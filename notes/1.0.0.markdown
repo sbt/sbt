@@ -1,5 +1,137 @@
 See [sbt 1.0 roadmap and beta-1][sbt-1-0-roadmap] for scheduled timeline.
 
+### sbt 1.0.0-M6
+
+This is the beta-2 release of sbt 1.0.
+
+### Changes since sbt 1.0.0-M5
+
+#### Features, fixes, changes with compatibility implications
+
+We are working with Scala Center to provide [an automatic migration tool][sbt-migration-rewrites].
+
+- sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
+
+#### Fixes
+
+- Fixes test content log not showing up. [#3198][3198]/[util#80][util80] by [@eed3si9n][@eed3si9n]
+- Fixes confusing log about "Unable to parse". [lm#98][lm98] by [@jvican][@jvican]
+- Fixes `console` task. [zinc#295][zinc295] by [@dwijnand][@dwijnand]
+- Fixes spurious recompilations when unrelated constructor changes. [zinc#288][zinc288] by [@smarter][@smarter]
+- Fixes restligeist macro for old operators. [#3218][3218] by [@eed3si9n][@eed3si9n]
+- Fixes task caching of `update` task. [#3233][3233] by [@eed3si9n][@eed3si9n]
+
+#### Improvements
+
+- Scala Center contributed a Java-friendly Zinc API. This was a overhaul of the Zinc internal API for a good Scala integration with other build tools. [zinc#304][zinc304] by [@jvican][@jvican]
+- Ivy engine with parallel artifact download. See below.
+- Scala Center contributed static validation of `build.sbt`. See below
+- Revamped documentation for [Scopes](www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
+- Ports sbt-cross-building's `^` and `^^` commands for plugin cross building. See below.
+- Adds support for cross-versioned exclusions. [#1518][1518]/[lm#88][lm88] by [@jvican][@jvican]
+- Adds new offline mode to the Ivy-based library management. [lm#92][lm92] by [@jvican][@jvican]
+- A number of features related to dependency locking. See below.
+- Improved eviction warning presentation. See below.
+- A better main class detection. [zinc#287][zinc287] by [@smarter][@smarter]
+- For faster startup, sbt will use Java refection to discover `autoImport` . [#3115][3115] by [@jvican][@jvican]
+- For faster startup, reuse the same global instance for parsing. [#3115][3115] by [@jvican][@jvican]
+- Adds `InteractionService` from sbt-core-next to keep compatibility with sbt 0.13. [#3182][3182] by [@eed3si9n][@eed3si9n]
+
+#### Static validation of build.sbt
+
+sbt 1.0 prohibits `.value` calls inside the bodies of if and else expressions in a task. `@sbtUnchecked` annotation can be used to override the check.
+
+The static validation also catches if you forget to call `.value` in a body of a task.
+
+[#3216][3216] and [#3225][3225] by [@jvican][@jvican]
+
+#### Internals
+
+- Adopted Scalafmt for formatting the source code using neo-scalafmt.
+- Scala Center contributed a redesign of the scripted test framework that has batch mode execution. Scripted now reuses the same sbt instance to run sbt tests, which reduces the CI build times by 50% [#3151][3151] by [@jvican][@jvican]
+- sbt 1.0.0-M6 is built using sbt 1.0.0-M5. [#3184][3184] by [@dwijnand][@dwijnand]
+
+#### Ivy engine with parallel artifact download
+
+sbt 1.0 adds parallel artifact download while still using Ivy for resolution, contributed by Scala Center.
+It also introduces Gigahorse OkHttp as the Network API, and it uses Square OkHttp for artifact download as well.
+
+[lm#90][lm90] by [@jvican][@jvican]/[@jsuereth][@jsuereth]
+and [lm#104][lm104] by [@eed3si9n][@eed3si9n].
+
+#### Dependency locking
+
+Dependency locking feature is still in progress, but Jorge ([@jvican][@jvican]) from Scala Center has added a number of related features
+that would should work together to allow dependency locking.
+
+- Frozen mode to the Ivy-based library management, which makes sure that the resolution is always intransitive. [lm#100][lm100]
+- Adds support to specify a resolver for dependencies. [lm#97][lm97]
+- Adds "managed checksums", which tells Ivy to skip the checksum process. [lm#111][lm111]
+
+#### Eviction warning presentation
+
+sbt 1.0 improves the eviction warning presetation.
+
+Before:
+
+    [warn] There may be incompatibilities among your library dependencies.
+    [warn] Here are some of the libraries that were evicted:
+    [warn]  * com.google.code.findbugs:jsr305:2.0.1 -> 3.0.0
+    [warn] Run 'evicted' to see detailed eviction warnings
+
+After:
+
+    [warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+    [warn]
+    [warn]      * com.typesafe.akka:akka-actor_2.12:2.5.0 is selected over 2.4.17
+    [warn]          +- de.heikoseeberger:akka-log4j_2.12:1.4.0            (depends on 2.5.0)
+    [warn]          +- com.typesafe.akka:akka-parsing_2.12:10.0.6         (depends on 2.4.17)
+    [warn]          +- com.typesafe.akka:akka-stream_2.12:2.4.17 ()       (depends on 2.4.17)
+    [warn]
+    [warn] Run 'evicted' to see detailed eviction warnings
+
+[#3202][3202] by [@eed3si9n][@eed3si9n]
+
+#### sbt-cross-building
+
+[@jrudolph][@jrudolph]'s sbt-cross-building is a plugin author's plugin.
+It adds cross command `^` and sbtVersion switch command `^^`, similar to `+` and `++`,
+but for switching between multiple sbt versions across major versions.
+sbt 0.13.16 merges these commands into sbt because the feature it provides is useful as we migrate plugins to sbt 1.0.
+
+To switch the `sbtVersion in pluginCrossBuild` from the shell use:
+
+```
+^^ 1.0.0-M5
+```
+
+Your plugin will now build with sbt 1.0.0-M5 (and its Scala version 2.12.2).
+
+If you need to make changes specific to a sbt version, you can now include them into `src/main/scala-sbt-0.13`,
+and `src/main/scala-sbt-1.0.0-M5`, where the binary sbt version number is used as postfix.
+
+To run a command across multiple sbt versions, set:
+
+```scala
+crossSbtVersions := Vector("0.13.15", "1.0.0-M5")
+```
+
+Then, run:
+
+```
+^ compile
+```
+
+[#3133][3133] by [@eed3si9n][@eed3si9n] (forward ported from 0.13.16-M1)
+
+
+#### notes
+
+- https://github.com/sbt/sbt/compare/v1.0.0-M5...v1.0.0-M6
+- https://github.com/sbt/zinc/compare/v1.0.0-X14...v1.0.0-X16
+- https://github.com/sbt/librarymanagement/compare/v1.0.0-X10...v1.0.0-X15
+- https://github.com/sbt/util/compare/v1.0.0-M23...v1.0.0-M24
+
 ### sbt 1.0.0-M5
 
 This is the beta-1 release of sbt 1.0.
@@ -85,17 +217,43 @@ In March 2016, we [rebooted](http://eed3si9n.com/sbt-server-reboot) the "server"
 Another related feature that was added is the `bgRun` task which, for example, enables a server process to be run in the background while you run tests against it.
 
   [@eed3si9n]: https://github.com/eed3si9n
-  [@gkossakowski]: https://github.com/gkossakowski
   [@dwijnand]: http://github.com/dwijnand
+  [@jvican]: https://github.com/jvican
   [@Duhemm]: https://github.com/Duhemm
   [@jsuereth]: https://github.com/jsuereth
+  [@gkossakowski]: https://github.com/gkossakowski
   [sbt-1-0-roadmap]: http://developer.lightbend.com/blog/2017-04-18-sbt-1-0-roadmap-and-beta1/
   [@eed3si9n]: https://github.com/eed3si9n
   [@jroper]: https://github.com/jroper
   [@valydia]: https://github.com/valydia
   [@RomanIakovlev]: https://github.com/RomanIakovlev
+  [@smarter]: https://github.com/smarter
   [840]: https://github.com/sbt/sbt/issues/840
   [2613]: https://github.com/sbt/sbt/pull/2613
   [1911]: https://github.com/sbt/sbt/issues/1911
   [2059]: https://github.com/sbt/sbt/issues/2059
   [2662]: https://github.com/sbt/sbt/pull/2662
+  [util80]: https://github.com/sbt/util/pull/80
+  [3198]: https://github.com/sbt/sbt/issues/3198
+  [lm88]: https://github.com/sbt/librarymanagement/pull/88
+  [1518]: https://github.com/sbt/sbt/issues/1518
+  [lm90]: https://github.com/sbt/librarymanagement/pull/90
+  [lm92]: https://github.com/sbt/librarymanagement/pull/92
+  [lm98]: https://github.com/sbt/librarymanagement/pull/98
+  [lm100]: https://github.com/sbt/librarymanagement/pull/100
+  [lm111]: https://github.com/sbt/librarymanagement/pull/111
+  [lm104]: https://github.com/sbt/librarymanagement/pull/104
+  [lm97]: https://github.com/sbt/librarymanagement/pull/97
+  [3202]: https://github.com/sbt/sbt/pull/3202
+  [zinc295]: https://github.com/sbt/zinc/pull/295
+  [zinc287]: https://github.com/sbt/zinc/pull/287
+  [zinc288]: https://github.com/sbt/zinc/pull/288
+  [zinc304]: https://github.com/sbt/zinc/pull/304
+  [3115]: https://github.com/sbt/sbt/pull/3115
+  [3182]: https://github.com/sbt/sbt/pull/3182
+  [3151]: https://github.com/sbt/sbt/pull/3151
+  [3184]: https://github.com/sbt/sbt/pull/3184
+  [3216]: https://github.com/sbt/sbt/pull/3216
+  [3218]: https://github.com/sbt/sbt/pull/3218
+  [3225]: https://github.com/sbt/sbt/pull/3225
+  [3233]: https://github.com/sbt/sbt/pull/3233
