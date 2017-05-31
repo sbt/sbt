@@ -228,6 +228,7 @@ Another related feature that was added is the `bgRun` task which, for example, e
   [@valydia]: https://github.com/valydia
   [@RomanIakovlev]: https://github.com/RomanIakovlev
   [@smarter]: https://github.com/smarter
+  [@jrudolph]: https://github.com/jrudolph
   [840]: https://github.com/sbt/sbt/issues/840
   [2613]: https://github.com/sbt/sbt/pull/2613
   [1911]: https://github.com/sbt/sbt/issues/1911
