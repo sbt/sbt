@@ -27,9 +27,7 @@ object Cross {
   private[sbt] def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
 
   private case class Switch(version: ScalaVersion, verbose: Boolean, command: Option[String])
-  private trait ScalaVersion {
-    def force: Boolean
-  }
+  private trait ScalaVersion { def force: Boolean }
   private case class NamedScalaVersion(name: String, force: Boolean) extends ScalaVersion
   private case class ScalaHomeVersion(home: File, resolveVersion: Option[String], force: Boolean)
       extends ScalaVersion
@@ -131,13 +129,13 @@ object Cross {
       crossVersions(x, proj) map { (proj.project, _) }
     }).toList
 
-    val verbose = if (args.verbose) "-v" else ""
 
     if (projVersions.isEmpty) {
       state
     } else {
+      val verbose = if (args.verbose) "-v" else ""
       // Group all the projects by scala version
-      val allCommands = projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
+      val allCommands = projVersions.groupBy(_._2).mapValues(_.map(_._1)).flatMap {
         case (version, Seq(project)) =>
           // If only one project for a version, issue it directly
           Seq(s"$SwitchCommand $verbose $version $project/$aggCommand")
