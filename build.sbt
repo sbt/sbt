@@ -69,6 +69,19 @@ lazy val tests = crossProject
 lazy val testsJvm = tests.jvm
 lazy val testsJs = tests.js
 
+lazy val `proxy-tests` = project
+  .dependsOn(testsJvm % "test->test")
+  .configs(Integration)
+  .settings(
+    shared,
+    dontPublish,
+    hasITs,
+    coursierPrefix,
+    libs += Deps.scalaAsync.value,
+    utest,
+    sharedTestResources
+  )
+
 lazy val cache = project
   .dependsOn(coreJvm)
   .settings(
@@ -242,6 +255,7 @@ lazy val jvm = project
   .aggregate(
     coreJvm,
     testsJvm,
+    `proxy-tests`,
     cache,
     bootstrap,
     extra,
@@ -274,6 +288,21 @@ lazy val js = project
     moduleName := "coursier-js"
   )
 
+// run sbt-plugins/publishLocal to publish all that necessary for plugins
+lazy val `sbt-plugins` = project
+  .dummy
+  .aggregate(
+    coreJvm,
+    cache,
+    extra,
+    `sbt-coursier`,
+    `sbt-shading`
+  )
+  .settings(
+    shared,
+    dontPublish
+  )
+
 lazy val coursier = project
   .in(root)
   .aggregate(
@@ -282,6 +311,7 @@ lazy val coursier = project
     `fetch-js`,
     testsJvm,
     testsJs,
+    `proxy-tests`,
     cache,
     bootstrap,
     extra,

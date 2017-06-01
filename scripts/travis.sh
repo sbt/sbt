@@ -24,6 +24,10 @@ launchTestRepo() {
   ./scripts/launch-test-repo.sh "$@"
 }
 
+launchProxyRepos() {
+  ./scripts/launch-proxies.sh
+}
+
 integrationTestsRequirements() {
   # Required for ~/.ivy2/local repo tests
   sbt ++2.11.11 coreJVM/publishLocal
@@ -217,6 +221,9 @@ else
       runSbtShadingTests
     fi
   else
+    # Required for the proxy tests (currently CentralNexus2ProxyTests and CentralNexus3ProxyTests)
+    launchProxyRepos
+
     runJvmTests
 
     testBootstrap

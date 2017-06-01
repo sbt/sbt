@@ -5,6 +5,9 @@ os:
   - osx
 script:
   - scripts/travis.sh
+sudo: required
+services:
+  - docker
 # Uncomment once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 # after_success:
 #    - bash <(curl -s https://codecov.io/bash)
@@ -13,6 +16,9 @@ matrix:
     - env: SCALA_VERSION=2.12.1 PUBLISH=1
       os: linux
       jdk: oraclejdk8
+      sudo: required
+      services:
+        - docker
     - env: SCALA_VERSION=2.11.11 PUBLISH=1
       os: linux
       jdk: oraclejdk8

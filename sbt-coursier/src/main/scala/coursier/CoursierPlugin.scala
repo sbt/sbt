@@ -28,6 +28,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierFallbackDependencies = Keys.coursierFallbackDependencies
     val coursierCache = Keys.coursierCache
     val coursierProject = Keys.coursierProject
+    val coursierConfigGraphs = Keys.coursierConfigGraphs
     val coursierInterProjectDependencies = Keys.coursierInterProjectDependencies
     val coursierPublications = Keys.coursierPublications
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
@@ -35,7 +36,11 @@ object CoursierPlugin extends AutoPlugin {
     val coursierConfigurations = Keys.coursierConfigurations
 
     val coursierParentProjectCache = Keys.coursierParentProjectCache
-    val coursierResolution = Keys.coursierResolution
+    val coursierResolutions = Keys.coursierResolutions
+
+    @deprecated("Use coursierResolutions instead", "1.0.0-RC4")
+    val coursierResolution = Keys.actualCoursierResolution
+
     val coursierSbtClassifiersResolution = Keys.coursierSbtClassifiersResolution
 
     val coursierDependencyTree = Keys.coursierDependencyTree
@@ -117,15 +122,30 @@ object CoursierPlugin extends AutoPlugin {
       ignoreArtifactErrors = true
     ).value,
     coursierProject := Tasks.coursierProjectTask.value,
+    coursierConfigGraphs := Tasks.ivyGraphsTask.value,
     coursierInterProjectDependencies := Tasks.coursierInterProjectDependenciesTask.value,
     coursierPublications := Tasks.coursierPublicationsTask(packageConfigs: _*).value,
     coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
     coursierConfigurations := Tasks.coursierConfigurationsTask(None).value,
     coursierParentProjectCache := Tasks.parentProjectCacheTask.value,
-    coursierResolution := Tasks.resolutionTask().value,
-    coursierSbtClassifiersResolution := Tasks.resolutionTask(
+    coursierResolutions := Tasks.resolutionsTask().value,
+    Keys.actualCoursierResolution := {
+
+      val config = Compile.name
+
+      coursierResolutions
+        .value
+        .collectFirst {
+          case (configs, res) if (configs(config)) =>
+            res
+        }
+        .getOrElse {
+          sys.error(s"Resolution for configuration $config not found")
+        }
+    },
+    coursierSbtClassifiersResolution := Tasks.resolutionsTask(
       sbtClassifiers = true
-    ).value,
+    ).value.head._2,
     ivyConfigurations := {
       val confs = ivyConfigurations.value
       val names = confs.map(_.name).toSet

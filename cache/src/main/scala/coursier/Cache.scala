@@ -19,6 +19,7 @@ import scalaz.Scalaz.ToEitherOps
 import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
+import java.nio.charset.Charset
 
 import scala.concurrent.duration.{ Duration, DurationInt }
 import scala.util.Try
@@ -29,6 +30,9 @@ trait AuthenticatedURLConnection extends URLConnection {
 }
 
 object Cache {
+
+  // java.nio.charset.StandardCharsets.UTF_8 not available in Java 6
+  private val UTF_8 = Charset.forName("UTF-8")
 
   // Check SHA-1 if available, else be fine with no checksum
   val defaultChecksums = Seq(Some("SHA-1"), None)
@@ -337,7 +341,7 @@ object Cache {
   ).r
 
   private def basicAuthenticationEncode(user: String, password: String): String =
-    (user + ":" + password).getBytes("UTF-8").toBase64
+    (user + ":" + password).getBytes(UTF_8).toBase64
 
   /**
     * Returns a `java.net.URL` for `s`, possibly using the custom protocol handlers found under the
@@ -676,7 +680,7 @@ object Cache {
           Task {
             if (referenceFileExists) {
               if (!errFile0.exists())
-                FileUtil.write(errFile0, "".getBytes("UTF-8"))
+                FileUtil.write(errFile0, "".getBytes(UTF_8))
             }
 
             ().right[FileError]
@@ -834,6 +838,18 @@ object Cache {
     parseChecksumLine(lines) orElse parseChecksumAlternative(lines)
   }
 
+  def parseRawChecksum(content: Array[Byte]): Option[BigInteger] =
+    if (content.length == 16 || content.length == 20)
+      Some(new BigInteger(content))
+    else {
+      val s = new String(content, UTF_8)
+      val lines = s
+        .lines
+        .toVector
+
+      parseChecksumLine(lines) orElse parseChecksumAlternative(lines)
+    }
+
   // matches md5 or sha1
   private val checksumPattern = Pattern.compile("^[0-9a-f]{32}([0-9a-f]{8})?")
 
@@ -866,9 +882,7 @@ object Cache {
           val sumFile = localFile(sumUrl, cache, artifact.authentication.map(_.user))
 
           Task {
-            val sumOpt = parseChecksum(
-              new String(FileUtil.readAllBytes(sumFile), "UTF-8")
-            )
+            val sumOpt = parseRawChecksum(FileUtil.readAllBytes(sumFile))
 
             sumOpt match {
               case None =>
@@ -979,7 +993,7 @@ object Cache {
         def notFound(f: File) = Left(s"${f.getCanonicalPath} not found")
 
         def read(f: File) =
-          try Right(new String(FileUtil.readAllBytes(f), "UTF-8"))
+          try Right(new String(FileUtil.readAllBytes(f), UTF_8))
           catch {
             case NonFatal(e) =>
               Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")

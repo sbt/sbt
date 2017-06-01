@@ -39,7 +39,7 @@ object MavenTests extends TestSuite {
 
       * - CentralTests.withArtifacts(
         dep = dep,
-        artifactType = "jar",
+        artifactType = "src",
         extraRepo = Some(repo),
         classifierOpt = Some("sources")
       ) {

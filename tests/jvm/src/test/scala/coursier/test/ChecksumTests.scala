@@ -22,7 +22,7 @@ object ChecksumTests extends TestSuite {
           assert(Cache.parseChecksum(other) == expected)
       }
 
-      * - {
+      'junk - {
         // https://repo1.maven.org/maven2/org/apache/spark/spark-core_2.11/1.2.0/spark-core_2.11-1.2.0.pom.sha1
         // as of 2016-03-02
         val junkSha1 =
@@ -34,7 +34,7 @@ object ChecksumTests extends TestSuite {
         sha1ParseTest(cleanSha1, junkSha1)
       }
 
-      * - {
+      'singleLine - {
         // https://repo1.maven.org/maven2/org/json/json/20080701/json-20080701.pom.sha1
         // as of 2016-03-05
         val dirtySha1 =
@@ -44,6 +44,18 @@ object ChecksumTests extends TestSuite {
         val cleanSha1 = "4bf5daa95eb5c12d753a359a3e00621fdc73d187"
 
         sha1ParseTest(cleanSha1, dirtySha1)
+      }
+
+      'binarySha1 - {
+        val content = Platform.readFullySync(getClass.getResource("/empty.sha1").openStream())
+        val res = Cache.parseRawChecksum(content)
+        assert(res.nonEmpty)
+      }
+
+      'binaryMd5 - {
+        val content = Platform.readFullySync(getClass.getResource("/empty.md5").openStream())
+        val res = Cache.parseRawChecksum(content)
+        assert(res.nonEmpty)
       }
     }
 
