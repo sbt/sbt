@@ -111,7 +111,18 @@ runJvmTests() {
 }
 
 validateReadme() {
+  # check that tut runs fine, and that the README doesn't change after a `sbt tut`
+  mv README.md README.md.orig
+
   sbt ++${SCALA_VERSION} tut
+
+  if cmp -s README.md.orig README.md; then
+    echo "README.md doesn't change"
+  else
+    echo "Error: README.md not the same after a \"sbt tut\":"
+    diff -u README.md.orig README.md
+    exit 1
+  fi
 }
 
 checkBinaryCompatibility() {
