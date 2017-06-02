@@ -87,15 +87,27 @@ private class StaticLauncher(appProvider: StaticAppProvider, scalaProvider: Stat
   override def topLoader(): ClassLoader = new URLClassLoader(Array.empty, null)
   override def globalLock(): xsbti.GlobalLock = new WeakGlobalLock
 
-  override def bootDirectory(): File = new File(sys props "user.home") / ".sbt" / "boot"
+  override val bootDirectory: File =
+    sys.props get "sbt.boot.directory" map (new File(_)) getOrElse (new File(sys props "user.home") / ".sbt" / "boot")
 
   override def ivyRepositories(): Array[xsbti.Repository] = appRepositories
-  override def appRepositories(): Array[xsbti.Repository] = Array(new FakeRepository(new FakeResolver("fakeresolver", bootDirectory / "fakeresolver-cache", modules)))
+  override def appRepositories(): Array[xsbti.Repository] = Array(new FakeRepository(new FakeResolver("fakeresolver", bootDirectory / "fakeresolver-cache", modules))) ++ definedRepositories
 
-  override def isOverrideRepositories(): Boolean = false
+  private val repositoriesFile: Option[File] = {
+    val file = sys.props get "sbt.repository.config" map (new File(_)) getOrElse (bootDirectory / "repositories")
+    if (file.exists) Some(file)
+    else None
+  }
+
+  override val isOverrideRepositories: Boolean = sys.props get "sbt.override.build.repos" map (_.toBoolean) getOrElse false
 
   override def ivyHome(): File = null
   override def checksums(): Array[String] = Array.empty
+
+  private lazy val definedRepositories: Array[xsbti.Repository] = repositoriesFile match {
+    case Some(file) => RepositoriesParser(file).toArray
+    case None       => Array.empty
+  }
 
   private lazy val modules = Map(
     ("org.scala-sbt", "sbt", sbtApplicationID.version) ->
@@ -104,6 +116,16 @@ private class StaticLauncher(appProvider: StaticAppProvider, scalaProvider: Stat
     ("org.scala-sbt", "compiler-interface", sbtApplicationID.version) -> {
       val file = scalaProvider.getComponent(StaticUtils.BRIDGE)
       Seq(FakeResolver.FakeArtifact("compiler-interface", "src", "jar", file))
+    },
+
+    (StaticUtils.SCALA_ORG, "scala-compiler", scalaProvider.version) -> {
+      val file = scalaProvider.getComponent(StaticUtils.COMPILER)
+      Seq(FakeResolver.FakeArtifact("scala-compiler", "jar", "jar", file))
+    },
+
+    (StaticUtils.SCALA_ORG, "scala-library", scalaProvider.version) -> {
+      val file = scalaProvider.getComponent(StaticUtils.LIBRARY)
+      Seq(FakeResolver.FakeArtifact("scala-library", "jar", "jar", file))
     }
   )
 }
