@@ -1,3 +1,5 @@
+[![Gitter Chat](https://badges.gitter.im/sbt/sbt.svg)](https://gitter.im/sbt/sbt)
+
   [sbt/sbt-zero-seven]: https://github.com/sbt/sbt-zero-seven
   [CONTRIBUTING]: CONTRIBUTING.md
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
