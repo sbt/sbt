@@ -1,10 +1,14 @@
 
-import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
-import java.io.{ ByteArrayOutputStream, FileInputStream, FileOutputStream, File, InputStream, IOException }
+import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
+import java.io.{ByteArrayOutputStream, FileInputStream, FileOutputStream, InputStream}
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+
+import sbt.File
 
 object ZipUtil {
 
-  def addToZip(sourceZip: File, destZip: File, extra: Seq[(String, File)]): Unit = {
+  def addToZip(sourceZip: File, destZip: File, extra: Seq[(String, Array[Byte])]): Unit = {
     
     val is = new FileInputStream(sourceZip)
     val os = new FileOutputStream(destZip)
@@ -50,9 +54,9 @@ object ZipUtil {
       outputZip.closeEntry()
     }
 
-    for ((dest, file) <- extra) {
+    for ((dest, data) <- extra) {
       outputZip.putNextEntry(new ZipEntry(dest))
-      outputZip.write(readFullySync(new FileInputStream(file)))
+      outputZip.write(data)
       outputZip.closeEntry()
     }
 
@@ -61,6 +65,23 @@ object ZipUtil {
     is.close()
     os.close()
 
+  }
+
+  // seems the -noverify may not be needed anymore (to launch the proguarded JAR)
+  // not sure why
+  private val prelude =
+    """#!/usr/bin/env bash
+      |exec java -noverify -jar "$0" "$@"
+      |""".stripMargin
+
+  def addPrelude(source: File, dest: File): dest.type = {
+
+    val rawContent = Files.readAllBytes(source.toPath)
+    val content = prelude.getBytes(StandardCharsets.UTF_8) ++ rawContent
+
+    Files.write(dest.toPath, content)
+
+    dest
   }
 
 }
