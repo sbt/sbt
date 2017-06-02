@@ -165,7 +165,8 @@ object Defaults extends BuildCommon {
     initialize :== {},
     templateResolverInfos :== Nil,
     forcegc :== sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(GCUtil.defaultForceGarbageCollection),
-    minForcegcInterval :== GCUtil.defaultMinForcegcInterval
+    minForcegcInterval :== GCUtil.defaultMinForcegcInterval,
+    projects := { buildStructure.value.units.values.map(_.defined).flatMap(_.values).toSeq }
   ))
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
     tags := Seq(Tags.Test -> 1),

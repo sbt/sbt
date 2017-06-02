@@ -56,6 +56,7 @@ object Keys {
   val onUnload = SettingKey[State => State]("on-unload", "Transformation to apply to the build state when the build is unloaded.", DSetting)
   val onLoadMessage = SettingKey[String]("on-load-message", "Message to display when the project is loaded.", DSetting)
   val transformState = AttributeKey[State => State]("transform-state", "State transformation to apply after tasks run.", DSetting)
+  val projects = TaskKey[Seq[ResolvedProject]]("projects", "Get the list of resolved projects.")
 
   val onComplete = SettingKey[() => Unit]("on-complete", "Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.", DSetting)
 
