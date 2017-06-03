@@ -1138,7 +1138,7 @@ private[sbt] object Load {
   /** Loads the plugins.
    *
    * @param dir The base directory for the build.
-   * @param config The configuration for the the build.
+   * @param config The configuration for the build.
    * @param pluginData The data required to load plugins.
    * @return An instance of the loaded build with plugin information.
    */
