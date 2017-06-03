@@ -9,6 +9,16 @@ import scala.language.higherKinds
 import scalaz._
 
 object MavenRepository {
+  val SnapshotTimestamp = "(.*-)?[0-9]{8}\\.[0-9]{6}-[0-9]+".r
+
+  def isSnapshot(version: String): Boolean =
+    version.endsWith("SNAPSHOT") || SnapshotTimestamp.findFirstIn(version).nonEmpty
+
+  def toBaseVersion(version: String): String = version match {
+      case SnapshotTimestamp(null) => "SNAPSHOT"
+      case SnapshotTimestamp(base) => base + "SNAPSHOT"
+      case _ => version
+    }
 
   def ivyLikePath(
     org: String,
@@ -80,7 +90,7 @@ final case class MavenRepository(
     module.organization.split('.').toSeq :+ dirModuleName(module, sbtAttrStub)
 
   private def moduleVersionPath(module: Module, version: String): Seq[String] =
-    modulePath(module) :+ version
+    modulePath(module) :+ toBaseVersion(version)
 
   private def urlFor(path: Seq[String]): String =
     root0 + path.map(encodeURIComponent).mkString("/")
@@ -99,7 +109,7 @@ final case class MavenRepository(
       Map.empty,
       Map.empty,
       Attributes("pom", ""),
-      changing = changing.getOrElse(version.contains("-SNAPSHOT")),
+      changing = changing.getOrElse(isSnapshot(version)),
       authentication = authentication
     )
     .withDefaultChecksums
@@ -253,6 +263,7 @@ final case class MavenRepository(
         snapshotVersioning(module, version, fetch).flatMap { snapshotVersioning =>
           val versioningOption =
             mavenVersioning(snapshotVersioning, "", "jar")
+              .orElse(mavenVersioning(snapshotVersioning, "", "pom"))
               .orElse(mavenVersioning(snapshotVersioning, "", ""))
 
           versioningOption match {
@@ -267,7 +278,7 @@ final case class MavenRepository(
         }
 
       val res = F.bind(findVersioning(module, version, None, fetch).run) { eitherProj =>
-        if (eitherProj.isLeft && version.contains("-SNAPSHOT"))
+        if (eitherProj.isLeft && isSnapshot(version))
           F.map(withSnapshotVersioning.run)(eitherProj0 =>
             if (eitherProj0.isLeft)
               eitherProj
@@ -332,6 +343,8 @@ final case class MavenRepository(
 
     val listFilesUrl = urlFor(moduleVersionPath(module, version)) + "/"
 
+    val changing0 = changing.getOrElse(isSnapshot(version))
+
     val listFilesArtifact =
       Artifact(
         listFilesUrl,
@@ -340,7 +353,7 @@ final case class MavenRepository(
           "metadata" -> projectArtifact0
         ),
         Attributes("", ""),
-        changing = changing.getOrElse(version.contains("-SNAPSHOT")),
+        changing = changing0,
         authentication
       )
 
@@ -356,7 +369,7 @@ final case class MavenRepository(
 
     for {
       str <- fetch(requiringDirListingProjectArtifact)
-      rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl, changing.getOrElse(version.contains("-SNAPSHOT")))).run) {
+      rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl, changing0)).run) {
         e => \/-(e.toOption): String \/ Option[String]
       })
       proj0 <- EitherT(F.point[String \/ Project](parseRawPom(str)))
