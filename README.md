@@ -42,7 +42,7 @@ Issues and Pull Requests
 
 Please read [CONTRIBUTING] carefully before opening a GitHub Issue.
 
-The short version: try [searching] or [asking] on StackOverflow and [sbt-dev].
+The short version: try [searching] or [asking] on StackOverflow.
 
 license
 -------
