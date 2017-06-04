@@ -14,3 +14,4 @@
 
 ## notes
 
+sbt version: *insert sbt version*
