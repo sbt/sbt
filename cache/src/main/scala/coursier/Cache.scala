@@ -159,7 +159,14 @@ object Cache {
     }
   }
 
-  def withLockFor[T](cache: File, file: File)(f: => FileError \/ T): FileError \/ T = {
+  private def withLockOr[T](
+    cache: File,
+    file: File
+  )(
+    f: => FileError \/ T,
+    ifLocked: => Option[FileError \/ T]
+  ): FileError \/ T = {
+
     val lockFile = new File(file.getParentFile, s"${file.getName}.lock")
 
     var out: FileOutputStream = null
@@ -169,29 +176,45 @@ object Cache {
       out = new FileOutputStream(lockFile)
     }
 
-    try {
-      var lock: FileLock = null
-      try {
-        lock = out.getChannel.tryLock()
-        if (lock == null)
-          -\/(FileError.Locked(file))
-        else
-          try f
-          finally {
-            lock.release()
-            lock = null
-            out.close()
-            out = null
-            lockFile.delete()
-          }
+    @tailrec
+    def loop(): FileError \/ T = {
+
+      val resOpt = {
+        var lock: FileLock = null
+        try {
+          lock = out.getChannel.tryLock()
+          if (lock == null)
+            ifLocked
+          else
+            try Some(f)
+            finally {
+              lock.release()
+              lock = null
+              out.close()
+              out = null
+              lockFile.delete()
+            }
+        }
+        catch {
+          case _: OverlappingFileLockException =>
+            ifLocked
+        }
+        finally if (lock != null) lock.release()
       }
-      catch {
-        case e: OverlappingFileLockException =>
-          -\/(FileError.Locked(file))
+
+      resOpt match {
+        case Some(res) => res
+        case None =>
+          loop()
       }
-      finally if (lock != null) lock.release()
-    } finally if (out != null) out.close()
+    }
+
+    try loop()
+    finally if (out != null) out.close()
   }
+
+  def withLockFor[T](cache: File, file: File)(f: => FileError \/ T): FileError \/ T =
+    withLockOr(cache, file)(f, Some(-\/(FileError.Locked(file))))
 
 
   private def defaultRetryCount = 3
@@ -222,24 +245,15 @@ object Cache {
 
           val res =
             if (prev == null) {
-              logger.foreach(_.downloadingArtifact(url, file))
-
               val res =
                 try \/-(f)
                 catch {
                   case nfe: FileNotFoundException if nfe.getMessage != null =>
-                    logger.foreach(_.downloadedArtifact(url, success = false))
                     -\/(-\/(FileError.NotFound(nfe.getMessage)))
-                  case e: Exception =>
-                    logger.foreach(_.downloadedArtifact(url, success = false))
-                    throw e
                 }
                 finally {
                   urlLocks.remove(url)
                 }
-
-              for (res0 <- res)
-                logger.foreach(_.downloadedArtifact(url, success = res0.isRight))
 
               res.merge[FileError \/ T]
             } else
@@ -394,17 +408,67 @@ object Cache {
     }
   }
 
+  private def contentLength(
+    url: String,
+    authentication: Option[Authentication],
+    logger0: Option[Logger]
+  ): FileError \/ Option[Long] = {
+
+    val logger = logger0.map(Logger.Extended(_))
+
+    var conn: URLConnection = null
+
+    try {
+      conn = urlConnection(url, authentication)
+
+      conn match {
+        case c: HttpURLConnection =>
+          logger.foreach(_.gettingLength(url))
+
+          var success = false
+          try {
+            c.setRequestMethod("HEAD")
+            val len = Some(c.getContentLength) // TODO Use getContentLengthLong when switching to Java >= 7
+              .filter(_ >= 0)
+              .map(_.toLong)
+
+            // TODO 404 Not found could be checked here
+
+            success = true
+            logger.foreach(_.gettingLengthResult(url, len))
+
+            len.right
+          } finally {
+            if (!success)
+              logger.foreach(_.gettingLengthResult(url, None))
+          }
+
+        case other =>
+          -\/(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
+      }
+    } finally {
+      if (conn != null)
+        conn match {
+          case conn0: HttpURLConnection =>
+            conn0.disconnect()
+          case _ =>
+        }
+    }
+  }
+
   private def download(
     artifact: Artifact,
     cache: File,
     checksums: Set[String],
     cachePolicy: CachePolicy,
     pool: ExecutorService,
-    logger: Option[Logger] = None,
+    logger0: Option[Logger] = None,
     ttl: Option[Duration] = defaultTtl
   ): Task[Seq[((File, String), FileError \/ Unit)]] = {
 
     implicit val pool0 = pool
+
+    val logger = logger0.map(Logger.Extended(_))
 
     // Reference file - if it exists, and we get not found errors on some URLs, we assume
     // we can keep track of these missing, and not try to get them again later.
@@ -585,9 +649,13 @@ object Cache {
     ): EitherT[Task, FileError, Unit] =
       EitherT {
         Task {
-          withLockFor(cache, file) {
+
+          val tmp = temporaryFile(file)
+
+          var lenOpt = Option.empty[Option[Long]]
+
+          def doDownload(): FileError \/ Unit =
             downloading(url, file, logger) {
-              val tmp = temporaryFile(file)
 
               val alreadyDownloaded = tmp.length()
 
@@ -622,7 +690,7 @@ object Cache {
                   // TODO Use the safer getContentLengthLong when switching back to Java >= 7
                   for (len0 <- Option(conn.getContentLength) if len0 >= 0L) {
                     val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
-                    logger.foreach(_.downloadLength(url, len, alreadyDownloaded))
+                    logger.foreach(_.downloadLength(url, len, alreadyDownloaded, watching = false))
                   }
 
                   val in = new BufferedInputStream(conn.getInputStream, bufferSize)
@@ -658,7 +726,60 @@ object Cache {
                   }
               }
             }
+
+          def checkDownload(): Option[FileError \/ Unit] = {
+
+            def progress(currentLen: Long): Unit =
+              if (lenOpt.isEmpty) {
+                lenOpt = Some(contentLength(url, artifact.authentication, logger).toOption.flatten)
+                for (o <- lenOpt; len <- o)
+                  logger.foreach(_.downloadLength(url, len, currentLen, watching = true))
+              } else
+                logger.foreach(_.downloadProgress(url, currentLen))
+
+            def done(): Unit =
+              if (lenOpt.isEmpty) {
+                lenOpt = Some(contentLength(url, artifact.authentication, logger).toOption.flatten)
+                for (o <- lenOpt; len <- o)
+                  logger.foreach(_.downloadLength(url, len, len, watching = true))
+              } else
+                for (o <- lenOpt; len <- o)
+                  logger.foreach(_.downloadProgress(url, len))
+
+            if (file.exists()) {
+              done()
+              Some(().right)
+            } else {
+              // yes, Thread.sleep. 'tis our thread pool anyway.
+              // (And the various resources make it not straightforward to switch to a more Task-based internal API here.)
+              Thread.sleep(20L)
+
+              val currentLen = tmp.length()
+
+              if (currentLen == 0L && file.exists()) { // check again if file exists in case it was created in the mean time
+                done()
+                Some(().right)
+              } else {
+                progress(currentLen)
+                None
+              }
+            }
           }
+
+          logger.foreach(_.downloadingArtifact(url, file))
+
+          var res: FileError \/ Unit = null
+
+          try {
+            res = withLockOr(cache, file)(
+              doDownload(),
+              checkDownload()
+            )
+          } finally {
+            logger.foreach(_.downloadedArtifact(url, success = res != null && res.isRight))
+          }
+
+          res
         }
       }
 
@@ -938,7 +1059,7 @@ object Cache {
         checksums = checksums0.collect { case Some(c) => c }.toSet,
         cachePolicy,
         pool,
-        logger = logger,
+        logger0 = logger,
         ttl = ttl
       ).map { results =>
         val checksum = checksums0.find {
@@ -1106,10 +1227,11 @@ object Cache {
 
     def downloadingArtifact(url: String, file: File): Unit = {}
 
-    @deprecated("Use / override the variant with 3 arguments instead", "1.0.0-M10")
+    @deprecated("extend Logger.Extended instead and use / override the variant with 4 arguments", "1.0.0-M10")
     def downloadLength(url: String, length: Long): Unit = {}
-    def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long): Unit = {
-      downloadLength(url, totalLength)
+    @deprecated("extend Logger.Extended instead and use / override the variant with 4 arguments", "1.0.0-RC4")
+    def downloadLength(url: String, length: Long, alreadyDownloaded: Long): Unit = {
+      downloadLength(url, length)
     }
 
     def downloadProgress(url: String, downloaded: Long): Unit = {}
@@ -1117,6 +1239,48 @@ object Cache {
     def downloadedArtifact(url: String, success: Boolean): Unit = {}
     def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit = {}
     def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]): Unit = {}
+  }
+
+  object Logger {
+    // adding new methods to this one, not to break bin compat in 2.10 / 2.11
+    abstract class Extended extends Logger {
+      def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit = {
+        downloadLength(url, totalLength, 0L)
+      }
+
+      def gettingLength(url: String): Unit = {}
+      def gettingLengthResult(url: String, length: Option[Long]): Unit = {}
+    }
+
+    object Extended {
+      def apply(logger: Logger): Extended =
+        logger match {
+          case e: Extended => e
+          case _ =>
+            new Extended {
+              override def foundLocally(url: String, f: File) =
+                logger.foundLocally(url, f)
+
+              override def downloadingArtifact(url: String, file: File) =
+                logger.downloadingArtifact(url, file)
+
+              override def downloadLength(url: String, length: Long) =
+                logger.downloadLength(url, length)
+              override def downloadLength(url: String, length: Long, alreadyDownloaded: Long) =
+                logger.downloadLength(url, length, alreadyDownloaded)
+
+              override def downloadProgress(url: String, downloaded: Long) =
+                logger.downloadProgress(url, downloaded)
+
+              override def downloadedArtifact(url: String, success: Boolean) =
+                logger.downloadedArtifact(url, success)
+              override def checkingUpdates(url: String, currentTimeOpt: Option[Long]) =
+                checkingUpdates(url, currentTimeOpt)
+              override def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]) =
+                checkingUpdatesResult(url, currentTimeOpt, remoteTimeOpt)
+            }
+        }
+    }
   }
 
   var bufferSize = 1024*1024

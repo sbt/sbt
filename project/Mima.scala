@@ -43,7 +43,14 @@ object Mima {
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
 
-      Seq()
+      Seq(
+        // these are private, don't know why they end-up appearing here
+        // (probably related to https://github.com/typesafehub/migration-manager/issues/34)
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("coursier.TermDisplay#DownloadInfo")),
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("coursier.TermDisplay$DownloadInfo")),
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("coursier.TermDisplay#CheckUpdateInfo")),
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("coursier.TermDisplay#Info"))
+      )
     }
   }
 
