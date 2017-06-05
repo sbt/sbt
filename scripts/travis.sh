@@ -25,7 +25,9 @@ launchTestRepo() {
 }
 
 launchProxyRepos() {
-  ./scripts/launch-proxies.sh
+  if [ "$(uname)" != "Darwin" ]; then
+    ./scripts/launch-proxies.sh
+  fi
 }
 
 integrationTestsRequirements() {
@@ -107,7 +109,13 @@ runJsTests() {
 }
 
 runJvmTests() {
-  sbt ++$SCALA_VERSION jvm/test jvm/it:test
+  if [ "$(uname)" == "Darwin" ]; then
+    IT="testsJVM/it:test" # don't run proxy-tests in particular
+  else
+    IT="jvm/it:test"
+  fi
+
+  sbt ++$SCALA_VERSION jvm/test $IT
 }
 
 validateReadme() {
