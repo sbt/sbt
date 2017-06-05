@@ -88,7 +88,7 @@ final case class IvyRepository(
                 }
             }
 
-          val retainedWithUrl = retained.flatMap { p =>
+          val retainedWithUrl = retained.distinct.flatMap { p =>
             pattern.substituteVariables(variables(
               dependency.module,
               Some(project.actualVersion),
