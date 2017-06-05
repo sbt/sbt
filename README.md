@@ -73,9 +73,10 @@ dependencyDotFile := file("dependencies.dot") //render dot file to `./dependenci
  * sbt < 0.13.6: The plugin will fall back on the old ivy report XML backend which suffers from [#39].
  * sbt < 0.13.5: Old versions of sbt have no `AutoPlugin` support, you need to add
 
-   ```scala
+```scala
 net.virtualvoid.sbt.graph.DependencyGraphSettings.graphSettings
-   ```
+```
+
    to your `build.sbt` or (`~/.sbt/0.13/user.sbt` for global configuration) to enable the plugin.
  * sbt <= 0.12.x: Old versions of sbt are not actively supported any more. Please use the old version from the [0.7 branch](https://github.com/jrudolph/sbt-dependency-graph/tree/0.7).
 
