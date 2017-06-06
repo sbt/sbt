@@ -840,7 +840,8 @@ object Tasks {
   def artifactFilesOrErrors(
     withClassifiers: Boolean,
     sbtClassifiers: Boolean = false,
-    ignoreArtifactErrors: Boolean = false
+    ignoreArtifactErrors: Boolean = false,
+    includeSignatures: Boolean = false
   ) = Def.task {
 
     // let's update only one module at once, for a better output
@@ -878,11 +879,20 @@ object Tasks {
         else
           None
 
-      val allArtifacts =
+      val allArtifacts0 =
         classifiers match {
           case None => res.flatMap(_.artifacts)
           case Some(cl) => res.flatMap(_.classifiersArtifacts(cl))
         }
+
+      val allArtifacts =
+        if (includeSignatures)
+          allArtifacts0.flatMap { a =>
+            val sigOpt = a.extra.get("sig").map(_.copy(attributes = Attributes()))
+            Seq(a) ++ sigOpt.toSeq
+          }
+        else
+          allArtifacts0
 
       var pool: ExecutorService = null
       var artifactsLogger: TermDisplay = null
@@ -1022,7 +1032,8 @@ object Tasks {
     shadedConfigOpt: Option[(String, String)],
     withClassifiers: Boolean,
     sbtClassifiers: Boolean = false,
-    ignoreArtifactErrors: Boolean = false
+    ignoreArtifactErrors: Boolean = false,
+    includeSignatures: Boolean = false
   ) = Def.task {
 
     def grouped[K, V](map: Seq[(K, V)])(mapKey: K => K): Map[K, Seq[V]] =
@@ -1134,7 +1145,9 @@ object Tasks {
               Keys.coursierSbtClassifiersArtifacts
             else
               Keys.coursierClassifiersArtifacts
-          } else
+          } else if (includeSignatures)
+            Keys.coursierSignedArtifacts
+          else
             Keys.coursierArtifacts
         ).value
 
@@ -1178,7 +1191,9 @@ object Tasks {
             _,
             _,
             _
-          )
+          ),
+          log,
+          includeSignatures = includeSignatures
         )
       }
 

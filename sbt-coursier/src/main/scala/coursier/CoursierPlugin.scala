@@ -47,6 +47,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierDependencyInverseTree = Keys.coursierDependencyInverseTree
 
     val coursierArtifacts = Keys.coursierArtifacts
+    val coursierSignedArtifacts = Keys.coursierSignedArtifacts
     val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
     val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
   }
@@ -97,6 +98,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierFallbackDependencies := Tasks.coursierFallbackDependenciesTask.value,
     coursierCache := Cache.default,
     coursierArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false).value,
+    coursierSignedArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false, includeSignatures = true).value,
     coursierClassifiersArtifacts := Tasks.artifactFilesOrErrors(
       withClassifiers = true
     ).value,

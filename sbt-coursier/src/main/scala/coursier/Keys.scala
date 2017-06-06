@@ -62,6 +62,7 @@ object Keys {
   )
 
   val coursierArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-artifacts")
+  val coursierSignedArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-signed-artifacts")
   val coursierClassifiersArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-classifiers-artifacts")
   val coursierSbtClassifiersArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-sbt-classifiers-artifacts")
 }
