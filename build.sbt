@@ -184,12 +184,10 @@ lazy val doc = project
     tutTargetDirectory := baseDirectory.in(LocalRootProject).value
   )
 
-// Don't try to compile that if you're not in 2.10
 lazy val `sbt-coursier` = project
   .dependsOn(coreJvm, cache, extra)
   .settings(plugin)
 
-// Don't try to compile that if you're not in 2.10
 lazy val `sbt-shading` = project
   .enablePlugins(ShadingPlugin)
   .dependsOn(`sbt-coursier`)
@@ -224,7 +222,6 @@ lazy val `http-server` = project
   .settings(
     shared,
     generatePack,
-    name := "http-server",
     dontPublishIn("2.10", "2.11"),
     libs ++= {
       if (scalaBinaryVersion.value == "2.12")
