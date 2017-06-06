@@ -26,14 +26,18 @@ object Def extends Init[Scope] with TaskMacroExtra {
       Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
   }
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
-    case BuildRef(current.build)      => "{.}/"
+    case BuildRef(current.build)      => "ThisBuild/"
     case `current`                    => if (multi) current.project + "/" else ""
     case ProjectRef(current.build, x) => x + "/"
     case _                            => Reference.display(project) + "/"
   }
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
-  def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String = Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
-  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String = Scope.displayMasked(scoped.scope, scoped.key.label, mask)
+  def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String =
+    Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
+  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String =
+    Scope.displayMasked(scoped.scope, scoped.key.label, mask)
+  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask, showZeroConfig: Boolean): String =
+    Scope.displayMasked(scoped.scope, scoped.key.label, mask, showZeroConfig)
 
   def colored(s: String, color: Option[String]): String = color match {
     case Some(c) => c + s + scala.Console.RESET

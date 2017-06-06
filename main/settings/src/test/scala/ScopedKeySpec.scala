@@ -21,7 +21,7 @@ class ScopedKeySpec extends Specification {
   *:fullClasspath
     ${beParsedAs("*:fullClasspath", GlobalScope, "fullClasspath")}
 
-  aea33a/test:fullClasspath   
+  aea33a/test:fullClasspath
     ${beParsedAs("aea33a/test:fullClasspath", ThisScope in (LocalProject("aea33a"), ConfigKey("test")), "fullClasspath")}
 
   doc::fullClasspath

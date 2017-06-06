@@ -17,6 +17,12 @@ final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
 
 object Act {
   val GlobalString = "*"
+  private[sbt] val GlobalIdent = "Global"
+  private[sbt] val ZeroIdent = "Zero"
+  private[sbt] val ThisBuildIdent = "ThisBuild"
+
+  // new separator for unified shell syntax. this allows optional whitespace around /.
+  private[sbt] val spacedSlash: Parser[Unit] = token(OptSpace ~> '/' <~ OptSpace).examples("/").map(_ => ())
 
   // this does not take aggregation into account
   def scopedKey(index: KeyIndex, current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String],
@@ -48,12 +54,21 @@ object Act {
           new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
         }
 
-      for {
-        rawProject <- optProjectRef(index, current)
-        proj = resolveProject(rawProject, current)
-        confAmb <- config(index configs proj)
-        partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
-      } yield taskKeyExtra(proj, confAmb, partialMask)
+      def fullKey =
+        for {
+          rawProject <- optProjectRef(index, current)
+          proj = resolveProject(rawProject, current)
+          confAmb <- configIdent(index configs proj, index configIdents proj)
+          partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
+        } yield taskKeyExtra(proj, confAmb, partialMask)
+
+      val globalIdent = token(GlobalIdent ~ spacedSlash) ^^^ ParsedGlobal
+      def globalKey =
+        for {
+          g <- globalIdent
+        } yield taskKeyExtra(None, ParsedZero, ScopeMask(true, true, false, false))
+
+      globalKey | fullKey
     }
   def makeScopedKey(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]], extra: ScopeAxis[AttributeMap], key: AttributeKey[_]): ScopedKey[_] =
     ScopedKey(Scope(toAxis(proj, Global), toAxis(conf map ConfigKey.apply, Global), toAxis(task, Global), extra), key)
@@ -112,12 +127,27 @@ object Act {
   def config(confs: Set[String]): Parser[ParsedAxis[String]] =
     {
       val sep = ':' !!! "Expected ':' (if selecting a configuration)"
-      token((GlobalString ^^^ ParsedGlobal | value(examples(ID, confs, "configuration"))) <~ sep) ?? Omitted
+      token((GlobalString ^^^ ParsedZero | value(examples(ID, confs, "configuration"))) <~ sep) ?? Omitted
+    }
+
+  // New configuration parser that's able to parse configuration ident trailed by slash.
+  private[sbt] def configIdent(confs: Set[String], idents: Set[String]): Parser[ParsedAxis[String]] =
+    {
+      val oldSep: Parser[Char] = ':'
+      val sep: Parser[Unit] = spacedSlash !!! "Expected '/'"
+      token(
+        ((GlobalString ^^^ ParsedZero) <~ oldSep)
+          | ((GlobalString ^^^ ParsedZero) <~ sep)
+          | ((ZeroIdent ^^^ ParsedZero) <~ sep)
+          | (value(examples(ID, confs, "configuration")) <~ oldSep)
+          | (value(examples(CapitalizedID, idents, "configuration ident") map { Scope.unguessConfigIdent }) <~ sep)
+      ) ?? Omitted
     }
 
   def configs(explicit: ParsedAxis[String], defaultConfigs: Option[ResolvedReference] => Seq[String], proj: Option[ResolvedReference], index: KeyIndex): Seq[Option[String]] =
     explicit match {
       case Omitted            => None +: defaultConfigurations(proj, index, defaultConfigs).flatMap(nonEmptyConfig(index, proj))
+      case ParsedZero         => None :: Nil
       case ParsedGlobal       => None :: Nil
       case pv: ParsedValue[x] => Some(pv.value) :: Nil
     }
@@ -168,11 +198,11 @@ object Act {
       val valid = allKnown ++ normKeys ++ taskKeys(_.rawLabel)
       val suggested = normKeys.map(_._1).toSet
       val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key") map valid
-      (token(value(keyP) | GlobalString ^^^ ParsedGlobal) <~ token("::".id)) ?? Omitted
+      (token(value(keyP) | GlobalString ^^^ ParsedZero | ZeroIdent ^^^ ParsedZero) <~ (token("::".id) | spacedSlash)) ?? Omitted
     }
   def resolveTask(task: ParsedAxis[AttributeKey[_]]): Option[AttributeKey[_]] =
     task match {
-      case ParsedGlobal | Omitted                     => None
+      case ParsedZero | ParsedGlobal | Omitted        => None
       case t: ParsedValue[AttributeKey[_]] @unchecked => Some(t.value)
     }
 
@@ -207,10 +237,29 @@ object Act {
 
   def projectRef(index: KeyIndex, currentBuild: URI): Parser[ParsedAxis[ResolvedReference]] =
     {
-      val global = token(GlobalString ~ '/') ^^^ ParsedGlobal
-      val trailing = '/' !!! "Expected '/' (if selecting a project)"
-      global | value(resolvedReference(index, currentBuild, trailing))
+      val global = token(GlobalString ~ spacedSlash) ^^^ ParsedZero
+      val zeroIdent = token(ZeroIdent ~ spacedSlash) ^^^ ParsedZero
+      val thisBuildIdent = value(token(ThisBuildIdent ~ spacedSlash) ^^^ BuildRef(currentBuild))
+      val trailing = spacedSlash !!! "Expected '/' (if selecting a project)"
+      global | zeroIdent | thisBuildIdent |
+        value(resolvedReferenceIdent(index, currentBuild, trailing)) |
+        value(resolvedReference(index, currentBuild, trailing))
     }
+
+  private[sbt] def resolvedReferenceIdent(index: KeyIndex, currentBuild: URI, trailing: Parser[_]): Parser[ResolvedReference] = {
+    def projectID(uri: URI) = token(DQuoteChar ~> examplesStrict(ID, index projects uri, "project ID") <~ DQuoteChar <~ OptSpace <~ ")" <~ trailing)
+    def projectRef(uri: URI) = projectID(uri) map { id => ProjectRef(uri, id) }
+
+    val uris = index.buildURIs
+    val resolvedURI = Uri(uris).map(uri => Scope.resolveBuild(currentBuild, uri))
+
+    val buildRef = token("ProjectRef(" ~> OptSpace ~> "uri(" ~> OptSpace ~> DQuoteChar ~>
+      resolvedURI <~ DQuoteChar <~ OptSpace <~ ")" <~ spacedComma)
+    buildRef flatMap { uri =>
+      projectRef(uri)
+    }
+  }
+
   def resolvedReference(index: KeyIndex, currentBuild: URI, trailing: Parser[_]): Parser[ResolvedReference] =
     {
       def projectID(uri: URI) = token(examplesStrict(ID, index projects uri, "project ID") <~ trailing)
@@ -229,9 +278,9 @@ object Act {
     projectRef(index, current.build) ?? Omitted
   def resolveProject(parsed: ParsedAxis[ResolvedReference], current: ProjectRef): Option[ResolvedReference] =
     parsed match {
-      case Omitted             => Some(current)
-      case ParsedGlobal        => None
-      case pv: ParsedValue[rr] => Some(pv.value)
+      case Omitted                   => Some(current)
+      case ParsedGlobal | ParsedZero => None
+      case pv: ParsedValue[rr]       => Some(pv.value)
     }
 
   def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))
@@ -305,6 +354,7 @@ object Act {
   sealed trait ParsedAxis[+T] {
     final def isExplicit = this != Omitted
   }
+  final object ParsedZero extends ParsedAxis[Nothing]
   final object ParsedGlobal extends ParsedAxis[Nothing]
   final object Omitted extends ParsedAxis[Nothing]
   final class ParsedValue[T](val value: T) extends ParsedAxis[T]

@@ -2182,7 +2182,7 @@ trait DefExtra {
   private[this] val ts: TaskSequential = new TaskSequential {}
   implicit def toTaskSequential(d: Def.type): TaskSequential = ts
 }
-trait BuildCommon {
+trait BuildCommon extends ScopeSyntax {
   @deprecated("Use Def.inputTask with the `Def.spaceDelimited()` parser.", "0.13.0")
   def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
     InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)

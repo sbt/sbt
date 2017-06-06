@@ -27,7 +27,9 @@ object ScalaArtifacts {
 
   def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
 
-  private[sbt] def toolDependencies(org: String, version: String, isDotty: Boolean = false): Seq[ModuleID] =
+  private[sbt] def toolDependencies(org: String, version: String): Seq[ModuleID] =
+    toolDependencies(org, version, false)
+  private[sbt] def toolDependencies(org: String, version: String, isDotty: Boolean): Seq[ModuleID] =
     if (isDotty)
       Seq(ModuleID(org, DottyIDPrefix, version, Some(Configurations.ScalaTool.name + "->default(compile)"),
         crossVersion = CrossVersion.binary))

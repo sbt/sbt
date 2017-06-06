@@ -191,7 +191,15 @@ object TestBuild {
       for (p <- b; c <- b; t <- b; x <- b) yield ScopeMask(project = p, config = c, task = t, extra = x)
     }
 
-  implicit lazy val idGen: Gen[String] = for (size <- chooseShrinkable(1, MaxIDSize); cs <- listOfN(size, alphaChar)) yield cs.mkString
+  implicit lazy val idGen: Gen[String] =
+    for {
+      size <- chooseShrinkable(1, MaxIDSize)
+      cs <- listOfN(size, alphaChar)
+    } yield {
+      val xs = cs.mkString
+      xs.take(1).toLowerCase + xs.drop(1)
+    }
+
   implicit lazy val optIDGen: Gen[Option[String]] = frequency((1, idGen map some.fn), (1, None))
   implicit lazy val uriGen: Gen[URI] = for (sch <- idGen; ssp <- idGen; frag <- optIDGen) yield new URI(sch, ssp, frag.orNull)
 
