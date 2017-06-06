@@ -31,6 +31,16 @@ trait AuthenticatedURLConnection extends URLConnection {
 
 object Cache {
 
+  private[coursier] def closeConn(conn: URLConnection): Unit = {
+    Try(conn.getInputStream).toOption.filter(_ != null).foreach(_.close())
+    conn match {
+      case conn0: HttpURLConnection =>
+        Try(conn0.getErrorStream).toOption.filter(_ != null).foreach(_.close())
+        conn0.disconnect()
+      case _ =>
+    }
+  }
+
   // java.nio.charset.StandardCharsets.UTF_8 not available in Java 6
   private val UTF_8 = Charset.forName("UTF-8")
 
@@ -398,12 +408,7 @@ object Cache {
     } catch {
       case NonFatal(e) =>
         if (conn != null)
-          conn match {
-            case conn0: HttpURLConnection =>
-              conn0.getInputStream.close()
-              conn0.disconnect()
-            case _ =>
-          }
+          closeConn(conn)
         throw e
     }
   }
@@ -448,11 +453,7 @@ object Cache {
       }
     } finally {
       if (conn != null)
-        conn match {
-          case conn0: HttpURLConnection =>
-            conn0.disconnect()
-          case _ =>
-        }
+        closeConn(conn)
     }
   }
 
@@ -535,11 +536,7 @@ object Cache {
             }
           } finally {
             if (conn != null)
-              conn match {
-                case conn0: HttpURLConnection =>
-                  conn0.disconnect()
-                case _ =>
-              }
+              closeConn(conn)
           }
         }
       }
@@ -673,8 +670,7 @@ object Cache {
 
                       ackRange.startsWith(s"bytes $alreadyDownloaded-") || {
                         // unrecognized Content-Range header -> start a new connection with no resume
-                        conn0.getInputStream.close()
-                        conn0.disconnect()
+                        closeConn(conn)
                         conn = urlConnection(url, artifact.authentication)
                         false
                       }
@@ -719,11 +715,7 @@ object Cache {
                 }
               } finally {
                 if (conn != null)
-                  conn match {
-                    case conn0: HttpURLConnection =>
-                      conn0.disconnect()
-                    case _ =>
-                  }
+                  closeConn(conn)
               }
             }
 

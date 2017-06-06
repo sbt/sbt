@@ -38,7 +38,7 @@ object FallbackDependenciesRepository {
             None
         } finally {
           if (conn != null)
-            conn.disconnect()
+            coursier.Cache.closeConn(conn)
         }
       case _ =>
         None
@@ -55,10 +55,8 @@ object FallbackDependenciesRepository {
         case _: IOException =>
           false
       } finally {
-        conn match {
-          case conn0: HttpURLConnection => conn0.disconnect()
-          case _ =>
-        }
+        if (conn != null)
+          coursier.Cache.closeConn(conn)
       }
     }
   }
