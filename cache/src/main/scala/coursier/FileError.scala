@@ -7,6 +7,11 @@ sealed abstract class FileError(
   val message: String
 ) extends Product with Serializable {
   def describe: String = s"${`type`}: $message"
+
+  final def notFound: Boolean = this match {
+    case _: FileError.NotFound => true
+    case _ => false
+  }
 }
 
 object FileError {

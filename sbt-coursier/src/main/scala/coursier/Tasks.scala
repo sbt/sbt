@@ -352,7 +352,8 @@ object Tasks {
     project: Project,
     resolution: Map[Set[String], Resolution],
     withClassifiers: Boolean,
-    sbtClassifiers: Boolean
+    sbtClassifiers: Boolean,
+    ignoreArtifactErrors: Boolean
   )
 
   private val resolutionsCache = new mutable.HashMap[ResolutionCacheKey, Map[Set[String], Resolution]]
@@ -1142,19 +1143,11 @@ object Tasks {
             artifact -> file
         }
 
-        val (ignoredArtifactErrors, artifactErrors) = artifactFilesOrErrors0
+        val artifactErrors = artifactFilesOrErrors0
           .toVector
           .collect {
-            case (a, -\/(err)) =>
+            case (a, -\/(err)) if !a.isOptional || !err.notFound =>
               a -> err
-          }
-          .partition {
-            case (a, err) =>
-              val notFound = err match {
-                case _: FileError.NotFound => true
-                case _ => false
-              }
-              a.isOptional && notFound
           }
 
         if (artifactErrors.nonEmpty) {
@@ -1194,7 +1187,8 @@ object Tasks {
           currentProject,
           res,
           withClassifiers,
-          sbtClassifiers
+          sbtClassifiers,
+          ignoreArtifactErrors
         ),
         report
       )

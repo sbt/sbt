@@ -45,7 +45,7 @@ object Scaladex {
           coursier.Platform.readFullySync(conn.getInputStream)
         } finally {
           if (conn != null)
-            conn.disconnect()
+            coursier.Cache.closeConn(conn)
         }
 
         new String(b, StandardCharsets.UTF_8).right[String]

@@ -76,7 +76,8 @@ object TermDisplay {
 
   private sealed abstract class Info extends Product with Serializable {
     def fraction: Option[Double]
-    def display(): String
+    def display(isDone: Boolean): String
+    def watching: Boolean
   }
 
   private final case class DownloadInfo(
@@ -84,7 +85,8 @@ object TermDisplay {
     previouslyDownloaded: Long,
     length: Option[Long],
     startTime: Long,
-    updateCheck: Boolean
+    updateCheck: Boolean,
+    watching: Boolean
   ) extends Info {
     /** 0.0 to 1.0 */
     def fraction: Option[Double] = length.map(downloaded.toDouble / _)
@@ -110,13 +112,29 @@ object TermDisplay {
       }
     }
 
-    def display(): String = {
-      val decile = (10.0 * fraction.getOrElse(0.0)).toInt
-      assert(decile >= 0)
-      assert(decile <= 10)
+    def display(isDone: Boolean): String = {
 
-      fraction.fold(" " * 6)(p => f"${100.0 * p}%5.1f%%") +
-        " [" + ("#" * decile) + (" " * (10 - decile)) + "] " +
+      val actualFraction = fraction
+        .orElse(if (isDone) Some(1.0) else None)
+        .orElse(if (downloaded == 0L) Some(0.0) else None)
+
+      val start =
+        actualFraction match {
+          case None =>
+            val elem = if (watching) "." else "?"
+            s"       [     $elem    ] "
+          case Some(frac) =>
+            val elem = if (watching) "." else "#"
+
+            val decile = (10.0 * frac).toInt
+            assert(decile >= 0)
+            assert(decile <= 10)
+
+            f"${100.0 * frac}%5.1f%%" +
+              " [" + (elem * decile) + (" " * (10 - decile)) + "] "
+        }
+
+      start +
         byteCount(downloaded) +
         rate().fold("")(r => s" (${byteCount(r.toLong)} / s)")
     }
@@ -132,8 +150,9 @@ object TermDisplay {
     remoteTimeOpt: Option[Long],
     isDone: Boolean
   ) extends Info {
+    def watching = false
     def fraction = None
-    def display(): String = {
+    def display(isDone: Boolean): String = {
       if (isDone)
         (currentTimeOpt, remoteTimeOpt) match {
           case (Some(current), Some(remote)) =>
@@ -215,7 +234,7 @@ object TermDisplay {
     )(
       update0: Info => Info
     ): Unit = {
-      downloads.synchronized {
+      val inf = downloads.synchronized {
         downloads -= url
 
         val info = infos.remove(url)
@@ -223,11 +242,13 @@ object TermDisplay {
 
         if (success)
           doneQueue += (url -> update0(info))
+
+        info
       }
 
       if (fallbackMode && success) {
         // FIXME What about concurrent accesses to out from the thread above?
-        out.write(fallbackMessage)
+        out.write((if (inf.watching) "(watching) " else "") + fallbackMessage)
         out.flush()
       }
 
@@ -308,7 +329,7 @@ object TermDisplay {
           (q, dw)
         }
 
-        for ((url, info) <- done0 ++ downloads0) {
+        for (((url, info), isDone) <- done0.iterator.map((_, true)) ++ downloads0.iterator.map((_, false))) {
           assert(info != null, s"Incoherent state ($url)")
 
           if (!printedAnything0) {
@@ -318,7 +339,7 @@ object TermDisplay {
 
           truncatedPrintln(url)
           out.clearLine(2)
-          out.write(s"  ${info.display()}\n")
+          out.write(s"  ${info.display(isDone)}\n")
         }
 
         val displayedCount = (done0 ++ downloads0).length
@@ -401,7 +422,7 @@ object TermDisplay {
 class TermDisplay(
   out: Writer,
   val fallbackMode: Boolean = TermDisplay.defaultFallbackMode
-) extends Cache.Logger {
+) extends Cache.Logger.Extended {
 
   import TermDisplay._
 
@@ -470,16 +491,20 @@ class TermDisplay(
   override def downloadingArtifact(url: String, file: File): Unit =
     updateRunnable.newEntry(
       url,
-      DownloadInfo(0L, 0L, None, System.currentTimeMillis(), updateCheck = false),
+      DownloadInfo(0L, 0L, None, System.currentTimeMillis(), updateCheck = false, watching = false),
       s"Downloading $url\n"
     )
 
-  override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long): Unit = {
+  override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit = {
     val info = updateRunnable.infos.get(url)
     assert(info != null)
     val newInfo = info match {
       case info0: DownloadInfo =>
-        info0.copy(length = Some(totalLength), previouslyDownloaded = alreadyDownloaded)
+        info0.copy(
+          length = Some(totalLength),
+          previouslyDownloaded = alreadyDownloaded,
+          watching = watching
+        )
       case _ =>
         throw new Exception(s"Incoherent display state for $url")
     }

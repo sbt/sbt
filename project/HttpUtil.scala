@@ -44,8 +44,11 @@ object HttpUtil {
       } finally {
         if (is != null)
           is.close()
-        if (httpConn != null)
+        if (httpConn != null) {
+          scala.util.Try(httpConn.getInputStream).filter(_ != null).foreach(_.close())
+          scala.util.Try(httpConn.getErrorStream).filter(_ != null).foreach(_.close())
           httpConn.disconnect()
+        }
       }
     }
 

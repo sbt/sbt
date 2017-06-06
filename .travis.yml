@@ -5,9 +5,6 @@ os:
   - osx
 script:
   - scripts/travis.sh
-sudo: required
-services:
-  - docker
 # Uncomment once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 # after_success:
 #    - bash <(curl -s https://codecov.io/bash)
