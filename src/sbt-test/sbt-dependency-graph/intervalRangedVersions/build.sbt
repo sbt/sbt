@@ -1,5 +1,7 @@
 scalaVersion := "2.9.1"
 
+resolvers += "typesafe maven" at "http://repo.typesafe.com/typesafe/maven-releases/"
+
 libraryDependencies ++= Seq(
   "com.codahale" % "jerkson_2.9.1" % "0.5.0"
 )
