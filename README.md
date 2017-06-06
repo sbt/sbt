@@ -1,3 +1,5 @@
+[![Gitter Chat](https://badges.gitter.im/sbt/sbt.svg)](https://gitter.im/sbt/sbt)
+
   [sbt/sbt-zero-seven]: https://github.com/sbt/sbt-zero-seven
   [CONTRIBUTING]: CONTRIBUTING.md
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
@@ -42,7 +44,7 @@ Issues and Pull Requests
 
 Please read [CONTRIBUTING] carefully before opening a GitHub Issue.
 
-The short version: try [searching] or [asking] on StackOverflow and [sbt-dev].
+The short version: try [searching] or [asking] on StackOverflow.
 
 license
 -------
