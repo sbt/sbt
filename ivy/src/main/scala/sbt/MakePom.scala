@@ -107,6 +107,12 @@ class MakePom(val log: Logger) {
                 case _=> NodeSeq.Empty
               }
             }
+            {
+              s.tag match {
+                case Some(t)=> <tag>{ t }</tag>
+                case None=> NodeSeq.Empty
+              }
+            }
           </scm>
         case _ => NodeSeq.Empty
       }
@@ -122,6 +128,37 @@ class MakePom(val log: Logger) {
                 <name>{ developer.name }</name>
                 <email>{ developer.email }</email>
                 <url>{ developer.url }</url>
+                {
+                  developer.organization match {
+                    case Some(org)=> <organization>{ org }</organization>
+                    case None=> NodeSeq.Empty
+                  }
+                }
+                {
+                  developer.organizationUrl match {
+                    case Some(orgUrl)=> <organizationUrl>{ orgUrl }</organizationUrl>
+                    case None=> NodeSeq.Empty
+                  }
+                }
+                {
+                  if (developer.roles.isEmpty)
+                    NodeSeq.Empty
+                  else
+                    <roles>
+                      {
+                        developer.roles.map(role => <role>{ role }</role>)
+                      }
+                    </roles>
+                }
+                {
+                  developer.timezone match {
+                    case Some(tz)=> <timezone>{ tz.getID }</timezone>
+                    case None=> NodeSeq.Empty
+                  }
+                }
+                {
+                  if (developer.properties.isEmpty) NodeSeq.Empty else makeProperties(developer.properties)
+                }
               </developer>
             }
           }

@@ -5,6 +5,7 @@ package sbt
 
 import java.io.File
 import java.net.{ URI, URL }
+import java.util.TimeZone
 import scala.xml.NodeSeq
 import org.apache.ivy.plugins.resolver.{ DependencyResolver, IBiblioResolver }
 import org.apache.ivy.util.url.CredentialsStore
@@ -21,9 +22,9 @@ final case class ModuleInfo(nameFormal: String, description: String = "", homepa
 }
 
 /** Basic SCM information for a project module */
-final case class ScmInfo(browseUrl: URL, connection: String, devConnection: Option[String] = None)
+final case class ScmInfo(browseUrl: URL, connection: String, devConnection: Option[String] = None, tag: Option[String] = None)
 
-final case class Developer(id: String, name: String, email: String, url: URL)
+final case class Developer(id: String, name: String, email: String, url: URL, organization: Option[String] = None, organizationUrl: Option[URL] = None, roles: Seq[String] = Nil, timezone: Option[TimeZone] = None, properties: Map[String, String] = Map.empty)
 
 /** Rule to exclude unwanted dependencies pulled in transitively by a module. */
 final case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
