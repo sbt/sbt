@@ -1510,8 +1510,11 @@ object Classpaths {
     }
     val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
     val uwConfig = (unresolvedWarningConfiguration in update).value
-    val show = Reference.display(thisProjectRef.value)
     val st = state.value
+    val extracted = (Project extract st)
+    val show =
+      if (sbtPlugin.value) Reference.display(thisProjectRef.value)
+      else Def.displayRelativeReference(extracted.currentRef, thisProjectRef.value)
     val logicalClock = LogicalClock(st.hashCode)
     val depDir = dependencyCacheDirectory.value
     val uc0 = updateConfiguration.value
