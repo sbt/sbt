@@ -1,5 +1,6 @@
 
 import sbt._
+import sbt.Defaults.sbtPluginExtra
 import sbt.Keys._
 
 object Deps {
@@ -18,6 +19,17 @@ object Deps {
   def sbtLauncherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   def typesafeConfig = "com.typesafe" % "config" % "1.3.1"
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M5"
+
+  def sbtPgp = Def.setting {
+    val sbtv = CrossVersion.binarySbtVersion(sbtVersion.value)
+    val sv = scalaBinaryVersion.value
+    val ver = sv match {
+      case "2.10" => "1.0.1"
+      case "2.12" => "1.1.0-M1"
+      case _ => "foo" // unused
+    }
+    sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)
+  }
 
   def scalaAsync = Def.setting {
 

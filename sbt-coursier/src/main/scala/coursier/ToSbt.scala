@@ -116,21 +116,41 @@ object ToSbt {
     res: Resolution,
     classifiersOpt: Option[Seq[String]],
     artifactFileOpt: (Module, String, Artifact) => Option[File],
-    keepPomArtifact: Boolean = false
+    log: sbt.Logger,
+    keepPomArtifact: Boolean = false,
+    includeSignatures: Boolean = false
   ) = {
-    val depArtifacts0 =
+    val depArtifacts1 =
       classifiersOpt match {
         case None => res.dependencyArtifacts
         case Some(cl) => res.dependencyClassifiersArtifacts(cl)
       }
 
-    val depArtifacts =
+    val depArtifacts0 =
       if (keepPomArtifact)
-        depArtifacts0
+        depArtifacts1
       else
-        depArtifacts0.filter {
+        depArtifacts1.filter {
           case (_, a) => a.attributes != Attributes("pom", "")
         }
+
+    val depArtifacts =
+      if (includeSignatures) {
+
+        val notFound = depArtifacts0.filter(!_._2.extra.contains("sig"))
+
+        if (notFound.isEmpty)
+          depArtifacts0.flatMap {
+            case (dep, a) =>
+              Seq(dep -> a) ++ a.extra.get("sig").toSeq.map(dep -> _)
+          }
+        else {
+          for ((_, a) <- notFound)
+            log.error(s"No signature found for ${a.url}")
+          sys.error(s"${notFound.length} signature(s) not found")
+        }
+      } else
+        depArtifacts0
 
     val groupedDepArtifacts = grouped(depArtifacts)
 
@@ -184,7 +204,9 @@ object ToSbt {
     configs: Map[String, Set[String]],
     classifiersOpt: Option[Seq[String]],
     artifactFileOpt: (Module, String, Artifact) => Option[File],
-    keepPomArtifact: Boolean = false
+    log: sbt.Logger,
+    keepPomArtifact: Boolean = false,
+    includeSignatures: Boolean = false
   ): sbt.UpdateReport = {
 
     val configReports = configs.map {
@@ -192,7 +214,14 @@ object ToSbt {
         val configDeps = extends0.flatMap(configDependencies.getOrElse(_, Nil))
         val subRes = resolutions(config).subset(configDeps)
 
-        val reports = ToSbt.moduleReports(subRes, classifiersOpt, artifactFileOpt, keepPomArtifact)
+        val reports = ToSbt.moduleReports(
+          subRes,
+          classifiersOpt,
+          artifactFileOpt,
+          log,
+          keepPomArtifact = keepPomArtifact,
+          includeSignatures = includeSignatures
+        )
 
         ConfigurationReport(
           config,

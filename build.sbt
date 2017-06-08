@@ -188,6 +188,19 @@ lazy val `sbt-coursier` = project
   .dependsOn(coreJvm, cache, extra)
   .settings(plugin)
 
+lazy val `sbt-pgp-coursier` = project
+  .dependsOn(`sbt-coursier`)
+  .settings(
+    plugin,
+    libs ++= {
+      scalaBinaryVersion.value match {
+        case "2.10" | "2.12" =>
+          Seq(Deps.sbtPgp.value)
+        case _ => Nil
+      }
+    }
+  )
+
 lazy val `sbt-shading` = project
   .enablePlugins(ShadingPlugin)
   .dependsOn(`sbt-coursier`)
@@ -258,6 +271,7 @@ lazy val jvm = project
     extra,
     cli,
     `sbt-coursier`,
+    `sbt-pgp-coursier`,
     `sbt-shading`,
     `sbt-launcher`,
     doc,
@@ -293,6 +307,7 @@ lazy val `sbt-plugins` = project
     cache,
     extra,
     `sbt-coursier`,
+    `sbt-pgp-coursier`,
     `sbt-shading`
   )
   .settings(
@@ -314,6 +329,7 @@ lazy val coursier = project
     extra,
     cli,
     `sbt-coursier`,
+    `sbt-pgp-coursier`,
     `sbt-shading`,
     `sbt-launcher`,
     web,
