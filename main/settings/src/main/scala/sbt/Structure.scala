@@ -18,7 +18,11 @@ import Types._
 import language.experimental.macros
 import reflect.internal.annotations.compileTimeOnly
 
-sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
+sealed trait Scoped {
+  def scope: Scope
+  val key: AttributeKey[_]
+  override def toString: String = s"""Scoped($scope, $key)"""
+}
 
 /** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks.*/
 sealed trait ScopedTaskable[T] extends Scoped {
@@ -35,6 +39,9 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
   val key: AttributeKey[T]
   final def toTask: Initialize[Task[T]] = this apply inlineTask
   final def scopedKey: ScopedKey[T] = ScopedKey(scope, key)
+
+  // NOTE: Because def in is final, we can't change it during 0.13.
+  @deprecated("Use slash syntax: `proj / Config / t / key`", "0.13.16")
   final def in(scope: Scope): SettingKey[T] = Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
 
   final def :=(v: T): Setting[T] = macro std.TaskMacro.settingAssignMacroImpl[T]
@@ -67,6 +74,8 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
   val key: AttributeKey[Task[T]]
   def toTask: Initialize[Task[T]] = this
   def scopedKey: ScopedKey[Task[T]] = ScopedKey(scope, key)
+
+  @deprecated("Use slash syntax: `proj / Config / t / key`", "0.13.16")
   def in(scope: Scope): TaskKey[T] = Scoped.scopedTask(Scope.replaceThis(this.scope)(scope), this.key)
 
   def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskAppend1Impl[T, U]
@@ -96,6 +105,8 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
 sealed trait InputKey[T] extends Scoped with KeyedInitialize[InputTask[T]] with Scoped.ScopingSetting[InputKey[T]] with Scoped.DefinableSetting[InputTask[T]] {
   val key: AttributeKey[InputTask[T]]
   def scopedKey: ScopedKey[InputTask[T]] = ScopedKey(scope, key)
+
+  @deprecated("Use slash syntax: `proj / Config / t / key`", "0.13.16")
   def in(scope: Scope): InputKey[T] = Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
 
   final def :=(v: T): Setting[InputTask[T]] = macro std.TaskMacro.inputTaskAssignMacroImpl[T]
@@ -124,15 +135,31 @@ object Scoped {
    *
    */
   sealed trait ScopingSetting[Result] {
+    @deprecated("Use slash syntax: `proj / Config / t / key`", "0.13.16")
     def in(s: Scope): Result
 
+    @deprecated("Use slash syntax: `proj / key`", "0.13.16")
     def in(p: Reference): Result = in(Select(p), This, This)
+
+    @deprecated("Use slash syntax: `t / key`", "0.13.16")
     def in(t: Scoped): Result = in(This, This, Select(t.key))
+
+    @deprecated("Use slash syntax: `Config / key`", "0.13.16")
     def in(c: ConfigKey): Result = in(This, Select(c), This)
+
+    @deprecated("Use slash syntax: `Config / t / key`", "0.13.16")
     def in(c: ConfigKey, t: Scoped): Result = in(This, Select(c), Select(t.key))
+
+    @deprecated("Use slash syntax: `proj / Config / key`", "0.13.16")
     def in(p: Reference, c: ConfigKey): Result = in(Select(p), Select(c), This)
+
+    @deprecated("Use slash syntax: `proj / key`", "0.13.16")
     def in(p: Reference, t: Scoped): Result = in(Select(p), This, Select(t.key))
+
+    @deprecated("Use slash syntax: `proj / Config / key`", "0.13.16")
     def in(p: Reference, c: ConfigKey, t: Scoped): Result = in(Select(p), Select(c), Select(t.key))
+
+    @deprecated("Use slash syntax: `proj / Config / t / key`", "0.13.16")
     def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in(Scope(p, c, t, This))
   }
 
