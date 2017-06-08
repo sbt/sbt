@@ -136,11 +136,13 @@ object Scope {
   def displayMasked(scope: Scope, sep: String, showProject: Reference => String, mask: ScopeMask): String =
     displayMasked(scope, sep, showProject, mask, false)
 
-  // unified / style introduced in sbt 0.13.16 / sbt 1.0
-  // By defeault, sbt will no longer display the Zero-config,
-  // so `name` will render as `name` as opposed to `{uri}proj/Zero/name`.
-  // Technically speaking an unspecified configuration axis defaults to
-  // the scope delegation (first configuration defining the key, then Zero).
+  /**
+   * unified / style introduced in sbt 0.13.16 / sbt 1.0
+   * By defeault, sbt will no longer display the Zero-config,
+   * so `name` will render as `name` as opposed to `{uri}proj/Zero/name`.
+   * Technically speaking an unspecified configuration axis defaults to
+   * the scope delegation (first configuration defining the key, then Zero).
+   */
   def displayMasked(scope: Scope, sep: String, showProject: Reference => String, mask: ScopeMask, showZeroConfig: Boolean): String =
     {
       import scope.{ project, config, task, extra }
