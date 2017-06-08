@@ -25,15 +25,38 @@ object Def extends Init[Scope] with TaskMacroExtra {
     def apply(key: ScopedKey[_]) =
       Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
   }
-  def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
-    case BuildRef(current.build)      => "{.}/"
-    case `current`                    => if (multi) current.project + "/" else ""
-    case ProjectRef(current.build, x) => x + "/"
-    case _                            => Reference.display(project) + "/"
+
+  /**
+   * Returns a String expression for the given [[Reference]] (BuildRef, [[ProjectRef]], etc)
+   * relative to the current project.
+   * For [[ProjectRef]] in particular, it will display on the project ID portion if it is
+   * in the current build.
+   */
+  def displayRelativeReference(current: ProjectRef, project: Reference): String =
+    displayRelative(current, true, project, false)
+
+  @deprecated("Use displayRelativeReference", "0.13.16")
+  def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String =
+    displayRelative(current, multi, project, true)
+
+  private[sbt] def displayRelative(current: ProjectRef, multi: Boolean, project: Reference,
+    trailingSlash: Boolean): String = {
+    val slash = if (trailingSlash) "/" else ""
+    project match {
+      case BuildRef(current.build)      => "ThisBuild" + slash
+      case `current`                    => if (multi) current.project + slash else ""
+      case ProjectRef(current.build, x) => x + slash
+      case _                            => Reference.display(project) + slash
+    }
   }
+
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
-  def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String = Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
-  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String = Scope.displayMasked(scoped.scope, scoped.key.label, mask)
+  def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String =
+    Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
+  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String =
+    Scope.displayMasked(scoped.scope, scoped.key.label, mask)
+  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask, showZeroConfig: Boolean): String =
+    Scope.displayMasked(scoped.scope, scoped.key.label, mask, showZeroConfig)
 
   def colored(s: String, color: Option[String]): String = color match {
     case Some(c) => c + s + scala.Console.RESET

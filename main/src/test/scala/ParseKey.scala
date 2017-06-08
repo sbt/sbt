@@ -22,12 +22,20 @@ object ParseKey extends Properties("Key parser test") {
 
   property("An explicitly specified axis is always parsed to that explicit value") =
     forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
-      import skm.{ structure, key, mask }
+      import skm.{ structure, key, mask => mask0 }
 
+      val hasZeroConfig = key.scope.config == Global
+      val mask =
+        mask0 match {
+          case _ if hasZeroConfig => mask0.copy(project = true)
+          case _                  => mask0
+        }
       val expected = resolve(structure, key, mask)
-      val string = displayMasked(key, mask)
-
-      ("Key: " + displayFull(key)) |:
+      // Note that this explicitly displays the configuration axis set to Zero.
+      // This is to disambiguate `proj/Zero/name`, which could render potentially
+      // as `Zero/name`, but could be interpretted as `Zero/Zero/name`.
+      val string = displayMasked(key, mask, hasZeroConfig)
+      ("Key: " + displayPedantic(key)) |:
         parseExpected(structure, string, expected, mask)
     }
 
@@ -37,13 +45,16 @@ object ParseKey extends Properties("Key parser test") {
 
       val mask = skm.mask.copy(project = false)
       val string = displayMasked(key, mask)
+      // skip when config axis is set to Zero
+      val hasZeroConfig = key.scope.config == Global
 
-      ("Key: " + displayFull(key)) |:
+      ("Key: " + displayPedantic(key)) |:
         ("Mask: " + mask) |:
         ("Current: " + structure.current) |:
         parse(structure, string) {
-          case Left(err) => false
-          case Right(sk) => sk.scope.project == Select(structure.current)
+          case Left(err)                  => false
+          case Right(sk) if hasZeroConfig => true
+          case Right(sk)                  => sk.scope.project == Select(structure.current)
         }
     }
 
@@ -53,7 +64,7 @@ object ParseKey extends Properties("Key parser test") {
       val mask = skm.mask.copy(task = false)
       val string = displayMasked(key, mask)
 
-      ("Key: " + displayFull(key)) |:
+      ("Key: " + displayPedantic(key)) |:
         ("Mask: " + mask) |:
         parse(structure, string) {
           case Left(err) => false
@@ -68,14 +79,17 @@ object ParseKey extends Properties("Key parser test") {
       val string = displayMasked(key, mask)
       val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
 
-      ("Key: " + displayFull(key)) |:
+      ("Key: " + displayPedantic(key)) |:
         ("Mask: " + mask) |:
         ("Expected configuration: " + resolvedConfig.map(_.name)) |:
         parse(structure, string) {
-          case Right(sk) => sk.scope.config == resolvedConfig
+          case Right(sk) => (sk.scope.config == resolvedConfig) || (sk.scope == Scope.GlobalScope)
           case Left(err) => false
         }
     }
+
+  def displayPedantic(scoped: ScopedKey[_]): String =
+    Scope.displayPedantic(scoped.scope, scoped.key.label)
 
   lazy val structureDefinedKey: Gen[StructureKeyMask] = structureKeyMask { s =>
     for (scope <- TestBuild.scope(s.env); key <- oneOf(s.allAttributeKeys.toSeq)) yield ScopedKey(scope, key)

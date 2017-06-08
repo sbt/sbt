@@ -1,0 +1,13 @@
+> root/Compile/compile
+
+# "Global" now works in shell. optional whitespace arond /
+> show Global / cancelable
+
+# "ThisBuild" now works in shell. optional whitespace arond /
+> show ThisBuild / scalaVersion
+
+> show Test / test
+
+> show root / Compile / compile / scalacOptions
+
+> show Zero / Zero / name

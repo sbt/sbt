@@ -28,6 +28,7 @@ object KeyIndex {
     def projects(uri: URI) = concat(_.projects(uri))
     def exists(project: Option[ResolvedReference]): Boolean = indices.exists(_ exists project)
     def configs(proj: Option[ResolvedReference]) = concat(_.configs(proj))
+    private[sbt] def configIdents(proj: Option[ResolvedReference]) = concat(_.configIdents(proj))
     def tasks(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.tasks(proj, conf))
     def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String) = concat(_.tasks(proj, conf, key))
     def keys(proj: Option[ResolvedReference]) = concat(_.keys(proj))
@@ -59,6 +60,7 @@ trait KeyIndex {
   def keys(proj: Option[ResolvedReference]): Set[String]
   def keys(proj: Option[ResolvedReference], conf: Option[String]): Set[String]
   def keys(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]]): Set[String]
+  private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String]
 }
 trait ExtendableKeyIndex extends KeyIndex {
   def add(scoped: ScopedKey[_]): ExtendableKeyIndex
@@ -77,7 +79,12 @@ private final class ConfigIndex(val data: Map[Option[String], AKeyIndex]) {
     new ConfigIndex(data updated (config, keyIndex(config).add(task, key)))
   def keyIndex(conf: Option[String]): AKeyIndex = getOr(data, conf, emptyAKeyIndex)
   def configs: Set[String] = keySet(data)
+  private[sbt] lazy val idents: Set[String] =
+    configs map { config =>
+      Scope.guessConfigIdent(config)
+    }
 }
+
 private final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
   def add(id: Option[String], config: Option[String], task: Option[AttributeKey[_]], key: AttributeKey[_]): ProjectIndex =
     new ProjectIndex(data updated (id, confIndex(id).add(config, task, key)))
@@ -99,6 +106,7 @@ private final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex {
       data.data.get(build).flatMap(_.data.get(project)).isDefined
     }
   def configs(project: Option[ResolvedReference]): Set[String] = confIndex(project).configs
+  private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String] = confIndex(project).idents
   def tasks(proj: Option[ResolvedReference], conf: Option[String]): Set[AttributeKey[_]] = keyIndex(proj, conf).tasks
   def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String): Set[AttributeKey[_]] = keyIndex(proj, conf).tasks(key)
   def keys(proj: Option[ResolvedReference]): Set[String] = (Set.empty[String] /: optConfigs(proj)) { (s, c) => s ++ keys(proj, c) }
