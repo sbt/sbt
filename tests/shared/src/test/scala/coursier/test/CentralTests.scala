@@ -21,6 +21,10 @@ abstract class CentralTests extends TestSuite {
     MavenRepository(centralBase)
   )
 
+  // different return type on JVM and JS...
+  private def fetch(repositories: Seq[Repository]) =
+    Fetch.from(repositories, compatibility.artifact)
+
   def resolve(
     deps: Set[Dependency],
     filter: Option[Dependency => Boolean] = None,
@@ -29,7 +33,7 @@ abstract class CentralTests extends TestSuite {
   ) = {
     val repositories0 = extraRepo.toSeq ++ repositories
 
-    val fetch = Platform.fetch(repositories0)
+    val fetch0 = fetch(repositories0)
 
     Resolution(
       deps,
@@ -37,7 +41,7 @@ abstract class CentralTests extends TestSuite {
       userActivations = profiles.map(_.iterator.map(_ -> true).toMap)
     )
       .process
-      .run(fetch)
+      .run(fetch0)
       .map { res =>
 
         assert(res.metadataErrors.isEmpty)
