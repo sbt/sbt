@@ -131,7 +131,7 @@ abstract class CrossVersionFunctions {
    * RCs for x.y.0 are considered API compatible.
    * Compatible versions include 0.12.0-1 and 0.12.0-RC1 for Some(0, 12).
    */
-  def sbtApiVersion(v: String): Option[(Int, Int)] = CrossVersionUtil.sbtApiVersion(v)
+  def sbtApiVersion(v: String): Option[(Long, Long)] = CrossVersionUtil.sbtApiVersion(v)
 
   def isScalaApiCompatible(v: String): Boolean = CrossVersionUtil.isScalaApiCompatible(v)
 
@@ -139,13 +139,13 @@ abstract class CrossVersionFunctions {
    * Returns Scala binary interface x.y API compatible with the given version string v.
    * Compatible versions include 2.10.0-1 and 2.10.1-M1 for Some(2, 10), but not 2.10.0-RC1.
    */
-  def scalaApiVersion(v: String): Option[(Int, Int)] = CrossVersionUtil.scalaApiVersion(v)
+  def scalaApiVersion(v: String): Option[(Long, Long)] = CrossVersionUtil.scalaApiVersion(v)
 
   /** Regular expression that extracts the major and minor components of a version into matched groups 1 and 2.*/
   val PartialVersion = CrossVersionUtil.PartialVersion
 
   /** Extracts the major and minor components of a version string `s` or returns `None` if the version is improperly formatted. */
-  def partialVersion(s: String): Option[(Int, Int)] = CrossVersionUtil.partialVersion(s)
+  def partialVersion(s: String): Option[(Long, Long)] = CrossVersionUtil.partialVersion(s)
 
   /**
    * Computes the binary Scala version from the `full` version.

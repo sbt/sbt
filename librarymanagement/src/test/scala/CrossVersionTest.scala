@@ -201,8 +201,8 @@ class CrossVersionTest extends UnitSpec {
   it should "for 2.10.1 return 2.10" in {
     binaryScalaVersion("2.10.1") shouldBe "2.10"
   }
-  it should "for 2.20170314093845.0-87654321 return 2.20170314093845.0-87654321" in {
-    binaryScalaVersion("2.20170314093845.0-87654321") shouldBe "2.20170314093845.0-87654321"
+  it should "for 2.20170314093845.0-87654321 return 2.20170314093845" in {
+    binaryScalaVersion("2.20170314093845.0-87654321") shouldBe "2.20170314093845"
   }
   it should "for Dotty 0.1.1 return 0.1" in {
     binaryScalaVersion("0.1.1") shouldBe "0.1"
