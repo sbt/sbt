@@ -13,6 +13,7 @@ install:
       }
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
+  - git submodule update --init --recursive
   - ps: |
       if (!(Test-Path 'C:\Users\appveyor\.m2\repository\org\anarres\jarjar\jarjar-core\1.0.1-coursier-SNAPSHOT')) {
         iex 'git clone https://github.com/alexarchambault/jarjar'

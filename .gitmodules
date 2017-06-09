@@ -1,0 +1,3 @@
+[submodule "tests/metadata"]
+	path = tests/metadata
+	url = https://github.com/coursier/test-metadata.git
