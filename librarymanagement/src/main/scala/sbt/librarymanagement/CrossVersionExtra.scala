@@ -76,8 +76,8 @@ abstract class CrossVersionFunctions {
       cross: Option[String => String]
   ): Vector[Artifact] =
     cross match {
-      case None     => artifacts
-      case Some(is) => substituteCrossA(artifacts, cross)
+      case None    => artifacts
+      case Some(_) => substituteCrossA(artifacts, cross)
     }
 
   private[sbt] def applyCross(s: String, fopt: Option[String => String]): String =
@@ -124,18 +124,12 @@ abstract class CrossVersionFunctions {
       m
   }
 
-  @deprecated("Use CrossVersion.isScalaApiCompatible or CrossVersion.isSbtApiCompatible", "0.13.0")
-  def isStable(v: String): Boolean = isScalaApiCompatible(v)
-
-  @deprecated("Use CrossVersion.scalaApiVersion or CrossVersion.sbtApiVersion", "0.13.0")
-  def selectVersion(full: String, binary: String): String = if (isStable(full)) binary else full
-
   def isSbtApiCompatible(v: String): Boolean = CrossVersionUtil.isSbtApiCompatible(v)
 
   /**
    * Returns sbt binary interface x.y API compatible with the given version string v.
    * RCs for x.y.0 are considered API compatible.
-   * Compatibile versions include 0.12.0-1 and 0.12.0-RC1 for Some(0, 12).
+   * Compatible versions include 0.12.0-1 and 0.12.0-RC1 for Some(0, 12).
    */
   def sbtApiVersion(v: String): Option[(Int, Int)] = CrossVersionUtil.sbtApiVersion(v)
 
@@ -143,7 +137,7 @@ abstract class CrossVersionFunctions {
 
   /**
    * Returns Scala binary interface x.y API compatible with the given version string v.
-   * Compatibile versions include 2.10.0-1 and 2.10.1-M1 for Some(2, 10), but not 2.10.0-RC1.
+   * Compatible versions include 2.10.0-1 and 2.10.1-M1 for Some(2, 10), but not 2.10.0-RC1.
    */
   def scalaApiVersion(v: String): Option[(Int, Int)] = CrossVersionUtil.scalaApiVersion(v)
 
@@ -164,9 +158,4 @@ abstract class CrossVersionFunctions {
    * Full sbt versions earlier than [[sbt.librarymanagement.CrossVersion.TransitionSbtVersion]] are returned as is.
    */
   def binarySbtVersion(full: String): String = CrossVersionUtil.binarySbtVersion(full)
-
-  @deprecated("Use CrossVersion.scalaApiVersion or CrossVersion.sbtApiVersion", "0.13.0")
-  def binaryVersion(full: String, cutoff: String): String =
-    CrossVersionUtil.binaryVersion(full, cutoff)
-
 }
