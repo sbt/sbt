@@ -28,6 +28,33 @@ class CrossVersionTest extends UnitSpec {
   it should "for 0.12.1 return Some((0, 12))" in {
     sbtApiVersion("0.12.1") shouldBe Some((0, 12))
   }
+  it should "for 1.0.0-M6 return None" in {
+    sbtApiVersion("1.0.0-M6") shouldBe None
+  }
+  it should "for 1.0.0-RC1 return Some((1, 0))" in {
+    sbtApiVersion("1.0.0-RC1") shouldBe Some((1, 0))
+  }
+  it should "for 1.0.0 return Some((1, 0))" in {
+    sbtApiVersion("1.0.0") shouldBe Some((1, 0))
+  }
+  it should "for 1.0.2-M1 return Some((1, 0))" in {
+    sbtApiVersion("1.0.2-M1") shouldBe Some((1, 0))
+  }
+  it should "for 1.0.2-RC1 return Some((1, 0))" in {
+    sbtApiVersion("1.0.2-RC1") shouldBe Some((1, 0))
+  }
+  it should "for 1.0.2 return Some((1, 0))" in {
+    sbtApiVersion("1.0.2") shouldBe Some((1, 0))
+  }
+  it should "for 1.3.0 return Some((1, 0))" in {
+    sbtApiVersion("1.3.0") shouldBe Some((1, 0))
+  }
+  it should "for 1.10.0 return Some((1, 0))" in {
+    sbtApiVersion("1.10.0") shouldBe Some((1, 0))
+  }
+  it should "for 2.0.0 return Some((2, 0))" in {
+    sbtApiVersion("2.0.0") shouldBe Some((2, 0))
+  }
 
   "isSbtApiCompatible" should "for 0.12.0-M1 return false" in {
     isSbtApiCompatible("0.12.0-M1") shouldBe false
@@ -37,6 +64,33 @@ class CrossVersionTest extends UnitSpec {
   }
   it should "for 0.12.1-RC1 return true" in {
     isSbtApiCompatible("0.12.1-RC1") shouldBe true
+  }
+  it should "for 1.0.0-M6 return false" in {
+    isSbtApiCompatible("1.0.0-M6") shouldBe false
+  }
+  it should "for 1.0.0-RC1 return true" in {
+    isSbtApiCompatible("1.0.0-RC1") shouldBe true
+  }
+  it should "for 1.0.0 return true" in {
+    isSbtApiCompatible("1.0.0") shouldBe true
+  }
+  it should "for 1.0.2-M1 return true" in {
+    isSbtApiCompatible("1.0.2-M1") shouldBe true
+  }
+  it should "for 1.0.2-RC1 return true" in {
+    isSbtApiCompatible("1.0.2-RC1") shouldBe true
+  }
+  it should "for 1.0.2 return true" in {
+    isSbtApiCompatible("1.0.2") shouldBe true
+  }
+  it should "for 1.3.0 return true" in {
+    isSbtApiCompatible("1.3.0") shouldBe true
+  }
+  it should "for 1.10.0 return true" in {
+    isSbtApiCompatible("1.10.0") shouldBe true
+  }
+  it should "for 2.0.0 return true" in {
+    isSbtApiCompatible("2.0.0") shouldBe true
   }
 
   "binarySbtVersion" should "for 0.11.3 return 0.11.3" in {
@@ -59,6 +113,33 @@ class CrossVersionTest extends UnitSpec {
   }
   it should "for 0.12.1 return 0.12" in {
     binarySbtVersion("0.12.1") shouldBe "0.12"
+  }
+  it should "for 1.0.0-M6 return 1.0.0-M6" in {
+    binarySbtVersion("1.0.0-M6") shouldBe "1.0.0-M6"
+  }
+  it should "for 1.0.0-RC1 return 1.0" in {
+    binarySbtVersion("1.0.0-RC1") shouldBe "1.0"
+  }
+  it should "for 1.0.0 return 1.0" in {
+    binarySbtVersion("1.0.0") shouldBe "1.0"
+  }
+  it should "for 1.0.2-M1 return 1.0" in {
+    binarySbtVersion("1.0.2-M1") shouldBe "1.0"
+  }
+  it should "for 1.0.2-RC1 return 1.0" in {
+    binarySbtVersion("1.0.2-RC1") shouldBe "1.0"
+  }
+  it should "for 1.0.2 return 1.0" in {
+    binarySbtVersion("1.0.2") shouldBe "1.0"
+  }
+  it should "for 1.3.0 return 1.0" in {
+    binarySbtVersion("1.3.0") shouldBe "1.0"
+  }
+  it should "for 1.10.0 return 1.0" in {
+    binarySbtVersion("1.10.0") shouldBe "1.0"
+  }
+  it should "for 2.0.0 return 2.0" in {
+    binarySbtVersion("2.0.0") shouldBe "2.0"
   }
 
   "scalaApiVersion" should "for xyz return None" in {

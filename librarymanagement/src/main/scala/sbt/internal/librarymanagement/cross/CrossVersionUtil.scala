@@ -36,10 +36,18 @@ object CrossVersionUtil {
    * Compatible versions include 0.12.0-1 and 0.12.0-RC1 for Some(0, 12).
    */
   private[sbt] def sbtApiVersion(v: String): Option[(Int, Int)] = v match {
-    case ReleaseV(x, y, _, _)                     => Some((x.toInt, y.toInt))
-    case CandidateV(x, y, _, _)                   => Some((x.toInt, y.toInt))
-    case NonReleaseV_n(x, y, z, _) if z.toInt > 0 => Some((x.toInt, y.toInt))
+    case ReleaseV(x, y, _, _)                     => Some(sbtApiVersion(x.toInt, y.toInt))
+    case CandidateV(x, y, _, _)                   => Some(sbtApiVersion(x.toInt, y.toInt))
+    case NonReleaseV_n(x, y, z, _) if z.toInt > 0 => Some(sbtApiVersion(x.toInt, y.toInt))
     case _                                        => None
+  }
+
+  private def sbtApiVersion(x: Int, y: Int) = {
+    // Prior to sbt 1 the "sbt api version" was the X.Y in the X.Y.Z version.
+    // For example for sbt 0.13.x releases, the sbt api version is 0.13
+    // As of sbt 1 it is now X.0.
+    // This means, for example, that all versions of sbt 1.x have sbt api version 1.0
+    if (x > 0) (x, 0) else (x, y)
   }
 
   private[sbt] def isScalaApiCompatible(v: String): Boolean = scalaApiVersion(v).isDefined
