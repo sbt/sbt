@@ -4,7 +4,7 @@ import java.math.BigInteger
 import java.net.{ HttpURLConnection, URL, URLConnection, URLStreamHandler, URLStreamHandlerFactory }
 import java.nio.channels.{ OverlappingFileLockException, FileLock }
 import java.security.MessageDigest
-import java.util.concurrent.{ ConcurrentHashMap, Executors, ExecutorService }
+import java.util.concurrent.{ Callable, ConcurrentHashMap, Executors, ExecutorService }
 import java.util.regex.Pattern
 
 import coursier.core.Authentication
@@ -47,63 +47,8 @@ object Cache {
   // Check SHA-1 if available, else be fine with no checksum
   val defaultChecksums = Seq(Some("SHA-1"), None)
 
-  private val unsafeChars: Set[Char] = " %$&+,:;=?@<>#".toSet
-
-  // Scala version of http://stackoverflow.com/questions/4571346/how-to-encode-url-to-avoid-special-characters-in-java/4605848#4605848
-  // '/' was removed from the unsafe character list
-  private def escape(input: String): String = {
-
-    def toHex(ch: Int) =
-      (if (ch < 10) '0' + ch else 'A' + ch - 10).toChar
-
-    def isUnsafe(ch: Char) =
-      ch > 128 || ch < 0 || unsafeChars(ch)
-
-    input.flatMap {
-      case ch if isUnsafe(ch) =>
-        "%" + toHex(ch / 16) + toHex(ch % 16)
-      case other =>
-        other.toString
-    }
-  }
-
-  def localFile(url: String, cache: File, user: Option[String]): File = {
-    val path =
-      if (url.startsWith("file:///"))
-        url.stripPrefix("file://")
-      else if (url.startsWith("file:/"))
-        url.stripPrefix("file:")
-      else
-        // FIXME Should we fully parse the URL here?
-        // FIXME Should some safeguards be added against '..' components in paths?
-        url.split(":", 2) match {
-          case Array(protocol, remaining) =>
-            val remaining0 =
-              if (remaining.startsWith("///"))
-                remaining.stripPrefix("///")
-              else if (remaining.startsWith("/"))
-                remaining.stripPrefix("/")
-              else
-                throw new Exception(s"URL $url doesn't contain an absolute path")
-
-            val remaining1 =
-              if (remaining0.endsWith("/"))
-                // keeping directory content in .directory files
-                remaining0 + ".directory"
-              else
-                remaining0
-
-            new File(
-              cache,
-              escape(protocol + "/" + user.fold("")(_ + "@") + remaining1.dropWhile(_ == '/'))
-            ).toString
-
-          case _ =>
-            throw new Exception(s"No protocol found in URL $url")
-        }
-
-    new File(path)
-  }
+  def localFile(url: String, cache: File, user: Option[String]): File =
+    CachePath.localFile(url, cache, user.orNull)
 
   private def readFullyTo(
     in: InputStream,
@@ -129,45 +74,14 @@ object Cache {
     helper(alreadyDownloaded)
   }
 
-  private val processStructureLocks = new ConcurrentHashMap[File, AnyRef]
-
   /**
     * Should be acquired when doing operations changing the file structure of the cache (creating
     * new directories, creating / acquiring locks, ...), so that these don't hinder each other.
     *
     * Should hopefully address some transient errors seen on the CI of ensime-server.
     */
-  private def withStructureLock[T](cache: File)(f: => T): T = {
-
-    val intraProcessLock = Option(processStructureLocks.get(cache)).getOrElse {
-      val lock = new AnyRef
-      val prev = Option(processStructureLocks.putIfAbsent(cache, lock))
-      prev.getOrElse(lock)
-    }
-
-    intraProcessLock.synchronized {
-      val lockFile = new File(cache, ".structure.lock")
-      lockFile.getParentFile.mkdirs()
-      var out = new FileOutputStream(lockFile)
-
-      try {
-        var lock: FileLock = null
-        try {
-          lock = out.getChannel.lock()
-
-          try f
-          finally {
-            lock.release()
-            lock = null
-            out.close()
-            out = null
-            lockFile.delete()
-          }
-        }
-        finally if (lock != null) lock.release()
-      } finally if (out != null) out.close()
-    }
-  }
+  private def withStructureLock[T](cache: File)(f: => T): T =
+    CachePath.withStructureLock(cache, new Callable[T] { def call() = f })
 
   private def withLockOr[T](
     cache: File,
@@ -177,7 +91,7 @@ object Cache {
     ifLocked: => Option[FileError \/ T]
   ): FileError \/ T = {
 
-    val lockFile = new File(file.getParentFile, s"${file.getName}.lock")
+    val lockFile = CachePath.lockFile(file)
 
     var out: FileOutputStream = null
 
@@ -287,12 +201,6 @@ object Cache {
     }
 
     helper(retry)
-  }
-
-  private def temporaryFile(file: File): File = {
-    val dir = file.getParentFile
-    val name = file.getName
-    new File(dir, s"$name.part")
   }
 
   private val partialContentResponseCode = 206
@@ -647,7 +555,7 @@ object Cache {
       EitherT {
         Task {
 
-          val tmp = temporaryFile(file)
+          val tmp = CachePath.temporaryFile(file)
 
           var lenOpt = Option.empty[Option[Long]]
 
@@ -1187,12 +1095,7 @@ object Cache {
     throw new Exception("Cannot happen")
   )
 
-  lazy val default = new File(
-    sys.env.getOrElse(
-      "COURSIER_CACHE",
-      sys.props("user.home") + "/.coursier/cache/v1"
-    )
-  ).getAbsoluteFile
+  lazy val default: File = CachePath.defaultCacheDirectory()
 
   val defaultConcurrentDownloadCount = 6
 
