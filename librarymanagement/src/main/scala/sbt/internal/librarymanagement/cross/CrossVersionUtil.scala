@@ -24,8 +24,8 @@ object CrossVersionUtil {
   private val ReleaseV = raw"""$basicVersion(-\d+)?""".r
   private val BinCompatV = raw"""$basicVersion-bin(-.*)?""".r
   private val CandidateV = raw"""$basicVersion(-RC\d+)""".r
-  private val NonReleaseV_1 = raw"""$basicVersion([-\w+]*)""".r
-  private val NonReleaseV_2 = raw"""$basicVersion(-\w+)""".r
+  private val NonReleaseV_n = raw"""$basicVersion([-\w]*)""".r // 0-n word suffixes, with leading dashes
+  private val NonReleaseV_1 = raw"""$basicVersion(-\w+)""".r // 1 word suffix, after a dash
   private[sbt] val PartialVersion = raw"""($intPattern)\.($intPattern)(?:\..+)?""".r
 
   private[sbt] def isSbtApiCompatible(v: String): Boolean = sbtApiVersion(v).isDefined
@@ -38,7 +38,7 @@ object CrossVersionUtil {
   private[sbt] def sbtApiVersion(v: String): Option[(Int, Int)] = v match {
     case ReleaseV(x, y, _, _)                     => Some((x.toInt, y.toInt))
     case CandidateV(x, y, _, _)                   => Some((x.toInt, y.toInt))
-    case NonReleaseV_1(x, y, z, _) if z.toInt > 0 => Some((x.toInt, y.toInt))
+    case NonReleaseV_n(x, y, z, _) if z.toInt > 0 => Some((x.toInt, y.toInt))
     case _                                        => None
   }
 
@@ -51,7 +51,7 @@ object CrossVersionUtil {
   private[sbt] def scalaApiVersion(v: String): Option[(Int, Int)] = v match {
     case ReleaseV(x, y, _, _)                     => Some((x.toInt, y.toInt))
     case BinCompatV(x, y, _, _)                   => Some((x.toInt, y.toInt))
-    case NonReleaseV_2(x, y, z, _) if z.toInt > 0 => Some((x.toInt, y.toInt))
+    case NonReleaseV_1(x, y, z, _) if z.toInt > 0 => Some((x.toInt, y.toInt))
     case _                                        => None
   }
 
