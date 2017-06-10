@@ -238,9 +238,9 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
       import ic._
       val moduleID = newConfiguredModuleID(module, moduleInfo, configurations)
       IvySbt.setConflictManager(moduleID, conflictManager, ivy.getSettings)
-      val defaultConf = defaultConfiguration getOrElse Configurations.config(
-        ModuleDescriptor.DEFAULT_CONFIGURATION
-      )
+      val defaultConf = defaultConfiguration getOrElse Configuration(
+        "Default",
+        ModuleDescriptor.DEFAULT_CONFIGURATION)
       log.debug(
         "Using inline dependencies specified in Scala" + (if (ivyXML.isEmpty) "."
                                                           else " and XML.")
@@ -859,7 +859,7 @@ private[sbt] object IvySbt {
   ): Unit = {
     val confs =
       if (artifact.configurations.isEmpty) allConfigurations
-      else artifact.configurations.map(_.name)
+      else artifact.configurations
     confs foreach addConfiguration
   }
 

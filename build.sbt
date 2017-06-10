@@ -64,11 +64,15 @@ lazy val lm = (project in file("librarymanagement"))
   .settings(
     commonSettings,
     name := "librarymanagement",
-    libraryDependencies ++= Seq(
-      ivy, jsch, scalaReflect.value, launcherInterface, gigahorseOkhttp, okhttpUrlconnection,
-      sjsonnewScalaJson.value % Optional,
-      scalaTest
-    ),
+    libraryDependencies ++= Seq(ivy,
+                                jsch,
+                                scalaReflect.value,
+                                scalaCompiler.value,
+                                launcherInterface,
+                                gigahorseOkhttp,
+                                okhttpUrlconnection,
+                                sjsonnewScalaJson.value % Optional,
+                                scalaTest),
     libraryDependencies ++= scalaXml.value,
     resourceGenerators in Compile += Def.task(
       Util.generateVersionFile(

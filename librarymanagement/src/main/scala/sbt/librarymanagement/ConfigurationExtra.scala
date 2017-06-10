@@ -3,8 +3,11 @@
  */
 package sbt.librarymanagement
 
+import scala.annotation.tailrec
+import scala.language.experimental.macros
+
 object Configurations {
-  def config(name: String) = Configuration(name)
+  def config(name: String) = macro ConfigurationMacro.configMacroImpl
   def default: Seq[Configuration] = defaultMavenConfigurations
   def defaultMavenConfigurations: Seq[Configuration] =
     Seq(Compile, Runtime, Test, Provided, Optional)
@@ -25,24 +28,26 @@ object Configurations {
     case _               => c
   }
 
-  def internal(base: Configuration, ext: Configuration*) =
-    config(base.name + "-internal").extend(ext: _*).hide
-  def fullInternal(base: Configuration): Configuration = internal(base, base, Optional, Provided)
-  def optionalInternal(base: Configuration): Configuration = internal(base, base, Optional)
+  private[sbt] def internal(base: Configuration, ext: Configuration*) =
+    Configuration(base.id + "Internal", base.name + "-internal").extend(ext: _*).hide
+  private[sbt] def fullInternal(base: Configuration): Configuration =
+    internal(base, base, Optional, Provided)
+  private[sbt] def optionalInternal(base: Configuration): Configuration =
+    internal(base, base, Optional)
 
-  lazy val Default = config("default")
-  lazy val Compile = config("compile")
-  lazy val IntegrationTest = config("it") extend (Runtime)
-  lazy val Provided = config("provided")
-  lazy val Runtime = config("runtime") extend (Compile)
-  lazy val Test = config("test") extend (Runtime)
-  lazy val System = config("system")
-  lazy val Optional = config("optional")
-  lazy val Pom = config("pom")
+  lazy val Default = Configuration("Default", "default")
+  lazy val Compile = Configuration("Compile", "compile")
+  lazy val IntegrationTest = Configuration("IntegrationTest", "it") extend (Runtime)
+  lazy val Provided = Configuration("Provided", "provided")
+  lazy val Runtime = Configuration("Runtime", "runtime") extend (Compile)
+  lazy val Test = Configuration("Test", "test") extend (Runtime)
+  lazy val System = Configuration("System", "system")
+  lazy val Optional = Configuration("Optional", "optional")
+  lazy val Pom = Configuration("Pom", "pom")
 
-  lazy val ScalaTool = config("scala-tool").hide
-  lazy val CompilerPlugin = config("plugin").hide
-  lazy val Component = config("component").hide
+  lazy val ScalaTool = Configuration("ScalaTool", "scala-tool").hide
+  lazy val CompilerPlugin = Configuration("CompilerPlugin", "plugin").hide
+  lazy val Component = Configuration("Component", "component").hide
 
   private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
   private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
@@ -70,6 +75,7 @@ object Configurations {
 }
 
 abstract class ConfigurationExtra {
+  def id: String
   def name: String
   def description: String
   def isPublic: Boolean
@@ -80,10 +86,51 @@ abstract class ConfigurationExtra {
   require(description != null)
 
   def describedAs(newDescription: String) =
-    Configuration(name, newDescription, isPublic, extendsConfigs, transitive)
+    Configuration(id, name, newDescription, isPublic, extendsConfigs, transitive)
   def extend(configs: Configuration*) =
-    Configuration(name, description, isPublic, configs.toVector ++ extendsConfigs, transitive)
+    Configuration(id, name, description, isPublic, configs.toVector ++ extendsConfigs, transitive)
   def notTransitive = intransitive
-  def intransitive = Configuration(name, description, isPublic, extendsConfigs, false)
-  def hide = Configuration(name, description, false, extendsConfigs, transitive)
+  def intransitive = Configuration(id, name, description, isPublic, extendsConfigs, false)
+  def hide = Configuration(id, name, description, false, extendsConfigs, transitive)
+}
+
+private[sbt] object ConfigurationMacro {
+  import scala.reflect.macros._
+
+  def configMacroImpl(c: Context)(name: c.Expr[String]): c.Expr[Configuration] = {
+    import c.universe._
+    val enclosingValName = definingValName(
+      c,
+      methodName =>
+        s"""$methodName must be directly assigned to a val, such as `val x = $methodName`.""")
+    val id = c.Expr[String](Literal(Constant(enclosingValName)))
+    reify { Configuration(id.splice, name.splice) }
+  }
+
+  def definingValName(c: blackbox.Context, invalidEnclosingTree: String => String): String = {
+    import c.universe.{ Apply => ApplyTree, _ }
+    val methodName = c.macroApplication.symbol.name
+    def processName(n: Name): String =
+      n.decodedName.toString.trim // trim is not strictly correct, but macros don't expose the API necessary
+    @tailrec def enclosingVal(trees: List[c.Tree]): String = {
+      trees match {
+        case vd @ ValDef(_, name, _, _) :: ts                => processName(name)
+        case (_: ApplyTree | _: Select | _: TypeApply) :: xs => enclosingVal(xs)
+        // lazy val x: X = <methodName> has this form for some reason (only when the explicit type is present, though)
+        case Block(_, _) :: DefDef(mods, name, _, _, _, _) :: xs if mods.hasFlag(Flag.LAZY) =>
+          processName(name)
+        case _ =>
+          c.error(c.enclosingPosition, invalidEnclosingTree(methodName.decodedName.toString))
+          "<error>"
+      }
+    }
+    enclosingVal(enclosingTrees(c).toList)
+  }
+
+  def enclosingTrees(c: blackbox.Context): Seq[c.Tree] =
+    c.asInstanceOf[reflect.macros.runtime.Context]
+      .callsiteTyper
+      .context
+      .enclosingContextChain
+      .map(_.tree.asInstanceOf[c.Tree])
 }

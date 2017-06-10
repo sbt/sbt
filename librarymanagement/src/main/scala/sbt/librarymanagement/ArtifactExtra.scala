@@ -11,7 +11,7 @@ abstract class ArtifactExtra {
   def `type`: String
   def extension: String
   def classifier: Option[String]
-  def configurations: Vector[Configuration]
+  def configurations: Vector[String]
   def url: Option[URL]
   def extraAttributes: Map[String, String]
   def checksum: Option[Checksum]
@@ -21,7 +21,7 @@ abstract class ArtifactExtra {
       `type`: String = `type`,
       extension: String = extension,
       classifier: Option[String] = classifier,
-      configurations: Vector[Configuration] = configurations,
+      configurations: Vector[String] = configurations,
       url: Option[URL] = url,
       extraAttributes: Map[String, String] = extraAttributes,
       checksum: Option[Checksum] = checksum
@@ -58,7 +58,7 @@ abstract class ArtifactFunctions {
       `type`: String,
       extension: String,
       classifier: Option[String],
-      configurations: Vector[Configuration],
+      configurations: Vector[String],
       url: Option[URL]
   ): Artifact = Artifact(name, `type`, extension, classifier, configurations, url, empty, None)
 
@@ -67,7 +67,7 @@ abstract class ArtifactFunctions {
 
   def sources(name: String) = classified(name, SourceClassifier)
   def javadoc(name: String) = classified(name, DocClassifier)
-  def pom(name: String) = Artifact(name, PomType, PomType, None, Vector(Pom), None)
+  def pom(name: String) = Artifact(name, PomType, PomType, None, Vector(Pom.name), None)
 
   // Possible ivy artifact types such that sbt will treat those artifacts at sources / docs
   val DefaultSourceTypes = Set("src", "source", "sources")

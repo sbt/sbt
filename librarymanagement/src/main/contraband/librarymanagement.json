@@ -13,7 +13,7 @@
         { "name": "type",            "type": "String",                               "default": "Artifact.DefaultType",      "since": "0.0.1" },
         { "name": "extension",       "type": "String",                               "default": "Artifact.DefaultExtension", "since": "0.0.1" },
         { "name": "classifier",      "type": "Option[String]",                       "default": "None",                      "since": "0.0.1" },
-        { "name": "configurations",  "type": "sbt.librarymanagement.Configuration*", "default": "Vector.empty",              "since": "0.0.1" },
+        { "name": "configurations",  "type": "String*",                              "default": "Vector.empty",              "since": "0.0.1" },
         { "name": "url",             "type": "Option[java.net.URL]",                 "default": "None",                      "since": "0.0.1" },
         { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" },
         { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" }
@@ -60,22 +60,6 @@
         { "name": "isDirectlyForceDependency", "type": "boolean"                        }
       ],
       "toString": "s\"$caller\""
-    },
-    {
-      "name": "Configuration",
-      "namespace": "sbt.librarymanagement",
-      "target": "Scala",
-      "type": "record",
-      "doc": "Represents an Ivy configuration.",
-      "parents": "sbt.librarymanagement.ConfigurationExtra",
-      "fields": [
-        { "name": "name",           "type": "String"                                                                            },
-        { "name": "description",    "type": "String",                               "default": "\"\"",         "since": "0.0.1" },
-        { "name": "isPublic",       "type": "boolean",                              "default": "true",         "since": "0.0.1" },
-        { "name": "extendsConfigs", "type": "sbt.librarymanagement.Configuration*", "default": "Vector.empty", "since": "0.0.1" },
-        { "name": "transitive",     "type": "boolean",                              "default": "true",         "since": "0.0.1" }
-      ],
-      "toString": "name"
     },
     {
       "name": "ConfigurationReport",
