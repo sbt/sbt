@@ -424,6 +424,9 @@ object Project extends ProjectExtra {
   def scopedKeyData(structure: BuildStructure, scope: Scope, key: AttributeKey[_]): Option[ScopedKeyData[_]] =
     structure.data.get(scope, key) map { v => ScopedKeyData(ScopedKey(scope, key), v) }
 
+  /**
+   * This is the implementation of inspect command, details (default) mode.
+   */
   def details(structure: BuildStructure, actual: Boolean, scope: Scope, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): String =
     {
       val scoped = ScopedKey(scope, key)
@@ -433,7 +436,9 @@ object Project extends ProjectExtra {
 
       val definingScope = structure.data.definingScope(scope, key)
       val providedBy = definingScope match {
-        case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
+        // Full scoped key can be displayed using `Scope.display(sc, key.label)`, but here
+        // we are using `display` that displays relative project name for user friendliness.
+        case Some(sc) => "Provided by:\n\t" + display(ScopedKey(sc, key)) + "\n"
         case None     => ""
       }
       val definingScoped = definingScope match { case Some(sc) => ScopedKey(sc, key); case None => scoped }
@@ -579,6 +584,10 @@ object Project extends ProjectExtra {
   }
 
   implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
+
+  // This is for handling `key in (projA, Zero, console)`
+  implicit def projectToScopeAxis(p: Project): ScopeAxis[Reference] =
+    Select(LocalProject(p.id))
 
   final class RichTaskSessionVar[S](i: Def.Initialize[Task[S]]) {
     import SessionVar.{ persistAndSet, resolveContext, set, transform => tx }

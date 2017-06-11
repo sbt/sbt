@@ -133,6 +133,7 @@ object Scoped {
     def in(p: Reference, c: ConfigKey): Result = in(Select(p), Select(c), This)
     def in(p: Reference, t: Scoped): Result = in(Select(p), This, Select(t.key))
     def in(p: Reference, c: ConfigKey, t: Scoped): Result = in(Select(p), Select(c), Select(t.key))
+    def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey]): Result = in(Scope(p, c, This, This))
     def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in(Scope(p, c, t, This))
   }
 

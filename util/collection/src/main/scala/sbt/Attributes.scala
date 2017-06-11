@@ -72,6 +72,10 @@ object AttributeKey {
     make(name, Some(description), extend, rank)
 
   private[this] def make[T](name: String, description0: Option[String], extend0: Seq[AttributeKey[_]], rank0: Int)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
+    require(name.headOption match {
+      case Some(c) => c.isLower
+      case None    => false
+    }, s"A named attribute key must start with a lowercase letter: $name")
     def manifest = mf
     def rawLabel = name
     val label = Util.hyphenToCamel(name)

@@ -77,7 +77,10 @@ object SettingsTest extends Properties("settings") {
     {
       import Gen._
       val nonEmptyAlphaStr =
-        nonEmptyListOf(alphaChar).map(_.mkString).suchThat(_.forall(_.isLetter))
+        nonEmptyListOf(alphaChar).map({ xs: List[Char] =>
+          val s = xs.mkString
+          s.take(1).toLowerCase + s.drop(1)
+        }).suchThat(_.forall(_.isLetter))
 
       (for {
         list <- Gen.listOfN(nr, nonEmptyAlphaStr) suchThat (l => l.size == l.distinct.size)

@@ -21,6 +21,21 @@ final case class Select[S](s: S) extends ScopeAxis[S] {
 object ScopeAxis {
   implicit def scopeAxisToScope(axis: ScopeAxis[Nothing]): Scope =
     Scope(axis, axis, axis, axis)
+
+  implicit def referenceToScopeAxis(p: Reference): ScopeAxis[Reference] =
+    Select(p)
+
+  // This is for handling `key in (Zero, Compile)`
+  implicit def configurationToScopeAxis(c: Configuration): ScopeAxis[ConfigKey] =
+    Select(ConfigKey(c.name))
+
+  implicit def configKeyToScopeAxis(c: ConfigKey): ScopeAxis[ConfigKey] =
+    Select(c)
+
+  // This is for handling `key in (Zero, Zero, console)`
+  implicit def scopedToScopeAxis(t: Scoped): ScopeAxis[AttributeKey[_]] =
+    Select(t.key)
+
   def fromOption[T](o: Option[T]): ScopeAxis[T] = o match {
     case Some(v) => Select(v)
     case None    => Global
