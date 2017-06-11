@@ -356,7 +356,21 @@ lazy val coursier = project
 
 
 lazy val addBootstrapJarAsResource = {
-  resourceGenerators.in(Compile) += packageBin.in(bootstrap).in(Compile).map(Seq(_)).taskValue
+
+  import java.nio.file.Files
+
+  packageBin.in(Compile) := {
+    val bootstrapJar = packageBin.in(bootstrap).in(Compile).value
+    val source = packageBin.in(Compile).value
+
+    val dest = source.getParentFile / (source.getName.stripSuffix(".jar") + "-with-bootstrap.jar")
+
+    ZipUtil.addToZip(source, dest, Seq(
+      "bootstrap.jar" -> Files.readAllBytes(bootstrapJar.toPath)
+    ))
+
+    dest
+  }
 }
 
 lazy val addBootstrapInProguardedJar = {
