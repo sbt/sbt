@@ -43,8 +43,12 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
   def compile(sources: Seq[File], changes: DependencyChanges, options: Seq[String], output: Output, callback: AnalysisCallback, reporter: Reporter, cache: GlobalsCache, log: Logger, progressOpt: Option[CompileProgress]): Unit =
     {
       val cached = cache(options.toArray, output, !changes.isEmpty, this, log, reporter)
-      val progress = progressOpt getOrElse IgnoreProgress
-      compile(sources, changes, callback, log, reporter, progress, cached)
+      try {
+        val progress = progressOpt getOrElse IgnoreProgress
+        compile(sources, changes, callback, log, reporter, progress, cached)
+      } finally {
+        cache.relinquish(cached)
+      }
     }
 
   def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, progress: CompileProgress, compiler: CachedCompiler) {

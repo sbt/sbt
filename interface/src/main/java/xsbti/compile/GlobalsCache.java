@@ -9,5 +9,6 @@ import xsbti.Reporter;
 public interface GlobalsCache
 {
 	CachedCompiler apply(String[] args, Output output, boolean forceNew, CachedCompilerProvider provider, Logger log, Reporter reporter);
+	void relinquish(CachedCompiler compiler);
 	void clear();
 }

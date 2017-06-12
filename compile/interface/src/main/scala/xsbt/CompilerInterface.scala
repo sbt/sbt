@@ -95,6 +95,14 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
     try { run(sources.toList, changes, callback, log, dreporter, progress) }
     finally { dreporter.dropDelegate() }
   }
+  def close(): Unit = {
+    val c = compiler
+    if (c != null) {
+      class GlobalCloseCompat(g: Global) { def close(): Unit = () }
+      implicit def GlobalCloseCompat(g: Global): GlobalCloseCompat = new GlobalCloseCompat(g)
+      c.close()
+    }
+  }
   private[this] def run(sources: List[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, dreporter: DelegatingReporter, compileProgress: CompileProgress): Unit = {
     if (command.shouldStopWithInfo) {
       dreporter.info(null, command.getInfoMessage(compiler), true)
@@ -233,6 +241,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
       callback0 = null
       superDropRun()
       reporter = null
+      close()
     }
 
     def findClass(name: String): Option[(AbstractFile, Boolean)] =
