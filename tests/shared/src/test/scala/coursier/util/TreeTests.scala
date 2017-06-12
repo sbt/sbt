@@ -18,11 +18,11 @@ object TreeTests extends TestSuite {
     'apply {
       val str = Tree[Node](roots)(_.children, _.label)
       assert(str == """├─ p1
-        ││  ├─ c1
-        ││  └─ c2
-        │└─ p2
-        │   ├─ c3
-        │   └─ c4""".stripMargin)
+        #│  ├─ c1
+        #│  └─ c2
+        #└─ p2
+        #   ├─ c3
+        #   └─ c4""".stripMargin('#'))
     }
   }
 }
