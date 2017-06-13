@@ -36,7 +36,7 @@ object Tree {
     def showLine(isLast: Seq[Boolean]): String = {
       val initPrefix = init(isLast) {
         case true => "   "
-        case false => "|  "
+        case false => "│  "
       }.mkString
 
       val lastPrefix = last(isLast) {
