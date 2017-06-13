@@ -194,8 +194,16 @@ object Settings {
       val prereq: Unit = scriptedDependencies.value
       val scriptedTests = ScriptedPlugin.scriptedTests.value
 
+      val testDir = sbtTestDirectory.value
+      val log = scriptedBufferLog.value
+      val args0 = args.toArray
+      val launcher = sbtLauncher.value
+      val opts = scriptedLaunchOpts.value.toArray
+
+      val sbtv = sbtVersion.in(pluginCrossBuild).value
+
       try {
-        if(sbtVersion.in(pluginCrossBuild).value == "1.0.0-M6")
+        if(sbtv == "1.0.0-M6")
           scriptedTests.asInstanceOf[{
             def run(
               x1: File,
@@ -205,14 +213,7 @@ object Settings {
               x5: Array[String],
               x6: java.util.List[File]
             ): Unit
-          }].run(
-            sbtTestDirectory.value,
-            scriptedBufferLog.value,
-            args.toArray,
-            sbtLauncher.value,
-            scriptedLaunchOpts.value.toArray,
-            new java.util.ArrayList()
-          )
+          }].run(testDir, log, args0, launcher, opts, new java.util.ArrayList)
         else
           scriptedTests.asInstanceOf[{
             def run(
@@ -222,13 +223,7 @@ object Settings {
               x4: File,
               x5: Array[String]
             ): Unit
-          }].run(
-            sbtTestDirectory.value,
-            scriptedBufferLog.value,
-            args.toArray,
-            sbtLauncher.value,
-            scriptedLaunchOpts.value.toArray
-          )
+          }].run(testDir, log, args0, launcher, opts)
       } catch {
         case e: java.lang.reflect.InvocationTargetException =>
           throw e.getCause
@@ -241,6 +236,32 @@ object Settings {
     divertThingsPlugin ++
     withScriptedTests ++
     Seq(
+      sbtLauncher := {
+
+        val rep = update
+          .value
+          .configuration(ScriptedPlugin.scriptedLaunchConf.name)
+          .getOrElse(sys.error(s"Configuration ${ScriptedPlugin.scriptedLaunchConf.name} not found"))
+
+        val org = "org.scala-sbt"
+        val name = "sbt-launch"
+
+        val (_, jar) = rep
+          .modules
+          .find { modRep =>
+            modRep.module.organization == org && modRep.module.name == name
+          }
+          .getOrElse {
+            sys.error(s"Module $org:$name not found in configuration ${ScriptedPlugin.scriptedLaunchConf.name}")
+          }
+          .artifacts
+          .headOption
+          .getOrElse {
+            sys.error(s"No artifacts found for module $org:$name in configuration ${ScriptedPlugin.scriptedLaunchConf.name}")
+          }
+
+        jar
+      },
       scripted100M6Workaround,
       scriptedLaunchOpts ++= Seq(
         "-Xmx1024M",
