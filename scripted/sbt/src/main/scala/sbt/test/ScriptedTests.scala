@@ -318,6 +318,20 @@ class ScriptedRunner {
         prescripted.add(f); ()
     }) //new FullLogger(Logger.xlog2Log(log)))
   }
+  // This is called by sbt-scripted 0.13.x (the sbt host) when cross-compiling to sbt 0.13.x and 1.0.x
+  // See https://github.com/sbt/sbt/issues/3245
+  def run(resourceBaseDirectory: File,
+          bufferLog: Boolean,
+          tests: Array[String],
+          bootProperties: File,
+          launchOpts: Array[String]): Unit =
+    run(resourceBaseDirectory,
+        bufferLog,
+        tests,
+        ConsoleLogger(),
+        bootProperties,
+        launchOpts,
+        ScriptedTests.emptyCallback)
 
   def run(resourceBaseDirectory: File,
           bufferLog: Boolean,
