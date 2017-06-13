@@ -16,16 +16,17 @@ object TestLogger {
       case a: TestStringEvent => List(a.value)
     })
 
-  private def generateName: String =
-    "test-" + generateId.incrementAndGet
+  private def generateName: String = "test-" + generateId.incrementAndGet
   private val generateId: AtomicInteger = new AtomicInteger
-  private def generateBufferName: String =
-    "testbuffer-" + generateBufferId.incrementAndGet
+
+  private def generateBufferName: String = "testbuffer-" + generateBufferId.incrementAndGet
   private val generateBufferId: AtomicInteger = new AtomicInteger
 
-  final class PerTest private[sbt] (val log: ManagedLogger,
-                                    val flush: () => Unit,
-                                    val buffered: Boolean)
+  final class PerTest private[sbt] (
+      val log: ManagedLogger,
+      val flush: () => Unit,
+      val buffered: Boolean
+  )
 
   def make(global: ManagedLogger, perTest: TestDefinition => PerTest): TestLogger = {
     def makePerTest(tdef: TestDefinition): ContentLogger = {
@@ -34,7 +35,7 @@ object TestLogger {
       val config = LogExchange.loggerConfig(l0.name)
       val as = config.getAppenders.asScala
       val buffs: List[BufferedAppender] = (as map {
-        case (k, v) => BufferedAppender(generateBufferName, v)
+        case (_, v) => BufferedAppender(generateBufferName, v)
       }).toList
       val newLog = LogExchange.logger(generateName, l0.channelName, l0.execId)
       LogExchange.bindLoggerAppenders(newLog.name, buffs map { x =>
@@ -52,7 +53,9 @@ object TestLogger {
         }
       )
     }
+
     global.registerStringCodec[TestStringEvent]
+
     val config = new TestLogging(wrap(global), global, makePerTest)
     new TestLogger(config)
   }
@@ -91,25 +94,26 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
   import logging.{ global => log, logTest, managed }
   import sbt.protocol.testing.codec.JsonProtocol._
 
-  def startGroup(name: String): Unit =
-    managed.logEvent(Level.Info, StartTestGroupEvent(name))
-  def testEvent(event: TestEvent): Unit =
-    managed.logEvent(Level.Info, toTestItemEvent(event))
-  def endGroup(name: String, t: Throwable): Unit = {
-    log.trace(t)
-    log.error("Could not run test " + name + ": " + t.toString)
-    managed.logEvent(Level.Info,
-                     EndTestGroupErrorEvent(
-                       name,
-                       t.getMessage + "\n" + t.getStackTrace.toList.mkString("\n")
-                     ))
-  }
-  def endGroup(name: String, result: TestResult): Unit =
-    managed.logEvent(Level.Info, EndTestGroupEvent(name, result))
   def doInit: Unit = managed.logEvent(Level.Info, TestInitEvent())
 
-  /** called once, at end of test group. */
+  def startGroup(name: String): Unit = managed.logEvent(Level.Info, StartTestGroupEvent(name))
+
+  def testEvent(event: TestEvent): Unit = managed.logEvent(Level.Info, toTestItemEvent(event))
+
+  def endGroup(name: String, result: TestResult): Unit =
+    managed.logEvent(Level.Info, EndTestGroupEvent(name, result))
+
+  def endGroup(name: String, t: Throwable): Unit = {
+    log.trace(t)
+    log.error(s"Could not run test $name: $t")
+    managed.logEvent(
+      Level.Info,
+      EndTestGroupErrorEvent(name, (t.getMessage +: t.getStackTrace).mkString("\n"))
+    )
+  }
+
   def doComplete(finalResult: TestResult): Unit =
     managed.logEvent(Level.Info, TestCompleteEvent(finalResult))
+
   override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
 }
