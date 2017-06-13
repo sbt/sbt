@@ -76,14 +76,11 @@ final case class MavenRepository(
   val root0 = if (root.endsWith("/")) root else root + "/"
   val source = MavenSource(root0, changing, sbtAttrStub, authentication)
 
-  private def modulePath(
-    module: Module,
-    version: String
-  ): Seq[String] =
-    module.organization.split('.').toSeq ++ Seq(
-      dirModuleName(module, sbtAttrStub),
-      version
-    )
+  private def modulePath(module: Module): Seq[String] =
+    module.organization.split('.').toSeq :+ dirModuleName(module, sbtAttrStub)
+
+  private def moduleVersionPath(module: Module, version: String): Seq[String] =
+    modulePath(module) :+ version
 
   private def urlFor(path: Seq[String]): String =
     root0 + path.map(encodeURIComponent).mkString("/")
@@ -94,7 +91,7 @@ final case class MavenRepository(
     versioningValue: Option[String]
   ): Artifact = {
 
-    val path = modulePath(module, version) :+
+    val path = moduleVersionPath(module, version) :+
       s"${module.name}-${versioningValue getOrElse version}.pom"
 
     Artifact(
@@ -136,7 +133,7 @@ final case class MavenRepository(
     version: String
   ): Option[Artifact] = {
 
-    val path = modulePath(module, version) :+ "maven-metadata.xml"
+    val path = moduleVersionPath(module, version) :+ "maven-metadata.xml"
 
     val artifact =
       Artifact(
@@ -151,6 +148,52 @@ final case class MavenRepository(
       .withDefaultSignature
 
     Some(artifact)
+  }
+
+  private def versionsFromListing[F[_]](
+    module: Module,
+    fetch: Fetch.Content[F]
+  )(implicit
+    F: Monad[F]
+  ): EitherT[F, String, Versions] = {
+
+    val listingUrl = urlFor(modulePath(module)) + "/"
+
+    // version listing -> changing (changes as new versions are released)
+    val listingArtifact = artifactFor(listingUrl, changing = true)
+
+    fetch(listingArtifact).flatMap { listing =>
+
+      val files = WebPage.listFiles(listingUrl, listing)
+      val rawVersions = WebPage.listDirectories(listingUrl, listing)
+
+      val res =
+        if (files.contains("maven-metadata.xml"))
+          -\/("maven-metadata.xml found, not listing version from directory listing")
+        else if (rawVersions.isEmpty)
+          -\/(s"No versions found at $listingUrl")
+        else {
+          val parsedVersions = rawVersions.map(Version(_))
+          val nonPreVersions = parsedVersions.filter(_.items.forall {
+            case q: Version.Qualifier => q.level >= 0
+            case _ => true
+          })
+
+          if (nonPreVersions.isEmpty)
+            -\/(s"Found only pre-versions at $listingUrl")
+          else {
+            val latest = nonPreVersions.max
+            \/-(Versions(
+              latest.repr,
+              latest.repr,
+              nonPreVersions.map(_.repr).toList,
+              None
+            ))
+          }
+        }
+
+      EitherT(F.point(res))
+    }
   }
 
   def versions[F[_]](
@@ -239,6 +282,16 @@ final case class MavenRepository(
       F.map(res)(_.map(proj => proj.copy(actualVersionOpt = Some(version))))
     }
 
+  private def artifactFor(url: String, changing: Boolean) =
+    Artifact(
+      url,
+      Map.empty,
+      Map.empty,
+      Attributes("", ""),
+      changing = changing,
+      authentication
+    )
+
   def findVersioning[F[_]](
     module: Module,
     version: String,
@@ -254,16 +307,6 @@ final case class MavenRepository(
         _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
         proj <- Pom.project(xml, relocationAsDependency = true)
       } yield proj
-
-    def artifactFor(url: String) =
-      Artifact(
-        url,
-        Map.empty,
-        Map.empty,
-        Attributes("", ""),
-        changing = changing.getOrElse(version.contains("-SNAPSHOT")),
-        authentication
-      )
 
     def isArtifact(fileName: String, prefix: String): Option[(String, String)] =
       // TODO There should be a regex for that...
@@ -287,7 +330,7 @@ final case class MavenRepository(
 
     val projectArtifact0 = projectArtifact(module, version, versioningValue)
 
-    val listFilesUrl = urlFor(modulePath(module, version)) + "/"
+    val listFilesUrl = urlFor(moduleVersionPath(module, version)) + "/"
 
     val listFilesArtifact =
       Artifact(
@@ -313,7 +356,7 @@ final case class MavenRepository(
 
     for {
       str <- fetch(requiringDirListingProjectArtifact)
-      rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl)).run) {
+      rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl, changing.getOrElse(version.contains("-SNAPSHOT")))).run) {
         e => \/-(e.toOption): String \/ Option[String]
       })
       proj0 <- EitherT(F.point[String \/ Project](parseRawPom(str)))
@@ -383,7 +426,14 @@ final case class MavenRepository(
         case None =>
           findNoInterval(module, version, fetch).map((source, _))
         case Some(itv) =>
-          versions(module, fetch).flatMap { versions0 =>
+          def v = versions(module, fetch)
+          val v0 =
+            if (changing.forall(!_) && module.attributes.contains("scalaVersion") && module.attributes.contains("sbtVersion"))
+              versionsFromListing(module, fetch).orElse(v)
+            else
+              v
+
+          v0.flatMap { versions0 =>
             val eitherVersion = {
               val release = Version(versions0.release)
 

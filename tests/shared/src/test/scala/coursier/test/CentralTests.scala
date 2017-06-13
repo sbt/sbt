@@ -69,27 +69,25 @@ abstract class CentralTests extends TestSuite {
             case (k, v) => k + "_" + v
           }.mkString("_")
 
-      val expected =
-        await(
-          textResource(
-            Seq(
-              "resolutions",
-              module.organization,
-              module.name,
-              attrPathPart,
-              version + (
-                if (configuration.isEmpty)
-                  ""
-                else
-                  "_" + configuration.replace('(', '_').replace(')', '_')
-              )
-            ).filter(_.nonEmpty).mkString("/")
-          )
-        ).split('\n').toSeq
+      val path = Seq(
+        "resolutions",
+        module.organization,
+        module.name,
+        attrPathPart,
+        version + (
+          if (configuration.isEmpty)
+            ""
+          else
+            "_" + configuration.replace('(', '_').replace(')', '_')
+        )
+      ).filter(_.nonEmpty).mkString("/")
+
+      def tryRead = textResource(path)
 
       val dep = Dependency(module, version, configuration = configuration)
       val res = await(resolve(Set(dep), extraRepo = extraRepo, profiles = profiles))
 
+      // making that lazy makes scalac crash in 2.10 with scalajs
       val result = res
         .minDependencies
         .toVector
@@ -108,6 +106,15 @@ abstract class CentralTests extends TestSuite {
           case (org, name, ver, cfg) =>
             Seq(org, name, ver, cfg).mkString(":")
         }
+
+      val expected =
+        await(
+          tryRead.recoverWith {
+            case _: Exception =>
+              tryCreate(path, result.mkString("\n"))
+              tryRead
+          }
+        ).split('\n').toSeq
 
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
         println(s"Line ${idx + 1}:\n  expected: $e\n  got:      $r")
@@ -721,6 +728,16 @@ abstract class CentralTests extends TestSuite {
           assert(jarOpt.forall(sigHasSig))
           assert(pomOpt.forall(sigHasSig))
         }
+      }
+    }
+
+    'sbtPluginVersionRange - {
+      val mod = Module("org.ensime", "sbt-ensime", attributes = Map("scalaVersion" -> "2.10", "sbtVersion" -> "0.13"))
+      val ver = "1.12.+"
+
+      * - {
+        if (isActualCentral) // doesn't work via proxies, which don't list all the upstream available versions
+          resolutionCheck(mod, ver)
       }
     }
   }
