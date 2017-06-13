@@ -56,6 +56,18 @@ object TestLogger {
 
     global.registerStringCodec[TestStringEvent]
 
+    def showNoLines[A] = ShowLines[A](_ => Nil)
+    implicit val showNoLinesTestInitEvent = showNoLines[TestInitEvent]
+    implicit val showNoLinesStartTestGroupEvent = showNoLines[StartTestGroupEvent]
+    implicit val showNoLinesTestItemEvent = showNoLines[TestItemEvent]
+    implicit val showNoLinesEndTestGroupEvent = showNoLines[EndTestGroupEvent]
+    implicit val showNoLinesTestCompleteEvent = showNoLines[TestCompleteEvent]
+    global.registerStringCodec[TestInitEvent]
+    global.registerStringCodec[StartTestGroupEvent]
+    global.registerStringCodec[TestItemEvent]
+    global.registerStringCodec[EndTestGroupEvent]
+    global.registerStringCodec[TestCompleteEvent]
+
     val config = new TestLogging(wrap(global), global, makePerTest)
     new TestLogger(config)
   }
