@@ -740,6 +740,13 @@ abstract class CentralTests extends TestSuite {
           resolutionCheck(mod, ver)
       }
     }
+
+    'multiVersionRanges - {
+      val mod = Module("org.webjars.bower", "dgrid")
+      val ver = "1.0.0"
+
+      * - resolutionCheck(mod, ver)
+    }
   }
 
 }

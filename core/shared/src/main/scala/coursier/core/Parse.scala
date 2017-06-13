@@ -1,6 +1,7 @@
 package coursier.core
 
 import java.util.regex.Pattern.quote
+
 import coursier.core.compatibility._
 
 object Parse {
@@ -63,13 +64,28 @@ object Parse {
     } yield itv
   }
 
+  private val multiVersionIntervalSplit = ("(?" + regexLookbehind + "[" + quote("])") + "]),(?=[" + quote("([") + "])").r
+
+  def multiVersionInterval(s: String): Option[VersionInterval] = {
+
+    // TODO Use a full-fledged (fastparsed-based) parser for this and versionInterval above
+
+    val openCount = s.count(c => c == '[' || c == '(')
+    val closeCount = s.count(c => c == ']' || c == ')')
+
+    if (openCount == closeCount && openCount >= 1)
+      versionInterval(multiVersionIntervalSplit.split(s).last)
+    else
+      None
+  }
+
   def versionConstraint(s: String): Option[VersionConstraint] = {
     def noConstraint = if (s.isEmpty) Some(VersionConstraint.all) else None
 
     noConstraint
       .orElse(ivyLatestSubRevisionInterval(s).map(VersionConstraint.interval))
       .orElse(version(s).map(VersionConstraint.preferred))
-      .orElse(versionInterval(s).map(VersionConstraint.interval))
+      .orElse(versionInterval(s).orElse(multiVersionInterval(s)).map(VersionConstraint.interval))
   }
 
   val fallbackConfigRegex = {

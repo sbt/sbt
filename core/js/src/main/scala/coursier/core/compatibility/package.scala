@@ -113,4 +113,7 @@ package object compatibility {
 
     links.result()
   }
+
+  def regexLookbehind: String = ":"
+
 }

@@ -421,6 +421,7 @@ final case class MavenRepository(
   ): EitherT[F, String, (Artifact.Source, Project)] = {
 
     Parse.versionInterval(version)
+      .orElse(Parse.multiVersionInterval(version))
       .orElse(Parse.ivyLatestSubRevisionInterval(version))
       .filter(_.isValid) match {
         case None =>
