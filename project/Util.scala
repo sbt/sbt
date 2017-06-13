@@ -93,7 +93,7 @@ object Util {
   }
   def lastCompilationTime(analysis: Analysis): Long = {
     val lastCompilation = analysis.compilations.allCompilations.lastOption
-    lastCompilation.map(_.startTime) getOrElse 0L
+    lastCompilation.map(_.getStartTime) getOrElse 0L
   }
   def generateVersionFile(version: String,
                           dir: File,

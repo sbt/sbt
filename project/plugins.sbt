@@ -5,9 +5,10 @@ scalacOptions ++= Seq("-feature", "-language:postfixOps")
 // addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.0")
 // addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "0.9.2")
 // addSbtPlugin("com.typesafe.sbt" % "sbt-javaversioncheck" % "0.1.0")
-//addSbtPlugin("com.geirsson" % "sbt-scalafmt" % "0.7.0-RC1")
-addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "0.3")
 // addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "1.2.0")
 addSbtPlugin("org.foundweekends" % "sbt-bintray" % "0.4.0")
 addSbtPlugin("org.scala-sbt" % "sbt-contraband" % "0.3.0-M5")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.0-M1")
+
+// hopefully this comes back soon.
+// addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "0.3")
