@@ -4,6 +4,8 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.*;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.CodeSource;
@@ -52,21 +54,21 @@ public class Bootstrap {
 
     /**
      *
-     * @param jarDir can be null if nothing should be downloaded!
+     * @param cacheDir can be null if nothing should be downloaded!
      * @param isolationIDs
      * @param bootstrapProtocol
      * @param loader
      * @return
      * @throws IOException
      */
-    static Map<String, URL[]> readIsolationContexts(File jarDir, String[] isolationIDs, String bootstrapProtocol, ClassLoader loader) throws IOException {
+    static Map<String, URL[]> readIsolationContexts(File cacheDir, String[] isolationIDs, String bootstrapProtocol, ClassLoader loader) throws IOException {
         final Map<String, URL[]> perContextURLs = new LinkedHashMap<String, URL[]>();
 
         for (String isolationID: isolationIDs) {
             String[] strUrls = readStringSequence("bootstrap-isolation-" + isolationID + "-jar-urls");
             String[] resources = readStringSequence("bootstrap-isolation-" + isolationID + "-jar-resources");
             List<URL> urls = getURLs(strUrls, resources, bootstrapProtocol, loader);
-            List<URL> localURLs = getLocalURLs(urls, jarDir, bootstrapProtocol);
+            List<URL> localURLs = getLocalURLs(urls, cacheDir, bootstrapProtocol);
 
             perContextURLs.put(isolationID, localURLs.toArray(new URL[localURLs.size()]));
         }
@@ -130,17 +132,6 @@ public class Bootstrap {
         return "";
     }
 
-    static File localFile(File jarDir, URL url) {
-        if (url.getProtocol().equals("file"))
-            return new File(url.getPath());
-
-        String path = url.getPath();
-        int idx = path.lastIndexOf('/');
-        // FIXME Add other components in path to prevent conflicts?
-        String fileName = path.substring(idx + 1);
-        return new File(jarDir, fileName);
-    }
-
     // from http://www.java2s.com/Code/Java/File-Input-Output/Readfiletobytearrayandsavebytearraytofile.htm
     static void writeBytesToFile(File file, byte[] bytes) throws IOException {
         BufferedOutputStream bos = null;
@@ -163,12 +154,12 @@ public class Bootstrap {
     /**
      *
      * @param urls
-     * @param jarDir: can be null if nothing should be downloaded!
+     * @param cacheDir
      * @param bootstrapProtocol
      * @return
      * @throws MalformedURLException
      */
-    static List<URL> getLocalURLs(List<URL> urls, final File jarDir, String bootstrapProtocol) throws MalformedURLException {
+    static List<URL> getLocalURLs(List<URL> urls, final File cacheDir, String bootstrapProtocol) throws MalformedURLException {
 
         ThreadFactory threadFactory = new ThreadFactory() {
             // from scalaz Strategy.DefaultDaemonThreadFactory
@@ -195,9 +186,7 @@ public class Bootstrap {
             if (protocol.equals("file") || protocol.equals(bootstrapProtocol)) {
                 localURLs.add(url);
             } else {
-                assert jarDir != null : "Should not happen, not supposed to download things";
-
-                File dest = localFile(jarDir, url);
+                File dest = CachePath.localFile(url.toString(), cacheDir, null);
 
                 if (dest.exists()) {
                     localURLs.add(dest.toURI().toURL());
@@ -207,29 +196,67 @@ public class Bootstrap {
             }
         }
 
-        final Random random = new Random();
         for (final URL url : missingURLs) {
-            assert jarDir != null : "Should not happen, not supposed to download things";
-
             completionService.submit(new Callable<URL>() {
                 @Override
                 public URL call() throws Exception {
-                    File dest = localFile(jarDir, url);
+                    final File dest = CachePath.localFile(url.toString(), cacheDir, null);
 
                     if (!dest.exists()) {
+                        FileOutputStream out = null;
+                        FileLock lock = null;
+
+                        final File tmpDest = CachePath.temporaryFile(dest);
+                        final File lockFile = CachePath.lockFile(tmpDest);
+
                         try {
-                            URLConnection conn = url.openConnection();
-                            long lastModified = conn.getLastModified();
-                            InputStream s = conn.getInputStream();
-                            byte[] b = readFullySync(s);
-                            File tmpDest = new File(dest.getParentFile(), dest.getName() + "-" + random.nextInt());
-                            tmpDest.deleteOnExit();
-                            writeBytesToFile(tmpDest, b);
-                            Files.move(tmpDest.toPath(), dest.toPath(), StandardCopyOption.ATOMIC_MOVE);
-                            dest.setLastModified(lastModified);
+
+                            out = CachePath.withStructureLock(cacheDir, new Callable<FileOutputStream>() {
+                                @Override
+                                public FileOutputStream call() throws FileNotFoundException {
+                                    tmpDest.getParentFile().mkdirs();
+                                    lockFile.getParentFile().mkdirs();
+                                    dest.getParentFile().mkdirs();
+
+                                    return new FileOutputStream(lockFile);
+                                }
+                            });
+
+                            try {
+                                lock = out.getChannel().tryLock();
+                                if (lock == null)
+                                    throw new RuntimeException("Ongoing concurrent download for " + url);
+                                else
+                                    try {
+                                        URLConnection conn = url.openConnection();
+                                        long lastModified = conn.getLastModified();
+                                        InputStream s = conn.getInputStream();
+                                        byte[] b = readFullySync(s);
+                                        tmpDest.deleteOnExit();
+                                        writeBytesToFile(tmpDest, b);
+                                        tmpDest.setLastModified(lastModified);
+                                        Files.move(tmpDest.toPath(), dest.toPath(), StandardCopyOption.ATOMIC_MOVE);
+                                    }
+                                    finally {
+                                        lock.release();
+                                        lock = null;
+                                        out.close();
+                                        out = null;
+                                        lockFile.delete();
+                                    }
+                            }
+                            catch (OverlappingFileLockException e) {
+                                throw new RuntimeException("Ongoing concurrent download for " + url);
+                            }
+                            finally {
+                                if (lock != null) lock.release();
+                            }
                         } catch (Exception e) {
                             System.err.println("Error while downloading " + url + ": " + e.getMessage() + ", ignoring it");
                             throw e;
+                        }
+                        finally {
+                            if (out != null) out.close();
                         }
                     }
 
@@ -345,19 +372,8 @@ public class Bootstrap {
         setExtraProperties("bootstrap.properties");
 
         String mainClass0 = System.getProperty("bootstrap.mainClass");
-        String jarDir0 = System.getProperty("bootstrap.jarDir");
 
-        File jarDir = null;
-
-        if (jarDir0 != null) {
-            jarDir = new File(jarDir0);
-
-            if (jarDir.exists()) {
-                if (!jarDir.isDirectory())
-                    exit("Error: " + jarDir0 + " is not a directory");
-            } else if (!jarDir.mkdirs())
-                System.err.println("Warning: cannot create " + jarDir0 + ", continuing anyway.");
-        }
+        File cacheDir = CachePath.defaultCacheDirectory();
 
         Random rng = new Random();
         String protocol = "bootstrap" + rng.nextLong();
@@ -369,10 +385,10 @@ public class Bootstrap {
         String[] strUrls = readStringSequence(defaultURLResource);
         String[] resources = readStringSequence(defaultJarResource);
         List<URL> urls = getURLs(strUrls, resources, protocol, contextLoader);
-        List<URL> localURLs = getLocalURLs(urls, jarDir, protocol);
+        List<URL> localURLs = getLocalURLs(urls, cacheDir, protocol);
 
         String[] isolationIDs = readStringSequence(isolationIDsResource);
-        Map<String, URL[]> perIsolationContextURLs = readIsolationContexts(jarDir, isolationIDs, protocol, contextLoader);
+        Map<String, URL[]> perIsolationContextURLs = readIsolationContexts(cacheDir, isolationIDs, protocol, contextLoader);
 
         Thread thread = Thread.currentThread();
         ClassLoader parentClassLoader = thread.getContextClassLoader();

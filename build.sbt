@@ -82,6 +82,12 @@ lazy val `proxy-tests` = project
     sharedTestResources
   )
 
+lazy val paths = project
+  .settings(
+    pureJava,
+    dontPublish
+  )
+
 lazy val cache = project
   .dependsOn(coreJvm)
   .settings(
@@ -89,13 +95,15 @@ lazy val cache = project
     Mima.previousArtifacts,
     coursierPrefix,
     libs += Deps.scalazConcurrent,
-    Mima.cacheFilters
+    Mima.cacheFilters,
+    addPathsSources
   )
 
 lazy val bootstrap = project
   .settings(
     pureJava,
     dontPublish,
+    addPathsSources,
     // seems not to be automatically found with sbt 0.13.16-M1 :-/
     mainClass := Some("coursier.Bootstrap"),
     renameMainJar("bootstrap.jar")
@@ -266,6 +274,7 @@ lazy val jvm = project
     coreJvm,
     testsJvm,
     `proxy-tests`,
+    paths,
     cache,
     bootstrap,
     extra,
@@ -324,6 +333,7 @@ lazy val coursier = project
     testsJvm,
     testsJs,
     `proxy-tests`,
+    paths,
     cache,
     bootstrap,
     extra,
@@ -346,7 +356,21 @@ lazy val coursier = project
 
 
 lazy val addBootstrapJarAsResource = {
-  resourceGenerators.in(Compile) += packageBin.in(bootstrap).in(Compile).map(Seq(_)).taskValue
+
+  import java.nio.file.Files
+
+  packageBin.in(Compile) := {
+    val bootstrapJar = packageBin.in(bootstrap).in(Compile).value
+    val source = packageBin.in(Compile).value
+
+    val dest = source.getParentFile / (source.getName.stripSuffix(".jar") + "-with-bootstrap.jar")
+
+    ZipUtil.addToZip(source, dest, Seq(
+      "bootstrap.jar" -> Files.readAllBytes(bootstrapJar.toPath)
+    ))
+
+    dest
+  }
 }
 
 lazy val addBootstrapInProguardedJar = {
@@ -413,4 +437,8 @@ lazy val proguardedCli = Seq(
 
 lazy val sharedTestResources = {
   unmanagedResourceDirectories.in(Test) += baseDirectory.in(LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources"
+}
+
+lazy val addPathsSources = {
+  unmanagedSourceDirectories.in(Compile) ++= unmanagedSourceDirectories.in(Compile).in(paths).value
 }
