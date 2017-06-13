@@ -8,7 +8,7 @@ This is the beta-2 release of sbt 1.0.
 
 #### Features, fixes, changes with compatibility implications
 
-We are working with Scala Center to provide [an automatic migration tool][sbt-migration-rewrites].
+The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
 - sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
 
@@ -39,7 +39,7 @@ We are working with Scala Center to provide [an automatic migration tool][sbt-mi
 
 #### Static validation of build.sbt
 
-sbt 1.0 prohibits `.value` calls inside the bodies of if and else expressions in a task. `@sbtUnchecked` annotation can be used to override the check.
+sbt 1.0 prohibits `.value` calls inside the bodies of if expressions and anonymous functions in a task, `@sbtUnchecked` annotation can be used to override the check.
 
 The static validation also catches if you forget to call `.value` in a body of a task.
 
