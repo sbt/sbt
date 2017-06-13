@@ -621,7 +621,7 @@ class Helper(
 
         res0.dependencyClassifiersArtifacts(classifiers.toVector.sorted).map(_._2)
       } else
-        res0.dependencyArtifacts.map(_._2)
+        res0.dependencyArtifacts(withOptional = true).map(_._2)
 
     if (artifactTypes("*"))
       artifacts0
