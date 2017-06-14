@@ -1,6 +1,6 @@
 import Dependencies._
 import Util._
-import com.typesafe.tools.mima.core._, ProblemFilters._
+// import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion: String = "1.0.0-M24"
 def internalPath   = file("internal")
@@ -19,12 +19,13 @@ def commonSettings: Seq[Setting[_]] = Seq(
     val old = scalacOptions.value
     scalaVersion.value match {
       case sv if sv.startsWith("2.10") => old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
-      case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
+      case sv if sv.startsWith("2.11") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
+      case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
     }
   },
   scalacOptions in console in Compile -= "-Ywarn-unused-import",
   scalacOptions in console in Test    -= "-Ywarn-unused-import",
-  mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
+  // mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false
 )
@@ -156,7 +157,7 @@ lazy val utilTesting = (project in internalPath / "util-testing").
   configure(addSbtIO)
 
 lazy val utilScripted = (project in internalPath / "util-scripted").
-  dependsOn(utilLogging).
+  dependsOn(utilLogging, utilInterface).
   settings(
     commonSettings,
     name := "Util Scripted",

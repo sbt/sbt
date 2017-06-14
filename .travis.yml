@@ -1,11 +1,11 @@
 language: scala
 
 scala:
-  - 2.11.8
-  - 2.12.1
+  - 2.11.11
+  - 2.12.2
 
 script:
-  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "plz $TRAVIS_SCALA_VERSION test"
+  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION" test
 
 jdk:
   - oraclejdk8
