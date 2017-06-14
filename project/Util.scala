@@ -3,21 +3,23 @@ import Keys._
 import sbt.IO
 
 import java.io.File
+import xsbti.compile.CompileAnalysis
 
 object Util {
 
   def versionLine(version: String): String = "version=" + version
   def containsVersion(propFile: File, version: String): Boolean =
     IO.read(propFile).contains(versionLine(version))
-  def lastCompilationTime(analysis: sbt.inc.Analysis): Long = {
+  def lastCompilationTime(analysis0: CompileAnalysis): Long = {
+    val analysis = analysis0 match { case a: sbt.internal.inc.Analysis => a }
     val lastCompilation = analysis.compilations.allCompilations.lastOption
-    lastCompilation.map(_.startTime) getOrElse 0L
+    lastCompilation.map(_.getStartTime) getOrElse 0L
   }
 
   def generateVersionFile(version: String,
                           dir: File,
                           s: TaskStreams,
-                          analysis: sbt.inc.Analysis): Seq[File] = {
+                          analysis: CompileAnalysis): Seq[File] = {
     import java.util.{ Date, TimeZone }
     val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
     formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
