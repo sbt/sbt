@@ -3,8 +3,8 @@ import Keys._
 
 object Dependencies {
   val scala210 = "2.10.6"
-  val scala211 = "2.11.8"
-  val scala212 = "2.12.1"
+  val scala211 = "2.11.11"
+  val scala212 = "2.12.2"
 
   private val ioVersion = "1.0.0-M10"
 
@@ -20,10 +20,16 @@ object Dependencies {
 
   lazy val sbtIoPath = getSbtModulePath("sbtio.path", "sbt/io")
 
-  def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID, c: Option[Configuration] = None) =
+  def addSbtModule(p: Project,
+                   path: Option[String],
+                   projectName: String,
+                   m: ModuleID,
+                   c: Option[Configuration] = None) =
     path match {
-      case Some(f) => p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(ProjectRef(file(f), projectName) % _)
-      case None    => p settings (libraryDependencies += c.fold(m)(m % _))
+      case Some(f) =>
+        p dependsOn c.fold[ClasspathDep[ProjectReference]](ProjectRef(file(f), projectName))(
+          ProjectRef(file(f), projectName) % _)
+      case None => p settings (libraryDependencies += c.fold(m)(m % _))
     }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
