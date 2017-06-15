@@ -1017,9 +1017,10 @@ final case class Resolution(
 
   private def artifacts0(
     overrideClassifiers: Option[Seq[String]],
-    keepAttributes: Boolean
+    keepAttributes: Boolean,
+    optional: Boolean
   ): Seq[Artifact] =
-    dependencyArtifacts0(overrideClassifiers).map {
+    dependencyArtifacts0(overrideClassifiers, optional).map {
       case (_, artifact) =>
         if (keepAttributes) artifact else artifact.copy(attributes = Attributes("", ""))
     }.distinct
@@ -1028,12 +1029,18 @@ final case class Resolution(
   // if one wants the attributes field of artifacts not to be cleared, call dependencyArtifacts
 
   def classifiersArtifacts(classifiers: Seq[String]): Seq[Artifact] =
-    artifacts0(Some(classifiers), keepAttributes = false)
+    artifacts0(Some(classifiers), keepAttributes = false, optional = true)
 
   def artifacts: Seq[Artifact] =
-    artifacts0(None, keepAttributes = false)
+    artifacts0(None, keepAttributes = false, optional = false)
 
-  private def dependencyArtifacts0(overrideClassifiers: Option[Seq[String]]): Seq[(Dependency, Artifact)] =
+  def artifacts(withOptional: Boolean): Seq[Artifact] =
+    artifacts0(None, keepAttributes = false, optional = withOptional)
+
+  private def dependencyArtifacts0(
+    overrideClassifiers: Option[Seq[String]],
+    optional: Boolean
+  ): Seq[(Dependency, Artifact)] =
     for {
       dep <- minDependencies.toSeq
       (source, proj) <- projectCache
@@ -1044,10 +1051,13 @@ final case class Resolution(
     } yield dep -> artifact
 
   def dependencyArtifacts: Seq[(Dependency, Artifact)] =
-    dependencyArtifacts0(None)
+    dependencyArtifacts0(None, optional = false)
+
+  def dependencyArtifacts(withOptional: Boolean): Seq[(Dependency, Artifact)] =
+    dependencyArtifacts0(None, optional = withOptional)
 
   def dependencyClassifiersArtifacts(classifiers: Seq[String]): Seq[(Dependency, Artifact)] =
-    dependencyArtifacts0(Some(classifiers))
+    dependencyArtifacts0(Some(classifiers), optional = true)
 
   /**
     * Returns errors on dependencies

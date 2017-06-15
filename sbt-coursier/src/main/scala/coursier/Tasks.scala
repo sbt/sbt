@@ -881,7 +881,7 @@ object Tasks {
 
       val allArtifacts0 =
         classifiers match {
-          case None => res.flatMap(_.artifacts)
+          case None => res.flatMap(_.artifacts(withOptional = true))
           case Some(cl) => res.flatMap(_.classifiersArtifacts(cl))
         }
 
