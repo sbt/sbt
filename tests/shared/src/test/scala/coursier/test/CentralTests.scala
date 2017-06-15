@@ -273,25 +273,42 @@ abstract class CentralTests extends TestSuite {
     }
 
     'snapshotMetadata - {
-      // Let's hope this one won't change too much
-      val mod = Module("com.github.fommil", "java-logging")
-      val version = "1.2-SNAPSHOT"
-      val extraRepo = MavenRepository("https://oss.sonatype.org/content/repositories/public/")
+      'simple - {
+        val mod = Module("com.github.fommil", "java-logging")
+        val version = "1.2-SNAPSHOT"
+        val extraRepo = MavenRepository("https://oss.sonatype.org/content/repositories/public/")
 
-      * - resolutionCheck(
-        mod,
-        version,
-        configuration = "runtime",
-        extraRepos = Seq(extraRepo)
-      )
+        * - resolutionCheck(
+          mod,
+          version,
+          configuration = "runtime",
+          extraRepos = Seq(extraRepo)
+        )
 
-      * - ensureHasArtifactWithExtension(
-        mod,
-        version,
-        "jar",
-        "jar",
-        extraRepos = Seq(extraRepo)
-      )
+        * - ensureHasArtifactWithExtension(
+          mod,
+          version,
+          "jar",
+          "jar",
+          extraRepos = Seq(extraRepo)
+        )
+      }
+
+      * - {
+        val mod = Module("org.jitsi", "jitsi-videobridge")
+        val version = "1.0-SNAPSHOT"
+        val extraRepos = Seq(
+          MavenRepository("https://github.com/jitsi/jitsi-maven-repository/raw/master/releases"),
+          MavenRepository("https://github.com/jitsi/jitsi-maven-repository/raw/master/snapshots"),
+          MavenRepository("https://jitpack.io")
+        )
+
+        * - resolutionCheck(
+          mod,
+          version,
+          extraRepos = extraRepos
+        )
+      }
     }
 
     'versionProperty - {
