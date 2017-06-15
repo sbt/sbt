@@ -1,6 +1,6 @@
 
 // for SbtExclusionRule with sbt 1.0
-import sbt.internal.librarymanagement._
+import Compatibility._
 
 enablePlugins(coursier.ShadingPlugin)
 shadingNamespace := "test.shaded"

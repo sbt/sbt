@@ -20,6 +20,8 @@ lazy val shared = Seq(
   scalaVersion := "2.11.8",
   confCheck := {
 
+    val log = streams.value.log
+
     val updateReport = update.value
     val updateClassifiersReport = updateClassifiers.value
 
@@ -41,12 +43,12 @@ lazy val shared = Seq(
             a
         }
 
-      streams.value.log.info(
+      log.info(
         s"Found ${artifacts.length} artifacts for config $config / classifier $classifier" +
           (if (useClassifiersReport) " in classifiers report" else "")
       )
       for (a <- artifacts)
-        streams.value.log.info("  " + a)
+        log.info("  " + a)
 
       artifacts
     }

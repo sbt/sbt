@@ -3,6 +3,8 @@ lazy val noPomCheck = TaskKey[Unit]("noPomCheck")
 
 noPomCheck := {
 
+  val log = streams.value.log
+
   val configReport = update.value
     .configuration("compile")
     .getOrElse {
@@ -22,7 +24,7 @@ noPomCheck := {
     }
 
   for (a <- pomArtifacts)
-    streams.value.log.error(s"Found POM artifact $a")
+    log.error(s"Found POM artifact $a")
 
   assert(pomArtifacts.isEmpty)
 }

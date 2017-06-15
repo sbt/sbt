@@ -19,9 +19,9 @@ lazy val checkToShadeClasses = TaskKey[Unit]("check-to-shade-classes")
 
 checkToShadeClasses := {
   val toShadeClasses0 = toShadeClasses.in(Shading).value
+  val log = streams.value.log
 
   if (toShadeClasses0.nonEmpty) {
-    val log = streams.value.log
     log.error(s"Found ${toShadeClasses0.length} classes to be explicitly shaded")
     for (name <- toShadeClasses0)
       log.error("  " + name)
