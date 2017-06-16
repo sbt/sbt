@@ -84,10 +84,13 @@ is212() {
 
 runSbtCoursierTests() {
   addPgpKeys
-  sbt ++$SCALA_VERSION sbt-plugins/publishLocal "sbt-coursier/scripted sbt-coursier/*" sbt-pgp-coursier/scripted
+  sbt ++$SCALA_VERSION sbt-plugins/publishLocal
   if [ "$SCALA_VERSION" = "2.10" ]; then
-    sbt ++$SCALA_VERSION "sbt-coursier/scripted sbt-coursier-0.13/*"
+    sbt ++$SCALA_VERSION "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*"
+  else
+    sbt ++$SCALA_VERSION "sbt-coursier/scripted sbt-coursier/simple" # full scripted suite currently taking too long on Travis CI...
   fi
+  sbt ++$SCALA_VERSION sbt-pgp-coursier/scripted
 }
 
 runSbtShadingTests() {
