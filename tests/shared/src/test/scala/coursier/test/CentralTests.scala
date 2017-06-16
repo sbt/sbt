@@ -28,10 +28,10 @@ abstract class CentralTests extends TestSuite {
   def resolve(
     deps: Set[Dependency],
     filter: Option[Dependency => Boolean] = None,
-    extraRepo: Option[Repository] = None,
+    extraRepos: Seq[Repository] = Nil,
     profiles: Option[Set[String]] = None
   ) = {
-    val repositories0 = extraRepo.toSeq ++ repositories
+    val repositories0 = extraRepos ++ repositories
 
     val fetch0 = fetch(repositories0)
 
@@ -56,7 +56,7 @@ abstract class CentralTests extends TestSuite {
   def resolutionCheck(
     module: Module,
     version: String,
-    extraRepo: Option[Repository] = None,
+    extraRepos: Seq[Repository] = Nil,
     configuration: String = "",
     profiles: Option[Set[String]] = None
   ) =
@@ -69,27 +69,25 @@ abstract class CentralTests extends TestSuite {
             case (k, v) => k + "_" + v
           }.mkString("_")
 
-      val expected =
-        await(
-          textResource(
-            Seq(
-              "resolutions",
-              module.organization,
-              module.name,
-              attrPathPart,
-              version + (
-                if (configuration.isEmpty)
-                  ""
-                else
-                  "_" + configuration.replace('(', '_').replace(')', '_')
-              )
-            ).filter(_.nonEmpty).mkString("/")
-          )
-        ).split('\n').toSeq
+      val path = Seq(
+        "resolutions",
+        module.organization,
+        module.name,
+        attrPathPart,
+        version + (
+          if (configuration.isEmpty)
+            ""
+          else
+            "_" + configuration.replace('(', '_').replace(')', '_')
+        )
+      ).filter(_.nonEmpty).mkString("/")
+
+      def tryRead = textResource(path)
 
       val dep = Dependency(module, version, configuration = configuration)
-      val res = await(resolve(Set(dep), extraRepo = extraRepo, profiles = profiles))
+      val res = await(resolve(Set(dep), extraRepos = extraRepos, profiles = profiles))
 
+      // making that lazy makes scalac crash in 2.10 with scalajs
       val result = res
         .minDependencies
         .toVector
@@ -109,6 +107,15 @@ abstract class CentralTests extends TestSuite {
             Seq(org, name, ver, cfg).mkString(":")
         }
 
+      val expected =
+        await(
+          tryRead.recoverWith {
+            case _: Exception =>
+              tryCreate(path, result.mkString("\n"))
+              tryRead
+          }
+        ).split('\n').toSeq
+
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
         println(s"Line ${idx + 1}:\n  expected: $e\n  got:      $r")
 
@@ -120,11 +127,11 @@ abstract class CentralTests extends TestSuite {
     version: String,
     artifactType: String,
     attributes: Attributes = Attributes(),
-    extraRepo: Option[Repository] = None
+    extraRepos: Seq[Repository] = Nil
   )(
     f: Artifact => T
   ): Future[T] =
-    withArtifacts(module, version, artifactType, attributes, extraRepo) {
+    withArtifacts(module, version, artifactType, attributes, extraRepos) {
       case Seq(artifact) =>
         f(artifact)
       case other =>
@@ -139,35 +146,35 @@ abstract class CentralTests extends TestSuite {
     version: String,
     artifactType: String,
     attributes: Attributes = Attributes(),
-    extraRepo: Option[Repository] = None,
+    extraRepos: Seq[Repository] = Nil,
     classifierOpt: Option[String] = None,
     transitive: Boolean = false
   )(
     f: Seq[Artifact] => T
   ): Future[T] = {
     val dep = Dependency(module, version, transitive = transitive, attributes = attributes)
-    withArtifacts(dep, artifactType, extraRepo, classifierOpt)(f)
+    withArtifacts(dep, artifactType, extraRepos, classifierOpt)(f)
   }
 
   def withArtifacts[T](
     dep: Dependency,
     artifactType: String,
-    extraRepo: Option[Repository],
+    extraRepos: Seq[Repository],
     classifierOpt: Option[String]
   )(
     f: Seq[Artifact] => T
   ): Future[T] = 
-    withArtifacts(Set(dep), artifactType, extraRepo, classifierOpt)(f)
+    withArtifacts(Set(dep), artifactType, extraRepos, classifierOpt)(f)
 
   def withArtifacts[T](
     deps: Set[Dependency],
     artifactType: String,
-    extraRepo: Option[Repository],
+    extraRepos: Seq[Repository],
     classifierOpt: Option[String]
   )(
     f: Seq[Artifact] => T
   ): Future[T] = async {
-    val res = await(resolve(deps, extraRepo = extraRepo))
+    val res = await(resolve(deps, extraRepos = extraRepos))
 
     assert(res.metadataErrors.isEmpty)
     assert(res.conflicts.isEmpty)
@@ -191,9 +198,9 @@ abstract class CentralTests extends TestSuite {
     artifactType: String,
     extension: String,
     attributes: Attributes = Attributes(),
-    extraRepo: Option[Repository] = None
+    extraRepos: Seq[Repository] = Nil
   ): Future[Unit] =
-    withArtifact(module, version, artifactType, attributes = attributes, extraRepo = extraRepo) { artifact =>
+    withArtifact(module, version, artifactType, attributes = attributes, extraRepos = extraRepos) { artifact =>
       assert(artifact.url.endsWith("." + extension))
     }
 
@@ -266,25 +273,42 @@ abstract class CentralTests extends TestSuite {
     }
 
     'snapshotMetadata - {
-      // Let's hope this one won't change too much
-      val mod = Module("com.github.fommil", "java-logging")
-      val version = "1.2-SNAPSHOT"
-      val extraRepo = MavenRepository("https://oss.sonatype.org/content/repositories/public/")
+      'simple - {
+        val mod = Module("com.github.fommil", "java-logging")
+        val version = "1.2-SNAPSHOT"
+        val extraRepo = MavenRepository("https://oss.sonatype.org/content/repositories/public/")
 
-      * - resolutionCheck(
-        mod,
-        version,
-        configuration = "runtime",
-        extraRepo = Some(extraRepo)
-      )
+        * - resolutionCheck(
+          mod,
+          version,
+          configuration = "runtime",
+          extraRepos = Seq(extraRepo)
+        )
 
-      * - ensureHasArtifactWithExtension(
-        mod,
-        version,
-        "jar",
-        "jar",
-        extraRepo = Some(extraRepo)
-      )
+        * - ensureHasArtifactWithExtension(
+          mod,
+          version,
+          "jar",
+          "jar",
+          extraRepos = Seq(extraRepo)
+        )
+      }
+
+      * - {
+        val mod = Module("org.jitsi", "jitsi-videobridge")
+        val version = "1.0-SNAPSHOT"
+        val extraRepos = Seq(
+          MavenRepository("https://github.com/jitsi/jitsi-maven-repository/raw/master/releases"),
+          MavenRepository("https://github.com/jitsi/jitsi-maven-repository/raw/master/snapshots"),
+          MavenRepository("https://jitpack.io")
+        )
+
+        * - resolutionCheck(
+          mod,
+          version,
+          extraRepos = extraRepos
+        )
+      }
     }
 
     'versionProperty - {
@@ -399,8 +423,8 @@ abstract class CentralTests extends TestSuite {
           intransitiveCompiler("optional")
         ),
         "jar",
-        None,
-        None
+        extraRepos = Nil,
+        classifierOpt = None
       ) {
         case Seq() =>
           throw new Exception("Expected one JAR")
@@ -683,7 +707,7 @@ abstract class CentralTests extends TestSuite {
       * - resolutionCheck(
         Module("org.kie", "kie-api"),
         "6.5.0.Final",
-        extraRepo = Some(MavenRepository("https://repository.jboss.org/nexus/content/repositories/public"))
+        extraRepos = Seq(MavenRepository("https://repository.jboss.org/nexus/content/repositories/public"))
       )
     }
 
@@ -722,6 +746,23 @@ abstract class CentralTests extends TestSuite {
           assert(pomOpt.forall(sigHasSig))
         }
       }
+    }
+
+    'sbtPluginVersionRange - {
+      val mod = Module("org.ensime", "sbt-ensime", attributes = Map("scalaVersion" -> "2.10", "sbtVersion" -> "0.13"))
+      val ver = "1.12.+"
+
+      * - {
+        if (isActualCentral) // doesn't work via proxies, which don't list all the upstream available versions
+          resolutionCheck(mod, ver)
+      }
+    }
+
+    'multiVersionRanges - {
+      val mod = Module("org.webjars.bower", "dgrid")
+      val ver = "1.0.0"
+
+      * - resolutionCheck(mod, ver)
     }
   }
 

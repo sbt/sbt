@@ -295,6 +295,28 @@ object VersionIntervalTests extends TestSuite {
           assert(itv.isEmpty)
         }
       }
+
+      'multiRange - {
+        * - {
+          val itv = Parse.multiVersionInterval("[1.0,2.0)")
+          assert(itv == Some(VersionInterval(Some(Version("1.0")), Some(Version("2.0")), fromIncluded = true, toIncluded = false)))
+        }
+
+        * - {
+          val itv = Parse.multiVersionInterval("[1.0,2.0),[3.0,4.0)")
+          assert(itv == Some(VersionInterval(Some(Version("3.0")), Some(Version("4.0")), fromIncluded = true, toIncluded = false)))
+        }
+
+        * - {
+          val itv = Parse.multiVersionInterval("[1.0,2.0),[3.0,4.0),[5.0,6.0)")
+          assert(itv == Some(VersionInterval(Some(Version("5.0")), Some(Version("6.0")), fromIncluded = true, toIncluded = false)))
+        }
+
+        * - {
+          val itv = Parse.multiVersionInterval("(1.0,2.0),[3.0,4.0),(5.0,6.0)")
+          assert(itv == Some(VersionInterval(Some(Version("5.0")), Some(Version("6.0")), fromIncluded = false, toIncluded = false)))
+        }
+      }
     }
 
     'constraint{

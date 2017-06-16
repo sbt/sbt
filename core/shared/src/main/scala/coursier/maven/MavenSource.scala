@@ -36,11 +36,11 @@ final case class MavenSource(
 
       val path = dependency.module.organization.split('.').toSeq ++ Seq(
         MavenRepository.dirModuleName(dependency.module, sbtAttrStub),
-        project.actualVersion,
+        toBaseVersion(project.actualVersion),
         s"${dependency.module.name}-${versioning getOrElse project.actualVersion}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
       )
 
-      val changing0 = changing.getOrElse(project.actualVersion.contains("-SNAPSHOT"))
+      val changing0 = changing.getOrElse(isSnapshot(project.actualVersion))
       var artifact =
         Artifact(
           root + path.mkString("/"),
@@ -149,7 +149,7 @@ final case class MavenSource(
           s"${dependency.module.name}-${versioning getOrElse project.actualVersion}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
         )
 
-        val changing0 = changing.getOrElse(project.actualVersion.contains("-SNAPSHOT"))
+        val changing0 = changing.getOrElse(isSnapshot(project.actualVersion))
 
         val extra0 = extra.mapValues(_.artifact(versioningType)).iterator.toMap
 

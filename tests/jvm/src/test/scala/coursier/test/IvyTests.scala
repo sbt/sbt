@@ -25,7 +25,7 @@ object IvyTests extends TestSuite {
           "org.scala-js", "sbt-scalajs", Map("sbtVersion" -> "0.13", "scalaVersion" -> "2.10")
         ),
         version = "0.6.6",
-        extraRepo = Some(sbtRepo),
+        extraRepos = Seq(sbtRepo),
         configuration = "default(compile)"
       )
     }
@@ -43,10 +43,10 @@ object IvyTests extends TestSuite {
       * - CentralTests.resolutionCheck(
         module = mod,
         version = ver,
-        extraRepo = Some(sbtRepo)
+        extraRepos = Seq(sbtRepo)
       )
 
-      * - CentralTests.withArtifact(mod, ver, "jar", extraRepo = Some(sbtRepo)) { artifact =>
+      * - CentralTests.withArtifact(mod, ver, "jar", extraRepos = Seq(sbtRepo)) { artifact =>
         assert(artifact.url == expectedArtifactUrl)
       }
     }
@@ -73,7 +73,7 @@ object IvyTests extends TestSuite {
       * - CentralTests.withArtifacts(
         dep = dep,
         artifactType = "jar",
-        extraRepo = Some(repo),
+        extraRepos = Seq(repo),
         classifierOpt = None
       ) {
         case Seq(artifact) =>
@@ -85,7 +85,7 @@ object IvyTests extends TestSuite {
       * - CentralTests.withArtifacts(
         dep = dep.copy(configuration = "test"),
         artifactType = "jar",
-        extraRepo = Some(repo),
+        extraRepos = Seq(repo),
         classifierOpt = None
       ) {
         case Seq(artifact1, artifact2) =>

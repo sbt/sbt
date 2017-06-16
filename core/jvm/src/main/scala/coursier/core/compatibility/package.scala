@@ -79,4 +79,6 @@ package object compatibility {
       .toVector
       .map(_.attr("href"))
 
+  def regexLookbehind: String = "<="
+
 }

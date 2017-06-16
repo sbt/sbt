@@ -48,4 +48,7 @@ package object compatibility {
       }
     }
   }
+
+  def tryCreate(path: String, content: String): Unit = {}
+
 }

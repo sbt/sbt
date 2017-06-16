@@ -1,6 +1,6 @@
 package coursier.test
 
-import java.io.{FileNotFoundException, InputStream}
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
 import coursier.util.TestEscape
@@ -70,5 +70,18 @@ package object compatibility {
       }
     }
   }
+
+  private lazy val baseResources = {
+    val dir = Paths.get("tests/shared/src/test/resources")
+    assert(Files.isDirectory(dir))
+    dir
+  }
+
+  def tryCreate(path: String, content: String): Unit =
+    if (fillChunks) {
+      val path0 = baseResources.resolve(path)
+      Files.createDirectories(path0.getParent)
+      Files.write(path0, content.getBytes(StandardCharsets.UTF_8))
+    }
 
 }

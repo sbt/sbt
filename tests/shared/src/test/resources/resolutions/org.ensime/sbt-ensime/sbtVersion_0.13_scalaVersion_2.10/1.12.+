@@ -1,0 +1,9 @@
+org.ensime:sbt-ensime;sbtVersion=0.13;scalaVersion=2.10:1.12.12:compile
+org.jsoup:jsoup:1.10.2:compile
+org.scala-lang:scala-library:2.10.6:compile
+org.scala-lang:scala-reflect:2.10.4:compile
+org.scalamacros:quasiquotes_2.10:2.1.0:compile
+org.scalariform:scalariform_2.10:0.1.4:compile
+org.scalaz:scalaz-concurrent_2.10:7.2.12:compile
+org.scalaz:scalaz-core_2.10:7.2.12:compile
+org.scalaz:scalaz-effect_2.10:7.2.12:compile

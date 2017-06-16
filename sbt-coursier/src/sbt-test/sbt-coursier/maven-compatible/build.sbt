@@ -1,12 +1,5 @@
 scalaVersion := "2.11.8"
 
-coursierCachePolicies := {
-  if (sys.props("os.name").startsWith("Windows"))
-    coursierCachePolicies.value
-  else
-    Seq(coursier.CachePolicy.ForceDownload)
-}
-
 resolvers += Resolver.url(
   "webjars-bintray",
   new URL("https://dl.bintray.com/scalaz/releases/")
