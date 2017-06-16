@@ -21,8 +21,9 @@ trait TestReportListener {
   /** called if test completed */
   def endGroup(name: String, result: TestResult): Unit
 
-  /** Used by the test framework for logging test results*/
+  /** Used by the test framework for logging test results */
   def contentLogger(test: TestDefinition): Option[ContentLogger] = None
+
 }
 
 final class ContentLogger(val log: TLogger, val flush: () => Unit)
@@ -32,8 +33,9 @@ trait TestsListener extends TestReportListener {
   /** called once, at beginning. */
   def doInit(): Unit
 
-  /** called once, at end. */
+  /** called once, at end of the test group. */
   def doComplete(finalResult: TestResult): Unit
+
 }
 
 /** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
@@ -84,8 +86,10 @@ object SuiteResult {
       count(TStatus.Pending)
     )
   }
+
   val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0, 0, 0, 0)
   val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0, 0, 0, 0)
+
 }
 
 abstract class TestEvent {
