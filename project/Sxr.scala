@@ -26,17 +26,22 @@ object Sxr {
     target := target.in(taskGlobal).value / "browse",
     sxr in taskGlobal := sxrTask.value
   )
-  def taskGlobal = ThisScope.copy(task = Global)
+  def taskGlobal = ThisScope.copy(task = Zero)
   def sxrTask = Def task {
     val out = target.value
     val outputDir = out.getParentFile / (out.getName + ".sxr")
+    val log = streams.value.log
+    val si = scalaInstance.value
+    val cp = fullClasspath.value
+    val so = scalacOptions.value
+    val co = classpathOptions.value
     val f = FileFunction.cached(streams.value.cacheDirectory / "sxr", FilesInfo.hash) { in =>
-      streams.value.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
+      log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
       IO.delete(out)
       IO.createDirectory(out)
       val comp =
-        new RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
-      comp(in.toSeq.sorted, fullClasspath.value.files, out, scalacOptions.value)
+        new RawCompiler(si, co, log)
+      comp(in.toSeq.sorted, cp.files, out, so)
       Set(outputDir)
     }
     f(sources.value.toSet)
