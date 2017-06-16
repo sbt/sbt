@@ -499,15 +499,20 @@ object Tasks {
     // Downloads are already parallel, no need to parallelize further anyway
     synchronized {
 
-      lazy val cm = coursierSbtClassifiersModule.value
+      val cm = coursierSbtClassifiersModule.value
 
-      lazy val projectName = thisProjectRef.value.project
+      val projectName = thisProjectRef.value.project
+      val baseConfigGraphs = coursierConfigGraphs.value
+
+      val sv = scalaVersion.value
+      val sbv = scalaBinaryVersion.value
+
+      val proj = coursierProject.value
+      val publications = coursierPublications.value
+      val fallbackDeps = coursierFallbackDependencies.value
 
       val (currentProject, fallbackDependencies, configGraphs) =
         if (sbtClassifiers) {
-          val sv = scalaVersion.value
-          val sbv = scalaBinaryVersion.value
-
           val proj = FromSbt.project(
             cm.id,
             cm.modules,
@@ -523,12 +528,8 @@ object Tasks {
           )
 
           (proj, fallbackDeps, Vector(cm.configurations.map(_.name).toSet))
-        } else {
-          val proj = coursierProject.value
-          val publications = coursierPublications.value
-          val fallbackDeps = coursierFallbackDependencies.value
-          (proj.copy(publications = publications), fallbackDeps, coursierConfigGraphs.value)
-        }
+        } else
+          (proj.copy(publications = publications), fallbackDeps, baseConfigGraphs)
 
       val interProjectDependencies = coursierInterProjectDependencies.value
 
@@ -543,18 +544,19 @@ object Tasks {
 
       // are these always defined? (e.g. for Java only projects?)
       val so = scalaOrganization.value
-      val sv = scalaVersion.value
-      val sbv = scalaBinaryVersion.value
 
       val userForceVersions = dependencyOverrides.value.map(
         FromSbt.moduleVersion(_, sv, sbv)
       ).toMap
 
+      val sbtResolvers = coursierSbtResolvers.value
+      val defaultResolvers = coursierRecursiveResolvers.value
+
       val resolvers =
         if (sbtClassifiers)
-          coursierSbtResolvers.value
+          sbtResolvers
         else
-          coursierRecursiveResolvers.value.distinct
+          defaultResolvers.distinct
 
       val parentProjectCache: ProjectCache = coursierParentProjectCache.value
           .get(resolvers)
@@ -600,11 +602,11 @@ object Tasks {
       ) ++ sys.props
 
       val useSbtCredentials = coursierUseSbtCredentials.value
+      val sbtCreds = sbt.Keys.credentials.value
 
       val authenticationByHost =
         if (useSbtCredentials)
-          sbt.Keys.credentials
-            .value
+          sbtCreds
             .flatMap {
               case dc: sbt.DirectCredentials => List(dc)
               case fc: sbt.FileCredentials =>
@@ -862,11 +864,16 @@ object Tasks {
 
       val verbosityLevel = coursierVerbosity.value
 
+      val classifiersRes = coursierSbtClassifiersResolution.value
+      val mainRes = coursierResolutions.value
+
       val res =
         if (withClassifiers && sbtClassifiers)
-          Seq(coursierSbtClassifiersResolution.value)
+          Seq(classifiersRes)
         else
-          coursierResolutions.value.values.toVector
+          mainRes.values.toVector
+
+      val trClassifiers = transitiveClassifiers.value
 
       val classifiers =
         if (withClassifiers)
@@ -874,7 +881,7 @@ object Tasks {
             if (sbtClassifiers)
               cm.classifiers
             else
-              transitiveClassifiers.value
+              trClassifiers
           }
         else
           None
@@ -1058,13 +1065,16 @@ object Tasks {
         internalSbtScalaProvider.jars()
       )
 
-      lazy val cm = coursierSbtClassifiersModule.value
+      val cm = coursierSbtClassifiersModule.value
+
+      val sv = scalaVersion.value
+      val sbv = scalaBinaryVersion.value
+
+      val proj = coursierProject.value
+      val publications = coursierPublications.value
 
       val currentProject =
-        if (sbtClassifiers) {
-          val sv = scalaVersion.value
-          val sbv = scalaBinaryVersion.value
-
+        if (sbtClassifiers)
           FromSbt.project(
             cm.id,
             cm.modules,
@@ -1072,22 +1082,21 @@ object Tasks {
             sv,
             sbv
           )
-        } else {
-          val proj = coursierProject.value
-          val publications = coursierPublications.value
+        else
           proj.copy(publications = publications)
-        }
 
       val log = streams.value.log
 
       val verbosityLevel = coursierVerbosity.value
 
+      val classifiersRes = coursierSbtClassifiersResolution.value
+      val mainRes = coursierResolutions.value
+
       val res =
-        if (withClassifiers && sbtClassifiers) {
-          val r = coursierSbtClassifiersResolution.value
-          Map(cm.configurations.map(c => c.name).toSet -> r)
-        } else
-          coursierResolutions.value
+        if (withClassifiers && sbtClassifiers)
+          Map(cm.configurations.map(c => c.name).toSet -> classifiersRes)
+        else
+          mainRes
 
       val configResolutions = res.flatMap {
         case (configs, r) =>
@@ -1128,13 +1137,15 @@ object Tasks {
           log.info(repr.split('\n').map("  " + _).mkString("\n"))
         }
 
+        val trClassifiers = transitiveClassifiers.value
+
         val classifiers =
           if (withClassifiers)
             Some {
               if (sbtClassifiers)
                 cm.classifiers
               else
-                transitiveClassifiers.value
+                trClassifiers
             }
           else
             None
@@ -1218,12 +1229,15 @@ object Tasks {
 
     lazy val projectName = thisProjectRef.value.project
 
-    val currentProject =
-      if (sbtClassifiers) {
-        val cm = coursierSbtClassifiersModule.value
-        val sv = scalaVersion.value
-        val sbv = scalaBinaryVersion.value
+    val cm = coursierSbtClassifiersModule.value
+    val sv = scalaVersion.value
+    val sbv = scalaBinaryVersion.value
 
+    val proj = coursierProject.value
+    val publications = coursierPublications.value
+
+    val currentProject =
+      if (sbtClassifiers)
         FromSbt.project(
           cm.id,
           cm.modules,
@@ -1231,18 +1245,17 @@ object Tasks {
           sv,
           sbv
         )
-      } else {
-        val proj = coursierProject.value
-        val publications = coursierPublications.value
+      else
         proj.copy(publications = publications)
-      }
+
+    val classifiersRes = coursierSbtClassifiersResolution.value
+    val mainRes = coursierResolutions.value
 
     val resolutions =
-      if (sbtClassifiers) {
-        val r = coursierSbtClassifiersResolution.value
-        Map(currentProject.configurations.keySet -> r)
-      } else
-        coursierResolutions.value
+      if (sbtClassifiers)
+        Map(currentProject.configurations.keySet -> classifiersRes)
+      else
+        mainRes
 
     val config = configuration.value.name
     val configs = coursierConfigurations.value

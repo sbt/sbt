@@ -1,6 +1,6 @@
 
 // for SbtExclusionRule with sbt 1.0
-import sbt.internal.librarymanagement._
+import Compatibility._
 
 scalaVersion := "2.11.8"
 
