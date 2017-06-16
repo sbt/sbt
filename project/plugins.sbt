@@ -9,6 +9,4 @@ scalacOptions ++= Seq("-feature", "-language:postfixOps")
 addSbtPlugin("org.foundweekends" % "sbt-bintray" % "0.4.0")
 addSbtPlugin("org.scala-sbt" % "sbt-contraband" % "0.3.0-M5")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.0-M1")
-
-// hopefully this comes back soon.
-// addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "0.3")
+addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "1.3")
