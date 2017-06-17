@@ -1,5 +1,7 @@
 import Dependencies._
-import com.typesafe.tools.mima.core._, ProblemFilters._
+import Path._
+
+// import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "1.0.0"
 
@@ -12,26 +14,24 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala211, scala212),
   resolvers += Resolver.sonatypeRepo("public"),
-  scalacOptions += "-Ywarn-unused",
-  mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
+  scalacOptions := {
+    val old = scalacOptions.value
+    scalaVersion.value match {
+      case sv if sv.startsWith("2.10") => old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
+      case sv if sv.startsWith("2.11") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
+      case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
+    }
+  },
+  // mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false,
-  parallelExecution in Test := false,
-  commands += Command.command("scalafmtCheck") { state =>
-    sys.process.Process("git diff --name-only --exit-code").! match {
-      case 0 => // ok
-      case x => sys.error("git diff detected! Did you compile before committing?")
-    }
-    state
-  }
+  parallelExecution in Test := false
 )
 
 lazy val lmRoot = (project in file("."))
   .aggregate(lm)
-  .disablePlugins(com.typesafe.sbt.SbtScalariform)
   .settings(
     inThisBuild(
       Seq(
@@ -40,6 +40,9 @@ lazy val lmRoot = (project in file("."))
         scmInfo := Some(ScmInfo(url("https://github.com/sbt/librarymanagement"),
                                 "git@github.com:sbt/librarymanagement.git")),
         bintrayPackage := "librarymanagement",
+        scalafmtOnCompile := true,
+        // scalafmtVersion 1.0.0-RC3 has regression
+        scalafmtVersion := "0.6.8",
         git.baseVersion := baseVersion
       )),
     commonSettings,
@@ -52,7 +55,6 @@ lazy val lmRoot = (project in file("."))
   )
 
 lazy val lm = (project in file("librarymanagement"))
-  .disablePlugins(com.typesafe.sbt.SbtScalariform)
   .settings(
     commonSettings,
     name := "librarymanagement",
@@ -71,7 +73,7 @@ lazy val lm = (project in file("librarymanagement"))
                                  streams.value,
                                  (compile in Compile).value))
       .taskValue,
-    mimaBinaryIssueFilters ++= Seq(),
+    // mimaBinaryIssueFilters ++= Seq(),
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
     mappings in (Compile, packageSrc) ++= {

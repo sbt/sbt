@@ -2,8 +2,8 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  val scala211 = "2.11.8"
-  val scala212 = "2.12.1"
+  val scala211 = "2.11.11"
+  val scala212 = "2.12.2"
 
   private val ioVersion = "1.0.0-M11"
   private val utilVersion = "1.0.0-M23"
@@ -34,7 +34,7 @@ object Dependencies {
                    c: Option[Configuration] = None) =
     path match {
       case Some(f) =>
-        p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(
+        p dependsOn c.fold[ClasspathDep[ProjectReference]](ProjectRef(file(f), projectName))(
           ProjectRef(file(f), projectName) % _)
       case None => p settings (libraryDependencies += c.fold(m)(m % _))
     }
