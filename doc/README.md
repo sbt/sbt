@@ -86,9 +86,9 @@ Download and run its launcher with
 $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
 
-Alternatively on OS X, install it via [@paulp](https://github.com/paulp/)'s homebrew formula,
+Alternatively on OS X, install it via homebrew,
 ```
-$ brew install --HEAD paulp/extras/coursier
+$ brew install coursier/formulas/coursier
 ```
 
 Run an application distributed via artifacts with
@@ -266,9 +266,9 @@ $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --
 The launcher itself weighs only 8 kB and can be easily embedded as is in other projects.
 It downloads the artifacts required to launch coursier on the first run.
 
-Alternatively on OS X, install it via [@paulp](https://github.com/paulp/)'s homebrew formula, that puts the `coursier` launcher directly in your PATH,
+Alternatively on OS X, install it via homebrew, that puts the `coursier` launcher directly in your PATH,
 ```
-$ brew install --HEAD paulp/extras/coursier
+$ brew install coursier/formulas/coursier
 ```
 
 ```
