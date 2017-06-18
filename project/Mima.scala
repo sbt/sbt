@@ -4,6 +4,8 @@ import sbt.Keys._
 
 import com.typesafe.tools.mima.plugin.MimaKeys._
 
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
 object Mima {
 
   // Important: the line with the "binary compatibility versions" comment below is matched during releases
@@ -20,7 +22,7 @@ object Mima {
     mimaPreviousArtifacts := {
       binaryCompatibilityVersions.collect {
         case ver if ver.nonEmpty =>
-          organization.value %% moduleName.value % ver
+          organization.value %%% moduleName.value % ver
       }
     }
   )
