@@ -1,0 +1,36 @@
+### Changes
+
+* Better support for Maven snapshot versioning (thanks to [@rfkm], [#581])
+* Add basic support for multiple version ranges (like `[1.0,2.0),[3.0,4.0)`, [#581])
+* Fix support for version ranges for sbt plugins from Maven repositories ([#581])
+* Support sbt `1.0.0-M6` (replaces support for `1.0.0-M5`, [#560])
+* Have boostraps use the main coursier cache ([#576])
+* More slick tree printing (thanks to [@sschuberth], [#574])
+* Better support for version ranges like `1.2.3-+` (thanks to [@avdv], [#556])
+* New `sbt-pgp-coursier` plugin, to download `sbt-pgp` checksums via coursier ([#571])
+* (Even) more careful handling of HTTP connections ([#568])
+* Don't fail if another coursier run downloads a file concurrently - watch the concurrent download instead, report its progress, and take over it if it gets interrupted ([#568])
+* Switch to scala-js `0.6.17` ([#565])
+* Ensure Nexus proxies (Nexus 2 and 3) support is fine (some regressions in `1.0.0-RC1`, fixed in [#554])
+* Don't mix resolutions of distinct Ivy configuration subgraphs in `sbt-coursier` (allows `neo-sbt-scalafmt` `0.2` to be fine with `sbt-coursier`, [#554], and extra non regression test in [#572] by [@dotta])
+* Add support for binary checksum files ([#554])
+
+[#554]: https://github.com/alexarchambault/coursier/pull/554
+[#556]: https://github.com/alexarchambault/coursier/pull/556
+[#560]: https://github.com/alexarchambault/coursier/pull/560
+[#565]: https://github.com/alexarchambault/coursier/pull/565
+[#568]: https://github.com/alexarchambault/coursier/pull/568
+[#571]: https://github.com/alexarchambault/coursier/pull/571
+[#572]: https://github.com/alexarchambault/coursier/pull/572
+[#574]: https://github.com/alexarchambault/coursier/pull/574
+[#576]: https://github.com/alexarchambault/coursier/pull/576
+[#581]: https://github.com/alexarchambault/coursier/pull/581
+
+[@rfkm]: https://github.com/rfkm
+[@sschuberth]: https://github.com/sschuberth
+[@avdv]: https://github.com/avdv
+[@dotta]: https://github.com/dotta
+
+### Non-backward compatible changes
+
+* None
