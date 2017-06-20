@@ -723,8 +723,6 @@ object Defaults extends BuildCommon {
     new TestLogger.PerTest(s.log, () => s.close(), buffered)
   }
 
-  def buffered(log: Logger): Logger = new BufferedLogger(FullLogger(log))
-
   def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap = {
     val mod = tdef.fingerprint match {
       case f: SubclassFingerprint  => f.isModule
