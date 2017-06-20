@@ -5,6 +5,7 @@ package sbt
 
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import java.io.{ File, PrintWriter }
+import java.nio.file.FileSystems
 import java.net.{ URI, URL }
 import java.util.Optional
 import java.util.concurrent.{ TimeUnit, Callable }
@@ -23,7 +24,7 @@ import sbt.internal._
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal.inc.ZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
-import sbt.internal.io.WatchState
+import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
@@ -47,7 +48,8 @@ import sbt.io.{
   PathFinder,
   SimpleFileFilter,
   DirectoryFilter,
-  Hash
+  Hash,
+  WatchService
 }, Path._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
@@ -250,7 +252,10 @@ object Defaults extends BuildCommon {
       Previous.references :== new Previous.References,
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
-      pollInterval :== 500,
+      pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
+      watchService :== { () =>
+        FileSystems.getDefault.newWatchService
+      },
       logBuffered :== false,
       commands :== Nil,
       showSuccess :== true,
@@ -317,7 +322,12 @@ object Defaults extends BuildCommon {
     unmanagedSources := collectFiles(unmanagedSourceDirectories,
                                      includeFilter in unmanagedSources,
                                      excludeFilter in unmanagedSources).value,
-    watchSources in ConfigGlobal ++= unmanagedSources.value,
+    watchSources in ConfigGlobal ++= {
+      val bases = unmanagedSourceDirectories.value
+      val include = (includeFilter in unmanagedSources).value
+      val exclude = (excludeFilter in unmanagedSources).value
+      bases.map(b => new Source(b, include, exclude))
+    },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
     sourceGenerators :== Nil,
@@ -337,7 +347,12 @@ object Defaults extends BuildCommon {
     unmanagedResources := collectFiles(unmanagedResourceDirectories,
                                        includeFilter in unmanagedResources,
                                        excludeFilter in unmanagedResources).value,
-    watchSources in ConfigGlobal ++= unmanagedResources.value,
+    watchSources in ConfigGlobal ++= {
+      val bases = unmanagedResourceDirectories.value
+      val include = (includeFilter in unmanagedResources).value
+      val exclude = (excludeFilter in unmanagedResources).value
+      bases.map(b => new Source(b, include, exclude))
+    },
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
@@ -537,7 +552,7 @@ object Defaults extends BuildCommon {
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
     generators { _.join.map(_.flatten) }
 
-  def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] = {
+  def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] = {
     import ScopeFilter.Make.{ inDependencies => inDeps, _ }
     val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
     val allWatched = (watchSources ?? Nil).all(selectDeps)
@@ -554,6 +569,7 @@ object Defaults extends BuildCommon {
 
   def watchSetting: Initialize[Watched] =
     Def.setting {
+      val getService = watchService.value
       val interval = pollInterval.value
       val base = thisProjectRef.value
       val msg = watchingMessage.value
@@ -564,11 +580,13 @@ object Defaults extends BuildCommon {
         override def pollInterval = interval
         override def watchingMessage(s: WatchState) = msg(s)
         override def triggeredMessage(s: WatchState) = trigMsg(s)
-        override def watchPaths(s: State) = EvaluateTask(Project structure s, key, s, base) match {
-          case Some((_, Value(ps))) => ps
-          case Some((_, Inc(i)))    => throw i
-          case None                 => sys.error("key not found: " + Def.displayFull(key))
-        }
+        override def watchService() = getService()
+        override def watchSources(s: State) =
+          EvaluateTask(Project structure s, key, s, base) match {
+            case Some((_, Value(ps))) => ps
+            case Some((_, Inc(i)))    => throw i
+            case None                 => sys.error("key not found: " + Def.displayFull(key))
+          }
       }
     }
 
