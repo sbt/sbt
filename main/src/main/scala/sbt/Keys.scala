@@ -36,8 +36,8 @@ import sbt.internal.{
   SessionSettings,
   LogManager
 }
-import sbt.io.FileFilter
-import sbt.internal.io.WatchState
+import sbt.io.{ FileFilter, WatchService }
+import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
@@ -130,9 +130,10 @@ object Keys {
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = SettingKey[Boolean]("suppressSbtShellNotification", """True to suppress the "Executing in batch mode.." message.""", CSetting)
-  val pollInterval = SettingKey[Int]("poll-interval", "Interval between checks for modified sources by the continuous execution command.", BMinusSetting)
-  val watchSources = TaskKey[Seq[File]]("watch-sources", "Defines the sources in this project for continuous execution to watch for changes.", BMinusSetting)
-  val watchTransitiveSources = TaskKey[Seq[File]]("watch-transitive-sources", "Defines the sources in all projects for continuous execution to watch.", CSetting)
+  val pollInterval = SettingKey[FiniteDuration]("poll-interval", "Interval between checks for modified sources by the continuous execution command.", BMinusSetting)
+  val watchService = SettingKey[() => WatchService]("watch-service", "Service to use to monitor file system changes.", BMinusSetting)
+  val watchSources = TaskKey[Seq[Source]]("watch-sources", "Defines the sources in this project for continuous execution to watch for changes.", BMinusSetting)
+  val watchTransitiveSources = TaskKey[Seq[Source]]("watch-transitive-sources", "Defines the sources in all projects for continuous execution to watch.", CSetting)
   val watchingMessage = SettingKey[WatchState => String]("watching-message", "The message to show when triggered execution waits for sources to change.", DSetting)
   val triggeredMessage = SettingKey[WatchState => String]("triggered-message", "The message to show before triggered execution executes an action after sources change.", DSetting)
 
