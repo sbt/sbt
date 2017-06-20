@@ -764,6 +764,13 @@ abstract class CentralTests extends TestSuite {
 
       * - resolutionCheck(mod, ver)
     }
+
+    'dependencyManagementScopeOverriding - {
+      val mod = Module("org.apache.tika", "tika-app")
+      val ver = "1.13"
+
+      * - resolutionCheck(mod, ver)
+    }
   }
 
 }
