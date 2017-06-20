@@ -38,6 +38,7 @@ object TestLogger {
         case (_, v) => BufferedAppender(generateBufferName, v)
       }).toList
       val newLog = LogExchange.logger(generateName, l0.channelName, l0.execId)
+      LogExchange.unbindLoggerAppenders(newLog.name)
       LogExchange.bindLoggerAppenders(newLog.name, buffs map { x =>
         (x, Level.Debug)
       })
@@ -49,7 +50,8 @@ object TestLogger {
         () => {
           buffs foreach { _.stopQuietly() }
           per.flush()
-          LogExchange.unbindLoggerAppenders(newLog.name)
+          // do not unbind here. since there's a delay in the async appender,
+          // it will result in missing log output.
         }
       )
     }
