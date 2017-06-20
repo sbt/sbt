@@ -10,8 +10,6 @@ import Def.Setting
 import sbt.io.Hash
 import sbt.internal.util.Attributed
 import sbt.internal.inc.ReflectUtilities
-import sbt.util.Eval
-import sbt.Project._
 
 trait BuildDef {
   def projectDefinitions(baseDirectory: File): Seq[Project] = projects
@@ -53,7 +51,7 @@ private[sbt] object BuildDef {
       base: File,
       agg: Seq[ProjectRef]
   ): Project =
-    Project.mkGeneratedRoot(id, base, Eval.later(agg)).settings(defaultProjectSettings)
+    Project.mkGeneratedRoot(id, base, agg).settings(defaultProjectSettings)
 
   private[sbt] def defaultProjectSettings: Seq[Setting[_]] = Seq(
     // TODO - Can we move this somewhere else?  ordering of settings is causing this to get borked.
