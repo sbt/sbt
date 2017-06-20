@@ -82,21 +82,10 @@ object CoursierPlugin extends AutoPlugin {
     shadedConfigOpt: Option[(String, String)],
     packageConfigs: Seq[(Configuration, String)]
   ) = Seq(
-    coursierParallelDownloads := 6,
-    coursierMaxIterations := 50,
-    coursierChecksums := Seq(Some("SHA-1"), None),
-    coursierArtifactsChecksums := Seq(None),
-    coursierCachePolicies := CachePolicy.default,
-    coursierTtl := Cache.defaultTtl,
-    coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
-    mavenProfiles := Set.empty,
     coursierResolvers := Tasks.coursierResolversTask.value,
     coursierRecursiveResolvers := Tasks.coursierRecursiveResolversTask.value,
     coursierSbtResolvers := externalResolvers.in(updateSbtClassifiers).value,
-    coursierUseSbtCredentials := true,
-    coursierCredentials := Map.empty,
     coursierFallbackDependencies := Tasks.coursierFallbackDependenciesTask.value,
-    coursierCache := Cache.default,
     coursierArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false).value,
     coursierSignedArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false, includeSignatures = true).value,
     coursierClassifiersArtifacts := Tasks.artifactFilesOrErrors(
@@ -169,6 +158,20 @@ object CoursierPlugin extends AutoPlugin {
 
       confs ++ extraSources.toSeq ++ extraDocs.toSeq
     }
+  )
+
+  override def buildSettings = super.buildSettings ++ Seq(
+    coursierParallelDownloads := 6,
+    coursierMaxIterations := 50,
+    coursierChecksums := Seq(Some("SHA-1"), None),
+    coursierArtifactsChecksums := Seq(None),
+    coursierCachePolicies := CachePolicy.default,
+    coursierTtl := Cache.defaultTtl,
+    coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
+    mavenProfiles := Set.empty,
+    coursierUseSbtCredentials := true,
+    coursierCredentials := Map.empty,
+    coursierCache := Cache.default
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++
