@@ -111,7 +111,6 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
 sealed trait Project extends ProjectDefinition[ProjectReference] {
   private[sbt] def settingsEval: Eval[Seq[Def.Setting[_]]]
   private[sbt] def aggregateEval: Eval[Seq[ProjectReference]]
-  private[sbt] def delegatesEval: Eval[Seq[ProjectReference]]
   private[sbt] def dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]]
 
   // TODO: add parameters for plugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
@@ -120,7 +119,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       base: File = base,
       aggregateEval: Eval[Seq[ProjectReference]] = aggregateEval,
       dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]] = dependenciesEval,
-      delegatesEval: Eval[Seq[ProjectReference]] = delegatesEval,
       settingsEval: Eval[Seq[Setting[_]]] = settingsEval,
       configurations: Seq[Configuration] = configurations
   ): Project =
@@ -129,7 +127,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       base,
       aggregateEval = aggregateEval,
       dependenciesEval = dependenciesEval,
-      delegatesEval = delegatesEval,
       settingsEval = settingsEval,
       configurations,
       plugins,
@@ -147,7 +144,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       base,
       aggregateEval = aggregateEval map resolveRefs,
       dependenciesEval = dependenciesEval map resolveDeps,
-      delegatesEval = delegatesEval map resolveRefs,
       settingsEval,
       configurations,
       plugins,
@@ -166,7 +162,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       base,
       aggregateEval = aggregateEval map resolveRefs,
       dependenciesEval = dependenciesEval map resolveDeps,
-      delegatesEval = delegatesEval map resolveRefs,
       settingsEval,
       configurations,
       plugins,
@@ -269,7 +264,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       base,
       aggregateEval = aggregateEval,
       dependenciesEval = dependenciesEval,
-      delegatesEval = delegatesEval,
       settingsEval,
       configurations,
       ns,
@@ -286,7 +280,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       base,
       aggregateEval = aggregateEval,
       dependenciesEval = dependenciesEval,
-      delegatesEval = delegatesEval,
       settingsEval,
       configurations,
       plugins,
@@ -303,7 +296,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       base,
       aggregateEval = aggregateEval,
       dependenciesEval = dependenciesEval,
-      delegatesEval = delegatesEval,
       settingsEval,
       configurations,
       plugins,
@@ -337,7 +329,6 @@ object Project extends ProjectExtra {
       val base: File,
       val aggregateEval: Eval[Seq[PR]],
       val dependenciesEval: Eval[Seq[ClasspathDep[PR]]],
-      val delegatesEval: Eval[Seq[PR]],
       val settingsEval: Eval[Seq[Def.Setting[_]]],
       val configurations: Seq[Configuration],
       val plugins: Plugins,
@@ -346,7 +337,6 @@ object Project extends ProjectExtra {
   ) extends ProjectDefinition[PR] {
     def aggregate: Seq[PR] = aggregateEval.value
     def dependencies: Seq[ClasspathDep[PR]] = dependenciesEval.value
-    def delegates: Seq[PR] = delegatesEval.value
     def settings: Seq[Def.Setting[_]] = settingsEval.value
 
     Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
@@ -368,7 +358,6 @@ object Project extends ProjectExtra {
     unresolved(
       id,
       base,
-      evalNil,
       evalNil,
       evalNil,
       evalNil,
@@ -421,7 +410,6 @@ object Project extends ProjectExtra {
       aggregate,
       evalNil,
       evalNil,
-      evalNil,
       Nil,
       Plugins.empty,
       Nil,
@@ -459,7 +447,6 @@ object Project extends ProjectExtra {
       base: File,
       aggregateEval: Eval[Seq[ProjectRef]],
       dependenciesEval: Eval[Seq[ClasspathDep[ProjectRef]]],
-      delegatesEval: Eval[Seq[ProjectRef]],
       settingsEval: Eval[Seq[Def.Setting[_]]],
       configurations: Seq[Configuration],
       plugins: Plugins,
@@ -471,7 +458,6 @@ object Project extends ProjectExtra {
       base,
       aggregateEval,
       dependenciesEval,
-      delegatesEval,
       settingsEval,
       configurations,
       plugins,
@@ -484,7 +470,6 @@ object Project extends ProjectExtra {
       base: File,
       aggregateEval: Eval[Seq[ProjectReference]],
       dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]],
-      delegatesEval: Eval[Seq[ProjectReference]],
       settingsEval: Eval[Seq[Def.Setting[_]]],
       configurations: Seq[Configuration],
       plugins: Plugins,
@@ -497,7 +482,6 @@ object Project extends ProjectExtra {
       base,
       aggregateEval,
       dependenciesEval,
-      delegatesEval,
       settingsEval,
       configurations,
       plugins,
