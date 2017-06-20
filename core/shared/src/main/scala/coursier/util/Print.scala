@@ -45,10 +45,10 @@ object Print {
     )
 
     val deps1 = minDeps
-      .groupBy(_.copy(configuration = ""))
+      .groupBy(_.copy(configuration = "", attributes = Attributes("", "")))
       .toVector
       .map { case (k, l) =>
-        k.copy(configuration = l.toVector.map(_.configuration).sorted.mkString(";"))
+        k.copy(configuration = l.toVector.map(_.configuration).sorted.distinct.mkString(";"))
       }
       .sortBy { dep =>
         (dep.module.organization, dep.module.name, dep.module.toString, dep.version)
