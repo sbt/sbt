@@ -1091,6 +1091,7 @@ object Tasks {
 
       val classifiersRes = coursierSbtClassifiersResolution.value
       val mainRes = coursierResolutions.value
+      val configs0 = coursierConfigurations.value
 
       val res =
         if (withClassifiers && sbtClassifiers)
@@ -1115,15 +1116,16 @@ object Tasks {
             }
         )
 
-        val configs = {
-          val m = coursierConfigurations.value
-          shadedConfigOpt.fold(m) {
-            case (baseConfig, shadedConfig) =>
-              (m - shadedConfig) + (
-                baseConfig -> (m.getOrElse(baseConfig, Set()) - shadedConfig)
-              )
-          }
-        }
+        val configs =
+          if (withClassifiers && sbtClassifiers)
+            cm.configurations.map(c => c.name -> Set.empty[String]).toMap
+          else
+            shadedConfigOpt.fold(configs0) {
+              case (baseConfig, shadedConfig) =>
+                (configs0 - shadedConfig) + (
+                  baseConfig -> (configs0.getOrElse(baseConfig, Set()) - shadedConfig)
+                )
+            }
 
         if (verbosityLevel >= 2) {
           val finalDeps = dependenciesWithConfig(
