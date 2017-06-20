@@ -555,7 +555,7 @@ object BuiltinCommands {
    * the last* commands operate on any output since the last 'shell' command and do shift the log file.
    * Otherwise, the output since the previous 'shell' command is used and the log file is not shifted.
    */
-  def isLastOnly(s: State): Boolean = s.history.previous.forall(_ == Shell)
+  def isLastOnly(s: State): Boolean = s.history.previous.forall(_.commandLine == Shell)
 
   def printLast(s: State): Seq[String] => Unit = _ foreach println
 
@@ -768,7 +768,8 @@ object BuiltinCommands {
     }
   }
 
-  private def intendsToInvokeNew(state: State) = state.remainingCommands contains TemplateCommand
+  private def intendsToInvokeNew(state: State) =
+    state.remainingCommands exists (_.commandLine == TemplateCommand)
 
   private def writeSbtVersion(state: State) =
     if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
@@ -782,7 +783,7 @@ object BuiltinCommands {
     }
 
   private def intendsToInvokeCompile(state: State) =
-    state.remainingCommands contains Keys.compile.key.label
+    state.remainingCommands exists (_.commandLine == Keys.compile.key.label)
 
   private def notifyUsersAboutShell(state: State): Unit = {
     val suppress = Project extract state getOpt Keys.suppressSbtShellNotification getOrElse false
