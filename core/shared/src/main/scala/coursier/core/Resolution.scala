@@ -268,7 +268,7 @@ object Resolution {
           if (mgmtDep.version.nonEmpty)
             dep = dep.copy(version = mgmtDep.version)
 
-          if (mgmtConfig.nonEmpty)
+          if (config.isEmpty)
             config = mgmtConfig
 
           // FIXME The version and scope/config from dependency management, if any, are substituted
