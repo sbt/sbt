@@ -34,7 +34,7 @@ import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, 
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
-import sbt.util.{ Eval, Show }
+import sbt.util.Show
 import sjsonnew.JsonFormat
 
 import language.experimental.macros
@@ -109,25 +109,21 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
 }
 
 sealed trait Project extends ProjectDefinition[ProjectReference] {
-  private[sbt] def settingsEval: Eval[Seq[Def.Setting[_]]]
-  private[sbt] def aggregateEval: Eval[Seq[ProjectReference]]
-  private[sbt] def dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]]
-
   // TODO: add parameters for plugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
   private[sbt] def copy(
       id: String = id,
       base: File = base,
-      aggregateEval: Eval[Seq[ProjectReference]] = aggregateEval,
-      dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]] = dependenciesEval,
-      settingsEval: Eval[Seq[Setting[_]]] = settingsEval,
+      aggregate: Seq[ProjectReference] = aggregate,
+      dependencies: Seq[ClasspathDep[ProjectReference]] = dependencies,
+      settings: Seq[Setting[_]] = settings,
       configurations: Seq[Configuration] = configurations
   ): Project =
     unresolved(
       id,
       base,
-      aggregateEval = aggregateEval,
-      dependenciesEval = dependenciesEval,
-      settingsEval = settingsEval,
+      aggregate = aggregate,
+      dependencies = dependencies,
+      settings = settings,
       configurations,
       plugins,
       autoPlugins,
@@ -142,9 +138,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     resolved(
       id,
       base,
-      aggregateEval = aggregateEval map resolveRefs,
-      dependenciesEval = dependenciesEval map resolveDeps,
-      settingsEval,
+      aggregate = resolveRefs(aggregate),
+      dependencies = resolveDeps(dependencies),
+      settings,
       configurations,
       plugins,
       autoPlugins,
@@ -160,9 +156,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     unresolved(
       id,
       base,
-      aggregateEval = aggregateEval map resolveRefs,
-      dependenciesEval = dependenciesEval map resolveDeps,
-      settingsEval,
+      aggregate = resolveRefs(aggregate),
+      dependencies = resolveDeps(dependencies),
+      settings,
       configurations,
       plugins,
       autoPlugins,
@@ -195,57 +191,19 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
 
   /** Adds classpath dependencies on internal or external projects. */
-  def dependsOn(deps: Eval[ClasspathDep[ProjectReference]]*): Project =
-    copy(dependenciesEval = dependenciesEval flatMap { ds0 =>
-      sequenceEval(deps.toSeq) map { ds1 =>
-        ds0 ++ ds1
-      }
-    })
-
-  /** Adds classpath dependencies on internal or external projects. */
-  def dependsOnSeq(deps: => Seq[ClasspathDep[ProjectReference]]): Project =
-    copy(dependenciesEval = dependenciesEval flatMap { ds0 =>
-      Eval.later { deps } map { ds1 =>
-        ds0 ++ ds1
-      }
-    })
+  def dependsOn(deps: ClasspathDep[ProjectReference]*): Project =
+    copy(dependencies = dependencies ++ deps)
 
   /**
    * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
    * the task will also be run in aggregated projects.
    */
-  def aggregate(refs: Eval[ProjectReference]*): Project =
-    copy(aggregateEval = aggregateEval flatMap { as0 =>
-      sequenceEval(refs.toSeq) map { as1 =>
-        as0 ++ as1
-      }
-    })
-
-  /**
-   * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
-   * the task will also be run in aggregated projects.
-   */
-  def aggregateSeq(refs: => Seq[ProjectReference]): Project =
-    copy(aggregateEval = aggregateEval flatMap { as0 =>
-      // sequenceEval(refs.toSeq) map { as1 => as0 ++ as1 }
-      Eval.later { refs } map { as1 =>
-        as0 ++ as1
-      }
-    })
+  def aggregate(refs: ProjectReference*): Project =
+    copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
 
   /** Appends settings to the current settings sequence for this project. */
   def settings(ss: Def.SettingsDefinition*): Project =
-    copy(settingsEval = settingsEval map { ss0 =>
-      (ss0: Seq[Def.Setting[_]]) ++ Def.settings(ss: _*)
-    })
-
-  /** Appends settings to the current settings sequence for this project. */
-  def settingsLazy(ss: Eval[Def.SettingsDefinition]*): Project =
-    copy(settingsEval = settingsEval flatMap { ss0 =>
-      sequenceEval(ss.toSeq) map { ss1 =>
-        (ss0: Seq[Def.Setting[_]]) ++ Def.settings(ss1: _*)
-      }
-    })
+    copy(settings = (settings: Seq[Def.Setting[_]]) ++ Def.settings(ss: _*))
 
   /**
    * Sets the [[AutoPlugin]]s of this project.
@@ -262,9 +220,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     unresolved(
       id,
       base,
-      aggregateEval = aggregateEval,
-      dependenciesEval = dependenciesEval,
-      settingsEval,
+      aggregate = aggregate,
+      dependencies = dependencies,
+      settings,
       configurations,
       ns,
       autoPlugins,
@@ -278,9 +236,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     unresolved(
       id,
       base,
-      aggregateEval = aggregateEval,
-      dependenciesEval = dependenciesEval,
-      settingsEval,
+      aggregate = aggregate,
+      dependencies = dependencies,
+      settings,
       configurations,
       plugins,
       autos,
@@ -294,9 +252,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     unresolved(
       id,
       base,
-      aggregateEval = aggregateEval,
-      dependenciesEval = dependenciesEval,
-      settingsEval,
+      aggregate = aggregate,
+      dependencies = dependencies,
+      settings,
       configurations,
       plugins,
       autoPlugins,
@@ -327,40 +285,24 @@ object Project extends ProjectExtra {
   private abstract class ProjectDef[PR <: ProjectReference](
       val id: String,
       val base: File,
-      val aggregateEval: Eval[Seq[PR]],
-      val dependenciesEval: Eval[Seq[ClasspathDep[PR]]],
-      val settingsEval: Eval[Seq[Def.Setting[_]]],
+      val aggregate: Seq[PR],
+      val dependencies: Seq[ClasspathDep[PR]],
+      val settings: Seq[Def.Setting[_]],
       val configurations: Seq[Configuration],
       val plugins: Plugins,
       val autoPlugins: Seq[AutoPlugin],
       val projectOrigin: ProjectOrigin
   ) extends ProjectDefinition[PR] {
-    def aggregate: Seq[PR] = aggregateEval.value
-    def dependencies: Seq[ClasspathDep[PR]] = dependenciesEval.value
-    def settings: Seq[Def.Setting[_]] = settingsEval.value
-
     Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
   }
-
-  private def evalNil[A]: Eval[Seq[A]] = Eval.now(Vector())
-
-  // hardcoded version of sequence for flipping Eval and Seq
-  def sequenceEval[A](es: Seq[Eval[A]]): Eval[Seq[A]] =
-    (evalNil[A] /: es) { (acc0, x0) =>
-      acc0 flatMap { acc =>
-        x0 map { x =>
-          acc :+ x
-        }
-      }
-    }
 
   def apply(id: String, base: File): Project =
     unresolved(
       id,
       base,
-      evalNil,
-      evalNil,
-      evalNil,
+      Nil,
+      Nil,
+      Nil,
       Nil,
       Plugins.empty,
       Nil,
@@ -401,15 +343,15 @@ object Project extends ProjectExtra {
   private[sbt] def mkGeneratedRoot(
       id: String,
       base: File,
-      aggregate: Eval[Seq[ProjectReference]]
+      aggregate: Seq[ProjectReference]
   ): Project = {
     validProjectID(id).foreach(errMsg => sys.error(s"Invalid project ID: $errMsg"))
     new ProjectDef[ProjectReference](
       id,
       base,
       aggregate,
-      evalNil,
-      evalNil,
+      Nil,
+      Nil,
       Nil,
       Plugins.empty,
       Nil,
@@ -445,9 +387,9 @@ object Project extends ProjectExtra {
   private def resolved(
       id: String,
       base: File,
-      aggregateEval: Eval[Seq[ProjectRef]],
-      dependenciesEval: Eval[Seq[ClasspathDep[ProjectRef]]],
-      settingsEval: Eval[Seq[Def.Setting[_]]],
+      aggregate: Seq[ProjectRef],
+      dependencies: Seq[ClasspathDep[ProjectRef]],
+      settings: Seq[Def.Setting[_]],
       configurations: Seq[Configuration],
       plugins: Plugins,
       autoPlugins: Seq[AutoPlugin],
@@ -456,9 +398,9 @@ object Project extends ProjectExtra {
     new ProjectDef[ProjectRef](
       id,
       base,
-      aggregateEval,
-      dependenciesEval,
-      settingsEval,
+      aggregate,
+      dependencies,
+      settings,
       configurations,
       plugins,
       autoPlugins,
@@ -468,9 +410,9 @@ object Project extends ProjectExtra {
   private def unresolved(
       id: String,
       base: File,
-      aggregateEval: Eval[Seq[ProjectReference]],
-      dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]],
-      settingsEval: Eval[Seq[Def.Setting[_]]],
+      aggregate: Seq[ProjectReference],
+      dependencies: Seq[ClasspathDep[ProjectReference]],
+      settings: Seq[Def.Setting[_]],
       configurations: Seq[Configuration],
       plugins: Plugins,
       autoPlugins: Seq[AutoPlugin],
@@ -480,9 +422,9 @@ object Project extends ProjectExtra {
     new ProjectDef[ProjectReference](
       id,
       base,
-      aggregateEval,
-      dependenciesEval,
-      settingsEval,
+      aggregate,
+      dependencies,
+      settings,
       configurations,
       plugins,
       autoPlugins,
@@ -879,36 +821,14 @@ object Project extends ProjectExtra {
 
 private[sbt] trait GeneratedRootProject
 
-trait ProjectExtra0 {
-  implicit def wrapProjectReferenceSeqEval[T](rs: => Seq[T])(
-      implicit ev: T => ProjectReference): Seq[Eval[ProjectReference]] =
-    rs map (r => Eval.later(r: ProjectReference))
-}
-
-trait ProjectExtra extends ProjectExtra0 {
-  implicit def classpathDependencyEval[T](p: => T)(
-      implicit ev: T => ClasspathDep[ProjectReference]): Eval[ClasspathDep[ProjectReference]] =
-    Eval.later(p: ClasspathDep[ProjectReference])
-
-  implicit def wrapProjectReferenceEval[T](ref: => T)(
-      implicit ev: T => ProjectReference): Eval[ProjectReference] =
-    Eval.later(ref: ProjectReference)
-
-  implicit def wrapSettingDefinitionEval[T](d: => T)(
-      implicit ev: T => Def.SettingsDefinition): Eval[Def.SettingsDefinition] =
-    Eval.later(d)
-
-  implicit def wrapSettingSeqEval(ss: => Seq[Setting[_]]): Eval[Def.SettingsDefinition] =
-    Eval.later(new Def.SettingList(ss))
-
+trait ProjectExtra {
   implicit def configDependencyConstructor[T](p: T)(
       implicit ev: T => ProjectReference): Constructor =
     new Constructor(p)
 
   implicit def classpathDependency[T](
       p: T
-  )(implicit ev: T => ProjectReference): ClasspathDep[ProjectReference] =
-    ClasspathDependency(p, None)
+  )(implicit ev: T => ProjectReference): ClasspathDependency = ClasspathDependency(p, None)
 
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
   // Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now

@@ -38,7 +38,7 @@ import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings, ~> }
 import sbt.io.{ GlobFilter, IO, Path }
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
-import sbt.util.{ Eval => Ev, Show, Logger }
+import sbt.util.{ Show, Logger }
 import scala.annotation.tailrec
 import scala.tools.nsc.reporters.ConsoleReporter
 import Scope.GlobalScope
@@ -1047,7 +1047,7 @@ private[sbt] object Load {
         expandSettings(AddSettings.allDefaults)
       }
       // Finally, a project we can use in buildStructure.
-      p.copy(settingsEval = Ev.later(allSettings))
+      p.copy(settings = allSettings)
         .setAutoPlugins(projectPlugins)
         .prefixConfigs(autoConfigs: _*)
     }
