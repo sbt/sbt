@@ -1,0 +1,14 @@
+### Changes
+
+* Fix `updateSbtClassifiers` (regression in `1.0.0-RC4`, [#585])
+* Fix in Maven dependency management scope overriding ([#587])
+* Don't print duplicated dependencies in `coursier resolve` output ([#587])
+* Move non-project specific  settings to `buildSettings` in sbt-coursier ([#588])
+
+[#585]: https://github.com/alexarchambault/coursier/pull/585
+[#587]: https://github.com/alexarchambault/coursier/pull/587
+[#588]: https://github.com/alexarchambault/coursier/pull/588
+
+### Non-backward compatible changes
+
+* None
