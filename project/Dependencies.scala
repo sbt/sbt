@@ -13,7 +13,6 @@ object Dependencies {
 
   private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
   private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
-  private val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
   private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
 
   def getSbtModulePath(key: String, name: String) = {
@@ -38,8 +37,6 @@ object Dependencies {
     addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
   def addSbtUtilLogging(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
-  def addSbtUtilCompletion(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilComplete", utilCompletion)
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
