@@ -83,7 +83,7 @@ lazy val utilCollection = (project in internalPath / "util-collection").
     crossScalaVersions := Seq(scala210, scala211, scala212),
     Util.keywordsSettings,
     name := "Util Collection",
-    libraryDependencies ++= Seq(sjsonnew.value)
+    libraryDependencies ++= Seq(sjsonnew.value, sjsonnewScalaJson.value % Test)
   )
 
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
@@ -140,7 +140,7 @@ lazy val utilLogic = (project in internalPath / "util-logic").
 
 // Persisted caching based on sjson-new
 lazy val utilCache = (project in file("util-cache")).
-  dependsOn(utilCollection, utilTesting % Test).
+  dependsOn(utilTesting % Test).
   settings(
     commonSettings,
     name := "Util Cache",
