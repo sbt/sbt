@@ -7,11 +7,11 @@ object Dependencies {
   val scala212 = "2.12.2"
 
   private val ioVersion = "1.0.0-M12"
-  private val utilVersion = "1.0.0-M25"
+  private val utilVersion = "1.0.0-M26"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
+  private val utilPosition = "org.scala-sbt" %% "util-position" % utilVersion
   private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
   private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
 
@@ -33,8 +33,8 @@ object Dependencies {
     }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
-  def addSbtUtilCollection(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
+  def addSbtUtilPosition(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilPosition", utilPosition)
   def addSbtUtilLogging(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
