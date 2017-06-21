@@ -1,6 +1,6 @@
 package sbt.librarymanagement
 
-import sbt.internal.util.UnitSpec
+import sbt.internal.librarymanagement.UnitSpec
 
 // This is a specification to check the version number parsing.
 class VersionNumberSpec extends UnitSpec {

@@ -1,6 +1,6 @@
 package sbt.librarymanagement
 
-import sbt.internal.util.UnitSpec
+import sbt.internal.librarymanagement.UnitSpec
 
 class UpdateOptionsSpec extends UnitSpec {
 

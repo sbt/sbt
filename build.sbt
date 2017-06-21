@@ -66,7 +66,8 @@ lazy val lm = (project in file("librarymanagement"))
     name := "librarymanagement",
     libraryDependencies ++= Seq(
       ivy, jsch, scalaReflect.value, launcherInterface, gigahorseOkhttp, okhttpUrlconnection,
-      sjsonnewScalaJson.value % Optional
+      sjsonnewScalaJson.value % Optional,
+      scalaTest
     ),
     libraryDependencies ++= scalaXml.value,
     resourceGenerators in Compile += Def.task(
@@ -90,7 +91,6 @@ lazy val lm = (project in file("librarymanagement"))
   .configure(
     addSbtIO,
     addSbtUtilLogging,
-    addSbtUtilTesting,
     addSbtUtilCollection,
     addSbtUtilCompletion,
     addSbtUtilCache
