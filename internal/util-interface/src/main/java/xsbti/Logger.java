@@ -3,11 +3,12 @@
  */
 package xsbti;
 
-public interface Logger
-{
-	void error(F0<String> msg);
-	void warn(F0<String> msg);
-	void info(F0<String> msg);
-	void debug(F0<String> msg);
-	void trace(F0<Throwable> exception);
+import java.util.function.Supplier;
+
+public interface Logger {
+	void error(Supplier<String> msg);
+	void warn(Supplier<String> msg);
+	void info(Supplier<String> msg);
+	void debug(Supplier<String> msg);
+	void trace(Supplier<Throwable> exception);
 }

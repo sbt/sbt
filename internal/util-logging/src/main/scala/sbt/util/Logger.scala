@@ -3,13 +3,14 @@
  */
 package sbt.util
 
-import xsbti.{ Logger => xLogger, F0 }
-import xsbti.{ Maybe, Position, Problem, Severity }
+import xsbti.{ Logger => xLogger }
+import xsbti.{ Position, Problem, Severity }
+
 import sys.process.ProcessLogger
 import sbt.internal.util.{ BufferedLogger, FullLogger }
-
 import java.io.File
 import java.util.Optional
+import java.util.function.Supplier
 
 /**
  * This is intended to be the simplest logging interface for use by code that wants to log.
@@ -32,12 +33,12 @@ abstract class Logger extends xLogger {
   def success(message: => String): Unit
   def log(level: Level.Value, message: => String): Unit
 
-  def debug(msg: F0[String]): Unit = log(Level.Debug, msg)
-  def warn(msg: F0[String]): Unit = log(Level.Warn, msg)
-  def info(msg: F0[String]): Unit = log(Level.Info, msg)
-  def error(msg: F0[String]): Unit = log(Level.Error, msg)
-  def trace(msg: F0[Throwable]): Unit = trace(msg.apply)
-  def log(level: Level.Value, msg: F0[String]): Unit = log(level, msg.apply)
+  def debug(msg: Supplier[String]): Unit = log(Level.Debug, msg)
+  def warn(msg: Supplier[String]): Unit = log(Level.Warn, msg)
+  def info(msg: Supplier[String]): Unit = log(Level.Info, msg)
+  def error(msg: Supplier[String]): Unit = log(Level.Error, msg)
+  def trace(msg: Supplier[Throwable]): Unit = trace(msg.get())
+  def log(level: Level.Value, msg: Supplier[String]): Unit = log(level, msg.get)
 }
 
 object Logger {
@@ -67,17 +68,18 @@ object Logger {
     case _         => wrapXLogger(lg)
   }
   private[this] def wrapXLogger(lg: xLogger): Logger = new Logger {
-    override def debug(msg: F0[String]): Unit = lg.debug(msg)
-    override def warn(msg: F0[String]): Unit = lg.warn(msg)
-    override def info(msg: F0[String]): Unit = lg.info(msg)
-    override def error(msg: F0[String]): Unit = lg.error(msg)
-    override def trace(msg: F0[Throwable]): Unit = lg.trace(msg)
-    override def log(level: Level.Value, msg: F0[String]): Unit = lg.log(level, msg)
-    def trace(t: => Throwable): Unit = trace(f0(t))
-    def success(s: => String): Unit = info(f0(s))
+    import InterfaceUtil.toSupplier
+    override def debug(msg: Supplier[String]): Unit = lg.debug(msg)
+    override def warn(msg: Supplier[String]): Unit = lg.warn(msg)
+    override def info(msg: Supplier[String]): Unit = lg.info(msg)
+    override def error(msg: Supplier[String]): Unit = lg.error(msg)
+    override def trace(msg: Supplier[Throwable]): Unit = lg.trace(msg)
+    override def log(level: Level.Value, msg: Supplier[String]): Unit = lg.log(level, msg)
+    def trace(t: => Throwable): Unit = trace(toSupplier(t))
+    def success(s: => String): Unit = info(toSupplier(s))
     def log(level: Level.Value, msg: => String): Unit =
       {
-        val fmsg = f0(msg)
+        val fmsg = toSupplier(msg)
         level match {
           case Level.Debug => lg.debug(fmsg)
           case Level.Info  => lg.info(fmsg)
@@ -86,9 +88,7 @@ object Logger {
         }
       }
   }
-  def f0[A](a: => A): F0[A] = InterfaceUtil.f0[A](a)
-  def m2o[A](m: Maybe[A]): Option[A] = InterfaceUtil.m2o(m)
-  def o2m[A](o: Option[A]): Maybe[A] = InterfaceUtil.o2m(o)
+
   def jo2o[A](o: Optional[A]): Option[A] = InterfaceUtil.jo2o(o)
   def o2jo[A](o: Option[A]): Optional[A] = InterfaceUtil.o2jo(o)
   def position(line0: Option[Integer], content: String, offset0: Option[Integer], pointer0: Option[Integer],
