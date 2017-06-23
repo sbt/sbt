@@ -247,12 +247,14 @@ lazy val commandProj = (project in file("main-command"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   )
-  .configure(addSbtCompilerInterface,
-             addSbtIO,
-             addSbtUtilLogging,
-             addSbtUtilCompletion,
-             addSbtCompilerClasspath,
-             addSbtLm)
+  .configure(
+    addSbtCompilerInterface,
+    addSbtIO,
+    addSbtUtilLogging,
+    addSbtUtilCompletion,
+    addSbtCompilerClasspath,
+    addSbtLm
+  )
 
 // The core macro project defines the main logic of the DSL, abstracted
 // away from several sbt implementators (tasks, settings, et cetera).
@@ -315,12 +317,14 @@ lazy val mainProj = (project in file("main"))
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
   )
-  .configure(addSbtCompilerInterface,
-             addSbtIO,
-             addSbtUtilLogging,
-             addSbtUtilLogic,
-             addSbtLm,
-             addSbtZincCompile)
+  .configure(
+    addSbtCompilerInterface,
+    addSbtIO,
+    addSbtUtilLogging,
+    addSbtUtilLogic,
+    addSbtLm,
+    addSbtZincCompile
+  )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
@@ -406,16 +410,14 @@ def otherRootSettings =
     aggregate in bintrayRelease := false
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(
-      scriptedPrescripted := { _ =>
-        ()
-      },
-      scriptedLaunchOpts := {
-        List("-Xmx1500M",
-             "-Xms512M",
-             "-server",
-             "-Dsbt.override.build.repos=true",
-             s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}""")
-      },
+      scriptedPrescripted := (_ => ()),
+      scriptedLaunchOpts := List(
+        "-Xmx1500M",
+        "-Xms512M",
+        "-server",
+        "-Dsbt.override.build.repos=true",
+        s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}"""
+      ),
       scripted := scriptedTask.evaluated,
       scriptedUnpublished := scriptedUnpublishedTask.evaluated,
       scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
@@ -449,15 +451,17 @@ lazy val safeProjects: ScopeFilter = ScopeFilter(
 )
 lazy val otherUnitTests = taskKey[Unit]("Unit test other projects")
 lazy val otherProjects: ScopeFilter = ScopeFilter(
-  inProjects(testingProj,
-             testAgentProj,
-             taskProj,
-             scriptedSbtProj,
-             scriptedPluginProj,
-             commandProj,
-             mainSettingsProj,
-             mainProj,
-             sbtProj),
+  inProjects(
+    testingProj,
+    testAgentProj,
+    taskProj,
+    scriptedSbtProj,
+    scriptedPluginProj,
+    commandProj,
+    mainSettingsProj,
+    mainProj,
+    sbtProj
+  ),
   inConfigurations(Test)
 )
 
