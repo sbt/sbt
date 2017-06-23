@@ -230,6 +230,13 @@ class CrossVersionTest extends UnitSpec {
     patchVersion("2.11.8-RC1-bin-extra") shouldBe Some("artefact_2.11.8-RC1")
   }
 
+  private def constantVersion(value: String) =
+    CrossVersion(CrossVersion.constant(value), "dummy1", "dummy2") map (fn => fn("artefact"))
+
+  "CrossVersion.constant" should "add a constant to the version" in {
+    constantVersion("duck") shouldBe Some("artefact_duck")
+  }
+
   "Disabled" should "have structural equality" in {
     Disabled() shouldBe Disabled()
   }
@@ -238,5 +245,8 @@ class CrossVersionTest extends UnitSpec {
   }
   "CrossVersion.binary" should "have structural equality" in {
     CrossVersion.binary shouldBe CrossVersion.binary
+  }
+  "CrossVersion.constant" should "have structural equality" in {
+    CrossVersion.constant("duck") shouldBe CrossVersion.constant("duck")
   }
 }
