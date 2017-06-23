@@ -32,7 +32,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 
 lazy val utilRoot: Project = (project in file(".")).
   aggregate(
-    utilInterface, utilControl, utilCollection, utilApplyMacro, utilComplete,
+    utilInterface, utilControl, utilPosition, utilCollection, utilApplyMacro, utilComplete,
     utilLogging, utilRelation, utilLogic, utilCache, utilTracking, utilTesting,
     utilScripted
   ).
@@ -76,8 +76,13 @@ lazy val utilControl = (project in internalPath / "util-control").
     name := "Util Control"
   )
 
+val utilPosition = (project in file("internal") / "util-position").settings(
+  commonSettings,
+  name := "Util Position"
+)
+
 lazy val utilCollection = (project in internalPath / "util-collection").
-  dependsOn(utilTesting % Test).
+  dependsOn(utilPosition, utilTesting % Test).
   settings(
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
