@@ -18,7 +18,6 @@ object Dependencies {
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  private val utilApplyMacro = "org.scala-sbt" %% "util-apply-macro" % utilVersion
   private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
   private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
   private val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
@@ -71,8 +70,6 @@ object Dependencies {
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
-  def addSbtUtilApplyMacro(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilApplyMacro", utilApplyMacro)
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
   def addSbtUtilCollection(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
