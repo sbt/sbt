@@ -107,7 +107,7 @@ lazy val utilComplete = (project in internalPath / "util-complete").
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging").
   enablePlugins(ContrabandPlugin, JsonCodecPlugin).
-  dependsOn(utilInterface, utilCollection, utilTesting % Test).
+  dependsOn(utilInterface, utilTesting % Test).
   settings(
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
