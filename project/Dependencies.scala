@@ -56,11 +56,13 @@ object Dependencies {
   lazy val sbtLmPath = getSbtModulePath("sbtlm.path", "sbt/lm")
   lazy val sbtZincPath = getSbtModulePath("sbtzinc.path", "sbt/zinc")
 
-  def addSbtModule(p: Project,
-                   path: Option[String],
-                   projectName: String,
-                   m: ModuleID,
-                   c: Option[Configuration] = None) =
+  def addSbtModule(
+      p: Project,
+      path: Option[String],
+      projectName: String,
+      m: ModuleID,
+      c: Option[Configuration] = None
+  ) =
     path match {
       case Some(f) =>
         p dependsOn c.fold[ClasspathDep[ProjectReference]](ProjectRef(file(f), projectName))(
