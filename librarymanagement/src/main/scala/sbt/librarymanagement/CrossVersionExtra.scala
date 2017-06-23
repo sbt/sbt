@@ -24,6 +24,9 @@ abstract class CrossVersionFunctions {
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
   def binary: CrossVersion = Binary()
 
+  /** Cross-versions a module with a constant string (typically the binary Scala version).  */
+  def constant(value: String): CrossVersion = Constant(value)
+
   /**
    * Cross-versions a module with the result of prepending `prefix` and appending `suffix` to the binary version
    * (typically the binary Scala version).  See also [[sbt.librarymanagement.Binary]].
@@ -58,6 +61,7 @@ abstract class CrossVersionFunctions {
     cross match {
       case _: Disabled => None
       case b: Binary   => append(b.prefix + binaryVersion + b.suffix)
+      case c: Constant => append(c.value)
       case _: Patch    => append(patchFun(fullVersion))
       case f: Full     => append(f.prefix + fullVersion + f.suffix)
     }
