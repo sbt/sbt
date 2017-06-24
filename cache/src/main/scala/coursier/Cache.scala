@@ -25,10 +25,6 @@ import scala.concurrent.duration.{ Duration, DurationInt }
 import scala.util.Try
 import scala.util.control.NonFatal
 
-trait AuthenticatedURLConnection extends URLConnection {
-  def authenticate(authentication: Authentication): Unit
-}
-
 object Cache {
 
   private[coursier] def closeConn(conn: URLConnection): Unit = {

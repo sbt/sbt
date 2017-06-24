@@ -112,7 +112,7 @@ final case class Missing(
           else {
             val min = map.map(_._2.size).min // should be 0
             val (toAdd, remaining) = map.partition {
-              case (k, v) => v.size == min
+              case (_, v) => v.size == min
             }
             val acc0 = toAdd.keys.foldLeft(acc)(_.::(_))
             val remainingKeys = remaining.keySet.map(_._1)
