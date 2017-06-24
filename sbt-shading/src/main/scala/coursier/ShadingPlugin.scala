@@ -4,7 +4,7 @@ import java.io.File
 
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import sbt.Keys._
-import sbt.{AutoPlugin, Compile, Configuration, TaskKey, inConfig}
+import sbt.{AutoPlugin, Compile, Configuration, SettingKey, TaskKey, inConfig}
 
 import SbtCompatibility._
 
@@ -21,10 +21,10 @@ object ShadingPlugin extends AutoPlugin {
   val Shaded = Configuration("shaded", "", isPublic = true, Vector(), transitive = true)
 
   // make that a setting?
-  val shadingNamespace = TaskKey[String]("shading-namespace")
+  val shadingNamespace = SettingKey[String]("shading-namespace")
 
   // make that a setting?
-  val shadeNamespaces = TaskKey[Set[String]]("shade-namespaces")
+  val shadeNamespaces = SettingKey[Set[String]]("shade-namespaces")
 
   val toShadeJars = TaskKey[Seq[File]]("to-shade-jars")
   val toShadeClasses = TaskKey[Seq[String]]("to-shade-classes")
@@ -61,6 +61,10 @@ object ShadingPlugin extends AutoPlugin {
 
   import CoursierPlugin.autoImport._
 
+  override lazy val buildSettings = super.buildSettings ++ Seq(
+    shadeNamespaces := Set()
+  )
+
   override lazy val projectSettings =
     Seq(
       coursierConfigurations := Tasks.coursierConfigurationsTask(
@@ -72,8 +76,7 @@ object ShadingPlugin extends AutoPlugin {
             conf.extend(Shaded)
           else
             conf
-      },
-      shadeNamespaces := Set()
+      }
     ) ++
     inConfig(Shading)(
       sbt.Defaults.configSettings ++
