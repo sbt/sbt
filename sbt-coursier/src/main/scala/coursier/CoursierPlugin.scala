@@ -21,6 +21,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierVerbosity = Keys.coursierVerbosity
     val mavenProfiles = Keys.mavenProfiles
     val coursierResolvers = Keys.coursierResolvers
+    val coursierReorderResolvers = Keys.coursierReorderResolvers
     val coursierRecursiveResolvers = Keys.coursierRecursiveResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
     val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
@@ -160,7 +161,7 @@ object CoursierPlugin extends AutoPlugin {
     }
   )
 
-  override def buildSettings = super.buildSettings ++ Seq(
+  override lazy val buildSettings = super.buildSettings ++ Seq(
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
     coursierChecksums := Seq(Some("SHA-1"), None),
@@ -171,7 +172,8 @@ object CoursierPlugin extends AutoPlugin {
     mavenProfiles := Set.empty,
     coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
-    coursierCache := Cache.default
+    coursierCache := Cache.default,
+    coursierReorderResolvers := true
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++

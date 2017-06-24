@@ -23,6 +23,10 @@ object Keys {
 
   val mavenProfiles = SettingKey[Set[String]]("maven-profiles")
 
+  val coursierReorderResolvers = SettingKey[Boolean](
+    "coursier-reorder-resolvers",
+    "Whether resolvers should be re-ordered so that typically slow ones are given a lower priority"
+  )
   val coursierResolvers = TaskKey[Seq[Resolver]]("coursier-resolvers")
   val coursierRecursiveResolvers = TaskKey[Seq[Resolver]]("coursier-recursive-resolvers", "Resolvers of the current project, plus those of all from its inter-dependency projects")
   val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers")

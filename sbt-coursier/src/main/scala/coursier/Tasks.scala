@@ -44,15 +44,44 @@ object Tasks {
     structure(state).allProjectRefs.filter(p => deps(p.project))
   }
 
+  private val slowReposBase = Seq(
+    "https://repo.typesafe.com/",
+    "https://repo.scala-sbt.org/",
+    "http://repo.typesafe.com/",
+    "http://repo.scala-sbt.org/"
+  )
+
+  private val fastReposBase = Seq(
+    "http://repo1.maven.org/",
+    "https://repo1.maven.org/"
+  )
+
   def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+
+    def url(res: Resolver): Option[String] =
+      res match {
+        case m: SbtCompatibility.MavenRepository =>
+          Some(m.root)
+        case u: sbt.URLRepository =>
+          u.patterns.artifactPatterns.headOption
+            .orElse(u.patterns.ivyPatterns.headOption)
+        case _ =>
+          None
+      }
+
+    def fastRepo(res: Resolver): Boolean =
+      url(res).exists(u => fastReposBase.exists(u.startsWith))
+    def slowRepo(res: Resolver): Boolean =
+      url(res).exists(u => slowReposBase.exists(u.startsWith))
 
     val extRes = externalResolvers.value
     val isSbtPlugin = sbtPlugin.value
     val sbtRes = sbtResolver.value
     val bootResOpt = bootResolvers.value
     val overrideFlag = overrideBuildResolvers.value
+    val reorderResolvers = coursierReorderResolvers.value
 
-    bootResOpt.filter(_ => overrideFlag).getOrElse {
+    val result = bootResOpt.filter(_ => overrideFlag).getOrElse {
       var resolvers = extRes
       if (isSbtPlugin)
         resolvers = Seq(
@@ -61,6 +90,12 @@ object Tasks {
         ) ++ resolvers
       resolvers
     }
+
+    if (reorderResolvers && result.exists(fastRepo) && result.exists(slowRepo)) {
+      val (slow, other) = result.partition(slowRepo)
+      other ++ slow
+    } else
+      result
   }
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =

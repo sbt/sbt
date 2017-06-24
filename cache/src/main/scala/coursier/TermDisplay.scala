@@ -6,56 +6,9 @@ import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.collection.mutable.ArrayBuffer
-import scala.util.Try
-
-object Terminal {
-
-  // Cut-n-pasted and adapted from
-  // https://github.com/lihaoyi/Ammonite/blob/10854e3b8b454a74198058ba258734a17af32023/terminal/src/main/scala/ammonite/terminal/Utils.scala
-
-  private lazy val pathedTput = if (new File("/usr/bin/tput").exists()) "/usr/bin/tput" else "tput"
-
-  def consoleDim(s: String): Option[Int] =
-    if (new File("/dev/tty").exists()) {
-      import sys.process._
-      val nullLog = new ProcessLogger {
-        def out(s: => String): Unit = {}
-        def err(s: => String): Unit = {}
-        def buffer[T](f: => T): T = f
-      }
-      Try(Process(Seq("bash", "-c", s"$pathedTput $s 2> /dev/tty")).!!(nullLog).trim.toInt).toOption
-    } else
-      None
-
-  implicit class Ansi(val output: Writer) extends AnyVal {
-    private def control(n: Int, c: Char) = output.write(s"\033[" + n + c)
-
-    /**
-      * Move up `n` squares
-      */
-    def up(n: Int): Unit = if (n > 0) control(n, 'A')
-    /**
-      * Move down `n` squares
-      */
-    def down(n: Int): Unit = if (n > 0) control(n, 'B')
-    /**
-      * Move left `n` squares
-      */
-    def left(n: Int): Unit = if (n > 0) control(n, 'D')
-
-    /**
-      * Clear the current line
-      *
-      * n=0: clear from cursor to end of line
-      * n=1: clear from cursor to start of line
-      * n=2: clear entire line
-      */
-    def clearLine(n: Int): Unit = control(n, 'K')
-  }
-
-}
 
 object TermDisplay {
+
   def defaultFallbackMode: Boolean = {
     val env0 = sys.env.get("COURSIER_PROGRESS").map(_.toLowerCase).collect {
       case "true"  | "enable"  | "1" => true
@@ -265,7 +218,7 @@ object TermDisplay {
           else
             s"(${pctOpt.map(pct => f"$pct%.2f %%, ").mkString}${downloadInfo.downloaded}${downloadInfo.length.map(" / " + _).mkString})"
 
-        case updateInfo: CheckUpdateInfo =>
+        case _: CheckUpdateInfo =>
           "Checking for updates"
       }
 

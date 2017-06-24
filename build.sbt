@@ -230,7 +230,7 @@ lazy val `sbt-launcher` = project
     libs ++= {
       if (scalaBinaryVersion.value == "2.11")
         Seq(
-          Deps.caseApp,
+          Deps.caseApp12,
           Deps.sbtLauncherInterface,
           Deps.typesafeConfig
         )

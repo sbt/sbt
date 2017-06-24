@@ -64,6 +64,22 @@ final case class Missing(
   cont: Resolution => ResolutionProcess
 ) extends ResolutionProcess {
 
+  def uniqueModules: Missing = {
+
+    // only try to fetch a single version of a given module in a same iteration, so that resolutions for different
+    // versions don't try to download the same URL in the same iteration, which the coursier.Cache.Logger API doesn't
+    // allow
+
+    val missing0 = missing.groupBy(_._1).toSeq.map(_._2).map {
+      case Seq(v) => v
+      case Seq() => sys.error("Cannot happen")
+      case v =>
+        v.maxBy { case (_, v0) => Version(v0) }
+    }
+
+    copy(missing = missing0)
+  }
+
   def next(results: Fetch.MD): ResolutionProcess = {
 
     val errors = results.collect {
@@ -96,7 +112,7 @@ final case class Missing(
           else {
             val min = map.map(_._2.size).min // should be 0
             val (toAdd, remaining) = map.partition {
-              case (k, v) => v.size == min
+              case (_, v) => v.size == min
             }
             val acc0 = toAdd.keys.foldLeft(acc)(_.::(_))
             val remainingKeys = remaining.keySet.map(_._1)
@@ -120,7 +136,7 @@ final case class Missing(
 
         Continue(res0, cont)
       } else
-        Missing(depMgmtMissing.toSeq, res, cont0)
+        Missing(depMgmtMissing.toSeq, res, cont0).uniqueModules
     }
 
     val current0 = current.copyWithCache(
@@ -158,7 +174,7 @@ object ResolutionProcess {
     if (resolution0.isDone)
       Done(resolution0)
     else
-      Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
+      Missing(resolution0.missingFromCache.toSeq, resolution0, apply).uniqueModules
   }
 }
 
