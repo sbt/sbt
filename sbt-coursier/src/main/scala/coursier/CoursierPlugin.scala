@@ -161,7 +161,7 @@ object CoursierPlugin extends AutoPlugin {
     }
   )
 
-  override def buildSettings = super.buildSettings ++ Seq(
+  override lazy val buildSettings = super.buildSettings ++ Seq(
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
     coursierChecksums := Seq(Some("SHA-1"), None),
