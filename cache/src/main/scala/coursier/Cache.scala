@@ -190,7 +190,11 @@ object Cache {
             // TODO If Cache is made an (instantiated) class at some point, allow to log that exception.
             None
           case NonFatal(e) =>
-            Some(-\/(FileError.DownloadError(s"Caught $e${Option(e.getMessage).fold("")(" (" + _ + ")")}")))
+            Some(-\/(
+              FileError.DownloadError(
+                s"Caught $e${Option(e.getMessage).fold("")(" (" + _ + ")")} while downloading $url"
+              )
+            ))
         }
 
       resOpt match {
