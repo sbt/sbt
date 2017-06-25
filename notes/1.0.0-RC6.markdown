@@ -1,0 +1,11 @@
+### Changes
+
+* In sbt-coursier, give slow resolvers a lower priority by default ([#592])
+* In sbt-coursier and sbt-shading, move non-project specific settings from project to build settings ([#592])
+* Small fix in recent Maven snapshot versioning changes ([#592])
+
+[#592]: https://github.com/alexarchambault/coursier/pull/592
+
+### Non-backward compatible changes
+
+* None
