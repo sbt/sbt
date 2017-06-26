@@ -285,9 +285,11 @@ object EvaluateTask {
         yield runTask(task, state, str, structure.index.triggers, config)(toNode)
     }
   }
+
   def logIncResult(result: Result[_], state: State, streams: Streams) = result match {
     case Inc(i) => logIncomplete(i, state, streams); case _ => ()
   }
+
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
     val all = Incomplete linearize result
     val keyed = for (Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) <- all)
@@ -310,13 +312,16 @@ object EvaluateTask {
       log.error("(" + display.show(key) + ") " + msgString)
     }
   }
+
   private[this] def contextDisplay(state: State, highlight: Boolean) =
     Project.showContextKey(state, if (highlight) Some(RED) else None)
+
   def suppressedMessage(key: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
     "Stack trace suppressed.  Run 'last %s' for the full log.".format(display.show(key))
 
   def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
     streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))
+
   def withStreams[T](structure: BuildStructure, state: State)(f: Streams => T): T = {
     val str = std.Streams.closeable(structure.streams(state))
     try { f(str) } finally { str.close() }

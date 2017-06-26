@@ -271,12 +271,14 @@ object Defaults extends BuildCommon {
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
         .## % 1000)
     ))
+
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
     inTask(key)(
       Seq(
         tags := Seq(Tags.Test -> 1),
         logBuffered := true
       ))
+
   // TODO: This should be on the new default settings for a project.
   def projectCore: Seq[Setting[_]] = Seq(
     name := thisProject.value.id,
@@ -286,6 +288,7 @@ object Defaults extends BuildCommon {
         s"Set current project to ${name.value} (in build ${thisProjectRef.value.build})"
       }).value
   )
+
   def paths = Seq(
     baseDirectory := thisProject.value.base,
     target := baseDirectory.value / "target",

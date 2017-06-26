@@ -10,20 +10,20 @@ import sbt.internal.{
   BuildUnit,
   CommandExchange,
   CommandStrings,
+  DefaultBackgroundJobService,
   EvaluateConfigurations,
   Inspect,
   IvyConsole,
   Load,
   LoadedBuildUnit,
+  LogManager,
   Output,
   PluginsDebug,
   ProjectNavigation,
   Script,
   SessionSettings,
   SetResult,
-  SettingCompletions,
-  LogManager,
-  DefaultBackgroundJobService
+  SettingCompletions
 }
 import sbt.internal.util.{
   AttributeKey,
@@ -35,7 +35,7 @@ import sbt.internal.util.{
   SimpleReader,
   Types
 }
-import sbt.util.{ Level, Logger }
+import sbt.util.{ Level, Logger, Show }
 
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.inc.ScalaInstance
@@ -54,8 +54,7 @@ import java.io.{ File, IOException }
 import java.net.URI
 import java.util.Locale
 import scala.util.control.NonFatal
-
-import BasicCommandStrings.{ Shell, OldShell, TemplateCommand }
+import BasicCommandStrings.{ Shell, TemplateCommand }
 import CommandStrings.BootCommand
 
 /** This class is the entry point for sbt. */
@@ -108,7 +107,8 @@ object StandardMain {
   }
 
   /** The common interface to standard output, used for all built-in ConsoleLoggers. */
-  val console = ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
+  val console: ConsoleOut =
+    ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
   def initialGlobalLogging: GlobalLogging =
     GlobalLogging.initial(MainAppender.globalDefault(console),
@@ -125,16 +125,18 @@ object StandardMain {
       Exec(x, None)
     }
     val initAttrs = BuiltinCommands.initialAttributes
-    val s = State(configuration,
-                  initialDefinitions,
-                  Set.empty,
-                  None,
-                  commands,
-                  State.newHistory,
-                  initAttrs,
-                  initialGlobalLogging,
-                  None,
-                  State.Continue)
+    val s = State(
+      configuration,
+      initialDefinitions,
+      Set.empty,
+      None,
+      commands,
+      State.newHistory,
+      initAttrs,
+      initialGlobalLogging,
+      None,
+      State.Continue
+    )
     s.initializeClassLoaderCache
   }
 }
@@ -435,10 +437,12 @@ object BuiltinCommands {
       reapply(setResult.session, structure, s)
   }
 
-  def setThis(s: State,
-              extracted: Extracted,
-              settings: Seq[Def.Setting[_]],
-              arg: String): SetResult =
+  def setThis(
+      s: State,
+      extracted: Extracted,
+      settings: Seq[Def.Setting[_]],
+      arg: String
+  ): SetResult =
     SettingCompletions.setThis(s, extracted, settings, arg)
 
   def inspect: Command = Command(InspectCommand, inspectBrief, inspectDetailed)(Inspect.parser) {
@@ -457,7 +461,8 @@ object BuiltinCommands {
         for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast(s))
         keepLastLog(s)
     }
-  def extractLast(s: State) = {
+
+  def extractLast(s: State): (BuildStructure, Select[ProjectRef], Show[Def.ScopedKey[_]]) = {
     val ext = Project.extract(s)
     (ext.structure, Select(ext.currentRef), ext.showKey)
   }
@@ -469,21 +474,28 @@ object BuiltinCommands {
       SettingCompletions.settingParser(structure.data, structure.index.keyMap, currentProject)
   }
 
-  val spacedAggregatedParser = (s: State) =>
+  import Def.ScopedKey
+  type KeysParser = Parser[Seq[ScopedKey[T]] forSome { type T }]
+
+  val spacedAggregatedParser: State => KeysParser = (s: State) =>
     Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
+
   val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] = (s: State) =>
     spacedAggregatedParser(s).map(x => Act.keyValues(s)(x)).?
 
   val exportParser: State => Parser[() => State] = (s: State) =>
     Act.requireSession(s, token(Space) ~> exportParser0(s))
+
   private[sbt] def exportParser0(s: State): Parser[() => State] = {
     val extracted = Project extract s
     import extracted.{ showKey, structure }
     val keysParser = token(flag("--last" <~ Space)) ~ Act.aggregatedKeyParser(extracted)
-    val show = Aggregation.ShowConfig(settingValues = true,
-                                      taskValues = false,
-                                      print = println(_),
-                                      success = false)
+    val show = Aggregation.ShowConfig(
+      settingValues = true,
+      taskValues = false,
+      print = println(_),
+      success = false
+    )
     for {
       lastOnly_keys <- keysParser
       kvs = Act.keyValues(structure)(lastOnly_keys._2)
@@ -502,17 +514,21 @@ object BuiltinCommands {
       }
   }
 
-  def lastGrepParser(s: State) =
+  def lastGrepParser(s: State): Parser[(String, Option[AnyKeys])] =
     Act.requireSession(
       s,
-      (token(Space) ~> token(NotSpace, "<pattern>")) ~ aggregatedKeyValueParser(s))
-  def last = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
+      (token(Space) ~> token(NotSpace, "<pattern>")) ~ aggregatedKeyValueParser(s)
+    )
+
+  def last: Command = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
     case (s, Some(sks)) => lastImpl(s, sks, None)
     case (s, None) =>
       for (logFile <- lastLogFile(s)) yield Output.last(logFile, printLast(s))
       keepLastLog(s)
   }
-  def export = Command(ExportCommand, exportBrief, exportDetailed)(exportParser)((s, f) => f())
+
+  def export: Command =
+    Command(ExportCommand, exportBrief, exportDetailed)(exportParser)((_, f) => f())
 
   private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State = {
     val (str, _, display) = extractLast(s)
@@ -521,7 +537,7 @@ object BuiltinCommands {
   }
 
   /** Determines the log file that last* commands should operate on.  See also isLastOnly. */
-  def lastLogFile(s: State) = {
+  def lastLogFile(s: State): Option[File] = {
     val backing = s.globalLogging.backing
     if (isLastOnly(s)) backing.last else Some(backing.file)
   }
@@ -539,28 +555,32 @@ object BuiltinCommands {
    * the last* commands operate on any output since the last 'shell' command and do shift the log file.
    * Otherwise, the output since the previous 'shell' command is used and the log file is not shifted.
    */
-  def isLastOnly(s: State): Boolean = s.history.previous.forall(_ == Shell)
+  def isLastOnly(s: State): Boolean = s.history.previous.forall(_.commandLine == Shell)
 
   def printLast(s: State): Seq[String] => Unit = _ foreach println
 
   def autoImports(extracted: Extracted): EvalImports =
     new EvalImports(imports(extracted), "<auto-imports>")
+
   def imports(extracted: Extracted): Seq[(String, Int)] = {
     val curi = extracted.currentRef.build
     extracted.structure.units(curi).imports.map(s => (s, -1))
   }
 
-  def listBuild(uri: URI,
-                build: LoadedBuildUnit,
-                current: Boolean,
-                currentID: String,
-                log: Logger) = {
-    log.info("In " + uri)
+  def listBuild(
+      uri: URI,
+      build: LoadedBuildUnit,
+      current: Boolean,
+      currentID: String,
+      log: Logger
+  ): Unit = {
+    log.info(s"In $uri")
     def prefix(id: String) = if (currentID != id) "   " else if (current) " * " else "(*)"
     for (id <- build.defined.keys.toSeq.sorted) log.info("\t" + prefix(id) + id)
   }
 
   def act: Command = Command.customHelp(Act.actParser, actHelp)
+
   def actHelp: State => Help =
     s => CommandStrings.showHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(s)
 
@@ -659,6 +679,7 @@ object BuiltinCommands {
 
   private[this] def loadProjectParser: State => Parser[String] =
     _ => matched(Project.loadActionParser)
+
   private[this] def loadProjectCommand(command: String, arg: String): String =
     s"$command $arg".trim
 
@@ -747,7 +768,8 @@ object BuiltinCommands {
     }
   }
 
-  private def intendsToInvokeNew(state: State) = state.remainingCommands contains TemplateCommand
+  private def intendsToInvokeNew(state: State) =
+    state.remainingCommands exists (_.commandLine == TemplateCommand)
 
   private def writeSbtVersion(state: State) =
     if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
@@ -761,7 +783,7 @@ object BuiltinCommands {
     }
 
   private def intendsToInvokeCompile(state: State) =
-    state.remainingCommands contains Keys.compile.key.label
+    state.remainingCommands exists (_.commandLine == Keys.compile.key.label)
 
   private def notifyUsersAboutShell(state: State): Unit = {
     val suppress = Project extract state getOpt Keys.suppressSbtShellNotification getOrElse false
