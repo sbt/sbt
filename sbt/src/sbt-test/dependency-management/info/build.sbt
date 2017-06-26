@@ -2,13 +2,13 @@ import scala.xml._
 
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := (baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache"))).value,
-    ivyXML := ((customInfo, organization, moduleName, version) apply inlineXML).value,
+    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
+    ivyXML := inlineXML(customInfo.value, organization.value, moduleName.value, version.value),
     scalaVersion := "2.9.1",
     projectID ~= (_ cross false),
-    customInfo := (baseDirectory{_ / "info" exists }).value,
+    customInfo := (baseDirectory.value / "info").exists,
     TaskKey[Unit]("check-download") := checkDownload.value,
-    delivered := (deliverLocal map XML.loadFile).value,
+    delivered := (XML loadFile deliverLocal.value),
     TaskKey[Unit]("check-info") := checkInfo.value
   )
 
@@ -16,7 +16,7 @@ lazy val delivered = taskKey[NodeSeq]("")
 lazy val customInfo = settingKey[Boolean]("")
 
 def inlineXML(addInfo: Boolean, organization: String, moduleID: String, version: String): NodeSeq =
-  if(addInfo)
+  if (addInfo)
     (<info organisation={organization} module={moduleID} revision={version}>
       <license name="Two-clause BSD-style" url="http://github.com/szeiger/scala-query/blob/master/LICENSE.txt" />
       <description homepage="http://github.com/szeiger/scala-query/">
@@ -27,14 +27,19 @@ def inlineXML(addInfo: Boolean, organization: String, moduleID: String, version:
   else
     <dependency org="org.scala-tools.testing" name="scalacheck_2.9.1" rev="1.9"/>
 
-def checkDownload = (dependencyClasspath in Compile) map { cp => if(cp.isEmpty) sys.error("Dependency not downloaded"); () }
-def checkInfo = (customInfo, delivered) map { (addInfo, d) =>
-  if((d \ "info").isEmpty)
-    sys.error("No info tag generated")
-  else if(addInfo) {
-    if( !deliveredWithCustom(d) ) sys.error("Expected 'license' and 'description' tags in info tag, got: \n" + (d \ "info")) else ()
-  } else
-    if( deliveredWithCustom(d) ) sys.error("Expected empty 'info' tag, got: \n" + (d \ "info")) else ()
+def checkDownload = Def task {
+  if ((dependencyClasspath in Compile).value.isEmpty) sys.error("Dependency not downloaded"); ()
 }
-def deliveredWithCustom(d: NodeSeq) = (d \ "info" \ "license").nonEmpty && (d \ "info" \ "description").nonEmpty
 
+def checkInfo = Def task {
+  val d = delivered.value
+  val addInfo = customInfo.value
+  if ((d \ "info").isEmpty)
+    sys.error("No info tag generated")
+  else if (addInfo) {
+    if (!deliveredWithCustom(d)) sys.error("Expected 'license' and 'description' tags in info tag, got: \n" + (d \ "info")) else ()
+  } else
+    if (deliveredWithCustom(d)) sys.error("Expected empty 'info' tag, got: \n" + (d \ "info")) else ()
+}
+
+def deliveredWithCustom(d: NodeSeq) = (d \ "info" \ "license").nonEmpty && (d \ "info" \ "description").nonEmpty

@@ -1,35 +1,21 @@
-import sbt.Def.Initialize
+val root = project in file(".")
 
-lazy val checkPom = taskKey[Unit]("")
+val subJar = project in file("subJar")
 
-lazy val root = (project in file(".")).
-  settings(
-    checkPom in ThisBuild := checkPomTask.value
-  )
-
-lazy val subJar = (project in file("subJar"))
-
-lazy val subWar = (project in file("subWar")).
-  settings(
-    warArtifact
-  )
-
-lazy val subParent = (project in file("subParent")).
-  settings(
-    publishArtifact in Compile := false
-  )
-
-def art(p: ProjectReference) = makePom in p
-def checkPomTask: Initialize[Task[Unit]] =
-  (art(subJar), art(subWar), art(subParent)) map { (jar, war, pom) =>
-    checkPackaging(jar, "jar")
-    checkPackaging(war, "war")
-    checkPackaging(pom, "pom")
-  }
-
-def checkPackaging(pom: File, expected: String) =
-{
-  val packaging = (xml.XML.loadFile(pom) \\ "packaging").text
-  if(packaging != expected) sys.error("Incorrect packaging for '" + pom + "'.  Expected '" + expected + "', but got '" + packaging + "'")
-}
 def warArtifact = artifact in (Compile, packageBin) ~= (_ withType "war" withExtension "war")
+val subWar = project in file("subWar") settings warArtifact
+
+val subParent = project in file("subParent") settings (publishArtifact in Compile := false)
+
+val checkPom = taskKey[Unit]("")
+checkPom in ThisBuild := {
+  checkPackaging((makePom in subJar).value, "jar")
+  checkPackaging((makePom in subWar).value, "war")
+  checkPackaging((makePom in subParent).value, "pom")
+}
+
+def checkPackaging(pom: File, expected: String) = {
+  val packaging = (xml.XML.loadFile(pom) \\ "packaging").text
+  if (packaging != expected)
+    sys error s"Incorrect packaging for '$pom'.  Expected '$expected', but got '$packaging'"
+}

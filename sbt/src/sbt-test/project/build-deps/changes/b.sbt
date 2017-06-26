@@ -1,3 +1,5 @@
-buildDependencies in Global := ((buildDependencies in Global, thisProjectRef, thisProjectRef in LocalProject("a")) { (deps, refB, refA) =>
-	deps.addClasspath(refA, ResolvedClasspathDependency(refB, None))
-}).value
+buildDependencies in Global :=
+  (buildDependencies in Global).value.addClasspath(
+    (thisProjectRef in LocalProject("a")).value,
+    ResolvedClasspathDependency(thisProjectRef.value, None)
+  )

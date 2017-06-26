@@ -831,16 +831,20 @@ object Project extends ProjectExtra {
 
     def updateState(f: (State, S) => State): Def.Initialize[Task[S]] = i(t => tx(t, f))
 
-    def storeAs(key: TaskKey[S])(implicit f: JsonFormat[S]): Def.Initialize[Task[S]] =
+    def storeAs(key: TaskKey[S])(implicit f: JsonFormat[S]): Def.Initialize[Task[S]] = {
+      import TupleSyntax._
       (Keys.resolvedScoped, i)(
         (scoped, task) =>
           tx(task,
              (state, value) =>
                persistAndSet(resolveContext(key, scoped.scope, state), state, value)(f)))
+    }
 
-    def keepAs(key: TaskKey[S]): Def.Initialize[Task[S]] =
+    def keepAs(key: TaskKey[S]): Def.Initialize[Task[S]] = {
+      import TupleSyntax._
       (i, Keys.resolvedScoped)((t, scoped) =>
         tx(t, (state, value) => set(resolveContext(key, scoped.scope, state), state, value)))
+    }
   }
 
   import scala.reflect.macros._

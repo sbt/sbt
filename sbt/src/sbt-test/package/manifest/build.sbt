@@ -1,5 +1,5 @@
-	import java.util.jar.{Attributes, Manifest}
-	import Path.makeString
+import java.util.jar.{Attributes, Manifest}
+import Path.makeString
 
 name := "Jar Manifest Test"
 
@@ -9,12 +9,11 @@ crossPaths := false
 
 mainClass := Some("jartest.Main")
 
-packageOptions in (Compile, packageBin) := ((packageOptions in (Compile, packageBin), scalaInstance) map { (opts, si) =>
-	def manifestExtra =
-	{
-		val mf = new Manifest
-		mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(si.libraryJar :: Nil) )
-		mf
-	}
-	opts :+ Package.JarManifest(manifestExtra)
-}).value
+packageOptions in (Compile, packageBin) := {
+  def manifestExtra = {
+    val mf = new Manifest
+    mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(scalaInstance.value.libraryJar :: Nil))
+    mf
+  }
+  (packageOptions in (Compile, packageBin)).value :+ Package.JarManifest(manifestExtra)
+}
