@@ -18,18 +18,15 @@ object Dependencies {
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
-  private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
-  private val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
-  private val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
-  private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
-  private val utilLogic = "org.scala-sbt" %% "util-logic" % utilVersion
-  private val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
-  private val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
-  private val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
-  private val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
-
+  private val lmPosition = "org.scala-sbt" %% "lm-position" % lmVersion
+  private val lmLogging = "org.scala-sbt" %% "lm-logging" % lmVersion
+  private val lmCache = "org.scala-sbt" %% "lm-cache" % lmVersion
   private val libraryManagement = "org.scala-sbt" %% "librarymanagement" % lmVersion
+
+  private val zincControl = "org.scala-sbt" %% "zinc-control" % zincVersion
+  private val zincRelation = "org.scala-sbt" %% "zinc-relation" % zincVersion
+  private val zincUtilScripted = "org.scala-sbt" %% "zinc-scripted" % zincVersion
+  private val zincTracking = "org.scala-sbt" %% "zinc-tracking" % zincVersion
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
@@ -52,46 +49,30 @@ object Dependencies {
   }
 
   lazy val sbtIoPath = getSbtModulePath("sbtio.path", "sbt/io")
-  lazy val sbtUtilPath = getSbtModulePath("sbtutil.path", "sbt/util")
   lazy val sbtLmPath = getSbtModulePath("sbtlm.path", "sbt/lm")
   lazy val sbtZincPath = getSbtModulePath("sbtzinc.path", "sbt/zinc")
 
-  def addSbtModule(
-      p: Project,
-      path: Option[String],
-      projectName: String,
-      m: ModuleID,
-      c: Option[Configuration] = None
-  ) =
+  def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID) =
     path match {
-      case Some(f) =>
-        p dependsOn c.fold[ClasspathDep[ProjectReference]](ProjectRef(file(f), projectName))(
-          ProjectRef(file(f), projectName) % _)
-      case None => p settings (libraryDependencies += c.fold(m)(m % _))
+      case Some(f) => p dependsOn ProjectRef(file(f), projectName)
+      case None    => p settings (libraryDependencies += m)
     }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
-  def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
-  def addSbtUtilCollection(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
-  def addSbtUtilCompletion(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilComplete", utilCompletion)
-  def addSbtUtilControl(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilControl", utilControl)
-  def addSbtUtilLogging(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
-  def addSbtUtilLogic(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilLogic", utilLogic)
-  def addSbtUtilRelation(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilRelation", utilRelation)
-  def addSbtUtilScripted(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilScripted", utilScripted)
-  def addSbtUtilTesting(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilTesting", utilTesting, Some(Test))
-  def addSbtUtilTracking(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilTracking", utilTracking)
-
+  def addSbtLmPosition(p: Project): Project = addSbtModule(p, sbtLmPath, "lmPosition", lmPosition)
+  def addSbtLmLogging(p: Project): Project = addSbtModule(p, sbtLmPath, "lmLogging", lmLogging)
+  def addSbtLmCache(p: Project): Project = addSbtModule(p, sbtLmPath, "lmCache", lmCache)
   def addSbtLm(p: Project): Project = addSbtModule(p, sbtLmPath, "lm", libraryManagement)
+
+  def addSbtZincControl(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincControl", zincControl)
+  def addSbtZincRelation(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincRelation", zincRelation)
+  def addSbtZincTracking(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincTracking", zincTracking)
+  def addSbtZincUtilScripted(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincUtilScripted", zincUtilScripted)
 
   def addSbtCompilerApiInfo(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincApiInfo", compilerApiInfo)
@@ -109,6 +90,7 @@ object Dependencies {
 
   val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.7.0"
 
+  val jline = "jline" % "jline" % "2.14.4"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2" % "2.4.17"
