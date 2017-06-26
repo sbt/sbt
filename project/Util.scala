@@ -162,13 +162,14 @@ object Util {
   def writeScalaKeywords(base: File, keywords: Set[String]): File = {
     val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
     val ObjectName = "ScalaKeywords"
-    val PackageName = "sbt"
-    val keywordsSrc =
-      """package %s
-object %s {
-	val values = %s
-}""".format(PackageName, ObjectName, init)
-    val out = base / PackageName.replace('.', '/') / (ObjectName + ".scala")
+    val PackageName = "sbt.internal.util"
+    val keywordsSrc = s"""
+      |package $PackageName
+      |object $ObjectName {
+      |  val values = $init
+      |}
+    """.trim.stripMargin
+    val out = base / PackageName.replace('.', '/') / s"$ObjectName.scala"
     IO.write(out, keywordsSrc)
     out
   }
@@ -179,7 +180,8 @@ object %s {
         scalaKeywords := getScalaKeywords,
         generateKeywords := writeScalaKeywords(sourceManaged.value, scalaKeywords.value),
         sourceGenerators += Def.task(Seq(generateKeywords.value)).taskValue
-      ))
+      )
+    )
 }
 
 object Licensed {

@@ -5,6 +5,7 @@ import java.io.File
 import sbt.internal.librarymanagement._
 import sbt.internal.util.HNil
 import sbt.internal.util.Types._
+import sbt.internal.util.HListFormats._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.CacheImplicits._
