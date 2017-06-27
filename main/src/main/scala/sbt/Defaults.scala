@@ -385,8 +385,6 @@ object Defaults extends BuildCommon {
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
     scalaCompilerBridgeSource := {
-      // This is a workaround for sbtVersion getting set to another value.
-      val sv = appConfiguration.value.provider.id.version
       if (ScalaInstance.isDotty(scalaVersion.value))
         // Maintained at https://github.com/lampepfl/dotty/tree/master/sbt-bridge
         ModuleID(scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value)
@@ -414,7 +412,7 @@ object Defaults extends BuildCommon {
     VersionNumber(sv) match {
       case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
       case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.6"
-      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.2"
+      case VersionNumber(Seq(1, _, _*), _, _)  => "2.12.2"
       case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
     }
 
