@@ -67,6 +67,14 @@ final class UpdateOptions private[sbt] (
       moduleResolvers
     )
 
+  override def toString(): String =
+    s"""UpdateOptions(
+        |  circularDependencyLevel = $circularDependencyLevel,
+        |  latestSnapshots = $latestSnapshots,
+        |  consolidatedResolution = $consolidatedResolution,
+        |  cachedResolution = $cachedResolution
+        |)""".stripMargin
+
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
       this.circularDependencyLevel == o.circularDependencyLevel &&
