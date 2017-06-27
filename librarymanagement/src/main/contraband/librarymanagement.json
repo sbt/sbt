@@ -151,6 +151,18 @@
           ]
         },
         {
+          "name": "Constant",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "doc": [
+            "Cross-versions a module using the string `value`."
+          ],
+          "type": "record",
+          "fields": [
+            { "name": "value", "type": "String", "default": "\"\"", "since": "0.0.2" }
+          ]
+        },
+        {
           "name": "Patch",
           "namespace": "sbt.librarymanagement",
           "target": "Scala",
