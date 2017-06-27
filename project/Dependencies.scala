@@ -43,7 +43,7 @@ object Dependencies {
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
-  val sjsonnewVersion = "0.7.0"
+  val sjsonnewVersion = "0.8.0-M1"
   val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
   val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 

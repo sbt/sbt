@@ -15,10 +15,10 @@ trait JValueFormats { self: sjsonnew.BasicJsonProtocol =>
     def read[J](j: Option[J], u: Unbuilder[J]) = JNull
   }
 
-  implicit val JBooleanFormat: JF[JBoolean] = project(_.get, (x: Boolean) => JBoolean(x))
-  implicit val JStringFormat: JF[JString] = project(_.value, (x: String) => JString(x))
-  implicit val JNumberFormat: JF[JNumber] = project(x => BigDecimal(x.value), (x: BigDecimal) => JNumber(x.toString))
-  implicit val JArrayFormat: JF[JArray] = project[JArray, Array[JValue]](_.value, JArray(_))
+  implicit val JBooleanFormat: JF[JBoolean] = projectFormat(_.get, (x: Boolean) => JBoolean(x))
+  implicit val JStringFormat: JF[JString] = projectFormat(_.value, (x: String) => JString(x))
+  implicit val JNumberFormat: JF[JNumber] = projectFormat(x => BigDecimal(x.value), (x: BigDecimal) => JNumber(x.toString))
+  implicit val JArrayFormat: JF[JArray] = projectFormat[JArray, Array[JValue]](_.value, JArray(_))
 
   implicit lazy val JObjectJsonWriter: JW[JObject] = new JW[JObject] {
     def write[J](x: JObject, b: Builder[J]) = {

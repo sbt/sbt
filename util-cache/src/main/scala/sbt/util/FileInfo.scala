@@ -39,7 +39,7 @@ object FilesInfo {
   def empty[F <: FileInfo]: FilesInfo[F] = FilesInfo(Set.empty[F])
 
   implicit def format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
-    project(_.files, (fs: Set[F]) => FilesInfo(fs))
+    projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
 
   def full: FileInfo.Style = FileInfo.full
   def hash: FileInfo.Style = FileInfo.hash
@@ -52,7 +52,7 @@ object FileInfo {
     type F <: FileInfo
 
     implicit def format: JsonFormat[F]
-    implicit def formats: JsonFormat[FilesInfo[F]] = project(_.files, (fs: Set[F]) => FilesInfo(fs))
+    implicit def formats: JsonFormat[FilesInfo[F]] = projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
 
     def apply(file: File): F
     def apply(files: Set[File]): FilesInfo[F] = FilesInfo(files map apply)

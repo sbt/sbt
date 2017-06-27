@@ -4,7 +4,8 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.util.codec
-import _root_.sjsonnew.{ deserializationError, serializationError, Builder, JsonFormat, Unbuilder }
-trait AbstractEntryFormats { self: sjsonnew.BasicJsonProtocol with sbt.internal.util.codec.StringEventFormats =>
-implicit lazy val AbstractEntryFormat: JsonFormat[sbt.internal.util.AbstractEntry] = flatUnionFormat1[sbt.internal.util.AbstractEntry, sbt.internal.util.StringEvent]("type")
+
+import _root_.sjsonnew.JsonFormat
+trait AbstractEntryFormats { self: sjsonnew.BasicJsonProtocol with sbt.internal.util.codec.StringEventFormats with sbt.internal.util.codec.TraceEventFormats =>
+implicit lazy val AbstractEntryFormat: JsonFormat[sbt.internal.util.AbstractEntry] = flatUnionFormat2[sbt.internal.util.AbstractEntry, sbt.internal.util.StringEvent, sbt.internal.util.TraceEvent]("type")
 }

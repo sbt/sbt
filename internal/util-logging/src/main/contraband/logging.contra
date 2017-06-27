@@ -14,3 +14,10 @@ type StringEvent implements sbt.internal.util.AbstractEntry {
   channelName: String
   execId: String
 }
+
+type TraceEvent implements sbt.internal.util.AbstractEntry {
+  level: String!
+  message: Throwable!
+  channelName: String
+  execId: String
+}

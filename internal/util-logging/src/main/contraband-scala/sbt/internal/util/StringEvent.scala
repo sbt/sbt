@@ -17,7 +17,7 @@ final class StringEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + level.##) + message.##) + channelName.##) + execId.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "StringEvent".##) + level.##) + message.##) + channelName.##) + execId.##)
   }
   override def toString: String = {
     "StringEvent(" + level + ", " + message + ", " + channelName + ", " + execId + ")"
