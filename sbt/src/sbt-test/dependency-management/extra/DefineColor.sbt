@@ -1,4 +1,4 @@
-ivyPaths := (baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache"))).value
+ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
 publishMavenStyle := false
 

@@ -1,10 +1,15 @@
 autoScalaLibrary := false
 
-ivyPaths := (baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache"))).value
+ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
-ivyScala := ((scalaVersion in update, scalaBinaryVersion in update) { (fv, bv) =>
-  Some(IvyScala(fv, bv, Vector.empty, filterImplicit = false, checkExplicit = false, overrideScalaVersion = false))
-}).value
+ivyScala := Some(IvyScala(
+  (scalaVersion in update).value,
+  (scalaBinaryVersion in update).value,
+  Vector.empty,
+  filterImplicit = false,
+  checkExplicit = false,
+  overrideScalaVersion = false
+))
 
 InputKey[Unit]("check") := {
   val args = Def.spaceDelimited().parsed

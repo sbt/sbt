@@ -2,7 +2,7 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := (baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache"))).value,
+    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
     libraryDependencies += "org.jsoup" % "jsoup" % "1.9.1" % Test from "http://jsoup.org/packages/jsoup-1.9.1.jar",
     ivyLoggingLevel := UpdateLogging.Full,
     TaskKey[Unit]("checkInTest") := checkClasspath(Test).value,

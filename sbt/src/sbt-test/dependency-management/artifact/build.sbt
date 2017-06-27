@@ -5,14 +5,13 @@ lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := ((baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache")))).value,
+    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
     resolvers += (baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }).value,
     moduleName := artifactID,
-    projectID := (baseDirectory { base => (if(base / "retrieve" exists) retrieveID else publishedID) }).value,
+    projectID := (if (baseDirectory.value / "retrieve" exists) retrieveID else publishedID),
     artifact in (Compile, packageBin) := mainArtifact,
-    libraryDependencies := ((libraryDependencies, baseDirectory) { (deps, base) =>
-      deps ++ (if(base / "retrieve" exists) publishedID :: Nil else Nil) }).value,
+    libraryDependencies ++= (if (baseDirectory.value / "retrieve" exists) publishedID :: Nil else Nil),
       // needed to add a jar with a different type to the managed classpath
     unmanagedClasspath in Compile += scalaInstance.map(_.libraryJar).value,
     classpathTypes := Set(tpe),
@@ -35,8 +34,8 @@ def publishedID = org % artifactID % vers artifacts(mainArtifact)
 def retrieveID = org % "test-retrieve" % "2.0"
 
 // check that the test class is on the compile classpath, either because it was compiled or because it was properly retrieved
-def checkTask(classpath: TaskKey[Classpath]) = (classpath in Compile, scalaInstance) map { (cp, si) =>
-  val loader = ClasspathUtilities.toLoader(cp.files, si.loader)
+def checkTask(classpath: TaskKey[Classpath]) = Def task {
+  val loader = ClasspathUtilities.toLoader((classpath in Compile).value.files, scalaInstance.value.loader)
   try { Class.forName("test.Test", false, loader); () }
   catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error("Dependency not retrieved properly") }
 }

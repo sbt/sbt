@@ -4,8 +4,10 @@ moduleName := "asdf"
 
 crossPaths := false
 
-TaskKey[Unit]("checkName") := ((moduleName, name, packageBin in Compile) map { (module, n, f) =>
-  val path = f.getAbsolutePath 
-  assert(path contains module, "Path " + path + " did not contain module name " + module)
-  assert(!path.contains(n), "Path " + path + " contained " + n)
-}).value
+TaskKey[Unit]("checkName") := Def task {
+  val path = (packageBin in Compile).value.getAbsolutePath
+  val module = moduleName.value
+  val n = name.value
+  assert(path contains module, s"Path $path did not contain module name $module")
+  assert(!path.contains(n), s"Path $path contained $n")
+}

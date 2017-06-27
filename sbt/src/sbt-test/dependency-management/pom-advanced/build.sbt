@@ -7,30 +7,28 @@ lazy val root = (project in file(".")).
       val result = spaceDelimited("<args>").parsed
       checkPomRepositories(makePom.value, result, streams.value)
     },
-    makePomConfiguration := ((makePomConfiguration, baseDirectory) { (conf, base) =>
-      conf.copy(filterRepositories = pomIncludeRepository(base, conf.filterRepositories) )
-    }).value,
+    makePomConfiguration := {
+      val conf = makePomConfiguration.value
+      conf.copy(filterRepositories = pomIncludeRepository(baseDirectory.value, conf.filterRepositories))
+    },
     ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value
   )
 
 val local = "local-maven-repo" at "file://" + (Path.userHome / ".m2" /"repository").absolutePath
 
-def pomIncludeRepository(base: File, prev: MavenRepository => Boolean): MavenRepository => Boolean =
-  {
-    case r: MavenRepository if (r.name == "local-preloaded") => false
-    case r: MavenRepository if (base  / "repo.none" exists)  => false
-    case r: MavenRepository if (base / "repo.all" exists)    => true
-    case r: MavenRepository => prev(r)
-  }
+def pomIncludeRepository(base: File, prev: MavenRepository => Boolean): MavenRepository => Boolean = {
+  case r: MavenRepository if (r.name == "local-preloaded") => false
+  case r: MavenRepository if (base  / "repo.none" exists)  => false
+  case r: MavenRepository if (base / "repo.all" exists)    => true
+  case r: MavenRepository => prev(r)
+}
 
-def addSlash(s: String): String =
-  s match {
-    case s if s endsWith "/" => s
-    case _ => s + "/"
-  }
+def addSlash(s: String): String = s match {
+  case s if s endsWith "/" => s
+  case _ => s + "/"
+}
 
-def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams)
-{
+def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams) {
   val repositories = scala.xml.XML.loadFile(file) \\ "repository"
   val extracted = repositories.map { repo => MavenRepository(repo \ "name" text, addSlash(repo \ "url" text)) }
   val expected = args.map(GlobFilter.apply)

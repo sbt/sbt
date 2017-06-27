@@ -1,11 +1,5 @@
-publishTo := (baseDirectory in ThisBuild)(x =>
-	Some(Resolver.file("test-publish", x / "repo"))
-).value
-
-resolvers += (baseDirectory in ThisBuild)(x =>
-	"test" at (x / "repo").asURL.toString
-).value
-
+publishTo := Some(Resolver.file("test-publish", (baseDirectory in ThisBuild).value / "repo"))
+resolvers += ("test" at ((baseDirectory in ThisBuild).value / "repo").asURL.toString)
 resolvers += Resolver.mavenLocal
 
 name := "demo3"

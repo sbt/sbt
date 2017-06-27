@@ -1,6 +1,6 @@
 autoScalaLibrary := false
 
-ivyPaths := (baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache"))).value
+ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
 libraryDependencies ++= Seq(
 	"org.sat4j" % "org.sat4j.pb" % "2.3.1",
