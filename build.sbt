@@ -3,7 +3,7 @@ import Path._
 
 // import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion = "1.0.0"
+def baseVersion = "1.0.0-SNAPSHOT"
 
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala212,
@@ -43,7 +43,12 @@ lazy val lmRoot = (project in file("."))
         scalafmtOnCompile := true,
         // scalafmtVersion 1.0.0-RC3 has regression
         scalafmtVersion := "0.6.8",
-        git.baseVersion := baseVersion
+        git.baseVersion := baseVersion,
+        version := {
+          val v = version.value
+          if (v contains "SNAPSHOT") git.baseVersion.value
+          else v
+        }
       )),
     commonSettings,
     name := "LM Root",
