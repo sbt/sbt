@@ -18,8 +18,9 @@ import sbt.internal.util.{
 }
 import MainAppender._
 import sbt.util.{ Level, Logger, LogExchange }
-import sbt.internal.util.ManagedLogger
+import sbt.internal.util.{ ManagedLogger, TraceEvent }
 import org.apache.logging.log4j.core.Appender
+import sbt.internal.util.codec.TraceEventShowLines._
 
 sealed abstract class LogManager {
   def apply(
@@ -130,6 +131,7 @@ object LogManager {
     val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
     val extraBacked = state.globalLogging.backed :: relay :: Nil
     val consoleOpt = consoleLocally(state, console)
+    log.registerStringCodec[TraceEvent]
     val config = MainAppender.MainAppenderConfig(
       consoleOpt,
       backed,

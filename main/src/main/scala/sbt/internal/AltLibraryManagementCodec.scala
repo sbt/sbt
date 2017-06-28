@@ -22,7 +22,7 @@ object AltLibraryManagementCodec extends LibraryManagementCodec {
   }
 
   implicit val altRawRepositoryJsonFormat: JsonFormat[RawRepository] =
-    project(_.name, FakeRawRepository.create)
+    projectFormat(_.name, FakeRawRepository.create)
 
   // Redefine to add RawRepository, and switch to unionFormat
   override lazy implicit val ResolverFormat: JsonFormat[Resolver] =
@@ -65,7 +65,7 @@ object AltLibraryManagementCodec extends LibraryManagementCodec {
                              None)
     }
 
-    project[InlineIvyConfiguration, InlineIvyHL](inlineIvyToHL, hlToInlineIvy)
+    projectFormat[InlineIvyConfiguration, InlineIvyHL](inlineIvyToHL, hlToInlineIvy)
   }
 
   // Redefine to use a subset of properties, that are serialisable
@@ -82,7 +82,7 @@ object AltLibraryManagementCodec extends LibraryManagementCodec {
         Vector.empty)
     }
 
-    project[ExternalIvyConfiguration, ExternalIvyHL](externalIvyToHL, hlToExternalIvy)
+    projectFormat[ExternalIvyConfiguration, ExternalIvyHL](externalIvyToHL, hlToExternalIvy)
   }
 
   // Redefine to switch to unionFormat
