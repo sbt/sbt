@@ -108,7 +108,7 @@ object Dependencies {
   def addSbtZincCompile(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
 
-  val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.7.0"
+  val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.8.0-M1"
 
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
