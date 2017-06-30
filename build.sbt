@@ -2,7 +2,7 @@ import Dependencies._
 import Util._
 // import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion: String = "1.0.0-M24"
+def baseVersion = "1.0.0-SNAPSHOT"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -39,6 +39,11 @@ lazy val utilRoot: Project = (project in file(".")).
   settings(
     inThisBuild(Seq(
       git.baseVersion := baseVersion,
+      version := {
+        val v = version.value
+        if (v contains "SNAPSHOT") git.baseVersion.value
+        else v
+      },
       bintrayPackage := "util",
       homepage := Some(url("https://github.com/sbt/util")),
       description := "Util module for sbt",
@@ -108,7 +113,13 @@ lazy val utilLogging = (project in internalPath / "util-logging").
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
     libraryDependencies ++= Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson, scalaReflect.value),
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    contrabandFormatsForType in generateContrabands in Compile := { tpe =>
+      val old = (contrabandFormatsForType in generateContrabands in Compile).value
+      val name = tpe.removeTypeParameters.name
+      if (name == "Throwable") Nil
+      else old(tpe)
+    },
   )
 
 // Relation

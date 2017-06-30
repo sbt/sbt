@@ -6,5 +6,6 @@
 package sbt.internal.util.codec
 trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.util.codec.StringEventFormats
+  with sbt.internal.util.codec.TraceEventFormats
   with sbt.internal.util.codec.AbstractEntryFormats
 object JsonProtocol extends JsonProtocol

@@ -16,7 +16,7 @@ abstract class AbstractEntry(
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + channelName.##) + execId.##)
+    37 * (37 * (37 * (17 + "AbstractEntry".##) + channelName.##) + execId.##)
   }
   override def toString: String = {
     "AbstractEntry(" + channelName + ", " + execId + ")"
