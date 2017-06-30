@@ -135,7 +135,8 @@ process_my_args () {
 }
 
 loadConfigFile() {
-  cat "$1" | sed '/^\#/d' | while read line; do
+  # Make sure the last line is read even if it doesn't have a terminating \n
+  cat "$1" | sed '/^\#/d' | while read -r line || [[ -n "$line" ]]; do
     eval echo $line
   done
 }
