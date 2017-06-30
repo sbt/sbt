@@ -71,7 +71,6 @@ final class UpdateOptions private[sbt] (
     s"""UpdateOptions(
         |  circularDependencyLevel = $circularDependencyLevel,
         |  latestSnapshots = $latestSnapshots,
-        |  consolidatedResolution = $consolidatedResolution,
         |  cachedResolution = $cachedResolution
         |)""".stripMargin
 
