@@ -5,6 +5,14 @@ import sbt.internal.librarymanagement.cross.CrossVersionUtil
 final case class ScalaVersion(full: String, binary: String)
 
 abstract class CrossVersionFunctions {
+  /** Compatibility with 0.13 */
+  final val Disabled = sbt.librarymanagement.Disabled
+  final val Binary = sbt.librarymanagement.Binary
+  final val Full = sbt.librarymanagement.Full
+  final val Patch = sbt.librarymanagement.Patch
+  type Binary = sbt.librarymanagement.Binary
+  type Full = sbt.librarymanagement.Full
+  type Patch = sbt.librarymanagement.Patch
 
   /** The first `major.minor` Scala version that the Scala binary version should be used for cross-versioning instead of the full version. */
   val TransitionScalaVersion = CrossVersionUtil.TransitionScalaVersion
@@ -23,6 +31,9 @@ abstract class CrossVersionFunctions {
 
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
   def binary: CrossVersion = Binary()
+
+  /** Disables cross versioning for a module. */
+  def disabled: CrossVersion = Disabled()
 
   /** Cross-versions a module with a constant string (typically the binary Scala version).  */
   def constant(value: String): CrossVersion = Constant(value)
