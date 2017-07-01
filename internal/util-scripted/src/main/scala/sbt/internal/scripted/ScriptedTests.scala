@@ -4,7 +4,7 @@ package scripted
 
 import java.io.File
 import sbt.util.{ Logger, LogExchange, Level }
-import sbt.internal.util.{ ManagedLogger, ConsoleOut, MainAppender, ConsoleAppender, BufferedAppender }
+import sbt.internal.util.{ ManagedLogger, ConsoleAppender, BufferedAppender }
 import sbt.io.IO.wrapNull
 import sbt.io.{ DirectoryFilter, HiddenFileFilter }
 import sbt.io.syntax._

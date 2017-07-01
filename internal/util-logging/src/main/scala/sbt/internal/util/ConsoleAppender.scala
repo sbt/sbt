@@ -162,7 +162,7 @@ object ConsoleAppender {
       terminal.restore // #460
       terminal.isAnsiSupported
     } catch {
-      case e: Exception => !isWindows
+      case _: Exception => !isWindows
 
       // sbt 0.13 drops JLine 1.0 from the launcher and uses 2.x as a normal dependency
       // when 0.13 is used with a 0.12 launcher or earlier, the JLine classes from the launcher get loaded
