@@ -69,7 +69,7 @@ lazy val lm = (project in file("librarymanagement"))
                                 launcherInterface,
                                 gigahorseOkhttp,
                                 okhttpUrlconnection,
-                                sjsonnewScalaJson % Optional),
+                                sjsonnewScalaJson.value % Optional),
     libraryDependencies ++= scalaXml.value,
     resourceGenerators in Compile += Def
       .task(
@@ -79,6 +79,9 @@ lazy val lm = (project in file("librarymanagement"))
                                  (compile in Compile).value))
       .taskValue,
     // mimaBinaryIssueFilters ++= Seq(),
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
     mappings in (Compile, packageSrc) ++= {
