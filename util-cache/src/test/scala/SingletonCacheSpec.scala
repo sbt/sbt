@@ -8,7 +8,7 @@ import CacheImplicits._
 import sjsonnew.{ Builder, deserializationError, IsoString, JsonFormat, Unbuilder }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 
-import scala.json.ast.unsafe.JValue
+import scalajson.ast.unsafe.JValue
 import sbt.internal.util.UnitSpec
 
 class SingletonCacheSpec extends UnitSpec {
