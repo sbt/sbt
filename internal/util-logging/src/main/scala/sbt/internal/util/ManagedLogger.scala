@@ -1,7 +1,7 @@
 package sbt.internal.util
 
 import sbt.util._
-import org.apache.logging.log4j.{ Logger => XLogger, Level => XLevel }
+import org.apache.logging.log4j.{ Logger => XLogger }
 import org.apache.logging.log4j.message.ObjectMessage
 import sjsonnew.JsonFormat
 import scala.reflect.runtime.universe.TypeTag

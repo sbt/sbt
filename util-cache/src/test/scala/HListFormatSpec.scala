@@ -1,6 +1,6 @@
 package sbt.util
 
-import scala.json.ast.unsafe._
+import scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
 import CacheImplicits._
 import sbt.internal.util.{ UnitSpec, HNil }

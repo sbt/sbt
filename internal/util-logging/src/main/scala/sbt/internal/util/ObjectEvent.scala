@@ -5,7 +5,7 @@ package util
 import sbt.util.Level
 import sjsonnew.JsonFormat
 import sjsonnew.support.scalajson.unsafe.Converter
-import scala.json.ast.unsafe.JValue
+import scalajson.ast.unsafe.JValue
 
 final class ObjectEvent[A](
   val level: Level.Value,

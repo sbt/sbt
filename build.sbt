@@ -83,7 +83,7 @@ lazy val utilCollection = (project in internalPath / "util-collection").
     crossScalaVersions := Seq(scala210, scala211, scala212),
     Util.keywordsSettings,
     name := "Util Collection",
-    libraryDependencies ++= Seq(sjsonnew)
+    libraryDependencies ++= Seq(sjsonnew.value)
   )
 
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
@@ -112,7 +112,7 @@ lazy val utilLogging = (project in internalPath / "util-logging").
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
-    libraryDependencies ++= Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson, scalaReflect.value),
+    libraryDependencies ++= Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value),
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := { tpe =>
       val old = (contrabandFormatsForType in generateContrabands in Compile).value
@@ -144,7 +144,7 @@ lazy val utilCache = (project in file("util-cache")).
   settings(
     commonSettings,
     name := "Util Cache",
-    libraryDependencies ++= Seq(sjsonnewScalaJson, scalaReflect.value)
+    libraryDependencies ++= Seq(sjsonnewScalaJson.value, scalaReflect.value)
   ).
   configure(addSbtIO)
 
