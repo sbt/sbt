@@ -7,7 +7,7 @@ package internal
 package util.codec
 
 import sjsonnew.{ JsonWriter => JW, JsonReader => JR, JsonFormat => JF, _ }
-import scala.json.ast.unsafe._
+import scalajson.ast.unsafe._
 
 trait JValueFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit val JNullFormat: JF[JNull.type] = new JF[JNull.type] {

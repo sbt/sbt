@@ -5,7 +5,7 @@ import sbt.io.syntax.fileToRichFile
 import sbt.io.{ IO, Using }
 import sjsonnew.{ IsoString, JsonReader, JsonWriter, SupportConverter }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
-import scala.json.ast.unsafe.JValue
+import scalajson.ast.unsafe.JValue
 
 /** A `CacheStore` is used by the caching infrastructure to persist cached information. */
 abstract class CacheStore extends Input with Output {

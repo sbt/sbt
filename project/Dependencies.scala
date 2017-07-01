@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   val scala210 = "2.10.6"
@@ -43,9 +44,8 @@ object Dependencies {
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
-  val sjsonnewVersion = "0.8.0-M1"
-  val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
-  val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
+  val sjsonnew = Def.setting { "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value }
+  val sjsonnewScalaJson = Def.setting { "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value }
 
   def log4jVersion = "2.8.1"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
