@@ -5,6 +5,7 @@ import sbt.internal.librarymanagement.cross.CrossVersionUtil
 final case class ScalaVersion(full: String, binary: String)
 
 abstract class CrossVersionFunctions {
+
   /** Compatibility with 0.13 */
   final val Disabled = sbt.librarymanagement.Disabled
   final val Binary = sbt.librarymanagement.Binary

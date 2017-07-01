@@ -18,7 +18,7 @@ trait UpdateOptionsFormat { self: BasicJsonProtocol with ModuleIDFormats with Re
   }
 
   implicit lazy val UpdateOptionsFormat: JsonFormat[UpdateOptions] =
-    project(
+    projectFormat(
       (uo: UpdateOptions) =>
         (
           uo.circularDependencyLevel.name,
