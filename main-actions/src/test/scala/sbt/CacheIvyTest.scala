@@ -12,7 +12,7 @@ class CacheIvyTest extends Properties("CacheIvy") {
   import sjsonnew._
   import sjsonnew.support.scalajson.unsafe.Converter
 
-  import scala.json.ast.unsafe.JValue
+  import scalajson.ast.unsafe.JValue
 
   private class InMemoryStore(converter: SupportConverter[JValue]) extends CacheStore {
     private var content: JValue = _

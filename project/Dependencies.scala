@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   val scala282 = "2.8.2"
@@ -11,10 +12,10 @@ object Dependencies {
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.0.0-M11"
-  private val utilVersion = "1.0.0-M24"
-  private val lmVersion = "1.0.0-X15"
-  private val zincVersion = "1.0.0-X16"
+  private val ioVersion = "1.0.0-M12"
+  private val utilVersion = "1.0.0-M25"
+  private val lmVersion = "1.0.0-X16"
+  private val zincVersion = "1.0.0-X17"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -108,8 +109,7 @@ object Dependencies {
   def addSbtZincCompile(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
 
-  val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.7.0"
-
+  val sjsonNewScalaJson = Def.setting { "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value }
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2" % "2.4.17"

@@ -133,7 +133,7 @@ lazy val testingProj = (project in file("testing"))
   .settings(
     baseSettings,
     name := "Testing",
-    libraryDependencies ++= Seq(testInterface, launcherInterface, sjsonNewScalaJson),
+    libraryDependencies ++= Seq(testInterface, launcherInterface, sjsonNewScalaJson.value),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -205,7 +205,7 @@ lazy val actionsProj = (project in file("main-actions"))
   .settings(
     testedBaseSettings,
     name := "Actions",
-    libraryDependencies += sjsonNewScalaJson
+    libraryDependencies += sjsonNewScalaJson.value
   )
   .configure(
     addSbtCompilerClasspath,
@@ -226,7 +226,7 @@ lazy val protocolProj = (project in file("protocol"))
   .settings(
     testedBaseSettings,
     name := "Protocol",
-    libraryDependencies ++= Seq(sjsonNewScalaJson),
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -241,7 +241,7 @@ lazy val commandProj = (project in file("main-command"))
   .settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson, templateResolverApi),
+    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",

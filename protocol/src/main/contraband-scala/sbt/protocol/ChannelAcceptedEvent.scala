@@ -14,7 +14,7 @@ final class ChannelAcceptedEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (17 + channelName.##)
+    37 * (37 * (17 + "ChannelAcceptedEvent".##) + channelName.##)
   }
   override def toString: String = {
     "ChannelAcceptedEvent(" + channelName + ")"

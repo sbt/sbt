@@ -4,14 +4,14 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.codec
-import _root_.sjsonnew.{ deserializationError, serializationError, Builder, JsonFormat, Unbuilder }
+import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait SettingQuerySuccessFormats { self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val SettingQuerySuccessFormat: JsonFormat[sbt.protocol.SettingQuerySuccess] = new JsonFormat[sbt.protocol.SettingQuerySuccess] {
   override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.SettingQuerySuccess = {
     jsOpt match {
       case Some(js) =>
       unbuilder.beginObject(js)
-      val value = unbuilder.readField[scala.json.ast.unsafe.JValue]("value")
+      val value = unbuilder.readField[scalajson.ast.unsafe.JValue]("value")
       val contentType = unbuilder.readField[String]("contentType")
       unbuilder.endObject()
       sbt.protocol.SettingQuerySuccess(value, contentType)

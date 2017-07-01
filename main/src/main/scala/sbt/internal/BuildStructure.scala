@@ -250,7 +250,7 @@ object BuildStreams {
   def mkStreams(units: Map[URI, LoadedBuildUnit],
                 root: URI,
                 data: Settings[Scope]): State => Streams = s => {
-    implicit val isoString: sjsonnew.IsoString[scala.json.ast.unsafe.JValue] =
+    implicit val isoString: sjsonnew.IsoString[scalajson.ast.unsafe.JValue] =
       sjsonnew.IsoString.iso(sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
                              sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe)
     (s get Keys.stateStreams) getOrElse {

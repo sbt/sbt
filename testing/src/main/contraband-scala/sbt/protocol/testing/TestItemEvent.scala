@@ -16,7 +16,7 @@ final class TestItemEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + result.##) + detail.##)
+    37 * (37 * (37 * (17 + "TestItemEvent".##) + result.##) + detail.##)
   }
   override def toString: String = {
     "TestItemEvent(" + result + ", " + detail + ")"

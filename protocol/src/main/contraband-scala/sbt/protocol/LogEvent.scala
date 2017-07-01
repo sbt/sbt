@@ -16,7 +16,7 @@ final class LogEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + level.##) + message.##)
+    37 * (37 * (37 * (17 + "LogEvent".##) + level.##) + message.##)
   }
   override def toString: String = {
     "LogEvent(" + level + ", " + message + ")"

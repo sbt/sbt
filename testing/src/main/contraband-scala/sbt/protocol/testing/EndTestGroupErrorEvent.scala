@@ -16,7 +16,7 @@ final class EndTestGroupErrorEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + name.##) + error.##)
+    37 * (37 * (37 * (17 + "EndTestGroupErrorEvent".##) + name.##) + error.##)
   }
   override def toString: String = {
     "EndTestGroupErrorEvent(" + name + ", " + error + ")"

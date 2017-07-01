@@ -16,7 +16,7 @@ final class Exec private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + commandLine.##) + execId.##) + source.##)
+    37 * (37 * (37 * (37 * (17 + "Exec".##) + commandLine.##) + execId.##) + source.##)
   }
   override def toString: String = {
     "Exec(" + commandLine + ", " + execId + ", " + source + ")"

@@ -2171,7 +2171,7 @@ object Classpaths {
       f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport = {
     import sbt.librarymanagement.LibraryManagementCodec._
     import sbt.util.FileBasedStore
-    implicit val isoString: sjsonnew.IsoString[scala.json.ast.unsafe.JValue] =
+    implicit val isoString: sjsonnew.IsoString[scalajson.ast.unsafe.JValue] =
       sjsonnew.IsoString.iso(
         sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
         sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe

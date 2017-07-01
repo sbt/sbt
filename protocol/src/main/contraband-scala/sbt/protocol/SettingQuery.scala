@@ -14,7 +14,7 @@ final class SettingQuery private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (17 + setting.##)
+    37 * (37 * (17 + "SettingQuery".##) + setting.##)
   }
   override def toString: String = {
     "SettingQuery(" + setting + ")"
