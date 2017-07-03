@@ -6,6 +6,7 @@ org.apache.commons:commons-math3:3.4.1:compile
 org.bytedeco:javacpp:1.2.3:compile
 org.javassist:javassist:3.18.2-GA:compile
 org.nd4j:nd4j-api:0.5.0:compile
+org.nd4j:nd4j-backend-impls:0.5.0:compile
 org.nd4j:nd4j-buffer:0.5.0:compile
 org.nd4j:nd4j-common:0.5.0:compile
 org.nd4j:nd4j-context:0.5.0:compile

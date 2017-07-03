@@ -259,7 +259,7 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("acme", "config"), "1.3.0")
         val res = await(resolve0(
           Set(dep)
-        )).clearFinalDependenciesCache
+        )).clearFinalDependenciesCache.clearProjectProperties
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -276,7 +276,7 @@ object ResolutionTests extends TestSuite {
         val trDep = Dependency(Module("acme", "play-json"), "2.4.0")
         val res = await(resolve0(
           Set(dep)
-        )).clearFinalDependenciesCache
+        )).clearFinalDependenciesCache.clearProjectProperties
 
         val expected = Resolution(
           rootDependencies = Set(dep),

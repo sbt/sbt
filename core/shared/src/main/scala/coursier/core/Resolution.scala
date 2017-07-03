@@ -117,12 +117,9 @@ object Resolution {
     }
   }
 
+  @deprecated("Originally intended for internal use only", "1.0.0-RC7")
   def propertiesMap(props: Seq[(String, String)]): Map[String, String] =
-    props.foldLeft(Map.empty[String, String]) {
-      case (acc, (k, v0)) =>
-        val v = substituteProps(v0, acc)
-        acc + (k -> v)
-    }
+    substitute(props).toMap
 
   /**
    * Substitutes `properties` in `dependencies`.
@@ -361,26 +358,25 @@ object Resolution {
   def projectProperties(project: Project): Seq[(String, String)] = {
 
     // vague attempt at recovering the POM packaging tag
-    def packagingOpt = project.publications.collectFirst {
+    val packagingOpt = project.publications.collectFirst {
       case ("compile", pub) =>
         pub.`type`
     }
 
     // FIXME The extra properties should only be added for Maven projects, not Ivy ones
-    val properties0 = Seq(
+    val properties0 = project.properties ++ Seq(
       // some artifacts seem to require these (e.g. org.jmock:jmock-legacy:2.5.1)
       // although I can find no mention of them in any manual / spec
       "pom.groupId"         -> project.module.organization,
       "pom.artifactId"      -> project.module.name,
-      "pom.version"         -> project.version,
+      "pom.version"         -> project.actualVersion,
       // Required by some dependencies too (org.apache.directory.shared:shared-ldap:0.9.19 in particular)
       "groupId"             -> project.module.organization,
       "artifactId"          -> project.module.name,
-      "version"             -> project.version
-    ) ++ project.properties ++ Seq(
+      "version"             -> project.actualVersion,
       "project.groupId"     -> project.module.organization,
       "project.artifactId"  -> project.module.name,
-      "project.version"     -> project.version
+      "project.version"     -> project.actualVersion
     ) ++ packagingOpt.toSeq.map { packaging =>
       "project.packaging"   -> packaging
     } ++ project.parent.toSeq.flatMap {
@@ -395,6 +391,11 @@ object Resolution {
     // loose attempt at substituting properties in each others in properties0
     // doesn't try to go recursive for now, but that could be made so if necessary
 
+    substitute(properties0)
+  }
+
+  private def substitute(properties0: Seq[(String, String)]): Seq[(String, String)] = {
+
     val done = properties0
       .collect {
         case kv @ (_, value) if propRegex.findFirstIn(value).isEmpty =>
@@ -402,10 +403,20 @@ object Resolution {
       }
       .toMap
 
-    properties0.map {
+    var didSubstitutions = false
+
+    val res = properties0.map {
       case (k, v) =>
-        k -> substituteProps(v, done)
+        val res = substituteProps(v, done)
+        if (!didSubstitutions)
+          didSubstitutions = res != v
+        k -> res
     }
+
+    if (didSubstitutions)
+      substitute(res)
+    else
+      res
   }
 
   /**
@@ -422,7 +433,7 @@ object Resolution {
 
     // section numbers in the comments refer to withDependencyManagement
 
-    val properties = propertiesMap(projectProperties(project))
+    val properties = project.properties.toMap
 
     val (actualConfig, configurations) = withParentConfigurations(from.configuration, project.configurations)
 
@@ -791,13 +802,13 @@ final case class Resolution(
       project.parent.toSet
     else {
 
-      val approxProperties0 =
-        project.parent
-          .flatMap(projectCache.get)
-          .map(_._2.properties)
-          .fold(project.properties)(project.properties ++ _)
+      val parentProperties0 = project
+        .parent
+        .flatMap(projectCache.get)
+        .map(_._2.properties.toMap)
+        .getOrElse(Map())
 
-      val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
+      val approxProperties = parentProperties0 ++ projectProperties(project)
 
       val profileDependencies =
         profiles(
@@ -862,6 +873,11 @@ final case class Resolution(
     )
   }
 
+  private def withFinalProperties(project: Project): Project =
+    project.copy(
+      properties = projectProperties(project)
+    )
+
   /**
    * Add dependency management / inheritance related items to `project`,
    * from what's available in cache.
@@ -903,14 +919,14 @@ final case class Resolution(
 
     // A bit fragile, but seems to work
 
-    val approxProperties0 =
-      project.parent
-        .filter(projectCache.contains)
-        .map(projectCache(_)._2.properties)
-        .fold(project.properties)(_ ++ project.properties)
+    val parentProperties0 = project
+      .parent
+      .flatMap(projectCache.get)
+      .map(_._2.properties)
+      .getOrElse(Seq())
 
     // 1.1 (see above)
-    val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
+    val approxProperties = parentProperties0.toMap ++ projectProperties(project)
 
     val profiles0 = profiles(
       project,
@@ -923,18 +939,13 @@ final case class Resolution(
     // 1.2 made from Pom.scala (TODO look at the very details?)
 
     // 1.3 & 1.4 (if only vaguely so)
-    val properties0 =
-      (project.properties /: profiles0) { (acc, p) =>
-        acc ++ p.properties
-      }
-
-    val project0 = project.copy(
-      properties = project.parent  // belongs to 1.5 & 1.6
-        .flatMap(projectCache.get)
-        .fold(properties0)(_._2.properties ++ properties0)
+    val project0 = withFinalProperties(
+      project.copy(
+        properties = parentProperties0 ++ project.properties ++ profiles0.flatMap(_.properties) // belongs to 1.5 & 1.6
+      )
     )
 
-    val propertiesMap0 = propertiesMap(projectProperties(project0))
+    val propertiesMap0 = project0.properties.toMap
 
     val dependencies0 = addDependencies(
       (project0.dependencies +: profiles0.map(_.dependencies)).map(withProperties(_, propertiesMap0))

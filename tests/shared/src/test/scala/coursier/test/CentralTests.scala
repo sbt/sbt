@@ -340,6 +340,13 @@ abstract class CentralTests extends TestSuite {
       )
     }
 
+    'propertySubstitution - {
+      resolutionCheck(
+        Module("org.drools", "drools-compiler"),
+        "7.0.0.Final"
+      )
+    }
+
     'artifactIdProperties - {
       resolutionCheck(
         Module("cc.factorie", "factorie_2.11"),
