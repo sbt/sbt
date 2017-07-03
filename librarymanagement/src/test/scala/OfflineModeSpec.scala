@@ -40,7 +40,7 @@ class OfflineModeSpec extends BaseIvySpecification with DependencyBuilders {
 
     // Compute an estimate to ensure that the second resolution does indeed use the cache
     val originalResolveTime = onlineResolution.right.get.stats.resolveTime
-    val estimatedCachedTime = originalResolveTime * 0.15
+    val estimatedCachedTime = originalResolveTime * 0.3
 
     val offlineResolution =
       IvyActions.updateEither(toResolve, offlineConf, warningConf, noClock, targetDir, log)
