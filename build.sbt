@@ -32,7 +32,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 
 lazy val utilRoot: Project = (project in file(".")).
   aggregate(
-    utilInterface, utilControl, utilCollection, utilApplyMacro, utilComplete,
+    utilInterface, utilControl, utilPosition, utilCollection, utilApplyMacro, utilComplete,
     utilLogging, utilRelation, utilLogic, utilCache, utilTracking, utilTesting,
     utilScripted
   ).
@@ -76,14 +76,19 @@ lazy val utilControl = (project in internalPath / "util-control").
     name := "Util Control"
   )
 
+val utilPosition = (project in file("internal") / "util-position").settings(
+  commonSettings,
+  name := "Util Position"
+)
+
 lazy val utilCollection = (project in internalPath / "util-collection").
-  dependsOn(utilTesting % Test).
+  dependsOn(utilPosition, utilTesting % Test).
   settings(
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
     Util.keywordsSettings,
     name := "Util Collection",
-    libraryDependencies ++= Seq(sjsonnew.value)
+    libraryDependencies ++= Seq(sjsonnew.value, sjsonnewScalaJson.value % Test)
   )
 
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
@@ -107,7 +112,7 @@ lazy val utilComplete = (project in internalPath / "util-complete").
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging").
   enablePlugins(ContrabandPlugin, JsonCodecPlugin).
-  dependsOn(utilInterface, utilCollection, utilTesting % Test).
+  dependsOn(utilInterface, utilTesting % Test).
   settings(
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
@@ -140,7 +145,7 @@ lazy val utilLogic = (project in internalPath / "util-logic").
 
 // Persisted caching based on sjson-new
 lazy val utilCache = (project in file("util-cache")).
-  dependsOn(utilCollection, utilTesting % Test).
+  dependsOn(utilTesting % Test).
   settings(
     commonSettings,
     name := "Util Cache",

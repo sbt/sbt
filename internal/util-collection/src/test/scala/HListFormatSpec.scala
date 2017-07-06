@@ -1,9 +1,10 @@
-package sbt.util
+package sbt
+package internal
+package util
 
 import scalajson.ast.unsafe._
-import sjsonnew._, support.scalajson.unsafe._
-import CacheImplicits._
-import sbt.internal.util.{ UnitSpec, HNil }
+import sjsonnew._, BasicJsonProtocol._, support.scalajson.unsafe._
+import HListFormats._
 
 class HListFormatSpec extends UnitSpec {
   val quux = 23 :+: "quux" :+: true :+: HNil

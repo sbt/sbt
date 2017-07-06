@@ -66,3 +66,5 @@ trait HListFormats {
     def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = hnil
   }
 }
+
+object HListFormats extends HListFormats
