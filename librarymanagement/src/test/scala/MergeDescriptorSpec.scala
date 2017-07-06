@@ -1,6 +1,6 @@
 package sbt.internal.librarymanagement
 
-import org.apache.ivy.core.module.descriptor.{ DependencyArtifactDescriptor }
+import org.apache.ivy.core.module.descriptor.DependencyArtifactDescriptor
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.ivyint._
 

@@ -1,6 +1,6 @@
 package sbt.librarymanagement
 
-import sbt.internal.util.UnitSpec
+import sbt.internal.librarymanagement.UnitSpec
 
 class ModuleIdTest extends UnitSpec {
   "Module Id" should "return cross-disabled module id as equal to a copy" in {

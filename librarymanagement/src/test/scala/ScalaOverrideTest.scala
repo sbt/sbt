@@ -3,7 +3,7 @@ package sbt.librarymanagement
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor
 
-import sbt.internal.util.UnitSpec
+import sbt.internal.librarymanagement.UnitSpec
 
 import IvyScala.OverrideScalaMediator
 import ScalaArtifacts._

@@ -7,14 +7,12 @@ object Dependencies {
   val scala212 = "2.12.2"
 
   private val ioVersion = "1.0.0-M12"
-  private val utilVersion = "1.0.0-M25"
+  private val utilVersion = "1.0.0-M26"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
+  private val utilPosition = "org.scala-sbt" %% "util-position" % utilVersion
   private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
-  private val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
-  private val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
   private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
 
   def getSbtModulePath(key: String, name: String) = {
@@ -28,27 +26,17 @@ object Dependencies {
   lazy val sbtIoPath = getSbtModulePath("sbtio.path", "sbt/io")
   lazy val sbtUtilPath = getSbtModulePath("sbtutil.path", "sbt/util")
 
-  def addSbtModule(p: Project,
-                   path: Option[String],
-                   projectName: String,
-                   m: ModuleID,
-                   c: Option[Configuration] = None) =
+  def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID) =
     path match {
-      case Some(f) =>
-        p dependsOn c.fold[ClasspathDep[ProjectReference]](ProjectRef(file(f), projectName))(
-          ProjectRef(file(f), projectName) % _)
-      case None => p settings (libraryDependencies += c.fold(m)(m % _))
+      case Some(f) => p dependsOn ProjectRef(file(f), projectName)
+      case None    => p settings (libraryDependencies += m)
     }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
-  def addSbtUtilCollection(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
+  def addSbtUtilPosition(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilPosition", utilPosition)
   def addSbtUtilLogging(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
-  def addSbtUtilTesting(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilTesting", utilTesting, Some(Test))
-  def addSbtUtilCompletion(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilComplete", utilCompletion)
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
@@ -56,6 +44,7 @@ object Dependencies {
   val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaXml = scala211Module("scala-xml", "1.0.5")
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.1" % Test
   val sjsonnew = Def.setting { "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value }
   val sjsonnewScalaJson = Def.setting { "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value }
   val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.3.0"

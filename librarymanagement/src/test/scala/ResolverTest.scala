@@ -2,7 +2,7 @@ package sbt.librarymanagement
 
 import java.net.URL
 
-import sbt.internal.util.UnitSpec
+import sbt.internal.librarymanagement.UnitSpec
 
 object ResolverTest extends UnitSpec {
 

@@ -1,11 +1,10 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import org.apache.ivy.core
-import core.module.descriptor.ModuleDescriptor
+import org.apache.ivy.core.module.descriptor.ModuleDescriptor
+import sbt.io.IO
 import sbt.util.{ CacheStore, Logger }
-import sbt.librarymanagement._
-import sbt.librarymanagement.LibraryManagementCodec._
+import sbt.librarymanagement._, LibraryManagementCodec._
 
 private[sbt] object JsonUtil {
   def sbtOrgTemp = "org.scala-sbt.temp"
@@ -22,14 +21,17 @@ private[sbt] object JsonUtil {
       fromLite(lite, cachedDescriptor)
     } catch {
       case e: Throwable =>
-        log.error("Unable to parse mini graph: " + path.toString)
+        log.error(s"Unable to parse mini graph: $path")
         throw e
     }
   }
+
   def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit = {
-    sbt.io.IO.createDirectory(graphPath.getParentFile)
-    CacheStore(graphPath).write(toLite(ur))
+    val updateReportLite = toLite(ur)
+    IO.createDirectory(graphPath.getParentFile)
+    CacheStore(graphPath).write(updateReportLite)
   }
+
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
       ConfigurationReportLite(
@@ -65,6 +67,7 @@ private[sbt] object JsonUtil {
         }
       )
     })
+
   // #1763/#2030. Caller takes up 97% of space, so we need to shrink it down,
   // but there are semantics associated with some of them.
   def filterOutArtificialCallers(callers: Vector[Caller]): Vector[Caller] =
