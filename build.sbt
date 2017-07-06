@@ -94,8 +94,8 @@ lazy val lm = (project in file("librarymanagement"))
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
     // "clean" ::
-    "so compile" ::
-      "so publishSigned" ::
+    "+compile" ::
+      "+publishSigned" ::
       "reload" ::
       state
   }
