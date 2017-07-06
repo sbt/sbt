@@ -1,20 +1,20 @@
 package sbt.internal.inc
 
 import java.io.File
-import java.util.concurrent.Callable
 
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement.{
   DefaultMavenRepository,
-  FileRepository,
-  Patterns,
+  ChainedResolver,
+  IvyLibraryManagement,
+  ModuleConfiguration,
   Resolver,
   UpdateOptions
 }
+import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 import sbt.util.Logger
 import xsbti.compile.CompilerBridgeProvider
-import xsbti.{ ComponentProvider, GlobalLock }
 
 /**
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
@@ -28,7 +28,7 @@ abstract class BridgeProviderSpecification extends UnitSpec {
 
   val resolvers = Array(ZincComponentCompiler.LocalResolver, DefaultMavenRepository)
   private val ivyConfiguration =
-    ZincComponentCompiler.getDefaultConfiguration(currentBase, currentTarget, resolvers, log)
+    getDefaultConfiguration(currentBase, currentTarget, resolvers, log)
 
   def secondaryCacheDirectory: File = {
     val target = file("target").getAbsoluteFile
@@ -40,7 +40,8 @@ abstract class BridgeProviderSpecification extends UnitSpec {
     val secondaryCache = Some(secondaryCacheDirectory)
     val componentProvider = ZincComponentCompiler.getDefaultComponentProvider(targetDir)
     val manager = new ZincComponentManager(lock, componentProvider, secondaryCache, log)
-    ZincComponentCompiler.interfaceProvider(manager, ivyConfiguration, currentManaged)
+    val libraryManagement = new IvyLibraryManagement(ivyConfiguration)
+    ZincComponentCompiler.interfaceProvider(manager, libraryManagement, currentManaged)
   }
 
   def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
@@ -57,5 +58,26 @@ abstract class BridgeProviderSpecification extends UnitSpec {
                     logger: Logger): xsbti.compile.ScalaInstance = {
     val provider = getZincProvider(targetDir, logger)
     provider.fetchScalaInstance(scalaVersion, logger)
+  }
+
+  private def getDefaultConfiguration(baseDirectory: File,
+                                      ivyHome: File,
+                                      resolvers0: Array[Resolver],
+                                      log: xsbti.Logger): InlineIvyConfiguration = {
+    import sbt.io.syntax._
+    val resolvers = resolvers0.toVector
+    val chainResolver = ChainedResolver("zinc-chain", resolvers)
+    new InlineIvyConfiguration(
+      paths = IvyPaths(baseDirectory, Some(ivyHome)),
+      resolvers = resolvers,
+      otherResolvers = Vector.empty,
+      moduleConfigurations = Vector(ModuleConfiguration("*", chainResolver)),
+      lock = None,
+      checksums = Vector.empty,
+      managedChecksums = false,
+      resolutionCacheDir = Some(ivyHome / "resolution-cache"),
+      updateOptions = UpdateOptions(),
+      log = log
+    )
   }
 }
