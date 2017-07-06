@@ -4,7 +4,7 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.testing.codec
-import _root_.sjsonnew.{ deserializationError, serializationError, Builder, JsonFormat, Unbuilder }
+import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait TestStringEventFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val TestStringEventFormat: JsonFormat[sbt.protocol.testing.TestStringEvent] = new JsonFormat[sbt.protocol.testing.TestStringEvent] {
   override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.testing.TestStringEvent = {

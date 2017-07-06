@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.protocol
 final class SettingQuerySuccess private (
-  val value: scala.json.ast.unsafe.JValue,
+  val value: scalajson.ast.unsafe.JValue,
   val contentType: String) extends sbt.protocol.SettingQueryResponse() with Serializable {
   
   
@@ -15,15 +15,15 @@ final class SettingQuerySuccess private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + value.##) + contentType.##)
+    37 * (37 * (37 * (17 + "SettingQuerySuccess".##) + value.##) + contentType.##)
   }
   override def toString: String = {
     "SettingQuerySuccess(" + value + ", " + contentType + ")"
   }
-  protected[this] def copy(value: scala.json.ast.unsafe.JValue = value, contentType: String = contentType): SettingQuerySuccess = {
+  protected[this] def copy(value: scalajson.ast.unsafe.JValue = value, contentType: String = contentType): SettingQuerySuccess = {
     new SettingQuerySuccess(value, contentType)
   }
-  def withValue(value: scala.json.ast.unsafe.JValue): SettingQuerySuccess = {
+  def withValue(value: scalajson.ast.unsafe.JValue): SettingQuerySuccess = {
     copy(value = value)
   }
   def withContentType(contentType: String): SettingQuerySuccess = {
@@ -32,5 +32,5 @@ final class SettingQuerySuccess private (
 }
 object SettingQuerySuccess {
   
-  def apply(value: scala.json.ast.unsafe.JValue, contentType: String): SettingQuerySuccess = new SettingQuerySuccess(value, contentType)
+  def apply(value: scalajson.ast.unsafe.JValue, contentType: String): SettingQuerySuccess = new SettingQuerySuccess(value, contentType)
 }

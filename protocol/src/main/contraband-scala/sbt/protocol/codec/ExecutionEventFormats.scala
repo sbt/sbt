@@ -4,7 +4,7 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.codec
-import _root_.sjsonnew.{ deserializationError, serializationError, Builder, JsonFormat, Unbuilder }
+import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ExecutionEventFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val ExecutionEventFormat: JsonFormat[sbt.protocol.ExecutionEvent] = new JsonFormat[sbt.protocol.ExecutionEvent] {
   override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.ExecutionEvent = {

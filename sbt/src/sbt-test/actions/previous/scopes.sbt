@@ -1,4 +1,4 @@
-import sjsonnew.BasicJsonProtocol.{ project => _, _ }
+import sjsonnew.BasicJsonProtocol._
 
 lazy val x = taskKey[Int]("x")
 lazy val y = taskKey[Int]("y")

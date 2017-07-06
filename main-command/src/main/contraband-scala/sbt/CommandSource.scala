@@ -14,7 +14,7 @@ final class CommandSource private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (17 + channelName.##)
+    37 * (37 * (17 + "CommandSource".##) + channelName.##)
   }
   override def toString: String = {
     "CommandSource(" + channelName + ")"

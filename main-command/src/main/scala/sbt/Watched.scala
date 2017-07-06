@@ -6,30 +6,35 @@ package sbt
 import BasicCommandStrings.ClearOnFailure
 import State.FailureWall
 import annotation.tailrec
-import java.io.File
+import java.nio.file.FileSystems
 
-import sbt.io.PathFinder
-import sbt.internal.io.{ SourceModificationWatch, WatchState }
+import scala.concurrent.duration._
+
+import sbt.io.WatchService
+import sbt.internal.io.{ Source, SourceModificationWatch, WatchState }
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.Types.const
 
 trait Watched {
 
   /** The files watched when an action is run with a preceeding ~ */
-  def watchPaths(s: State): Seq[File] = Nil
+  def watchSources(s: State): Seq[Source] = Nil
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
   /**
    * The time in milliseconds between checking for changes.  The actual time between the last change made to a file and the
    * execution time is between `pollInterval` and `pollInterval*2`.
    */
-  def pollInterval: Int = Watched.PollDelayMillis
+  def pollInterval: FiniteDuration = Watched.PollDelay
 
   /** The message to show when triggered execution waits for sources to change.*/
   private[sbt] def watchingMessage(s: WatchState): String = Watched.defaultWatchingMessage(s)
 
   /** The message to show before an action is run. */
   private[sbt] def triggeredMessage(s: WatchState): String = Watched.defaultTriggeredMessage(s)
+
+  /** The `WatchService` to use to monitor the file system. */
+  private[sbt] def watchService(): WatchService = FileSystems.getDefault.newWatchService()
 }
 
 object Watched {
@@ -43,7 +48,7 @@ object Watched {
 
   def multi(base: Watched, paths: Seq[Watched]): Watched =
     new AWatched {
-      override def watchPaths(s: State) = (base.watchPaths(s) /: paths)(_ ++ _.watchPaths(s))
+      override def watchSources(s: State) = (base.watchSources(s) /: paths)(_ ++ _.watchSources(s))
       override def terminateWatch(key: Int): Boolean = base.terminateWatch(key)
       override val pollInterval = (base +: paths).map(_.pollInterval).min
       override def watchingMessage(s: WatchState) = base.watchingMessage(s)
@@ -51,15 +56,16 @@ object Watched {
     }
   def empty: Watched = new AWatched
 
-  val PollDelayMillis = 500
+  val PollDelay: FiniteDuration = 500.milliseconds
   def isEnter(key: Int): Boolean = key == 10 || key == 13
   def printIfDefined(msg: String) = if (!msg.isEmpty) System.out.println(msg)
 
   def executeContinuously(watched: Watched, s: State, next: String, repeat: String): State = {
     @tailrec def shouldTerminate: Boolean =
       (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)
-    val sourcesFinder = PathFinder { watched watchPaths s }
-    val watchState = s get ContinuousState getOrElse WatchState.empty
+    val sources = watched.watchSources(s)
+    val service = watched.watchService()
+    val watchState = s get ContinuousState getOrElse WatchState.empty(service, sources)
 
     if (watchState.count > 0)
       printIfDefined(watched watchingMessage watchState)
@@ -67,8 +73,7 @@ object Watched {
     val (triggered, newWatchState) =
       try {
         val (triggered, newWatchState) =
-          SourceModificationWatch.watch(sourcesFinder, watched.pollInterval, watchState)(
-            shouldTerminate)
+          SourceModificationWatch.watch(watched.pollInterval, watchState)(shouldTerminate)
         (triggered, newWatchState)
       } catch {
         case e: Exception =>
@@ -84,7 +89,8 @@ object Watched {
       (ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
     } else {
       while (System.in.available() > 0) System.in.read()
-      s.put(ContinuousState, WatchState.empty)
+      service.close()
+      s.remove(ContinuousState)
     }
   }
   val ContinuousState =

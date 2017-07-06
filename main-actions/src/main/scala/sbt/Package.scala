@@ -120,7 +120,7 @@ object Package {
     "Input file mappings:\n\t" + (sources map { case (f, s) => s + "\n\t  " + f } mkString ("\n\t"))
 
   implicit def manifestEquiv: Equiv[Manifest] = defaultEquiv
-  implicit def manifestFormat: JsonFormat[Manifest] = project[Manifest, Array[Byte]](
+  implicit def manifestFormat: JsonFormat[Manifest] = projectFormat[Manifest, Array[Byte]](
     m => {
       val bos = new java.io.ByteArrayOutputStream()
       m write bos

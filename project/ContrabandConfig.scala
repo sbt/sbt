@@ -32,7 +32,7 @@ object ContrabandConfig {
     case "sbt.testing.Status" => { _ =>
       "sbt.internal.testing.StatusFormats" :: Nil
     }
-    case "scala.json.ast.unsafe.JValue" => { _ =>
+    case "scalajson.ast.unsafe.JValue" => { _ =>
       "sbt.internal.util.codec.JValueFormats" :: Nil
     }
   }
