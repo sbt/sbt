@@ -85,7 +85,6 @@ lazy val utilCollection = (project in internalPath / "util-collection").
   dependsOn(utilPosition, utilTesting % Test).
   settings(
     commonSettings,
-    crossScalaVersions := Seq(scala210, scala211, scala212),
     Util.keywordsSettings,
     name := "Util Collection",
     libraryDependencies ++= Seq(sjsonnew.value, sjsonnewScalaJson.value % Test)
