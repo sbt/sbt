@@ -190,8 +190,8 @@ lazy val utilScripted = (project in internalPath / "util-scripted").
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
     // "clean" ::
-    "so compile" ::
-    "so publishSigned" ::
+    "+compile" ::
+    "+publishSigned" ::
     "reload" ::
     state
   }
