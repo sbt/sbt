@@ -8,31 +8,31 @@ class FileExamplesTest extends UnitSpec {
 
   "listing all files in an absolute base directory" should
     "produce the entire base directory's contents" in {
-      val _ = new DirectoryStructure {
-        fileExamples().toList should contain theSameElementsAs (allRelativizedPaths)
-      }
+    val _ = new DirectoryStructure {
+      fileExamples().toList should contain theSameElementsAs (allRelativizedPaths)
     }
+  }
 
   "listing files with a prefix that matches none" should
     "produce an empty list" in {
-      val _ = new DirectoryStructure(withCompletionPrefix = "z") {
-        fileExamples().toList shouldBe empty
-      }
+    val _ = new DirectoryStructure(withCompletionPrefix = "z") {
+      fileExamples().toList shouldBe empty
     }
+  }
 
   "listing single-character prefixed files" should
     "produce matching paths only" in {
-      val _ = new DirectoryStructure(withCompletionPrefix = "f") {
-        fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
-      }
+    val _ = new DirectoryStructure(withCompletionPrefix = "f") {
+      fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
     }
+  }
 
   "listing directory-prefixed files" should
     "produce matching paths only" in {
-      val _ = new DirectoryStructure(withCompletionPrefix = "far") {
-        fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
-      }
+    val _ = new DirectoryStructure(withCompletionPrefix = "far") {
+      fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
     }
+  }
 
   it should "produce sub-dir contents only when appending a file separator to the directory" in {
     val _ = new DirectoryStructure(withCompletionPrefix = "far" + File.separator) {
@@ -42,17 +42,17 @@ class FileExamplesTest extends UnitSpec {
 
   "listing files with a sub-path prefix" should
     "produce matching paths only" in {
-      val _ = new DirectoryStructure(withCompletionPrefix = "far" + File.separator + "ba") {
-        fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
-      }
+    val _ = new DirectoryStructure(withCompletionPrefix = "far" + File.separator + "ba") {
+      fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
     }
+  }
 
   "completing a full path" should
     "produce a list with an empty string" in {
-      val _ = new DirectoryStructure(withCompletionPrefix = "bazaar") {
-        fileExamples().toList shouldEqual List("")
-      }
+    val _ = new DirectoryStructure(withCompletionPrefix = "bazaar") {
+      fileExamples().toList shouldEqual List("")
     }
+  }
 
   // TODO: Remove DelayedInit - https://github.com/scala/scala/releases/tag/v2.11.0-RC1
   class DirectoryStructure(withCompletionPrefix: String = "") extends DelayedInit {
@@ -64,17 +64,19 @@ class FileExamplesTest extends UnitSpec {
     var nestedDirectories: List[File] = _
 
     def allRelativizedPaths: List[String] =
-      (childFiles ++ childDirectories ++ nestedFiles ++ nestedDirectories).map(relativize(baseDir, _).get)
+      (childFiles ++ childDirectories ++ nestedFiles ++ nestedDirectories)
+        .map(relativize(baseDir, _).get)
 
     def prefixedPathsOnly: List[String] =
-      allRelativizedPaths.filter(_ startsWith withCompletionPrefix).map(_ substring withCompletionPrefix.length)
+      allRelativizedPaths
+        .filter(_ startsWith withCompletionPrefix)
+        .map(_ substring withCompletionPrefix.length)
 
     override def delayedInit(testBody: => Unit): Unit = {
-      withTemporaryDirectory {
-        tempDir =>
-          createSampleDirStructure(tempDir)
-          fileExamples = new FileExamples(baseDir, withCompletionPrefix)
-          testBody
+      withTemporaryDirectory { tempDir =>
+        createSampleDirStructure(tempDir)
+        fileExamples = new FileExamples(baseDir, withCompletionPrefix)
+        testBody
       }
     }
 
@@ -90,7 +92,8 @@ class FileExamplesTest extends UnitSpec {
       baseDir = tempDir
     }
 
-    private def toChildFiles(baseDir: File, files: List[String]): List[File] = files.map(new File(baseDir, _))
+    private def toChildFiles(baseDir: File, files: List[String]): List[File] =
+      files.map(new File(baseDir, _))
   }
 
 }

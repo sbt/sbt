@@ -10,6 +10,7 @@ import sbt.io.IO
  * TAB key in the console.
  */
 trait ExampleSource {
+
   /**
    * @return a (possibly lazy) list of completion example strings. These strings are continuations of user's input. The
    *         user's input is incremented with calls to [[withAddedPrefix]].
@@ -22,6 +23,7 @@ trait ExampleSource {
    *         the just added prefix).
    */
   def withAddedPrefix(addedPrefix: String): ExampleSource
+
 }
 
 /**
@@ -29,7 +31,8 @@ trait ExampleSource {
  * @param examples the examples that will be displayed to the user when they press the TAB key.
  */
 sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSource {
-  override def withAddedPrefix(addedPrefix: String): ExampleSource = FixedSetExamples(examplesWithRemovedPrefix(addedPrefix))
+  override def withAddedPrefix(addedPrefix: String): ExampleSource =
+    FixedSetExamples(examplesWithRemovedPrefix(addedPrefix))
 
   override def apply(): Iterable[String] = examples
 
@@ -46,12 +49,17 @@ sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSo
 class FileExamples(base: File, prefix: String = "") extends ExampleSource {
   override def apply(): Stream[String] = files(base).map(_ substring prefix.length)
 
-  override def withAddedPrefix(addedPrefix: String): FileExamples = new FileExamples(base, prefix + addedPrefix)
+  override def withAddedPrefix(addedPrefix: String): FileExamples =
+    new FileExamples(base, prefix + addedPrefix)
 
   protected def files(directory: File): Stream[String] = {
     val childPaths = IO.listFiles(directory).toStream
-    val prefixedDirectChildPaths = childPaths map { IO.relativize(base, _).get } filter { _ startsWith prefix }
-    val dirsToRecurseInto = childPaths filter { _.isDirectory } map { IO.relativize(base, _).get } filter { dirStartsWithPrefix }
+    val prefixedDirectChildPaths = childPaths map { IO.relativize(base, _).get } filter {
+      _ startsWith prefix
+    }
+    val dirsToRecurseInto = childPaths filter { _.isDirectory } map { IO.relativize(base, _).get } filter {
+      dirStartsWithPrefix
+    }
     prefixedDirectChildPaths append dirsToRecurseInto.flatMap(dir => files(new File(base, dir)))
   }
 

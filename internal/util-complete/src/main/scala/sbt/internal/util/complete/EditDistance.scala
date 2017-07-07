@@ -5,12 +5,23 @@ import java.lang.Character.{ toLowerCase => lower }
 
 /** @author Paul Phillips*/
 object EditDistance {
+
   /**
    * Translated from the java version at
    *    http://www.merriampark.com/ld.htm
    *  which is declared to be public domain.
    */
-  def levenshtein(s: String, t: String, insertCost: Int = 1, deleteCost: Int = 1, subCost: Int = 1, transposeCost: Int = 1, matchCost: Int = 0, caseCost: Int = 1, transpositions: Boolean = false): Int = {
+  def levenshtein(
+      s: String,
+      t: String,
+      insertCost: Int = 1,
+      deleteCost: Int = 1,
+      subCost: Int = 1,
+      transposeCost: Int = 1,
+      matchCost: Int = 0,
+      caseCost: Int = 1,
+      transpositions: Boolean = false
+  ): Int = {
     val n = s.length
     val m = t.length
     if (n == 0) return m

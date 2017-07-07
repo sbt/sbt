@@ -22,32 +22,38 @@ sealed trait KList[+M[_]] {
   /** Discards the heterogeneous type information and constructs a plain List from this KList's elements. */
   def toList: List[M[_]]
 }
+
 final case class KCons[H, +T <: KList[M], +M[_]](head: M[H], tail: T) extends KList[M] {
   final type Transform[N[_]] = KCons[H, tail.Transform[N], N]
 
   def transform[N[_]](f: M ~> N) = KCons(f(head), tail.transform(f))
   def toList: List[M[_]] = head :: tail.toList
-  def apply[N[x] >: M[x], Z](f: Transform[Id] => Z)(implicit ap: Applicative[N]): N[Z] =
-    {
-      val g = (t: tail.Transform[Id]) => (h: H) => f(KCons[H, tail.Transform[Id], Id](h, t))
-      ap.apply(tail.apply[N, H => Z](g), head)
-    }
-  def traverse[N[_], P[_]](f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Transform[P]] =
-    {
-      val tt: N[tail.Transform[P]] = tail.traverse[N, P](f)
-      val g = (t: tail.Transform[P]) => (h: P[H]) => KCons(h, t)
-      np.apply(np.map(g, tt), f(head))
-    }
+
+  def apply[N[x] >: M[x], Z](f: Transform[Id] => Z)(implicit ap: Applicative[N]): N[Z] = {
+    val g = (t: tail.Transform[Id]) => (h: H) => f(KCons[H, tail.Transform[Id], Id](h, t))
+    ap.apply(tail.apply[N, H => Z](g), head)
+  }
+
+  def traverse[N[_], P[_]](f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Transform[P]] = {
+    val tt: N[tail.Transform[P]] = tail.traverse[N, P](f)
+    val g = (t: tail.Transform[P]) => (h: P[H]) => KCons(h, t)
+    np.apply(np.map(g, tt), f(head))
+  }
+
   def :^:[A, N[x] >: M[x]](h: N[A]) = KCons(h, this)
   override def foldr[B](f: (M[_], B) => B, init: B): B = f(head, tail.foldr(f, init))
 }
+
 sealed abstract class KNil extends KList[Nothing] {
   final type Transform[N[_]] = KNil
   final def transform[N[_]](f: Nothing ~> N): Transform[N] = KNil
   final def toList = Nil
   final def apply[N[x], Z](f: KNil => Z)(implicit ap: Applicative[N]): N[Z] = ap.pure(f(KNil))
-  final def traverse[N[_], P[_]](f: Nothing ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[KNil] = np.pure(KNil)
+
+  final def traverse[N[_], P[_]](f: Nothing ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[KNil] =
+    np.pure(KNil)
 }
+
 case object KNil extends KNil {
   def :^:[M[_], H](h: M[H]): KCons[H, KNil, M] = KCons(h, this)
 }

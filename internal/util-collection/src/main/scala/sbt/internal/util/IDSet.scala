@@ -20,12 +20,13 @@ trait IDSet[T] {
 object IDSet {
   implicit def toTraversable[T]: IDSet[T] => Traversable[T] = _.all
   def apply[T](values: T*): IDSet[T] = apply(values)
-  def apply[T](values: Iterable[T]): IDSet[T] =
-    {
-      val s = create[T]
-      s ++= values
-      s
-    }
+
+  def apply[T](values: Iterable[T]): IDSet[T] = {
+    val s = create[T]
+    s ++= values
+    s
+  }
+
   def create[T]: IDSet[T] = new IDSet[T] {
     private[this] val backing = new java.util.IdentityHashMap[T, AnyRef]
     private[this] val Dummy: AnyRef = ""
@@ -39,7 +40,10 @@ object IDSet {
     def all = collection.JavaConversions.collectionAsScalaIterable(backing.keySet)
     def toList = all.toList
     def isEmpty = backing.isEmpty
-    def process[S](t: T)(ifSeen: S)(ifNew: => S) = if (contains(t)) ifSeen else { this += t; ifNew }
+
+    def process[S](t: T)(ifSeen: S)(ifNew: => S) =
+      if (contains(t)) ifSeen else { this += t; ifNew }
+
     override def toString = backing.toString
   }
 }

@@ -7,10 +7,19 @@ package complete
 import Parser._
 import java.io.File
 import java.net.URI
-import java.lang.Character.{ getType, MATH_SYMBOL, OTHER_SYMBOL, DASH_PUNCTUATION, OTHER_PUNCTUATION, MODIFIER_SYMBOL, CURRENCY_SYMBOL }
+import java.lang.Character.{
+  getType,
+  MATH_SYMBOL,
+  OTHER_SYMBOL,
+  DASH_PUNCTUATION,
+  OTHER_PUNCTUATION,
+  MODIFIER_SYMBOL,
+  CURRENCY_SYMBOL
+}
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers {
+
   /** Matches the end of input, providing no useful result on success. */
   lazy val EOF = not(any, "Expected EOF")
 
@@ -24,10 +33,12 @@ trait Parsers {
   lazy val Digit = charClass(_.isDigit, "digit") examples DigitSet
 
   /** Set containing Chars for hexadecimal digits 0-9 and A-F (but not a-f). */
-  lazy val HexDigitSet = Set('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
+  lazy val HexDigitSet =
+    Set('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
 
   /** Parses a single hexadecimal digit (0-9, a-f, A-F). */
-  lazy val HexDigit = charClass(c => HexDigitSet(c.toUpper), "hex digit") examples HexDigitSet.map(_.toString)
+  lazy val HexDigit = charClass(c => HexDigitSet(c.toUpper), "hex digit") examples HexDigitSet.map(
+    _.toString)
 
   /** Parses a single letter, according to Char.isLetter, into a Char. */
   lazy val Letter = charClass(_.isLetter, "letter")
@@ -70,14 +81,22 @@ trait Parsers {
 
   /** Returns true if `c` an operator character. */
   def isOpChar(c: Char) = !isDelimiter(c) && isOpType(getType(c))
-  def isOpType(cat: Int) = cat match { case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL | CURRENCY_SYMBOL => true; case _ => false }
+
+  def isOpType(cat: Int) = cat match {
+    case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL |
+        CURRENCY_SYMBOL =>
+      true; case _      => false
+  }
+
   /** Returns true if `c` is a dash `-`, a letter, digit, or an underscore `_`. */
   def isIDChar(c: Char) = isScalaIDChar(c) || c == '-'
 
   /** Returns true if `c` is a letter, digit, or an underscore `_`. */
   def isScalaIDChar(c: Char) = c.isLetterOrDigit || c == '_'
 
-  def isDelimiter(c: Char) = c match { case '`' | '\'' | '\"' | /*';' | */ ',' | '.' => true; case _ => false }
+  def isDelimiter(c: Char) = c match {
+    case '`' | '\'' | '\"' | /*';' | */ ',' | '.' => true; case _ => false
+  }
 
   /** Matches a single character that is not a whitespace character. */
   lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
@@ -120,17 +139,22 @@ trait Parsers {
 
   /** Matches any character except a double quote or whitespace. */
   lazy val NotDQuoteSpaceClass =
-    charClass({ c: Char => (c != DQuoteChar) && !c.isWhitespace }, "non-double-quote-space character")
+    charClass({ c: Char =>
+      (c != DQuoteChar) && !c.isWhitespace
+    }, "non-double-quote-space character")
 
   /** Matches any character except a double quote or backslash. */
   lazy val NotDQuoteBackslashClass =
-    charClass({ c: Char => (c != DQuoteChar) && (c != BackslashChar) }, "non-double-quote-backslash character")
+    charClass({ c: Char =>
+      (c != DQuoteChar) && (c != BackslashChar)
+    }, "non-double-quote-backslash character")
 
   /** Matches a single character that is valid somewhere in a URI. */
   lazy val URIChar = charClass(alphanum) | chars("_-!.~'()*,;:$&+=?/[]@%#")
 
   /** Returns true if `c` is an ASCII letter or digit. */
-  def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
+  def alphanum(c: Char) =
+    ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
   /**
    * @param base the directory used for completion proposals (when the user presses the TAB key). Only paths under this
@@ -192,7 +216,9 @@ trait Parsers {
    * A unicode escape begins with a backslash, followed by a `u` and 4 hexadecimal digits representing the unicode value.
    */
   lazy val UnicodeEscape: Parser[Char] =
-    ("u" ~> repeat(HexDigit, 4, 4)) map { seq => Integer.parseInt(seq.mkString, 16).toChar }
+    ("u" ~> repeat(HexDigit, 4, 4)) map { seq =>
+      Integer.parseInt(seq.mkString, 16).toChar
+    }
 
   /** Parses an unquoted, non-empty String value that cannot start with a double quote and cannot contain whitespace.*/
   lazy val NotQuoted = (NotDQuoteSpaceClass ~ OptNotSpace) map { case (c, s) => c.toString + s }
@@ -212,20 +238,25 @@ trait Parsers {
     (rep ~ (sep ~> rep).*).map { case (x ~ xs) => x +: xs }
 
   /** Wraps the result of `p` in `Some`.*/
-  def some[T](p: Parser[T]): Parser[Option[T]] = p map { v => Some(v) }
+  def some[T](p: Parser[T]): Parser[Option[T]] = p map { v =>
+    Some(v)
+  }
 
   /**
    * Applies `f` to the result of `p`, transforming any exception when evaluating
    * `f` into a parse failure with the exception `toString` as the message.
    */
   def mapOrFail[S, T](p: Parser[S])(f: S => T): Parser[T] =
-    p flatMap { s => try { success(f(s)) } catch { case e: Exception => failure(e.toString) } }
+    p flatMap { s =>
+      try { success(f(s)) } catch { case e: Exception => failure(e.toString) }
+    }
 
   /**
    * Parses a space-delimited, possibly empty sequence of arguments.
    * The arguments may use quotes and escapes according to [[StringBasic]].
    */
-  def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(StringBasic, display)).* <~ SpaceClass.*
+  def spaceDelimited(display: String): Parser[Seq[String]] =
+    (token(Space) ~> token(StringBasic, display)).* <~ SpaceClass.*
 
   /** Applies `p` and uses `true` as the result if it succeeds and turns failure into a result of `false`. */
   def flag[T](p: Parser[T]): Parser[Boolean] = (p ^^^ true) ?? false
@@ -236,14 +267,17 @@ trait Parsers {
    * The parsers obtained in this way are separated by `sep`, whose result is discarded and only the sequence
    * of values from the parsers returned by `p` is used for the result.
    */
-  def repeatDep[A](p: Seq[A] => Parser[A], sep: Parser[Any]): Parser[Seq[A]] =
-    {
-      def loop(acc: Seq[A]): Parser[Seq[A]] = {
-        val next = (sep ~> p(acc)) flatMap { result => loop(acc :+ result) }
-        next ?? acc
+  def repeatDep[A](p: Seq[A] => Parser[A], sep: Parser[Any]): Parser[Seq[A]] = {
+    def loop(acc: Seq[A]): Parser[Seq[A]] = {
+      val next = (sep ~> p(acc)) flatMap { result =>
+        loop(acc :+ result)
       }
-      p(Vector()) flatMap { first => loop(Seq(first)) }
+      next ?? acc
     }
+    p(Vector()) flatMap { first =>
+      loop(Seq(first))
+    }
+  }
 
   /** Applies String.trim to the result of `p`. */
   def trimmed(p: Parser[String]) = p map { _.trim }
@@ -260,10 +294,12 @@ object Parsers extends Parsers
 
 /** Provides common [[Parser]] implementations and helper methods.*/
 object DefaultParsers extends Parsers with ParserMain {
+
   /** Applies parser `p` to input `s` and returns `true` if the parse was successful. */
   def matches(p: Parser[_], s: String): Boolean =
     apply(p)(s).resultEmpty.isValid
 
   /** Returns `true` if `s` parses successfully according to [[ID]].*/
   def validID(s: String): Boolean = matches(ID, s)
+
 }

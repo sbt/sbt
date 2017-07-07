@@ -20,9 +20,10 @@ trait TypeFunctions {
 
   def nestCon[M[_], N[_], G[_]](f: M ~> N): (M ∙ G)#l ~> (N ∙ G)#l =
     f.asInstanceOf[(M ∙ G)#l ~> (N ∙ G)#l] // implemented with a cast to avoid extra object+method call.  castless version:
+
   /* new ( (M ∙ G)#l ~> (N ∙ G)#l ) {
-		def apply[T](mg: M[G[T]]): N[G[T]] = f(mg)
-	}*/
+        def apply[T](mg: M[G[T]]): N[G[T]] = f(mg)
+    } */
 
   implicit def toFn1[A, B](f: A => B): Fn1[A, B] = new Fn1[A, B] {
     def ∙[C](g: C => A) = f compose g
@@ -31,6 +32,7 @@ trait TypeFunctions {
   type Endo[T] = T => T
   type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
 }
+
 object TypeFunctions extends TypeFunctions
 
 trait ~>[-A[_], +B[_]] { outer =>
@@ -40,11 +42,13 @@ trait ~>[-A[_], +B[_]] { outer =>
   final def ∙[C, D](g: C => D)(implicit ev: D <:< A[D]): C => B[D] = i => apply(ev(g(i)))
   final def fn[T] = (t: A[T]) => apply[T](t)
 }
+
 object ~> {
   import TypeFunctions._
   val Id: Id ~> Id = new (Id ~> Id) { def apply[T](a: T): T = a }
   implicit def tcIdEquals: (Id ~> Id) = Id
 }
+
 trait Fn1[A, B] {
   def ∙[C](g: C => A): C => B
 }

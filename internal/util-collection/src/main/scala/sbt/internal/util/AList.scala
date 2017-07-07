@@ -14,11 +14,14 @@ trait AList[K[L[x]]] {
   def foldr[M[_], A](value: K[M], f: (M[_], A) => A, init: A): A
 
   def toList[M[_]](value: K[M]): List[M[_]] = foldr[M, List[M[_]]](value, _ :: _, Nil)
+
   def apply[M[_], C](value: K[M], f: K[Id] => C)(implicit a: Applicative[M]): M[C] =
     a.map(f, traverse[M, M, Id](value, idK[M])(a))
 }
+
 object AList {
   type Empty = AList[({ type l[L[x]] = Unit })#l]
+
   /** AList for Unit, which represents a sequence that is always empty.*/
   val empty: Empty = new Empty {
     def transform[M[_], N[_]](in: Unit, f: M ~> N) = ()
@@ -28,21 +31,23 @@ object AList {
   }
 
   type SeqList[T] = AList[({ type l[L[x]] = List[L[T]] })#l]
+
   /** AList for a homogeneous sequence. */
   def seq[T]: SeqList[T] = new SeqList[T] {
     def transform[M[_], N[_]](s: List[M[T]], f: M ~> N) = s.map(f.fn[T])
     def foldr[M[_], A](s: List[M[T]], f: (M[_], A) => A, init: A): A = (init /: s.reverse)((t, m) => f(m, t))
-    override def apply[M[_], C](s: List[M[T]], f: List[T] => C)(implicit ap: Applicative[M]): M[C] =
-      {
-        def loop[V](in: List[M[T]], g: List[T] => V): M[V] =
-          in match {
-            case Nil => ap.pure(g(Nil))
-            case x :: xs =>
-              val h = (ts: List[T]) => (t: T) => g(t :: ts)
-              ap.apply(loop(xs, h), x)
-          }
-        loop(s, f)
-      }
+
+    override def apply[M[_], C](s: List[M[T]], f: List[T] => C)(implicit ap: Applicative[M]): M[C] = {
+      def loop[V](in: List[M[T]], g: List[T] => V): M[V] =
+        in match {
+          case Nil => ap.pure(g(Nil))
+          case x :: xs =>
+            val h = (ts: List[T]) => (t: T) => g(t :: ts)
+            ap.apply(loop(xs, h), x)
+        }
+      loop(s, f)
+    }
+
     def traverse[M[_], N[_], P[_]](s: List[M[T]], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[List[P[T]]] = ???
   }
 
@@ -55,8 +60,9 @@ object AList {
     override def toList[M[_]](k: KL[M]) = k.toList
   }
 
-  /** AList for a single value. */
   type Single[A] = AList[({ type l[L[x]] = L[A] })#l]
+
+  /** AList for a single value. */
   def single[A]: Single[A] = new Single[A] {
     def transform[M[_], N[_]](a: M[A], f: M ~> N) = f(a)
     def foldr[M[_], T](a: M[A], f: (M[_], T) => T, init: T): T = f(a, init)
@@ -64,17 +70,18 @@ object AList {
   }
 
   type ASplit[K[L[x]], B[x]] = AList[({ type l[L[x]] = K[(L ∙ B)#l] })#l]
+
   /** AList that operates on the outer type constructor `A` of a composition `[x] A[B[x]]` for type constructors `A` and `B`*/
   def asplit[K[L[x]], B[x]](base: AList[K]): ASplit[K, B] = new ASplit[K, B] {
     type Split[L[x]] = K[(L ∙ B)#l]
+
     def transform[M[_], N[_]](value: Split[M], f: M ~> N): Split[N] =
       base.transform[(M ∙ B)#l, (N ∙ B)#l](value, nestCon[M, N, B](f))
 
-    def traverse[M[_], N[_], P[_]](value: Split[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Split[P]] =
-      {
-        val g = nestCon[M, (N ∙ P)#l, B](f)
-        base.traverse[(M ∙ B)#l, N, (P ∙ B)#l](value, g)(np)
-      }
+    def traverse[M[_], N[_], P[_]](value: Split[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Split[P]] = {
+      val g = nestCon[M, (N ∙ P)#l, B](f)
+      base.traverse[(M ∙ B)#l, N, (P ∙ B)#l](value, g)(np)
+    }
 
     def foldr[M[_], A](value: Split[M], f: (M[_], A) => A, init: A): A =
       base.foldr[(M ∙ B)#l, A](value, f, init)
@@ -87,11 +94,10 @@ object AList {
     type T2[M[_]] = (M[A], M[B])
     def transform[M[_], N[_]](t: T2[M], f: M ~> N): T2[N] = (f(t._1), f(t._2))
     def foldr[M[_], T](t: T2[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, init))
-    def traverse[M[_], N[_], P[_]](t: T2[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T2[P]] =
-      {
-        val g = (Tuple2.apply[P[A], P[B]] _).curried
-        np.apply(np.map(g, f(t._1)), f(t._2))
-      }
+    def traverse[M[_], N[_], P[_]](t: T2[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T2[P]] = {
+      val g = (Tuple2.apply[P[A], P[B]] _).curried
+      np.apply(np.map(g, f(t._1)), f(t._2))
+    }
   }
 
   sealed trait T3K[A, B, C] { type l[L[x]] = (L[A], L[B], L[C]) }
@@ -100,11 +106,10 @@ object AList {
     type T3[M[_]] = (M[A], M[B], M[C])
     def transform[M[_], N[_]](t: T3[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3))
     def foldr[M[_], T](t: T3[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, init)))
-    def traverse[M[_], N[_], P[_]](t: T3[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T3[P]] =
-      {
-        val g = (Tuple3.apply[P[A], P[B], P[C]] _).curried
-        np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3))
-      }
+    def traverse[M[_], N[_], P[_]](t: T3[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T3[P]] = {
+      val g = (Tuple3.apply[P[A], P[B], P[C]] _).curried
+      np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3))
+    }
   }
 
   sealed trait T4K[A, B, C, D] { type l[L[x]] = (L[A], L[B], L[C], L[D]) }
@@ -113,11 +118,10 @@ object AList {
     type T4[M[_]] = (M[A], M[B], M[C], M[D])
     def transform[M[_], N[_]](t: T4[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4))
     def foldr[M[_], T](t: T4[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, init))))
-    def traverse[M[_], N[_], P[_]](t: T4[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T4[P]] =
-      {
-        val g = (Tuple4.apply[P[A], P[B], P[C], P[D]] _).curried
-        np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4))
-      }
+    def traverse[M[_], N[_], P[_]](t: T4[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T4[P]] = {
+      val g = (Tuple4.apply[P[A], P[B], P[C], P[D]] _).curried
+      np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4))
+    }
   }
 
   sealed trait T5K[A, B, C, D, E] { type l[L[x]] = (L[A], L[B], L[C], L[D], L[E]) }
@@ -126,11 +130,10 @@ object AList {
     type T5[M[_]] = (M[A], M[B], M[C], M[D], M[E])
     def transform[M[_], N[_]](t: T5[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4), f(t._5))
     def foldr[M[_], T](t: T5[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, f(t._5, init)))))
-    def traverse[M[_], N[_], P[_]](t: T5[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T5[P]] =
-      {
-        val g = (Tuple5.apply[P[A], P[B], P[C], P[D], P[E]] _).curried
-        np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5))
-      }
+    def traverse[M[_], N[_], P[_]](t: T5[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T5[P]] = {
+      val g = (Tuple5.apply[P[A], P[B], P[C], P[D], P[E]] _).curried
+      np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5))
+    }
   }
 
   sealed trait T6K[A, B, C, D, E, F] { type l[L[x]] = (L[A], L[B], L[C], L[D], L[E], L[F]) }
@@ -139,11 +142,10 @@ object AList {
     type T6[M[_]] = (M[A], M[B], M[C], M[D], M[E], M[F])
     def transform[M[_], N[_]](t: T6[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4), f(t._5), f(t._6))
     def foldr[M[_], T](t: T6[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, f(t._5, f(t._6, init))))))
-    def traverse[M[_], N[_], P[_]](t: T6[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T6[P]] =
-      {
-        val g = (Tuple6.apply[P[A], P[B], P[C], P[D], P[E], P[F]] _).curried
-        np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6))
-      }
+    def traverse[M[_], N[_], P[_]](t: T6[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T6[P]] = {
+      val g = (Tuple6.apply[P[A], P[B], P[C], P[D], P[E], P[F]] _).curried
+      np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6))
+    }
   }
 
   sealed trait T7K[A, B, C, D, E, F, G] { type l[L[x]] = (L[A], L[B], L[C], L[D], L[E], L[F], L[G]) }
@@ -152,23 +154,22 @@ object AList {
     type T7[M[_]] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G])
     def transform[M[_], N[_]](t: T7[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4), f(t._5), f(t._6), f(t._7))
     def foldr[M[_], T](t: T7[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, f(t._5, f(t._6, f(t._7, init)))))))
-    def traverse[M[_], N[_], P[_]](t: T7[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T7[P]] =
-      {
-        val g = (Tuple7.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G]] _).curried
-        np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7))
-      }
+    def traverse[M[_], N[_], P[_]](t: T7[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T7[P]] = {
+      val g = (Tuple7.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G]] _).curried
+      np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7))
+    }
   }
+
   sealed trait T8K[A, B, C, D, E, F, G, H] { type l[L[x]] = (L[A], L[B], L[C], L[D], L[E], L[F], L[G], L[H]) }
   type T8List[A, B, C, D, E, F, G, H] = AList[T8K[A, B, C, D, E, F, G, H]#l]
   def tuple8[A, B, C, D, E, F, G, H]: T8List[A, B, C, D, E, F, G, H] = new T8List[A, B, C, D, E, F, G, H] {
     type T8[M[_]] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H])
     def transform[M[_], N[_]](t: T8[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4), f(t._5), f(t._6), f(t._7), f(t._8))
     def foldr[M[_], T](t: T8[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, f(t._5, f(t._6, f(t._7, f(t._8, init))))))))
-    def traverse[M[_], N[_], P[_]](t: T8[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T8[P]] =
-      {
-        val g = (Tuple8.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H]] _).curried
-        np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8))
-      }
+    def traverse[M[_], N[_], P[_]](t: T8[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T8[P]] = {
+      val g = (Tuple8.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H]] _).curried
+      np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8))
+    }
   }
 
   sealed trait T9K[A, B, C, D, E, F, G, H, I] { type l[L[x]] = (L[A], L[B], L[C], L[D], L[E], L[F], L[G], L[H], L[I]) }
@@ -177,11 +178,10 @@ object AList {
     type T9[M[_]] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I])
     def transform[M[_], N[_]](t: T9[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4), f(t._5), f(t._6), f(t._7), f(t._8), f(t._9))
     def foldr[M[_], T](t: T9[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, f(t._5, f(t._6, f(t._7, f(t._8, f(t._9, init)))))))))
-    def traverse[M[_], N[_], P[_]](t: T9[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T9[P]] =
-      {
-        val g = (Tuple9.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H], P[I]] _).curried
-        np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8)), f(t._9))
-      }
+    def traverse[M[_], N[_], P[_]](t: T9[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T9[P]] = {
+      val g = (Tuple9.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H], P[I]] _).curried
+      np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8)), f(t._9))
+    }
   }
 
   sealed trait T10K[A, B, C, D, E, F, G, H, I, J] { type l[L[x]] = (L[A], L[B], L[C], L[D], L[E], L[F], L[G], L[H], L[I], L[J]) }
@@ -190,11 +190,10 @@ object AList {
     type T10[M[_]] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J])
     def transform[M[_], N[_]](t: T10[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4), f(t._5), f(t._6), f(t._7), f(t._8), f(t._9), f(t._10))
     def foldr[M[_], T](t: T10[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, f(t._5, f(t._6, f(t._7, f(t._8, f(t._9, f(t._10, init))))))))))
-    def traverse[M[_], N[_], P[_]](t: T10[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T10[P]] =
-      {
-        val g = (Tuple10.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H], P[I], P[J]] _).curried
-        np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8)), f(t._9)), f(t._10))
-      }
+    def traverse[M[_], N[_], P[_]](t: T10[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T10[P]] = {
+      val g = (Tuple10.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H], P[I], P[J]] _).curried
+      np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8)), f(t._9)), f(t._10))
+    }
   }
 
   sealed trait T11K[A, B, C, D, E, F, G, H, I, J, K] { type l[L[x]] = (L[A], L[B], L[C], L[D], L[E], L[F], L[G], L[H], L[I], L[J], L[K]) }
@@ -203,10 +202,9 @@ object AList {
     type T11[M[_]] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K])
     def transform[M[_], N[_]](t: T11[M], f: M ~> N) = (f(t._1), f(t._2), f(t._3), f(t._4), f(t._5), f(t._6), f(t._7), f(t._8), f(t._9), f(t._10), f(t._11))
     def foldr[M[_], T](t: T11[M], f: (M[_], T) => T, init: T): T = f(t._1, f(t._2, f(t._3, f(t._4, f(t._5, f(t._6, f(t._7, f(t._8, f(t._9, f(t._10, f(t._11, init)))))))))))
-    def traverse[M[_], N[_], P[_]](t: T11[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T11[P]] =
-      {
-        val g = (Tuple11.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H], P[I], P[J], P[K]] _).curried
-        np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8)), f(t._9)), f(t._10)), f(t._11))
-      }
+    def traverse[M[_], N[_], P[_]](t: T11[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[T11[P]] = {
+      val g = (Tuple11.apply[P[A], P[B], P[C], P[D], P[E], P[F], P[G], P[H], P[I], P[J], P[K]] _).curried
+      np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.apply(np.map(g, f(t._1)), f(t._2)), f(t._3)), f(t._4)), f(t._5)), f(t._6)), f(t._7)), f(t._8)), f(t._9)), f(t._10)), f(t._11))
+    }
   }
 }

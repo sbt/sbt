@@ -42,54 +42,75 @@ sealed trait AttributeKey[T] {
   def rank: Int
 
   def optJsonWriter: OptJsonWriter[T]
+
 }
+
 private[sbt] abstract class SharedAttributeKey[T] extends AttributeKey[T] {
   override final def toString = label
   override final def hashCode = label.hashCode
-  override final def equals(o: Any) = (this eq o.asInstanceOf[AnyRef]) || (o match {
-    case a: SharedAttributeKey[t] => a.label == this.label && a.manifest == this.manifest
-    case _                        => false
-  })
+  override final def equals(o: Any) =
+    (this eq o.asInstanceOf[AnyRef]) || (o match {
+      case a: SharedAttributeKey[t] => a.label == this.label && a.manifest == this.manifest
+      case _                        => false
+    })
   final def isLocal: Boolean = false
 }
+
 object AttributeKey {
-  def apply[T](name: String)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String): AttributeKey[T] =
     make(name, None, Nil, Int.MaxValue)
 
-  def apply[T](name: String, rank: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String, rank: Int): AttributeKey[T] =
     make(name, None, Nil, rank)
 
-  def apply[T](name: String, description: String)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String, description: String): AttributeKey[T] =
     apply(name, description, Nil)
 
-  def apply[T](name: String, description: String, rank: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String,
+                                        description: String,
+                                        rank: Int): AttributeKey[T] =
     apply(name, description, Nil, rank)
 
-  def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]])(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String,
+                                        description: String,
+                                        extend: Seq[AttributeKey[_]]): AttributeKey[T] =
     apply(name, description, extend, Int.MaxValue)
 
-  def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]], rank: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String,
+                                        description: String,
+                                        extend: Seq[AttributeKey[_]],
+                                        rank: Int): AttributeKey[T] =
     make(name, Some(description), extend, rank)
 
-  private[this] def make[T](name: String, description0: Option[String], extend0: Seq[AttributeKey[_]], rank0: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] = new SharedAttributeKey[T] {
-    def manifest = mf
-    val label = Util.hyphenToCamel(name)
-    def description = description0
-    def extend = extend0
-    def rank = rank0
-    def optJsonWriter = ojw
-  }
-  private[sbt] def local[T](implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] = new AttributeKey[T] {
-    def manifest = mf
-    def label = LocalLabel
-    def description = None
-    def extend = Nil
-    override def toString = label
-    def isLocal: Boolean = true
-    def rank = Int.MaxValue
-    val optJsonWriter = ojw
-  }
+  private[this] def make[T](
+      name: String,
+      description0: Option[String],
+      extend0: Seq[AttributeKey[_]],
+      rank0: Int
+  )(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+    new SharedAttributeKey[T] {
+      def manifest = mf
+      val label = Util.hyphenToCamel(name)
+      def description = description0
+      def extend = extend0
+      def rank = rank0
+      def optJsonWriter = ojw
+    }
+
+  private[sbt] def local[T](implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+    new AttributeKey[T] {
+      def manifest = mf
+      def label = LocalLabel
+      def description = None
+      def extend = Nil
+      override def toString = label
+      def isLocal: Boolean = true
+      def rank = Int.MaxValue
+      val optJsonWriter = ojw
+    }
+
   private[sbt] final val LocalLabel = "$" + "local"
+
 }
 
 /**
@@ -98,6 +119,7 @@ object AttributeKey {
  * Excluding this possibility is the responsibility of the client if desired.
  */
 trait AttributeMap {
+
   /**
    * Gets the value of type `T` associated with the key `k`.
    * If a key with the same label but different type is defined, this method will fail.
@@ -142,8 +164,11 @@ trait AttributeMap {
 
   /** `true` if there are no mappings in this map, `false` if there are. */
   def isEmpty: Boolean
+
 }
+
 object AttributeMap {
+
   /** An [[AttributeMap]] without any mappings. */
   val empty: AttributeMap = new BasicAttributeMap(Map.empty)
 
@@ -157,27 +182,38 @@ object AttributeMap {
   implicit def toNatTrans(map: AttributeMap): AttributeKey ~> Id = new (AttributeKey ~> Id) {
     def apply[T](key: AttributeKey[T]): T = map(key)
   }
+
 }
-private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any]) extends AttributeMap {
+private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
+    extends AttributeMap {
+
   def isEmpty: Boolean = backing.isEmpty
   def apply[T](k: AttributeKey[T]) = backing(k).asInstanceOf[T]
   def get[T](k: AttributeKey[T]) = backing.get(k).asInstanceOf[Option[T]]
   def remove[T](k: AttributeKey[T]): AttributeMap = new BasicAttributeMap(backing - k)
   def contains[T](k: AttributeKey[T]) = backing.contains(k)
-  def put[T](k: AttributeKey[T], value: T): AttributeMap = new BasicAttributeMap(backing.updated(k, value))
+
+  def put[T](k: AttributeKey[T], value: T): AttributeMap =
+    new BasicAttributeMap(backing.updated(k, value))
+
   def keys: Iterable[AttributeKey[_]] = backing.keys
-  def ++(o: Iterable[AttributeEntry[_]]): AttributeMap =
-    {
-      val newBacking = (backing /: o) { case (b, AttributeEntry(key, value)) => b.updated(key, value) }
-      new BasicAttributeMap(newBacking)
+
+  def ++(o: Iterable[AttributeEntry[_]]): AttributeMap = {
+    val newBacking = (backing /: o) {
+      case (b, AttributeEntry(key, value)) => b.updated(key, value)
     }
+    new BasicAttributeMap(newBacking)
+  }
+
   def ++(o: AttributeMap): AttributeMap =
     o match {
       case bam: BasicAttributeMap => new BasicAttributeMap(backing ++ bam.backing)
       case _                      => o ++ this
     }
+
   def entries: Iterable[AttributeEntry[_]] =
     for ((k: AttributeKey[kt], v) <- backing) yield AttributeEntry(k, v.asInstanceOf[kt])
+
   override def toString = entries.mkString("(", ", ", ")")
 }
 
@@ -189,16 +225,21 @@ final case class AttributeEntry[T](key: AttributeKey[T], value: T) {
 
 /** Associates a `metadata` map with `data`. */
 final case class Attributed[D](data: D)(val metadata: AttributeMap) {
+
   /** Retrieves the associated value of `key` from the metadata. */
   def get[T](key: AttributeKey[T]): Option[T] = metadata.get(key)
 
   /** Defines a mapping `key -> value` in the metadata. */
-  def put[T](key: AttributeKey[T], value: T): Attributed[D] = Attributed(data)(metadata.put(key, value))
+  def put[T](key: AttributeKey[T], value: T): Attributed[D] =
+    Attributed(data)(metadata.put(key, value))
 
   /** Transforms the data by applying `f`. */
   def map[T](f: D => T): Attributed[T] = Attributed(f(data))(metadata)
+
 }
+
 object Attributed {
+
   /** Extracts the underlying data from the sequence `in`. */
   def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 
@@ -207,4 +248,5 @@ object Attributed {
 
   /** Associates an empty metadata map with `data`. */
   def blank[T](data: T): Attributed[T] = Attributed(data)(AttributeMap.empty)
+
 }

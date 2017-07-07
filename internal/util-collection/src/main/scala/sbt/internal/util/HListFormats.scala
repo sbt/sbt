@@ -21,7 +21,10 @@ trait HListFormats {
     }
   }
 
-  implicit def hconsFormat[H, T <: HList](implicit hf: JsonFormat[H], tf: HListJF[T]): JsonFormat[H :+: T] =
+  implicit def hconsFormat[H, T <: HList](
+      implicit hf: JsonFormat[H],
+      tf: HListJF[T]
+  ): JsonFormat[H :+: T] =
     new JsonFormat[H :+: T] {
       def write[J](hcons: H :+: T, builder: Builder[J]) = {
         builder.beginArray()
@@ -34,7 +37,8 @@ trait HListFormats {
         case None => HCons(hf.read(None, unbuilder), tf.read(None, unbuilder))
         case Some(js) =>
           unbuilder.beginArray(js)
-          val hcons = HCons(hf.read(Some(unbuilder.nextElement), unbuilder), tf.read(Some(js), unbuilder))
+          val hcons =
+            HCons(hf.read(Some(unbuilder.nextElement), unbuilder), tf.read(Some(js), unbuilder))
           unbuilder.endArray()
           hcons
       }
@@ -45,7 +49,10 @@ trait HListFormats {
     def write[J](obj: A, builder: Builder[J]): Unit
   }
 
-  implicit def hconsHListJF[H, T <: HList](implicit hf: JsonFormat[H], tf: HListJF[T]): HListJF[H :+: T] =
+  implicit def hconsHListJF[H, T <: HList](
+      implicit hf: JsonFormat[H],
+      tf: HListJF[T]
+  ): HListJF[H :+: T] =
     new HListJF[H :+: T] {
       def write[J](hcons: H :+: T, builder: Builder[J]) = {
         hf.write(hcons.head, builder)
@@ -53,8 +60,9 @@ trait HListFormats {
       }
 
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
-        case None     => HCons(hf.read(None, unbuilder), tf.read(None, unbuilder))
-        case Some(js) => HCons(hf.read(Some(unbuilder.nextElement), unbuilder), tf.read(Some(js), unbuilder))
+        case None => HCons(hf.read(None, unbuilder), tf.read(None, unbuilder))
+        case Some(js) =>
+          HCons(hf.read(Some(unbuilder.nextElement), unbuilder), tf.read(Some(js), unbuilder))
       }
     }
 

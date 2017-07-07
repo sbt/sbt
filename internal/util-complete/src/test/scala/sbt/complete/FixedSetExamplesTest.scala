@@ -5,7 +5,8 @@ class FixedSetExamplesTest extends UnitSpec {
 
   "adding a prefix" should "produce a smaller set of examples with the prefix removed" in {
     val _ = new Examples {
-      fixedSetExamples.withAddedPrefix("f")() should contain theSameElementsAs (List("oo", "ool", "u"))
+      fixedSetExamples.withAddedPrefix("f")() should contain theSameElementsAs
+        (List("oo", "ool", "u"))
       fixedSetExamples.withAddedPrefix("fo")() should contain theSameElementsAs (List("o", "ol"))
       fixedSetExamples.withAddedPrefix("b")() should contain theSameElementsAs (List("ar"))
     }
