@@ -124,6 +124,34 @@ lazy val bundledLauncherProj =
 
 /* ** subproject declarations ** */
 
+val collectionProj = (project in file("internal") / "util-collection")
+  .settings(
+    testedBaseSettings,
+    Util.keywordsSettings,
+    name := "Collections",
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value)
+  )
+  .configure(addSbtUtilPosition)
+
+// Command line-related utilities.
+val completeProj = (project in file("internal") / "util-complete")
+  .dependsOn(collectionProj)
+  .settings(
+    testedBaseSettings,
+    name := "Completion",
+    libraryDependencies += jline
+  )
+  .configure(addSbtIO, addSbtUtilControl)
+
+// A logic with restricted negation as failure for a unique, stable model
+val logicProj = (project in file("internal") / "util-logic")
+  .dependsOn(collectionProj)
+  .settings(
+    testedBaseSettings,
+    name := "Logic"
+  )
+  .configure(addSbtUtilRelation)
+
 /* **** Intermediate-level Modules **** */
 
 // Runner for uniform test interface
@@ -154,21 +182,23 @@ lazy val testAgentProj = (project in file("testing") / "agent")
 
 // Basic task engine
 lazy val taskProj = (project in file("tasks"))
+  .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
     name := "Tasks"
   )
-  .configure(addSbtUtilControl, addSbtUtilCollection)
+  .configure(addSbtUtilControl)
 
 // Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 lazy val stdTaskProj = (project in file("tasks-standard"))
+  .dependsOn(collectionProj)
   .dependsOn(taskProj % "compile;test->test")
   .settings(
     testedBaseSettings,
     name := "Task System",
     testExclusive
   )
-  .configure(addSbtUtilCollection, addSbtUtilLogging, addSbtUtilCache, addSbtIO)
+  .configure(addSbtIO, addSbtUtilLogging, addSbtUtilCache)
 
 // Embedded Scala code runner
 lazy val runProj = (project in file("run"))
@@ -201,24 +231,23 @@ lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
 
 // Implementation and support code for defining actions.
 lazy val actionsProj = (project in file("main-actions"))
-  .dependsOn(runProj, stdTaskProj, taskProj, testingProj)
+  .dependsOn(completeProj, runProj, stdTaskProj, taskProj, testingProj)
   .settings(
     testedBaseSettings,
     name := "Actions",
     libraryDependencies += sjsonNewScalaJson.value
   )
   .configure(
-    addSbtCompilerClasspath,
-    addSbtUtilCompletion,
-    addSbtCompilerApiInfo,
-    addSbtZinc,
-    addSbtCompilerIvyIntegration,
-    addSbtCompilerInterface,
     addSbtIO,
     addSbtUtilLogging,
     addSbtUtilRelation,
+    addSbtCompilerInterface,
+    addSbtCompilerClasspath,
+    addSbtCompilerApiInfo,
+    addSbtUtilTracking,
     addSbtLm,
-    addSbtUtilTracking
+    addSbtCompilerIvyIntegration,
+    addSbtZinc
   )
 
 lazy val protocolProj = (project in file("protocol"))
@@ -237,7 +266,7 @@ lazy val protocolProj = (project in file("protocol"))
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(protocolProj)
+  .dependsOn(protocolProj, completeProj)
   .settings(
     testedBaseSettings,
     name := "Command",
@@ -247,22 +276,23 @@ lazy val commandProj = (project in file("main-command"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   )
-  .configure(addSbtCompilerInterface,
-             addSbtIO,
-             addSbtUtilLogging,
-             addSbtUtilCompletion,
-             addSbtCompilerClasspath,
-             addSbtLm)
+  .configure(
+    addSbtIO,
+    addSbtUtilLogging,
+    addSbtCompilerInterface,
+    addSbtCompilerClasspath,
+    addSbtLm
+  )
 
 // The core macro project defines the main logic of the DSL, abstracted
 // away from several sbt implementators (tasks, settings, et cetera).
 lazy val coreMacrosProj = (project in file("core-macros"))
+  .dependsOn(collectionProj)
   .settings(
     commonSettings,
     name := "Core Macros",
     libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value
   )
-  .configure(addSbtUtilCollection)
 
 /* Write all the compile-time dependencies of the spores macro to a file,
  * in order to read it from the created Toolbox to run the neg tests. */
@@ -286,19 +316,18 @@ lazy val generateToolboxClasspath = Def.task {
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
-  .dependsOn(commandProj, stdTaskProj, coreMacrosProj)
+  .dependsOn(completeProj, commandProj, stdTaskProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
     name := "Main Settings",
     resourceGenerators in Compile += generateToolboxClasspath.taskValue
   )
   .configure(
-    addSbtUtilCache,
-    addSbtCompilerInterface,
-    addSbtUtilRelation,
-    addSbtUtilLogging,
     addSbtIO,
-    addSbtUtilCompletion,
+    addSbtUtilLogging,
+    addSbtUtilCache,
+    addSbtUtilRelation,
+    addSbtCompilerInterface,
     addSbtCompilerClasspath,
     addSbtLm
   )
@@ -306,7 +335,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
-  .dependsOn(actionsProj, mainSettingsProj, runProj, commandProj)
+  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj)
   .settings(
     testedBaseSettings,
     name := "Main",
@@ -315,12 +344,13 @@ lazy val mainProj = (project in file("main"))
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
   )
-  .configure(addSbtCompilerInterface,
-             addSbtIO,
-             addSbtUtilLogging,
-             addSbtUtilLogic,
-             addSbtLm,
-             addSbtZincCompile)
+  .configure(
+    addSbtIO,
+    addSbtUtilLogging,
+    addSbtCompilerInterface,
+    addSbtLm,
+    addSbtZincCompile
+  )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
@@ -375,6 +405,9 @@ lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 def allProjects =
   Seq(
+    collectionProj,
+    logicProj,
+    completeProj,
     testingProj,
     testAgentProj,
     taskProj,
@@ -406,16 +439,14 @@ def otherRootSettings =
     aggregate in bintrayRelease := false
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(
-      scriptedPrescripted := { _ =>
-        ()
-      },
-      scriptedLaunchOpts := {
-        List("-Xmx1500M",
-             "-Xms512M",
-             "-server",
-             "-Dsbt.override.build.repos=true",
-             s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}""")
-      },
+      scriptedPrescripted := (_ => ()),
+      scriptedLaunchOpts := List(
+        "-Xmx1500M",
+        "-Xms512M",
+        "-server",
+        "-Dsbt.override.build.repos=true",
+        s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}"""
+      ),
       scripted := scriptedTask.evaluated,
       scriptedUnpublished := scriptedUnpublishedTask.evaluated,
       scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
@@ -449,15 +480,17 @@ lazy val safeProjects: ScopeFilter = ScopeFilter(
 )
 lazy val otherUnitTests = taskKey[Unit]("Unit test other projects")
 lazy val otherProjects: ScopeFilter = ScopeFilter(
-  inProjects(testingProj,
-             testAgentProj,
-             taskProj,
-             scriptedSbtProj,
-             scriptedPluginProj,
-             commandProj,
-             mainSettingsProj,
-             mainProj,
-             sbtProj),
+  inProjects(
+    testingProj,
+    testAgentProj,
+    taskProj,
+    scriptedSbtProj,
+    scriptedPluginProj,
+    commandProj,
+    mainSettingsProj,
+    mainProj,
+    sbtProj
+  ),
   inConfigurations(Test)
 )
 

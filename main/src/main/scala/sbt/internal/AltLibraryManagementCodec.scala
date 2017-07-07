@@ -3,6 +3,7 @@ package sbt.internal
 import sbt.internal.librarymanagement._
 import sbt.internal.util.Types._
 import sbt.internal.util.{ HList, HNil }
+import sbt.internal.util.HListFormats._
 import sbt.io.{ Hash, IO }
 import sbt.librarymanagement._
 import sbt.util.CacheImplicits._

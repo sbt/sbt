@@ -11,6 +11,7 @@ import sbt.io.syntax._
 import sbt.io.IO
 
 import sbt.internal.util.Types.:+:
+import sbt.internal.util.HListFormats._
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.inputChanged
 import sbt.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, ModifiedFileInfo, PlainFileInfo }

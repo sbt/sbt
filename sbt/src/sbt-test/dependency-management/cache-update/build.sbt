@@ -24,6 +24,7 @@ lazy val root = (project in file("."))
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 
       import sbt.util.CacheImplicits._
+      import sbt.internal.util.HListFormats._
       import sbt.internal.AltLibraryManagementCodec._
 
       val f: In => Unit =
