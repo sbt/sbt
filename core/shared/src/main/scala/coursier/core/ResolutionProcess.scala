@@ -1,9 +1,11 @@
 package coursier
 package core
 
-import scalaz._
 import scala.annotation.tailrec
 import scala.language.higherKinds
+
+import scalaz.{Monad, -\/, \/-}
+import scalaz.Scalaz.{ToFunctorOps, ToTraverseOps, vectorInstance}
 
 
 sealed abstract class ResolutionProcess {
@@ -12,8 +14,7 @@ sealed abstract class ResolutionProcess {
     maxIterations: Int = 50
   )(implicit
     F: Monad[F]
-  ): F[Resolution] = {
-
+  ): F[Resolution] =
     if (maxIterations == 0) F.point(current)
     else {
       val maxIterations0 =
@@ -23,7 +24,7 @@ sealed abstract class ResolutionProcess {
         case Done(res) =>
           F.point(res)
         case missing0 @ Missing(missing, _, _) =>
-          F.bind(fetch(missing))(result =>
+          F.bind(ResolutionProcess.fetchAll(missing, fetch))(result =>
             missing0.next(result).run(fetch, maxIterations0)
           )
         case cont @ Continue(_, _) =>
@@ -32,7 +33,6 @@ sealed abstract class ResolutionProcess {
             .run(fetch, maxIterations0)
       }
     }
-  }
 
   @tailrec
   final def next[F[_]](
@@ -40,20 +40,18 @@ sealed abstract class ResolutionProcess {
     fastForward: Boolean = true
   )(implicit
     F: Monad[F]
-  ): F[ResolutionProcess] = {
-
+  ): F[ResolutionProcess] =
     this match {
-      case Done(res) =>
+      case Done(_) =>
         F.point(this)
       case missing0 @ Missing(missing, _, _) =>
-        F.map(fetch(missing))(result => missing0.next(result))
+        F.map(ResolutionProcess.fetchAll(missing, fetch))(result => missing0.next(result))
       case cont @ Continue(_, _) =>
         if (fastForward)
           cont.nextNoCont.next(fetch, fastForward = fastForward)
         else
           F.point(cont.next)
     }
-  }
 
   def current: Resolution
 }
@@ -63,22 +61,6 @@ final case class Missing(
   current: Resolution,
   cont: Resolution => ResolutionProcess
 ) extends ResolutionProcess {
-
-  def uniqueModules: Missing = {
-
-    // only try to fetch a single version of a given module in a same iteration, so that resolutions for different
-    // versions don't try to download the same URL in the same iteration, which the coursier.Cache.Logger API doesn't
-    // allow
-
-    val missing0 = missing.groupBy(_._1).toSeq.map(_._2).map {
-      case Seq(v) => v
-      case Seq() => sys.error("Cannot happen")
-      case v =>
-        v.maxBy { case (_, v0) => Version(v0) }
-    }
-
-    copy(missing = missing0)
-  }
 
   def next(results: Fetch.MD): ResolutionProcess = {
 
@@ -126,17 +108,17 @@ final case class Missing(
         val orderedSuccesses = order(depMgmtMissing0.map { case (k, v) => k -> v.intersect(modVer) }.toMap, Nil)
 
         val res0 = orderedSuccesses.foldLeft(res) {
-          case (acc, (modVer, (source, proj))) =>
+          case (acc, (modVer0, (source, proj))) =>
             acc.copyWithCache(
               projectCache = acc.projectCache + (
-                modVer -> (source, acc.withDependencyManagement(proj))
+                modVer0 -> (source, acc.withDependencyManagement(proj))
               )
             )
         }
 
         Continue(res0, cont)
       } else
-        Missing(depMgmtMissing.toSeq, res, cont0).uniqueModules
+        Missing(depMgmtMissing.toSeq, res, cont0)
     }
 
     val current0 = current.copyWithCache(
@@ -145,6 +127,10 @@ final case class Missing(
 
     cont0(current0)
   }
+
+  @deprecated("Intended for internal use only", "1.0.0-RC7")
+  def uniqueModules: Missing =
+    this
 
 }
 
@@ -155,7 +141,7 @@ final case class Continue(
 
   def next: ResolutionProcess = cont(current)
 
-  @tailrec final def nextNoCont: ResolutionProcess =
+  @tailrec def nextNoCont: ResolutionProcess =
     next match {
       case nextCont: Continue => nextCont.nextNoCont
       case other => other
@@ -174,7 +160,37 @@ object ResolutionProcess {
     if (resolution0.isDone)
       Done(resolution0)
     else
-      Missing(resolution0.missingFromCache.toSeq, resolution0, apply).uniqueModules
+      Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
   }
+
+  private def fetchAll[F[_]](modVers: Seq[(Module, String)], fetch: Fetch.Metadata[F])(implicit F: Monad[F]) = {
+
+    def uniqueModules(modVers: Seq[(Module, String)]): Stream[Seq[(Module, String)]] = {
+
+      val res = modVers.groupBy(_._1).toSeq.map(_._2).map {
+        case Seq(v) => (v, Nil)
+        case Seq() => sys.error("Cannot happen")
+        case v =>
+          // there might be version intervals in there, but that shouldn't matter...
+          val res = v.maxBy { case (_, v0) => Version(v0) }
+          (res, v.filter(_ != res))
+      }
+
+      val other = res.flatMap(_._2)
+
+      if (other.isEmpty)
+        Stream(modVers)
+      else {
+        val missing0 = res.map(_._1)
+        missing0 #:: uniqueModules(other)
+      }
+    }
+
+    uniqueModules(modVers)
+      .toVector
+      .traverse(fetch)
+      .map(_.flatten)
+  }
+
 }
 

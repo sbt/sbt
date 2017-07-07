@@ -57,7 +57,7 @@ org.fusesource:sigar:1.6.4:compile
 org.gnu.inet:libidn:1.15:compile
 org.hamcrest:hamcrest-core:1.1:compile
 org.igniterealtime:tinder:1.2.3:compile
-org.igniterealtime.smack:smack:3.2.2-jitsi-2-20170425.180418-3:compile
+org.igniterealtime.smack:smack:3.2.2-jitsi-2-20170425.180420-2:compile
 org.igniterealtime.smack:smackx:3.2.2-jitsi-2-20170425.180420-2:compile
 org.igniterealtime.whack:core:2.0.0:compile
 org.jitsi:bccontrib:1.0:compile
