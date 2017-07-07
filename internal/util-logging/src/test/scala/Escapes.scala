@@ -4,7 +4,7 @@ import org.scalacheck._
 import Prop._
 import Gen.{ listOf, oneOf }
 
-import ConsoleAppender.{ ESC, hasEscapeSequence, isEscapeTerminator, removeEscapeSequences }
+import EscHelpers.{ ESC, hasEscapeSequence, isEscapeTerminator, removeEscapeSequences }
 
 object Escapes extends Properties("Escapes") {
   property("genTerminator only generates terminators") =

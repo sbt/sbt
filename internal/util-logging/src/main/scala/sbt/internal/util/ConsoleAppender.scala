@@ -1,5 +1,6 @@
 package sbt.internal.util
 
+import scala.compat.Platform.EOL
 import sbt.util._
 import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
@@ -14,146 +15,220 @@ import ConsoleAppender._
 
 object ConsoleLogger {
   // These are provided so other modules do not break immediately.
-  @deprecated("Use ConsoleAppender.", "0.13.x")
-  final val ESC = ConsoleAppender.ESC
-  @deprecated("Use ConsoleAppender.", "0.13.x")
-  private[sbt] def isEscapeTerminator(c: Char): Boolean = ConsoleAppender.isEscapeTerminator(c)
-  @deprecated("Use ConsoleAppender.", "0.13.x")
-  def hasEscapeSequence(s: String): Boolean = ConsoleAppender.hasEscapeSequence(s)
-  @deprecated("Use ConsoleAppender.", "0.13.x")
-  def removeEscapeSequences(s: String): String = ConsoleAppender.removeEscapeSequences(s)
-  @deprecated("Use ConsoleAppender.", "0.13.x")
-  val formatEnabled = ConsoleAppender.formatEnabled
+  @deprecated("Use EscHelpers.", "0.13.x")
+  final val ESC = EscHelpers.ESC
+  @deprecated("Use EscHelpers.", "0.13.x")
+  private[sbt] def isEscapeTerminator(c: Char): Boolean = EscHelpers.isEscapeTerminator(c)
+  @deprecated("Use EscHelpers.", "0.13.x")
+  def hasEscapeSequence(s: String): Boolean = EscHelpers.hasEscapeSequence(s)
+  @deprecated("Use EscHelpers.", "0.13.x")
+  def removeEscapeSequences(s: String): String = EscHelpers.removeEscapeSequences(s)
+  @deprecated("Use ConsoleAppenders.formatEnabledInEnv", "0.13.x")
+  val formatEnabled = ConsoleAppender.formatEnabledInEnv
   @deprecated("Use ConsoleAppender.", "0.13.x")
   val noSuppressedMessage = ConsoleAppender.noSuppressedMessage
 
+  /**
+   * A new `ConsoleLogger` that logs to `out`.
+   *
+   * @param out Where to log the messages.
+   * @return A new `ConsoleLogger` that logs to `out`.
+   */
   def apply(out: PrintStream): ConsoleLogger = apply(ConsoleOut.printStreamOut(out))
+
+  /**
+   * A new `ConsoleLogger` that logs to `out`.
+   *
+   * @param out Where to log the messages.
+   * @return A new `ConsoleLogger` that logs to `out`.
+   */
   def apply(out: PrintWriter): ConsoleLogger = apply(ConsoleOut.printWriterOut(out))
-  def apply(out: ConsoleOut = ConsoleOut.systemOut, ansiCodesSupported: Boolean = ConsoleAppender.formatEnabled,
-    useColor: Boolean = ConsoleAppender.formatEnabled, suppressedMessage: SuppressedTraceContext => Option[String] = ConsoleAppender.noSuppressedMessage): ConsoleLogger =
-    new ConsoleLogger(out, ansiCodesSupported, useColor, suppressedMessage)
+
+  /**
+   * A new `ConsoleLogger` that logs to `out`.
+   *
+   * @param out                Where to log the messages.
+   * @param ansiCodesSupported `true` if `out` supported ansi codes, `false` otherwise.
+   * @param useFormat          `true` to show formatting, `false` to remove it from messages.
+   * @param suppressedMessage  How to show suppressed stack traces.
+   * @return A new `ConsoleLogger` that logs to `out`.
+   */
+  def apply(out: ConsoleOut = ConsoleOut.systemOut,
+            ansiCodesSupported: Boolean = ConsoleAppender.formatEnabledInEnv,
+            useFormat: Boolean = ConsoleAppender.formatEnabledInEnv,
+            suppressedMessage: SuppressedTraceContext => Option[String] = ConsoleAppender.noSuppressedMessage): ConsoleLogger =
+    new ConsoleLogger(out, ansiCodesSupported, useFormat, suppressedMessage)
 }
 
 /**
  * A logger that logs to the console.  On supported systems, the level labels are
  * colored.
  */
-class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut, override val ansiCodesSupported: Boolean, val useColor: Boolean, val suppressedMessage: SuppressedTraceContext => Option[String]) extends BasicLogger {
-  private[sbt] val appender = ConsoleAppender(generateName, out, ansiCodesSupported, useColor, suppressedMessage)
+class ConsoleLogger private[ConsoleLogger] (out: ConsoleOut,
+                                            override val ansiCodesSupported: Boolean,
+                                            useFormat: Boolean,
+                                            suppressedMessage: SuppressedTraceContext => Option[String]) extends BasicLogger {
+
+  private[sbt] val appender: ConsoleAppender =
+    ConsoleAppender(generateName(), out, ansiCodesSupported, useFormat, suppressedMessage)
 
   override def control(event: ControlEvent.Value, message: => String): Unit =
     appender.control(event, message)
+
   override def log(level: Level.Value, message: => String): Unit =
-    {
-      if (atLevel(level)) {
-        appender.appendLog(level, message)
-      }
+    if (atLevel(level)) {
+      appender.appendLog(level, message)
     }
 
   override def success(message: => String): Unit =
-    {
-      if (successEnabled) {
-        appender.success(message)
-      }
+    if (successEnabled) {
+      appender.success(message)
     }
+
   override def trace(t: => Throwable): Unit =
     appender.trace(t, getTrace)
 
-  override def logAll(events: Seq[LogEvent]) = out.lockObject.synchronized { events.foreach(log) }
+  override def logAll(events: Seq[LogEvent]) =
+    out.lockObject.synchronized { events.foreach(log) }
 }
 
 object ConsoleAppender {
-  /** Escape character, used to introduce an escape sequence. */
-  final val ESC = '\u001B'
 
-  /**
-   * An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value 126).
-   * It is the final character in an escape sequence.
-   *
-   * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
-   */
-  private[sbt] def isEscapeTerminator(c: Char): Boolean =
-    c >= '@' && c <= '~'
+  /** Hide stack trace altogether. */
+  val noSuppressedMessage = (_: SuppressedTraceContext) => None
 
-  /**
-   * Test if the character AFTER an ESC is the ANSI CSI.
-   *
-   * see: http://en.wikipedia.org/wiki/ANSI_escape_code
-   *
-   * The CSI (control sequence instruction) codes start with ESC + '['.   This is for testing the second character.
-   *
-   * There is an additional CSI (one character) that we could test for, but is not frequnetly used, and we don't
-   * check for it.
-   *
-   * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
-   */
-  private def isCSI(c: Char): Boolean = c == '['
-
-  /**
-   * Tests whether or not a character needs to immediately terminate the ANSI sequence.
-   *
-   * c.f. http://en.wikipedia.org/wiki/ANSI_escape_code#Sequence_elements
-   */
-  private def isAnsiTwoCharacterTerminator(c: Char): Boolean =
-    (c >= '@') && (c <= '_')
-
-  /**
-   * Returns true if the string contains the ESC character.
-   *
-   * TODO - this should handle raw CSI (not used much)
-   */
-  def hasEscapeSequence(s: String): Boolean =
-    s.indexOf(ESC) >= 0
-
-  /**
-   * Returns the string `s` with escape sequences removed.
-   * An escape sequence starts with the ESC character (decimal value 27) and ends with an escape terminator.
-   * @see isEscapeTerminator
-   */
-  def removeEscapeSequences(s: String): String =
-    if (s.isEmpty || !hasEscapeSequence(s))
-      s
-    else {
-      val sb = new java.lang.StringBuilder
-      nextESC(s, 0, sb)
-      sb.toString
-    }
-  private[this] def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
-    val escIndex = s.indexOf(ESC, start)
-    if (escIndex < 0) {
-      sb.append(s, start, s.length)
-      ()
-    } else {
-      sb.append(s, start, escIndex)
-      val next: Int =
-        // If it's a CSI we skip past it and then look for a terminator.
-        if (isCSI(s.charAt(escIndex + 1))) skipESC(s, escIndex + 2)
-        else if (isAnsiTwoCharacterTerminator(s.charAt(escIndex + 1))) escIndex + 2
-        else {
-          // There could be non-ANSI character sequences we should make sure we handle here.
-          skipESC(s, escIndex + 1)
-        }
-      nextESC(s, next, sb)
-    }
+  /** Indicates whether formatting has been disabled in environment variables. */
+  val formatEnabledInEnv: Boolean = {
+    import java.lang.Boolean.{ getBoolean, parseBoolean }
+    val value = System.getProperty("sbt.log.format")
+    if (value eq null) (ansiSupported && !getBoolean("sbt.log.noformat")) else parseBoolean(value)
   }
 
-  /** Skips the escape sequence starting at `i-1`.  `i` should be positioned at the character after the ESC that starts the sequence. */
-  private[this] def skipESC(s: String, i: Int): Int = {
-    if (i >= s.length) {
-      i
-    } else if (isEscapeTerminator(s.charAt(i))) {
-      i + 1
-    } else {
-      skipESC(s, i + 1)
-    }
+  private[this] val generateId: AtomicInteger = new AtomicInteger
+
+  /**
+   * A new `ConsoleAppender` that writes to standard output.
+   *
+   * @return A new `ConsoleAppender` that writes to standard output.
+   */
+  def apply(): ConsoleAppender = apply(ConsoleOut.systemOut)
+
+  /**
+   * A new `ConsoleAppender` that appends log message to `out`.
+   *
+   * @param out Where to write messages.
+   * @return A new `ConsoleAppender`.
+   */
+  def apply(out: PrintStream): ConsoleAppender = apply(ConsoleOut.printStreamOut(out))
+
+  /**
+   * A new `ConsoleAppender` that appends log messages to `out`.
+   *
+   * @param out Where to write messages.
+   * @return A new `ConsoleAppender`.
+   */
+  def apply(out: PrintWriter): ConsoleAppender = apply(ConsoleOut.printWriterOut(out))
+
+  /**
+   * A new `ConsoleAppender` that writes to `out`.
+   *
+   * @param out Where to write messages.
+   * @return A new `ConsoleAppender that writes to `out`.
+   */
+  def apply(out: ConsoleOut): ConsoleAppender = apply(generateName(), out)
+
+  /**
+   * A new `ConsoleAppender` identified by `name`, and that writes to standard output.
+   *
+   * @param name An identifier for the `ConsoleAppender`.
+   * @return A new `ConsoleAppender` that writes to standard output.
+   */
+  def apply(name: String): ConsoleAppender = apply(name, ConsoleOut.systemOut)
+
+  /**
+   * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
+   *
+   * @param name An identifier for the `ConsoleAppender`.
+   * @param out Where to write messages.
+   * @return A new `ConsoleAppender` that writes to `out`.
+   */
+  def apply(name: String, out: ConsoleOut): ConsoleAppender = apply(name, out, formatEnabledInEnv)
+
+  /**
+   * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
+   *
+   * @param name              An identifier for the `ConsoleAppender`.
+   * @param out               Where to write messages.
+   * @param suppressedMessage How to handle stack traces.
+   * @return A new `ConsoleAppender` that writes to `out`.
+   */
+  def apply(name: String, out: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
+    apply(name, out, formatEnabledInEnv, formatEnabledInEnv, suppressedMessage)
+
+  /**
+   * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
+   *
+   * @param name      An identifier for the `ConsoleAppender`.
+   * @param out       Where to write messages.
+   * @param useFormat `true` to enable format (color, bold, etc.), `false` to remove formatting.
+   * @return A new `ConsoleAppender` that writes to `out`.
+   */
+  def apply(name: String, out: ConsoleOut, useFormat: Boolean): ConsoleAppender =
+    apply(name, out, formatEnabledInEnv, useFormat, noSuppressedMessage)
+
+  /**
+   * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
+   *
+   * @param name               An identifier for the `ConsoleAppender`.
+   * @param out                Where to write messages.
+   * @param ansiCodesSupported `true` if the output stream supports ansi codes, `false` otherwise.
+   * @param useFormat          `true` to enable format (color, bold, etc.), `false` to remove
+   *                           formatting.
+   * @return A new `ConsoleAppender` that writes to `out`.
+   */
+  def apply(name: String,
+            out: ConsoleOut,
+            ansiCodesSupported: Boolean,
+            useFormat: Boolean,
+            suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender = {
+              val appender = new ConsoleAppender(name, out, ansiCodesSupported, useFormat, suppressedMessage)
+              appender.start
+              appender
   }
 
-  val formatEnabled: Boolean =
-    {
-      import java.lang.Boolean.{ getBoolean, parseBoolean }
-      val value = System.getProperty("sbt.log.format")
-      if (value eq null) (ansiSupported && !getBoolean("sbt.log.noformat")) else parseBoolean(value)
+  /**
+   * Converts the Log4J `level` to the corresponding sbt level.
+   *
+   * @param level A level, as represented by Log4J.
+   * @return The corresponding level in sbt's world.
+   */
+  def toLevel(level: XLevel): Level.Value =
+    level match {
+      case XLevel.OFF   => Level.Debug
+      case XLevel.FATAL => Level.Error
+      case XLevel.ERROR => Level.Error
+      case XLevel.WARN  => Level.Warn
+      case XLevel.INFO  => Level.Info
+      case XLevel.DEBUG => Level.Debug
+      case _            => Level.Debug
     }
+
+  /**
+   * Converts the sbt `level` to the corresponding Log4J level.
+   *
+   * @param level A level, as represented by sbt.
+   * @return The corresponding level in Log4J's world.
+   */
+  def toXLevel(level: Level.Value): XLevel =
+    level match {
+      case Level.Error => XLevel.ERROR
+      case Level.Warn  => XLevel.WARN
+      case Level.Info  => XLevel.INFO
+      case Level.Debug => XLevel.DEBUG
+    }
+
+  private[sbt] def generateName(): String = "out-" + generateId.incrementAndGet
+
   private[this] def jline1to2CompatMsg = "Found class jline.Terminal, but interface was expected"
 
   private[this] def ansiSupported =
@@ -172,57 +247,9 @@ object ConsoleAppender {
         throw new IncompatibleClassChangeError("JLine incompatibility detected.  Check that the sbt launcher is version 0.13.x or later.")
     }
 
-  val noSuppressedMessage = (_: SuppressedTraceContext) => None
-
   private[this] def os = System.getProperty("os.name")
   private[this] def isWindows = os.toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
 
-  def apply(out: PrintStream): ConsoleAppender = apply(ConsoleOut.printStreamOut(out))
-  def apply(out: PrintWriter): ConsoleAppender = apply(ConsoleOut.printWriterOut(out))
-  def apply(): ConsoleAppender = apply(ConsoleOut.systemOut)
-  def apply(name: String): ConsoleAppender = apply(name, ConsoleOut.systemOut)
-  def apply(out: ConsoleOut): ConsoleAppender = apply(generateName, out)
-  def apply(name: String, out: ConsoleOut): ConsoleAppender = apply(name, out, formatEnabled)
-
-  def apply(name: String, out: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
-    apply(name, out, formatEnabled, formatEnabled, suppressedMessage)
-
-  def apply(name: String, out: ConsoleOut, useColor: Boolean): ConsoleAppender =
-    apply(name, out, formatEnabled, useColor, noSuppressedMessage)
-
-  def apply(name: String, out: ConsoleOut, ansiCodesSupported: Boolean,
-    useColor: Boolean, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
-    {
-      val appender = new ConsoleAppender(name, out, ansiCodesSupported, useColor, suppressedMessage)
-      appender.start
-      appender
-    }
-
-  def generateName: String = "out-" + generateId.incrementAndGet
-
-  private val generateId: AtomicInteger = new AtomicInteger
-
-  private[this] val EscapeSequence = (27.toChar + "[^@-~]*[@-~]").r
-  def stripEscapeSequences(s: String): String =
-    EscapeSequence.pattern.matcher(s).replaceAll("")
-
-  def toLevel(level: XLevel): Level.Value =
-    level match {
-      case XLevel.OFF   => Level.Debug
-      case XLevel.FATAL => Level.Error
-      case XLevel.ERROR => Level.Error
-      case XLevel.WARN  => Level.Warn
-      case XLevel.INFO  => Level.Info
-      case XLevel.DEBUG => Level.Debug
-      case _            => Level.Debug
-    }
-  def toXLevel(level: Level.Value): XLevel =
-    level match {
-      case Level.Error => XLevel.ERROR
-      case Level.Warn  => XLevel.WARN
-      case Level.Info  => XLevel.INFO
-      case Level.Debug => XLevel.DEBUG
-    }
 }
 
 // See http://stackoverflow.com/questions/24205093/how-to-create-a-custom-appender-in-log4j2
@@ -237,35 +264,135 @@ object ConsoleAppender {
  * This logger is not thread-safe.
  */
 class ConsoleAppender private[ConsoleAppender] (
-  val name: String,
-  val out: ConsoleOut,
-  val ansiCodesSupported: Boolean,
-  val useColor: Boolean,
-  val suppressedMessage: SuppressedTraceContext => Option[String]
+  name: String,
+  out: ConsoleOut,
+  ansiCodesSupported: Boolean,
+  useFormat: Boolean,
+  suppressedMessage: SuppressedTraceContext => Option[String]
 ) extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {
   import scala.Console.{ BLUE, GREEN, RED, RESET, YELLOW }
 
-  def append(event: XLogEvent): Unit =
-    {
-      val level = ConsoleAppender.toLevel(event.getLevel)
-      val message = event.getMessage
-      // val str = messageToString(message)
-      appendMessage(level, message)
+  private final val SUCCESS_LABEL_COLOR   = GREEN
+  private final val SUCCESS_MESSAGE_COLOR = RESET
+  private final val NO_COLOR              = RESET
+
+  override def append(event: XLogEvent): Unit = {
+    val level = ConsoleAppender.toLevel(event.getLevel)
+    val message = event.getMessage
+    appendMessage(level, message)
+  }
+
+  // TODO:
+  // success is called by ConsoleLogger.
+  // This should turn into an event.
+  private[sbt] def success(message: => String): Unit = {
+    appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
+  }
+
+  /**
+   * Logs the stack trace of `t`, possibly shortening it.
+   *
+   * The `traceLevel` parameter configures how the stack trace will be shortened.
+   * See `StackTrace.trimmed`.
+   *
+   * @param t          The `Throwable` whose stack trace to log.
+   * @param traceLevel How to shorten the stack trace.
+   */
+  def trace(t: => Throwable, traceLevel: Int): Unit =
+    out.lockObject.synchronized {
+      if (traceLevel >= 0)
+        write(StackTrace.trimmed(t, traceLevel))
+      if (traceLevel <= 2)
+        for (msg <- suppressedMessage(new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)))
+          appendLog(NO_COLOR, "trace", NO_COLOR, msg)
     }
 
-  def appendMessage(level: Level.Value, msg: Message): Unit =
+  /**
+   * Logs a `ControlEvent` to the log.
+   *
+   * @param event   The kind of `ControlEvent`.
+   * @param message The message to log.
+   */
+  def control(event: ControlEvent.Value, message: => String): Unit =
+    appendLog(labelColor(Level.Info), Level.Info.toString, BLUE, message)
+
+  /**
+   * Appends the message `message` to the to the log at level `level`.
+   *
+   * @param level   The importance level of the message.
+   * @param message The message to log.
+   */
+  def appendLog(level: Level.Value, message: => String): Unit = {
+    appendLog(labelColor(level), level.toString, NO_COLOR, message)
+  }
+
+  /**
+   * Formats `msg` with `format, wrapped between `RESET`s
+   *
+   * @param format The format to use
+   * @param msg    The message to format
+   * @return The formatted message.
+   */
+  private def formatted(format: String, msg: String): String =
+    s"${RESET}${format}${msg}${RESET}"
+
+  /**
+   * Select the right color for the label given `level`.
+   *
+   * @param level The label to consider to select the color.
+   * @return The color to use to color the label.
+   */
+  private def labelColor(level: Level.Value): String =
+    level match {
+      case Level.Error => RED
+      case Level.Warn  => YELLOW
+      case _           => NO_COLOR
+    }
+
+  /**
+   * Appends a full message to the log. Each line is prefixed with `[$label]`, written in
+   * `labelColor` if formatting is enabled. The lines of the messages are colored with
+   * `messageColor` if formatting is enabled.
+   *
+   * @param labelColor   The color to use to format the label.
+   * @param label        The label to prefix each line with. The label is shown between square
+   *                     brackets.
+   * @param messageColor The color to use to format the message.
+   * @param message      The message to write.
+   */
+  private def appendLog(labelColor: String, label: String, messageColor: String, message: String): Unit =
+    out.lockObject.synchronized {
+      message.lines.foreach { line =>
+        val labeledLine = s"[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
+        writeLine(labeledLine)
+      }
+    }
+
+  private def write(msg: String): Unit = {
+    val cleanedMsg =
+      if (!useFormat) EscHelpers.removeEscapeSequences(msg)
+      else msg
+    out.println(cleanedMsg)
+  }
+
+  private def writeLine(line: String): Unit =
+    write(line + EOL)
+
+  private def appendMessage(level: Level.Value, msg: Message): Unit =
     msg match {
       case o: ObjectMessage         => objectToLines(o.getParameter) foreach { appendLog(level, _) }
       case o: ReusableObjectMessage => objectToLines(o.getParameter) foreach { appendLog(level, _) }
       case _                        => appendLog(level, msg.getFormattedMessage)
     }
-  def objectToLines(o: AnyRef): Vector[String] =
+
+  private def objectToLines(o: AnyRef): Vector[String] =
     o match {
       case x: StringEvent    => Vector(x.message)
       case x: ObjectEvent[_] => objectEventToLines(x)
       case _                 => Vector(o.toString)
     }
-  def objectEventToLines(oe: ObjectEvent[_]): Vector[String] =
+
+  private def objectEventToLines(oe: ObjectEvent[_]): Vector[String] =
     {
       val contentType = oe.contentType
       LogExchange.stringCodec[AnyRef](contentType) match {
@@ -273,61 +400,7 @@ class ConsoleAppender private[ConsoleAppender] (
         case _           => Vector(oe.message.toString)
       }
     }
-  def messageColor(level: Level.Value) = RESET
-  def labelColor(level: Level.Value) =
-    level match {
-      case Level.Error => RED
-      case Level.Warn  => YELLOW
-      case _           => RESET
-    }
 
-  // success is called by ConsoleLogger.
-  // This should turn into an event.
-  private[sbt] def success(message: => String): Unit = {
-    appendLog(successLabelColor, Level.SuccessLabel, successMessageColor, message)
-  }
-  private[sbt] def successLabelColor = GREEN
-  private[sbt] def successMessageColor = RESET
-
-  def trace(t: => Throwable, traceLevel: Int): Unit =
-    out.lockObject.synchronized {
-      if (traceLevel >= 0)
-        out.print(StackTrace.trimmed(t, traceLevel))
-      if (traceLevel <= 2)
-        for (msg <- suppressedMessage(new SuppressedTraceContext(traceLevel, ansiCodesSupported && useColor)))
-          printLabeledLine(labelColor(Level.Error), "trace", messageColor(Level.Error), msg)
-    }
-
-  def control(event: ControlEvent.Value, message: => String): Unit =
-    appendLog(labelColor(Level.Info), Level.Info.toString, BLUE, message)
-
-  def appendLog(level: Level.Value, message: => String): Unit = {
-    appendLog(labelColor(level), level.toString, messageColor(level), message)
-  }
-  private def reset(): Unit = setColor(RESET)
-
-  private def setColor(color: String): Unit = {
-    if (ansiCodesSupported && useColor)
-      out.lockObject.synchronized { out.print(color) }
-  }
-  private def appendLog(labelColor: String, label: String, messageColor: String, message: String): Unit =
-    out.lockObject.synchronized {
-      for (line <- message.split("""\n"""))
-        printLabeledLine(labelColor, label, messageColor, line)
-    }
-  private def printLabeledLine(labelColor: String, label: String, messageColor: String, line: String): Unit =
-    {
-      reset()
-      out.print("[")
-      setColor(labelColor)
-      out.print(label)
-      reset()
-      out.print("] ")
-      setColor(messageColor)
-      out.print(line)
-      reset()
-      out.println()
-    }
 }
 
-final class SuppressedTraceContext(val traceLevel: Int, val useColor: Boolean)
+final class SuppressedTraceContext(val traceLevel: Int, val useFormat: Boolean)
