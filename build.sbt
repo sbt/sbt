@@ -32,8 +32,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
 
 lazy val utilRoot: Project = (project in file(".")).
   aggregate(
-    utilInterface, utilControl, utilPosition, utilCollection, utilApplyMacro, utilComplete,
-    utilLogging, utilRelation, utilLogic, utilCache, utilTracking, utilTesting,
+    utilInterface, utilControl, utilPosition,
+    utilLogging, utilRelation, utilCache, utilTracking, utilTesting,
     utilScripted
   ).
   settings(
@@ -81,33 +81,6 @@ val utilPosition = (project in file("internal") / "util-position").settings(
   name := "Util Position"
 )
 
-lazy val utilCollection = (project in internalPath / "util-collection").
-  dependsOn(utilPosition, utilTesting % Test).
-  settings(
-    commonSettings,
-    Util.keywordsSettings,
-    name := "Util Collection",
-    libraryDependencies ++= Seq(sjsonnew.value, sjsonnewScalaJson.value % Test)
-  )
-
-lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
-  dependsOn(utilCollection).
-  settings(
-    commonSettings,
-    name := "Util Apply Macro",
-    libraryDependencies += scalaCompiler.value
-  )
-
-// Command line-related utilities.
-lazy val utilComplete = (project in internalPath / "util-complete").
-  dependsOn(utilCollection, utilControl, utilTesting % Test).
-  settings(
-    commonSettings,
-    name := "Util Completion",
-    libraryDependencies += jline
-  ).
-  configure(addSbtIO)
-
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging").
   enablePlugins(ContrabandPlugin, JsonCodecPlugin).
@@ -132,14 +105,6 @@ lazy val utilRelation = (project in internalPath / "util-relation").
   settings(
     commonSettings,
     name := "Util Relation"
-  )
-
-// A logic with restricted negation as failure for a unique, stable model
-lazy val utilLogic = (project in internalPath / "util-logic").
-  dependsOn(utilCollection, utilRelation, utilTesting % Test).
-  settings(
-    commonSettings,
-    name := "Util Logic"
   )
 
 // Persisted caching based on sjson-new
