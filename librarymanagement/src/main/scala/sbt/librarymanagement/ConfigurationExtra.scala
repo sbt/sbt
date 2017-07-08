@@ -134,3 +134,8 @@ private[sbt] object ConfigurationMacro {
       .enclosingContextChain
       .map(_.tree.asInstanceOf[c.Tree])
 }
+
+abstract class ConfigRefFunctions {
+  implicit def configToConfigRef(c: Configuration): ConfigRef =
+    c.toConfigRef
+}

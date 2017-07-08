@@ -63,6 +63,8 @@ final class Configuration private[sbt] (
   def withTransitive(transitive: Boolean): Configuration = {
     copy(transitive = transitive)
   }
+
+  def toConfigRef: ConfigRef = ConfigRef(name)
 }
 object Configuration {
   private[sbt] def apply(id: String, name: String): Configuration =

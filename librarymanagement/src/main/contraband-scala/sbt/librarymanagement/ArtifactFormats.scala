@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ArtifactFormats { self: sbt.librarymanagement.ChecksumFormats with sjsonnew.BasicJsonProtocol =>
+trait ArtifactFormats { self: sbt.librarymanagement.ConfigRefFormats with sbt.librarymanagement.ChecksumFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ArtifactFormat: JsonFormat[sbt.librarymanagement.Artifact] = new JsonFormat[sbt.librarymanagement.Artifact] {
   override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.Artifact = {
     jsOpt match {
@@ -15,7 +15,7 @@ implicit lazy val ArtifactFormat: JsonFormat[sbt.librarymanagement.Artifact] = n
       val `type` = unbuilder.readField[String]("type")
       val extension = unbuilder.readField[String]("extension")
       val classifier = unbuilder.readField[Option[String]]("classifier")
-      val configurations = unbuilder.readField[Vector[String]]("configurations")
+      val configurations = unbuilder.readField[Vector[sbt.librarymanagement.ConfigRef]]("configurations")
       val url = unbuilder.readField[Option[java.net.URL]]("url")
       val extraAttributes = unbuilder.readField[Map[String, String]]("extraAttributes")
       val checksum = unbuilder.readField[Option[sbt.librarymanagement.Checksum]]("checksum")

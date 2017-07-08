@@ -603,10 +603,12 @@ private[sbt] object IvySbt {
   private def toIvyArtifact(
       moduleID: ModuleDescriptor,
       a: Artifact,
-      allConfigurations: Iterable[String]
+      allConfigurations: Vector[ConfigRef]
   ): MDArtifact = {
     val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
-    copyConfigurations(a, artifact.addConfiguration, allConfigurations)
+    copyConfigurations(a,
+                       (ref: ConfigRef) => { artifact.addConfiguration(ref.name) },
+                       allConfigurations)
     artifact
   }
   def getExtraAttributes(revID: ExtendableItem): Map[String, String] = {
@@ -816,7 +818,7 @@ private[sbt] object IvySbt {
         url.orNull,
         extraMap
       )
-      copyConfigurations(artifact, ivyArtifact.addConfiguration)
+      copyConfigurations(artifact, (ref: ConfigRef) => { ivyArtifact.addConfiguration(ref.name) })
       for (conf <- dependencyDescriptor.getModuleConfigurations)
         dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
     }
@@ -849,13 +851,13 @@ private[sbt] object IvySbt {
 
     dependencyDescriptor
   }
-  def copyConfigurations(artifact: Artifact, addConfiguration: String => Unit): Unit =
-    copyConfigurations(artifact, addConfiguration, "*" :: Nil)
+  def copyConfigurations(artifact: Artifact, addConfiguration: ConfigRef => Unit): Unit =
+    copyConfigurations(artifact, addConfiguration, Vector(ConfigRef("*")))
 
   private[this] def copyConfigurations(
       artifact: Artifact,
-      addConfiguration: String => Unit,
-      allConfigurations: Iterable[String]
+      addConfiguration: ConfigRef => Unit,
+      allConfigurations: Vector[ConfigRef]
   ): Unit = {
     val confs =
       if (artifact.configurations.isEmpty) allConfigurations
@@ -923,7 +925,7 @@ private[sbt] object IvySbt {
     configurations.foreach(config => mod.addConfiguration(toIvyConfiguration(config)))
 
   def mapArtifacts(moduleID: ModuleDescriptor, artifacts: Seq[Artifact]): Seq[IArtifact] = {
-    lazy val allConfigurations = moduleID.getPublicConfigurationsNames
+    lazy val allConfigurations = moduleID.getPublicConfigurationsNames.toVector map ConfigRef.apply
     for (artifact <- artifacts) yield toIvyArtifact(moduleID, artifact, allConfigurations)
   }
 

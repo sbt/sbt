@@ -217,7 +217,9 @@ object IvyRetrieve {
       getType,
       getExt,
       Option(getExtraAttribute("classifier")),
-      getConfigurations.toVector,
+      getConfigurations.toVector map { c: String =>
+        ConfigRef(c)
+      },
       Option(getUrl)
     )
   }
