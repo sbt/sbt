@@ -232,8 +232,6 @@ final case class BootstrapOptions(
     mainClass: String = "",
   @Short("o")
     output: String = "bootstrap",
-  @Short("d")
-    downloadDir: String = "",
   @Short("f")
     force: Boolean = false,
   @Help("Generate a standalone launcher, with all JARs included, instead of one downloading its dependencies on startup.")
@@ -247,6 +245,14 @@ final case class BootstrapOptions(
   @Value("option")
   @Short("J")
     javaOpt: List[String] = Nil,
+  @Help("Generate native launcher")
+  @Short("S")
+    native: Boolean = false,
+  @Help("Native compilation target directory")
+  @Short("d")
+    target: String = "native-target",
+  @Help("Don't wipe native compilation target directory (for debug purposes)")
+    keepTarget: Boolean = false,
   @Recurse
     isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
   @Recurse

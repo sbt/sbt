@@ -9,6 +9,18 @@ SCALA_JS="${SCALA_JS:-0}"
 
 JARJAR_VERSION="${JARJAR_VERSION:-1.0.1-coursier-SNAPSHOT}"
 
+is210() {
+  echo "$SCALA_VERSION" | grep -q "^2\.10"
+}
+
+is211() {
+  echo "$SCALA_VERSION" | grep -q "^2\.11"
+}
+
+is212() {
+  echo "$SCALA_VERSION" | grep -q "^2\.12"
+}
+
 setupCoursierBinDir() {
   mkdir -p bin
   cp coursier bin/
@@ -16,6 +28,7 @@ setupCoursierBinDir() {
 }
 
 downloadInstallSbtExtras() {
+  mkdir -p bin
   curl -L -o bin/sbt https://github.com/paulp/sbt-extras/raw/9ade5fa54914ca8aded44105bf4b9a60966f3ccd/sbt
   chmod +x bin/sbt
 }
@@ -43,6 +56,18 @@ integrationTestsRequirements() {
   launchTestRepo --port 8081
 }
 
+setupCustomScalaNative() {
+  if [ ! -d "$HOME/.ivy2/local/org.scala-native/tools_2.11/0.3.0-coursier-1" ]; then
+    git clone https://github.com/coursier/scala-native.git
+    cd scala-native
+    git checkout 550bf6e37d27
+    sbt ++2.11.8 sandbox/publishLocal
+    git checkout f8088aef6981
+    sbt ++2.11.8 nscplugin/publishLocal util/publishLocal nir/publishLocal tools/publishLocal
+    cd ..
+  fi
+}
+
 setupCustomJarjar() {
   if [ ! -d "$HOME/.m2/repository/org/anarres/jarjar/jarjar-core/$JARJAR_VERSION" ]; then
     git clone https://github.com/alexarchambault/jarjar.git
@@ -68,18 +93,6 @@ sbtCoursier() {
 
 sbtShading() {
   [ "$SBT_SHADING" = 1 ]
-}
-
-is210() {
-  echo "$SCALA_VERSION" | grep -q "^2\.10"
-}
-
-is211() {
-  echo "$SCALA_VERSION" | grep -q "^2\.11"
-}
-
-is212() {
-  echo "$SCALA_VERSION" | grep -q "^2\.12"
 }
 
 runSbtCoursierTests() {
@@ -216,6 +229,17 @@ testBootstrap() {
   fi
 }
 
+testNativeBootstrap() {
+  if is211; then
+    sbt ++${SCALA_VERSION} cli/pack
+    cli/target/pack/bin/coursier bootstrap -S -o native-test sandbox::sandbox_native0.3:0.1-SNAPSHOT
+    if [ "$(./native-test)" != "Hello, World!" ]; then
+      echo "Error: unexpected output from native test bootstrap." 1>&2
+      exit 1
+    fi
+  fi
+}
+
 addPgpKeys() {
   for key in b41f2bce 9fa47a44 ae548ced b4493b94 53a97466 36ee59d9 dc426429 3b80305d 69e0a56c fdd5c0cd 35543c27 70173ee5 111557de 39c263a9; do
     gpg --keyserver keyserver.ubuntu.com --recv "$key"
@@ -225,15 +249,18 @@ addPgpKeys() {
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 
-setupCustomJarjar
-
-setupCoursierBinDir
 downloadInstallSbtExtras
+setupCoursierBinDir
+
+setupCustomJarjar
+setupCustomScalaNative
 
 if isScalaJs; then
   jsCompile
   runJsTests
 else
+  testNativeBootstrap
+
   integrationTestsRequirements
   jvmCompile
 
