@@ -28,7 +28,7 @@ trait DependencyFilterExtra {
     }
   def configurationFilter(name: NameFilter = AllPassFilter): ConfigurationFilter =
     new ConfigurationFilter {
-      def apply(c: String): Boolean = name.accept(c)
+      def apply(c: ConfigRef): Boolean = name.accept(c.name)
     }
 }
 object DependencyFilter extends DependencyFilterExtra {
@@ -38,7 +38,7 @@ object DependencyFilter extends DependencyFilterExtra {
       artifact: ArtifactFilter = artifactFilter()
   ): DependencyFilter =
     new DependencyFilter {
-      def apply(c: String, m: ModuleID, a: Artifact): Boolean =
+      def apply(c: ConfigRef, m: ModuleID, a: Artifact): Boolean =
         configuration(c) && module(m) && artifact(a)
     }
   def apply(
@@ -47,7 +47,7 @@ object DependencyFilter extends DependencyFilterExtra {
       combine: (Boolean, Boolean) => Boolean
   ): DependencyFilter =
     new DependencyFilter {
-      def apply(c: String, m: ModuleID, a: Artifact): Boolean = combine(x(c, m, a), y(c, m, a))
+      def apply(c: ConfigRef, m: ModuleID, a: Artifact): Boolean = combine(x(c, m, a), y(c, m, a))
     }
   def allPass: DependencyFilter = configurationFilter()
   implicit def fnToModuleFilter(f: ModuleID => Boolean): ModuleFilter = new ModuleFilter {
@@ -56,12 +56,12 @@ object DependencyFilter extends DependencyFilterExtra {
   implicit def fnToArtifactFilter(f: Artifact => Boolean): ArtifactFilter = new ArtifactFilter {
     def apply(m: Artifact) = f(m)
   }
-  implicit def fnToConfigurationFilter(f: String => Boolean): ConfigurationFilter =
-    new ConfigurationFilter { def apply(c: String) = f(c) }
+  implicit def fnToConfigurationFilter(f: ConfigRef => Boolean): ConfigurationFilter =
+    new ConfigurationFilter { def apply(c: ConfigRef) = f(c) }
   implicit def subDepFilterToFn[Arg](f: SubDepFilter[Arg, _]): Arg => Boolean = f apply _
 }
 trait DependencyFilter {
-  def apply(configuration: String, module: ModuleID, artifact: Artifact): Boolean
+  def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean
   final def &&(o: DependencyFilter) = DependencyFilter(this, o, _ && _)
   final def ||(o: DependencyFilter) = DependencyFilter(this, o, _ || _)
   final def --(o: DependencyFilter) = DependencyFilter(this, o, _ && !_)
@@ -80,20 +80,20 @@ trait ModuleFilter extends SubDepFilter[ModuleID, ModuleFilter] {
   protected final def make(f: ModuleID => Boolean) = new ModuleFilter {
     def apply(m: ModuleID) = f(m)
   }
-  final def apply(configuration: String, module: ModuleID, artifact: Artifact): Boolean =
+  final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(module)
 }
 trait ArtifactFilter extends SubDepFilter[Artifact, ArtifactFilter] {
   protected final def make(f: Artifact => Boolean) = new ArtifactFilter {
     def apply(m: Artifact) = f(m)
   }
-  final def apply(configuration: String, module: ModuleID, artifact: Artifact): Boolean =
+  final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(artifact)
 }
-trait ConfigurationFilter extends SubDepFilter[String, ConfigurationFilter] {
-  protected final def make(f: String => Boolean) = new ConfigurationFilter {
-    def apply(m: String) = f(m)
+trait ConfigurationFilter extends SubDepFilter[ConfigRef, ConfigurationFilter] {
+  protected final def make(f: ConfigRef => Boolean) = new ConfigurationFilter {
+    def apply(m: ConfigRef) = f(m)
   }
-  final def apply(configuration: String, module: ModuleID, artifact: Artifact): Boolean =
+  final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(configuration)
 }

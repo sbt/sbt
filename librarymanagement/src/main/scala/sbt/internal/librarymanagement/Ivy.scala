@@ -829,7 +829,7 @@ private[sbt] object IvySbt {
           IvyScala.excludeRule(
             excls.organization,
             excls.name,
-            excls.configurations,
+            excls.configurations map { _.name },
             excls.artifact
           )
         )
@@ -842,7 +842,7 @@ private[sbt] object IvySbt {
           IvyScala.includeRule(
             incls.organization,
             incls.name,
-            incls.configurations,
+            incls.configurations map { _.name },
             incls.artifact
           )
         )
@@ -877,7 +877,7 @@ private[sbt] object IvySbt {
     val exclude = CrossVersion.substituteCross(exclude0, ivyScala)
     val confs =
       if (exclude.configurations.isEmpty) moduleID.getConfigurationsNames.toList
-      else exclude.configurations
+      else exclude.configurations map { _.name }
     val excludeRule =
       IvyScala.excludeRule(exclude.organization, exclude.name, confs, exclude.artifact)
     moduleID.addExcludeRule(excludeRule)

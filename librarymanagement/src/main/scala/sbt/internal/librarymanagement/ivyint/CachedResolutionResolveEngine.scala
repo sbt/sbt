@@ -512,14 +512,16 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     )
     val configReports = rootModuleConfigs map { conf =>
       log.debug("::: -----------")
-      val crs = reports flatMap { _.configurations filter { _.configuration == conf.getName } }
-      mergeConfigurationReports(conf.getName, crs, os, log)
+      val crs = reports flatMap {
+        _.configurations filter { _.configuration.name == conf.getName }
+      }
+      mergeConfigurationReports(ConfigRef(conf.getName), crs, os, log)
     }
     UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
   }
   // memory usage 62%, of which 58% is in mergeOrganizationArtifactReports
   def mergeConfigurationReports(
-      rootModuleConf: String,
+      rootModuleConf: ConfigRef,
       reports: Vector[ConfigurationReport],
       os: Vector[IvyOverride],
       log: Logger
@@ -539,7 +541,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    * Returns a tuple of (merged org + name combo, newly evicted modules)
    */
   def mergeOrganizationArtifactReports(
-      rootModuleConf: String,
+      rootModuleConf: ConfigRef,
       reports0: Vector[OrganizationArtifactReport],
       os: Vector[IvyOverride],
       log: Logger
@@ -735,7 +737,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    * Returns a touple of (surviving modules ++ non-conflicting modules, newly evicted modules).
    */
   def mergeModuleReports(
-      rootModuleConf: String,
+      rootModuleConf: ConfigRef,
       modules: Vector[ModuleReport],
       os: Vector[IvyOverride],
       log: Logger
@@ -787,7 +789,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    * This transitively evicts any non-evicted modules whose only callers are newly evicted.
    */
   def transitivelyEvict(
-      rootModuleConf: String,
+      rootModuleConf: ConfigRef,
       pairs: List[(String, String)],
       reports0: Map[(String, String), Vector[OrganizationArtifactReport]],
       evicted0: Vector[ModuleReport],
@@ -833,7 +835,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    * which may be because Ivy makes all Maven dependencies as forced="true".
    */
   def resolveConflict(
-      rootModuleConf: String,
+      rootModuleConf: ConfigRef,
       conflicts: Vector[ModuleReport],
       os: Vector[IvyOverride],
       log: Logger
@@ -945,7 +947,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
     // These are the configurations from the original project we want to resolve.
     val rootModuleConfs = md0.getConfigurations.toVector
-    val configurations0 = ur.configurations.toVector
+    val configurations0: Vector[ConfigurationReport] = ur.configurations.toVector
     // This is how md looks from md0 via dd's mapping.
     val remappedConfigs0: Map[String, Vector[String]] = Map(rootModuleConfs map { conf0 =>
       val remapped
@@ -969,7 +971,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val remappedCRs = configurations0 filter { cr =>
         remappedConfigs(conf0.getName) contains cr.configuration
       }
-      mergeConfigurationReports(conf0.getName, remappedCRs, os, log)
+      mergeConfigurationReports(ConfigRef(conf0.getName), remappedCRs, os, log)
     }
     UpdateReport(ur.cachedDescriptor, configurations, ur.stats, ur.stamps)
   }

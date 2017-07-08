@@ -24,7 +24,7 @@ final class ModuleReport private (
   val extraAttributes: Map[String, String],
   val isDefault: Option[Boolean],
   val branch: Option[String],
-  val configurations: Vector[String],
+  val configurations: Vector[sbt.librarymanagement.ConfigRef],
   val licenses: Vector[scala.Tuple2[String, Option[String]]],
   val callers: Vector[sbt.librarymanagement.Caller]) extends sbt.librarymanagement.ModuleReportExtra with Serializable {
   
@@ -41,7 +41,7 @@ final class ModuleReport private (
     s"\t\t$module: " +
     (if (arts.size <= 1) "" else "\n\t\t\t") + arts.mkString("\n\t\t\t") + "\n"
   }
-  protected[this] def copy(module: sbt.librarymanagement.ModuleID = module, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, missingArtifacts: Vector[sbt.librarymanagement.Artifact] = missingArtifacts, status: Option[String] = status, publicationDate: Option[java.util.Calendar] = publicationDate, resolver: Option[String] = resolver, artifactResolver: Option[String] = artifactResolver, evicted: Boolean = evicted, evictedData: Option[String] = evictedData, evictedReason: Option[String] = evictedReason, problem: Option[String] = problem, homepage: Option[String] = homepage, extraAttributes: Map[String, String] = extraAttributes, isDefault: Option[Boolean] = isDefault, branch: Option[String] = branch, configurations: Vector[String] = configurations, licenses: Vector[scala.Tuple2[String, Option[String]]] = licenses, callers: Vector[sbt.librarymanagement.Caller] = callers): ModuleReport = {
+  protected[this] def copy(module: sbt.librarymanagement.ModuleID = module, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, missingArtifacts: Vector[sbt.librarymanagement.Artifact] = missingArtifacts, status: Option[String] = status, publicationDate: Option[java.util.Calendar] = publicationDate, resolver: Option[String] = resolver, artifactResolver: Option[String] = artifactResolver, evicted: Boolean = evicted, evictedData: Option[String] = evictedData, evictedReason: Option[String] = evictedReason, problem: Option[String] = problem, homepage: Option[String] = homepage, extraAttributes: Map[String, String] = extraAttributes, isDefault: Option[Boolean] = isDefault, branch: Option[String] = branch, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, licenses: Vector[scala.Tuple2[String, Option[String]]] = licenses, callers: Vector[sbt.librarymanagement.Caller] = callers): ModuleReport = {
     new ModuleReport(module, artifacts, missingArtifacts, status, publicationDate, resolver, artifactResolver, evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch, configurations, licenses, callers)
   }
   def withModule(module: sbt.librarymanagement.ModuleID): ModuleReport = {
@@ -89,7 +89,7 @@ final class ModuleReport private (
   def withBranch(branch: Option[String]): ModuleReport = {
     copy(branch = branch)
   }
-  def withConfigurations(configurations: Vector[String]): ModuleReport = {
+  def withConfigurations(configurations: Vector[sbt.librarymanagement.ConfigRef]): ModuleReport = {
     copy(configurations = configurations)
   }
   def withLicenses(licenses: Vector[scala.Tuple2[String, Option[String]]]): ModuleReport = {
@@ -102,5 +102,5 @@ final class ModuleReport private (
 object ModuleReport {
   
   def apply(module: sbt.librarymanagement.ModuleID, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], missingArtifacts: Vector[sbt.librarymanagement.Artifact]): ModuleReport = new ModuleReport(module, artifacts, missingArtifacts, None, None, None, None, false, None, None, None, None, Map.empty, None, None, Vector.empty, Vector.empty, Vector.empty)
-  def apply(module: sbt.librarymanagement.ModuleID, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], missingArtifacts: Vector[sbt.librarymanagement.Artifact], status: Option[String], publicationDate: Option[java.util.Calendar], resolver: Option[String], artifactResolver: Option[String], evicted: Boolean, evictedData: Option[String], evictedReason: Option[String], problem: Option[String], homepage: Option[String], extraAttributes: Map[String, String], isDefault: Option[Boolean], branch: Option[String], configurations: Vector[String], licenses: Vector[scala.Tuple2[String, Option[String]]], callers: Vector[sbt.librarymanagement.Caller]): ModuleReport = new ModuleReport(module, artifacts, missingArtifacts, status, publicationDate, resolver, artifactResolver, evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch, configurations, licenses, callers)
+  def apply(module: sbt.librarymanagement.ModuleID, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], missingArtifacts: Vector[sbt.librarymanagement.Artifact], status: Option[String], publicationDate: Option[java.util.Calendar], resolver: Option[String], artifactResolver: Option[String], evicted: Boolean, evictedData: Option[String], evictedReason: Option[String], problem: Option[String], homepage: Option[String], extraAttributes: Map[String, String], isDefault: Option[Boolean], branch: Option[String], configurations: Vector[sbt.librarymanagement.ConfigRef], licenses: Vector[scala.Tuple2[String, Option[String]]], callers: Vector[sbt.librarymanagement.Caller]): ModuleReport = new ModuleReport(module, artifacts, missingArtifacts, status, publicationDate, resolver, artifactResolver, evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch, configurations, licenses, callers)
 }

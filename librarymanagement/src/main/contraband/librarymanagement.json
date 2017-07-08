@@ -52,7 +52,7 @@
       "type": "record",
       "fields": [
         { "name": "caller",                    "type": "sbt.librarymanagement.ModuleID" },
-        { "name": "callerConfigurations",      "type": "String*"                        },
+        { "name": "callerConfigurations",      "type": "sbt.librarymanagement.ConfigRef*" },
         { "name": "callerExtraAttributes",     "type": "Map[String, String]"            },
         { "name": "isForceDependency",         "type": "boolean"                        },
         { "name": "isChangingDependency",      "type": "boolean"                        },
@@ -76,7 +76,8 @@
           "doc": [ "The name of the configuration that eventually get used by Maven." ]
         }
       ],
-      "parentsCompanion": "sbt.librarymanagement.ConfigRefFunctions"
+      "parentsCompanion": "sbt.librarymanagement.ConfigRefFunctions",
+      "toString": "name"
     },
     {
       "name": "ConfigurationReport",
@@ -88,7 +89,7 @@
       ],
       "parents": "sbt.librarymanagement.ConfigurationReportExtra",
       "fields": [
-        { "name": "configuration", "type": "String", "doc": [ "the configuration this report is for." ] },
+        { "name": "configuration", "type": "sbt.librarymanagement.ConfigRef", "doc": [ "the configuration this report is for." ] },
         {
           "name": "modules",
           "type": "sbt.librarymanagement.ModuleReport*",
@@ -233,7 +234,7 @@
         { "name": "organization",   "type": "String",  "default": "\"*\"",        "since": "0.0.1" },
         { "name": "name",           "type": "String",  "default": "\"*\"",        "since": "0.0.1" },
         { "name": "artifact",       "type": "String",  "default": "\"*\"",        "since": "0.0.1" },
-        { "name": "configurations", "type": "String*", "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "configurations", "type": "sbt.librarymanagement.ConfigRef*", "default": "Vector.empty", "since": "0.0.1" },
         { "name": "crossVersion",   "type": "sbt.librarymanagement.CrossVersion", "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1"}
       ],
       "parentsCompanion": "sbt.librarymanagement.InclExclRuleFunctions"
@@ -351,7 +352,7 @@
         { "name": "extraAttributes",  "type": "Map[String, String]",                   "default": "Map.empty",    "since": "0.0.1" },
         { "name": "isDefault",        "type": "Option[Boolean]",                       "default": "None",         "since": "0.0.1" },
         { "name": "branch",           "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
-        { "name": "configurations",   "type": "String*",                               "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "configurations",   "type": "sbt.librarymanagement.ConfigRef*",                               "default": "Vector.empty", "since": "0.0.1" },
         { "name": "licenses",         "type": "scala.Tuple2[String, Option[String]]*", "default": "Vector.empty", "since": "0.0.1" },
         { "name": "callers",          "type": "sbt.librarymanagement.Caller*",         "default": "Vector.empty", "since": "0.0.1" }
       ],
@@ -805,8 +806,8 @@
       "fields": [
         { "name": "retrieveDirectory",        "type": "java.io.File"                                                                           },
         { "name": "outputPattern",            "type": "String"                                                                                 },
-        { "name": "sync",                     "type": "boolean",                                          "default": "false", "since": "0.0.1" },
-        { "name": "configurationsToRetrieve", "type": "Option[Set[sbt.librarymanagement.Configuration]]", "default": "None",  "since": "0.0.1" }
+        { "name": "sync",                     "type": "boolean",                                      "default": "false", "since": "0.0.1" },
+        { "name": "configurationsToRetrieve", "type": "Option[Set[sbt.librarymanagement.ConfigRef]]", "default": "None",  "since": "0.0.1" }
       ]
     },
     {

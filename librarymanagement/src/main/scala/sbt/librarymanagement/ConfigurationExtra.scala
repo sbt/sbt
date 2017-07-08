@@ -14,6 +14,7 @@ object Configurations {
   def defaultInternal: Seq[Configuration] = Seq(CompileInternal, RuntimeInternal, TestInternal)
   def auxiliary: Seq[Configuration] = Seq(Pom)
   def names(cs: Seq[Configuration]) = cs.map(_.name)
+  def refs(cs: Seq[Configuration]) = cs.map(_.toConfigRef)
 
   lazy val RuntimeInternal = optionalInternal(Runtime)
   lazy val TestInternal = fullInternal(Test)

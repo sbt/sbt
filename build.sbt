@@ -72,7 +72,8 @@ lazy val lm = (project in file("librarymanagement"))
                                 gigahorseOkhttp,
                                 okhttpUrlconnection,
                                 sjsonnewScalaJson.value % Optional,
-                                scalaTest),
+                                scalaTest,
+                                scalaCheck),
     libraryDependencies ++= scalaXml.value,
     resourceGenerators in Compile += Def.task(
       Util.generateVersionFile(

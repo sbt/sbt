@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait InclExclRuleFormats { self: sbt.librarymanagement.CrossVersionFormats with sjsonnew.BasicJsonProtocol =>
+trait InclExclRuleFormats { self: sbt.librarymanagement.ConfigRefFormats with sbt.librarymanagement.CrossVersionFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val InclExclRuleFormat: JsonFormat[sbt.librarymanagement.InclExclRule] = new JsonFormat[sbt.librarymanagement.InclExclRule] {
   override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.InclExclRule = {
     jsOpt match {
@@ -14,7 +14,7 @@ implicit lazy val InclExclRuleFormat: JsonFormat[sbt.librarymanagement.InclExclR
       val organization = unbuilder.readField[String]("organization")
       val name = unbuilder.readField[String]("name")
       val artifact = unbuilder.readField[String]("artifact")
-      val configurations = unbuilder.readField[Vector[String]]("configurations")
+      val configurations = unbuilder.readField[Vector[sbt.librarymanagement.ConfigRef]]("configurations")
       val crossVersion = unbuilder.readField[sbt.librarymanagement.CrossVersion]("crossVersion")
       unbuilder.endObject()
       sbt.librarymanagement.InclExclRule(organization, name, artifact, configurations, crossVersion)

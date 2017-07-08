@@ -17,7 +17,7 @@ final class InclExclRule private (
   val organization: String,
   val name: String,
   val artifact: String,
-  val configurations: Vector[String],
+  val configurations: Vector[sbt.librarymanagement.ConfigRef],
   val crossVersion: sbt.librarymanagement.CrossVersion) extends Serializable {
   
   private def this() = this("*", "*", "*", Vector.empty, sbt.librarymanagement.Disabled())
@@ -32,7 +32,7 @@ final class InclExclRule private (
   override def toString: String = {
     "InclExclRule(" + organization + ", " + name + ", " + artifact + ", " + configurations + ", " + crossVersion + ")"
   }
-  protected[this] def copy(organization: String = organization, name: String = name, artifact: String = artifact, configurations: Vector[String] = configurations, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion): InclExclRule = {
+  protected[this] def copy(organization: String = organization, name: String = name, artifact: String = artifact, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion): InclExclRule = {
     new InclExclRule(organization, name, artifact, configurations, crossVersion)
   }
   def withOrganization(organization: String): InclExclRule = {
@@ -44,7 +44,7 @@ final class InclExclRule private (
   def withArtifact(artifact: String): InclExclRule = {
     copy(artifact = artifact)
   }
-  def withConfigurations(configurations: Vector[String]): InclExclRule = {
+  def withConfigurations(configurations: Vector[sbt.librarymanagement.ConfigRef]): InclExclRule = {
     copy(configurations = configurations)
   }
   def withCrossVersion(crossVersion: sbt.librarymanagement.CrossVersion): InclExclRule = {
@@ -54,5 +54,5 @@ final class InclExclRule private (
 object InclExclRule extends sbt.librarymanagement.InclExclRuleFunctions {
   
   def apply(): InclExclRule = new InclExclRule("*", "*", "*", Vector.empty, sbt.librarymanagement.Disabled())
-  def apply(organization: String, name: String, artifact: String, configurations: Vector[String], crossVersion: sbt.librarymanagement.CrossVersion): InclExclRule = new InclExclRule(organization, name, artifact, configurations, crossVersion)
+  def apply(organization: String, name: String, artifact: String, configurations: Vector[sbt.librarymanagement.ConfigRef], crossVersion: sbt.librarymanagement.CrossVersion): InclExclRule = new InclExclRule(organization, name, artifact, configurations, crossVersion)
 }

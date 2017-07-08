@@ -19,7 +19,7 @@ final class ConfigRef private (
     37 * (37 * (17 + "ConfigRef".##) + name.##)
   }
   override def toString: String = {
-    "ConfigRef(" + name + ")"
+    name
   }
   protected[this] def copy(name: String = name): ConfigRef = {
     new ConfigRef(name)

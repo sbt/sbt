@@ -541,19 +541,15 @@ object IvyActions {
       config: RetrieveConfiguration
   ): UpdateReport = {
     val copyChecksums = ivy.getVariable(ConvertResolver.ManagedChecksums).toBoolean
-    val toRetrieve = config.configurationsToRetrieve
+    val toRetrieve: Option[Set[ConfigRef]] = config.configurationsToRetrieve
     val base = config.retrieveDirectory
     val pattern = config.outputPattern
-    val configurationNames = toRetrieve match {
-      case None          => None
-      case Some(configs) => Some(configs.map(_.name))
-    }
     val existingFiles = PathFinder(base).allPaths.get filterNot { _.isDirectory }
     val toCopy = new collection.mutable.HashSet[(File, File)]
-    val retReport = report retrieve { (conf, mid, art, cached) =>
-      configurationNames match {
+    val retReport = report retrieve { (conf: ConfigRef, mid, art, cached) =>
+      toRetrieve match {
         case None => performRetrieve(conf, mid, art, base, pattern, cached, copyChecksums, toCopy)
-        case Some(names) if names(conf) =>
+        case Some(refs) if refs(conf) =>
           performRetrieve(conf, mid, art, base, pattern, cached, copyChecksums, toCopy)
         case _ => cached
       }
@@ -572,7 +568,7 @@ object IvyActions {
   }
 
   private def performRetrieve(
-      conf: String,
+      conf: ConfigRef,
       mid: ModuleID,
       art: Artifact,
       base: File,
@@ -603,7 +599,7 @@ object IvyActions {
   }
 
   private def retrieveTarget(
-      conf: String,
+      conf: ConfigRef,
       mid: ModuleID,
       art: Artifact,
       base: File,
@@ -611,7 +607,7 @@ object IvyActions {
   ): File =
     new File(base, substitute(conf, mid, art, pattern))
 
-  private def substitute(conf: String, mid: ModuleID, art: Artifact, pattern: String): String = {
+  private def substitute(conf: ConfigRef, mid: ModuleID, art: Artifact, pattern: String): String = {
     val mextra = IvySbt.javaMap(mid.extraAttributes, true)
     val aextra = IvySbt.extra(art, true)
     IvyPatternHelper.substitute(
@@ -623,7 +619,7 @@ object IvyActions {
       art.name,
       art.`type`,
       art.extension,
-      conf,
+      conf.name,
       null,
       mextra,
       aextra

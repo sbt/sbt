@@ -7,7 +7,7 @@ package sbt.librarymanagement
 /** Provides information about resolution of a single configuration. */
 final class ConfigurationReport private (
   /** the configuration this report is for. */
-  val configuration: String,
+  val configuration: sbt.librarymanagement.ConfigRef,
   /** a sequence containing one report for each module resolved for this configuration. */
   val modules: Vector[sbt.librarymanagement.ModuleReport],
   /** a sequence containing one report for each org/name, which may or may not be part of the final resolution. */
@@ -27,10 +27,10 @@ final class ConfigurationReport private (
     (if (details.isEmpty) modules.mkString + details.flatMap(_.modules).filter(_.evicted).map("\t\t(EVICTED) " + _ + "\n").mkString
     else details.mkString)
   }
-  protected[this] def copy(configuration: String = configuration, modules: Vector[sbt.librarymanagement.ModuleReport] = modules, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReport = {
+  protected[this] def copy(configuration: sbt.librarymanagement.ConfigRef = configuration, modules: Vector[sbt.librarymanagement.ModuleReport] = modules, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReport = {
     new ConfigurationReport(configuration, modules, details)
   }
-  def withConfiguration(configuration: String): ConfigurationReport = {
+  def withConfiguration(configuration: sbt.librarymanagement.ConfigRef): ConfigurationReport = {
     copy(configuration = configuration)
   }
   def withModules(modules: Vector[sbt.librarymanagement.ModuleReport]): ConfigurationReport = {
@@ -42,5 +42,5 @@ final class ConfigurationReport private (
 }
 object ConfigurationReport {
   
-  def apply(configuration: String, modules: Vector[sbt.librarymanagement.ModuleReport], details: Vector[sbt.librarymanagement.OrganizationArtifactReport]): ConfigurationReport = new ConfigurationReport(configuration, modules, details)
+  def apply(configuration: sbt.librarymanagement.ConfigRef, modules: Vector[sbt.librarymanagement.ModuleReport], details: Vector[sbt.librarymanagement.OrganizationArtifactReport]): ConfigurationReport = new ConfigurationReport(configuration, modules, details)
 }

@@ -8,7 +8,7 @@ import sbt.util.ShowLines
 import sbt.internal.librarymanagement.{ InlineConfiguration, IvySbt }
 
 final class EvictionWarningOptions private[sbt] (
-    val configurations: Seq[Configuration],
+    val configurations: Seq[ConfigRef],
     val warnScalaVersionEviction: Boolean,
     val warnDirectEvictions: Boolean,
     val warnTransitiveEvictions: Boolean,
@@ -16,9 +16,7 @@ final class EvictionWarningOptions private[sbt] (
     val showCallers: Boolean,
     val guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean]
 ) {
-  private[sbt] def configStrings = configurations map { _.name }
-
-  def withConfigurations(configurations: Seq[Configuration]): EvictionWarningOptions =
+  def withConfigurations(configurations: Seq[ConfigRef]): EvictionWarningOptions =
     copy(configurations = configurations)
   def withWarnScalaVersionEviction(warnScalaVersionEviction: Boolean): EvictionWarningOptions =
     copy(warnScalaVersionEviction = warnScalaVersionEviction)
@@ -36,7 +34,7 @@ final class EvictionWarningOptions private[sbt] (
     copy(guessCompatible = guessCompatible)
 
   private[sbt] def copy(
-      configurations: Seq[Configuration] = configurations,
+      configurations: Seq[ConfigRef] = configurations,
       warnScalaVersionEviction: Boolean = warnScalaVersionEviction,
       warnDirectEvictions: Boolean = warnDirectEvictions,
       warnTransitiveEvictions: Boolean = warnTransitiveEvictions,
@@ -193,7 +191,7 @@ object EvictionWarning {
   ): Seq[OrganizationArtifactReport] = {
     val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
     val confs = report.configurations filter { x =>
-      options.configStrings contains x.configuration
+      options.configurations contains x.configuration
     }
     confs flatMap { confReport =>
       confReport.details map { detail =>
