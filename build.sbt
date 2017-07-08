@@ -110,10 +110,34 @@ lazy val bootstrap = project
   )
 
 lazy val extra = project
+  .enablePlugins(ShadingPlugin)
   .dependsOn(coreJvm)
   .settings(
     shared,
-    coursierPrefix
+    coursierPrefix,
+    shading,
+    libs ++= {
+      val ver = "0.3.0-coursier-1"
+      if (scalaBinaryVersion.value == "2.11")
+        Seq(
+          "org.scala-native" %% "tools" % ver % "shaded",
+          // brought by tools, but issues in ShadingPlugin (with things published locally?) makes these not be shaded...
+          "org.scala-native" %% "nir" % ver % "shaded",
+          "org.scala-native" %% "util" % ver % "shaded",
+          Deps.fastParse % "shaded"
+        )
+      else
+        Nil
+    },
+    shadeNamespaces ++=
+      Set(
+        "fastparse",
+        "sourcecode"
+      ) ++
+      // not blindly shading the whole scala.scalanative here, for some constant strings starting with
+      // "scala.scalanative.native." in scalanative not to get prefixed with "coursier.shaded."
+      Seq("codegen", "io", "linker", "nir", "optimizer", "tools", "util")
+        .map("scala.scalanative." + _)
   )
 
 lazy val cli = project
