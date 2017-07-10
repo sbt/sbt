@@ -35,7 +35,7 @@ private[sbt] object JsonUtil {
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
       ConfigurationReportLite(
-        cr.configuration,
+        cr.configuration.name,
         cr.details map {
           oar =>
             OrganizationArtifactReport(
@@ -92,7 +92,7 @@ private[sbt] object JsonUtil {
           !mr.evicted && mr.problem.isEmpty
         }
       }
-      ConfigurationReport(cr.configuration, modules, details)
+      ConfigurationReport(ConfigRef(cr.configuration), modules, details)
     }
     UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
   }

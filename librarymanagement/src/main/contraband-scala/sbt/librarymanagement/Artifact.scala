@@ -9,7 +9,7 @@ final class Artifact private (
   val `type`: String,
   val extension: String,
   val classifier: Option[String],
-  val configurations: Vector[sbt.librarymanagement.Configuration],
+  val configurations: Vector[sbt.librarymanagement.ConfigRef],
   val url: Option[java.net.URL],
   val extraAttributes: Map[String, String],
   val checksum: Option[sbt.librarymanagement.Checksum]) extends sbt.librarymanagement.ArtifactExtra with Serializable {
@@ -26,7 +26,7 @@ final class Artifact private (
   override def toString: String = {
     "Artifact(" + name + ", " + `type` + ", " + extension + ", " + classifier + ", " + configurations + ", " + url + ", " + extraAttributes + ", " + checksum + ")"
   }
-  protected[this] def copy(name: String = name, `type`: String = `type`, extension: String = extension, classifier: Option[String] = classifier, configurations: Vector[sbt.librarymanagement.Configuration] = configurations, url: Option[java.net.URL] = url, extraAttributes: Map[String, String] = extraAttributes, checksum: Option[sbt.librarymanagement.Checksum] = checksum): Artifact = {
+  protected[this] def copy(name: String = name, `type`: String = `type`, extension: String = extension, classifier: Option[String] = classifier, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, url: Option[java.net.URL] = url, extraAttributes: Map[String, String] = extraAttributes, checksum: Option[sbt.librarymanagement.Checksum] = checksum): Artifact = {
     new Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum)
   }
   def withName(name: String): Artifact = {
@@ -41,7 +41,7 @@ final class Artifact private (
   def withClassifier(classifier: Option[String]): Artifact = {
     copy(classifier = classifier)
   }
-  def withConfigurations(configurations: Vector[sbt.librarymanagement.Configuration]): Artifact = {
+  def withConfigurations(configurations: Vector[sbt.librarymanagement.ConfigRef]): Artifact = {
     copy(configurations = configurations)
   }
   def withUrl(url: Option[java.net.URL]): Artifact = {
@@ -57,5 +57,5 @@ final class Artifact private (
 object Artifact extends sbt.librarymanagement.ArtifactFunctions {
   
   def apply(name: String): Artifact = new Artifact(name, Artifact.DefaultType, Artifact.DefaultExtension, None, Vector.empty, None, Map.empty, None)
-  def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Vector[sbt.librarymanagement.Configuration], url: Option[java.net.URL], extraAttributes: Map[String, String], checksum: Option[sbt.librarymanagement.Checksum]): Artifact = new Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum)
+  def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Vector[sbt.librarymanagement.ConfigRef], url: Option[java.net.URL], extraAttributes: Map[String, String], checksum: Option[sbt.librarymanagement.Checksum]): Artifact = new Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum)
 }

@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ModuleReportFormats { self: sbt.librarymanagement.ModuleIDFormats with sbt.librarymanagement.ArtifactFormats with sbt.librarymanagement.CallerFormats with sjsonnew.BasicJsonProtocol =>
+trait ModuleReportFormats { self: sbt.librarymanagement.ModuleIDFormats with sbt.librarymanagement.ArtifactFormats with sbt.librarymanagement.ConfigRefFormats with sbt.librarymanagement.CallerFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ModuleReportFormat: JsonFormat[sbt.librarymanagement.ModuleReport] = new JsonFormat[sbt.librarymanagement.ModuleReport] {
   override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ModuleReport = {
     jsOpt match {
@@ -26,7 +26,7 @@ implicit lazy val ModuleReportFormat: JsonFormat[sbt.librarymanagement.ModuleRep
       val extraAttributes = unbuilder.readField[Map[String, String]]("extraAttributes")
       val isDefault = unbuilder.readField[Option[Boolean]]("isDefault")
       val branch = unbuilder.readField[Option[String]]("branch")
-      val configurations = unbuilder.readField[Vector[String]]("configurations")
+      val configurations = unbuilder.readField[Vector[sbt.librarymanagement.ConfigRef]]("configurations")
       val licenses = unbuilder.readField[Vector[scala.Tuple2[String, Option[String]]]]("licenses")
       val callers = unbuilder.readField[Vector[sbt.librarymanagement.Caller]]("callers")
       unbuilder.endObject()

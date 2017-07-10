@@ -28,7 +28,7 @@ class IvyRepoSpec extends BaseIvySpecification with DependencyBuilders {
     val report = ivyUpdate(m)
 
     import Inside._
-    inside(report.configuration("compile").map(_.modules)) {
+    inside(report.configuration(ConfigRef("compile")).map(_.modules)) {
       case Some(Seq(mr)) =>
         inside(mr.artifacts) {
           case Seq((ar, _)) =>
@@ -82,7 +82,7 @@ class IvyRepoSpec extends BaseIvySpecification with DependencyBuilders {
                                                log)
 
     import Inside._
-    inside(report2.configuration("compile").map(_.modules)) {
+    inside(report2.configuration(ConfigRef("compile")).map(_.modules)) {
       case Some(Seq(mr)) =>
         inside(mr.artifacts) {
           case Seq((ar, _)) =>

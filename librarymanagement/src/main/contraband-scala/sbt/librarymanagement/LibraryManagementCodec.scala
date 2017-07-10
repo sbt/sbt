@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 trait LibraryManagementCodec extends sjsonnew.BasicJsonProtocol
-  with sbt.librarymanagement.ConfigurationFormats
+  with sbt.librarymanagement.ConfigRefFormats
   with sbt.librarymanagement.ChecksumFormats
   with sbt.librarymanagement.ArtifactFormats
   with sbt.librarymanagement.ArtifactTypeFilterFormats
@@ -24,6 +24,7 @@ trait LibraryManagementCodec extends sjsonnew.BasicJsonProtocol
   with sbt.librarymanagement.ConflictManagerFormats
   with sbt.librarymanagement.DeveloperFormats
   with sbt.librarymanagement.FileConfigurationFormats
+  with sbt.librarymanagement.ConfigurationFormats
   with sbt.librarymanagement.IvyScalaFormats
   with sbt.librarymanagement.ChainedResolverFormats
   with sbt.librarymanagement.MavenRepoFormats

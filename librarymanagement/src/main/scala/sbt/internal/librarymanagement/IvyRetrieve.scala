@@ -89,7 +89,7 @@ object IvyRetrieve {
     def toCaller(caller: IvyCaller): Caller = {
       val m = toModuleID(caller.getModuleRevisionId)
       val callerConfigurations = caller.getCallerConfigurations.toVector collect {
-        case x if nonEmptyString(x).isDefined => x
+        case x if nonEmptyString(x).isDefined => ConfigRef(x)
       }
       val ddOpt = Option(caller.getDependencyDescriptor)
       val (extraAttributes, isForce, isChanging, isTransitive, isDirectlyForce) = ddOpt match {
@@ -167,7 +167,9 @@ object IvyRetrieve {
       case _        => dep.getResolvedId.getExtraAttributes
     })
     val isDefault = Option(dep.getDescriptor) map { _.isDefault }
-    val configurations = dep.getConfigurations(confReport.getConfiguration).toVector
+    val configurations = dep.getConfigurations(confReport.getConfiguration).toVector map {
+      ConfigRef(_)
+    }
     val licenses: Vector[(String, Option[String])] = mdOpt match {
       case Some(md) =>
         md.getLicenses.toVector collect {
@@ -217,7 +219,9 @@ object IvyRetrieve {
       getType,
       getExt,
       Option(getExtraAttribute("classifier")),
-      getConfigurations.toVector map Configurations.config,
+      getConfigurations.toVector map { c: String =>
+        ConfigRef(c)
+      },
       Option(getUrl)
     )
   }
@@ -233,7 +237,7 @@ object IvyRetrieve {
     UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
     ConfigurationReport(
-      confReport.getConfiguration,
+      ConfigRef(confReport.getConfiguration),
       moduleReports(confReport),
       organizationArtifactReports(confReport)
     )

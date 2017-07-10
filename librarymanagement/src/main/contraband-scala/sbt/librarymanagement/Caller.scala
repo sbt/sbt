@@ -6,7 +6,7 @@
 package sbt.librarymanagement
 final class Caller private (
   val caller: sbt.librarymanagement.ModuleID,
-  val callerConfigurations: Vector[String],
+  val callerConfigurations: Vector[sbt.librarymanagement.ConfigRef],
   val callerExtraAttributes: Map[String, String],
   val isForceDependency: Boolean,
   val isChangingDependency: Boolean,
@@ -25,13 +25,13 @@ final class Caller private (
   override def toString: String = {
     s"$caller"
   }
-  protected[this] def copy(caller: sbt.librarymanagement.ModuleID = caller, callerConfigurations: Vector[String] = callerConfigurations, callerExtraAttributes: Map[String, String] = callerExtraAttributes, isForceDependency: Boolean = isForceDependency, isChangingDependency: Boolean = isChangingDependency, isTransitiveDependency: Boolean = isTransitiveDependency, isDirectlyForceDependency: Boolean = isDirectlyForceDependency): Caller = {
+  protected[this] def copy(caller: sbt.librarymanagement.ModuleID = caller, callerConfigurations: Vector[sbt.librarymanagement.ConfigRef] = callerConfigurations, callerExtraAttributes: Map[String, String] = callerExtraAttributes, isForceDependency: Boolean = isForceDependency, isChangingDependency: Boolean = isChangingDependency, isTransitiveDependency: Boolean = isTransitiveDependency, isDirectlyForceDependency: Boolean = isDirectlyForceDependency): Caller = {
     new Caller(caller, callerConfigurations, callerExtraAttributes, isForceDependency, isChangingDependency, isTransitiveDependency, isDirectlyForceDependency)
   }
   def withCaller(caller: sbt.librarymanagement.ModuleID): Caller = {
     copy(caller = caller)
   }
-  def withCallerConfigurations(callerConfigurations: Vector[String]): Caller = {
+  def withCallerConfigurations(callerConfigurations: Vector[sbt.librarymanagement.ConfigRef]): Caller = {
     copy(callerConfigurations = callerConfigurations)
   }
   def withCallerExtraAttributes(callerExtraAttributes: Map[String, String]): Caller = {
@@ -52,5 +52,5 @@ final class Caller private (
 }
 object Caller {
   
-  def apply(caller: sbt.librarymanagement.ModuleID, callerConfigurations: Vector[String], callerExtraAttributes: Map[String, String], isForceDependency: Boolean, isChangingDependency: Boolean, isTransitiveDependency: Boolean, isDirectlyForceDependency: Boolean): Caller = new Caller(caller, callerConfigurations, callerExtraAttributes, isForceDependency, isChangingDependency, isTransitiveDependency, isDirectlyForceDependency)
+  def apply(caller: sbt.librarymanagement.ModuleID, callerConfigurations: Vector[sbt.librarymanagement.ConfigRef], callerExtraAttributes: Map[String, String], isForceDependency: Boolean, isChangingDependency: Boolean, isTransitiveDependency: Boolean, isDirectlyForceDependency: Boolean): Caller = new Caller(caller, callerConfigurations, callerExtraAttributes, isForceDependency, isChangingDependency, isTransitiveDependency, isDirectlyForceDependency)
 }

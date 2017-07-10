@@ -11,7 +11,7 @@ abstract class ArtifactExtra {
   def `type`: String
   def extension: String
   def classifier: Option[String]
-  def configurations: Vector[Configuration]
+  def configurations: Vector[ConfigRef]
   def url: Option[URL]
   def extraAttributes: Map[String, String]
   def checksum: Option[Checksum]
@@ -21,7 +21,7 @@ abstract class ArtifactExtra {
       `type`: String = `type`,
       extension: String = extension,
       classifier: Option[String] = classifier,
-      configurations: Vector[Configuration] = configurations,
+      configurations: Vector[ConfigRef] = configurations,
       url: Option[URL] = url,
       extraAttributes: Map[String, String] = extraAttributes,
       checksum: Option[Checksum] = checksum
@@ -58,7 +58,7 @@ abstract class ArtifactFunctions {
       `type`: String,
       extension: String,
       classifier: Option[String],
-      configurations: Vector[Configuration],
+      configurations: Vector[ConfigRef],
       url: Option[URL]
   ): Artifact = Artifact(name, `type`, extension, classifier, configurations, url, empty, None)
 

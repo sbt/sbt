@@ -238,9 +238,9 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
       import ic._
       val moduleID = newConfiguredModuleID(module, moduleInfo, configurations)
       IvySbt.setConflictManager(moduleID, conflictManager, ivy.getSettings)
-      val defaultConf = defaultConfiguration getOrElse Configurations.config(
-        ModuleDescriptor.DEFAULT_CONFIGURATION
-      )
+      val defaultConf = defaultConfiguration getOrElse Configuration(
+        "Default",
+        ModuleDescriptor.DEFAULT_CONFIGURATION)
       log.debug(
         "Using inline dependencies specified in Scala" + (if (ivyXML.isEmpty) "."
                                                           else " and XML.")
@@ -603,10 +603,12 @@ private[sbt] object IvySbt {
   private def toIvyArtifact(
       moduleID: ModuleDescriptor,
       a: Artifact,
-      allConfigurations: Iterable[String]
+      allConfigurations: Vector[ConfigRef]
   ): MDArtifact = {
     val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
-    copyConfigurations(a, artifact.addConfiguration, allConfigurations)
+    copyConfigurations(a,
+                       (ref: ConfigRef) => { artifact.addConfiguration(ref.name) },
+                       allConfigurations)
     artifact
   }
   def getExtraAttributes(revID: ExtendableItem): Map[String, String] = {
@@ -816,7 +818,7 @@ private[sbt] object IvySbt {
         url.orNull,
         extraMap
       )
-      copyConfigurations(artifact, ivyArtifact.addConfiguration)
+      copyConfigurations(artifact, (ref: ConfigRef) => { ivyArtifact.addConfiguration(ref.name) })
       for (conf <- dependencyDescriptor.getModuleConfigurations)
         dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
     }
@@ -827,7 +829,7 @@ private[sbt] object IvySbt {
           IvyScala.excludeRule(
             excls.organization,
             excls.name,
-            excls.configurations,
+            excls.configurations map { _.name },
             excls.artifact
           )
         )
@@ -840,7 +842,7 @@ private[sbt] object IvySbt {
           IvyScala.includeRule(
             incls.organization,
             incls.name,
-            incls.configurations,
+            incls.configurations map { _.name },
             incls.artifact
           )
         )
@@ -849,17 +851,17 @@ private[sbt] object IvySbt {
 
     dependencyDescriptor
   }
-  def copyConfigurations(artifact: Artifact, addConfiguration: String => Unit): Unit =
-    copyConfigurations(artifact, addConfiguration, "*" :: Nil)
+  def copyConfigurations(artifact: Artifact, addConfiguration: ConfigRef => Unit): Unit =
+    copyConfigurations(artifact, addConfiguration, Vector(ConfigRef("*")))
 
   private[this] def copyConfigurations(
       artifact: Artifact,
-      addConfiguration: String => Unit,
-      allConfigurations: Iterable[String]
+      addConfiguration: ConfigRef => Unit,
+      allConfigurations: Vector[ConfigRef]
   ): Unit = {
     val confs =
       if (artifact.configurations.isEmpty) allConfigurations
-      else artifact.configurations.map(_.name)
+      else artifact.configurations
     confs foreach addConfiguration
   }
 
@@ -875,7 +877,7 @@ private[sbt] object IvySbt {
     val exclude = CrossVersion.substituteCross(exclude0, ivyScala)
     val confs =
       if (exclude.configurations.isEmpty) moduleID.getConfigurationsNames.toList
-      else exclude.configurations
+      else exclude.configurations map { _.name }
     val excludeRule =
       IvyScala.excludeRule(exclude.organization, exclude.name, confs, exclude.artifact)
     moduleID.addExcludeRule(excludeRule)
@@ -923,7 +925,7 @@ private[sbt] object IvySbt {
     configurations.foreach(config => mod.addConfiguration(toIvyConfiguration(config)))
 
   def mapArtifacts(moduleID: ModuleDescriptor, artifacts: Seq[Artifact]): Seq[IArtifact] = {
-    lazy val allConfigurations = moduleID.getPublicConfigurationsNames
+    lazy val allConfigurations = moduleID.getPublicConfigurationsNames.toVector map ConfigRef.apply
     for (artifact <- artifacts) yield toIvyArtifact(moduleID, artifact, allConfigurations)
   }
 

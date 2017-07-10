@@ -7,7 +7,7 @@ import java.io.File
 import java.{ util => ju }
 
 abstract class ConfigurationReportExtra {
-  def configuration: String
+  def configuration: ConfigRef
   def modules: Vector[ModuleReport]
   def details: Vector[OrganizationArtifactReport]
 
@@ -28,7 +28,7 @@ abstract class ConfigurationReportExtra {
     } else module
   }
 
-  def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
+  def retrieve(f: (ConfigRef, ModuleID, Artifact, File) => File): ConfigurationReport =
     ConfigurationReport(configuration, modules map {
       _.retrieve((mid, art, file) => f(configuration, mid, art, file))
     }, details)
@@ -50,7 +50,7 @@ abstract class ModuleReportExtra {
   def extraAttributes: Map[String, String]
   def isDefault: Option[Boolean]
   def branch: Option[String]
-  def configurations: Vector[String]
+  def configurations: Vector[ConfigRef]
   def licenses: Vector[(String, Option[String])]
   def callers: Vector[Caller]
 
@@ -115,7 +115,7 @@ abstract class ModuleReportExtra {
       extraAttributes: Map[String, String] = extraAttributes,
       isDefault: Option[Boolean] = isDefault,
       branch: Option[String] = branch,
-      configurations: Vector[String] = configurations,
+      configurations: Vector[ConfigRef] = configurations,
       licenses: Vector[(String, Option[String])] = licenses,
       callers: Vector[Caller] = callers
   ): ModuleReport
@@ -144,12 +144,12 @@ abstract class UpdateReportExtra {
     }
   }
 
-  def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
+  def retrieve(f: (ConfigRef, ModuleID, Artifact, File) => File): UpdateReport =
     UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
 
   /** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
-  def configuration(s: String) = configurations.find(_.configuration == s)
+  def configuration(s: ConfigRef) = configurations.find(_.configuration == s)
 
   /** Gets the names of all resolved configurations.  This `UpdateReport` contains one `ConfigurationReport` for each configuration in this list. */
-  def allConfigurations: Seq[String] = configurations.map(_.configuration)
+  def allConfigurations: Vector[ConfigRef] = configurations.map(_.configuration)
 }

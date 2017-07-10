@@ -69,7 +69,7 @@ final class RichUpdateReport(report: UpdateReport) {
     }
 
   private[sbt] def substitute(
-      f: (String, ModuleID, Vector[(Artifact, File)]) => Vector[(Artifact, File)]
+      f: (ConfigRef, ModuleID, Vector[(Artifact, File)]) => Vector[(Artifact, File)]
   ): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
       val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
@@ -78,15 +78,15 @@ final class RichUpdateReport(report: UpdateReport) {
         .withMissingArtifacts(modReport.missingArtifacts)
     }
 
-  def toSeq: Seq[(String, ModuleID, Artifact, File)] = toVector
-  def toVector: Vector[(String, ModuleID, Artifact, File)] =
+  def toSeq: Seq[(ConfigRef, ModuleID, Artifact, File)] = toVector
+  def toVector: Vector[(ConfigRef, ModuleID, Artifact, File)] =
     for {
       confReport <- report.configurations
       modReport <- confReport.modules
       (artifact, file) <- modReport.artifacts
     } yield (confReport.configuration, modReport.module, artifact, file)
 
-  def allMissing: Vector[(String, ModuleID, Artifact)] =
+  def allMissing: Vector[(ConfigRef, ModuleID, Artifact)] =
     for {
       confReport <- report.configurations
       modReport <- confReport.modules
@@ -99,7 +99,7 @@ final class RichUpdateReport(report: UpdateReport) {
         .withMissingArtifacts((modReport.missingArtifacts ++ f(modReport.module)).distinct)
     }
 
-  private[sbt] def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport = {
+  private[sbt] def moduleReportMap(f: (ConfigRef, ModuleReport) => ModuleReport): UpdateReport = {
     val newConfigurations = report.configurations.map { confReport =>
       import confReport._
       val newModules = modules map { modReport =>
