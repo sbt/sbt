@@ -78,7 +78,6 @@ import xsbti.compile.IncToolOptionsUtil
 import xsbti.CrossValue
 
 // incremental compiler
-import xsbt.api.Discovery
 import xsbti.compile.{
   ClassFileManagerType,
   ClasspathOptionsUtil,
@@ -1328,11 +1327,10 @@ object Defaults extends BuildCommon {
                                bgCopyClasspath in bgRunMain,
                                runner in run).evaluated
 
-  def discoverMainClasses(analysis: CompileAnalysis): Seq[String] =
-    Discovery
-      .applications(Tests.allDefs(analysis))
-      .collect({ case (definition, discovered) if discovered.hasMain => definition.name })
-      .sorted
+  def discoverMainClasses(analysis: CompileAnalysis): Seq[String] = analysis match {
+    case analysis: Analysis =>
+      analysis.infos.allInfos.values.map(_.getMainClasses).flatten.toSeq.sorted
+  }
 
   def consoleProjectTask =
     Def.task {
