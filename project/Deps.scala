@@ -40,29 +40,7 @@ object Deps {
     "org.scala-lang.modules" %% "scala-async" % version
   }
   
-  def jarjar = Def.setting {
-    val coursierJarjarVersion = "1.0.1-coursier-SNAPSHOT"
-    def coursierJarjarFoundInM2 = (file(sys.props("user.home")) / s".m2/repository/org/anarres/jarjar/jarjar-core/$coursierJarjarVersion").exists()
-
-    val jarjarVersion =
-      if (sys.env.contains("CI") || coursierJarjarFoundInM2 || !isSnapshot.value)
-        coursierJarjarVersion
-      else {
-        val fallback = "1.0.0"
-
-        // streams.value.log.warn( // "a setting cannot depend on a task"
-        scala.Console.err.println(
-         s"""Warning: using jarjar $fallback, which doesn't properly shade Scala JARs (classes with '$$' aren't shaded).
-            |See the instructions around
-            |https://github.com/coursier/coursier/blob/630a780487d662dd994ed1c3246895a22c00cf21/scripts/travis.sh#L40
-            |to use a version fine with Scala JARs.""".stripMargin
-        )
-
-        fallback
-      }
-
-    "org.anarres.jarjar" % "jarjar-core" % jarjarVersion
-  }
+  def jarjar = "io.get-coursier.jarjar" % "jarjar-core" % "1.0.1-coursier-1"
 
   def jarjarTransitiveDeps = Seq(
     "com.google.code.findbugs" % "jsr305" % "2.0.2",

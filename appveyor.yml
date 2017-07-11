@@ -24,14 +24,6 @@ install:
         iex 'sbt ++2.11.8 nscplugin/publishLocal util/publishLocal nir/publishLocal tools/publishLocal'
         Set-Location -Path ..
       }
-  - ps: |
-      if (!(Test-Path 'C:\Users\appveyor\.m2\repository\org\anarres\jarjar\jarjar-core\1.0.1-coursier-SNAPSHOT')) {
-        iex 'git clone https://github.com/alexarchambault/jarjar'
-        Set-Location -Path jarjar
-        iex 'git checkout 249c8dbb970f8'
-        iex './gradlew.bat :jarjar-core:install'
-        Set-Location -Path ..
-      }
 build_script:
   - sbt ++2.11.11 clean compile coreJVM/publishLocal cli/publishLocal
   - sbt ++2.12.1 http-server/publishLocal

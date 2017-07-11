@@ -240,7 +240,7 @@ lazy val `sbt-shading` = project
     plugin,
     shading,
     localM2Repository, // for a possibly locally published jarjar
-    libs += Deps.jarjar.value % "shaded",
+    libs += Deps.jarjar % "shaded",
     // dependencies of jarjar-core - directly depending on these so that they don't get shaded
     libs ++= Deps.jarjarTransitiveDeps
   )

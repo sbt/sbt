@@ -68,21 +68,6 @@ setupCustomScalaNative() {
   fi
 }
 
-setupCustomJarjar() {
-  if [ ! -d "$HOME/.m2/repository/org/anarres/jarjar/jarjar-core/$JARJAR_VERSION" ]; then
-    git clone https://github.com/alexarchambault/jarjar.git
-    cd jarjar
-    if ! grep -q "^version=$JARJAR_VERSION\$" gradle.properties; then
-      echo "Expected jarjar version not found" 1>&2
-      exit 1
-    fi
-    git checkout 249c8dbb970f8
-    ./gradlew :jarjar-core:install
-    cd ..
-    rm -rf jarjar
-  fi
-}
-
 isScalaJs() {
   [ "$SCALA_JS" = 1 ]
 }
@@ -252,7 +237,6 @@ addPgpKeys() {
 downloadInstallSbtExtras
 setupCoursierBinDir
 
-setupCustomJarjar
 setupCustomScalaNative
 
 if isScalaJs; then
