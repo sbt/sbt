@@ -117,13 +117,14 @@ lazy val extra = project
     coursierPrefix,
     shading,
     libs ++= {
-      val ver = "0.3.0-coursier-1"
       if (scalaBinaryVersion.value == "2.11")
         Seq(
-          "org.scala-native" %% "tools" % ver % "shaded",
-          // brought by tools, but issues in ShadingPlugin (with things published locally?) makes these not be shaded...
-          "org.scala-native" %% "nir" % ver % "shaded",
-          "org.scala-native" %% "util" % ver % "shaded",
+          Deps.scalaNativeTools % "shaded",
+          // brought by only tools, so should be automaticaly shaded,
+	  // but issues in ShadingPlugin (with things published locally?)
+	  // seem to require explicit shading...
+          Deps.scalaNativeNir % "shaded",
+          Deps.scalaNativeUtil % "shaded",
           Deps.fastParse % "shaded"
         )
       else

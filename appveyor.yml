@@ -14,16 +14,6 @@ install:
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
   - git submodule update --init --recursive
-  - ps: |
-      if (!(Test-Path 'C:\Users\appveyor\.ivy2\local\sandbox\sandbox_native0.3_2.11\0.1-SNAPSHOT')) {
-        iex 'git clone https://github.com/coursier/scala-native'
-        Set-Location -Path scala-native
-        iex 'git checkout 550bf6e37d27'
-        iex 'sbt ++2.11.8 sandbox/publishLocal'
-        iex 'git checkout f8088aef6981'
-        iex 'sbt ++2.11.8 nscplugin/publishLocal util/publishLocal nir/publishLocal tools/publishLocal'
-        Set-Location -Path ..
-      }
 build_script:
   - sbt ++2.11.11 clean compile coreJVM/publishLocal cli/publishLocal
   - sbt ++2.12.1 http-server/publishLocal

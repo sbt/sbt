@@ -48,4 +48,8 @@ object Deps {
     "org.ow2.asm" % "asm-util" % "5.0.3",
     "org.slf4j" % "slf4j-api" % "1.7.25"
   )
+
+  def scalaNativeNir = "io.get-coursier.scala-native" %% "nir" % SharedVersions.scalaNative
+  def scalaNativeTools = "io.get-coursier.scala-native" %% "tools" % SharedVersions.scalaNative
+  def scalaNativeUtil = "io.get-coursier.scala-native" %% "util" % SharedVersions.scalaNative
 }

@@ -56,18 +56,6 @@ integrationTestsRequirements() {
   launchTestRepo --port 8081
 }
 
-setupCustomScalaNative() {
-  if [ ! -d "$HOME/.ivy2/local/org.scala-native/tools_2.11/0.3.0-coursier-1" ]; then
-    git clone https://github.com/coursier/scala-native.git
-    cd scala-native
-    git checkout 550bf6e37d27
-    sbt ++2.11.8 sandbox/publishLocal
-    git checkout f8088aef6981
-    sbt ++2.11.8 nscplugin/publishLocal util/publishLocal nir/publishLocal tools/publishLocal
-    cd ..
-  fi
-}
-
 isScalaJs() {
   [ "$SCALA_JS" = 1 ]
 }
@@ -217,7 +205,7 @@ testBootstrap() {
 testNativeBootstrap() {
   if is211; then
     sbt ++${SCALA_VERSION} cli/pack
-    cli/target/pack/bin/coursier bootstrap -S -o native-test sandbox::sandbox_native0.3:0.1-SNAPSHOT
+    cli/target/pack/bin/coursier bootstrap -S -o native-test io.get-coursier.scala-native::sandbox_native0.3:0.3.0-coursier-1
     if [ "$(./native-test)" != "Hello, World!" ]; then
       echo "Error: unexpected output from native test bootstrap." 1>&2
       exit 1
@@ -236,8 +224,6 @@ addPgpKeys() {
 
 downloadInstallSbtExtras
 setupCoursierBinDir
-
-setupCustomScalaNative
 
 if isScalaJs; then
   jsCompile
