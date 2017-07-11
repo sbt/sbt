@@ -1,0 +1,67 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009,2010  Mark Harrah
+ */
+package sbt.librarymanagement
+
+import sbt.internal.librarymanagement.StringUtilities.nonEmpty
+
+abstract class DependencyBuilders {
+  import DependencyBuilders._
+
+  implicit def stringToOrganization(organization: String): Organization = {
+    nonEmpty(organization, "Organization")
+    new Organization(organization)
+  }
+
+  implicit def toRepositoryName(name: String): RepositoryName = {
+    nonEmpty(name, "Repository name")
+    new RepositoryName(name)
+  }
+
+  implicit def moduleIDConfigurable(m: ModuleID): ModuleIDConfigurable = {
+    require(m.configurations.isEmpty, "Configurations already specified for module " + m)
+    new ModuleIDConfigurable(m)
+  }
+}
+
+object DependencyBuilders {
+  final class Organization private[sbt] (private[sbt] val organization: String) {
+    def %(name: String) = organizationArtifact(name, Disabled())
+    def %%(name: String): OrganizationArtifactName =
+      organizationArtifact(name, CrossVersion.binary)
+
+    private def organizationArtifact(name: String, cross: CrossVersion) = {
+      nonEmpty(name, "Artifact ID")
+      new OrganizationArtifactName(organization, name, cross)
+    }
+  }
+
+  final class OrganizationArtifactName private[sbt] (
+      private[sbt] val organization: String,
+      private[sbt] val name: String,
+      private[sbt] val crossVersion: CrossVersion
+  ) {
+    def %(revision: String): ModuleID = {
+      nonEmpty(revision, "Revision")
+      ModuleID(organization, name, revision).cross(crossVersion)
+    }
+  }
+
+  final class ModuleIDConfigurable private[sbt] (moduleID: ModuleID) {
+    def %(configuration: Configuration): ModuleID = %(configuration.name)
+    def %(configuration: ConfigRef): ModuleID = %(configuration.name)
+
+    def %(configurations: String): ModuleID = {
+      nonEmpty(configurations, "Configurations")
+      val c = configurations
+      moduleID.withConfigurations(configurations = Some(c))
+    }
+  }
+
+  final class RepositoryName private[sbt] (name: String) {
+    def at(location: String) = {
+      nonEmpty(location, "Repository location")
+      MavenRepository(name, location)
+    }
+  }
+}
