@@ -8,7 +8,7 @@ import sbt.librarymanagement.syntax._
 /**
  * Library management API to resolve dependencies.
  */
-class LibraryManagement private[sbt] (lmEngine: LibraryManagementInterface) {
+class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface) {
   import sbt.internal.librarymanagement.InternalDefaults._
   import sbt.internal.librarymanagement.UpdateClassifiersUtil._
 
@@ -217,7 +217,7 @@ class LibraryManagement private[sbt] (lmEngine: LibraryManagementInterface) {
     }).mkString(", ")
 }
 
-object LibraryManagement {
-  def apply(lmEngine: LibraryManagementInterface): LibraryManagement =
-    new LibraryManagement(lmEngine)
+object DependencyResolution {
+  def apply(lmEngine: DependencyResolutionInterface): DependencyResolution =
+    new DependencyResolution(lmEngine)
 }

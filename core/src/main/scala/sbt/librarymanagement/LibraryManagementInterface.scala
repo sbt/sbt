@@ -4,9 +4,9 @@ import java.io.File
 import sbt.util.Logger
 
 /**
- * Interface for library management intended for library management engine authors.
+ * Interface for dependency resolution intended for engine authors.
  */
-abstract class LibraryManagementInterface {
+trait DependencyResolutionInterface {
 
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.
@@ -35,7 +35,7 @@ abstract class LibraryManagementInterface {
 /**
  * Interface for publishing modules.
  */
-abstract class PublisherInterface {
+trait PublisherInterface {
 
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.

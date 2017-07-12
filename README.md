@@ -15,9 +15,9 @@ log: sbt.internal.util.ManagedLogger = sbt.internal.util.ManagedLogger@c439b0f
 scala> val lm = {
          import sbt.librarymanagement.ivy._
          val ivyConfig = InlineIvyConfiguration().withLog(log)
-         IvyLibraryManagement(ivyConfig)
+         IvyDependencyResolution(ivyConfig)
        }
-lm: sbt.librarymanagement.LibraryManagement = sbt.librarymanagement.ivy.IvyLibraryManagement@11c07acb
+lm: sbt.librarymanagement.DependencyResolution = sbt.librarymanagement.DependencyResolution@6a9b40f8
 
 scala> val module = "commons-io" % "commons-io" % "2.5"
 module: sbt.librarymanagement.ModuleID = commons-io:commons-io:2.5
