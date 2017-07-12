@@ -6,6 +6,11 @@ package sbt.librarymanagement
 import sbt.io.{ AllPassFilter, NameFilter }
 
 trait DependencyFilterExtra {
+  // See http://www.scala-lang.org/news/2.12.0#traits-compile-to-interfaces
+  // Avoid defining fields (val or var, but a constant is ok – final val without result type)
+  // Avoid calling super
+  // Avoid initializer statements in the body
+
   def moduleFilter(
       organization: NameFilter = AllPassFilter,
       name: NameFilter = AllPassFilter,
@@ -15,6 +20,7 @@ trait DependencyFilterExtra {
       def apply(m: ModuleID): Boolean =
         organization.accept(m.organization) && name.accept(m.name) && revision.accept(m.revision)
     }
+
   def artifactFilter(
       name: NameFilter = AllPassFilter,
       `type`: NameFilter = AllPassFilter,
@@ -26,11 +32,13 @@ trait DependencyFilterExtra {
         name.accept(a.name) && `type`.accept(a.`type`) && extension.accept(a.extension) && classifier
           .accept(a.classifier getOrElse "")
     }
+
   def configurationFilter(name: NameFilter = AllPassFilter): ConfigurationFilter =
     new ConfigurationFilter {
       def apply(c: ConfigRef): Boolean = name.accept(c.name)
     }
 }
+
 object DependencyFilter extends DependencyFilterExtra {
   def make(
       configuration: ConfigurationFilter = configurationFilter(),

@@ -8,7 +8,12 @@ import sbt.internal.librarymanagement.StringUtilities.nonEmpty
 /**
  * DependencyBuilders implements the implicits for % and %% DSL.
  */
-abstract class DependencyBuilders {
+trait DependencyBuilders {
+  // See http://www.scala-lang.org/news/2.12.0#traits-compile-to-interfaces
+  // Avoid defining fields (val or var, but a constant is ok – final val without result type)
+  // Avoid calling super
+  // Avoid initializer statements in the body
+
   import DependencyBuilders._
 
   implicit def stringToOrganization(organization: String): Organization = {
