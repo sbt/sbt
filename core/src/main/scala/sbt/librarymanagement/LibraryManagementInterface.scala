@@ -4,7 +4,7 @@ import java.io.File
 import sbt.util.Logger
 
 /**
- * Interface for library management
+ * Interface for library management intended for library management engine authors.
  */
 abstract class LibraryManagementInterface {
 

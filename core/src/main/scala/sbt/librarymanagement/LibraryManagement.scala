@@ -6,11 +6,20 @@ import sbt.io.Hash
 import sbt.librarymanagement.syntax._
 
 /**
- * Helper mixin to provide methods for library management
+ * Library management API to resolve dependencies.
  */
-abstract class LibraryManagement extends LibraryManagementInterface {
+class LibraryManagement private[sbt] (lmEngine: LibraryManagementInterface) {
   import sbt.internal.librarymanagement.InternalDefaults._
   import sbt.internal.librarymanagement.UpdateClassifiersUtil._
+
+  /**
+   * Builds a ModuleDescriptor that describes a subproject with dependencies.
+   *
+   * @param moduleSetting It contains the information about the module including the dependencies.
+   * @return A `ModuleDescriptor` describing a subproject and its dependencies.
+   */
+  def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
+    lmEngine.moduleDescriptor(moduleSetting)
 
   /**
    * Build a ModuleDescriptor that describes a subproject with dependencies.
@@ -29,6 +38,22 @@ abstract class LibraryManagement extends LibraryManagementInterface {
       .withDependencies(directDependencies)
     moduleDescriptor(moduleSetting)
   }
+
+  /**
+   * Resolves the given module's dependencies performing a retrieval.
+   *
+   * @param module The module to be resolved.
+   * @param configuration The update configuration.
+   * @param uwconfig The configuration to handle unresolved warnings.
+   * @param log The logger.
+   * @return The result, either an unresolved warning or an update report. Note that this
+   *         update report will or will not be successful depending on the `missingOk` option.
+   */
+  def update(module: ModuleDescriptor,
+             configuration: UpdateConfiguration,
+             uwconfig: UnresolvedWarningConfiguration,
+             log: Logger): Either[UnresolvedWarning, UpdateReport] =
+    lmEngine.update(module, configuration, uwconfig, log)
 
   /**
    * Returns a `ModuleDescriptor` that depends on `dependencyId`.
@@ -192,7 +217,7 @@ abstract class LibraryManagement extends LibraryManagementInterface {
     }).mkString(", ")
 }
 
-/**
- * Helper mixin to provide methods for publisher
- */
-abstract class Publisher extends PublisherInterface
+object LibraryManagement {
+  def apply(lmEngine: LibraryManagementInterface): LibraryManagement =
+    new LibraryManagement(lmEngine)
+}

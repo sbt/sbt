@@ -5,7 +5,7 @@ package ivy
 import sbt.internal.librarymanagement._
 import sbt.util.Logger
 
-class IvyLibraryManagement private[sbt] (val ivySbt: IvySbt) extends LibraryManagement {
+class IvyLibraryManagement private[sbt] (val ivySbt: IvySbt) extends LibraryManagementInterface {
   type Module = ivySbt.Module
 
   override def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor = {
@@ -26,5 +26,5 @@ class IvyLibraryManagement private[sbt] (val ivySbt: IvySbt) extends LibraryMana
 
 object IvyLibraryManagement {
   def apply(ivyConfiguration: IvyConfiguration): LibraryManagement =
-    new IvyLibraryManagement(new IvySbt(ivyConfiguration))
+    LibraryManagement(new IvyLibraryManagement(new IvySbt(ivyConfiguration)))
 }

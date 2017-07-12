@@ -6,7 +6,7 @@ import sbt.internal.librarymanagement._
 import sbt.util.Logger
 import java.io.File
 
-class IvyPublisher private[sbt] (val ivySbt: IvySbt) extends Publisher {
+class IvyPublisher private[sbt] (val ivySbt: IvySbt) extends PublisherInterface {
   type Module = ivySbt.Module
 
   override def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor = {
@@ -31,5 +31,5 @@ class IvyPublisher private[sbt] (val ivySbt: IvySbt) extends Publisher {
 
 object IvyPublisher {
   def apply(ivyConfiguration: IvyConfiguration): Publisher =
-    new IvyPublisher(new IvySbt(ivyConfiguration))
+    Publisher(new IvyPublisher(new IvySbt(ivyConfiguration)))
 }
