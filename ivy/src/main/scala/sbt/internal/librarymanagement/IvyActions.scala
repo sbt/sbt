@@ -270,10 +270,10 @@ object IvyActions {
 
   implicit def toIvyFilter(f: ArtifactTypeFilter): IvyFilter = new IvyFilter {
     override def accept(o: Object): Boolean = Option(o) exists {
-      case a: IArtifact => applyFilter(f, a)
+      case a: IArtifact => applyFilter(a)
     }
 
-    def applyFilter(f: ArtifactTypeFilter, a: IArtifact): Boolean =
+    def applyFilter(a: IArtifact): Boolean =
       (f.types contains a.getType) ^ f.inverted
   }
 

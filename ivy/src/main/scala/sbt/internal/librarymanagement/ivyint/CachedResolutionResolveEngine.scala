@@ -209,7 +209,7 @@ private[sbt] class CachedResolutionResolveCache {
        else None) match {
         case Some(path) =>
           log.debug(s"parsing ${path.getAbsolutePath.toString}")
-          val ur = JsonUtil.parseUpdateReport( /* md, */ path, cachedDescriptor, log)
+          val ur = JsonUtil.parseUpdateReport(path, cachedDescriptor, log)
           if (ur.allFiles forall { _.exists }) {
             updateReportCache(md.getModuleRevisionId) = Right(ur)
             Some(Right(ur))

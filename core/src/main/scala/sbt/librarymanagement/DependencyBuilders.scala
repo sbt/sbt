@@ -5,6 +5,9 @@ package sbt.librarymanagement
 
 import sbt.internal.librarymanagement.StringUtilities.nonEmpty
 
+/**
+ * DependencyBuilders implements the implicits for % and %% DSL.
+ */
 abstract class DependencyBuilders {
   import DependencyBuilders._
 
@@ -31,7 +34,7 @@ object DependencyBuilders {
       organizationArtifact(name, CrossVersion.binary)
 
     private def organizationArtifact(name: String, cross: CrossVersion) = {
-      nonEmpty(name, "Artifact ID")
+      nonEmpty(name, "Name")
       new OrganizationArtifactName(organization, name, cross)
     }
   }

@@ -6,7 +6,6 @@ package sbt.librarymanagement
 import java.io.{ IOException, File }
 import java.net.URL
 import scala.xml.XML
-// import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.xml.sax.SAXParseException
 
 final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name) {
