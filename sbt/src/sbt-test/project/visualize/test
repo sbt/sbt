@@ -1,0 +1,4 @@
+# Run the visualize command and check for the output
+> visualize
+$ exists actual_dependencies.dot
+$ exists declared_dependencies.dot

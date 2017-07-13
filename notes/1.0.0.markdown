@@ -186,6 +186,8 @@ We are working with Scala Center to provide [an automatic migration tool][sbt-mi
 - Add logging of the name of the different `build.sbt` (matching `*.sbt`) files used. [#1911][1911] by [@valydia][@valydia]
 - Add the ability to call `aggregate` for the current project inside a build sbt file. By [@xuwei-k][@xuwei-k]
 - Add new global setting `asciiGraphWidth` that controls the maximum width of the ASCII graphs printed by commands like `inspect tree`. Default value corresponds to the previously hardcoded value of 40 characters. By [@RomanIakovlev][@RomanIakovlev].
+- Add new task `visualize` to sbt. It creates two dot-files, each one for actual and
+  declared dependency graph. By [@zartstrom][@zartstrom]
 
 ### Details of major changes
 

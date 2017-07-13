@@ -299,7 +299,14 @@ object Defaults extends BuildCommon {
     historyPath := (historyPath or target(t => Option(t / ".history"))).value,
     sourceDirectory := baseDirectory.value / "src",
     sourceManaged := crossTarget.value / "src_managed",
-    resourceManaged := crossTarget.value / "resource_managed"
+    resourceManaged := crossTarget.value / "resource_managed",
+    visualize := {
+      val extracted = Project.extract(state.value)
+      import extracted._
+      val structure = buildStructure.value
+      val baseDir = baseDirectory.value
+      Project.graphSettings(structure, baseDir)
+    }
   )
 
   lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
