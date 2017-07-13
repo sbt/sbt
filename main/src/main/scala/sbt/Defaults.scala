@@ -1746,7 +1746,8 @@ object Classpaths {
           }
           val base = ModuleID(id.groupID, id.name, sbtVersion.value).withCrossVersion(cross)
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
-        }
+        },
+        shellPrompt := shellPromptFromState
       ))
 
   val ivyBaseSettings: Seq[Setting[_]] = baseGlobalDefaults ++ sbtClassifiersTasks ++ Seq(
@@ -2871,6 +2872,14 @@ object Classpaths {
             sys.error(
               "Unknown predefined resolver '" + unknown + "'.  This resolver may only be supported in newer sbt versions.")
         }
+    }
+  }
+
+  def shellPromptFromState: State => String = { s: State =>
+    val extracted = Project.extract(s)
+    (name in extracted.currentRef).get(extracted.structure.data) match {
+      case Some(name) => s"sbt:$name" + Def.withColor("> ", Option(scala.Console.CYAN))
+      case _          => "> "
     }
   }
 }
