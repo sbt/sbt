@@ -1,7 +1,7 @@
 package sbt
 
 import sbt.internal.util.Types.const
-import sbt.internal.util.{ Attributed, AttributeKey, Init }
+import sbt.internal.util.{ Attributed, AttributeKey, Init, ConsoleAppender }
 import sbt.util.Show
 import sbt.internal.util.complete.Parser
 import java.io.File
@@ -36,7 +36,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
     Show[ScopedKey[_]](
       (key: ScopedKey[_]) =>
         Scope.display(key.scope,
-                      colored(key.key.label, keyNameColor),
+                      withColor(key.key.label, keyNameColor),
                       ref => displayRelative(current, multi, ref)))
 
   def showBuildRelativeKey(currentBuild: URI,
@@ -45,7 +45,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
     Show[ScopedKey[_]](
       (key: ScopedKey[_]) =>
         Scope.display(key.scope,
-                      colored(key.key.label, keyNameColor),
+                      withColor(key.key.label, keyNameColor),
                       ref => displayBuildRelative(currentBuild, multi, ref)))
 
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String =
@@ -63,13 +63,16 @@ object Def extends Init[Scope] with TaskMacroExtra {
     }
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
   def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String =
-    Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
+    Scope.display(scoped.scope, withColor(scoped.key.label, keyNameColor))
   def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String =
     Scope.displayMasked(scoped.scope, scoped.key.label, mask)
 
-  def colored(s: String, color: Option[String]): String = color match {
-    case Some(c) => c + s + scala.Console.RESET
-    case None    => s
+  def withColor(s: String, color: Option[String]): String = {
+    val useColor = ConsoleAppender.formatEnabled
+    color match {
+      case Some(c) if useColor => c + s + scala.Console.RESET
+      case _                   => s
+    }
   }
 
   override def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] =
