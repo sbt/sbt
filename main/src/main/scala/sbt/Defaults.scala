@@ -62,6 +62,7 @@ import sbt.librarymanagement.Configurations.{
   Test
 }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
+import sbt.internal.librarymanagement.UnsafeLibraryManagementCodec.moduleIdJsonKeyFormat
 import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.librarymanagement.syntax._
 import sbt.util.InterfaceUtil.f1
@@ -2145,26 +2146,18 @@ object Classpaths {
                            Vector(Configurations.Default),
                            classifiers.toVector)
     }
-  def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] =
-    Def.task {
-      val _ = update.value
-      IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
-    }
+  def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] = {
+    Def
+      .task(IvyActions.deliver(ivyModule.value, config.value, streams.value.log))
+      .dependsOn(update)
+  }
+
   def publishTask(config: TaskKey[PublishConfiguration],
-                  deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-    Def.task {
-      IvyActions.publish(ivyModule.value, config.value, streams.value.log)
-    } tag (Tags.Publish, Tags.Network)
-  val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
-    new sjsonnew.JsonKeyFormat[ModuleID] {
-      import sjsonnew.support.scalajson.unsafe._
-      import LibraryManagementCodec._
-      val moduleIdFormat: JsonFormat[ModuleID] = implicitly[JsonFormat[ModuleID]]
-      def write(key: ModuleID): String =
-        CompactPrinter(Converter.toJsonUnsafe(key)(moduleIdFormat))
-      def read(key: String): ModuleID =
-        Converter.fromJsonUnsafe[ModuleID](Parser.parseUnsafe(key))(moduleIdFormat)
-    }
+                  deliverKey: TaskKey[_]): Initialize[Task[Unit]] = {
+    Def
+      .task(IvyActions.publish(ivyModule.value, config.value, streams.value.log))
+      .tag(Tags.Publish, Tags.Network)
+  }
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport = {
@@ -2218,8 +2211,8 @@ object Classpaths {
     val s = streams.value
     val cacheDirectory = streams.value.cacheDirectory
 
-    val isRoot = executionRoots.value contains resolvedScoped.value
-    val shouldForce = isRoot || {
+    val isCalledByUser = executionRoots.value contains resolvedScoped.value
+    val shouldForce = isCalledByUser || {
       forceUpdatePeriod.value match {
         case None => false
         case Some(period) =>
@@ -2281,69 +2274,28 @@ object Classpaths {
     )
   }
 
+  /** Maps module ids (lib dependencies) to positions of the sbt files where they were defined.
+   *
+   * This information is useful for the update task that uses it to report errors. It is usually
+   * wrapped in [[UnresolvedWarningConfiguration]].
+   */
   private[sbt] def dependencyPositionsTask: Initialize[Task[Map[ModuleID, SourcePosition]]] =
     Def.task {
-      val projRef = thisProjectRef.value
-      val st = state.value
-      val s = streams.value
-      val cacheStoreFactory = s.cacheStoreFactory sub updateCacheName.value
+      import sbt.internal.ModulePositions._
       import sbt.librarymanagement.LibraryManagementCodec._
-      def modulePositions: Map[ModuleID, SourcePosition] =
-        try {
-          val extracted = (Project extract st)
-          val sk = (libraryDependencies in (GlobalScope in projRef)).scopedKey
-          val empty = extracted.structure.data set (sk.scope, sk.key, Nil)
-          val settings = extracted.structure.settings filter { s: Setting[_] =>
-            (s.key.key == libraryDependencies.key) &&
-            (s.key.scope.project == Select(projRef))
-          }
-          Map(settings flatMap {
-            case s: Setting[Seq[ModuleID]] @unchecked =>
-              s.init.evaluate(empty) map { _ -> s.pos }
-          }: _*)
-        } catch {
-          case NonFatal(e) => Map()
-        }
-
-      val outCacheStore = cacheStoreFactory make "output_dsp"
-      val f = Tracked.inputChanged(cacheStoreFactory make "input_dsp") {
+      val cacheStoreFactory = streams.value.cacheStoreFactory sub updateCacheName.value
+      val outStore = cacheStoreFactory make "output_dsp"
+      val cached = Tracked.inputChanged(cacheStoreFactory make "input_dsp") {
         (inChanged: Boolean, in: Seq[ModuleID]) =>
-          implicit val NoPositionFormat: JsonFormat[NoPosition.type] = asSingleton(NoPosition)
-          implicit val LinePositionFormat: IsoLList.Aux[LinePosition, String :*: Int :*: LNil] =
-            LList.iso(
-              { l: LinePosition =>
-                ("path", l.path) :*: ("startLine", l.startLine) :*: LNil
-              }, { in: String :*: Int :*: LNil =>
-                LinePosition(in.head, in.tail.head)
-              }
-            )
-          implicit val LineRangeFormat: IsoLList.Aux[LineRange, Int :*: Int :*: LNil] = LList.iso(
-            { l: LineRange =>
-              ("start", l.start) :*: ("end", l.end) :*: LNil
-            }, { in: Int :*: Int :*: LNil =>
-              LineRange(in.head, in.tail.head)
+          Tracked
+            .lastOutput[Seq[ModuleID], Map[ModuleID, SourcePosition]](outStore) {
+              case (_, Some(same)) if !inChanged => same
+              case _ =>
+                modulesToPositions(state.value, thisProjectRef.value, libraryDependencies)
             }
-          )
-          implicit val RangePositionFormat
-            : IsoLList.Aux[RangePosition, String :*: LineRange :*: LNil] = LList.iso(
-            { r: RangePosition =>
-              ("path", r.path) :*: ("range", r.range) :*: LNil
-            }, { in: String :*: LineRange :*: LNil =>
-              RangePosition(in.head, in.tail.head)
-            }
-          )
-          implicit val SourcePositionFormat: JsonFormat[SourcePosition] =
-            unionFormat3[SourcePosition, NoPosition.type, LinePosition, RangePosition]
-
-          implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
-          val outCache =
-            Tracked.lastOutput[Seq[ModuleID], Map[ModuleID, SourcePosition]](outCacheStore) {
-              case (_, Some(out)) if !inChanged => out
-              case _                            => modulePositions
-            }
-          outCache(in)
+            .apply(in)
       }
-      f(libraryDependencies.value)
+      cached(libraryDependencies.value)
     }
 
   /*
