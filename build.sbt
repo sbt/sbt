@@ -113,7 +113,7 @@ lazy val utilCache = (project in file("util-cache")).
   settings(
     commonSettings,
     name := "Util Cache",
-    libraryDependencies ++= Seq(sjsonnewScalaJson.value, scalaReflect.value)
+    libraryDependencies ++= Seq(sjsonnewScalaJson.value, sjsonnewMurmurhash.value, scalaReflect.value)
   ).
   configure(addSbtIO)
 

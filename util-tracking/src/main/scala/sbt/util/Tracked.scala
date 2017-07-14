@@ -10,11 +10,9 @@ import sbt.io.IO
 import sbt.io.syntax._
 
 import sjsonnew.JsonFormat
+import sjsonnew.support.murmurhash.Hasher
 
 object Tracked {
-
-  import CacheImplicits.LongJsonFormat
-
   /**
    * Creates a tracker that provides the last time it was evaluated.
    * If the function throws an exception.
@@ -33,7 +31,10 @@ object Tracked {
    * If 'useStartTime' is false, the recorded time is when the evaluated function completes.
    * In both cases, the timestamp is not updated if the function throws an exception.
    */
-  def tstamp(store: CacheStore, useStartTime: Boolean): Timestamp = new Timestamp(store, useStartTime)
+  def tstamp(store: CacheStore, useStartTime: Boolean): Timestamp = {
+    import CacheImplicits.LongJsonFormat
+    new Timestamp(store, useStartTime)
+  }
 
   /**
    * Creates a tracker that provides the last time it was evaluated.
@@ -74,7 +75,10 @@ object Tracked {
    * recent invocation.
    */
   def inputChanged[I: JsonFormat: SingletonCache, O](store: CacheStore)(f: (Boolean, I) => O): I => O = { in =>
-    val cache: SingletonCache[I] = implicitly
+    val cache: SingletonCache[Long] = {
+      import CacheImplicits.LongJsonFormat
+      implicitly
+    }
     val help = new CacheHelp(cache)
     val changed = help.changed(store, in)
     val result = f(changed, in)
@@ -90,15 +94,20 @@ object Tracked {
   def inputChanged[I: JsonFormat: SingletonCache, O](cacheFile: File)(f: (Boolean, I) => O): I => O =
     inputChanged(CacheStore(cacheFile))(f)
 
-  private final class CacheHelp[I: JsonFormat](val sc: SingletonCache[I]) {
+  private final class CacheHelp[I: JsonFormat](val sc: SingletonCache[Long]) {
+    import CacheImplicits.implicitHashWriter
     def save(store: CacheStore, value: I): Unit = {
       store.write(value)
     }
 
     def changed(store: CacheStore, value: I): Boolean =
       Try { store.read[I] } match {
-        case Success(prev) => !sc.equiv.equiv(value, prev)
-        case Failure(_)    => true
+        case Success(prev) =>
+          Hasher.hash(value) match {
+            case Success(keyHash) => keyHash.toLong != prev
+            case Failure(_)       => true
+          }
+        case Failure(_) => true
       }
   }
 
