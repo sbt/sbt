@@ -9,7 +9,6 @@ import org.apache.logging.log4j.{ Level => XLevel }
 import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
-import org.apache.logging.log4j.core.layout.PatternLayout
 
 import ConsoleAppender._
 
@@ -269,7 +268,7 @@ class ConsoleAppender private[ConsoleAppender] (
   ansiCodesSupported: Boolean,
   useFormat: Boolean,
   suppressedMessage: SuppressedTraceContext => Option[String]
-) extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {
+) extends AbstractAppender(name, null, LogExchange.dummyLayout, true) {
   import scala.Console.{ BLUE, GREEN, RED, RESET, YELLOW }
 
   private final val SUCCESS_LABEL_COLOR   = GREEN
