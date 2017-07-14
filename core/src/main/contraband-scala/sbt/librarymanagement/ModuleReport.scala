@@ -35,7 +35,7 @@ final class ModuleReport private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "ModuleReport".##) + module.##) + artifacts.##) + missingArtifacts.##) + status.##) + publicationDate.##) + resolver.##) + artifactResolver.##) + evicted.##) + evictedData.##) + evictedReason.##) + problem.##) + homepage.##) + extraAttributes.##) + isDefault.##) + branch.##) + configurations.##) + licenses.##) + callers.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleReport".##) + module.##) + artifacts.##) + missingArtifacts.##) + status.##) + publicationDate.##) + resolver.##) + artifactResolver.##) + evicted.##) + evictedData.##) + evictedReason.##) + problem.##) + homepage.##) + extraAttributes.##) + isDefault.##) + branch.##) + configurations.##) + licenses.##) + callers.##)
   }
   override def toString: String = {
     s"\t\t$module: " +

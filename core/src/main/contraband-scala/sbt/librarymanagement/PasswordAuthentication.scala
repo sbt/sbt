@@ -15,7 +15,7 @@ final class PasswordAuthentication private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "PasswordAuthentication".##) + user.##) + password.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.PasswordAuthentication".##) + user.##) + password.##)
   }
   override def toString: String = {
     "PasswordAuthentication(" + user + ", " + password + ")"

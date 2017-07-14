@@ -17,7 +17,7 @@ final class PomConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "PomConfiguration".##) + validate.##) + scalaModuleInfo.##) + file.##) + autoScalaTools.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.PomConfiguration".##) + validate.##) + scalaModuleInfo.##) + file.##) + autoScalaTools.##)
   }
   override def toString: String = {
     "PomConfiguration(" + validate + ", " + scalaModuleInfo + ", " + file + ", " + autoScalaTools + ")"

@@ -18,7 +18,7 @@ final class GetClassifiersConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (17 + "GetClassifiersConfiguration".##) + module.##) + excludes.##) + updateConfiguration.##) + sourceArtifactTypes.##) + docArtifactTypes.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.GetClassifiersConfiguration".##) + module.##) + excludes.##) + updateConfiguration.##) + sourceArtifactTypes.##) + docArtifactTypes.##)
   }
   override def toString: String = {
     "GetClassifiersConfiguration(" + module + ", " + excludes + ", " + updateConfiguration + ", " + sourceArtifactTypes + ", " + docArtifactTypes + ")"

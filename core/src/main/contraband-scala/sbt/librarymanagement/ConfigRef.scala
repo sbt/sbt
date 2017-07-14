@@ -16,7 +16,7 @@ final class ConfigRef private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + "ConfigRef".##) + name.##)
+    37 * (37 * (17 + "sbt.librarymanagement.ConfigRef".##) + name.##)
   }
   override def toString: String = {
     name

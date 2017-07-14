@@ -17,7 +17,7 @@ final class IvyFileConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "IvyFileConfiguration".##) + validate.##) + scalaModuleInfo.##) + file.##) + autoScalaTools.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.IvyFileConfiguration".##) + validate.##) + scalaModuleInfo.##) + file.##) + autoScalaTools.##)
   }
   override def toString: String = {
     "IvyFileConfiguration(" + validate + ", " + scalaModuleInfo + ", " + file + ", " + autoScalaTools + ")"

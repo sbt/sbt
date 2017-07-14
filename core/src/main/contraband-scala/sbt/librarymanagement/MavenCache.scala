@@ -22,7 +22,7 @@ final class MavenCache private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "MavenCache".##) + name.##) + root.##) + localIfFile.##) + rootFile.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.MavenCache".##) + name.##) + root.##) + localIfFile.##) + rootFile.##)
   }
   override def toString: String = {
     s"cache:$name: ${rootFile.getAbsolutePath}"

@@ -18,7 +18,7 @@ final class RetrieveConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "RetrieveConfiguration".##) + retrieveDirectory.##) + outputPattern.##) + sync.##) + configurationsToRetrieve.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.RetrieveConfiguration".##) + retrieveDirectory.##) + outputPattern.##) + sync.##) + configurationsToRetrieve.##)
   }
   override def toString: String = {
     "RetrieveConfiguration(" + retrieveDirectory + ", " + outputPattern + ", " + sync + ", " + configurationsToRetrieve + ")"

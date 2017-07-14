@@ -18,7 +18,7 @@ final class GetClassifiersModule private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (17 + "GetClassifiersModule".##) + id.##) + scalaModuleInfo.##) + dependencies.##) + configurations.##) + classifiers.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.GetClassifiersModule".##) + id.##) + scalaModuleInfo.##) + dependencies.##) + configurations.##) + classifiers.##)
   }
   override def toString: String = {
     "GetClassifiersModule(" + id + ", " + scalaModuleInfo + ", " + dependencies + ", " + configurations + ", " + classifiers + ")"

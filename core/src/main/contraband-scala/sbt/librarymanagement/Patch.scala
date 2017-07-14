@@ -17,7 +17,7 @@ override def equals(o: Any): Boolean = o match {
   case _ => false
 }
 override def hashCode: Int = {
-  37 * (17 + "Patch".##)
+  37 * (17 + "sbt.librarymanagement.Patch".##)
 }
 override def toString: String = {
   "Patch()"

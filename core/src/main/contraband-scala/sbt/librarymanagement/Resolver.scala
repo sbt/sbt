@@ -15,7 +15,7 @@ abstract class Resolver(
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + "Resolver".##) + name.##)
+    37 * (37 * (17 + "sbt.librarymanagement.Resolver".##) + name.##)
   }
   override def toString: String = {
     "Resolver(" + name + ")"

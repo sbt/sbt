@@ -27,7 +27,7 @@ final class OrganizationArtifactReport private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "OrganizationArtifactReport".##) + organization.##) + name.##) + modules.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.OrganizationArtifactReport".##) + organization.##) + name.##) + modules.##)
   }
   override def toString: String = {
     "OrganizationArtifactReport(" + organization + ", " + name + ", " + modules + ")"

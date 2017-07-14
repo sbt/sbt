@@ -27,7 +27,7 @@ final class InclExclRule private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (17 + "InclExclRule".##) + organization.##) + name.##) + artifact.##) + configurations.##) + crossVersion.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.InclExclRule".##) + organization.##) + name.##) + artifact.##) + configurations.##) + crossVersion.##)
   }
   override def toString: String = {
     "InclExclRule(" + organization + ", " + name + ", " + artifact + ", " + configurations + ", " + crossVersion + ")"

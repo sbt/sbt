@@ -15,7 +15,7 @@ final class Checksum private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "Checksum".##) + digest.##) + `type`.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.Checksum".##) + digest.##) + `type`.##)
   }
   override def toString: String = {
     "Checksum(" + digest + ", " + `type` + ")"

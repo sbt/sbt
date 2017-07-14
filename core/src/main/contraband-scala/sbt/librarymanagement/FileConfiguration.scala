@@ -16,7 +16,7 @@ final class FileConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "FileConfiguration".##) + isLocal.##) + isTransactional.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.FileConfiguration".##) + isLocal.##) + isTransactional.##)
   }
   override def toString: String = {
     "FileConfiguration(" + isLocal + ", " + isTransactional + ")"

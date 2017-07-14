@@ -15,7 +15,7 @@ final class Constant private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + "Constant".##) + value.##)
+    37 * (37 * (17 + "sbt.librarymanagement.Constant".##) + value.##)
   }
   override def toString: String = {
     "Constant(" + value + ")"

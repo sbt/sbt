@@ -18,7 +18,7 @@ final class FileRepository private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "FileRepository".##) + name.##) + patterns.##) + configuration.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.FileRepository".##) + name.##) + patterns.##) + configuration.##)
   }
   override def toString: String = {
     "FileRepository(" + name + ", " + patterns + ", " + configuration + ")"

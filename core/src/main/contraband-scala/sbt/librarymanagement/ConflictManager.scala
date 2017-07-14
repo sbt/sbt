@@ -17,7 +17,7 @@ final class ConflictManager private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "ConflictManager".##) + name.##) + organization.##) + module.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ConflictManager".##) + name.##) + organization.##) + module.##)
   }
   override def toString: String = {
     "ConflictManager(" + name + ", " + organization + ", " + module + ")"

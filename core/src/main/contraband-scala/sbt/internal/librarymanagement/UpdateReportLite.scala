@@ -14,7 +14,7 @@ final class UpdateReportLite private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + "UpdateReportLite".##) + configurations.##)
+    37 * (37 * (17 + "sbt.internal.librarymanagement.UpdateReportLite".##) + configurations.##)
   }
   override def toString: String = {
     "UpdateReportLite(" + configurations + ")"

@@ -17,7 +17,7 @@ final class ModuleConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "ModuleConfiguration".##) + organization.##) + name.##) + revision.##) + resolver.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleConfiguration".##) + organization.##) + name.##) + revision.##) + resolver.##)
   }
   override def toString: String = {
     "ModuleConfiguration(" + organization + ", " + name + ", " + revision + ", " + resolver + ")"

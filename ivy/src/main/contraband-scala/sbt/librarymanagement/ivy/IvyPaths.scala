@@ -15,7 +15,7 @@ final class IvyPaths private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "IvyPaths".##) + baseDirectory.##) + ivyHome.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.ivy.IvyPaths".##) + baseDirectory.##) + ivyHome.##)
   }
   override def toString: String = {
     "IvyPaths(" + baseDirectory + ", " + ivyHome + ")"

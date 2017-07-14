@@ -19,7 +19,7 @@ final class SshRepository private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "SshRepository".##) + name.##) + patterns.##) + connection.##) + publishPermissions.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.SshRepository".##) + name.##) + patterns.##) + connection.##) + publishPermissions.##)
   }
   override def toString: String = {
     "SshRepository(" + name + ", " + patterns + ", " + connection + ", " + publishPermissions + ")"

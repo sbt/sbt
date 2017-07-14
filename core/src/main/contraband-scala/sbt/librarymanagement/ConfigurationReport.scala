@@ -20,7 +20,7 @@ final class ConfigurationReport private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "ConfigurationReport".##) + configuration.##) + modules.##) + details.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ConfigurationReport".##) + configuration.##) + modules.##) + details.##)
   }
   override def toString: String = {
     s"\t$configuration:\n" +

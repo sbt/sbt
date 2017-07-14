@@ -25,7 +25,7 @@ final class UpdateReport private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "UpdateReport".##) + cachedDescriptor.##) + configurations.##) + stats.##) + stamps.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.UpdateReport".##) + cachedDescriptor.##) + configurations.##) + stats.##) + stamps.##)
   }
   override def toString: String = {
     "Update report:\n\t" + stats + "\n" + configurations.mkString

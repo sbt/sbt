@@ -17,7 +17,7 @@ abstract class PatternsBasedRepository(
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "PatternsBasedRepository".##) + name.##) + patterns.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.PatternsBasedRepository".##) + name.##) + patterns.##)
   }
   override def toString: String = {
     "PatternsBasedRepository(" + name + ", " + patterns + ")"

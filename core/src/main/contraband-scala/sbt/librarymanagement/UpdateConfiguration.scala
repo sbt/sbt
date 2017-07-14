@@ -32,7 +32,7 @@ final class UpdateConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "UpdateConfiguration".##) + retrieveManaged.##) + missingOk.##) + logging.##) + logicalClock.##) + metadataDirectory.##) + artifactFilter.##) + offline.##) + frozen.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.UpdateConfiguration".##) + retrieveManaged.##) + missingOk.##) + logging.##) + logicalClock.##) + metadataDirectory.##) + artifactFilter.##) + offline.##) + frozen.##)
   }
   override def toString: String = {
     "UpdateConfiguration(" + retrieveManaged + ", " + missingOk + ", " + logging + ", " + logicalClock + ", " + metadataDirectory + ", " + artifactFilter + ", " + offline + ", " + frozen + ")"

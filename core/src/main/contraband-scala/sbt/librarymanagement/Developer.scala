@@ -17,7 +17,7 @@ final class Developer private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "Developer".##) + id.##) + name.##) + email.##) + url.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.Developer".##) + id.##) + name.##) + email.##) + url.##)
   }
   override def toString: String = {
     "Developer(" + id + ", " + name + ", " + email + ", " + url + ")"

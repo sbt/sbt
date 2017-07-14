@@ -16,7 +16,7 @@ final class KeyFileAuthentication private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "KeyFileAuthentication".##) + user.##) + keyfile.##) + password.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.KeyFileAuthentication".##) + user.##) + keyfile.##) + password.##)
   }
   override def toString: String = {
     "KeyFileAuthentication(" + user + ", " + keyfile + ", " + password + ")"

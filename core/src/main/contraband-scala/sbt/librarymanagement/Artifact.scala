@@ -21,7 +21,7 @@ final class Artifact private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "Artifact".##) + name.##) + `type`.##) + extension.##) + classifier.##) + configurations.##) + url.##) + extraAttributes.##) + checksum.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.Artifact".##) + name.##) + `type`.##) + extension.##) + classifier.##) + configurations.##) + url.##) + extraAttributes.##) + checksum.##)
   }
   override def toString: String = {
     "Artifact(" + name + ", " + `type` + ", " + extension + ", " + classifier + ", " + configurations + ", " + url + ", " + extraAttributes + ", " + checksum + ")"

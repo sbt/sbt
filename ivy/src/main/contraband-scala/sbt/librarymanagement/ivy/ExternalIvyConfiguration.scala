@@ -19,7 +19,7 @@ final class ExternalIvyConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "ExternalIvyConfiguration".##) + lock.##) + log.##) + updateOptions.##) + baseDirectory.##) + uri.##) + extraResolvers.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ivy.ExternalIvyConfiguration".##) + lock.##) + log.##) + updateOptions.##) + baseDirectory.##) + uri.##) + extraResolvers.##)
   }
   override def toString: String = {
     "ExternalIvyConfiguration(" + lock + ", " + log + ", " + updateOptions + ", " + baseDirectory + ", " + uri + ", " + extraResolvers + ")"

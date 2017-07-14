@@ -21,7 +21,7 @@ final class Full private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "Full".##) + prefix.##) + suffix.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.Full".##) + prefix.##) + suffix.##)
   }
   override def toString: String = {
     "Full(" + prefix + ", " + suffix + ")"

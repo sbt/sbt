@@ -21,7 +21,7 @@ final class Binary private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "Binary".##) + prefix.##) + suffix.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.Binary".##) + prefix.##) + suffix.##)
   }
   override def toString: String = {
     "Binary(" + prefix + ", " + suffix + ")"

@@ -15,7 +15,7 @@ final class URLRepository private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "URLRepository".##) + name.##) + patterns.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.URLRepository".##) + name.##) + patterns.##)
   }
   override def toString: String = {
     "URLRepository(" + name + ", " + patterns + ")"

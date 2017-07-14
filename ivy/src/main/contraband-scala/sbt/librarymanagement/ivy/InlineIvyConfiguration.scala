@@ -23,7 +23,7 @@ final class InlineIvyConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "InlineIvyConfiguration".##) + lock.##) + log.##) + updateOptions.##) + paths.##) + resolvers.##) + otherResolvers.##) + moduleConfigurations.##) + checksums.##) + managedChecksums.##) + resolutionCacheDir.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ivy.InlineIvyConfiguration".##) + lock.##) + log.##) + updateOptions.##) + paths.##) + resolvers.##) + otherResolvers.##) + moduleConfigurations.##) + checksums.##) + managedChecksums.##) + resolutionCacheDir.##)
   }
   override def toString: String = {
     "InlineIvyConfiguration(" + lock + ", " + log + ", " + updateOptions + ", " + paths + ", " + resolvers + ", " + otherResolvers + ", " + moduleConfigurations + ", " + checksums + ", " + managedChecksums + ", " + resolutionCacheDir + ")"

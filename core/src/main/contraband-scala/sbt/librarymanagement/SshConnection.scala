@@ -16,7 +16,7 @@ final class SshConnection private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "SshConnection".##) + authentication.##) + hostname.##) + port.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.SshConnection".##) + authentication.##) + hostname.##) + port.##)
   }
   override def toString: String = {
     "SshConnection(" + authentication + ", " + hostname + ", " + port + ")"

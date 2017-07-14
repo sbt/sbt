@@ -24,7 +24,7 @@ final class ModuleDescriptorConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "ModuleDescriptorConfiguration".##) + validate.##) + scalaModuleInfo.##) + module.##) + moduleInfo.##) + dependencies.##) + overrides.##) + excludes.##) + ivyXML.##) + configurations.##) + defaultConfiguration.##) + conflictManager.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleDescriptorConfiguration".##) + validate.##) + scalaModuleInfo.##) + module.##) + moduleInfo.##) + dependencies.##) + overrides.##) + excludes.##) + ivyXML.##) + configurations.##) + defaultConfiguration.##) + conflictManager.##)
   }
   override def toString: String = {
     "ModuleDescriptorConfiguration(" + validate + ", " + scalaModuleInfo + ", " + module + ", " + moduleInfo + ", " + dependencies + ", " + overrides + ", " + excludes + ", " + ivyXML + ", " + configurations + ", " + defaultConfiguration + ", " + conflictManager + ")"

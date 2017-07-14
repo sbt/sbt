@@ -17,7 +17,7 @@ final class ScmInfo private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "ScmInfo".##) + browseUrl.##) + connection.##) + devConnection.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ScmInfo".##) + browseUrl.##) + connection.##) + devConnection.##)
   }
   override def toString: String = {
     "ScmInfo(" + browseUrl + ", " + connection + ", " + devConnection + ")"

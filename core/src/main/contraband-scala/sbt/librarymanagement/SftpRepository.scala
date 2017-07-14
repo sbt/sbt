@@ -18,7 +18,7 @@ final class SftpRepository private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "SftpRepository".##) + name.##) + patterns.##) + connection.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.SftpRepository".##) + name.##) + patterns.##) + connection.##)
   }
   override def toString: String = {
     "SftpRepository(" + name + ", " + patterns + ", " + connection + ")"

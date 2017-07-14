@@ -22,7 +22,7 @@ final class PublishConfiguration private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "PublishConfiguration".##) + publishMavenStyle.##) + deliverIvyPattern.##) + status.##) + configurations.##) + resolverName.##) + artifacts.##) + checksums.##) + logging.##) + overwrite.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.PublishConfiguration".##) + publishMavenStyle.##) + deliverIvyPattern.##) + status.##) + configurations.##) + resolverName.##) + artifacts.##) + checksums.##) + logging.##) + overwrite.##)
   }
   override def toString: String = {
     "PublishConfiguration(" + publishMavenStyle + ", " + deliverIvyPattern + ", " + status + ", " + configurations + ", " + resolverName + ", " + artifacts + ", " + checksums + ", " + logging + ", " + overwrite + ")"

@@ -17,7 +17,7 @@ final class UpdateStats private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "UpdateStats".##) + resolveTime.##) + downloadTime.##) + downloadSize.##) + cached.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.UpdateStats".##) + resolveTime.##) + downloadTime.##) + downloadSize.##) + cached.##)
   }
   override def toString: String = {
     Seq("Resolve time: " + resolveTime + " ms", "Download time: " + downloadTime + " ms", "Download size: " + downloadSize + " bytes").mkString(", ")

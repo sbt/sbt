@@ -17,7 +17,7 @@ abstract class IvyConfiguration(
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "IvyConfiguration".##) + lock.##) + log.##) + updateOptions.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ivy.IvyConfiguration".##) + lock.##) + log.##) + updateOptions.##)
   }
   override def toString: String = {
     "IvyConfiguration(" + lock + ", " + log + ", " + updateOptions + ")"

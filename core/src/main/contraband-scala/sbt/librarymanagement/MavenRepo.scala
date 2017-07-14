@@ -16,7 +16,7 @@ final class MavenRepo private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "MavenRepo".##) + name.##) + root.##) + localIfFile.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.MavenRepo".##) + name.##) + root.##) + localIfFile.##)
   }
   override def toString: String = {
     s"$name: $root"

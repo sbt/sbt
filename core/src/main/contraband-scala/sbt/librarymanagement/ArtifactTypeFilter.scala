@@ -22,7 +22,7 @@ final class ArtifactTypeFilter private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "ArtifactTypeFilter".##) + types.##) + inverted.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.ArtifactTypeFilter".##) + types.##) + inverted.##)
   }
   override def toString: String = {
     "ArtifactTypeFilter(" + types + ", " + inverted + ")"

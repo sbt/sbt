@@ -18,7 +18,7 @@ abstract class MavenRepository(
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "MavenRepository".##) + name.##) + root.##) + localIfFile.##)
+    37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.MavenRepository".##) + name.##) + root.##) + localIfFile.##)
   }
   override def toString: String = {
     "MavenRepository(" + name + ", " + root + ", " + localIfFile + ")"

@@ -15,7 +15,7 @@ override def equals(o: Any): Boolean = o match {
   case _ => false
 }
 override def hashCode: Int = {
-  37 * (17 + "CrossVersion".##)
+  37 * (17 + "sbt.librarymanagement.CrossVersion".##)
 }
 override def toString: String = {
   "CrossVersion()"

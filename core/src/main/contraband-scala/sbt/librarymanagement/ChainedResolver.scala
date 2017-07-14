@@ -15,7 +15,7 @@ final class ChainedResolver private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "ChainedResolver".##) + name.##) + resolvers.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.ChainedResolver".##) + name.##) + resolvers.##)
   }
   override def toString: String = {
     "ChainedResolver(" + name + ", " + resolvers + ")"

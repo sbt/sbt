@@ -16,7 +16,7 @@ abstract class ModuleSettings(
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "ModuleSettings".##) + validate.##) + scalaModuleInfo.##)
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleSettings".##) + validate.##) + scalaModuleInfo.##)
   }
   override def toString: String = {
     "ModuleSettings(" + validate + ", " + scalaModuleInfo + ")"

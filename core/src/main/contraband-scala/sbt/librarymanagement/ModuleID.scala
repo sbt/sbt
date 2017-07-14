@@ -26,7 +26,7 @@ final class ModuleID private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "ModuleID".##) + organization.##) + name.##) + revision.##) + configurations.##) + isChanging.##) + isTransitive.##) + isForce.##) + explicitArtifacts.##) + inclusions.##) + exclusions.##) + extraAttributes.##) + crossVersion.##) + branchName.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleID".##) + organization.##) + name.##) + revision.##) + configurations.##) + isChanging.##) + isTransitive.##) + isForce.##) + explicitArtifacts.##) + inclusions.##) + exclusions.##) + extraAttributes.##) + crossVersion.##) + branchName.##)
   }
   override def toString: String = {
     this.toStringImpl

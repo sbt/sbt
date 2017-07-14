@@ -18,7 +18,7 @@ final class Patterns private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (17 + "Patterns".##) + ivyPatterns.##) + artifactPatterns.##) + isMavenCompatible.##) + descriptorOptional.##) + skipConsistencyCheck.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.Patterns".##) + ivyPatterns.##) + artifactPatterns.##) + isMavenCompatible.##) + descriptorOptional.##) + skipConsistencyCheck.##)
   }
   override def toString: String = {
     "Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s, descriptorOptional=%s, skipConsistencyCheck=%s)".format(
