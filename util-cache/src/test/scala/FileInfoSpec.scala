@@ -1,6 +1,6 @@
 package sbt.util
 
-import scalajson.ast.unsafe._
+import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
 import sbt.internal.util.UnitSpec
 

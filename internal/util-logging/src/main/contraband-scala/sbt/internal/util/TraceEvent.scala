@@ -17,7 +17,7 @@ final class TraceEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "TraceEvent".##) + level.##) + message.##) + channelName.##) + execId.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.util.TraceEvent".##) + level.##) + message.##) + channelName.##) + execId.##)
   }
   override def toString: String = {
     "TraceEvent(" + level + ", " + message + ", " + channelName + ", " + execId + ")"
