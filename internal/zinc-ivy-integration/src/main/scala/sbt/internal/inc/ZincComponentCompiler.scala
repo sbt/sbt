@@ -71,10 +71,11 @@ private[sbt] object ZincComponentCompiler {
     def compiledBridge(bridgeSources: ModuleID,
                        scalaInstance: xsbti.compile.ScalaInstance,
                        logger: xsbti.Logger): File = {
+      import InterfaceUtil.{ toSupplier => f0 }
       val autoClasspath = ClasspathOptionsUtil.auto
       val raw = new RawCompiler(scalaInstance, autoClasspath, logger)
       val zinc = new ZincComponentCompiler(raw, manager, ivyConfiguration, bridgeSources, logger)
-      logger.debug(InterfaceUtil.f0(s"Getting $bridgeSources for Scala ${scalaInstance.version}"))
+      logger.debug(f0(s"Getting $bridgeSources for Scala ${scalaInstance.version}"))
       zinc.compiledBridgeJar
     }
 
