@@ -5,8 +5,8 @@ package object sbt
     extends sbt.IOSyntax0
     with sbt.std.TaskExtra
     with sbt.internal.util.Types
-    with sbt.internal.librarymanagement.impl.DependencyBuilders
     with sbt.ProjectExtra
+    with sbt.librarymanagement.DependencyBuilders
     with sbt.librarymanagement.DependencyFilterExtra
     with sbt.librarymanagement.LibraryManagementSyntax
     with sbt.BuildExtra
@@ -36,15 +36,15 @@ package object sbt
   final val Global = Scope.Global
   final val GlobalScope = Scope.GlobalScope
 
-  import sbt.{ Configurations => C }
-  final val Compile = C.Compile
-  final val Test = C.Test
-  final val Runtime = C.Runtime
-  final val IntegrationTest = C.IntegrationTest
-  final val Default = C.Default
-  final val Provided = C.Provided
+  // import sbt.{ Configurations => C }
+  // final val Compile = C.Compile
+  // final val Test = C.Test
+  // final val Runtime = C.Runtime
+  // final val IntegrationTest = C.IntegrationTest
+  // final val Default = C.Default
+  // final val Provided = C.Provided
   // java.lang.System is more important, so don't alias this one
   //  final val System = C.System
-  final val Optional = C.Optional
-  def config(s: String): Configuration = C.config(s)
+  // final val Optional = C.Optional
+  // def config(s: String): Configuration = C.config(s)
 }

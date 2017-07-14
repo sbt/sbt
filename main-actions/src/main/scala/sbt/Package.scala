@@ -16,6 +16,7 @@ import sbt.util.Logger
 
 import sbt.util.{ CacheStoreFactory, FilesInfo, ModifiedFileInfo, PlainFileInfo }
 import sbt.internal.util.HNil
+import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.inputChanged

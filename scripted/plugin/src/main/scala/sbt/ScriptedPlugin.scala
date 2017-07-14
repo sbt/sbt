@@ -15,8 +15,8 @@ object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
   override def trigger = allRequirements
   object autoImport {
-    def scriptedConf = config("scripted-sbt") hide
-    def scriptedLaunchConf = config("scripted-sbt-launch") hide
+    val scriptedConf = Configurations.config("scripted-sbt") hide
+    val scriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
     val scriptedSbt = SettingKey[String]("scripted-sbt")
     val sbtLauncher = TaskKey[File]("sbt-launcher")
     val sbtTestDirectory = SettingKey[File]("sbt-test-directory")

@@ -212,12 +212,12 @@ lazy val actionsProj = (project in file("main-actions"))
     addSbtUtilCompletion,
     addSbtCompilerApiInfo,
     addSbtZinc,
-    addSbtCompilerIvyIntegration,
+    addSbtCompilerLmIntegration,
     addSbtCompilerInterface,
     addSbtIO,
     addSbtUtilLogging,
     addSbtUtilRelation,
-    addSbtLm,
+    addSbtLmCore,
     addSbtUtilTracking
   )
 
@@ -252,7 +252,7 @@ lazy val commandProj = (project in file("main-command"))
              addSbtUtilLogging,
              addSbtUtilCompletion,
              addSbtCompilerClasspath,
-             addSbtLm)
+             addSbtLmCore)
 
 // The core macro project defines the main logic of the DSL, abstracted
 // away from several sbt implementators (tasks, settings, et cetera).
@@ -300,7 +300,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     addSbtIO,
     addSbtUtilCompletion,
     addSbtCompilerClasspath,
-    addSbtLm
+    addSbtLmCore
   )
 
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
@@ -319,7 +319,8 @@ lazy val mainProj = (project in file("main"))
              addSbtIO,
              addSbtUtilLogging,
              addSbtUtilLogic,
-             addSbtLm,
+             addSbtLmCore,
+             addSbtLmIvy,
              addSbtZincCompile)
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object

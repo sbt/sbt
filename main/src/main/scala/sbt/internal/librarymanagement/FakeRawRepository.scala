@@ -7,5 +7,5 @@ import sbt.librarymanagement.RawRepository
 
 object FakeRawRepository {
   def create(name: String): RawRepository =
-    new RawRepository(new FakeResolver(name, IO.createTemporaryDirectory, Map.empty))
+    new RawRepository(new FakeResolver(name, IO.createTemporaryDirectory, Map.empty), name)
 }

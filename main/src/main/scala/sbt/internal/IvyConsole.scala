@@ -41,7 +41,7 @@ object IvyConsole {
 
       val depSettings: Seq[Setting[_]] = Seq(
         libraryDependencies ++= managed.reverse,
-        resolvers ++= repos.reverse,
+        resolvers ++= repos.reverse.toVector,
         unmanagedJars in Compile ++= Attributed blankSeq unmanaged.reverse,
         logLevel in Global := Level.Warn,
         showSuccess in Global := false

@@ -3,7 +3,8 @@
  */
 package sbt
 
-import sbt.librarymanagement.{ Credentials, MavenRepository, Resolver }
+import sbt.librarymanagement.{ MavenRepository, Resolver }
+import sbt.librarymanagement.ivy.Credentials
 
 import java.io.File
 import java.net.URL
@@ -62,11 +63,12 @@ object DefaultOptions {
   def scaladoc(name: String, version: String): Seq[String] =
     doc.title(name) ++ doc.version(version)
 
-  def resolvers(snapshot: Boolean): Seq[Resolver] = {
-    if (snapshot) Seq(resolver.sbtSnapshots) else Nil
+  def resolvers(snapshot: Boolean): Vector[Resolver] = {
+    if (snapshot) Vector(resolver.sbtSnapshots) else Vector.empty
   }
-  def pluginResolvers(plugin: Boolean, snapshot: Boolean): Seq[Resolver] = {
-    if (plugin && snapshot) Seq(resolver.sbtSnapshots, resolver.sbtIvySnapshots) else Nil
+  def pluginResolvers(plugin: Boolean, snapshot: Boolean): Vector[Resolver] = {
+    if (plugin && snapshot) Vector(resolver.sbtSnapshots, resolver.sbtIvySnapshots)
+    else Vector.empty
   }
   def addResolvers: Setting[_] = Keys.resolvers ++= { resolvers(Keys.isSnapshot.value) }
   def addPluginResolvers: Setting[_] =

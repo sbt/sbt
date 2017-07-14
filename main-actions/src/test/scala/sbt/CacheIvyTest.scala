@@ -46,14 +46,20 @@ class CacheIvyTest extends Properties("CacheIvy") {
       eq(out, m) :| s"Expected: ${str(m)}" :| s"Got: ${str(out)}"
   }
 
-  implicit val arbExclusionRule: Arbitrary[ExclusionRule] = Arbitrary(
+  implicit val arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(
+    for {
+      n <- Gen.alphaStr
+    } yield ConfigRef(n)
+  )
+
+  implicit val arbExclusionRule: Arbitrary[InclExclRule] = Arbitrary(
     for {
       o <- Gen.alphaStr
       n <- Gen.alphaStr
       a <- Gen.alphaStr
       v <- arbCrossVersion.arbitrary
-      cs <- arbitrary[List[String]]
-    } yield ExclusionRule(o, n, a, cs.toVector, v)
+      cs <- arbitrary[List[ConfigRef]]
+    } yield InclExclRule(o, n, a, cs.toVector, v)
   )
 
   implicit val arbCrossVersion: Arbitrary[CrossVersion] = Arbitrary {
@@ -78,8 +84,8 @@ class CacheIvyTest extends Properties("CacheIvy") {
       isTransitive <- arbitrary[Boolean]
       isForce <- arbitrary[Boolean]
       explicitArtifacts <- Gen.listOf(arbitrary[Artifact])
-      exclusions <- Gen.listOf(arbitrary[ExclusionRule])
-      inclusions <- Gen.listOf(arbitrary[InclusionRule])
+      exclusions <- Gen.listOf(arbitrary[InclExclRule])
+      inclusions <- Gen.listOf(arbitrary[InclExclRule])
       extraAttributes <- Gen.mapOf(arbitrary[(String, String)])
       crossVersion <- arbitrary[CrossVersion]
     } yield

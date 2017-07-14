@@ -225,8 +225,8 @@ trait Import {
   type Caller = sbt.librarymanagement.Caller
   val ChainedResolver = sbt.librarymanagement.ChainedResolver
   type ChainedResolver = sbt.librarymanagement.ChainedResolver
-  val CircularDependencyLevel = sbt.librarymanagement.CircularDependencyLevel
-  type CircularDependencyLevel = sbt.librarymanagement.CircularDependencyLevel
+  val CircularDependencyLevel = sbt.librarymanagement.ivy.CircularDependencyLevel
+  type CircularDependencyLevel = sbt.librarymanagement.ivy.CircularDependencyLevel
   val Configuration = sbt.librarymanagement.Configuration
   type Configuration = sbt.librarymanagement.Configuration
   val ConfigurationReport = sbt.librarymanagement.ConfigurationReport
@@ -236,33 +236,33 @@ trait Import {
   type ConflictManager = sbt.librarymanagement.ConflictManager
   val ConflictWarning = sbt.librarymanagement.ConflictWarning
   type ConflictWarning = sbt.librarymanagement.ConflictWarning
-  val Credentials = sbt.librarymanagement.Credentials
-  type Credentials = sbt.librarymanagement.Credentials
+  val Credentials = sbt.librarymanagement.ivy.Credentials
+  type Credentials = sbt.librarymanagement.ivy.Credentials
   val CrossVersion = sbt.librarymanagement.CrossVersion
   type CrossVersion = sbt.librarymanagement.CrossVersion
-  val DefaultMavenRepository = sbt.librarymanagement.DefaultMavenRepository
+  val DefaultMavenRepository = sbt.librarymanagement.Resolver.DefaultMavenRepository
   val Developer = sbt.librarymanagement.Developer
   type Developer = sbt.librarymanagement.Developer
   val Disabled = sbt.librarymanagement.Disabled
   type Disabled = sbt.librarymanagement.Disabled
-  type DirectCredentials = sbt.librarymanagement.DirectCredentials
+  type DirectCredentials = sbt.librarymanagement.ivy.DirectCredentials
   val EvictionPair = sbt.librarymanagement.EvictionPair
   type EvictionPair = sbt.librarymanagement.EvictionPair
   val EvictionWarning = sbt.librarymanagement.EvictionWarning
   type EvictionWarning = sbt.librarymanagement.EvictionWarning
   val EvictionWarningOptions = sbt.librarymanagement.EvictionWarningOptions
   type EvictionWarningOptions = sbt.librarymanagement.EvictionWarningOptions
-  val ExclusionRule = sbt.librarymanagement.ExclusionRule
-  type ExclusionRule = sbt.librarymanagement.ExclusionRule
-  type FileCredentials = sbt.librarymanagement.FileCredentials
+  // val ExclusionRule = sbt.librarymanagement.InclExclRule
+  // type ExclusionRule = sbt.librarymanagement.InclExclRule
+  type FileCredentials = sbt.librarymanagement.ivy.FileCredentials
   val FileRepository = sbt.librarymanagement.FileRepository
   type FileRepository = sbt.librarymanagement.FileRepository
   val Full = sbt.librarymanagement.Full
   type Full = sbt.librarymanagement.Full
-  val IvyScala = sbt.librarymanagement.IvyScala
-  type IvyScala = sbt.librarymanagement.IvyScala
-  val JCenterRepository = sbt.librarymanagement.JCenterRepository
-  val JavaNet2Repository = sbt.librarymanagement.JavaNet2Repository
+  val IvyScala = sbt.librarymanagement.ScalaModuleInfo
+  type IvyScala = sbt.librarymanagement.ScalaModuleInfo
+  val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
+  val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
   val MavenCache = sbt.librarymanagement.MavenCache
   type MavenCache = sbt.librarymanagement.MavenCache
   val MavenRepo = sbt.librarymanagement.MavenRepo
@@ -301,8 +301,8 @@ trait Import {
   val URLRepository = sbt.librarymanagement.URLRepository
   type URLRepository = sbt.librarymanagement.URLRepository
   val UpdateLogging = sbt.librarymanagement.UpdateLogging
-  val UpdateOptions = sbt.librarymanagement.UpdateOptions
-  type UpdateOptions = sbt.librarymanagement.UpdateOptions
+  val UpdateOptions = sbt.librarymanagement.ivy.UpdateOptions
+  type UpdateOptions = sbt.librarymanagement.ivy.UpdateOptions
   val UpdateReport = sbt.librarymanagement.UpdateReport
   type UpdateReport = sbt.librarymanagement.UpdateReport
   val UpdateStats = sbt.librarymanagement.UpdateStats
@@ -312,8 +312,8 @@ trait Import {
   type VersionNumberCompatibility = sbt.librarymanagement.VersionNumberCompatibility
 
   // sbt.internal.librarymanagement
-  type IvyPaths = sbt.internal.librarymanagement.IvyPaths
-  val IvyPaths = sbt.internal.librarymanagement.IvyPaths
+  // type IvyPaths = sbt.internal.librarymanagement.ivy.IvyPaths
+  // val IvyPaths = sbt.internal.librarymanagement.ivy.IvyPaths
 
   type IncOptions = xsbti.compile.IncOptions
 }

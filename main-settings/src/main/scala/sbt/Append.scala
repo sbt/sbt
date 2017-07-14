@@ -56,6 +56,14 @@ object Append {
         })
       def appendValue(a: List[T], b: V): List[T] = a :+ (b: T)
     }
+  implicit def appendVectorImplicit[T, V](implicit ev: V => T): Sequence[Vector[T], Seq[V], V] =
+    new Sequence[Vector[T], Seq[V], V] {
+      def appendValues(a: Vector[T], b: Seq[V]): Vector[T] =
+        a ++ (b map { x =>
+          (x: T)
+        })
+      def appendValue(a: Vector[T], b: V): Vector[T] = a :+ (b: T)
+    }
   implicit def appendString: Value[String, String] = new Value[String, String] {
     def appendValue(a: String, b: String) = a + b
   }

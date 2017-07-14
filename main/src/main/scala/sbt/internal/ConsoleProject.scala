@@ -15,7 +15,7 @@ object ConsoleProject {
     val cpImports = new Imports(extracted, state)
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
-    val (_, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
+    val (_, dependencyResolution) = extracted.runTask(Keys.dependencyResolution, state)
     val scalaInstance = {
       val scalaProvider = state.configuration.provider.scalaProvider
       ScalaInstance(scalaProvider.version, scalaProvider.launcher)
@@ -30,7 +30,7 @@ object ConsoleProject {
       globalLock = launcher.globalLock,
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
-      ivyConfiguration = ivyConf,
+      dependencyResolution = dependencyResolution,
       compilerBridgeSource = extracted.get(Keys.scalaCompilerBridgeSource),
       scalaJarsTarget = zincDir,
       log = log

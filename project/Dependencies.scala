@@ -13,9 +13,9 @@ object Dependencies {
 
   // sbt modules
   private val ioVersion = "1.0.0-M12"
-  private val utilVersion = "1.0.0-M25"
-  private val lmVersion = "1.0.0-X16"
-  private val zincVersion = "1.0.0-X17"
+  private val utilVersion = "1.0.0-M26"
+  private val lmVersion = "1.0.0-SNAPSHOT"
+  private val zincVersion = "1.0.0-X19-SNAPSHOT"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -31,7 +31,8 @@ object Dependencies {
   private val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
   private val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
 
-  private val libraryManagement = "org.scala-sbt" %% "librarymanagement" % lmVersion
+  private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
+  private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
@@ -41,7 +42,7 @@ object Dependencies {
   private val compilerBridge = "org.scala-sbt" %% "compiler-bridge" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
-  private val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
+  private val compilerLmIntegration = "org.scala-sbt" %% "zinc-library-management-integration" % zincVersion
   private val zinc = "org.scala-sbt" %% "zinc" % zincVersion
   private val zincCompile = "org.scala-sbt" %% "zinc-compile" % zincVersion
 
@@ -93,7 +94,8 @@ object Dependencies {
   def addSbtUtilTracking(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilTracking", utilTracking)
 
-  def addSbtLm(p: Project): Project = addSbtModule(p, sbtLmPath, "lm", libraryManagement)
+  def addSbtLmCore(p: Project): Project = addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
+  def addSbtLmIvy(p: Project): Project = addSbtModule(p, sbtLmPath, "lmIvy", libraryManagementIvy)
 
   def addSbtCompilerApiInfo(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincApiInfo", compilerApiInfo)
@@ -103,8 +105,8 @@ object Dependencies {
     addSbtModule(p, sbtZincPath, "zincClasspath", compilerClasspath)
   def addSbtCompilerInterface(p: Project): Project =
     addSbtModule(p, sbtZincPath, "compilerInterface", compilerInterface)
-  def addSbtCompilerIvyIntegration(p: Project): Project =
-    addSbtModule(p, sbtZincPath, "zincIvyIntegration", compilerIvyIntegration)
+  def addSbtCompilerLmIntegration(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincLmIntegration", compilerLmIntegration)
   def addSbtZinc(p: Project): Project = addSbtModule(p, sbtZincPath, "zinc", zinc)
   def addSbtZincCompile(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)

@@ -102,7 +102,7 @@ object GlobalPlugin {
 final case class GlobalPluginData(projectID: ModuleID,
                                   dependencies: Seq[ModuleID],
                                   descriptors: Map[ModuleRevisionId, ModuleDescriptor],
-                                  resolvers: Seq[Resolver],
+                                  resolvers: Vector[Resolver],
                                   fullClasspath: Classpath,
                                   internalClasspath: Classpath)(val updateReport: UpdateReport)
 final case class GlobalPlugin(data: GlobalPluginData,
