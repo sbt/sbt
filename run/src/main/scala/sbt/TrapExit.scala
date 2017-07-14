@@ -9,15 +9,15 @@ package sbt
 
 import scala.reflect.Manifest
 import scala.collection.concurrent.TrieMap
-
 import java.lang.ref.WeakReference
 import Thread.currentThread
 import java.security.Permission
 import java.util.concurrent.{ ConcurrentHashMap => CMap }
 import java.lang.Integer.{ toHexString => hex }
+import java.util.function.Supplier
 
 import sbt.util.Logger
-
+import sbt.util.InterfaceUtil
 import TrapExit._
 
 /**
@@ -39,7 +39,7 @@ object TrapExit {
    */
   def apply(execute: => Unit, log: Logger): Int =
     System.getSecurityManager match {
-      case m: TrapExit => m.runManaged(Logger.f0(execute), log)
+      case m: TrapExit => m.runManaged(InterfaceUtil.toSupplier(execute), log)
       case _           => runUnmanaged(execute, log)
     }
 
@@ -149,12 +149,12 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
   private[this] val threadToApp = new CMap[ThreadID, App]
 
   /** Executes `f` in a managed context. */
-  def runManaged(f: xsbti.F0[Unit], xlog: xsbti.Logger): Int = {
+  def runManaged(f: Supplier[Unit], xlog: xsbti.Logger): Int = {
     val _ = running.incrementAndGet()
     try runManaged0(f, xlog)
     finally running.decrementAndGet()
   }
-  private[this] def runManaged0(f: xsbti.F0[Unit], xlog: xsbti.Logger): Int = {
+  private[this] def runManaged0(f: Supplier[Unit], xlog: xsbti.Logger): Int = {
     val log: Logger = xlog
     val app = new App(f, log)
     val executionThread = app.mainThread
@@ -214,7 +214,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
    * `execute` is the application code to evaluate.
    * `log` is used for debug logging.
    */
-  private final class App(val execute: xsbti.F0[Unit], val log: Logger) extends Runnable {
+  private final class App(val execute: Supplier[Unit], val log: Logger) extends Runnable {
 
     /**
      * Tracks threads and groups created by this application.
@@ -249,7 +249,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     val exitCode = new ExitCode
 
     def run(): Unit = {
-      try execute()
+      try execute.get()
       catch {
         case x: Throwable =>
           exitCode.set(1) //exceptions in the main thread cause the exit code to be 1

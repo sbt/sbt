@@ -64,7 +64,7 @@ import sbt.librarymanagement.Configurations.{
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.librarymanagement.syntax._
-import sbt.util.InterfaceUtil.f1
+import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sbt.util.CacheImplicits._
 import scala.concurrent.duration.FiniteDuration
