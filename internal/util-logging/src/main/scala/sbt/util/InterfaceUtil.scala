@@ -1,22 +1,29 @@
 package sbt.util
 
-import xsbti.{ Maybe, F0, F1, T2, Position, Problem, Severity }
+import xsbti.{ Position, Problem, Severity, T2 }
 import java.io.File
 import java.util.Optional
+import java.util.function.Supplier
 
 object InterfaceUtil {
-  def f0[A](a: => A): F0[A] = new ConcreteF0[A](a)
-  def f1[A1, R](f: A1 => R): F1[A1, R] = new ConcreteF1(f)
+  def toSupplier[A](a: => A): Supplier[A] = new Supplier[A] {
+    override def get: A = a
+  }
+
+  import java.util.function.{ Function => JavaFunction }
+  def toJavaFunction[A1, R](f: A1 => R): JavaFunction[A1, R] = new JavaFunction[A1, R] {
+    override def apply(t: A1): R = f(t)
+  }
+
   def t2[A1, A2](x: (A1, A2)): T2[A1, A2] = new ConcreteT2(x._1, x._2)
 
-  def m2o[A](m: Maybe[A]): Option[A] =
-    if (m.isDefined) Some(m.get)
-    else None
+  def toOption[A](m: Optional[A]): Option[A] =
+    if (m.isPresent) Some(m.get) else None
 
-  def o2m[A](o: Option[A]): Maybe[A] =
+  def toOptional[A](o: Option[A]): Optional[A] =
     o match {
-      case Some(v) => Maybe.just(v)
-      case None    => Maybe.nothing()
+      case Some(v) => Optional.of(v)
+      case None    => Optional.empty()
     }
 
   def jo2o[A](o: Optional[A]): Option[A] =
@@ -35,14 +42,6 @@ object InterfaceUtil {
 
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
     new ConcreteProblem(cat, pos, msg, sev)
-
-  private final class ConcreteF0[A](a: => A) extends F0[A] {
-    def apply: A = a
-  }
-
-  private final class ConcreteF1[A1, R](f: A1 => R) extends F1[A1, R] {
-    def apply(a1: A1): R = f(a1)
-  }
 
   private final class ConcreteT2[A1, A2](a1: A1, a2: A2) extends T2[A1, A2] {
     val get1: A1 = a1
