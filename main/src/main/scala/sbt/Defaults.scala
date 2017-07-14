@@ -101,7 +101,7 @@ import sbt.internal.inc.{
   Analysis,
   FileValueCache,
   Locate,
-  LoggerReporter,
+  ManagedLoggedReporter,
   MixedAnalyzingCompiler,
   ScalaInstance
 }
@@ -1435,9 +1435,13 @@ object Defaults extends BuildCommon {
         f1(foldMappers(sourcePositionMappers.value)),
         compileOrder.value
       ),
-      compilerReporter := new LoggerReporter(maxErrors.value,
-                                             streams.value.log,
-                                             foldMappers(sourcePositionMappers.value)),
+      compilerReporter := {
+        new ManagedLoggedReporter(
+          maxErrors.value,
+          streams.value.log,
+          foldMappers(sourcePositionMappers.value)
+        )
+      },
       compileInputs := new Inputs(
         compilers.value,
         compileOptions.value,
@@ -1477,10 +1481,8 @@ object Defaults extends BuildCommon {
       val problems =
         analysis.infos.allInfos.values.flatMap(i =>
           i.getReportedProblems ++ i.getUnreportedProblems)
-      val reporter = new LoggerReporter(max, streams.value.log, foldMappers(spms))
-      problems foreach { p =>
-        reporter.display(p)
-      }
+      val reporter = new ManagedLoggedReporter(max, streams.value.log, foldMappers(spms))
+      problems.foreach(p => reporter.log(p))
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
