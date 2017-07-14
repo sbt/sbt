@@ -5,6 +5,7 @@ import org.apache.logging.log4j.{ LogManager => XLogManager, Level => XLevel }
 import org.apache.logging.log4j.core._
 import org.apache.logging.log4j.core.appender.AsyncAppender
 import org.apache.logging.log4j.core.config.{ AppenderRef, LoggerConfig }
+import org.apache.logging.log4j.core.layout.PatternLayout
 import scala.collection.JavaConverters._
 import scala.collection.concurrent
 import sjsonnew.JsonFormat
@@ -47,6 +48,22 @@ sealed abstract class LogExchange {
     val config = ctx.getConfiguration
     config.getLoggerConfig(loggerName)
   }
+
+  // This is a dummy layout to avoid casting error during PatternLayout.createDefaultLayout()
+  // that was originally used for ConsoleAppender.
+  // The stacktrace shows it's having issue initializing default DefaultConfiguration.
+  // Since we currently do not use Layout inside ConsoleAppender, the actual pattern is not relevant.
+  private[sbt] lazy val dummyLayout: PatternLayout = {
+    val _ = context
+    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
+    val config = ctx.getConfiguration
+    val lo = PatternLayout.newBuilder
+      .withConfiguration(config)
+      .withPattern(PatternLayout.SIMPLE_CONVERSION_PATTERN)
+      .build
+    lo
+  }
+
   def jsonCodec[A](tag: String): Option[JsonFormat[A]] =
     jsonCodecs.get(tag) map { _.asInstanceOf[JsonFormat[A]] }
   def hasJsonCodec(tag: String): Boolean =
@@ -63,9 +80,6 @@ sealed abstract class LogExchange {
   private[sbt] def buildAsyncStdout: AsyncAppender = {
     val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
     val config = ctx.getConfiguration
-    // val layout = PatternLayout.newBuilder
-    //   .withPattern(PatternLayout.SIMPLE_CONVERSION_PATTERN)
-    //   .build
     val appender = ConsoleAppender("Stdout")
     // CustomConsoleAppenderImpl.createAppender("Stdout", layout, null, null)
     appender.start
