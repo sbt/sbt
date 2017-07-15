@@ -59,14 +59,14 @@ object IvyActions {
   def makePomFile(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger): File = {
     import configuration.{
       allRepositories,
-      moduleInfo,
       configurations,
-      extra,
-      file,
       filterRepositories,
       process,
       includeTypes
     }
+    val file = configuration.file.getOrElse(sys.error("file must be specified."))
+    val moduleInfo = configuration.moduleInfo.getOrElse(sys.error("moduleInfo must be specified."))
+    val extra = configuration.extra.getOrElse(scala.xml.NodeSeq.Empty)
     module.withModule(log) { (ivy, md, default) =>
       (new MakePom(log)).write(
         ivy,
