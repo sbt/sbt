@@ -1,3 +1,6 @@
 > compile
+$ sleep 2000
+> check
+$ sleep 2000
 > check
 > check2
