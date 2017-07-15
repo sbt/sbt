@@ -238,7 +238,7 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
       import ic._
       val moduleID = newConfiguredModuleID(module, moduleInfo, configurations)
       IvySbt.setConflictManager(moduleID, conflictManager, ivy.getSettings)
-      val defaultConf = defaultConfiguration getOrElse Configuration(
+      val defaultConf = defaultConfiguration getOrElse Configuration.of(
         "Default",
         ModuleDescriptor.DEFAULT_CONFIGURATION)
       log.debug(

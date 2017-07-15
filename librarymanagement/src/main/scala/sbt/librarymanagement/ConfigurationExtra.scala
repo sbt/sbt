@@ -30,25 +30,25 @@ object Configurations {
   }
 
   private[sbt] def internal(base: Configuration, ext: Configuration*) =
-    Configuration(base.id + "Internal", base.name + "-internal").extend(ext: _*).hide
+    Configuration.of(base.id + "Internal", base.name + "-internal").extend(ext: _*).hide
   private[sbt] def fullInternal(base: Configuration): Configuration =
     internal(base, base, Optional, Provided)
   private[sbt] def optionalInternal(base: Configuration): Configuration =
     internal(base, base, Optional)
 
-  lazy val Default = Configuration("Default", "default")
-  lazy val Compile = Configuration("Compile", "compile")
-  lazy val IntegrationTest = Configuration("IntegrationTest", "it") extend (Runtime)
-  lazy val Provided = Configuration("Provided", "provided")
-  lazy val Runtime = Configuration("Runtime", "runtime") extend (Compile)
-  lazy val Test = Configuration("Test", "test") extend (Runtime)
-  lazy val System = Configuration("System", "system")
-  lazy val Optional = Configuration("Optional", "optional")
-  lazy val Pom = Configuration("Pom", "pom")
+  lazy val Default = Configuration.of("Default", "default")
+  lazy val Compile = Configuration.of("Compile", "compile")
+  lazy val IntegrationTest = Configuration.of("IntegrationTest", "it") extend (Runtime)
+  lazy val Provided = Configuration.of("Provided", "provided")
+  lazy val Runtime = Configuration.of("Runtime", "runtime") extend (Compile)
+  lazy val Test = Configuration.of("Test", "test") extend (Runtime)
+  lazy val System = Configuration.of("System", "system")
+  lazy val Optional = Configuration.of("Optional", "optional")
+  lazy val Pom = Configuration.of("Pom", "pom")
 
-  lazy val ScalaTool = Configuration("ScalaTool", "scala-tool").hide
-  lazy val CompilerPlugin = Configuration("CompilerPlugin", "plugin").hide
-  lazy val Component = Configuration("Component", "component").hide
+  lazy val ScalaTool = Configuration.of("ScalaTool", "scala-tool").hide
+  lazy val CompilerPlugin = Configuration.of("CompilerPlugin", "plugin").hide
+  lazy val Component = Configuration.of("Component", "component").hide
 
   private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
   private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
@@ -87,12 +87,17 @@ abstract class ConfigurationExtra {
   require(description != null)
 
   def describedAs(newDescription: String) =
-    Configuration(id, name, newDescription, isPublic, extendsConfigs, transitive)
+    Configuration.of(id, name, newDescription, isPublic, extendsConfigs, transitive)
   def extend(configs: Configuration*) =
-    Configuration(id, name, description, isPublic, configs.toVector ++ extendsConfigs, transitive)
+    Configuration.of(id,
+                     name,
+                     description,
+                     isPublic,
+                     configs.toVector ++ extendsConfigs,
+                     transitive)
   def notTransitive = intransitive
-  def intransitive = Configuration(id, name, description, isPublic, extendsConfigs, false)
-  def hide = Configuration(id, name, description, false, extendsConfigs, transitive)
+  def intransitive = Configuration.of(id, name, description, isPublic, extendsConfigs, false)
+  def hide = Configuration.of(id, name, description, false, extendsConfigs, transitive)
 }
 
 private[sbt] object ConfigurationMacro {
@@ -105,7 +110,7 @@ private[sbt] object ConfigurationMacro {
       methodName =>
         s"""$methodName must be directly assigned to a val, such as `val x = $methodName`.""")
     val id = c.Expr[String](Literal(Constant(enclosingValName)))
-    reify { Configuration(id.splice, name.splice) }
+    reify { Configuration.of(id.splice, name.splice) }
   }
 
   def definingValName(c: blackbox.Context, invalidEnclosingTree: String => String): String = {

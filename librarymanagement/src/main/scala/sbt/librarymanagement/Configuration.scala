@@ -67,13 +67,14 @@ final class Configuration private[sbt] (
   def toConfigRef: ConfigRef = ConfigRef(name)
 }
 object Configuration {
-  private[sbt] def apply(id: String, name: String): Configuration =
+  // Don't call this directly. It's intended to be used from config macro.
+  def of(id: String, name: String): Configuration =
     new Configuration(id, name, "", true, Vector.empty, true)
-  private[sbt] def apply(id: String,
-                         name: String,
-                         description: String,
-                         isPublic: Boolean,
-                         extendsConfigs: Vector[sbt.librarymanagement.Configuration],
-                         transitive: Boolean): Configuration =
+  def of(id: String,
+         name: String,
+         description: String,
+         isPublic: Boolean,
+         extendsConfigs: Vector[sbt.librarymanagement.Configuration],
+         transitive: Boolean): Configuration =
     new Configuration(id, name, description, isPublic, extendsConfigs, transitive)
 }
