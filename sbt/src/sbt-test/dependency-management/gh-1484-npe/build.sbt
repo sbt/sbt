@@ -1,7 +1,7 @@
 lazy val check = taskKey[Unit]("tests update")
 
 def commonSettings: Seq[Def.Setting[_]] = Seq(
-    resolvers ++= Resolver.typesafeIvyRepo("releases") :: Resolver.typesafeRepo("releases") :: Resolver.sbtPluginRepo("releases") :: Nil,
+    resolvers ++= Vector(Resolver.typesafeIvyRepo("releases"), Resolver.typesafeRepo("releases"), Resolver.sbtPluginRepo("releases")),
     check := {
       val ur = update.value
       import sbinary._, Operations._, DefaultProtocol._

@@ -1,3 +1,5 @@
+import scala.language.experimental.macros
+
 /* sbt -- Simple Build Tool
  * Copyright 2010, 2011 Mark Harrah
  */
@@ -46,5 +48,6 @@ package object sbt
   // java.lang.System is more important, so don't alias this one
   //  final val System = C.System
   // final val Optional = C.Optional
-  // def config(s: String): Configuration = C.config(s)
+  def config(name: String): Configuration =
+    macro sbt.librarymanagement.ConfigurationMacro.configMacroImpl
 }

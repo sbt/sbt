@@ -8,6 +8,8 @@ trait Import {
   type URI = java.net.URI
   type URL = java.net.URL
 
+  implicit def Seq2Vector[T](s: Seq[T]): Vector[T] = s.toVector
+
   // sbt
   val StdoutOutput = sbt.OutputStrategy.StdoutOutput
   type BufferedOutput = sbt.OutputStrategy.BufferedOutput
@@ -263,6 +265,7 @@ trait Import {
   type IvyScala = sbt.librarymanagement.ScalaModuleInfo
   val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
+  type MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
   val MavenCache = sbt.librarymanagement.MavenCache
   type MavenCache = sbt.librarymanagement.MavenCache
   val MavenRepo = sbt.librarymanagement.MavenRepo
@@ -312,8 +315,8 @@ trait Import {
   type VersionNumberCompatibility = sbt.librarymanagement.VersionNumberCompatibility
 
   // sbt.internal.librarymanagement
-  // type IvyPaths = sbt.internal.librarymanagement.ivy.IvyPaths
-  // val IvyPaths = sbt.internal.librarymanagement.ivy.IvyPaths
+  type IvyPaths = sbt.librarymanagement.ivy.IvyPaths
+  val IvyPaths = sbt.librarymanagement.ivy.IvyPaths
 
   type IncOptions = xsbti.compile.IncOptions
 }

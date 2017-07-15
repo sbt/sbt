@@ -1898,7 +1898,7 @@ object Classpaths {
       )
     },
     publishLocalConfiguration := publishConfig(
-      publishMavenStyle.value,
+      false, //publishMavenStyle.value,
       deliverPattern(crossTarget.value),
       if (isSnapshot.value) "integration" else "release",
       ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,

@@ -1,6 +1,7 @@
 import scala.xml.{ Node, _ }
 import scala.xml.Utility.trim
-import sbt.internal.librarymanagement.{ IvySbt, MakePomConfiguration, MakePom }
+import sbt.librarymanagement.MakePomConfiguration
+import sbt.internal.librarymanagement.{ IvySbt, MakePom }
 
 lazy val check = taskKey[Unit]("check")
 

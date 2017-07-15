@@ -15,8 +15,8 @@ object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
   override def trigger = allRequirements
   object autoImport {
-    val scriptedConf = Configurations.config("scripted-sbt") hide
-    val scriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
+    val ScriptedConf = Configurations.config("scripted-sbt") hide
+    val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
     val scriptedSbt = SettingKey[String]("scripted-sbt")
     val sbtLauncher = TaskKey[File]("sbt-launcher")
     val sbtTestDirectory = SettingKey[File]("sbt-test-directory")
@@ -32,26 +32,26 @@ object ScriptedPlugin extends AutoPlugin {
   }
   import autoImport._
   override lazy val projectSettings = Seq(
-    ivyConfigurations ++= Seq(scriptedConf, scriptedLaunchConf),
+    ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
     scriptedSbt := (sbtVersion in pluginCrossBuild).value,
-    sbtLauncher := getJars(scriptedLaunchConf).map(_.get.head).value,
+    sbtLauncher := getJars(ScriptedLaunchConf).map(_.get.head).value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
     libraryDependencies ++= {
       binarySbtVersion(scriptedSbt.value) match {
         case "0.13" =>
           Seq(
-            "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
-            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
+            "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % ScriptedConf.toString,
+            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf.toString
           )
         case sv if sv startsWith "1.0." =>
           Seq(
-            "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
-            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
+            "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf.toString,
+            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf.toString
           )
       }
     },
     scriptedBufferLog := true,
-    scriptedClasspath := getJars(scriptedConf).value,
+    scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {

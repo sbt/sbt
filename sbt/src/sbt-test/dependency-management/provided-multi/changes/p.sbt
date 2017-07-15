@@ -1,5 +1,5 @@
 def configIvyScala =
-  ivyScala ~= (_ map (_ withCheckExplicit false))
+  scalaModuleInfo ~= (_ map (_ withCheckExplicit false))
 
 val declared = SettingKey[Boolean]("declared")
 lazy val a = project.
