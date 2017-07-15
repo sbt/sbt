@@ -6,7 +6,7 @@ import scala.util.{Failure, Success, Try}
 
 object Settings {
 
-  private lazy val baseDefaultVerbosityLevel =
+  private val baseDefaultVerbosityLevel =
     if (System.console() == null) // non interactive mode
       0
     else
@@ -15,17 +15,18 @@ object Settings {
   def defaultVerbosityLevel(logger: Logger): Int = {
 
     def fromOption(value: Option[String], description: String): Option[Int] =
-      value.filter(_.nonEmpty).flatMap {
-        str =>
+      value
+        .filter(_.nonEmpty)
+        .flatMap { str =>
           Try(str.toInt) match {
             case Success(level) => Some(level)
-            case Failure(ex) =>
+            case Failure(_) =>
               logger.warn(
                 s"unrecognized $description value (should be an integer), ignoring it."
               )
               None
           }
-      }
+        }
 
     val fromEnv = fromOption(
       sys.env.get("COURSIER_VERBOSITY"),
