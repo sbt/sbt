@@ -33,6 +33,7 @@ cache:
   - '%USERPROFILE%\.ivy2\cache'
   - '%USERPROFILE%\.m2'
   - '%USERPROFILE%\.sbt'
+  - C:\sbt
   - '%USERPROFILE%\.coursier'
 branches:
   only:
