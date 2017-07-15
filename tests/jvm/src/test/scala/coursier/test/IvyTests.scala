@@ -74,7 +74,8 @@ object IvyTests extends TestSuite {
         dep = dep,
         artifactType = "jar",
         extraRepos = Seq(repo),
-        classifierOpt = None
+        classifierOpt = None,
+        optional = true
       ) {
         case Seq(artifact) =>
           assert(artifact.url == mainJarUrl)
@@ -86,7 +87,8 @@ object IvyTests extends TestSuite {
         dep = dep.copy(configuration = "test"),
         artifactType = "jar",
         extraRepos = Seq(repo),
-        classifierOpt = None
+        classifierOpt = None,
+        optional = true
       ) {
         case Seq(artifact1, artifact2) =>
           val urls = Set(

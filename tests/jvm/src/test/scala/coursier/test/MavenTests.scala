@@ -29,7 +29,8 @@ object MavenTests extends TestSuite {
         dep = dep,
         artifactType = "jar",
         extraRepos = Seq(repo),
-        classifierOpt = None
+        classifierOpt = None,
+        optional = true
       ) {
         case Seq(artifact) =>
           assert(artifact.url == mainJarUrl)
@@ -41,7 +42,8 @@ object MavenTests extends TestSuite {
         dep = dep,
         artifactType = "src",
         extraRepos = Seq(repo),
-        classifierOpt = Some("sources")
+        classifierOpt = Some("sources"),
+        optional = true
       ) {
         case Seq(artifact) =>
           assert(artifact.url == sourcesJarUrl)

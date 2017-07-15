@@ -148,29 +148,32 @@ abstract class CentralTests extends TestSuite {
     attributes: Attributes = Attributes(),
     extraRepos: Seq[Repository] = Nil,
     classifierOpt: Option[String] = None,
-    transitive: Boolean = false
+    transitive: Boolean = false,
+    optional: Boolean = true
   )(
     f: Seq[Artifact] => T
   ): Future[T] = {
     val dep = Dependency(module, version, transitive = transitive, attributes = attributes)
-    withArtifacts(dep, artifactType, extraRepos, classifierOpt)(f)
+    withArtifacts(dep, artifactType, extraRepos, classifierOpt, optional)(f)
   }
 
   def withArtifacts[T](
     dep: Dependency,
     artifactType: String,
     extraRepos: Seq[Repository],
-    classifierOpt: Option[String]
+    classifierOpt: Option[String],
+    optional: Boolean
   )(
     f: Seq[Artifact] => T
   ): Future[T] = 
-    withArtifacts(Set(dep), artifactType, extraRepos, classifierOpt)(f)
+    withArtifacts(Set(dep), artifactType, extraRepos, classifierOpt, optional)(f)
 
   def withArtifacts[T](
     deps: Set[Dependency],
     artifactType: String,
     extraRepos: Seq[Repository],
-    classifierOpt: Option[String]
+    classifierOpt: Option[String],
+    optional: Boolean
   )(
     f: Seq[Artifact] => T
   ): Future[T] = async {
@@ -181,7 +184,7 @@ abstract class CentralTests extends TestSuite {
     assert(res.isDone)
 
     val artifacts = classifierOpt
-      .fold(res.dependencyArtifacts)(c => res.dependencyClassifiersArtifacts(Seq(c)))
+      .fold(res.dependencyArtifacts(withOptional = optional))(c => res.dependencyClassifiersArtifacts(Seq(c)))
       .map(_._2)
       .filter {
         if (artifactType == "*") _ => true
@@ -431,7 +434,8 @@ abstract class CentralTests extends TestSuite {
         ),
         "jar",
         extraRepos = Nil,
-        classifierOpt = None
+        classifierOpt = None,
+        optional = true
       ) {
         case Seq() =>
           throw new Exception("Expected one JAR")
@@ -552,7 +556,7 @@ abstract class CentralTests extends TestSuite {
           assert(res.conflicts.isEmpty)
           assert(res.isDone)
 
-          val dependencyArtifacts = res.dependencyArtifacts
+          val dependencyArtifacts = res.dependencyArtifacts(withOptional = true)
 
           val zookeeperTestArtifacts = dependencyArtifacts.collect {
             case (dep, artifact)
@@ -777,6 +781,29 @@ abstract class CentralTests extends TestSuite {
       val ver = "1.13"
 
       * - resolutionCheck(mod, ver)
+    }
+
+    'optionalArtifacts - {
+      val mod = Module("io.monix", "monix_2.12")
+      val ver = "2.3.0"
+
+      val mainUrl = "https://repo1.maven.org/maven2/io/monix/monix_2.12/2.3.0/monix_2.12-2.3.0.jar"
+
+      * - resolutionCheck(mod, ver)
+
+      * - {
+        if (isActualCentral)
+          withArtifacts(mod, ver, "jar") { artifacts =>
+            val mainArtifactOpt = artifacts.find(_.url == mainUrl)
+            assert(mainArtifactOpt.nonEmpty)
+            assert(mainArtifactOpt.forall(_.isOptional))
+          }
+      }
+
+      * - withArtifacts(mod, ver, "jar", optional = false) { artifacts =>
+        val mainArtifactOpt = artifacts.find(_.url == mainUrl)
+        assert(mainArtifactOpt.isEmpty)
+      }
     }
   }
 

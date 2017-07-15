@@ -1059,6 +1059,7 @@ final case class Resolution(
         .toSeq
       artifact <- source
         .artifacts(dep, proj, overrideClassifiers)
+      if optional || !artifact.isOptional
     } yield dep -> artifact
 
   def dependencyArtifacts: Seq[(Dependency, Artifact)] =
