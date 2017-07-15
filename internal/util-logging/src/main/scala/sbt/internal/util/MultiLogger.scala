@@ -41,7 +41,7 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
 
   private[this] def removeEscapes(event: LogEvent): LogEvent =
     {
-      import ConsoleAppender.{ removeEscapeSequences => rm }
+      import EscHelpers.{ removeEscapeSequences => rm }
       event match {
         case s: Success => new Success(rm(s.msg))
         case l: Log => new Log(l.level, rm(l.msg))

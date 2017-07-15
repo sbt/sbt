@@ -33,7 +33,7 @@ object ConsoleOut {
     def println(s: String): Unit = synchronized { current.append(s); println() }
     def println(): Unit = synchronized {
       val s = current.toString
-      if (ConsoleAppender.formatEnabled && last.exists(lmsg => f(s, lmsg)))
+      if (ConsoleAppender.formatEnabledInEnv && last.exists(lmsg => f(s, lmsg)))
         lockObject.print(OverwriteLine)
       lockObject.println(s)
       last = Some(s)
