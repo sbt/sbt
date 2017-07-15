@@ -122,7 +122,7 @@ object ToSbt {
   ) = {
     val depArtifacts1 =
       classifiersOpt match {
-        case None => res.dependencyArtifacts
+        case None => res.dependencyArtifacts(withOptional = true)
         case Some(cl) => res.dependencyClassifiersArtifacts(cl)
       }
 

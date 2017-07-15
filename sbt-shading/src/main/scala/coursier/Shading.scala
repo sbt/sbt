@@ -91,7 +91,8 @@ object Shading {
       )
     }
 
-    val dependencyArtifacts = res.dependencyArtifacts
+    val dependencyArtifacts = res
+      .dependencyArtifacts(withOptional = true)
       .filter { case (_, a) => classpathTypes(a.`type`) }
       .groupBy(_._1)
       .mapValues(_.map(_._2))
