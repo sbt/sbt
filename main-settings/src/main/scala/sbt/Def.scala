@@ -68,7 +68,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
     Scope.displayMasked(scoped.scope, scoped.key.label, mask)
 
   def withColor(s: String, color: Option[String]): String = {
-    val useColor = ConsoleAppender.formatEnabled
+    val useColor = ConsoleAppender.formatEnabledInEnv
     color match {
       case Some(c) if useColor => c + s + scala.Console.RESET
       case _                   => s
