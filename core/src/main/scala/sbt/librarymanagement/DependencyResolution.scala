@@ -136,26 +136,6 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
     }
   }
 
-  def transitiveScratch(
-      label: String,
-      config: GetClassifiersConfiguration,
-      uwconfig: UnresolvedWarningConfiguration,
-      log: Logger
-  ): Either[UnresolvedWarning, UpdateReport] = {
-    import config.{ updateConfiguration => c, module => mod }
-    import mod.{ id, dependencies => deps, scalaModuleInfo }
-    val base = restrictedCopy(id, true).withName(id.name + "$" + label)
-    val module = moduleDescriptor(base, deps, scalaModuleInfo)
-    val report = update(module, c, uwconfig, log) match {
-      case Right(r) => r
-      case Left(w) =>
-        throw w.resolveException
-    }
-    val newConfig = config
-      .withModule(mod.withDependencies(report.allModules))
-    updateClassifiers(newConfig, uwconfig, Vector(), log)
-  }
-
   /**
    * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
    * is for Maven compatibility, where these artifacts are not "published" in the POM, so they don't end up in the Ivy
