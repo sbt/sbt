@@ -31,13 +31,13 @@ import Keys.{
 }
 import Project.inScope
 import sbt.internal.inc.classpath.ClasspathUtilities
-import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
+import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResolution, IvyPaths }
 import sbt.internal.inc.{ ZincUtil, ScalaInstance }
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings, ~> }
 import sbt.io.{ GlobFilter, IO, Path }
-import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
+import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
 import sbt.util.{ Show, Logger }
 import scala.annotation.tailrec
 import scala.tools.nsc.reporters.ConsoleReporter
@@ -79,18 +79,12 @@ private[sbt] object Load {
     val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
     val loader = getClass.getClassLoader
     val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
-    val ivyConfiguration = new InlineIvyConfiguration(
-      paths = IvyPaths(baseDirectory, bootIvyHome(state.configuration)),
-      resolvers = Resolver.withDefaultResolvers(Nil).toVector,
-      otherResolvers = Vector.empty,
-      moduleConfigurations = Vector.empty,
-      lock = None,
-      checksums = Vector.empty,
-      managedChecksums = false,
-      resolutionCacheDir = None,
-      updateOptions = UpdateOptions(),
-      log = log
-    )
+    val ivyConfiguration =
+      InlineIvyConfiguration()
+        .withPaths(IvyPaths(baseDirectory, bootIvyHome(state.configuration)))
+        .withResolvers(Resolver.combineDefaultResolvers(Vector.empty))
+        .withLog(log)
+    val dependencyResolution = IvyDependencyResolution(ivyConfiguration)
     val si = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     val zincDir = BuildPaths.getZincDirectory(state, globalBase)
     val classpathOptions = ClasspathOptionsUtil.boot
@@ -100,7 +94,7 @@ private[sbt] object Load {
       globalLock = launcher.globalLock,
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
-      ivyConfiguration = ivyConfiguration,
+      dependencyResolution = dependencyResolution,
       compilerBridgeSource = ZincUtil.getDefaultBridgeModule(scalaProvider.version),
       scalaJarsTarget = zincDir,
       log = log

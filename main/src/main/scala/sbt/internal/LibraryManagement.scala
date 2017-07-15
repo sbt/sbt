@@ -7,8 +7,9 @@ import sbt.internal.util.HNil
 import sbt.internal.util.Types._
 import sbt.internal.util.HListFormats._
 import sbt.librarymanagement._
+import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
-import sbt.util.CacheImplicits._
+import sbt.internal.util.HListFormats._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 
 object LibraryManagement {
@@ -40,7 +41,7 @@ object LibraryManagement {
       log.info(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
         //try {
-        IvyActions.updateEither(module, updateConfig, uwConfig, logicalClock, depDir, log)
+        IvyActions.updateEither(module, updateConfig, uwConfig, /*logicalClock, depDir,*/ log)
       // } catch {
       //   case e: Throwable =>
       //     e.printStackTrace

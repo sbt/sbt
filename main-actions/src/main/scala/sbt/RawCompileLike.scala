@@ -16,6 +16,7 @@ import sbt.util.CacheImplicits._
 import sbt.util.Tracked.inputChanged
 import sbt.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, ModifiedFileInfo, PlainFileInfo }
 import sbt.internal.util.HNil
+import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, hash, lastModified }
 import xsbti.compile.ClasspathOptions
 

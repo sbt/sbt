@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
   autoScalaLibrary := false,
-  ivyScala := None,
+  scalaModuleInfo := None,
   unmanagedJars in Compile ++= (scalaInstance map (_.allJars.toSeq)).value,
   publishArtifact in packageSrc := false,
   publishArtifact in packageDoc := false,

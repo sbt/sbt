@@ -18,8 +18,9 @@ lazy val root = (project in file("."))
       val module = ivyModule.value
       val config = updateConfiguration.value
 
-      import sbt.internal.librarymanagement.IvyConfiguration
+      import sbt.librarymanagement.ivy.IvyConfiguration
       import sbt.librarymanagement.{ ModuleSettings, UpdateConfiguration }
+      import sbt.internal.util.HListFormats._
 
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 

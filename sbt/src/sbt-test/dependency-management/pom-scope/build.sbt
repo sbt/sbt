@@ -1,4 +1,4 @@
-lazy val custom = config("custom")
+lazy val custom = config("custom") //Configurations.config("custom")
 
 lazy val root = (project in file(".")).
   configs(custom).

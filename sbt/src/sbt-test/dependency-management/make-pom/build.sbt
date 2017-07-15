@@ -6,7 +6,10 @@ lazy val root = (project in file(".")) settings (
   TaskKey[Unit]("checkExtra") := checkExtra.value,
   TaskKey[Unit]("checkVersionPlusMapping") := checkVersionPlusMapping.value,
   resolvers += Resolver.sonatypeRepo("snapshots"),
-  makePomConfiguration ~= { _.copy(extra = <extra-tag/>) },
+  makePomConfiguration := {
+    val p = makePomConfiguration.value
+    new MakePomConfiguration(p.file, p.moduleInfo, p.configurations, <extra-tag/>, p.process, p.filterRepositories, p.allRepositories, p.includeTypes)
+  },
   libraryDependencies += "com.google.code.findbugs" % "jsr305" % "1.3.+"
 )
 

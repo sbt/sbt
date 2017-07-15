@@ -8,7 +8,7 @@ import sbt.util._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
 import xsbti.AppConfiguration
 import sbt.librarymanagement._
-import sbt.internal.librarymanagement.IvyConfiguration
+import sbt.librarymanagement.ivy.{ IvyConfiguration, IvyDependencyResolution }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import BasicCommandStrings._, BasicKeys._
 
@@ -25,13 +25,13 @@ private[sbt] object TemplateCommandUtil {
     val extracted = (Project extract state)
     val (s2, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
     val globalBase = BuildPaths.getGlobalBase(state)
-    val ivyScala = extracted.get(Keys.ivyScala in Keys.updateSbtClassifiers)
+    val scalaModuleInfo = extracted.get(Keys.scalaModuleInfo in Keys.updateSbtClassifiers)
     val arguments = inputArg.toList ++
       (state.remainingCommands match {
         case exec :: Nil if exec.commandLine == "shell" => Nil
         case xs                                         => xs map (_.commandLine)
       })
-    run(infos, arguments, state.configuration, ivyConf, globalBase, ivyScala, log)
+    run(infos, arguments, state.configuration, ivyConf, globalBase, scalaModuleInfo, log)
     "exit" :: s2.copy(remainingCommands = Nil)
   }
 
@@ -41,11 +41,11 @@ private[sbt] object TemplateCommandUtil {
       config: AppConfiguration,
       ivyConf: IvyConfiguration,
       globalBase: File,
-      ivyScala: Option[IvyScala],
+      scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
   ): Unit =
     infos find { info =>
-      val loader = infoLoader(info, config, ivyConf, globalBase, ivyScala, log)
+      val loader = infoLoader(info, config, ivyConf, globalBase, scalaModuleInfo, log)
       val hit = tryTemplate(info, arguments, loader)
       if (hit) {
         runTemplate(info, arguments, loader)
@@ -75,10 +75,10 @@ private[sbt] object TemplateCommandUtil {
       config: AppConfiguration,
       ivyConf: IvyConfiguration,
       globalBase: File,
-      ivyScala: Option[IvyScala],
+      scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
   ): ClassLoader = {
-    val cp = classpathForInfo(info, ivyConf, globalBase, ivyScala, log)
+    val cp = classpathForInfo(info, ivyConf, globalBase, scalaModuleInfo, log)
     ClasspathUtilities.toLoader(cp, config.provider.loader)
   }
 
@@ -103,10 +103,10 @@ private[sbt] object TemplateCommandUtil {
       info: TemplateResolverInfo,
       ivyConf: IvyConfiguration,
       globalBase: File,
-      ivyScala: Option[IvyScala],
+      scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
   ): List[File] = {
-    val lm = new DefaultLibraryManagement(ivyConf, log)
+    val lm = IvyDependencyResolution(ivyConf)
     val templatesBaseDirectory = new File(globalBase, "templates")
     val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
     val templateDirectory = new File(templatesBaseDirectory, templateId)
@@ -114,8 +114,13 @@ private[sbt] object TemplateCommandUtil {
     if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList
     else {
       IO.createDirectory(templateDirectory)
-      val m = lm.getModule(info.module.withConfigurations(Some("component")), ivyScala)
-      val xs = lm.update(m, templateDirectory)(_ => true).toList.flatten
+      val m = lm.moduleDescriptor(info.module.withConfigurations(Some("component")),
+                                  Vector.empty,
+                                  scalaModuleInfo)
+      val xs = lm.retrieve(m, templateDirectory, log) match {
+        case Left(_)      => ??? // FIXME
+        case Right(files) => files.toList
+      }
       xs
     }
   }

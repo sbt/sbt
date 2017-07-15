@@ -2,12 +2,12 @@ autoScalaLibrary := false
 
 ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
-ivyScala := Some(IvyScala(
+scalaModuleInfo := Some(sbt.librarymanagement.ScalaModuleInfo(
   (scalaVersion in update).value,
   (scalaBinaryVersion in update).value,
   Vector.empty,
-  filterImplicit = false,
   checkExplicit = false,
+  filterImplicit = false,
   overrideScalaVersion = false
 ))
 

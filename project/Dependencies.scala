@@ -27,7 +27,8 @@ object Dependencies {
   private val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
   private val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
 
-  private val libraryManagement = "org.scala-sbt" %% "librarymanagement" % lmVersion
+  private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
+  private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
@@ -77,7 +78,8 @@ object Dependencies {
   def addSbtUtilScripted(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilScripted", utilScripted)
 
-  def addSbtLm(p: Project): Project = addSbtModule(p, sbtLmPath, "lm", libraryManagement)
+  def addSbtLmCore(p: Project): Project = addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
+  def addSbtLmIvy(p: Project): Project = addSbtModule(p, sbtLmPath, "lmIvy", libraryManagementIvy)
 
   def addSbtCompilerInterface(p: Project): Project =
     addSbtModule(p, sbtZincPath, "compilerInterface", compilerInterface)
