@@ -9,7 +9,7 @@ object Highlight {
 
   def showMatches(pattern: Pattern)(line: String): Option[String] = {
     val matcher = pattern.matcher(line)
-    if (ConsoleAppender.formatEnabled) {
+    if (ConsoleAppender.formatEnabledInEnv) {
       // ANSI codes like \033[39m (normal text color) don't work on Windows
       val highlighted = matcher.replaceAll(scala.Console.RED + "$0" + RESET)
       if (highlighted == line) None else Some(highlighted)
@@ -19,5 +19,5 @@ object Highlight {
       None
   }
   def bold(s: String) =
-    if (ConsoleAppender.formatEnabled) BOLD + s.replace(RESET, RESET + BOLD) + RESET else s
+    if (ConsoleAppender.formatEnabledInEnv) BOLD + s.replace(RESET, RESET + BOLD) + RESET else s
 }

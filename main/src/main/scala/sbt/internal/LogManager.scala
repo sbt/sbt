@@ -164,10 +164,11 @@ object LogManager {
   ): SuppressedTraceContext => Option[String] = {
     lazy val display = Project.showContextKey(state)
     def commandBase = "last " + display.show(unwrapStreamsKey(key))
-    def command(useColor: Boolean) =
-      if (useColor) BLUE + commandBase + RESET else s"'$commandBase'"
+    def command(useFormat: Boolean) =
+      if (useFormat) BLUE + commandBase + RESET else s"'$commandBase'"
     context =>
-      Some("Stack trace suppressed: run %s for the full output.".format(command(context.useColor)))
+      Some(
+        "Stack trace suppressed: run %s for the full output.".format(command(context.useFormat)))
   }
 
   def unwrapStreamsKey(key: ScopedKey[_]): ScopedKey[_] = key.scope.task match {
