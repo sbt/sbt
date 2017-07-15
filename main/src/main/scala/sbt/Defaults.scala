@@ -492,8 +492,11 @@ object Defaults extends BuildCommon {
     }
   }
 
+  def defaultCompileSettings: Seq[Setting[_]] =
+    globalDefaults(enableBinaryCompileAnalysis := true)
+
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
+    compileInputsSettings) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
@@ -1369,10 +1372,11 @@ object Defaults extends BuildCommon {
 
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
+    val useBinary: Boolean = enableBinaryCompileAnalysis.value
     // TODO - expose bytecode manipulation phase.
     val analysisResult: CompileResult = manipulateBytecode.value
     if (analysisResult.hasModified) {
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !enableBinaryCompileAnalysis)
       store.set(analysisResult.analysis, analysisResult.setup)
     }
     analysisResult.analysis
@@ -1464,7 +1468,8 @@ object Defaults extends BuildCommon {
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     previousCompile := {
       val setup = compileIncSetup.value
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
+      val useBinary: Boolean = enableBinaryCompileAnalysis.value
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
       store.get() match {
         case Some((an, setup)) =>
           new PreviousResult(Option(an).toOptional, Option(setup).toOptional)
