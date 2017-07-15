@@ -1,0 +1,5 @@
+- InlineConfiguration is renamed to ModuleConfiguration
+- IvyScala is renamed to ScalaModuleInfo
+- UpdateConfiguration, RetrieveConfiguration, PublishConfiguration are refactored to use builder pattern.
+- Adds ConfigRef for referencing Configuration
+- Moves syntax related things into `sbt.librarymagement.syntax`
