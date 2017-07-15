@@ -73,13 +73,5 @@ object Cache {
         println(label + ".write: " + value)
         cache.write(to, value)
       }
-
-      override def equiv: Equiv[I] = new Equiv[I] {
-        def equiv(a: I, b: I) = {
-          val equ = cache.equiv.equiv(a, b)
-          println(label + ".equiv(" + a + ", " + b + "): " + equ)
-          equ
-        }
-      }
     }
 }
