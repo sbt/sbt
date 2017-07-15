@@ -74,7 +74,7 @@ import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
 import std.TaskExtra._
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
-import xsbti.compile.IncToolOptionsUtil
+import xsbti.compile.{ IncToolOptionsUtil, AnalysisContents }
 import xsbti.CrossValue
 
 // incremental compiler
@@ -1376,8 +1376,10 @@ object Defaults extends BuildCommon {
     // TODO - expose bytecode manipulation phase.
     val analysisResult: CompileResult = manipulateBytecode.value
     if (analysisResult.hasModified) {
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !enableBinaryCompileAnalysis)
-      store.set(analysisResult.analysis, analysisResult.setup)
+      val store =
+        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
+      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
+      store.set(contents)
     }
     analysisResult.analysis
   }
@@ -1470,9 +1472,11 @@ object Defaults extends BuildCommon {
       val setup = compileIncSetup.value
       val useBinary: Boolean = enableBinaryCompileAnalysis.value
       val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
-      store.get() match {
-        case Some((an, setup)) =>
-          new PreviousResult(Option(an).toOptional, Option(setup).toOptional)
+      store.get().toOption match {
+        case Some(contents) =>
+          val analysis = Option(contents.getAnalysis).toOptional
+          val setup = Option(contents.getMiniSetup).toOptional
+          new PreviousResult(analysis, setup)
         case None => new PreviousResult(jnone[CompileAnalysis], jnone[MiniSetup])
       }
     }
