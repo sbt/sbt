@@ -20,7 +20,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyPaths }
 import sbt.util.Logger
 
-import scalajson.ast.unsafe._
+import sjsonnew.shaded.scalajson.ast.unsafe._
 import scala.collection.mutable
 import jawn.{ SupportParser, MutableFacade }
 

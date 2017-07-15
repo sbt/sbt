@@ -4,7 +4,7 @@ import java.net.URL
 import java.io.File
 
 import sbt.internal._, librarymanagement._
-import scalajson.ast.unsafe._
+import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
 import org.scalatest.Assertion
 
