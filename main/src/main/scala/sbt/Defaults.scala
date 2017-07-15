@@ -74,7 +74,7 @@ import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
 import std.TaskExtra._
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
-import xsbti.compile.IncToolOptionsUtil
+import xsbti.compile.{ IncToolOptionsUtil, AnalysisContents }
 import xsbti.CrossValue
 
 // incremental compiler
@@ -101,7 +101,7 @@ import sbt.internal.inc.{
   Analysis,
   FileValueCache,
   Locate,
-  LoggerReporter,
+  ManagedLoggedReporter,
   MixedAnalyzingCompiler,
   ScalaInstance
 }
@@ -492,8 +492,11 @@ object Defaults extends BuildCommon {
     }
   }
 
+  def defaultCompileSettings: Seq[Setting[_]] =
+    globalDefaults(enableBinaryCompileAnalysis := true)
+
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
+    compileInputsSettings) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
@@ -1369,11 +1372,14 @@ object Defaults extends BuildCommon {
 
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
+    val useBinary: Boolean = enableBinaryCompileAnalysis.value
     // TODO - expose bytecode manipulation phase.
     val analysisResult: CompileResult = manipulateBytecode.value
     if (analysisResult.hasModified) {
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
-      store.set(analysisResult.analysis, analysisResult.setup)
+      val store =
+        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
+      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
+      store.set(contents)
     }
     analysisResult.analysis
   }
@@ -1435,9 +1441,13 @@ object Defaults extends BuildCommon {
         f1(foldMappers(sourcePositionMappers.value)),
         compileOrder.value
       ),
-      compilerReporter := new LoggerReporter(maxErrors.value,
-                                             streams.value.log,
-                                             foldMappers(sourcePositionMappers.value)),
+      compilerReporter := {
+        new ManagedLoggedReporter(
+          maxErrors.value,
+          streams.value.log,
+          foldMappers(sourcePositionMappers.value)
+        )
+      },
       compileInputs := new Inputs(
         compilers.value,
         compileOptions.value,
@@ -1460,10 +1470,13 @@ object Defaults extends BuildCommon {
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     previousCompile := {
       val setup = compileIncSetup.value
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
-      store.get() match {
-        case Some((an, setup)) =>
-          new PreviousResult(Option(an).toOptional, Option(setup).toOptional)
+      val useBinary: Boolean = enableBinaryCompileAnalysis.value
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
+      store.get().toOption match {
+        case Some(contents) =>
+          val analysis = Option(contents.getAnalysis).toOptional
+          val setup = Option(contents.getMiniSetup).toOptional
+          new PreviousResult(analysis, setup)
         case None => new PreviousResult(jnone[CompileAnalysis], jnone[MiniSetup])
       }
     }
@@ -1477,10 +1490,8 @@ object Defaults extends BuildCommon {
       val problems =
         analysis.infos.allInfos.values.flatMap(i =>
           i.getReportedProblems ++ i.getUnreportedProblems)
-      val reporter = new LoggerReporter(max, streams.value.log, foldMappers(spms))
-      problems foreach { p =>
-        reporter.display(p)
-      }
+      val reporter = new ManagedLoggedReporter(max, streams.value.log, foldMappers(spms))
+      problems.foreach(p => reporter.log(p))
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
