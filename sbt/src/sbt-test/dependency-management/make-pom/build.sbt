@@ -8,7 +8,7 @@ lazy val root = (project in file(".")) settings (
   resolvers += Resolver.sonatypeRepo("snapshots"),
   makePomConfiguration := {
     val p = makePomConfiguration.value
-    new MakePomConfiguration(p.file, p.moduleInfo, p.configurations, <extra-tag/>, p.process, p.filterRepositories, p.allRepositories, p.includeTypes)
+    p.withExtra(<extra-tag/>)
   },
   libraryDependencies += "com.google.code.findbugs" % "jsr305" % "1.3.+"
 )

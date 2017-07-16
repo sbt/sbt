@@ -266,6 +266,7 @@ trait Import {
   val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
   type MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
+  val MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
   val MavenCache = sbt.librarymanagement.MavenCache
   type MavenCache = sbt.librarymanagement.MavenCache
   val MavenRepo = sbt.librarymanagement.MavenRepo
