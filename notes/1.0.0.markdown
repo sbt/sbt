@@ -11,6 +11,7 @@ This is the beta-2 release of sbt 1.0.
 The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
 - sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
+- sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
 
 #### Fixes
 
