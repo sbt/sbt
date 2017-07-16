@@ -13,6 +13,8 @@ This is the RC-1 release of sbt 1.0.
 - sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
 - Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
 - Many of the case classes are replaced with pseudo case classes generated using Contraband. Migrate `.copy(foo = xxx)` to `withFoo(xxx)`.
+- Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
+- `config("tooling")` must be directly assigned to a `val`, like `val Tooling = config("tooling")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
 - Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
 - `PathFinder`'s `.***` method is renamed to `.allPaths` method.
 - Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
@@ -37,7 +39,6 @@ This is the RC-1 release of sbt 1.0.
 - sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
 - Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
 - Renames `ivyScala: IvyScala` to `scalaModuleInfo: ScalaModuleInfo`.
-- Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
 
 The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
