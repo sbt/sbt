@@ -1131,7 +1131,7 @@ private[sbt] object Load {
         PluginData(
           removeEntries(cp, prod),
           prod,
-          Some(fullResolvers.value),
+          Some(fullResolvers.value.toVector),
           Some(update.value),
           opts
         )

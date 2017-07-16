@@ -1259,7 +1259,7 @@ object Defaults extends BuildCommon {
       }
     }
   }
-  def psTask: Initialize[Task[Vector[JobHandle]]] =
+  def psTask: Initialize[Task[Seq[JobHandle]]] =
     Def.task {
       val xs = bgList.value
       val s = streams.value
@@ -1795,7 +1795,7 @@ object Classpaths {
                            useJCenter.value) match {
       case (Some(delegated), Seq(), _, _) => delegated
       case (_, rs, Some(ars), uj)         => ars ++ rs
-      case (_, rs, _, uj)                 => Resolver.combineDefaultResolvers(rs, uj, mavenCentral = true)
+      case (_, rs, _, uj)                 => Resolver.combineDefaultResolvers(rs.toVector, uj, mavenCentral = true)
     }),
     appResolvers := {
       val ac = appConfiguration.value
@@ -1866,12 +1866,11 @@ object Classpaths {
     retrieveConfiguration := {
       if (retrieveManaged.value)
         Some(
-          RetrieveConfiguration(
-            managedDirectory.value,
-            retrievePattern.value,
-            retrieveManagedSync.value,
-            configurationsToRetrieve.value.getOrElse(Vector.empty).map(c => ConfigRef(c.name))
-          ))
+          RetrieveConfiguration()
+            .withRetrieveDirectory(managedDirectory.value)
+            .withOutputPattern(retrievePattern.value)
+            .withSync(retrieveManagedSync.value)
+            .withConfigurationsToRetrieve(configurationsToRetrieve.value map { _.toVector }))
       else None
     },
     dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
@@ -1903,7 +1902,7 @@ object Classpaths {
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         packagedArtifacts.in(publish).value.toVector,
-        checksums.in(publish).value,
+        checksums.in(publish).value.toVector,
         getPublishTo(publishTo.value).name,
         ivyLoggingLevel.value,
         isSnapshot.value
@@ -1915,7 +1914,7 @@ object Classpaths {
       if (isSnapshot.value) "integration" else "release",
       ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
       packagedArtifacts.in(publishLocal).value.toVector,
-      checksums.in(publishLocal).value,
+      checksums.in(publishLocal).value.toVector,
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
     ),
@@ -1925,7 +1924,7 @@ object Classpaths {
       if (isSnapshot.value) "integration" else "release",
       ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
       packagedArtifacts.in(publishM2).value.toVector,
-      checksums = checksums.in(publishM2).value,
+      checksums = checksums.in(publishM2).value.toVector,
       resolverName = Resolver.publishMavenLocal.name,
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
@@ -1991,8 +1990,9 @@ object Classpaths {
             excludes.toVector,
             c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
             // scalaModule,
-            srcTypes,
-            docTypes),
+            srcTypes.toVector,
+            docTypes.toVector
+          ),
           uwConfig,
           Vector.empty,
           s.log
@@ -2062,19 +2062,16 @@ object Classpaths {
       new IvySbt(ivyConfiguration.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
-    ModuleDescriptorConfiguration(
-      ivyValidate.value,
-      scalaModuleInfo.value,
-      projectID.value,
-      projectInfo.value,
-      allDependencies.value.toVector,
-      dependencyOverrides.value,
-      excludeDependencies.value.toVector,
-      ivyXML.value,
-      ivyConfigurations.value.toVector,
-      defaultConfiguration.value,
-      conflictManager.value
-    )
+    ModuleDescriptorConfiguration(projectID.value, projectInfo.value)
+      .withValidate(ivyValidate.value)
+      .withScalaModuleInfo(scalaModuleInfo.value)
+      .withDependencies(allDependencies.value.toVector)
+      .withOverrides(dependencyOverrides.value.toVector)
+      .withExcludes(excludeDependencies.value.toVector)
+      .withIvyXML(ivyXML.value)
+      .withConfigurations(ivyConfigurations.value.toVector)
+      .withDefaultConfiguration(defaultConfiguration.value)
+      .withConflictManager(conflictManager.value)
   }
 
   private[this] def sbtClassifiersGlobalDefaults =
@@ -2148,8 +2145,8 @@ object Classpaths {
                                               excludes.toVector,
                                               c.withArtifactFilter(c.artifactFilter.map(af =>
                                                 af.withInverted(!af.inverted))),
-                                              srcTypes,
-                                              docTypes),
+                                              srcTypes.toVector,
+                                              docTypes.toVector),
                   uwConfig,
                   log
                 ) match {
@@ -2587,7 +2584,7 @@ object Classpaths {
         .withOtherResolvers(other)
         .withModuleConfigurations(moduleConfigurations.value.toVector)
         .withLock(lock(appConfiguration.value))
-        .withChecksums((checksums in update).value)
+        .withChecksums((checksums in update).value.toVector)
         .withResolutionCacheDir(crossTarget.value / "resolution-cache")
         .withUpdateOptions(updateOptions.value)
         .withLog(s.log)

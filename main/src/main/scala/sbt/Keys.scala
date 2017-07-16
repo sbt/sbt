@@ -45,6 +45,7 @@ import sbt.librarymanagement.LibraryManagementCodec._
 import sbt.librarymanagement.ivy.{ Credentials, UpdateOptions }
 import sbt.librarymanagement.{
   Artifact,
+  ConfigRef,
   Configuration,
   ConflictManager,
   ConflictWarning,
@@ -83,6 +84,9 @@ import sbt.BuildSyntax._
 // format: off
 
 object Keys {
+  // Normally we prefer concrete datatype like Vector, but due to ++= implicits and for backward compatibility,
+  // for keys we should stick to using Seq.
+
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."
 
   // logging
@@ -258,8 +262,8 @@ object Keys {
   val envVars = TaskKey[Map[String, String]]("envVars", "Environment variables used when forking a new JVM", BTask)
 
   val bgJobService = settingKey[BackgroundJobService]("Job manager used to run background jobs.")
-  val bgList = taskKey[Vector[JobHandle]]("List running background jobs.")
-  val ps = taskKey[Vector[JobHandle]]("bgList variant that displays on the log.")
+  val bgList = taskKey[Seq[JobHandle]]("List running background jobs.")
+  val ps = taskKey[Seq[JobHandle]]("bgList variant that displays on the log.")
   val bgStop = inputKey[Unit]("Stop a background job by providing its ID.")
   val bgWaitFor = inputKey[Unit]("Wait for a background job to finish by providing its ID.")
   val bgRun = inputKey[JobHandle]("Start an application's default main class as a background job")
@@ -352,8 +356,8 @@ object Keys {
   val updateClassifiers = TaskKey[UpdateReport]("update-classifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
   val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers", "List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.", BSetting)
   val updateSbtClassifiers = TaskKey[UpdateReport]("update-sbt-classifiers", "Resolves and optionally retrieves classifiers, such as javadocs and sources, for sbt, transitively.", BPlusTask, updateClassifiers)
-  val sourceArtifactTypes = SettingKey[Vector[String]]("source-artifact-types", "Ivy artifact types that correspond to source artifacts. Used by IDEs to resolve these resources.", BSetting)
-  val docArtifactTypes = SettingKey[Vector[String]]("doc-artifact-types", "Ivy artifact types that correspond to javadoc artifacts. Used by IDEs to resolve these resources.", BSetting)
+  val sourceArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to source artifacts. Used by IDEs to resolve these resources.") // BSetting
+  val docArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to javadoc artifacts. Used by IDEs to resolve these resources.") // BSetting
 
   val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration", "Configuration for publishing to a repository.", DTask)
   val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration", "Configuration for publishing to the local Ivy repository.", DTask)
@@ -381,13 +385,13 @@ object Keys {
   val moduleID = SettingKey[ModuleID]("module-id", "A dependency management descriptor.  This is currently used for associating a ModuleID with a classpath entry.", BPlusSetting)
   val projectID = SettingKey[ModuleID]("project-id", "The dependency management descriptor for the current module.", BMinusSetting)
   val overrideBuildResolvers = SettingKey[Boolean]("override-build-resolvers", "Whether or not all the build resolvers should be overridden with what's defined from the launcher.", BMinusSetting)
-  val bootResolvers = TaskKey[Option[Vector[Resolver]]]("boot-resolvers", "The resolvers used by the sbt launcher.", BMinusSetting)
-  val appResolvers = SettingKey[Option[Vector[Resolver]]]("app-resolvers", "The resolvers configured for this application by the sbt launcher.", BMinusSetting)
-  val externalResolvers = TaskKey[Vector[Resolver]]("external-resolvers", "The external resolvers for automatically managed dependencies.", BMinusSetting)
-  val resolvers = SettingKey[Vector[Resolver]]("resolvers", "The user-defined additional resolvers for automatically managed dependencies.", BMinusTask)
+  val bootResolvers = TaskKey[Option[Seq[Resolver]]]("boot-resolvers", "The resolvers used by the sbt launcher.", BMinusSetting)
+  val appResolvers = SettingKey[Option[Seq[Resolver]]]("app-resolvers", "The resolvers configured for this application by the sbt launcher.", BMinusSetting)
+  val externalResolvers = TaskKey[Seq[Resolver]]("external-resolvers", "The external resolvers for automatically managed dependencies.", BMinusSetting)
+  val resolvers = SettingKey[Seq[Resolver]]("resolvers", "The user-defined additional resolvers for automatically managed dependencies.", BMinusTask)
   val projectResolver = TaskKey[Resolver]("project-resolver", "Resolver that handles inter-project dependencies.", DTask)
-  val fullResolvers = TaskKey[Vector[Resolver]]("full-resolvers", "Combines the project resolver, default resolvers, and user-defined resolvers.", CTask)
-  val otherResolvers = TaskKey[Vector[Resolver]]("other-resolvers", "Resolvers not included in the main resolver chain, such as those in module configurations.", CSetting)
+  val fullResolvers = TaskKey[Seq[Resolver]]("full-resolvers", "Combines the project resolver, default resolvers, and user-defined resolvers.", CTask)
+  val otherResolvers = TaskKey[Seq[Resolver]]("other-resolvers", "Resolvers not included in the main resolver chain, such as those in module configurations.", CSetting)
   val useJCenter = SettingKey[Boolean]("use-jcenter", "Use JCenter as the default repository.", BSetting)
   val moduleConfigurations = SettingKey[Seq[ModuleConfiguration]]("module-configurations", "Defines module configurations, which override resolvers on a per-module basis.", BMinusSetting)
   val retrievePattern = SettingKey[String]("retrieve-pattern", "Pattern used to retrieve managed dependencies to the current build.", DSetting)
@@ -396,7 +400,7 @@ object Keys {
   val ivyPaths = SettingKey[IvyPaths]("ivy-paths", "Configures paths used by Ivy for dependency management.", DSetting)
   val dependencyCacheDirectory = TaskKey[File]("dependency-cache-directory", "The base directory for cached dependencies.", DTask)
   val libraryDependencies = SettingKey[Seq[ModuleID]]("library-dependencies", "Declares managed dependencies.", APlusSetting)
-  val dependencyOverrides = SettingKey[Vector[ModuleID]]("dependency-overrides", "Declares managed dependency overrides.", BSetting)
+  val dependencyOverrides = SettingKey[Seq[ModuleID]]("dependency-overrides", "Declares managed dependency overrides.", BSetting)
   val excludeDependencies = SettingKey[Seq[InclExclRule]]("exclude-dependencies", "Declares managed dependency exclusions.", BSetting)
   val allDependencies = TaskKey[Seq[ModuleID]]("all-dependencies", "Inter-project and library dependencies.", CTask)
   val projectDependencies = TaskKey[Seq[ModuleID]]("project-dependencies", "Inter-project dependencies.", DTask)
@@ -410,12 +414,12 @@ object Keys {
   val autoUpdate = SettingKey[Boolean]("auto-update", "<unimplemented>", Invisible)
   val retrieveManaged = SettingKey[Boolean]("retrieve-managed", "If true, enables retrieving dependencies to the current build.  Otherwise, dependencies are used directly from the cache.", BSetting)
   val retrieveManagedSync = SettingKey[Boolean]("retrieve-managed-sync", "If true, enables synchronizing the dependencies retrieved to the current build by removed unneeded files.", BSetting)
-  val configurationsToRetrieve = SettingKey[Option[Vector[Configuration]]]("configurations-to-retrieve", "An optional set of configurations from which to retrieve dependencies if retrieveManaged is set to true", BSetting)
+  val configurationsToRetrieve = SettingKey[Option[Seq[ConfigRef]]]("configurations-to-retrieve", "An optional set of configurations from which to retrieve dependencies if retrieveManaged is set to true", BSetting)
   val managedDirectory = SettingKey[File]("managed-directory", "Directory to which managed dependencies are retrieved.", BSetting)
   val classpathTypes = SettingKey[Set[String]]("classpath-types", "Artifact types that are included on the classpath.", BSetting)
   val publishArtifact = SettingKey[Boolean]("publish-artifact", "Enables (true) or disables (false) publishing an artifact.", AMinusSetting)
   val packagedArtifact = TaskKey[(Artifact, File)]("packaged-artifact", "Generates a packaged artifact, returning the Artifact and the produced File.", CTask)
-  val checksums = SettingKey[Vector[String]]("checksums", "The list of checksums to generate and to verify for dependencies.", BSetting)
+  val checksums = SettingKey[Seq[String]]("checksums", "The list of checksums to generate and to verify for dependencies.", BSetting)
   val forceUpdatePeriod = SettingKey[Option[FiniteDuration]]("force-update-period", "Duration after which to force a full update to occur", CSetting)
 
   val classifiersModule = TaskKey[GetClassifiersModule]("classifiers-module", rank = CTask)

@@ -12,6 +12,8 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 
 - sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
 - sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
+- sbt 1.0 changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
+- sbt 1.0 renames `ivyScala: IvyScala` to `scalaModuleInfo: ScalaModuleInfo`.
 
 #### Fixes
 

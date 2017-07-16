@@ -69,7 +69,7 @@ object GlobalPlugin {
       GlobalPluginData(projectID.value,
                        projectDependencies.value,
                        depMap,
-                       resolvers.value,
+                       resolvers.value.toVector,
                        (fullClasspath in Runtime).value,
                        (prods ++ intcp).distinct)(updateReport)
     }
