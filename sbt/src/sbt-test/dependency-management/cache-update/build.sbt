@@ -4,6 +4,23 @@ dependencyOverrides in ThisBuild += "com.github.nscala-time" %% "nscala-time" % 
 lazy val root = (project in file("."))
   .dependsOn(p1 % Compile)
   .settings(
+    inThisBuild(List(
+      organizationName := "eed3si9n",
+      organizationHomepage := Some(url("http://example.com/")),
+      homepage := Some(url("https://github.com/example/example")),
+      scmInfo := Some(ScmInfo(url("https://github.com/example/example"), "git@github.com:example/example.git")),
+      developers := List(
+        Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
+        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
+        Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
+        Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
+        Developer("gkossakowski", "Grzegorz Kossakowski", "@gkossakowski", url("https://github.com/gkossakowski")),
+        Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
+      ),
+      version := "0.3.1-SNAPSHOT",
+      description := "An HTTP client for Scala with Async Http Client underneath.",
+      licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
+    )),
     ivyPaths := IvyPaths(
       (baseDirectory in ThisBuild).value,
       Some((baseDirectory in LocalRootProject).value / "ivy-cache")
