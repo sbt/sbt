@@ -35,8 +35,10 @@ This is the RC-1 release of sbt 1.0.
     again.
 - sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
 - sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
-- sbt 1.0 changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
-- sbt 1.0 renames `ivyScala: IvyScala` to `scalaModuleInfo: ScalaModuleInfo`.
+- Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
+- Renames `ivyScala: IvyScala` to `scalaModuleInfo: ScalaModuleInfo`.
+- Java classes under the `xsbti.compile` package hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
+
 
 The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
