@@ -96,16 +96,20 @@ object Tracked {
 
   private final class CacheHelp[I: JsonFormat](val sc: SingletonCache[Long]) {
     import CacheImplicits.implicitHashWriter
+    import CacheImplicits.LongJsonFormat
     def save(store: CacheStore, value: I): Unit = {
-      store.write(value)
+      Hasher.hash(value) match {
+        case Success(keyHash) => store.write[Long](keyHash.toLong)
+        case Failure(e)       => ()
+      }
     }
 
     def changed(store: CacheStore, value: I): Boolean =
-      Try { store.read[I] } match {
-        case Success(prev) =>
+      Try { store.read[Long] } match {
+        case Success(prev: Long) =>
           Hasher.hash(value) match {
-            case Success(keyHash) => keyHash.toLong != prev
-            case Failure(_)       => true
+            case Success(keyHash: Int) => keyHash.toLong != prev
+            case Failure(_)            => true
           }
         case Failure(_) => true
       }

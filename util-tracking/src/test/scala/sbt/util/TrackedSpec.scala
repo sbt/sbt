@@ -51,10 +51,10 @@ class TrackedSpec extends UnitSpec {
 
   "inputChanged" should "detect that the input has not changed" in {
     withStore { store =>
-      val input0 = 0
+      val input0 = "foo"
 
       val res0 =
-        Tracked.inputChanged[Int, Int](store) {
+        Tracked.inputChanged[String, String](store) {
           case (true, in) =>
             assert(in === input0)
             in
@@ -64,7 +64,7 @@ class TrackedSpec extends UnitSpec {
       assert(res0 === input0)
 
       val res1 =
-        Tracked.inputChanged[Int, Int](store) {
+        Tracked.inputChanged[String, String](store) {
           case (true, in) =>
             fail()
           case (false, in) =>
