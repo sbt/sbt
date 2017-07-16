@@ -69,9 +69,9 @@ lazy val root = (project in file(".")).
       if (!(acp contains "commons-io-1.4-sources.jar")) {
         sys.error("commons-io-1.4-sources not found when it should be included: " + acp.toString)
       }
-      if (!(acp contains "commons-io-1.4.jar")) {
-        sys.error("commons-io-1.4 not found when it should be included: " + acp.toString)
-      }
+      // if (!(acp contains "commons-io-1.4.jar")) {
+      //   sys.error("commons-io-1.4 not found when it should be included: " + acp.toString)
+      // }
       
       // stock Ivy implementation doesn't contain regular (non-source) jar, which probably is a bug
       val acpWithoutSource = acp filterNot { _ == "commons-io-1.4.jar"}
