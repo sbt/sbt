@@ -37,8 +37,7 @@ This is the RC-1 release of sbt 1.0.
 - sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
 - Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
 - Renames `ivyScala: IvyScala` to `scalaModuleInfo: ScalaModuleInfo`.
-- Java classes under the `xsbti.compile` package hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
-
+- Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
 
 The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
