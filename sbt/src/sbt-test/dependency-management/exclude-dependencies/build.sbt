@@ -1,6 +1,5 @@
 import scala.xml.{ Node, _ }
 import scala.xml.Utility.trim
-import sbt.librarymanagement.MakePomConfiguration
 import sbt.internal.librarymanagement.{ IvySbt, MakePom }
 
 lazy val check = taskKey[Unit]("check")
@@ -60,6 +59,6 @@ def makePomXml(log: Logger, makePomConfig: MakePomConfiguration, ivyModule: IvyS
   ivyModule.withModule[Node](log) { (ivy, md, default) =>
     import makePomConfig._
     new MakePom(log).toPom(
-      ivy, md, moduleInfo, configurations, includeTypes, extra, filterRepositories, allRepositories)
+      ivy, md, moduleInfo.get, configurations, includeTypes, extra.get, filterRepositories, allRepositories)
   }
 }
