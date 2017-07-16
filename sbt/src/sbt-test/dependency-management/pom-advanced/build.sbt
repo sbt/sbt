@@ -9,7 +9,8 @@ lazy val root = (project in file(".")).
     },
     makePomConfiguration := {
       val conf = makePomConfiguration.value
-      conf.copy(filterRepositories = pomIncludeRepository(baseDirectory.value, conf.filterRepositories))
+      conf
+        .withFilterRepositories(pomIncludeRepository(baseDirectory.value, conf.filterRepositories))
     },
     ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value
   )
