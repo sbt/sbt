@@ -43,7 +43,7 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 #### Zinc API changes
 
 - Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
-- Renames `ivyScala: IvyScala` to `scalaModuleInfo: ScalaModuleInfo`.
+- Renames `ivyScala: IvyScala` key to `scalaModuleInfo: ScalaModuleInfo`.
 - `xsbti.Reporter#log(...)` takes `xsbti.Problem` as the parameter. Call `log(problem.position, problem.message, problem.severity)` to delegate to the older `log(...)`.
 - `xsbi.Maybe`, `xsbti.F0`, and `sxbti.F1` are changed to corresponding Java 8 classes `java.util.Optional`, `java.util.Supplier` and `java.util.Function`.
 
