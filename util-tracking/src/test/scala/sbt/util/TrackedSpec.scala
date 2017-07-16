@@ -104,6 +104,35 @@ class TrackedSpec extends UnitSpec {
     }
   }
 
+  "outputChanged" should "detect that the output has not changed" in {
+    withStore { store =>
+      val input0: String = "foo"
+      val p0: () => String = () => input0
+
+      val res0 =
+        Tracked.outputChanged[String, String](store) {
+          case (true, in) =>
+            assert(in === input0)
+            in
+          case (false, in) =>
+            fail()
+        }(implicitly)(p0)
+      assert(res0 === input0)
+
+      val res1 =
+        Tracked.outputChanged[String, String](store) {
+          case (true, in) =>
+            fail()
+          case (false, in) =>
+            assert(in === input0)
+            in
+        }(implicitly)(p0)
+      assert(res1 === input0)
+
+    }
+  }
+
+
   "tstamp tracker" should "have a timestamp of 0 on first invocation" in {
     withStore { store =>
       Tracked.tstamp(store) { last =>

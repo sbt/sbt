@@ -71,8 +71,65 @@ object Tracked {
     lastOutput(CacheStore(cacheFile))(f)
 
   /**
+   * Creates a tracker that indicates whether the output returned from `p` has changed or not.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   */
+  def outputChanged[A1: JsonFormat, A2](store: CacheStore)(f: (Boolean, A1) => A2): (() => A1) => A2 = p => {
+    val cache: SingletonCache[Long] = {
+      import CacheImplicits.LongJsonFormat
+      implicitly
+    }
+    val initial = p()
+    val help = new CacheHelp(cache)
+    val changed = help.changed(store, initial)
+    val result = f(changed, initial)
+    if (changed) {
+      help.save(store, initial)
+    }
+    result
+  }
+
+  /**
+   * Creates a tracker that indicates whether the output returned from `p` has changed or not.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   */
+  def outputChanged[A1: JsonFormat, A2](cacheFile: File)(f: (Boolean, A1) => A2): (() => A1) => A2 =
+    outputChanged[A1, A2](CacheStore(cacheFile))(f)
+
+  /**
    * Creates a tracker that indicates whether the arguments given to f have changed since the most
    * recent invocation.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
    */
   def inputChanged[I: JsonFormat: SingletonCache, O](store: CacheStore)(f: (Boolean, I) => O): I => O = { in =>
     val cache: SingletonCache[Long] = {
@@ -90,6 +147,17 @@ object Tracked {
   /**
    * Creates a tracker that indicates whether the arguments given to f have changed since the most
    * recent invocation.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
    */
   def inputChanged[I: JsonFormat: SingletonCache, O](cacheFile: File)(f: (Boolean, I) => O): I => O =
     inputChanged(CacheStore(cacheFile))(f)
