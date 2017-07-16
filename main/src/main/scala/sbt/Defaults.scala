@@ -2284,11 +2284,14 @@ object Classpaths {
       import UpdateLogging.{ Full, DownloadOnly, Default }
       val conf = updateConfiguration.value
       val maybeUpdateLevel = (logLevel in update).?.value
-      maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
+      val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
         case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
         case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
         case _                                            => conf
       }
+
+      // logical clock is folded into UpdateConfiguration
+      conf1.withLogicalClock(LogicalClock(state0.hashCode))
     }
 
     val evictionOptions = Def.taskDyn {
@@ -2307,7 +2310,6 @@ object Classpaths {
       force = shouldForce,
       depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
       uwConfig = (unresolvedWarningConfiguration in update).value,
-      logicalClock = LogicalClock(state0.hashCode),
       depDir = Some(dependencyCacheDirectory.value),
       ewo = evictionOptions,
       mavenStyle = publishMavenStyle.value,

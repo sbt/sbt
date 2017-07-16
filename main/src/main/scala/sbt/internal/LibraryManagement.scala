@@ -9,14 +9,13 @@ import sbt.internal.util.HListFormats._
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
-import sbt.internal.util.HListFormats._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 
-object LibraryManagement {
+private[sbt] object LibraryManagement {
 
   private type UpdateInputs = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 
-  private[sbt] def cachedUpdate(
+  def cachedUpdate(
       cacheStoreFactory: CacheStoreFactory,
       label: String,
       module: IvySbt#Module,
@@ -26,7 +25,6 @@ object LibraryManagement {
       force: Boolean,
       depsUpdated: Boolean,
       uwConfig: UnresolvedWarningConfiguration,
-      logicalClock: LogicalClock,
       depDir: Option[File],
       ewo: EvictionWarningOptions,
       mavenStyle: Boolean,
@@ -118,7 +116,9 @@ object LibraryManagement {
     val settings = module.moduleSettings
     val outStore = cacheStoreFactory.make("output")
     val handler = if (skip && !force) skipResolve(outStore) else doResolve(outStore)
-    handler(ivyConfig :+: settings :+: updateConfig :+: HNil)
+    // Remove clock for caching purpose
+    val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)
+    handler(ivyConfig :+: settings :+: withoutClock :+: HNil)
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =

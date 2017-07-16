@@ -261,10 +261,14 @@ trait Import {
   type FileRepository = sbt.librarymanagement.FileRepository
   val Full = sbt.librarymanagement.Full
   type Full = sbt.librarymanagement.Full
+  val InlineConfiguration = sbt.librarymanagement.ModuleDescriptorConfiguration
+  type InlineConfiguration = sbt.librarymanagement.ModuleDescriptorConfiguration
   val IvyScala = sbt.librarymanagement.ScalaModuleInfo
   type IvyScala = sbt.librarymanagement.ScalaModuleInfo
   val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
+  type LogicalClock = sbt.librarymanagement.LogicalClock
+  val LogicalClock = sbt.librarymanagement.LogicalClock
   type MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
   val MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
   val MavenCache = sbt.librarymanagement.MavenCache
@@ -275,12 +279,16 @@ trait Import {
   type MavenRepository = sbt.librarymanagement.MavenRepository
   val ModuleConfiguration = sbt.librarymanagement.ModuleConfiguration
   type ModuleConfiguration = sbt.librarymanagement.ModuleConfiguration
+  val ModuleDescriptorConfiguration = sbt.librarymanagement.ModuleDescriptorConfiguration
+  type ModuleDescriptorConfiguration = sbt.librarymanagement.ModuleDescriptorConfiguration
   val ModuleID = sbt.librarymanagement.ModuleID
   type ModuleID = sbt.librarymanagement.ModuleID
   val ModuleInfo = sbt.librarymanagement.ModuleInfo
   type ModuleInfo = sbt.librarymanagement.ModuleInfo
   val ModuleReport = sbt.librarymanagement.ModuleReport
   type ModuleReport = sbt.librarymanagement.ModuleReport
+  val ModuleSettings = sbt.librarymanagement.ModuleSettings
+  type ModuleSettings = sbt.librarymanagement.ModuleSettings
   val OrganizationArtifactReport = sbt.librarymanagement.OrganizationArtifactReport
   type OrganizationArtifactReport = sbt.librarymanagement.OrganizationArtifactReport
   val Patterns = sbt.librarymanagement.Patterns
@@ -315,7 +323,9 @@ trait Import {
   type VersionNumber = sbt.librarymanagement.VersionNumber
   type VersionNumberCompatibility = sbt.librarymanagement.VersionNumberCompatibility
 
-  // sbt.internal.librarymanagement
+  // sbt.librarymanagement.ivy
+  val InlineIvyConfiguration = sbt.librarymanagement.ivy.InlineIvyConfiguration
+  type InlineIvyConfiguration = sbt.librarymanagement.ivy.InlineIvyConfiguration
   type IvyPaths = sbt.librarymanagement.ivy.IvyPaths
   val IvyPaths = sbt.librarymanagement.ivy.IvyPaths
 

@@ -33,7 +33,12 @@ lazy val root = (project in file("."))
       val s = (streams in update).value
       val cacheStoreFactory = s.cacheStoreFactory sub updateCacheName.value
       val module = ivyModule.value
-      val config = updateConfiguration.value
+      val updateConfig = updateConfiguration.value
+      val ivyConfiguration0 = module.owner.configuration
+      val moduleSettings0 = module.moduleSettings
+      val inline0 = moduleSettings0 match { case x: InlineConfiguration => x }
+      // Remove clock for caching purpose
+      val updateConfig0 = updateConfig.withLogicalClock(LogicalClock.unknown)
 
       import sbt.librarymanagement.ivy.IvyConfiguration
       import sbt.librarymanagement.{ ModuleSettings, UpdateConfiguration }
@@ -47,10 +52,41 @@ lazy val root = (project in file("."))
 
       val f: In => Unit =
         Tracked.inputChanged(cacheStoreFactory make "inputs") { (inChanged: Boolean, in: In) =>
-          if (inChanged)
-            sys.error(s"Update cache is invalidated: ${module.owner.configuration}, ${module.moduleSettings}, $config")
+          val ivyConfiguration1 = in.head
+          val moduleSettings1 = in.tail.head
+          val inline1 = moduleSettings1 match { case x: InlineConfiguration => x }
+          val updateConfig1 = in.tail.tail.head
+
+          if (inChanged) {
+            sys.error(s"""
+ivyConfiguration1 == ivyConfiguration0: ${ivyConfiguration1 == ivyConfiguration0}
+
+ivyConfiguration1:
+$ivyConfiguration1
+
+ivyConfiguration0
+$ivyConfiguration0
+-----
+inline1 == inline0: ${inline1 == inline0}
+
+inline1:
+$inline1
+
+inline0
+$inline0
+-----
+updateConfig1 == updateConfig0: ${updateConfig1 == updateConfig0}
+
+updateConfig1:
+$updateConfig1
+
+updateConfig0
+$updateConfig0
+""")
+          }
         }
-      f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
+
+      f(ivyConfiguration0 :+: (inline0: ModuleSettings) :+: updateConfig0 :+: HNil)
     },
 
     // https://github.com/sbt/sbt/issues/3226
