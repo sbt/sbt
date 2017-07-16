@@ -2169,7 +2169,8 @@ object Classpaths {
         // TODO: Should it be sbt's scalaModuleInfo?
         scalaModuleInfo.value,
         sbtDependency.value +: pluginIDs,
-        Vector(Configurations.Default),
+        // sbt is now on Maven Central, so this has changed from sbt 0.13.
+        Vector(Configurations.Default) ++ Configurations.default,
         classifiers.toVector
       )
     }
