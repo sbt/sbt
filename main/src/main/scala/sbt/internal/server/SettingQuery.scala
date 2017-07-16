@@ -6,7 +6,7 @@ package internal
 package server
 
 import java.net.URI
-import scalajson.ast.unsafe.JValue
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import scala.util.{ Left, Right }
 import sbt.util.{ SomeJsonWriter, NoJsonWriter }
 import sbt.librarymanagement.LibraryManagementCodec._

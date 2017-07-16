@@ -72,9 +72,10 @@ import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import std.TaskExtra._
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
-import xsbti.compile.{ IncToolOptionsUtil, AnalysisContents }
+import xsbti.compile.{ IncToolOptionsUtil, AnalysisContents, IncOptions }
 import xsbti.CrossValue
 
 // incremental compiler
@@ -376,8 +377,8 @@ object Defaults extends BuildCommon {
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     incOptions := incOptions.value
       .withClassfileManagerType(
-        Option(new TransactionalManagerType(crossTarget.value / "classes.bak",
-                                            sbt.util.Logger.Null): ClassFileManagerType).toOptional
+        Option(TransactionalManagerType
+          .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType).toOptional
       ),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else Disabled()),
@@ -413,7 +414,7 @@ object Defaults extends BuildCommon {
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
-      incOptions := IncOptionsUtil.defaultIncOptions,
+      incOptions := IncOptions.of(),
       classpathOptions :== ClasspathOptionsUtil.boot,
       classpathOptions in console :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
@@ -470,7 +471,8 @@ object Defaults extends BuildCommon {
         globalLock = launcher.globalLock,
         componentProvider = app.provider.components,
         secondaryCacheDir = Option(zincDir),
-        dependencyResolution = dependencyResolution.value,
+        // Todo: Fix typo
+        depencencyResolution = dependencyResolution.value,
         compilerBridgeSource = scalaCompilerBridgeSource.value,
         scalaJarsTarget = zincDir,
         log = streams.value.log
@@ -1417,7 +1419,7 @@ object Defaults extends BuildCommon {
       override def definesClass(classpathEntry: File): DefinesClass =
         cachedPerEntryDefinesClassLookup(classpathEntry)
     }
-    new Setup(
+    Setup.of(
       lookup,
       (skip in compile).value,
       // TODO - this is kind of a bad way to grab the cache directory for streams...
@@ -1432,7 +1434,7 @@ object Defaults extends BuildCommon {
   }
   def compileInputsSettings: Seq[Setting[_]] = {
     Seq(
-      compileOptions := new CompileOptions(
+      compileOptions := CompileOptions.of(
         (classDirectory.value +: data(dependencyClasspath.value)).toArray,
         sources.value.toArray,
         classDirectory.value,
@@ -1449,7 +1451,7 @@ object Defaults extends BuildCommon {
           foldMappers(sourcePositionMappers.value)
         )
       },
-      compileInputs := new Inputs(
+      compileInputs := Inputs.of(
         compilers.value,
         compileOptions.value,
         compileIncSetup.value,
@@ -1477,8 +1479,8 @@ object Defaults extends BuildCommon {
         case Some(contents) =>
           val analysis = Option(contents.getAnalysis).toOptional
           val setup = Option(contents.getMiniSetup).toOptional
-          new PreviousResult(analysis, setup)
-        case None => new PreviousResult(jnone[CompileAnalysis], jnone[MiniSetup])
+          PreviousResult.of(analysis, setup)
+        case None => PreviousResult.of(jnone[CompileAnalysis], jnone[MiniSetup])
       }
     }
   )
@@ -1709,7 +1711,7 @@ object Classpaths {
       val config = makePomConfiguration.value
       val publisher = Keys.publisher.value
       publisher.makePomFile(ivyModule.value, config, streams.value.log)
-      config.file
+      config.file.get
     },
     packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
     deliver := deliverTask(publishConfiguration).value,
@@ -1887,13 +1889,13 @@ object Classpaths {
       else Nil
     },
     moduleSettings := moduleSettings0.value,
-    makePomConfiguration := new MakePomConfiguration(artifactPath in makePom value,
-                                                     projectInfo.value,
-                                                     None,
-                                                     pomExtra.value,
-                                                     pomPostProcess.value,
-                                                     pomIncludeRepository.value,
-                                                     pomAllRepositories.value),
+    makePomConfiguration := MakePomConfiguration()
+      .withFile((artifactPath in makePom).value)
+      .withModuleInfo(projectInfo.value)
+      .withExtra(pomExtra.value)
+      .withProcess(pomPostProcess.value)
+      .withFilterRepositories(pomIncludeRepository.value)
+      .withAllRepositories(pomAllRepositories.value),
     publishConfiguration := {
       publishConfig(
         publishMavenStyle.value,
@@ -2136,22 +2138,24 @@ object Classpaths {
             val depDir = dependencyCacheDirectory.value
             val ivy = scalaModuleInfo.value
             val st = state.value
-            withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-              // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
-              lm.transitiveScratch(
-                "sbt",
-                GetClassifiersConfiguration(
-                  mod,
-                  excludes.toVector,
-                  c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
-                  srcTypes,
-                  docTypes),
-                uwConfig,
-                log
-              ) match {
-                case Left(uw)  => ???
-                case Right(ur) => ur
-              }
+            withExcludes(out, mod.classifiers, lock(app)) {
+              excludes =>
+                // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
+                LibraryManagement.transitiveScratch(
+                  lm,
+                  "sbt",
+                  GetClassifiersConfiguration(mod,
+                                              excludes.toVector,
+                                              c.withArtifactFilter(c.artifactFilter.map(af =>
+                                                af.withInverted(!af.inverted))),
+                                              srcTypes,
+                                              docTypes),
+                  uwConfig,
+                  log
+                ) match {
+                  case Left(uw)  => ???
+                  case Right(ur) => ur
+                }
             }
           } tag (Tags.Update, Tags.Network)).value
         )) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
@@ -2197,7 +2201,7 @@ object Classpaths {
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport): UpdateReport = {
     import sbt.librarymanagement.LibraryManagementCodec._
     import sbt.util.FileBasedStore
-    implicit val isoString: sjsonnew.IsoString[scalajson.ast.unsafe.JValue] =
+    implicit val isoString: sjsonnew.IsoString[JValue] =
       sjsonnew.IsoString.iso(
         sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
         sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe

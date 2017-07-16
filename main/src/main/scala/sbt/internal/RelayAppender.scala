@@ -10,7 +10,7 @@ import sbt.util.Level
 import sbt.internal.util._
 import sbt.protocol.LogEvent
 import sbt.internal.util.codec._
-import scalajson.ast.unsafe._
+import sjsonnew.shaded.scalajson.ast.unsafe._
 
 class RelayAppender(name: String)
     extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {

@@ -14,6 +14,7 @@ import sbt.io.syntax._
 import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 final class BuildStructure(val units: Map[URI, LoadedBuildUnit],
                            val root: URI,
@@ -250,7 +251,7 @@ object BuildStreams {
   def mkStreams(units: Map[URI, LoadedBuildUnit],
                 root: URI,
                 data: Settings[Scope]): State => Streams = s => {
-    implicit val isoString: sjsonnew.IsoString[scalajson.ast.unsafe.JValue] =
+    implicit val isoString: sjsonnew.IsoString[JValue] =
       sjsonnew.IsoString.iso(sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
                              sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe)
     (s get Keys.stateStreams) getOrElse {

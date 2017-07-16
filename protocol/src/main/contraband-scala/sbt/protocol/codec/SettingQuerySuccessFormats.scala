@@ -11,7 +11,7 @@ implicit lazy val SettingQuerySuccessFormat: JsonFormat[sbt.protocol.SettingQuer
     jsOpt match {
       case Some(js) =>
       unbuilder.beginObject(js)
-      val value = unbuilder.readField[scalajson.ast.unsafe.JValue]("value")
+      val value = unbuilder.readField[sjsonnew.shaded.scalajson.ast.unsafe.JValue]("value")
       val contentType = unbuilder.readField[String]("contentType")
       unbuilder.endObject()
       sbt.protocol.SettingQuerySuccess(value, contentType)

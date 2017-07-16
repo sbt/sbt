@@ -4,6 +4,7 @@ import org.scalacheck._
 import org.scalacheck.Arbitrary._
 import Prop._
 import sbt.librarymanagement._
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 class CacheIvyTest extends Properties("CacheIvy") {
   import sbt.util.{ CacheStore, SingletonCache }
@@ -11,8 +12,6 @@ class CacheIvyTest extends Properties("CacheIvy") {
 
   import sjsonnew._
   import sjsonnew.support.scalajson.unsafe.Converter
-
-  import scalajson.ast.unsafe.JValue
 
   private class InMemoryStore(converter: SupportConverter[JValue]) extends CacheStore {
     private var content: JValue = _

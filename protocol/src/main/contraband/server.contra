@@ -43,7 +43,7 @@ type ExecStatusEvent implements EventMessage {
 interface SettingQueryResponse implements EventMessage {}
 
 type SettingQuerySuccess implements SettingQueryResponse {
-  value: scalajson.ast.unsafe.JValue!
+  value: sjsonnew.shaded.scalajson.ast.unsafe.JValue!
   contentType: String!
 }
 
