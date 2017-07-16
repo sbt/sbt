@@ -13,7 +13,7 @@ This is the RC-1 release of sbt 1.0.
 - sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
 - sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
 - Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
-- `config("tooling")` must be directly assigned to a `val`, like `val Tooling = config("tooling")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
+- `config("tooling")` must be directly assigned to a *capitalized* `val`, like `val Tooling = config("tooling")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
 - Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
 - `PathFinder`'s `.***` method is renamed to `.allPaths` method.
 - Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).

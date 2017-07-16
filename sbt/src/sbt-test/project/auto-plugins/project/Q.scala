@@ -9,8 +9,8 @@ package sbttest // you need package http://stackoverflow.com/questions/9822008/
 
 object Imports
 {
-	lazy val q = config("q")
-	lazy val p = config("p").extend(q)
+	lazy val Quux = config("q")
+	lazy val Pippy = config("p").extend(Quux)
 
 	lazy val demo = settingKey[String]("A demo setting.")
 	lazy val del = settingKey[String]("Another demo setting.")
@@ -47,13 +47,13 @@ object Q extends AutoPlugin
 	override def trigger = allRequirements
 
 	override def projectConfigurations: Seq[Configuration] =
-		p ::
-		q ::
+		Pippy ::
+		Quux ::
 		Nil
 
    override def projectSettings: Seq[Setting[_]] =
 		(demo := s"project ${name.value}") ::
-		(del in q := " Q") ::
+		(del in Quux := " Q") ::
 		Nil
 
    override def buildSettings: Seq[Setting[_]] =
@@ -77,9 +77,9 @@ object R extends AutoPlugin
 
 	override def projectSettings = Seq(
 		// tests proper ordering: R requires Q, so Q settings should come first
-		del in q += " R",
+		del in Quux += " R",
 		// tests that configurations are properly registered, enabling delegation from p to q
-		demo += (del in p).value
+		demo += (del in Pippy).value
 	)
 }
 
@@ -91,7 +91,7 @@ object S extends AutoPlugin
 	override def trigger = noTrigger
 
 	override def projectSettings = Seq(
-		del in q += " S",
+		del in Quux += " S",
 		organization := "S"
 	)
 }
