@@ -109,7 +109,7 @@ private[sbt] object ConfigurationMacro {
     val enclosingValName = definingValName(
       c,
       methodName =>
-        s"""$methodName must be directly assigned to a val, such as `val x = $methodName`.""")
+        s"""$methodName must be directly assigned to a val, such as `val Tooling = $methodName("tooling")`.""")
     val id = c.Expr[String](Literal(Constant(enclosingValName)))
     reify { Configuration.of(id.splice, name.splice) }
   }
