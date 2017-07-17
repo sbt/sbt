@@ -15,7 +15,9 @@ This is the RC-1 release of sbt 1.0.
 - Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
 - `config("tooling")` must be directly assigned to a *capitalized* `val`, like `val Tooling = config("tooling")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
 - Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
+- `Path.relativizeFile(baseFile, file)` is renamed to `IO.relativizeFile(baseFile, file)`.
 - `PathFinder`'s `.***` method is renamed to `.allPaths` method.
+- `PathFinder.x_!(mapper)` is moved to `def pair` on `PathFinder`.
 - Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
 - Renames early command feature from `--<command>` to `early(<command>)`.
 - Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
@@ -40,13 +42,6 @@ This is the RC-1 release of sbt 1.0.
 
 The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
-#### Zinc API changes
-
-- Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
-- Renames `ivyScala: IvyScala` key to `scalaModuleInfo: ScalaModuleInfo`.
-- `xsbti.Reporter#log(...)` takes `xsbti.Problem` as the parameter. Call `log(problem.position, problem.message, problem.severity)` to delegate to the older `log(...)`.
-- `xsbi.Maybe`, `xsbti.F0`, and `sxbti.F1` are changed to corresponding Java 8 classes `java.util.Optional`, `java.util.Supplier` and `java.util.Function`.
-
 #### Features
 
 - New incremental compiler called Zinc 1. Details below.
@@ -60,12 +55,14 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 - Fixes spurious recompilations when unrelated constructor changes. [zinc#288][zinc288] by [@smarter][@smarter]
 - Fixes restligeist macro for old operators. [#3218][3218] by [@eed3si9n][@eed3si9n]
 - Fixes task caching of `update` task. [#3233][3233] by [@eed3si9n][@eed3si9n]
+- Fixes ncurses-JLine issue by updating to JLine 2.14.4. [util#81][util81] by [@Rogach][@Rogach]
 
 #### Improvements
 
 - Scala Center contributed a Java-friendly Zinc API. This was a overhaul of the Zinc internal API for a good Scala integration with other build tools. [zinc#304][zinc304] by [@jvican][@jvican]
-- Ivy engine with parallel artifact download. See below.
+- Scala Center contributed a binary format for Zinc's internal storage. See below
 - Scala Center contributed static validation of `build.sbt`. See below
+- Library management API and parallel artifact download. See below.
 - The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840] by [@eed3si9n][@eed3si9n]
 - Replace cross building support with sbt-doge. This allows builds with projects that have multiple different combinations of cross scala versions to be cross built correctly.  The behaviour of ++ is changed so that it only updates the Scala version of projects that support that Scala version, but the Scala version can be post fixed with ! to force it to change for all projects. A -v argument has been added that prints verbose information about which projects are having their settings changed along with their cross scala versions. [#2613][2613] by [@jroper][@jroper]
 - `ivyLoggingLevel` is dropped to `UpdateLogging.Quiet` when CI environment is detected. [@eed3si9n][@eed3si9n]
@@ -82,6 +79,11 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 - For faster startup, sbt will use Java refection to discover `autoImport` . [#3115][3115] by [@jvican][@jvican]
 - For faster startup, reuse the same global instance for parsing. [#3115][3115] by [@jvican][@jvican]
 - Adds `InteractionService` from sbt-core-next to keep compatibility with sbt 0.13. [#3182][3182] by [@eed3si9n][@eed3si9n]
+- Adds new `WatchService` that abstracts `PollingWatchService` and Java NIO. [io#47][io47] by [@Duhemm][@Duhemm] on behalf of The Scala Center.
+- Adds variants of `IO.copyFile` and `IO.copyDirectory` that accept `sbt.io.CopyOptions()`. See below for details.
+- `Path.directory` and `Path.contentOf` are donated from sbt-native-packager [io#38][io38] by [@muuki88][@muuki88]
+- ApiDiff feature used to debug Zinc uses Scala implementation borrowed from Dotty. [zinc#346][zinc346] by [@Krever][@Krever]
+- In Zinc internal, make ExtractAPI use perRunCaches. [zinc#347][zinc347] by [@gheine][@gheine]
 
 #### Internals
 
@@ -106,6 +108,14 @@ scala/scala MatchCodeGen class:         Before 48s, After 17s (2.8x)
 
 This depends on some factors such as how your classes are organized, but you can see 3x ~ 40x improvements. The reason for the speedup is because it compiles fewer source files than before by untangling the classes from source files. In the example adding a method to scala/scala's Platform class, sbt 0.13's name hashing used to compile 72 sources, but the new Zinc compiles 6 sources.
 
+#### Zinc API changes
+
+- Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
+- Renames `ivyScala: IvyScala` key to `scalaModuleInfo: ScalaModuleInfo`.
+- `xsbti.Reporter#log(...)` takes `xsbti.Problem` as the parameter. Call `log(problem.position, problem.message, problem.severity)` to delegate to the older `log(...)`.
+- `xsbi.Maybe`, `xsbti.F0`, and `sxbti.F1` are changed to corresponding Java 8 classes `java.util.Optional`, `java.util.Supplier` and `java.util.Function`.
+- Removes unused "resident" option. [zinc#345][zinc345] by [@lukeindykiewicz][@lukeindykiewicz]
+
 ### sbt server: JSON API for tooling integration
 
 sbt 1.0 includes server feature, which allows IDEs and other tools to query the build for settings, and invoke commands via a JSON API. Similar to the way that the interactive shell in sbt 0.13 is implemented with `shell` command, "server" is also just `shell` command that listens to both human input and network input. As a user, there should be minimal impact because of the server.
@@ -125,23 +135,6 @@ sbt 1.0 prohibits `.value` calls inside the bodies of if expressions and anonymo
 The static validation also catches if you forget to call `.value` in a body of a task.
 
 [#3216][3216] and [#3225][3225] by [@jvican][@jvican]
-
-#### Ivy engine with parallel artifact download
-
-sbt 1.0 adds parallel artifact download while still using Ivy for resolution, contributed by Scala Center.
-It also introduces Gigahorse OkHttp as the Network API, and it uses Square OkHttp for artifact download as well.
-
-[lm#90][lm90] by [@jvican][@jvican]/[@jsuereth][@jsuereth]
-and [lm#104][lm104] by [@eed3si9n][@eed3si9n].
-
-#### Dependency locking
-
-Dependency locking feature is still in progress, but Jorge ([@jvican][@jvican]) from Scala Center has added a number of related features
-that would should work together to allow dependency locking.
-
-- Frozen mode to the Ivy-based library management, which makes sure that the resolution is always intransitive. [lm#100][lm100]
-- Adds support to specify a resolver for dependencies. [lm#97][lm97]
-- Adds "managed checksums", which tells Ivy to skip the checksum process. [lm#111][lm111]
 
 #### Eviction warning presentation
 
@@ -199,12 +192,64 @@ Then, run:
 
 [#3133][3133] by [@eed3si9n][@eed3si9n] (forward ported from 0.13.16-M1)
 
+### CopyOptions
+
+sbt IO 1.0 add variant of `IO.copyFile` and `IO.copyDirectory` that accept `sbt.io.CopyOptions()`.
+`CopyOptions()` is an example of pseudo case class similar to the builder pattern.
+
+```scala
+import sbt.io.{ IO, CopyOptions }
+
+IO.copyDirectory(source, target)
+
+// The above is same as the following
+IO.copyDirectory(source, target, CopyOptions()
+  .withOverwrite(false)
+  .withPreserveLastModified(true)
+  .withPreserveExecutable(true))
+```
+
+[io#53][io53] by [@dwijnand][@dwijnand]
+
+#### Library management API and parallel artifact download
+
+sbt 1.0 adds Library management API co-authored by Eugene Yokota ([@eed3si9n][@eed3si9n]) from Lightbend and Martin Duhem ([@Duhemm][@Duhemm]) from Scala Center.
+This API aims to abstract Apache Ivy as well as alternative dependency resolution engines Ivy, cached resolution, and Coursier.
+
+Parallel artifact download for Ivy engine was contributed by Jorge ([@jvican][@jvican]) from Scala Center.
+It also introduces Gigahorse OkHttp as the Network API, and it uses Square OkHttp for artifact download as well.
+
+[lm#124][lm124] by [@eed3si9n][@eed3si9n]/[@Duhemm][@Duhemm],
+[lm#90][lm90] by [@jvican][@jvican]/[@jsuereth][@jsuereth]
+and [lm#104][lm104] by [@eed3si9n][@eed3si9n].
+
+#### Binary format for Zinc's internal storage
+
+Jorge ([@jvican][@jvican]) from Scala Center contributed a binary format for Zinc's internal storage using Google Procol Buffer.
+The new format provides us with three main advantages:
+
+1. Backwards and forwards binary compatibility at the analysis format level.
+2. Faster (1.5 ~ 2x) serialization/deserialization of the analysis file.
+3. Provides a better way to make the analysis file machine-independent.
+
+[zinc#351][zinc351] by [@jvican][@jvican]
+
+#### Dependency locking
+
+Dependency locking feature is still in progress, but Jorge ([@jvican][@jvican]) from Scala Center has added a number of related features
+that would should work together to allow dependency locking.
+
+- Frozen mode to the Ivy-based library management, which makes sure that the resolution is always intransitive. [lm#100][lm100]
+- Adds support to specify a resolver for dependencies. [lm#97][lm97]
+- Adds "managed checksums", which tells Ivy to skip the checksum process. [lm#111][lm111]
+
 #### notes
 
-- https://github.com/sbt/sbt/compare/v1.0.0-M5...v1.0.0-M6
-- https://github.com/sbt/zinc/compare/v1.0.0-X14...v1.0.0-X16
-- https://github.com/sbt/librarymanagement/compare/v1.0.0-X10...v1.0.0-X15
-- https://github.com/sbt/util/compare/v1.0.0-M23...v1.0.0-M24
+- https://github.com/sbt/sbt/compare/v1.0.0-M6...1.0.x
+- https://github.com/sbt/zinc/compare/v1.0.0-X16...v1.0.0-X20
+- https://github.com/sbt/librarymanagement/compare/v1.0.0-X15...v1.0.0-X18
+- https://github.com/sbt/util/compare/v1.0.0-M24...v1.0.0-M28
+- https://github.com/sbt/io/compare/v1.0.0-M11...v1.0.0-M13
 
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: http://github.com/dwijnand
@@ -219,6 +264,11 @@ Then, run:
   [@RomanIakovlev]: https://github.com/RomanIakovlev
   [@smarter]: https://github.com/smarter
   [@jrudolph]: https://github.com/jrudolph
+  [@muuki88]: https://github.com/muuki88
+  [@Rogach]: https://github.com/Rogach
+  [@Krever]: https://github.com/Krever
+  [@lukeindykiewicz]: https://github.com/lukeindykiewicz
+  [@gheine]: https://github.com/gheine
   [840]: https://github.com/sbt/sbt/issues/840
   [2613]: https://github.com/sbt/sbt/pull/2613
   [1911]: https://github.com/sbt/sbt/issues/1911
@@ -235,11 +285,16 @@ Then, run:
   [lm111]: https://github.com/sbt/librarymanagement/pull/111
   [lm104]: https://github.com/sbt/librarymanagement/pull/104
   [lm97]: https://github.com/sbt/librarymanagement/pull/97
+  [lm124]: https://github.com/sbt/librarymanagement/pull/124
   [3202]: https://github.com/sbt/sbt/pull/3202
   [zinc295]: https://github.com/sbt/zinc/pull/295
   [zinc287]: https://github.com/sbt/zinc/pull/287
   [zinc288]: https://github.com/sbt/zinc/pull/288
   [zinc304]: https://github.com/sbt/zinc/pull/304
+  [zinc346]: https://github.com/sbt/zinc/pull/346
+  [zinc345]: https://github.com/sbt/zinc/pull/345
+  [zinc347]: https://github.com/sbt/zinc/pull/347
+  [zinc351]: https://github.com/sbt/zinc/pull/351
   [3115]: https://github.com/sbt/sbt/pull/3115
   [3182]: https://github.com/sbt/sbt/pull/3182
   [3151]: https://github.com/sbt/sbt/pull/3151
@@ -248,3 +303,7 @@ Then, run:
   [3218]: https://github.com/sbt/sbt/pull/3218
   [3225]: https://github.com/sbt/sbt/pull/3225
   [3233]: https://github.com/sbt/sbt/pull/3233
+  [io47]: https://github.com/sbt/io/pull/47
+  [io53]: https://github.com/sbt/io/pull/53
+  [io38]: https://github.com/sbt/io/pull/38
+  [util81]: https://github.com/sbt/util/pull/81
