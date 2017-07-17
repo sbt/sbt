@@ -471,8 +471,7 @@ object Defaults extends BuildCommon {
         globalLock = launcher.globalLock,
         componentProvider = app.provider.components,
         secondaryCacheDir = Option(zincDir),
-        // Todo: Fix typo
-        depencencyResolution = dependencyResolution.value,
+        dependencyResolution = dependencyResolution.value,
         compilerBridgeSource = scalaCompilerBridgeSource.value,
         scalaJarsTarget = zincDir,
         log = streams.value.log

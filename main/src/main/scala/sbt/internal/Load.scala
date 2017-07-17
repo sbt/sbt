@@ -94,8 +94,7 @@ private[sbt] object Load {
       globalLock = launcher.globalLock,
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
-      // Todo: Fix typo
-      depencencyResolution = dependencyResolution,
+      dependencyResolution = dependencyResolution,
       compilerBridgeSource = ZincUtil.getDefaultBridgeModule(scalaProvider.version),
       scalaJarsTarget = zincDir,
       log = log

@@ -30,8 +30,7 @@ object ConsoleProject {
       globalLock = launcher.globalLock,
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
-      // Todo: Fix typo
-      depencencyResolution = dependencyResolution,
+      dependencyResolution = dependencyResolution,
       compilerBridgeSource = extracted.get(Keys.scalaCompilerBridgeSource),
       scalaJarsTarget = zincDir,
       log = log
