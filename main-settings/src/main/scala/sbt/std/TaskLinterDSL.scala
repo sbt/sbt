@@ -145,10 +145,10 @@ object OnlyTaskDynLinterDSL extends BaseTaskLinterDSL {
 }
 
 object TaskLinterDSLFeedback {
-  private final val startBold = if (ConsoleAppender.formatEnabled) AnsiColor.BOLD else ""
-  private final val startRed = if (ConsoleAppender.formatEnabled) AnsiColor.RED else ""
-  private final val startGreen = if (ConsoleAppender.formatEnabled) AnsiColor.GREEN else ""
-  private final val reset = if (ConsoleAppender.formatEnabled) AnsiColor.RESET else ""
+  private final val startBold = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.BOLD else ""
+  private final val startRed = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.RED else ""
+  private final val startGreen = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.GREEN else ""
+  private final val reset = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.RESET else ""
 
   private final val ProblemHeader = s"${startRed}Problem${reset}"
   private final val SolutionHeader = s"${startGreen}Solution${reset}"

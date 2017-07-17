@@ -6,7 +6,7 @@ package protocol
 
 import sjsonnew.JsonFormat
 import sjsonnew.support.scalajson.unsafe.{ Parser, Converter, CompactPrinter }
-import scalajson.ast.unsafe.{ JValue, JObject, JString }
+import sjsonnew.shaded.scalajson.ast.unsafe.{ JValue, JObject, JString }
 import java.nio.ByteBuffer
 import scala.util.{ Success, Failure }
 import sbt.internal.util.StringEvent

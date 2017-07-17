@@ -1,11 +1,10 @@
 import sbt.internal.inc.Analysis
-import xsbti.Maybe
 import xsbti.compile.{PreviousResult, CompileAnalysis, MiniSetup}
 
 previousCompile in Compile := {
   val previous = (previousCompile in Compile).value
   if (!CompileState.isNew) {
-    val res = new PreviousResult(none[CompileAnalysis].asJava, none[MiniSetup].asJava)
+    val res = PreviousResult.of(none[CompileAnalysis].asJava, none[MiniSetup].asJava)
     CompileState.isNew = true
     res
   } else previous

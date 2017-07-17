@@ -6,7 +6,7 @@ val b = project
     localCache,
     scalaVersion := "2.11.8",
     libraryDependencies += "org.example" %% "artifacta" % "1.0.0-SNAPSHOT" withSources() classifier("tests"),
-    externalResolvers := Seq(
+    externalResolvers := Vector(
       MavenCache("demo", ((baseDirectory in ThisBuild).value / "demo-repo")),
       DefaultMavenRepository
     )

@@ -31,7 +31,7 @@ val checkApiMappings = taskKey[Unit]("Verifies that the API mappings are collect
 def expectedMappings = Def.task {
   val version = scalaVersion.value
   val binVersion = scalaBinaryVersion.value
-	val ms = update.value.configuration(Compile.name).get.modules.flatMap { mod => 
+	val ms = update.value.configuration(Compile).get.modules.flatMap { mod => 
 		mod.artifacts.flatMap { case (a,f) =>
 			val n = a.name.stripSuffix("_" + binVersion)
 			n match {

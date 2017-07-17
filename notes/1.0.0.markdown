@@ -1,16 +1,56 @@
 See [sbt 1.0 roadmap and beta-1][sbt-1-0-roadmap] for scheduled timeline.
 
-### sbt 1.0.0-M6
+### sbt 1.0.0-RC1
 
-This is the beta-2 release of sbt 1.0.
-
-### Changes since sbt 1.0.0-M5
+This is the RC-1 release of sbt 1.0.
 
 #### Features, fixes, changes with compatibility implications
 
+- Many of the case classes are replaced with pseudo case classes generated using Contraband. Migrate `.copy(foo = xxx)` to `withFoo(xxx)`.
+- sbt 1.0 uses Scala 2.12 for build definitions and plugins. This also requires JDK 8.
+- Non-auto `sbt.Plugin` trait is dropped. Please migrate to AutoPlugin. Auto plugins are easier to configure, and work better with each other.
+- sbt 0.12 style `Build` trait that was deprecated in sbt 0.13.12, is removed. Please [migrate to build.sbt](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+from+the+Build+trait). Auto plugins and `Build` trait do not work well together, and its feature is now largely subsumed by multi-project build.sbt.
+- sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
+- sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
+- Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
+- `config("tooling")` must be directly assigned to a *capitalized* `val`, like `val Tooling = config("tooling")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
+- Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
+- `PathFinder`'s `.***` method is renamed to `.allPaths` method.
+- Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
+- Renames early command feature from `--<command>` to `early(<command>)`.
+- Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
+- `sbt.Process` and `sbt.ProcessExtra` are dropped. Use `scala.sys.process` instead.
+- `incOptions.value.withNameHashing(...)` option is removed because name hashing is always on.
+- `TestResult.Value` is now called `TestResult`.
+- The scripted plugin is cross-versioned now, so you must use `%%` when depending on it
+- Removes the `settingsSets` method from `Project` (along with `add/setSbtFiles`).
+- Drops deprecated `InputTask` `apply` method and `inputTask` DSL method. Use `Def.inputTask` and `Def.spaceDelimited().parsed`.
+- Drops deprecated `ProjectReference` implicit lifts. Use `RootProject(<uri>)`, `RootProject(<file>)` or `LocalProject(<string>)`.
+- Drops deprecated `seq(..)` DSL method. Use `Seq` or pass in the settings without wrapping.
+- Drops deprecated `File`/`Seq[File]` setting enrichments. Use `.value` and `Def.setting`.
+- Drops deprecated `SubProcess` `apply` overload. Use `SubProcess(ForkOptions(runJVMOptions = ..))`.
+- Drops `toError(opt: Option[String]): Unit` (equivalent to `opt foreach sys.error`); if used to wrap
+    `ScalaRun#run` then the replacement is `scalaRun.run(...).failed foreach (sys error _.getMessage)`
+- A number of the methods on `sbt.Path` (such as `relativeTo` and `rebase` and `flat`) are now no longer in the
+    default namespace by virtue of being mixed into the sbt package object. Use `sbt.io.Path` to access them
+    again.
+- sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
+- sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
+- Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
+
 The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
-- sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
+#### Zinc API changes
+
+- Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
+- Renames `ivyScala: IvyScala` key to `scalaModuleInfo: ScalaModuleInfo`.
+- `xsbti.Reporter#log(...)` takes `xsbti.Problem` as the parameter. Call `log(problem.position, problem.message, problem.severity)` to delegate to the older `log(...)`.
+- `xsbi.Maybe`, `xsbti.F0`, and `sxbti.F1` are changed to corresponding Java 8 classes `java.util.Optional`, `java.util.Supplier` and `java.util.Function`.
+
+#### Features
+
+- New incremental compiler called Zinc 1. Details below.
+- The interactive shell is adds network API. Details below.
 
 #### Fixes
 
@@ -26,6 +66,12 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 - Scala Center contributed a Java-friendly Zinc API. This was a overhaul of the Zinc internal API for a good Scala integration with other build tools. [zinc#304][zinc304] by [@jvican][@jvican]
 - Ivy engine with parallel artifact download. See below.
 - Scala Center contributed static validation of `build.sbt`. See below
+- The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840] by [@eed3si9n][@eed3si9n]
+- Replace cross building support with sbt-doge. This allows builds with projects that have multiple different combinations of cross scala versions to be cross built correctly.  The behaviour of ++ is changed so that it only updates the Scala version of projects that support that Scala version, but the Scala version can be post fixed with ! to force it to change for all projects. A -v argument has been added that prints verbose information about which projects are having their settings changed along with their cross scala versions. [#2613][2613] by [@jroper][@jroper]
+- `ivyLoggingLevel` is dropped to `UpdateLogging.Quiet` when CI environment is detected. [@eed3si9n][@eed3si9n]
+- Add logging of the name of the different `build.sbt` (matching `*.sbt`) files used. [#1911][1911] by [@valydia][@valydia]
+- Add the ability to call `aggregate` for the current project inside a build sbt file. By [@xuwei-k][@xuwei-k]
+- Add new global setting `asciiGraphWidth` that controls the maximum width of the ASCII graphs printed by commands like `inspect tree`. Default value corresponds to the previously hardcoded value of 40 characters. By [@RomanIakovlev][@RomanIakovlev].
 - Revamped documentation for [Scopes](www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
 - Ports sbt-cross-building's `^` and `^^` commands for plugin cross building. See below.
 - Adds support for cross-versioned exclusions. [#1518][1518]/[lm#88][lm88] by [@jvican][@jvican]
@@ -37,6 +83,41 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 - For faster startup, reuse the same global instance for parsing. [#3115][3115] by [@jvican][@jvican]
 - Adds `InteractionService` from sbt-core-next to keep compatibility with sbt 0.13. [#3182][3182] by [@eed3si9n][@eed3si9n]
 
+#### Internals
+
+- Adopted Scalafmt for formatting the source code using neo-scalafmt.
+- Scala Center contributed a redesign of the scripted test framework that has batch mode execution. Scripted now reuses the same sbt instance to run sbt tests, which reduces the CI build times by 50% [#3151][3151] by [@jvican][@jvican]
+- sbt 1.0.0-M6 is built using sbt 1.0.0-M5. [#3184][3184] by [@dwijnand][@dwijnand]
+
+### Details of major changes
+
+### Zinc 1: Class-based name hashing
+
+A major improvement brought into Zinc 1.0 by Grzegorz Kossakowski (commissioned by Lightbend) is class-based name hashing, which will speed up the incremental compilation of Scala in large projects.
+
+Zinc 1.0's name hashing tracks your code dependendencies at the class level, instead of at the source file level. The GitHub issue [sbt/sbt#1104](https://github.com/sbt/sbt/issues/1104) lists some comparisons of adding a method to an existing class in some projects:
+
+```
+ScalaTest   AndHaveWord class:          Before 49s, After 4s (12x)
+Specs2      OptionResultMatcher class:  Before 48s, After 1s (48x)
+scala/scala Platform class:             Before 59s, After 15s (3.9x)
+scala/scala MatchCodeGen class:         Before 48s, After 17s (2.8x)
+```
+
+This depends on some factors such as how your classes are organized, but you can see 3x ~ 40x improvements. The reason for the speedup is because it compiles fewer source files than before by untangling the classes from source files. In the example adding a method to scala/scala's Platform class, sbt 0.13's name hashing used to compile 72 sources, but the new Zinc compiles 6 sources.
+
+### sbt server: JSON API for tooling integration
+
+sbt 1.0 includes server feature, which allows IDEs and other tools to query the build for settings, and invoke commands via a JSON API. Similar to the way that the interactive shell in sbt 0.13 is implemented with `shell` command, "server" is also just `shell` command that listens to both human input and network input. As a user, there should be minimal impact because of the server.
+
+In March 2016, we [rebooted](http://eed3si9n.com/sbt-server-reboot) the "server" feature to make it as small as possible. We worked in collaboration with JetBrains' @jastice who works on IntelliJ's sbt interface to narrow down the feature list. sbt 1.0 will not have all the things we originally wanted, but in the long term, we hope to see better integration between IDE and sbt ecosystem using this system. For example, IDEs will be able to issue the compile task and retrieve compiler warning as JSON events:
+
+```
+{"type":"xsbti.Problem","message":{"category":"","severity":"Warn","message":"a pure expression does nothing in statement position; you may be omitting necessary parentheses","position":{"line":2,"lineContent":"  1","offset":29,"pointer":2,"pointerSpace":"  ","sourcePath":"/tmp/hello/Hello.scala","sourceFile":"file:/tmp/hello/Hello.scala"}},"level":"warn"}
+```
+
+Another related feature that was added is the `bgRun` task which, for example, enables a server process to be run in the background while you run tests against it.
+
 #### Static validation of build.sbt
 
 sbt 1.0 prohibits `.value` calls inside the bodies of if expressions and anonymous functions in a task, `@sbtUnchecked` annotation can be used to override the check.
@@ -44,12 +125,6 @@ sbt 1.0 prohibits `.value` calls inside the bodies of if expressions and anonymo
 The static validation also catches if you forget to call `.value` in a body of a task.
 
 [#3216][3216] and [#3225][3225] by [@jvican][@jvican]
-
-#### Internals
-
-- Adopted Scalafmt for formatting the source code using neo-scalafmt.
-- Scala Center contributed a redesign of the scripted test framework that has batch mode execution. Scripted now reuses the same sbt instance to run sbt tests, which reduces the CI build times by 50% [#3151][3151] by [@jvican][@jvican]
-- sbt 1.0.0-M6 is built using sbt 1.0.0-M5. [#3184][3184] by [@dwijnand][@dwijnand]
 
 #### Ivy engine with parallel artifact download
 
@@ -124,97 +199,12 @@ Then, run:
 
 [#3133][3133] by [@eed3si9n][@eed3si9n] (forward ported from 0.13.16-M1)
 
-
 #### notes
 
 - https://github.com/sbt/sbt/compare/v1.0.0-M5...v1.0.0-M6
 - https://github.com/sbt/zinc/compare/v1.0.0-X14...v1.0.0-X16
 - https://github.com/sbt/librarymanagement/compare/v1.0.0-X10...v1.0.0-X15
 - https://github.com/sbt/util/compare/v1.0.0-M23...v1.0.0-M24
-
-### sbt 1.0.0-M5
-
-This is the beta-1 release of sbt 1.0.
-There's no binary compatibility with sbt 0.13 or other future 1.0.0-Mx versions.
-
-#### Features, fixes, changes with compatibility implications
-
-We are working with Scala Center to provide [an automatic migration tool][sbt-migration-rewrites].
-
-- sbt 1.0 uses Scala 2.12 for build definitions and plugins. This also requires JDK 8.
-- Non-auto `sbt.Plugin` trait is dropped. Please migrate to AutoPlugin. Auto plugins are easier to configure, and work better with each other.
-- sbt 0.12 style `Build` trait that was deprecated in sbt 0.13.12, is removed. Please [migrate to build.sbt](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+from+the+Build+trait). Auto plugins and `Build` trait do not work well together, and its feature is now largely subsumed by multi-project build.sbt.
-- sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
-- sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
-- Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
-- Many of the case classes are replaced with pseudo case classes generated using Contraband. Migrate `.copy(foo = xxx)` to `withFoo(xxx)`.
-- Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
-- `PathFinder`'s `.***` method is renamed to `.allPaths` method.
-- Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
-- Renames early command feature from `--<command>` to `early(<command>)`.
-- Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
-- `sbt.Process` and `sbt.ProcessExtra` are dropped. Use `scala.sys.process` instead.
-- `incOptions.value.withNameHashing(...)` option is removed because name hashing is always on.
-- `TestResult.Value` is now called `TestResult`.
-- The scripted plugin is cross-versioned now, so you must use `%%` when depending on it
-- Removes the `settingsSets` method from `Project` (along with `add/setSbtFiles`).
-- Drops deprecated `InputTask` `apply` method and `inputTask` DSL method. Use `Def.inputTask` and `Def.spaceDelimited().parsed`.
-- Drops deprecated `ProjectReference` implicit lifts. Use `RootProject(<uri>)`, `RootProject(<file>)` or `LocalProject(<string>)`.
-- Drops deprecated `seq(..)` DSL method. Use `Seq` or pass in the settings without wrapping.
-- Drops deprecated `File`/`Seq[File]` setting enrichments. Use `.value` and `Def.setting`.
-- Drops deprecated `SubProcess` `apply` overload. Use `SubProcess(ForkOptions(runJVMOptions = ..))`.
-- Drops `toError(opt: Option[String]): Unit` (equivalent to `opt foreach sys.error`); if used to wrap
-    `ScalaRun#run` then the replacement is `scalaRun.run(...).failed foreach (sys error _.getMessage)`
-- A number of the methods on `sbt.Path` (such as `relativeTo` and `rebase` and `flat`) are now no longer in the
-    default namespace by virtue of being mixed into the sbt package object. Use `sbt.io.Path` to access them
-    again.
-
-#### Features
-
-- New incremental compiler called Zinc 1. Details below.
-- The interactive shell is adds network API. Details below.
-
-#### Fixes
-
-
-
-#### Improvements
-
-- The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840] by [@eed3si9n][@eed3si9n]
-- Replace cross building support with sbt-doge. This allows builds with projects that have multiple different combinations of cross scala versions to be cross built correctly.  The behaviour of ++ is changed so that it only updates the Scala version of projects that support that Scala version, but the Scala version can be post fixed with ! to force it to change for all projects. A -v argument has been added that prints verbose information about which projects are having their settings changed along with their cross scala versions. [#2613][2613] by [@jroper][@jroper]
-- `ivyLoggingLevel` is dropped to `UpdateLogging.Quiet` when CI environment is detected. [@eed3si9n][@eed3si9n]
-- Add logging of the name of the different `build.sbt` (matching `*.sbt`) files used. [#1911][1911] by [@valydia][@valydia]
-- Add the ability to call `aggregate` for the current project inside a build sbt file. By [@xuwei-k][@xuwei-k]
-- Add new global setting `asciiGraphWidth` that controls the maximum width of the ASCII graphs printed by commands like `inspect tree`. Default value corresponds to the previously hardcoded value of 40 characters. By [@RomanIakovlev][@RomanIakovlev].
-
-### Details of major changes
-
-### Zinc 1: Class-based name hashing
-
-A major improvement brought into Zinc 1.0 by Grzegorz Kossakowski (commissioned by Lightbend) is class-based name hashing, which will speed up the incremental compilation of Scala in large projects.
-
-Zinc 1.0's name hashing tracks your code dependendencies at the class level, instead of at the source file level. The GitHub issue [sbt/sbt#1104](https://github.com/sbt/sbt/issues/1104) lists some comparisons of adding a method to an existing class in some projects:
-
-```
-ScalaTest   AndHaveWord class:          Before 49s, After 4s (12x)
-Specs2      OptionResultMatcher class:  Before 48s, After 1s (48x)
-scala/scala Platform class:             Before 59s, After 15s (3.9x)
-scala/scala MatchCodeGen class:         Before 48s, After 17s (2.8x)
-```
-
-This depends on some factors such as how your classes are organized, but you can see 3x ~ 40x improvements. The reason for the speedup is because it compiles fewer source files than before by untangling the classes from source files. In the example adding a method to scala/scala's Platform class, sbt 0.13's name hashing used to compile 72 sources, but the new Zinc compiles 6 sources.
-
-### sbt server: JSON API for tooling integration
-
-sbt 1.0 includes server feature, which allows IDEs and other tools to query the build for settings, and invoke commands via a JSON API. Similar to the way that the interactive shell in sbt 0.13 is implemented with `shell` command, "server" is also just `shell` command that listens to both human input and network input. As a user, there should be minimal impact because of the server.
-
-In March 2016, we [rebooted](http://eed3si9n.com/sbt-server-reboot) the "server" feature to make it as small as possible. We worked in collaboration with JetBrains' @jastice who works on IntelliJ's sbt interface to narrow down the feature list. sbt 1.0 will not have all the things we originally wanted, but in the long term, we hope to see better integration between IDE and sbt ecosystem using this system. For example, IDEs will be able to issue the compile task and retrieve compiler warning as JSON events:
-
-```
-{"type":"xsbti.Problem","message":{"category":"","severity":"Warn","message":"a pure expression does nothing in statement position; you may be omitting necessary parentheses","position":{"line":2,"lineContent":"  1","offset":29,"pointer":2,"pointerSpace":"  ","sourcePath":"/tmp/hello/Hello.scala","sourceFile":"file:/tmp/hello/Hello.scala"}},"level":"warn"}
-```
-
-Another related feature that was added is the `bgRun` task which, for example, enables a server process to be run in the background while you run tests against it.
 
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: http://github.com/dwijnand

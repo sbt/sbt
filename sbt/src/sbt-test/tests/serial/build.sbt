@@ -1,11 +1,11 @@
 val commonSettings = Seq(
-  libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test"
+  libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % Test
 )
 
 lazy val root = (project in file(".")).
   aggregate(sub1, sub2).
   settings(inThisBuild(List(
-      organization := "com.softwaremill",
+      organization := "com.example",
       version := "0.0.1-SNAPSHOT",
       scalaVersion := "2.10.6"
     )),

@@ -48,8 +48,7 @@ import sbt.io.{
   PathFinder,
   SimpleFileFilter,
   DirectoryFilter,
-  Hash,
-  WatchService
+  Hash
 }, Path._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
@@ -62,9 +61,10 @@ import sbt.librarymanagement.Configurations.{
   Test
 }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
-import sbt.librarymanagement.{ `package` => _, _ }
+import sbt.librarymanagement._
+import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
-import sbt.util.InterfaceUtil.f1
+import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sbt.util.CacheImplicits._
 import scala.concurrent.duration.FiniteDuration
@@ -72,9 +72,10 @@ import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import std.TaskExtra._
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
-import xsbti.compile.IncToolOptionsUtil
+import xsbti.compile.{ IncToolOptionsUtil, AnalysisContents, IncOptions }
 import xsbti.CrossValue
 
 // incremental compiler
@@ -101,7 +102,7 @@ import sbt.internal.inc.{
   Analysis,
   FileValueCache,
   Locate,
-  LoggerReporter,
+  ManagedLoggedReporter,
   MixedAnalyzingCompiler,
   ScalaInstance
 }
@@ -376,8 +377,8 @@ object Defaults extends BuildCommon {
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     incOptions := incOptions.value
       .withClassfileManagerType(
-        Option(new TransactionalManagerType(crossTarget.value / "classes.bak",
-                                            sbt.util.Logger.Null): ClassFileManagerType).toOptional
+        Option(TransactionalManagerType
+          .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType).toOptional
       ),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else Disabled()),
@@ -413,7 +414,7 @@ object Defaults extends BuildCommon {
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
-      incOptions := IncOptionsUtil.defaultIncOptions,
+      incOptions := IncOptions.of(),
       classpathOptions :== ClasspathOptionsUtil.boot,
       classpathOptions in console :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
@@ -470,7 +471,7 @@ object Defaults extends BuildCommon {
         globalLock = launcher.globalLock,
         componentProvider = app.provider.components,
         secondaryCacheDir = Option(zincDir),
-        ivyConfiguration = bootIvyConfiguration.value,
+        dependencyResolution = dependencyResolution.value,
         compilerBridgeSource = scalaCompilerBridgeSource.value,
         scalaJarsTarget = zincDir,
         log = streams.value.log
@@ -492,8 +493,11 @@ object Defaults extends BuildCommon {
     }
   }
 
+  def defaultCompileSettings: Seq[Setting[_]] =
+    globalDefaults(enableBinaryCompileAnalysis := true)
+
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
+    compileInputsSettings) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
@@ -622,7 +626,7 @@ object Defaults extends BuildCommon {
   }
 
   def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
-    val toolReport = update.value.configuration(Configurations.ScalaTool.name) getOrElse
+    val toolReport = update.value.configuration(Configurations.ScalaTool) getOrElse
       sys.error(noToolConfiguration(managedScalaInstance.value))
     def files(id: String) =
       for {
@@ -1062,12 +1066,13 @@ object Defaults extends BuildCommon {
         case c       => Some(c.name)
       }
       val combined = cPart.toList ++ classifier.toList
-      if (combined.isEmpty) a.withClassifier(None).withConfigurations(cOpt.toVector)
+      val configurations = cOpt.map(c => ConfigRef(c.name)).toVector
+      if (combined.isEmpty) a.withClassifier(None).withConfigurations(configurations)
       else {
         val classifierString = combined mkString "-"
         a.withClassifier(Some(classifierString))
           .withType(Artifact.classifierType(classifierString))
-          .withConfigurations(cOpt.toVector)
+          .withConfigurations(configurations)
       }
     }
 
@@ -1253,7 +1258,7 @@ object Defaults extends BuildCommon {
       }
     }
   }
-  def psTask: Initialize[Task[Vector[JobHandle]]] =
+  def psTask: Initialize[Task[Seq[JobHandle]]] =
     Def.task {
       val xs = bgList.value
       val s = streams.value
@@ -1369,11 +1374,14 @@ object Defaults extends BuildCommon {
 
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
+    val useBinary: Boolean = enableBinaryCompileAnalysis.value
     // TODO - expose bytecode manipulation phase.
     val analysisResult: CompileResult = manipulateBytecode.value
     if (analysisResult.hasModified) {
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
-      store.set(analysisResult.analysis, analysisResult.setup)
+      val store =
+        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
+      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
+      store.set(contents)
     }
     analysisResult.analysis
   }
@@ -1410,7 +1418,7 @@ object Defaults extends BuildCommon {
       override def definesClass(classpathEntry: File): DefinesClass =
         cachedPerEntryDefinesClassLookup(classpathEntry)
     }
-    new Setup(
+    Setup.of(
       lookup,
       (skip in compile).value,
       // TODO - this is kind of a bad way to grab the cache directory for streams...
@@ -1425,7 +1433,7 @@ object Defaults extends BuildCommon {
   }
   def compileInputsSettings: Seq[Setting[_]] = {
     Seq(
-      compileOptions := new CompileOptions(
+      compileOptions := CompileOptions.of(
         (classDirectory.value +: data(dependencyClasspath.value)).toArray,
         sources.value.toArray,
         classDirectory.value,
@@ -1435,10 +1443,14 @@ object Defaults extends BuildCommon {
         f1(foldMappers(sourcePositionMappers.value)),
         compileOrder.value
       ),
-      compilerReporter := new LoggerReporter(maxErrors.value,
-                                             streams.value.log,
-                                             foldMappers(sourcePositionMappers.value)),
-      compileInputs := new Inputs(
+      compilerReporter := {
+        new ManagedLoggedReporter(
+          maxErrors.value,
+          streams.value.log,
+          foldMappers(sourcePositionMappers.value)
+        )
+      },
+      compileInputs := Inputs.of(
         compilers.value,
         compileOptions.value,
         compileIncSetup.value,
@@ -1460,11 +1472,14 @@ object Defaults extends BuildCommon {
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     previousCompile := {
       val setup = compileIncSetup.value
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
-      store.get() match {
-        case Some((an, setup)) =>
-          new PreviousResult(Option(an).toOptional, Option(setup).toOptional)
-        case None => new PreviousResult(jnone[CompileAnalysis], jnone[MiniSetup])
+      val useBinary: Boolean = enableBinaryCompileAnalysis.value
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
+      store.get().toOption match {
+        case Some(contents) =>
+          val analysis = Option(contents.getAnalysis).toOptional
+          val setup = Option(contents.getMiniSetup).toOptional
+          PreviousResult.of(analysis, setup)
+        case None => PreviousResult.of(jnone[CompileAnalysis], jnone[MiniSetup])
       }
     }
   )
@@ -1477,10 +1492,8 @@ object Defaults extends BuildCommon {
       val problems =
         analysis.infos.allInfos.values.flatMap(i =>
           i.getReportedProblems ++ i.getUnreportedProblems)
-      val reporter = new LoggerReporter(max, streams.value.log, foldMappers(spms))
-      problems foreach { p =>
-        reporter.display(p)
-      }
+      val reporter = new ManagedLoggedReporter(max, streams.value.log, foldMappers(spms))
+      problems.foreach(p => reporter.log(p))
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
@@ -1656,7 +1669,9 @@ object Classpaths {
     def notFound =
       sys.error(
         "Configuration to use for managed classpath must be explicitly defined when default configurations are not present.")
-    search find { defined contains _.name } getOrElse notFound
+    search find { c =>
+      defined contains ConfigRef(c.name)
+    } getOrElse notFound
   }
 
   def packaged(pkgTasks: Seq[TaskKey[File]]): Initialize[Task[Map[Artifact, File]]] =
@@ -1692,12 +1707,14 @@ object Classpaths {
     packagedArtifacts :== Map.empty,
     crossTarget := target.value,
     makePom := {
-      val config = makePomConfiguration.value;
-      IvyActions.makePom(ivyModule.value, config, streams.value.log); config.file
+      val config = makePomConfiguration.value
+      val publisher = Keys.publisher.value
+      publisher.makePomFile(ivyModule.value, config, streams.value.log)
+      config.file.get
     },
     packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
-    deliver := deliverTask(deliverConfiguration).value,
-    deliverLocal := deliverTask(deliverLocalConfiguration).value,
+    deliver := deliverTask(publishConfiguration).value,
+    deliverLocal := deliverTask(publishLocalConfiguration).value,
     publish := publishTask(publishConfiguration, deliver).value,
     publishLocal := publishTask(publishLocalConfiguration, deliverLocal).value,
     publishM2 := publishTask(publishM2Configuration, deliverLocal).value
@@ -1715,7 +1732,7 @@ object Classpaths {
         scmInfo :== None,
         offline :== false,
         defaultConfiguration :== Some(Configurations.Compile),
-        dependencyOverrides :== Set.empty,
+        dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
         excludeDependencies :== Nil,
         ivyLoggingLevel :== {
@@ -1728,12 +1745,12 @@ object Classpaths {
         ivyValidate :== false,
         moduleConfigurations :== Nil,
         publishTo :== None,
-        resolvers :== Nil,
+        resolvers :== Vector.empty,
         useJCenter :== false,
         retrievePattern :== Resolver.defaultRetrievePattern,
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
-        sourceArtifactTypes :== Artifact.DefaultSourceTypes,
-        docArtifactTypes :== Artifact.DefaultDocTypes,
+        sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
+        docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
         sbtDependency := {
           val app = appConfiguration.value
           val id = app.provider.id
@@ -1777,13 +1794,13 @@ object Classpaths {
                            useJCenter.value) match {
       case (Some(delegated), Seq(), _, _) => delegated
       case (_, rs, Some(ars), uj)         => ars ++ rs
-      case (_, rs, _, uj)                 => Resolver.withDefaultResolvers(rs, uj, mavenCentral = true)
+      case (_, rs, _, uj)                 => Resolver.combineDefaultResolvers(rs.toVector, uj, mavenCentral = true)
     }),
     appResolvers := {
       val ac = appConfiguration.value
       val uj = useJCenter.value
       appRepositories(ac) map { ars =>
-        val useMavenCentral = ars contains DefaultMavenRepository
+        val useMavenCentral = ars contains Resolver.DefaultMavenRepository
         Resolver.reorganizeAppResolvers(ars, uj, useMavenCentral)
       }
     },
@@ -1806,7 +1823,7 @@ object Classpaths {
       val st = state.value
       BuildPaths.getDependencyDirectory(st, BuildPaths.getGlobalBase(st))
     },
-    otherResolvers := Resolver.publishMavenLocal :: publishTo.value.toList,
+    otherResolvers := Resolver.publishMavenLocal +: publishTo.value.toVector,
     projectResolver := projectResolverTask.value,
     projectDependencies := projectDependenciesTask.value,
     // TODO - Is this the appropriate split?  Ivy defines this simply as
@@ -1815,10 +1832,10 @@ object Classpaths {
     allDependencies := {
       projectDependencies.value ++ libraryDependencies.value
     },
-    ivyScala := (ivyScala or (
+    scalaModuleInfo := (scalaModuleInfo or (
       Def.setting {
         Option(
-          IvyScala(
+          ScalaModuleInfo(
             (scalaVersion in update).value,
             (scalaBinaryVersion in update).value,
             Vector.empty,
@@ -1837,26 +1854,26 @@ object Classpaths {
     projectDescriptors := depMap.value,
     updateConfiguration := {
       // Tell the UpdateConfiguration which artifact types are special (for sources and javadocs)
-      val specialArtifactTypes = sourceArtifactTypes.value union docArtifactTypes.value
+      val specialArtifactTypes = sourceArtifactTypes.value.toSet union docArtifactTypes.value.toSet
       // By default, to retrieve all types *but* these (it's assumed that everything else is binary/resource)
-      UpdateConfiguration(
-        retrieve = retrieveConfiguration.value,
-        missingOk = false,
-        logging = ivyLoggingLevel.value,
-        artifactFilter = ArtifactTypeFilter.forbid(specialArtifactTypes),
-        offline = offline.value,
-        frozen = false
-      )
+      UpdateConfiguration()
+        .withRetrieveManaged(retrieveConfiguration.value)
+        .withLogging(ivyLoggingLevel.value)
+        .withArtifactFilter(ArtifactTypeFilter.forbid(specialArtifactTypes))
+        .withOffline(offline.value)
     },
     retrieveConfiguration := {
       if (retrieveManaged.value)
         Some(
-          RetrieveConfiguration(managedDirectory.value,
-                                retrievePattern.value,
-                                retrieveManagedSync.value,
-                                configurationsToRetrieve.value))
+          RetrieveConfiguration()
+            .withRetrieveDirectory(managedDirectory.value)
+            .withOutputPattern(retrievePattern.value)
+            .withSync(retrieveManagedSync.value)
+            .withConfigurationsToRetrieve(configurationsToRetrieve.value map { _.toVector }))
       else None
     },
+    dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
+    publisher := IvyPublisher(ivyConfiguration.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
       val confs = thisProject.value.configurations
@@ -1870,43 +1887,44 @@ object Classpaths {
       else Nil
     },
     moduleSettings := moduleSettings0.value,
-    makePomConfiguration := new MakePomConfiguration(artifactPath in makePom value,
-                                                     projectInfo.value,
-                                                     None,
-                                                     pomExtra.value,
-                                                     pomPostProcess.value,
-                                                     pomIncludeRepository.value,
-                                                     pomAllRepositories.value),
-    deliverLocalConfiguration := deliverConfig(crossTarget.value,
-                                               status =
-                                                 if (isSnapshot.value) "integration"
-                                                 else "release",
-                                               logging = ivyLoggingLevel.value),
-    deliverConfiguration := deliverLocalConfiguration.value,
+    makePomConfiguration := MakePomConfiguration()
+      .withFile((artifactPath in makePom).value)
+      .withModuleInfo(projectInfo.value)
+      .withExtra(pomExtra.value)
+      .withProcess(pomPostProcess.value)
+      .withFilterRepositories(pomIncludeRepository.value)
+      .withAllRepositories(pomAllRepositories.value),
     publishConfiguration := {
-      // TODO(jvican): I think this is a bug.
-      val delivered = deliver.value
       publishConfig(
-        packagedArtifacts.in(publish).value,
-        if (publishMavenStyle.value) None else Some(delivered),
-        resolverName = getPublishTo(publishTo.value).name,
-        checksums = checksums.in(publish).value,
-        logging = ivyLoggingLevel.value,
-        overwrite = isSnapshot.value
+        publishMavenStyle.value,
+        deliverPattern(crossTarget.value),
+        if (isSnapshot.value) "integration" else "release",
+        ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+        packagedArtifacts.in(publish).value.toVector,
+        checksums.in(publish).value.toVector,
+        getPublishTo(publishTo.value).name,
+        ivyLoggingLevel.value,
+        isSnapshot.value
       )
     },
     publishLocalConfiguration := publishConfig(
-      packagedArtifacts.in(publishLocal).value,
-      Some(deliverLocal.value),
-      checksums.in(publishLocal).value,
+      false, //publishMavenStyle.value,
+      deliverPattern(crossTarget.value),
+      if (isSnapshot.value) "integration" else "release",
+      ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+      packagedArtifacts.in(publishLocal).value.toVector,
+      checksums.in(publishLocal).value.toVector,
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
     ),
     publishM2Configuration := publishConfig(
-      packagedArtifacts.in(publishM2).value,
-      None,
+      true,
+      deliverPattern(crossTarget.value),
+      if (isSnapshot.value) "integration" else "release",
+      ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+      packagedArtifacts.in(publishM2).value.toVector,
+      checksums = checksums.in(publishM2).value.toVector,
       resolverName = Resolver.publishMavenLocal.name,
-      checksums = checksums.in(publishM2).value,
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
     ),
@@ -1944,14 +1962,18 @@ object Classpaths {
       implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
       val projectDeps = projectDependencies.value.iterator.map(key).toSet
       val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
-      GetClassifiersModule(projectID.value,
-                           externalModules,
-                           ivyConfigurations.in(updateClassifiers).value.toVector,
-                           transitiveClassifiers.in(updateClassifiers).value.toVector)
+      GetClassifiersModule(
+        projectID.value,
+        None,
+        externalModules,
+        ivyConfigurations.in(updateClassifiers).value.toVector,
+        transitiveClassifiers.in(updateClassifiers).value.toVector
+      )
     },
     updateClassifiers := (Def.task {
       val s = streams.value
       val is = ivySbt.value
+      val lm = new DependencyResolution(new IvyDependencyResolution(is))
       val mod = (classifiersModule in updateClassifiers).value
       val c = updateConfiguration.value
       val app = appConfiguration.value
@@ -1959,24 +1981,24 @@ object Classpaths {
       val docTypes = docArtifactTypes.value
       val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
       val uwConfig = (unresolvedWarningConfiguration in update).value
-      val depDir = dependencyCacheDirectory.value
-      val ivy = ivyScala.value
-      val st = state.value
+      val scalaModule = scalaModuleInfo.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-        IvyActions.updateClassifiers(
-          is,
-          GetClassifiersConfiguration(mod,
-                                      excludes,
-                                      c.withArtifactFilter(c.artifactFilter.invert),
-                                      ivy,
-                                      srcTypes,
-                                      docTypes),
+        lm.updateClassifiers(
+          GetClassifiersConfiguration(
+            mod,
+            excludes.toVector,
+            c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
+            // scalaModule,
+            srcTypes.toVector,
+            docTypes.toVector
+          ),
           uwConfig,
-          LogicalClock(st.hashCode),
-          Some(depDir),
           Vector.empty,
           s.log
-        )
+        ) match {
+          case Left(_)   => ???
+          case Right(ur) => ur
+        }
       }
     } tag (Tags.Update, Tags.Network)).value
   )
@@ -1999,7 +2021,7 @@ object Classpaths {
         else base
       val sbtOrg = scalaOrganization.value
       val version = scalaVersion.value
-      if (scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
+      if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
       else {
         val isDotty = ScalaInstance.isDotty(version)
@@ -2039,19 +2061,16 @@ object Classpaths {
       new IvySbt(ivyConfiguration.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
-    InlineConfiguration(
-      ivyValidate.value,
-      ivyScala.value,
-      projectID.value,
-      projectInfo.value,
-      allDependencies.value.toVector,
-      dependencyOverrides.value,
-      excludeDependencies.value.toVector,
-      ivyXML.value,
-      ivyConfigurations.value.toVector,
-      defaultConfiguration.value,
-      conflictManager.value
-    )
+    ModuleDescriptorConfiguration(projectID.value, projectInfo.value)
+      .withValidate(ivyValidate.value)
+      .withScalaModuleInfo(scalaModuleInfo.value)
+      .withDependencies(allDependencies.value.toVector)
+      .withOverrides(dependencyOverrides.value.toVector)
+      .withExcludes(excludeDependencies.value.toVector)
+      .withIvyXML(ivyXML.value)
+      .withConfigurations(ivyConfigurations.value.toVector)
+      .withDefaultConfiguration(defaultConfiguration.value)
+      .withConflictManager(conflictManager.value)
   }
 
   private[this] def sbtClassifiersGlobalDefaults =
@@ -2072,7 +2091,7 @@ object Classpaths {
               .resolvers
             explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
           },
-          ivyConfiguration := new InlineIvyConfiguration(
+          ivyConfiguration := InlineIvyConfiguration(
             paths = ivyPaths.value,
             resolvers = externalResolvers.value.toVector,
             otherResolvers = Vector.empty,
@@ -2090,16 +2109,18 @@ object Classpaths {
           // to fix https://github.com/sbt/sbt/issues/2686
           scalaVersion := appConfiguration.value.provider.scalaProvider.version,
           scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
-          ivyScala := {
+          scalaModuleInfo := {
             Some(
-              IvyScala(scalaVersion.value,
-                       scalaBinaryVersion.value,
-                       Vector(),
-                       checkExplicit = false,
-                       filterImplicit = false,
-                       overrideScalaVersion = true).withScalaOrganization(scalaOrganization.value))
+              ScalaModuleInfo(
+                scalaVersion.value,
+                scalaBinaryVersion.value,
+                Vector(),
+                checkExplicit = false,
+                filterImplicit = false,
+                overrideScalaVersion = true).withScalaOrganization(scalaOrganization.value))
           },
           updateSbtClassifiers in TaskGlobal := (Def.task {
+            val lm = dependencyResolution.value
             val s = streams.value
             val is = ivySbt.value
             val mod = classifiersModule.value
@@ -2111,24 +2132,26 @@ object Classpaths {
             val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
             val uwConfig = (unresolvedWarningConfiguration in update).value
             val depDir = dependencyCacheDirectory.value
-            val ivy = ivyScala.value
+            val ivy = scalaModuleInfo.value
             val st = state.value
-            withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-              val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
-              IvyActions.transitiveScratch(
-                is,
-                "sbt",
-                GetClassifiersConfiguration(mod,
-                                            excludes,
-                                            c.withArtifactFilter(c.artifactFilter.invert),
-                                            noExplicitCheck,
-                                            srcTypes,
-                                            docTypes),
-                uwConfig,
-                LogicalClock(st.hashCode),
-                Some(depDir),
-                log
-              )
+            withExcludes(out, mod.classifiers, lock(app)) {
+              excludes =>
+                // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
+                LibraryManagement.transitiveScratch(
+                  lm,
+                  "sbt",
+                  GetClassifiersConfiguration(mod,
+                                              excludes.toVector,
+                                              c.withArtifactFilter(c.artifactFilter.map(af =>
+                                                af.withInverted(!af.inverted))),
+                                              srcTypes.toVector,
+                                              docTypes.toVector),
+                  uwConfig,
+                  log
+                ) match {
+                  case Left(uw)  => ???
+                  case Right(ur) => ur
+                }
             }
           } tag (Tags.Update, Tags.Network)).value
         )) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
@@ -2140,12 +2163,17 @@ object Classpaths {
       val pluginClasspath = loadedBuild.value.units(ref.build).unit.plugins.fullClasspath.toVector
       val pluginJars = pluginClasspath.filter(_.data.isFile) // exclude directories: an approximation to whether they've been published
       val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
-      GetClassifiersModule(projectID.value,
-                           sbtDependency.value +: pluginIDs,
-                           Vector(Configurations.Default),
-                           classifiers.toVector)
+      GetClassifiersModule(
+        projectID.value,
+        // TODO: Should it be sbt's scalaModuleInfo?
+        scalaModuleInfo.value,
+        sbtDependency.value +: pluginIDs,
+        // sbt is now on Maven Central, so this has changed from sbt 0.13.
+        Vector(Configurations.Default) ++ Configurations.default,
+        classifiers.toVector
+      )
     }
-  def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] =
+  def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[File]] =
     Def.task {
       val _ = update.value
       IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
@@ -2167,10 +2195,10 @@ object Classpaths {
     }
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
-      f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport = {
+      f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport): UpdateReport = {
     import sbt.librarymanagement.LibraryManagementCodec._
     import sbt.util.FileBasedStore
-    implicit val isoString: sjsonnew.IsoString[scalajson.ast.unsafe.JValue] =
+    implicit val isoString: sjsonnew.IsoString[JValue] =
       sjsonnew.IsoString.iso(
         sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
         sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
@@ -2184,11 +2212,17 @@ object Classpaths {
         def call = {
           implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
           val excludes =
-            store.read[Map[ModuleID, Set[String]]](default = Map.empty[ModuleID, Set[String]])
+            store
+              .read[Map[ModuleID, Vector[ConfigRef]]](
+                default = Map.empty[ModuleID, Vector[ConfigRef]])
           val report = f(excludes)
-          val allExcludes = excludes ++ IvyActions.extractExcludes(report)
+          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++ IvyActions
+            .extractExcludes(report)
+            .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
           store.write(allExcludes)
-          IvyActions.addExcluded(report, classifiers.toVector, allExcludes)
+          IvyActions.addExcluded(report,
+                                 classifiers.toVector,
+                                 allExcludes.mapValues(_.map(_.name).toSet))
         }
       }
     )
@@ -2249,11 +2283,14 @@ object Classpaths {
       import UpdateLogging.{ Full, DownloadOnly, Default }
       val conf = updateConfiguration.value
       val maybeUpdateLevel = (logLevel in update).?.value
-      maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
+      val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
         case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
         case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
         case _                                            => conf
       }
+
+      // logical clock is folded into UpdateConfiguration
+      conf1.withLogicalClock(LogicalClock(state0.hashCode))
     }
 
     val evictionOptions = Def.taskDyn {
@@ -2272,7 +2309,6 @@ object Classpaths {
       force = shouldForce,
       depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
       uwConfig = (unresolvedWarningConfiguration in update).value,
-      logicalClock = LogicalClock(state0.hashCode),
       depDir = Some(dependencyCacheDirectory.value),
       ewo = evictionOptions,
       mavenStyle = publishMavenStyle.value,
@@ -2362,25 +2398,24 @@ object Classpaths {
   def getPublishTo(repo: Option[Resolver]): Resolver =
     repo getOrElse sys.error("Repository for publishing is not specified.")
 
-  def deliverConfig(outputDirectory: File,
-                    status: String = "release",
-                    logging: UpdateLogging = UpdateLogging.DownloadOnly) =
-    new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
-
-  def publishConfig(
-      artifacts: Map[Artifact, File],
-      ivyFile: Option[File],
-      checksums: Seq[String],
-      resolverName: String = "local",
-      logging: UpdateLogging = UpdateLogging.DownloadOnly,
-      overwrite: Boolean = false
-  ) =
-    new PublishConfiguration(ivyFile,
-                             resolverName,
-                             artifacts,
-                             checksums.toVector,
-                             logging,
-                             overwrite)
+  def publishConfig(publishMavenStyle: Boolean,
+                    deliverIvyPattern: String,
+                    status: String,
+                    configurations: Vector[ConfigRef],
+                    artifacts: Vector[(Artifact, File)],
+                    checksums: Vector[String],
+                    resolverName: String = "local",
+                    logging: UpdateLogging = UpdateLogging.DownloadOnly,
+                    overwrite: Boolean = false) =
+    PublishConfiguration(publishMavenStyle,
+                         deliverIvyPattern,
+                         status,
+                         configurations,
+                         resolverName,
+                         artifacts,
+                         checksums,
+                         logging,
+                         overwrite)
 
   def deliverPattern(outputPath: File): String =
     (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
@@ -2415,7 +2450,8 @@ object Classpaths {
 
   def projectResolverTask: Initialize[Task[Resolver]] =
     projectDescriptors map { m =>
-      new RawRepository(new ProjectResolver(ProjectResolver.InterProject, m))
+      val resolver = new ProjectResolver(ProjectResolver.InterProject, m)
+      new RawRepository(resolver, resolver.getName)
     }
 
   def analyzed[T](data: T, analysis: CompileAnalysis) =
@@ -2544,19 +2580,16 @@ object Classpaths {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
       val s = streams.value
       warnResolversConflict(rs ++: other, s.log)
-      new InlineIvyConfiguration(
-        paths = ivyPaths.value,
-        resolvers = rs,
-        otherResolvers = other,
-        moduleConfigurations = moduleConfigurations.value.toVector,
-        // offline.value,
-        lock = Option(lock(appConfiguration.value)),
-        checksums = (checksums in update).value.toVector,
-        managedChecksums = false,
-        resolutionCacheDir = Some(crossTarget.value / "resolution-cache"),
-        updateOptions = updateOptions.value,
-        log = s.log
-      )
+      InlineIvyConfiguration()
+        .withPaths(ivyPaths.value)
+        .withResolvers(rs)
+        .withOtherResolvers(other)
+        .withModuleConfigurations(moduleConfigurations.value.toVector)
+        .withLock(lock(appConfiguration.value))
+        .withChecksums((checksums in update).value.toVector)
+        .withResolutionCacheDir(crossTarget.value / "resolution-cache")
+        .withUpdateOptions(updateOptions.value)
+        .withLog(s.log)
     }
 
   import java.util.LinkedHashSet
@@ -2570,12 +2603,12 @@ object Classpaths {
       val applicableConfigs = allConfigs(c)
       for (ac <- applicableConfigs) // add all configurations in this project
         visited add (p -> ac.name)
-      val masterConfs = names(getConfigurations(projectRef, data))
+      val masterConfs = names(getConfigurations(projectRef, data).toVector)
 
       for (ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)) {
         val configurations = getConfigurations(dep, data)
         val mapping =
-          mapped(confMapping, masterConfs, names(configurations), "compile", "*->compile")
+          mapped(confMapping, masterConfs, names(configurations.toVector), "compile", "*->compile")
         // map master configuration 'c' and all extended configurations to the appropriate dependency configuration
         for (ac <- applicableConfigs; depConfName <- mapping(ac.name)) {
           for (depConf <- confOpt(configurations, depConfName))
@@ -2813,8 +2846,8 @@ object Classpaths {
       case _: NoSuchMethodError => None
     }
 
-  def bootChecksums(app: xsbti.AppConfiguration): Seq[String] =
-    try { app.provider.scalaProvider.launcher.checksums.toSeq } catch {
+  def bootChecksums(app: xsbti.AppConfiguration): Vector[String] =
+    try { app.provider.scalaProvider.launcher.checksums.toVector } catch {
       case _: NoSuchMethodError => IvySbt.DefaultChecksums
     }
 
@@ -2823,13 +2856,13 @@ object Classpaths {
     catch { case _: NoSuchMethodError => false }
 
   /** Loads the `appRepositories` configured for this launcher, if supported. */
-  def appRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
-    try { Some(app.provider.scalaProvider.launcher.appRepositories.toSeq map bootRepository) } catch {
+  def appRepositories(app: xsbti.AppConfiguration): Option[Vector[Resolver]] =
+    try { Some(app.provider.scalaProvider.launcher.appRepositories.toVector map bootRepository) } catch {
       case _: NoSuchMethodError => None
     }
 
-  def bootRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
-    try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toSeq map bootRepository) } catch {
+  def bootRepositories(app: xsbti.AppConfiguration): Option[Vector[Resolver]] =
+    try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toVector map bootRepository) } catch {
       case _: NoSuchMethodError => None
     }
 
@@ -2863,7 +2896,7 @@ object Classpaths {
         p.id match {
           case Predefined.Local                => Resolver.defaultLocal
           case Predefined.MavenLocal           => Resolver.mavenLocal
-          case Predefined.MavenCentral         => DefaultMavenRepository
+          case Predefined.MavenCentral         => Resolver.DefaultMavenRepository
           case Predefined.ScalaToolsReleases   => Resolver.ScalaToolsReleases
           case Predefined.ScalaToolsSnapshots  => Resolver.ScalaToolsSnapshots
           case Predefined.SonatypeOSSReleases  => Resolver.sonatypeRepo("releases")
@@ -2987,7 +3020,13 @@ trait BuildExtra extends BuildCommon with DefExtra {
         otherTask map {
           case (base, app, pr, uo, s) =>
             val extraResolvers = if (addMultiResolver) Vector(pr) else Vector.empty
-            ExternalIvyConfiguration(Option(lock(app)), base, s.log, uo, u, extraResolvers)
+            ExternalIvyConfiguration()
+              .withLock(lock(app))
+              .withBaseDirectory(base)
+              .withLog(s.log)
+              .withUpdateOptions(uo)
+              .withUri(u)
+              .withExtraResolvers(extraResolvers)
         }
     }).value
   }
@@ -2996,18 +3035,19 @@ trait BuildExtra extends BuildCommon with DefExtra {
     baseDirectory.value / name
   }
 
-  def externalIvyFile(
-      file: Initialize[File] = inBase("ivy.xml"),
-      iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
+  def externalIvyFile(file: Initialize[File] = inBase("ivy.xml"),
+                      iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo)
+    : Setting[Task[ModuleSettings]] =
     moduleSettings := IvyFileConfiguration(ivyValidate.value,
                                            iScala.value,
                                            file.value,
                                            managedScalaInstance.value)
 
   def externalPom(file: Initialize[File] = inBase("pom.xml"),
-                  iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
+                  iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo)
+    : Setting[Task[ModuleSettings]] =
     moduleSettings := PomConfiguration(ivyValidate.value,
-                                       ivyScala.value,
+                                       scalaModuleInfo.value,
                                        file.value,
                                        managedScalaInstance.value)
 

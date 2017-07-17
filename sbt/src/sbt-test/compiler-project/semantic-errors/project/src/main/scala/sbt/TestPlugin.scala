@@ -31,6 +31,9 @@ class CollectingReporter extends xsbti.Reporter {
   def printSummary(): Unit = ()
   def problems: Array[xsbti.Problem] = buffer.toArray
 
+  def log(problem: xsbti.Problem): Unit =
+    log(problem.position, problem.message, problem.severity)
+
   /** Logs a message. */
   def log(pos: xsbti.Position, msg: String, sev: xsbti.Severity): Unit = {
     object MyProblem extends xsbti.Problem {

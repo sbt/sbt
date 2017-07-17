@@ -1,7 +1,7 @@
-lazy val custom = config("custom")
+lazy val Custom = config("custom")
 
 lazy val root = (project in file(".")).
-  configs(custom).
+  configs(Custom).
   settings(
     TaskKey[Unit]("checkPom") := checkPom.value,
     libraryDependencies ++= Seq(
@@ -9,7 +9,7 @@ lazy val root = (project in file(".")).
       "b" % "b" % "1.0" % "runtime,optional",
       "c" % "c" % "1.0" % "optional",
       "d" % "d" % "1.0" % "test",
-      "e" % "e" % "1.0" % "custom",
+      "e" % "e" % "1.0" % Custom,
       "f" % "f" % "1.0" % "custom,optional,runtime",
       "g" % "g" % "1.0" % "custom,runtime" classifier "foo",
       "h" % "h" % "1.0" % "custom,optional,runtime" classifier "foo"

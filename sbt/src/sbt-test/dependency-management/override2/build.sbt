@@ -6,6 +6,6 @@ scalaBinaryVersion := "2.9.1"
 
 resolvers += Classpaths.typesafeReleases
 
-dependencyOverrides := Set("com.typesafe.sbtscalariform" % "sbtscalariform" % "0.3.1")
+dependencyOverrides := Vector("com.typesafe.sbtscalariform" % "sbtscalariform" % "0.3.1")
 
 autoScalaLibrary := false

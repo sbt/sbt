@@ -3,14 +3,14 @@ package sbt.internal
 import sbt.internal.librarymanagement._
 import sbt.internal.util.Types._
 import sbt.internal.util.{ HList, HNil }
-import sbt.internal.util.HListFormats._
-import sbt.io.{ Hash, IO }
+import sbt.io.Hash
 import sbt.librarymanagement._
-import sbt.util.CacheImplicits._
+import sbt.librarymanagement.ivy._
 import sbt.util._
+import sbt.internal.util.HListFormats._
 import sjsonnew.JsonFormat
 
-object AltLibraryManagementCodec extends LibraryManagementCodec {
+object AltLibraryManagementCodec extends IvyLibraryManagementCodec {
   type In0 = ModuleSettings :+: UpdateConfiguration :+: HNil
   type In = IvyConfiguration :+: In0
 
@@ -37,33 +37,31 @@ object AltLibraryManagementCodec extends LibraryManagementCodec {
                  SftpRepository,
                  RawRepository]
 
-  type InlineIvyHL = (IvyPaths :+: Vector[Resolver] :+: Vector[Resolver] :+: Vector[
+  type InlineIvyHL = (Option[IvyPaths] :+: Vector[Resolver] :+: Vector[Resolver] :+: Vector[
     ModuleConfiguration] :+: Vector[String] :+: Boolean :+: HNil)
   def inlineIvyToHL(i: InlineIvyConfiguration): InlineIvyHL = (
     i.paths :+: i.resolvers :+: i.otherResolvers :+: i.moduleConfigurations :+:
       i.checksums :+: i.managedChecksums :+: HNil
   )
 
-  type ExternalIvyHL = PlainFileInfo :+: Array[Byte] :+: HNil
+  type ExternalIvyHL = Option[PlainFileInfo] :+: Array[Byte] :+: HNil
   def externalIvyToHL(e: ExternalIvyConfiguration): ExternalIvyHL =
-    FileInfo.exists(e.baseDirectory) :+: Hash.contentsIfLocal(e.uri) :+: HNil
+    e.baseDirectory.map(FileInfo.exists.apply) :+: e.uri
+      .map(Hash.contentsIfLocal)
+      .getOrElse(Array.empty) :+: HNil
 
   // Redefine to use a subset of properties, that are serialisable
   override lazy implicit val InlineIvyConfigurationFormat: JsonFormat[InlineIvyConfiguration] = {
     def hlToInlineIvy(i: InlineIvyHL): InlineIvyConfiguration = {
-      val (paths :+: resolvers :+: otherResolvers :+: moduleConfigurations :+: localOnly
-        :+: checksums :+: HNil) = i
-      InlineIvyConfiguration(None,
-                             IO.createTemporaryDirectory,
-                             NullLogger,
-                             UpdateOptions(),
-                             paths,
-                             resolvers,
-                             otherResolvers,
-                             moduleConfigurations,
-                             localOnly,
-                             checksums,
-                             None)
+      val (paths :+: resolvers :+: otherResolvers :+: moduleConfigurations :+: checksums
+        :+: managedChecksums :+: HNil) = i
+      InlineIvyConfiguration()
+        .withPaths(paths)
+        .withResolvers(resolvers)
+        .withOtherResolvers(otherResolvers)
+        .withModuleConfigurations(moduleConfigurations)
+        .withManagedChecksums(managedChecksums)
+        .withChecksums(checksums)
     }
 
     projectFormat[InlineIvyConfiguration, InlineIvyHL](inlineIvyToHL, hlToInlineIvy)
@@ -76,11 +74,12 @@ object AltLibraryManagementCodec extends LibraryManagementCodec {
       val baseDirectory :+: _ /* uri */ :+: HNil = e
       ExternalIvyConfiguration(
         None,
-        baseDirectory.file,
-        NullLogger,
+        Some(NullLogger),
         UpdateOptions(),
-        IO.createTemporaryDirectory.toURI /* the original uri is destroyed.. */,
-        Vector.empty)
+        baseDirectory.map(_.file),
+        None /* the original uri is destroyed.. */,
+        Vector.empty
+      )
     }
 
     projectFormat[ExternalIvyConfiguration, ExternalIvyHL](externalIvyToHL, hlToExternalIvy)

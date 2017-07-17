@@ -4,6 +4,7 @@ import org.scalacheck._
 import org.scalacheck.Arbitrary._
 import Prop._
 import sbt.librarymanagement._
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 class CacheIvyTest extends Properties("CacheIvy") {
   import sbt.util.{ CacheStore, SingletonCache }
@@ -11,8 +12,6 @@ class CacheIvyTest extends Properties("CacheIvy") {
 
   import sjsonnew._
   import sjsonnew.support.scalajson.unsafe.Converter
-
-  import scalajson.ast.unsafe.JValue
 
   private class InMemoryStore(converter: SupportConverter[JValue]) extends CacheStore {
     private var content: JValue = _
@@ -46,14 +45,20 @@ class CacheIvyTest extends Properties("CacheIvy") {
       eq(out, m) :| s"Expected: ${str(m)}" :| s"Got: ${str(out)}"
   }
 
-  implicit val arbExclusionRule: Arbitrary[ExclusionRule] = Arbitrary(
+  implicit val arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(
+    for {
+      n <- Gen.alphaStr
+    } yield ConfigRef(n)
+  )
+
+  implicit val arbExclusionRule: Arbitrary[InclExclRule] = Arbitrary(
     for {
       o <- Gen.alphaStr
       n <- Gen.alphaStr
       a <- Gen.alphaStr
       v <- arbCrossVersion.arbitrary
-      cs <- arbitrary[List[String]]
-    } yield ExclusionRule(o, n, a, cs.toVector, v)
+      cs <- arbitrary[List[ConfigRef]]
+    } yield InclExclRule(o, n, a, cs.toVector, v)
   )
 
   implicit val arbCrossVersion: Arbitrary[CrossVersion] = Arbitrary {
@@ -78,8 +83,8 @@ class CacheIvyTest extends Properties("CacheIvy") {
       isTransitive <- arbitrary[Boolean]
       isForce <- arbitrary[Boolean]
       explicitArtifacts <- Gen.listOf(arbitrary[Artifact])
-      exclusions <- Gen.listOf(arbitrary[ExclusionRule])
-      inclusions <- Gen.listOf(arbitrary[InclusionRule])
+      exclusions <- Gen.listOf(arbitrary[InclExclRule])
+      inclusions <- Gen.listOf(arbitrary[InclExclRule])
       extraAttributes <- Gen.mapOf(arbitrary[(String, String)])
       crossVersion <- arbitrary[CrossVersion]
     } yield

@@ -140,7 +140,7 @@ object EvaluateTaskConfig {
 final case class PluginData(
     dependencyClasspath: Seq[Attributed[File]],
     definitionClasspath: Seq[Attributed[File]],
-    resolvers: Option[Seq[Resolver]],
+    resolvers: Option[Vector[Resolver]],
     report: Option[UpdateReport],
     scalacOptions: Seq[String]
 ) {

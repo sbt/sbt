@@ -7,15 +7,15 @@ import sbt.internal.util.HNil
 import sbt.internal.util.Types._
 import sbt.internal.util.HListFormats._
 import sbt.librarymanagement._
+import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
-import sbt.util.CacheImplicits._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 
-object LibraryManagement {
+private[sbt] object LibraryManagement {
 
   private type UpdateInputs = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 
-  private[sbt] def cachedUpdate(
+  def cachedUpdate(
       cacheStoreFactory: CacheStoreFactory,
       label: String,
       module: IvySbt#Module,
@@ -25,7 +25,6 @@ object LibraryManagement {
       force: Boolean,
       depsUpdated: Boolean,
       uwConfig: UnresolvedWarningConfiguration,
-      logicalClock: LogicalClock,
       depDir: Option[File],
       ewo: EvictionWarningOptions,
       mavenStyle: Boolean,
@@ -40,7 +39,7 @@ object LibraryManagement {
       log.info(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
         //try {
-        IvyActions.updateEither(module, updateConfig, uwConfig, logicalClock, depDir, log)
+        IvyActions.updateEither(module, updateConfig, uwConfig, /*logicalClock, depDir,*/ log)
       // } catch {
       //   case e: Throwable =>
       //     e.printStackTrace
@@ -117,10 +116,39 @@ object LibraryManagement {
     val settings = module.moduleSettings
     val outStore = cacheStoreFactory.make("output")
     val handler = if (skip && !force) skipResolve(outStore) else doResolve(outStore)
-    handler(ivyConfig :+: settings :+: updateConfig :+: HNil)
+    // Remove clock for caching purpose
+    val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)
+    handler(ivyConfig :+: settings :+: withoutClock :+: HNil)
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
     stamps.get(file).forall(_ == file.lastModified)
 
+  private[sbt] def transitiveScratch(
+      lm: DependencyResolution,
+      label: String,
+      config: GetClassifiersConfiguration,
+      uwconfig: UnresolvedWarningConfiguration,
+      log: Logger
+  ): Either[UnresolvedWarning, UpdateReport] = {
+    import config.{ updateConfiguration => c, module => mod }
+    import mod.{ id, dependencies => deps, scalaModuleInfo }
+    val base = restrictedCopy(id, true).withName(id.name + "$" + label)
+    val module = lm.moduleDescriptor(base, deps, scalaModuleInfo)
+    val report = lm.update(module, c, uwconfig, log) match {
+      case Right(r) => r
+      case Left(w) =>
+        throw w.resolveException
+    }
+    val newConfig = config
+      .withModule(mod.withDependencies(report.allModules))
+    lm.updateClassifiers(newConfig, uwconfig, Vector(), log)
+  }
+
+  private[sbt] def restrictedCopy(m: ModuleID, confs: Boolean) =
+    ModuleID(m.organization, m.name, m.revision)
+      .withCrossVersion(m.crossVersion)
+      .withExtraAttributes(m.extraAttributes)
+      .withConfigurations(if (confs) m.configurations else None)
+      .branch(m.branchName)
 }

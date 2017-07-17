@@ -69,7 +69,7 @@ object GlobalPlugin {
       GlobalPluginData(projectID.value,
                        projectDependencies.value,
                        depMap,
-                       resolvers.value,
+                       resolvers.value.toVector,
                        (fullClasspath in Runtime).value,
                        (prods ++ intcp).distinct)(updateReport)
     }
@@ -102,7 +102,7 @@ object GlobalPlugin {
 final case class GlobalPluginData(projectID: ModuleID,
                                   dependencies: Seq[ModuleID],
                                   descriptors: Map[ModuleRevisionId, ModuleDescriptor],
-                                  resolvers: Seq[Resolver],
+                                  resolvers: Vector[Resolver],
                                   fullClasspath: Classpath,
                                   internalClasspath: Classpath)(val updateReport: UpdateReport)
 final case class GlobalPlugin(data: GlobalPluginData,

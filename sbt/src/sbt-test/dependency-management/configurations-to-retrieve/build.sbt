@@ -1,4 +1,4 @@
-configurationsToRetrieve := Some(Set(Compile))
+configurationsToRetrieve := Some(Vector(Compile))
 
 retrieveManaged := true
 
