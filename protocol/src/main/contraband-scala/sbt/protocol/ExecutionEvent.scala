@@ -16,7 +16,7 @@ final class ExecutionEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "ExecutionEvent".##) + success.##) + commandLine.##)
+    37 * (37 * (37 * (17 + "sbt.protocol.ExecutionEvent".##) + success.##) + commandLine.##)
   }
   override def toString: String = {
     "ExecutionEvent(" + success + ", " + commandLine + ")"

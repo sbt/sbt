@@ -14,7 +14,7 @@ final class TestStringEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + "TestStringEvent".##) + value.##)
+    37 * (37 * (17 + "sbt.protocol.testing.TestStringEvent".##) + value.##)
   }
   override def toString: String = {
     value

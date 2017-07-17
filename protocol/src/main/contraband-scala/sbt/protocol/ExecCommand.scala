@@ -16,7 +16,7 @@ final class ExecCommand private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "ExecCommand".##) + commandLine.##) + execId.##)
+    37 * (37 * (37 * (17 + "sbt.protocol.ExecCommand".##) + commandLine.##) + execId.##)
   }
   override def toString: String = {
     "ExecCommand(" + commandLine + ", " + execId + ")"

@@ -15,7 +15,7 @@ final class StartTestGroupEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + "StartTestGroupEvent".##) + name.##)
+    37 * (37 * (17 + "sbt.protocol.testing.StartTestGroupEvent".##) + name.##)
   }
   override def toString: String = {
     "StartTestGroupEvent(" + name + ")"

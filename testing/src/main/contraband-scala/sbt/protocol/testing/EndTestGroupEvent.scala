@@ -16,7 +16,7 @@ final class EndTestGroupEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "EndTestGroupEvent".##) + name.##) + result.##)
+    37 * (37 * (37 * (17 + "sbt.protocol.testing.EndTestGroupEvent".##) + name.##) + result.##)
   }
   override def toString: String = {
     "EndTestGroupEvent(" + name + ", " + result + ")"

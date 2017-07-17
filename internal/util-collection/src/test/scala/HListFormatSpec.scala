@@ -2,7 +2,7 @@ package sbt
 package internal
 package util
 
-import scalajson.ast.unsafe._
+import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, BasicJsonProtocol._, support.scalajson.unsafe._
 import HListFormats._
 

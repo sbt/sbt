@@ -14,7 +14,7 @@ override def equals(o: Any): Boolean = o match {
   case _ => false
 }
 override def hashCode: Int = {
-  37 * (17 + "TestInitEvent".##)
+  37 * (17 + "sbt.protocol.testing.TestInitEvent".##)
 }
 override def toString: String = {
   "TestInitEvent()"
