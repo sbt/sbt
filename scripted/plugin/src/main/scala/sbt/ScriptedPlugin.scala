@@ -9,7 +9,7 @@ import complete.{ Parser, DefaultParsers }
 import classpath.ClasspathUtilities
 import java.lang.reflect.{ InvocationTargetException, Method }
 import java.util.Properties
-import CrossVersion.binarySbtVersion
+import CrossVersion.partialVersion
 
 object ScriptedPlugin extends Plugin {
   def scriptedConf = config("scripted-sbt") hide
@@ -101,20 +101,18 @@ object ScriptedPlugin extends Plugin {
     scriptedSbt := (sbtVersion in pluginCrossBuild).value,
     sbtLauncher <<= getJars(scriptedLaunchConf).map(_.get.head),
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
-    libraryDependencies ++= {
-      binarySbtVersion(scriptedSbt.value) match {
-        case "0.13" =>
-          Seq(
-            "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
-            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
-          )
-        case sv if sv startsWith "1.0." =>
-          Seq(
-            "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
-            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
-          )
-      }
-    },
+    libraryDependencies ++= (partialVersion(scriptedSbt.value) match {
+      case Some((0, 13)) =>
+        Seq(
+          "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
+          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
+        )
+      case Some((1, _)) =>
+        Seq(
+          "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
+          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
+        )
+    }),
     scriptedBufferLog := true,
     scriptedClasspath := getJars(scriptedConf).value,
     scriptedTests <<= scriptedTestsTask,
