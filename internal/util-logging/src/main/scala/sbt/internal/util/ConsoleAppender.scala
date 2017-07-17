@@ -363,7 +363,7 @@ class ConsoleAppender private[ConsoleAppender] (
     out.lockObject.synchronized {
       message.lines.foreach { line =>
         val labeledLine = s"$RESET[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
-        writeLine(labeledLine)
+        write(labeledLine)
       }
     }
 
@@ -371,11 +371,8 @@ class ConsoleAppender private[ConsoleAppender] (
     val cleanedMsg =
       if (!useFormat) EscHelpers.removeEscapeSequences(msg)
       else msg
-    out.print(cleanedMsg)
+    out.println(cleanedMsg)
   }
-
-  private def writeLine(line: String): Unit =
-    write(line + EOL)
 
   private def appendMessage(level: Level.Value, msg: Message): Unit =
     msg match {
