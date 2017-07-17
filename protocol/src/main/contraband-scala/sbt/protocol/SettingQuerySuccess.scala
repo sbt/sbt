@@ -15,7 +15,7 @@ final class SettingQuerySuccess private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "SettingQuerySuccess".##) + value.##) + contentType.##)
+    37 * (37 * (37 * (17 + "sbt.protocol.SettingQuerySuccess".##) + value.##) + contentType.##)
   }
   override def toString: String = {
     "SettingQuerySuccess(" + value + ", " + contentType + ")"

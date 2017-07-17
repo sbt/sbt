@@ -18,7 +18,7 @@ final class ExecStatusEvent private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (17 + "ExecStatusEvent".##) + status.##) + channelName.##) + execId.##) + commandQueue.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.protocol.ExecStatusEvent".##) + status.##) + channelName.##) + execId.##) + commandQueue.##)
   }
   override def toString: String = {
     "ExecStatusEvent(" + status + ", " + channelName + ", " + execId + ", " + commandQueue + ")"

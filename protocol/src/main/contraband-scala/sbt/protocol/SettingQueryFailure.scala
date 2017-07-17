@@ -14,7 +14,7 @@ final class SettingQueryFailure private (
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (17 + "SettingQueryFailure".##) + message.##)
+    37 * (37 * (17 + "sbt.protocol.SettingQueryFailure".##) + message.##)
   }
   override def toString: String = {
     "SettingQueryFailure(" + message + ")"

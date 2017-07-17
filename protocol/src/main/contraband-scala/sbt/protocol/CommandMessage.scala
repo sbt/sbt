@@ -15,7 +15,7 @@ override def equals(o: Any): Boolean = o match {
   case _ => false
 }
 override def hashCode: Int = {
-  37 * (17 + "CommandMessage".##)
+  37 * (17 + "sbt.protocol.CommandMessage".##)
 }
 override def toString: String = {
   "CommandMessage()"
