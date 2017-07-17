@@ -1,7 +1,7 @@
 lazy val root = (project in file("."))
   .settings(
-    organization := "org.scala-sbt",
-    version := "1.0-SNAPSHOT",
+    organization := "com.example",
+    version := "1.0",
     name := "define-color",
     projectID := {
       val old = projectID.value
