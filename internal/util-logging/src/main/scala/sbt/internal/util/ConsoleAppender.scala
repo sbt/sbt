@@ -371,7 +371,7 @@ class ConsoleAppender private[ConsoleAppender] (
     val cleanedMsg =
       if (!useFormat) EscHelpers.removeEscapeSequences(msg)
       else msg
-    out.println(cleanedMsg)
+    out.print(cleanedMsg)
   }
 
   private def writeLine(line: String): Unit =
