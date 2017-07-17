@@ -362,7 +362,7 @@ class ConsoleAppender private[ConsoleAppender] (
   private def appendLog(labelColor: String, label: String, messageColor: String, message: String): Unit =
     out.lockObject.synchronized {
       message.lines.foreach { line =>
-        val labeledLine = s"[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
+        val labeledLine = s"$RESET[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
         writeLine(labeledLine)
       }
     }
