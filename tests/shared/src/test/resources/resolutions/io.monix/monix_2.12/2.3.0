@@ -1,0 +1,8 @@
+io.monix:monix-eval_2.12:2.3.0:compile
+io.monix:monix-execution_2.12:2.3.0:compile
+io.monix:monix-reactive_2.12:2.3.0:compile
+io.monix:monix-types_2.12:2.3.0:compile
+io.monix:monix_2.12:2.3.0:compile
+org.jctools:jctools-core:2.0.1:compile
+org.reactivestreams:reactive-streams:1.0.0:compile
+org.scala-lang:scala-library:2.12.2:compile

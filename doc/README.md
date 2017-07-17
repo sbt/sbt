@@ -180,13 +180,13 @@ val fetch = Fetch.from(repositories, Cache.fetch())
 
 Then run the resolution per-se,
 ```tut:silent
-val resolution = start.process.run(fetch).run
+val resolution = start.process.run(fetch).unsafePerformSync
 ```
 That will fetch and use metadata.
 
 Check for errors in
 ```tut:silent
-val errors: Seq[(Dependency, Seq[String])] = resolution.errors
+val errors: Seq[((Module, String), Seq[String])] = resolution.metadataErrors
 ```
 These would mean that the resolution wasn't able to get metadata about some dependencies.
 
@@ -198,7 +198,7 @@ import scalaz.concurrent.Task
 
 val localArtifacts: Seq[FileError \/ File] = Task.gatherUnordered(
   resolution.artifacts.map(Cache.file(_).run)
-).run
+).unsafePerformSync
 ```
 
 
@@ -530,7 +530,7 @@ resolution is particularly complex, in which case `maxIterations` could be incre
 
 Let's run the whole resolution,
 ```tut:silent
-val resolution = start.process.run(fetch).run
+val resolution = start.process.run(fetch).unsafePerformSync
 ```
 
 To get additional feedback during the resolution, we can give the `Cache.default` method above
@@ -541,7 +541,7 @@ you can supply your own thread pool to `Cache.default`.
 
 Now that the resolution is done, we can check for errors in
 ```tut:silent
-val errors: Seq[(Dependency, Seq[String])] = resolution.errors
+val errors: Seq[((Module, String), Seq[String])] = resolution.metadataErrors
 ```
 These would mean that the resolution wasn't able to get metadata about some dependencies.
 
@@ -559,7 +559,7 @@ import scalaz.concurrent.Task
 
 val localArtifacts: Seq[FileError \/ File] = Task.gatherUnordered(
   resolution.artifacts.map(Cache.file(_).run)
-).run
+).unsafePerformSync
 ```
 
 We're using the `Cache.file` method, that can also be given a `Logger` (for more feedback) and a custom thread pool.

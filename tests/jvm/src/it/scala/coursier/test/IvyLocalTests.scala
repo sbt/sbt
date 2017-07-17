@@ -46,7 +46,7 @@ object IvyLocalTests extends TestSuite {
           extraRepos = extraRepos
         ))
 
-        val artifacts = res.dependencyArtifacts.filter(_._2.`type` == "jar").map(_._2.url)
+        val artifacts = res.dependencyArtifacts(withOptional = true).filter(_._2.`type` == "jar").map(_._2.url)
         val anyJavadoc = artifacts.exists(_.contains("-javadoc"))
         val anySources = artifacts.exists(_.contains("-sources"))
 

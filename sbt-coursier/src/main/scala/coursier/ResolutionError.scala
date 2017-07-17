@@ -3,7 +3,8 @@ package coursier
 import scala.collection.mutable.ArrayBuffer
 
 sealed abstract class ResolutionError extends Product with Serializable {
-  def cause: Option[Throwable] = this match {
+
+  final def cause: Option[Throwable] = this match {
     case ResolutionError.MaximumIterationsReached => None
     case ResolutionError.UnknownException(ex) => Some(ex)
     case ResolutionError.UnknownDownloadException(ex) => Some(ex)
@@ -12,10 +13,10 @@ sealed abstract class ResolutionError extends Product with Serializable {
     case _: ResolutionError.DownloadErrors => None
   }
 
-  def message: String = this match {
+  final def message: String = this match {
     case ResolutionError.MaximumIterationsReached =>
       "Maximum number of iteration of dependency resolution reached"
-    case ResolutionError.UnknownException(ex) =>
+    case ResolutionError.UnknownException(_) =>
       "Exception during resolution"
     case ResolutionError.UnknownDownloadException(ex) =>
       "Error while downloading / verifying artifacts"
@@ -29,10 +30,10 @@ sealed abstract class ResolutionError extends Product with Serializable {
       err.description(verbose = true)
   }
 
-  def exception(): ResolutionException =
+  final def exception(): ResolutionException =
     new ResolutionException(this)
 
-  def throwException(): Nothing =
+  final def throwException(): Nothing =
     throw exception()
 }
 
@@ -49,40 +50,44 @@ object ResolutionError {
       def grouped(errs: Seq[String]) =
         errs
           .map { s =>
-            val idx = s.indexOf(": ")
-            if (idx >= 0)
-              (s.take(idx), s.drop(idx + ": ".length))
-            else
-              ("", s)
+            s.split(": ", 2) match {
+              case Array(k, v) => (k, v)
+              case _ => ("", s)
+            }
           }
           .groupBy(_._1)
           .mapValues(_.map(_._2))
           .toVector
           .sortBy(_._1)
 
-      val lines = new ArrayBuffer[String]
 
-      lines += s"Encountered ${errors.length} error(s) in dependency resolution:"
+      val lines = new ArrayBuffer[String]
+      def print(s: String, indentLevel: Int = 0) =
+        lines += "  " * indentLevel * 2 + s
+      def result = lines.mkString("\n")
+
+
+      print(s"Encountered ${errors.length} error(s) in dependency resolution:")
 
       for (((mod, ver), errs) <- errors) {
-        lines += s"  $mod:$ver:"
+        print(s"$mod:$ver:", 1)
 
         for ((type0, errs0) <- grouped(errs))
           if (type0.isEmpty)
             for (err <- errs0)
-              lines += s"    $err"
+              print(err, 2)
           else
             errs0 match {
               case Seq(err) =>
-                lines += s"    $type0: $err"
+                print(s"$type0: $err", 2)
               case _ =>
-                lines += s"    $type0:"
+                print(s"$type0:", 2)
                 for (err <- errs0)
-                  lines += s"      $err"
+                  print(err, 3)
             }
       }
 
-      lines.mkString("\n")
+      result
     }
   }
 
@@ -96,16 +101,21 @@ object ResolutionError {
         .toVector
         .sortBy(_._1)
 
-      val b = new ArrayBuffer[String]
+
+      val lines = new ArrayBuffer[String]
+      def print(s: String, indentLevel: Int = 0) =
+        lines += "  " * indentLevel * 2 + s
+      def result = lines.mkString("\n")
+
 
       for ((type0, errors) <- groupedArtifactErrors) {
-        b += s"${errors.size} $type0"
+        print(s"${errors.size} $type0")
         if (verbose)
           for (err <- errors)
-            b += "  " + err
+            print(err, 1)
       }
 
-      b.mkString("\n")
+      result
     }
   }
 }
