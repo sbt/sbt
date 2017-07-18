@@ -70,7 +70,7 @@ object IvyTests extends TestSuite {
       val mainJarUrl = repoBase + "com.example/a_2.11/0.1.0-SNAPSHOT/jars/a_2.11.jar"
       val testJarUrl = repoBase + "com.example/a_2.11/0.1.0-SNAPSHOT/jars/a_2.11-tests.jar"
 
-      * - CentralTests.withArtifacts(
+      "no conf or classifier" - CentralTests.withArtifacts(
         dep = dep,
         artifactType = "jar",
         extraRepos = Seq(repo),
@@ -83,7 +83,7 @@ object IvyTests extends TestSuite {
           throw new Exception(s"Unexpected number of artifacts\n${other.mkString("\n")}")
       }
 
-      * - CentralTests.withArtifacts(
+      "test conf" - CentralTests.withArtifacts(
         dep = dep.copy(configuration = "test"),
         artifactType = "jar",
         extraRepos = Seq(repo),
@@ -98,6 +98,40 @@ object IvyTests extends TestSuite {
           assert(urls == Set(mainJarUrl, testJarUrl))
         case other =>
           throw new Exception(s"Unexpected number of artifacts\n${other.mkString("\n")}")
+      }
+
+      "tests classifier" - {
+        val testsDep = dep.copy(attributes = Attributes("jar", "tests"))
+
+        * - CentralTests.withArtifacts(
+          deps = Set(dep, testsDep),
+          artifactType = "jar",
+          extraRepos = Seq(repo),
+          classifierOpt = None,
+          optional = true
+        ) {
+          case Seq(artifact1, artifact2) =>
+            val urls = Set(
+              artifact1.url,
+              artifact2.url
+            )
+            assert(urls == Set(mainJarUrl, testJarUrl))
+          case other =>
+            throw new Exception(s"Unexpected number of artifacts\n${other.mkString("\n")}")
+        }
+
+        * - CentralTests.withArtifacts(
+          dep = testsDep,
+          artifactType = "jar",
+          extraRepos = Seq(repo),
+          classifierOpt = None,
+          optional = true
+        ) {
+          case Seq(artifact) =>
+            assert(artifact.url == testJarUrl)
+          case other =>
+            throw new Exception(s"Unexpected number of artifacts\n${other.mkString("\n")}")
+        }
       }
     }
   }

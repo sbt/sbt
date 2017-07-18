@@ -73,13 +73,32 @@ final case class IvyRepository(
           val retained =
             overrideClassifiers match {
               case None =>
-                project.publications.collect {
-                  case (conf, p)
-                    if conf == "*" ||
-                       conf == dependency.configuration ||
-                       project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
-                    p
-                }
+
+                // FIXME Some duplication with what's done in MavenSource
+
+                if (dependency.attributes.classifier.nonEmpty)
+                  // FIXME We're ignoring dependency.attributes.`type` in this case
+                  project.publications.collect {
+                    case (_, p) if p.classifier == dependency.attributes.classifier =>
+                      p
+                  }
+                else if (dependency.attributes.`type`.nonEmpty)
+                  project.publications.collect {
+                    case (_, p)
+                      if p.classifier.isEmpty && (
+                        p.`type` == dependency.attributes.`type` ||
+                          (p.ext == dependency.attributes.`type` && project.packagingOpt.toSeq.contains(p.`type`)) // wow
+                        ) =>
+                      p
+                  }
+                else
+                  project.publications.collect {
+                    case (conf, p)
+                      if conf == "*" ||
+                         conf == dependency.configuration ||
+                         project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
+                      p
+                  }
               case Some(classifiers) =>
                 val classifiersSet = classifiers.toSet
                 project.publications.collect {
