@@ -5,6 +5,8 @@ import sbt.Keys._
 
 import SbtCompatibility._
 
+import coursier.core.ResolutionProcess
+
 object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
@@ -163,7 +165,7 @@ object CoursierPlugin extends AutoPlugin {
 
   override lazy val buildSettings = super.buildSettings ++ Seq(
     coursierParallelDownloads := 6,
-    coursierMaxIterations := 50,
+    coursierMaxIterations := ResolutionProcess.defaultMaxIterations,
     coursierChecksums := Seq(Some("SHA-1"), None),
     coursierArtifactsChecksums := Seq(None),
     coursierCachePolicies := CachePolicy.default,
