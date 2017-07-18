@@ -69,15 +69,14 @@ object CoursierPlugin extends AutoPlugin {
     shadedConfigOpt: Option[(String, String)]
   ): Setting[Task[T]] =
     // not 100% sure that make writeFiles below happen before the actions triggered by task.value...
-    task := {
+    task := task.dependsOn(Def.task {
       val currentProject = {
         val proj = coursierProject.value
         val publications = coursierPublications.value
         proj.copy(publications = publications)
       }
       IvyXml.writeFiles(currentProject, shadedConfigOpt, ivySbt.value, streams.value.log)
-      task.value
-    }
+    }).value
 
   def coursierSettings(
     shadedConfigOpt: Option[(String, String)],
@@ -96,8 +95,8 @@ object CoursierPlugin extends AutoPlugin {
       withClassifiers = true,
       sbtClassifiers = true
     ).value,
-    makeIvyXmlBefore(deliverLocalConfiguration, shadedConfigOpt),
-    makeIvyXmlBefore(deliverConfiguration, shadedConfigOpt),
+    makeIvyXmlBefore(publishLocalConfiguration, shadedConfigOpt),
+    makeIvyXmlBefore(publishConfiguration, shadedConfigOpt),
     update := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = false
@@ -128,7 +127,7 @@ object CoursierPlugin extends AutoPlugin {
       coursierResolutions
         .value
         .collectFirst {
-          case (configs, res) if (configs(config)) =>
+          case (configs, res) if configs(config) =>
             res
         }
         .getOrElse {
@@ -149,13 +148,31 @@ object CoursierPlugin extends AutoPlugin {
         if (names("sources"))
           None
         else
-          Some(Configuration("sources", "", isPublic = true, extendsConfigs = Vector.empty, transitive = false))
+          Some(
+            Configuration.of(
+              id = "Sources",
+              name = "sources",
+              description = "",
+              isPublic = true,
+              extendsConfigs = Vector.empty,
+              transitive = false
+            )
+          )
 
       val extraDocs =
         if (names("docs"))
           None
         else
-          Some(Configuration("docs", "", isPublic = true, extendsConfigs = Vector.empty, transitive = false))
+          Some(
+            Configuration.of(
+              id = "Docs",
+              name = "docs",
+              description = "",
+              isPublic = true,
+              extendsConfigs = Vector.empty,
+              transitive = false
+            )
+          )
 
       confs ++ extraSources.toSeq ++ extraDocs.toSeq
     }

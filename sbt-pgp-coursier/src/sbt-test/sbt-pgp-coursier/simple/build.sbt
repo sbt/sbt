@@ -9,7 +9,8 @@ check := {
   val configReport = report
     .configurations
     .find { confRep =>
-      confRep.configuration == "compile"
+      // .toString required with sbt 1.0 (ConfigRef -> String)
+      confRep.configuration.toString == "compile"
     }
     .getOrElse {
       sys.error("No configuration report found for configuration 'compile'")
