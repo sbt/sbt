@@ -1,0 +1,23 @@
+### Changes
+
+* Fix regressions that increased the number of iterations during resolution (and were possibly slowing resolutions, [#599])
+* Make Maven property handling more robust ([#599])
+
+* Allow to generate native launchers, e.g.
+```
+    $ coursier bootstrap -S -o native-test io.get-coursier.scala-native::sandbox_native0.3:0.3.0-coursier-1
+```
+generates a scala-native-based launcher (`native-test`) for... a hello world ([#598]).
+
+* Fix issue with classifiers and Ivy repositories, from the sbt plugin ([#609])
+* Ensure the API doesn't return optional artifacts if not asked to ([#606])
+
+
+[#598]: https://github.com/alexarchambault/coursier/pull/598
+[#599]: https://github.com/alexarchambault/coursier/pull/599
+[#606]: https://github.com/alexarchambault/coursier/pull/606
+[#609]: https://github.com/alexarchambault/coursier/pull/609
+
+### Non-backward compatible changes
+
+* None
