@@ -54,4 +54,5 @@ class ManagedLogger(
         new ObjectMessage(entry)
       )
     }
+  override def ansiCodesSupported = ConsoleAppender.formatEnabledInEnv
 }
