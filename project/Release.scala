@@ -354,7 +354,6 @@ object Release {
       setNextVersion,
       commitNextVersion,
       ReleaseStep(_.reload),
-      releaseStepCommand("mimaReportBinaryIssues"),
       pushChanges
     ),
     releasePublishArtifactsAction := PgpKeys.publishSigned.value
