@@ -16,6 +16,7 @@ object Mima {
     "1.0.0-RC4",
     "1.0.0-RC5",
     "1.0.0-RC6",
+    "1.0.0-RC7",
     "" // binary compatibility versions
   )
 
