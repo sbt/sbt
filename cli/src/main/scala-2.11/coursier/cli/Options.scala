@@ -3,6 +3,7 @@ package cli
 
 import caseapp.{ HelpMessage => Help, ValueDescription => Value, ExtraName => Short, _ }
 
+import coursier.core.ResolutionProcess
 import coursier.util.Parse
 
 final case class CommonOptions(
@@ -27,7 +28,7 @@ final case class CommonOptions(
     progress: Boolean = false,
   @Help("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
   @Short("N")
-    maxIterations: Int = 100,
+    maxIterations: Int = ResolutionProcess.defaultMaxIterations,
   @Help("Repository - for multiple repositories, separate with comma and/or add this option multiple times (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
   @Value("maven|sonatype:$repo|ivy2local|bintray:$org/$repo|bintray-ivy:$org/$repo|typesafe:ivy-$repo|typesafe:$repo|sbt-plugin:$repo|ivy:$pattern")
   @Short("r")

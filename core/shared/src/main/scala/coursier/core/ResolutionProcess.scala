@@ -11,7 +11,7 @@ import scalaz.Scalaz.{ToFunctorOps, ToTraverseOps, vectorInstance}
 sealed abstract class ResolutionProcess {
   def run[F[_]](
     fetch: Fetch.Metadata[F],
-    maxIterations: Int = 50
+    maxIterations: Int = ResolutionProcess.defaultMaxIterations
   )(implicit
     F: Monad[F]
   ): F[Resolution] =
@@ -154,6 +154,9 @@ final case class Done(resolution: Resolution) extends ResolutionProcess {
 }
 
 object ResolutionProcess {
+
+  def defaultMaxIterations: Int = 100
+
   def apply(resolution: Resolution): ResolutionProcess = {
     val resolution0 = resolution.nextIfNoMissing
 
