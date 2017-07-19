@@ -394,7 +394,7 @@ Welcome to the Ammonite Repl 0.7.0
 ### bootstrap
 
 The `bootstrap` generates tiny bootstrap launchers, able to pull their dependencies from
-repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/coursier/coursier/blob/master/project/generate-launcher.sh) with a command like
+repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/coursier/coursier/blob/master/scripts/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
     io.get-coursier:coursier-cli_2.11:1.0.0-RC7 \
@@ -717,7 +717,7 @@ Excluding `org.jboss.netty:netty` from the spark dependencies fixes it.
 
 #### On first launch, the coursier launcher downloads a 1.5+ MB JAR. Is it possible to have a standalone launcher, that would not need to download things on first launch?
 
-Run `project/generate-launcher.sh -s` from the root of the coursier sources. That will generate a new (bigger) `coursier` launcher, that needs not to download anything on first launch.
+Run `scripts/generate-launcher.sh -s` from the root of the coursier sources. That will generate a new (bigger) `coursier` launcher, that needs not to download anything on first launch.
 
 #### How can the launcher be run on Windows, or manually with the `java` program?
 
