@@ -175,7 +175,10 @@ object CoursierPlugin extends AutoPlugin {
           )
 
       confs ++ extraSources.toSeq ++ extraDocs.toSeq
-    }
+    },
+    // Tests artifacts from Maven repositories are given this type.
+    // Adding it here so that these work straightaway.
+    classpathTypes += "test-jar"
   )
 
   override lazy val buildSettings = super.buildSettings ++ Seq(
