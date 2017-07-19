@@ -4,6 +4,9 @@ import scala.language.implicitConversions
 
 object SbtCompatibility {
 
+  final case class ConfigRef(name: String) extends AnyVal
+  implicit def configRefToString(ref: ConfigRef): String = ref.name
+
   val GetClassifiersModule = sbt.GetClassifiersModule
   type GetClassifiersModule = sbt.GetClassifiersModule
 
@@ -45,12 +48,29 @@ object SbtCompatibility {
   implicit class ConfigurationOps(val config: sbt.Configuration) extends AnyVal {
     def withExtendsConfigs(extendsConfigs: Vector[sbt.Configuration]): sbt.Configuration =
       config.copy(extendsConfigs = extendsConfigs.toList)
+    def toConfigRef: ConfigRef =
+      ConfigRef(config.name)
+  }
+
+  implicit def configurationToConfigRef(config: sbt.Configuration): ConfigRef =
+    config.toConfigRef
+
+  implicit class ConfigurationCompanionOps(val companion: sbt.Configuration.type) extends AnyVal {
+    def of(
+      id: String,
+      name: String,
+      description: String,
+      isPublic: Boolean,
+      extendsConfigs: Vector[sbt.Configuration],
+      transitive: Boolean
+    ): sbt.Configuration =
+      sbt.Configuration(name, description, isPublic, extendsConfigs.toList, transitive)
   }
 
   implicit class CallerCompanionOps(val companion: sbt.Caller.type) extends AnyVal {
     def apply(
       caller: sbt.ModuleID,
-      callerConfigurations: Vector[String],
+      callerConfigurations: Vector[ConfigRef],
       callerExtraAttributes: Map[String, String],
       isForceDependency: Boolean,
       isChangingDependency: Boolean,
@@ -59,7 +79,7 @@ object SbtCompatibility {
     ): sbt.Caller =
       new sbt.Caller(
         caller,
-        callerConfigurations,
+        callerConfigurations.map(_.name),
         callerExtraAttributes,
         isForceDependency,
         isChangingDependency,
@@ -116,5 +136,9 @@ object SbtCompatibility {
     configs.toList
   implicit def configListToVector(configs: List[sbt.Configuration]): Vector[sbt.Configuration] =
     configs.toVector
+
+  implicit class GetClassifiersModuleOps(val module: GetClassifiersModule) extends AnyVal {
+    def dependencies = module.modules
+  }
 
 }

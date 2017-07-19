@@ -178,59 +178,6 @@ object Settings {
     )
   }
 
-  lazy val scripted100M6Workaround = {
-
-    // see https://github.com/sbt/sbt/issues/3245#issuecomment-306045952
-
-    ScriptedPlugin.scripted := Def.inputTask {
-
-      val args = ScriptedPlugin
-        .asInstanceOf[{
-          def scriptedParser(f: File): complete.Parser[Seq[String]]
-        }]
-        .scriptedParser(sbtTestDirectory.value)
-        .parsed
-
-      val prereq: Unit = scriptedDependencies.value
-      val scriptedTests = ScriptedPlugin.scriptedTests.value
-
-      val testDir = sbtTestDirectory.value
-      val log = scriptedBufferLog.value
-      val args0 = args.toArray
-      val launcher = sbtLauncher.value
-      val opts = scriptedLaunchOpts.value.toArray
-
-      val sbtv = sbtVersion.in(pluginCrossBuild).value
-
-      try {
-        if(sbtv == "1.0.0-M6")
-          scriptedTests.asInstanceOf[{
-            def run(
-              x1: File,
-              x2: Boolean,
-              x3: Array[String],
-              x4: File,
-              x5: Array[String],
-              x6: java.util.List[File]
-            ): Unit
-          }].run(testDir, log, args0, launcher, opts, new java.util.ArrayList)
-        else
-          scriptedTests.asInstanceOf[{
-            def run(
-              x1: File,
-              x2: Boolean,
-              x3: Array[String],
-              x4: File,
-              x5: Array[String]
-            ): Unit
-          }].run(testDir, log, args0, launcher, opts)
-      } catch {
-        case e: java.lang.reflect.InvocationTargetException =>
-          throw e.getCause
-      }
-    }.evaluated
-  }
-
   lazy val plugin =
     javaScalaPluginShared ++
     divertThingsPlugin ++
@@ -262,7 +209,6 @@ object Settings {
 
         jar
       },
-      scripted100M6Workaround,
       scriptedLaunchOpts ++= Seq(
         "-Xmx1024M",
         "-Dplugin.version=" + version.value,
@@ -279,7 +225,7 @@ object Settings {
       sbtVersion := {
         scalaBinaryVersion.value match {
           case "2.10" => "0.13.8"
-          case "2.12" => "1.0.0-M6"
+          case "2.12" => "1.0.0-RC2"
           case _ => sbtVersion.value
         }
       },

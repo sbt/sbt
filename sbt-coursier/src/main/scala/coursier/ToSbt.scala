@@ -74,7 +74,7 @@ object ToSbt {
       case (dependee, dependeeProj) =>
         Caller(
           ToSbt.moduleId(dependee, dependeeProj.properties.toMap),
-          dependeeProj.configurations.keys.toVector,
+          dependeeProj.configurations.keys.toVector.map(ConfigRef(_)),
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
           isForceDependency = false,
@@ -101,7 +101,7 @@ object ToSbt {
       .withExtraAttributes(dependency.module.attributes ++ project.properties)
       // .withIsDefault(None)
       // .withBranch(None)
-      .withConfigurations(project.configurations.keys.toVector)
+      .withConfigurations(project.configurations.keys.toVector.map(ConfigRef(_)))
       .withLicenses(project.info.licenses.toVector)
       .withCallers(callers.toVector)
   }
@@ -224,7 +224,7 @@ object ToSbt {
         )
 
         ConfigurationReport(
-          config,
+          ConfigRef(config),
           reports.toVector,
           Vector()
         )

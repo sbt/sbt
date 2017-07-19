@@ -15,10 +15,24 @@ object ShadingPlugin extends AutoPlugin {
   override def requires = sbt.plugins.IvyPlugin
 
   private val baseSbtConfiguration = Compile
-  val Shading = Configuration("shading", "", isPublic = false, Vector(baseSbtConfiguration), transitive = true)
+  val Shading = Configuration.of(
+    id = "Shading",
+    name = "shading",
+    description = "",
+    isPublic = false,
+    Vector(baseSbtConfiguration),
+    transitive = true
+  )
 
   private val baseDependencyConfiguration = "compile"
-  val Shaded = Configuration("shaded", "", isPublic = true, Vector(), transitive = true)
+  val Shaded = Configuration.of(
+    id = "Shaded",
+    name = "shaded",
+    description = "",
+    isPublic = true,
+    Vector(),
+    transitive = true
+  )
 
   // make that a setting?
   val shadingNamespace = SettingKey[String]("shading-namespace")
