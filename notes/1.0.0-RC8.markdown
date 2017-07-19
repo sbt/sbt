@@ -1,0 +1,14 @@
+### Changes
+
+* Add support for sbt 1.0.0-RC2 ([#610])
+* Don't require adding `"test-jar"` to the `classpathTypes` setting to add test artifacts to the classpath ([#612])
+* Increase default maximum number of iterations in resolution in sbt plugin (set it to the same value as the CLI tools, 100, [#613])
+* Fix in compatibility API ([#614])
+
+
+
+[#610]: https://github.com/alexarchambault/coursier/pull/610
+[#612]: https://github.com/alexarchambault/coursier/pull/612
+[#613]: https://github.com/alexarchambault/coursier/pull/613
+[#614]: https://github.com/alexarchambault/coursier/pull/614
+
