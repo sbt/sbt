@@ -804,6 +804,23 @@ abstract class CentralTests extends TestSuite {
         val mainArtifactOpt = artifacts.find(_.url == mainUrl)
         assert(mainArtifactOpt.isEmpty)
       }
+
+      * - {
+        if (isActualCentral)
+          withArtifacts(Module("com.lihaoyi", "scalatags_2.12"), "0.6.2", "jar", transitive = true, optional = false) { artifacts =>
+
+            assert(artifacts.forall(!_.isOptional))
+
+            val urls = artifacts.map(_.url).toSet
+
+            val expectedUrls = Set(
+              "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.0/scala-library-2.12.0.jar",
+              "https://repo1.maven.org/maven2/com/lihaoyi/sourcecode_2.12/0.1.3/sourcecode_2.12-0.1.3.jar",
+              "https://repo1.maven.org/maven2/com/lihaoyi/scalatags_2.12/0.6.2/scalatags_2.12-0.6.2.jar"
+            )
+            assert(urls == expectedUrls)
+          }
+      }
     }
   }
 
