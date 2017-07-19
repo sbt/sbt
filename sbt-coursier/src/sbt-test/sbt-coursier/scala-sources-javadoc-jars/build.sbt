@@ -1,3 +1,6 @@
+
+import Compatibility._
+
 scalaVersion := appConfiguration.value.provider.scalaProvider.version
 
 lazy val updateClassifiersCheck = TaskKey[Unit]("updateClassifiersCheck")
@@ -5,7 +8,7 @@ lazy val updateClassifiersCheck = TaskKey[Unit]("updateClassifiersCheck")
 updateClassifiersCheck := {
 
   val configReport = updateClassifiers.value
-    .configuration("compile")
+    .configuration(Compile)
     .getOrElse {
       throw new Exception(
         "compile configuration not found in updateClassifiers report"
