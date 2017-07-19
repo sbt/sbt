@@ -1,4 +1,6 @@
 
+import Compatibility._
+
 lazy val noPomCheck = TaskKey[Unit]("noPomCheck")
 
 noPomCheck := {
@@ -6,7 +8,7 @@ noPomCheck := {
   val log = streams.value.log
 
   val configReport = update.value
-    .configuration("compile")
+    .configuration(Compile)
     .getOrElse {
       throw new Exception(
         "compile configuration not found in update report"

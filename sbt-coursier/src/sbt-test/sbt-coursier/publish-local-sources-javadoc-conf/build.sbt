@@ -1,4 +1,6 @@
 
+import Compatibility._
+
 val org = "io.get-coursier.scriptedtest"
 val ver = "0.1.0-SNAPSHOT"
 
@@ -25,13 +27,13 @@ lazy val shared = Seq(
     val updateReport = update.value
     val updateClassifiersReport = updateClassifiers.value
 
-    def artifacts(config: String, classifier: Option[String], useClassifiersReport: Boolean = false) = {
+    def artifacts(classifier: Option[String], useClassifiersReport: Boolean = false) = {
 
       val configReport = (if (useClassifiersReport) updateClassifiersReport else updateReport)
-        .configuration(config)
+        .configuration(Compile)
         .getOrElse {
           throw new Exception(
-            s"$config configuration not found in update report"
+            "Compile configuration not found in update report"
           )
         }
 
@@ -44,7 +46,7 @@ lazy val shared = Seq(
         }
 
       log.info(
-        s"Found ${artifacts.length} artifacts for config $config / classifier $classifier" +
+        s"Found ${artifacts.length} artifacts for config Compile / classifier $classifier" +
           (if (useClassifiersReport) " in classifiers report" else "")
       )
       for (a <- artifacts)
@@ -53,11 +55,11 @@ lazy val shared = Seq(
       artifacts
     }
 
-    val compileSourceArtifacts = artifacts("compile", Some("sources"))
-    val sourceArtifacts = artifacts("compile", Some("sources"), useClassifiersReport = true)
+    val compileSourceArtifacts = artifacts(Some("sources"))
+    val sourceArtifacts = artifacts(Some("sources"), useClassifiersReport = true)
 
-    val compileDocArtifacts = artifacts("compile", Some("javadoc"))
-    val docArtifacts = artifacts("compile", Some("javadoc"), useClassifiersReport = true)
+    val compileDocArtifacts = artifacts(Some("javadoc"))
+    val docArtifacts = artifacts(Some("javadoc"), useClassifiersReport = true)
 
     assert(
       compileSourceArtifacts.isEmpty,
