@@ -281,7 +281,7 @@ final case class MavenSource(
               k -> other.extra.get(k).fold(v)(merge(v, _))
           } ++
           other.extra
-            .filterKeys(k => !a.extra.contains(k))
+            .filterKeys(k => !a.extra.contains(k) && k != Artifact.optionalKey)
 
         a.copy(
           checksumUrls = other.checksumUrls ++ a.checksumUrls,
