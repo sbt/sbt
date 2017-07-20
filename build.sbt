@@ -32,9 +32,9 @@ def buildLevelSettings: Seq[Setting[_]] =
       homepage := Some(url("https://github.com/sbt/sbt")),
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
-      scalafmtOnCompile := true,
+      // scalafmtOnCompile := true,
       // scalafmtVersion 1.0.0-RC3 has regression
-      scalafmtVersion := "0.6.8"
+      // scalafmtVersion := "0.6.8"
     ))
 
 def commonSettings: Seq[Setting[_]] =
@@ -74,8 +74,8 @@ def testedBaseSettings: Seq[Setting[_]] =
 
 lazy val sbtRoot: Project = (project in file("."))
   .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
-  .configs(Sxr.sxrConf)
-  .aggregateSeq(nonRoots)
+  .configs(Sxr.SxrConf)
+  .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
     minimalSettings,
