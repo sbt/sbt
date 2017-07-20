@@ -27,6 +27,8 @@ trait Import {
 
   // sbt.io
   val AllPassFilter = sbt.io.AllPassFilter
+  val CopyOptions = sbt.io.CopyOptions
+  type CopyOptions = sbt.io.CopyOptions
   val DirectoryFilter = sbt.io.DirectoryFilter
   type ExactFilter = sbt.io.ExactFilter
   val ExistsFileFilter = sbt.io.ExistsFileFilter
@@ -229,6 +231,8 @@ trait Import {
   type ChainedResolver = sbt.librarymanagement.ChainedResolver
   val CircularDependencyLevel = sbt.librarymanagement.ivy.CircularDependencyLevel
   type CircularDependencyLevel = sbt.librarymanagement.ivy.CircularDependencyLevel
+  val ConfigRef = sbt.librarymanagement.ConfigRef
+  type ConfigRef = sbt.librarymanagement.ConfigRef
   val Configuration = sbt.librarymanagement.Configuration
   type Configuration = sbt.librarymanagement.Configuration
   val ConfigurationReport = sbt.librarymanagement.ConfigurationReport
@@ -294,6 +298,8 @@ trait Import {
   val Patterns = sbt.librarymanagement.Patterns
   type Patterns = sbt.librarymanagement.Patterns
   type PatternsBasedRepository = sbt.librarymanagement.PatternsBasedRepository
+  val PublishConfiguration = sbt.librarymanagement.PublishConfiguration
+  type PublishConfiguration = sbt.librarymanagement.PublishConfiguration
   type RawRepository = sbt.librarymanagement.RawRepository
   val Resolver = sbt.librarymanagement.Resolver
   type Resolver = sbt.librarymanagement.Resolver
