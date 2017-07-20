@@ -41,9 +41,9 @@ lazy val lmRoot = (project in file("."))
           url("https://github.com/sbt/librarymanagement"), "git@github.com:sbt/librarymanagement.git"
         )),
         bintrayPackage := "librarymanagement",
-        scalafmtOnCompile := true,
+        // scalafmtOnCompile := true,
         // scalafmtVersion 1.0.0-RC3 has regression
-        scalafmtVersion := "0.6.8",
+        // scalafmtVersion := "0.6.8",
         git.baseVersion := baseVersion,
         version := {
           val v = version.value
