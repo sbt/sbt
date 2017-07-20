@@ -10,9 +10,11 @@ abstract class CrossVersionFunctions {
   /** Compatibility with 0.13 */
   final val Disabled = sbt.librarymanagement.Disabled
   final val Binary = sbt.librarymanagement.Binary
+  final val Constant = sbt.librarymanagement.Constant
   final val Full = sbt.librarymanagement.Full
   final val Patch = sbt.librarymanagement.Patch
   type Binary = sbt.librarymanagement.Binary
+  type Constant = sbt.librarymanagement.Constant
   type Full = sbt.librarymanagement.Full
   type Patch = sbt.librarymanagement.Patch
 
