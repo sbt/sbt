@@ -30,6 +30,10 @@ def commonSettings: Seq[Setting[_]] = Seq(
   parallelExecution in Test := false
 )
 
+val mimaSettings = Def settings (
+  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0-X18")
+)
+
 lazy val lmRoot = (project in file("."))
   .aggregate(lmCore, lmIvy)
   .settings(
@@ -91,7 +95,8 @@ lazy val lmCore = (project in file("core"))
       val sdirs = (managedSourceDirectories in Compile).value
       val base = baseDirectory.value
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
-    }
+    },
+    mimaSettings,
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
@@ -107,6 +112,7 @@ lazy val lmIvy = (project in file("ivy"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     scalacOptions in (Compile, console) --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
+    mimaSettings,
   )
 
 def customCommands: Seq[Setting[_]] = Seq(

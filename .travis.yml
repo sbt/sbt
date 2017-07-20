@@ -7,8 +7,8 @@ scala:
 
 script:
 # drop scalafmt on the 1.0.0 branch to dogfood 1.0.0-RC2 before there is a sbt 1.0 of new-sbt-scalafnt
-# - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M ";++$TRAVIS_SCALA_VERSION test;scalafmt::test;test:scalafmt::test"
-  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M ";++$TRAVIS_SCALA_VERSION test"
+# - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M ";++$TRAVIS_SCALA_VERSION;mimaReportBinaryIssues;test;scalafmt::test;test:scalafmt::test"
+  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M ";++$TRAVIS_SCALA_VERSION;mimaReportBinaryIssues;test"
 
 cache:
   directories:
