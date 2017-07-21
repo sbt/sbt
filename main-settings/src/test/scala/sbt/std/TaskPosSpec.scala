@@ -150,4 +150,25 @@ class TaskPosSpec {
       avoidDCE
     }
   }
+
+  locally {
+    import sbt._
+    import sbt.Def._
+    val foo = settingKey[String]("")
+    val condition = true
+    val baz = Def.task[String] {
+      // settings can be evaluated in a condition
+      if (condition) foo.value
+      else "..."
+    }
+  }
+
+  locally {
+    import sbt._
+    import sbt.Def._
+    val foo = settingKey[String]("")
+    val baz = Def.task[Seq[String]] {
+      (1 to 10).map(_ => foo.value)
+    }
+  }
 }
