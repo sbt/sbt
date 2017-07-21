@@ -3,7 +3,7 @@
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
-  [subscriptions]: http://typesafe.com/how/subscription
+  [subscriptions]: https://www.lightbend.com/platform/subscription
   [327]: https://github.com/sbt/sbt/issues/327
 
 Issues and Pull Requests
@@ -28,7 +28,7 @@ sbt project uses GitHub Issues as a publicly visible todo list. Please open a Gi
 
 - If you need help with sbt, please [ask] on StackOverflow with the tag "sbt" and the name of the sbt plugin if any.
 - If you run into an issue, have an enhancement idea, or a general discussion, bring it up to [sbt-dev] Google Group first.
-- If you need a faster response time, consider one of the [Typesafe subscriptions][subscriptions].
+- If you need a faster response time, consider one of the [Lightbend subscriptions][subscriptions].
 
 What to report
 --------------
