@@ -103,6 +103,34 @@ object FromSbt {
       (module0, version, url, module.isChanging)
     }
 
+  def sbtClassifiersProject(
+    cm: GetClassifiersModule,
+    scalaVersion: String,
+    scalaBinaryVersion: String
+  ) = {
+
+    val p = FromSbt.project(
+      cm.id,
+      cm.dependencies,
+      cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
+      scalaVersion,
+      scalaBinaryVersion
+    )
+
+    // for w/e reasons, the dependencies sometimes don't land in the right config above
+    // this is a loose attempt at fixing that
+    cm.configurations match {
+      case Seq(cfg) =>
+        p.copy(
+          dependencies = p.dependencies.map {
+            case (_, d) => (cfg.name, d)
+          }
+        )
+      case _ =>
+        p
+    }
+  }
+
   def project(
     projectID: ModuleID,
     allDependencies: Seq[ModuleID],
