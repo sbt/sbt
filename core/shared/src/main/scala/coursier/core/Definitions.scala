@@ -64,6 +64,9 @@ final case class Attributes(
 ) {
   def publication(name: String, ext: String): Publication =
     Publication(name, `type`, ext, classifier)
+
+  def isEmpty: Boolean =
+    `type`.isEmpty && classifier.isEmpty
 }
 
 final case class Project(
