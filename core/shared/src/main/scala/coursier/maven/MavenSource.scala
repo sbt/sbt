@@ -251,7 +251,7 @@ final case class MavenSource(
         else if (dependency.attributes.`type`.nonEmpty)
           enrichedPublications.collect {
             case p
-              if p.publication.classifier.isEmpty && (
+              if (p.publication.classifier.isEmpty || p.publication.classifier == MavenSource.typeDefaultClassifier(dependency.attributes.`type`)) && (
                    p.publication.`type` == dependency.attributes.`type` ||
                    (p.publication.ext == dependency.attributes.`type` && project.packagingOpt.toSeq.contains(p.publication.`type`)) // wow
                 ) =>

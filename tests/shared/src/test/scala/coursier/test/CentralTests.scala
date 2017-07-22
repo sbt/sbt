@@ -569,6 +569,7 @@ abstract class CentralTests extends TestSuite {
 
           val zookeeperTestArtifact = zookeeperTestArtifacts.head
 
+          assert(!isActualCentral || !zookeeperTestArtifact.isOptional)
           assert(zookeeperTestArtifact.attributes.`type` == "test-jar")
           assert(zookeeperTestArtifact.attributes.classifier == "tests")
           zookeeperTestArtifact.url.endsWith("-tests.jar")
