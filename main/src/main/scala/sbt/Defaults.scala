@@ -238,17 +238,13 @@ object Defaults extends BuildCommon {
     }
   )
 
+  // This is included into JvmPlugin.projectSettings
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     incOptions := incOptions.value.withNewClassfileManager(
       sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.Logger.Null)),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
-    scalaVersion := {
-      val scalaV = scalaVersion.value
-      val sv = (sbtBinaryVersion in pluginCrossBuild).value
-      if (sbtPlugin.value) scalaVersionFromSbtBinaryVersion(sv)
-      else scalaV
-    },
+    scalaVersion := PluginCross.scalaVersionSetting.value,
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion((sbtVersion in pluginCrossBuild).value),
     crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
     crossTarget := makeCrossTarget(target.value,
@@ -283,14 +279,6 @@ object Defaults extends BuildCommon {
     derive(compilersSetting),
     derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
   ))
-
-  private[sbt] def scalaVersionFromSbtBinaryVersion(sv: String): String =
-    VersionNumber(sv) match {
-      case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
-      case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.6"
-      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.2"
-      case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
-    }
 
   def makeCrossSources(scalaSrcDir: File, javaSrcDir: File, sv: String, cross: Boolean): Seq[File] = {
     if (cross)
