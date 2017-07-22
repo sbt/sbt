@@ -48,7 +48,9 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
           case Some(src) if src.channelName != name =>
             askUserThread match {
               case Some(x) =>
-                shutdown()
+                // keep listening while network-origin command is running
+                // make sure to test Windows and Cygwin, if you uncomment
+                // shutdown()
               case _ =>
             }
           case _ =>
