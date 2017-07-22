@@ -203,6 +203,7 @@ lazy val stdTaskProj = (project in file("tasks-standard"))
 // Embedded Scala code runner
 lazy val runProj = (project in file("run"))
   .enablePlugins(ContrabandPlugin)
+  .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
     name := "Run",
@@ -335,7 +336,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
-  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj)
+  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj)
   .settings(
     testedBaseSettings,
     name := "Main",
