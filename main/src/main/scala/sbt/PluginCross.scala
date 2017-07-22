@@ -15,6 +15,9 @@ import Def.ScopedKey
 import sbt.internal.Load
 import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
+import sbt.librarymanagement.Configurations._
+import sbt.librarymanagement.VersionNumber
+import Project.inConfig
 
 /**
  * Module responsible for plugin cross building.
@@ -42,7 +45,10 @@ private[sbt] object PluginCross {
         val x = Project.extract(state)
         import x._
         state.log.info(s"Setting `sbtVersion in pluginCrossBuild` to $version")
-        val add = (sbtVersion in GlobalScope in pluginCrossBuild :== version) :: Nil
+        val add = List(sbtVersion in GlobalScope in pluginCrossBuild :== version) ++
+          inConfig(Compile)(List(scalaVersion := scalaVersionSetting.value)) ++
+          inConfig(Test)(List(scalaVersion := scalaVersionSetting.value))
+
         val cleared = session.mergeSettings.filterNot(crossExclude)
         val newStructure = Load.reapply(cleared ++ add, structure)
         Project.setProject(session, newStructure, command :: state)
@@ -74,4 +80,20 @@ private[sbt] object PluginCross {
         else versions.map(PluginSwitchCommand + " " + _ + " " + command) ::: current ::: state
     }
   }
+
+  def scalaVersionSetting: Def.Initialize[String] = Def.setting {
+    val scalaV = scalaVersion.value
+    val sv = (sbtBinaryVersion in pluginCrossBuild).value
+    val isPlugin = sbtPlugin.value
+    if (isPlugin) scalaVersionFromSbtBinaryVersion(sv)
+    else scalaV
+  }
+
+  def scalaVersionFromSbtBinaryVersion(sv: String): String =
+    VersionNumber(sv) match {
+      case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
+      case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.6"
+      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.2"
+      case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
+    }
 }
