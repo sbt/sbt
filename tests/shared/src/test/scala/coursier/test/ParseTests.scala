@@ -42,5 +42,10 @@ object ParseTests extends TestSuite {
       val res = Parse.repository("typesafe:releases")
       assert(res.exists(isMavenRepo))
     }
+
+    "jitpack" - {
+      val res = Parse.repository("jitpack")
+      assert(res.exists(isMavenRepo))
+    }
   }
 }
