@@ -569,6 +569,7 @@ abstract class CentralTests extends TestSuite {
 
           val zookeeperTestArtifact = zookeeperTestArtifacts.head
 
+          assert(!isActualCentral || !zookeeperTestArtifact.isOptional)
           assert(zookeeperTestArtifact.attributes.`type` == "test-jar")
           assert(zookeeperTestArtifact.attributes.classifier == "tests")
           zookeeperTestArtifact.url.endsWith("-tests.jar")
@@ -820,6 +821,33 @@ abstract class CentralTests extends TestSuite {
             )
             assert(urls == expectedUrls)
           }
+      }
+    }
+
+    'packagingTpe - {
+      val mod = Module("android.arch.lifecycle", "extensions")
+      val ver = "1.0.0-alpha3"
+
+      val extraRepo = MavenRepository("https://maven.google.com")
+
+      * - resolutionCheck(mod, ver, extraRepos = Seq(extraRepo))
+
+      * - withArtifacts(mod, ver, "*", extraRepos = Seq(extraRepo), transitive = true) { artifacts =>
+        val urls = artifacts.map(_.url).toSet
+        val expectedUrls = Set(
+          "https://maven.google.com/com/android/support/support-fragment/25.3.1/support-fragment-25.3.1.aar",
+          "https://maven.google.com/android/arch/core/core/1.0.0-alpha3/core-1.0.0-alpha3.aar",
+          "https://maven.google.com/android/arch/lifecycle/runtime/1.0.0-alpha3/runtime-1.0.0-alpha3.aar",
+          "https://maven.google.com/android/arch/lifecycle/extensions/1.0.0-alpha3/extensions-1.0.0-alpha3.aar",
+          "https://maven.google.com/com/android/support/support-compat/25.3.1/support-compat-25.3.1.aar",
+          "https://maven.google.com/com/android/support/support-media-compat/25.3.1/support-media-compat-25.3.1.aar",
+          "https://maven.google.com/com/android/support/support-core-ui/25.3.1/support-core-ui-25.3.1.aar",
+          "https://maven.google.com/com/android/support/support-core-utils/25.3.1/support-core-utils-25.3.1.aar",
+          "https://maven.google.com/com/android/support/support-annotations/25.3.1/support-annotations-25.3.1.jar",
+          "https://maven.google.com/android/arch/lifecycle/common/1.0.0-alpha3/common-1.0.0-alpha3.jar"
+        )
+
+        assert(expectedUrls.forall(urls))
       }
     }
   }

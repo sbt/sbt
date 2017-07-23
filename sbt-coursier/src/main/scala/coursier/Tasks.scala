@@ -550,13 +550,7 @@ object Tasks {
 
       val (currentProject, fallbackDependencies, configGraphs) =
         if (sbtClassifiers) {
-          val proj = FromSbt.project(
-            cm.id,
-            cm.dependencies,
-            cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
-            sv,
-            sbv
-          )
+          val proj = FromSbt.sbtClassifiersProject(cm, sv, sbv)
 
           val fallbackDeps = FromSbt.fallbackDependencies(
             cm.dependencies,
@@ -1112,13 +1106,7 @@ object Tasks {
 
       val currentProject =
         if (sbtClassifiers)
-          FromSbt.project(
-            cm.id,
-            cm.dependencies,
-            cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
-            sv,
-            sbv
-          )
+          FromSbt.sbtClassifiersProject(cm, sv, sbv)
         else
           proj.copy(publications = publications)
 
@@ -1155,7 +1143,7 @@ object Tasks {
 
         val configs =
           if (withClassifiers && sbtClassifiers)
-            cm.configurations.map(c => c.name -> Set.empty[String]).toMap
+            cm.configurations.map(c => c.name -> Set(c.name)).toMap
           else
             shadedConfigOpt.fold(configs0) {
               case (baseConfig, shadedConfig) =>
@@ -1277,13 +1265,7 @@ object Tasks {
 
     val currentProject =
       if (sbtClassifiers)
-        FromSbt.project(
-          cm.id,
-          cm.dependencies,
-          cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
-          sv,
-          sbv
-        )
+        FromSbt.sbtClassifiersProject(cm, sv, sbv)
       else
         proj.copy(publications = publications)
 

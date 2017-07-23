@@ -19,8 +19,9 @@ final case class MavenSource(
     overrideClassifiers: Option[Seq[String]]
   ): Seq[Artifact] = {
 
-    val packagingTpeMap = project.packagingOpt
-      .filter(_ != Pom.relocatedPackaging)
+    val packagingOpt = project.packagingOpt.filter(_ != Pom.relocatedPackaging)
+
+    val packagingTpeMap = packagingOpt
       .map { packaging =>
         (MavenSource.typeDefaultClassifier(packaging), MavenSource.typeExtension(packaging)) -> packaging
       }
@@ -67,7 +68,18 @@ final case class MavenSource(
       )
     }
 
-    lazy val defaultPublication = {
+    lazy val defaultPublications = {
+
+      val packagingPublicationOpt = packagingOpt
+        .filter(_ => dependency.attributes.isEmpty)
+        .map { packaging =>
+          Publication(
+            dependency.module.name,
+            packaging,
+            MavenSource.typeExtension(packaging),
+            MavenSource.typeDefaultClassifier(packaging)
+          )
+        }
 
       val type0 = if (dependency.attributes.`type`.isEmpty) "jar" else dependency.attributes.`type`
 
@@ -84,41 +96,41 @@ final case class MavenSource(
         MavenSource.classifierExtensionDefaultTypeOpt(classifier, ext).getOrElse(ext)
       )
 
-      Publication(
-        dependency.module.name,
-        tpe,
-        ext,
-        classifier
-      )
+      val pubs = packagingPublicationOpt.toSeq :+
+        Publication(
+          dependency.module.name,
+          tpe,
+          ext,
+          classifier
+        )
+
+      pubs.distinct
     }
 
-    overrideClassifiers match {
-      case Some(classifiers) =>
+    overrideClassifiers
+      .fold(defaultPublications) { classifiers =>
+        classifiers.flatMap { classifier =>
+          if (classifier == dependency.attributes.classifier)
+            defaultPublications
+          else {
+            val ext = "jar"
+            val tpe = packagingTpeMap.getOrElse(
+              (classifier, ext),
+              MavenSource.classifierExtensionDefaultTypeOpt(classifier, ext).getOrElse(ext)
+            )
 
-        classifiers
-          .map { classifier =>
-            if (classifier == dependency.attributes.classifier)
-              defaultPublication
-            else {
-              val ext = "jar"
-              val tpe = packagingTpeMap.getOrElse(
-                (classifier, ext),
-                MavenSource.classifierExtensionDefaultTypeOpt(classifier, ext).getOrElse(ext)
-              )
-
+            Seq(
               Publication(
                 dependency.module.name,
                 tpe,
                 ext,
                 classifier
               )
-            }
+            )
           }
-          .map(artifactWithExtra)
-
-      case None =>
-        Seq(defaultPublication).map(artifactWithExtra)
-    }
+        }
+      }
+      .map(artifactWithExtra)
   }
 
   private val types = Map("sha1" -> "SHA-1", "md5" -> "MD5", "asc" -> "sig")
@@ -239,7 +251,7 @@ final case class MavenSource(
         else if (dependency.attributes.`type`.nonEmpty)
           enrichedPublications.collect {
             case p
-              if p.publication.classifier.isEmpty && (
+              if (p.publication.classifier.isEmpty || p.publication.classifier == MavenSource.typeDefaultClassifier(dependency.attributes.`type`)) && (
                    p.publication.`type` == dependency.attributes.`type` ||
                    (p.publication.ext == dependency.attributes.`type` && project.packagingOpt.toSeq.contains(p.publication.`type`)) // wow
                 ) =>
@@ -290,14 +302,14 @@ final case class MavenSource(
       }
 
       val defaultPublications = artifactsUnknownPublications(dependency, project, overrideClassifiers)
+        .map(makeOptional)
 
       if (project.publications.isEmpty)
         defaultPublications
       else {
         val listedPublications = artifactsKnownPublications(dependency, project, overrideClassifiers)
         val listedUrls = listedPublications.map(_.url).toSet
-        val defaultPublications0 = defaultPublications.map(makeOptional)
-        val defaultPublicationsMap = defaultPublications0
+        val defaultPublicationsMap = defaultPublications
           .map(a => a.url -> a)
           .toMap
         val listedPublications0 = listedPublications.map { a =>
@@ -305,7 +317,7 @@ final case class MavenSource(
             .get(a.url)
             .fold(a)(merge(a, _))
         }
-        val extraPublications = defaultPublications0
+        val extraPublications = defaultPublications
           .filter(a => !listedUrls(a.url))
 
         listedPublications0 ++ extraPublications

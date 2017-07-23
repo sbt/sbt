@@ -74,8 +74,7 @@ object TermDisplay {
       val start =
         actualFraction match {
           case None =>
-            val elem = if (watching) "." else "?"
-            s"       [     $elem    ] "
+            "       [          ] "
           case Some(frac) =>
             val elem = if (watching) "." else "#"
 

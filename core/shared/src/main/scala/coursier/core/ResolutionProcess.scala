@@ -3,9 +3,8 @@ package core
 
 import scala.annotation.tailrec
 import scala.language.higherKinds
-
-import scalaz.{Monad, -\/, \/-}
-import scalaz.Scalaz.{ToFunctorOps, ToTraverseOps, vectorInstance}
+import scalaz.{-\/, Monad, \/, \/-}
+import scalaz.Scalaz.{ToFunctorOps, ToBindOps, ToTraverseOps, vectorInstance}
 
 
 sealed abstract class ResolutionProcess {
@@ -166,7 +165,10 @@ object ResolutionProcess {
       Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
   }
 
-  private def fetchAll[F[_]](modVers: Seq[(Module, String)], fetch: Fetch.Metadata[F])(implicit F: Monad[F]) = {
+  private[coursier] def fetchAll[F[_]](
+    modVers: Seq[(Module, String)],
+    fetch: Fetch.Metadata[F]
+  )(implicit F: Monad[F]): F[Vector[((Module, String), Seq[String] \/ (Artifact.Source, Project))]] = {
 
     def uniqueModules(modVers: Seq[(Module, String)]): Stream[Seq[(Module, String)]] = {
 
@@ -191,8 +193,11 @@ object ResolutionProcess {
 
     uniqueModules(modVers)
       .toVector
-      .traverse(fetch)
-      .map(_.flatten)
+      .foldLeft(F.point(Vector.empty[((Module, String), Seq[String] \/ (Artifact.Source, Project))])) {
+        (acc, l) =>
+          for (v <- acc; e <- fetch(l))
+            yield v ++ e
+      }
   }
 
 }

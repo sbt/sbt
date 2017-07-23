@@ -207,6 +207,8 @@ object Parse {
       ).right
     else if (s.startsWith("ivy:"))
       IvyRepository.parse(s.stripPrefix("ivy:"))
+    else if (s == "jitpack")
+      MavenRepository("https://jitpack.io").right
     else
       MavenRepository(s).right
 
