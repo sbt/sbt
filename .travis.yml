@@ -6,7 +6,7 @@ scala:
   - 2.12.2
 
 script:
-  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION" test
+  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION" mimaReportBinaryIssues test
 
 cache:
   directories:
