@@ -60,6 +60,36 @@ object CrossVersionTest extends Specification {
     "return binary sbt version for 0.12.1 as 0.12" in {
       CrossVersion.binarySbtVersion("0.12.1") must_== "0.12"
     }
+    "return binary sbt version for 1.0.0-M6 as 1.0.0-M6" in {
+      CrossVersion.binarySbtVersion("1.0.0-M6") must_== "1.0.0-M6"
+    }
+    "return binary sbt version for 1.0.0-RC1 as 1.0" in {
+      CrossVersion.binarySbtVersion("1.0.0-RC1") must_== "1.0"
+    }
+    "return binary sbt version for 1.0.0 as 1.0" in {
+      CrossVersion.binarySbtVersion("1.0.0") must_== "1.0"
+    }
+    "return binary sbt version for 1.0.2-M1 as 1.0" in {
+      CrossVersion.binarySbtVersion("1.0.2-M1") must_== "1.0"
+    }
+    "return binary sbt version for 1.0.2-RC1 as 1.0" in {
+      CrossVersion.binarySbtVersion("1.0.2-RC1") must_== "1.0"
+    }
+    "return binary sbt version for 1.0.2 as 1.0" in {
+      CrossVersion.binarySbtVersion("1.0.2") must_== "1.0"
+    }
+    "return binary sbt version for 1.3.0 as 1.0" in {
+      CrossVersion.binarySbtVersion("1.3.0") must_== "1.0"
+    }
+    "return binary sbt version for 1.3.0-SNAPSHOT as 1.0" in {
+      CrossVersion.binarySbtVersion("1.3.0-SNAPSHOT") must_== "1.0"
+    }
+    "return binary sbt version for 1.10.0 as 1.0" in {
+      CrossVersion.binarySbtVersion("1.10.0") must_== "1.0"
+    }
+    "return binary sbt version for 2.0.0 as 2.0" in {
+      CrossVersion.binarySbtVersion("2.0.0") must_== "2.0"
+    }
 
     "return Scala API for xyz as None" in {
       CrossVersion.scalaApiVersion("xyz") must_== None
@@ -121,11 +151,9 @@ object CrossVersionTest extends Specification {
     "return binary Scala version for 2.20170314093845.0-87654321 as 2.20170314093845.0-87654321" in {
       CrossVersion.binaryScalaVersion("2.20170314093845.0-87654321") must_== "2.20170314093845.0-87654321"
     }
-
     "return binary Scala version for Dotty 0.1.1 as 0.1" in {
       CrossVersion.binaryScalaVersion("0.1.1") must_== "0.1"
     }
-
     "return patch Scala version for 2.11.8 as 2.11.8" in {
       CrossVersion(CrossVersion.patch, "2.11.8", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8")
     }
