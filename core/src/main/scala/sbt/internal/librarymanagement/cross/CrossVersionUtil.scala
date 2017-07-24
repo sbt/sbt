@@ -36,10 +36,13 @@ object CrossVersionUtil {
    * Compatible versions include 0.12.0-1 and 0.12.0-RC1 for Some(0, 12).
    */
   private[sbt] def sbtApiVersion(v: String): Option[(Long, Long)] = v match {
-    case ReleaseV(x, y, _, _)                     => Some(sbtApiVersion(x.toLong, y.toLong))
-    case CandidateV(x, y, _, _)                   => Some(sbtApiVersion(x.toLong, y.toLong))
-    case NonReleaseV_n(x, y, z, _) if z.toInt > 0 => Some(sbtApiVersion(x.toLong, y.toLong))
-    case _                                        => None
+    case ReleaseV(x, y, _, _)   => Some(sbtApiVersion(x.toLong, y.toLong))
+    case CandidateV(x, y, _, _) => Some(sbtApiVersion(x.toLong, y.toLong))
+    case NonReleaseV_n(x, y, z, _) if x.toLong == 0 && z.toLong > 0 =>
+      Some(sbtApiVersion(x.toLong, y.toLong))
+    case NonReleaseV_n(x, y, z, _) if x.toLong > 0 && (y.toLong > 0 || z.toLong > 0) =>
+      Some(sbtApiVersion(x.toLong, y.toLong))
+    case _                      => None
   }
 
   private def sbtApiVersion(x: Long, y: Long) = {
