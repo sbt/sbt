@@ -12,7 +12,7 @@ import sbt.internal.inc.ScalaInstance
 import scala.annotation.tailrec
 import sbt.internal.util.ManagedLogger
 import sbt.io.IO
-import sbt.protocol.testing.TestResult
+import sbt.internal.protocol.testing.TestResult
 
 object TestFrameworks {
   val ScalaCheck = TestFramework("org.scalacheck.ScalaCheckFramework")

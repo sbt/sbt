@@ -7,7 +7,7 @@ package client
 
 import java.net.{ SocketTimeoutException, Socket }
 import java.util.concurrent.atomic.AtomicBoolean
-import sbt.protocol._
+import sbt.internal.protocol._
 import sbt.internal.util.StringEvent
 
 abstract class ServerConnection(connection: Socket) {

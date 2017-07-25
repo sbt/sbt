@@ -12,7 +12,7 @@ import Tests.{ Output => TestOutput, _ }
 import sbt.io.IO
 import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
-import sbt.protocol.testing._
+import sbt.internal.protocol.testing._
 
 private[sbt] object ForkTests {
   def apply(runners: Map[TestFramework, Runner],

@@ -171,7 +171,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
   }
 
   def query(setting: String): String = {
-    import sbt.protocol._
+    import sbt.internal.protocol._
     val req: SettingQuery = protocol.SettingQuery(setting)
     val rsp: SettingQueryResponse = server.SettingQuery.handleSettingQuery(req, structure)
     val bytes: Array[Byte] = Serialization serializeEventMessage rsp

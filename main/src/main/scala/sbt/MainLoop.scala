@@ -11,7 +11,7 @@ import sbt.io.Using
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.util.Logger
-import sbt.protocol._
+import sbt.internal.protocol._
 
 object MainLoop {
 

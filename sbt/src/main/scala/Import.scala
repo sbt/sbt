@@ -23,8 +23,8 @@ trait Import {
   val NoTrigger = sbt.PluginTrigger.NoTrigger
 
   // sbt.testing
-  type TestResult = sbt.protocol.testing.TestResult
-  val TestResult = sbt.protocol.testing.TestResult
+  type TestResult = sbt.internal.protocol.testing.TestResult
+  val TestResult = sbt.internal.protocol.testing.TestResult
 
   // sbt.io
   val AllPassFilter = sbt.io.AllPassFilter

@@ -2,7 +2,7 @@ package sbt
 package internal
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import sbt.protocol.EventMessage
+import sbt.internal.protocol.EventMessage
 import sjsonnew.JsonFormat
 
 /**

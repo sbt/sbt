@@ -7,7 +7,7 @@ import java.io.File
 import sbt.io.IO
 
 import scala.collection.mutable.Map
-import sbt.protocol.testing.TestResult
+import sbt.internal.protocol.testing.TestResult
 
 // Assumes exclusive ownership of the file.
 private[sbt] class TestStatusReporter(f: File) extends TestsListener {

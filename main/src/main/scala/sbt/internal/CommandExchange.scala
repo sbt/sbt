@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.server._
 import sbt.internal.util.StringEvent
-import sbt.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
+import sbt.internal.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.serverPort

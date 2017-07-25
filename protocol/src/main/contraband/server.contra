@@ -1,6 +1,6 @@
-package sbt.protocol
+package sbt.internal.protocol
 @target(Scala)
-@codecPackage("sbt.protocol.codec")
+@codecPackage("sbt.internal.protocol.codec")
 @fullCodec("JsonProtocol")
 
 ## Message to invoke command.

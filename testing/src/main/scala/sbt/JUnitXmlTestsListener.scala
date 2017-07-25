@@ -14,7 +14,7 @@ import testing.{
   OptionalThrowable,
   TestSelector
 }
-import sbt.protocol.testing.TestResult
+import sbt.internal.protocol.testing.TestResult
 
 /**
  * A tests listener that outputs the results it receives in junit xml

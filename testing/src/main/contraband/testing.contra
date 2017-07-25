@@ -1,6 +1,6 @@
-package sbt.protocol.testing
+package sbt.internal.protocol.testing
 @target(Scala)
-@codecPackage("sbt.protocol.testing.codec")
+@codecPackage("sbt.internal.protocol.testing.codec")
 @fullCodec("JsonProtocol")
 
 ## Events for testing
@@ -17,7 +17,7 @@ type TestInitEvent implements TestMessage {}
 
 ## Called once, at end of the testing.
 type TestCompleteEvent implements TestMessage {
-  result: sbt.protocol.testing.TestResult!
+  result: sbt.internal.protocol.testing.TestResult!
 }
 
 ## Called for each class or equivalent grouping.
@@ -28,7 +28,7 @@ type StartTestGroupEvent implements TestMessage {
 ## Called if test completed.
 type EndTestGroupEvent implements TestMessage {
   name: String!
-  result: sbt.protocol.testing.TestResult!
+  result: sbt.internal.protocol.testing.TestResult!
 }
 
 ## Called if test completed with an error.
@@ -39,8 +39,8 @@ type EndTestGroupErrorEvent implements TestMessage {
 
 ## Called for each test method or equivalent.
 type TestItemEvent implements TestMessage {
-  result: sbt.protocol.testing.TestResult
-  detail: [sbt.protocol.testing.TestItemDetail]
+  result: sbt.internal.protocol.testing.TestResult
+  detail: [sbt.internal.protocol.testing.TestItemDetail]
 }
 
 ## Mini version of sbt.testing.Event

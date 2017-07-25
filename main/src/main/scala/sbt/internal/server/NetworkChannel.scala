@@ -7,7 +7,7 @@ package server
 
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
-import sbt.protocol._
+import sbt.internal.protocol._
 import sjsonnew._
 
 final class NetworkChannel(val name: String, connection: Socket, structure: BuildStructure)

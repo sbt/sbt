@@ -4,12 +4,12 @@ package internal.testing
 import testing.{ Logger => TLogger }
 import sbt.internal.util.{ ManagedLogger, BufferedAppender }
 import sbt.util.{ Level, LogExchange, ShowLines }
-import sbt.protocol.testing._
+import sbt.internal.protocol.testing._
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.JavaConverters._
 
 object TestLogger {
-  import sbt.protocol.testing.codec.JsonProtocol._
+  import sbt.internal.protocol.testing.codec.JsonProtocol._
 
   implicit val testStringEventShowLines: ShowLines[TestStringEvent] =
     ShowLines[TestStringEvent]({
@@ -106,7 +106,7 @@ final class TestLogging(
 class TestLogger(val logging: TestLogging) extends TestsListener {
   import TestLogger._
   import logging.{ global => log, logTest, managed }
-  import sbt.protocol.testing.codec.JsonProtocol._
+  import sbt.internal.protocol.testing.codec.JsonProtocol._
 
   def doInit: Unit = managed.logEvent(Level.Info, TestInitEvent())
 

@@ -26,7 +26,7 @@ import scala.annotation.tailrec
 
 import sbt.internal.util.ManagedLogger
 import sbt.util.Logger
-import sbt.protocol.testing.TestResult
+import sbt.internal.protocol.testing.TestResult
 
 sealed trait TestOption
 object Tests {
