@@ -1,6 +1,5 @@
 package sbt.internal.util
 
-import scala.compat.Platform.EOL
 import sbt.util._
 import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
@@ -269,11 +268,16 @@ class ConsoleAppender private[ConsoleAppender] (
   useFormat: Boolean,
   suppressedMessage: SuppressedTraceContext => Option[String]
 ) extends AbstractAppender(name, null, LogExchange.dummyLayout, true) {
-  import scala.Console.{ BLUE, GREEN, RED, RESET, YELLOW }
+  import scala.Console.{ BLUE, GREEN, RED, YELLOW }
 
-  private final val SUCCESS_LABEL_COLOR   = GREEN
-  private final val SUCCESS_MESSAGE_COLOR = RESET
-  private final val NO_COLOR              = RESET
+  private val reset: String = {
+    if (ansiCodesSupported && useFormat) scala.Console.RESET
+    else ""
+  }
+
+  private val SUCCESS_LABEL_COLOR   = GREEN
+  private val SUCCESS_MESSAGE_COLOR = reset
+  private val NO_COLOR              = reset
 
   override def append(event: XLogEvent): Unit = {
     val level = ConsoleAppender.toLevel(event.getLevel)
@@ -333,7 +337,7 @@ class ConsoleAppender private[ConsoleAppender] (
    * @return The formatted message.
    */
   private def formatted(format: String, msg: String): String =
-    s"${RESET}${format}${msg}${RESET}"
+    s"$reset${format}${msg}$reset"
 
   /**
    * Select the right color for the label given `level`.
@@ -362,14 +366,14 @@ class ConsoleAppender private[ConsoleAppender] (
   private def appendLog(labelColor: String, label: String, messageColor: String, message: String): Unit =
     out.lockObject.synchronized {
       message.lines.foreach { line =>
-        val labeledLine = s"$RESET[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
+        val labeledLine = s"$reset[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
         write(labeledLine)
       }
     }
 
   private def write(msg: String): Unit = {
     val cleanedMsg =
-      if (!useFormat) EscHelpers.removeEscapeSequences(msg)
+      if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg)
       else msg
     out.println(cleanedMsg)
   }
