@@ -54,5 +54,7 @@ class ManagedLogger(
         new ObjectMessage(entry)
       )
     }
+
+  @deprecated("No longer used.", "1.0.0")
   override def ansiCodesSupported = ConsoleAppender.formatEnabledInEnv
 }
