@@ -116,7 +116,9 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
   /** Plays buffered events and disables buffering. */
   def stop(): Unit = synchronized { play(); clear() }
 
+  @deprecated("No longer used.", "1.0.0")
   override def ansiCodesSupported = delegate.ansiCodesSupported
+
   override def setLevel(newLevel: Level.Value): Unit = synchronized {
     super.setLevel(newLevel)
     if (recording)

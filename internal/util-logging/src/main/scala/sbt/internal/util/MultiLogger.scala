@@ -9,7 +9,9 @@ import sbt.util._
 // note that setting the logging level on this logger has no effect on its behavior, only
 //   on the behavior of the delegates.
 class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
+  @deprecated("No longer used.", "1.0.0")
   override lazy val ansiCodesSupported = delegates exists supported
+
   private[this] lazy val allSupportCodes = delegates forall supported
   private[this] def supported = (_: AbstractLogger).ansiCodesSupported
 
