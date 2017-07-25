@@ -383,7 +383,6 @@ object Defaults extends BuildCommon {
       ),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
-    scalaVersion := PluginCross.scalaVersionSetting.value,
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
       (sbtVersion in pluginCrossBuild).value),
     crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
