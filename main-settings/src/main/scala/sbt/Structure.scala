@@ -86,6 +86,9 @@ sealed abstract class SettingKey[T]
     import TupleSyntax._
     set((this, other)(f), source)
   }
+
+  final def withRank(rank: Int): SettingKey[T] =
+    SettingKey(AttributeKey.copyWithRank(key, rank))
 }
 
 /**
@@ -149,6 +152,9 @@ sealed abstract class TaskKey[T]
     import TupleSyntax._
     set((this, other)((a, b) => (a, b) map f.tupled), source)
   }
+
+  final def withRank(rank: Int): TaskKey[T] =
+    TaskKey(AttributeKey.copyWithRank(key, rank))
 }
 
 /**
@@ -176,6 +182,9 @@ sealed trait InputKey[T]
 
   final def transform(f: T => T, source: SourcePosition): Setting[InputTask[T]] =
     set(scopedKey(_ mapTask { _ map f }), source)
+
+  final def withRank(rank: Int): InputKey[T] =
+    InputKey(AttributeKey.copyWithRank(key, rank))
 }
 
 /** Methods and types related to constructing settings, including keys, scopes, and initializations. */
