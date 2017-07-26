@@ -87,7 +87,7 @@ val root = (project in file(".")).
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
     },
-    debianBuildId := 3, // 0
+    debianBuildId := 0, // 0
     // Used to have "openjdk-8-jdk" but that doesn't work on Ubuntu 14.04 https://github.com/sbt/sbt/issues/3105
     // before that we had java6-runtime-headless" and that was pulling in JDK9 on Ubuntu 16.04 https://github.com/sbt/sbt/issues/2931
     debianPackageDependencies in Debian ++= Seq("bash (>= 3.2)"),
@@ -113,7 +113,7 @@ val root = (project in file(".")).
       })
       else stable
     },
-    rpmRelease := "3",
+    rpmRelease := "0",
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
