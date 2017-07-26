@@ -279,6 +279,15 @@ class ConsoleAppender private[ConsoleAppender] (
   private val SUCCESS_MESSAGE_COLOR = reset
   private val NO_COLOR              = reset
 
+  private var traceEnabledVar: Int = Int.MaxValue
+  
+  def setTrace(level: Int): Unit = synchronized { traceEnabledVar = level }
+
+  /**
+   * Returns the number of lines for stacktrace.
+   */
+  def getTrace: Int = synchronized { traceEnabledVar }
+
   override def append(event: XLogEvent): Unit = {
     val level = ConsoleAppender.toLevel(event.getLevel)
     val message = event.getMessage
@@ -383,11 +392,27 @@ class ConsoleAppender private[ConsoleAppender] (
       case _                        => appendLog(level, msg.getFormattedMessage)
     }
 
+  private def appendTraceEvent(te: TraceEvent): Unit = {
+    val traceLevel = getTrace
+    val throwableShowLines: ShowLines[Throwable] =
+      ShowLines[Throwable]( (t: Throwable) => {
+        List(StackTrace.trimmed(t, traceLevel))
+      })
+    val codec: ShowLines[TraceEvent] =
+      ShowLines[TraceEvent]( (t: TraceEvent) => {
+        throwableShowLines.showLines(t.message)
+      })
+    codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
+  }
+
   private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {   
     def appendEvent(oe: ObjectEvent[_]): Unit =
       {
         val contentType = oe.contentType
-        LogExchange.stringCodec[AnyRef](contentType) match {
+        if (contentType == "sbt.internal.util.TraceEvent") {
+          appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
+        }
+        else LogExchange.stringCodec[AnyRef](contentType) match {
           case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
             codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }
           case Some(codec) =>
