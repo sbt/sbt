@@ -1,7 +1,6 @@
 import Dependencies._
 import Path._
-
-// import com.typesafe.tools.mima.core._, ProblemFilters._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "1.0.0-SNAPSHOT"
 
@@ -24,7 +23,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
       case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
     }
   },
-  // mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false,
   parallelExecution in Test := false
@@ -97,6 +95,14 @@ lazy val lmCore = (project in file("core"))
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
     },
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // method urlFactory()okhttp3.OkUrlFactory in object sbt.librarymanagement.Http does not have a correspondent in current version
+      // Was private[sbt] and manually checked to be unused in Zinc or sbt
+      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.urlFactory"),
+      // method open(java.net.URL)java.net.HttpURLConnection in object sbt.librarymanagement.Http does not have a correspondent in current version
+      // Was private[sbt] and manually checked to be unused in Zinc or sbt
+      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.open"),
+    )
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
@@ -113,6 +119,11 @@ lazy val lmIvy = (project in file("ivy"))
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     scalacOptions in (Compile, console) --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // method UnknownResolver()java.lang.String in object sbt.internal.librarymanagement.SbtIvyLogger does not have a correspondent in current version
+      // Was in a private object in sbt.internal and manually checked to be unused in Zinc or sbt
+      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.SbtIvyLogger.UnknownResolver")
+    )
   )
 
 def customCommands: Seq[Setting[_]] = Seq(
