@@ -157,7 +157,7 @@ process_args () {
               *) addResidual "$1" && shift ;;
     esac
   done
-  
+
   is_function_defined process_my_args && {
     myargs=("${residual_args[@]}")
     residual_args=()
@@ -165,7 +165,7 @@ process_args () {
   }
 
   ## parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
-  java_version=$("$java_cmd" -Xmx512M -version 2>&1 | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
+  java_version=$("$java_cmd" -Xmx512M -version 2>&1 | grep ' version "' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
   vlog "[process_args] java_version = '$java_version'"
 }
 
@@ -265,8 +265,8 @@ run() {
     ${java_args[@]} \
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
-    "${residual_args[@]}"  
-  
+    "${residual_args[@]}"
+
   exit_code=$?
 
   # Clean up the terminal from cygwin hacks.
