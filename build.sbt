@@ -1,6 +1,6 @@
 import Dependencies._
 import Util._
-// import com.typesafe.tools.mima.core._, ProblemFilters._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "1.0.0-SNAPSHOT"
 def internalPath   = file("internal")
@@ -106,6 +106,11 @@ lazy val utilLogging = (project in internalPath / "util-logging").
       else old(tpe)
     },
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // abstract method SuccessEventFormat()sjsonnew.JsonFormat in trait sbt.internal.util.codec.SuccessEventFormats is inherited by class JsonProtocol in current version.
+      // I think this is a false positive: https://github.com/typesafehub/migration-manager/issues/187
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("sbt.internal.util.codec.SuccessEventFormats.SuccessEventFormat")
+    )
   )
 
 // Relation
