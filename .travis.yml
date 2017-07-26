@@ -17,9 +17,8 @@ matrix:
 env:
   matrix:
   # drop scalafmt on the 1.0.0 branch to dogfood 1.0.0-RC2 before there is a sbt 1.0 of new-sbt-scalafnt
-  # - SBT_CMD=";test:compile;scalafmt::test;test:scalafmt::test;mainSettingsProj/test;safeUnitTests;otherUnitTests"
-    - SBT_CMD=";test:compile;mainSettingsProj/test;safeUnitTests;otherUnitTests"
-  # - SBT_CMD="mimaReportBinaryIssues"
+  # - SBT_CMD=";mimaReportBinaryIssues;test:compile;scalafmt::test;test:scalafmt::test;mainSettingsProj/test;safeUnitTests;otherUnitTests"
+    - SBT_CMD=";mimaReportBinaryIssues;test:compile;mainSettingsProj/test;safeUnitTests;otherUnitTests"
     - SBT_CMD="scripted actions/*"
     - SBT_CMD="scripted apiinfo/* compiler-project/* ivy-deps-management/*"
     - SBT_CMD="scripted dependency-management/*1of4"
