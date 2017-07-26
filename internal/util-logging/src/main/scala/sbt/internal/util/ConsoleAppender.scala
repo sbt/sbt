@@ -285,13 +285,6 @@ class ConsoleAppender private[ConsoleAppender] (
     appendMessage(level, message)
   }
 
-  // TODO:
-  // success is called by ConsoleLogger.
-  // This should turn into an event.
-  private[sbt] def success(message: => String): Unit = {
-    appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
-  }
-
   /**
    * Logs the stack trace of `t`, possibly shortening it.
    *
@@ -371,6 +364,11 @@ class ConsoleAppender private[ConsoleAppender] (
       }
     }
 
+  // success is called by ConsoleLogger.
+  private[sbt] def success(message: => String): Unit = {
+    appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
+  }
+
   private def write(msg: String): Unit = {
     val cleanedMsg =
       if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg)
@@ -380,27 +378,30 @@ class ConsoleAppender private[ConsoleAppender] (
 
   private def appendMessage(level: Level.Value, msg: Message): Unit =
     msg match {
-      case o: ObjectMessage         => objectToLines(o.getParameter) foreach { appendLog(level, _) }
-      case o: ReusableObjectMessage => objectToLines(o.getParameter) foreach { appendLog(level, _) }
+      case o: ObjectMessage         => appendMessageContent(level, o.getParameter)
+      case o: ReusableObjectMessage => appendMessageContent(level, o.getParameter)
       case _                        => appendLog(level, msg.getFormattedMessage)
     }
 
-  private def objectToLines(o: AnyRef): Vector[String] =
+  private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {   
+    def appendEvent(oe: ObjectEvent[_]): Unit =
+      {
+        val contentType = oe.contentType
+        LogExchange.stringCodec[AnyRef](contentType) match {
+          case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
+            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }
+          case Some(codec) =>
+            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { appendLog(level, _) }
+          case _           => appendLog(level, oe.message.toString)
+        }
+      } 
+
     o match {
-      case x: StringEvent    => Vector(x.message)
-      case x: ObjectEvent[_] => objectEventToLines(x)
-      case _                 => Vector(o.toString)
+      case x: StringEvent    => Vector(x.message) foreach { appendLog(level, _) }
+      case x: ObjectEvent[_] => appendEvent(x)
+      case _                 => Vector(o.toString) foreach { appendLog(level, _) }
     }
-
-  private def objectEventToLines(oe: ObjectEvent[_]): Vector[String] =
-    {
-      val contentType = oe.contentType
-      LogExchange.stringCodec[AnyRef](contentType) match {
-        case Some(codec) => codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector
-        case _           => Vector(oe.message.toString)
-      }
-    }
-
+  }
 }
 
 final class SuppressedTraceContext(val traceLevel: Int, val useFormat: Boolean)
