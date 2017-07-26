@@ -4,7 +4,7 @@ package internal
 import sbt.internal.util._
 import BasicKeys._
 import java.io.File
-import sbt.protocol.EventMessage
+import sbt.internal.protocol.EventMessage
 import sjsonnew.JsonFormat
 
 private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {

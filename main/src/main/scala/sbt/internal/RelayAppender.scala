@@ -8,7 +8,7 @@ import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.core.async.RingBufferLogEvent
 import sbt.util.Level
 import sbt.internal.util._
-import sbt.protocol.LogEvent
+import sbt.internal.protocol.LogEvent
 import sbt.internal.util.codec._
 import sjsonnew.shaded.scalajson.ast.unsafe._
 

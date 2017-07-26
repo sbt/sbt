@@ -10,7 +10,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
-import sbt.protocol._
+import sbt.internal.protocol._
 import sbt.internal.util.{ JLine, StringEvent, ConsoleAppender }
 import sbt.util.Level
 
