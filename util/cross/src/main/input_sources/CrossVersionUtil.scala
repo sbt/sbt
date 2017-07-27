@@ -30,12 +30,25 @@ object CrossVersionUtil
 		val CandidateV = (basicVersion + """(-RC\d+)""").r
 		val NonReleaseV = (basicVersion + """([-\w+]*)""").r
 		v match {
-			case ReleaseV(x, y, z, ht)    => Some((x.toInt, y.toInt))
-			case CandidateV(x, y, z, ht)  => Some((x.toInt, y.toInt))
-			case NonReleaseV(x, y, z, ht) if z.toInt > 0 => Some((x.toInt, y.toInt))
+			case ReleaseV(x, y, z, ht)   => Some(sbtApiVersion(x.toInt, y.toInt))
+			case CandidateV(x, y, z, ht) => Some(sbtApiVersion(x.toInt, y.toInt))
+			case NonReleaseV(x, y, z, ht) if x.toInt == 0 && z.toInt > 0 =>
+				Some(sbtApiVersion(x.toInt, y.toInt))
+			case NonReleaseV(x, y, z, _) if x.toInt > 0 && (y.toInt > 0 || z.toInt > 0) =>
+				Some(sbtApiVersion(x.toInt, y.toInt))
 			case _ => None
 		}
 	}
+
+  private[${{cross.package0}}] def sbtApiVersion(x: Int, y: Int): (Int, Int) = {
+    // Prior to sbt 1 the "sbt api version" was the X.Y in the X.Y.Z version.
+    // For example for sbt 0.13.x releases, the sbt api version is 0.13
+    // As of sbt 1 it is now X.0.
+    // This means, for example, that all versions of sbt 1.x have sbt api version 1.0
+    if (x > 0) (x, 0)
+    else (x, y)
+  }
+
 	private[${{cross.package0}}] def isScalaApiCompatible(v: String): Boolean = scalaApiVersion(v).isDefined
 	/** Returns Scala binary interface x.y API compatible with the given version string v. 
 	 * Compatibile versions include 2.10.0-1 and 2.10.1-M1 for Some(2, 10), but not 2.10.0-RC1.

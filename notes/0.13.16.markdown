@@ -1,55 +1,21 @@
 ### Fixes with compatibility implications
 
-- Removes the "hit \[ENTER\] to switch to interactive mode" feature. See below.
+- Removes the "hit \[ENTER\] to switch to interactive mode" feature. Run `sbt xxx shell` to stay in shell after `xxx`. [#3091][3091]/[#3153][3153] by [@dwijnand][@dwijnand]
 
 ### Improvements
 
 - Improves the new startup messages. See below.
 - Ports sbt-cross-building's `^` and `^^` commands for plugin cross building. See below.
+- Adds `Zero` scope component for sbt 1.0 compatibility. [#3179][3179] by [@eed3si9n][@eed3si9n]
+- Backports `withXXX` methods for `ModuleID` and `Artifact` for sbt 1.0 compatibility. [#3215][3215] by [@eed3si9n][@eed3si9n]
 
 ### Bug fixes
 
 - Fixes the new startup messages. See below.
-
-### Improvements and bug fixes to the new startup messages
-
-The two new startup messages introduced in sbt 0.13.15 are:
-
-- when writing out `sbt.version`, for build reproducability, and
-- when informing the user about sbt's shell, for the performance improvement
-
-When writing out `sbt.version` the messaging now:
-
-- correctly uses a logger rather than println
-- honours the log level set, for instance by `--error`
-- never executes when sbt "new" is being run
-
-When informing the user about sbt's shell the messaging now:
-
-- is a 1 line message, rather than 3
-- is at info level, rather than warn level
-- can be suppressed with `suppressSbtShellNotification := true`
-- only triggers when `compile` is being run
-- never shows when sbt `new` is being run
-
-[#3091][3091]/[#3097][3097]/[#3147][3147] by [@dwijnand][@dwijnand]
-
-### Remove the "hit \[ENTER\] to switch to interactive mode" feature
-
-In sbt 0.13.15, in addition to notifying the user about the existence of sbt's shell, a feature was added to
-allow the user to switch to sbt's shell - a more pro-active approach to just displaying a message.
-
-Unfortunately sbt is often unintentionally invoked in shell scripts in "interactive mode" when no interaction is
-expected by, for exmaple, invoking `sbt package` instead of `sbt package < /dev/null`. In that case hitting
-\[ENTER\] would silently trigger sbt to run its shell, easily wrecking the script. In addition to that I was
-unhappy with the implementation as it created a tight coupling between sbt's command processing abstraction to
-sbt's shell command.
-
-If you want to stay in sbt's shell after running a task like `package` then invoke sbt like so:
-
-    sbt package shell
-
-[#3091][3091]/[#3153][3153] by [@dwijnand][@dwijnand]
+- Fixes forward compatibility of Scripted plugin with sbt 1.0.0-RC2. [#3329][3329] by [@dwijnand][@dwijnand]
+- Fixes ScalaTest nested suite test names being reported as "(It is not a test)". [#3154][3154] by [@jameskoch][@jameskoch]
+- Fixes default `scalaBinaryVersion` for Dotty. [#3152][3152] by [@smarter][@smater]
+- Updates JLine dependency to 2.14.4 to work around ncurses change causing `NumberFormatException`. [#3265][3265] by [@Rogach][@Rogach]
 
 ### sbt-cross-building
 
@@ -61,18 +27,18 @@ sbt 0.13.16 merges these commands into sbt because the feature it provides is us
 To switch the `sbtVersion in pluginCrossBuild` from the shell use:
 
 ```
-^^ 1.0.0-M5
+^^ 1.0.0-RC2
 ```
 
-Your plugin will now build with sbt 1.0.0-M5 (and its Scala version 2.12.2).
+Your plugin will now build with sbt 1.0.0-RC2 (and its Scala version 2.12.2).
 
 If you need to make changes specific to a sbt version, you can now include them into `src/main/scala-sbt-0.13`,
-and `src/main/scala-sbt-1.0.0-M5`, where the binary sbt version number is used as postfix.
+and `src/main/scala-sbt-1.0`, where the binary sbt version number is used as postfix.
 
 To run a command across multiple sbt versions, set:
 
 ```scala
-crossSbtVersions := Vector("0.13.15", "1.0.0-M5")
+crossSbtVersions := Vector("0.13.15", "1.0.0-RC2")
 ```
 
 Then, run:
@@ -83,11 +49,56 @@ Then, run:
 
 [#3133][3133] by [@eed3si9n][@eed3si9n]
 
+#### Eviction warning presentation
+
+sbt 0.13.16 improves the eviction warning presetation.
+
+Before:
+
+    [warn] There may be incompatibilities among your library dependencies.
+    [warn] Here are some of the libraries that were evicted:
+    [warn]  * com.google.code.findbugs:jsr305:2.0.1 -> 3.0.0
+    [warn] Run 'evicted' to see detailed eviction warnings
+
+After:
+
+    [warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+    [warn]
+    [warn]      * com.typesafe.akka:akka-actor_2.12:2.5.0 is selected over 2.4.17
+    [warn]          +- de.heikoseeberger:akka-log4j_2.12:1.4.0            (depends on 2.5.0)
+    [warn]          +- com.typesafe.akka:akka-parsing_2.12:10.0.6         (depends on 2.4.17)
+    [warn]          +- com.typesafe.akka:akka-stream_2.12:2.4.17 ()       (depends on 2.4.17)
+    [warn]
+    [warn] Run 'evicted' to see detailed eviction warnings
+
+[#3202][3202] by [@eed3si9n][@eed3si9n]
+
+### Improvements and bug fixes to the startup messages
+
+sbt writes out the `sbt.version` in `project/build.properties` if it is missing.
+sbt 0.13.16 fixes the logging when it happens by using the logger.
+
+We encourage the use of the sbt shell by running `sbt`, instead of running `sbt compile` from the terminal repreatedly.
+The sbt shell keeps the JVM warm, and there is a significant performance improvement gained for your compilation.
+The startup message that we added in sbt 0.13.15 was a bit too aggressive, so we are toning it down in 0.13.16.
+It will only be triggered for `sbt compile`, and it can also be supressed with `suppressSbtShellNotification := true`.
+
+[#3091][3091]/[#3097][3097]/[#3147][3147] by [@dwijnand][@dwijnand]
+
   [3091]: https://github.com/sbt/sbt/issues/3091
   [3097]: https://github.com/sbt/sbt/issues/3097
   [3147]: https://github.com/sbt/sbt/pull/3147
   [3133]: https://github.com/sbt/sbt/pull/3133
   [3153]: https://github.com/sbt/sbt/pull/3153
+  [3152]: https://github.com/sbt/sbt/pull/3152
+  [3179]: https://github.com/sbt/sbt/pull/3179
+  [3202]: https://github.com/sbt/sbt/pull/3202
+  [3215]: https://github.com/sbt/sbt/pull/3215
+  [3265]: https://github.com/sbt/sbt/pull/3265
+  [3329]: https://github.com/sbt/sbt/pull/3329
   [@jrudolph]: https://github.com/jrudolph
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: https://github.com/dwijnand
+  [@jameskoch]: https://github.com/jameskoch
+  [@smarter]: https://github.com/smarter
+  [@Rogach]: https://github.com/Rogach

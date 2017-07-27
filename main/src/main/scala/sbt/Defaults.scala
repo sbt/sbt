@@ -244,7 +244,6 @@ object Defaults extends BuildCommon {
       sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.Logger.Null)),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
-    scalaVersion := PluginCross.scalaVersionSetting.value,
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion((sbtVersion in pluginCrossBuild).value),
     crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
     crossTarget := makeCrossTarget(target.value,
