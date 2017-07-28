@@ -596,6 +596,10 @@
         { "name": "organization", "type": "String"                              },
         { "name": "name",         "type": "String"                              },
         { "name": "modules",      "type": "sbt.librarymanagement.ModuleReport*" }
+      ],
+      "toString": [
+        "val details = modules map { _.detailReport }",
+        "s\"\\t$organization:$name\\n${details.mkString}\\n\""
       ]
     },
     {
