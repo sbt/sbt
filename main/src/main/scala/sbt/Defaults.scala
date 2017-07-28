@@ -2159,16 +2159,26 @@ object Classpaths {
         classifiers.toVector
       )
     }
+
   def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[File]] =
     Def.task {
       val _ = update.value
       IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
     }
+
   def publishTask(config: TaskKey[PublishConfiguration],
                   deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-    Def.task {
-      IvyActions.publish(ivyModule.value, config.value, streams.value.log)
+    Def.taskDyn {
+      val s = streams.value
+      val skp = (skip in publish).value
+      val ref = thisProjectRef.value
+      if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") }
+      else Def.task {
+        val cfg = config.value
+        IvyActions.publish(ivyModule.value, config.value, s.log)
+      }
     } tag (Tags.Publish, Tags.Network)
+
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
     new sjsonnew.JsonKeyFormat[ModuleID] {
       import sjsonnew.support.scalajson.unsafe._
