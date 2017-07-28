@@ -356,7 +356,7 @@ lazy val mainProj = (project in file("main"))
   .settings(
     testedBaseSettings,
     name := "Main",
-    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface),
+    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies,
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
