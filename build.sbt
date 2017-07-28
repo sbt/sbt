@@ -102,6 +102,15 @@ lazy val lmCore = (project in file("core"))
       // method open(java.net.URL)java.net.HttpURLConnection in object sbt.librarymanagement.Http does not have a correspondent in current version
       // Was private[sbt] and manually checked to be unused in Zinc or sbt
       ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.open"),
+
+      // method globalLockIsoString()sjsonnew.IsoString in trait sbt.internal.librarymanagement.formats.GlobalLockFormat is present only in current version
+      // method xsbtiLoggerIsoString()sjsonnew.IsoString in trait sbt.internal.librarymanagement.formats.LoggerFormat is present only in current version
+      // These only fail in Scala 2.11
+      // We're _probably_ ok to add these between sbt 1 RC2 and RC3,
+      // but it's dangerous territory in general
+      // see typesafehub/migration-manager#183 for an example of what happens..
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.internal.librarymanagement.formats.GlobalLockFormat.globalLockIsoString"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.internal.librarymanagement.formats.LoggerFormat.xsbtiLoggerIsoString"),
     )
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
