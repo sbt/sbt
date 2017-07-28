@@ -3,29 +3,25 @@ package sbt.internal
 import java.io.File
 
 import sbt.internal.librarymanagement._
-import sbt.internal.util.HNil
-import sbt.internal.util.Types._
-import sbt.internal.util.HListFormats._
 import sbt.librarymanagement._
-import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 
 private[sbt] object LibraryManagement {
 
-  private type UpdateInputs = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
+  private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
 
   def cachedUpdate(
+      lm: DependencyResolution,
+      module: ModuleDescriptor,
       cacheStoreFactory: CacheStoreFactory,
       label: String,
-      module: IvySbt#Module,
       updateConfig: UpdateConfiguration,
       transform: UpdateReport => UpdateReport,
       skip: Boolean,
       force: Boolean,
       depsUpdated: Boolean,
       uwConfig: UnresolvedWarningConfiguration,
-      depDir: Option[File],
       ewo: EvictionWarningOptions,
       mavenStyle: Boolean,
       compatWarning: CompatibilityWarningOptions,
@@ -39,7 +35,7 @@ private[sbt] object LibraryManagement {
       log.info(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
         //try {
-        IvyActions.updateEither(module, updateConfig, uwConfig, /*logicalClock, depDir,*/ log)
+        lm.update(module, updateConfig, uwConfig, log)
       // } catch {
       //   case e: Throwable =>
       //     e.printStackTrace
@@ -107,18 +103,19 @@ private[sbt] object LibraryManagement {
           }
           .apply(cachedResolve(updateInputs))
       }
-      import AltLibraryManagementCodec._
+      import LibraryManagementCodec._
       Tracked.inputChanged(cacheStoreFactory.make("inputs"))(doCachedResolve)
     }
 
     // Get the handler to use and feed it in the inputs
-    val ivyConfig = module.owner.configuration
+    // This is lm-engine specific input hashed into Long
+    val extraInputHash = module.extraInputHash
     val settings = module.moduleSettings
     val outStore = cacheStoreFactory.make("output")
     val handler = if (skip && !force) skipResolve(outStore) else doResolve(outStore)
     // Remove clock for caching purpose
     val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)
-    handler(ivyConfig :+: settings :+: withoutClock :+: HNil)
+    handler((extraInputHash, settings, withoutClock))
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
