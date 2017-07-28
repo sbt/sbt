@@ -103,7 +103,9 @@ lazy val lmCore = (project in file("core"))
       // Was private[sbt] and manually checked to be unused in Zinc or sbt
       ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.open"),
       // New methods added to LM API
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleDescriptor.*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleDescriptor.moduleSettings"),
+      // New methods added to LM API
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleDescriptor.extraInputHash"),
       // New formats for Logger and GlockLock
       ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.internal.librarymanagement.formats.*"),
     )
