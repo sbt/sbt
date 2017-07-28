@@ -102,6 +102,8 @@ lazy val lmCore = (project in file("core"))
       // method open(java.net.URL)java.net.HttpURLConnection in object sbt.librarymanagement.Http does not have a correspondent in current version
       // Was private[sbt] and manually checked to be unused in Zinc or sbt
       ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.open"),
+      // New methods added to LM API
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleDescriptor.*"),
     )
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
