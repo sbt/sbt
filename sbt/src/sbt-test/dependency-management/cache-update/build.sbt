@@ -34,38 +34,33 @@ lazy val root = (project in file("."))
       val cacheStoreFactory = s.cacheStoreFactory sub updateCacheName.value
       val module = ivyModule.value
       val updateConfig = updateConfiguration.value
-      val ivyConfiguration0 = module.owner.configuration
+      val extraInputHash0 = module.extraInputHash
       val moduleSettings0 = module.moduleSettings
       val inline0 = moduleSettings0 match { case x: InlineConfiguration => x }
       // Remove clock for caching purpose
       val updateConfig0 = updateConfig.withLogicalClock(LogicalClock.unknown)
 
-      import sbt.librarymanagement.ivy.IvyConfiguration
-      import sbt.librarymanagement.{ ModuleSettings, UpdateConfiguration }
-      import sbt.internal.util.HListFormats._
+      import sbt.librarymanagement.{ ModuleSettings, UpdateConfiguration, LibraryManagementCodec }
+      type In = (Long, ModuleSettings, UpdateConfiguration)
 
-      type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
-
-      import sbt.util.CacheImplicits._
-      import sbt.internal.util.HListFormats._
-      import sbt.internal.AltLibraryManagementCodec._
+      import LibraryManagementCodec._
 
       val f: In => Unit =
         Tracked.inputChanged(cacheStoreFactory make "inputs") { (inChanged: Boolean, in: In) =>
-          val ivyConfiguration1 = in.head
-          val moduleSettings1 = in.tail.head
+          val extraInputHash1 = in._1
+          val moduleSettings1 = in._2
           val inline1 = moduleSettings1 match { case x: InlineConfiguration => x }
-          val updateConfig1 = in.tail.tail.head
+          val updateConfig1 = in._3
 
           if (inChanged) {
             sys.error(s"""
-ivyConfiguration1 == ivyConfiguration0: ${ivyConfiguration1 == ivyConfiguration0}
+extraInputHash1 == extraInputHash0: ${extraInputHash1 == extraInputHash0}
 
-ivyConfiguration1:
-$ivyConfiguration1
+extraInputHash1:
+$extraInputHash1
 
-ivyConfiguration0
-$ivyConfiguration0
+extraInputHash0
+$extraInputHash0
 -----
 inline1 == inline0: ${inline1 == inline0}
 
@@ -86,7 +81,7 @@ $updateConfig0
           }
         }
 
-      f(ivyConfiguration0 :+: (inline0: ModuleSettings) :+: updateConfig0 :+: HNil)
+      f((extraInputHash0, (inline0: ModuleSettings), updateConfig0))
     },
 
     // https://github.com/sbt/sbt/issues/3226

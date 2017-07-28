@@ -371,6 +371,10 @@ lazy val mainProj = (project in file("main"))
       // method scalaVersionFromSbtBinaryVersion(java.lang.String)java.lang.String in object sbt.Defaults does not have a correspondent in current version
       // Was private[sbt]
       ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.Defaults.scalaVersionFromSbtBinaryVersion"),
+      // AltLibraryManagementCodec was removed.
+      ProblemFilters.exclude[MissingClassProblem]("sbt.internal.AltLibraryManagementCodec*"),
+      // The signature of internal method changed. This is ok.
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("sbt.internal.LibraryManagement.cachedUpdate"),
     )
   )
   .configure(

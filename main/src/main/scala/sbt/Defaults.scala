@@ -71,7 +71,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
-import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
+import sjsonnew.{ IsoLList, JsonFormat, LList, LNil, :*: }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import std.TaskExtra._
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
@@ -2285,16 +2285,18 @@ object Classpaths {
     }.value
 
     LibraryManagement.cachedUpdate(
+      // LM API
+      lm = dependencyResolution.value,
+      // Ivy-free ModuleDescriptor
+      module = ivyModule.value,
       s.cacheStoreFactory.sub(updateCacheName.value),
       Reference.display(thisProjectRef.value),
-      ivyModule.value,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
       skip = (skip in update).value,
       force = shouldForce,
       depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
       uwConfig = (unresolvedWarningConfiguration in update).value,
-      depDir = Some(dependencyCacheDirectory.value),
       ewo = evictionOptions,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,
