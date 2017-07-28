@@ -104,6 +104,8 @@ lazy val lmCore = (project in file("core"))
       ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.open"),
       // New methods added to LM API
       ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleDescriptor.*"),
+      // New formats for Logger and GlockLock
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.internal.librarymanagement.formats.*"),
     )
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
