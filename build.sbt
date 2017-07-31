@@ -1,7 +1,6 @@
 import Util._
 import Dependencies._
 import Sxr.sxr
-import com.typesafe.tools.mima.core._, ProblemFilters._
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -67,7 +66,7 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(organization.value % moduleName.value % "1.0.0-RC2"
+  mimaPreviousArtifacts := Set(organization.value % moduleName.value % "1.0.0-RC3"
     cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
   )
 )
@@ -361,21 +360,6 @@ lazy val mainProj = (project in file("main"))
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // abstract method terminalHeight()Int in class sbt.InteractionService is present only in current version
-      // Manually checked that sbt.InteractionService isn't implemented by anything outside of sbt
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.InteractionService.terminalHeight"),
-      // abstract method terminalWidth()Int in class sbt.InteractionService is present only in current version
-      // Manually checked that sbt.InteractionService isn't implemented by anything outside of sbt
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.InteractionService.terminalWidth"),
-      // method scalaVersionFromSbtBinaryVersion(java.lang.String)java.lang.String in object sbt.Defaults does not have a correspondent in current version
-      // Was private[sbt]
-      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.Defaults.scalaVersionFromSbtBinaryVersion"),
-      // AltLibraryManagementCodec was removed.
-      ProblemFilters.exclude[MissingClassProblem]("sbt.internal.AltLibraryManagementCodec*"),
-      // The signature of internal method changed. This is ok.
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("sbt.internal.LibraryManagement.cachedUpdate"),
-    )
   )
   .configure(
     addSbtIO,
@@ -397,11 +381,6 @@ lazy val sbtProj = (project in file("sbt"))
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // abstract [synthetic] method [...] in interface sbt.Import is present only in current version
-      // This is a forward-compatibility concern, which we don't guarantee.
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.Import.*"),
-    )
   )
   .configure(addSbtCompilerBridge)
 
