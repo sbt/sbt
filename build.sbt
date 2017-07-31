@@ -1,6 +1,6 @@
 import Dependencies._
 import Path._
-import com.typesafe.tools.mima.core._, ProblemFilters._
+//import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "1.0.0-SNAPSHOT"
 
@@ -29,7 +29,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 )
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0-X18")
+  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0-RC3")
 )
 
 lazy val lmRoot = (project in file("."))
@@ -82,7 +82,6 @@ lazy val lmCore = (project in file("core"))
         version.value, resourceManaged.value, streams.value, (compile in Compile).value
       )
     ).taskValue,
-    // mimaBinaryIssueFilters ++= Seq(),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -95,26 +94,6 @@ lazy val lmCore = (project in file("core"))
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
     },
     mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // method urlFactory()okhttp3.OkUrlFactory in object sbt.librarymanagement.Http does not have a correspondent in current version
-      // Was private[sbt] and manually checked to be unused in Zinc or sbt
-      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.urlFactory"),
-      // method open(java.net.URL)java.net.HttpURLConnection in object sbt.librarymanagement.Http does not have a correspondent in current version
-      // Was private[sbt] and manually checked to be unused in Zinc or sbt
-      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Http.open"),
-      // New methods added to LM API
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleDescriptor.moduleSettings"),
-      // New methods added to LM API
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleDescriptor.extraInputHash"),
-      // method globalLockIsoString()sjsonnew.IsoString in trait sbt.internal.librarymanagement.formats.GlobalLockFormat is present only in current version
-      // method xsbtiLoggerIsoString()sjsonnew.IsoString in trait sbt.internal.librarymanagement.formats.LoggerFormat is present only in current version
-      // These only fail in Scala 2.11
-      // We're _probably_ ok to add these between sbt 1 RC2 and RC3,
-      // but it's dangerous territory in general
-      // see typesafehub/migration-manager#183 for an example of what happens..
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.internal.librarymanagement.formats.GlobalLockFormat.globalLockIsoString"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.internal.librarymanagement.formats.LoggerFormat.xsbtiLoggerIsoString"),
-    )
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
@@ -131,11 +110,6 @@ lazy val lmIvy = (project in file("ivy"))
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     scalacOptions in (Compile, console) --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
     mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // method UnknownResolver()java.lang.String in object sbt.internal.librarymanagement.SbtIvyLogger does not have a correspondent in current version
-      // Was in a private object in sbt.internal and manually checked to be unused in Zinc or sbt
-      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.SbtIvyLogger.UnknownResolver")
-    )
   )
 
 def customCommands: Seq[Setting[_]] = Seq(
