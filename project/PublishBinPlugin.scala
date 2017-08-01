@@ -28,7 +28,7 @@ object PublishBinPlugin extends AutoPlugin {
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         (packagedArtifacts in publishLocalBin).value.toVector,
-        (checksums in publishLocalBin).value,
+        (checksums in publishLocalBin).value.toVector,
         resolverName = "local",
         logging = ivyLoggingLevel.value,
         overwrite = isSnapshot.value)
