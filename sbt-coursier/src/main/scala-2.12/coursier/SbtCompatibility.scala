@@ -22,12 +22,12 @@ object SbtCompatibility {
 
   implicit class BinaryOps(private val binary: Binary) extends AnyVal {
     def remapVersion(scalaBinaryVersion: String): String =
-      scalaBinaryVersion
+      binary.prefix + scalaBinaryVersion + binary.suffix
   }
 
   implicit class FullOps(private val full: Full) extends AnyVal {
     def remapVersion(scalaVersion: String): String =
-      scalaVersion
+      full.prefix + scalaVersion + full.suffix
   }
 
 }
