@@ -1,6 +1,6 @@
 package sbt
 
-import sbt.Tests.{ Output, Summary }
+import sbt.Tests.Summary
 
 /**
  * Logs information about tests after they finish.
@@ -19,14 +19,14 @@ trait TestResultLogger {
    * @param results The test results about which to log.
    * @param taskName The task about which we are logging. Eg. "my-module-b/test:test"
    */
-  def run(log: Logger, results: Output, taskName: String): Unit
+  def run(log: Logger, results: Tests.Output, taskName: String): Unit
 
   /** Only allow invocation if certain criteria is met, else use another `TestResultLogger` (defaulting to nothing) . */
-  final def onlyIf(f: (Output, String) => Boolean, otherwise: TestResultLogger = TestResultLogger.Null) =
+  final def onlyIf(f: (Tests.Output, String) => Boolean, otherwise: TestResultLogger = TestResultLogger.Null) =
     TestResultLogger.choose(f, this, otherwise)
 
   /** Allow invocation unless a certain predicate passes, in which case use another `TestResultLogger` (defaulting to nothing) . */
-  final def unless(f: (Output, String) => Boolean, otherwise: TestResultLogger = TestResultLogger.Null) =
+  final def unless(f: (Tests.Output, String) => Boolean, otherwise: TestResultLogger = TestResultLogger.Null) =
     TestResultLogger.choose(f, otherwise, this)
 }
 
@@ -42,9 +42,9 @@ object TestResultLogger {
   def SilentWhenNoTests = silenceWhenNoTests(Default)
 
   /** Creates a `TestResultLogger` using a given function. */
-  def apply(f: (Logger, Output, String) => Unit): TestResultLogger =
+  def apply(f: (Logger, Tests.Output, String) => Unit): TestResultLogger =
     new TestResultLogger {
-      override def run(log: Logger, results: Output, taskName: String) =
+      override def run(log: Logger, results: Tests.Output, taskName: String) =
         f(log, results, taskName)
     }
 
@@ -57,7 +57,7 @@ object TestResultLogger {
    * @param t The `TestResultLogger` to choose if the predicate passes.
    * @param f The `TestResultLogger` to choose if the predicate fails.
    */
-  def choose(cond: (Output, String) => Boolean, t: TestResultLogger, f: TestResultLogger) =
+  def choose(cond: (Tests.Output, String) => Boolean, t: TestResultLogger, f: TestResultLogger) =
     TestResultLogger((log, results, taskName) =>
       (if (cond(results, taskName)) t else f).run(log, results, taskName))
 
@@ -72,13 +72,13 @@ object TestResultLogger {
 
     /** SBT's default `TestResultLogger`. Use `copy()` to change selective portions. */
     case class Main(
-        printStandard_? : Output => Boolean = Defaults.printStandard_?,
+        printStandard_? : Tests.Output => Boolean = Defaults.printStandard_?,
         printSummary: TestResultLogger = Defaults.printSummary,
         printStandard: TestResultLogger = Defaults.printStandard,
         printFailures: TestResultLogger = Defaults.printFailures,
         printNoTests: TestResultLogger = Defaults.printNoTests) extends TestResultLogger {
 
-      override def run(log: Logger, results: Output, taskName: String): Unit = {
+      override def run(log: Logger, results: Tests.Output, taskName: String): Unit = {
         def run(r: TestResultLogger): Unit = r.run(log, results, taskName)
 
         run(printSummary)
@@ -109,7 +109,7 @@ object TestResultLogger {
         }
     })
 
-    val printStandard_? : Output => Boolean =
+    val printStandard_? : Tests.Output => Boolean =
       results =>
         // Print the standard one-liner statistic if no framework summary is defined, or when > 1 framework is in used.
         results.summaries.size > 1 || results.summaries.headOption.forall(_.summaryText.isEmpty)

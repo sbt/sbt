@@ -9,14 +9,17 @@ import java.io.File
 object Inspect {
   sealed trait Mode
   final case class Details(actual: Boolean) extends Mode
-  private[this] final class Opt(override val toString: String) extends Mode
-  val DependencyTree: Mode = new Opt("tree")
-  val Uses: Mode = new Opt("inspect")
-  val Definitions: Mode = new Opt("definitions")
+  private[this] sealed class Opt( final override val toString: String) extends Mode
+  private[this] case object DependencyTreeMode extends Opt("tree")
+  private[this] case object UsesMode extends Opt("inspect")
+  private[this] case object DefinitionsMode extends Opt("definitions")
+  val DependencyTree: Mode = DependencyTreeMode
+  val Uses: Mode = UsesMode
+  val Definitions: Mode = DependencyTreeMode
 
   def parser: State => Parser[(Inspect.Mode, ScopedKey[_])] = (s: State) => spacedModeParser(s) flatMap {
-    case opt @ (Uses | Definitions)          => allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
-    case opt @ (DependencyTree | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
+    case opt @ (UsesMode | DefinitionsMode)      => allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
+    case opt @ (DependencyTreeMode | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
   }
   val spacedModeParser: (State => Parser[Mode]) = (s: State) => {
     val actual = "actual" ^^^ Details(true)
@@ -40,12 +43,12 @@ object Inspect {
       option match {
         case Details(actual) =>
           Project.details(structure, actual, sk.scope, sk.key)
-        case DependencyTree =>
+        case DependencyTreeMode =>
           val basedir = new File(Project.session(s).current.build)
           Project.settingGraph(structure, basedir, sk).dependsAscii(get(sbt.Keys.asciiGraphWidth))
-        case Uses =>
+        case UsesMode =>
           Project.showUses(Project.usedBy(structure, true, sk.key))
-        case Definitions =>
+        case DefinitionsMode =>
           Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
       }
     }

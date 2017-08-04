@@ -269,20 +269,27 @@ object IvyActions {
         if (arts.isEmpty) None
         else Some(m.copy(isTransitive = false, explicitArtifacts = arts))
       }
-    def hardcodedArtifacts = classifiedArtifacts(classifiers, exclude)(m)
+    def hardcodedArtifacts = classifiedArtifacts0(classifiers, exclude)(m)
     explicitArtifacts orElse hardcodedArtifacts
   }
+
   @deprecated("This is no longer public.", "0.13.10")
   def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
+    classifiedArtifacts0(classifiers, exclude)(m)
+
+  private[this] def classifiedArtifacts0(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
     {
       val excluded = exclude getOrElse (restrictedCopy(m, false), Set.empty)
       val included = classifiers filterNot excluded
       if (included.isEmpty) None else Some(m.copy(isTransitive = false, explicitArtifacts = classifiedArtifacts(m.name, included)))
     }
+
   def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
     report.addMissing { id => classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude)) }
+
   def classifiedArtifacts(name: String, classifiers: Seq[String]): Seq[Artifact] =
     classifiers map { c => Artifact.classified(name, c) }
+
   private[this] def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
     exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
 
