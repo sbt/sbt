@@ -61,18 +61,22 @@ object Scope {
       case br: BuildReference   => resolveBuild(current, br)
       case pr: ProjectReference => resolveProjectBuild(current, pr)
     }
+
   def resolveBuild(current: URI, ref: BuildReference): BuildReference =
     ref match {
       case ThisBuild     => BuildRef(current)
       case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
     }
+
   def resolveProjectBuild(current: URI, ref: ProjectReference): ProjectReference =
     ref match {
       case LocalRootProject    => RootProject(current)
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
+      case ThisProject         => ref
     }
+
   def resolveBuild(current: URI, uri: URI): URI =
     if (!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
       current // this handles the shortcut of referring to the current build using "."
@@ -90,9 +94,10 @@ object Scope {
       case LocalRootProject => ProjectRef(current, rootProject(current))
       case LocalProject(id) => ProjectRef(current, id)
       case RootProject(uri) =>
-        val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
+        val r = resolveBuild(current, uri); ProjectRef(r, rootProject(r))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
     }
+
   def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
     ref match {
       case ThisBuild     => BuildRef(current)

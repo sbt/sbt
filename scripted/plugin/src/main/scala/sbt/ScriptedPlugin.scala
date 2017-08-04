@@ -99,7 +99,7 @@ object ScriptedPlugin extends Plugin {
   val scriptedSettings = Seq(
     ivyConfigurations ++= Seq(scriptedConf, scriptedLaunchConf),
     scriptedSbt := (sbtVersion in pluginCrossBuild).value,
-    sbtLauncher <<= getJars(scriptedLaunchConf).map(_.get.head),
+    sbtLauncher := getJars(scriptedLaunchConf).value.get.head,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
     libraryDependencies ++= (partialVersion(scriptedSbt.value) match {
       case Some((0, 13)) =>
@@ -115,11 +115,12 @@ object ScriptedPlugin extends Plugin {
     }),
     scriptedBufferLog := true,
     scriptedClasspath := getJars(scriptedConf).value,
-    scriptedTests <<= scriptedTestsTask,
-    scriptedRun <<= scriptedRunTask,
-    scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },
+    scriptedTests := scriptedTestsTask.value,
+    scriptedRun := scriptedRunTask.value,
+    scriptedDependencies := (()),
+    scriptedDependencies := (scriptedDependencies dependsOn (compile in Test, publishLocal)).value,
     scriptedLaunchOpts := Seq(),
-    scripted <<= scriptedTask
+    scripted := scriptedTask.evaluated
   )
   private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
     PathFinder(Classpaths.managedJars(config, classpathTypes.value, update.value).map(_.data))

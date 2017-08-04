@@ -67,7 +67,7 @@ final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[Str
   }
   override def hashCode: Int = (ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck).hashCode
 
-  @deprecated
+  @deprecated("Specify descriptorOptional and skipConsistencyCheck", "0.13.1")
   def this(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean) = this(ivyPatterns, artifactPatterns, isMavenCompatible, false, false)
 }
 object Patterns {
