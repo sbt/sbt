@@ -5,8 +5,6 @@ import sbt.Keys._
 
 import SbtCompatibility._
 
-import coursier.core.ResolutionProcess
-
 object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
@@ -70,7 +68,6 @@ object CoursierPlugin extends AutoPlugin {
     task: TaskKey[T],
     shadedConfigOpt: Option[(String, String)]
   ): Setting[Task[T]] =
-    // not 100% sure that make writeFiles below happen before the actions triggered by task.value...
     task := task.dependsOn(Def.task {
       val currentProject = {
         val proj = coursierProject.value
@@ -97,8 +94,8 @@ object CoursierPlugin extends AutoPlugin {
       withClassifiers = true,
       sbtClassifiers = true
     ).value,
-    makeIvyXmlBefore(publishLocalConfiguration, shadedConfigOpt),
-    makeIvyXmlBefore(publishConfiguration, shadedConfigOpt),
+    makeIvyXmlBefore(needsIvyXmlLocal, shadedConfigOpt),
+    makeIvyXmlBefore(needsIvyXml, shadedConfigOpt),
     update := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = false

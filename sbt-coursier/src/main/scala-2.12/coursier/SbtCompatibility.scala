@@ -30,4 +30,7 @@ object SbtCompatibility {
       full.prefix + scalaVersion + full.suffix
   }
 
+  def needsIvyXmlLocal = sbt.Keys.publishLocalConfiguration
+  def needsIvyXml = sbt.Keys.publishConfiguration
+
 }
