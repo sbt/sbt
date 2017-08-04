@@ -15,7 +15,7 @@ jdk:
 
 env:
   matrix:
-    - SBT_CMD="safeUnitTests"
+    - SBT_CMD=";doc;safeUnitTests"
     - SBT_CMD="otherUnitTests"
     - SBT_CMD="scripted actions/*"
     - SBT_CMD="scripted api/*"
@@ -41,8 +41,7 @@ env:
 
 notifications:
   email:
-    - eugene.yokota@typesafe.com
-    - joshua.suereth@typesafe.com
+    - sbt-dev-bot@googlegroups.com
 
 script:
   - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
