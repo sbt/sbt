@@ -16,6 +16,11 @@ jdk:
   - openjdk6
 #  - oraclejdk7
 
+# WORKAROUND https://github.com/travis-ci/travis-ci/issues/5227
+addons:
+  hosts: workaround-travis-ci-issue-5227
+  hostname: workaround-travis-ci-issue-5227
+
 env:
   matrix:
     - SBT_CMD=";doc;safeUnitTests"
