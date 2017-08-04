@@ -1,0 +1,3 @@
+Only run with sbt 0.13 here - requires sbt-pgp-coursier with sbt 1.0
+
+A few things from this test were grabbed from https://github.com/sbt/sbt-pgp/tree/431c0a50fc5e91b881ebb154f22cc6a0b209be10/pgp-plugin/src/sbt-test/sbt-pgp/skip

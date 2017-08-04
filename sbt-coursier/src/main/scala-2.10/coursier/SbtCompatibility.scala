@@ -141,4 +141,7 @@ object SbtCompatibility {
     def dependencies = module.modules
   }
 
+  def needsIvyXmlLocal = sbt.Keys.deliverLocalConfiguration
+  def needsIvyXml = sbt.Keys.deliverConfiguration
+
 }

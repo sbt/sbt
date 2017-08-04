@@ -1,0 +1,3 @@
+See a similar test under sbt-coursier/src/sbt-test/sbt-coursier-0.13/publish-local-signed
+
+A few things from this test were grabbed from https://github.com/sbt/sbt-pgp/tree/431c0a50fc5e91b881ebb154f22cc6a0b209be10/pgp-plugin/src/sbt-test/sbt-pgp/skip

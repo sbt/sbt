@@ -1,12 +1,12 @@
 
 plugins_(
   "io.get-coursier"   % "sbt-coursier"    % coursierVersion,
-  "com.typesafe"      % "sbt-mima-plugin" % "0.1.14",
+  "com.typesafe"      % "sbt-mima-plugin" % "0.1.15",
   "org.xerial.sbt"    % "sbt-pack"        % "0.8.2",
   "com.jsuereth"      % "sbt-pgp"         % "1.0.1",
   "com.typesafe.sbt"  % "sbt-proguard"    % "0.2.3",
   "com.github.gseitz" % "sbt-release"     % "1.0.5",
-  "org.scala-js"      % "sbt-scalajs"     % "0.6.17",
+  "org.scala-js"      % "sbt-scalajs"     % "0.6.19",
   "org.scoverage"     % "sbt-scoverage"   % "1.4.0",
   "io.get-coursier"   % "sbt-shading"     % coursierVersion,
   "org.xerial.sbt"    % "sbt-sonatype"    % "1.1",
