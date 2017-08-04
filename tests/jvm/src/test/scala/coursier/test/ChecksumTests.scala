@@ -52,6 +52,12 @@ object ChecksumTests extends TestSuite {
         assert(res.nonEmpty)
       }
 
+      'binarySha256 - {
+        val content = Platform.readFullySync(getClass.getResource("/empty.sha256").openStream())
+        val res = Cache.parseRawChecksum(content)
+        assert(res.nonEmpty)
+      }
+
       'binaryMd5 - {
         val content = Platform.readFullySync(getClass.getResource("/empty.md5").openStream())
         val res = Cache.parseRawChecksum(content)
@@ -77,7 +83,8 @@ object ChecksumTests extends TestSuite {
         url,
         Map(
           "MD5" -> (url + ".md5"),
-          "SHA-1" -> (url + ".sha1")
+          "SHA-1" -> (url + ".sha1"),
+          "SHA-256" -> (url + ".sha256")
         ),
         Map.empty,
         Attributes("jar"),
@@ -98,6 +105,7 @@ object ChecksumTests extends TestSuite {
         }
 
       'sha1 - validateAll("SHA-1")
+      'sha256 - validateAll("SHA-256")
       'md5  - validateAll("MD5")
     }
   }

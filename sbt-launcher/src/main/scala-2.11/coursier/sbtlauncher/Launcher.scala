@@ -248,7 +248,7 @@ class Launcher(
   def globalLock = DummyGlobalLock
 
   // See https://github.com/sbt/ivy/blob/2cf13e211b2cb31f0d3b317289dca70eca3362f6/src/java/org/apache/ivy/util/ChecksumHelper.java
-  def checksums: Array[String] = Array("sha1", "md5")
+  def checksums: Array[String] = Array("sha1", "sha256", "md5")
 
   def app(id: xsbti.ApplicationID, version: String): xsbti.AppProvider =
     app(ApplicationID(id).copy(version = version))

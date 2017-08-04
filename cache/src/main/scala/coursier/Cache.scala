@@ -871,8 +871,8 @@ object Cache {
       parseChecksumLine(lines) orElse parseChecksumAlternative(lines)
     }
 
-  // matches md5 or sha1
-  private val checksumPattern = Pattern.compile("^[0-9a-f]{32}([0-9a-f]{8})?")
+  // matches md5 or sha1 or sha-256
+  private val checksumPattern = Pattern.compile("^[0-9a-f]{32}([0-9a-f]{8})?([0-9a-f]{24})?")
 
   private def findChecksum(elems: Seq[String]): Option[BigInteger] =
     elems.collectFirst {

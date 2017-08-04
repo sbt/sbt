@@ -133,7 +133,7 @@ final case class MavenSource(
       .map(artifactWithExtra)
   }
 
-  private val types = Map("sha1" -> "SHA-1", "md5" -> "MD5", "asc" -> "sig")
+  private val types = Map("sha1" -> "SHA-1", "sha256" -> "SHA-256", "md5" -> "MD5", "asc" -> "sig")
 
   private def artifactsKnownPublications(
     dependency: Dependency,
@@ -327,7 +327,7 @@ final case class MavenSource(
 
 object MavenSource {
 
-  private val checksumTypes = Set("MD5", "SHA-1")
+  private val checksumTypes = Set("MD5", "SHA-1", "SHA-256")
 
   val typeExtensions: Map[String, String] = Map(
     "eclipse-plugin" -> "jar",
