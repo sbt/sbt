@@ -302,6 +302,14 @@ object UpdateReport {
       }
   }
 
+  // WORKAROUND sbt/sbt#2812 scaladoc 2.10 struggles with FastTypeTag's macro
+  import scala.pickling.FastTypeTag
+  private[this] implicit val configurationReportTag: FastTypeTag[ConfigurationReport] = FastTypeTag.apply
+  private[this] implicit val vectorConfigurationReportTag: FastTypeTag[Vector[ConfigurationReport]] = FastTypeTag.apply
+  private[this] implicit val updateStatsTag: FastTypeTag[UpdateStats] = FastTypeTag.apply
+  private[this] implicit val fileTag: FastTypeTag[File] = FastTypeTag.apply
+  private[this] implicit val flMapTag: FastTypeTag[Map[File, Long]] = FastTypeTag.apply
+
   private val vectorConfigurationReportPickler = implicitly[Pickler[Vector[ConfigurationReport]]]
   private val vectorConfigurationReportUnpickler = implicitly[Unpickler[Vector[ConfigurationReport]]]
   private val updateStatsPickler = implicitly[Pickler[UpdateStats]]
@@ -310,11 +318,7 @@ object UpdateReport {
   private val flMapUnpickler = implicitly[Unpickler[Map[File, Long]]]
 
   implicit val pickler: Pickler[UpdateReport] with Unpickler[UpdateReport] = new Pickler[UpdateReport] with Unpickler[UpdateReport] {
-    val tag = implicitly[FastTypeTag[UpdateReport]]
-    val fileTag = implicitly[FastTypeTag[File]]
-    val vectorConfigurationReportTag = implicitly[FastTypeTag[Vector[ConfigurationReport]]]
-    val updateStatsTag = implicitly[FastTypeTag[UpdateStats]]
-    val flMapTag = implicitly[FastTypeTag[Map[File, Long]]]
+    val tag: FastTypeTag[UpdateReport] = FastTypeTag.apply
     def pickle(a: UpdateReport, builder: PBuilder): Unit = {
       builder.pushHints()
       builder.hintTag(tag)

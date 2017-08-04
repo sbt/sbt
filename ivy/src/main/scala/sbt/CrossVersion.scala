@@ -36,11 +36,14 @@ object CrossVersion {
     override def toString = "Full"
   }
 
-  private val disabledTag = implicitly[FastTypeTag[Disabled.type]]
-  private val binaryTag = implicitly[FastTypeTag[Binary]]
-  private val fullTag = implicitly[FastTypeTag[Full]]
+  // WORKAROUND sbt/sbt#2812 scaladoc 2.10 struggles with FastTypeTag's macro
+  import scala.pickling.FastTypeTag
+  private[this] val tag = FastTypeTag[CrossVersion]
+  private val disabledTag = FastTypeTag[Disabled.type]
+  private val binaryTag = FastTypeTag[Binary]
+  private val fullTag = FastTypeTag[Full]
   implicit val pickler: Pickler[CrossVersion] = new Pickler[CrossVersion] {
-    val tag = implicitly[FastTypeTag[CrossVersion]]
+    val tag = CrossVersion.this.tag
     def pickle(a: CrossVersion, builder: PBuilder): Unit = {
       builder.pushHints()
       builder.hintTag(a match {
@@ -54,7 +57,7 @@ object CrossVersion {
     }
   }
   implicit val unpickler: Unpickler[CrossVersion] = new Unpickler[CrossVersion] {
-    val tag = implicitly[FastTypeTag[CrossVersion]]
+    val tag = CrossVersion.this.tag
     def unpickle(tpe: String, reader: PReader): Any = {
       reader.pushHints()
       reader.hintTag(tag)
