@@ -61,7 +61,7 @@ abstract class ModuleReportExtra {
     s"\t\t- ${module.revision}\n" +
       (if (arts.size <= 1) "" else arts.mkString("\t\t\t", "\n\t\t\t", "\n")) +
       reportStr("status", status) +
-      reportStr("publicationDate", publicationDate map { _.toString }) +
+      reportStr("publicationDate", publicationDate map calendarToString) +
       reportStr("resolver", resolver) +
       reportStr("artifactResolver", artifactResolver) +
       reportStr("evicted", Some(evicted.toString)) +
@@ -95,6 +95,11 @@ abstract class ModuleReportExtra {
     value map { x =>
       s"\t\t\t$key: $x\n"
     } getOrElse ""
+
+  private[this] def calendarToString(c: ju.Calendar): String = {
+    import sjsonnew._, BasicJsonProtocol._
+    implicitly[IsoString[ju.Calendar]] to c
+  }
 
   def retrieve(f: (ModuleID, Artifact, File) => File): ModuleReport =
     copy(artifacts = artifacts.map { case (art, file) => (art, f(module, art, file)) })

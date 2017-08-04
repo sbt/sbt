@@ -12,6 +12,7 @@ class UpdateReportSpec extends FlatSpec with Matchers {
       |	compile:
       |	org:name
       |		- 1.0
+      |			publicationDate: 1970-01-01T00:00:00Z
       |			evicted: false
       |
       |""".stripMargin.drop(1))
@@ -32,10 +33,18 @@ class UpdateReportSpec extends FlatSpec with Matchers {
       Vector(organizationArtifactReport)
     )
 
-  lazy val moduleReport =
+  lazy val moduleReport = (
     ModuleReport(ModuleID("org", "name", "1.0"), Vector.empty, Vector.empty)
+      withPublicationDate Some(epochCalendar)
+  )
 
   lazy val organizationArtifactReport =
     OrganizationArtifactReport("org", "name", Vector(moduleReport))
 
+  val epochCalendar: java.util.Calendar = {
+    val utc = java.util.TimeZone getTimeZone "UTC"
+    val c = new java.util.GregorianCalendar(utc, java.util.Locale.ENGLISH)
+    c setTimeInMillis 0L
+    c
+  }
 }
