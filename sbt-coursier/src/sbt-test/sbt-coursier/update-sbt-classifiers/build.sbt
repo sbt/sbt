@@ -7,25 +7,32 @@ lazy val updateSbtClassifiersCheck = TaskKey[Unit]("updateSbtClassifiersCheck")
 
 updateSbtClassifiersCheck := {
 
-  val configReport = updateSbtClassifiers
+  val defaultModules = updateSbtClassifiers
     .value
     .configuration(Default)
-    .getOrElse {
-      throw new Exception(
-        "default configuration not found in updateSbtClassifiers report"
-      )
-    }
+    .map(_.modules)
+    .getOrElse(Nil)
 
-  def artifacts(org: String, name: String) = configReport
-    .modules
-    .collect {
-      case moduleReport
-        if moduleReport.module.organization == org &&
-             moduleReport.module.name == name =>
-        moduleReport.artifacts
-    }
-    .toSeq
-    .flatten
+  val compileModules = updateSbtClassifiers
+    .value
+    .configuration(Compile)
+    .map(_.modules)
+    .getOrElse(Nil)
+
+  def artifacts(org: String, name: String) =
+    (defaultModules ++ compileModules)
+      .map { m =>
+        println(s"Found module $m")
+        m
+      }
+      .collect {
+        case moduleReport
+          if moduleReport.module.organization == org &&
+               moduleReport.module.name == name =>
+          moduleReport.artifacts
+      }
+      .toSeq
+      .flatten
 
   def ensureHasArtifact(org: String, name: String) =
     assert(
