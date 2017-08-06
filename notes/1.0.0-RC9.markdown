@@ -1,0 +1,15 @@
+### Changes
+
+* Fetch artifacts with custom packaging types (e.g. `aar` packaging, [#620])
+* Fix `updateSbtClassifiers` in sbt-coursier (regressed during RCs, [#620])
+* Add short syntax for [jitpack](https://jitpack.io/) repository from the CLI tools (e.g. `-r jitpack` to add the jitpack repository, [#620])
+* Add support for SHA-256 (thanks to [@gaboraranyossy-da], [#625])
+* Switch to scala-js 0.6.19 ([#627])
+* Fix `publishSigned` when sbt-coursier is enabled (regressed in RC8, [#627])
+
+
+[#620]: https://github.com/alexarchambault/coursier/pull/620
+[#625]: https://github.com/alexarchambault/coursier/pull/625
+[#627]: https://github.com/alexarchambault/coursier/pull/627
+
+[@gaboraranyossy-da]: https://github.com/gaboraranyossy-da
