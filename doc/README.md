@@ -787,6 +787,7 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 - Claudio Bley ([@avdv](https://github.com/avdv))
 - Erem Boto ([@eboto](https://github.com/eboto))
 - Erik LaBianca ([@easel](https://github.com/easel))
+- Gabor Aranyossy ([@gaboraranyossy-da](https://github.com/gaboraranyossy-da))
 - Guillaume Massé ([@MasseGuillaume](https://github.com/MasseGuillaume))
 - Han Ju ([@darkjh](https://github.com/darkjh))
 - Jameel Al-Aziz ([@jalaziz](https://github.com/jalaziz))
