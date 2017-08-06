@@ -411,7 +411,7 @@ object Tasks {
 
   private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
 
-  private lazy val globalPluginPattern = {
+  private lazy val globalPluginPatterns = {
 
     val props = sys.props.toMap
 
@@ -426,23 +426,37 @@ object Tasks {
     addUriProp("sbt.global.base")
     addUriProp("user.home")
 
+    def pattern(s: String): coursier.ivy.Pattern = {
+      val p = PropertiesPattern.parse(s) match {
+        case -\/(err) =>
+          throw new Exception(s"Cannot parse pattern $s: $err")
+        case \/-(p) =>
+          p
+      }
+
+      p.substituteProperties(props ++ extraProps) match {
+        case -\/(err) =>
+          throw new Exception(err)
+        case \/-(p) =>
+          p
+      }
+    }
+
     // FIXME get the 0.13 automatically?
-    val s = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/0.13}/plugins/target/resolution-cache/" +
+    val defaultRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/0.13}/plugins/target" +
+      "/resolution-cache/" +
       "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
 
-    val p = PropertiesPattern.parse(s) match {
-      case -\/(err) =>
-        throw new Exception(s"Cannot parse pattern $s: $err")
-      case \/-(p) =>
-        p
-    }
+    // seems to be required in more recent versions of sbt (since 0.13.16?)
+    val extraRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/0.13}/plugins/target" +
+      "(/scala-[scalaVersion])(/sbt-[sbtVersion])" +
+      "/resolution-cache/" +
+      "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
 
-    p.substituteProperties(props ++ extraProps) match {
-      case -\/(err) =>
-        throw new Exception(err)
-      case \/-(p) =>
-        p
-    }
+    Seq(
+      defaultRawPattern,
+      extraRawPattern
+    ).map(pattern)
   }
 
   def parentProjectCacheTask: Def.Initialize[sbt.Task[Map[Seq[sbt.Resolver],Seq[coursier.ProjectCache]]]] =
@@ -608,12 +622,14 @@ object Tasks {
           log.info(s"  ${p.module}:${p.version}")
       }
 
-      val globalPluginsRepo = IvyRepository.fromPattern(
-        globalPluginPattern,
-        withChecksums = false,
-        withSignatures = false,
-        withArtifacts = false
-      )
+      val globalPluginsRepos =
+        for (p <- globalPluginPatterns)
+          yield IvyRepository.fromPattern(
+            p,
+            withChecksums = false,
+            withSignatures = false,
+            withArtifacts = false
+          )
 
       val interProjectRepo = InterProjectRepository(interProjectDependencies)
 
@@ -704,7 +720,7 @@ object Tasks {
         }
       }
 
-      val internalRepositories = Seq(globalPluginsRepo, interProjectRepo)
+      val internalRepositories = globalPluginsRepos :+ interProjectRepo
 
       val repositories =
         internalRepositories ++
