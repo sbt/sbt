@@ -5,8 +5,10 @@ import coursier.core.{Activation, Parse, Version}
  */
 package object coursier {
 
+  // `extends Serializable` added here-or-there for bin compat while switching from 2.12.1 to 2.12.4
+
   type Dependency = core.Dependency
-  object Dependency {
+  object Dependency extends Serializable {
     def apply(
       module: Module,
       version: String,
@@ -29,7 +31,7 @@ package object coursier {
   }
 
   type Attributes = core.Attributes
-  object Attributes {
+  object Attributes extends Serializable {
     def apply(
       `type`: String = "",
       classifier: String = ""
@@ -47,7 +49,7 @@ package object coursier {
   val Profile = core.Profile
 
   type Module = core.Module
-  object Module {
+  object Module extends Serializable {
     def apply(organization: String, name: String, attributes: Map[String, String] = Map.empty): Module =
       core.Module(organization, name, attributes)
   }
@@ -63,7 +65,7 @@ package object coursier {
   val MavenRepository = maven.MavenRepository
 
   type Resolution = core.Resolution
-  object Resolution {
+  object Resolution extends Serializable {
     val empty = apply()
     def apply(
       rootDependencies: Set[Dependency] = Set.empty,

@@ -10,7 +10,7 @@ script:
 #    - bash <(curl -s https://codecov.io/bash)
 matrix:
   include:
-    - env: SCALA_VERSION=2.12.1 PUBLISH=1
+    - env: SCALA_VERSION=2.12.4 PUBLISH=1
       os: linux
       jdk: oraclejdk8
       sudo: required
@@ -30,10 +30,10 @@ matrix:
       sudo: required
       services:
         - docker
-    - env: SCALA_VERSION=2.12.1 SBT_COURSIER=1
+    - env: SCALA_VERSION=2.12.4 SBT_COURSIER=1
       os: linux
       jdk: oraclejdk8
-    - env: SCALA_VERSION=2.12.1 SBT_SHADING=1
+    - env: SCALA_VERSION=2.12.4 SBT_SHADING=1
       os: linux
       jdk: oraclejdk8
     - env: SCALA_VERSION=2.10.6 SBT_COURSIER=1
@@ -44,7 +44,7 @@ matrix:
     - env: SCALA_VERSION=2.10.6 SBT_SHADING=1
       os: linux
       jdk: oraclejdk8
-    - env: SCALA_VERSION=2.12.1 SCALA_JS=1
+    - env: SCALA_VERSION=2.12.4 SCALA_JS=1
       os: linux
       jdk: oraclejdk8
     - env: SCALA_VERSION=2.11.11 SCALA_JS=1
