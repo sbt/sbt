@@ -114,11 +114,9 @@ private[sbt] object TemplateCommandUtil {
     if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList
     else {
       IO.createDirectory(templateDirectory)
-      val m = lm.moduleDescriptor(info.module.withConfigurations(Some("component")),
-                                  Vector.empty,
-                                  scalaModuleInfo)
+      val m = lm.wrapDependencyInModule(info.module, scalaModuleInfo)
       val xs = lm.retrieve(m, templateDirectory, log) match {
-        case Left(_)      => ??? // FIXME
+        case Left(_)      => sys.error(s"Retrieval of ${info.module} failed.")
         case Right(files) => files.toList
       }
       xs

@@ -37,4 +37,18 @@ object Util {
     Camel.replaceAllIn(s, m => m.group(1) + "-" + m.group(2).toLowerCase(Locale.ENGLISH))
 
   def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) '`' + s + '`' else s
+
+  lazy val isWindows: Boolean =
+    System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
+
+  lazy val isCygwin: Boolean = {
+    val os = Option(System.getenv("OSTYPE"))
+    os match {
+      case Some(x) => x.toLowerCase(Locale.ENGLISH).contains("cygwin")
+      case _       => false
+    }
+  }
+
+  lazy val isNonCygwinWindows: Boolean = isWindows && !isCygwin
+  lazy val isCygwinWindows: Boolean = isWindows && isCygwin
 }

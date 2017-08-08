@@ -17,6 +17,7 @@ import java.util.Locale
 
 import scala.sys.process.Process
 import scala.util.control.NonFatal
+import sbt.internal.util.Util
 
 object Resolvers {
   type Resolver = BuildLoader.Resolver
@@ -125,20 +126,12 @@ object Resolvers {
     private def normalized(uri: URI) = uri.copy(scheme = scheme)
   }
 
-  private lazy val onWindows = {
-    val os = System.getenv("OSTYPE")
-    val isCygwin = (os != null) && os.toLowerCase(Locale.ENGLISH).contains("cygwin")
-    val isWindows =
-      System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).contains("windows")
-    isWindows && !isCygwin
-  }
-
   def run(command: String*): Unit =
     run(None, command: _*)
 
   def run(cwd: Option[File], command: String*): Unit = {
     val result = Process(
-      if (onWindows) "cmd" +: "/c" +: command
+      if (Util.isNonCygwinWindows) "cmd" +: "/c" +: command
       else command,
       cwd
     ) !;

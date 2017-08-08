@@ -71,7 +71,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
-import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
+import sjsonnew.{ IsoLList, JsonFormat, LList, LNil, :*: }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import std.TaskExtra._
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
@@ -374,6 +374,7 @@ object Defaults extends BuildCommon {
     }
   )
 
+  // This is included into JvmPlugin.projectSettings
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     incOptions := incOptions.value
       .withClassfileManagerType(
@@ -381,15 +382,7 @@ object Defaults extends BuildCommon {
           .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType).toOptional
       ),
     scalaInstance := scalaInstanceTask.value,
-    crossVersion := (if (crossPaths.value) CrossVersion.binary else Disabled()),
-    scalaVersion := {
-      val scalaV = scalaVersion.value
-      val sv = (sbtBinaryVersion in pluginCrossBuild).value
-      val isPlugin = sbtPlugin.value
-      if (isPlugin) {
-        scalaVersionFromSbtBinaryVersion(sv)
-      } else scalaV
-    },
+    crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
       (sbtVersion in pluginCrossBuild).value),
     crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
@@ -425,14 +418,6 @@ object Defaults extends BuildCommon {
       derive(compilersSetting),
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
     ))
-
-  private[sbt] def scalaVersionFromSbtBinaryVersion(sv: String): String =
-    VersionNumber(sv) match {
-      case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
-      case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.6"
-      case VersionNumber(Seq(1, _, _*), _, _)  => "2.12.2"
-      case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
-    }
 
   def makeCrossSources(scalaSrcDir: File,
                        javaSrcDir: File,
@@ -2173,16 +2158,26 @@ object Classpaths {
         classifiers.toVector
       )
     }
+
   def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[File]] =
     Def.task {
       val _ = update.value
       IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
     }
+
   def publishTask(config: TaskKey[PublishConfiguration],
                   deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-    Def.task {
-      IvyActions.publish(ivyModule.value, config.value, streams.value.log)
+    Def.taskDyn {
+      val s = streams.value
+      val skp = (skip in publish).value
+      val ref = thisProjectRef.value
+      if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") }
+      else Def.task {
+        val cfg = config.value
+        IvyActions.publish(ivyModule.value, config.value, s.log)
+      }
     } tag (Tags.Publish, Tags.Network)
+
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
     new sjsonnew.JsonKeyFormat[ModuleID] {
       import sjsonnew.support.scalajson.unsafe._
@@ -2300,16 +2295,18 @@ object Classpaths {
     }.value
 
     LibraryManagement.cachedUpdate(
+      // LM API
+      lm = dependencyResolution.value,
+      // Ivy-free ModuleDescriptor
+      module = ivyModule.value,
       s.cacheStoreFactory.sub(updateCacheName.value),
       Reference.display(thisProjectRef.value),
-      ivyModule.value,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
       skip = (skip in update).value,
       force = shouldForce,
       depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
       uwConfig = (unresolvedWarningConfiguration in update).value,
-      depDir = Some(dependencyCacheDirectory.value),
       ewo = evictionOptions,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,

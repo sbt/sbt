@@ -12,6 +12,7 @@ This is the RC-1 release of sbt 1.0.
 - sbt 0.12 style `Build` trait that was deprecated in sbt 0.13.12, is removed. Please [migrate to build.sbt](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+from+the+Build+trait). Auto plugins and `Build` trait do not work well together, and its feature is now largely subsumed by multi-project build.sbt.
 - sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
 - sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
+- sbt 0.12 style tuple enrichement DSL, which was deprecated in sbt 0.13.13, is opt-in under `sbt.TupleSyntax`. [#2762][2762]/[#3291][3291] by [@dwijnand][@dwijnand]
 - Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
 - `config("tooling")` must be directly assigned to a *capitalized* `val`, like `val Tooling = config("tooling")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
 - Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
@@ -39,6 +40,7 @@ This is the RC-1 release of sbt 1.0.
 - sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
 - sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
 - Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
+- `Command.process(..)` is removed. Use `"cmd" :: state`.
 
 The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
 
@@ -46,6 +48,10 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 
 - New incremental compiler called Zinc 1. Details below.
 - The interactive shell is adds network API. Details below.
+- Library management API and parallel artifact download. See below.
+- sbt 1.0's logging supports event logging. See below.
+- Scala Center contributed static validation of `build.sbt`. See below
+- Ports sbt-cross-building's `^` and `^^` commands for plugin cross building. See below.
 
 #### Fixes
 
@@ -61,8 +67,6 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 
 - Scala Center contributed a Java-friendly Zinc API. This was a overhaul of the Zinc internal API for a good Scala integration with other build tools. [zinc#304][zinc304] by [@jvican][@jvican]
 - Scala Center contributed a binary format for Zinc's internal storage. See below
-- Scala Center contributed static validation of `build.sbt`. See below
-- Library management API and parallel artifact download. See below.
 - The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840] by [@eed3si9n][@eed3si9n]
 - Replace cross building support with sbt-doge. This allows builds with projects that have multiple different combinations of cross scala versions to be cross built correctly.  The behaviour of ++ is changed so that it only updates the Scala version of projects that support that Scala version, but the Scala version can be post fixed with ! to force it to change for all projects. A -v argument has been added that prints verbose information about which projects are having their settings changed along with their cross scala versions. [#2613][2613] by [@jroper][@jroper]
 - `ivyLoggingLevel` is dropped to `UpdateLogging.Quiet` when CI environment is detected. [@eed3si9n][@eed3si9n]
@@ -70,7 +74,6 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 - Add the ability to call `aggregate` for the current project inside a build sbt file. By [@xuwei-k][@xuwei-k]
 - Add new global setting `asciiGraphWidth` that controls the maximum width of the ASCII graphs printed by commands like `inspect tree`. Default value corresponds to the previously hardcoded value of 40 characters. By [@RomanIakovlev][@RomanIakovlev].
 - Revamped documentation for [Scopes](www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
-- Ports sbt-cross-building's `^` and `^^` commands for plugin cross building. See below.
 - Adds support for cross-versioned exclusions. [#1518][1518]/[lm#88][lm88] by [@jvican][@jvican]
 - Adds new offline mode to the Ivy-based library management. [lm#92][lm92] by [@jvican][@jvican]
 - A number of features related to dependency locking. See below.
@@ -127,6 +130,22 @@ In March 2016, we [rebooted](http://eed3si9n.com/sbt-server-reboot) the "server"
 ```
 
 Another related feature that was added is the `bgRun` task which, for example, enables a server process to be run in the background while you run tests against it.
+
+### Event logging
+
+sbt 1.0 introduces event logging implemented using Log4J 2 and sjson-new.
+In addition to the regular String-based logging, you can now send case classes and Contraband-generated pseudo case classes to the logger:
+
+    def registerStringCodec[A: ShowLines: TypeTag]: Unit = ...
+    final def debugEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Debug, event)
+    final def infoEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Info, event)
+    final def warnEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Warn, event)
+    final def errorEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Error, event)
+
+Various events such as `[success]` message are sent internally via event logging.
+We are hoping that this mechanism can be used in conjunction with server so plugins and compilers can publish JSON events.
+
+Since the logger uses Log4J 2 internally, we now provide SLF4J binding.
 
 #### Static validation of build.sbt
 
@@ -245,11 +264,11 @@ that would should work together to allow dependency locking.
 
 #### notes
 
-- https://github.com/sbt/sbt/compare/v1.0.0-M6...1.0.x
-- https://github.com/sbt/zinc/compare/v1.0.0-X16...v1.0.0-X20
-- https://github.com/sbt/librarymanagement/compare/v1.0.0-X15...v1.0.0-X18
-- https://github.com/sbt/util/compare/v1.0.0-M24...v1.0.0-M28
-- https://github.com/sbt/io/compare/v1.0.0-M11...v1.0.0-M13
+- https://github.com/sbt/sbt/compare/v1.0.0-RC2...v1.0.0-RC3
+- https://github.com/sbt/zinc/compare/v1.0.0-X20...v1.0.0-RC3
+- https://github.com/sbt/librarymanagement/compare/v1.0.0-X18...v1.0.0-RC3
+- https://github.com/sbt/util/compare/v1.0.0-M28...v1.0.0-RC3
+- https://github.com/sbt/io/compare/v1.0.0-M13...v1.0.0-RC3
 
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: http://github.com/dwijnand
@@ -269,11 +288,14 @@ that would should work together to allow dependency locking.
   [@Krever]: https://github.com/Krever
   [@lukeindykiewicz]: https://github.com/lukeindykiewicz
   [@gheine]: https://github.com/gheine
+  [@xuwei-k]: https://github.com/xuwei-k
   [840]: https://github.com/sbt/sbt/issues/840
   [2613]: https://github.com/sbt/sbt/pull/2613
   [1911]: https://github.com/sbt/sbt/issues/1911
   [2059]: https://github.com/sbt/sbt/issues/2059
   [2662]: https://github.com/sbt/sbt/pull/2662
+  [2762]: https://github.com/sbt/sbt/issues/2762
+  [3291]: https://github.com/sbt/sbt/pull/3291
   [util80]: https://github.com/sbt/util/pull/80
   [3198]: https://github.com/sbt/sbt/issues/3198
   [lm88]: https://github.com/sbt/librarymanagement/pull/88
