@@ -1,0 +1,21 @@
+> compile in root
+
+> compile.in(root)
+
+> compile in Test
+
+> compile in (Test)
+
+> scalacOptions in compile
+
+> (run in Runtime) foo
+
+# "Global" now works in shell. optional whitespace arond /
+> show cancelable in Global
+
+# "ThisBuild" now works in shell
+> show scalaVersion in ThisBuild
+
+> show test in Test
+
+> show scalacOptions in (root, Compile, compile)
