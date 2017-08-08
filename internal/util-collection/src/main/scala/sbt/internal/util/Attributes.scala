@@ -82,6 +82,10 @@ object AttributeKey {
                                         rank: Int): AttributeKey[T] =
     make(name, Some(description), extend, rank)
 
+
+  private[sbt] def copyWithRank[T](a: AttributeKey[T], rank: Int): AttributeKey[T] =
+    make(a.label, a.description, a.extend, rank)(a.manifest, a.optJsonWriter)
+
   private[this] def make[T](
       name: String,
       description0: Option[String],

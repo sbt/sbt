@@ -5,7 +5,7 @@ import com.typesafe.sbt.site.SitePlugin.autoImport._
 import com.typesafe.sbt.site.SiteScaladocPlugin.autoImport._
 import com.typesafe.sbt.sbtghpages.GhpagesPlugin.autoImport._
 import com.typesafe.sbt.SbtGit, SbtGit.{ git, GitKeys }
-import Sxr.{ sxr, sxrConf }
+import Sxr.{ sxr, SxrConf }
  */
 
 object Docs {
@@ -37,8 +37,8 @@ object Docs {
 
   def siteIncludeSxr(prefix: String) = Def settings (
     mappings in sxr := Path.allSubpaths(sxr.value).toSeq,
-    siteSubdirName in sxrConf := prefix,
-    addMappingsToSiteDir(mappings in sxr, siteSubdirName in sxrConf)
+    siteSubdirName in SxrConf := prefix,
+    addMappingsToSiteDir(mappings in sxr, siteSubdirName in SxrConf)
   )
 
   def synchLocalImpl = Def task {

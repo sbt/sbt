@@ -4,9 +4,9 @@
 package sbt
 
 import java.io.File
-import java.util.Locale
 import scala.sys.process.Process
 import OutputStrategy._
+import sbt.internal.util.Util
 
 /**
  * Represents a command that can be forked.
@@ -80,15 +80,13 @@ object Fork {
   private[this] val MaxConcatenatedOptionLength = 5000
 
   private def fitClasspath(options: Seq[String]): (Option[String], Seq[String]) =
-    if (isWindows && optionsTooLong(options))
+    if (Util.isWindows && optionsTooLong(options))
       convertClasspathToEnv(options)
     else
       (None, options)
   private[this] def optionsTooLong(options: Seq[String]): Boolean =
     options.mkString(" ").length > MaxConcatenatedOptionLength
 
-  private[this] val isWindows: Boolean =
-    System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
   private[this] def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) = {
     val (preCP, cpAndPost) = options.span(opt => !isClasspathOption(opt))
     val postCP = cpAndPost.drop(2)

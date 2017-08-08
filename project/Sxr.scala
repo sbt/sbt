@@ -2,22 +2,20 @@ import sbt._
 import Keys._
 import Scope.ThisScope
 
-import sbt.librarymanagement.syntax._
-
 import sbt.internal.inc.RawCompiler
 
 object Sxr {
-  val sxrConf = config("sxr").hide
+  val SxrConf = config("sxr").hide
   val sxr = TaskKey[File]("sxr")
   val sourceDirectories = TaskKey[Seq[File]]("sxr-source-directories")
 
   lazy val settings: Seq[Setting[_]] = inTask(sxr)(inSxrSettings) ++ baseSettings
 
   def baseSettings = Seq(
-    libraryDependencies += "org.scala-sbt.sxr" % "sxr_2.10" % "0.3.0" % sxrConf.name
+    libraryDependencies += "org.scala-sbt.sxr" % "sxr_2.10" % "0.3.0" % SxrConf
   )
   def inSxrSettings = Seq(
-    managedClasspath := update.value.matching(configurationFilter(sxrConf.name)).classpath,
+    managedClasspath := update.value.matching(configurationFilter(SxrConf.name)).classpath,
     scalacOptions += "-P:sxr:base-directory:" + sourceDirectories.value.absString,
     scalacOptions += "-Xplugin:" + managedClasspath.value.files
       .filter(_.getName.contains("sxr"))

@@ -8,14 +8,14 @@ object Dependencies {
   val scala293 = "2.9.3"
   val scala210 = "2.10.6"
   val scala211 = "2.11.8"
-  val scala212 = "2.12.2"
+  val scala212 = "2.12.3"
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.0.0-M12"
-  private val utilVersion = "1.0.0-M28"
-  private val lmVersion = "1.0.0-X18"
-  private val zincVersion = "1.0.0-X20"
+  private val ioVersion = "1.0.0-RC3"
+  private val utilVersion = "1.0.0-RC3"
+  private val lmVersion = "1.0.0-RC3"
+  private val zincVersion = "1.0.0-RC3"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -113,4 +113,11 @@ object Dependencies {
 
   val scalaXml = scala211Module("scala-xml", "1.0.6")
   val scalaParsers = scala211Module("scala-parser-combinators", "1.0.5")
+
+  def log4jVersion = "2.8.1"
+  val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
+  val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
+  val log4jSlf4jImpl = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
+  // specify all of log4j modules to prevent misalignment
+  val log4jDependencies = Vector(log4jApi, log4jCore, log4jSlf4jImpl)
 }
