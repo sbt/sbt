@@ -2068,7 +2068,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    */
   def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
     libraryDependencies += {
-      val sbtV = (sbtBinaryVersion in update).value
+      val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
       val scalaV = (scalaBinaryVersion in update).value
       sbtPluginExtra(dependency, sbtV, scalaV)
     }
