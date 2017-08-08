@@ -207,6 +207,7 @@ class Timestamp(val store: CacheStore, useStartTime: Boolean)(implicit format: J
     Try { store.read[Long] } getOrElse 0
 }
 
+@deprecated("Use Tracked.inputChanged and Tracked.outputChanged instead", "1.0.1")
 class Changed[O: Equiv: JsonFormat](val store: CacheStore) extends Tracked {
   def clean() = store.delete()
   def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): O => O2 = value =>
