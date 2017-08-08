@@ -13,5 +13,9 @@ abstract class InteractionService {
   /** Ask the user to confirm something (yes or no) before continuing. */
   def confirm(msg: String): Boolean
 
+  def terminalWidth: Int
+
+  def terminalHeight: Int
+
   // TODO - Ask for input with autocomplete?
 }

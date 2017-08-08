@@ -14,11 +14,21 @@ abstract class JLine extends LineReader {
   protected[this] def handleCONT: Boolean
   protected[this] def reader: ConsoleReader
   protected[this] def injectThreadSleep: Boolean
-  protected[this] val in: InputStream = JLine.makeInputStream(injectThreadSleep)
-
-  def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine {
-    unsynchronizedReadLine(prompt, mask)
+  protected[this] lazy val in: InputStream = {
+    // On Windows InputStream#available doesn't seem to return positive number.
+    JLine.makeInputStream(injectThreadSleep && !Util.isNonCygwinWindows)
   }
+
+  def readLine(prompt: String, mask: Option[Char] = None) = 
+    try {
+      JLine.withJLine {
+        unsynchronizedReadLine(prompt, mask)
+      }
+    } catch {
+      case _: InterruptedException =>
+        // println("readLine: InterruptedException")
+        Option("")
+    }
 
   private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
     readLineWithHistory(prompt, mask) map { x =>
@@ -42,13 +52,9 @@ abstract class JLine extends LineReader {
 
   private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): Option[String] = {
     val newprompt = handleMultilinePrompt(prompt)
-    try {
-      mask match {
-        case Some(m) => Option(reader.readLine(newprompt, m))
-        case None    => Option(reader.readLine(newprompt))
-      }
-    } catch {
-      case e: InterruptedException => Option("")
+    mask match {
+      case Some(m) => Option(reader.readLine(newprompt, m))
+      case None    => Option(reader.readLine(newprompt))
     }
   }
 

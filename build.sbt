@@ -32,9 +32,9 @@ def buildLevelSettings: Seq[Setting[_]] =
       homepage := Some(url("https://github.com/sbt/sbt")),
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
-      scalafmtOnCompile := true,
+      // scalafmtOnCompile := true,
       // scalafmtVersion 1.0.0-RC3 has regression
-      scalafmtVersion := "0.6.8"
+      // scalafmtVersion := "0.6.8"
     ))
 
 def commonSettings: Seq[Setting[_]] =
@@ -51,13 +51,6 @@ def commonSettings: Seq[Setting[_]] =
     bintrayPackage := (bintrayPackage in ThisBuild).value,
     bintrayRepository := (bintrayRepository in ThisBuild).value,
     publishArtifact in Test := false,
-    /*
-    mimaPreviousArtifacts := Set.empty, // Set(organization.value % moduleName.value % "1.0.0"),
-    mimaBinaryIssueFilters ++= {
-      import com.typesafe.tools.mima.core._, ProblemFilters._
-      Seq()
-    },
-     */
     fork in compile := true,
     fork in run := true
   ) flatMap (_.settings)
@@ -72,10 +65,16 @@ def baseSettings: Seq[Setting[_]] =
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
+val mimaSettings = Def settings (
+  mimaPreviousArtifacts := Set(organization.value % moduleName.value % "1.0.0-RC3"
+    cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  )
+)
+
 lazy val sbtRoot: Project = (project in file("."))
   .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
-  .configs(Sxr.sxrConf)
-  .aggregateSeq(nonRoots)
+  .configs(Sxr.SxrConf)
+  .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
     minimalSettings,
@@ -117,6 +116,7 @@ lazy val bundledLauncherProj =
       description := "sbt application launcher",
       autoScalaLibrary := false,
       crossPaths := false,
+      // mimaSettings, // TODO: Configure MiMa, deal with Proguard
       publish := Release.deployLauncher.value,
       publishLauncher := Release.deployLauncher.value,
       packageBin in Compile := sbtLaunchJar.value
@@ -129,7 +129,8 @@ val collectionProj = (project in file("internal") / "util-collection")
     testedBaseSettings,
     Util.keywordsSettings,
     name := "Collections",
-    libraryDependencies ++= Seq(sjsonNewScalaJson.value)
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value),
+    mimaSettings,
   )
   .configure(addSbtUtilPosition)
 
@@ -139,7 +140,8 @@ val completeProj = (project in file("internal") / "util-complete")
   .settings(
     testedBaseSettings,
     name := "Completion",
-    libraryDependencies += jline
+    libraryDependencies += jline,
+    mimaSettings,
   )
   .configure(addSbtIO, addSbtUtilControl)
 
@@ -148,7 +150,8 @@ val logicProj = (project in file("internal") / "util-logic")
   .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
-    name := "Logic"
+    name := "Logic",
+    mimaSettings,
   )
   .configure(addSbtUtilRelation)
 
@@ -165,7 +168,8 @@ lazy val testingProj = (project in file("testing"))
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
+    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
+    mimaSettings,
   )
   .configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
 
@@ -177,7 +181,8 @@ lazy val testAgentProj = (project in file("testing") / "agent")
     crossPaths := false,
     autoScalaLibrary := false,
     name := "Test Agent",
-    libraryDependencies += testInterface
+    libraryDependencies += testInterface,
+    mimaSettings,
   )
 
 // Basic task engine
@@ -185,7 +190,8 @@ lazy val taskProj = (project in file("tasks"))
   .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
-    name := "Tasks"
+    name := "Tasks",
+    mimaSettings,
   )
   .configure(addSbtUtilControl)
 
@@ -196,19 +202,22 @@ lazy val stdTaskProj = (project in file("tasks-standard"))
   .settings(
     testedBaseSettings,
     name := "Task System",
-    testExclusive
+    testExclusive,
+    mimaSettings,
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilCache)
 
 // Embedded Scala code runner
 lazy val runProj = (project in file("run"))
   .enablePlugins(ContrabandPlugin)
+  .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
     name := "Run",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    mimaSettings,
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerClasspath)
 
@@ -217,7 +226,8 @@ lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
   .settings(
     baseSettings,
     name := "Scripted sbt",
-    libraryDependencies ++= Seq(launcherInterface % "provided")
+    libraryDependencies ++= Seq(launcherInterface % "provided"),
+    mimaSettings,
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted)
 
@@ -225,7 +235,8 @@ lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
   .dependsOn(sbtProj)
   .settings(
     baseSettings,
-    name := "Scripted Plugin"
+    name := "Scripted Plugin",
+    mimaSettings,
   )
   .configure(addSbtCompilerClasspath)
 
@@ -235,7 +246,8 @@ lazy val actionsProj = (project in file("main-actions"))
   .settings(
     testedBaseSettings,
     name := "Actions",
-    libraryDependencies += sjsonNewScalaJson.value
+    libraryDependencies += sjsonNewScalaJson.value,
+    mimaSettings,
   )
   .configure(
     addSbtIO,
@@ -259,7 +271,8 @@ lazy val protocolProj = (project in file("protocol"))
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
+    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
+    mimaSettings,
   )
   .configure(addSbtUtilLogging)
 
@@ -274,7 +287,8 @@ lazy val commandProj = (project in file("main-command"))
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
+    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
+    mimaSettings,
   )
   .configure(
     addSbtIO,
@@ -291,7 +305,8 @@ lazy val coreMacrosProj = (project in file("core-macros"))
   .settings(
     commonSettings,
     name := "Core Macros",
-    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value
+    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+    mimaSettings,
   )
 
 /* Write all the compile-time dependencies of the spores macro to a file,
@@ -320,7 +335,8 @@ lazy val mainSettingsProj = (project in file("main-settings"))
   .settings(
     testedBaseSettings,
     name := "Main Settings",
-    resourceGenerators in Compile += generateToolboxClasspath.taskValue
+    resourceGenerators in Compile += generateToolboxClasspath.taskValue,
+    mimaSettings,
   )
   .configure(
     addSbtIO,
@@ -335,14 +351,15 @@ lazy val mainSettingsProj = (project in file("main-settings"))
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
-  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj)
+  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj)
   .settings(
     testedBaseSettings,
     name := "Main",
-    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface),
+    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies,
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    mimaSettings,
   )
   .configure(
     addSbtIO,
@@ -362,7 +379,8 @@ lazy val sbtProj = (project in file("sbt"))
     name := "sbt",
     normalizedName := "sbt",
     crossScalaVersions := Seq(baseScalaVersion),
-    crossPaths := false
+    crossPaths := false,
+    mimaSettings,
   )
   .configure(addSbtCompilerBridge)
 

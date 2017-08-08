@@ -1,5 +1,6 @@
 package sbt.std
 
+import sbt.SettingKey
 import sbt.internal.util.ConsoleAppender
 import sbt.internal.util.appmacro.{ Convert, Converted, LinterDSL }
 
@@ -62,10 +63,12 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
           case ap @ Apply(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
             val shouldIgnore = uncheckedWrappers.contains(ap)
             val wrapperName = nme.decodedName.toString
-            if (!shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
-              val qualName =
-                if (qual.symbol != null) qual.symbol.name.decodedName.toString
-                else ap.pos.lineContent
+            val (qualName, isSettingKey) =
+              Option(qual.symbol)
+                .map(sym => (sym.name.decodedName.toString, sym.info <:< typeOf[SettingKey[_]]))
+                .getOrElse((ap.pos.lineContent, false))
+
+            if (!isSettingKey && !shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
               if (insideIf && !isDynamicTask) {
                 // Error on the use of value inside the if of a regular task (dyn task is ok)
                 ctx.error(ap.pos, TaskLinterDSLFeedback.useOfValueInsideIfExpression(qualName))
