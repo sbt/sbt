@@ -77,13 +77,35 @@ object CoursierPlugin extends AutoPlugin {
       IvyXml.writeFiles(currentProject, shadedConfigOpt, ivySbt.value, streams.value.log)
     }).value
 
+  private val pluginIvySnapshotsBase = Resolver.SbtPluginRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
+
   def coursierSettings(
     shadedConfigOpt: Option[(String, String)],
     packageConfigs: Seq[(Configuration, String)]
   ) = Seq(
     coursierResolvers := Tasks.coursierResolversTask.value,
     coursierRecursiveResolvers := Tasks.coursierRecursiveResolversTask.value,
-    coursierSbtResolvers := externalResolvers.in(updateSbtClassifiers).value,
+    coursierSbtResolvers := {
+
+      // TODO Add docker-based integration test for that, see https://github.com/coursier/coursier/issues/632
+
+      val resolvers = externalResolvers.in(updateSbtClassifiers).value
+
+      val pluginIvySnapshotsFound = resolvers.exists {
+        case repo: URLRepository =>
+          repo
+            .patterns
+            .artifactPatterns
+            .headOption
+            .exists(_.startsWith(pluginIvySnapshotsBase))
+        case _ => false
+      }
+
+      if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
+        resolvers :+ Classpaths.sbtPluginReleases
+      else
+        resolvers
+    },
     coursierFallbackDependencies := Tasks.coursierFallbackDependenciesTask.value,
     coursierArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false).value,
     coursierSignedArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false, includeSignatures = true).value,
