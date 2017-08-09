@@ -1,0 +1,9 @@
+### Changes
+
+* Automatically ensure the sbt plugin releases repository is there when needed (fixes issues fetching plugins enabled in `~/.sbt/0.13/plugins/plugins.sbt`, along with sbt-coursier, when starting sbt, [#635])
+* Fix possible issue getting some internal sbt dependency when starting it, with sbt-coursier enabled ([#633])
+
+
+[#633]: https://github.com/alexarchambault/coursier/pull/633
+[#635]: https://github.com/alexarchambault/coursier/pull/635
+
