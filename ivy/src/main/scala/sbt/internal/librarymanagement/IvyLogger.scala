@@ -7,7 +7,7 @@ import org.apache.ivy.util.{ Message, MessageLogger, MessageLoggerEngine }
 import sbt.util.Logger
 
 /** Interface to Ivy logging. */
-private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
+private[sbt] final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
   def rawlog(msg: String, level: Int): Unit = log(msg, level)
   def log(msg: String, level: Int): Unit = {
     import Message.{ MSG_DEBUG, MSG_VERBOSE, MSG_INFO, MSG_WARN, MSG_ERR }
@@ -24,7 +24,7 @@ private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
   def debug(msg: String): Unit = ()
   def verbose(msg: String): Unit = logger.verbose(msg)
   def deprecated(msg: String): Unit = warn(msg)
-  def info(msg: String): Unit = logger.info(msg)
+  def info(msg: String): Unit = if (SbtIvyLogger.acceptInfo(msg)) logger.info(msg)
   def rawinfo(msg: String): Unit = info(msg)
   def warn(msg: String): Unit = logger.warn(msg)
   def error(msg: String): Unit = if (SbtIvyLogger.acceptError(msg)) logger.error(msg)
@@ -43,13 +43,16 @@ private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
   def isShowProgress = false
   def setShowProgress(progress: Boolean): Unit = ()
 }
-private final class SbtMessageLoggerEngine extends MessageLoggerEngine {
+private[sbt] final class SbtMessageLoggerEngine extends MessageLoggerEngine {
 
   /** This is a hack to filter error messages about 'unknown resolver ...'. */
   override def error(msg: String): Unit = if (SbtIvyLogger.acceptError(msg)) super.error(msg)
   override def sumupProblems(): Unit = clearProblems()
 }
-private object SbtIvyLogger {
-  val UnknownResolver = "unknown resolver"
-  def acceptError(msg: String) = (msg ne null) && !msg.startsWith(UnknownResolver)
+private[sbt] object SbtIvyLogger {
+  final val unknownResolver = "unknown resolver"
+  def acceptError(msg: String) = (msg ne null) && !msg.startsWith(unknownResolver)
+
+  final val loadingSettings = ":: loading settings"
+  def acceptInfo(msg: String) = (msg ne null) && !msg.startsWith(loadingSettings)
 }

@@ -400,10 +400,11 @@ private[sbt] object ConvertResolver {
       try super.put(source, destination, overwrite)
       catch {
         case e: java.io.IOException if e.getMessage.contains("destination already exists") =>
+          val overwriteWarning =
+            if (destination contains "-SNAPSHOT") s"Attempting to overwrite $destination"
+            else "Attempting to overwrite $destination (non-SNAPSHOT)\n\tYou need to remove it from the cache manually to take effect."
           import org.apache.ivy.util.Message
-          Message.warn(
-            s"Attempting to overwrite $destination\n\tThis usage is deprecated and will be removed in sbt 1.0."
-          )
+          Message.warn(overwriteWarning)
           super.put(source, destination, true)
       }
     }

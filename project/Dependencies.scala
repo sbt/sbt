@@ -4,10 +4,10 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   val scala211 = "2.11.11"
-  val scala212 = "2.12.2"
+  val scala212 = "2.12.3"
 
-  private val ioVersion = "1.0.0-M13"
-  private val utilVersion = "1.0.0-M27"
+  private val ioVersion = "1.0.0"
+  private val utilVersion = "1.0.0"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 

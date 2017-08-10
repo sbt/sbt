@@ -4,9 +4,8 @@ package ivyint
 import java.net.{ URL, UnknownHostException, HttpURLConnection }
 import java.io.{ File, IOException, InputStream, ByteArrayOutputStream, ByteArrayInputStream }
 import org.apache.ivy.util.{ CopyProgressListener, Message, FileUtil }
-import org.apache.ivy.util.url.{ URLHandler, AbstractURLHandler, BasicURLHandler }
+import org.apache.ivy.util.url.{ URLHandler, AbstractURLHandler, BasicURLHandler, IvyAuthenticator }
 import org.apache.ivy.util.url.URLHandler._
-import sbt.librarymanagement.Http
 import sbt.io.{ IO, Using }
 
 // Copied from Ivy's BasicURLHandler.
@@ -24,8 +23,14 @@ class GigahorseUrlHandler extends AbstractURLHandler {
    * if the url is not reachable.
    */
   def getURLInfo(url0: URL, timeout: Int): URLInfo = {
+    // Install the ErrorMessageAuthenticator
+    if ("http" == url0.getProtocol() || "https" == url0.getProtocol()) {
+        IvyAuthenticator.install()
+        ErrorMessageAuthenticator.install()
+    }
+
     val url = normalizeToURL(url0)
-    val con = Http.open(url)
+    val con = GigahorseUrlHandler.open(url)
     val infoOption = try {
       con match {
         case httpCon: HttpURLConnection =>
@@ -65,8 +70,14 @@ class GigahorseUrlHandler extends AbstractURLHandler {
   }
 
   def openStream(url0: URL): InputStream = {
+    // Install the ErrorMessageAuthenticator
+    if ("http" == url0.getProtocol() || "https" == url0.getProtocol()) {
+        IvyAuthenticator.install()
+        ErrorMessageAuthenticator.install()
+    }
+
     val url = normalizeToURL(url0)
-    val conn = Http.open(url)
+    val conn = GigahorseUrlHandler.open(url)
     conn.setRequestProperty("Accept-Encoding", "gzip,deflate")
     conn match {
       case httpCon: HttpURLConnection =>
@@ -91,8 +102,14 @@ class GigahorseUrlHandler extends AbstractURLHandler {
   }
 
   def download(src0: URL, dest: File, l: CopyProgressListener): Unit = {
+    // Install the ErrorMessageAuthenticator
+    if ("http" == src0.getProtocol() || "https" == src0.getProtocol()) {
+        IvyAuthenticator.install()
+        ErrorMessageAuthenticator.install()
+    }
+
     val src = normalizeToURL(src0)
-    val srcConn = Http.open(src)
+    val srcConn = GigahorseUrlHandler.open(src)
     srcConn.setRequestProperty("Accept-Encoding", "gzip,deflate")
     srcConn match {
       case httpCon: HttpURLConnection =>
@@ -126,8 +143,16 @@ class GigahorseUrlHandler extends AbstractURLHandler {
   }
 
   def upload(source: File, dest0: URL, l: CopyProgressListener): Unit = {
+    if( ("http" != dest0.getProtocol()) && ("https" != dest0.getProtocol())) {
+      throw new UnsupportedOperationException(
+        "URL repository only support HTTP PUT at the moment")
+    }
+
+    IvyAuthenticator.install()
+    ErrorMessageAuthenticator.install()
+
     val dest = normalizeToURL(dest0)
-    val conn = Http.open(dest) match {
+    val conn = GigahorseUrlHandler.open(dest) match {
       case c: HttpURLConnection => c
     }
     conn.setDoOutput(true)
@@ -168,4 +193,22 @@ class GigahorseUrlHandler extends AbstractURLHandler {
       this(available, contentLength, lastModified, null)
     }
   }
+}
+
+object GigahorseUrlHandler {
+  import gigahorse._, support.okhttp.Gigahorse
+  import okhttp3.{ OkUrlFactory, OkHttpClient, JavaNetAuthenticator }
+
+  lazy val http: HttpClient = Gigahorse.http(Gigahorse.config)
+
+  private[sbt] def urlFactory = {
+    val client0 = http.underlying[OkHttpClient]
+    val client = client0.newBuilder()
+      .authenticator(new JavaNetAuthenticator)
+      .build
+    new OkUrlFactory(client)
+  }
+
+  private[sbt] def open(url: URL): HttpURLConnection =
+    urlFactory.open(url)
 }
