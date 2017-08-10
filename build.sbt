@@ -18,7 +18,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
   scalacOptions := {
     val old = scalacOptions.value
     scalaVersion.value match {
-      case sv if sv.startsWith("2.10") => old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
+      case sv if sv.startsWith("2.10") =>
+        old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
       case sv if sv.startsWith("2.11") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
       case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
     }
@@ -39,13 +40,13 @@ lazy val lmRoot = (project in file("."))
       Seq(
         homepage := Some(url("https://github.com/sbt/librarymanagement")),
         description := "Library management module for sbt",
-        scmInfo := Some(ScmInfo(
-          url("https://github.com/sbt/librarymanagement"), "git@github.com:sbt/librarymanagement.git"
-        )),
+        scmInfo := {
+          val slug = "sbt/librarymanagement"
+          Some(ScmInfo(url(s"https://github.com/$slug"), s"git@github.com:$slug.git"))
+        },
         bintrayPackage := "librarymanagement",
-        // scalafmtOnCompile := true,
-        // scalafmtVersion 1.0.0-RC3 has regression
-        // scalafmtVersion := "0.6.8",
+        scalafmtOnCompile := true,
+        scalafmtVersion := "1.1.0",
         git.baseVersion := baseVersion,
         version := {
           val v = version.value
@@ -67,21 +68,28 @@ lazy val lmCore = (project in file("core"))
   .settings(
     commonSettings,
     name := "librarymanagement-core",
-    libraryDependencies ++= Seq(jsch,
-                                scalaReflect.value,
-                                scalaCompiler.value,
-                                launcherInterface,
-                                gigahorseOkhttp,
-                                okhttpUrlconnection,
-                                sjsonnewScalaJson.value % Optional,
-                                scalaTest,
-                                scalaCheck),
+    libraryDependencies ++= Seq(
+      jsch,
+      scalaReflect.value,
+      scalaCompiler.value,
+      launcherInterface,
+      gigahorseOkhttp,
+      okhttpUrlconnection,
+      sjsonnewScalaJson.value % Optional,
+      scalaTest,
+      scalaCheck
+    ),
     libraryDependencies ++= scalaXml.value,
-    resourceGenerators in Compile += Def.task(
-      Util.generateVersionFile(
-        version.value, resourceManaged.value, streams.value, (compile in Compile).value
+    resourceGenerators in Compile += Def
+      .task(
+        Util.generateVersionFile(
+          version.value,
+          resourceManaged.value,
+          streams.value,
+          (compile in Compile).value
+        )
       )
-    ).taskValue,
+      .taskValue,
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -108,7 +116,8 @@ lazy val lmIvy = (project in file("ivy"))
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
-    scalacOptions in (Compile, console) --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
+    scalacOptions in (Compile, console) --=
+      Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
     mimaSettings,
   )
 

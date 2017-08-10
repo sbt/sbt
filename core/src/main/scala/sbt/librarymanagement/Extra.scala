@@ -17,8 +17,7 @@ abstract class InclExclRuleFunctions {
     apply(organization.organization)
   implicit def stringToExclusionRule(organization: String): InclExclRule = apply(organization)
 
-  implicit def organizationArtifactNameToExclusionRule(
-      oa: OrganizationArtifactName): InclExclRule =
+  implicit def organizationArtifactNameToExclusionRule(oa: OrganizationArtifactName): InclExclRule =
     InclExclRule(oa.organization, oa.name, "*", Vector.empty, oa.crossVersion)
 
   implicit def moduleIDToExclusionRule(moduleID: ModuleID): InclExclRule = {

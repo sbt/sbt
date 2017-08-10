@@ -42,7 +42,7 @@ object CrossVersionUtil {
       Some(sbtApiVersion(x.toLong, y.toLong))
     case NonReleaseV_n(x, y, z, _) if x.toLong > 0 && (y.toLong > 0 || z.toLong > 0) =>
       Some(sbtApiVersion(x.toLong, y.toLong))
-    case _                      => None
+    case _ => None
   }
 
   private def sbtApiVersion(x: Long, y: Long) = {

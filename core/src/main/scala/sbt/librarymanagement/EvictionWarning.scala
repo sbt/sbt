@@ -83,8 +83,7 @@ object EvictionWarningOptions {
       defaultGuess
     )
 
-  lazy val defaultGuess
-    : Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
+  lazy val defaultGuess: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
     guessSecondSegment orElse guessSemVer orElse guessFalse
   lazy val guessSecondSegment
     : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {

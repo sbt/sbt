@@ -77,8 +77,7 @@ final class MakePomConfiguration private (val file: Option[File],
   def withProcess(process: XNode => XNode): MakePomConfiguration = {
     copy(process = process)
   }
-  def withFilterRepositories(
-      filterRepositories: MavenRepository => Boolean): MakePomConfiguration = {
+  def withFilterRepositories(filterRepositories: MavenRepository => Boolean): MakePomConfiguration = {
     copy(filterRepositories = filterRepositories)
   }
   def withAllRepositories(allRepositories: Boolean): MakePomConfiguration = {
