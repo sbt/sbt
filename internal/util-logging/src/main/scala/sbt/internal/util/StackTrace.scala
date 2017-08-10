@@ -9,12 +9,13 @@ object StackTrace {
    * Return a printable representation of the stack trace associated
    * with t.  Information about t and its Throwable causes is included.
    * The number of lines to be included for each Throwable is configured
-   * via d which should be greater than or equal to zero.  If d is zero,
-   * then all elements are included up to (but not including) the first
-   * element that comes from sbt. If d is greater than zero, then up to
-   * that many lines are included, where the line for the Throwable is
-   * counted plus one line for each stack element.  Less lines will be
-   * included if there are not enough stack elements.
+   * via d which should be greater than or equal to 0.
+   *
+   * - If d is 0, then all elements are included up to (but not including)
+   *   the first element that comes from sbt.
+   * - If d is greater than 0, then up to that many lines are included,
+   *   where the line for the Throwable is counted plus one line for each stack element.
+   *   Less lines will be included if there are not enough stack elements.
    */
   def trimmed(t: Throwable, d: Int): String = {
     require(d >= 0)

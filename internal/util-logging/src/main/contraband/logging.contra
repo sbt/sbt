@@ -21,3 +21,7 @@ type TraceEvent implements sbt.internal.util.AbstractEntry {
   channelName: String
   execId: String
 }
+
+type SuccessEvent {
+  message: String!
+}

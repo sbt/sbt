@@ -7,6 +7,7 @@ import sjsonnew.JsonFormat
 import scala.reflect.runtime.universe.TypeTag
 import sbt.internal.util.codec.ThrowableShowLines._
 import sbt.internal.util.codec.TraceEventShowLines._
+import sbt.internal.util.codec.SuccessEventShowLines._
 import sbt.internal.util.codec.JsonProtocol._
 
 /**
@@ -27,7 +28,11 @@ class ManagedLogger(
         new ObjectMessage(StringEvent(level.toString, message, channelName, execId))
       )
     }
-  override def success(message: => String): Unit = xlogger.info(message)
+  
+  // send special event for success since it's not a real log level
+  override def success(message: => String): Unit = {
+    infoEvent[SuccessEvent](SuccessEvent(message))
+  }
 
   def registerStringCodec[A: ShowLines: TypeTag]: Unit =
     {
@@ -38,6 +43,7 @@ class ManagedLogger(
     }
   registerStringCodec[Throwable]
   registerStringCodec[TraceEvent]
+  registerStringCodec[SuccessEvent]
   final def debugEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Debug, event)
   final def infoEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Info, event)
   final def warnEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Warn, event)
@@ -54,4 +60,7 @@ class ManagedLogger(
         new ObjectMessage(entry)
       )
     }
+
+  @deprecated("No longer used.", "1.0.0")
+  override def ansiCodesSupported = ConsoleAppender.formatEnabledInEnv
 }

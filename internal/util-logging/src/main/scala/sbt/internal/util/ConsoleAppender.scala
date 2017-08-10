@@ -1,6 +1,5 @@
 package sbt.internal.util
 
-import scala.compat.Platform.EOL
 import sbt.util._
 import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
@@ -269,23 +268,30 @@ class ConsoleAppender private[ConsoleAppender] (
   useFormat: Boolean,
   suppressedMessage: SuppressedTraceContext => Option[String]
 ) extends AbstractAppender(name, null, LogExchange.dummyLayout, true) {
-  import scala.Console.{ BLUE, GREEN, RED, RESET, YELLOW }
+  import scala.Console.{ BLUE, GREEN, RED, YELLOW }
 
-  private final val SUCCESS_LABEL_COLOR   = GREEN
-  private final val SUCCESS_MESSAGE_COLOR = RESET
-  private final val NO_COLOR              = RESET
+  private val reset: String = {
+    if (ansiCodesSupported && useFormat) scala.Console.RESET
+    else ""
+  }
+
+  private val SUCCESS_LABEL_COLOR   = GREEN
+  private val SUCCESS_MESSAGE_COLOR = reset
+  private val NO_COLOR              = reset
+
+  private var traceEnabledVar: Int = Int.MaxValue
+  
+  def setTrace(level: Int): Unit = synchronized { traceEnabledVar = level }
+
+  /**
+   * Returns the number of lines for stacktrace.
+   */
+  def getTrace: Int = synchronized { traceEnabledVar }
 
   override def append(event: XLogEvent): Unit = {
     val level = ConsoleAppender.toLevel(event.getLevel)
     val message = event.getMessage
     appendMessage(level, message)
-  }
-
-  // TODO:
-  // success is called by ConsoleLogger.
-  // This should turn into an event.
-  private[sbt] def success(message: => String): Unit = {
-    appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
   }
 
   /**
@@ -333,7 +339,7 @@ class ConsoleAppender private[ConsoleAppender] (
    * @return The formatted message.
    */
   private def formatted(format: String, msg: String): String =
-    s"${RESET}${format}${msg}${RESET}"
+    s"$reset${format}${msg}$reset"
 
   /**
    * Select the right color for the label given `level`.
@@ -362,41 +368,65 @@ class ConsoleAppender private[ConsoleAppender] (
   private def appendLog(labelColor: String, label: String, messageColor: String, message: String): Unit =
     out.lockObject.synchronized {
       message.lines.foreach { line =>
-        val labeledLine = s"$RESET[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
+        val labeledLine = s"$reset[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
         write(labeledLine)
       }
     }
 
+  // success is called by ConsoleLogger.
+  private[sbt] def success(message: => String): Unit = {
+    appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
+  }
+
   private def write(msg: String): Unit = {
     val cleanedMsg =
-      if (!useFormat) EscHelpers.removeEscapeSequences(msg)
+      if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg)
       else msg
     out.println(cleanedMsg)
   }
 
   private def appendMessage(level: Level.Value, msg: Message): Unit =
     msg match {
-      case o: ObjectMessage         => objectToLines(o.getParameter) foreach { appendLog(level, _) }
-      case o: ReusableObjectMessage => objectToLines(o.getParameter) foreach { appendLog(level, _) }
+      case o: ObjectMessage         => appendMessageContent(level, o.getParameter)
+      case o: ReusableObjectMessage => appendMessageContent(level, o.getParameter)
       case _                        => appendLog(level, msg.getFormattedMessage)
     }
 
-  private def objectToLines(o: AnyRef): Vector[String] =
+  private def appendTraceEvent(te: TraceEvent): Unit = {
+    val traceLevel = getTrace
+    val throwableShowLines: ShowLines[Throwable] =
+      ShowLines[Throwable]( (t: Throwable) => {
+        List(StackTrace.trimmed(t, traceLevel))
+      })
+    val codec: ShowLines[TraceEvent] =
+      ShowLines[TraceEvent]( (t: TraceEvent) => {
+        throwableShowLines.showLines(t.message)
+      })
+    codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
+  }
+
+  private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {   
+    def appendEvent(oe: ObjectEvent[_]): Unit =
+      {
+        val contentType = oe.contentType
+        if (contentType == "sbt.internal.util.TraceEvent") {
+          appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
+        }
+        else LogExchange.stringCodec[AnyRef](contentType) match {
+          case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
+            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }
+          case Some(codec) =>
+            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { appendLog(level, _) }
+          case _           => appendLog(level, oe.message.toString)
+        }
+      } 
+
     o match {
-      case x: StringEvent    => Vector(x.message)
-      case x: ObjectEvent[_] => objectEventToLines(x)
-      case _                 => Vector(o.toString)
+      case x: StringEvent    => Vector(x.message) foreach { appendLog(level, _) }
+      case x: ObjectEvent[_] => appendEvent(x)
+      case _                 => Vector(o.toString) foreach { appendLog(level, _) }
     }
-
-  private def objectEventToLines(oe: ObjectEvent[_]): Vector[String] =
-    {
-      val contentType = oe.contentType
-      LogExchange.stringCodec[AnyRef](contentType) match {
-        case Some(codec) => codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector
-        case _           => Vector(oe.message.toString)
-      }
-    }
-
+  }
 }
 
 final class SuppressedTraceContext(val traceLevel: Int, val useFormat: Boolean)

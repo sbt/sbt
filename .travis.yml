@@ -3,10 +3,10 @@ jdk: oraclejdk8
 
 scala:
   - 2.11.11
-  - 2.12.2
+  - 2.12.3
 
 script:
-  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION" test
+  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION" mimaReportBinaryIssues test
 
 cache:
   directories:

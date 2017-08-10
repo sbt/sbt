@@ -1,6 +1,6 @@
 import Dependencies._
 import Util._
-// import com.typesafe.tools.mima.core._, ProblemFilters._
+//import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "1.0.0-SNAPSHOT"
 def internalPath   = file("internal")
@@ -25,9 +25,14 @@ def commonSettings: Seq[Setting[_]] = Seq(
   },
   scalacOptions in console in Compile -= "-Ywarn-unused-import",
   scalacOptions in console in Test    -= "-Ywarn-unused-import",
-  // mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false
+)
+
+val mimaSettings = Def settings (
+  mimaPreviousArtifacts := Set(organization.value % moduleName.value % "1.0.0-RC3"
+    cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  )
 )
 
 lazy val utilRoot: Project = (project in file(".")).
@@ -67,18 +72,21 @@ lazy val utilInterface = (project in internalPath / "util-interface").
     commonSettings,
     javaOnlySettings,
     name := "Util Interface",
-    exportJars := true
+    exportJars := true,
+    mimaSettings,
   )
 
 lazy val utilControl = (project in internalPath / "util-control").
   settings(
     commonSettings,
-    name := "Util Control"
+    name := "Util Control",
+    mimaSettings,
   )
 
 val utilPosition = (project in file("internal") / "util-position").settings(
   commonSettings,
-  name := "Util Position"
+  name := "Util Position",
+  mimaSettings,
 )
 
 // logging
@@ -97,6 +105,7 @@ lazy val utilLogging = (project in internalPath / "util-logging").
       if (name == "Throwable") Nil
       else old(tpe)
     },
+    mimaSettings,
   )
 
 // Relation
@@ -104,7 +113,8 @@ lazy val utilRelation = (project in internalPath / "util-relation").
   dependsOn(utilTesting % Test).
   settings(
     commonSettings,
-    name := "Util Relation"
+    name := "Util Relation",
+    mimaSettings,
   )
 
 // Persisted caching based on sjson-new
@@ -113,7 +123,8 @@ lazy val utilCache = (project in file("util-cache")).
   settings(
     commonSettings,
     name := "Util Cache",
-    libraryDependencies ++= Seq(sjsonnewScalaJson.value, sjsonnewMurmurhash.value, scalaReflect.value)
+    libraryDependencies ++= Seq(sjsonnewScalaJson.value, sjsonnewMurmurhash.value, scalaReflect.value),
+    mimaSettings,
   ).
   configure(addSbtIO)
 
@@ -122,7 +133,8 @@ lazy val utilTracking = (project in file("util-tracking")).
   dependsOn(utilCache, utilTesting % Test).
   settings(
     commonSettings,
-    name := "Util Tracking"
+    name := "Util Tracking",
+    mimaSettings,
   ).
   configure(addSbtIO)
 
@@ -132,7 +144,8 @@ lazy val utilTesting = (project in internalPath / "util-testing").
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Testing",
-    libraryDependencies ++= Seq(scalaCheck, scalatest)
+    libraryDependencies ++= Seq(scalaCheck, scalatest),
+    mimaSettings,
   ).
   configure(addSbtIO)
 
@@ -147,7 +160,8 @@ lazy val utilScripted = (project in internalPath / "util-scripted").
         case sv if sv startsWith "2.12" => Seq(parserCombinator211)
         case _ => Seq()
       }
-    }
+    },
+    mimaSettings,
   ).
   configure(addSbtIO)
 

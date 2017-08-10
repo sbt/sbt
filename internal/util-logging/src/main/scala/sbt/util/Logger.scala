@@ -27,6 +27,7 @@ abstract class Logger extends xLogger {
   // sys.process.ProcessLogger
   final def out(message: => String): Unit = log(Level.Info, message)
 
+  @deprecated("No longer used.", "1.0.0")
   def ansiCodesSupported: Boolean = false
 
   def trace(t: => Throwable): Unit
