@@ -184,8 +184,7 @@ abstract class TestBuild {
       project <- oneOf(build.projects)
       cAxis <- oneOrGlobal(project.configurations map toConfigKey)
       tAxis <- oneOrGlobal(env.tasks map getKey)
-      pAxis <- orGlobal(
-        frequency((1, BuildRef(build.uri)), (3, ProjectRef(build.uri, project.id))))
+      pAxis <- orGlobal(frequency((1, BuildRef(build.uri)), (3, ProjectRef(build.uri, project.id))))
     } yield Scope(pAxis, cAxis, tAxis, Zero)
 
   def orGlobal[T](gen: Gen[T]): Gen[ScopeAxis[T]] =
@@ -265,9 +264,7 @@ abstract class TestBuild {
                  maxDeps: Gen[Int],
                  count: Gen[Int]): Gen[Seq[Config]] =
     genAcyclicDirect[Config, String](maxDeps, genName, count)((key, deps) => new Config(key, deps))
-  def genTasks(implicit genName: Gen[String],
-               maxDeps: Gen[Int],
-               count: Gen[Int]): Gen[Seq[Taskk]] =
+  def genTasks(implicit genName: Gen[String], maxDeps: Gen[Int], count: Gen[Int]): Gen[Seq[Taskk]] =
     genAcyclicDirect[Taskk, String](maxDeps, genName, count)((key, deps) =>
       new Taskk(AttributeKey[String](key), deps))
 
@@ -286,8 +283,7 @@ abstract class TestBuild {
         genAcyclic(maxDeps, keys.distinct)(make)
       }
     }
-  def genAcyclic[A, T](maxDeps: Gen[Int], keys: List[T])(
-      make: T => Gen[Seq[A] => A]): Gen[Seq[A]] =
+  def genAcyclic[A, T](maxDeps: Gen[Int], keys: List[T])(make: T => Gen[Seq[A] => A]): Gen[Seq[A]] =
     genAcyclic(maxDeps, keys, Nil) flatMap { pairs =>
       sequence(pairs.map { case (key, deps) => mapMake(key, deps, make) }) flatMap { inputs =>
         val made = new collection.mutable.HashMap[T, A]

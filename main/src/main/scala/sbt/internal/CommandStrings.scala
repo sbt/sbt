@@ -138,8 +138,8 @@ $LastCommand <key>
   """.stripMargin.trim
 
   val SetCommand = "set"
-  val setBrief = (s"$SetCommand [every] <setting>",
-                  "Evaluates a Setting and applies it to the current project.")
+  val setBrief =
+    (s"$SetCommand [every] <setting>", "Evaluates a Setting and applies it to the current project.")
   val setDetailed =
     s"""$SetCommand [every] <setting-expression>
 
@@ -275,8 +275,7 @@ $ProjectsCommand remove <URI>+
   def LoadProjectImpl = "loadp"
   def LoadProject = "reload"
   def LoadProjectBrief =
-    (LoadProject,
-     "(Re)loads the current project or changes to plugins project or returns from it.")
+    (LoadProject, "(Re)loads the current project or changes to plugins project or returns from it.")
   def LoadProjectDetailed =
     s"""$LoadProject
 

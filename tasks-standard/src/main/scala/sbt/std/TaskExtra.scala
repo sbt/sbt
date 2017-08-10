@@ -222,11 +222,11 @@ trait TaskExtra {
         IO.readLines(s.readText(key(in), sid))
       }
   }
-  implicit def processToTask(p: ProcessBuilder)(
-      implicit streams: Task[TaskStreams[_]]): Task[Int] = streams map { s =>
-    val pio = TaskExtra.processIO(s)
-    (p run pio).exitValue
-  }
+  implicit def processToTask(p: ProcessBuilder)(implicit streams: Task[TaskStreams[_]]): Task[Int] =
+    streams map { s =>
+      val pio = TaskExtra.processIO(s)
+      (p run pio).exitValue
+    }
 }
 object TaskExtra extends TaskExtra {
   def processIO(s: TaskStreams[_]): ProcessIO = {

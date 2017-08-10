@@ -19,7 +19,7 @@ abstract class JLine extends LineReader {
     JLine.makeInputStream(injectThreadSleep && !Util.isNonCygwinWindows)
   }
 
-  def readLine(prompt: String, mask: Option[Char] = None) = 
+  def readLine(prompt: String, mask: Option[Char] = None) =
     try {
       JLine.withJLine {
         unsynchronizedReadLine(prompt, mask)

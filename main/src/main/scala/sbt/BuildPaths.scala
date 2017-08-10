@@ -58,9 +58,9 @@ object BuildPaths {
     fileSetting(globalSettingsDirectory, GlobalSettingsProperty, globalBase)(state)
 
   def getDependencyDirectory(state: State, globalBase: File): File =
-    fileSetting(dependencyBaseDirectory,
-                DependencyBaseProperty,
-                defaultDependencyBase(globalBase))(state)
+    fileSetting(dependencyBaseDirectory, DependencyBaseProperty, defaultDependencyBase(globalBase))(
+      state
+    )
 
   def getZincDirectory(state: State, globalBase: File): File =
     fileSetting(globalZincDirectory, GlobalZincProperty, defaultGlobalZinc(globalBase))(state)

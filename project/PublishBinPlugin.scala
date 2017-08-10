@@ -19,7 +19,6 @@ object PublishBinPlugin extends AutoPlugin {
 
   override def projectSettings = Def settings (
     publishLocalBin := Classpaths.publishTask(publishLocalBinConfig, deliverLocal).value,
-
     publishLocalBinConfig := {
       val _ = deliverLocal.value
       Classpaths.publishConfig(
@@ -31,9 +30,9 @@ object PublishBinPlugin extends AutoPlugin {
         (checksums in publishLocalBin).value.toVector,
         resolverName = "local",
         logging = ivyLoggingLevel.value,
-        overwrite = isSnapshot.value)
+        overwrite = isSnapshot.value
+      )
     },
-
     packagedArtifacts in publishLocalBin := Classpaths.packaged(Seq(packageBin in Compile)).value
   )
 

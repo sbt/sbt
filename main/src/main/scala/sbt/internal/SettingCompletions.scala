@@ -63,10 +63,8 @@ private[sbt] object SettingCompletions {
               settings: Seq[Def.Setting[_]],
               arg: String): SetResult = {
     import extracted._
-    val append = Load.transformSettings(Load.projectScope(currentRef),
-                                        currentRef.build,
-                                        rootProject,
-                                        settings)
+    val append =
+      Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newSession = session.appendSettings(append map (a => (a, arg.split('\n').toList)))
     val r = relation(newSession.mergeSettings, true)(structure.delegates,
                                                      structure.scopeLocal,
