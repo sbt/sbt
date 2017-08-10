@@ -81,4 +81,14 @@ trait ModuleDescriptor {
    * if any.
    */
   def scalaModuleInfo: Option[ScalaModuleInfo]
+
+  /**
+   * The input parameters used to construct the `ModuleSettings`.
+   */
+  def moduleSettings: ModuleSettings
+
+  /**
+   * Hash for extra parameter that were not captured as `moduleSettings`.
+   */
+  def extraInputHash: Long
 }

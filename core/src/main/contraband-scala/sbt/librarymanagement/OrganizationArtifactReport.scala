@@ -30,7 +30,8 @@ final class OrganizationArtifactReport private (
     37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.OrganizationArtifactReport".##) + organization.##) + name.##) + modules.##)
   }
   override def toString: String = {
-    "OrganizationArtifactReport(" + organization + ", " + name + ", " + modules + ")"
+    val details = modules map { _.detailReport }
+    s"\t$organization:$name\n${details.mkString}\n"
   }
   protected[this] def copy(organization: String = organization, name: String = name, modules: Vector[sbt.librarymanagement.ModuleReport] = modules): OrganizationArtifactReport = {
     new OrganizationArtifactReport(organization, name, modules)

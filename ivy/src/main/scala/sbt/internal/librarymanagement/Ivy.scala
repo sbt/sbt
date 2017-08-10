@@ -36,10 +36,12 @@ import org.apache.ivy.util.extendable.ExtendableItem
 import org.apache.ivy.util.url._
 import scala.xml.NodeSeq
 import scala.collection.mutable
-import sbt.util.Logger
+import scala.util.{ Success, Failure }
+import sbt.util._
 import sbt.librarymanagement.{ ModuleDescriptorConfiguration => InlineConfiguration, _ }
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+
 import IvyInternalDefaults._
 import Resolver.PluginPattern
 import ivyint.{
@@ -49,6 +51,8 @@ import ivyint.{
   SbtDefaultDependencyDescriptor,
   GigahorseUrlHandler
 }
+import sjsonnew.JsonFormat
+import sjsonnew.support.murmurhash.Hasher
 
 final class IvySbt(val configuration: IvyConfiguration) { self =>
   /*
@@ -336,6 +340,73 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
       )
     }
     private def toURL(file: File) = file.toURI.toURL
+
+    // Todo: We just need writing side of this codec. We can clean up the reads.
+    private[sbt] object AltLibraryManagementCodec extends IvyLibraryManagementCodec {
+      import sbt.io.Hash
+      type InlineIvyHL = (Option[IvyPaths], Vector[Resolver], Vector[Resolver], Vector[
+        ModuleConfiguration], Vector[String], Boolean)
+      def inlineIvyToHL(i: InlineIvyConfiguration): InlineIvyHL =
+        (i.paths, i.resolvers, i.otherResolvers, i.moduleConfigurations,
+          i.checksums, i.managedChecksums)
+
+      type ExternalIvyHL = (Option[PlainFileInfo], Array[Byte])
+      def externalIvyToHL(e: ExternalIvyConfiguration): ExternalIvyHL =
+        (e.baseDirectory.map(FileInfo.exists.apply),
+          e.uri.map(Hash.contentsIfLocal).getOrElse(Array.empty))
+
+      // Redefine to use a subset of properties, that are serialisable
+      override implicit lazy val InlineIvyConfigurationFormat: JsonFormat[InlineIvyConfiguration] = {
+        def hlToInlineIvy(i: InlineIvyHL): InlineIvyConfiguration = {
+          val (paths, resolvers, otherResolvers, moduleConfigurations, checksums, managedChecksums) = i
+          InlineIvyConfiguration()
+            .withPaths(paths)
+            .withResolvers(resolvers)
+            .withOtherResolvers(otherResolvers)
+            .withModuleConfigurations(moduleConfigurations)
+            .withManagedChecksums(managedChecksums)
+            .withChecksums(checksums)
+        }
+        projectFormat[InlineIvyConfiguration, InlineIvyHL](inlineIvyToHL, hlToInlineIvy)
+      }
+
+      // Redefine to use a subset of properties, that are serialisable
+      override implicit lazy val ExternalIvyConfigurationFormat
+        : JsonFormat[ExternalIvyConfiguration] = {
+        def hlToExternalIvy(e: ExternalIvyHL): ExternalIvyConfiguration = {
+          val (baseDirectory, _) = e
+          ExternalIvyConfiguration(
+            None,
+            Some(NullLogger),
+            UpdateOptions(),
+            baseDirectory.map(_.file),
+            None /* the original uri is destroyed.. */,
+            Vector.empty
+          )
+        }
+        projectFormat[ExternalIvyConfiguration, ExternalIvyHL](externalIvyToHL, hlToExternalIvy)
+      }
+
+      // Redefine to switch to unionFormat
+      override implicit lazy val IvyConfigurationFormat: JsonFormat[IvyConfiguration] =
+        unionFormat2[IvyConfiguration, InlineIvyConfiguration, ExternalIvyConfiguration]
+
+      object NullLogger extends sbt.internal.util.BasicLogger {
+        override def control(event: sbt.util.ControlEvent.Value, message: ⇒ String): Unit = ()
+        override def log(level: Level.Value, message: ⇒ String): Unit = ()
+        override def logAll(events: Seq[sbt.util.LogEvent]): Unit = ()
+        override def success(message: ⇒ String): Unit = ()
+        override def trace(t: ⇒ Throwable): Unit = ()
+      }
+    }
+
+    def extraInputHash: Long = {
+      import AltLibraryManagementCodec._
+      Hasher.hash(owner.configuration) match {
+        case Success(keyHash) => keyHash.toLong
+        case Failure(_)       => 0L
+      }
+    }
   }
 }
 

@@ -1,7 +1,6 @@
 import Dependencies._
 import Path._
-
-// import com.typesafe.tools.mima.core._, ProblemFilters._
+//import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "1.0.0-SNAPSHOT"
 
@@ -24,10 +23,13 @@ def commonSettings: Seq[Setting[_]] = Seq(
       case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
     }
   },
-  // mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false,
   parallelExecution in Test := false
+)
+
+val mimaSettings = Def settings (
+  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0-RC3")
 )
 
 lazy val lmRoot = (project in file("."))
@@ -41,9 +43,9 @@ lazy val lmRoot = (project in file("."))
           url("https://github.com/sbt/librarymanagement"), "git@github.com:sbt/librarymanagement.git"
         )),
         bintrayPackage := "librarymanagement",
-        scalafmtOnCompile := true,
+        // scalafmtOnCompile := true,
         // scalafmtVersion 1.0.0-RC3 has regression
-        scalafmtVersion := "0.6.8",
+        // scalafmtVersion := "0.6.8",
         git.baseVersion := baseVersion,
         version := {
           val v = version.value
@@ -80,7 +82,6 @@ lazy val lmCore = (project in file("core"))
         version.value, resourceManaged.value, streams.value, (compile in Compile).value
       )
     ).taskValue,
-    // mimaBinaryIssueFilters ++= Seq(),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -91,7 +92,8 @@ lazy val lmCore = (project in file("core"))
       val sdirs = (managedSourceDirectories in Compile).value
       val base = baseDirectory.value
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
-    }
+    },
+    mimaSettings,
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
@@ -107,6 +109,7 @@ lazy val lmIvy = (project in file("ivy"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     scalacOptions in (Compile, console) --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
+    mimaSettings,
   )
 
 def customCommands: Seq[Setting[_]] = Seq(
