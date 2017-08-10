@@ -58,18 +58,20 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     val lines1 = IO.readLines(fromString(file1))
     val lines2 = IO.readLines(fromString(file2))
     if (lines1 != lines2)
-      scriptError("File contents are different:\n" + lines1.mkString("\n") + "\nAnd:\n" + lines2.mkString("\n"))
+      scriptError(
+        "File contents are different:\n" + lines1.mkString("\n") +
+          "\nAnd:\n" + lines2.mkString("\n")
+      )
   }
 
-  def newer(a: String, b: String): Unit =
-    {
-      val pathA = fromString(a)
-      val pathB = fromString(b)
-      val isNewer = pathA.exists && (!pathB.exists || pathA.lastModified > pathB.lastModified)
-      if (!isNewer) {
-        scriptError(s"$pathA is not newer than $pathB")
-      }
+  def newer(a: String, b: String): Unit = {
+    val pathA = fromString(a)
+    val pathB = fromString(b)
+    val isNewer = pathA.exists && (!pathB.exists || pathA.lastModified > pathB.lastModified)
+    if (!isNewer) {
+      scriptError(s"$pathA is not newer than $pathB")
     }
+  }
   def exists(paths: List[String]): Unit = {
     val notPresent = fromStrings(paths).filter(!_.exists)
     if (notPresent.nonEmpty)
@@ -127,9 +129,16 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
           IO.copy(mapped.init pair map)
           ()
       }
+
     def wrongArguments(args: List[String]): Unit =
-      scriptError("Command '" + commandName + "' does not accept arguments (found '" + spaced(args) + "').")
+      scriptError(
+        "Command '" + commandName + "' does not accept arguments (found '" + spaced(args) + "')."
+      )
+
     def wrongArguments(requiredArgs: String, args: List[String]): Unit =
-      scriptError("Wrong number of arguments to " + commandName + " command.  " + requiredArgs + " required, found: '" + spaced(args) + "'.")
+      scriptError(
+        "Wrong number of arguments to " + commandName + " command.  " +
+          requiredArgs + " required, found: '" + spaced(args) + "'."
+      )
   }
 }

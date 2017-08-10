@@ -17,7 +17,10 @@ trait JValueFormats { self: sjsonnew.BasicJsonProtocol =>
 
   implicit val JBooleanFormat: JF[JBoolean] = projectFormat(_.get, (x: Boolean) => JBoolean(x))
   implicit val JStringFormat: JF[JString] = projectFormat(_.value, (x: String) => JString(x))
-  implicit val JNumberFormat: JF[JNumber] = projectFormat(x => BigDecimal(x.value), (x: BigDecimal) => JNumber(x.toString))
+
+  implicit val JNumberFormat: JF[JNumber] =
+    projectFormat(x => BigDecimal(x.value), (x: BigDecimal) => JNumber(x.toString))
+
   implicit val JArrayFormat: JF[JArray] = projectFormat[JArray, Array[JValue]](_.value, JArray(_))
 
   implicit lazy val JObjectJsonWriter: JW[JObject] = new JW[JObject] {
@@ -43,5 +46,6 @@ trait JValueFormats { self: sjsonnew.BasicJsonProtocol =>
     def read[J](j: Option[J], u: Unbuilder[J]) = ??? // Is this even possible? with no Manifest[J]?
   }
 
-  implicit lazy val JValueFormat: JF[JValue] = jsonFormat[JValue](JValueJsonReader, JValueJsonWriter)
+  implicit lazy val JValueFormat: JF[JValue] =
+    jsonFormat[JValue](JValueJsonReader, JValueJsonWriter)
 }

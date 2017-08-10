@@ -24,8 +24,16 @@ sealed abstract class LogExchange {
     val _ = context
     val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
     val config = ctx.getConfiguration
-    val loggerConfig = LoggerConfig.createLogger(false, XLevel.DEBUG, name,
-      "true", Array[AppenderRef](), null, config, null)
+    val loggerConfig = LoggerConfig.createLogger(
+      false,
+      XLevel.DEBUG,
+      name,
+      "true",
+      Array[AppenderRef](),
+      null,
+      config,
+      null
+    )
     config.addLogger(name, loggerConfig)
     ctx.updateLoggers
     val logger = ctx.getLogger(name)

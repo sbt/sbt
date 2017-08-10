@@ -19,8 +19,13 @@ successChar ::= '+' | '-'
 word ::= [^ \[\]]+
 comment ::= '#' \S* nl
 nl ::= '\r' \'n' | '\n' | '\r' | eof
-*/
-final case class Statement(command: String, arguments: List[String], successExpected: Boolean, line: Int) {
+ */
+final case class Statement(
+    command: String,
+    arguments: List[String],
+    successExpected: Boolean,
+    line: Int
+) {
   def linePrefix = "{line " + line + "} "
 }
 
@@ -41,43 +46,50 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
   if (handlers.keys.exists(key => key == '+' || key == '-'))
     sys.error("Start characters cannot be '+' or '-'")
 
-  def parse(scriptFile: File): List[(StatementHandler, Statement)] = parse(read(scriptFile), Some(scriptFile.getAbsolutePath))
+  def parse(scriptFile: File): List[(StatementHandler, Statement)] =
+    parse(read(scriptFile), Some(scriptFile.getAbsolutePath))
   def parse(script: String): List[(StatementHandler, Statement)] = parse(script, None)
-  private def parse(script: String, label: Option[String]): List[(StatementHandler, Statement)] =
-    {
-      parseAll(statements, script) match {
-        case Success(result, next) => result
-        case err: NoSuccess =>
-          {
-            val labelString = label.map("'" + _ + "' ").getOrElse("")
-            sys.error("Could not parse test script, " + labelString + err.toString)
-          }
+  private def parse(script: String, label: Option[String]): List[(StatementHandler, Statement)] = {
+    parseAll(statements, script) match {
+      case Success(result, next) => result
+      case err: NoSuccess => {
+        val labelString = label.map("'" + _ + "' ").getOrElse("")
+        sys.error("Could not parse test script, " + labelString + err.toString)
       }
     }
+  }
 
   lazy val statements = rep1(space ~> statement <~ newline)
-  def statement: Parser[(StatementHandler, Statement)] =
-    {
-      trait PositionalStatement extends Positional {
-        def tuple: (StatementHandler, Statement)
-      }
-      positioned {
-        val command = (word | err("expected command"))
-        val arguments = rep(space ~> (word | failure("expected argument")))
-        (successParser ~ (space ~> startCharacterParser <~ space) ~! command ~! arguments) ^^
-          {
-            case successExpected ~ start ~ command ~ arguments =>
-              new PositionalStatement {
-                def tuple = (handlers(start), new Statement(command, arguments, successExpected, pos.line))
-              }
-          }
-      } ^^ (_.tuple)
+
+  def statement: Parser[(StatementHandler, Statement)] = {
+    trait PositionalStatement extends Positional {
+      def tuple: (StatementHandler, Statement)
     }
+    positioned {
+      val command = (word | err("expected command"))
+      val arguments = rep(space ~> (word | failure("expected argument")))
+      (successParser ~ (space ~> startCharacterParser <~ space) ~! command ~! arguments) ^^ {
+        case successExpected ~ start ~ command ~ arguments =>
+          new PositionalStatement {
+            def tuple =
+              (handlers(start), new Statement(command, arguments, successExpected, pos.line))
+          }
+      }
+    } ^^ (_.tuple)
+  }
+
   def successParser: Parser[Boolean] = ('+' ^^^ true) | ('-' ^^^ false) | success(true)
   def space: Parser[String] = """[ \t]*""".r
-  lazy val word: Parser[String] = ("\'" ~> "[^'\n\r]*".r <~ "\'") | ("\"" ~> "[^\"\n\r]*".r <~ "\"") | WordRegex
-  def startCharacterParser: Parser[Char] = elem("start character", handlers.contains _) |
-    ((newline | err("expected start character " + handlers.keys.mkString("(", "", ")"))) ~> failure("end of input"))
+
+  lazy val word: Parser[String] =
+    ("\'" ~> "[^'\n\r]*".r <~ "\'") | ("\"" ~> "[^\"\n\r]*".r <~ "\"") | WordRegex
+
+  def startCharacterParser: Parser[Char] =
+    elem("start character", handlers.contains _) |
+      (
+        (newline | err("expected start character " + handlers.keys.mkString("(", "", ")")))
+          ~> failure("end of input")
+      )
 
   def newline = """\s*([\n\r]|$)""".r
 }

@@ -11,7 +11,6 @@ import sbt.internal.util.UnitSpec
 class TrackedSpec extends UnitSpec {
   "lastOutput" should "store the last output" in {
     withStore { store =>
-
       val value = 5
       val otherValue = 10
 
@@ -132,7 +131,6 @@ class TrackedSpec extends UnitSpec {
     }
   }
 
-
   "tstamp tracker" should "have a timestamp of 0 on first invocation" in {
     withStore { store =>
       Tracked.tstamp(store) { last =>
@@ -143,7 +141,6 @@ class TrackedSpec extends UnitSpec {
 
   it should "provide the last time a function has been evaluated" in {
     withStore { store =>
-
       Tracked.tstamp(store) { last =>
         assert(last === 0)
       }

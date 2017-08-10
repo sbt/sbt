@@ -24,7 +24,8 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     import sjsonnew.BasicJsonProtocol._
     val log = LogExchange.logger("foo")
     LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
-    implicit val intShow: ShowLines[Int] = ShowLines({ (x: Int) => Vector(s"String representation of $x") })
+    implicit val intShow: ShowLines[Int] =
+      ShowLines((x: Int) => Vector(s"String representation of $x"))
     log.registerStringCodec[Int]
     log.infoEvent(1)
   }
@@ -33,7 +34,8 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     import sjsonnew.BasicJsonProtocol._
     val log = LogExchange.logger("foo")
     LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
-    implicit val intArrayShow: ShowLines[Array[Int]] = ShowLines({ (x: Array[Int]) => Vector(s"String representation of ${x.mkString}") })
+    implicit val intArrayShow: ShowLines[Array[Int]] =
+      ShowLines((x: Array[Int]) => Vector(s"String representation of ${x.mkString}"))
     log.registerStringCodec[Array[Int]]
     log.infoEvent(Array(1, 2, 3))
   }
@@ -42,7 +44,8 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     import sjsonnew.BasicJsonProtocol._
     val log = LogExchange.logger("foo")
     LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
-    implicit val intVectorShow: ShowLines[Vector[Vector[Int]]] = ShowLines({ (xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss") })
+    implicit val intVectorShow: ShowLines[Vector[Vector[Int]]] =
+      ShowLines((xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss"))
     log.registerStringCodec[Vector[Vector[Int]]]
     log.infoEvent(Vector(Vector(1, 2, 3)))
   }
@@ -51,7 +54,9 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     // this is passed into State normally
     val global0 = initialGlobalLogging
     val full = global0.full
-    (1 to 3).toList foreach { x => full.info(s"test$x") }
+    (1 to 3).toList foreach { x =>
+      full.info(s"test$x")
+    }
   }
 
   // This is done in Mainloop.scala
@@ -62,7 +67,7 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
       val out = new PrintWriter(writer)
       val g = global0.newAppender(global0.full, out, logBacking0)
       val full = g.full
-      (1 to 3).toList foreach { x => full.info(s"newAppender $x") }
+      (1 to 3).toList foreach (x => full.info(s"newAppender $x"))
       assert(logBacking0.file.exists)
       g
     }
@@ -71,7 +76,7 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
       val out = new PrintWriter(writer)
       val g = global1.newAppender(global1.full, out, logBacking1)
       val full = g.full
-      (1 to 3).toList foreach { x => full.info(s"newAppender $x") }
+      (1 to 3).toList foreach (x => full.info(s"newAppender $x"))
       // println(logBacking.file)
       // print("Press enter to continue. ")
       // System.console.readLine
@@ -81,6 +86,8 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
 
   val console = ConsoleOut.systemOut
   def initialGlobalLogging: GlobalLogging = GlobalLogging.initial(
-    MainAppender.globalDefault(console), File.createTempFile("sbt", ".log"), console
+    MainAppender.globalDefault(console),
+    File.createTempFile("sbt", ".log"),
+    console
   )
 }

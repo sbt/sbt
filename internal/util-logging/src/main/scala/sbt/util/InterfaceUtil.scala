@@ -36,8 +36,15 @@ object InterfaceUtil {
       case None    => Optional.empty[A]()
     }
 
-  def position(line0: Option[Integer], content: String, offset0: Option[Integer], pointer0: Option[Integer],
-    pointerSpace0: Option[String], sourcePath0: Option[String], sourceFile0: Option[File]): Position =
+  def position(
+      line0: Option[Integer],
+      content: String,
+      offset0: Option[Integer],
+      pointer0: Option[Integer],
+      pointerSpace0: Option[String],
+      sourcePath0: Option[String],
+      sourceFile0: Option[File]
+  ): Position =
     new ConcretePosition(line0, content, offset0, pointer0, pointerSpace0, sourcePath0, sourceFile0)
 
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
@@ -53,23 +60,22 @@ object InterfaceUtil {
           this.get2 == o.get2
       case _ => false
     }
-    override def hashCode: Int =
-      {
-        var hash = 1
-        hash = hash * 31 + this.get1.##
-        hash = hash * 31 + this.get2.##
-        hash
-      }
+    override def hashCode: Int = {
+      var hash = 1
+      hash = hash * 31 + this.get1.##
+      hash = hash * 31 + this.get2.##
+      hash
+    }
   }
 
   private final class ConcretePosition(
-    line0: Option[Integer],
-    content: String,
-    offset0: Option[Integer],
-    pointer0: Option[Integer],
-    pointerSpace0: Option[String],
-    sourcePath0: Option[String],
-    sourceFile0: Option[File]
+      line0: Option[Integer],
+      content: String,
+      offset0: Option[Integer],
+      pointer0: Option[Integer],
+      pointerSpace0: Option[String],
+      sourcePath0: Option[String],
+      sourceFile0: Option[File]
   ) extends Position {
     val line = o2jo(line0)
     val lineContent = content
@@ -81,10 +87,10 @@ object InterfaceUtil {
   }
 
   private final class ConcreteProblem(
-    cat: String,
-    pos: Position,
-    msg: String,
-    sev: Severity
+      cat: String,
+      pos: Position,
+      msg: String,
+      sev: Severity
   ) extends Problem {
     val category = cat
     val position = pos

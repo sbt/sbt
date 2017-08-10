@@ -51,10 +51,13 @@ object ConsoleLogger {
    * @param suppressedMessage  How to show suppressed stack traces.
    * @return A new `ConsoleLogger` that logs to `out`.
    */
-  def apply(out: ConsoleOut = ConsoleOut.systemOut,
-            ansiCodesSupported: Boolean = ConsoleAppender.formatEnabledInEnv,
-            useFormat: Boolean = ConsoleAppender.formatEnabledInEnv,
-            suppressedMessage: SuppressedTraceContext => Option[String] = ConsoleAppender.noSuppressedMessage): ConsoleLogger =
+  def apply(
+      out: ConsoleOut = ConsoleOut.systemOut,
+      ansiCodesSupported: Boolean = ConsoleAppender.formatEnabledInEnv,
+      useFormat: Boolean = ConsoleAppender.formatEnabledInEnv,
+      suppressedMessage: SuppressedTraceContext => Option[String] =
+        ConsoleAppender.noSuppressedMessage
+  ): ConsoleLogger =
     new ConsoleLogger(out, ansiCodesSupported, useFormat, suppressedMessage)
 }
 
@@ -62,10 +65,12 @@ object ConsoleLogger {
  * A logger that logs to the console.  On supported systems, the level labels are
  * colored.
  */
-class ConsoleLogger private[ConsoleLogger] (out: ConsoleOut,
-                                            override val ansiCodesSupported: Boolean,
-                                            useFormat: Boolean,
-                                            suppressedMessage: SuppressedTraceContext => Option[String]) extends BasicLogger {
+class ConsoleLogger private[ConsoleLogger] (
+    out: ConsoleOut,
+    override val ansiCodesSupported: Boolean,
+    useFormat: Boolean,
+    suppressedMessage: SuppressedTraceContext => Option[String]
+) extends BasicLogger {
 
   private[sbt] val appender: ConsoleAppender =
     ConsoleAppender(generateName(), out, ansiCodesSupported, useFormat, suppressedMessage)
@@ -160,7 +165,11 @@ object ConsoleAppender {
    * @param suppressedMessage How to handle stack traces.
    * @return A new `ConsoleAppender` that writes to `out`.
    */
-  def apply(name: String, out: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
+  def apply(
+      name: String,
+      out: ConsoleOut,
+      suppressedMessage: SuppressedTraceContext => Option[String]
+  ): ConsoleAppender =
     apply(name, out, formatEnabledInEnv, formatEnabledInEnv, suppressedMessage)
 
   /**
@@ -184,14 +193,16 @@ object ConsoleAppender {
    *                           formatting.
    * @return A new `ConsoleAppender` that writes to `out`.
    */
-  def apply(name: String,
-            out: ConsoleOut,
-            ansiCodesSupported: Boolean,
-            useFormat: Boolean,
-            suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender = {
-              val appender = new ConsoleAppender(name, out, ansiCodesSupported, useFormat, suppressedMessage)
-              appender.start
-              appender
+  def apply(
+      name: String,
+      out: ConsoleOut,
+      ansiCodesSupported: Boolean,
+      useFormat: Boolean,
+      suppressedMessage: SuppressedTraceContext => Option[String]
+  ): ConsoleAppender = {
+    val appender = new ConsoleAppender(name, out, ansiCodesSupported, useFormat, suppressedMessage)
+    appender.start
+    appender
   }
 
   /**
@@ -242,7 +253,9 @@ object ConsoleAppender {
       // this results in a linkage error as detected below.  The detection is likely jvm specific, but the priority
       // is avoiding mistakenly identifying something as a launcher incompatibility when it is not
       case e: IncompatibleClassChangeError if e.getMessage == jline1to2CompatMsg =>
-        throw new IncompatibleClassChangeError("JLine incompatibility detected.  Check that the sbt launcher is version 0.13.x or later.")
+        throw new IncompatibleClassChangeError(
+          "JLine incompatibility detected.  Check that the sbt launcher is version 0.13.x or later."
+        )
     }
 
   private[this] def os = System.getProperty("os.name")
@@ -262,11 +275,11 @@ object ConsoleAppender {
  * This logger is not thread-safe.
  */
 class ConsoleAppender private[ConsoleAppender] (
-  name: String,
-  out: ConsoleOut,
-  ansiCodesSupported: Boolean,
-  useFormat: Boolean,
-  suppressedMessage: SuppressedTraceContext => Option[String]
+    name: String,
+    out: ConsoleOut,
+    ansiCodesSupported: Boolean,
+    useFormat: Boolean,
+    suppressedMessage: SuppressedTraceContext => Option[String]
 ) extends AbstractAppender(name, null, LogExchange.dummyLayout, true) {
   import scala.Console.{ BLUE, GREEN, RED, YELLOW }
 
@@ -275,12 +288,12 @@ class ConsoleAppender private[ConsoleAppender] (
     else ""
   }
 
-  private val SUCCESS_LABEL_COLOR   = GREEN
+  private val SUCCESS_LABEL_COLOR = GREEN
   private val SUCCESS_MESSAGE_COLOR = reset
-  private val NO_COLOR              = reset
+  private val NO_COLOR = reset
 
   private var traceEnabledVar: Int = Int.MaxValue
-  
+
   def setTrace(level: Int): Unit = synchronized { traceEnabledVar = level }
 
   /**
@@ -307,9 +320,11 @@ class ConsoleAppender private[ConsoleAppender] (
     out.lockObject.synchronized {
       if (traceLevel >= 0)
         write(StackTrace.trimmed(t, traceLevel))
-      if (traceLevel <= 2)
-        for (msg <- suppressedMessage(new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)))
+      if (traceLevel <= 2) {
+        val ctx = new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)
+        for (msg <- suppressedMessage(ctx))
           appendLog(NO_COLOR, "trace", NO_COLOR, msg)
+      }
     }
 
   /**
@@ -365,10 +380,16 @@ class ConsoleAppender private[ConsoleAppender] (
    * @param messageColor The color to use to format the message.
    * @param message      The message to write.
    */
-  private def appendLog(labelColor: String, label: String, messageColor: String, message: String): Unit =
+  private def appendLog(
+      labelColor: String,
+      label: String,
+      messageColor: String,
+      message: String
+  ): Unit =
     out.lockObject.synchronized {
       message.lines.foreach { line =>
-        val labeledLine = s"$reset[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
+        val labeledLine =
+          s"$reset[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
         write(labeledLine)
       }
     }
@@ -395,31 +416,30 @@ class ConsoleAppender private[ConsoleAppender] (
   private def appendTraceEvent(te: TraceEvent): Unit = {
     val traceLevel = getTrace
     val throwableShowLines: ShowLines[Throwable] =
-      ShowLines[Throwable]( (t: Throwable) => {
+      ShowLines[Throwable]((t: Throwable) => {
         List(StackTrace.trimmed(t, traceLevel))
       })
     val codec: ShowLines[TraceEvent] =
-      ShowLines[TraceEvent]( (t: TraceEvent) => {
+      ShowLines[TraceEvent]((t: TraceEvent) => {
         throwableShowLines.showLines(t.message)
       })
     codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
   }
 
-  private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {   
-    def appendEvent(oe: ObjectEvent[_]): Unit =
-      {
-        val contentType = oe.contentType
-        if (contentType == "sbt.internal.util.TraceEvent") {
-          appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
-        }
-        else LogExchange.stringCodec[AnyRef](contentType) match {
+  private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {
+    def appendEvent(oe: ObjectEvent[_]): Unit = {
+      val contentType = oe.contentType
+      if (contentType == "sbt.internal.util.TraceEvent") {
+        appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
+      } else
+        LogExchange.stringCodec[AnyRef](contentType) match {
           case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
             codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }
           case Some(codec) =>
-            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { appendLog(level, _) }
-          case _           => appendLog(level, oe.message.toString)
+            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach (appendLog(level, _))
+          case _ => appendLog(level, oe.message.toString)
         }
-      } 
+    }
 
     o match {
       case x: StringEvent    => Vector(x.message) foreach { appendLog(level, _) }

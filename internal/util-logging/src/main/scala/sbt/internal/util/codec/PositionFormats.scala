@@ -1,7 +1,6 @@
 /**
  * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
-
 package sbt.internal.util.codec
 import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 import xsbti.Position

@@ -16,10 +16,21 @@ import org.apache.logging.log4j.core.Appender
  * `backing` tracks the files that persist the global logging.
  * `newLogger` creates a new global logging configuration from a sink and backing configuration.
  */
-final case class GlobalLogging(full: ManagedLogger, console: ConsoleOut, backed: Appender,
-  backing: GlobalLogBacking, newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging)
+final case class GlobalLogging(
+    full: ManagedLogger,
+    console: ConsoleOut,
+    backed: Appender,
+    backing: GlobalLogBacking,
+    newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging
+)
 
-final case class GlobalLogging1(full: Logger, console: ConsoleOut, backed: AbstractLogger, backing: GlobalLogBacking, newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging1)
+final case class GlobalLogging1(
+    full: Logger,
+    console: ConsoleOut,
+    backed: AbstractLogger,
+    backing: GlobalLogBacking,
+    newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging1
+)
 
 /**
  * Tracks the files that persist the global logging.
@@ -27,6 +38,7 @@ final case class GlobalLogging1(full: Logger, console: ConsoleOut, backed: Abstr
  * `newBackingFile` creates a new temporary location for the next backing file.
  */
 final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile: () => File) {
+
   /** Shifts the current backing file to `last` and sets the current backing to `newFile`. */
   def shift(newFile: File) = GlobalLogBacking(newFile, Some(file), newBackingFile)
 
@@ -38,32 +50,38 @@ final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile
    * Otherwise, no changes are made.
    */
   def unshift = GlobalLogBacking(last getOrElse file, None, newBackingFile)
+
 }
+
 object GlobalLogBacking {
-  def apply(newBackingFile: => File): GlobalLogBacking = GlobalLogBacking(newBackingFile, None, newBackingFile _)
+  def apply(newBackingFile: => File): GlobalLogBacking =
+    GlobalLogBacking(newBackingFile, None, newBackingFile _)
 }
 
 object GlobalLogging {
   import java.util.concurrent.atomic.AtomicInteger
-  private def generateName: String =
-    "GlobalLogging" + generateId.incrementAndGet
+
+  private def generateName: String = "GlobalLogging" + generateId.incrementAndGet
   private val generateId: AtomicInteger = new AtomicInteger
 
-  def initial1(newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging1, newBackingFile: => File, console: ConsoleOut): GlobalLogging1 =
-    {
-      val log = ConsoleLogger(console)
-      GlobalLogging1(log, console, log, GlobalLogBacking(newBackingFile), newLogger)
-    }
+  def initial1(
+      newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging1,
+      newBackingFile: => File,
+      console: ConsoleOut
+  ): GlobalLogging1 = {
+    val log = ConsoleLogger(console)
+    GlobalLogging1(log, console, log, GlobalLogBacking(newBackingFile), newLogger)
+  }
 
-  def initial(newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging, newBackingFile: => File, console: ConsoleOut): GlobalLogging =
-    {
-      val loggerName = generateName
-      val log = LogExchange.logger(loggerName)
-      val appender = ConsoleAppender(ConsoleAppender.generateName, console)
-      LogExchange.bindLoggerAppenders(
-        loggerName, List(appender -> Level.Info)
-      )
-      GlobalLogging(log, console, appender, GlobalLogBacking(newBackingFile), newAppender)
-    }
+  def initial(
+      newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging,
+      newBackingFile: => File,
+      console: ConsoleOut
+  ): GlobalLogging = {
+    val loggerName = generateName
+    val log = LogExchange.logger(loggerName)
+    val appender = ConsoleAppender(ConsoleAppender.generateName, console)
+    LogExchange.bindLoggerAppenders(loggerName, List(appender -> Level.Info))
+    GlobalLogging(log, console, appender, GlobalLogBacking(newBackingFile), newAppender)
+  }
 }
-

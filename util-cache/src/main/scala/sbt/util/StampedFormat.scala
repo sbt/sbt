@@ -10,13 +10,17 @@ object StampedFormat extends BasicJsonProtocol {
     withStamp(stamp(format))(format)
   }
 
-  def withStamp[T, S](stamp: S)(format: JsonFormat[T])(implicit formatStamp: JsonFormat[S], equivStamp: Equiv[S]): JsonFormat[T] =
+  def withStamp[T, S](stamp: S)(format: JsonFormat[T])(
+      implicit formatStamp: JsonFormat[S],
+      equivStamp: Equiv[S]
+  ): JsonFormat[T] =
     new JsonFormat[T] {
       override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T =
         jsOpt match {
           case Some(js) =>
             val stampedLength = unbuilder.beginArray(js)
-            if (stampedLength != 2) sys.error(s"Expected JsArray of size 2, found JsArray of size $stampedLength.")
+            if (stampedLength != 2)
+              sys.error(s"Expected JsArray of size 2, found JsArray of size $stampedLength.")
             val readStamp = unbuilder.nextElement
             val readValue = unbuilder.nextElement
             val actualStamp = formatStamp.read(Some(readStamp), unbuilder)
@@ -34,7 +38,10 @@ object StampedFormat extends BasicJsonProtocol {
         builder.endArray()
       }
     }
-  private def stamp[T](format: JsonFormat[T])(implicit mf: Manifest[JsonFormat[T]]): Int = typeHash(mf)
+
+  private def stamp[T](format: JsonFormat[T])(implicit mf: Manifest[JsonFormat[T]]): Int =
+    typeHash(mf)
+
   private def typeHash[T](implicit mf: Manifest[T]) = mf.toString.hashCode
 
 }

@@ -13,41 +13,43 @@ import java.util.concurrent.atomic.AtomicInteger
 object BufferedAppender {
   def generateName: String =
     "buffered-" + generateId.incrementAndGet
+
   private val generateId: AtomicInteger = new AtomicInteger
+
   def apply(delegate: Appender): BufferedAppender =
     apply(generateName, delegate)
-  def apply(name: String, delegate: Appender): BufferedAppender =
-    {
-      val appender = new BufferedAppender(name, delegate)
-      appender.start
-      appender
-    }
+
+  def apply(name: String, delegate: Appender): BufferedAppender = {
+    val appender = new BufferedAppender(name, delegate)
+    appender.start
+    appender
+  }
 }
 
 /**
- * Am appender that can buffer the logging done on it and then can flush the buffer
+ * An appender that can buffer the logging done on it and then can flush the buffer
  * to the delegate appender provided in the constructor.  Use 'record()' to
  * start buffering and then 'play' to flush the buffer to the backing appender.
  *  The logging level set at the time a message is originally logged is used, not
  * the level at the time 'play' is called.
  */
-class BufferedAppender private[BufferedAppender] (name: String, delegate: Appender) extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {
+class BufferedAppender private[BufferedAppender] (name: String, delegate: Appender)
+    extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {
+
   private[this] val buffer = new ListBuffer[XLogEvent]
   private[this] var recording = false
 
-  def append(event: XLogEvent): Unit =
-    {
-      if (recording) {
-        buffer += event.toImmutable
-      } else delegate.append(event)
-    }
+  def append(event: XLogEvent): Unit = {
+    if (recording) {
+      buffer += event.toImmutable
+    } else delegate.append(event)
+  }
 
   /** Enables buffering. */
   def record() = synchronized { recording = true }
   def buffer[T](f: => T): T = {
     record()
-    try { f }
-    finally { stopQuietly() }
+    try { f } finally { stopQuietly() }
   }
   def bufferQuietly[T](f: => T): T = {
     record()
@@ -70,10 +72,13 @@ class BufferedAppender private[BufferedAppender] (name: String, delegate: Append
       }
       buffer.clear()
     }
+
   /** Clears buffered events and disables buffering. */
   def clearBuffer(): Unit = synchronized { buffer.clear(); recording = false }
+
   /** Plays buffered events and disables buffering. */
   def stopBuffer(): Unit = synchronized { play(); clearBuffer() }
+
 }
 
 /**
@@ -93,8 +98,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
   def record() = synchronized { recording = true }
   def buffer[T](f: => T): T = {
     record()
-    try { f }
-    finally { stopQuietly() }
+    try { f } finally { stopQuietly() }
   }
   def bufferQuietly[T](f: => T): T = {
     record()
@@ -111,8 +115,10 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
    * so that the messages are written consecutively. The buffer is cleared in the process.
    */
   def play(): Unit = synchronized { delegate.logAll(buffer.toList); buffer.clear() }
+
   /** Clears buffered events and disables buffering. */
   def clear(): Unit = synchronized { buffer.clear(); recording = false }
+
   /** Plays buffered events and disables buffering. */
   def stop(): Unit = synchronized { play(); clear() }
 
@@ -127,6 +133,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       delegate.setLevel(newLevel)
     ()
   }
+
   override def setSuccessEnabled(flag: Boolean): Unit = synchronized {
     super.setSuccessEnabled(flag)
     if (recording)
@@ -135,6 +142,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       delegate.setSuccessEnabled(flag)
     ()
   }
+
   override def setTrace(level: Int): Unit = synchronized {
     super.setTrace(level)
     if (recording)
@@ -144,12 +152,14 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
     ()
   }
 
-  def trace(t: => Throwable): Unit =
-    doBufferableIf(traceEnabled, new Trace(t), _.trace(t))
+  def trace(t: => Throwable): Unit = doBufferableIf(traceEnabled, new Trace(t), _.trace(t))
+
   def success(message: => String): Unit =
     doBufferable(Level.Info, new Success(message), _.success(message))
+
   def log(level: Level.Value, message: => String): Unit =
     doBufferable(level, new Log(level, message), _.log(level, message))
+
   def logAll(events: Seq[LogEvent]): Unit = synchronized {
     if (recording)
       buffer ++= events
@@ -157,11 +167,22 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       delegate.logAll(events)
     ()
   }
+
   def control(event: ControlEvent.Value, message: => String): Unit =
     doBufferable(Level.Info, new ControlEvent(event, message), _.control(event, message))
-  private def doBufferable(level: Level.Value, appendIfBuffered: => LogEvent, doUnbuffered: AbstractLogger => Unit): Unit =
+
+  private def doBufferable(
+      level: Level.Value,
+      appendIfBuffered: => LogEvent,
+      doUnbuffered: AbstractLogger => Unit
+  ): Unit =
     doBufferableIf(atLevel(level), appendIfBuffered, doUnbuffered)
-  private def doBufferableIf(condition: => Boolean, appendIfBuffered: => LogEvent, doUnbuffered: AbstractLogger => Unit): Unit = synchronized {
+
+  private def doBufferableIf(
+      condition: => Boolean,
+      appendIfBuffered: => LogEvent,
+      doUnbuffered: AbstractLogger => Unit
+  ): Unit = synchronized {
     if (condition) {
       if (recording)
         buffer += appendIfBuffered

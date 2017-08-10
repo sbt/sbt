@@ -12,6 +12,7 @@ object Level extends Enumeration {
   val Info = Value(2, "info")
   val Warn = Value(3, "warn")
   val Error = Value(4, "error")
+
   /**
    * Defines the label to use for success messages.
    * Because the label for levels is defined in this module, the success label is also defined here.
@@ -23,6 +24,7 @@ object Level extends Enumeration {
 
   /** Returns the level with the given name wrapped in Some, or None if no level exists for that name. */
   def apply(s: String) = values.find(s == _.toString)
+
   /** Same as apply, defined for use in pattern matching. */
   private[sbt] def unapply(s: String) = apply(s)
 }

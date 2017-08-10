@@ -6,7 +6,7 @@ package internal
 package scripted
 
 final class TestException(statement: Statement, msg: String, exception: Throwable)
-  extends RuntimeException(statement.linePrefix + " " + msg, exception)
+    extends RuntimeException(statement.linePrefix + " " + msg, exception)
 
 class ScriptRunner {
   import scala.collection.mutable.HashMap
@@ -15,14 +15,16 @@ class ScriptRunner {
     def processStatement(handler: StatementHandler, statement: Statement): Unit = {
       val state = states(handler).asInstanceOf[handler.State]
       val nextState =
-        try { Right(handler(statement.command, statement.arguments, state)) }
-        catch { case e: Exception => Left(e) }
+        try { Right(handler(statement.command, statement.arguments, state)) } catch {
+          case e: Exception => Left(e)
+        }
       nextState match {
         case Left(err) =>
           if (statement.successExpected) {
             err match {
-              case t: TestFailed => throw new TestException(statement, "Command failed: " + t.getMessage, null)
-              case _             => throw new TestException(statement, "Command failed", err)
+              case t: TestFailed =>
+                throw new TestException(statement, "Command failed: " + t.getMessage, null)
+              case _ => throw new TestException(statement, "Command failed", err)
             }
           } else
             ()
@@ -36,12 +38,11 @@ class ScriptRunner {
     val handlers = Set() ++ statements.map(_._1)
 
     try {
-      handlers.foreach { handler => states(handler) = handler.initialState }
+      handlers.foreach(handler => states(handler) = handler.initialState)
       statements foreach (Function.tupled(processStatement))
     } finally {
       for (handler <- handlers; state <- states.get(handler)) {
-        try { handler.finish(state.asInstanceOf[handler.State]) }
-        catch { case e: Exception => () }
+        try { handler.finish(state.asInstanceOf[handler.State]) } catch { case e: Exception => () }
       }
     }
   }

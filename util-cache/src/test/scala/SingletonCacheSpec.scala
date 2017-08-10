@@ -42,7 +42,8 @@ class SingletonCacheSpec extends UnitSpec {
       }
   }
 
-  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
+  implicit val isoString: IsoString[JValue] =
+    IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   "A singleton cache" should "throw an exception if read without being written previously" in {
     testCache[Int] {
@@ -83,7 +84,9 @@ class SingletonCacheSpec extends UnitSpec {
     }
   }
 
-  private def testCache[T](f: (SingletonCache[T], CacheStore) => Unit)(implicit cache: SingletonCache[T]): Unit =
+  private def testCache[T](f: (SingletonCache[T], CacheStore) => Unit)(
+      implicit cache: SingletonCache[T]
+  ): Unit =
     IO.withTemporaryDirectory { tmp =>
       val store = new FileBasedStore(tmp / "cache-store", Converter)
       f(cache, store)

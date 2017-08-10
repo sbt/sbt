@@ -9,7 +9,11 @@ import sbt.util._
  * Provides a `java.io.Writer` interface to a `Logger`.  Content is line-buffered and logged at `level`.
  * A line is delimited by `nl`, which is by default the platform line separator.
  */
-class LoggerWriter(delegate: Logger, unbufferedLevel: Option[Level.Value], nl: String = System.getProperty("line.separator")) extends java.io.Writer {
+class LoggerWriter(
+    delegate: Logger,
+    unbufferedLevel: Option[Level.Value],
+    nl: String = System.getProperty("line.separator")
+) extends java.io.Writer {
   def this(delegate: Logger, level: Level.Value) = this(delegate, Some(level))
   def this(delegate: Logger) = this(delegate, None)
 
@@ -17,6 +21,7 @@ class LoggerWriter(delegate: Logger, unbufferedLevel: Option[Level.Value], nl: S
   private[this] val lines = new collection.mutable.ListBuffer[String]
 
   override def close() = flush()
+
   override def flush(): Unit =
     synchronized {
       if (buffer.nonEmpty) {
@@ -24,12 +29,14 @@ class LoggerWriter(delegate: Logger, unbufferedLevel: Option[Level.Value], nl: S
         buffer.clear()
       }
     }
+
   def flushLines(level: Level.Value): Unit =
     synchronized {
       for (line <- lines)
         delegate.log(level, line)
       lines.clear()
     }
+
   override def write(content: Array[Char], offset: Int, length: Int): Unit =
     synchronized {
       buffer.appendAll(content, offset, length)
@@ -44,6 +51,7 @@ class LoggerWriter(delegate: Logger, unbufferedLevel: Option[Level.Value], nl: S
       process()
     }
   }
+
   private[this] def log(s: String): Unit = unbufferedLevel match {
     case None =>
       lines += s; ()
