@@ -153,19 +153,21 @@ val root = (project in file(".")).
     mappings in Universal := {
       val t = (target in Universal).value
       val prev = (mappings in Universal).value
+      val BinBash = "bin" + java.io.File.separator + "sbt-launch-lib.bash"
+      val BinBat = "bin" + java.io.File.separator + "sbt.bat"
       prev.toList map {
-        case (k, "bin/sbt-launch-lib.bash") =>
+        case (k, BinBash) =>
           val x = IO.read(k)
           IO.write(t / "sbt-launch-lib.bash", x.replaceAllLiterally(
             "declare init_sbt_version=_to_be_replaced",
             s"""declare init_sbt_version="$sbtVersionToRelease""""))
-          (t / "sbt-launch-lib.bash", "bin/sbt-launch-lib.bash")
-        case (k, "bin/sbt.bat") =>
+          (t / "sbt-launch-lib.bash", BinBash)
+        case (k, BinBat) =>
           val x = IO.read(k)
           IO.write(t / "sbt.bat", x.replaceAllLiterally(
             "set INIT_SBT_VERSION=_TO_BE_REPLACED",
             s"""set INIT_SBT_VERSION="$sbtVersionToRelease""""))
-          (t / "sbt.bat", "bin/sbt.bat")
+          (t / "sbt.bat", BinBat)
         case (k, v) => (k, v)
       }
     },
