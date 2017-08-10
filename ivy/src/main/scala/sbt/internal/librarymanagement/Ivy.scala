@@ -344,21 +344,43 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
     // Todo: We just need writing side of this codec. We can clean up the reads.
     private[sbt] object AltLibraryManagementCodec extends IvyLibraryManagementCodec {
       import sbt.io.Hash
-      type InlineIvyHL = (Option[IvyPaths], Vector[Resolver], Vector[Resolver], Vector[
-        ModuleConfiguration], Vector[String], Boolean)
+      type InlineIvyHL = (
+          Option[IvyPaths],
+          Vector[Resolver],
+          Vector[Resolver],
+          Vector[ModuleConfiguration],
+          Vector[String],
+          Boolean
+      )
       def inlineIvyToHL(i: InlineIvyConfiguration): InlineIvyHL =
-        (i.paths, i.resolvers, i.otherResolvers, i.moduleConfigurations,
-          i.checksums, i.managedChecksums)
+        (
+          i.paths,
+          i.resolvers,
+          i.otherResolvers,
+          i.moduleConfigurations,
+          i.checksums,
+          i.managedChecksums
+        )
 
       type ExternalIvyHL = (Option[PlainFileInfo], Array[Byte])
       def externalIvyToHL(e: ExternalIvyConfiguration): ExternalIvyHL =
-        (e.baseDirectory.map(FileInfo.exists.apply),
-          e.uri.map(Hash.contentsIfLocal).getOrElse(Array.empty))
+        (
+          e.baseDirectory.map(FileInfo.exists.apply),
+          e.uri.map(Hash.contentsIfLocal).getOrElse(Array.empty)
+        )
 
       // Redefine to use a subset of properties, that are serialisable
-      override implicit lazy val InlineIvyConfigurationFormat: JsonFormat[InlineIvyConfiguration] = {
+      override implicit lazy val InlineIvyConfigurationFormat
+        : JsonFormat[InlineIvyConfiguration] = {
         def hlToInlineIvy(i: InlineIvyHL): InlineIvyConfiguration = {
-          val (paths, resolvers, otherResolvers, moduleConfigurations, checksums, managedChecksums) = i
+          val (
+            paths,
+            resolvers,
+            otherResolvers,
+            moduleConfigurations,
+            checksums,
+            managedChecksums
+          ) = i
           InlineIvyConfiguration()
             .withPaths(paths)
             .withResolvers(resolvers)

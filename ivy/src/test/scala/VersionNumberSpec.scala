@@ -97,7 +97,8 @@ class VersionNumberSpec extends UnitSpec {
   }
   it should "cascade" in generateCorrectCascadingNumbers(
     "1.0.0-alpha+001+002",
-    Seq("1.0.0-alpha+001+002", "1.0.0", "1.0"))
+    Seq("1.0.0-alpha+001+002", "1.0.0", "1.0")
+  )
 
   "non.space.!?string" should "be parsed" in {
     beParsedAs("non.space.!?string", Seq(), Seq(), Seq("non.space.!?string"))

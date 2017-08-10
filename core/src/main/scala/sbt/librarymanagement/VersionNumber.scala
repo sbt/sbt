@@ -145,8 +145,7 @@ object VersionNumber {
         case (v1, v2)
             if (v1.size >= 3) && (v2.size >= 3) => // A normal version number MUST take the form X.Y.Z
           (v1._1.get, v1._2.get, v1._3.get, v1.tags, v2._1.get, v2._2.get, v2._3.get, v2.tags) match {
-            case (x1 @ _, y1 @ _, 0, ts1, x2 @ _, y2 @ _, 0, ts2)
-                if ts1.nonEmpty || ts2.nonEmpty =>
+            case (x1 @ _, y1 @ _, 0, ts1, x2 @ _, y2 @ _, 0, ts2) if ts1.nonEmpty || ts2.nonEmpty =>
               // A pre-release version MAY be denoted by appending a hyphen and a series of dot separated identifiers
               equalsIgnoreExtra(v1, v2)
             case (x1, y1, _, _, x2, y2, _, _) =>

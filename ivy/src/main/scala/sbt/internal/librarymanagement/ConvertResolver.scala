@@ -9,11 +9,7 @@ import java.util.Collections
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
 import org.apache.ivy.core.resolve.ResolveData
 import org.apache.ivy.core.settings.IvySettings
-import org.apache.ivy.plugins.repository.{
-  RepositoryCopyProgressListener,
-  Resource,
-  TransferEvent
-}
+import org.apache.ivy.plugins.repository.{ RepositoryCopyProgressListener, Resource, TransferEvent }
 import org.apache.ivy.plugins.resolver.{
   BasicResolver,
   DependencyResolver,
@@ -402,7 +398,8 @@ private[sbt] object ConvertResolver {
         case e: java.io.IOException if e.getMessage.contains("destination already exists") =>
           val overwriteWarning =
             if (destination contains "-SNAPSHOT") s"Attempting to overwrite $destination"
-            else "Attempting to overwrite $destination (non-SNAPSHOT)\n\tYou need to remove it from the cache manually to take effect."
+            else
+              "Attempting to overwrite $destination (non-SNAPSHOT)\n\tYou need to remove it from the cache manually to take effect."
           import org.apache.ivy.util.Message
           Message.warn(overwriteWarning)
           super.put(source, destination, true)

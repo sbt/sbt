@@ -25,8 +25,8 @@ class GigahorseUrlHandler extends AbstractURLHandler {
   def getURLInfo(url0: URL, timeout: Int): URLInfo = {
     // Install the ErrorMessageAuthenticator
     if ("http" == url0.getProtocol() || "https" == url0.getProtocol()) {
-        IvyAuthenticator.install()
-        ErrorMessageAuthenticator.install()
+      IvyAuthenticator.install()
+      ErrorMessageAuthenticator.install()
     }
 
     val url = normalizeToURL(url0)
@@ -72,8 +72,8 @@ class GigahorseUrlHandler extends AbstractURLHandler {
   def openStream(url0: URL): InputStream = {
     // Install the ErrorMessageAuthenticator
     if ("http" == url0.getProtocol() || "https" == url0.getProtocol()) {
-        IvyAuthenticator.install()
-        ErrorMessageAuthenticator.install()
+      IvyAuthenticator.install()
+      ErrorMessageAuthenticator.install()
     }
 
     val url = normalizeToURL(url0)
@@ -104,8 +104,8 @@ class GigahorseUrlHandler extends AbstractURLHandler {
   def download(src0: URL, dest: File, l: CopyProgressListener): Unit = {
     // Install the ErrorMessageAuthenticator
     if ("http" == src0.getProtocol() || "https" == src0.getProtocol()) {
-        IvyAuthenticator.install()
-        ErrorMessageAuthenticator.install()
+      IvyAuthenticator.install()
+      ErrorMessageAuthenticator.install()
     }
 
     val src = normalizeToURL(src0)
@@ -143,9 +143,8 @@ class GigahorseUrlHandler extends AbstractURLHandler {
   }
 
   def upload(source: File, dest0: URL, l: CopyProgressListener): Unit = {
-    if( ("http" != dest0.getProtocol()) && ("https" != dest0.getProtocol())) {
-      throw new UnsupportedOperationException(
-        "URL repository only support HTTP PUT at the moment")
+    if (("http" != dest0.getProtocol()) && ("https" != dest0.getProtocol())) {
+      throw new UnsupportedOperationException("URL repository only support HTTP PUT at the moment")
     }
 
     IvyAuthenticator.install()
@@ -203,7 +202,8 @@ object GigahorseUrlHandler {
 
   private[sbt] def urlFactory = {
     val client0 = http.underlying[OkHttpClient]
-    val client = client0.newBuilder()
+    val client = client0
+      .newBuilder()
       .authenticator(new JavaNetAuthenticator)
       .build
     new OkUrlFactory(client)

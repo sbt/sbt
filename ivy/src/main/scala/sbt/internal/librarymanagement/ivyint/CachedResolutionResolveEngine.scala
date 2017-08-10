@@ -21,10 +21,7 @@ import core.module.descriptor.{
   ExcludeRule,
   IncludeRule
 }
-import core.module.descriptor.{
-  OverrideDependencyDescriptorMediator,
-  DependencyArtifactDescriptor
-}
+import core.module.descriptor.{ OverrideDependencyDescriptorMediator, DependencyArtifactDescriptor }
 import core.IvyPatternHelper
 import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
