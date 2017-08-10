@@ -7,7 +7,9 @@ import sbt.io.{ IO, Using }
 
 trait Input extends Closeable {
   def read[T: JsonReader](): T
-  def read[T: JsonReader](default: => T): T = try read[T]() catch { case NonFatal(_) => default }
+  def read[T: JsonReader](default: => T): T =
+    try read[T]()
+    catch { case NonFatal(_) => default }
 }
 
 class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J]) extends Input {

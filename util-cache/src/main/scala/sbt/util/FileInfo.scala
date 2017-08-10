@@ -32,7 +32,8 @@ object HashModifiedFileInfo {
 private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
 private final case class FileHash(file: File, hash: List[Byte]) extends HashFileInfo
-private final case class FileHashModified(file: File, hash: List[Byte], lastModified: Long) extends HashModifiedFileInfo
+private final case class FileHashModified(file: File, hash: List[Byte], lastModified: Long)
+    extends HashModifiedFileInfo
 
 final case class FilesInfo[F <: FileInfo] private (files: Set[F])
 object FilesInfo {
@@ -52,7 +53,8 @@ object FileInfo {
     type F <: FileInfo
 
     implicit def format: JsonFormat[F]
-    implicit def formats: JsonFormat[FilesInfo[F]] = projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
+    implicit def formats: JsonFormat[FilesInfo[F]] =
+      projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
 
     def apply(file: File): F
     def apply(files: Set[File]): FilesInfo[F] = FilesInfo(files map apply)
@@ -113,7 +115,9 @@ object FileInfo {
 
     implicit def apply(file: File): HashFileInfo = FileHash(file.getAbsoluteFile, computeHash(file))
 
-    private def computeHash(file: File): List[Byte] = try Hash(file).toList catch { case NonFatal(_) => Nil }
+    private def computeHash(file: File): List[Byte] =
+      try Hash(file).toList
+      catch { case NonFatal(_) => Nil }
   }
 
   object lastModified extends Style {
@@ -140,7 +144,8 @@ object FileInfo {
       }
     }
 
-    implicit def apply(file: File): ModifiedFileInfo = FileModified(file.getAbsoluteFile, file.lastModified)
+    implicit def apply(file: File): ModifiedFileInfo =
+      FileModified(file.getAbsoluteFile, file.lastModified)
   }
 
   object exists extends Style {

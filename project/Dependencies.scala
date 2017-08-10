@@ -44,9 +44,15 @@ object Dependencies {
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
-  val sjsonnew = Def.setting { "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value }
-  val sjsonnewScalaJson = Def.setting { "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value }
-  val sjsonnewMurmurhash = Def.setting { "com.eed3si9n" %% "sjson-new-murmurhash" % contrabandSjsonNewVersion.value }
+  val sjsonnew = Def.setting {
+    "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value
+  }
+  val sjsonnewScalaJson = Def.setting {
+    "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value
+  }
+  val sjsonnewMurmurhash = Def.setting {
+    "com.eed3si9n" %% "sjson-new-murmurhash" % contrabandSjsonNewVersion.value
+  }
 
   def log4jVersion = "2.8.1"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion

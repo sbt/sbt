@@ -8,14 +8,13 @@ final case class StringTypeTag[A](key: String) {
 }
 
 object StringTypeTag {
-  def apply[A: TypeTag]: StringTypeTag[A] =
-    {
-      val tag = implicitly[TypeTag[A]]
-      val tpe = tag.tpe
-      val k = typeToString(tpe)
-      // println(tpe.getClass.toString + " " + k)
-      StringTypeTag[A](k)
-    }
+  def apply[A: TypeTag]: StringTypeTag[A] = {
+    val tag = implicitly[TypeTag[A]]
+    val tpe = tag.tpe
+    val k = typeToString(tpe)
+    // println(tpe.getClass.toString + " " + k)
+    StringTypeTag[A](k)
+  }
   def typeToString(tpe: Type): String =
     tpe match {
       case TypeRef(_, sym, args) =>

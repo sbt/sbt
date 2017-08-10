@@ -8,7 +8,8 @@ trait Output extends Closeable {
   def write[T: JsonWriter](value: T): Unit
 }
 
-class PlainOutput[J: IsoString](output: OutputStream, converter: SupportConverter[J]) extends Output {
+class PlainOutput[J: IsoString](output: OutputStream, converter: SupportConverter[J])
+    extends Output {
   val isoFormat: IsoString[J] = implicitly
 
   def write[T: JsonWriter](value: T) = {

@@ -43,7 +43,9 @@ object FileFunction {
    * @param inStyle The strategy by which to detect state change in the input files from the previous run
    * @param action The work function, which receives a list of input files and returns a list of output files
    */
-  def cached(cacheBaseDirectory: File, inStyle: FileInfo.Style)(action: Set[File] => Set[File]): Set[File] => Set[File] =
+  def cached(cacheBaseDirectory: File, inStyle: FileInfo.Style)(
+      action: Set[File] => Set[File]
+  ): Set[File] => Set[File] =
     cached(cacheBaseDirectory, inStyle = inStyle, outStyle = defaultOutStyle)(action)
 
   /**
@@ -64,8 +66,12 @@ object FileFunction {
    * @param outStyle The strategy by which to detect state change in the output files from the previous run
    * @param action The work function, which receives a list of input files and returns a list of output files
    */
-  def cached(cacheBaseDirectory: File, inStyle: FileInfo.Style, outStyle: FileInfo.Style)(action: Set[File] => Set[File]): Set[File] => Set[File] =
-    cached(CacheStoreFactory(cacheBaseDirectory), inStyle, outStyle)((in, out) => action(in.checked))
+  def cached(cacheBaseDirectory: File, inStyle: FileInfo.Style, outStyle: FileInfo.Style)(
+      action: Set[File] => Set[File]
+  ): Set[File] => Set[File] =
+    cached(CacheStoreFactory(cacheBaseDirectory), inStyle, outStyle)(
+      (in, out) => action(in.checked)
+    )
 
   /**
    * Generic change-detection helper used to help build / artifact generation /
@@ -103,7 +109,9 @@ object FileFunction {
    * @param inStyle The strategy by which to detect state change in the input files from the previous run
    * @param action The work function, which receives a list of input files and returns a list of output files
    */
-  def cached(storeFactory: CacheStoreFactory, inStyle: FileInfo.Style)(action: UpdateFunction): Set[File] => Set[File] =
+  def cached(storeFactory: CacheStoreFactory, inStyle: FileInfo.Style)(
+      action: UpdateFunction
+  ): Set[File] => Set[File] =
     cached(storeFactory, inStyle = inStyle, outStyle = defaultOutStyle)(action)
 
   /**
@@ -124,20 +132,21 @@ object FileFunction {
    * @param outStyle The strategy by which to detect state change in the output files from the previous run
    * @param action The work function, which receives a list of input files and returns a list of output files
    */
-  def cached(storeFactory: CacheStoreFactory, inStyle: FileInfo.Style, outStyle: FileInfo.Style)(action: UpdateFunction): Set[File] => Set[File] =
-    {
-      lazy val inCache = Difference.inputs(storeFactory.make("in-cache"), inStyle)
-      lazy val outCache = Difference.outputs(storeFactory.make("out-cache"), outStyle)
-      inputs =>
-        {
-          inCache(inputs) { inReport =>
-            outCache { outReport =>
-              if (inReport.modified.isEmpty && outReport.modified.isEmpty)
-                outReport.checked
-              else
-                action(inReport, outReport)
-            }
+  def cached(storeFactory: CacheStoreFactory, inStyle: FileInfo.Style, outStyle: FileInfo.Style)(
+      action: UpdateFunction
+  ): Set[File] => Set[File] = {
+    lazy val inCache = Difference.inputs(storeFactory.make("in-cache"), inStyle)
+    lazy val outCache = Difference.outputs(storeFactory.make("out-cache"), outStyle)
+    inputs =>
+      {
+        inCache(inputs) { inReport =>
+          outCache { outReport =>
+            if (inReport.modified.isEmpty && outReport.modified.isEmpty)
+              outReport.checked
+            else
+              action(inReport, outReport)
           }
         }
-    }
+      }
+  }
 }

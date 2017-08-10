@@ -13,7 +13,8 @@ import sbt.internal.util.UnitSpec
 
 class CacheSpec extends UnitSpec {
 
-  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
+  implicit val isoString: IsoString[JValue] =
+    IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   "A cache" should "NOT throw an exception if read without being written previously" in {
     testCache[String, Int] {
@@ -68,7 +69,9 @@ class CacheSpec extends UnitSpec {
     }
   }
 
-  private def testCache[K, V](f: (Cache[K, V], CacheStore) => Unit)(implicit cache: Cache[K, V]): Unit =
+  private def testCache[K, V](f: (Cache[K, V], CacheStore) => Unit)(
+      implicit cache: Cache[K, V]
+  ): Unit =
     IO.withTemporaryDirectory { tmp =>
       val store = new FileBasedStore(tmp / "cache-store", Converter)
       f(cache, store)

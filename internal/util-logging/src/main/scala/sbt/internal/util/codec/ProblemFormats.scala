@@ -1,7 +1,6 @@
 /**
  * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
-
 package sbt.internal.util.codec
 
 import xsbti.{ Problem, Severity, Position }

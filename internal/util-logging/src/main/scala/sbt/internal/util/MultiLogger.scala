@@ -1,4 +1,3 @@
-
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009, 2010 Mark Harrah
  */
@@ -17,19 +16,25 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
     super.setLevel(newLevel)
     dispatch(new SetLevel(newLevel))
   }
+
   override def setTrace(level: Int): Unit = {
     super.setTrace(level)
     dispatch(new SetTrace(level))
   }
+
   override def setSuccessEnabled(flag: Boolean): Unit = {
     super.setSuccessEnabled(flag)
     dispatch(new SetSuccess(flag))
   }
+
   def trace(t: => Throwable): Unit = dispatch(new Trace(t))
   def log(level: Level.Value, message: => String): Unit = dispatch(new Log(level, message))
   def success(message: => String): Unit = dispatch(new Success(message))
   def logAll(events: Seq[LogEvent]): Unit = delegates.foreach(_.logAll(events))
-  def control(event: ControlEvent.Value, message: => String): Unit = delegates.foreach(_.control(event, message))
+
+  def control(event: ControlEvent.Value, message: => String): Unit =
+    delegates.foreach(_.control(event, message))
+
   private[this] def dispatch(event: LogEvent): Unit = {
     for (d <- delegates) {
       d.log(event)

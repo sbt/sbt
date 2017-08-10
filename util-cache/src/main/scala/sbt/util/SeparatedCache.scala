@@ -14,11 +14,13 @@ import CacheImplicits._
  * A cache that stores a single value.
  */
 trait SingletonCache[A] {
+
   /** Reads the cache from the backing `from`. */
   def read(from: Input): A
 
   /** Writes `value` to the backing `to`. */
   def write(to: Output, value: A): Unit
+
 }
 
 object SingletonCache {

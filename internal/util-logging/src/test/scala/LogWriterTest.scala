@@ -36,6 +36,7 @@ object LogWriterTest extends Properties("Log Writer") {
       case l: Log => "Log('" + Escape(l.msg) + "', " + l.level + ")"
       case _      => "Not Log"
     }
+
   /**
    * Writes the given lines to the Writer.  `lines` is taken to be a list of lines, which are
    * represented as separately written segments (ToLog instances).  ToLog.`byCharacter`
@@ -46,7 +47,7 @@ object LogWriterTest extends Properties("Log Writer") {
       val content = section.content
       val normalized = Escape.newline(content, newLine)
       if (section.byCharacter)
-        normalized.foreach { c => writer.write(c.toInt) }
+        normalized.foreach(c => writer.write(c.toInt))
       else
         writer.write(normalized)
     }
@@ -56,6 +57,7 @@ object LogWriterTest extends Properties("Log Writer") {
   /** Converts the given lines in segments to lines as Strings for checking the results of the test.*/
   def toLines(lines: List[List[ToLog]]): List[String] =
     lines.map(_.map(_.contentOnly).mkString)
+
   /** Checks that the expected `lines` were recorded as `events` at level `Lvl`.*/
   def check(lines: List[String], events: List[LogEvent], Lvl: Level.Value): Boolean =
     (lines zip events) forall {
@@ -64,10 +66,10 @@ object LogWriterTest extends Properties("Log Writer") {
     }
 
   /* The following are implicit generators to build up a write sequence.
-	* ToLog represents a written segment.  NewLine represents one of the possible
-	* newline separators.  A List[ToLog] represents a full line and always includes a
-	* final ToLog with a trailing '\n'.  Newline characters are otherwise not present in
-	* the `content` of a ToLog instance.*/
+   * ToLog represents a written segment.  NewLine represents one of the possible
+   * newline separators.  A List[ToLog] represents a full line and always includes a
+   * final ToLog with a trailing '\n'.  Newline characters are otherwise not present in
+   * the `content` of a ToLog instance.*/
 
   implicit lazy val arbOut: Arbitrary[Output] = Arbitrary(genOutput)
   implicit lazy val arbLog: Arbitrary[ToLog] = Arbitrary(genLog)
@@ -76,7 +78,8 @@ object LogWriterTest extends Properties("Log Writer") {
   implicit lazy val arbLevel: Arbitrary[Level.Value] = Arbitrary(genLevel)
 
   implicit def genLine(implicit logG: Gen[ToLog]): Gen[List[ToLog]] =
-    for (l <- listOf[ToLog](MaxSegments); last <- logG) yield (addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
+    for (l <- listOf[ToLog](MaxSegments); last <- logG)
+      yield (addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
 
   implicit def genLog(implicit content: Arbitrary[String], byChar: Arbitrary[Boolean]): Gen[ToLog] =
     for (c <- content.arbitrary; by <- byChar.arbitrary) yield {
@@ -98,7 +101,7 @@ object LogWriterTest extends Properties("Log Writer") {
     new ToLog(l.content + "\n", l.byCharacter) // \n will be replaced by a random line terminator for all lines
 
   def listOf[T](max: Int)(implicit content: Arbitrary[T]): Gen[List[T]] =
-    Gen.choose(0, max) flatMap { sz => listOfN(sz, content.arbitrary) }
+    Gen.choose(0, max) flatMap (sz => listOfN(sz, content.arbitrary))
 }
 
 /* Helper classes*/
@@ -107,35 +110,43 @@ final class Output(val lines: List[List[ToLog]], val level: Level.Value) {
   override def toString =
     "Level: " + level + "\n" + lines.map(_.mkString).mkString("\n")
 }
+
 final class NewLine(val str: String) {
   override def toString = Escape(str)
 }
+
 final class ToLog(val content: String, val byCharacter: Boolean) {
   def contentOnly = Escape.newline(content, "")
-  override def toString = if (content.isEmpty) "" else "ToLog('" + Escape(contentOnly) + "', " + byCharacter + ")"
+
+  override def toString =
+    if (content.isEmpty) "" else "ToLog('" + Escape(contentOnly) + "', " + byCharacter + ")"
 }
+
 /** Defines some utility methods for escaping unprintable characters.*/
 object Escape {
+
   /** Escapes characters with code less than 20 by printing them as unicode escapes.*/
-  def apply(s: String): String =
-    {
-      val builder = new StringBuilder(s.length)
-      for (c <- s) {
-        val char = c.toInt
-        def escaped = pad(char.toHexString.toUpperCase, 4, '0')
-        if (c < 20) builder.append("\\u").append(escaped) else builder.append(c)
-      }
-      builder.toString
+  def apply(s: String): String = {
+    val builder = new StringBuilder(s.length)
+    for (c <- s) {
+      val char = c.toInt
+      def escaped = pad(char.toHexString.toUpperCase, 4, '0')
+      if (c < 20) builder.append("\\u").append(escaped) else builder.append(c)
     }
-  def pad(s: String, minLength: Int, extra: Char) =
-    {
-      val diff = minLength - s.length
-      if (diff <= 0) s else List.fill(diff)(extra).mkString("", "", s)
-    }
+    builder.toString
+  }
+
+  def pad(s: String, minLength: Int, extra: Char) = {
+    val diff = minLength - s.length
+    if (diff <= 0) s else List.fill(diff)(extra).mkString("", "", s)
+  }
+
   /** Replaces a \n character at the end of a string `s` with `nl`.*/
   def newline(s: String, nl: String): String =
     if (s.endsWith("\n")) s.substring(0, s.length - 1) + nl else s
+
 }
+
 /** Records logging events for later retrieval.*/
 final class RecordingLogger extends BasicLogger {
   private var events: List[LogEvent] = Nil
@@ -147,6 +158,7 @@ final class RecordingLogger extends BasicLogger {
   def log(level: Level.Value, message: => String): Unit = { events ::= new Log(level, message) }
   def success(message: => String): Unit = { events ::= new Success(message) }
   def logAll(es: Seq[LogEvent]): Unit = { events :::= es.toList }
-  def control(event: ControlEvent.Value, message: => String): Unit = { events ::= new ControlEvent(event, message) }
 
+  def control(event: ControlEvent.Value, message: => String): Unit =
+    events ::= new ControlEvent(event, message)
 }

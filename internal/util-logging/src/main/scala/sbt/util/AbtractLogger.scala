@@ -13,6 +13,7 @@ abstract class AbstractLogger extends Logger {
   def control(event: ControlEvent.Value, message: => String): Unit
 
   def logAll(events: Seq[LogEvent]): Unit
+
   /** Defined in terms of other methods in Logger and should not be called from them. */
   final def log(event: LogEvent): Unit = {
     event match {
