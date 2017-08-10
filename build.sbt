@@ -149,6 +149,27 @@ val root = (project in file(".")).
     // Universal ZIP download install.
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
     version in Universal := sbtVersionToRelease,
+
+    mappings in Universal := {
+      val t = (target in Universal).value
+      val prev = (mappings in Universal).value
+      prev.toList map {
+        case (k, "bin/sbt-launch-lib.bash") =>
+          val x = IO.read(k)
+          IO.write(t / "sbt-launch-lib.bash", x.replaceAllLiterally(
+            "declare init_sbt_version=_to_be_replaced",
+            s"""declare init_sbt_version="$sbtVersionToRelease""""))
+          (t / "sbt-launch-lib.bash", "bin/sbt-launch-lib.bash")
+        case (k, "bin/sbt.bat") =>
+          val x = IO.read(k)
+          IO.write(t / "sbt.bat", x.replaceAllLiterally(
+            "set INIT_SBT_VERSION=_TO_BE_REPLACED",
+            s"""set INIT_SBT_VERSION="$sbtVersionToRelease""""))
+          (t / "sbt.bat", "bin/sbt.bat")
+        case (k, v) => (k, v)
+      }
+    },
+
     mappings in Universal ++= {
       val launchJar = sbtLaunchJar.value
       val rtExportJar = (packageBin in Compile in java9rtexport).value
@@ -162,17 +183,6 @@ val root = (project in file(".")).
         }
       else Def.task { Seq[(File, String)]() }
     }).value,
-    stage in Universal := {
-      val old = (stage in Universal).value
-      val sd = (stagingDirectory in Universal).value
-      val x = IO.read(sd / "bin" / "sbt-launch-lib.bash")
-      IO.write(sd / "bin" / "sbt-launch-lib.bash", x.replaceAllLiterally(
-        "declare init_sbt_version=_to_be_replaced", s"declare init_sbt_version=$sbtVersionToRelease"))
-      val y = IO.read(sd / "bin" / "sbt.bat")
-      IO.write(sd / "bin" / "sbt.bat", y.replaceAllLiterally(
-        "set INIT_SBT_VERSION=_TO_BE_REPLACED", s"set INIT_SBT_VERSION=$sbtVersionToRelease"))
-      old
-    },
 
     // Misccelaneous publishing stuff...
     projectID in Debian := {
