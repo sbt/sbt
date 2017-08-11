@@ -1,0 +1,81 @@
+### Fixes
+
+- Fixes triggered execution's resource leak by caching the watch service. [#3999][3999] by [@eatkins][@eatkins]
+- Fixes classloader classloader inheriting the dependencies of Scala compiler during `run` [zinc#505][zinc505] by [@eed3si9n][@eed3si9n]
+- Fixes forked test concurrency issue. [#4030][4030] by [@eatkins][@eatkins]
+- Fixes `new` command leaving behind target directory [#4033][4033] by [@eed3si9n][@eed3si9n]
+- Fixes handling on null Content-Type. [lm214][lm214] by [@staale][@staale]
+- Fixes null handling of `managedChecksums` in `ivySettings` file. [lm#218][lm218] by [@IanGabes][@IanGabes]
+- Adds `sbt.boot.lock` as a JVM property to opt-out of locking. [#3927][3927] by [@dwijnand][@dwijnand]
+- Provides `SBT_GLOBAL_SERVER_DIR` env var as a workaround to long socket file path on UNIX. [#3932][3932] by [@dwijnand][@dwijnand]
+- Fixes forked runs reporting noisy "Stream closed" exception. [#3970][3970] by [@retronym][@retronym]
+- Fixes test compilation not getting included in VS Code save trigger. [#4022][4022] by [@tmiyamon][@tmiyamon]
+- Fixes sbt server responding with string id when number id passed. [#4025][4025] by [@tiqwab][@tiqwab]
+- Fixes `getDecoder` in Analysis format [zinc#502][zinc502] by [@jilen][@jilen]
+- Fixes equal / hashCode inconsistencies around Array. [zinc#513][zinc513] by [@eed3si9n][@eed3si9n]
+- Whitelists `java9-rt-ext- output` in rt export process [lp#211][lp211] by [@eatkins][@eatkins]
+- Fixes JDK version detection. [lp#219][lp219] by [@eed3si9n][@eed3si9n] and [@2m][@2m]
+- Fixes quoting in Windows bat file. [lp#220][lp220] by [@ForNeVeR][@ForNeVeR]
+- Fixes `-error` not supressing startup logs. [#4036][4036] by [@eed3si9n][@eed3si9n]
+
+### Improvements
+
+- Performance optimization around logging. [util#152][util152] by [@retronym][@retronym]
+- Performance fix by caching the hashCode of `Configuration`. [lm#213][lm213] by [@retronym][@retronym]
+- Returns error code `-33000L` on sbt server when a command fails. [#3991][3991] by [@dwijnand][@dwijnand]
+- Allows wildcards in organization and artifact. [#215][lm215] by [@dhs3000][@dhs3000]
+- Updates to latest Jsch to support stronger key exchange algorithms. [lm#217][lm217] by [@ryandbair][@ryandbair]
+- Fixes preloading of compiler bridge. [lp#222][lp222] by [@analytically][@analytically]
+
+### Internal
+
+- Updates [contribution guide][CONTRIBUTING]. [#3960][3960]/[#4019][4019] by [@eed3si9n][@eed3si9n]
+- Deletes `buildinfo.BuildInfo` from sbt main that was intended for testing. [3967][3967] by [@dwijnand][@dwijnand] and [@xuwei-k][@xuwei-k]
+- Various improvements around Zinc benchmark by [@retronym][@retronym]
+
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dwijnand]: http://github.com/dwijnand
+  [@cunei]: https://github.com/cunei
+  [@jvican]: https://github.com/jvican
+  [@Duhemm]: https://github.com/Duhemm
+  [@xuwei-k]: https://github.com/xuwei-k
+  [@retronym]: https://github.com/retronym
+  [@eatkins]: https://github.com/eatkins
+  [@itohiro73]: https://github.com/itohiro73
+  [@tmiyamon]: https://github.com/tmiyamon
+  [@tiqwab]: https://github.com/tiqwab
+  [@staale]: https://github.com/staale
+  [@ryandbair]: https://github.com/ryandbair
+  [@dhs3000]: https://github.com/dhs3000
+  [@IanGabes]: https://github.com/IanGabes
+  [@jilen]: https://github.com/jilen
+  [@2m]: https://github.com/2m
+  [@ForNeVeR]: https://github.com/ForNeVeR
+  [@analytically]: https://github.com/analytically
+  [3927]: https://github.com/sbt/sbt/pull/3927
+  [3932]: https://github.com/sbt/sbt/pull/3932
+  [3960]: https://github.com/sbt/sbt/pull/3960
+  [3967]: https://github.com/sbt/sbt/pull/3967
+  [3970]: https://github.com/sbt/sbt/pull/3970
+  [3999]: https://github.com/sbt/sbt/pull/3999
+  [3991]: https://github.com/sbt/sbt/pull/3991
+  [4019]: https://github.com/sbt/sbt/pull/4019
+  [4022]: https://github.com/sbt/sbt/pull/4022
+  [4025]: https://github.com/sbt/sbt/pull/4025
+  [4030]: https://github.com/sbt/sbt/pull/4030
+  [4033]: https://github.com/sbt/sbt/pull/4033
+  [4036]: https://github.com/sbt/sbt/pull/4036
+  [util152]: https://github.com/sbt/util/pull/152
+  [lm213]: https://github.com/sbt/librarymanagement/pull/213
+  [lm214]: https://github.com/sbt/librarymanagement/pull/214
+  [lm215]: https://github.com/sbt/librarymanagement/pull/215
+  [lm217]: https://github.com/sbt/librarymanagement/pull/217
+  [lm218]: https://github.com/sbt/librarymanagement/pull/218
+  [zinc502]: https://github.com/sbt/zinc/pull/502
+  [zinc505]: https://github.com/sbt/zinc/pull/505
+  [zinc513]: https://github.com/sbt/zinc/pull/513
+  [lp211]: https://github.com/sbt/sbt-launcher-package/pull/211
+  [lp219]: https://github.com/sbt/sbt-launcher-package/pull/219
+  [lp220]: https://github.com/sbt/sbt-launcher-package/pull/220
+  [lp222]: https://github.com/sbt/sbt-launcher-package/pull/222
+  [CONTRIBUTING]: https://github.com/sbt/sbt/blob/1.x/CONTRIBUTING.md

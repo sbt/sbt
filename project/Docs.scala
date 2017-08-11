@@ -1,25 +1,92 @@
 import sbt._, Keys._
-/*
+
 import StatusPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
-import com.typesafe.sbt.site.SiteScaladocPlugin.autoImport._
-import com.typesafe.sbt.sbtghpages.GhpagesPlugin.autoImport._
+import com.typesafe.sbt.site.SiteScaladocPlugin
+import SiteScaladocPlugin.autoImport._
+import com.typesafe.sbt.sbtghpages.GhpagesPlugin
+import GhpagesPlugin.autoImport._
 import com.typesafe.sbt.SbtGit, SbtGit.{ git, GitKeys }
 import Sxr.{ sxr, SxrConf }
- */
+import sbtunidoc.{ BaseUnidocPlugin, ScalaUnidocPlugin }
+import BaseUnidocPlugin.autoImport._
+import ScalaUnidocPlugin.autoImport._
 
-object Docs {
-  def settings: Seq[Setting[_]] = Nil
+object DocsPlugin extends AutoPlugin {
+  override def requires = GhpagesPlugin && ScalaUnidocPlugin && SiteScaladocPlugin
 
-  /*
   val siteExcludes = Set(".buildinfo", "objects.inv")
   def siteInclude(f: File) = !siteExcludes.contains(f.getName)
 
-  def settings: Seq[Setting[_]] = Def settings (
+  override def projectSettings: Seq[Setting[_]] = Def settings (
     siteSubdirName in SiteScaladoc := "api",
-    siteIncludeSxr("sxr"),
-    ghPagesSettings
+    // siteIncludeSxr("sxr"),
+    ghPagesSettings,
+    unidocProjectFilter in (ScalaUnidoc, unidoc) := {
+      inProjects(projectRefs(baseDirectory.value): _*)
+    },
+    doc in Compile := { (unidoc in Compile).value.head }
   )
+
+  /**
+   * This is a list manually constructed from
+   * sbt:sbtRoot> projects 
+   */
+  def projectRefs(base: File): Seq[ProjectReference] = {
+    val parent = base.getParentFile
+    val lmPath = parent / "librarymanagement"
+    val zincPath = parent / "zinc"
+    val ioPath = parent / "io"
+    val utilPath = parent / "util"
+    Vector(
+      LocalProject("actionsProj"),
+      LocalProject("collectionProj"),
+      LocalProject("commandProj"),
+      LocalProject("completeProj"),
+      LocalProject("coreMacrosProj"),
+      LocalProject("logicProj"),
+      LocalProject("mainProj"),
+      LocalProject("mainSettingsProj"),
+      LocalProject("protocolProj"),
+      LocalProject("runProj"),
+      LocalProject("sbtProj"),
+      LocalProject("scriptedPluginProj"),
+      LocalProject("scriptedSbtProj"),
+      LocalProject("stdTaskProj"),
+      LocalProject("taskProj"),
+      LocalProject("testAgentProj"),
+    ) ++
+    Vector(
+      ProjectRef(lmPath, "lmCore"),
+      ProjectRef(lmPath, "lmIvy"),
+    ) ++
+    Vector(
+      // skipping some of the internal subprojects here
+      ProjectRef(zincPath, "compilerBridge"),
+      ProjectRef(zincPath, "compilerInterface"),
+      ProjectRef(zincPath, "zinc"),
+      ProjectRef(zincPath, "zincApiInfo"),
+      ProjectRef(zincPath, "zincClassfile"),
+      ProjectRef(zincPath, "zincClasspath"),
+      ProjectRef(zincPath, "zincCompile"),
+      ProjectRef(zincPath, "zincCompileCore"),
+      ProjectRef(zincPath, "zincCore"),
+      ProjectRef(zincPath, "zincPersist"),
+    ) ++
+    Vector(
+      ProjectRef(ioPath, "io"),
+    ) ++
+    Vector(
+      ProjectRef(utilPath, "utilCache"),
+      ProjectRef(utilPath, "utilControl"),
+      ProjectRef(utilPath, "utilInterface"),
+      ProjectRef(utilPath, "utilLogging"),
+      ProjectRef(utilPath, "utilPosition"),
+      ProjectRef(utilPath, "utilRelation"),
+      ProjectRef(utilPath, "utilScripted"),
+      ProjectRef(utilPath, "utilTracking"),
+    )
+  }
 
   def ghPagesSettings = Def settings (
     git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
@@ -52,5 +119,4 @@ object Docs {
     IO.copy(toCopy)
     repo
   }
- */
 }

@@ -143,7 +143,7 @@ val scriptedSbtReduxMimaSettings = Def settings (
 )
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
+  .enablePlugins(ScriptedPlugin, ScalaUnidocPlugin, DocsPlugin)
   .configs(Sxr.SxrConf)
   .aggregate(nonRoots: _*)
   .settings(
@@ -165,7 +165,6 @@ lazy val sbtRoot: Project = (project in file("."))
          else "")
     },
     Util.baseScalacOptions,
-    Docs.settings,
     Sxr.settings,
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
     sources in sxr := {
