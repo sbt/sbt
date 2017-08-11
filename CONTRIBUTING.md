@@ -136,7 +136,14 @@ See [PROFILING](./PROFILING.md)
 Other notes for maintainers
 ---------------------------
 
-### Publishing VS Code Extensions
+Please note that these tests run PAINFULLY slow if the version set in
+`build.sbt` is set to SNAPSHOT, as every time the scripted test boots
+up a test instance of sbt, remote mirrors are scanned for possible
+updates. It is recommended that you set the version suffix to
+`-devel`, as in `1.0.0-devel`.
+
+Note for maintainers
+====================
 
 Reference https://code.visualstudio.com/docs/extensions/publish-extension
 
@@ -158,3 +165,14 @@ Contributing to sbt requires you or your employer to sign the
 To make it easier to respect our license agreements, we have added an sbt task
 that takes care of adding the LICENSE headers to new files. Run `headerCreate`
 and sbt will put a copyright notice into it.
+
+### Building API docs
+
+1. Rebase wip/unidoc branch https://github.com/eed3si9n/sbt/tree/wip/unidoc on top of the target sbt version.
+2. Set the version to the target version.
+3. Check out the right versions for all modules locally, and run ./sbt-allsources.sh.
+4. ghpagesPushSite
+
+### Building Documentation
+
+The scala-sbt.org site documentation is a separate project [website](https://github.com/sbt/website). Follow [the steps in the README](https://github.com/sbt/website#scala-sbtorg) to generate the documentation.

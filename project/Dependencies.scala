@@ -68,13 +68,13 @@ object Dependencies {
   def addSbtLmIvy = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy)
   def addSbtLmIvyTest = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy, Some(Test))
 
-  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterfaceJVM", compilerInterface)
-  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspathJVM2_12", compilerClasspath)
-  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfoJVM2_12", compilerApiInfo)
-  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridgeJVM2_12", compilerBridge)
-  def addSbtZinc = addSbtModule(sbtZincPath, "zincJVM2_12", zinc)
-  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompileJVM2_12", zincCompile)
-  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCoreJVM2_12", zincCompileCore)
+  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterface", compilerInterface)
+  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspath", compilerClasspath)
+  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfo", compilerApiInfo)
+  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridge", compilerBridge)
+  def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
+  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
+  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.0"
 

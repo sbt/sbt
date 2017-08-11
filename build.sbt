@@ -175,7 +175,7 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
+  .enablePlugins(ScriptedPlugin, ScalaUnidocPlugin, DocsPlugin)
   .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
@@ -196,7 +196,6 @@ lazy val sbtRoot: Project = (project in file("."))
          else "")
     },
     Util.baseScalacOptions,
-    Docs.settings,
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
     Util.publishPomSettings,
     otherRootSettings,

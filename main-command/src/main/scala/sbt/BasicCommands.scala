@@ -9,7 +9,7 @@ package sbt
 
 import java.nio.file.Paths
 import sbt.util.Level
-import sbt.internal.util.{ AttributeKey, FullReader, LineReader, Terminal }
+import sbt.internal.util.{ AttributeKey, FullReader, LineReader, Terminal => UTerminal }
 import sbt.internal.util.complete.{
   Completion,
   Completions,
@@ -400,7 +400,7 @@ object BasicCommands {
   def oldshell: Command = Command.command(OldShell, Help.more(Shell, OldShellDetailed)) { s =>
     val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
-    val reader = new FullReader(history, s.combinedParser, LineReader.HandleCONT, Terminal.console)
+    val reader = new FullReader(history, s.combinedParser, LineReader.HandleCONT, UTerminal.console)
     val line = reader.readLine(prompt)
     line match {
       case Some(line) =>

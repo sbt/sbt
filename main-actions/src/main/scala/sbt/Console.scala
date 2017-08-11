@@ -10,7 +10,7 @@ package sbt
 import java.io.File
 import java.nio.channels.ClosedChannelException
 import sbt.internal.inc.{ AnalyzingCompiler, MappedFileConverter, PlainVirtualFile }
-import sbt.internal.util.{ DeprecatedJLine, Terminal }
+import sbt.internal.util.{ DeprecatedJLine, Terminal => UTerminal }
 import sbt.util.Logger
 import xsbti.compile.{ Compilers, Inputs }
 
@@ -46,14 +46,14 @@ final class Console(compiler: AnalyzingCompiler) {
       initialCommands: String,
       cleanupCommands: String
   )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
-    apply(classpath, options, initialCommands, cleanupCommands, Terminal.get)(loader, bindings)
+    apply(classpath, options, initialCommands, cleanupCommands, UTerminal.get)(loader, bindings)
   }
   def apply(
       classpath: Seq[File],
       options: Seq[String],
       initialCommands: String,
       cleanupCommands: String,
-      terminal: Terminal
+      terminal: UTerminal
   )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
     def console0(): Unit =
       try {

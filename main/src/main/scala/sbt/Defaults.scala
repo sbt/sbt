@@ -156,7 +156,7 @@ object Defaults extends BuildCommon {
       )
     )
   private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
-    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+    defaultTestTasks(Keys.test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       fileInputs :== Nil,
       fileInputIncludeFilter :== AllPassFilter.toNio,
@@ -1089,7 +1089,7 @@ object Defaults extends BuildCommon {
       )
     )
   lazy val testTasks
-      : Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(
+      : Seq[Setting[_]] = testTaskOptions(Keys.test) ++ testTaskOptions(testOnly) ++ testTaskOptions(
     testQuick
   ) ++ testDefaults ++ Seq(
     testLoader := ClassLoaders.testTask.value,
@@ -1104,23 +1104,23 @@ object Defaults extends BuildCommon {
     executeTests := (
       Def.taskDyn {
         allTestGroupsTask(
-          (streams in test).value,
+          (streams in Keys.test).value,
           loadedTestFrameworks.value,
           testLoader.value,
-          (testGrouping in test).value,
-          (testExecution in test).value,
-          (fullClasspath in test).value,
+          (testGrouping in Keys.test).value,
+          (testExecution in Keys.test).value,
+          (fullClasspath in Keys.test).value,
           testForkedParallel.value,
-          (javaOptions in test).value,
+          (javaOptions in Keys.test).value,
           (classLoaderLayeringStrategy).value,
           projectId = s"${thisProject.value.id} / ",
         )
       }
     ).value,
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
-    testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
-    test := {
-      val trl = (testResultLogger in (Test, test)).value
+    testResultLogger in (Test, Keys.test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
+    Keys.test := {
+      val trl = (testResultLogger in (Test, Keys.test)).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
       try trl.run(streams.value.log, executeTests.value, taskName)
       finally close(testLoader.value)
@@ -1236,8 +1236,8 @@ object Defaults extends BuildCommon {
 
   def testQuickFilter: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
     Def.task {
-      val cp = (fullClasspath in test).value
-      val s = (streams in test).value
+      val cp = (fullClasspath in Keys.test).value
+      val s = (streams in Keys.test).value
       val ans: Seq[Analysis] = cp.flatMap(_.metadata get Keys.analysis) map {
         case a0: Analysis => a0
       }
@@ -3923,13 +3923,15 @@ object Classpaths {
   // for forward-compatibility with launcher.jar prior to 1.3.11
   private[this] def mavenRepoAllowInsecureProtocol(mavenRepo: xsbti.MavenRepository): Boolean =
     try {
-      mavenRepo.allowInsecureProtocol
+      false
+      // mavenRepo.allowInsecureProtocol
     } catch { case _: NoSuchMethodError => false }
 
   // for forward-compatibility with launcher.jar prior to 1.3.11
   private[this] def allowInsecureProtocol(ivyRepo: xsbti.IvyRepository): Boolean =
     try {
-      ivyRepo.allowInsecureProtocol
+      false
+      // ivyRepo.allowInsecureProtocol
     } catch { case _: NoSuchMethodError => false }
 
   @com.github.ghik.silencer.silent
