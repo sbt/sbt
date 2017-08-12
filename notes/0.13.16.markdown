@@ -10,6 +10,7 @@
 ### Bug fixes
 
 - Fixes the new startup messages. See below.
+- Fixes ScalaTest nested suite test names being reported as "(It is not a test)". [#3154][3154] by [@jameskoch][@jameskoch]
 
 ### Improvements and bug fixes to the new startup messages
 
@@ -88,6 +89,8 @@ Then, run:
   [3147]: https://github.com/sbt/sbt/pull/3147
   [3133]: https://github.com/sbt/sbt/pull/3133
   [3153]: https://github.com/sbt/sbt/pull/3153
+  [3154]: https://github.com/sbt/sbt/pull/3154
   [@jrudolph]: https://github.com/jrudolph
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: https://github.com/dwijnand
+  [@jameskoch]: https://github.com/jameskoch
