@@ -21,19 +21,18 @@ object NightlyPlugin extends AutoPlugin {
     // Avoid 2.9.x precompiled
     // Avoid 2.8.x precompiled
     includeTestDependencies := {
-      val v = scalaVersion.value
-      v.startsWith("2.10.") || v.startsWith("2.11.") || v.startsWith("2.12.")
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, n)) if n >= 10 => true
+        case _                       => false
+      }
     }
   )
 
   override def projectSettings: Seq[Setting[_]] = Seq(
     crossVersion in update := {
-      scalaVersion.value match {
-        case sv if sv startsWith "2.8."  => crossVersion.value
-        case sv if sv startsWith "2.9."  => crossVersion.value
-        case sv if sv startsWith "2.10." => crossVersion.value
-        case sv if sv startsWith "2.11." => CrossVersion.full
-        case sv if sv startsWith "2.12." => CrossVersion.full
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, n)) if n >= 11 => CrossVersion.full
+        case _                       => crossVersion.value
       }
     },
     resolvers += Resolver.typesafeIvyRepo("releases")
