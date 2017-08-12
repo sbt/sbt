@@ -1,31 +1,36 @@
-See [sbt 1.0 roadmap and beta-1][sbt-1-0-roadmap] for scheduled timeline.
+### Features, fixes, changes with compatibility implications
 
-### sbt 1.0.0-RC1
+See [Migrating from sbt 0.13.x][Migrating-from-sbt-013x] also.
 
-This is the RC-1 release of sbt 1.0.
-
-#### Features, fixes, changes with compatibility implications
-
+- sbt 1.0 uses **Scala 2.12** for build definitions and plugins. This also requires JDK 8.
 - Many of the case classes are replaced with pseudo case classes generated using Contraband. Migrate `.copy(foo = xxx)` to `withFoo(xxx)`.
-- sbt 1.0 uses Scala 2.12 for build definitions and plugins. This also requires JDK 8.
-- Non-auto `sbt.Plugin` trait is dropped. Please migrate to AutoPlugin. Auto plugins are easier to configure, and work better with each other.
-- sbt 0.12 style `Build` trait that was deprecated in sbt 0.13.12, is removed. Please [migrate to build.sbt](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+from+the+Build+trait). Auto plugins and `Build` trait do not work well together, and its feature is now largely subsumed by multi-project build.sbt.
-- sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
-- sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
-- sbt 0.12 style tuple enrichement DSL, which was deprecated in sbt 0.13.13, is opt-in under `sbt.TupleSyntax`. [#2762][2762]/[#3291][3291] by [@dwijnand][@dwijnand]
+  For example, `UpdateConfiguration`, `RetrieveConfiguration`, `PublishConfiguration` are refactored to use builder pattern.
 - Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
-- `config("tooling")` must be directly assigned to a *capitalized* `val`, like `val Tooling = config("tooling")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
+- `config("xyz")` must be directly assigned to a *capitalized* `val`, like `val Xyz = config("xyz")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
 - Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
 - `Path.relativizeFile(baseFile, file)` is renamed to `IO.relativizeFile(baseFile, file)`.
 - `PathFinder`'s `.***` method is renamed to `.allPaths` method.
 - `PathFinder.x_!(mapper)` is moved to `def pair` on `PathFinder`.
-- Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
+- A number of the methods on `sbt.Path` (such as `relativeTo` and `rebase` and `flat`) are now no longer in the
+    default namespace by virtue of being mixed into the sbt package object. Use `sbt.io.Path` to access them
+    again.
+- sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
+- sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
+- Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
 - Renames early command feature from `--<command>` to `early(<command>)`.
+- Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
 - Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
 - `sbt.Process` and `sbt.ProcessExtra` are dropped. Use `scala.sys.process` instead.
 - `incOptions.value.withNameHashing(...)` option is removed because name hashing is always on.
 - `TestResult.Value` is now called `TestResult`.
-- The scripted plugin is cross-versioned now, so you must use `%%` when depending on it
+- The scripted plugin is cross-versioned now, so you must use `%%` when depending on it.
+
+**Dropped dreprecations**:
+
+- sbt 0.12 style `Build` trait that was deprecated in sbt 0.13.12, is removed. Please [migrate to build.sbt](Migrating-from-sbt-013x.html#Migrating+from+the+Build+trait). Auto plugins and `Build` trait do not work well together, and its feature is now largely subsumed by multi-project build.sbt.
+- sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
+- sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](Migrating-from-sbt-013x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
+- Non-auto `sbt.Plugin` trait is dropped. Please migrate to AutoPlugin. Auto plugins are easier to configure, and work better with each other.
 - Removes the `settingsSets` method from `Project` (along with `add/setSbtFiles`).
 - Drops deprecated `InputTask` `apply` method and `inputTask` DSL method. Use `Def.inputTask` and `Def.spaceDelimited().parsed`.
 - Drops deprecated `ProjectReference` implicit lifts. Use `RootProject(<uri>)`, `RootProject(<file>)` or `LocalProject(<string>)`.
@@ -34,26 +39,17 @@ This is the RC-1 release of sbt 1.0.
 - Drops deprecated `SubProcess` `apply` overload. Use `SubProcess(ForkOptions(runJVMOptions = ..))`.
 - Drops `toError(opt: Option[String]): Unit` (equivalent to `opt foreach sys.error`); if used to wrap
     `ScalaRun#run` then the replacement is `scalaRun.run(...).failed foreach (sys error _.getMessage)`
-- A number of the methods on `sbt.Path` (such as `relativeTo` and `rebase` and `flat`) are now no longer in the
-    default namespace by virtue of being mixed into the sbt package object. Use `sbt.io.Path` to access them
-    again.
-- sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
-- sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
-- Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
-- `Command.process(..)` is removed. Use `"cmd" :: state`.
 
-The Scala Center is working with Lightbend to provide [an automatic migration tool][sbt-migration-rewrites].
-
-#### Features
+### Features
 
 - New incremental compiler called Zinc 1. Details below.
-- The interactive shell is adds network API. Details below.
+- The interactive shell adds network API. Details below.
 - Library management API and parallel artifact download. See below.
 - sbt 1.0's logging supports event logging. See below.
 - Scala Center contributed static validation of `build.sbt`. See below
 - Ports sbt-cross-building's `^` and `^^` commands for plugin cross building. See below.
 
-#### Fixes
+### Fixes
 
 - Fixes test content log not showing up. [#3198][3198]/[util#80][util80] by [@eed3si9n][@eed3si9n]
 - Fixes confusing log about "Unable to parse". [lm#98][lm98] by [@jvican][@jvican]
@@ -63,7 +59,7 @@ The Scala Center is working with Lightbend to provide [an automatic migration to
 - Fixes task caching of `update` task. [#3233][3233] by [@eed3si9n][@eed3si9n]
 - Fixes ncurses-JLine issue by updating to JLine 2.14.4. [util#81][util81] by [@Rogach][@Rogach]
 
-#### Improvements
+### Improvements
 
 - Scala Center contributed a Java-friendly Zinc API. This was a overhaul of the Zinc internal API for a good Scala integration with other build tools. [zinc#304][zinc304] by [@jvican][@jvican]
 - Scala Center contributed a binary format for Zinc's internal storage. See below
@@ -119,7 +115,7 @@ This depends on some factors such as how your classes are organized, but you can
 - `xsbi.Maybe`, `xsbti.F0`, and `sxbti.F1` are changed to corresponding Java 8 classes `java.util.Optional`, `java.util.Supplier` and `java.util.Function`.
 - Removes unused "resident" option. [zinc#345][zinc345] by [@lukeindykiewicz][@lukeindykiewicz]
 
-### sbt server: JSON API for tooling integration
+#### sbt server: JSON API for tooling integration
 
 sbt 1.0 includes server feature, which allows IDEs and other tools to query the build for settings, and invoke commands via a JSON API. Similar to the way that the interactive shell in sbt 0.13 is implemented with `shell` command, "server" is also just `shell` command that listens to both human input and network input. As a user, there should be minimal impact because of the server.
 
@@ -131,7 +127,7 @@ In March 2016, we [rebooted](http://eed3si9n.com/sbt-server-reboot) the "server"
 
 Another related feature that was added is the `bgRun` task which, for example, enables a server process to be run in the background while you run tests against it.
 
-### Event logging
+#### Event logging
 
 sbt 1.0 introduces event logging implemented using Log4J 2 and sjson-new.
 In addition to the regular String-based logging, you can now send case classes and Contraband-generated pseudo case classes to the logger:
@@ -211,7 +207,7 @@ Then, run:
 
 [#3133][3133] by [@eed3si9n][@eed3si9n] (forward ported from 0.13.16-M1)
 
-### CopyOptions
+#### CopyOptions
 
 sbt IO 1.0 add variant of `IO.copyFile` and `IO.copyDirectory` that accept `sbt.io.CopyOptions()`.
 `CopyOptions()` is an example of pseudo case class similar to the builder pattern.
@@ -262,14 +258,12 @@ that would should work together to allow dependency locking.
 - Adds support to specify a resolver for dependencies. [lm#97][lm97]
 - Adds "managed checksums", which tells Ivy to skip the checksum process. [lm#111][lm111]
 
-#### notes
+#### Contributors
 
-- https://github.com/sbt/sbt/compare/v1.0.0-RC2...v1.0.0-RC3
-- https://github.com/sbt/zinc/compare/v1.0.0-X20...v1.0.0-RC3
-- https://github.com/sbt/librarymanagement/compare/v1.0.0-X18...v1.0.0-RC3
-- https://github.com/sbt/util/compare/v1.0.0-M28...v1.0.0-RC3
-- https://github.com/sbt/io/compare/v1.0.0-M13...v1.0.0-RC3
+Too many people to thank here. See [Credits][Credits]
 
+  [Credits]: http://www.scala-sbt.org/1.x/docs/Credits.html
+  [Migrating-from-sbt-013x]: http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: http://github.com/dwijnand
   [@jvican]: https://github.com/jvican
@@ -288,14 +282,12 @@ that would should work together to allow dependency locking.
   [@Krever]: https://github.com/Krever
   [@lukeindykiewicz]: https://github.com/lukeindykiewicz
   [@gheine]: https://github.com/gheine
-  [@xuwei-k]: https://github.com/xuwei-k
   [840]: https://github.com/sbt/sbt/issues/840
   [2613]: https://github.com/sbt/sbt/pull/2613
   [1911]: https://github.com/sbt/sbt/issues/1911
   [2059]: https://github.com/sbt/sbt/issues/2059
   [2662]: https://github.com/sbt/sbt/pull/2662
-  [2762]: https://github.com/sbt/sbt/issues/2762
-  [3291]: https://github.com/sbt/sbt/pull/3291
+  [3133]: https://github.com/sbt/sbt/pull/3133
   [util80]: https://github.com/sbt/util/pull/80
   [3198]: https://github.com/sbt/sbt/issues/3198
   [lm88]: https://github.com/sbt/librarymanagement/pull/88
