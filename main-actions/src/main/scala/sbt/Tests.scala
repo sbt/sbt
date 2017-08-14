@@ -100,8 +100,7 @@ object Tests {
    *                  If None, the arguments will apply to all test frameworks.
    * @param args The list of arguments to pass to the selected framework(s).
    */
-  final case class Argument(framework: Option[TestFramework], args: List[String])
-      extends TestOption
+  final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
   /**
    * Configures test execution.

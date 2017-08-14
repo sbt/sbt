@@ -38,9 +38,8 @@ object KeyIndex {
       concat(_.tasks(proj, conf, key))
     def keys(proj: Option[ResolvedReference]) = concat(_.keys(proj))
     def keys(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.keys(proj, conf))
-    def keys(proj: Option[ResolvedReference],
-             conf: Option[String],
-             task: Option[AttributeKey[_]]) = concat(_.keys(proj, conf, task))
+    def keys(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]]) =
+      concat(_.keys(proj, conf, task))
     def concat[T](f: KeyIndex => Set[T]): Set[T] =
       (Set.empty[T] /: indices)((s, k) => s ++ f(k))
   }

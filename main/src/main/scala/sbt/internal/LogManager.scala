@@ -167,8 +167,7 @@ object LogManager {
     def command(useFormat: Boolean) =
       if (useFormat) BLUE + commandBase + RESET else s"'$commandBase'"
     context =>
-      Some(
-        "Stack trace suppressed: run %s for the full output.".format(command(context.useFormat)))
+      Some("Stack trace suppressed: run %s for the full output.".format(command(context.useFormat)))
   }
 
   def unwrapStreamsKey(key: ScopedKey[_]): ScopedKey[_] = key.scope.task match {

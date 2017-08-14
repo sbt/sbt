@@ -49,8 +49,7 @@ object InitializeConvert extends Convert {
 
 object SettingMacro {
   import LinterDSL.{ Empty => EmptyLinter }
-  def settingMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
-      t: c.Expr[T]): c.Expr[Initialize[T]] =
+  def settingMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
     Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
       Left(t),
       Instance.idTransform[c.type])

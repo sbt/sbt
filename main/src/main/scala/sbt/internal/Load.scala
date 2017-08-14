@@ -742,9 +742,8 @@ private[sbt] object Load {
       val defs = if (defsScala.isEmpty) defaultBuildIfNone :: Nil else defsScala
       // HERE we pull out the defined vals from memoSettings and unify them all so
       // we can use them later.
-      val valDefinitions = memoSettings.values.foldLeft(DefinedSbtValues.empty) {
-        (prev, sbtFile) =>
-          prev.zip(sbtFile.definitions)
+      val valDefinitions = memoSettings.values.foldLeft(DefinedSbtValues.empty) { (prev, sbtFile) =>
+        prev.zip(sbtFile.definitions)
       }
       val loadedDefs = new LoadedDefinitions(
         defDir,

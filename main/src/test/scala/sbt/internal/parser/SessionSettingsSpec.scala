@@ -26,8 +26,7 @@ abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec 
     }
   }
 
-  private def runTestOnFiles(
-      expectedResultAndMap: File => Seq[(List[String], Seq[SessionSetting])])
+  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], Seq[SessionSetting])])
     : MatchResult[GenTraversableOnce[File]] = {
 
     val allFiles = rootDir

@@ -26,8 +26,7 @@ object SessionVar {
     set(key, state, value)
   }
 
-  def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(
-      implicit f: JsonFormat[T]): Unit =
+  def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: JsonFormat[T]): Unit =
     Project.structure(state).streams(state).use(key)(s => s.getOutput(DefaultDataID).write(value))
 
   def clear(s: State): State = s.put(sessionVars, SessionVar.emptyMap)
@@ -41,14 +40,11 @@ object SessionVar {
   def orEmpty(opt: Option[Map]) = opt getOrElse emptyMap
 
   def transform[S](task: Task[S], f: (State, S) => State): Task[S] = {
-    val g = (s: S, map: AttributeMap) =>
-      map.put(Keys.transformState, (state: State) => f(state, s))
+    val g = (s: S, map: AttributeMap) => map.put(Keys.transformState, (state: State) => f(state, s))
     task.copy(info = task.info.postTransform(g))
   }
 
-  def resolveContext[T](key: ScopedKey[Task[T]],
-                        context: Scope,
-                        state: State): ScopedKey[Task[T]] = {
+  def resolveContext[T](key: ScopedKey[Task[T]], context: Scope, state: State): ScopedKey[Task[T]] = {
     val subScope = Scope.replaceThis(context)(key.scope)
     val scope = Project.structure(state).data.definingScope(subScope, key.key) getOrElse subScope
     ScopedKey(scope, key.key)

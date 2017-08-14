@@ -24,8 +24,7 @@ object TokenCompletions {
     }
   }
 
-  val default: TokenCompletions = mapDelegateCompletions(
-    (seen, level, c) => ctoken(seen, c.append))
+  val default: TokenCompletions = mapDelegateCompletions((seen, level, c) => ctoken(seen, c.append))
 
   def displayOnly(msg: String): TokenCompletions = new Fixed {
     def completions(seen: String, level: Int) = Completions.single(Completion.displayOnly(msg))
