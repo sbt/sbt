@@ -412,7 +412,12 @@ object Defaults extends BuildCommon {
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
     ))
 
-  def makeCrossSources(scalaSrcDir: File, javaSrcDir: File, sv: String, cross: Boolean): Seq[File] = {
+  def makeCrossSources(
+      scalaSrcDir: File,
+      javaSrcDir: File,
+      sv: String,
+      cross: Boolean
+  ): Seq[File] = {
     if (cross)
       Seq(scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$sv", scalaSrcDir, javaSrcDir)
     else
@@ -3151,7 +3156,9 @@ trait BuildCommon {
     def classpath: Classpath = Attributed blankSeq s
   }
 
-  def overrideConfigs(cs: Configuration*)(configurations: Seq[Configuration]): Seq[Configuration] = {
+  def overrideConfigs(cs: Configuration*)(
+      configurations: Seq[Configuration]
+  ): Seq[Configuration] = {
     val existingName = configurations.map(_.name).toSet
     val newByName = cs.map(c => (c.name, c)).toMap
     val overridden = configurations map { conf =>

@@ -264,7 +264,10 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
    * @param imports - trees
    * @return imports per line
    */
-  private def importsToLineRanges(modifiedContent: String, imports: Seq[Tree]): Seq[(String, Int)] = {
+  private def importsToLineRanges(
+      modifiedContent: String,
+      imports: Seq[Tree]
+  ): Seq[(String, Int)] = {
     val toLineRange = imports map convertImport(modifiedContent)
     val groupedByLineNumber = toLineRange.groupBy { case (_, lineNumber) => lineNumber }
     val mergedImports = groupedByLineNumber.map {
