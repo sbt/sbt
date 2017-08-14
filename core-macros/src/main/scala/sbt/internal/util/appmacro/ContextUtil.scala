@@ -85,7 +85,10 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
    * Collects all definitions in the tree for use in checkReferences.
    * This excludes definitions in wrapped expressions because checkReferences won't allow nested dereferencing anyway.
    */
-  def collectDefs(tree: Tree, isWrapper: (String, Type, Tree) => Boolean): collection.Set[Symbol] = {
+  def collectDefs(
+      tree: Tree,
+      isWrapper: (String, Type, Tree) => Boolean
+  ): collection.Set[Symbol] = {
     val defs = new collection.mutable.HashSet[Symbol]
     // adds the symbols for all non-Ident subtrees to `defs`.
     val process = new Traverser {

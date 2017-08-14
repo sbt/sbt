@@ -153,7 +153,11 @@ abstract class TestBuild {
     val root = projects.head
     val projectMap = mapBy(projects)(_.id)
   }
-  final class Proj(val id: String, val delegates: Seq[ProjectRef], val configurations: Seq[Config]) {
+  final class Proj(
+      val id: String,
+      val delegates: Seq[ProjectRef],
+      val configurations: Seq[Config]
+  ) {
     override def toString =
       "Project " + id + "\n      Delegates:\n        " + delegates.mkString("\n        ") +
         "\n      Configurations:\n        " + configurations.mkString("\n        ")

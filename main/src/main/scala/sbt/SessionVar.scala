@@ -44,7 +44,11 @@ object SessionVar {
     task.copy(info = task.info.postTransform(g))
   }
 
-  def resolveContext[T](key: ScopedKey[Task[T]], context: Scope, state: State): ScopedKey[Task[T]] = {
+  def resolveContext[T](
+      key: ScopedKey[Task[T]],
+      context: Scope,
+      state: State
+  ): ScopedKey[Task[T]] = {
     val subScope = Scope.replaceThis(context)(key.scope)
     val scope = Project.structure(state).data.definingScope(subScope, key.key) getOrElse subScope
     ScopedKey(scope, key.key)

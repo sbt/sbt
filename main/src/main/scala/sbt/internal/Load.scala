@@ -617,7 +617,11 @@ private[sbt] object Load {
     new LoadedBuild(loaded.root, units)
   }
 
-  def resolveProjects(uri: URI, unit: PartBuildUnit, rootProject: URI => String): LoadedBuildUnit = {
+  def resolveProjects(
+      uri: URI,
+      unit: PartBuildUnit,
+      rootProject: URI => String
+  ): LoadedBuildUnit = {
     IO.assertAbsolute(uri)
     val resolve = (_: Project).resolve(ref => Scope.resolveProjectRef(uri, rootProject, ref))
     new LoadedBuildUnit(
@@ -842,7 +846,11 @@ private[sbt] object Load {
       // a. Apply all the project manipulations from .sbt files in order
       // b. Deduce the auto plugins for the project
       // c. Finalize a project with all its settings/configuration.
-      def finalizeProject(p: Project, files: Seq[File], expand: Boolean): (Project, Seq[Project]) = {
+      def finalizeProject(
+          p: Project,
+          files: Seq[File],
+          expand: Boolean
+      ): (Project, Seq[Project]) = {
         val configFiles = files flatMap { f =>
           memoSettings.get(f)
         }

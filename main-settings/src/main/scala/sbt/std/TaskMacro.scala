@@ -300,7 +300,9 @@ object TaskMacro {
     }
   }
 
-  private[this] def transformMacroImpl(c: blackbox.Context)(init: c.Tree)(newName: String): c.Tree = {
+  private[this] def transformMacroImpl(c: blackbox.Context)(init: c.Tree)(
+      newName: String
+  ): c.Tree = {
     import c.universe._
     val target =
       c.macroApplication match {

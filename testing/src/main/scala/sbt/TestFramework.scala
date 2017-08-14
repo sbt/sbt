@@ -73,7 +73,11 @@ final class TestDefinition(val name: String,
   override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
-final class TestRunner(delegate: Runner, listeners: Vector[TestReportListener], log: ManagedLogger) {
+final class TestRunner(
+    delegate: Runner,
+    listeners: Vector[TestReportListener],
+    log: ManagedLogger
+) {
 
   final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] =
     delegate.tasks(
