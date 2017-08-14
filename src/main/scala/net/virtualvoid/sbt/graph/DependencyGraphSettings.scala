@@ -18,15 +18,11 @@ package net.virtualvoid.sbt.graph
 
 import sbt._
 import Keys._
-
 import CrossVersion._
-
 import sbt.complete.Parser
-
 import org.apache.ivy.core.resolve.ResolveOptions
-
 import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
-import net.virtualvoid.sbt.graph.rendering.DagreHTML
+import net.virtualvoid.sbt.graph.rendering.{ AsciiGraph, DagreHTML }
 import net.virtualvoid.sbt.graph.util.IOUtil
 
 object DependencyGraphSettings {
@@ -55,23 +51,6 @@ object DependencyGraphSettings {
       else graph
     },
     moduleGraphStore <<= moduleGraph storeAs moduleGraphStore triggeredBy moduleGraph,
-    asciiGraph <<= moduleGraph map rendering.AsciiGraph.asciiGraph,
-    dependencyGraph <<= InputTask(shouldForceParser) { force ⇒
-      (force, moduleGraph, streams) map { (force, graph, streams) ⇒
-        if (force || graph.nodes.size < 15) {
-          streams.log.info(rendering.AsciiGraph.asciiGraph(graph))
-          streams.log.info("\n\n")
-          streams.log.info("Note: The old tree layout is still available by using `dependency-tree`")
-        } else {
-          streams.log.info(rendering.AsciiTree.asciiTree(graph))
-
-          if (!force) {
-            streams.log.info("\n")
-            streams.log.info("Note: The graph was estimated to be too big to display (> 15 nodes). Use `sbt 'dependency-graph --force'` (with the single quotes) to force graph display.")
-          }
-        }
-      }
-    },
     asciiTree <<= moduleGraph map rendering.AsciiTree.asciiTree,
     dependencyTree <<= print(asciiTree),
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
@@ -101,7 +80,7 @@ object DependencyGraphSettings {
         streams.log.info(rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module)))
       }
     },
-    licenseInfo <<= (moduleGraph, streams) map showLicenseInfo))
+    licenseInfo <<= (moduleGraph, streams) map showLicenseInfo) ++ AsciiGraph.asciiGraphSetttings)
 
   def ivyReportFunctionTask =
     (sbtVersion, target, projectID, ivyModule, appConfiguration, streams) map { (sbtV, target, projectID, ivyModule, config, streams) ⇒
