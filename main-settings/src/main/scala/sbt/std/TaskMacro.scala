@@ -179,8 +179,7 @@ object TaskMacro {
       f: c.Expr[S => S]): c.Expr[Setting[S]] =
     c.Expr[Setting[S]](transformMacroImpl(c)(f.tree)(TransformInitName))
 
-  def settingAssignPure[T: c.WeakTypeTag](c: blackbox.Context)(
-      app: c.Expr[T]): c.Expr[Setting[T]] =
+  def settingAssignPure[T: c.WeakTypeTag](c: blackbox.Context)(app: c.Expr[T]): c.Expr[Setting[T]] =
     settingAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
 
   def settingAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(
@@ -301,8 +300,7 @@ object TaskMacro {
     }
   }
 
-  private[this] def transformMacroImpl(c: blackbox.Context)(init: c.Tree)(
-      newName: String): c.Tree = {
+  private[this] def transformMacroImpl(c: blackbox.Context)(init: c.Tree)(newName: String): c.Tree = {
     import c.universe._
     val target =
       c.macroApplication match {

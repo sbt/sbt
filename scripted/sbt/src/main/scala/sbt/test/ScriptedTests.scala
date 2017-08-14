@@ -65,8 +65,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
     }
   }
 
-  private def createScriptedHandlers(testDir: File,
-                                     buffered: Logger): Map[Char, StatementHandler] = {
+  private def createScriptedHandlers(testDir: File, buffered: Logger): Map[Char, StatementHandler] = {
     val fileHandler = new FileCommands(testDir)
     val sbtHandler = new SbtHandler(testDir, launcher, buffered, launchOpts)
     Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler)

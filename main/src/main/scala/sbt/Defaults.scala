@@ -12,14 +12,7 @@ import java.util.concurrent.{ TimeUnit, Callable }
 import Keys._
 import org.apache.ivy.core.module.{ descriptor, id }, descriptor.ModuleDescriptor,
 id.ModuleRevisionId
-import Project.{
-  inConfig,
-  inScope,
-  inTask,
-  richInitialize,
-  richInitializeTask,
-  richTaskSessionVar
-}
+import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import sbt.internal._
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal.inc.ZincUtil
@@ -419,10 +412,7 @@ object Defaults extends BuildCommon {
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
     ))
 
-  def makeCrossSources(scalaSrcDir: File,
-                       javaSrcDir: File,
-                       sv: String,
-                       cross: Boolean): Seq[File] = {
+  def makeCrossSources(scalaSrcDir: File, javaSrcDir: File, sv: String, cross: Boolean): Seq[File] = {
     if (cross)
       Seq(scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$sv", scalaSrcDir, javaSrcDir)
     else
@@ -1070,8 +1060,7 @@ object Defaults extends BuildCommon {
       case None    => scope :: Nil
     }
 
-  def packageTaskSettings(key: TaskKey[File],
-                          mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
+  def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
     inTask(key)(
       Seq(
         key in TaskZero := packageTask.value,
@@ -2125,12 +2114,13 @@ object Classpaths {
                 LibraryManagement.transitiveScratch(
                   lm,
                   "sbt",
-                  GetClassifiersConfiguration(mod,
-                                              excludes.toVector,
-                                              c.withArtifactFilter(c.artifactFilter.map(af =>
-                                                af.withInverted(!af.inverted))),
-                                              srcTypes.toVector,
-                                              docTypes.toVector),
+                  GetClassifiersConfiguration(
+                    mod,
+                    excludes.toVector,
+                    c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
+                    srcTypes.toVector,
+                    docTypes.toVector
+                  ),
                   uwConfig,
                   log
                 ) match {
@@ -2171,11 +2161,11 @@ object Classpaths {
       val s = streams.value
       val skp = (skip in publish).value
       val ref = thisProjectRef.value
-      if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") }
-      else Def.task {
-        val cfg = config.value
-        IvyActions.publish(ivyModule.value, config.value, s.log)
-      }
+      if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") } else
+        Def.task {
+          val cfg = config.value
+          IvyActions.publish(ivyModule.value, config.value, s.log)
+        }
     } tag (Tags.Publish, Tags.Network)
 
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =

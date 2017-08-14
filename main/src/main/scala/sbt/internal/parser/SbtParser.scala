@@ -185,8 +185,7 @@ sealed trait ParsedSbtFileExpressions {
  * @param file  The file we're parsing (may be a dummy file)
  * @param lines The parsed "lines" of the file, where each string is a line.
  */
-private[sbt] case class SbtParser(file: File, lines: Seq[String])
-    extends ParsedSbtFileExpressions {
+private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends ParsedSbtFileExpressions {
   //settingsTrees,modifiedContent needed for "session save"
   // TODO - We should look into splitting out "definitions" vs. "settings" here instead of further string lookups, since we have the
   // parsed trees.
@@ -265,8 +264,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String])
    * @param imports - trees
    * @return imports per line
    */
-  private def importsToLineRanges(modifiedContent: String,
-                                  imports: Seq[Tree]): Seq[(String, Int)] = {
+  private def importsToLineRanges(modifiedContent: String, imports: Seq[Tree]): Seq[(String, Int)] = {
     val toLineRange = imports map convertImport(modifiedContent)
     val groupedByLineNumber = toLineRange.groupBy { case (_, lineNumber) => lineNumber }
     val mergedImports = groupedByLineNumber.map {

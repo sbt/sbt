@@ -78,7 +78,8 @@ object Dependencies {
   def addSbtUtilScripted(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilScripted", utilScripted)
 
-  def addSbtLmCore(p: Project): Project = addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
+  def addSbtLmCore(p: Project): Project =
+    addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
   def addSbtLmIvy(p: Project): Project = addSbtModule(p, sbtLmPath, "lmIvy", libraryManagementIvy)
 
   def addSbtCompilerInterface(p: Project): Project =
@@ -95,7 +96,9 @@ object Dependencies {
   def addSbtZincCompile(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
 
-  val sjsonNewScalaJson = Def.setting { "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value }
+  val sjsonNewScalaJson = Def.setting {
+    "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value
+  }
 
   val jline = "jline" % "jline" % "2.14.4"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"

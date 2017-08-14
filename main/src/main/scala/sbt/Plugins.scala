@@ -206,7 +206,8 @@ object Plugins extends PluginsFunctions {
                 val selectedPlugins = selectedAtoms map { a =>
                   byAtomMap.getOrElse(
                     a,
-                    throw AutoPluginException(s"${a} was not found in atom map."))
+                    throw AutoPluginException(s"${a} was not found in atom map.")
+                  )
                 }
                 val forbidden: Set[AutoPlugin] =
                   (selectedPlugins flatMap { Plugins.asExclusions }).toSet
