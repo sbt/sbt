@@ -81,7 +81,10 @@ private[sbt] case class SbtChainResolver(
   override def locate(artifact: IArtifact): ArtifactOrigin =
     if (IvySbt.hasImplicitClassifier(artifact)) null else super.locate(artifact)
 
-  override def getDependency(dd: DependencyDescriptor, data: ResolveData): ResolvedModuleRevision = {
+  override def getDependency(
+      dd: DependencyDescriptor,
+      data: ResolveData
+  ): ResolvedModuleRevision = {
     if (data.getOptions.getLog != LogOptions.LOG_QUIET)
       Message.debug("Resolving " + dd.getDependencyRevisionId + " ...")
     val gd = CustomSbtResolution.getDependency(dd, data)

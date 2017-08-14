@@ -104,7 +104,10 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
   // we can't find the module descriptor.
   override def findIvyFileRef(dd: DependencyDescriptor, data: ResolveData): ResolvedResource = null
 
-  override def getDependency(dd: DependencyDescriptor, data: ResolveData): ResolvedModuleRevision = {
+  override def getDependency(
+      dd: DependencyDescriptor,
+      data: ResolveData
+  ): ResolvedModuleRevision = {
 
     val Artifact(organisation, name, revision) = dd
     val mrid = dd.getDependencyRevisionId()

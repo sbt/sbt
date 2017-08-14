@@ -46,7 +46,7 @@ lazy val lmRoot = (project in file("."))
         },
         bintrayPackage := "librarymanagement",
         scalafmtOnCompile := true,
-        scalafmtVersion := "1.1.0",
+        scalafmtVersion := "1.2.0",
         git.baseVersion := baseVersion,
         version := {
           val v = version.value

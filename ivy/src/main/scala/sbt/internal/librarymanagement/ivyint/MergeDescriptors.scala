@@ -121,7 +121,9 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
       case _ => art
     }
   }
-  private[this] def defaultArtifact(a: DependencyDescriptor): Array[DependencyArtifactDescriptor] = {
+  private[this] def defaultArtifact(
+      a: DependencyDescriptor
+  ): Array[DependencyArtifactDescriptor] = {
     val dd = new DefaultDependencyArtifactDescriptor(
       a,
       a.getDependencyRevisionId.getName,
