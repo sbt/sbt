@@ -40,7 +40,12 @@ class IvyCache(val ivyHome: Option[File]) {
   def lockFile = new File(ivyHome getOrElse Path.userHome, ".sbt.cache.lock")
 
   /** Caches the given 'file' with the given ID.  It may be retrieved or cleared using this ID.*/
-  def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: Logger): Unit = {
+  def cacheJar(
+      moduleID: ModuleID,
+      file: File,
+      lock: Option[xsbti.GlobalLock],
+      log: Logger
+  ): Unit = {
     val artifact = defaultArtifact(moduleID)
     val resolved =
       new ResolvedResource(new FileResource(new IvyFileRepository, file), moduleID.revision)
