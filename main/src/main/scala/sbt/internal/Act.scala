@@ -159,11 +159,14 @@ object Act {
       case ParsedZero         => None :: Nil
       case pv: ParsedValue[x] => Some(pv.value) :: Nil
     }
+
   def defaultConfigurations(
       proj: Option[ResolvedReference],
       index: KeyIndex,
-      defaultConfigs: Option[ResolvedReference] => Seq[String]): Seq[String] =
+      defaultConfigs: Option[ResolvedReference] => Seq[String]
+  ): Seq[String] =
     if (index exists proj) defaultConfigs(proj) else Nil
+
   def nonEmptyConfig(index: KeyIndex,
                      proj: Option[ResolvedReference]): String => Seq[Option[String]] =
     config => if (index.isEmpty(proj, Some(config))) Nil else Some(config) :: Nil

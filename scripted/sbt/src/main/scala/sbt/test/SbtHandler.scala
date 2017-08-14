@@ -24,23 +24,24 @@ final class SbtHandler(directory: File,
   type State = Option[SbtInstance]
   def initialState = None
 
-  def apply(command: String,
-            arguments: List[String],
-            i: Option[SbtInstance]): Option[SbtInstance] = onSbtInstance(i) { (process, server) =>
-    send((command :: arguments.map(escape)).mkString(" "), server)
-    receive(command + " failed", server)
-  }
-  def onSbtInstance(i: Option[SbtInstance])(
-      f: (Process, IPC.Server) => Unit): Option[SbtInstance] = i match {
-    case Some(ai @ SbtInstance(process, server)) if server.isClosed =>
-      finish(i)
-      onNewSbtInstance(f)
-    case Some(SbtInstance(process, server)) =>
-      f(process, server)
-      i
-    case None =>
-      onNewSbtInstance(f)
-  }
+  def apply(command: String, arguments: List[String], i: Option[SbtInstance]): Option[SbtInstance] =
+    onSbtInstance(i) { (process, server) =>
+      send((command :: arguments.map(escape)).mkString(" "), server)
+      receive(command + " failed", server)
+    }
+
+  def onSbtInstance(i: Option[SbtInstance])(f: (Process, IPC.Server) => Unit): Option[SbtInstance] =
+    i match {
+      case Some(ai @ SbtInstance(process, server)) if server.isClosed =>
+        finish(i)
+        onNewSbtInstance(f)
+      case Some(SbtInstance(process, server)) =>
+        f(process, server)
+        i
+      case None =>
+        onNewSbtInstance(f)
+    }
+
   private[this] def onNewSbtInstance(f: (Process, IPC.Server) => Unit): Option[SbtInstance] = {
     val server = IPC.unmanagedServer
     val p = try newRemote(server)

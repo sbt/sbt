@@ -49,25 +49,40 @@ object InputWrapper {
   private[this] def implDetailError =
     sys.error("This method is an implementation detail and should not be referenced.")
 
-  private[std] def wrapTask[T: c.WeakTypeTag](c: blackbox.Context)(ts: c.Expr[Any],
-                                                                   pos: c.Position): c.Expr[T] =
+  private[std] def wrapTask[T: c.WeakTypeTag](c: blackbox.Context)(
+      ts: c.Expr[Any],
+      pos: c.Position
+  ): c.Expr[T] =
     wrapImpl[T, InputWrapper.type](c, InputWrapper, WrapTaskName)(ts, pos)
-  private[std] def wrapInit[T: c.WeakTypeTag](c: blackbox.Context)(ts: c.Expr[Any],
-                                                                   pos: c.Position): c.Expr[T] =
+
+  private[std] def wrapInit[T: c.WeakTypeTag](c: blackbox.Context)(
+      ts: c.Expr[Any],
+      pos: c.Position
+  ): c.Expr[T] =
     wrapImpl[T, InputWrapper.type](c, InputWrapper, WrapInitName)(ts, pos)
-  private[std] def wrapInitTask[T: c.WeakTypeTag](
-      c: blackbox.Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
+
+  private[std] def wrapInitTask[T: c.WeakTypeTag](c: blackbox.Context)(
+      ts: c.Expr[Any],
+      pos: c.Position
+  ): c.Expr[T] =
     wrapImpl[T, InputWrapper.type](c, InputWrapper, WrapInitTaskName)(ts, pos)
 
-  private[std] def wrapInitInputTask[T: c.WeakTypeTag](
-      c: blackbox.Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
+  private[std] def wrapInitInputTask[T: c.WeakTypeTag](c: blackbox.Context)(
+      ts: c.Expr[Any],
+      pos: c.Position
+  ): c.Expr[T] =
     wrapImpl[T, InputWrapper.type](c, InputWrapper, WrapInitInputName)(ts, pos)
-  private[std] def wrapInputTask[T: c.WeakTypeTag](
-      c: blackbox.Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
+
+  private[std] def wrapInputTask[T: c.WeakTypeTag](c: blackbox.Context)(
+      ts: c.Expr[Any],
+      pos: c.Position
+  ): c.Expr[T] =
     wrapImpl[T, InputWrapper.type](c, InputWrapper, WrapInputName)(ts, pos)
 
-  private[std] def wrapPrevious[T: c.WeakTypeTag](
-      c: blackbox.Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[Option[T]] =
+  private[std] def wrapPrevious[T: c.WeakTypeTag](c: blackbox.Context)(
+      ts: c.Expr[Any],
+      pos: c.Position
+  ): c.Expr[Option[T]] =
     wrapImpl[Option[T], InputWrapper.type](c, InputWrapper, WrapPreviousName)(ts, pos)
 
   /**
@@ -79,8 +94,8 @@ object InputWrapper {
   def wrapImpl[T: c.WeakTypeTag, S <: AnyRef with Singleton](
       c: blackbox.Context,
       s: S,
-      wrapName: String)(ts: c.Expr[Any], pos: c.Position)(
-      implicit it: c.TypeTag[s.type]): c.Expr[T] = {
+      wrapName: String
+  )(ts: c.Expr[Any], pos: c.Position)(implicit it: c.TypeTag[s.type]): c.Expr[T] = {
     import c.universe.{ Apply => ApplyTree, _ }
     import internal.decorators._
     val util = new ContextUtil[c.type](c)
@@ -260,8 +275,7 @@ object ParserInput {
     wrap[T](c)(c.universe.reify { Def.toSParser(e.splice) }, pos)
   }
 
-  private def wrapInitParser[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree,
-                                                                    pos: c.Position) = {
+  private def wrapInitParser[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree, pos: c.Position) = {
     val e = c.Expr[Initialize[Parser[T]]](tree)
     val es = c.universe.reify { Def.toISParser(e.splice) }
     wrapInit[T](c)(es, pos)

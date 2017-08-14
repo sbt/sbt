@@ -32,9 +32,8 @@ def buildLevelSettings: Seq[Setting[_]] =
       homepage := Some(url("https://github.com/sbt/sbt")),
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
-      // scalafmtOnCompile := true,
-      // scalafmtVersion 1.0.0-RC3 has regression
-      // scalafmtVersion := "0.6.8"
+      scalafmtOnCompile := true,
+      scalafmtVersion := "1.1.0",
     ))
 
 def commonSettings: Seq[Setting[_]] =
@@ -66,8 +65,9 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(organization.value % moduleName.value % "1.0.0-RC3"
-    cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  mimaPreviousArtifacts := Set(
+    organization.value % moduleName.value % "1.0.0-RC3"
+      cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
   )
 )
 
@@ -367,7 +367,8 @@ lazy val mainProj = (project in file("main"))
     addSbtLmCore,
     addSbtLmIvy,
     addSbtCompilerInterface,
-    addSbtZincCompile)
+    addSbtZincCompile
+  )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project

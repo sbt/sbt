@@ -76,8 +76,7 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
   }
 
   private def onExecCommand(cmd: ExecCommand) =
-    append(
-      Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
+    append(Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
 
   private def onSettingQuery(req: SettingQuery) =
     StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure)

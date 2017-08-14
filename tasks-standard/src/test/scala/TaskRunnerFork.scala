@@ -27,11 +27,10 @@ object TaskRunnerForkTest extends Properties("TaskRunner Fork") {
     def inner(i: Int) = List.range(0, b).map(j => task(j).named(j.toString)).join
     tryRun(List.range(0, a).map(inner).join, false, workers)
   }
-  property("fork and reduce") = forAll(TaskListGen, MaxWorkersGen) {
-    (m: List[Int], workers: Int) =>
-      m.nonEmpty ==> {
-        val expected = m.sum
-        checkResult(tryRun(m.tasks.reduced(_ + _), false, workers), expected)
-      }
+  property("fork and reduce") = forAll(TaskListGen, MaxWorkersGen) { (m: List[Int], workers: Int) =>
+    m.nonEmpty ==> {
+      val expected = m.sum
+      checkResult(tryRun(m.tasks.reduced(_ + _), false, workers), expected)
+    }
   }
 }

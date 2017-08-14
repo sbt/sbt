@@ -114,10 +114,8 @@ final case class Extracted(structure: BuildStructure,
       display.show(ScopedKey(scope, key)) + " is undefined.")
 
   def append(settings: Seq[Setting[_]], state: State): State = {
-    val appendSettings = Load.transformSettings(Load.projectScope(currentRef),
-                                                currentRef.build,
-                                                rootProject,
-                                                settings)
+    val appendSettings =
+      Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newStructure = Load.reapply(session.original ++ appendSettings, structure)
     Project.setProject(session, newStructure, state)
   }

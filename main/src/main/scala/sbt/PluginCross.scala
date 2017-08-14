@@ -47,9 +47,9 @@ private[sbt] object PluginCross {
         state.log.info(s"Setting `sbtVersion in pluginCrossBuild` to $version")
         val add = List(sbtVersion in GlobalScope in pluginCrossBuild :== version) ++
           List(scalaVersion := scalaVersionSetting.value) ++
-          inScope(GlobalScope.copy(project = Select(currentRef)))(Seq(
-            scalaVersion := scalaVersionSetting.value
-          ))
+          inScope(GlobalScope.copy(project = Select(currentRef)))(
+            Seq(scalaVersion := scalaVersionSetting.value)
+          )
         val cleared = session.mergeSettings.filterNot(crossExclude)
         val newStructure = Load.reapply(cleared ++ add, structure)
         Project.setProject(session, newStructure, command :: state)

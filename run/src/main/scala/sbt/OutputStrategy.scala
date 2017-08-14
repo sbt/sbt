@@ -19,9 +19,7 @@ object OutputStrategy {
    * the `error` level. The output is buffered until the process completes, at which point
    * the logger flushes it (to the screen, for example).
    */
-  final class BufferedOutput private (val logger: Logger)
-      extends OutputStrategy
-      with Serializable {
+  final class BufferedOutput private (val logger: Logger) extends OutputStrategy with Serializable {
     override def equals(o: Any): Boolean = o match {
       case x: BufferedOutput => (this.logger == x.logger)
       case _                 => false
