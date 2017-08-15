@@ -176,7 +176,7 @@ object Cross {
               // If only one project for a version, issue it directly
               Seq(s"$SwitchCommand $verbose $version $project/$aggCommand")
             case (version, projects) if aggCommand.contains(" ") =>
-              // If the command contains a space, then the all command won't work because it doesn't support issuing
+              // If the command contains a space, then the `all` command won't work because it doesn't support issuing
               // commands with spaces, so revert to running the command on each project one at a time
               s"$SwitchCommand $verbose $version" :: projects.map(project =>
                 s"$project/$aggCommand")
