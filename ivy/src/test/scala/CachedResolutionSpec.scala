@@ -1,11 +1,17 @@
 package sbt.internal.librarymanagement
 
+import org.scalatest.LoneElement._
 import sbt.util.ShowLines
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.UpdateOptions
 
 class CachedResolutionSpec extends BaseIvySpecification {
   import ShowLines._
+
+  override val resolvers = Vector(
+    Resolver.mavenCentral,
+    Resolver.sbtPluginRepo("releases")
+  )
 
   "Resolving the same module twice" should "work" in {
     cleanIvyCache()
@@ -76,6 +82,30 @@ class CachedResolutionSpec extends BaseIvySpecification {
     }))
   }
 
+  "Resolving a module with sbt cross build" should "work" in {
+    cleanIvyCache()
+    val attributes013 = Map("e:sbtVersion" -> "0.13", "e:scalaVersion" -> "2.10")
+    val attributes10 = Map("e:sbtVersion" -> "1.0", "e:scalaVersion" -> "2.12")
+    val module013 = module(
+      ModuleID("com.example", "foo", "0.4.0").withConfigurations(Some("compile")),
+      Vector(sbtRelease.withExtraAttributes(attributes013)),
+      Some("2.10.6"),
+      UpdateOptions().withCachedResolution(true)
+    )
+    val module10 = module(
+      ModuleID("com.example", "foo", "0.4.0").withConfigurations(Some("compile")),
+      Vector(sbtRelease.withExtraAttributes(attributes10)),
+      Some("2.12.3"),
+      UpdateOptions().withCachedResolution(true)
+    )
+    ivyUpdate(module013).configurations.head.modules.map(_.toString).loneElement should include(
+      "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.10, sbtVersion=0.13)"
+    )
+    ivyUpdate(module10).configurations.head.modules.map(_.toString).loneElement should include(
+      "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.12, sbtVersion=1.0)"
+    )
+  }
+
   def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3").withConfigurations(Some("compile"))
   def mavenCayennePlugin302 =
     ModuleID("org.apache.cayenne.plugins", "maven-cayenne-plugin", "3.0.2").withConfigurations(
@@ -85,6 +115,8 @@ class CachedResolutionSpec extends BaseIvySpecification {
     ModuleID("com.linkedin.pegasus", "data-avro", "1.9.40").withConfigurations(Some("compile"))
   def netty320 =
     ModuleID("org.jboss.netty", "netty", "3.2.0.Final").withConfigurations(Some("compile"))
+  def sbtRelease =
+    ModuleID("com.github.gseitz", "sbt-release", "1.0.6").withConfigurations(Some("compile"))
 
   def defaultOptions = EvictionWarningOptions.default
 }

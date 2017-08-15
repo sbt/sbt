@@ -70,7 +70,7 @@ abstract class ModuleReportExtra {
       reportStr("problem", problem) +
       reportStr("homepage", homepage) +
       reportStr(
-        "textraAttributes",
+        "extraAttributes",
         if (extraAttributes.isEmpty) None
         else { Some(extraAttributes.toString) }
       ) +
