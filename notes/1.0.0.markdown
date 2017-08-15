@@ -25,7 +25,7 @@ See [Migrating from sbt 0.13.x][Migrating-from-sbt-013x] also.
 - `TestResult.Value` is now called `TestResult`.
 - The scripted plugin is cross-versioned now, so you must use `%%` when depending on it.
 
-**Dropped dreprecations**:
+**Dropped deprecations**:
 
 - sbt 0.12 style `Build` trait that was deprecated in sbt 0.13.12, is removed. Please [migrate to build.sbt](Migrating-from-sbt-013x.html#Migrating+from+the+Build+trait). Auto plugins and `Build` trait do not work well together, and its feature is now largely subsumed by multi-project build.sbt.
 - sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
