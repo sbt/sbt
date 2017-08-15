@@ -1170,9 +1170,9 @@ object Cache {
               override def downloadedArtifact(url: String, success: Boolean) =
                 logger.downloadedArtifact(url, success)
               override def checkingUpdates(url: String, currentTimeOpt: Option[Long]) =
-                checkingUpdates(url, currentTimeOpt)
+                logger.checkingUpdates(url, currentTimeOpt)
               override def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]) =
-                checkingUpdatesResult(url, currentTimeOpt, remoteTimeOpt)
+                logger.checkingUpdatesResult(url, currentTimeOpt, remoteTimeOpt)
             }
         }
     }
