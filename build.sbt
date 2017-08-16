@@ -82,12 +82,13 @@ val root = (project in file(".")).
         if !(link.destination endsWith "sbt-launch.jar")
       } yield link
     },
+    
     // DEBIAN SPECIFIC
+    debianBuildId := 1,
     version in Debian := {
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
     },
-    debianBuildId := 0, // 0
     // Used to have "openjdk-8-jdk" but that doesn't work on Ubuntu 14.04 https://github.com/sbt/sbt/issues/3105
     // before that we had java6-runtime-headless" and that was pulling in JDK9 on Ubuntu 16.04 https://github.com/sbt/sbt/issues/2931
     debianPackageDependencies in Debian ++= Seq("bash (>= 3.2)"),
@@ -100,10 +101,9 @@ val root = (project in file(".")).
     },
     debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
     addPackage(Debian, packageBin in Debian, "deb"),
-    maintainerScripts in Debian := maintainerScriptsAppend((maintainerScripts in Debian).value)(
-      Postinst -> s"/usr/share/sbt/bin/sbt about"
-    ),
+    
     // RPM SPECIFIC
+    rpmRelease := "1",
     version in Rpm := {
       val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
       val stable = if (rpmRelease.value == "0") stable0
@@ -113,7 +113,6 @@ val root = (project in file(".")).
       })
       else stable
     },
-    rpmRelease := "0",
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
@@ -123,9 +122,6 @@ val root = (project in file(".")).
     // https://github.com/elastic/logstash/issues/6275#issuecomment-261359933
     rpmRequirements := Seq(),
     rpmProvides := Seq("sbt"),
-    maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
-      RpmConstants.Post -> s"/usr/share/sbt/bin/sbt about"
-    ),
 
     // WINDOWS SPECIFIC
     windowsBuildId := 0,
