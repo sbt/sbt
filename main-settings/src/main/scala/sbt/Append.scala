@@ -43,6 +43,19 @@ object Append {
     new Value[Seq[Task[T]], TaskKey[V]] {
       def appendValue(a: Seq[Task[T]], b: TaskKey[V]): Seq[Task[T]] = ???
     }
+  implicit def appendList[T, V <: T]: Sequence[List[T], List[V], V] =
+    new Sequence[List[T], List[V], V] {
+      def appendValues(a: List[T], b: List[V]): List[T] = a ::: b
+      def appendValue(a: List[T], b: V): List[T] = a :+ b
+    }
+  implicit def appendListImplicit[T, V](implicit ev: V => T): Sequence[List[T], List[V], V] =
+    new Sequence[List[T], List[V], V] {
+      def appendValues(a: List[T], b: List[V]): List[T] =
+        a ::: (b map { x =>
+          (x: T)
+        })
+      def appendValue(a: List[T], b: V): List[T] = a :+ (b: T)
+    }
   implicit def appendVectorImplicit[T, V](implicit ev: V => T): Sequence[Vector[T], Seq[V], V] =
     new Sequence[Vector[T], Seq[V], V] {
       def appendValues(a: Vector[T], b: Seq[V]): Vector[T] =
