@@ -40,7 +40,6 @@ object Assign {
   val tsk: complete.Parser[Task[String]] = DefaultParsers.failure("ignored")
   val itsk: Initialize[InputTask[Int]] = inputKey[Int]("ignored")
   val seqSetting = settingKey[Seq[String]]("seqSetting")
-  val listSetting = settingKey[List[String]]("listSetting")
 
   /*	def azy = sk.value
 
@@ -110,8 +109,4 @@ object Assign {
   seqSetting ++= Seq("test2")
   seqSetting ++= List("test3")
   seqSetting += "test4"
-
-  listSetting := List("test1")
-  listSetting ++= List("test2")
-  listSetting += "test4"
 }
