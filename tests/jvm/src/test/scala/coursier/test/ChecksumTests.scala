@@ -46,6 +46,17 @@ object ChecksumTests extends TestSuite {
         sha1ParseTest(cleanSha1, dirtySha1)
       }
 
+      'singleLineEndingWithChunkedSha1 - {
+        // http://www-eu.apache.org/dist/kafka/0.10.1.0/kafka_2.11-0.10.1.0.tgz.sha1
+        // as of 2017-08-17
+        val dirtySha1 =
+          "kafka_2.11-0.10.1.0.tgz: 710F 31E7 0AB7 54BF D533  3278 E226 82C9 8DD0 56CA\n"
+
+        val cleanSha1 = "710f31e70ab754bfd5333278e22682c98dd056ca"
+
+        sha1ParseTest(cleanSha1, dirtySha1)
+      }
+
       'binarySha1 - {
         val content = Platform.readFullySync(getClass.getResource("/empty.sha1").openStream())
         val res = Cache.parseRawChecksum(content)

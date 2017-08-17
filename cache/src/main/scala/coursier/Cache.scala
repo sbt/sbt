@@ -884,7 +884,12 @@ object Cache {
     findChecksum(lines.map(_.toLowerCase.replaceAll("\\s", "")))
 
   private def parseChecksumAlternative(lines: Seq[String]): Option[BigInteger] =
-    findChecksum(lines.flatMap(_.toLowerCase.split("\\s+")))
+    findChecksum(lines.flatMap(_.toLowerCase.split("\\s+"))) orElse {
+      findChecksum(lines.map(_.toLowerCase
+        .split("\\s+")
+        .filter(_.matches("[0-9a-f]+"))
+        .mkString))
+    }
 
   def validateChecksum(
     artifact: Artifact,
