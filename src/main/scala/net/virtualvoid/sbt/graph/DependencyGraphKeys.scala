@@ -49,6 +49,15 @@ trait DependencyGraphKeys {
   val dependencyBrowseGraph = TaskKey[URI](
     "dependency-browse-graph",
     "Opens an HTML page that can be used to view the graph.")
+  val dependencyBrowseTreeTarget = SettingKey[File](
+    "dependency-browse-tree-target",
+    "The location dependency browse tree files should be put.")
+  val dependencyBrowseTreeHTML = TaskKey[URI](
+    "dependency-browse-tree-html",
+    "Creates an HTML page that can be used to view the dependency tree")
+  val dependencyBrowseTree = TaskKey[URI](
+    "dependency-browse-tree",
+    "Opens an HTML page that can be used to view the dependency tree")
   val moduleGraph = TaskKey[ModuleGraph](
     "module-graph",
     "The dependency graph for a project")

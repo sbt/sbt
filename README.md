@@ -21,6 +21,7 @@ the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tr
 
 ## Main Tasks
 
+ * `dependencyBrowseTree`: Opens a browser window with a visualization of the dependency tree (courtesy of jstree).
  * `dependencyTree`: Shows an ASCII tree representation of the project's dependencies
  * `dependencyBrowseGraph`: Opens a browser window with a visualization of the dependency graph (courtesy of graphlib-dot + dagre-d3).
  * `dependencyList`: Shows a flat list of all transitive dependencies on the sbt console (sorted by organization and name)
