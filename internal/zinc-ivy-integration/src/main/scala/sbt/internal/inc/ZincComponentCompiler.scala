@@ -304,7 +304,10 @@ private object ZincLMHelper {
     }
   }
 
-  private def defaultUpdateConfiguration(targetDir: File, noSource: Boolean): UpdateConfiguration = {
+  private def defaultUpdateConfiguration(
+      targetDir: File,
+      noSource: Boolean
+  ): UpdateConfiguration = {
     val retrieve = RetrieveConfiguration()
       .withRetrieveDirectory(targetDir)
       .withOutputPattern(defaultRetrievePattern)
