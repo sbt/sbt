@@ -19,3 +19,5 @@ lazy val fooPlugin =(project in file("sbt-foo")).
     scalaVersion := "2.12.1",
     crossScalaVersions := Seq("2.12.1")
   )
+
+addCommandAlias("build", "compile")

@@ -3,7 +3,7 @@
  */
 package sbt
 
-import Keys._
+import Keys.{ version, _ }
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.AttributeKey
 import DefaultParsers._
@@ -18,6 +18,7 @@ import sbt.internal.CommandStrings.{
 }
 import java.io.File
 
+import sbt.internal.Act
 import sbt.internal.inc.ScalaInstance
 import sbt.io.IO
 import sbt.librarymanagement.CrossVersion
@@ -125,10 +126,13 @@ object Cross {
       case Left(cmd) => (resolveAggregates(x), cmd)
     }
 
+    val projCrossVersions = aggs map { proj =>
+      proj -> crossVersions(x, proj)
+    }
     // if we support scalaVersion, projVersions should be cached somewhere since
     // running ++2.11.1 is at the root level is going to mess with the scalaVersion for the aggregated subproj
-    val projVersions = (aggs flatMap { proj =>
-      crossVersions(x, proj) map { (proj.project, _) }
+    val projVersions = (projCrossVersions flatMap {
+      case (proj, versions) => versions map { proj.project -> _ }
     }).toList
 
     val verbose = if (args.verbose) "-v" else ""
@@ -136,19 +140,51 @@ object Cross {
     if (projVersions.isEmpty) {
       state
     } else {
-      // Group all the projects by scala version
-      val allCommands = projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
-        case (version, Seq(project)) =>
-          // If only one project for a version, issue it directly
-          Seq(s"$SwitchCommand $verbose $version $project/$aggCommand")
-        case (version, projects) if aggCommand.contains(" ") =>
-          // If the command contains a space, then the all command won't work because it doesn't support issuing
-          // commands with spaces, so revert to running the command on each project one at a time
-          s"$SwitchCommand $verbose $version" :: projects.map(project => s"$project/$aggCommand")
-        case (version, projects) =>
-          // First switch scala version, then use the all command to run the command on each project concurrently
-          Seq(s"$SwitchCommand $verbose $version",
-              projects.map(_ + "/" + aggCommand).mkString("all ", " ", ""))
+      // Detect whether a task or command has been issued
+      val allCommands = Parser.parse(aggCommand, Act.aggregatedKeyParser(x)) match {
+        case Left(_) =>
+          // It's definitely not a task, check if it's a valid command, because we don't want to emit the warning
+          // message below for typos.
+          val validCommand = Parser.parse(aggCommand, state.combinedParser).isRight
+
+          val distinctCrossConfigs = projCrossVersions.map(_._2.toSet).distinct
+          if (validCommand && distinctCrossConfigs.size > 1) {
+            state.log.warn(
+              "Issuing a cross building command, but not all sub projects have the same cross build " +
+                "configuration. This could result in subprojects cross building against Scala versions that they are " +
+                "not compatible with. Try issuing cross building command with tasks instead, since sbt will be able " +
+                "to ensure that cross building is only done using configured project and Scala version combinations " +
+                "that are configured.")
+            state.log.debug("Scala versions configuration is:")
+            projCrossVersions.foreach {
+              case (project, versions) => state.log.debug(s"$project: $versions")
+            }
+          }
+
+          // Execute using a blanket switch
+          projCrossVersions.toMap.apply(currentRef).flatMap { version =>
+            // Force scala version
+            Seq(s"$SwitchCommand $verbose $version!", aggCommand)
+          }
+
+        case Right(_) =>
+          // We have a key, we're likely to be able to cross build this using the per project behaviour.
+
+          // Group all the projects by scala version
+          projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
+            case (version, Seq(project)) =>
+              // If only one project for a version, issue it directly
+              Seq(s"$SwitchCommand $verbose $version $project/$aggCommand")
+            case (version, projects) if aggCommand.contains(" ") =>
+              // If the command contains a space, then the `all` command won't work because it doesn't support issuing
+              // commands with spaces, so revert to running the command on each project one at a time
+              s"$SwitchCommand $verbose $version" :: projects.map(project =>
+                s"$project/$aggCommand")
+            case (version, projects) =>
+              // First switch scala version, then use the all command to run the command on each project concurrently
+              Seq(s"$SwitchCommand $verbose $version",
+                  projects.map(_ + "/" + aggCommand).mkString("all ", " ", ""))
+          }
       }
 
       allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, x)
