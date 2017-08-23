@@ -37,7 +37,7 @@ import sbt.internal.{
   LogManager
 }
 import sbt.io.{ FileFilter, WatchService }
-import sbt.internal.io.{ Source, WatchState }
+import sbt.internal.io.WatchState
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
@@ -132,8 +132,8 @@ object Keys {
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
-  val watchSources = taskKey[Seq[Source]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
-  val watchTransitiveSources = taskKey[Seq[Source]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
+  val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
+  val watchTransitiveSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
   val watchingMessage = settingKey[WatchState => String]("The message to show when triggered execution waits for sources to change.").withRank(DSetting)
   val triggeredMessage = settingKey[WatchState => String]("The message to show before triggered execution executes an action after sources change.").withRank(DSetting)
 
