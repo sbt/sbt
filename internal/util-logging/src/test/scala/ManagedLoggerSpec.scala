@@ -50,6 +50,30 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     log.infoEvent(Vector(Vector(1, 2, 3)))
   }
 
+  it should "be thread safe" in {
+    import java.util.concurrent.{ Executors, TimeUnit }
+    import sjsonnew.BasicJsonProtocol._
+    val pool = Executors.newFixedThreadPool(100)
+
+    for {
+      i <- 1 to 10000
+    } {
+      pool.submit(new Runnable {
+        def run(): Unit = {
+          val stringTypeTag = StringTypeTag[List[Int]]
+          val log = LogExchange.logger(s"foo$i")
+          LogExchange.bindLoggerAppenders(s"foo$i", List(LogExchange.asyncStdout -> Level.Info))
+          if (i % 100 == 0) {
+            log.info(s"foo$i test $stringTypeTag")
+          }
+          Thread.sleep(1)
+        }
+      })
+    }
+    pool.shutdown
+    pool.awaitTermination(30, TimeUnit.SECONDS)
+  }
+
   "global logging" should "log immediately after initialization" in {
     // this is passed into State normally
     val global0 = initialGlobalLogging
