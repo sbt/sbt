@@ -1,5 +1,8 @@
-# Use Docker-based container (instead of OpenVZ)
 sudo: false
+
+# https://blog.travis-ci.com/2017-07-11-trusty-as-default-linux-is-coming
+# Travis now defaults to Trusty, which is missing openjdk6.
+dist: precise
 
 cache:
   directories:
