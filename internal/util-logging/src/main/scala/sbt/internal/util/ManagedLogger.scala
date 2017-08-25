@@ -5,9 +5,6 @@ import org.apache.logging.log4j.{ Logger => XLogger }
 import org.apache.logging.log4j.message.ObjectMessage
 import sjsonnew.JsonFormat
 import scala.reflect.runtime.universe.TypeTag
-import sbt.internal.util.codec.ThrowableShowLines._
-import sbt.internal.util.codec.TraceEventShowLines._
-import sbt.internal.util.codec.SuccessEventShowLines._
 import sbt.internal.util.codec.JsonProtocol._
 
 /**
@@ -34,14 +31,9 @@ class ManagedLogger(
   }
 
   def registerStringCodec[A: ShowLines: TypeTag]: Unit = {
-    val tag = StringTypeTag[A]
-    val ev = implicitly[ShowLines[A]]
-    // println(s"registerStringCodec ${tag.key}")
-    val _ = LogExchange.getOrElseUpdateStringCodec(tag.key, ev)
+    LogExchange.registerStringCodec[A]
   }
-  registerStringCodec[Throwable]
-  registerStringCodec[TraceEvent]
-  registerStringCodec[SuccessEvent]
+
   final def debugEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Debug, event)
   final def infoEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Info, event)
   final def warnEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Warn, event)

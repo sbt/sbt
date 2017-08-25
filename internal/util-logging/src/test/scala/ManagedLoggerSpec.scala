@@ -20,6 +20,13 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     log.infoEvent(1)
   }
 
+  it should "support logging Throwable out of the box" in {
+    import sbt.internal.util.codec.JsonProtocol._
+    val log = LogExchange.logger("foo")
+    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    log.infoEvent(SuccessEvent("yes"))
+  }
+
   it should "allow registering Show[Int]" in {
     import sjsonnew.BasicJsonProtocol._
     val log = LogExchange.logger("foo")
@@ -52,9 +59,7 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
 
   it should "be thread safe" in {
     import java.util.concurrent.{ Executors, TimeUnit }
-    import sjsonnew.BasicJsonProtocol._
     val pool = Executors.newFixedThreadPool(100)
-
     for {
       i <- 1 to 10000
     } {

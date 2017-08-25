@@ -8,6 +8,7 @@ import org.apache.logging.log4j.core.config.{ AppenderRef, LoggerConfig }
 import org.apache.logging.log4j.core.layout.PatternLayout
 import scala.collection.JavaConverters._
 import scala.collection.concurrent
+import scala.reflect.runtime.universe.TypeTag
 import sjsonnew.JsonFormat
 
 // http://logging.apache.org/log4j/2.x/manual/customconfig.html
@@ -15,6 +16,7 @@ import sjsonnew.JsonFormat
 
 sealed abstract class LogExchange {
   private[sbt] lazy val context: LoggerContext = init()
+  private[sbt] lazy val builtInStringCodecs: Unit = initStringCodecs()
   private[sbt] lazy val asyncStdout: AsyncAppender = buildAsyncStdout
   private[sbt] val jsonCodecs: concurrent.Map[String, JsonFormat[_]] = concurrent.TrieMap()
   private[sbt] val stringCodecs: concurrent.Map[String, ShowLines[_]] = concurrent.TrieMap()
@@ -22,6 +24,7 @@ sealed abstract class LogExchange {
   def logger(name: String): ManagedLogger = logger(name, None, None)
   def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger = {
     val _ = context
+    val codecs = builtInStringCodecs
     val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
     val config = ctx.getConfiguration
     val loggerConfig = LoggerConfig.createLogger(
@@ -57,6 +60,16 @@ sealed abstract class LogExchange {
     config.getLoggerConfig(loggerName)
   }
 
+  private[sbt] def initStringCodecs(): Unit = {
+    import sbt.internal.util.codec.ThrowableShowLines._
+    import sbt.internal.util.codec.TraceEventShowLines._
+    import sbt.internal.util.codec.SuccessEventShowLines._
+
+    registerStringCodec[Throwable]
+    registerStringCodec[TraceEvent]
+    registerStringCodec[SuccessEvent]
+  }
+
   // This is a dummy layout to avoid casting error during PatternLayout.createDefaultLayout()
   // that was originally used for ConsoleAppender.
   // The stacktrace shows it's having issue initializing default DefaultConfiguration.
@@ -84,6 +97,12 @@ sealed abstract class LogExchange {
     stringCodecs.contains(tag)
   def getOrElseUpdateStringCodec[A](tag: String, v: ShowLines[A]): ShowLines[A] =
     stringCodecs.getOrElseUpdate(tag, v).asInstanceOf[ShowLines[A]]
+
+  def registerStringCodec[A: ShowLines: TypeTag]: Unit = {
+    val tag = StringTypeTag[A]
+    val ev = implicitly[ShowLines[A]]
+    val _ = getOrElseUpdateStringCodec(tag.key, ev)
+  }
 
   private[sbt] def buildAsyncStdout: AsyncAppender = {
     val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
