@@ -8,13 +8,29 @@ final case class StringTypeTag[A](key: String) {
 }
 
 object StringTypeTag {
-  def apply[A: TypeTag]: StringTypeTag[A] = {
-    val tag = implicitly[TypeTag[A]]
-    val tpe = tag.tpe
-    val k = typeToString(tpe)
-    // println(tpe.getClass.toString + " " + k)
-    StringTypeTag[A](k)
-  }
+  def apply[A: TypeTag]: StringTypeTag[A] =
+    synchronized {
+      def doApply: StringTypeTag[A] = {
+        val tag = implicitly[TypeTag[A]]
+        val tpe = tag.tpe
+        val k = typeToString(tpe)
+        // println(tpe.getClass.toString + " " + k)
+        StringTypeTag[A](k)
+      }
+      def retry(n: Int): StringTypeTag[A] =
+        try {
+          doApply
+        } catch {
+          case e: NullPointerException =>
+            if (n < 1) throw new RuntimeException("NPE in StringTypeTag", e)
+            else {
+              Thread.sleep(1)
+              retry(n - 1)
+            }
+        }
+      retry(3)
+    }
+
   def typeToString(tpe: Type): String =
     tpe match {
       case TypeRef(_, sym, args) =>
