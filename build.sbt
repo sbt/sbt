@@ -66,7 +66,7 @@ def testedBaseSettings: Seq[Setting[_]] =
 
 val mimaSettings = Def settings (
   mimaPreviousArtifacts := Set(
-    organization.value % moduleName.value % "1.0.0-RC3"
+    organization.value % moduleName.value % "1.0.0"
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
   )
 )
