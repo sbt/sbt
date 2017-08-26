@@ -503,8 +503,8 @@ object Defaults extends BuildCommon {
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
-    runMain := runMainTask(fullClasspath, runner in run).evaluated,
-    run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
+    runMain := foregroundRunMainTask.evaluated,
+    run := foregroundRunTask.evaluated,
     copyResources := copyResourcesTask.value,
     // note that we use the same runner and mainClass as plain run
     bgRunMain := bgRunMainTask(exportedProductJars,
@@ -1540,8 +1540,11 @@ object Defaults extends BuildCommon {
   lazy val configSettings
     : Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
 
-  lazy val compileSettings
-    : Seq[Setting[_]] = configSettings ++ (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
+  lazy val compileSettings: Seq[Setting[_]] =
+    configSettings ++
+      (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++
+      Classpaths.addUnmanagedLibrary
+
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
