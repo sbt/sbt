@@ -30,7 +30,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 )
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0-RC3")
+  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0")
 )
 
 lazy val lmRoot = (project in file("."))
