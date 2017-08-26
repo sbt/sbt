@@ -180,17 +180,25 @@ private[sbt] class CachedResolutionResolveCache {
   ): Either[ResolveException, UpdateReport] = {
     import sbt.io.syntax._
     val mrid = md.getResolvedModuleRevisionId
-    val (pathOrg, pathName, pathRevision) = md match {
+    def extraPath(id: ModuleRevisionId, key: String, pattern: String): String =
+      Option(id.getExtraAttribute(key)).fold(".")(pattern.format(_)) // "." has no affect on paths
+    def scalaVersion(id: ModuleRevisionId): String = extraPath(id, "e:scalaVersion", "scala_%s")
+    def sbtVersion(id: ModuleRevisionId): String = extraPath(id, "e:sbtVersion", "sbt_%s")
+    val (pathOrg, pathName, pathRevision, pathScalaVersion, pathSbtVersion) = md match {
       case x: ArtificialModuleDescriptor =>
         val tmrid = x.targetModuleRevisionId
-        (tmrid.getOrganisation, tmrid.getName, tmrid.getRevision + "_" + mrid.getName)
+        (tmrid.getOrganisation,
+         tmrid.getName,
+         tmrid.getRevision + "_" + mrid.getName,
+         scalaVersion(tmrid),
+         sbtVersion(tmrid))
       case _ =>
-        (mrid.getOrganisation, mrid.getName, mrid.getRevision)
+        (mrid.getOrganisation, mrid.getName, mrid.getRevision, scalaVersion(mrid), sbtVersion(mrid))
     }
     val staticGraphDirectory = miniGraphPath / "static"
     val dynamicGraphDirectory = miniGraphPath / "dynamic"
-    val staticGraphPath = staticGraphDirectory / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
-    val dynamicGraphPath = dynamicGraphDirectory / todayStr / logicalClock.toString / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
+    val staticGraphPath = staticGraphDirectory / pathScalaVersion / pathSbtVersion / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
+    val dynamicGraphPath = dynamicGraphDirectory / todayStr / logicalClock.toString / pathScalaVersion / pathSbtVersion / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
     def cleanDynamicGraph(): Unit = {
       val list = IO.listFiles(dynamicGraphDirectory, DirectoryFilter).toList
       list filterNot { d =>
