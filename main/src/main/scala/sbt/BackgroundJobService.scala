@@ -5,6 +5,7 @@ import sbt.util.Logger
 import Def.{ ScopedKey, Classpath }
 import sbt.internal.util.complete._
 import java.io.File
+import scala.util.Try
 
 abstract class BackgroundJobService extends Closeable {
 
@@ -24,6 +25,12 @@ abstract class BackgroundJobService extends Closeable {
   def shutdown(): Unit
   def jobs: Vector[JobHandle]
   def stop(job: JobHandle): Unit
+
+  def waitForTry(job: JobHandle): Try[Unit] = {
+    // This implementation is provided only for backward compatibility.
+    Try(waitFor(job))
+  }
+
   def waitFor(job: JobHandle): Unit
 
   /** Copies classpath to temporary directories. */

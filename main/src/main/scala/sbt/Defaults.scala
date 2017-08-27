@@ -1168,14 +1168,14 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
-      service.waitFor(handle)
+      service.waitForTry(handle).get
     }
   // run calls bgRun in the background and waits for the result.
   def foregroundRunTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
       val handle = bgRun.evaluated
       val service = bgJobService.value
-      service.waitFor(handle)
+      service.waitForTry(handle).get
     }
   def runMainTask(classpath: Initialize[Task[Classpath]],
                   scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] = {

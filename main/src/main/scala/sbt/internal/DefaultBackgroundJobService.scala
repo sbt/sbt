@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.io.Closeable
 import Def.{ ScopedKey, Setting, Classpath }
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 import Scope.GlobalScope
 import java.io.File
 import sbt.io.{ IO, Hash }
@@ -18,6 +19,13 @@ import sbt.internal.util.{ Attributed, ManagedLogger }
 private[sbt] abstract class BackgroundJob {
   def humanReadableName: String
   def awaitTermination(): Unit
+
+  /** This waits till the job ends, and returns inner error via `Try`. */
+  def awaitTerminationTry(): Try[Unit] = {
+    // This implementation is provided only for backward compatibility.
+    Try(awaitTermination())
+  }
+
   def shutdown(): Unit
   // this should be true on construction and stay true until
   // the job is complete
@@ -132,14 +140,26 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
 
   private def withHandle(job: JobHandle)(f: ThreadJobHandle => Unit): Unit = job match {
     case handle: ThreadJobHandle @unchecked => f(handle)
-    case dead: DeadHandle @unchecked        => () // nothing to stop or wait for
+    case _: DeadHandle @unchecked           => () // nothing to stop or wait for
     case other =>
       sys.error(
         s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other")
   }
 
+  private def withHandleTry(job: JobHandle)(f: ThreadJobHandle => Try[Unit]): Try[Unit] =
+    job match {
+      case handle: ThreadJobHandle @unchecked => f(handle)
+      case _: DeadHandle @unchecked           => Try(()) // nothing to stop or wait for
+      case other =>
+        Try(sys.error(
+          s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other"))
+    }
+
   override def stop(job: JobHandle): Unit =
     withHandle(job)(_.job.shutdown())
+
+  override def waitForTry(job: JobHandle): Try[Unit] =
+    withHandleTry(job)(_.job.awaitTerminationTry())
 
   override def waitFor(job: JobHandle): Unit =
     withHandle(job)(_.job.awaitTermination())
@@ -212,6 +232,9 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
     @volatile
     private var status: Status = Waiting
 
+    // This is used to capture exceptions that are caught in this background job.
+    private var exitTry: Option[Try[Unit]] = None
+
     // double-finally for extra paranoia that we will finishedLatch.countDown
     override def run() =
       try {
@@ -226,7 +249,11 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
               throw new RuntimeException("Impossible status of bg thread")
           }
         }
-        try { if (go) body() } finally cleanup()
+        try {
+          if (go) {
+            exitTry = Option(Try(body()))
+          }
+        } finally cleanup()
       } finally finishedLatch.countDown()
 
     private class StopListener(val callback: () => Unit, val executionContext: ExecutionContext)
@@ -269,6 +296,12 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
         result
       }
     override def awaitTermination(): Unit = finishedLatch.await()
+
+    override def awaitTerminationTry(): Try[Unit] = {
+      awaitTermination()
+      exitTry.getOrElse(Try(()))
+    }
+
     override def humanReadableName: String = taskName
     override def isRunning(): Boolean =
       status match {
