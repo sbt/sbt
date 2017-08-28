@@ -20,6 +20,13 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     log.infoEvent(1)
   }
 
+  it should "support logging Throwable out of the box" in {
+    import sbt.internal.util.codec.JsonProtocol._
+    val log = LogExchange.logger("foo")
+    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    log.infoEvent(SuccessEvent("yes"))
+  }
+
   it should "allow registering Show[Int]" in {
     import sjsonnew.BasicJsonProtocol._
     val log = LogExchange.logger("foo")
@@ -48,6 +55,28 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
       ShowLines((xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss"))
     log.registerStringCodec[Vector[Vector[Int]]]
     log.infoEvent(Vector(Vector(1, 2, 3)))
+  }
+
+  it should "be thread safe" in {
+    import java.util.concurrent.{ Executors, TimeUnit }
+    val pool = Executors.newFixedThreadPool(100)
+    for {
+      i <- 1 to 10000
+    } {
+      pool.submit(new Runnable {
+        def run(): Unit = {
+          val stringTypeTag = StringTypeTag[List[Int]]
+          val log = LogExchange.logger(s"foo$i")
+          LogExchange.bindLoggerAppenders(s"foo$i", List(LogExchange.asyncStdout -> Level.Info))
+          if (i % 100 == 0) {
+            log.info(s"foo$i test $stringTypeTag")
+          }
+          Thread.sleep(1)
+        }
+      })
+    }
+    pool.shutdown
+    pool.awaitTermination(30, TimeUnit.SECONDS)
   }
 
   "global logging" should "log immediately after initialization" in {
