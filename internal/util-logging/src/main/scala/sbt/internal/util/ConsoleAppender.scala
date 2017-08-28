@@ -13,17 +13,17 @@ import ConsoleAppender._
 
 object ConsoleLogger {
   // These are provided so other modules do not break immediately.
-  @deprecated("Use EscHelpers.", "0.13.x")
+  @deprecated("Use EscHelpers.ESC instead", "0.13.x")
   final val ESC = EscHelpers.ESC
-  @deprecated("Use EscHelpers.", "0.13.x")
+  @deprecated("Use EscHelpers.isEscapeTerminator instead", "0.13.x")
   private[sbt] def isEscapeTerminator(c: Char): Boolean = EscHelpers.isEscapeTerminator(c)
-  @deprecated("Use EscHelpers.", "0.13.x")
+  @deprecated("Use EscHelpers.hasEscapeSequence instead", "0.13.x")
   def hasEscapeSequence(s: String): Boolean = EscHelpers.hasEscapeSequence(s)
-  @deprecated("Use EscHelpers.", "0.13.x")
+  @deprecated("Use EscHelpers.removeEscapeSequences instead", "0.13.x")
   def removeEscapeSequences(s: String): String = EscHelpers.removeEscapeSequences(s)
-  @deprecated("Use ConsoleAppenders.formatEnabledInEnv", "0.13.x")
+  @deprecated("Use ConsoleAppender.formatEnabledInEnv instead", "0.13.x")
   val formatEnabled = ConsoleAppender.formatEnabledInEnv
-  @deprecated("Use ConsoleAppender.", "0.13.x")
+  @deprecated("Use ConsoleAppender.noSuppressedMessage instead", "0.13.x")
   val noSuppressedMessage = ConsoleAppender.noSuppressedMessage
 
   /**
