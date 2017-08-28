@@ -63,6 +63,7 @@ lazy val utilRoot: Project = (project in file("."))
         description := "Util module for sbt",
         scmInfo := Some(ScmInfo(url("https://github.com/sbt/util"), "git@github.com:sbt/util.git")),
         scalafmtOnCompile := true,
+        scalafmtOnCompile in Sbt := false,
         scalafmtVersion := "1.2.0",
       )),
     commonSettings,
