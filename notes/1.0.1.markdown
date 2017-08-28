@@ -19,7 +19,7 @@ The watch source feature went through a major change from sbt 0.13 to sbt 1.0 us
 
 First, `sbt.WatchSource` is a new alias for `sbt.internal.io.Source`. Hopefully this is easy enough to remember because the key is named `watchSources`. Next, `def apply(base: File)` and `def apply(base: File, includeFilter: FileFilter, excludeFilter: FileFilter)` constructors were added to the companion object of `sbt.WatchSource`.
 
-For backward compatiblity, sbt 1.0.1 adds `+=` support (`Append` instance) from `File` to `Seqp[WatchSource]`.
+For backward compatiblity, sbt 1.0.1 adds `+=` support (`Append` instance) from `File` to `Seq[WatchSource]`.
 
 So, if you have a directory you want to watch:
 
