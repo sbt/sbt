@@ -12,6 +12,7 @@ This is a hotfix release for sbt 1.0.x series.
 - Shows `actual` as a potential option of `inspect` [#3335][3335] by [@Duhemm][@Duhemm]
 - Includes base directory to watched sources. [#3439][3439] by [@Duhemm][@Duhemm]
 - Adds an attempt to workaround intermittent `NullPointerException` arround logging. [util#121][util121] by [@eed3si9n][@eed3si9n]
+- Reverts a bad forward porting. [#3481][3481] by [@eed3si9n][@eed3si9n]
 
 ### WatchSource
 
@@ -39,6 +40,7 @@ If you have a list of files:
   [3442]: https://github.com/sbt/sbt/pull/3442
   [3446]: https://github.com/sbt/sbt/pull/3446
   [3477]: https://github.com/sbt/sbt/pull/3477
+  [3481]: https://github.com/sbt/sbt/pull/3481
   [util121]: https://github.com/sbt/util/pull/121
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: http://github.com/dwijnand
