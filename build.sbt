@@ -1,6 +1,7 @@
 import Util._
 import Dependencies._
 import Sxr.sxr
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -382,8 +383,17 @@ lazy val sbtProj = (project in file("sbt"))
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     mimaSettings,
+    mimaBinaryIssueFilters ++= sbtIgnoredProblems,
   )
   .configure(addSbtCompilerBridge)
+
+lazy val sbtIgnoredProblems = {
+  Seq(
+    // Added more items to Import trait.
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource")
+  )
+}
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
