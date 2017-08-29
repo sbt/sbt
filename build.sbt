@@ -84,7 +84,7 @@ val root = (project in file(".")).
     },
     
     // DEBIAN SPECIFIC
-    debianBuildId := 1,
+    debianBuildId := 0,
     version in Debian := {
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
@@ -103,7 +103,7 @@ val root = (project in file(".")).
     addPackage(Debian, packageBin in Debian, "deb"),
     
     // RPM SPECIFIC
-    rpmRelease := "1",
+    rpmRelease := "0",
     version in Rpm := {
       val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
       val stable = if (rpmRelease.value == "0") stable0
