@@ -411,7 +411,7 @@ object Tasks {
 
   private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
 
-  private lazy val globalPluginPatterns = {
+  private def globalPluginPatterns(sbtVersion: String): Seq[coursier.ivy.Pattern] = {
 
     val props = sys.props.toMap
 
@@ -443,12 +443,12 @@ object Tasks {
     }
 
     // FIXME get the 0.13 automatically?
-    val defaultRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/0.13}/plugins/target" +
+    val defaultRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/$sbtVersion}/plugins/target" +
       "/resolution-cache/" +
       "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
 
     // seems to be required in more recent versions of sbt (since 0.13.16?)
-    val extraRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/0.13}/plugins/target" +
+    val extraRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/$sbtVersion}/plugins/target" +
       "(/scala-[scalaVersion])(/sbt-[sbtVersion])" +
       "/resolution-cache/" +
       "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
@@ -623,7 +623,7 @@ object Tasks {
       }
 
       val globalPluginsRepos =
-        for (p <- globalPluginPatterns)
+        for (p <- globalPluginPatterns(sbtBinaryVersion.value))
           yield IvyRepository.fromPattern(
             p,
             withChecksums = false,
