@@ -219,7 +219,10 @@ lazy val doc = project
 
 lazy val `sbt-coursier` = project
   .dependsOn(coreJvm, cache, extra)
-  .settings(plugin)
+  .settings(
+    plugin,
+    utest
+  )
 
 lazy val `sbt-pgp-coursier` = project
   .dependsOn(`sbt-coursier`)

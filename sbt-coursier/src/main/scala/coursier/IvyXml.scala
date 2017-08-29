@@ -10,6 +10,23 @@ import SbtCompatibility._
 
 object IvyXml {
 
+  def rawContent(
+    currentProject: Project,
+    shadedConfigOpt: Option[(String, String)]
+  ): String = {
+
+    // Important: width = Int.MaxValue, so that no tag gets truncated.
+    // In particular, that prevents things like <foo /> to be split to
+    // <foo>
+    // </foo>
+    // by the pretty-printer.
+    // See https://github.com/sbt/sbt/issues/3412.
+    val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
+
+    """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
+      printer.format(content(currentProject, shadedConfigOpt.map(_._2)))
+  }
+
   // These are required for publish to be fine, later on.
   def writeFiles(
     currentProject: Project,
@@ -32,10 +49,7 @@ object IvyXml {
     val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
     val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
 
-    val printer = new scala.xml.PrettyPrinter(80, 2)
-
-    val content0 = """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
-      printer.format(content(currentProject, shadedConfigOpt.map(_._2)))
+    val content0 = rawContent(currentProject, shadedConfigOpt)
     cacheIvyFile.getParentFile.mkdirs()
     log.info(s"Writing Ivy file $cacheIvyFile")
     FileUtil.write(cacheIvyFile, content0.getBytes("UTF-8"))
