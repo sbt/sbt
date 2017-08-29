@@ -16,9 +16,18 @@
 
 package sbt
 
+import sbt.compat.SbtCompat._
+import librarymanagement._
+import internal._
+import librarymanagement._
+import Classpaths._
+import LibraryManagement._
+import internal.util.JLine
+
 /** Accessors to private[sbt] symbols. */
 object SbtAccess {
   val unmanagedScalaInstanceOnly = Defaults.unmanagedScalaInstanceOnly
 
   def getTerminalWidth: Int = JLine.usingTerminal(_.getWidth)
+
 }
