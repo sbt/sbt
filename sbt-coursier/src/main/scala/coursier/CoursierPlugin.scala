@@ -79,17 +79,78 @@ object CoursierPlugin extends AutoPlugin {
 
   private val pluginIvySnapshotsBase = Resolver.SbtPluginRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
+  // allows to get the actual repo list when sbt starts up
+  private val hackHack = Seq(
+    // TODO Add docker-based non reg test for that, with sbt-assembly 0.14.5 in ~/.sbt/1.0/plugins/plugins.sbt
+    // along with the required extra repo https://repository.jboss.org/nexus/content/repositories/public
+    // (required for coursier, because of bad checksums on central)
+    appConfiguration.in(updateSbtClassifiers) := {
+      val app = appConfiguration.in(updateSbtClassifiers).value
+
+      // hack to trigger https://github.com/sbt/sbt/blob/v1.0.1/main/src/main/scala/sbt/Defaults.scala#L2856,
+      // to have the third case be used instead of the second one, at https://github.com/sbt/sbt/blob/v1.0.1/main/src/main/scala/sbt/Defaults.scala#L2069
+      // 😃🔫
+      new xsbti.AppConfiguration {
+        def provider() = {
+          val prov = app.provider()
+          new xsbti.AppProvider {
+            def newMain() = prov.newMain()
+            def components() = prov.components()
+            def mainClass() = prov.mainClass()
+            def mainClasspath() = prov.mainClasspath()
+            def loader() = prov.loader()
+            def scalaProvider() = {
+              val scalaProv = prov.scalaProvider()
+              new xsbti.ScalaProvider {
+                def app(id: xsbti.ApplicationID) = scalaProv.app(id)
+                def loader() = scalaProv.loader()
+                def jars() = scalaProv.jars()
+                def libraryJar() = scalaProv.libraryJar()
+                def version() = scalaProv.version()
+                def compilerJar() = scalaProv.compilerJar()
+                def launcher() = {
+                  val launch = scalaProv.launcher()
+                  new xsbti.Launcher {
+                    def app(id: xsbti.ApplicationID, version: String) = launch.app(id, version)
+                    def checksums() = launch.checksums()
+                    def globalLock() = launch.globalLock()
+                    def bootDirectory() = launch.bootDirectory()
+                    def appRepositories() = launch.appRepositories()
+                    def topLoader() = launch.topLoader()
+                    def getScala(version: String) = launch.getScala(version)
+                    def getScala(version: String, reason: String) = launch.getScala(version, reason)
+                    def getScala(version: String, reason: String, scalaOrg: String) = launch.getScala(version, reason, scalaOrg)
+                    def isOverrideRepositories = launch.isOverrideRepositories
+                    def ivyRepositories() =
+                      throw new NoSuchMethodError("nope")
+                    def ivyHome() = launch.ivyHome()
+                  }
+                }
+              }
+            }
+            def entryPoint() = prov.entryPoint()
+            def id() = prov.id()
+          }
+        }
+        def arguments() = app.arguments()
+        def baseDirectory() = app.baseDirectory()
+      }
+    }
+  )
+
   def coursierSettings(
     shadedConfigOpt: Option[(String, String)],
     packageConfigs: Seq[(Configuration, String)]
-  ) = Seq(
+  ) = hackHack ++ Seq(
     coursierResolvers := Tasks.coursierResolversTask.value,
     coursierRecursiveResolvers := Tasks.coursierRecursiveResolversTask.value,
     coursierSbtResolvers := {
 
       // TODO Add docker-based integration test for that, see https://github.com/coursier/coursier/issues/632
 
-      val resolvers = externalResolvers.in(updateSbtClassifiers).value
+      val resolvers =
+        sbt.Classpaths.bootRepositories(appConfiguration.value).toSeq.flatten ++ // required because of the hack above it seems
+          externalResolvers.in(updateSbtClassifiers).value
 
       val pluginIvySnapshotsFound = resolvers.exists {
         case repo: URLRepository =>
