@@ -21,7 +21,7 @@ libs ++= Seq(
 )
 
 // important: this line is matched / substituted during releases (via sbt-release)
-def coursierVersion = "1.0.0-RC10"
+def coursierVersion = "1.0.0-RC11"
 
 // required for just released things
 resolvers += Resolver.sonatypeRepo("releases")

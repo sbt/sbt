@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.0.0-RC10
+VERSION=1.0.0-RC11
 CACHE_VERSION=v1
 
 SBTPACK_LAUNCHER="$(dirname "$0")/../cli/target/pack/bin/coursier"
