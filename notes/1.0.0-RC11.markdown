@@ -1,0 +1,16 @@
+### Changes
+
+* Fix small glitch in API ([#638], thanks to [@larsrh])
+* Accept (even) more loose checksum formats ([#640], thanks to [@hochgi])
+* Tweak repository handling when during sbt start up (fixes issues with global plugins in sbt 1.0, [#645])
+* Don't generate malformed Ivy XML due to pretty-printing ([#646])
+
+
+[#638]: https://github.com/alexarchambault/coursier/pull/638
+[#640]: https://github.com/alexarchambault/coursier/pull/640
+[#645]: https://github.com/alexarchambault/coursier/pull/645
+[#646]: https://github.com/alexarchambault/coursier/pull/646
+
+[@larsrh]: https://github.com/larsrh
+[@hochgi]: https://github.com/hochgi
+
