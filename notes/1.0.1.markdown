@@ -1,0 +1,49 @@
+This is a hotfix release for sbt 1.0.x series.
+
+### Improvements
+
+- Various improves around watch source feature. See below.
+
+### Bug fixes
+
+- Fixes command support for cross building `+` command. The `+` added to sbt 1.0 traveres over the subprojects, respecting `crossScalaVersions`; however, it no longer accepted commands as arguments. This brings back the support for it. [#3446][3446] by [@jroper][@jroper]
+- Fixes `addSbtPlugin` to use the correct version of sbt during cross building. [#3442][3442] by [@dwijnand][@dwijnand]
+- Fixes `run in Compile` task not including `Runtime` configuration, by reimplementing `run` in terms of `bgRun`. [#3477][3477] by [@eed3si9n][@eed3si9n]
+- Shows `actual` as a potential option of `inspect` [#3335][3335] by [@Duhemm][@Duhemm]
+- Includes base directory to watched sources. [#3439][3439] by [@Duhemm][@Duhemm]
+- Adds an attempt to workaround intermittent `NullPointerException` arround logging. [util#121][util121] by [@eed3si9n][@eed3si9n]
+- Reverts a bad forward porting. [#3481][3481] by [@eed3si9n][@eed3si9n]
+
+### WatchSource
+
+The watch source feature went through a major change from sbt 0.13 to sbt 1.0 using NIO; however, it did not have clear migration path, so we are rectifying that in sbt 1.0.1.
+
+First, `sbt.WatchSource` is a new alias for `sbt.internal.io.Source`. Hopefully this is easy enough to remember because the key is named `watchSources`. Next, `def apply(base: File)` and `def apply(base: File, includeFilter: FileFilter, excludeFilter: FileFilter)` constructors were added to the companion object of `sbt.WatchSource`.
+
+For backward compatiblity, sbt 1.0.1 adds `+=` support (`Append` instance) from `File` to `Seq[WatchSource]`.
+
+So, if you have a directory you want to watch:
+
+    watchSources += WatchSource(sourceDirectory.value)
+
+If you have a list of files:
+
+    watchSources ++= (sourceDirectory.value ** "*.scala").get
+
+[#3438][3438] by [@Duhemm][@Duhemm]; [#3478][3478] and [io#74][io74] by [@eed3si9n][@eed3si9n]
+
+  [3335]: https://github.com/sbt/sbt/pull/3335
+  [3438]: https://github.com/sbt/sbt/pull/3438
+  [3478]: https://github.com/sbt/sbt/pull/3478
+  [3439]: https://github.com/sbt/sbt/pull/3439
+  [io74]: https://github.com/sbt/io/pull/74
+  [3442]: https://github.com/sbt/sbt/pull/3442
+  [3446]: https://github.com/sbt/sbt/pull/3446
+  [3477]: https://github.com/sbt/sbt/pull/3477
+  [3481]: https://github.com/sbt/sbt/pull/3481
+  [util121]: https://github.com/sbt/util/pull/121
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dwijnand]: http://github.com/dwijnand
+  [@jvican]: https://github.com/jvican
+  [@Duhemm]: https://github.com/Duhemm
+  [@jroper]: https://github.com/jroper

@@ -28,10 +28,11 @@ class Foo {
 		catch { case _: URISyntaxException => new File(url.getPath) }
 }
 
-object Test
-{
-	def main(args: Array[String])
-	{
+object Test {
+	def main(args: Array[String]): Unit = {
+		// test that Runtime configuration is included
+		Class.forName("org.apache.commons.io.ByteOrderMark")
+		
 		val foo = new Foo
 		args.foreach { arg =>  foo.eval(arg) == arg.toInt }
 	}

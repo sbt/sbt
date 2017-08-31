@@ -50,6 +50,8 @@ trait Import {
   type RichFile = sbt.io.RichFile
   type SimpleFileFilter = sbt.io.SimpleFileFilter
   type SimpleFilter = sbt.io.SimpleFilter
+  type WatchSource = sbt.internal.io.Source
+  val WatchSource = sbt.internal.io.Source
 
   // sbt.util
   type AbstractLogger = sbt.util.AbstractLogger

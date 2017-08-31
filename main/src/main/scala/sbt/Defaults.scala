@@ -316,7 +316,9 @@ object Defaults extends BuildCommon {
                                      includeFilter in unmanagedSources,
                                      excludeFilter in unmanagedSources).value,
     watchSources in ConfigGlobal ++= {
-      val bases = unmanagedSourceDirectories.value
+      val baseDir = baseDirectory.value
+      val bases = unmanagedSourceDirectories.value ++ (if (sourcesInBase.value) Seq(baseDir)
+                                                       else Seq.empty)
       val include = (includeFilter in unmanagedSources).value
       val exclude = (excludeFilter in unmanagedSources).value
       bases.map(b => new Source(b, include, exclude))
@@ -388,14 +390,7 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := {
-      if (ScalaInstance.isDotty(scalaVersion.value))
-        // Maintained at https://github.com/lampepfl/dotty/tree/master/sbt-bridge
-        ModuleID(scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value)
-          .withConfigurations(Some("component"))
-          .sources()
-      else ZincUtil.getDefaultBridgeModule(scalaVersion.value)
-    }
+    scalaCompilerBridgeSource := ZincUtil.getDefaultBridgeModule(scalaVersion.value)
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
@@ -501,8 +496,8 @@ object Defaults extends BuildCommon {
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
-    runMain := runMainTask(fullClasspath, runner in run).evaluated,
-    run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
+    runMain := foregroundRunMainTask.evaluated,
+    run := foregroundRunTask.evaluated,
     copyResources := copyResourcesTask.value,
     // note that we use the same runner and mainClass as plain run
     bgRunMain := bgRunMainTask(exportedProductJars,
@@ -1166,14 +1161,14 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
-      service.waitFor(handle)
+      service.waitForTry(handle).get
     }
   // run calls bgRun in the background and waits for the result.
   def foregroundRunTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
       val handle = bgRun.evaluated
       val service = bgJobService.value
-      service.waitFor(handle)
+      service.waitForTry(handle).get
     }
   def runMainTask(classpath: Initialize[Task[Classpath]],
                   scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] = {
@@ -1538,8 +1533,11 @@ object Defaults extends BuildCommon {
   lazy val configSettings
     : Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
 
-  lazy val compileSettings
-    : Seq[Setting[_]] = configSettings ++ (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
+  lazy val compileSettings: Seq[Setting[_]] =
+    configSettings ++
+      (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++
+      Classpaths.addUnmanagedLibrary
+
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
@@ -2961,7 +2959,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    */
   def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
     libraryDependencies += {
-      val sbtV = (sbtBinaryVersion in update).value
+      val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
       val scalaV = (scalaBinaryVersion in update).value
       sbtPluginExtra(dependency, sbtV, scalaV)
     }
