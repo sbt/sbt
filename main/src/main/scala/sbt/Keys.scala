@@ -372,6 +372,8 @@ object Keys {
   val makePom = taskKey[File]("Generates a pom for publishing when publishing Maven-style.").withRank(BPlusTask)
   val deliver = taskKey[File]("Generates the Ivy file for publishing to a repository.").withRank(BTask)
   val deliverLocal = taskKey[File]("Generates the Ivy file for publishing to the local repository.").withRank(BTask)
+  // makeIvyXml is currently identical to the confusingly-named "deliver", which may be deprecated in the future
+  val makeIvyXml = taskKey[File]("Generates the Ivy file for publishing to a repository.").withRank(BTask)
   val publish = taskKey[Unit]("Publishes artifacts to a repository.").withRank(APlusTask)
   val publishLocal = taskKey[Unit]("Publishes artifacts to the local Ivy repository.").withRank(APlusTask)
   val publishM2 = taskKey[Unit]("Publishes artifacts to the local Maven repository.").withRank(ATask)

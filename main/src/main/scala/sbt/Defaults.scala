@@ -1692,6 +1692,7 @@ object Classpaths {
     packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
     deliver := deliverTask(makeIvyXmlConfiguration).value,
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
+    makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
     publish := publishTask(publishConfiguration, deliver).value,
     publishLocal := publishTask(publishLocalConfiguration, deliverLocal).value,
     publishM2 := publishTask(publishM2Configuration, deliverLocal).value
