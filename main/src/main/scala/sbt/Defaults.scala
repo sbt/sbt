@@ -1690,8 +1690,9 @@ object Classpaths {
       config.file.get
     },
     packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
-    deliver := deliverTask(publishConfiguration).value,
-    deliverLocal := deliverTask(publishLocalConfiguration).value,
+    deliver := deliverTask(makeIvyXmlConfiguration).value,
+    deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
+    makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
     publish := publishTask(publishConfiguration, deliver).value,
     publishLocal := publishTask(publishLocalConfiguration, deliverLocal).value,
     publishM2 := publishTask(publishM2Configuration, deliverLocal).value
@@ -1871,6 +1872,17 @@ object Classpaths {
       .withProcess(pomPostProcess.value)
       .withFilterRepositories(pomIncludeRepository.value)
       .withAllRepositories(pomAllRepositories.value),
+    makeIvyXmlConfiguration := {
+      makeIvyXmlConfig(
+        publishMavenStyle.value,
+        sbt.Classpaths.deliverPattern(crossTarget.value),
+        if (isSnapshot.value) "integration" else "release",
+        ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+        checksums.in(publish).value.toVector,
+        ivyLoggingLevel.value,
+        isSnapshot.value
+      )
+    },
     publishConfiguration := {
       publishConfig(
         publishMavenStyle.value,
@@ -1882,6 +1894,18 @@ object Classpaths {
         getPublishTo(publishTo.value).name,
         ivyLoggingLevel.value,
         isSnapshot.value
+      )
+    },
+    makeIvyXmlLocalConfiguration := {
+      makeIvyXmlConfig(
+        false, //publishMavenStyle.value,
+        sbt.Classpaths.deliverPattern(crossTarget.value),
+        if (isSnapshot.value) "integration" else "release",
+        ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+        checksums.in(publish).value.toVector,
+        ivyLoggingLevel.value,
+        isSnapshot.value,
+        optResolverName = Some("local")
       )
     },
     publishLocalConfiguration := publishConfig(
@@ -2405,6 +2429,24 @@ object Classpaths {
                          artifacts,
                          checksums,
                          logging,
+                         overwrite)
+
+  def makeIvyXmlConfig(publishMavenStyle: Boolean,
+                       deliverIvyPattern: String,
+                       status: String,
+                       configurations: Vector[ConfigRef],
+                       checksums: Vector[String],
+                       logging: sbt.librarymanagement.UpdateLogging = UpdateLogging.DownloadOnly,
+                       overwrite: Boolean = false,
+                       optResolverName: Option[String] = None) =
+    PublishConfiguration(publishMavenStyle,
+                         Some(deliverIvyPattern),
+                         Some(status),
+                         Some(configurations),
+                         optResolverName,
+                         Vector.empty,
+                         checksums,
+                         Some(logging),
                          overwrite)
 
   def deliverPattern(outputPath: File): String =
