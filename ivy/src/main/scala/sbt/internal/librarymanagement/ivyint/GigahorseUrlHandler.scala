@@ -1,16 +1,26 @@
 package sbt.internal.librarymanagement
 package ivyint
 
-import java.net.{ URL, UnknownHostException, HttpURLConnection }
-import java.io.{ File, IOException, InputStream, ByteArrayOutputStream, ByteArrayInputStream }
-import org.apache.ivy.util.{ CopyProgressListener, Message, FileUtil }
-import org.apache.ivy.util.url.{ URLHandler, AbstractURLHandler, BasicURLHandler, IvyAuthenticator }
+import java.net.{ HttpURLConnection, URL, UnknownHostException }
+import java.io._
+
+import scala.util.control.NonFatal
+
+import okhttp3.{ MediaType, OkUrlFactory, Request, RequestBody }
+import okhttp3.internal.http.HttpDate
+
+import okhttp3._
+import okio._
+
+import org.apache.ivy.util.{ CopyProgressEvent, CopyProgressListener, Message }
+import org.apache.ivy.util.url.{ AbstractURLHandler, BasicURLHandler, IvyAuthenticator, URLHandler }
 import org.apache.ivy.util.url.URLHandler._
-import sbt.io.{ IO, Using }
+import sbt.io.IO
 
 // Copied from Ivy's BasicURLHandler.
 class GigahorseUrlHandler extends AbstractURLHandler {
-  private val BUFFER_SIZE = 64 * 1024
+
+  import GigahorseUrlHandler._
 
   /**
    * Returns the URLInfo of the given url or a #UNAVAILABLE instance,
@@ -24,126 +34,136 @@ class GigahorseUrlHandler extends AbstractURLHandler {
    */
   def getURLInfo(url0: URL, timeout: Int): URLInfo = {
     // Install the ErrorMessageAuthenticator
-    if ("http" == url0.getProtocol() || "https" == url0.getProtocol()) {
+    if ("http" == url0.getProtocol || "https" == url0.getProtocol) {
       IvyAuthenticator.install()
       ErrorMessageAuthenticator.install()
     }
 
     val url = normalizeToURL(url0)
-    val con = GigahorseUrlHandler.open(url)
-    val infoOption = try {
-      con match {
-        case httpCon: HttpURLConnection =>
-          if (getRequestMethod == URLHandler.REQUEST_METHOD_HEAD) {
-            httpCon.setRequestMethod("HEAD")
-          }
-          if (checkStatusCode(url, httpCon)) {
-            val bodyCharset = BasicURLHandler.getCharSetFromContentType(con.getContentType)
-            Some(
-              new SbtUrlInfo(true,
-                             httpCon.getContentLength.toLong,
-                             con.getLastModified(),
-                             bodyCharset))
-          } else None
+    val request = new Request.Builder()
+      .url(url)
 
-        case _ =>
-          val contentLength = con.getContentLength
-          if (contentLength <= 0) None
-          else {
-            // TODO: not HTTP... maybe we *don't* want to default to ISO-8559-1 here?
-            val bodyCharset = BasicURLHandler.getCharSetFromContentType(con.getContentType)
-            Some(new SbtUrlInfo(true, contentLength.toLong, con.getLastModified(), bodyCharset))
-          }
+    if (getRequestMethod == URLHandler.REQUEST_METHOD_HEAD) request.head() else request.get()
+
+    val response = okHttpClient.newCall(request.build()).execute()
+    try {
+      val infoOption = try {
+
+        if (checkStatusCode(url, response)) {
+          val bodyCharset =
+            BasicURLHandler.getCharSetFromContentType(response.body().contentType().toString)
+          Some(
+            new SbtUrlInfo(true,
+                           response.body().contentLength(),
+                           lastModifiedTimestamp(response),
+                           bodyCharset))
+        } else None
+        //
+        //      Commented out for now - can potentially be used for non HTTP urls
+        //
+        //      val contentLength: Long = con.getContentLengthLong
+        //      if (contentLength <= 0) None
+        //      else {
+        //        // TODO: not HTTP... maybe we *don't* want to default to ISO-8559-1 here?
+        //        val bodyCharset = BasicURLHandler.getCharSetFromContentType(con.getContentType)
+        //        Some(new SbtUrlInfo(true, contentLength, con.getLastModified(), bodyCharset))
+        //      }
+
+      } catch {
+        case e: UnknownHostException =>
+          Message.warn("Host " + e.getMessage + " not found. url=" + url)
+          Message.info(
+            "You probably access the destination server through "
+              + "a proxy server that is not well configured.")
+          None
+        case e: IOException =>
+          Message.error("Server access Error: " + e.getMessage + " url=" + url)
+          None
       }
-    } catch {
-      case e: UnknownHostException =>
-        Message.warn("Host " + e.getMessage() + " not found. url=" + url)
-        Message.info(
-          "You probably access the destination server through "
-            + "a proxy server that is not well configured.")
-        None
-      case e: IOException =>
-        Message.error("Server access Error: " + e.getMessage() + " url=" + url)
-        None
+      infoOption.getOrElse(UNAVAILABLE)
+    } finally {
+      response.close()
     }
-    infoOption.getOrElse(UNAVAILABLE)
   }
 
-  def openStream(url0: URL): InputStream = {
+  //The caller of this *MUST* call Response.close()
+  private def getUrl(url0: URL): okhttp3.Response = {
     // Install the ErrorMessageAuthenticator
-    if ("http" == url0.getProtocol() || "https" == url0.getProtocol()) {
+    if ("http" == url0.getProtocol || "https" == url0.getProtocol) {
       IvyAuthenticator.install()
       ErrorMessageAuthenticator.install()
     }
 
     val url = normalizeToURL(url0)
-    val conn = GigahorseUrlHandler.open(url)
-    conn.setRequestProperty("Accept-Encoding", "gzip,deflate")
-    conn match {
-      case httpCon: HttpURLConnection =>
-        if (!checkStatusCode(url, httpCon)) {
-          throw new IOException(
-            "The HTTP response code for " + url + " did not indicate a success."
-              + " See log for more detail.")
-        }
-      case _ =>
+    val request = new Request.Builder()
+      .url(url)
+      .get()
+      .build()
+
+    val response = okHttpClient.newCall(request).execute()
+    try {
+      if (!checkStatusCode(url, response)) {
+        throw new IOException(
+          "The HTTP response code for " + url + " did not indicate a success."
+            + " See log for more detail.")
+      }
+      response
+    } catch {
+      case NonFatal(e) =>
+        //ensure the response gets closed if there's an error
+        response.close()
+        throw e
     }
-    val inStream = getDecodingInputStream(conn.getContentEncoding(), conn.getInputStream())
-    val outStream = new ByteArrayOutputStream()
-    val buffer = new Array[Byte](BUFFER_SIZE)
-    var len = 0
-    while ({
-      len = inStream.read(buffer)
-      len > 0
-    }) {
-      outStream.write(buffer, 0, len)
-    }
-    new ByteArrayInputStream(outStream.toByteArray())
+
   }
 
-  def download(src0: URL, dest: File, l: CopyProgressListener): Unit = {
-    // Install the ErrorMessageAuthenticator
-    if ("http" == src0.getProtocol() || "https" == src0.getProtocol()) {
-      IvyAuthenticator.install()
-      ErrorMessageAuthenticator.install()
-    }
+  def openStream(url: URL): InputStream = {
+    //It's assumed that the caller of this will call close() on the supplied inputstream,
+    // thus closing the OkHTTP request
+    getUrl(url).body().byteStream()
+  }
 
-    val src = normalizeToURL(src0)
-    val srcConn = GigahorseUrlHandler.open(src)
-    srcConn.setRequestProperty("Accept-Encoding", "gzip,deflate")
-    srcConn match {
-      case httpCon: HttpURLConnection =>
-        if (!checkStatusCode(src, httpCon)) {
-          throw new IOException(
-            "The HTTP response code for " + src + " did not indicate a success."
-              + " See log for more detail.")
-        }
-      case _ =>
+  def download(url: URL, dest: File, l: CopyProgressListener): Unit = {
+
+    val response = getUrl(url)
+    try {
+
+      if (l != null) {
+        l.start(new CopyProgressEvent())
+      }
+      val sink = Okio.buffer(Okio.sink(dest))
+      try {
+        sink.writeAll(response.body().source())
+        sink.flush()
+      } finally {
+        sink.close()
+      }
+
+      val contentLength = response.body().contentLength()
+      if (contentLength != -1 && dest.length != contentLength) {
+        IO.delete(dest)
+        throw new IOException(
+          "Downloaded file size doesn't match expected Content Length for " + url
+            + ". Please retry.")
+      }
+
+      val lastModified = lastModifiedTimestamp(response)
+      if (lastModified > 0) {
+        dest.setLastModified(lastModified)
+      }
+
+      if (l != null) {
+        l.end(new CopyProgressEvent(EmptyBuffer, contentLength))
+      }
+
+    } finally {
+      response.close()
     }
-    val inStream = getDecodingInputStream(srcConn.getContentEncoding(), srcConn.getInputStream())
-    FileUtil.copy(inStream, dest, l)
-    // check content length only if content was not encoded
-    Option(srcConn.getContentEncoding) match {
-      case None =>
-        val contentLength = srcConn.getContentLength
-        if (contentLength != -1 && dest.length != contentLength) {
-          IO.delete(dest)
-          throw new IOException(
-            "Downloaded file size doesn't match expected Content Length for " + src
-              + ". Please retry.")
-        }
-      case _ => ()
-    }
-    val lastModified = srcConn.getLastModified
-    if (lastModified > 0) {
-      dest.setLastModified(lastModified)
-      ()
-    }
-    ()
   }
 
   def upload(source: File, dest0: URL, l: CopyProgressListener): Unit = {
-    if (("http" != dest0.getProtocol()) && ("https" != dest0.getProtocol())) {
+
+    if (("http" != dest0.getProtocol) && ("https" != dest0.getProtocol)) {
       throw new UnsupportedOperationException("URL repository only support HTTP PUT at the moment")
     }
 
@@ -151,36 +171,34 @@ class GigahorseUrlHandler extends AbstractURLHandler {
     ErrorMessageAuthenticator.install()
 
     val dest = normalizeToURL(dest0)
-    val conn = GigahorseUrlHandler.open(dest) match {
-      case c: HttpURLConnection => c
+
+    val body = RequestBody.create(MediaType.parse("application/octet-stream"), source)
+
+    val request = new Request.Builder()
+      .url(dest)
+      .put(body)
+      .build()
+
+    if (l != null) {
+      l.start(new CopyProgressEvent())
     }
-    conn.setDoOutput(true)
-    conn.setRequestMethod("PUT")
-    conn.setRequestProperty("Content-type", "application/octet-stream")
-    conn.setRequestProperty("Content-length", source.length.toLong.toString)
-    conn.setInstanceFollowRedirects(true)
-    Using.fileInputStream(source) { in =>
-      val os = conn.getOutputStream
-      FileUtil.copy(in, os, l)
+    val response = okHttpClient.newCall(request).execute()
+    try {
+      if (l != null) {
+        l.end(new CopyProgressEvent(EmptyBuffer, source.length()))
+      }
+      validatePutStatusCode(dest, response.code(), response.message())
+    } finally {
+      response.close()
     }
-    validatePutStatusCode(dest, conn.getResponseCode(), conn.getResponseMessage())
   }
 
-  def checkStatusCode(url: URL, con: HttpURLConnection): Boolean =
-    con.getResponseCode match {
-      case 200                                   => true
-      case 204 if "HEAD" == con.getRequestMethod => true
-      case status =>
-        Message.debug("HTTP response status: " + status + " url=" + url)
-        if (status == 407 /* PROXY_AUTHENTICATION_REQUIRED */ ) {
-          Message.warn("Your proxy requires authentication.");
-        } else if (String.valueOf(status).startsWith("4")) {
-          Message.verbose("CLIENT ERROR: " + con.getResponseMessage() + " url=" + url)
-        } else if (String.valueOf(status).startsWith("5")) {
-          Message.error("SERVER ERROR: " + con.getResponseMessage() + " url=" + url)
-        }
-        false
-    }
+}
+
+object GigahorseUrlHandler {
+  import gigahorse.HttpClient
+  import gigahorse.support.okhttp.Gigahorse
+  import okhttp3.{ OkHttpClient, JavaNetAuthenticator }
 
   // This is requires to access the constructor of URLInfo.
   private[sbt] class SbtUrlInfo(available: Boolean,
@@ -192,23 +210,51 @@ class GigahorseUrlHandler extends AbstractURLHandler {
       this(available, contentLength, lastModified, null)
     }
   }
-}
 
-object GigahorseUrlHandler {
-  import gigahorse._, support.okhttp.Gigahorse
-  import okhttp3.{ OkUrlFactory, OkHttpClient, JavaNetAuthenticator }
+  private val EmptyBuffer: Array[Byte] = new Array[Byte](0)
 
   lazy val http: HttpClient = Gigahorse.http(Gigahorse.config)
 
-  private[sbt] def urlFactory = {
-    val client0 = http.underlying[OkHttpClient]
-    val client = client0
+  private lazy val okHttpClient: OkHttpClient = {
+    http
+      .underlying[OkHttpClient]
       .newBuilder()
       .authenticator(new JavaNetAuthenticator)
+      .followRedirects(true)
+      .followSslRedirects(true)
       .build
-    new OkUrlFactory(client)
+  }
+
+  private[sbt] def urlFactory = {
+    new OkUrlFactory(okHttpClient)
   }
 
   private[sbt] def open(url: URL): HttpURLConnection =
     urlFactory.open(url)
+
+  private def checkStatusCode(url: URL, response: Response): Boolean =
+    response.code() match {
+      case 200                                          => true
+      case 204 if "HEAD" == response.request().method() => true
+      case status =>
+        Message.debug("HTTP response status: " + status + " url=" + url)
+        if (status == 407 /* PROXY_AUTHENTICATION_REQUIRED */ ) {
+          Message.warn("Your proxy requires authentication.")
+        } else if (String.valueOf(status).startsWith("4")) {
+          Message.verbose("CLIENT ERROR: " + response.message() + " url=" + url)
+        } else if (String.valueOf(status).startsWith("5")) {
+          Message.error("SERVER ERROR: " + response.message() + " url=" + url)
+        }
+        false
+    }
+
+  private def lastModifiedTimestamp(response: Response): Long = {
+    val lastModifiedDate =
+      Option(response.headers().get("Last-Modified")).flatMap { headerValue =>
+        Option(HttpDate.parse(headerValue))
+      }
+
+    lastModifiedDate.map(_.getTime).getOrElse(0)
+  }
+
 }
