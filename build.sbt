@@ -30,7 +30,16 @@ def commonSettings: Seq[Setting[_]] = Seq(
 )
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0")
+  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0"),
+  mimaBinaryIssueFilters ++= {
+    import com.typesafe.tools.mima.core._
+    import com.typesafe.tools.mima.core.ProblemFilters._
+    Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler#SbtUrlInfo.this"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler#SbtUrlInfo.this"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler.checkStatusCode")
+    )
+  }
 )
 
 lazy val lmRoot = (project in file("."))
