@@ -23,14 +23,20 @@ object Pom {
   }
 
   // TODO Allow no version in some contexts
-  private def module(node: Node, groupIdIsOptional: Boolean = false): String \/ Module = {
+  private def module(
+    node: Node,
+    defaultGroupId: Option[String] = None,
+    defaultArtifactId: Option[String] = None
+  ): String \/ Module = {
     for {
       organization <- {
         val e = text(node, "groupId", "Organization")
-        if (groupIdIsOptional) e.orElse(\/-(""))
-        else e
+        defaultGroupId.fold(e)(g => e.orElse(\/-(g)))
       }
-      name <- text(node, "artifactId", "Name")
+      name <- {
+        val n = text(node, "artifactId", "Name")
+        defaultArtifactId.fold(n)(n0 => n.orElse(\/-(n0)))
+      }
     } yield Module(organization, name, Map.empty).trim
   }
 
@@ -50,7 +56,7 @@ object Pom {
         .getOrElse(Seq.empty)
       exclusions <- {
         import Scalaz._
-        xmlExclusions.toList.traverseU(module(_))
+        xmlExclusions.toList.traverseU(module(_, defaultArtifactId = Some("*")))
       }
       optional = text(node, "optional", "").toOption.toSeq.contains("true")
     } yield scopeOpt.getOrElse("") -> Dependency(
@@ -152,7 +158,7 @@ object Pom {
     import Scalaz._
 
     for {
-      projModule <- module(pom, groupIdIsOptional = true)
+      projModule <- module(pom, defaultGroupId = Some(""))
       projVersion = readVersion(pom)
 
       parentOpt = pom.children
