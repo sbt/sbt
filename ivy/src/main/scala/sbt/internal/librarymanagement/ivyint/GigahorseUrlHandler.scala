@@ -225,10 +225,12 @@ object GigahorseUrlHandler {
       .build
   }
 
+  @deprecated("Use the Gigahorse HttpClient directly instead.", "librarymanagement-ivy 1.0.1")
   private[sbt] def urlFactory = {
     new OkUrlFactory(okHttpClient)
   }
 
+  @deprecated("Use the Gigahorse HttpClient directly instead.", "librarymanagement-ivy 1.0.1")
   private[sbt] def open(url: URL): HttpURLConnection =
     urlFactory.open(url)
 
