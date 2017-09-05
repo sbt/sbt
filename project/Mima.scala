@@ -44,7 +44,9 @@ object Mima {
         // was private, now removed
         ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.PropertiesPattern$Parser$"),
         // made private so that the shaded fastparse stuff doesn't leak
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.PropertiesPattern.parser")
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.PropertiesPattern.parser"),
+        // corresponds to a default value of a private method, not sure why this error is raised
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.maven.Pom.coursier$maven$Pom$$module$default$2")
       )
     }
   }

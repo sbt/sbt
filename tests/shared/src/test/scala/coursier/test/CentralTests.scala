@@ -850,6 +850,13 @@ abstract class CentralTests extends TestSuite {
         assert(expectedUrls.forall(urls))
       }
     }
+
+    'noArtifactIdExclusion - {
+      val mod = Module("org.datavec", "datavec-api")
+      val ver = "0.9.1"
+
+      * - resolutionCheck(mod, ver)
+    }
   }
 
 }
