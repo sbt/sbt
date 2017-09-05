@@ -295,7 +295,7 @@ abstract class ResolverFunctions {
 
     /**
      * Constructs a file resolver with the given name.  The patterns to use must be explicitly specified
-     * using the `ivys` or `artifacts` methods on the constructed resolver object.
+     * using the `withPatterns` method on the constructed resolver object.
      */
     def apply(name: String): FileRepository =
       FileRepository(name, defaultFileConfiguration, Patterns(false))
@@ -310,7 +310,7 @@ abstract class ResolverFunctions {
 
     /**
      * Constructs a URL resolver with the given name.  The patterns to use must be explicitly specified
-     * using the `ivys` or `artifacts` methods on the constructed resolver object.
+     * using the `withPatterns` method on the constructed resolver object.
      */
     def apply(name: String): URLRepository = URLRepository(name, Patterns(false))
 
