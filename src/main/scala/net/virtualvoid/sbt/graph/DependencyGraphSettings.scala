@@ -25,7 +25,6 @@ import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
 import net.virtualvoid.sbt.graph.rendering.{ AsciiGraph, DagreHTML }
 import net.virtualvoid.sbt.graph.util.IOUtil
 
-import sbt.compat.SbtCompat._
 import internal.librarymanagement._
 import librarymanagement._
 
