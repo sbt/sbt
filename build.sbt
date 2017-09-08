@@ -487,7 +487,7 @@ lazy val sbtProj = (project in sbtPath).
 lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
   dependsOn(sbtProj, ivyProj % "test->test").
   settings(
-    baseSettings,
+    testedBaseSettings,
     name := "sbt-maven-resolver",
     libraryDependencies ++= aetherLibs,
     sbtPlugin := true
