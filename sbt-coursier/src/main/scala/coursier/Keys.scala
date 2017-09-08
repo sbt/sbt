@@ -18,6 +18,7 @@ object Keys {
   val coursierArtifactsChecksums = SettingKey[Seq[Option[String]]]("coursier-artifacts-checksums")
   val coursierCachePolicies = SettingKey[Seq[CachePolicy]]("coursier-cache-policies")
   val coursierTtl = SettingKey[Option[Duration]]("coursier-ttl")
+  val coursierKeepPreloaded = SettingKey[Boolean]("coursier-keep-preloaded", "Whether to take into account sbt preloaded repositories or not")
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
 

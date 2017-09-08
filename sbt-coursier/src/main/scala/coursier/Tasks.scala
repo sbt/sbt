@@ -99,12 +99,21 @@ object Tasks {
     Def.task {
       val result = resultTask.value
       val reorderResolvers = coursierReorderResolvers.value
+      val keepPreloaded = coursierKeepPreloaded.value
 
-      if (reorderResolvers && result.exists(fastRepo) && result.exists(slowRepo)) {
-        val (slow, other) = result.partition(slowRepo)
-        other ++ slow
-      } else
-        result
+      val result0 =
+        if (reorderResolvers && result.exists(fastRepo) && result.exists(slowRepo)) {
+          val (slow, other) = result.partition(slowRepo)
+          other ++ slow
+        } else
+          result
+
+      if (keepPreloaded)
+        result0
+      else
+        result0.filter { r =>
+          !r.name.startsWith("local-preloaded")
+        }
     }
   }
 
@@ -423,7 +432,7 @@ object Tasks {
 
   private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
 
-  private def globalPluginPatterns(sbtVersion: String): Seq[coursier.ivy.Pattern] = {
+  private[coursier] def exceptionPatternParser(): String => coursier.ivy.Pattern = {
 
     val props = sys.props.toMap
 
@@ -438,21 +447,25 @@ object Tasks {
     addUriProp("sbt.global.base")
     addUriProp("user.home")
 
-    def pattern(s: String): coursier.ivy.Pattern = {
-      val p = PropertiesPattern.parse(s) match {
-        case -\/(err) =>
-          throw new Exception(s"Cannot parse pattern $s: $err")
-        case \/-(p) =>
-          p
-      }
+    {
+      s =>
+        val p = PropertiesPattern.parse(s) match {
+          case -\/(err) =>
+            throw new Exception(s"Cannot parse pattern $s: $err")
+          case \/-(p) =>
+            p
+        }
 
-      p.substituteProperties(props ++ extraProps) match {
-        case -\/(err) =>
-          throw new Exception(err)
-        case \/-(p) =>
-          p
-      }
+        p.substituteProperties(props ++ extraProps) match {
+          case -\/(err) =>
+            throw new Exception(err)
+          case \/-(p) =>
+            p
+        }
     }
+  }
+
+  private def globalPluginPatterns(sbtVersion: String): Seq[coursier.ivy.Pattern] = {
 
     // FIXME get the 0.13 automatically?
     val defaultRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/$sbtVersion}/plugins/target" +
@@ -468,7 +481,7 @@ object Tasks {
     Seq(
       defaultRawPattern,
       extraRawPattern
-    ).map(pattern)
+    ).map(exceptionPatternParser())
   }
 
   def parentProjectCacheTask: Def.Initialize[sbt.Task[Map[Seq[sbt.Resolver],Seq[coursier.ProjectCache]]]] =
