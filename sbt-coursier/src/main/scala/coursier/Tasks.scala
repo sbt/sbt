@@ -57,7 +57,7 @@ object Tasks {
     "https://repo1.maven.org/"
   )
 
-  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.taskDyn {
 
     def url(res: Resolver): Option[String] =
       res match {
@@ -75,28 +75,37 @@ object Tasks {
     def slowRepo(res: Resolver): Boolean =
       url(res).exists(u => slowReposBase.exists(u.startsWith))
 
-    val extRes = externalResolvers.value
-    val isSbtPlugin = sbtPlugin.value
-    val sbtRes = sbtResolver.value
     val bootResOpt = bootResolvers.value
     val overrideFlag = overrideBuildResolvers.value
-    val reorderResolvers = coursierReorderResolvers.value
 
-    val result = bootResOpt.filter(_ => overrideFlag).getOrElse {
-      var resolvers = extRes
-      if (isSbtPlugin)
-        resolvers = Seq(
-          sbtRes,
-          Classpaths.sbtPluginReleases
-        ) ++ resolvers
-      resolvers
+    val resultTask = bootResOpt.filter(_ => overrideFlag) match {
+      case Some(r) => Def.task(r)
+      case None =>
+        Def.taskDyn {
+          val extRes = externalResolvers.value
+          val isSbtPlugin = sbtPlugin.value
+          if (isSbtPlugin)
+            Def.task {
+              Seq(
+                sbtResolver.value,
+                Classpaths.sbtPluginReleases
+              ) ++ extRes
+            }
+          else
+            Def.task(extRes)
+        }
     }
 
-    if (reorderResolvers && result.exists(fastRepo) && result.exists(slowRepo)) {
-      val (slow, other) = result.partition(slowRepo)
-      other ++ slow
-    } else
-      result
+    Def.task {
+      val result = resultTask.value
+      val reorderResolvers = coursierReorderResolvers.value
+
+      if (reorderResolvers && result.exists(fastRepo) && result.exists(slowRepo)) {
+        val (slow, other) = result.partition(slowRepo)
+        other ++ slow
+      } else
+        result
+    }
   }
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
@@ -346,9 +355,12 @@ object Tasks {
 
   def coursierConfigurationsTask(shadedConfig: Option[(String, String)]) = Def.task {
 
-    val configs0 = ivyConfigurations.value.map { config =>
-      config.name -> config.extendsConfigs.map(_.name)
-    }.toMap
+    val configs0 = ivyConfigurations
+      .value
+      .map { config =>
+        config.name -> config.extendsConfigs.map(_.name)
+      }
+      .toMap
 
     def allExtends(c: String) = {
       // possibly bad complexity
@@ -544,26 +556,17 @@ object Tasks {
 
   def resolutionsTask(
     sbtClassifiers: Boolean = false
-  ): Def.Initialize[sbt.Task[Map[Set[String], coursier.Resolution]]] = Def.task {
+  ): Def.Initialize[sbt.Task[Map[Set[String], coursier.Resolution]]] = Def.taskDyn {
 
-    // let's update only one module at once, for a better output
-    // Downloads are already parallel, no need to parallelize further anyway
-    synchronized {
+    val projectName = thisProjectRef.value.project
 
-      val cm = coursierSbtClassifiersModule.value
+    val sv = scalaVersion.value
+    val sbv = scalaBinaryVersion.value
 
-      val projectName = thisProjectRef.value.project
-      val baseConfigGraphs = coursierConfigGraphs.value
-
-      val sv = scalaVersion.value
-      val sbv = scalaBinaryVersion.value
-
-      val proj = coursierProject.value
-      val publications = coursierPublications.value
-      val fallbackDeps = coursierFallbackDependencies.value
-
-      val (currentProject, fallbackDependencies, configGraphs) =
-        if (sbtClassifiers) {
+    val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[(Module, String, URL, Boolean)], Seq[Set[String]])]] =
+      if (sbtClassifiers)
+        Def.task {
+          val cm = coursierSbtClassifiersModule.value
           val proj = FromSbt.sbtClassifiersProject(cm, sv, sbv)
 
           val fallbackDeps = FromSbt.fallbackDependencies(
@@ -573,87 +576,76 @@ object Tasks {
           )
 
           (proj, fallbackDeps, Vector(cm.configurations.map(_.name).toSet))
-        } else
-          (proj.copy(publications = publications), fallbackDeps, baseConfigGraphs)
+        }
+      else
+        Def.task {
+          val baseConfigGraphs = coursierConfigGraphs.value
+          (coursierProject.value.copy(publications = coursierPublications.value), coursierFallbackDependencies.value, baseConfigGraphs)
+        }
 
-      val interProjectDependencies = coursierInterProjectDependencies.value
+    val interProjectDependencies = coursierInterProjectDependencies.value
 
-      val parallelDownloads = coursierParallelDownloads.value
-      val checksums = coursierChecksums.value
-      val maxIterations = coursierMaxIterations.value
-      val cachePolicies = coursierCachePolicies.value
-      val ttl = coursierTtl.value
-      val cache = coursierCache.value
+    val parallelDownloads = coursierParallelDownloads.value
+    val checksums = coursierChecksums.value
+    val maxIterations = coursierMaxIterations.value
+    val cachePolicies = coursierCachePolicies.value
+    val ttl = coursierTtl.value
+    val cache = coursierCache.value
 
-      val log = streams.value.log
+    val log = streams.value.log
 
-      // are these always defined? (e.g. for Java only projects?)
-      val so = scalaOrganization.value
+    // are these always defined? (e.g. for Java only projects?)
+    val so = scalaOrganization.value
 
-      val userForceVersions = dependencyOverrides.value.map(
-        FromSbt.moduleVersion(_, sv, sbv)
-      ).toMap
+    val userForceVersions = dependencyOverrides
+      .value
+      .map(FromSbt.moduleVersion(_, sv, sbv))
+      .toMap
 
-      val sbtResolvers = coursierSbtResolvers.value
-      val defaultResolvers = coursierRecursiveResolvers.value
+    val resolversTask =
+      if (sbtClassifiers)
+        Def.task(coursierSbtResolvers.value)
+      else
+        Def.task(coursierRecursiveResolvers.value.distinct)
 
-      val resolvers =
-        if (sbtClassifiers)
-          sbtResolvers
-        else
-          defaultResolvers.distinct
+    val verbosityLevel = coursierVerbosity.value
 
-      val parentProjectCache: ProjectCache = coursierParentProjectCache.value
-          .get(resolvers)
-          .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
-          .getOrElse(Map.empty)
+    val userEnabledProfiles = mavenProfiles.value
 
-      // TODO Warn about possible duplicated modules from source repositories?
+    val typelevel = scalaOrganization.value == Typelevel.typelevelOrg
 
-      val verbosityLevel = coursierVerbosity.value
+    val globalPluginsRepos =
+      for (p <- globalPluginPatterns(sbtBinaryVersion.value))
+        yield IvyRepository.fromPattern(
+          p,
+          withChecksums = false,
+          withSignatures = false,
+          withArtifacts = false
+        )
 
-      val userEnabledProfiles = mavenProfiles.value
+    val interProjectRepo = InterProjectRepository(interProjectDependencies)
 
-      val typelevel = scalaOrganization.value == Typelevel.typelevelOrg
+    val ivyHome = sys.props.getOrElse(
+      "ivy.home",
+      new File(sys.props("user.home")).toURI.getPath + ".ivy2"
+    )
 
-      if (verbosityLevel >= 2) {
-        log.info("InterProjectRepository")
-        for (p <- interProjectDependencies)
-          log.info(s"  ${p.module}:${p.version}")
-      }
+    val sbtIvyHome = sys.props.getOrElse(
+      "sbt.ivy.home",
+      ivyHome
+    )
 
-      val globalPluginsRepos =
-        for (p <- globalPluginPatterns(sbtBinaryVersion.value))
-          yield IvyRepository.fromPattern(
-            p,
-            withChecksums = false,
-            withSignatures = false,
-            withArtifacts = false
-          )
+    val ivyProperties = Map(
+      "ivy.home" -> ivyHome,
+      "sbt.ivy.home" -> sbtIvyHome
+    ) ++ sys.props
 
-      val interProjectRepo = InterProjectRepository(interProjectDependencies)
+    val useSbtCredentials = coursierUseSbtCredentials.value
 
-      val ivyHome = sys.props.getOrElse(
-        "ivy.home",
-        new File(sys.props("user.home")).toURI.getPath + ".ivy2"
-      )
-
-      val sbtIvyHome = sys.props.getOrElse(
-        "sbt.ivy.home",
-        ivyHome
-      )
-
-      val ivyProperties = Map(
-        "ivy.home" -> ivyHome,
-        "sbt.ivy.home" -> sbtIvyHome
-      ) ++ sys.props
-
-      val useSbtCredentials = coursierUseSbtCredentials.value
-      val sbtCreds = sbt.Keys.credentials.value
-
-      val authenticationByHost =
-        if (useSbtCredentials)
-          sbtCreds
+    val authenticationByHostTask =
+      if (useSbtCredentials)
+        Def.task {
+          sbt.Keys.credentials.value
             .flatMap {
               case dc: sbt.DirectCredentials => List(dc)
               case fc: sbt.FileCredentials =>
@@ -668,10 +660,24 @@ object Tasks {
               c.host -> Authentication(c.userName, c.passwd)
             }
             .toMap
-        else
-          Map.empty[String, Authentication]
+        }
+      else
+        Def.task(Map.empty[String, Authentication])
 
-      val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
+    val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
+
+    Def.task {
+      val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
+      val resolvers = resolversTask.value
+
+      val parentProjectCache: ProjectCache = coursierParentProjectCache.value
+        .get(resolvers)
+        .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
+        .getOrElse(Map.empty)
+
+      // TODO Warn about possible duplicated modules from source repositories?
+
+      val authenticationByHost = authenticationByHostTask.value
 
       val fallbackDependenciesRepositories =
         if (fallbackDependencies.isEmpty)
@@ -686,6 +692,12 @@ object Tasks {
             FallbackDependenciesRepository(map)
           )
         }
+
+      if (verbosityLevel >= 2) {
+        log.info("InterProjectRepository")
+        for (p <- interProjectDependencies)
+          log.info(s"  ${p.module}:${p.version}")
+      }
 
       def withAuthenticationByHost(repo: Repository, credentials: Map[String, Authentication]): Repository = {
 
@@ -724,15 +736,15 @@ object Tasks {
 
       val repositories =
         internalRepositories ++
-        resolvers.flatMap { resolver =>
-          FromSbt.repository(
-            resolver,
-            ivyProperties,
-            log,
-            authenticationByRepositoryId.get(resolver.name)
-          )
-        }.map(withAuthenticationByHost(_, authenticationByHost)) ++
-        fallbackDependenciesRepositories
+          resolvers.flatMap { resolver =>
+            FromSbt.repository(
+              resolver,
+              ivyProperties,
+              log,
+              authenticationByRepositoryId.get(resolver.name)
+            )
+          }.map(withAuthenticationByHost(_, authenticationByHost)) ++
+          fallbackDependenciesRepositories
 
       def startRes(configs: Set[String]) = Resolution(
         currentProject
@@ -870,19 +882,24 @@ object Tasks {
 
       val allStartRes = configGraphs.map(configs => configs -> startRes(configs)).toMap
 
-      resolutionsCache.getOrElseUpdate(
-        ResolutionCacheKey(
-          currentProject,
-          repositories,
-          userEnabledProfiles,
-          allStartRes,
-          sbtClassifiers
-        ),
-        allStartRes.map {
-          case (config, startRes) =>
-            config -> resolution(startRes)
-        }
-      )
+      // let's update only one module at once, for a better output
+      // Downloads are already parallel, no need to parallelize further anyway
+      synchronized {
+
+        resolutionsCache.getOrElseUpdate(
+          ResolutionCacheKey(
+            currentProject,
+            repositories,
+            userEnabledProfiles,
+            allStartRes,
+            sbtClassifiers
+          ),
+          allStartRes.map {
+            case (config, startRes) =>
+              config -> resolution(startRes)
+          }
+        )
+      }
     }
   }
 
@@ -891,47 +908,39 @@ object Tasks {
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false,
     includeSignatures: Boolean = false
-  ) = Def.task {
+  ) = Def.taskDyn {
 
-    // let's update only one module at once, for a better output
-    // Downloads are already parallel, no need to parallelize further anyway
-    synchronized {
+    val projectName = thisProjectRef.value.project
 
-      lazy val cm = coursierSbtClassifiersModule.value
+    val parallelDownloads = coursierParallelDownloads.value
+    val artifactsChecksums = coursierArtifactsChecksums.value
+    val cachePolicies = coursierCachePolicies.value
+    val ttl = coursierTtl.value
+    val cache = coursierCache.value
 
-      lazy val projectName = thisProjectRef.value.project
+    val log = streams.value.log
 
-      val parallelDownloads = coursierParallelDownloads.value
-      val artifactsChecksums = coursierArtifactsChecksums.value
-      val cachePolicies = coursierCachePolicies.value
-      val ttl = coursierTtl.value
-      val cache = coursierCache.value
+    val verbosityLevel = coursierVerbosity.value
 
-      val log = streams.value.log
+    val resTask: sbt.Def.Initialize[sbt.Task[Seq[Resolution]]] =
+      if (withClassifiers && sbtClassifiers)
+        Def.task(Seq(coursierSbtClassifiersResolution.value))
+      else
+        Def.task(coursierResolutions.value.values.toVector)
 
-      val verbosityLevel = coursierVerbosity.value
-
-      val classifiersRes = coursierSbtClassifiersResolution.value
-      val mainRes = coursierResolutions.value
-
-      val res =
-        if (withClassifiers && sbtClassifiers)
-          Seq(classifiersRes)
+    val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[String]]]] =
+      if (withClassifiers) {
+        if (sbtClassifiers)
+          Def.task(Some(coursierSbtClassifiersModule.value.classifiers))
         else
-          mainRes.values.toVector
+          Def.task(Some(transitiveClassifiers.value))
+      } else
+        Def.task(None)
 
-      val trClassifiers = transitiveClassifiers.value
+    Def.task {
 
-      val classifiers =
-        if (withClassifiers)
-          Some {
-            if (sbtClassifiers)
-              cm.classifiers
-            else
-              trClassifiers
-          }
-        else
-          None
+      val classifiers = classifiersTask.value
+      val res = resTask.value
 
       val allArtifacts0 =
         classifiers match {
@@ -948,64 +957,69 @@ object Tasks {
         else
           allArtifacts0
 
-      var pool: ExecutorService = null
-      var artifactsLogger: TermDisplay = null
+      // let's update only one module at once, for a better output
+      // Downloads are already parallel, no need to parallelize further anyway
+      synchronized {
 
-      val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
+        var pool: ExecutorService = null
+        var artifactsLogger: TermDisplay = null
 
-      val artifactFilesOrErrors = try {
-        pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
-        artifactsLogger = createLogger()
+        val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
-        val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
-          def f(p: CachePolicy) =
-            Cache.file(
-              a,
-              cache,
-              p,
-              checksums = artifactsChecksums,
-              logger = Some(artifactsLogger),
-              pool = pool,
-              ttl = ttl
-            )
+        val artifactFilesOrErrors = try {
+          pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
+          artifactsLogger = createLogger()
 
-          cachePolicies.tail
-            .foldLeft(f(cachePolicies.head))(_ orElse f(_))
-            .run
-            .map((a, _))
-        }
+          val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
+            def f(p: CachePolicy) =
+              Cache.file(
+                a,
+                cache,
+                p,
+                checksums = artifactsChecksums,
+                logger = Some(artifactsLogger),
+                pool = pool,
+                ttl = ttl
+              )
 
-        val artifactInitialMessage =
-          if (verbosityLevel >= 0)
-            s"Fetching artifacts of $projectName" +
-              (if (sbtClassifiers) " (sbt classifiers)" else "")
-          else
-            ""
+            cachePolicies.tail
+              .foldLeft(f(cachePolicies.head))(_ orElse f(_))
+              .run
+              .map((a, _))
+          }
 
-        if (verbosityLevel >= 2)
-          log.info(artifactInitialMessage)
-
-        artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
-
-        Task.gatherUnordered(artifactFileOrErrorTasks).unsafePerformSyncAttempt match {
-          case -\/(ex) =>
-            ResolutionError.UnknownDownloadException(ex)
-              .throwException()
-          case \/-(l) =>
-            l.toMap
-        }
-      } finally {
-        if (pool != null)
-          pool.shutdown()
-        if (artifactsLogger != null)
-          if ((artifactsLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
-            log.info(
-              s"Fetched artifacts of $projectName" +
+          val artifactInitialMessage =
+            if (verbosityLevel >= 0)
+              s"Fetching artifacts of $projectName" +
                 (if (sbtClassifiers) " (sbt classifiers)" else "")
-            )
-      }
+            else
+              ""
 
-      artifactFilesOrErrors
+          if (verbosityLevel >= 2)
+            log.info(artifactInitialMessage)
+
+          artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
+
+          Task.gatherUnordered(artifactFileOrErrorTasks).unsafePerformSyncAttempt match {
+            case -\/(ex) =>
+              ResolutionError.UnknownDownloadException(ex)
+                .throwException()
+            case \/-(l) =>
+              l.toMap
+          }
+        } finally {
+          if (pool != null)
+            pool.shutdown()
+          if (artifactsLogger != null)
+            if ((artifactsLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
+              log.info(
+                s"Fetched artifacts of $projectName" +
+                  (if (sbtClassifiers) " (sbt classifiers)" else "")
+              )
+        }
+
+        artifactFilesOrErrors
+      }
     }
   }
 
@@ -1088,7 +1102,7 @@ object Tasks {
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false,
     includeSignatures: Boolean = false
-  ) = Def.task {
+  ) = Def.taskDyn {
 
     def grouped[K, V](map: Seq[(K, V)])(mapKey: K => K): Map[K, Seq[V]] =
       map.groupBy { case (k, _) => mapKey(k) }.map {
@@ -1096,49 +1110,94 @@ object Tasks {
           k -> l.map { case (_, v) => v }
       }
 
-    // let's update only one module at once, for a better output
-    // Downloads are already parallel, no need to parallelize further anyway
-    synchronized {
+    val so = scalaOrganization.value
+    val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
+    val sbtBootJarOverrides = SbtBootJars(
+      so, // this seems plain wrong - this assumes that the scala org of the project is the same
+      // as the one that started SBT. This will scrap the scala org specific JARs by the ones
+      // that booted SBT, even if the latter come from the standard org.scala-lang org.
+      // But SBT itself does it this way, and not doing so may make two different versions
+      // of the scala JARs land in the classpath...
+      internalSbtScalaProvider.version(),
+      internalSbtScalaProvider.jars()
+    )
 
-      val so = scalaOrganization.value
-      val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
-      val sbtBootJarOverrides = SbtBootJars(
-        so, // this seems plain wrong - this assumes that the scala org of the project is the same
-        // as the one that started SBT. This will scrap the scala org specific JARs by the ones
-        // that booted SBT, even if the latter come from the standard org.scala-lang org.
-        // But SBT itself does it this way, and not doing so may make two different versions
-        // of the scala JARs land in the classpath...
-        internalSbtScalaProvider.version(),
-        internalSbtScalaProvider.jars()
-      )
+    val sv = scalaVersion.value
+    val sbv = scalaBinaryVersion.value
 
-      val cm = coursierSbtClassifiersModule.value
+    val currentProjectTask =
+      if (sbtClassifiers)
+        Def.task(FromSbt.sbtClassifiersProject(coursierSbtClassifiersModule.value, sv, sbv))
+      else
+        Def.task {
+          val proj = coursierProject.value
+          val publications = coursierPublications.value
 
-      val sv = scalaVersion.value
-      val sbv = scalaBinaryVersion.value
-
-      val proj = coursierProject.value
-      val publications = coursierPublications.value
-
-      val currentProject =
-        if (sbtClassifiers)
-          FromSbt.sbtClassifiersProject(cm, sv, sbv)
-        else
           proj.copy(publications = publications)
+        }
 
-      val log = streams.value.log
+    val log = streams.value.log
 
-      val verbosityLevel = coursierVerbosity.value
+    val verbosityLevel = coursierVerbosity.value
 
-      val classifiersRes = coursierSbtClassifiersResolution.value
-      val mainRes = coursierResolutions.value
-      val configs0 = coursierConfigurations.value
-
-      val res =
-        if (withClassifiers && sbtClassifiers)
+    val resTask =
+      if (withClassifiers && sbtClassifiers)
+        Def.task {
+          val cm = coursierSbtClassifiersModule.value
+          val classifiersRes = coursierSbtClassifiersResolution.value
           Map(cm.configurations.map(c => c.name).toSet -> classifiersRes)
+        }
+      else
+        Def.task(coursierResolutions.value)
+
+    // we should be able to call .value on that one here, its conditions don't originate from other tasks
+    val artifactFilesOrErrors0Task =
+      if (withClassifiers) {
+        if (sbtClassifiers)
+          Keys.coursierSbtClassifiersArtifacts
         else
-          mainRes
+          Keys.coursierClassifiersArtifacts
+      } else if (includeSignatures)
+        Keys.coursierSignedArtifacts
+      else
+        Keys.coursierArtifacts
+
+    val configsTask: sbt.Def.Initialize[sbt.Task[Map[String, Set[String]]]] =
+      if (withClassifiers && sbtClassifiers)
+        Def.task {
+          val cm = coursierSbtClassifiersModule.value
+          cm.configurations.map(c => c.name -> Set(c.name)).toMap
+        }
+      else
+        Def.task {
+          val configs0 = coursierConfigurations.value
+
+          shadedConfigOpt.fold(configs0) {
+            case (baseConfig, shadedConfig) =>
+              (configs0 - shadedConfig) + (
+                baseConfig -> (configs0.getOrElse(baseConfig, Set()) - shadedConfig)
+              )
+          }
+        }
+
+    val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[String]]]] =
+      if (withClassifiers) {
+        if (sbtClassifiers)
+          Def.task {
+            val cm = coursierSbtClassifiersModule.value
+            Some(cm.classifiers)
+          }
+        else
+          Def.task(Some(transitiveClassifiers.value))
+      } else
+        Def.task(None)
+
+    Def.task {
+      val currentProject = currentProjectTask.value
+      val res = resTask.value
+      val artifactFilesOrErrors0 = artifactFilesOrErrors0Task.value
+      val classifiers = classifiersTask.value
+      val configs = configsTask.value
 
       val configResolutions = res.flatMap {
         case (configs, r) =>
@@ -1157,17 +1216,6 @@ object Tasks {
             }
         )
 
-        val configs =
-          if (withClassifiers && sbtClassifiers)
-            cm.configurations.map(c => c.name -> Set(c.name)).toMap
-          else
-            shadedConfigOpt.fold(configs0) {
-              case (baseConfig, shadedConfig) =>
-                (configs0 - shadedConfig) + (
-                  baseConfig -> (configs0.getOrElse(baseConfig, Set()) - shadedConfig)
-                )
-            }
-
         if (verbosityLevel >= 2) {
           val finalDeps = dependenciesWithConfig(
             configResolutions,
@@ -1179,31 +1227,6 @@ object Tasks {
           val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
           log.info(repr.split('\n').map("  " + _).mkString("\n"))
         }
-
-        val trClassifiers = transitiveClassifiers.value
-
-        val classifiers =
-          if (withClassifiers)
-            Some {
-              if (sbtClassifiers)
-                cm.classifiers
-              else
-                trClassifiers
-            }
-          else
-            None
-
-        val artifactFilesOrErrors0 = (
-          if (withClassifiers) {
-            if (sbtClassifiers)
-              Keys.coursierSbtClassifiersArtifacts
-            else
-              Keys.coursierClassifiersArtifacts
-          } else if (includeSignatures)
-            Keys.coursierSignedArtifacts
-          else
-            Keys.coursierArtifacts
-        ).value
 
         val artifactFiles = artifactFilesOrErrors0.collect {
           case (artifact, \/-(file)) =>
@@ -1251,16 +1274,21 @@ object Tasks {
         )
       }
 
-      reportsCache.getOrElseUpdate(
-        ReportCacheKey(
-          currentProject,
-          res,
-          withClassifiers,
-          sbtClassifiers,
-          ignoreArtifactErrors
-        ),
-        report
-      )
+      // let's update only one module at once, for a better output
+      // Downloads are already parallel, no need to parallelize further anyway
+      synchronized {
+
+        reportsCache.getOrElseUpdate(
+          ReportCacheKey(
+            currentProject,
+            res,
+            withClassifiers,
+            sbtClassifiers,
+            ignoreArtifactErrors
+          ),
+          report
+        )
+      }
     }
   }
 
@@ -1268,61 +1296,71 @@ object Tasks {
     inverse: Boolean,
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false
-  ) = Def.task {
+  ) = Def.taskDyn {
 
-    lazy val projectName = thisProjectRef.value.project
+    val projectName = thisProjectRef.value.project
 
-    val cm = coursierSbtClassifiersModule.value
-    val sv = scalaVersion.value
-    val sbv = scalaBinaryVersion.value
-
-    val proj = coursierProject.value
-    val publications = coursierPublications.value
-
-    val currentProject =
+    val currentProjectTask =
       if (sbtClassifiers)
-        FromSbt.sbtClassifiersProject(cm, sv, sbv)
+        Def.task {
+          val sv = scalaVersion.value
+          val sbv = scalaBinaryVersion.value
+          val cm = coursierSbtClassifiersModule.value
+          FromSbt.sbtClassifiersProject(cm, sv, sbv)
+        }
       else
-        proj.copy(publications = publications)
-
-    val classifiersRes = coursierSbtClassifiersResolution.value
-    val mainRes = coursierResolutions.value
-
-    val resolutions =
-      if (sbtClassifiers)
-        Map(currentProject.configurations.keySet -> classifiersRes)
-      else
-        mainRes
+        Def.task {
+          val proj = coursierProject.value
+          val publications = coursierPublications.value
+          proj.copy(publications = publications)
+        }
 
     val config = configuration.value.name
     val configs = coursierConfigurations.value
 
     val includedConfigs = configs.getOrElse(config, Set.empty) + config
 
-    for {
-      (subGraphConfigs, res) <- resolutions
-      if subGraphConfigs.exists(includedConfigs)
-    } {
+    Def.taskDyn {
+      val currentProject = currentProjectTask.value
 
-      val dependencies0 = currentProject.dependencies.collect {
-        case (cfg, dep) if includedConfigs(cfg) && subGraphConfigs(cfg) => dep
-      }.sortBy { dep =>
-        (dep.module.organization, dep.module.name, dep.version)
-      }
+      val resolutionsTask =
+        if (sbtClassifiers)
+          Def.task {
+            val classifiersRes = coursierSbtClassifiersResolution.value
+            Map(currentProject.configurations.keySet -> classifiersRes)
+          }
+        else
+          Def.task(coursierResolutions.value)
 
-      val subRes = res.subset(dependencies0.toSet)
+      Def.task {
+        val resolutions = resolutionsTask.value
 
-      // use sbt logging?
-      println(
-        s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
-          Print.dependencyTree(
-            dependencies0,
-            subRes,
-            printExclusions = true,
-            inverse,
-            colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
+        for {
+          (subGraphConfigs, res) <- resolutions
+          if subGraphConfigs.exists(includedConfigs)
+        } {
+
+          val dependencies0 = currentProject.dependencies.collect {
+            case (cfg, dep) if includedConfigs(cfg) && subGraphConfigs(cfg) => dep
+          }.sortBy { dep =>
+            (dep.module.organization, dep.module.name, dep.version)
+          }
+
+          val subRes = res.subset(dependencies0.toSet)
+
+          // use sbt logging?
+          println(
+            s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
+              Print.dependencyTree(
+                dependencies0,
+                subRes,
+                printExclusions = true,
+                inverse,
+                colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
+              )
           )
-      )
+        }
+      }
     }
   }
 
