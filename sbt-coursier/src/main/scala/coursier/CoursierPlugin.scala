@@ -52,6 +52,11 @@ object CoursierPlugin extends AutoPlugin {
     val coursierSignedArtifacts = Keys.coursierSignedArtifacts
     val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
     val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
+
+    val coursierVersion = coursier.util.Properties.version
+    val addSbtCoursier = {
+      addSbtPlugin("io.get-coursier" % "sbt-coursier" % coursierVersion)
+    }
   }
 
   import autoImport._
