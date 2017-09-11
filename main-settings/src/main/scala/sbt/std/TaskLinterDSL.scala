@@ -65,7 +65,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
             val wrapperName = nme.decodedName.toString
             val (qualName, isSettingKey) =
               Option(qual.symbol)
-                .map(sym => (sym.name.decodedName.toString, sym.info <:< typeOf[SettingKey[_]]))
+                .map(sym => (sym.name.decodedName.toString, qual.tpe <:< typeOf[SettingKey[_]]))
                 .getOrElse((ap.pos.lineContent, false))
 
             if (!isSettingKey && !shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
