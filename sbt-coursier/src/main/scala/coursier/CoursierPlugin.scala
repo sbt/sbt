@@ -18,6 +18,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierArtifactsChecksums = Keys.coursierArtifactsChecksums
     val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierTtl = Keys.coursierTtl
+    val coursierKeepPreloaded = Keys.coursierKeepPreloaded
     val coursierVerbosity = Keys.coursierVerbosity
     val mavenProfiles = Keys.mavenProfiles
     val coursierResolvers = Keys.coursierResolvers
@@ -51,6 +52,11 @@ object CoursierPlugin extends AutoPlugin {
     val coursierSignedArtifacts = Keys.coursierSignedArtifacts
     val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
     val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
+
+    val coursierVersion = coursier.util.Properties.version
+    val addSbtCoursier = {
+      addSbtPlugin("io.get-coursier" % "sbt-coursier" % coursierVersion)
+    }
   }
 
   import autoImport._
@@ -138,6 +144,11 @@ object CoursierPlugin extends AutoPlugin {
     }
   )
 
+  private val preloadedBase = {
+    val rawPattern = "file:///${sbt.preloaded-${sbt.global.base-${user.home}/.sbt}/preloaded/}"
+    Tasks.exceptionPatternParser().apply(rawPattern).string
+  }
+
   def coursierSettings(
     shadedConfigOpt: Option[(String, String)],
     packageConfigs: Seq[(Configuration, String)]
@@ -162,10 +173,18 @@ object CoursierPlugin extends AutoPlugin {
         case _ => false
       }
 
-      if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
-        resolvers :+ Classpaths.sbtPluginReleases
+      val resolvers0 =
+        if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
+          resolvers :+ Classpaths.sbtPluginReleases
+        else
+          resolvers
+
+      if (coursierKeepPreloaded.value)
+        resolvers0
       else
-        resolvers
+        resolvers0.filter { r =>
+          !r.name.startsWith("local-preloaded")
+        }
     },
     coursierFallbackDependencies := Tasks.coursierFallbackDependenciesTask.value,
     coursierArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false).value,
@@ -275,7 +294,8 @@ object CoursierPlugin extends AutoPlugin {
     coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
     coursierCache := Cache.default,
-    coursierReorderResolvers := true
+    coursierReorderResolvers := true,
+    coursierKeepPreloaded := false
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++
