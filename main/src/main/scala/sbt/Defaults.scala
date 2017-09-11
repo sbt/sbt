@@ -500,15 +500,8 @@ object Defaults extends BuildCommon {
     run := foregroundRunTask.evaluated,
     copyResources := copyResourcesTask.value,
     // note that we use the same runner and mainClass as plain run
-    bgRunMain := bgRunMainTask(exportedProductJars,
-                               fullClasspathAsJars,
-                               bgCopyClasspath in bgRunMain,
-                               runner in run).evaluated,
-    bgRun := bgRunTask(exportedProductJars,
-                       fullClasspathAsJars,
-                       mainClass in run,
-                       bgCopyClasspath in bgRun,
-                       runner in run).evaluated
+    mainBgRunMainTaskForConfig(This),
+    mainBgRunTaskForConfig(This)
   ) ++ inTask(run)(runnerSettings)
 
   private[this] lazy val configGlobal = globalDefaults(
@@ -1119,10 +1112,12 @@ object Defaults extends BuildCommon {
       toClean
     }
 
-  def bgRunMainTask(products: Initialize[Task[Classpath]],
-                    classpath: Initialize[Task[Classpath]],
-                    copyClasspath: Initialize[Boolean],
-                    scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] = {
+  def bgRunMainTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      copyClasspath: Initialize[Boolean],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[JobHandle]] = {
     val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
       Defaults.runMainParser(s, names getOrElse Nil))
     Def.inputTask {
@@ -1137,11 +1132,14 @@ object Defaults extends BuildCommon {
       }
     }
   }
-  def bgRunTask(products: Initialize[Task[Classpath]],
-                classpath: Initialize[Task[Classpath]],
-                mainClassTask: Initialize[Task[Option[String]]],
-                copyClasspath: Initialize[Boolean],
-                scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] = {
+
+  def bgRunTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      mainClassTask: Initialize[Task[Option[String]]],
+      copyClasspath: Initialize[Boolean],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[JobHandle]] = {
     import Def.parserToInput
     val parser = Def.spaceDelimited()
     Def.inputTask {
@@ -1156,6 +1154,7 @@ object Defaults extends BuildCommon {
       }
     }
   }
+
   // runMain calls bgRunMain in the background and waits for the result.
   def foregroundRunMainTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
@@ -1163,6 +1162,7 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       service.waitForTry(handle).get
     }
+
   // run calls bgRun in the background and waits for the result.
   def foregroundRunTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
@@ -1170,8 +1170,11 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       service.waitForTry(handle).get
     }
-  def runMainTask(classpath: Initialize[Task[Classpath]],
-                  scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] = {
+
+  def runMainTask(
+      classpath: Initialize[Task[Classpath]],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[Unit]] = {
     val parser =
       loadForParser(discoveredMainClasses)((s, names) => runMainParser(s, names getOrElse Nil))
     Def.inputTask {
@@ -1179,9 +1182,12 @@ object Defaults extends BuildCommon {
       scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log).get
     }
   }
-  def runTask(classpath: Initialize[Task[Classpath]],
-              mainClassTask: Initialize[Task[Option[String]]],
-              scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] = {
+
+  def runTask(
+      classpath: Initialize[Task[Classpath]],
+      mainClassTask: Initialize[Task[Option[String]]],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[Unit]] = {
     import Def.parserToInput
     val parser = Def.spaceDelimited()
     Def.inputTask {
@@ -1189,7 +1195,9 @@ object Defaults extends BuildCommon {
       scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log).get
     }
   }
+
   def runnerTask: Setting[Task[ScalaRun]] = runner := runnerInit.value
+
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
@@ -1217,7 +1225,8 @@ object Defaults extends BuildCommon {
   }
 
   private def foreachJobTask(
-      f: (BackgroundJobService, JobHandle) => Unit): Initialize[InputTask[Unit]] = {
+      f: (BackgroundJobService, JobHandle) => Unit
+  ): Initialize[InputTask[Unit]] = {
     val parser: Initialize[State => Parser[Seq[JobHandle]]] = Def.setting { (s: State) =>
       val extracted = Project.extract(s)
       val service = extracted.get(bgJobService)
@@ -1232,6 +1241,7 @@ object Defaults extends BuildCommon {
       }
     }
   }
+
   def psTask: Initialize[Task[Seq[JobHandle]]] =
     Def.task {
       val xs = bgList.value
@@ -1241,9 +1251,11 @@ object Defaults extends BuildCommon {
       }
       xs
     }
+
   def bgStopTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
     manager.stop(handle)
   }
+
   def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
     manager.waitFor(handle)
   }
@@ -1294,17 +1306,25 @@ object Defaults extends BuildCommon {
         }
       ))
 
-  def mainBgRunTask =
-    bgRun := bgRunTask(exportedProductJars,
-                       fullClasspathAsJars in Runtime,
-                       mainClass in run,
-                       bgCopyClasspath in bgRun,
-                       runner in run).evaluated
-  def mainBgRunMainTask =
-    bgRunMain := bgRunMainTask(exportedProductJars,
-                               fullClasspathAsJars in Runtime,
-                               bgCopyClasspath in bgRunMain,
-                               runner in run).evaluated
+  def mainBgRunTask = mainBgRunTaskForConfig(Select(Runtime))
+  def mainBgRunMainTask = mainBgRunMainTaskForConfig(Select(Runtime))
+
+  private[this] def mainBgRunTaskForConfig(c: ScopeAxis[ConfigKey]) =
+    bgRun := bgRunTask(
+      exportedProductJars,
+      fullClasspathAsJars in (This, c, This),
+      mainClass in run,
+      bgCopyClasspath in bgRun,
+      runner in run
+    ).evaluated
+
+  private[this] def mainBgRunMainTaskForConfig(c: ScopeAxis[ConfigKey]) =
+    bgRunMain := bgRunMainTask(
+      exportedProductJars,
+      fullClasspathAsJars in (This, c, This),
+      bgCopyClasspath in bgRunMain,
+      runner in run
+    ).evaluated
 
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] = analysis match {
     case analysis: Analysis =>
@@ -1316,6 +1336,7 @@ object Defaults extends BuildCommon {
       ConsoleProject(state.value, (initialCommands in consoleProject).value)(streams.value.log)
       println()
     }
+
   def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
@@ -1340,6 +1361,7 @@ object Defaults extends BuildCommon {
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
     args => w.println((command +: args).mkString(" "))
+
   private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args => {
     val w = s.text(ExportStream)
     try exported(w, command)
@@ -1530,8 +1552,10 @@ object Defaults extends BuildCommon {
   lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
 
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
-  lazy val configSettings
-    : Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
+
+  lazy val configSettings: Seq[Setting[_]] =
+    Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++
+      Classpaths.compilerPluginConfig ++ deprecationSettings
 
   lazy val compileSettings: Seq[Setting[_]] =
     configSettings ++
@@ -1541,8 +1565,8 @@ object Defaults extends BuildCommon {
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
-  lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++ inConfig(Test)(
-    testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
+  lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++
+    inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
 
   // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[_]] =
