@@ -2,7 +2,7 @@ package sbt.std
 
 import sbt.SettingKey
 import sbt.internal.util.ConsoleAppender
-import sbt.internal.util.appmacro.{ Convert, Converted, LinterDSL }
+import sbt.internal.util.appmacro.{ Convert, LinterDSL }
 
 import scala.collection.mutable.{ HashSet => MutableSet }
 import scala.io.AnsiColor
@@ -27,7 +27,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
 
       def handleUncheckedAnnotation(exprAtUseSite: Tree, tt: TypeTree): Unit = {
         tt.original match {
-          case Annotated(annot, arg) =>
+          case Annotated(annot, _) =>
             Option(annot.tpe) match {
               case Some(AnnotatedType(annotations, _)) =>
                 val tpeAnnotations = annotations.flatMap(ann => Option(ann.tree.tpe).toList)
@@ -65,7 +65,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
             val wrapperName = nme.decodedName.toString
             val (qualName, isSettingKey) =
               Option(qual.symbol)
-                .map(sym => (sym.name.decodedName.toString, sym.info <:< typeOf[SettingKey[_]]))
+                .map(sym => (sym.name.decodedName.toString, qual.tpe <:< typeOf[SettingKey[_]]))
                 .getOrElse((ap.pos.lineContent, false))
 
             if (!isSettingKey && !shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
