@@ -274,7 +274,7 @@ object Cross {
       excluded.foreach(logProject.tupled)
     }
 
-    val projects: Seq[Reference] = {
+    val projects: Seq[ResolvedReference] = {
       val projectScalaVersions =
         structure.allProjectRefs.map(proj => proj -> crossVersions(extracted, proj))
       if (switch.version.force) {
