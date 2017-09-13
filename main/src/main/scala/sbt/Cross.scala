@@ -228,6 +228,8 @@ object Cross {
     val extracted = Project.extract(state)
     import extracted._
 
+    type ScalaVersion = String
+
     val (version, instance) = switch.version match {
       case ScalaHomeVersion(homePath, resolveVersion, _) =>
         val home = IO.resolve(extracted.currentProject.base, homePath)
@@ -241,11 +243,9 @@ object Cross {
       case NamedScalaVersion(v, _) => (v, None)
     }
 
-    val binaryVersion = CrossVersion.binaryScalaVersion(version)
-
     def logSwitchInfo(
-        included: Seq[(ProjectRef, Seq[String])],
-        excluded: Seq[(ProjectRef, Seq[String])]
+        included: Seq[(ProjectRef, Seq[ScalaVersion])],
+        excluded: Seq[(ProjectRef, Seq[ScalaVersion])]
     ) = {
 
       instance.foreach {
@@ -264,7 +264,7 @@ object Cross {
       def detailedLog(msg: => String) =
         if (switch.verbose) state.log.info(msg) else state.log.debug(msg)
 
-      def logProject: (ProjectRef, Seq[String]) => Unit = (proj, scalaVersions) => {
+      def logProject: (ProjectRef, Seq[ScalaVersion]) => Unit = (proj, scalaVersions) => {
         val current = if (proj == currentRef) "*" else " "
         detailedLog(s"  $current ${proj.project} ${scalaVersions.mkString("(", ", ", ")")}")
       }
@@ -281,6 +281,7 @@ object Cross {
         logSwitchInfo(projectScalaVersions, Nil)
         structure.allProjectRefs ++ structure.units.keys.map(BuildRef.apply)
       } else {
+        val binaryVersion = CrossVersion.binaryScalaVersion(version)
 
         val (included, excluded) = projectScalaVersions.partition {
           case (_, scalaVersions) =>
