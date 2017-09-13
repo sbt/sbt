@@ -1,5 +1,6 @@
-# Use Docker-based container (instead of OpenVZ)
 sudo: false
+dist: trusty
+group: stable
 
 cache:
   directories:
@@ -35,6 +36,10 @@ env:
 notifications:
   email:
     - sbt-dev-bot@googlegroups.com
+
+# Undo _JAVA_OPTIONS environment variable
+before_script:
+  - _JAVA_OPTIONS=
 
 script:
   # It doesn't need that much memory because compile and run are forked
