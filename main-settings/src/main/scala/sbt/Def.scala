@@ -27,26 +27,35 @@ object Def extends Init[Scope] with TaskMacroExtra {
     Invisible)
 
   lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
+
   def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
     Show[ScopedKey[_]]((key: ScopedKey[_]) => displayFull(key, keyNameColor))
 
-  def showRelativeKey(current: ProjectRef,
-                      multi: Boolean,
-                      keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
+  def showRelativeKey(
+      current: ProjectRef,
+      multi: Boolean,
+      keyNameColor: Option[String] = None
+  ): Show[ScopedKey[_]] =
     Show[ScopedKey[_]](
-      (key: ScopedKey[_]) =>
-        Scope.display(key.scope,
-                      withColor(key.key.label, keyNameColor),
-                      ref => displayRelative(current, multi, ref)))
+      key =>
+        Scope.display(
+          key.scope,
+          withColor(key.key.label, keyNameColor),
+          ref => displayRelative(current, multi, ref)
+      ))
 
-  def showBuildRelativeKey(currentBuild: URI,
-                           multi: Boolean,
-                           keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
+  def showBuildRelativeKey(
+      currentBuild: URI,
+      multi: Boolean,
+      keyNameColor: Option[String] = None
+  ): Show[ScopedKey[_]] =
     Show[ScopedKey[_]](
-      (key: ScopedKey[_]) =>
-        Scope.display(key.scope,
-                      withColor(key.key.label, keyNameColor),
-                      ref => displayBuildRelative(currentBuild, multi, ref)))
+      key =>
+        Scope.display(
+          key.scope,
+          withColor(key.key.label, keyNameColor),
+          ref => displayBuildRelative(currentBuild, multi, ref)
+      ))
 
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String =
     project match {
@@ -55,15 +64,19 @@ object Def extends Init[Scope] with TaskMacroExtra {
       case ProjectRef(current.build, x) => x + "/"
       case _                            => Reference.display(project) + "/"
     }
+
   def displayBuildRelative(currentBuild: URI, multi: Boolean, project: Reference): String =
     project match {
       case BuildRef(`currentBuild`)      => "{.}/"
       case ProjectRef(`currentBuild`, x) => x + "/"
       case _                             => Reference.display(project) + "/"
     }
+
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
+
   def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String =
     Scope.display(scoped.scope, withColor(scoped.key.label, keyNameColor))
+
   def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String =
     Scope.displayMasked(scoped.scope, scoped.key.label, mask)
 

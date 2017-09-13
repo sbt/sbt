@@ -3,7 +3,7 @@
  */
 package sbt
 
-import Keys.{ version, _ }
+import Keys._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.AttributeKey
 import DefaultParsers._
@@ -225,12 +225,12 @@ object Cross {
   }
 
   private def switchScalaVersion(switch: Switch, state: State): State = {
-    val x = Project.extract(state)
-    import x._
+    val extracted = Project.extract(state)
+    import extracted._
 
     val (version, instance) = switch.version match {
       case ScalaHomeVersion(homePath, resolveVersion, _) =>
-        val home = IO.resolve(x.currentProject.base, homePath)
+        val home = IO.resolve(extracted.currentProject.base, homePath)
         if (home.exists()) {
           val instance = ScalaInstance(home)(state.classLoaderCache.apply _)
           val version = resolveVersion.getOrElse(instance.actualVersion)
@@ -243,8 +243,10 @@ object Cross {
 
     val binaryVersion = CrossVersion.binaryScalaVersion(version)
 
-    def logSwitchInfo(included: Seq[(ProjectRef, Seq[String])],
-                      excluded: Seq[(ProjectRef, Seq[String])]) = {
+    def logSwitchInfo(
+        included: Seq[(ProjectRef, Seq[String])],
+        excluded: Seq[(ProjectRef, Seq[String])]
+    ) = {
 
       instance.foreach {
         case (home, instance) =>
@@ -274,14 +276,14 @@ object Cross {
 
     val projects: Seq[Reference] = {
       val projectScalaVersions =
-        structure.allProjectRefs.map(proj => proj -> crossVersions(x, proj))
+        structure.allProjectRefs.map(proj => proj -> crossVersions(extracted, proj))
       if (switch.version.force) {
         logSwitchInfo(projectScalaVersions, Nil)
         structure.allProjectRefs ++ structure.units.keys.map(BuildRef.apply)
       } else {
 
         val (included, excluded) = projectScalaVersions.partition {
-          case (proj, scalaVersions) =>
+          case (_, scalaVersions) =>
             scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion)
         }
         logSwitchInfo(included, excluded)
@@ -289,14 +291,16 @@ object Cross {
       }
     }
 
-    setScalaVersionForProjects(version, instance, projects, state, x)
+    setScalaVersionForProjects(version, instance, projects, state, extracted)
   }
 
-  private def setScalaVersionForProjects(version: String,
-                                         instance: Option[(File, ScalaInstance)],
-                                         projects: Seq[Reference],
-                                         state: State,
-                                         extracted: Extracted): State = {
+  private def setScalaVersionForProjects(
+      version: String,
+      instance: Option[(File, ScalaInstance)],
+      projects: Seq[Reference],
+      state: State,
+      extracted: Extracted
+  ): State = {
     import extracted._
 
     val newSettings = projects.flatMap { project =>
