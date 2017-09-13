@@ -2,15 +2,17 @@ package sbt
 package internal
 
 import java.util.concurrent.atomic.AtomicLong
-import java.io.Closeable
-import Def.{ ScopedKey, Setting, Classpath }
+import java.io.{ Closeable, File, FileInputStream, IOException }
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
+import java.security.{ DigestInputStream, MessageDigest }
+import Def.{ Classpath, ScopedKey, Setting }
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 import Scope.GlobalScope
-import java.io.File
-import sbt.io.{ IO, Hash }
+import sbt.io.{ Hash, IO }
 import sbt.io.syntax._
-import sbt.util.{ Logger, LogExchange }
+import sbt.util.{ LogExchange, Logger }
 import sbt.internal.util.{ Attributed, ManagedLogger }
 
 /**
@@ -167,26 +169,52 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   override def toString(): String = s"BackgroundJobService(jobs=${jobs.map(_.id).mkString})"
 
   /**
-   * Copies products to the workind directory, and the rest to the serviceTempDir of this service,
+   * Copies products to the working directory, and the rest to the serviceTempDir of this service,
    * both wrapped in SHA-1 hash of the file contents.
-   * This is intended to mimize the file copying and accumulation of the unused JAR file.
+   * This is intended to minimize the file copying and accumulation of the unused JAR file.
    * Since working directory is wiped out when the background job ends, the product JAR is deleted too.
    * Meanwhile, the rest of the dependencies are cached for the duration of this service.
    */
-  override def copyClasspath(products: Classpath,
-                             full: Classpath,
-                             workingDirectory: File): Classpath = {
+  override def copyClasspath(
+      products: Classpath,
+      full: Classpath,
+      workingDirectory: File
+  ): Classpath = {
     def syncTo(dir: File)(source0: Attributed[File]): Attributed[File] = {
       val source = source0.data
-      val hash8 = Hash.toHex(Hash(source)).take(8)
+      val hash8 = Hash.toHex(hash(source)).take(8)
       val dest = dir / hash8 / source.getName
-      if (!dest.exists) { IO.copyFile(source, dest) }
+      if (!dest.exists) {
+        if (source.isDirectory) IO.copyDirectory(source, dest)
+        else IO.copyFile(source, dest)
+      }
       Attributed.blank(dest)
     }
     val xs = (products.toVector map { syncTo(workingDirectory / "target") }) ++
       ((full diff products) map { syncTo(serviceTempDir / "target") })
     Thread.sleep(100)
     xs
+  }
+
+  /** An alternative to sbt.io.Hash that handles java.io.File being a directory. */
+  private def hash(f: File) = {
+    val digest = MessageDigest.getInstance("SHA")
+    val buffer = new Array[Byte](8192)
+    Files.walkFileTree(
+      f.toPath,
+      new SimpleFileVisitor[Path]() {
+        override def visitFile(file: Path, attrs: BasicFileAttributes) = {
+          val dis = new DigestInputStream(new FileInputStream(file.toFile), digest)
+          try {
+            while (dis.read(buffer) >= 0) ()
+            FileVisitResult.CONTINUE
+          } catch {
+            case _: IOException => FileVisitResult.TERMINATE
+          } finally dis.close()
+        }
+      }
+    )
+    digest.digest
   }
 }
 
