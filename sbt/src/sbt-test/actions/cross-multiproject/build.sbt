@@ -1,3 +1,6 @@
+inThisBuild(List(
+  crossScalaVersions := Seq("2.12.1", "2.11.8")
+))
 
 lazy val rootProj = (project in file("."))
   .aggregate(libProj, fooPlugin)
@@ -18,6 +21,11 @@ lazy val fooPlugin = (project in file("sbt-foo"))
     sbtPlugin := true,
     scalaVersion := "2.12.1",
     crossScalaVersions := Seq("2.12.1")
+  )
+
+lazy val extrasProj = (project in file("extras"))
+  .settings(
+    name := "foo-extras",
   )
 
 addCommandAlias("build", "compile")
