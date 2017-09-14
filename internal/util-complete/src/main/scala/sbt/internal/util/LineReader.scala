@@ -119,6 +119,7 @@ private[sbt] object JLine {
    */
   def usingTerminal[T](f: jline.Terminal => T): T =
     withTerminal { t =>
+      t.restore
       val result = f(t)
       t.restore
       result
