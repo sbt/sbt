@@ -46,3 +46,10 @@ $ exists lib/target/scala-2.12
 -$ exists lib/target/scala-2.11
 $ exists sbt-foo/target/scala-2.12
 -$ exists sbt-foo/target/scala-2.11
+
+> clean
+# Test ++ leaves crossScalaVersions unchanged
+> ++2.12.1
+> +extrasProj/compile
+$ exists extras/target/scala-2.11
+$ exists extras/target/scala-2.12
