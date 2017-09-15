@@ -82,7 +82,6 @@ import xsbti.compile.{
   CompileOrder,
   CompileResult,
   DefinesClass,
-  IncOptionsUtil,
   Inputs,
   MiniSetup,
   PerClasspathEntryLookup,
