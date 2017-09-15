@@ -87,7 +87,7 @@ object Cross {
     (currentRef :: currentProject.aggregate.toList.flatMap(findAggregates)).distinct
   }
 
-  private def crossVersions(extracted: Extracted, proj: ProjectRef): Seq[String] = {
+  private def crossVersions(extracted: Extracted, proj: ResolvedReference): Seq[String] = {
     import extracted._
     (crossScalaVersions in proj get structure.data) getOrElse {
       // reading scalaVersion is a one-time deal
@@ -218,12 +218,14 @@ object Cross {
   }
 
   private def switchScalaVersion(switch: Switch, state: State): State = {
-    val x = Project.extract(state)
-    import x._
+    val extracted = Project.extract(state)
+    import extracted._
+
+    type ScalaVersion = String
 
     val (version, instance) = switch.version match {
       case ScalaHomeVersion(homePath, resolveVersion, _) =>
-        val home = IO.resolve(x.currentProject.base, homePath)
+        val home = IO.resolve(extracted.currentProject.base, homePath)
         if (home.exists()) {
           val instance = ScalaInstance(home)(state.classLoaderCache.apply _)
           val version = resolveVersion.getOrElse(instance.actualVersion)
@@ -234,10 +236,10 @@ object Cross {
       case NamedScalaVersion(v, _) => (v, None)
     }
 
-    val binaryVersion = CrossVersion.binaryScalaVersion(version)
-
-    def logSwitchInfo(included: Seq[(ProjectRef, Seq[String])],
-                      excluded: Seq[(ProjectRef, Seq[String])]) = {
+    def logSwitchInfo(
+        included: Seq[(ProjectRef, Seq[ScalaVersion])],
+        excluded: Seq[(ProjectRef, Seq[ScalaVersion])]
+    ) = {
 
       instance.foreach {
         case (home, instance) =>
@@ -255,7 +257,7 @@ object Cross {
       def detailedLog(msg: => String) =
         if (switch.verbose) state.log.info(msg) else state.log.debug(msg)
 
-      def logProject: (ProjectRef, Seq[String]) => Unit = (proj, scalaVersions) => {
+      def logProject: (ProjectRef, Seq[ScalaVersion]) => Unit = (proj, scalaVersions) => {
         val current = if (proj == currentRef) "*" else " "
         detailedLog(s"  $current ${proj.project} ${scalaVersions.mkString("(", ", ", ")")}")
       }
@@ -265,57 +267,67 @@ object Cross {
       excluded.foreach(logProject.tupled)
     }
 
-    val projects: Seq[Reference] = {
+    val projects: Seq[(ResolvedReference, Seq[ScalaVersion])] = {
       val projectScalaVersions =
-        structure.allProjectRefs.map(proj => proj -> crossVersions(x, proj))
+        structure.allProjectRefs.map(proj => proj -> crossVersions(extracted, proj))
       if (switch.version.force) {
         logSwitchInfo(projectScalaVersions, Nil)
-        structure.allProjectRefs ++ structure.units.keys.map(BuildRef.apply)
+        projectScalaVersions ++ structure.units.keys
+          .map(BuildRef.apply)
+          .map(proj => proj -> crossVersions(extracted, proj))
       } else {
+        val binaryVersion = CrossVersion.binaryScalaVersion(version)
 
         val (included, excluded) = projectScalaVersions.partition {
-          case (proj, scalaVersions) =>
+          case (_, scalaVersions) =>
             scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion)
         }
         logSwitchInfo(included, excluded)
-        included.map(_._1)
+        included
       }
     }
 
-    setScalaVersionForProjects(version, instance, projects, state, x)
+    setScalaVersionForProjects(version, instance, projects, state, extracted)
   }
 
-  private def setScalaVersionForProjects(version: String,
-                                         instance: Option[(File, ScalaInstance)],
-                                         projects: Seq[Reference],
-                                         state: State,
-                                         extracted: Extracted): State = {
+  private def setScalaVersionForProjects(
+      version: String,
+      instance: Option[(File, ScalaInstance)],
+      projects: Seq[(ResolvedReference, Seq[String])],
+      state: State,
+      extracted: Extracted
+  ): State = {
     import extracted._
 
-    val newSettings = projects.flatMap { project =>
-      val scope = Scope(Select(project), Zero, Zero, Zero)
+    val newSettings = projects.flatMap {
+      case (project, scalaVersions) =>
+        val scope = Scope(Select(project), Zero, Zero, Zero)
 
-      instance match {
-        case Some((home, inst)) =>
-          Seq(
-            scalaVersion in scope := version,
-            scalaHome in scope := Some(home),
-            scalaInstance in scope := inst
-          )
-        case None =>
-          Seq(
-            scalaVersion in scope := version,
-            scalaHome in scope := None
-          )
-      }
+        instance match {
+          case Some((home, inst)) =>
+            Seq(
+              scalaVersion in scope := version,
+              crossScalaVersions in scope := scalaVersions,
+              scalaHome in scope := Some(home),
+              scalaInstance in scope := inst
+            )
+          case None =>
+            Seq(
+              scalaVersion in scope := version,
+              crossScalaVersions in scope := scalaVersions,
+              scalaHome in scope := None
+            )
+        }
     }
 
     val filterKeys: Set[AttributeKey[_]] = Set(scalaVersion, scalaHome, scalaInstance).map(_.key)
 
+    val projectsContains: Reference => Boolean = projects.map(_._1).toSet.contains
+
     // Filter out any old scala version settings that were added, this is just for hygiene.
     val filteredRawAppend = session.rawAppend.filter(_.key match {
       case ScopedKey(Scope(Select(ref), Zero, Zero, Zero), key)
-          if filterKeys.contains(key) && projects.contains(ref) =>
+          if filterKeys.contains(key) && projectsContains(ref) =>
         false
       case _ => true
     })
