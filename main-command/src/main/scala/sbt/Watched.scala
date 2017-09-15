@@ -124,7 +124,6 @@ object Watched {
         printIfDefined(watched triggeredMessage newWatchState)
         (ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
       } else {
-
         while (System.in.available() > 0) System.in.read()
         service.close()
         s.remove(ContinuousState)
