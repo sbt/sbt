@@ -85,6 +85,11 @@ object Watched {
   def isEnter(key: Int): Boolean = key == 10 || key == 13
   def printIfDefined(msg: String) = if (!msg.isEmpty) System.out.println(msg)
 
+  def isCommandDefined(s: State, commandName: String) = s.definedCommands.exists {
+    case c: SimpleCommand => c.name == commandName
+    case _                => false
+  }
+
   def executeContinuously(watched: Watched, s: State, next: String, repeat: String): State = {
     @tailrec def shouldTerminate: Boolean =
       (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)
@@ -110,8 +115,13 @@ object Watched {
 
     if (triggered) {
       printIfDefined(watched triggeredMessage newWatchState)
-      (ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
+      if (isCommandDefined(s, next)) {
+        (ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
+      } else {
+        throw new IllegalArgumentException(s"`$next` is not a defined command name")
+      }
     } else {
+
       while (System.in.available() > 0) System.in.read()
       service.close()
       s.remove(ContinuousState)
