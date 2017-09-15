@@ -16,6 +16,7 @@ import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
  * Typically you would resort to a command when you need to do something that's impossible in a regular task.
  */
 sealed trait Command {
+  def name: Option[String]
   def help: State => Help
   def parser: State => Parser[() => State]
 
@@ -24,20 +25,21 @@ sealed trait Command {
 }
 
 private[sbt] final class SimpleCommand(
-    val name: String,
+    val _name: String,
     private[sbt] val help0: Help,
     val parser: State => Parser[() => State],
     val tags: AttributeMap
 ) extends Command {
 
-  assert(Command validID name, s"'$name' is not a valid command name.")
+  assert(Command validID _name, s"'${_name}' is not a valid command name.")
 
+  override final val name = Some(_name)
   def help = const(help0)
 
   def tag[T](key: AttributeKey[T], value: T): SimpleCommand =
-    new SimpleCommand(name, help0, parser, tags.put(key, value))
+    new SimpleCommand(_name, help0, parser, tags.put(key, value))
 
-  override def toString = s"SimpleCommand($name)"
+  override def toString = s"SimpleCommand(${_name})"
 }
 
 private[sbt] final class ArbitraryCommand(
@@ -45,6 +47,7 @@ private[sbt] final class ArbitraryCommand(
     val help: State => Help,
     val tags: AttributeMap
 ) extends Command {
+  override final val name = None
   def tag[T](key: AttributeKey[T], value: T): ArbitraryCommand =
     new ArbitraryCommand(parser, help, tags.put(key, value))
 }
@@ -137,7 +140,7 @@ object Command {
   private[this] def apply1[A, B, C](f: (A, B) => C, a: A): B => () => C = b => () => f(a, b)
 
   def simpleParser(cmds: Seq[SimpleCommand]): State => Parser[() => State] =
-    simpleParser(cmds.map(sc => (sc.name, argParser(sc))).toMap)
+    simpleParser(cmds.map(sc => (sc._name, argParser(sc))).toMap)
 
   private[this] def argParser(sc: SimpleCommand): State => Parser[() => State] = {
     def usageError = s"${sc.name} usage:" + Help.message(sc.help0, None)
