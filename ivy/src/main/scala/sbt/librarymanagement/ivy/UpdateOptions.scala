@@ -109,7 +109,7 @@ object UpdateOptions {
       interProjectFirst = true,
       latestSnapshots = true,
       cachedResolution = false,
-      gigahorse = sys.props.get("sbt.gigahorse.enabled") map { _.toLowerCase == "true" } getOrElse true,
+      gigahorse = sys.props.get("sbt.gigahorse") map { _.toLowerCase == "true" } getOrElse true,
       resolverConverter = PartialFunction.empty,
       moduleResolvers = Map.empty
     )
