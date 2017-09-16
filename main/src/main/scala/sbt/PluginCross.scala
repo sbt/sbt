@@ -15,9 +15,8 @@ import Def.ScopedKey
 import sbt.internal.Load
 import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
-import sbt.librarymanagement.Configurations._
 import sbt.librarymanagement.VersionNumber
-import Project.{ inConfig, inScope }
+import Project.{ inScope }
 
 /**
  * Module responsible for plugin cross building.

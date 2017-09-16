@@ -3,23 +3,16 @@
  */
 package sbt
 
-import Keys._
-import sbt.internal.util.complete.{ DefaultParsers, Parser }
-import sbt.internal.util.AttributeKey
-import DefaultParsers._
-import Def.{ ScopedKey, Setting }
-import sbt.internal.CommandStrings.{
-  CrossCommand,
-  CrossRestoreSessionCommand,
-  SwitchCommand,
-  crossHelp,
-  crossRestoreSessionHelp,
-  switchHelp
-}
 import java.io.File
 
+import sbt.Def.{ ScopedKey, Setting }
+import sbt.Keys._
 import sbt.internal.Act
+import sbt.internal.CommandStrings._
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.util.AttributeKey
+import sbt.internal.util.complete.DefaultParsers._
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
 import sbt.librarymanagement.CrossVersion
 
