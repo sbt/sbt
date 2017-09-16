@@ -16,7 +16,6 @@ import sbt.internal.util.{
 }
 import sbt.internal.util.complete.HistoryCommands
 import sbt.internal.inc.classpath.ClassLoaderCache
-import sbt.BasicCommandStrings.Shell
 
 /**
  * Data structure representing all command execution information.

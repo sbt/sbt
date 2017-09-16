@@ -120,7 +120,9 @@ private[sbt] object JLine {
   def usingTerminal[T](f: jline.Terminal => T): T =
     withTerminal { t =>
       t.restore
-      f(t)
+      val result = f(t)
+      t.restore
+      result
     }
 
   def createReader(): ConsoleReader = createReader(None, JLine.makeInputStream(true))

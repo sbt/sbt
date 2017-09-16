@@ -23,6 +23,9 @@ import scala.util.{ Success, Failure }
  * this exchange, which could serve command request from either of the channel.
  */
 private[sbt] final class CommandExchange {
+  private val autoStartServer = sys.props.get("sbt.server.autostart") map {
+    _.toLowerCase == "true"
+  } getOrElse true
   private val lock = new AnyRef {}
   private var server: Option[ServerInstance] = None
   private var consoleChannel: Option[ConsoleChannel] = None
@@ -61,13 +64,17 @@ private[sbt] final class CommandExchange {
         consoleChannel = Some(x)
         subscribe(x)
     }
-    runServer(s)
+    if (autoStartServer) runServer(s)
+    else s
   }
 
   private def newChannelName: String = s"channel-${nextChannelId.incrementAndGet()}"
 
-  private def runServer(s: State): State = {
-    val port = (s get serverPort) match {
+  /**
+   * Check if a server instance is running already, and start one if it isn't.
+   */
+  private[sbt] def runServer(s: State): State = {
+    def port = (s get serverPort) match {
       case Some(x) => x
       case None    => 5001
     }

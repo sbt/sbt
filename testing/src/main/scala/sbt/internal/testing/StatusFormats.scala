@@ -2,7 +2,7 @@ package sbt.internal.testing
 
 import sbt.testing.Status
 
-import _root_.sjsonnew.{ deserializationError, serializationError, Builder, JsonFormat, Unbuilder }
+import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 
 trait StatusFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val StatusFormat: JsonFormat[Status] = new JsonFormat[Status] {

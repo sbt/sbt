@@ -124,16 +124,22 @@ object Scope {
     }
 
   def display(config: ConfigKey): String = config.name + ":"
+
   def display(scope: Scope, sep: String): String =
     displayMasked(scope, sep, showProject, ScopeMask())
+
   def displayMasked(scope: Scope, sep: String, mask: ScopeMask): String =
     displayMasked(scope, sep, showProject, mask)
+
   def display(scope: Scope, sep: String, showProject: Reference => String): String =
     displayMasked(scope, sep, showProject, ScopeMask())
-  def displayMasked(scope: Scope,
-                    sep: String,
-                    showProject: Reference => String,
-                    mask: ScopeMask): String = {
+
+  def displayMasked(
+      scope: Scope,
+      sep: String,
+      showProject: Reference => String,
+      mask: ScopeMask
+  ): String = {
     import scope.{ project, config, task, extra }
     val configPrefix = config.foldStrict(display, "*:", ".:")
     val taskPrefix = task.foldStrict(_.label + "::", "", ".::")
@@ -148,9 +154,12 @@ object Scope {
       (!mask.task || a.task == b.task) &&
       (!mask.extra || a.extra == b.extra)
 
-  def projectPrefix(project: ScopeAxis[Reference],
-                    show: Reference => String = showProject): String =
+  def projectPrefix(
+      project: ScopeAxis[Reference],
+      show: Reference => String = showProject
+  ): String =
     project.foldStrict(show, "*/", "./")
+
   def showProject = (ref: Reference) => Reference.display(ref) + "/"
 
   def transformTaskName(s: String) = {

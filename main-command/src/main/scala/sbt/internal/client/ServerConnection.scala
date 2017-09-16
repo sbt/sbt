@@ -30,8 +30,8 @@ abstract class ServerConnection(connection: Socket) {
             bytesRead = in.read(readBuffer)
             buffer = buffer ++ readBuffer.toVector.take(bytesRead)
             // handle un-framing
-            val delimPos = buffer.indexOf(delimiter)
-            if (delimPos > 0) {
+            var delimPos = buffer.indexOf(delimiter)
+            while (delimPos > -1) {
               val chunk = buffer.take(delimPos)
               buffer = buffer.drop(delimPos + 1)
 
@@ -47,6 +47,7 @@ abstract class ServerConnection(connection: Socket) {
                     case event: StringEvent  => onLogEntry(event)
                   }
                 )
+              delimPos = buffer.indexOf(delimiter)
             }
 
           } catch {

@@ -29,8 +29,8 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
             bytesRead = in.read(readBuffer)
             buffer = buffer ++ readBuffer.toVector.take(bytesRead)
             // handle un-framing
-            val delimPos = buffer.indexOf(delimiter)
-            if (delimPos > 0) {
+            var delimPos = buffer.indexOf(delimiter)
+            while (delimPos > -1) {
               val chunk = buffer.take(delimPos)
               buffer = buffer.drop(delimPos + 1)
 
@@ -40,6 +40,7 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
                   errorDesc => println("Got invalid chunk from client: " + errorDesc),
                   onCommand
                 )
+              delimPos = buffer.indexOf(delimiter)
             }
 
           } catch {
