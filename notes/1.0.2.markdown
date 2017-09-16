@@ -11,14 +11,16 @@ This is a hotfix release for sbt 1.0.x series.
 - Fixes sbt server missing some messages. [#3523][3523] by [@guillaumebort][@guillaumebort]
 - Refixes `consoleProject`. [zinc#386][zinc386] by [@dwijnand][@dwijnand]
 - Adds JVM flag `sbt.gigahorse` to enable/disable the internal use of Gigahorse to workaround NPE in `JavaNetAuthenticator` when used in conjunction with `repositories` override. [lm#167][lm167] by [@cunei][@cunei]
+- Adds JVM flag `sbt.server.autostart` to enable/disable the automatic starting of sbt server with the sbt shell. This also adds new `startServer` command to manually start the server. by [@eed3si9n][@eed3si9n]
 
 ### Internal
 
 - Fixes unused import warnings. [#3533][3533] by [@razvan-panda][@razvan-panda]
 
-  [@dpratt]: https://github.com/dpratt
   [@dwijnand]: https://github.com/dwijnand
   [@cunei]: https://github.com/cunei
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dpratt]: https://github.com/dpratt
   [@kczulko]: https://github.com/kczulko
   [@razvan-panda]: https://github.com/razvan-panda
   [@guillaumebort]: https://github.com/guillaumebort
