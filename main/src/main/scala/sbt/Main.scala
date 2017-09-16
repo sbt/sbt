@@ -195,6 +195,7 @@ object BuiltinCommands {
       multi,
       shell,
       oldshell,
+      startServer,
       BasicCommands.client,
       continuous,
       eval,
@@ -736,6 +737,12 @@ object BuiltinCommands {
     if (exec.commandLine.trim.isEmpty) newState
     else newState.clearGlobalLog
   }
+
+  def startServer: Command =
+    Command.command(StartServer, Help.more(StartServer, StartServerDetailed)) { s0 =>
+      val exchange = StandardMain.exchange
+      exchange.runServer(s0)
+    }
 
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
   private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()

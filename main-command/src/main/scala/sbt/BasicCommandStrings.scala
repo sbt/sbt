@@ -161,6 +161,12 @@ $AliasCommand name=
   def ShellDetailed =
     "Provides an interactive prompt and network server from which commands can be run."
 
+  def StartServer = "startServer"
+  def StartServerDetailed =
+    s"""$StartServer
+	Starts the server if it has not been started. This is intended to be used with
+	-Dsbt.server.autostart=false."""
+
   def OldShell = "oldshell"
   def OldShellDetailed = "Provides an interactive prompt from which commands can be run."
 
