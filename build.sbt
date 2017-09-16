@@ -9,7 +9,7 @@ def buildLevelSettings: Seq[Setting[_]] =
   inThisBuild(
     Seq(
       organization := "org.scala-sbt",
-      version := "1.0.2-SNAPSHOT",
+      version := "1.0.3-SNAPSHOT",
       description := "sbt is an interactive build tool",
       bintrayOrganization := Some("sbt"),
       bintrayRepository := {
