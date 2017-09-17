@@ -5,12 +5,17 @@ package sbt
 package internal
 package server
 
+import java.io.File
 import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, Socket }
 import java.util.concurrent.atomic.AtomicBoolean
-import sbt.util.Logger
-import sbt.internal.util.ErrorHandling
 import scala.concurrent.{ Future, Promise }
 import scala.util.{ Try, Success, Failure }
+import sbt.internal.util.ErrorHandling
+import sbt.internal.protocol.PortFile
+import sbt.util.Logger
+import sbt.io.IO
+import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
+import sbt.internal.protocol.codec._
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -18,14 +23,19 @@ private[sbt] sealed trait ServerInstance {
 }
 
 private[sbt] object Server {
+  sealed trait JsonProtocol
+      extends sjsonnew.BasicJsonProtocol
+      with PortFileFormats
+      with TokenFileFormats
+  object JsonProtocol extends JsonProtocol
+
   def start(host: String,
             port: Int,
             onIncomingSocket: Socket => Unit,
-            /*onIncomingCommand: CommandMessage => Unit,*/ log: Logger): ServerInstance =
+            portfile: File,
+            tokenfile: File,
+            log: Logger): ServerInstance =
     new ServerInstance {
-
-      // val lock = new AnyRef {}
-      // val clients: mutable.ListBuffer[ClientConnection] = mutable.ListBuffer.empty
       val running = new AtomicBoolean(false)
       val p: Promise[Unit] = Promise[Unit]()
       val ready: Future[Unit] = p.future
@@ -41,6 +51,7 @@ private[sbt] object Server {
             case Success(serverSocket) =>
               serverSocket.setSoTimeout(5000)
               log.info(s"sbt server started at $host:$port")
+              writePortfile()
               running.set(true)
               p.success(())
               while (running.get()) {
@@ -58,8 +69,21 @@ private[sbt] object Server {
 
       override def shutdown(): Unit = {
         log.info("shutting down server")
+        if (portfile.exists) {
+          IO.delete(portfile)
+        }
+        if (tokenfile.exists) {
+          IO.delete(tokenfile)
+        }
         running.set(false)
       }
-    }
 
+      // This file exists through the lifetime of the server.
+      def writePortfile(): Unit = {
+        import JsonProtocol._
+        val p = PortFile(s"tcp://$host:$port", None)
+        val json = Converter.toJson(p).get
+        IO.write(portfile, CompactPrinter(json))
+      }
+    }
 }

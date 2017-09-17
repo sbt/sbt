@@ -290,6 +290,10 @@ lazy val commandProj = (project in file("main-command"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      // Changed the signature of Server method. nacho cheese.
+      exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*")
+    )
   )
   .configure(
     addSbtIO,

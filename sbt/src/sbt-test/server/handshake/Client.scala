@@ -4,10 +4,11 @@ import java.net.{ URI, Socket, InetAddress, SocketException }
 import sbt.io._
 import sbt.io.syntax._
 import java.io.File
+import sjsonnew.support.scalajson.unsafe.{ Parser, Converter, CompactPrinter }
+import sjsonnew.shaded.scalajson.ast.unsafe.{ JValue, JObject, JString }
 
 object Client extends App {
   val host = "127.0.0.1"
-  val port = 5123
   val delimiter: Byte = '\n'.toByte
 
   println("hello")
@@ -24,9 +25,25 @@ object Client extends App {
   val baseDirectory = new File(args(0))
   IO.write(baseDirectory / "ok.txt", "ok")
 
+  def getPort: Int = {
+    val portfile = baseDirectory / "project" / "target" / "active.json"
+    val json: JValue = Parser.parseFromFile(portfile).get
+    json match {
+      case JObject(fields) =>
+        (fields find { _.field == "url" } map { _.value }) match {
+          case Some(JString(value)) => 
+            val u = new URI(value)
+            u.getPort
+          case _                    =>
+            sys.error("json doesn't url field that is JString")
+        }
+      case _ => sys.error("json doesn't have url field")
+    }
+  }
+
   def getConnection: Socket =
     try {
-      new Socket(InetAddress.getByName(host), port)
+      new Socket(InetAddress.getByName(host), getPort)
     } catch {
       case _ =>
         Thread.sleep(1000)

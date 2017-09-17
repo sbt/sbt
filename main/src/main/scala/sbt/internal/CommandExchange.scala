@@ -15,6 +15,8 @@ import sjsonnew.JsonFormat
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{ Success, Failure }
+import sbt.io.syntax._
+import sbt.io.Hash
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -87,7 +89,10 @@ private[sbt] final class CommandExchange {
     server match {
       case Some(x) => // do nothing
       case _ =>
-        val x = Server.start("127.0.0.1", port, onIncomingSocket, s.log)
+        val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
+        val h = Hash.halfHashString(portfile.toURL.toString)
+        val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
+        val x = Server.start("127.0.0.1", port, onIncomingSocket, portfile, tokenfile, s.log)
         Await.ready(x.ready, Duration("10s"))
         x.ready.value match {
           case Some(Success(_)) =>
