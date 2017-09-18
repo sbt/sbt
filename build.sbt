@@ -82,12 +82,13 @@ val root = (project in file(".")).
         if !(link.destination endsWith "sbt-launch.jar")
       } yield link
     },
+    
     // DEBIAN SPECIFIC
+    debianBuildId := 0,
     version in Debian := {
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
     },
-    debianBuildId := 3, // 0
     // Used to have "openjdk-8-jdk" but that doesn't work on Ubuntu 14.04 https://github.com/sbt/sbt/issues/3105
     // before that we had java6-runtime-headless" and that was pulling in JDK9 on Ubuntu 16.04 https://github.com/sbt/sbt/issues/2931
     debianPackageDependencies in Debian ++= Seq("bash (>= 3.2)"),
@@ -100,10 +101,9 @@ val root = (project in file(".")).
     },
     debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
     addPackage(Debian, packageBin in Debian, "deb"),
-    maintainerScripts in Debian := maintainerScriptsAppend((maintainerScripts in Debian).value)(
-      Postinst -> s"/usr/share/sbt/bin/sbt about"
-    ),
+    
     // RPM SPECIFIC
+    rpmRelease := "0",
     version in Rpm := {
       val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
       val stable = if (rpmRelease.value == "0") stable0
@@ -113,7 +113,6 @@ val root = (project in file(".")).
       })
       else stable
     },
-    rpmRelease := "3",
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
@@ -123,9 +122,6 @@ val root = (project in file(".")).
     // https://github.com/elastic/logstash/issues/6275#issuecomment-261359933
     rpmRequirements := Seq(),
     rpmProvides := Seq("sbt"),
-    maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
-      RpmConstants.Post -> s"/usr/share/sbt/bin/sbt about"
-    ),
 
     // WINDOWS SPECIFIC
     windowsBuildId := 0,
@@ -149,6 +145,29 @@ val root = (project in file(".")).
     // Universal ZIP download install.
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
     version in Universal := sbtVersionToRelease,
+
+    mappings in Universal := {
+      val t = (target in Universal).value
+      val prev = (mappings in Universal).value
+      val BinBash = "bin" + java.io.File.separator + "sbt-launch-lib.bash"
+      val BinBat = "bin" + java.io.File.separator + "sbt.bat"
+      prev.toList map {
+        case (k, BinBash) =>
+          val x = IO.read(k)
+          IO.write(t / "sbt-launch-lib.bash", x.replaceAllLiterally(
+            "declare init_sbt_version=_to_be_replaced",
+            s"""declare init_sbt_version="$sbtVersionToRelease""""))
+          (t / "sbt-launch-lib.bash", BinBash)
+        case (k, BinBat) =>
+          val x = IO.read(k)
+          IO.write(t / "sbt.bat", x.replaceAllLiterally(
+            "set INIT_SBT_VERSION=_TO_BE_REPLACED",
+            s"""set INIT_SBT_VERSION="$sbtVersionToRelease""""))
+          (t / "sbt.bat", BinBat)
+        case (k, v) => (k, v)
+      }
+    },
+
     mappings in Universal ++= {
       val launchJar = sbtLaunchJar.value
       val rtExportJar = (packageBin in Compile in java9rtexport).value
@@ -162,17 +181,6 @@ val root = (project in file(".")).
         }
       else Def.task { Seq[(File, String)]() }
     }).value,
-    stage in Universal := {
-      val old = (stage in Universal).value
-      val sd = (stagingDirectory in Universal).value
-      val x = IO.read(sd / "bin" / "sbt-launch-lib.bash")
-      IO.write(sd / "bin" / "sbt-launch-lib.bash", x.replaceAllLiterally(
-        "declare init_sbt_version=_to_be_replaced", s"declare init_sbt_version=$sbtVersionToRelease"))
-      val y = IO.read(sd / "bin" / "sbt.bat")
-      IO.write(sd / "bin" / "sbt.bat", y.replaceAllLiterally(
-        "set INIT_SBT_VERSION=_TO_BE_REPLACED", s"set INIT_SBT_VERSION=$sbtVersionToRelease"))
-      old
-    },
 
     // Misccelaneous publishing stuff...
     projectID in Debian := {

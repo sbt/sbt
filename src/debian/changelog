@@ -1,3 +1,10 @@
+sbt (1.0.0) stable; urgency=low
+
+  * sbt 1.0 uses Scala 2.12 for build definitions and plugins. This also requires JDK 8.
+  * See http://www.scala-sbt.org/1.x/docs/sbt-1.0-Release-Notes.html for the full list of changes. 
+
+ -- Eugene Yokota <eed3si9n@gmail.com>  Fri, 11 Aug 2017 00:00:00 +0000
+
 sbt (0.13.15) stable; urgency=low
 
   * sbt 0.13.15 removes the Maven version range when possible.
