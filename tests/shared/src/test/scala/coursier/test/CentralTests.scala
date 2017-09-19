@@ -774,7 +774,10 @@ abstract class CentralTests extends TestSuite {
       val mod = Module("org.webjars.bower", "dgrid")
       val ver = "1.0.0"
 
-      * - resolutionCheck(mod, ver)
+      * - {
+        if (isActualCentral) // if false, the tests rely on things straight from Central, which can be updated sometimes…
+          resolutionCheck(mod, ver)
+      }
     }
 
     'dependencyManagementScopeOverriding - {
