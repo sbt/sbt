@@ -5,26 +5,26 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.protocol
 final class TokenFile private (
-  val url: String,
+  val uri: String,
   val token: String) extends Serializable {
   
   
   
   override def equals(o: Any): Boolean = o match {
-    case x: TokenFile => (this.url == x.url) && (this.token == x.token)
+    case x: TokenFile => (this.uri == x.uri) && (this.token == x.token)
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "sbt.internal.protocol.TokenFile".##) + url.##) + token.##)
+    37 * (37 * (37 * (17 + "sbt.internal.protocol.TokenFile".##) + uri.##) + token.##)
   }
   override def toString: String = {
-    "TokenFile(" + url + ", " + token + ")"
+    "TokenFile(" + uri + ", " + token + ")"
   }
-  protected[this] def copy(url: String = url, token: String = token): TokenFile = {
-    new TokenFile(url, token)
+  protected[this] def copy(uri: String = uri, token: String = token): TokenFile = {
+    new TokenFile(uri, token)
   }
-  def withUrl(url: String): TokenFile = {
-    copy(url = url)
+  def withUri(uri: String): TokenFile = {
+    copy(uri = uri)
   }
   def withToken(token: String): TokenFile = {
     copy(token = token)
@@ -32,5 +32,5 @@ final class TokenFile private (
 }
 object TokenFile {
   
-  def apply(url: String, token: String): TokenFile = new TokenFile(url, token)
+  def apply(uri: String, token: String): TokenFile = new TokenFile(uri, token)
 }

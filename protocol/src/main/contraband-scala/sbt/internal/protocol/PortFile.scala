@@ -9,27 +9,27 @@ package sbt.internal.protocol
  * It can be used to find out the transport protocol (port number etc).
  */
 final class PortFile private (
-  /** URL of the sbt server. */
-  val url: String,
+  /** URI of the sbt server. */
+  val uri: String,
   val tokenfile: Option[String]) extends Serializable {
   
   
   
   override def equals(o: Any): Boolean = o match {
-    case x: PortFile => (this.url == x.url) && (this.tokenfile == x.tokenfile)
+    case x: PortFile => (this.uri == x.uri) && (this.tokenfile == x.tokenfile)
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (17 + "sbt.internal.protocol.PortFile".##) + url.##) + tokenfile.##)
+    37 * (37 * (37 * (17 + "sbt.internal.protocol.PortFile".##) + uri.##) + tokenfile.##)
   }
   override def toString: String = {
-    "PortFile(" + url + ", " + tokenfile + ")"
+    "PortFile(" + uri + ", " + tokenfile + ")"
   }
-  protected[this] def copy(url: String = url, tokenfile: Option[String] = tokenfile): PortFile = {
-    new PortFile(url, tokenfile)
+  protected[this] def copy(uri: String = uri, tokenfile: Option[String] = tokenfile): PortFile = {
+    new PortFile(uri, tokenfile)
   }
-  def withUrl(url: String): PortFile = {
-    copy(url = url)
+  def withUri(uri: String): PortFile = {
+    copy(uri = uri)
   }
   def withTokenfile(tokenfile: Option[String]): PortFile = {
     copy(tokenfile = tokenfile)
@@ -40,6 +40,6 @@ final class PortFile private (
 }
 object PortFile {
   
-  def apply(url: String, tokenfile: Option[String]): PortFile = new PortFile(url, tokenfile)
-  def apply(url: String, tokenfile: String): PortFile = new PortFile(url, Option(tokenfile))
+  def apply(uri: String, tokenfile: Option[String]): PortFile = new PortFile(uri, tokenfile)
+  def apply(uri: String, tokenfile: String): PortFile = new PortFile(uri, Option(tokenfile))
 }

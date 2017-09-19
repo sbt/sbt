@@ -11,17 +11,17 @@ implicit lazy val TokenFileFormat: JsonFormat[sbt.internal.protocol.TokenFile] =
     jsOpt match {
       case Some(js) =>
       unbuilder.beginObject(js)
-      val url = unbuilder.readField[String]("url")
+      val uri = unbuilder.readField[String]("uri")
       val token = unbuilder.readField[String]("token")
       unbuilder.endObject()
-      sbt.internal.protocol.TokenFile(url, token)
+      sbt.internal.protocol.TokenFile(uri, token)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
   }
   override def write[J](obj: sbt.internal.protocol.TokenFile, builder: Builder[J]): Unit = {
     builder.beginObject()
-    builder.addField("url", obj.url)
+    builder.addField("uri", obj.uri)
     builder.addField("token", obj.token)
     builder.endObject()
   }

@@ -30,14 +30,14 @@ object Client extends App {
     val json: JValue = Parser.parseFromFile(portfile).get
     json match {
       case JObject(fields) =>
-        (fields find { _.field == "url" } map { _.value }) match {
+        (fields find { _.field == "uri" } map { _.value }) match {
           case Some(JString(value)) => 
             val u = new URI(value)
             u.getPort
           case _                    =>
-            sys.error("json doesn't url field that is JString")
+            sys.error("json doesn't uri field that is JString")
         }
-      case _ => sys.error("json doesn't have url field")
+      case _ => sys.error("json doesn't have uri field")
     }
   }
 

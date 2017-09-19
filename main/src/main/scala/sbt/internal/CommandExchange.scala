@@ -90,7 +90,7 @@ private[sbt] final class CommandExchange {
       case Some(x) => // do nothing
       case _ =>
         val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
-        val h = Hash.halfHashString(portfile.toURL.toString)
+        val h = Hash.halfHashString(portfile.toURI.toString)
         val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
         val x = Server.start("127.0.0.1", port, onIncomingSocket, portfile, tokenfile, s.log)
         Await.ready(x.ready, Duration("10s"))

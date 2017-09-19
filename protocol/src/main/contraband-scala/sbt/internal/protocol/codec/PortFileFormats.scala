@@ -11,17 +11,17 @@ implicit lazy val PortFileFormat: JsonFormat[sbt.internal.protocol.PortFile] = n
     jsOpt match {
       case Some(js) =>
       unbuilder.beginObject(js)
-      val url = unbuilder.readField[String]("url")
+      val uri = unbuilder.readField[String]("uri")
       val tokenfile = unbuilder.readField[Option[String]]("tokenfile")
       unbuilder.endObject()
-      sbt.internal.protocol.PortFile(url, tokenfile)
+      sbt.internal.protocol.PortFile(uri, tokenfile)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
   }
   override def write[J](obj: sbt.internal.protocol.PortFile, builder: Builder[J]): Unit = {
     builder.beginObject()
-    builder.addField("url", obj.url)
+    builder.addField("uri", obj.uri)
     builder.addField("tokenfile", obj.tokenfile)
     builder.endObject()
   }

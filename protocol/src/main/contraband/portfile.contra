@@ -5,12 +5,12 @@ package sbt.internal.protocol
 ## This file should exist throughout the lifetime of the server.
 ## It can be used to find out the transport protocol (port number etc).
 type PortFile {
-  ## URL of the sbt server.
-  url: String!
+  ## URI of the sbt server.
+  uri: String!
   tokenfile: String
 }
 
 type TokenFile {
-  url: String!
+  uri: String!
   token: String!
 }
