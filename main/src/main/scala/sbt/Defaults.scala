@@ -601,19 +601,18 @@ object Defaults extends BuildCommon {
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
-    val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
+    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val binVersion = scalaBinaryVersion.value
     val compilerJar =
       if (ScalaInstance.isDotty(scalaVersion.value))
         file(ScalaArtifacts.dottyID(binVersion))
       else file(ScalaArtifacts.CompilerID)
-    val otherJars = allFiles.filterNot(x => x == libraryJar || x == compilerJar)
     new ScalaInstance(scalaVersion.value,
-                      makeClassLoader(state.value)(libraryJar :: compilerJar :: otherJars.toList),
+                      makeClassLoader(state.value)(allJars.toList),
                       libraryJar,
                       compilerJar,
-                      otherJars.toArray,
+                      allJars.toArray,
                       None)
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
