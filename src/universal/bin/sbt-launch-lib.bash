@@ -189,13 +189,14 @@ syncPreloaded() {
 checkJava() {
   local required_version="$1"
   # Now check to see if it's a good enough version
+  local good_enough="$(echo "$java_version >= $required_version" | bc)"
   if [[ "$java_version" == "" ]]; then
     echo
     echo No java installations was detected.
     echo Please go to http://www.java.com/getjava/ and download
     echo
     exit 1
-  elif [[ "$java_version" < "$required_version" ]]; then
+  elif [[ "$good_enough" != "1" ]]; then
     echo
     echo The java installation you have is not up to date
     echo $script_name requires at least version $required_version+, you have
@@ -209,7 +210,8 @@ checkJava() {
 }
 
 copyRt() {
-  if [[ "$java_version" == "9" ]]; then
+  local at_least_9="$(echo "$java_version >= 9" | bc)"
+  if [[ "$at_least_9" == "1" ]]; then
     rtexport=$(rt_export_file)
     java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
       -jar "$rtexport" --rt-ext-dir)
