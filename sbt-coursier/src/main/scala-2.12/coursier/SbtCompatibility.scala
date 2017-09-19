@@ -16,20 +16,6 @@ object SbtCompatibility {
 
   type IvySbt = sbt.internal.librarymanagement.IvySbt
 
-  type Binary = sbt.librarymanagement.Binary
-  type Disabled = sbt.librarymanagement.Disabled
-  type Full = sbt.librarymanagement.Full
-
-  implicit class BinaryOps(private val binary: Binary) extends AnyVal {
-    def remapVersion(scalaBinaryVersion: String): String =
-      binary.prefix + scalaBinaryVersion + binary.suffix
-  }
-
-  implicit class FullOps(private val full: Full) extends AnyVal {
-    def remapVersion(scalaVersion: String): String =
-      full.prefix + scalaVersion + full.suffix
-  }
-
   def needsIvyXmlLocal = sbt.Keys.publishLocalConfiguration
   def needsIvyXml = sbt.Keys.publishConfiguration
 

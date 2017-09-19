@@ -25,11 +25,9 @@ object FromSbt {
     crossVersion: CrossVersion,
     scalaVersion: => String,
     scalaBinaryVersion: => String
-  ): String = crossVersion match {
-    case _: Disabled => name
-    case f: Full => name + "_" + f.remapVersion(scalaVersion)
-    case b: Binary => name + "_" + b.remapVersion(scalaBinaryVersion)
-  }
+  ): String =
+    CrossVersion(crossVersion, scalaVersion, scalaBinaryVersion)
+      .fold(name)(_(name))
 
   def attributes(attr: Map[String, String]): Map[String, String] =
     attr.map { case (k, v) =>

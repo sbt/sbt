@@ -18,10 +18,6 @@ object SbtCompatibility {
 
   type IvySbt = sbt.IvySbt
 
-  type Binary = sbt.CrossVersion.Binary
-  type Disabled = sbt.CrossVersion.Disabled.type
-  type Full = sbt.CrossVersion.Full
-
   implicit class ModuleIDOps(val id: sbt.ModuleID) extends AnyVal {
     def withConfigurations(configurations: Option[String]): sbt.ModuleID =
       id.copy(configurations = configurations)
