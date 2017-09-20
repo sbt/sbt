@@ -141,7 +141,7 @@ object Release {
 
   val savePreviousReleaseVersion = ReleaseStep { state =>
 
-    val cmd = Seq(state.vcs.commandName, "tag", "-l")
+    val cmd = Seq(state.vcs.commandName, "tag", "--sort", "version:refname")
 
     val tag = scala.sys.process.Process(cmd)
       .!!
