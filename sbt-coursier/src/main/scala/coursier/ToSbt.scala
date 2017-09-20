@@ -221,9 +221,25 @@ object ToSbt {
           includeSignatures = includeSignatures
         )
 
+        val reports0 =
+          if (subRes.rootDependencies.size == 1) {
+            // quick hack ensuring the module for the only root dependency
+            // appears first in the update report, see https://github.com/coursier/coursier/issues/650
+            val dep = subRes.rootDependencies.head
+            val (_, proj) = subRes.projectCache(dep.moduleVersion)
+            val mod = ToSbt.moduleId(dep, proj.properties.toMap)
+            val (main, other) = reports.partition { r =>
+              r.module.organization == mod.organization &&
+                r.module.name == mod.name &&
+                r.module.crossVersion == mod.crossVersion
+            }
+            main.toVector ++ other.toVector
+          } else
+            reports.toVector
+
         sbt.ConfigurationReport(
           ConfigRef(config),
-          reports.toVector,
+          reports0,
           Vector()
         )
     }
