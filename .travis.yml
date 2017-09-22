@@ -20,9 +20,8 @@ matrix:
       os: linux
       jdk: oraclejdk8
       sudo: required
-      group: deprecated-2017Q3
       before_install:
-      - curl https://raw.githubusercontent.com/scala-native/scala-native/v0.3.1/bin/travis_setup.sh | bash -x
+      - curl https://raw.githubusercontent.com/scala-native/scala-native/e9df70ce671c58f34eab530a44875d6f818ba8fe/bin/travis_setup.sh | bash -x
       services:
         - docker
     - env: SCALA_VERSION=2.10.6 PUBLISH=1

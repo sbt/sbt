@@ -20,9 +20,6 @@ libs ++= Seq(
   "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M5"
 )
 
-// important: this line is matched / substituted during releases (via sbt-release)
-def coursierVersion = "1.0.0-RC12"
-
 // required for just released things
 resolvers += Resolver.sonatypeRepo("releases")
 

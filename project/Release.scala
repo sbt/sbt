@@ -141,7 +141,7 @@ object Release {
 
   val savePreviousReleaseVersion = ReleaseStep { state =>
 
-    val cmd = Seq(state.vcs.commandName, "tag", "-l")
+    val cmd = Seq(state.vcs.commandName, "tag", "--sort", "version:refname")
 
     val tag = scala.sys.process.Process(cmd)
       .!!
@@ -193,7 +193,7 @@ object Release {
   }
 
 
-  val coursierVersionPattern = s"(?m)^${Pattern.quote("def coursierVersion = \"")}[^${'"'}]*${Pattern.quote("\"")}$$".r
+  val coursierVersionPattern = s"(?m)^${Pattern.quote("def coursierVersion0 = \"")}[^${'"'}]*${Pattern.quote("\"")}$$".r
 
   val updatePluginsSbt = ReleaseStep { state =>
 
@@ -204,13 +204,9 @@ object Release {
     }
 
     val baseDir = Project.extract(state).get(baseDirectory.in(ThisBuild))
-    val pluginsSbtFile = baseDir / "project" / "plugins.sbt"
-    val projectPluginsSbtFile = baseDir / "project" / "project" / "plugins.sbt"
     val projectProjectPluginsSbtFile = baseDir / "project" / "project" / "project" / "plugins.sbt"
 
     val files = Seq(
-      pluginsSbtFile,
-      projectPluginsSbtFile,
       projectProjectPluginsSbtFile
     )
 
@@ -223,7 +219,7 @@ object Release {
         case _ => sys.error(s"Found too many matches in $f")
       }
 
-      val newContent = coursierVersionPattern.replaceAllIn(content, "def coursierVersion = \"" + releaseVer + "\"")
+      val newContent = coursierVersionPattern.replaceAllIn(content, "def coursierVersion0 = \"" + releaseVer + "\"")
       Files.write(f.toPath, newContent.getBytes(StandardCharsets.UTF_8))
       vcs.add(f.getAbsolutePath).!!(state.log)
     }
