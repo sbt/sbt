@@ -7,10 +7,12 @@ package server
 
 import java.io.File
 import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, Socket }
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicLong }
+import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.file.attribute.{ UserPrincipal, AclEntry, AclEntryPermission, AclEntryType }
+import java.security.SecureRandom
+import java.math.BigInteger
 import scala.concurrent.{ Future, Promise }
-import scala.util.{ Try, Success, Failure, Random }
+import scala.util.{ Try, Success, Failure }
 import sbt.internal.util.ErrorHandling
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
@@ -43,7 +45,8 @@ private[sbt] object Server {
       val running = new AtomicBoolean(false)
       val p: Promise[Unit] = Promise[Unit]()
       val ready: Future[Unit] = p.future
-      val token = new AtomicLong(Random.nextLong)
+      private[this] val rand = new SecureRandom
+      private[this] var token: String = nextToken
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
@@ -72,13 +75,17 @@ private[sbt] object Server {
       }
       serverThread.start()
 
-      override def authenticate(challenge: String): Boolean = {
-        try {
-          val l = challenge.toLong
-          token.compareAndSet(l, Random.nextLong)
-        } catch {
-          case _: NumberFormatException => false
-        }
+      override def authenticate(challenge: String): Boolean = synchronized {
+        if (token == challenge) {
+          token = nextToken
+          writeTokenfile()
+          true
+        } else false
+      }
+
+      /** Generates 128-bit non-negative integer, and represent it as decimal string. */
+      private[this] def nextToken: String = {
+        new BigInteger(128, rand).toString
       }
 
       override def shutdown(): Unit = {
@@ -92,11 +99,11 @@ private[sbt] object Server {
         running.set(false)
       }
 
-      def writeTokenfile(): Unit = {
+      private[this] def writeTokenfile(): Unit = {
         import JsonProtocol._
 
         val uri = s"tcp://$host:$port"
-        val t = TokenFile(uri, token.get.toString)
+        val t = TokenFile(uri, token)
         val jsonToken = Converter.toJson(t).get
 
         if (tokenfile.exists) {
@@ -108,7 +115,7 @@ private[sbt] object Server {
       }
 
       /** Set the persmission of the file such that the only the owner can read/write it. */
-      def ownerOnly(file: File): Unit = {
+      private[this] def ownerOnly(file: File): Unit = {
         def acl(owner: UserPrincipal) = {
           val builder = AclEntry.newBuilder
           builder.setPrincipal(owner)
@@ -127,7 +134,7 @@ private[sbt] object Server {
       }
 
       // This file exists through the lifetime of the server.
-      def writePortfile(): Unit = {
+      private[this] def writePortfile(): Unit = {
         import JsonProtocol._
 
         val uri = s"tcp://$host:$port"
