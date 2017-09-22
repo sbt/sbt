@@ -18,12 +18,44 @@ object Client extends App {
   val out = connection.getOutputStream
   val in = connection.getInputStream
 
+  out.write(s"""{ "type": "InitCommand", "token": "$getToken" }""".getBytes("utf-8"))
+  out.write(delimiter.toInt)
+  out.flush
+
   out.write("""{ "type": "ExecCommand", "commandLine": "exit" }""".getBytes("utf-8"))
   out.write(delimiter.toInt)
   out.flush
 
   val baseDirectory = new File(args(0))
   IO.write(baseDirectory / "ok.txt", "ok")
+
+  def getToken: String = {
+    val tokenfile = new File(getTokenFile)
+    val json: JValue = Parser.parseFromFile(tokenfile).get
+    json match {
+      case JObject(fields) =>
+        (fields find { _.field == "token" } map { _.value }) match {
+          case Some(JString(value)) => value
+          case _                    =>
+            sys.error("json doesn't token field that is JString")
+        }
+      case _ => sys.error("json doesn't have token field")
+    }
+  }
+
+  def getTokenFile: URI = {
+    val portfile = baseDirectory / "project" / "target" / "active.json"
+    val json: JValue = Parser.parseFromFile(portfile).get
+    json match {
+      case JObject(fields) =>
+        (fields find { _.field == "tokenfile" } map { _.value }) match {
+          case Some(JString(value)) => new URI(value)
+          case _                    =>
+            sys.error("json doesn't tokenfile field that is JString")
+        }
+      case _ => sys.error("json doesn't have tokenfile field")
+    }
+  }
 
   def getPort: Int = {
     val portfile = baseDirectory / "project" / "target" / "active.json"

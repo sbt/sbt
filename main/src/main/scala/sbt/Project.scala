@@ -16,7 +16,9 @@ import Keys.{
   sessionSettings,
   shellPrompt,
   templateResolverInfos,
+  serverHost,
   serverPort,
+  serverAuthentication,
   watch
 }
 import Scope.{ Global, ThisScope }
@@ -509,23 +511,30 @@ object Project extends ProjectExtra {
     val prompt = get(shellPrompt)
     val trs = (templateResolverInfos in Global get structure.data).toList.flatten
     val watched = get(watch)
+    val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
+    val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands,
                                                                        projectCommand)
-    val newAttrs0 =
-      setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
-    val newAttrs = setCond(serverPort.key, port, newAttrs0)
-      .put(historyPath.key, history)
-      .put(templateResolverInfos.key, trs)
+    val newAttrs =
+      s.attributes
+        .setCond(Watched.Configuration, watched)
+        .put(historyPath.key, history)
+        .setCond(serverPort.key, port)
+        .setCond(serverHost.key, host)
+        .setCond(serverAuthentication.key, authentication)
+        .put(historyPath.key, history)
+        .put(templateResolverInfos.key, trs)
+        .setCond(shellPrompt.key, prompt)
     s.copy(
-      attributes = setCond(shellPrompt.key, prompt, newAttrs),
+      attributes = newAttrs,
       definedCommands = newDefinedCommands
     )
   }
 
   def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
-    vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
+    attributes.setCond(key, vopt)
 
   private[sbt] def checkTargets(data: Settings[Scope]): Option[String] = {
     val dups = overlappingTargets(allTargets(data))

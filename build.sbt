@@ -132,6 +132,10 @@ val collectionProj = (project in file("internal") / "util-collection")
     name := "Collections",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Added private[sbt] method to capture State attributes.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.util.AttributeMap.setCond"),
+    ),
   )
   .configure(addSbtUtilPosition)
 
@@ -292,7 +296,9 @@ lazy val commandProj = (project in file("main-command"))
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // Changed the signature of Server method. nacho cheese.
-      exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*")
+      exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*"),
+      // Added method to ServerInstance. This is also internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerInstance.*"),
     )
   )
   .configure(
@@ -365,6 +371,10 @@ lazy val mainProj = (project in file("main"))
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      // Changed the signature of NetworkChannel ctor. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.server.NetworkChannel.*"),
+    )
   )
   .configure(
     addSbtIO,

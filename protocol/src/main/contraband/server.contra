@@ -7,6 +7,11 @@ package sbt.protocol
 interface CommandMessage {
 }
 
+type InitCommand implements CommandMessage {
+  token: String
+  execId: String
+}
+
 ## Command to execute sbt command.
 type ExecCommand implements CommandMessage {
   commandLine: String!
