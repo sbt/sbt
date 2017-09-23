@@ -183,32 +183,6 @@ object Settings {
     divertThingsPlugin ++
     withScriptedTests ++
     Seq(
-      sbtLauncher := {
-
-        val rep = update
-          .value
-          .configuration(ScriptedPlugin.scriptedLaunchConf.name)
-          .getOrElse(sys.error(s"Configuration ${ScriptedPlugin.scriptedLaunchConf.name} not found"))
-
-        val org = "org.scala-sbt"
-        val name = "sbt-launch"
-
-        val (_, jar) = rep
-          .modules
-          .find { modRep =>
-            modRep.module.organization == org && modRep.module.name == name
-          }
-          .getOrElse {
-            sys.error(s"Module $org:$name not found in configuration ${ScriptedPlugin.scriptedLaunchConf.name}")
-          }
-          .artifacts
-          .headOption
-          .getOrElse {
-            sys.error(s"No artifacts found for module $org:$name in configuration ${ScriptedPlugin.scriptedLaunchConf.name}")
-          }
-
-        jar
-      },
       scriptedLaunchOpts ++= Seq(
         "-Xmx1024M",
         "-Dplugin.version=" + version.value,
