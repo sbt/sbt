@@ -357,7 +357,7 @@ abstract class ResolverFunctions {
   def mavenStyleBasePattern =
     "[organisation]/[module](_[scalaVersion])(_[sbtVersion])/[revision]/[artifact]-[revision](-[classifier]).[ext]"
   def localBasePattern =
-    "[organisation]/[module]/" + PluginPattern + "(/[branch])/[revision]/[type]s/[artifact](-[classifier]).[ext]"
+    "[organisation]/[module]/" + PluginPattern + "([branch]/)[revision]/[type]s/[artifact](-[classifier]).[ext]"
   def defaultRetrievePattern =
     "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
   final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
