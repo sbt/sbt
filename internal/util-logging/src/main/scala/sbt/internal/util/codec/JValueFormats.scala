@@ -42,8 +42,13 @@ trait JValueFormats { self: sjsonnew.BasicJsonProtocol =>
     }
   }
 
+  // This passes through JValue, or returns JNull instead of blowing up with unimplemented.
   implicit lazy val JValueJsonReader: JR[JValue] = new JR[JValue] {
-    def read[J](j: Option[J], u: Unbuilder[J]) = ??? // Is this even possible? with no Manifest[J]?
+    def read[J](j: Option[J], u: Unbuilder[J]) = j match {
+      case Some(x: JValue) => x
+      case Some(x)         => sys.error(s"Uknown AST $x")
+      case _               => JNull
+    }
   }
 
   implicit lazy val JValueFormat: JF[JValue] =
