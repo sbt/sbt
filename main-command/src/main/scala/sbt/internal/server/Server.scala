@@ -138,12 +138,14 @@ private[sbt] object Server {
         import JsonProtocol._
 
         val uri = s"tcp://$host:$port"
-        val tokenRef =
-          if (auth(ServerAuthentication.Token)) {
-            writeTokenfile()
-            Some(tokenfile.toURI.toString)
-          } else None
-        val p = PortFile(uri, tokenRef)
+        val p =
+          auth match {
+            case _ if auth(ServerAuthentication.Token) =>
+              writeTokenfile()
+              PortFile(uri, Option(tokenfile.toString), Option(tokenfile.toURI.toString))
+            case _ =>
+              PortFile(uri, None, None)
+          }
         val json = Converter.toJson(p).get
         IO.write(portfile, CompactPrinter(json))
       }

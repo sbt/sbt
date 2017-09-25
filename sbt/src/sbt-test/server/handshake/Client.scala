@@ -30,7 +30,7 @@ object Client extends App {
   IO.write(baseDirectory / "ok.txt", "ok")
 
   def getToken: String = {
-    val tokenfile = new File(getTokenFile)
+    val tokenfile = new File(getTokenFileUri)
     val json: JValue = Parser.parseFromFile(tokenfile).get
     json match {
       case JObject(fields) =>
@@ -43,12 +43,12 @@ object Client extends App {
     }
   }
 
-  def getTokenFile: URI = {
+  def getTokenFileUri: URI = {
     val portfile = baseDirectory / "project" / "target" / "active.json"
     val json: JValue = Parser.parseFromFile(portfile).get
     json match {
       case JObject(fields) =>
-        (fields find { _.field == "tokenfile" } map { _.value }) match {
+        (fields find { _.field == "tokenfileUri" } map { _.value }) match {
           case Some(JString(value)) => new URI(value)
           case _                    =>
             sys.error("json doesn't tokenfile field that is JString")
