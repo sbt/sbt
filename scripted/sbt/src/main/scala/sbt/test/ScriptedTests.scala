@@ -402,7 +402,7 @@ class ScriptedRunner {
     reportErrors(tests.flatMap(test => test.apply().flatten.toSeq).toList)
   }
 
-  @deprecated("No longer used", "1.0.2")
+  @deprecated("No longer used", "1.1.0")
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     get(tests, baseDirectory, _ => true, log)
   def get(tests: Seq[String],
@@ -411,7 +411,7 @@ class ScriptedRunner {
           log: Logger): Seq[ScriptedTest] =
     if (tests.isEmpty) listTests(baseDirectory, accept, log) else parseTests(tests)
 
-  @deprecated("No longer used", "1.0.2")
+  @deprecated("No longer used", "1.1.0")
   def listTests(baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     listTests(baseDirectory, _ => true, log)
   def listTests(baseDirectory: File,
