@@ -10,11 +10,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol._
 import sjsonnew._
 
-final class NetworkChannel(val name: String, connection: Socket, structure: BuildStructure)
+final class NetworkChannel(val name: String,
+                           connection: Socket,
+                           structure: BuildStructure,
+                           auth: Set[ServerAuthentication],
+                           instance: ServerInstance)
     extends CommandChannel {
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
   private val out = connection.getOutputStream
+  private var initialized = false
 
   val thread = new Thread(s"sbt-networkchannel-${connection.getPort}") {
     override def run(): Unit = {
@@ -42,12 +47,10 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
                 )
               delimPos = buffer.indexOf(delimiter)
             }
-
           } catch {
             case _: SocketTimeoutException => // its ok
           }
         }
-
       } finally {
         shutdown()
       }
@@ -72,15 +75,44 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
   }
 
   def onCommand(command: CommandMessage): Unit = command match {
+    case x: InitCommand  => onInitCommand(x)
     case x: ExecCommand  => onExecCommand(x)
     case x: SettingQuery => onSettingQuery(x)
   }
 
-  private def onExecCommand(cmd: ExecCommand) =
-    append(Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
+  private def onInitCommand(cmd: InitCommand): Unit = {
+    if (auth(ServerAuthentication.Token)) {
+      cmd.token match {
+        case Some(x) =>
+          instance.authenticate(x) match {
+            case true =>
+              initialized = true
+              publishEventMessage(ChannelAcceptedEvent(name))
+            case _ => sys.error("invalid token")
+          }
+        case None => sys.error("init command but without token.")
+      }
+    } else {
+      initialized = true
+    }
+  }
 
-  private def onSettingQuery(req: SettingQuery) =
-    StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure)
+  private def onExecCommand(cmd: ExecCommand) = {
+    if (initialized) {
+      append(
+        Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
+    } else {
+      println(s"ignoring command $cmd before initialization")
+    }
+  }
+
+  private def onSettingQuery(req: SettingQuery) = {
+    if (initialized) {
+      StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure)
+    } else {
+      println(s"ignoring query $req before initialization")
+    }
+  }
 
   def shutdown(): Unit = {
     println("Shutting down client connection")

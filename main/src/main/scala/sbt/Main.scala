@@ -101,7 +101,9 @@ object StandardMain {
     val previous = TrapExit.installManager()
     try {
       try {
-        MainLoop.runLogged(s)
+        try {
+          MainLoop.runLogged(s)
+        } finally exchange.shutdown
       } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
     } finally TrapExit.uninstallManager(previous)
   }

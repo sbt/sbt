@@ -168,6 +168,11 @@ trait AttributeMap {
   /** `true` if there are no mappings in this map, `false` if there are. */
   def isEmpty: Boolean
 
+  /**
+   * Adds the mapping `k -> opt.get` if opt is Some.
+   * Otherwise, it returns this map without the mapping for `k`.
+   */
+  private[sbt] def setCond[T](k: AttributeKey[T], opt: Option[T]): AttributeMap
 }
 
 object AttributeMap {
@@ -216,6 +221,12 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
 
   def entries: Iterable[AttributeEntry[_]] =
     for ((k: AttributeKey[kt], v) <- backing) yield AttributeEntry(k, v.asInstanceOf[kt])
+
+  private[sbt] def setCond[T](k: AttributeKey[T], opt: Option[T]): AttributeMap =
+    opt match {
+      case Some(v) => put(k, v)
+      case None    => remove(k)
+    }
 
   override def toString = entries.mkString("(", ", ", ")")
 }

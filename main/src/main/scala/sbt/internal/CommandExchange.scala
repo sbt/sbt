@@ -6,15 +6,17 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.server._
 import sbt.internal.util.StringEvent
-import sbt.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
+import sbt.protocol.{ EventMessage, Serialization }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
-import BasicKeys.serverPort
+import BasicKeys.{ serverHost, serverPort, serverAuthentication }
 import java.net.Socket
 import sjsonnew.JsonFormat
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{ Success, Failure }
+import sbt.io.syntax._
+import sbt.io.Hash
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -74,20 +76,30 @@ private[sbt] final class CommandExchange {
    * Check if a server instance is running already, and start one if it isn't.
    */
   private[sbt] def runServer(s: State): State = {
-    def port = (s get serverPort) match {
+    lazy val port = (s get serverPort) match {
       case Some(x) => x
       case None    => 5001
     }
-    def onIncomingSocket(socket: Socket): Unit = {
+    lazy val host = (s get serverHost) match {
+      case Some(x) => x
+      case None    => "127.0.0.1"
+    }
+    lazy val auth: Set[ServerAuthentication] = (s get serverAuthentication) match {
+      case Some(xs) => xs
+      case None     => Set(ServerAuthentication.Token)
+    }
+    def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       s.log.info(s"new client connected from: ${socket.getPort}")
-      val channel = new NetworkChannel(newChannelName, socket, Project structure s)
+      val channel = new NetworkChannel(newChannelName, socket, Project structure s, auth, instance)
       subscribe(channel)
-      channel.publishEventMessage(ChannelAcceptedEvent(channel.name))
     }
     server match {
       case Some(x) => // do nothing
       case _ =>
-        val x = Server.start("127.0.0.1", port, onIncomingSocket, s.log)
+        val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
+        val h = Hash.halfHashString(portfile.toURI.toString)
+        val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
+        val x = Server.start(host, port, onIncomingSocket, auth, portfile, tokenfile, s.log)
         Await.ready(x.ready, Duration("10s"))
         x.ready.value match {
           case Some(Success(_)) =>

@@ -127,6 +127,8 @@ object Keys {
   val historyPath = SettingKey(BasicKeys.historyPath)
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
   val serverPort = SettingKey(BasicKeys.serverPort)
+  val serverHost = SettingKey(BasicKeys.serverHost)
+  val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
