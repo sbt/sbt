@@ -187,7 +187,7 @@ object Defaults extends BuildCommon {
       },
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
-      version :== "0.1-SNAPSHOT",
+      version :== "0.1.0-SNAPSHOT",
       classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
