@@ -234,7 +234,7 @@ lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
   )
-  .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted)
+  .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted, addSbtLmCore)
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
   .dependsOn(sbtProj)
