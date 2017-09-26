@@ -6,6 +6,7 @@ package sbt
 package test
 
 import java.io.File
+import java.util.Properties
 
 import scala.util.control.NonFatal
 import sbt.internal.scripted._
@@ -343,7 +344,9 @@ class ScriptedRunner {
           launchOpts: Array[String],
           prescripted: File => Unit): Unit = {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
-    val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
+    val sbtVersion = bootProperties.getName.dropWhile(!_.isDigit).dropRight(".jar".length)
+    val accept = isTestCompatible(resourceBaseDirectory, sbtVersion) _
+    val allTests = get(tests, resourceBaseDirectory, accept, logger) flatMap {
       case ScriptedTest(group, name) =>
         runner.singleScriptedTest(group, name, prescripted, logger)
     }
@@ -399,17 +402,44 @@ class ScriptedRunner {
     reportErrors(tests.flatMap(test => test.apply().flatten.toSeq).toList)
   }
 
+  @deprecated("No longer used", "1.1.0")
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
-    if (tests.isEmpty) listTests(baseDirectory, log) else parseTests(tests)
+    get(tests, baseDirectory, _ => true, log)
+  def get(tests: Seq[String],
+          baseDirectory: File,
+          accept: ScriptedTest => Boolean,
+          log: Logger): Seq[ScriptedTest] =
+    if (tests.isEmpty) listTests(baseDirectory, accept, log) else parseTests(tests)
 
+  @deprecated("No longer used", "1.1.0")
   def listTests(baseDirectory: File, log: Logger): Seq[ScriptedTest] =
-    new ListTests(baseDirectory, _ => true, log).listTests
+    listTests(baseDirectory, _ => true, log)
+  def listTests(baseDirectory: File,
+                accept: ScriptedTest => Boolean,
+                log: Logger): Seq[ScriptedTest] =
+    (new ListTests(baseDirectory, accept, log)).listTests
 
   def parseTests(in: Seq[String]): Seq[ScriptedTest] =
     for (testString <- in) yield {
       val Array(group, name) = testString.split("/").map(_.trim)
       ScriptedTest(group, name)
     }
+
+  private def isTestCompatible(resourceBaseDirectory: File, sbtVersion: String)(
+      test: ScriptedTest): Boolean = {
+    import sbt.internal.librarymanagement.cross.CrossVersionUtil.binarySbtVersion
+    val buildProperties = new Properties()
+    val testDir = new File(new File(resourceBaseDirectory, test.group), test.name)
+    val buildPropertiesFile = new File(new File(testDir, "project"), "build.properties")
+
+    IO.load(buildProperties, buildPropertiesFile)
+
+    Option(buildProperties.getProperty("sbt.version")) match {
+      case Some(version) => binarySbtVersion(version) == binarySbtVersion(sbtVersion)
+      case None          => true
+    }
+  }
+
 }
 
 final case class ScriptedTest(group: String, name: String) {
