@@ -367,7 +367,7 @@ private[sbt] object ConvertResolver {
         // Here we duplicate the put method for files so we don't just bail on trying ot use Http handler
         val resource = getResource(destination)
         if (!overwrite && resource.exists()) {
-          throw new IOException("destination file exists and overwrite == false");
+          throw new IOException(s"Destination file $destination exists and overwrite == false");
         }
         fireTransferInitiated(resource, TransferEvent.REQUEST_PUT);
         try {
