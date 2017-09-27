@@ -123,29 +123,84 @@ object Scope {
       case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
     }
 
-  def display(config: ConfigKey): String = config.name + ":"
+  def display(config: ConfigKey): String = guessConfigIdent(config.name) + "/"
+
+  private[sbt] val configIdents: Map[String, String] =
+    Map(
+      "it" -> "IntegrationTest",
+      "scala-tool" -> "ScalaTool",
+      "plugin" -> "CompilerPlugin"
+    )
+  private[sbt] val configIdentsInverse: Map[String, String] =
+    configIdents map { _.swap }
+
+  private[sbt] def guessConfigIdent(conf: String): String =
+    configIdents.applyOrElse(conf, (x: String) => x.capitalize)
+
+  private[sbt] def unguessConfigIdent(conf: String): String =
+    configIdentsInverse.applyOrElse(conf, (x: String) => x.take(1).toLowerCase + x.drop(1))
+
+  def displayConfigKey012Style(config: ConfigKey): String = config.name + ":"
 
   def display(scope: Scope, sep: String): String =
     displayMasked(scope, sep, showProject, ScopeMask())
 
-  def displayMasked(scope: Scope, sep: String, mask: ScopeMask): String =
-    displayMasked(scope, sep, showProject, mask)
-
   def display(scope: Scope, sep: String, showProject: Reference => String): String =
     displayMasked(scope, sep, showProject, ScopeMask())
 
-  def displayMasked(
-      scope: Scope,
-      sep: String,
-      showProject: Reference => String,
-      mask: ScopeMask
-  ): String = {
+  private[sbt] def displayPedantic(scope: Scope, sep: String): String =
+    displayMasked(scope, sep, showProject, ScopeMask(), true)
+
+  def displayMasked(scope: Scope, sep: String, mask: ScopeMask): String =
+    displayMasked(scope, sep, showProject, mask)
+
+  def displayMasked(scope: Scope, sep: String, mask: ScopeMask, showZeroConfig: Boolean): String =
+    displayMasked(scope, sep, showProject, mask, showZeroConfig)
+
+  def displayMasked(scope: Scope,
+                    sep: String,
+                    showProject: Reference => String,
+                    mask: ScopeMask): String =
+    displayMasked(scope, sep, showProject, mask, false)
+
+  /**
+   * unified slash style introduced in sbt 1.1.0.
+   * By default, sbt will no longer display the Zero-config,
+   * so `name` will render as `name` as opposed to `{uri}proj/Zero/name`.
+   * Technically speaking an unspecified configuration axis defaults to
+   * the scope delegation (first configuration defining the key, then Zero).
+   */
+  def displayMasked(scope: Scope,
+                    sep: String,
+                    showProject: Reference => String,
+                    mask: ScopeMask,
+                    showZeroConfig: Boolean): String = {
     import scope.{ project, config, task, extra }
-    val configPrefix = config.foldStrict(display, "*:", ".:")
+    val zeroConfig = if (showZeroConfig) "Zero/" else ""
+    val configPrefix = config.foldStrict(display, zeroConfig, "./")
+    val taskPrefix = task.foldStrict(_.label + "/", "", "./")
+    val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
+    val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
+    if (scope == GlobalScope) "Global/" + sep + postfix
+    else
+      mask.concatShow(projectPrefix(project, showProject), configPrefix, taskPrefix, sep, postfix)
+  }
+
+  // sbt 0.12 style
+  def display012StyleMasked(scope: Scope,
+                            sep: String,
+                            showProject: Reference => String,
+                            mask: ScopeMask): String = {
+    import scope.{ project, config, task, extra }
+    val configPrefix = config.foldStrict(displayConfigKey012Style, "*:", ".:")
     val taskPrefix = task.foldStrict(_.label + "::", "", ".::")
     val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
     val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-    mask.concatShow(projectPrefix(project, showProject), configPrefix, taskPrefix, sep, postfix)
+    mask.concatShow(projectPrefix012Style(project, showProject),
+                    configPrefix,
+                    taskPrefix,
+                    sep,
+                    postfix)
   }
 
   def equal(a: Scope, b: Scope, mask: ScopeMask): Boolean =
@@ -154,10 +209,12 @@ object Scope {
       (!mask.task || a.task == b.task) &&
       (!mask.extra || a.extra == b.extra)
 
-  def projectPrefix(
-      project: ScopeAxis[Reference],
-      show: Reference => String = showProject
-  ): String =
+  def projectPrefix(project: ScopeAxis[Reference],
+                    show: Reference => String = showProject): String =
+    project.foldStrict(show, "Zero/", "./")
+
+  def projectPrefix012Style(project: ScopeAxis[Reference],
+                            show: Reference => String = showProject): String =
     project.foldStrict(show, "*/", "./")
 
   def showProject = (ref: Reference) => Reference.display(ref) + "/"

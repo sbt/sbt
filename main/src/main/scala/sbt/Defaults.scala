@@ -2336,13 +2336,20 @@ object Classpaths {
       else Def.task((evictionWarningOptions in update).value)
     }.value
 
+    val extracted = (Project extract state0)
+    val isPlugin = sbtPlugin.value
+    val thisRef = thisProjectRef.value
+    val label =
+      if (isPlugin) Reference.display(thisRef)
+      else Def.displayRelativeReference(extracted.currentRef, thisRef)
+
     LibraryManagement.cachedUpdate(
       // LM API
       lm = dependencyResolution.value,
       // Ivy-free ModuleDescriptor
       module = ivyModule.value,
       s.cacheStoreFactory.sub(updateCacheName.value),
-      Reference.display(thisProjectRef.value),
+      label = label,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
       skip = (skip in update).value,

@@ -3,12 +3,13 @@ package sbt
 import Project._
 import sbt.internal.util.Types.idFun
 import sbt.internal.TestBuild._
+import sbt.librarymanagement.Configuration
 import org.scalacheck._
 import Prop._
 import Gen._
 
 object Delegates extends Properties("delegates") {
-  property("generate non-empty configs") = forAll { (c: Seq[Config]) =>
+  property("generate non-empty configs") = forAll { (c: Seq[Configuration]) =>
     c.nonEmpty
   }
   property("generate non-empty tasks") = forAll { (t: Seq[Taskk]) =>

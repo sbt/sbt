@@ -5,6 +5,7 @@ import Def.{ ScopedKey, Setting }
 import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }
 import sbt.internal.util.Types.{ const, some }
 import sbt.internal.util.complete.Parser
+import sbt.librarymanagement.Configuration
 
 import java.net.URI
 import org.scalacheck._
@@ -119,7 +120,7 @@ abstract class TestBuild {
     lazy val allProjects = builds.flatMap(_.allProjects)
     def rootProject(uri: URI): String = buildMap(uri).root.id
     def inheritConfig(ref: ResolvedReference, config: ConfigKey) =
-      projectFor(ref).confMap(config.name).extended map toConfigKey
+      projectFor(ref).confMap(config.name).extendsConfigs map toConfigKey
     def inheritTask(task: AttributeKey[_]) = taskMap.get(task) match {
       case None => Nil; case Some(t) => t.delegates map getKey
     }
@@ -144,7 +145,7 @@ abstract class TestBuild {
       } yield Scope(project = ref, config = c, task = t, extra = Zero)
   }
   def getKey: Taskk => AttributeKey[_] = _.key
-  def toConfigKey: Config => ConfigKey = c => ConfigKey(c.name)
+  def toConfigKey: Configuration => ConfigKey = c => ConfigKey(c.name)
   final class Build(val uri: URI, val projects: Seq[Proj]) {
     override def toString = "Build " + uri.toString + " :\n    " + projects.mkString("\n    ")
     val allProjects = projects map { p =>
@@ -156,7 +157,7 @@ abstract class TestBuild {
   final class Proj(
       val id: String,
       val delegates: Seq[ProjectRef],
-      val configurations: Seq[Config]
+      val configurations: Seq[Configuration]
   ) {
     override def toString =
       "Project " + id + "\n      Delegates:\n        " + delegates.mkString("\n        ") +
@@ -164,9 +165,6 @@ abstract class TestBuild {
     val confMap = mapBy(configurations)(_.name)
   }
 
-  final class Config(val name: String, val extended: Seq[Config]) {
-    override def toString = name + " (extends: " + extended.map(_.name).mkString(", ") + ")"
-  }
   final class Taskk(val key: AttributeKey[String], val delegates: Seq[Taskk]) {
     override def toString =
       key.label + " (delegates: " + delegates.map(_.key.label).mkString(", ") + ")"
@@ -222,7 +220,15 @@ abstract class TestBuild {
     val keys = data.allKeys((s, key) => ScopedKey(s, key))
     val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
     val projectsMap = env.builds.map(b => (b.uri, b.projects.map(_.id).toSet)).toMap
-    new Structure(env, current, data, KeyIndex(keys, projectsMap), keyMap)
+    val confs = for {
+      b <- env.builds.toVector
+      p <- b.projects.toVector
+      c <- p.configurations.toVector
+    } yield c
+    val confMap = Map(confs map { c =>
+      (c.name, Seq(c))
+    }: _*)
+    new Structure(env, current, data, KeyIndex(keys, projectsMap, confMap), keyMap)
   }
 
   implicit lazy val mkEnv: Gen[Env] = {
@@ -239,7 +245,14 @@ abstract class TestBuild {
   }
 
   implicit lazy val idGen: Gen[String] =
-    for (size <- chooseShrinkable(1, MaxIDSize); cs <- listOfN(size, alphaChar)) yield cs.mkString
+    for {
+      size <- chooseShrinkable(1, MaxIDSize)
+      cs <- listOfN(size, alphaChar)
+    } yield {
+      val xs = cs.mkString
+      xs.take(1).toLowerCase + xs.drop(1)
+    }
+
   implicit lazy val optIDGen: Gen[Option[String]] = frequency((1, idGen map some.fn), (1, None))
   implicit lazy val uriGen: Gen[URI] = for (sch <- idGen; ssp <- idGen; frag <- optIDGen)
     yield new URI(sch, ssp, frag.orNull)
@@ -256,7 +269,7 @@ abstract class TestBuild {
   implicit def genProjects(build: URI)(implicit genID: Gen[String],
                                        maxDeps: Gen[Int],
                                        count: Gen[Int],
-                                       confs: Gen[Seq[Config]]): Gen[Seq[Proj]] =
+                                       confs: Gen[Seq[Configuration]]): Gen[Seq[Proj]] =
     genAcyclic(maxDeps, genID, count) { (id: String) =>
       for (cs <- confs) yield { (deps: Seq[Proj]) =>
         new Proj(id, deps.map { dep =>
@@ -264,10 +277,16 @@ abstract class TestBuild {
         }, cs)
       }
     }
+
   def genConfigs(implicit genName: Gen[String],
                  maxDeps: Gen[Int],
-                 count: Gen[Int]): Gen[Seq[Config]] =
-    genAcyclicDirect[Config, String](maxDeps, genName, count)((key, deps) => new Config(key, deps))
+                 count: Gen[Int]): Gen[Seq[Configuration]] =
+    genAcyclicDirect[Configuration, String](maxDeps, genName, count)(
+      (key, deps) =>
+        Configuration
+          .of(key.capitalize, key)
+          .withExtendsConfigs(deps.toVector))
+
   def genTasks(implicit genName: Gen[String], maxDeps: Gen[Int], count: Gen[Int]): Gen[Seq[Taskk]] =
     genAcyclicDirect[Taskk, String](maxDeps, genName, count)((key, deps) =>
       new Taskk(AttributeKey[String](key), deps))

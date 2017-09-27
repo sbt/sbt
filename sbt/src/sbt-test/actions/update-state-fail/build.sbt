@@ -1,4 +1,4 @@
-lazy val akey = AttributeKey[Int]("TestKey")
+lazy val akey = AttributeKey[Int]("testKey")
 lazy val testTask = taskKey[String]("")
 lazy val check = inputKey[Unit]("")
 
