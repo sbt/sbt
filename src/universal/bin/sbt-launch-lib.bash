@@ -117,6 +117,21 @@ get_mem_opts () {
   fi
 }
 
+get_gc_opts () {
+  local older_than_9="$(echo "$java_version < 9" | bc)"
+
+  if [[ "$older_than_9" == "1" ]]; then
+    # don't need to worry about gc
+    echo ""
+  elif [[ "${JAVA_OPTS}" =~ Use.*GC ]] || [[ "${JAVA_TOOL_OPTIONS}" =~ Use.*GC ]] || [[ "${SBT_OPTS}" =~ Use.*GC ]] ; then
+    # GC arg has been passed in - don't change
+    echo ""
+  else
+    # Java 9+ so revert to old
+    echo "-XX:+UseParallelGC"
+  fi
+}
+
 require_arg () {
   local type="$1"
   local opt="$2"
@@ -262,6 +277,7 @@ run() {
   # run sbt
   execRunner "$java_cmd" \
     $(get_mem_opts $sbt_mem) \
+    $(get_gc_opts) \
     ${JAVA_OPTS} \
     ${SBT_OPTS:-$default_sbt_opts} \
     ${java_args[@]} \
