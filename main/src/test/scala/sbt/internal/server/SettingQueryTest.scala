@@ -202,7 +202,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
     "scalaVersion" in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
     "t/scalacOptions" in qko(
-      s"""Key ProjectRef(uri(\\"$baseUri\\"),\\"t\\")/Compile/scalacOptions is a task, can only query settings""")
+      s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"t\\") / Compile / scalacOptions is a task, can only query settings""")
     "t/fooo" in qko(
       "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^")
   }

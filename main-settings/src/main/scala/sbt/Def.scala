@@ -75,7 +75,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
   private[sbt] def displayRelative(current: ProjectRef,
                                    project: Reference,
                                    trailingSlash: Boolean): String = {
-    val trailing = if (trailingSlash) "/" else ""
+    val trailing = if (trailingSlash) " /" else ""
     project match {
       case BuildRef(current.build)      => "ThisBuild" + trailing
       case `current`                    => ""
@@ -86,9 +86,9 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   def displayBuildRelative(currentBuild: URI, multi: Boolean, project: Reference): String =
     project match {
-      case BuildRef(`currentBuild`)      => "ThisBuild/"
-      case ProjectRef(`currentBuild`, x) => x + "/"
-      case _                             => Reference.display(project) + "/"
+      case BuildRef(`currentBuild`)      => "ThisBuild /"
+      case ProjectRef(`currentBuild`, x) => x + " /"
+      case _                             => Reference.display(project) + " /"
     }
 
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)

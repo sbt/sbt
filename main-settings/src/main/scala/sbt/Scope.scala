@@ -123,7 +123,7 @@ object Scope {
       case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
     }
 
-  def display(config: ConfigKey): String = guessConfigIdent(config.name) + "/"
+  def display(config: ConfigKey): String = guessConfigIdent(config.name) + " /"
 
   private[sbt] val configIdents: Map[String, String] =
     Map(
@@ -176,15 +176,23 @@ object Scope {
                     mask: ScopeMask,
                     showZeroConfig: Boolean): String = {
     import scope.{ project, config, task, extra }
-    val zeroConfig = if (showZeroConfig) "Zero/" else ""
+    val zeroConfig = if (showZeroConfig) "Zero /" else ""
     val configPrefix = config.foldStrict(display, zeroConfig, "./")
-    val taskPrefix = task.foldStrict(_.label + "/", "", "./")
+    val taskPrefix = task.foldStrict(_.label + " /", "", "./")
     val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
     val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-    if (scope == GlobalScope) "Global/" + sep + postfix
+    if (scope == GlobalScope) "Global / " + sep + postfix
     else
-      mask.concatShow(projectPrefix(project, showProject), configPrefix, taskPrefix, sep, postfix)
+      mask.concatShow(appendSpace(projectPrefix(project, showProject)),
+                      appendSpace(configPrefix),
+                      appendSpace(taskPrefix),
+                      sep,
+                      postfix)
   }
+
+  private[sbt] def appendSpace(s: String): String =
+    if (s == "") ""
+    else s + " "
 
   // sbt 0.12 style
   def display012StyleMasked(scope: Scope,
@@ -196,7 +204,7 @@ object Scope {
     val taskPrefix = task.foldStrict(_.label + "::", "", ".::")
     val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
     val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-    mask.concatShow(projectPrefix012Style(project, showProject),
+    mask.concatShow(projectPrefix012Style(project, showProject012Style),
                     configPrefix,
                     taskPrefix,
                     sep,
@@ -211,13 +219,15 @@ object Scope {
 
   def projectPrefix(project: ScopeAxis[Reference],
                     show: Reference => String = showProject): String =
-    project.foldStrict(show, "Zero/", "./")
+    project.foldStrict(show, "Zero /", "./")
 
   def projectPrefix012Style(project: ScopeAxis[Reference],
                             show: Reference => String = showProject): String =
     project.foldStrict(show, "*/", "./")
 
-  def showProject = (ref: Reference) => Reference.display(ref) + "/"
+  def showProject = (ref: Reference) => Reference.display(ref) + " /"
+
+  def showProject012Style = (ref: Reference) => Reference.display(ref) + "/"
 
   def transformTaskName(s: String) = {
     val parts = s.split("-+")

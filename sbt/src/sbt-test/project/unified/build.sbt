@@ -21,29 +21,29 @@ lazy val root = (project in file("."))
 Description:
 \tExecutes all tests.
 Provided by:
-\tProjectRef(uri("${baseDirectory.value.toURI}"),"root")/Test/test
+\tProjectRef(uri("${baseDirectory.value.toURI}"), "root") / Test / test
 Defined at:
 \t(sbt.Defaults.testTasks) Defaults.scala:670
 Dependencies:
-\tTest/executeTests
-\tTest/test/streams
-\tTest/state
-\tTest/test/testResultLogger
+\tTest / executeTests
+\tTest / test / streams
+\tTest / state
+\tTest / test / testResultLogger
 Delegates:
-\tTest/test
-\tRuntime/test
-\tCompile/test
+\tTest / test
+\tRuntime / test
+\tCompile / test
 \ttest
-\tThisBuild/Test/test
-\tThisBuild/Runtime/test
-\tThisBuild/Compile/test
-\tThisBuild/test
-\tZero/Test/test
-\tZero/Runtime/test
-\tZero/Compile/test
-\tGlobal/test
+\tThisBuild / Test / test
+\tThisBuild / Runtime / test
+\tThisBuild / Compile / test
+\tThisBuild / test
+\tZero / Test / test
+\tZero / Runtime / test
+\tZero / Compile / test
+\tGlobal / test
 Related:
-\tprojA/Test/test"""
+\tprojA / Test / test"""
 
         if (processText(actual) == processText(expected)) ()
         else {
@@ -52,7 +52,14 @@ $actual
 
 expected:
 $expected
-""")
+
+diff:
+""" +
+(
+  processText(actual)
+    zip processText(expected)
+    filter { case ( a, b) => a != b }
+))
         }
         s.log.info(actual)
         s

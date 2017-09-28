@@ -91,7 +91,7 @@ object Reference {
       case LocalRootProject    => "{<this>}<root>"
       case LocalProject(id)    => "{<this>}" + id
       case RootProject(uri)    => "{" + uri + " }<root>"
-      case ProjectRef(uri, id) => s"""ProjectRef(uri("$uri"),"$id")"""
+      case ProjectRef(uri, id) => s"""ProjectRef(uri("$uri"), "$id")"""
     }
 
   def buildURI(ref: ResolvedReference): URI = ref match {
