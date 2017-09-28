@@ -1,0 +1,28 @@
+> root/Compile/compile
+
+# "Global" now works in shell.
+> show Global/cancelable
+
+# "Global" now works in shell. optional whitespace around /
+> show Global / cancelable
+
+# "ThisBuild" now works in shell.
+> show ThisBuild/scalaVersion
+
+# "ThisBuild" now works in shell. optional whitespace around /
+> show ThisBuild / scalaVersion
+
+$ mkdir target
+> Test/test
+# Check the side-effect of executing uTest
+$ exists target/foo
+
+# use all axes
+> show root/Compile/compile/scalacOptions
+
+# use all axes. optional whitespace around /
+> show root / Compile / compile / scalacOptions
+
+> show Zero / Zero / name
+
+> inspectCheck test

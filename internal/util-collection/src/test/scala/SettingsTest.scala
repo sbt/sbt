@@ -80,7 +80,12 @@ object SettingsTest extends Properties("settings") {
   private def mkAttrKeys[T](nr: Int)(implicit mf: Manifest[T]): Gen[List[AttributeKey[T]]] = {
     import Gen._
     val nonEmptyAlphaStr =
-      nonEmptyListOf(alphaChar).map(_.mkString).suchThat(_.forall(_.isLetter))
+      nonEmptyListOf(alphaChar)
+        .map({ xs: List[Char] =>
+          val s = xs.mkString
+          s.take(1).toLowerCase + s.drop(1)
+        })
+        .suchThat(_.forall(_.isLetter))
 
     (for {
       list <- Gen.listOfN(nr, nonEmptyAlphaStr) suchThat (l => l.size == l.distinct.size)

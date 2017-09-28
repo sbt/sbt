@@ -43,6 +43,12 @@ trait Parsers {
   /** Parses a single letter, according to Char.isLetter, into a Char. */
   lazy val Letter = charClass(_.isLetter, "letter")
 
+  /** Parses a single letter, according to Char.isUpper, into a Char. */
+  lazy val Upper = charClass(_.isUpper, "upper")
+
+  /** Parses a single letter, according to Char.isLower, into a Char. */
+  lazy val Lower = charClass(_.isLower, "lower")
+
   /** Parses the first Char in an sbt identifier, which must be a [[Letter]].*/
   def IDStart = Letter
 
@@ -66,6 +72,9 @@ trait Parsers {
 
   /** Parses a non-symbolic Scala-like identifier.  The identifier must start with [[IDStart]] and contain zero or more [[ScalaIDChar]]s after that.*/
   lazy val ScalaID = identifier(IDStart, ScalaIDChar)
+
+  /** Parses a non-symbolic Scala-like identifier.  The identifier must start with [[Upper]] and contain zero or more [[ScalaIDChar]]s after that.*/
+  lazy val CapitalizedID = identifier(Upper, ScalaIDChar)
 
   /** Parses a String that starts with `start` and is followed by zero or more characters parsed by `rep`.*/
   def identifier(start: Parser[Char], rep: Parser[Char]): Parser[String] =

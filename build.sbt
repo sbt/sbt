@@ -45,7 +45,8 @@ def commonSettings: Seq[Setting[_]] =
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
     concurrentRestrictions in Global += Util.testExclusiveRestriction,
-    testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
     javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
@@ -374,6 +375,11 @@ lazy val mainProj = (project in file("main"))
     mimaBinaryIssueFilters ++= Vector(
       // Changed the signature of NetworkChannel ctor. internal.
       exclude[DirectMissingMethodProblem]("sbt.internal.server.NetworkChannel.*"),
+      // ctor for ConfigIndex. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.ConfigIndex.*"),
+      // New and changed methods on KeyIndex. internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
     )
   )
   .configure(

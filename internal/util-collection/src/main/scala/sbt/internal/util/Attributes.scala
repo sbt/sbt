@@ -92,6 +92,11 @@ object AttributeKey {
       rank0: Int
   )(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     new SharedAttributeKey[T] {
+      require(name.headOption match {
+        case Some(c) => c.isLower
+        case None    => false
+      }, s"A named attribute key must start with a lowercase letter: $name")
+
       def manifest = mf
       val label = Util.hyphenToCamel(name)
       def description = description0
