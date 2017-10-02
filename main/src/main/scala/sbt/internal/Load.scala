@@ -324,11 +324,8 @@ private[sbt] object Load {
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
     val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k)).toVector
     val projectsMap = projects.mapValues(_.defined.keySet)
-    val configsMap: Map[String, Seq[Configuration]] = Map(projects.values.toSeq flatMap { bu =>
-      bu.defined map {
-        case (k, v) => (k, v.configurations)
-      }
-    }: _*)
+    val configsMap: Map[String, Seq[Configuration]] =
+      projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
     val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
     val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap, configsMap)
     new StructureIndex(
