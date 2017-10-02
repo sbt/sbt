@@ -16,12 +16,14 @@ import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseMessage
 import sbt.internal.util.ObjectEvent
 import sbt.internal.util.codec.JValueFormats
+import sbt.util.Logger
 
 final class NetworkChannel(val name: String,
                            connection: Socket,
                            structure: BuildStructure,
                            auth: Set[ServerAuthentication],
-                           instance: ServerInstance)
+                           instance: ServerInstance,
+                           val log: Logger)
     extends CommandChannel
     with LanguageServerProtocol {
   import NetworkChannel._
@@ -106,7 +108,7 @@ final class NetworkChannel(val name: String,
                         .deserializeCommand(chunk)
                         .fold(
                           errorDesc =>
-                            println(
+                            log.error(
                               s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc),
                           onCommand
                         )
@@ -117,7 +119,7 @@ final class NetworkChannel(val name: String,
                         case Some(_) =>
                           state = InHeader
                           process()
-                        case _ => println("Got invalid chunk from client: " + str)
+                        case _ => log.error("Got invalid chunk from client: " + str)
                       }
                   }
                 case _ => ()
@@ -133,7 +135,7 @@ final class NetworkChannel(val name: String,
                     handleHeader(str) match {
                       case Some(_) => process()
                       case _ =>
-                        println("Got invalid header from client: " + str)
+                        log.error("Got invalid header from client: " + str)
                         resetChannelState()
                     }
                 case _ => ()
@@ -152,7 +154,7 @@ final class NetworkChannel(val name: String,
         while (bytesRead != -1 && running.get) {
           try {
             bytesRead = in.read(readBuffer)
-            println(s"bytesRead: $bytesRead")
+            // log.debug(s"bytesRead: $bytesRead")
             if (bytesRead > 0) {
               buffer = buffer ++ readBuffer.toVector.take(bytesRead)
             }
@@ -174,7 +176,7 @@ final class NetworkChannel(val name: String,
               onRequestMessage(req)
             } catch {
               case LangServerError(code, message) =>
-                println(s"sending error: $code: $message")
+                log.debug(s"sending error: $code: $message")
                 langError(Option(req.id), code, message)
             }
           case Left(errorDesc) =>
@@ -188,12 +190,12 @@ final class NetworkChannel(val name: String,
               .deserializeCommand(chunk)
               .fold(
                 errorDesc =>
-                  println(
+                  log.error(
                     s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc),
                 onCommand
               )
           case _ =>
-            println(s"Unknown Content-Type: $contentType")
+            log.error(s"Unknown Content-Type: $contentType")
         }
       } // if-else
     }
@@ -312,7 +314,7 @@ final class NetworkChannel(val name: String,
       append(
         Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
     } else {
-      println(s"ignoring command $cmd before initialization")
+      log.warn(s"ignoring command $cmd before initialization")
     }
   }
 
@@ -320,12 +322,12 @@ final class NetworkChannel(val name: String,
     if (initialized) {
       StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure)
     } else {
-      println(s"ignoring query $req before initialization")
+      log.warn(s"ignoring query $req before initialization")
     }
   }
 
   def shutdown(): Unit = {
-    println("Shutting down client connection")
+    log.info("Shutting down client connection")
     running.set(false)
     out.close()
   }

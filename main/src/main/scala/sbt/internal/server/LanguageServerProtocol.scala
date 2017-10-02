@@ -9,6 +9,7 @@ import sbt.internal.protocol._
 import sbt.internal.protocol.codec._
 import sbt.internal.langserver._
 import sbt.internal.util.ObjectEvent
+import sbt.util.Logger
 
 private[sbt] case class LangServerError(code: Long, message: String) extends Throwable(message)
 
@@ -22,13 +23,14 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   protected def authenticate(token: String): Boolean
   protected def authOptions: Set[ServerAuthentication]
   protected def setInitialized(value: Boolean): Unit
+  protected def log: Logger
 
   protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
 
     import sbt.internal.langserver.codec.JsonProtocol._
     import internalJsonProtocol._
 
-    println(s"onRequestMessage: $request")
+    log.debug(s"onRequestMessage: $request")
     request.method match {
       case "initialize" =>
         if (authOptions(ServerAuthentication.Token)) {
@@ -70,7 +72,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
       case "xsbti.Problem" =>
         () // ignore
       case _ =>
-        // println(event)
+        // log.debug(event)
         ()
     }
   }
@@ -114,7 +116,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   private[sbt] def langNotify[A: JsonFormat](method: String, params: A): Unit = {
     val m =
       JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
-    println(s"langNotify: $m")
+    log.debug(s"langNotify: $m")
     val bytes = Serialization.serializeNotificationMessage(m)
     publishBytes(bytes)
   }

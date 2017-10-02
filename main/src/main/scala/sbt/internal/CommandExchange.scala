@@ -16,9 +16,10 @@ import scala.util.{ Success, Failure }
 import sbt.io.syntax._
 import sbt.io.Hash
 import sbt.internal.server._
-import sbt.internal.util.{ StringEvent, ObjectEvent }
+import sbt.internal.util.{ StringEvent, ObjectEvent, ConsoleOut, MainAppender }
 import sbt.internal.util.codec.JValueFormats
 import sbt.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
+import sbt.util.{ Level, Logger, LogExchange }
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -92,9 +93,19 @@ private[sbt] final class CommandExchange {
       case Some(xs) => xs
       case None     => Set(ServerAuthentication.Token)
     }
+    val serverLogLevel: Level.Value = Level.Debug
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       s.log.info(s"new client connected from: ${socket.getPort}")
-      val channel = new NetworkChannel(newChannelName, socket, Project structure s, auth, instance)
+      val logger: Logger = {
+        val loggerName = s"network-${socket.getPort}"
+        val log = LogExchange.logger(loggerName, None, None)
+        LogExchange.unbindLoggerAppenders(loggerName)
+        val appender = MainAppender.defaultScreen(s.globalLogging.console)
+        LogExchange.bindLoggerAppenders(loggerName, List(appender -> serverLogLevel))
+        log
+      }
+      val channel =
+        new NetworkChannel(newChannelName, socket, Project structure s, auth, instance, logger)
       subscribe(channel)
     }
     server match {
