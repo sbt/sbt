@@ -2215,7 +2215,6 @@ object Classpaths {
       val ref = thisProjectRef.value
       if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") } else
         Def.task {
-          val cfg = config.value
           IvyActions.publish(ivyModule.value, config.value, s.log)
         }
     } tag (Tags.Publish, Tags.Network)
