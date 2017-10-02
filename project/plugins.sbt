@@ -8,6 +8,6 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.17")
 // addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "1.2.0")
 
 addSbtPlugin("org.foundweekends" % "sbt-bintray" % "0.5.1")
-addSbtPlugin("org.scala-sbt" % "sbt-contraband" % "0.3.0")
+addSbtPlugin("org.scala-sbt" % "sbt-contraband" % "0.3.1")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.0-M1")
 addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "1.10")

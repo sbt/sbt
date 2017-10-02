@@ -407,6 +407,41 @@ lazy val sbtProj = (project in file("sbt"))
   )
   .configure(addSbtCompilerBridge)
 
+lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
+  .settings(
+    crossPaths := false,
+    crossScalaVersions := Seq(baseScalaVersion),
+    skip in publish := true,
+    compile in Compile := {
+      val u = update.value
+      import sbt.internal.inc.Analysis
+      import scala.sys.process._
+      Process(s"npm run compile", Option(baseDirectory.value)).!
+      Analysis.empty
+    },
+    update := {
+      val old = update.value
+      val t = target.value / "updated"
+      val base = baseDirectory.value
+      if (t.exists) ()
+      else {
+        import scala.sys.process._
+        Process("npm install", Option(base)).!
+        IO.touch(t)
+      }
+      old
+    },
+    cleanFiles ++= {
+      val base = baseDirectory.value
+      Vector(
+        target.value / "updated",
+        base / "node_modules", base / "client" / "node_modules",
+        base / "client" / "server",
+        base / "client" / "out",
+        base / "server" / "node_modules") filter { _.exists }
+    }
+  )
+
 lazy val sbtIgnoredProblems = {
   Seq(
     // Added more items to Import trait.

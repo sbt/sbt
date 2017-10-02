@@ -1,0 +1,24 @@
+{
+	"name": "vscode-sbt-scala",
+	"displayName": "Scala (sbt)",
+	"version": "0.0.1",
+	"author": "Lightbend, Inc.",
+	"license": "BSD-3-Clause",
+	"publisher": "lightbend",
+	"description": "Relay server to sbt server.",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/sbt/sbt"
+	},
+	"engines": {
+		"node": "*"
+	},
+	"dependencies": {
+		"vscode-languageserver": "^3.4.2"
+	},
+	"scripts": {
+		"installServer": "installServerIntoExtension ../client ./package.json ./tsconfig.json",
+		"compile": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -p .",
+		"watch": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -w -p ."
+	}
+}
