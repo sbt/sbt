@@ -300,6 +300,8 @@ lazy val commandProj = (project in file("main-command"))
       exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*"),
       // Added method to ServerInstance. This is also internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerInstance.*"),
+      // Added method to CommandChannel. internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
     )
   )
   .configure(
@@ -380,6 +382,8 @@ lazy val mainProj = (project in file("main"))
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      // Removed unused val. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
     )
   )
   .configure(
