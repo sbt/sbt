@@ -196,7 +196,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
       "scala.collection.Seq[java.lang.String]")
 
     "t/libraryDependencies" in qok(
-      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"crossVersion":{"type":"Disabled"}}]""",
+      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
       "scala.collection.Seq[sbt.librarymanagement.ModuleID]"
     )
 
