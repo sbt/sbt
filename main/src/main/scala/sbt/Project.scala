@@ -111,7 +111,6 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
 }
 
 sealed trait Project extends ProjectDefinition[ProjectReference] {
-  // TODO: add parameters for plugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
   private[sbt] def copy(
       id: String = id,
       base: File = base,
@@ -119,6 +118,19 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       dependencies: Seq[ClasspathDep[ProjectReference]] = dependencies,
       settings: Seq[Setting[_]] = settings,
       configurations: Seq[Configuration] = configurations
+  ): Project =
+    copy2(id, base, aggregate, dependencies, settings, configurations)
+
+  private[this] def copy2(
+      id: String = id,
+      base: File = base,
+      aggregate: Seq[ProjectReference] = aggregate,
+      dependencies: Seq[ClasspathDep[ProjectReference]] = dependencies,
+      settings: Seq[Setting[_]] = settings,
+      configurations: Seq[Configuration] = configurations,
+      plugins: Plugins = plugins,
+      autoPlugins: Seq[AutoPlugin] = autoPlugins,
+      projectOrigin: ProjectOrigin = projectOrigin,
   ): Project =
     unresolved(
       id,
@@ -217,52 +229,13 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   def disablePlugins(ps: AutoPlugin*): Project =
     setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
 
-  private[this] def setPlugins(ns: Plugins): Project = {
-    // TODO: for 0.14.0, use copy when it has the additional `plugins` parameter
-    unresolved(
-      id,
-      base,
-      aggregate = aggregate,
-      dependencies = dependencies,
-      settings,
-      configurations,
-      ns,
-      autoPlugins,
-      projectOrigin
-    )
-  }
+  private[this] def setPlugins(ns: Plugins): Project = copy2(plugins = ns)
 
   /** Definitively set the [[AutoPlugin]]s for this project. */
-  private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = {
-    // TODO: for 0.14.0, use copy when it has the additional `autoPlugins` parameter
-    unresolved(
-      id,
-      base,
-      aggregate = aggregate,
-      dependencies = dependencies,
-      settings,
-      configurations,
-      plugins,
-      autos,
-      projectOrigin
-    )
-  }
+  private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = copy2(autoPlugins = autos)
 
   /** Definitively set the [[ProjectOrigin]] for this project. */
-  private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = {
-    // TODO: for 1.0.x, use withProjectOrigin.
-    unresolved(
-      id,
-      base,
-      aggregate = aggregate,
-      dependencies = dependencies,
-      settings,
-      configurations,
-      plugins,
-      autoPlugins,
-      origin
-    )
-  }
+  private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = copy2(projectOrigin = origin)
 }
 
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
