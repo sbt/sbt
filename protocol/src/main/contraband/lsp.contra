@@ -110,3 +110,10 @@ type PublishDiagnosticsParams {
   ## An array of diagnostic information items.
   diagnostics: [sbt.internal.langserver.Diagnostic]
 }
+
+# sbt extension
+
+## Command to execute sbt command.
+type SbtExecParams {
+  commandLine: String!
+}

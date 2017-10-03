@@ -30,14 +30,14 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
     import sbt.internal.langserver.codec.JsonProtocol._
     import internalJsonProtocol._
 
+    def json =
+      request.params.getOrElse(
+        throw LangServerError(ErrorCodes.InvalidParams,
+                              s"param is expected on '${request.method}' method."))
     log.debug(s"onRequestMessage: $request")
     request.method match {
       case "initialize" =>
         if (authOptions(ServerAuthentication.Token)) {
-          val json =
-            request.params.getOrElse(
-              throw LangServerError(ErrorCodes.InvalidParams,
-                                    "param is expected on 'initialize' method."))
           val param = Converter.fromJson[InitializeParams](json).get
           val optionJson = param.initializationOptions.getOrElse(
             throw LangServerError(ErrorCodes.InvalidParams,
@@ -51,6 +51,9 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         langRespond(InitializeResult(serverCapabilities), Option(request.id))
       case "textDocument/didSave" =>
         append(Exec("compile", Some(request.id), Some(CommandSource(name))))
+      case "sbt/exec" =>
+        val param = Converter.fromJson[SbtExecParams](json).get
+        append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
       case _ => ()
     }
   }

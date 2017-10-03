@@ -1,11 +1,13 @@
 
+### initialize
+
+```json
+{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { "token": "************" } } }
+```
 
 ### ExecCommand
 
 ```json
-{ "type": "ExecCommand", "commandLine": "compile" }
+{ "jsonrpc": "2.0", "id": 1, "method": "sbt/exec", "params": { "commandLine": "compile" } }
 ```
 
-```json
-{ "type": "ExecCommand", "commandLine": "eval Thread.sleep(10000)" }
-```

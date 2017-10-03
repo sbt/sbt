@@ -102,17 +102,11 @@ final class NetworkChannel(val name: String,
               tillEndOfLine match {
                 case Some(chunk) =>
                   chunk.headOption match {
-                    case None => // ignore blank line
+                    case None        => // ignore blank line
                     case Some(Curly) =>
-                      Serialization
-                        .deserializeCommand(chunk)
-                        .fold(
-                          errorDesc =>
-                            log.error(
-                              s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc),
-                          onCommand
-                        )
-                      resetChannelState()
+                      // When Content-Length header is not found, interpret the line as JSON message.
+                      handleBody(chunk)
+                      process()
                     case Some(_) =>
                       val str = (new String(chunk.toArray, "UTF-8")).trim
                       handleHeader(str) match {
