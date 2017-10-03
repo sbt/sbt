@@ -167,17 +167,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
     def resolveDep(d: ClasspathDep[ProjectReference]) =
       ClasspathDependency(resolveRef(d.project), d.configuration)
-    unresolved(
-      id,
-      base,
-      aggregate = resolveRefs(aggregate),
-      dependencies = resolveDeps(dependencies),
-      settings,
-      configurations,
-      plugins,
-      autoPlugins,
-      projectOrigin
-    )
+    copy2(aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies))
   }
 
   /**
