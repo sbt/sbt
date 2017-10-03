@@ -3,18 +3,19 @@
  */
 package sbt
 
-import BasicCommandStrings.ClearOnFailure
-import State.FailureWall
-import annotation.tailrec
 import java.io.File
 import java.nio.file.FileSystems
 
-import scala.concurrent.duration._
-
-import sbt.io.{ AllPassFilter, NothingFilter, FileFilter, WatchService }
+import sbt.BasicCommandStrings.ClearOnFailure
+import sbt.State.FailureWall
 import sbt.internal.io.{ Source, SourceModificationWatch, WatchState }
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.Types.const
+import sbt.io._
+
+import scala.annotation.tailrec
+import scala.concurrent.duration._
+import scala.util.Properties
 
 trait Watched {
 
@@ -35,7 +36,7 @@ trait Watched {
   private[sbt] def triggeredMessage(s: WatchState): String = Watched.defaultTriggeredMessage(s)
 
   /** The `WatchService` to use to monitor the file system. */
-  private[sbt] def watchService(): WatchService = FileSystems.getDefault.newWatchService()
+  private[sbt] def watchService(): WatchService = Watched.createWatchService()
 }
 
 object Watched {
@@ -121,4 +122,18 @@ object Watched {
     AttributeKey[WatchState]("watch state", "Internal: tracks state for continuous execution.")
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
+
+  def createWatchService(): WatchService = {
+    sys.props.get("sbt.watch.mode") match {
+      case Some("polling") =>
+        new PollingWatchService(PollDelay)
+      case Some("nio") =>
+        FileSystems.getDefault.newWatchService()
+      case _ if Properties.isMac =>
+        // WatchService is slow on macOS - use old polling mode
+        new PollingWatchService(PollDelay)
+      case _ =>
+        FileSystems.getDefault.newWatchService()
+    }
+  }
 }

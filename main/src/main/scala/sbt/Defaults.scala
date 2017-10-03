@@ -5,7 +5,6 @@ package sbt
 
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import java.io.{ File, PrintWriter }
-import java.nio.file.FileSystems
 import java.net.{ URI, URL }
 import java.util.Optional
 import java.util.concurrent.{ TimeUnit, Callable }
@@ -246,7 +245,7 @@ object Defaults extends BuildCommon {
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchService :== { () =>
-        FileSystems.getDefault.newWatchService
+        Watched.createWatchService()
       },
       logBuffered :== false,
       commands :== Nil,
