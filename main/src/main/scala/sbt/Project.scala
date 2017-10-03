@@ -258,17 +258,12 @@ object Project extends ProjectExtra {
       val autoPlugins: Seq[AutoPlugin],
       val projectOrigin: ProjectOrigin
   ) extends ProjectDefinition[PR] {
-    Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
+    // checks for cyclic references here instead of having to do it in Scope.delegates
+    Dag.topologicalSort(configurations)(_.extendsConfigs)
   }
 
   def apply(id: String, base: File): Project =
     unresolved(id, base, Nil, Nil, Nil, Nil, Plugins.empty, Nil, ProjectOrigin.Organic)
-
-  // TODO: add parameter for plugins and projectOrigin in 1.0
-  // TODO: Modify default settings to be the core settings, and automatically add the IvyModule + JvmPlugins.
-  // def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
-  //  delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = Nil, configurations: Seq[Configuration] = Nil): Project =
-  //  unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil) // Note: JvmModule/IvyModule auto included...
 
   def showContextKey(state: State): Show[ScopedKey[_]] =
     showContextKey(state, None)
