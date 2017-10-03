@@ -5,6 +5,7 @@ package server
 import sjsonnew.JsonFormat
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
+import sbt.protocol.{ SettingQuery => Q }
 import sbt.internal.protocol._
 import sbt.internal.protocol.codec._
 import sbt.internal.langserver._
@@ -24,6 +25,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   protected def authOptions: Set[ServerAuthentication]
   protected def setInitialized(value: Boolean): Unit
   protected def log: Logger
+  protected def onSettingQuery(execId: Option[String], req: Q): Unit
 
   protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
 
@@ -54,6 +56,11 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
       case "sbt/exec" =>
         val param = Converter.fromJson[SbtExecParams](json).get
         append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
+      case "sbt/setting" => {
+        import sbt.protocol.codec.JsonProtocol._
+        val param = Converter.fromJson[Q](json).get
+        onSettingQuery(Option(request.id), param)
+      }
       case _ => ()
     }
   }

@@ -9,11 +9,9 @@ import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 
 import sjsonnew._
-import sjsonnew.support.scalajson.unsafe.Converter
 import scala.annotation.tailrec
 import sbt.protocol._
 import sbt.internal.langserver.ErrorCodes
-import sbt.internal.protocol.JsonRpcResponseMessage
 import sbt.internal.util.ObjectEvent
 import sbt.internal.util.codec.JValueFormats
 import sbt.util.Logger
@@ -283,7 +281,7 @@ final class NetworkChannel(val name: String,
   def onCommand(command: CommandMessage): Unit = command match {
     case x: InitCommand  => onInitCommand(x)
     case x: ExecCommand  => onExecCommand(x)
-    case x: SettingQuery => onSettingQuery(x)
+    case x: SettingQuery => onSettingQuery(None, x)
   }
 
   private def onInitCommand(cmd: InitCommand): Unit = {
@@ -312,9 +310,13 @@ final class NetworkChannel(val name: String,
     }
   }
 
-  private def onSettingQuery(req: SettingQuery) = {
+  protected def onSettingQuery(execId: Option[String], req: SettingQuery) = {
     if (initialized) {
-      StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure)
+      import sbt.protocol.codec.JsonProtocol._
+      SettingQuery.handleSettingQueryEither(req, structure) match {
+        case Right(x) => langRespond(x, execId)
+        case Left(s)  => langError(execId, ErrorCodes.InvalidParams, s)
+      }
     } else {
       log.warn(s"ignoring query $req before initialization")
     }
