@@ -262,17 +262,7 @@ object Project extends ProjectExtra {
   }
 
   def apply(id: String, base: File): Project =
-    unresolved(
-      id,
-      base,
-      Nil,
-      Nil,
-      Nil,
-      Nil,
-      Plugins.empty,
-      Nil,
-      ProjectOrigin.Organic
-    )
+    unresolved(id, base, Nil, Nil, Nil, Nil, Plugins.empty, Nil, ProjectOrigin.Organic)
 
   // TODO: add parameter for plugins and projectOrigin in 1.0
   // TODO: Modify default settings to be the core settings, and automatically add the IvyModule + JvmPlugins.
