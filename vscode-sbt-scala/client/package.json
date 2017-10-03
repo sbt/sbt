@@ -1,7 +1,7 @@
 {
   "name": "vscode-sbt-scala",
   "displayName": "Scala (sbt)",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Lightbend, Inc.",
   "license": "BSD-3-Clause",
   "publisher": "lightbend",
@@ -17,6 +17,29 @@
   "categories": [
     "Languages"
   ],
+  "contributes": {
+    "languages": [
+        {
+            "id": "scala",
+            "aliases": [
+                "Scala",
+                "scala"
+            ],
+            "extensions": [
+                ".scala",
+                ".sbt"
+            ],
+            "configuration": "./language-configuration.json"
+        }
+    ],
+    "grammars": [
+        {
+            "language": "scala",
+            "scopeName": "source.scala",
+            "path": "./syntaxes/Scala.tmLanguage"
+        }
+    ]
+  },
   "activationEvents": [
     "workspaceContains:build.sbt"
   ],
