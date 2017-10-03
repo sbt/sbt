@@ -31,9 +31,7 @@ object KeyIndex {
     } yield {
       val data = ids map { id =>
         val configs = configurations.getOrElse(id, Seq())
-        Option(id) -> new ConfigIndex(Map.empty, Map(configs map { c =>
-          (c.name, c.id)
-        }: _*))
+        Option(id) -> new ConfigIndex(Map.empty, configs.map(c => (c.name, c.id)).toMap)
       }
       Option(uri) -> new ProjectIndex(data.toMap)
     }
