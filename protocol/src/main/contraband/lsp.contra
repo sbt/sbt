@@ -1,0 +1,119 @@
+package sbt.internal.langserver
+@target(Scala)
+@codecPackage("sbt.internal.langserver.codec")
+@fullCodec("JsonProtocol")
+
+# Basic structure
+
+## Position in a text document expressed as zero-based line and zero-based character offset.
+## A position is between two characters like an 'insert' cursor in a editor.
+type Position {
+  ## Line position in a document (zero-based).
+  line: Long!
+
+  ## Character offset on a line in a document (zero-based).
+  character: Long!
+}
+
+## A range in a text document expressed as (zero-based) start and end positions. A range is comparable to a selection in an editor.
+## Therefore the end position is exclusive.
+type Range {
+  ## The range's start position.
+  start: sbt.internal.langserver.Position!
+
+  ## The range's end position.
+  end: sbt.internal.langserver.Position!
+}
+
+## Represents a location inside a resource, such as a line inside a text file.
+type Location {
+  uri: String!
+  range: sbt.internal.langserver.Range!
+}
+
+## Represents a diagnostic, such as a compiler error or warning.
+## Diagnostic objects are only valid in the scope of a resource.
+type Diagnostic {
+  ## The range at which the message applies.
+  range: sbt.internal.langserver.Range!
+
+  ## The diagnostic's severity. Can be omitted. If omitted it is up to the
+  ## client to interpret diagnostics as error, warning, info or hint.
+  severity: Long
+
+  ## The diagnostic's code. Can be omitted.
+  code: String
+
+  ## A human-readable string describing the source of this
+  ## diagnostic, e.g. 'typescript' or 'super lint'.
+  source: String
+
+  ## The diagnostic's message.
+  message: String!
+}
+
+# initialize request
+# https://github.com/Microsoft/language-server-protocol/blob/master/protocol.md#initialize-request
+
+type InitializeParams {
+  processId: Long
+
+  ## The rootPath of the workspace.
+  rootPath: String
+
+  rootUri: String
+
+  initializationOptions: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+
+  capabilities: sbt.internal.langserver.ClientCapabilities
+
+  trace: String
+}
+
+type ClientCapabilities {
+}
+
+type InitializeResult {
+  ## The capabilities the language server provides.
+  capabilities: sbt.internal.langserver.ServerCapabilities!
+}
+
+type ServerCapabilities {
+  textDocumentSync: sbt.internal.langserver.TextDocumentSyncOptions
+
+  ## The server provides hover support.
+  hoverProvider: Boolean
+}
+
+type TextDocumentSyncOptions {
+  openClose: Boolean
+  change: Long
+  willSave: Boolean
+  willSaveWaitUntil: Boolean
+  save: sbt.internal.langserver.SaveOptions
+}
+
+type SaveOptions {
+  ## The client is supposed to include the content on save.
+  includeText: Boolean
+}
+
+# Document
+
+# PublishDiagnostics Notification https://github.com/Microsoft/language-server-protocol/blob/master/protocol.md#textDocument_publishDiagnostics
+
+## Diagnostics notification are sent from the server to the client to signal results of validation runs.
+type PublishDiagnosticsParams {
+  ## The URI for which diagnostic information is reported.
+  uri: String!
+
+  ## An array of diagnostic information items.
+  diagnostics: [sbt.internal.langserver.Diagnostic]
+}
+
+# sbt extension
+
+## Command to execute sbt command.
+type SbtExecParams {
+  commandLine: String!
+}

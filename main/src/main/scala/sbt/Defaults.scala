@@ -23,6 +23,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
+import sbt.internal.server.LanguageServerReporter
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -1402,6 +1403,14 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
+      val prev = i.previousResult
+      prev.analysis.toOption map { analysis =>
+        i.setup.reporter match {
+          case r: LanguageServerReporter =>
+            r.resetPrevious(analysis)
+          case _ => ()
+        }
+      }
       incCompiler.compile(i, s.log)
     } finally x.close() // workaround for #937
   }
@@ -1441,7 +1450,7 @@ object Defaults extends BuildCommon {
         compileOrder.value
       ),
       compilerReporter := {
-        new ManagedLoggedReporter(
+        new LanguageServerReporter(
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value)

@@ -300,6 +300,8 @@ lazy val commandProj = (project in file("main-command"))
       exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*"),
       // Added method to ServerInstance. This is also internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerInstance.*"),
+      // Added method to CommandChannel. internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
     )
   )
   .configure(
@@ -380,6 +382,8 @@ lazy val mainProj = (project in file("main"))
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      // Removed unused val. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
     )
   )
   .configure(
@@ -406,6 +410,41 @@ lazy val sbtProj = (project in file("sbt"))
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
   )
   .configure(addSbtCompilerBridge)
+
+lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
+  .settings(
+    crossPaths := false,
+    crossScalaVersions := Seq(baseScalaVersion),
+    skip in publish := true,
+    compile in Compile := {
+      val u = update.value
+      import sbt.internal.inc.Analysis
+      import scala.sys.process._
+      Process(s"npm run compile", Option(baseDirectory.value)).!
+      Analysis.empty
+    },
+    update := {
+      val old = update.value
+      val t = target.value / "updated"
+      val base = baseDirectory.value
+      if (t.exists) ()
+      else {
+        import scala.sys.process._
+        Process("npm install", Option(base)).!
+        IO.touch(t)
+      }
+      old
+    },
+    cleanFiles ++= {
+      val base = baseDirectory.value
+      Vector(
+        target.value / "updated",
+        base / "node_modules", base / "client" / "node_modules",
+        base / "client" / "server",
+        base / "client" / "out",
+        base / "server" / "node_modules") filter { _.exists }
+    }
+  )
 
 lazy val sbtIgnoredProblems = {
   Seq(

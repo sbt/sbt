@@ -11,19 +11,25 @@ object Client extends App {
   val host = "127.0.0.1"
   val delimiter: Byte = '\n'.toByte
 
-  println("hello")
-  Thread.sleep(1000)
+  lazy val connection = getConnection
+  lazy val out = connection.getOutputStream
+  lazy val in = connection.getInputStream
 
-  val connection = getConnection
-  val out = connection.getOutputStream
-  val in = connection.getInputStream
+  val t = getToken
+  val msg0 = s"""{ "type": "InitCommand", "token": "$t" }"""
 
-  out.write(s"""{ "type": "InitCommand", "token": "$getToken" }""".getBytes("utf-8"))
-  out.write(delimiter.toInt)
+  writeLine(s"Content-Length: ${ msg0.size + 2 }")
+  writeLine("Content-Type: application/sbt-x1")
+  writeLine("")
+  writeLine(msg0)
   out.flush
 
-  out.write("""{ "type": "ExecCommand", "commandLine": "exit" }""".getBytes("utf-8"))
-  out.write(delimiter.toInt)
+  writeLine("Content-Length: 49")
+  writeLine("Content-Type: application/sbt-x1")
+  writeLine("")
+            // 12345678901234567890123456789012345678901234567890
+  writeLine("""{ "type": "ExecCommand", "commandLine": "exit" }""")
+  writeLine("")
   out.flush
 
   val baseDirectory = new File(args(0))
@@ -81,4 +87,20 @@ object Client extends App {
         Thread.sleep(1000)
         getConnection
     }
+
+  def writeLine(s: String): Unit = {
+    if (s != "") {
+      out.write(s.getBytes("UTF-8"))
+    }
+    writeEndLine
+  }
+
+  def writeEndLine(): Unit = {
+    val retByte: Byte = '\r'.toByte
+    val delimiter: Byte = '\n'.toByte
+
+    out.write(retByte.toInt)
+    out.write(delimiter.toInt)
+    out.flush
+  }
 }

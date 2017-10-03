@@ -15,3 +15,7 @@ type TokenFile {
   uri: String!
   token: String!
 }
+
+type InitializeOption {
+  token: String
+}

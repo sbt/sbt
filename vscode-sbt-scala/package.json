@@ -1,0 +1,26 @@
+{
+  "name": "vscode-sbt-scala",
+  "displayName": "Scala (sbt)",
+  "version": "0.0.1",
+  "author": "Lightbend, Inc.",
+  "license": "BSD-3-Clause",
+  "publisher": "lightbend",
+  "description": "Scala language support for Visual Studio Code using sbt",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sbt/sbt"
+  },
+  "scripts": {
+    "postinstall": "cd server && npm install && cd ../client && npm install && cd ..",
+    "compile": "tsc -p client/tsconfig.json && cd server && npm run installServer && cd .. && tsc -p server/tsconfig.json",
+    "compile:client": "tsc -p client/tsconfig.json",
+    "watch:client": "tsc -w -p client/tsconfig.json",
+    "compile:server": "cd server && npm run installServer && cd .. && tsc -p server/tsconfig.json",
+    "watch:server": "cd server && npm run installServer && cd .. && tsc -w -p server/tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/mocha": "^2.2.42",
+    "@types/node": "^6.0.88",
+    "typescript": "^2.5.2"
+  }
+}
