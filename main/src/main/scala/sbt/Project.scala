@@ -111,7 +111,6 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
 }
 
 sealed trait Project extends ProjectDefinition[ProjectReference] {
-  // TODO: add parameters for plugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
   private[sbt] def copy(
       id: String = id,
       base: File = base,
@@ -119,6 +118,19 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       dependencies: Seq[ClasspathDep[ProjectReference]] = dependencies,
       settings: Seq[Setting[_]] = settings,
       configurations: Seq[Configuration] = configurations
+  ): Project =
+    copy2(id, base, aggregate, dependencies, settings, configurations)
+
+  private[this] def copy2(
+      id: String = id,
+      base: File = base,
+      aggregate: Seq[ProjectReference] = aggregate,
+      dependencies: Seq[ClasspathDep[ProjectReference]] = dependencies,
+      settings: Seq[Setting[_]] = settings,
+      configurations: Seq[Configuration] = configurations,
+      plugins: Plugins = plugins,
+      autoPlugins: Seq[AutoPlugin] = autoPlugins,
+      projectOrigin: ProjectOrigin = projectOrigin,
   ): Project =
     unresolved(
       id,
@@ -155,17 +167,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
     def resolveDep(d: ClasspathDep[ProjectReference]) =
       ClasspathDependency(resolveRef(d.project), d.configuration)
-    unresolved(
-      id,
-      base,
-      aggregate = resolveRefs(aggregate),
-      dependencies = resolveDeps(dependencies),
-      settings,
-      configurations,
-      plugins,
-      autoPlugins,
-      projectOrigin
-    )
+    copy2(aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies))
   }
 
   /**
@@ -174,6 +176,8 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
    * The intended use is a convenience for applying default configuration provided by a plugin.
    */
   def configure(transforms: (Project => Project)*): Project = Function.chain(transforms)(this)
+
+  def withId(id: String) = copy(id = id)
 
   /** Sets the base directory for this project.*/
   def in(dir: File): Project = copy(base = dir)
@@ -217,52 +221,13 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   def disablePlugins(ps: AutoPlugin*): Project =
     setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
 
-  private[this] def setPlugins(ns: Plugins): Project = {
-    // TODO: for 0.14.0, use copy when it has the additional `plugins` parameter
-    unresolved(
-      id,
-      base,
-      aggregate = aggregate,
-      dependencies = dependencies,
-      settings,
-      configurations,
-      ns,
-      autoPlugins,
-      projectOrigin
-    )
-  }
+  private[this] def setPlugins(ns: Plugins): Project = copy2(plugins = ns)
 
   /** Definitively set the [[AutoPlugin]]s for this project. */
-  private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = {
-    // TODO: for 0.14.0, use copy when it has the additional `autoPlugins` parameter
-    unresolved(
-      id,
-      base,
-      aggregate = aggregate,
-      dependencies = dependencies,
-      settings,
-      configurations,
-      plugins,
-      autos,
-      projectOrigin
-    )
-  }
+  private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = copy2(autoPlugins = autos)
 
   /** Definitively set the [[ProjectOrigin]] for this project. */
-  private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = {
-    // TODO: for 1.0.x, use withProjectOrigin.
-    unresolved(
-      id,
-      base,
-      aggregate = aggregate,
-      dependencies = dependencies,
-      settings,
-      configurations,
-      plugins,
-      autoPlugins,
-      origin
-    )
-  }
+  private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = copy2(projectOrigin = origin)
 }
 
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
@@ -295,27 +260,12 @@ object Project extends ProjectExtra {
       val autoPlugins: Seq[AutoPlugin],
       val projectOrigin: ProjectOrigin
   ) extends ProjectDefinition[PR] {
-    Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
+    // checks for cyclic references here instead of having to do it in Scope.delegates
+    Dag.topologicalSort(configurations)(_.extendsConfigs)
   }
 
   def apply(id: String, base: File): Project =
-    unresolved(
-      id,
-      base,
-      Nil,
-      Nil,
-      Nil,
-      Nil,
-      Plugins.empty,
-      Nil,
-      ProjectOrigin.Organic
-    )
-
-  // TODO: add parameter for plugins and projectOrigin in 1.0
-  // TODO: Modify default settings to be the core settings, and automatically add the IvyModule + JvmPlugins.
-  // def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
-  //  delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = Nil, configurations: Seq[Configuration] = Nil): Project =
-  //  unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil) // Note: JvmModule/IvyModule auto included...
+    unresolved(id, base, Nil, Nil, Nil, Nil, Plugins.empty, Nil, ProjectOrigin.Organic)
 
   def showContextKey(state: State): Show[ScopedKey[_]] =
     showContextKey(state, None)
@@ -348,17 +298,10 @@ object Project extends ProjectExtra {
       aggregate: Seq[ProjectReference]
   ): Project = {
     validProjectID(id).foreach(errMsg => sys.error(s"Invalid project ID: $errMsg"))
-    new ProjectDef[ProjectReference](
-      id,
-      base,
-      aggregate,
-      Nil,
-      Nil,
-      Nil,
-      Plugins.empty,
-      Nil,
-      ProjectOrigin.GenericRoot
-    ) with Project with GeneratedRootProject
+    val plugins = Plugins.empty
+    val origin = ProjectOrigin.GenericRoot
+    new ProjectDef(id, base, aggregate, Nil, Nil, Nil, plugins, Nil, origin) with Project
+    with GeneratedRootProject
   }
 
   /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
