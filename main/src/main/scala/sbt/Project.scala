@@ -177,6 +177,8 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
    */
   def configure(transforms: (Project => Project)*): Project = Function.chain(transforms)(this)
 
+  def withId(id: String) = copy(id = id)
+
   /** Sets the base directory for this project.*/
   def in(dir: File): Project = copy(base = dir)
 
