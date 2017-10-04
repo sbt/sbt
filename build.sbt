@@ -39,6 +39,13 @@ def buildLevelSettings: Seq[Setting[_]] =
 
 def commonSettings: Seq[Setting[_]] =
   Seq[SettingsDefinition](
+    headerLicense := Some(HeaderLicense.Custom(
+      """|sbt
+         |Copyright 2011 - 2017, Lightbend, Inc.
+         |Copyright 2008 - 2010, Mark Harrah
+         |Licensed under BSD-3-Clause license (see LICENSE)
+         |""".stripMargin
+    )),
     scalaVersion := baseScalaVersion,
     componentID := None,
     resolvers += Resolver.typesafeIvyRepo("releases"),

@@ -1,6 +1,8 @@
 /*
- * This file has been copy-pasted from spores.
- * https://github.com/scalacenter/spores/blob/master/core/src/test/scala/scala/spores/TestUtil.scala
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
 
 package sbt.std
