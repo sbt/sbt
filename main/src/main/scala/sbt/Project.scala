@@ -296,17 +296,10 @@ object Project extends ProjectExtra {
       aggregate: Seq[ProjectReference]
   ): Project = {
     validProjectID(id).foreach(errMsg => sys.error(s"Invalid project ID: $errMsg"))
-    new ProjectDef[ProjectReference](
-      id,
-      base,
-      aggregate,
-      Nil,
-      Nil,
-      Nil,
-      Plugins.empty,
-      Nil,
-      ProjectOrigin.GenericRoot
-    ) with Project with GeneratedRootProject
+    val plugins = Plugins.empty
+    val origin = ProjectOrigin.GenericRoot
+    new ProjectDef(id, base, aggregate, Nil, Nil, Nil, plugins, Nil, origin) with Project
+    with GeneratedRootProject
   }
 
   /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
