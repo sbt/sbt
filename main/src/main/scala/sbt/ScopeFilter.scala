@@ -19,7 +19,7 @@ import java.net.URI
 object ScopeFilter {
   type ScopeFilter = Base[Scope]
   type AxisFilter[T] = Base[ScopeAxis[T]]
-  type ProjectFilter = AxisFilter[Reference]
+  type ProjectFilter = AxisFilter[ScopeFilterReference]
   type ConfigurationFilter = AxisFilter[ConfigKey]
   type TaskFilter = AxisFilter[AttributeKey[_]]
 
@@ -91,7 +91,7 @@ object ScopeFilter {
     def inGlobalTask: TaskFilter = inZeroTask
 
     /** Selects Scopes with a Zero project axis. */
-    def inZeroProject: ProjectFilter = zeroAxis[Reference]
+    def inZeroProject: ProjectFilter = zeroAxis[ScopeFilterReference]
 
     @deprecated("Use inZeroProject", "1.0.0")
     def inGlobalProject: ProjectFilter = inZeroProject
@@ -116,7 +116,7 @@ object ScopeFilter {
      * Selects Scopes that have a project axis that is aggregated by `ref`, transitively if `transitive` is true.
      * If `includeRoot` is true, Scopes with `ref` itself as the project axis value are also selected.
      */
-    def inAggregates(ref: ProjectReference,
+    def inAggregates(ref: ScopeFilterProjectReference,
                      transitive: Boolean = true,
                      includeRoot: Boolean = true): ProjectFilter =
       byDeps(ref,
@@ -129,7 +129,7 @@ object ScopeFilter {
      * Selects Scopes that have a project axis that is a dependency of `ref`, transitively if `transitive` is true.
      * If `includeRoot` is true, Scopes with `ref` itself as the project axis value are also selected.
      */
-    def inDependencies(ref: ProjectReference,
+    def inDependencies(ref: ScopeFilterProjectReference,
                        transitive: Boolean = true,
                        includeRoot: Boolean = true): ProjectFilter =
       byDeps(ref,
@@ -163,7 +163,7 @@ object ScopeFilter {
    * project reference resolution, and the list of all static Scopes.
    */
   private final class Data(val units: Map[URI, LoadedBuildUnit],
-                           val resolve: ProjectReference => ProjectRef,
+                           val resolve: ScopeFilterProjectReference => ProjectRef,
                            val allScopes: Set[Scope])
 
   /** Constructs a Data instance from the list of static scopes and the project relationships.*/
@@ -177,10 +177,11 @@ object ScopeFilter {
         case None                     => build.root
       }
       val rootProject = Load.getRootProject(build.units)
-      val resolve: ProjectReference => ProjectRef = p =>
+      val resolve: ScopeFilterProjectReference => ProjectRef = p =>
         (p, thisRef) match {
           case (ThisProject, Some(pref)) => pref
-          case _                         => Scope.resolveProjectRef(current, rootProject, p)
+          case (ThisProject, None)       => sys.error("Cannot resolve ThisProject without thisProjectRef")
+          case (pr: ProjectReference, _) => Scope.resolveProjectRef(current, rootProject, pr)
       }
       new Data(build.units, resolve, scopes)
     }
@@ -194,7 +195,7 @@ object ScopeFilter {
           (if (aggregate) p.aggregate else Nil)
     }
 
-  private[this] def byDeps(ref: ProjectReference,
+  private[this] def byDeps(ref: ScopeFilterProjectReference,
                            transitive: Boolean,
                            includeRoot: Boolean,
                            aggregate: Boolean,
@@ -211,7 +212,7 @@ object ScopeFilter {
       }
     }
 
-  private def inProjects(projects: ProjectReference*): ProjectFilter =
+  private def inProjects(projects: ScopeFilterProjectReference*): ProjectFilter =
     inResolvedProjects(data => projects.map(data.resolve))
 
   private[this] def inResolvedProjects(projects: Data => Seq[ProjectRef]): ProjectFilter =

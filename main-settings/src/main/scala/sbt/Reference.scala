@@ -14,8 +14,10 @@ import sbt.io.IO
 
 // in all of these, the URI must be resolved and normalized before it is definitive
 
+sealed trait ScopeFilterReference
+
 /** Identifies a project or build. */
-sealed trait Reference
+sealed trait Reference extends ScopeFilterReference
 
 /** A fully resolved, unique identifier for a project or build. */
 sealed trait ResolvedReference extends Reference
@@ -29,8 +31,10 @@ final case object ThisBuild extends BuildReference
 /** Uniquely identifies a build by a URI. */
 final case class BuildRef(build: URI) extends BuildReference with ResolvedReference
 
+sealed trait ScopeFilterProjectReference extends ScopeFilterReference
+
 /** Identifies a project. */
-sealed trait ProjectReference extends Reference
+sealed trait ProjectReference extends Reference with ScopeFilterProjectReference
 
 /** Uniquely references a project by a URI and a project identifier String. */
 final case class ProjectRef(build: URI, project: String)
@@ -47,7 +51,7 @@ final case class RootProject(build: URI) extends ProjectReference
 final case object LocalRootProject extends ProjectReference
 
 /** Identifies the project for the current context. */
-final case object ThisProject extends ProjectReference
+final case object ThisProject extends ScopeFilterProjectReference
 
 object ProjectRef {
   def apply(base: File, id: String): ProjectRef = ProjectRef(IO toURI base, id)
@@ -91,7 +95,6 @@ object Reference {
     }
   def display(ref: ProjectReference): String =
     ref match {
-      case ThisProject         => "{<this>}<this>"
       case LocalRootProject    => "{<this>}<root>"
       case LocalProject(id)    => "{<this>}" + id
       case RootProject(uri)    => "{" + uri + " }<root>"
