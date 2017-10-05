@@ -10,6 +10,7 @@ lazy val root = (project in file("."))
     Compile / console / scalacOptions += "-Ywarn-numeric-widen",
     projA / Compile / console / scalacOptions += "-feature",
     Zero / Zero / name := "foo",
+    Zero / Zero / Zero / name := "foo",
 
     libraryDependencies += uTest % Test,
     testFrameworks += new TestFramework("utest.runner.Framework"),
