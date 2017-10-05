@@ -178,6 +178,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
   implicit def macroValueIInT[T](in: Initialize[InputTask[T]]): InputEvaluated[T] = ???
   implicit def taskMacroValueIT[T](in: Initialize[Task[T]]): MacroTaskValue[T] = ???
   implicit def macroPrevious[T](in: TaskKey[T]): MacroPrevious[T] = ???
+  implicit def taskKeyThunkPrevious[T](in: TaskKeyThunk[T]): MacroPrevious[T] = ???
 
   // The following conversions enable the types Parser[T], Initialize[Parser[T]], and Initialize[State => Parser[T]] to
   //  be used in the inputTask macro as an input with an ultimate result of type T
@@ -206,6 +207,52 @@ object Def extends Init[Scope] with TaskMacroExtra {
   private[sbt] val (streamsManagerKey, dummyStreamsManager) = Def.dummy[std.Streams[ScopedKey[_]]](
     "streams-manager",
     "Streams manager, which provides streams for different contexts.")
+
+  /**
+   * SettingKeyThunk is a thunk used to hold a scope and a key for the path syntax
+   * while we're not sure if the key is terminal or task-scoping.
+   */
+  final class SettingKeyThunk[A](base: Scope, key: SettingKey[A]) extends Def.KeyedInitialize[A] {
+    def materialize: SettingKey[A] = key in base
+    private[sbt] def rescope: RichScope = new RichScope(base in key.key)
+    def scopedKey = materialize.scopedKey
+    override def toString: String = s"$base / ${key.key}"
+  }
+
+  /**
+   * TaskKeyThunk is a thunk used to hold a scope and a key for the path syntax
+   * while we're not sure if the key is terminal or task-scoping.
+   */
+  final class TaskKeyThunk[A](base: Scope, key: TaskKey[A]) extends Def.KeyedInitialize[Task[A]] {
+    import reflect.macros._
+    import reflect.internal.annotations.compileTimeOnly
+
+    def materialize: TaskKey[A] = key in base
+    private[sbt] def rescope: RichScope = new RichScope(base in key.key)
+
+    def scopedKey = materialize.scopedKey
+
+    override def toString: String = s"$base / ${key.key}"
+  }
+
+  /**
+   * InputKeyThunk is a thunk used to hold a scope and a key for the path syntax
+   * while we're not sure if the key is terminal or task-scoping.
+   */
+  final class InputKeyThunk[A](base: Scope, key: InputKey[A])
+      extends Def.KeyedInitialize[InputTask[A]] {
+    def materialize: InputKey[A] = key in base
+    private[sbt] def rescope: RichScope = new RichScope(base in key.key)
+    def scopedKey = materialize.scopedKey
+    override def toString: String = s"$base / ${key.key}"
+  }
+
+  /** RichScope wraps a general scope to provide the `/` operator for scoping. */
+  final class RichScope(scope: Scope) {
+    def /[A](key: SettingKey[A]): SettingKey[A] = key in scope
+    def /[A](key: TaskKey[A]): TaskKey[A] = key in scope
+    def /[A](key: InputKey[A]): InputKey[A] = key in scope
+  }
 }
 // these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra {
