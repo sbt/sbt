@@ -34,7 +34,8 @@ trait SlashSyntax {
     new RichReference(Scope(a, This, This, This))
 
   implicit def sbtSlashSyntaxRichReference(r: Reference): RichReference = Select(r)
-  implicit def sbtSlashSyntaxRichProject(p: Project): RichReference = (p: Reference)
+  implicit def sbtSlashSyntaxRichProject[A](p: A)(implicit x: A => Reference): RichReference =
+    (p: Reference)
 
   implicit def sbtSlashSyntaxRichConfigKey(c: ConfigKey): RichConfiguration =
     new RichConfiguration(Scope(This, Select(c), This, This))
@@ -105,9 +106,7 @@ object SlashSyntax {
     private[sbt] def materialize: K = key in scope
     private[sbt] def rescope: TerminalScope = new TerminalScope(scope in key.key)
 
-    override def toString: String = {
-      s"$scope / ${key.key}"
-    }
+    override def toString: String = s"$scope / ${key.key}"
   }
 
 }
