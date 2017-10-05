@@ -12,7 +12,7 @@ import sbt.internal.util.AttributeKey
 import Def._
 
 /**
- * SlashSyntax implements the slash syntax to scope keys for build.sbt DSL.
+ * ScopePathSyntax implements the scope path syntax to scope keys for build.sbt DSL.
  * The implicits are set up such that the order that the scope components
  * must appear in the order of the project axis, the configuration axis, and
  * the task axis. This ordering is the same as the shell syntax.
@@ -28,8 +28,8 @@ import Def._
  *  Zero / Zero / name := "foo"
  *  }}}
  */
-trait SlashSyntax {
-  import SlashSyntax._
+trait ScopePathSyntax {
+  import ScopePathSyntax._
 
   implicit def sbtScopeSyntaxRichReference(r: Reference): RichReference =
     new RichReference(Scope(Select(r), This, This, This))
@@ -72,7 +72,7 @@ trait SlashSyntax {
     thunk.rescope
 }
 
-object SlashSyntax {
+object ScopePathSyntax {
   sealed trait RichScopeLike {
     protected def toScope: Scope
 
