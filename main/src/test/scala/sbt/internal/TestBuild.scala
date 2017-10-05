@@ -232,7 +232,9 @@ abstract class TestBuild {
       p <- b.projects.toVector
       c <- p.configurations.toVector
     } yield c
-    val confMap = confs.map(c => (c.name, Seq(c))).toMap
+    val confMap = Map(confs map { c =>
+      (c.name, Seq(c))
+    }: _*)
     new Structure(env, current, data, KeyIndex(keys, projectsMap, confMap), keyMap)
   }
 
