@@ -97,8 +97,7 @@ object Scope {
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject =>
-        RootProject(current) // Is this right? It was an inexhaustive match before..
+      case ThisProject         => ThisProject // haven't exactly "resolved" anything..
     }
   def resolveBuild(current: URI, uri: URI): URI =
     if (!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
@@ -118,13 +117,11 @@ object Scope {
                         rootProject: URI => String,
                         ref: ProjectReference): ProjectRef =
     ref match {
-      case LocalRootProject => ProjectRef(current, rootProject(current))
-      case LocalProject(id) => ProjectRef(current, id)
-      case RootProject(uri) =>
-        val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
+      case LocalRootProject    => ProjectRef(current, rootProject(current))
+      case LocalProject(id)    => ProjectRef(current, id)
+      case RootProject(uri)    => val u = resolveBuild(current, uri); ProjectRef(u, rootProject(u))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject =>
-        ProjectRef(current, rootProject(current)) // Is this right? It was an inexhaustive match before..
+      case ThisProject         => sys.error("Cannot resolve ThisProject w/o the current project")
     }
   def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
     ref match {
