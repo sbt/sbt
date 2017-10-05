@@ -31,130 +31,53 @@ import sbt.internal.util.AttributeKey
 trait SlashSyntax {
   import SlashSyntax._
 
-  implicit def sbtScopeSyntaxRichReference(r: Reference): RichReference =
-    new RichReference(Scope(Select(r), This, This, This))
+  implicit def sbtScopePathSyntaxRichReferenceAxis(a: ScopeAxis[Reference]): RichReference =
+    new RichReference(Scope(a, This, This, This))
 
-  implicit def sbtScopeSyntaxRichProject(p: Project): RichReference =
-    new RichReference(Scope(Select(p), This, This, This))
+  implicit def sbtScopePathSyntaxRichReference(r: Reference): RichReference = Select(r)
+  implicit def sbtScopePathSyntaxRichProject[A](p: A)(implicit x: A => Reference): RichReference =
+    (p: Reference)
 
-  implicit def sbtScopeSyntaxRichConfiguration(c: Configuration): RichConfiguration =
+  implicit def sbtScopePathSyntaxRichConfiguration(c: Configuration): RichConfiguration =
     new RichConfiguration(Scope(This, Select(c), This, This))
 
-  implicit def sbtScopeSyntaxRichScope(s: Scope): RichScope =
+  implicit def sbtScopePathSyntaxRichScope(s: Scope): RichScope =
     new RichScope(s)
 
-  implicit def sbtScopeSyntaxRichScopeFromScoped(t: Scoped): RichScope =
-    new RichScope(Scope(This, This, Select(t.key), This))
-
-  implicit def sbtScopeSyntaxRichScopeAxis(a: ScopeAxis[Reference]): RichScopeAxis =
-    new RichScopeAxis(a)
-
-  // Materialize the setting key thunk
-  implicit def sbtScopeSyntaxSettingKeyThunkMaterialize[A](
-      thunk: SettingKeyThunk[A]): SettingKey[A] =
-    thunk.materialize
-
-  implicit def sbtScopeSyntaxSettingKeyThunkKeyRescope[A](thunk: SettingKeyThunk[A]): RichScope =
-    thunk.rescope
-
-  // Materialize the task key thunk
-  implicit def sbtScopeSyntaxTaskKeyThunkMaterialize[A](thunk: TaskKeyThunk[A]): TaskKey[A] =
-    thunk.materialize
-
-  implicit def sbtScopeSyntaxTaskKeyThunkRescope[A](thunk: TaskKeyThunk[A]): RichScope =
-    thunk.rescope
-
-  // Materialize the input key thunk
-  implicit def sbtScopeSyntaxInputKeyThunkMaterialize[A](thunk: InputKeyThunk[A]): InputKey[A] =
-    thunk.materialize
-
-  implicit def sbtScopeSyntaxInputKeyThunkRescope[A](thunk: InputKeyThunk[A]): RichScope =
-    thunk.rescope
+  /**
+   * This handles task scoping an existing scoped key (such as `Compile / test`)
+   * into a task scoping in `(Compile / test) / name`.
+   */
+  implicit def sbtScopePathSyntaxRichScopeFromScoped(t: Scoped): RichScope =
+    new RichScope(t.scope.copy(task = Select(t.key)))
 }
 
 object SlashSyntax {
 
-  /** RichReference wraps a project to provide the `/` operator for scoping. */
-  final class RichReference(s: Scope) {
-    def /(c: Configuration): RichConfiguration = new RichConfiguration(s in c)
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: SettingKey[A]): SettingKeyThunk[A] = new SettingKeyThunk(s, key)
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: TaskKey[A]): TaskKeyThunk[A] = new TaskKeyThunk(s, key)
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: InputKey[A]): InputKeyThunk[A] = new InputKeyThunk(s, key)
-  }
-
-  /** RichConfiguration wraps a configuration to provide the `/` operator for scoping. */
-  final class RichConfiguration(s: Scope) {
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: SettingKey[A]): SettingKeyThunk[A] = new SettingKeyThunk(s, key)
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: TaskKey[A]): TaskKeyThunk[A] = new TaskKeyThunk(s, key)
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: InputKey[A]): InputKeyThunk[A] = new InputKeyThunk(s, key)
-
-    // This is for handling `Zero / Zero / Zero / name`.
-    def /(taskAxis: ScopeAxis[AttributeKey[_]]): RichScope =
-      new RichScope(s.copy(task = taskAxis))
-  }
-
-  /** RichScope wraps a general scope to provide the `/` operator for scoping. */
-  final class RichScope(scope: Scope) {
+  /** RichScopeLike wraps a general scope to provide the `/` operator for key scoping. */
+  sealed trait RichScopeLike {
+    protected def scope: Scope
     def /[A](key: SettingKey[A]): SettingKey[A] = key in scope
     def /[A](key: TaskKey[A]): TaskKey[A] = key in scope
     def /[A](key: InputKey[A]): InputKey[A] = key in scope
   }
 
-  /** RichScopeAxis wraps a project axis to provide the `/` operator to `Zero` for scoping. */
-  final class RichScopeAxis(a: ScopeAxis[Reference]) {
-    private[this] def toScope: Scope = Scope(a, This, This, This)
-
-    def /(c: Configuration): RichConfiguration = new RichConfiguration(toScope in c)
+  /** RichReference wraps a reference to provide the `/` operator for scoping. */
+  final class RichReference(protected val scope: Scope) extends RichScopeLike {
+    def /(c: Configuration): RichConfiguration = new RichConfiguration(scope in c)
 
     // This is for handling `Zero / Zero / name`.
     def /(configAxis: ScopeAxis[ConfigKey]): RichConfiguration =
-      new RichConfiguration(toScope.copy(config = configAxis))
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: SettingKey[A]): SettingKeyThunk[A] = new SettingKeyThunk(toScope, key)
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: TaskKey[A]): TaskKeyThunk[A] = new TaskKeyThunk(toScope, key)
-
-    // We don't know what the key is for yet, so just capture in a thunk.
-    def /[A](key: InputKey[A]): InputKeyThunk[A] = new InputKeyThunk(toScope, key)
+      new RichConfiguration(scope.copy(config = configAxis))
   }
 
-  /**
-   * SettingKeyThunk is a thunk used to hold a scope and a key
-   * while we're not sure if the key is terminal or task-scoping.
-   */
-  final class SettingKeyThunk[A](base: Scope, key: SettingKey[A]) {
-    private[sbt] def materialize: SettingKey[A] = key in base
-    private[sbt] def rescope: RichScope = new RichScope(base in key.key)
+  /** RichConfiguration wraps a configuration to provide the `/` operator for scoping. */
+  final class RichConfiguration(protected val scope: Scope) extends RichScopeLike {
+    // This is for handling `Zero / Zero / Zero / name`.
+    def /(taskAxis: ScopeAxis[AttributeKey[_]]): RichScope =
+      new RichScope(scope.copy(task = taskAxis))
   }
 
-  /**
-   * TaskKeyThunk is a thunk used to hold a scope and a key
-   * while we're not sure if the key is terminal or task-scoping.
-   */
-  final class TaskKeyThunk[A](base: Scope, key: TaskKey[A]) {
-    private[sbt] def materialize: TaskKey[A] = key in base
-    private[sbt] def rescope: RichScope = new RichScope(base in key.key)
-  }
-
-  /**
-   * InputKeyThunk is a thunk used to hold a scope and a key
-   * while we're not sure if the key is terminal or task-scoping.
-   */
-  final class InputKeyThunk[A](base: Scope, key: InputKey[A]) {
-    private[sbt] def materialize: InputKey[A] = key in base
-    private[sbt] def rescope: RichScope = new RichScope(base in key.key)
-  }
+  /** RichScope wraps a general scope to provide the `/` operator for scoping. */
+  final class RichScope(protected val scope: Scope) extends RichScopeLike {}
 }
