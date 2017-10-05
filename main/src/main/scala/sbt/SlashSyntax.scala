@@ -1,6 +1,7 @@
 package sbt
 
 import sbt.librarymanagement.Configuration
+import sbt.internal.util.AttributeKey
 
 /**
  * SlashSyntax implements the slash syntax to scope keys for build.sbt DSL.
@@ -57,7 +58,12 @@ object SlashSyntax {
   }
 
   /** RichConfiguration wraps a configuration to provide the `/` operator for scoping. */
-  final class RichConfiguration(protected val scope: Scope) extends RichScopeLike
+  final class RichConfiguration(protected val scope: Scope) extends RichScopeLike {
+
+    // This is for handling `Zero / Zero / Zero / name`.
+    def /(taskAxis: ScopeAxis[AttributeKey[_]]): RichScope =
+      new RichScope(scope.copy(task = taskAxis))
+  }
 
   /** Both `Scoped.ScopingSetting` and `Scoped` are parents of `SettingKey`, `TaskKey` and
    * `InputKey`. We'll need both, so this is a convenient type alias. */
@@ -91,6 +97,10 @@ object SlashSyntax {
   final class ScopeAndKey[K <: Key[K]](scope: Scope, key: K) {
     private[sbt] def materialize: K = key in scope
     private[sbt] def rescope: TerminalScope = new TerminalScope(scope in key.key)
+
+    override def toString: String = {
+      s"$scope / ${key.key}"
+    }
   }
 
 }

@@ -34,6 +34,8 @@ sealed abstract class SettingKey[T]
 
   val key: AttributeKey[T]
 
+  override def toString: String = s"SettingKey($scope / $key)"
+
   final def toTask: Initialize[Task[T]] = this apply inlineTask
 
   final def scopedKey: ScopedKey[T] = ScopedKey(scope, key)
@@ -105,6 +107,8 @@ sealed abstract class TaskKey[T]
 
   val key: AttributeKey[Task[T]]
 
+  override def toString: String = s"TaskKey($scope / $key)"
+
   def toTask: Initialize[Task[T]] = this
 
   def scopedKey: ScopedKey[Task[T]] = ScopedKey(scope, key)
@@ -171,6 +175,8 @@ sealed trait InputKey[T]
     with Scoped.DefinableSetting[InputTask[T]] {
 
   val key: AttributeKey[InputTask[T]]
+
+  override def toString: String = s"InputKey($scope / $key)"
 
   def scopedKey: ScopedKey[InputTask[T]] = ScopedKey(scope, key)
 

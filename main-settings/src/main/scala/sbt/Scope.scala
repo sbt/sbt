@@ -24,6 +24,11 @@ final case class Scope(project: ScopeAxis[Reference],
   def in(project: Reference): Scope = copy(project = Select(project))
   def in(config: ConfigKey): Scope = copy(config = Select(config))
   def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
+
+  override def toString: String = {
+    if (extra == This) s"$project / $config / $task"
+    else s"Scope($project, $config, $task, $extra)"
+  }
 }
 object Scope {
   val ThisScope: Scope = Scope(This, This, This, This)
