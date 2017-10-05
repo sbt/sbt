@@ -97,6 +97,10 @@ object SlashSyntax {
   final class ScopeAndKey[K <: Key[K]](scope: Scope, key: K) {
     private[sbt] def materialize: K = key in scope
     private[sbt] def rescope: TerminalScope = new TerminalScope(scope in key.key)
+
+    override def toString: String = {
+      s"$scope / ${key.key}"
+    }
   }
 
 }
