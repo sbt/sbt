@@ -391,6 +391,8 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       // Removed unused val. internal.
       exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
+      // Removed unused def. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.Load.isProjectThis"),
     )
   )
   .configure(

@@ -363,12 +363,6 @@ private[sbt] object Load {
     )
   }
 
-  def isProjectThis(s: Setting[_]): Boolean =
-    s.key.scope.project match {
-      case This | Select(ThisProject) => true
-      case _                          => false
-    }
-
   def buildConfigurations(
       loaded: LoadedBuild,
       rootProject: URI => String,
