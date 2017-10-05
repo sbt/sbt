@@ -20,7 +20,7 @@ package object sbt
     with sbt.ScopeFilter.Make
     with sbt.BuildSyntax
     with sbt.OptionSyntax
-    with sbt.SlashSyntax
+    with sbt.ScopePathSyntax
     with sbt.Import {
   // IO
   def uri(s: String): URI = new URI(s)

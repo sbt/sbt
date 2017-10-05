@@ -7,12 +7,11 @@
 
 package sbt
 
-import java.io.File
 import sbt.librarymanagement.Configuration
 import sbt.internal.util.AttributeKey
 
 /**
- * SlashSyntax implements the slash syntax to scope keys for build.sbt DSL.
+ * ScopePathSyntax implements the scope path syntax to scope keys for build.sbt DSL.
  * The implicits are set up such that the order that the scope components
  * must appear in the order of the project axis, the configuration axis, and
  * the task axis. This ordering is the same as the shell syntax.
@@ -28,8 +27,8 @@ import sbt.internal.util.AttributeKey
  *  Zero / Zero / name := "foo"
  *  }}}
  */
-trait SlashSyntax {
-  import SlashSyntax._
+trait ScopePathSyntax {
+  import ScopePathSyntax._
 
   implicit def sbtScopePathSyntaxRichReferenceAxis(a: ScopeAxis[Reference]): RichReference =
     new RichReference(Scope(a, This, This, This))
@@ -52,7 +51,7 @@ trait SlashSyntax {
     new RichScope(t.scope.copy(task = Select(t.key)))
 }
 
-object SlashSyntax {
+object ScopePathSyntax {
 
   /** RichScopeLike wraps a general scope to provide the `/` operator for key scoping. */
   sealed trait RichScopeLike {
