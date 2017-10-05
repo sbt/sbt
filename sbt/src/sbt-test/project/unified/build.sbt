@@ -1,4 +1,3 @@
-import Dependencies._
 import sbt.internal.CommandStrings.{ inspectBrief, inspectDetailed }
 import sbt.internal.Inspect
 import sjsonnew._, BasicJsonProtocol._
@@ -7,6 +6,8 @@ val foo = taskKey[Int]("")
 val bar = taskKey[Int]("")
 val baz = inputKey[Unit]("")
 val buildInfo = taskKey[Seq[File]]("The task that generates the build info.")
+
+val uTest = "com.lihaoyi" %% "utest" % "0.5.3"
 
 lazy val root = (project in file("."))
   .settings(

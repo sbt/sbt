@@ -43,16 +43,6 @@ package object sbt
   final val Global = Scope.Global
   final val GlobalScope = Scope.GlobalScope
 
-  // import sbt.{ Configurations => C }
-  // final val Compile = C.Compile
-  // final val Test = C.Test
-  // final val Runtime = C.Runtime
-  // final val IntegrationTest = C.IntegrationTest
-  // final val Default = C.Default
-  // final val Provided = C.Provided
-  // java.lang.System is more important, so don't alias this one
-  //  final val System = C.System
-  // final val Optional = C.Optional
   def config(name: String): Configuration =
     macro sbt.librarymanagement.ConfigurationMacro.configMacroImpl
 }
