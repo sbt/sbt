@@ -40,10 +40,10 @@ object Scope {
   val GlobalScope: Scope = Global
 
   def resolveScope(thisScope: Scope, current: URI, rootProject: URI => String): Scope => Scope =
-    resolveProject(current, rootProject) compose replaceThis(thisScope) compose subThisProject
+    resolveProject(current, rootProject) compose replaceThis(thisScope)
 
   def resolveBuildScope(thisScope: Scope, current: URI): Scope => Scope =
-    buildResolve(current) compose replaceThis(thisScope) compose subThisProject
+    buildResolve(current) compose replaceThis(thisScope)
 
   def replaceThis(thisScope: Scope): Scope => Scope =
     (scope: Scope) =>
@@ -57,14 +57,8 @@ object Scope {
   def subThis[T](sub: ScopeAxis[T], into: ScopeAxis[T]): ScopeAxis[T] =
     if (into == This) sub else into
 
-  /**
-   * `Select(ThisProject)` cannot be resolved by [[resolveProject]] (it doesn't know what to replace it with), so we
-   * perform this transformation so that [[replaceThis]] picks it up.
-   */
-  def subThisProject: Scope => Scope = {
-    case s @ Scope(Select(ThisProject), _, _, _) => s.copy(project = This)
-    case s                                       => s
-  }
+  @deprecated("No longer used, it's now an identity function", "2.0.0")
+  def subThisProject: Scope => Scope = s => s
 
   def fillTaskAxis(scope: Scope, key: AttributeKey[_]): Scope =
     scope.task match {
@@ -97,7 +91,6 @@ object Scope {
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject         => ThisProject // haven't exactly "resolved" anything..
     }
   def resolveBuild(current: URI, uri: URI): URI =
     if (!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
@@ -121,7 +114,6 @@ object Scope {
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => val u = resolveBuild(current, uri); ProjectRef(u, rootProject(u))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject         => sys.error("Cannot resolve ThisProject w/o the current project")
     }
   def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
     ref match {
