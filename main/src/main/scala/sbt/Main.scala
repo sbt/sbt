@@ -165,9 +165,6 @@ object BuiltinCommands {
 
   def DefaultCommands: Seq[Command] =
     Seq(
-      ignore,
-      help,
-      completionsCommand,
       about,
       tasks,
       settingsCommand,
@@ -175,9 +172,6 @@ object BuiltinCommands {
       templateCommand,
       projects,
       project,
-      reboot,
-      read,
-      history,
       set,
       sessionCommand,
       inspect,
@@ -188,36 +182,21 @@ object BuiltinCommands {
       PluginCross.pluginCross,
       PluginCross.pluginSwitch,
       Cross.crossRestoreSession,
-      setOnFailure,
-      clearOnFailure,
-      stashOnFailure,
-      popOnFailure,
       setLogLevel,
       plugin,
       plugins,
       writeSbtVersion,
       notifyUsersAboutShell,
-      ifLast,
-      multi,
       shell,
-      oldshell,
       startServer,
-      BasicCommands.client,
-      continuous,
       eval,
-      alias,
-      append,
       last,
       lastGrep,
       export,
       boot,
-      nop,
-      call,
-      exit,
-      early,
       initialize,
       act
-    ) ++ compatCommands
+    ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
     WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
