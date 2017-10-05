@@ -31,11 +31,12 @@ import Def._
 trait ScopePathSyntax {
   import ScopePathSyntax._
 
-  implicit def sbtScopeSyntaxRichReference(r: Reference): RichReference =
-    new RichReference(Scope(Select(r), This, This, This))
+  implicit def sbtSlashSyntaxRichReferenceAxis(a: ScopeAxis[Reference]): RichReference =
+    new RichReference(Scope(a, This, This, This))
 
-  implicit def sbtScopeSyntaxRichProject(p: Project): RichReference =
-    new RichReference(Scope(Select(p), This, This, This))
+  implicit def sbtSlashSyntaxRichReference(r: Reference): RichReference = Select(r)
+  implicit def sbtSlashSyntaxRichProject[A](p: A)(implicit x: A => Reference): RichReference =
+    (p: Reference)
 
   implicit def sbtScopeSyntaxRichConfiguration(c: Configuration): RichConfiguration =
     new RichConfiguration(Scope(This, Select(c), This, This))
