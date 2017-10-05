@@ -12,7 +12,7 @@ import language.experimental.macros
 import reflect.macros._
 import reflect.internal.annotations.compileTimeOnly
 
-import Def.Initialize
+import Def.{ Initialize, TaskKeyThunk }
 import sbt.internal.util.appmacro.ContextUtil
 import sbt.internal.util.complete.Parser
 
@@ -165,12 +165,20 @@ object InputWrapper {
     import c.universe._
     c.macroApplication match {
       case a @ Apply(Select(Apply(_, t :: Nil), tp), fmt) =>
-        if (t.tpe <:< c.weakTypeOf[TaskKey[T]]) {
-          val tsTyped = c.Expr[TaskKey[T]](t)
-          val newTree = c.universe.reify { Previous.runtime[T](tsTyped.splice)(format.splice) }
-          wrapPrevious[T](c)(newTree, a.pos)
-        } else
-          unexpectedType(c)(a.pos, t.tpe)
+        t.tpe match {
+          case tpe if tpe <:< c.weakTypeOf[TaskKey[T]] =>
+            val tsTyped = c.Expr[TaskKey[T]](t)
+            val newTree = c.universe.reify { Previous.runtime[T](tsTyped.splice)(format.splice) }
+            wrapPrevious[T](c)(newTree, a.pos)
+          case tpe if tpe <:< c.weakTypeOf[TaskKeyThunk[T]] =>
+            val tsTyped = c.Expr[TaskKeyThunk[T]](t)
+            val newTree = c.universe.reify {
+              // call materialize
+              Previous.runtime[T](tsTyped.splice.materialize)(format.splice)
+            }
+            wrapPrevious[T](c)(newTree, a.pos)
+          case tpe => unexpectedType(c)(a.pos, tpe)
+        }
       case x => ContextUtil.unexpectedTree(x)
     }
   }
