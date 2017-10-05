@@ -1,6 +1,7 @@
-import Dependencies._
 import sbt.internal.CommandStrings.{ inspectBrief, inspectDetailed }
 import sbt.internal.Inspect
+
+val uTest = "com.lihaoyi" %% "utest" % "0.5.3"
 
 lazy val root = (project in file("."))
   .settings(
