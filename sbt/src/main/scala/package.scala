@@ -1,8 +1,12 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 import scala.language.experimental.macros
 
-/* sbt -- Simple Build Tool
- * Copyright 2010, 2011 Mark Harrah
- */
 package object sbt
     extends sbt.IOSyntax0
     with sbt.std.TaskExtra
