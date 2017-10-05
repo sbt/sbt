@@ -26,6 +26,9 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
   val scalaVersion = settingKey[String]("")
   val scalacOptions = taskKey[Seq[String]]("")
 
+  val foo = settingKey[Int]("")
+  val bar = settingKey[Int]("")
+
   val uTest = "com.lihaoyi" %% "utest" % "0.5.3"
 
   Seq[Setting[_]](
@@ -36,6 +39,7 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
     projA / Compile / console / scalacOptions += "-feature",
     Zero / Zero / name := "foo",
     Zero / Zero / Zero / name := "foo",
+    foo := (Test / bar).value + 1,
     libraryDependencies += uTest % Test,
   )
 }
