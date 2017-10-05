@@ -164,13 +164,19 @@ object InputWrapper {
       format: c.Expr[sjsonnew.JsonFormat[T]]): c.Expr[Option[T]] = {
     import c.universe._
     c.macroApplication match {
-      case a @ Apply(Select(Apply(_, t :: Nil), tp), fmt) =>
+      case a @ Apply(Select(Apply(_, t :: Nil), _), _) =>
         if (t.tpe <:< c.weakTypeOf[TaskKey[T]]) {
           val tsTyped = c.Expr[TaskKey[T]](t)
           val newTree = c.universe.reify { Previous.runtime[T](tsTyped.splice)(format.splice) }
           wrapPrevious[T](c)(newTree, a.pos)
-        } else
-          unexpectedType(c)(a.pos, t.tpe)
+        } else if (t.tpe <:< c.weakTypeOf[SlashSyntax.ScopeAndTaskKey[T]]) {
+          val tsTyped = c.Expr[SlashSyntax.ScopeAndTaskKey[T]](t)
+          val newTree = c.universe.reify {
+            // manually call materialize
+            Previous.runtime[T](tsTyped.splice.materialize)(format.splice)
+          }
+          wrapPrevious[T](c)(newTree, a.pos)
+        } else unexpectedType(c)(a.pos, t.tpe)
       case x => ContextUtil.unexpectedTree(x)
     }
   }

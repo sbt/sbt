@@ -178,6 +178,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
   implicit def macroValueIInT[T](in: Initialize[InputTask[T]]): InputEvaluated[T] = ???
   implicit def taskMacroValueIT[T](in: Initialize[Task[T]]): MacroTaskValue[T] = ???
   implicit def macroPrevious[T](in: TaskKey[T]): MacroPrevious[T] = ???
+  implicit def taskKeyThunkPrevious[T](in: SlashSyntax.ScopeAndTaskKey[T]): MacroPrevious[T] = ???
 
   // The following conversions enable the types Parser[T], Initialize[Parser[T]], and Initialize[State => Parser[T]] to
   //  be used in the inputTask macro as an input with an ultimate result of type T
