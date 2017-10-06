@@ -39,22 +39,30 @@ trait SlashSyntax {
 
   implicit def sbtSlashSyntaxRichConfigKey(c: ConfigKey): RichConfiguration =
     new RichConfiguration(Scope(This, Select(c), This, This))
-
-  implicit def sbtSlashSyntaxRichConfiguration(c: Configuration): RichConfiguration = (c: ConfigKey)
-
-  implicit def sbtSlashSyntaxRichScopeFromScoped(t: Scoped): RichScope =
-    new RichScope(Scope(This, This, Select(t.key), This))
+  implicit def sbtSlashSyntaxRichConfiguration(c: Configuration): RichConfiguration =
+    sbtSlashSyntaxRichConfigKey(c: ConfigKey)
 
   implicit def sbtSlashSyntaxRichScope(s: Scope): RichScope = new RichScope(s)
 
-  implicit def sbtSlashSyntaxScopeAndKeyRescope(scopeAndKey: ScopeAndKey[_]): TerminalScope =
-    scopeAndKey.rescope
+  /**
+   * This handles task scoping an existing scoped key (such as `Compile / test`)
+   * into a task scoping in `(Compile / test) / name`.
+   */
+  implicit def sbtSlashSyntaxRichScopeFromScoped(t: Scoped): RichScope =
+    new RichScope(t.scope.copy(task = Select(t.key)))
 
-  implicit def sbtSlashSyntaxScopeAndKeyMaterialize[K <: Key[K]](scopeAndKey: ScopeAndKey[K]): K =
-    scopeAndKey.materialize
+  implicit val sbtSlashSyntaxSettingKeyCanScope: CanScope[SettingKey] = new SettingKeyCanScope()
+  implicit val sbtSlashSyntaxTaskKeyCanScope: CanScope[TaskKey] = new TaskKeyCanScope()
+  implicit val sbtSlashSyntaxInputKeyCanScope: CanScope[InputKey] = new InputKeyCanScope()
 }
 
 object SlashSyntax {
+
+  /** RichScopeLike wraps a general scope to provide the `/` operator for key scoping. */
+  sealed trait RichScopeLike {
+    protected def scope: Scope
+    def /[A, F[_]: CanScope](key: F[A]): F[A] = implicitly[CanScope[F]].inScope(key, scope)
+  }
 
   /** RichReference wraps a reference to provide the `/` operator for scoping. */
   final class RichReference(protected val scope: Scope) extends RichScopeLike {
@@ -68,46 +76,28 @@ object SlashSyntax {
 
   /** RichConfiguration wraps a configuration to provide the `/` operator for scoping. */
   final class RichConfiguration(protected val scope: Scope) extends RichScopeLike {
-
     // This is for handling `Zero / Zero / Zero / name`.
     def /(taskAxis: ScopeAxis[AttributeKey[_]]): RichScope =
       new RichScope(scope.copy(task = taskAxis))
   }
 
-  /** Both `Scoped.ScopingSetting` and `Scoped` are parents of `SettingKey`, `TaskKey` and
-   * `InputKey`. We'll need both, so this is a convenient type alias. */
-  type Key[K] = Scoped.ScopingSetting[K] with Scoped
-
-  sealed trait RichScopeLike {
-    protected def scope: Scope
-
-    // We don't know what the key is for yet, so just capture for now.
-    def /[K <: Key[K]](key: K): ScopeAndKey[K] = new ScopeAndKey(scope, key)
-  }
-
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
-  final class RichScope(protected val scope: Scope) extends RichScopeLike
-
-  /** TerminalScope provides the last `/` for scoping. */
-  final class TerminalScope(scope: Scope) {
-    def /[K <: Key[K]](key: K): K = key in scope
-  }
+  final class RichScope(protected val scope: Scope) extends RichScopeLike {}
 
   /**
-   * ScopeAndKey is a synthetic DSL construct necessary to capture both the built-up scope with a
-   * given key, while we're not sure if the given key is terminal or task-scoping. The "materialize"
-   * method will be used if it's terminal, returning the scoped key, while "rescope" will be used
-   * if we're task-scoping.
-   *
-   * @param scope the built-up scope
-   * @param key a given key
-   * @tparam K the type of the given key, necessary to type "materialize"
+   * A typeclass that represents scoping.
    */
-  final class ScopeAndKey[K <: Key[K]](scope: Scope, key: K) {
-    private[sbt] def materialize: K = key in scope
-    private[sbt] def rescope: TerminalScope = new TerminalScope(scope in key.key)
-
-    override def toString: String = s"$scope / ${key.key}"
+  sealed trait CanScope[F[A]] {
+    def inScope[A](key: F[A], scope: Scope): F[A]
   }
 
+  final class SettingKeyCanScope extends CanScope[SettingKey] {
+    def inScope[A](key: SettingKey[A], scope: Scope): SettingKey[A] = key in scope
+  }
+  final class TaskKeyCanScope extends CanScope[TaskKey] {
+    def inScope[A](key: TaskKey[A], scope: Scope): TaskKey[A] = key in scope
+  }
+  final class InputKeyCanScope extends CanScope[InputKey] {
+    def inScope[A](key: InputKey[A], scope: Scope): InputKey[A] = key in scope
+  }
 }
