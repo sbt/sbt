@@ -58,6 +58,7 @@ object SlashSyntax {
 
   /** RichReference wraps a reference to provide the `/` operator for scoping. */
   final class RichReference(protected val scope: Scope) extends RichScopeLike {
+    def /(c: ConfigKey): RichConfiguration = new RichConfiguration(scope in c)
     def /(c: Configuration): RichConfiguration = new RichConfiguration(scope in c)
 
     // This is for handling `Zero / Zero / name`.
