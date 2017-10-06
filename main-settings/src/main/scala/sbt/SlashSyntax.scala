@@ -74,15 +74,13 @@ object SlashSyntax {
       new RichScope(scope.copy(task = taskAxis))
   }
 
-  /** Both `Scoped.ScopingSetting` and `Scoped` are parents of `SettingKey`, `TaskKey` and
-   * `InputKey`. We'll need both, so this is a convenient type alias. */
-  type Key[K] = Scoped.ScopingSetting[K] with Scoped
-
   sealed trait RichScopeLike {
     protected def scope: Scope
 
     // We don't know what the key is for yet, so just capture for now.
-    def /[K <: Key[K]](key: K): ScopeAndKey[K] = new ScopeAndKey(scope, key)
+    def /[A](key: SettingKey[A]): ScopeAndSettingKey[A] = new ScopeAndSettingKey(scope, key)
+    def /[A](key: TaskKey[A]): ScopeAndTaskKey[A] = new ScopeAndTaskKey(scope, key)
+    def /[A](key: InputKey[A]): ScopeAndInputKey[A] = new ScopeAndInputKey(scope, key)
   }
 
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
@@ -90,8 +88,12 @@ object SlashSyntax {
 
   /** TerminalScope provides the last `/` for scoping. */
   final class TerminalScope(scope: Scope) {
-    def /[K <: Key[K]](key: K): K = key in scope
+    def /[K](key: Scoped.ScopingSetting[K]): K = key in scope
   }
+
+  /** Both `Scoped.ScopingSetting` and `Scoped` are parents of `SettingKey`, `TaskKey` and
+   * `InputKey`. We'll need both, so this is a convenient type alias. */
+  type Key[K] = Scoped.ScopingSetting[K] with Scoped
 
   /**
    * ScopeAndKey is a synthetic DSL construct necessary to capture both the built-up scope with a
@@ -99,15 +101,40 @@ object SlashSyntax {
    * method will be used if it's terminal, returning the scoped key, while "rescope" will be used
    * if we're task-scoping.
    *
-   * @param scope the built-up scope
-   * @param key a given key
    * @tparam K the type of the given key, necessary to type "materialize"
    */
-  final class ScopeAndKey[K <: Key[K]](scope: Scope, key: K) {
-    private[sbt] def materialize: K = key in scope
-    private[sbt] def rescope: TerminalScope = new TerminalScope(scope in key.key)
+  sealed trait ScopeAndKey[K <: Key[K]] {
+    protected[this] def scope: Scope
+    protected[this] def key: K
 
-    override def toString: String = s"$scope / ${key.key}"
+    final private[sbt] def materialize: K = key in scope
+    final private[sbt] def rescope: TerminalScope = new TerminalScope(scope in key.key)
+
+    final override def toString: String = s"$scope / ${key.key}"
+  }
+
+  final class ScopeAndSettingKey[A](
+      protected[this] val scope: Scope,
+      protected[this] val key: SettingKey[A]
+  ) extends ScopeAndKey[SettingKey[A]]
+      with Def.KeyedInitialize[A] {
+    def scopedKey = materialize.scopedKey
+  }
+
+  final class ScopeAndTaskKey[A](
+      protected[this] val scope: Scope,
+      protected[this] val key: TaskKey[A]
+  ) extends ScopeAndKey[TaskKey[A]]
+      with Def.KeyedInitialize[Task[A]] {
+    def scopedKey = materialize.scopedKey
+  }
+
+  final class ScopeAndInputKey[A](
+      protected[this] val scope: Scope,
+      protected[this] val key: InputKey[A]
+  ) extends ScopeAndKey[InputKey[A]]
+      with Def.KeyedInitialize[InputTask[A]] {
+    def scopedKey = materialize.scopedKey
   }
 
 }
