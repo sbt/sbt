@@ -57,14 +57,29 @@ object BuildDSLInstances {
   implicit def arbAttrKey[A: Manifest]: Arbitrary[AttributeKey[_]] =
     Arbitrary(Gen.identifier map (AttributeKey[A](_)))
 
-  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] =
-    Arbitrary(Gen.identifier map (InputKey[A](_)))
+  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = Arbitrary {
+    val keyGen = Gen.identifier map (InputKey[A](_))
+    Gen.frequency(
+      50 -> keyGen,
+      1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
+    )
+  }
 
-  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] =
-    Arbitrary(Gen.identifier map (SettingKey[A](_)))
+  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = Arbitrary {
+    val keyGen = Gen.identifier map (SettingKey[A](_))
+    Gen.frequency(
+      50 -> keyGen,
+      1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
+    )
+  }
 
-  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] =
-    Arbitrary(Gen.identifier map (TaskKey[A](_)))
+  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = Arbitrary {
+    val keyGen = Gen.identifier map (TaskKey[A](_))
+    Gen.frequency(
+      50 -> keyGen,
+      1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
+    )
+  }
 
   implicit def arbKey[A: Manifest]: Arbitrary[Key[_]] = Arbitrary {
     Gen.frequency[Key[_]](
