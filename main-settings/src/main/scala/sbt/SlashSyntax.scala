@@ -45,7 +45,7 @@ trait SlashSyntax {
   implicit def sbtSlashSyntaxRichScopeFromScoped(t: Scoped): RichScope =
     new RichScope(Scope(This, This, Select(t.key), This))
 
-  implicit def sbtSlashSyntaxRichScope(s: Scope): RichScope = new RichScope(s)
+  implicit def sbtSlashSyntaxRichScope(s: Scope): TerminalScope = new TerminalScope(s)
 
   implicit def sbtSlashSyntaxScopeAndKeyRescope(scopeAndKey: ScopeAndKey[_]): TerminalScope =
     scopeAndKey.rescope
