@@ -11,7 +11,7 @@ libraryDependencies ++= {
 libraryDependencies += "org.specs2" %% "specs2-core" % "3.9.1" % "test"
 
 libraryDependencies += Defaults.sbtPluginExtra(
-  "com.dwijnand" % "sbt-compat" % "1.0.0+2-ae121c50",
+  "com.dwijnand" % "sbt-compat" % "1.1.0",
   (sbtBinaryVersion in pluginCrossBuild).value,
   (scalaBinaryVersion in update).value
 )
