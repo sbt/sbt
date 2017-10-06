@@ -27,7 +27,8 @@ object Build extends sbt.Build {
     Project("test-dot-file-generation", file("d"))
       .settings(defaultSettings: _*)
       .settings(
-        TaskKey[Unit]("check") <<= (dependencyDot in Compile) map { (dotFile) =>
+        TaskKey[Unit]("check") := {
+          val dotFile = (dependencyDot in Compile).value
           val expectedGraph =
             """digraph "dependency-graph" {
               |    graph[rankdir="LR"]

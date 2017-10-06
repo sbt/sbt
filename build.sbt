@@ -1,4 +1,5 @@
 ScriptedPlugin.scriptedSettings
+ScriptedPlugin.scriptedLaunchOpts += s"-Dproject.version=${version.value}"
 
 libraryDependencies ++= {
   println(s"Evaluated ${sbtVersion in pluginCrossBuild value}")

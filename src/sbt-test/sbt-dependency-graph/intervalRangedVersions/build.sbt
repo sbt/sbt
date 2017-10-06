@@ -6,7 +6,10 @@ libraryDependencies ++= Seq(
   "com.codahale" % "jerkson_2.9.1" % "0.5.0"
 )
 
-TaskKey[Unit]("check") <<= (ivyReport in Test, asciiTree in Test) map { (report, graph) =>
+TaskKey[Unit]("check") := {
+  val report = (ivyReport in Test).value
+  val graph = (asciiTree in Test).value
+
   def sanitize(str: String): String = str.split('\n').drop(1).map(_.trim).mkString("\n")
   val expectedGraph =
     """default:default-dbc48d_2.9.2:0.1-SNAPSHOT [S]
