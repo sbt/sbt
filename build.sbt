@@ -427,19 +427,23 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
     skip in publish := true,
     compile in Compile := {
       val u = update.value
+      val log = streams.value.log
       import sbt.internal.inc.Analysis
       import scala.sys.process._
-      Process(s"npm run compile", Option(baseDirectory.value)).!
+      val exitCode = Process(s"npm run compile", Option(baseDirectory.value)) ! log
+      if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
       Analysis.empty
     },
     update := {
       val old = update.value
       val t = target.value / "updated"
       val base = baseDirectory.value
+      val log = streams.value.log
       if (t.exists) ()
       else {
         import scala.sys.process._
-        Process("npm install", Option(base)).!
+        val exitCode = Process("npm install", Option(base)) ! log
+        if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
         IO.touch(t)
       }
       old
