@@ -1,5 +1,13 @@
 import sbt.internal.CommandStrings.{ inspectBrief, inspectDetailed }
 import sbt.internal.Inspect
+import sjsonnew._, BasicJsonProtocol._
+
+val foo = taskKey[Int]("")
+val bar = taskKey[Int]("")
+val baz = inputKey[Unit]("")
+val buildInfo = taskKey[Seq[File]]("The task that generates the build info.")
+
+val uTest = "com.lihaoyi" %% "utest" % "0.5.3"
 
 val uTest = "com.lihaoyi" %% "utest" % "0.5.3"
 
@@ -10,8 +18,22 @@ lazy val root = (project in file("."))
     console / scalacOptions += "-deprecation",
     Compile / console / scalacOptions += "-Ywarn-numeric-widen",
     projA / Compile / console / scalacOptions += "-feature",
+    Zero / name := "foo",
     Zero / Zero / name := "foo",
     Zero / Zero / Zero / name := "foo",
+    Test / bar := 1,
+    Test / foo := (Test / bar).value + 1,
+    Compile / foo := {
+      (Compile / bar).previous.getOrElse(1)
+    },
+    Compile / bar := {
+      (Compile / foo).previous.getOrElse(2)
+    },
+    Test / buildInfo := Nil,
+    baz := {
+      val x = (Test / buildInfo).taskValue
+      (Compile / run).evaluated
+    },
 
     libraryDependencies += uTest % Test,
     testFrameworks += new TestFramework("utest.runner.Framework"),
