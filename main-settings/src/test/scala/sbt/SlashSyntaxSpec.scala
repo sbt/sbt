@@ -63,24 +63,18 @@ object BuildDSLInstances {
       1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
     ))
 
-  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] =
-    withScope(Gen.identifier map (InputKey[A](_)))
+  def genInputKey[A: Manifest]: Gen[InputKey[A]] = Gen.identifier map (InputKey[A](_))
+  def genSettingKey[A: Manifest]: Gen[SettingKey[A]] = Gen.identifier map (SettingKey[A](_))
+  def genTaskKey[A: Manifest]: Gen[TaskKey[A]] = Gen.identifier map (TaskKey[A](_))
 
-  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] =
-    withScope(Gen.identifier map (SettingKey[A](_)))
-
-  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] =
-    withScope(Gen.identifier map (TaskKey[A](_)))
+  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = withScope(genInputKey[A])
+  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = withScope(genSettingKey[A])
+  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = withScope(genTaskKey[A])
 
   object WithoutScope {
-    implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] =
-      Arbitrary(Gen.identifier map (InputKey[A](_)))
-
-    implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] =
-      Arbitrary(Gen.identifier map (SettingKey[A](_)))
-
-    implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] =
-      Arbitrary(Gen.identifier map (TaskKey[A](_)))
+    implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = Arbitrary(genInputKey[A])
+    implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = Arbitrary(genSettingKey[A])
+    implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = Arbitrary(genTaskKey[A])
   }
 
   implicit def arbScopeAxis[A: Arbitrary]: Arbitrary[ScopeAxis[A]] =
