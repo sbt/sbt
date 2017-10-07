@@ -150,7 +150,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
 
   property("Reference / task.key / key == key in Reference in task") = {
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((r: Reference, t: K, k: K) => expectValue(k in (r, t))(r / t.key / k))
+      forAll((r: Reference, t: T, k: K) => expectValue(k in (r, t))(r / t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -167,7 +167,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   property("Reference / task / key ~= key in Reference in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((r: Reference, t: K, k: K) => expectValue(k in (r, t))(r / t / k))
+      forAll((r: Reference, t: T, k: K) => expectValue(k in (r, t))(r / t / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -183,7 +183,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
 
   property("Reference / Config / task.key / key == key in Reference in Config in task") = {
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((r: Reference, c: ConfigKey, t: K, k: K) => expectValue(k in (r, c, t))(r / c / t.key / k))
+      forAll((r: Reference, c: ConfigKey, t: T, k: K) => expectValue(k in (r, c, t))(r / c / t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -200,7 +200,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   property("Reference / Config / task / key ~= key in Reference in Config in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((r: Reference, c: ConfigKey, t: K, k: K) => expectValue(k in (r, c, t))(r / c / t / k))
+      forAll((r: Reference, c: ConfigKey, t: T, k: K) => expectValue(k in (r, c, t))(r / c / t / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -222,7 +222,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
 
   property("Config / task.key / key == key in Config in task") = {
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((c: ConfigKey, t: K, k: K) => expectValue(k in c in t)(c / t.key / k))
+      forAll((c: ConfigKey, t: T, k: K) => expectValue(k in c in t)(c / t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -239,7 +239,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   property("Config / task / key ~= key in Config in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((c: ConfigKey, t: K, k: K) => expectValue(k in c in t)(c / t / k))
+      forAll((c: ConfigKey, t: T, k: K) => expectValue(k in c in t)(c / t / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -253,9 +253,9 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     )
   }
 
-  property("task / key == key in task") = {
+  property("task.key / key == key in task") = {
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((t: K, k: K) => expectValue(k in t)(t.key / k))
+      forAll((t: T, k: K) => expectValue(k in t)(t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -272,7 +272,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   property("task / key ~= key in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((t: K, k: K) => expectValue(k in t)(t / k))
+      forAll((t: T, k: K) => expectValue(k in t)(t / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
