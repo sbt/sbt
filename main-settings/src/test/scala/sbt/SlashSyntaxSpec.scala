@@ -59,7 +59,7 @@ object BuildDSLInstances {
 
   def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Arbitrary[K] =
     Arbitrary(Gen.frequency(
-      50 -> keyGen,
+      5 -> keyGen,
       1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
     ))
 
