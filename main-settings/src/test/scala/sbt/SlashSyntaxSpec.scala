@@ -63,16 +63,14 @@ object BuildDSLInstances {
       1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
     ))
 
-  object WithScope {
-    implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] =
-      withScope(Gen.identifier map (InputKey[A](_)))
+  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] =
+    withScope(Gen.identifier map (InputKey[A](_)))
 
-    implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] =
-      withScope(Gen.identifier map (SettingKey[A](_)))
+  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] =
+    withScope(Gen.identifier map (SettingKey[A](_)))
 
-    implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] =
-      withScope(Gen.identifier map (TaskKey[A](_)))
-  }
+  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] =
+    withScope(Gen.identifier map (TaskKey[A](_)))
 
   object WithoutScope {
     implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] =
@@ -139,21 +137,18 @@ import CustomEquality._
 
 object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   property("Global / key == key in Global") = {
-    import WithScope._
     (forAll { (k: SettingKey[String]) => expectValue(k in Global)(Global / k) }
       && forAll { (k: TaskKey[String]) => expectValue(k in Global)(Global / k) }
       && forAll { (k: InputKey[String]) => expectValue(k in Global)(Global / k) })
   }
 
   property("Reference / key == key in Reference") = {
-    import WithScope._
     (forAll { (r: Reference, k: SettingKey[String]) => expectValue(k in r)(r / k) }
       && forAll { (r: Reference, k: TaskKey[String]) => expectValue(k in r)(r / k) }
       && forAll { (r: Reference, k: InputKey[String]) => expectValue(k in r)(r / k) })
   }
 
   property("Reference / Config / key == key in Reference in Config") = {
-    import WithScope._
     (forAll { (r: Reference, c: ConfigKey, k: SettingKey[String]) => expectValue(k in r in c)(r / c / k) }
       && forAll { (r: Reference, c: ConfigKey, k: TaskKey[String]) => expectValue(k in r in c)(r / c / k) }
       && forAll { (r: Reference, c: ConfigKey, k: InputKey[String]) => expectValue(k in r in c)(r / c / k) })
@@ -174,7 +169,6 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   }
 
   property("Config / key == key in Config") = {
-    import WithScope._
     (forAll { (c: ConfigKey, k: SettingKey[String]) => expectValue(k in c)(c / k) }
       && forAll { (c: ConfigKey, k: TaskKey[String]) => expectValue(k in c)(c / k) }
       && forAll { (c: ConfigKey, k: InputKey[String]) => expectValue(k in c)(c / k) })
@@ -195,14 +189,12 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   }
 
   property("Scope / key == key in Scope") = {
-    import WithScope._
     (forAll { (s: Scope, k: SettingKey[String]) => expectValue(k in s)(s / k) }
       && forAll { (s: Scope, k: TaskKey[String]) => expectValue(k in s)(s / k) }
       && forAll { (s: Scope, k: InputKey[String]) => expectValue(k in s)(s / k) })
   }
 
   property("Reference? / key == key in ThisScope.copy(..)") = {
-    import WithScope._
     (forAll { (r: ScopeAxis[Reference], k: SettingKey[String]) =>
       expectValue(k in ThisScope.copy(project = r))(r / k) } &&
       forAll { (r: ScopeAxis[Reference], k: TaskKey[String]) =>
@@ -212,7 +204,6 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   }
 
   property("Reference? / ConfigKey? / key == key in ThisScope.copy(..)") = {
-    import WithScope._
     (forAll { (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], k: SettingKey[String]) =>
       expectValue(k in ThisScope.copy(project = r, config = c))(r / c / k) } &&
       forAll { (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], k: TaskKey[String]) =>
@@ -222,7 +213,6 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   }
 
   // property("Reference? / AttributeKey? / key == key in ThisScope.copy(..)") = {
-  //   import WithScope._
   //   (forAll { (r: ScopeAxis[Reference], t: ScopeAxis[AttributeKey[_]], k: SettingKey[String]) =>
   //     expectValue(k in ThisScope.copy(project = r, task = t))(r / t / k) } &&
   //     forAll { (r: ScopeAxis[Reference], t: ScopeAxis[AttributeKey[_]], k: TaskKey[String]) =>
@@ -232,7 +222,6 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   // }
 
   property("Reference? / ConfigKey? / AttributeKey? / key == key in ThisScope.copy(..)") = {
-    import WithScope._
     (forAll { (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]], k: SettingKey[String]) =>
       expectValue(k in ThisScope.copy(project = r, config = c, task = t))(r / c / t / k) } &&
       forAll { (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]], k: TaskKey[String]) =>
