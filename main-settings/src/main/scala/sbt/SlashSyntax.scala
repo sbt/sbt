@@ -39,8 +39,8 @@ trait SlashSyntax {
 
   implicit def sbtSlashSyntaxRichConfigKey(c: ConfigKey): RichConfiguration =
     new RichConfiguration(Scope(This, Select(c), This, This))
-  implicit def sbtSlashSyntaxRichConfiguration(c: Configuration): RichConfiguration =
-    sbtSlashSyntaxRichConfigKey(c: ConfigKey)
+
+  implicit def sbtSlashSyntaxRichConfiguration(c: Configuration): RichConfiguration = (c: ConfigKey)
 
   implicit def sbtSlashSyntaxRichScope(s: Scope): RichScope = new RichScope(s)
 
@@ -51,21 +51,24 @@ trait SlashSyntax {
   implicit def sbtSlashSyntaxRichScopeFromScoped(t: Scoped): RichScope =
     new RichScope(t.scope.copy(task = Select(t.key)))
 
-  implicit val sbtSlashSyntaxSettingKeyCanScope: CanScope[SettingKey] = new SettingKeyCanScope()
-  implicit val sbtSlashSyntaxTaskKeyCanScope: CanScope[TaskKey] = new TaskKeyCanScope()
-  implicit val sbtSlashSyntaxInputKeyCanScope: CanScope[InputKey] = new InputKeyCanScope()
+  implicit def sbtSlashSyntaxRichScopeFromAttributeKey(a: AttributeKey[_]): RichScope =
+    Scope(This, This, Select(a), This)
+
 }
 
 object SlashSyntax {
 
-  /** RichScopeLike wraps a general scope to provide the `/` operator for key scoping. */
-  sealed trait RichScopeLike {
+  sealed trait HasSlashKey {
     protected def scope: Scope
-    def /[A, F[_]: CanScope](key: F[A]): F[A] = implicitly[CanScope[F]].inScope(key, scope)
+    final def /[K](key: Scoped.ScopingSetting[K]): K = key in scope
+  }
+
+  sealed trait HasSlashKeyOrAttrKey extends HasSlashKey {
+    final def /(key: AttributeKey[_]): RichScope = new RichScope(scope in key)
   }
 
   /** RichReference wraps a reference to provide the `/` operator for scoping. */
-  final class RichReference(protected val scope: Scope) extends RichScopeLike {
+  final class RichReference(protected val scope: Scope) extends HasSlashKeyOrAttrKey {
     def /(c: ConfigKey): RichConfiguration = new RichConfiguration(scope in c)
     def /(c: Configuration): RichConfiguration = new RichConfiguration(scope in c)
 
@@ -75,29 +78,13 @@ object SlashSyntax {
   }
 
   /** RichConfiguration wraps a configuration to provide the `/` operator for scoping. */
-  final class RichConfiguration(protected val scope: Scope) extends RichScopeLike {
+  final class RichConfiguration(protected val scope: Scope) extends HasSlashKeyOrAttrKey {
     // This is for handling `Zero / Zero / Zero / name`.
     def /(taskAxis: ScopeAxis[AttributeKey[_]]): RichScope =
       new RichScope(scope.copy(task = taskAxis))
   }
 
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
-  final class RichScope(protected val scope: Scope) extends RichScopeLike {}
+  final class RichScope(protected val scope: Scope) extends HasSlashKey
 
-  /**
-   * A typeclass that represents scoping.
-   */
-  sealed trait CanScope[F[A]] {
-    def inScope[A](key: F[A], scope: Scope): F[A]
-  }
-
-  final class SettingKeyCanScope extends CanScope[SettingKey] {
-    def inScope[A](key: SettingKey[A], scope: Scope): SettingKey[A] = key in scope
-  }
-  final class TaskKeyCanScope extends CanScope[TaskKey] {
-    def inScope[A](key: TaskKey[A], scope: Scope): TaskKey[A] = key in scope
-  }
-  final class InputKeyCanScope extends CanScope[InputKey] {
-    def inScope[A](key: InputKey[A], scope: Scope): InputKey[A] = key in scope
-  }
 }
