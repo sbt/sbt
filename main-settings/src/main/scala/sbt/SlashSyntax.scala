@@ -50,10 +50,6 @@ trait SlashSyntax {
    */
   implicit def sbtSlashSyntaxRichScopeFromScoped(t: Scoped): RichScope =
     new RichScope(t.scope.copy(task = Select(t.key)))
-
-  implicit val sbtSlashSyntaxSettingKeyCanScope: CanScope[SettingKey] = new SettingKeyCanScope()
-  implicit val sbtSlashSyntaxTaskKeyCanScope: CanScope[TaskKey] = new TaskKeyCanScope()
-  implicit val sbtSlashSyntaxInputKeyCanScope: CanScope[InputKey] = new InputKeyCanScope()
 }
 
 object SlashSyntax {
@@ -61,7 +57,7 @@ object SlashSyntax {
   /** RichScopeLike wraps a general scope to provide the `/` operator for key scoping. */
   sealed trait RichScopeLike {
     protected def scope: Scope
-    def /[A, F[_]: CanScope](key: F[A]): F[A] = implicitly[CanScope[F]].inScope(key, scope)
+    final def /[K](key: Scoped.ScopingSetting[K]): K = key in scope
   }
 
   /** RichReference wraps a reference to provide the `/` operator for scoping. */
@@ -83,21 +79,4 @@ object SlashSyntax {
 
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
   final class RichScope(protected val scope: Scope) extends RichScopeLike {}
-
-  /**
-   * A typeclass that represents scoping.
-   */
-  sealed trait CanScope[F[A]] {
-    def inScope[A](key: F[A], scope: Scope): F[A]
-  }
-
-  final class SettingKeyCanScope extends CanScope[SettingKey] {
-    def inScope[A](key: SettingKey[A], scope: Scope): SettingKey[A] = key in scope
-  }
-  final class TaskKeyCanScope extends CanScope[TaskKey] {
-    def inScope[A](key: TaskKey[A], scope: Scope): TaskKey[A] = key in scope
-  }
-  final class InputKeyCanScope extends CanScope[InputKey] {
-    def inScope[A](key: InputKey[A], scope: Scope): InputKey[A] = key in scope
-  }
 }
