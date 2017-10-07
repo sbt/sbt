@@ -125,7 +125,7 @@ object CustomEquality {
     }
   }
 
-  def expectValue[A: Eq](expected: A)(x: A) =  x.toString |: (expected =? x)
+  def expectValue[A: Eq](expected: A)(x: A) =  expected =? x
 }
 import CustomEquality._
 
