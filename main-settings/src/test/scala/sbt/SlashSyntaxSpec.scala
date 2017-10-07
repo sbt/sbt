@@ -148,10 +148,42 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
 
+  property("Reference / task.key / key == key in Reference in task") = {
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((r: Reference, t: K, k: K) => expectValue(k in (r, t))(r / t.key / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
   property("Reference / task / key ~= key in Reference in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
       forAll((r: Reference, t: K, k: K) => expectValue(k in (r, t))(r / t / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
+  property("Reference / Config / task.key / key == key in Reference in Config in task") = {
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((r: Reference, c: ConfigKey, t: K, k: K) => expectValue(k in (r, c, t))(r / c / t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -188,10 +220,42 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
 
+  property("Config / task.key / key == key in Config in task") = {
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((c: ConfigKey, t: K, k: K) => expectValue(k in c in t)(c / t.key / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
   property("Config / task / key ~= key in Config in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
       forAll((c: ConfigKey, t: K, k: K) => expectValue(k in c in t)(c / t / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
+  property("task / key == key in task") = {
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((t: K, k: K) => expectValue(k in t)(t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
