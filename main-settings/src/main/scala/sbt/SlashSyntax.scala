@@ -39,8 +39,8 @@ trait SlashSyntax {
 
   implicit def sbtSlashSyntaxRichConfigKey(c: ConfigKey): RichConfiguration =
     new RichConfiguration(Scope(This, Select(c), This, This))
-  implicit def sbtSlashSyntaxRichConfiguration(c: Configuration): RichConfiguration =
-    sbtSlashSyntaxRichConfigKey(c: ConfigKey)
+
+  implicit def sbtSlashSyntaxRichConfiguration(c: Configuration): RichConfiguration = (c: ConfigKey)
 
   implicit def sbtSlashSyntaxRichScope(s: Scope): RichScope = new RichScope(s)
 
