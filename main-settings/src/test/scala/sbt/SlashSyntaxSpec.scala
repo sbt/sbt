@@ -148,7 +148,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
 
-  property("Reference / task / key == key in Reference in task") = {
+  property("Reference / task / key ~= key in Reference in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
       forAll((r: Reference, t: K, k: K) => expectValue(k in (r, t))(r / t / k))
@@ -165,7 +165,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     )
   }
 
-  property("Reference / Config / task / key == key in Reference in Config in task") = {
+  property("Reference / Config / task / key ~= key in Reference in Config in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
       forAll((r: Reference, c: ConfigKey, t: K, k: K) => expectValue(k in (r, c, t))(r / c / t / k))
@@ -188,7 +188,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
 
-  property("Config / task / key == key in Config in task") = {
+  property("Config / task / key ~= key in Config in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
       forAll((c: ConfigKey, t: K, k: K) => expectValue(k in c in t)(c / t / k))
@@ -205,7 +205,7 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     )
   }
 
-  property("task / key == key in task") = {
+  property("task / key ~= key in task") = {
     import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
       forAll((t: K, k: K) => expectValue(k in t)(t / k))
