@@ -11,7 +11,7 @@ import org.scalacheck.{ Test => _, _ }, Arbitrary.arbitrary, Gen._, Prop._
 
 import java.io.File
 import sbt.io.IO
-import sbt.SlashSyntax, SlashSyntax.Key
+import sbt.SlashSyntax
 import sbt.{ Scope, ScopeAxis, Scoped, Select, This, Zero }, Scope.{ Global, ThisScope }
 import sbt.{ BuildRef, LocalProject, LocalRootProject, ProjectRef, Reference, RootProject, ThisBuild, ThisProject }
 import sbt.ConfigKey
@@ -59,25 +59,22 @@ object BuildDSLInstances {
 
   def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Arbitrary[K] =
     Arbitrary(Gen.frequency(
-      50 -> keyGen,
+      5 -> keyGen,
       1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
     ))
 
-  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] =
-    withScope(Gen.identifier map (InputKey[A](_)))
+  def genInputKey[A: Manifest]: Gen[InputKey[A]] = Gen.identifier map (InputKey[A](_))
+  def genSettingKey[A: Manifest]: Gen[SettingKey[A]] = Gen.identifier map (SettingKey[A](_))
+  def genTaskKey[A: Manifest]: Gen[TaskKey[A]] = Gen.identifier map (TaskKey[A](_))
 
-  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] =
-    withScope(Gen.identifier map (SettingKey[A](_)))
+  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = withScope(genInputKey[A])
+  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = withScope(genSettingKey[A])
+  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = withScope(genTaskKey[A])
 
-  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] =
-    withScope(Gen.identifier map (TaskKey[A](_)))
-
-  implicit def arbKey[A: Manifest]: Arbitrary[Key[_]] = Arbitrary {
-    Gen.frequency[Key[_]](
-      15 -> arbitrary[InputKey[A]],   // 15,431
-      20 -> arbitrary[SettingKey[A]], // 19,645
-      23 -> arbitrary[TaskKey[A]],    // 22,867
-    )
+  object WithoutScope {
+    implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = Arbitrary(genInputKey[A])
+    implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = Arbitrary(genSettingKey[A])
+    implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = Arbitrary(genTaskKey[A])
   }
 
   implicit def arbScopeAxis[A: Arbitrary]: Arbitrary[ScopeAxis[A]] =
@@ -128,27 +125,32 @@ object CustomEquality {
     }
   }
 
-  def expectValue[A: Eq](expected: A)(x: A) =  x.toString |: (expected =? x)
+  def expectValue[A: Eq](expected: A)(x: A) =  expected =? x
 }
 import CustomEquality._
 
 object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
+  type Key[K] = Scoped.ScopingSetting[K] with Scoped
+
   property("Global / key == key in Global") = {
     def check[K <: Key[K]: Arbitrary] = forAll((k: K) => expectValue(k in Global)(Global / k))
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
+
   property("Reference / key == key in Reference") = {
     def check[K <: Key[K]: Arbitrary] = forAll((r: Reference, k: K) => expectValue(k in r)(r / k))
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
+
   property("Reference / Config / key == key in Reference in Config") = {
     def check[K <: Key[K]: Arbitrary] =
       forAll((r: Reference, c: ConfigKey, k: K) => expectValue(k in r in c)(r / c / k))
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
-  property("Reference / task / key == key in Reference in task") = {
+
+  property("Reference / task.key / key == key in Reference in task") = {
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((r: Reference, t: K, k: K) => expectValue(k in (r, t))(r / t / k))
+      forAll((r: Reference, t: T, k: K) => expectValue(k in (r, t))(r / t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -161,9 +163,11 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
         && check[TaskKey[String], TaskKey[String]]
     )
   }
-  property("Reference / Config / task / key == key in Reference in Config in task") = {
+
+  property("Reference / task / key ~= key in Reference in task") = {
+    import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((r: Reference, c: ConfigKey, t: K, k: K) => expectValue(k in (r, c, t))(r / c / t / k))
+      forAll((r: Reference, t: T, k: K) => expectValue(k in (r, t))(r / t / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -176,14 +180,49 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
         && check[TaskKey[String], TaskKey[String]]
     )
   }
+
+  property("Reference / Config / task.key / key == key in Reference in Config in task") = {
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((r: Reference, c: ConfigKey, t: T, k: K) => expectValue(k in (r, c, t))(r / c / t.key / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
+  property("Reference / Config / task / key ~= key in Reference in Config in task") = {
+    import WithoutScope._
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((r: Reference, c: ConfigKey, t: T, k: K) => expectValue(k in (r, c, t))(r / c / t / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
   property("Config / key == key in Config") = {
     def check[K <: Key[K]: Arbitrary] =
       forAll((c: ConfigKey, k: K) => expectValue(k in c)(c / k))
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
-  property("Config / task / key == key in Config in task") = {
+
+  property("Config / task.key / key == key in Config in task") = {
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((c: ConfigKey, t: K, k: K) => expectValue(k in c in t)(c / t / k))
+      forAll((c: ConfigKey, t: T, k: K) => expectValue(k in c in t)(c / t.key / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -196,9 +235,11 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
         && check[TaskKey[String], TaskKey[String]]
     )
   }
-  property("task / key == key in task") = {
+
+  property("Config / task / key ~= key in Config in task") = {
+    import WithoutScope._
     def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
-      forAll((t: K, k: K) => expectValue(k in t)(t / k))
+      forAll((c: ConfigKey, t: T, k: K) => expectValue(k in c in t)(c / t / k))
     (true
         && check[InputKey[String], InputKey[String]]
         && check[InputKey[String], SettingKey[String]]
@@ -209,36 +250,74 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
         && check[TaskKey[String], InputKey[String]]
         && check[TaskKey[String], SettingKey[String]]
         && check[TaskKey[String], TaskKey[String]]
-        )
+    )
   }
+
+  property("task.key / key == key in task") = {
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((t: T, k: K) => expectValue(k in t)(t.key / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
+  property("task / key ~= key in task") = {
+    import WithoutScope._
+    def check[T <: Key[T]: Arbitrary, K <: Key[K]: Arbitrary] =
+      forAll((t: T, k: K) => expectValue(k in t)(t / k))
+    (true
+        && check[InputKey[String], InputKey[String]]
+        && check[InputKey[String], SettingKey[String]]
+        && check[InputKey[String], TaskKey[String]]
+        && check[SettingKey[String], InputKey[String]]
+        && check[SettingKey[String], SettingKey[String]]
+        && check[SettingKey[String], TaskKey[String]]
+        && check[TaskKey[String], InputKey[String]]
+        && check[TaskKey[String], SettingKey[String]]
+        && check[TaskKey[String], TaskKey[String]]
+    )
+  }
+
   property("Scope / key == key in Scope") = {
     def check[K <: Key[K]: Arbitrary] = forAll((s: Scope, k: K) => expectValue(k in s)(s / k))
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
+
   property("Reference? / key == key in ThisScope.copy(..)") = {
     def check[K <: Key[K]: Arbitrary] =
       forAll((r: ScopeAxis[Reference], k: K) =>
         expectValue(k in ThisScope.copy(project = r))(r / k))
-      check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
+    check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
+
   property("Reference? / ConfigKey? / key == key in ThisScope.copy(..)") = {
     def check[K <: Key[K]: Arbitrary] =
       forAll((r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], k: K) =>
         expectValue(k in ThisScope.copy(project = r, config = c))(r / c / k))
-      check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
+    check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
+
 //  property("Reference? / AttributeKey? / key == key in ThisScope.copy(..)") = {
 //    def check[K <: Key[K]: Arbitrary] =
 //      forAll(
 //        (r: ScopeAxis[Reference], t: ScopeAxis[AttributeKey[_]], k: K) =>
 //          expectValue(k in ThisScope.copy(project = r, task = t))(r / t / k))
-//      check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
+//    check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
 //  }
+
   property("Reference? / ConfigKey? / AttributeKey? / key == key in ThisScope.copy(..)") = {
     def check[K <: Key[K]: Arbitrary] =
       forAll(
         (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]], k: K) =>
           expectValue(k in ThisScope.copy(project = r, config = c, task = t))(r / c / t / k))
-      check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
+    check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
   }
 }

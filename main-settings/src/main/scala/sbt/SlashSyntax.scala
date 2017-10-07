@@ -42,22 +42,33 @@ trait SlashSyntax {
 
   implicit def sbtSlashSyntaxRichConfiguration(c: Configuration): RichConfiguration = (c: ConfigKey)
 
-  implicit def sbtSlashSyntaxRichScopeFromScoped(t: Scoped): RichScope =
-    new RichScope(Scope(This, This, Select(t.key), This))
-
   implicit def sbtSlashSyntaxRichScope(s: Scope): RichScope = new RichScope(s)
 
-  implicit def sbtSlashSyntaxScopeAndKeyRescope(scopeAndKey: ScopeAndKey[_]): TerminalScope =
-    scopeAndKey.rescope
+  /**
+   * This handles task scoping an existing scoped key (such as `Compile / test`)
+   * into a task scoping in `(Compile / test) / name`.
+   */
+  implicit def sbtSlashSyntaxRichScopeFromScoped(t: Scoped): RichScope =
+    new RichScope(t.scope.copy(task = Select(t.key)))
 
-  implicit def sbtSlashSyntaxScopeAndKeyMaterialize[K <: Key[K]](scopeAndKey: ScopeAndKey[K]): K =
-    scopeAndKey.materialize
+  implicit def sbtSlashSyntaxRichScopeFromAttributeKey(a: AttributeKey[_]): RichScope =
+    Scope(This, This, Select(a), This)
+
 }
 
 object SlashSyntax {
 
+  sealed trait HasSlashKey {
+    protected def scope: Scope
+    final def /[K](key: Scoped.ScopingSetting[K]): K = key in scope
+  }
+
+  sealed trait HasSlashKeyOrAttrKey extends HasSlashKey {
+    final def /(key: AttributeKey[_]): RichScope = new RichScope(scope in key)
+  }
+
   /** RichReference wraps a reference to provide the `/` operator for scoping. */
-  final class RichReference(protected val scope: Scope) extends RichScopeLike {
+  final class RichReference(protected val scope: Scope) extends HasSlashKeyOrAttrKey {
     def /(c: ConfigKey): RichConfiguration = new RichConfiguration(scope in c)
     def /(c: Configuration): RichConfiguration = new RichConfiguration(scope in c)
 
@@ -67,47 +78,13 @@ object SlashSyntax {
   }
 
   /** RichConfiguration wraps a configuration to provide the `/` operator for scoping. */
-  final class RichConfiguration(protected val scope: Scope) extends RichScopeLike {
-
+  final class RichConfiguration(protected val scope: Scope) extends HasSlashKeyOrAttrKey {
     // This is for handling `Zero / Zero / Zero / name`.
     def /(taskAxis: ScopeAxis[AttributeKey[_]]): RichScope =
       new RichScope(scope.copy(task = taskAxis))
   }
 
-  /** Both `Scoped.ScopingSetting` and `Scoped` are parents of `SettingKey`, `TaskKey` and
-   * `InputKey`. We'll need both, so this is a convenient type alias. */
-  type Key[K] = Scoped.ScopingSetting[K] with Scoped
-
-  sealed trait RichScopeLike {
-    protected def scope: Scope
-
-    // We don't know what the key is for yet, so just capture for now.
-    def /[K <: Key[K]](key: K): ScopeAndKey[K] = new ScopeAndKey(scope, key)
-  }
-
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
-  final class RichScope(protected val scope: Scope) extends RichScopeLike
-
-  /** TerminalScope provides the last `/` for scoping. */
-  final class TerminalScope(scope: Scope) {
-    def /[K <: Key[K]](key: K): K = key in scope
-  }
-
-  /**
-   * ScopeAndKey is a synthetic DSL construct necessary to capture both the built-up scope with a
-   * given key, while we're not sure if the given key is terminal or task-scoping. The "materialize"
-   * method will be used if it's terminal, returning the scoped key, while "rescope" will be used
-   * if we're task-scoping.
-   *
-   * @param scope the built-up scope
-   * @param key a given key
-   * @tparam K the type of the given key, necessary to type "materialize"
-   */
-  final class ScopeAndKey[K <: Key[K]](scope: Scope, key: K) {
-    private[sbt] def materialize: K = key in scope
-    private[sbt] def rescope: TerminalScope = new TerminalScope(scope in key.key)
-
-    override def toString: String = s"$scope / ${key.key}"
-  }
+  final class RichScope(protected val scope: Scope) extends HasSlashKey
 
 }
