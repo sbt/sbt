@@ -101,6 +101,16 @@ type SaveOptions {
   includeText: Boolean
 }
 
+# LogMessage Notification
+
+type LogMessageParams {
+  ## The message type.
+  type: Long!
+
+  ## The actual message
+  message: String!
+}
+
 # Document
 
 # PublishDiagnostics Notification https://github.com/Microsoft/language-server-protocol/blob/master/protocol.md#textDocument_publishDiagnostics
