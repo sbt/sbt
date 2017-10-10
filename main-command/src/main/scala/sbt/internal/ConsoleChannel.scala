@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package internal
 
@@ -30,6 +37,8 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
   def run(s: State): State = s
 
   def publishBytes(bytes: Array[Byte]): Unit = ()
+
+  def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = ()
 
   def publishEvent[A: JsonFormat](event: A): Unit = ()
 

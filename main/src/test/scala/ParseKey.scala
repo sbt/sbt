@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 import Def.{ displayFull, displayMasked, ScopedKey }
@@ -22,13 +29,17 @@ object ParseKey extends Properties("Key parser test") {
 
   property("An explicitly specified axis is always parsed to that explicit value") =
     forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
-      import skm.{ structure, key, mask }
+      import skm.{ structure, key, mask => mask0 }
 
+      val hasZeroConfig = key.scope.config == Zero
+      val mask = if (hasZeroConfig) mask0.copy(project = true) else mask0
       val expected = resolve(structure, key, mask)
-      val string = displayMasked(key, mask)
-
-      ("Key: " + displayFull(key)) |:
-        parseExpected(structure, string, expected, mask)
+      // Note that this explicitly displays the configuration axis set to Zero.
+      // This is to disambiguate `proj/Zero/name`, which could render potentially
+      // as `Zero/name`, but could be interpretted as `Zero/Zero/name`.
+      val s = displayMasked(key, mask, hasZeroConfig)
+      ("Key: " + displayPedantic(key)) |:
+        parseExpected(structure, s, expected, mask)
     }
 
   property("An unspecified project axis resolves to the current project") =
@@ -37,13 +48,16 @@ object ParseKey extends Properties("Key parser test") {
 
       val mask = skm.mask.copy(project = false)
       val string = displayMasked(key, mask)
+      // skip when config axis is set to Zero
+      val hasZeroConfig = key.scope.config == Zero
 
-      ("Key: " + displayFull(key)) |:
+      ("Key: " + displayPedantic(key)) |:
         ("Mask: " + mask) |:
         ("Current: " + structure.current) |:
         parse(structure, string) {
-        case Left(err) => false
-        case Right(sk) => sk.scope.project == Select(structure.current)
+        case Left(err)                  => false
+        case Right(sk) if hasZeroConfig => true
+        case Right(sk)                  => sk.scope.project == Select(structure.current)
       }
     }
 
@@ -53,7 +67,7 @@ object ParseKey extends Properties("Key parser test") {
       val mask = skm.mask.copy(task = false)
       val string = displayMasked(key, mask)
 
-      ("Key: " + displayFull(key)) |:
+      ("Key: " + displayPedantic(key)) |:
         ("Mask: " + mask) |:
         parse(structure, string) {
         case Left(err) => false
@@ -69,14 +83,17 @@ object ParseKey extends Properties("Key parser test") {
       val string = displayMasked(key, mask)
       val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
 
-      ("Key: " + displayFull(key)) |:
+      ("Key: " + displayPedantic(key)) |:
         ("Mask: " + mask) |:
         ("Expected configuration: " + resolvedConfig.map(_.name)) |:
         parse(structure, string) {
-        case Right(sk) => sk.scope.config == resolvedConfig
+        case Right(sk) => (sk.scope.config == resolvedConfig) || (sk.scope == Scope.GlobalScope)
         case Left(err) => false
       }
     }
+
+  def displayPedantic(scoped: ScopedKey[_]): String =
+    Scope.displayPedantic(scoped.scope, scoped.key.label)
 
   lazy val structureDefinedKey: Gen[StructureKeyMask] = structureKeyMask { s =>
     for (scope <- TestBuild.scope(s.env); key <- oneOf(s.allAttributeKeys.toSeq))
@@ -101,7 +118,10 @@ object ParseKey extends Properties("Key parser test") {
       ("Mask: " + mask) |:
       parse(structure, s) {
       case Left(err) => false
-      case Right(sk) => Project.equal(sk, expected, mask)
+      case Right(sk) =>
+        (s"${sk}.key == ${expected}.key: ${sk.key == expected.key}") |:
+          (s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}") |:
+          Project.equal(sk, expected, mask)
     }
 
   def parse(structure: Structure, s: String)(f: Either[String, ScopedKey[_]] => Prop): Prop = {

@@ -1,20 +1,32 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package internal
 
 import java.net.SocketException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
-import sbt.internal.server._
-import sbt.internal.util.StringEvent
-import sbt.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
-import BasicKeys.serverPort
+import BasicKeys.{ serverHost, serverPort, serverAuthentication }
 import java.net.Socket
 import sjsonnew.JsonFormat
+import sjsonnew.shaded.scalajson.ast.unsafe._
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{ Success, Failure }
+import sbt.io.syntax._
+import sbt.io.Hash
+import sbt.internal.server._
+import sbt.internal.util.{ StringEvent, ObjectEvent, ConsoleOut, MainAppender }
+import sbt.internal.util.codec.JValueFormats
+import sbt.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
+import sbt.util.{ Level, Logger, LogExchange }
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -32,6 +44,8 @@ private[sbt] final class CommandExchange {
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
+  private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
+
   def channels: List[CommandChannel] = channelBuffer.toList
   def subscribe(c: CommandChannel): Unit =
     lock.synchronized {
@@ -74,20 +88,40 @@ private[sbt] final class CommandExchange {
    * Check if a server instance is running already, and start one if it isn't.
    */
   private[sbt] def runServer(s: State): State = {
-    def port = (s get serverPort) match {
+    lazy val port = (s get serverPort) match {
       case Some(x) => x
       case None    => 5001
     }
-    def onIncomingSocket(socket: Socket): Unit = {
+    lazy val host = (s get serverHost) match {
+      case Some(x) => x
+      case None    => "127.0.0.1"
+    }
+    lazy val auth: Set[ServerAuthentication] = (s get serverAuthentication) match {
+      case Some(xs) => xs
+      case None     => Set(ServerAuthentication.Token)
+    }
+    val serverLogLevel: Level.Value = Level.Debug
+    def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       s.log.info(s"new client connected from: ${socket.getPort}")
-      val channel = new NetworkChannel(newChannelName, socket, Project structure s)
+      val logger: Logger = {
+        val loggerName = s"network-${socket.getPort}"
+        val log = LogExchange.logger(loggerName, None, None)
+        LogExchange.unbindLoggerAppenders(loggerName)
+        val appender = MainAppender.defaultScreen(s.globalLogging.console)
+        LogExchange.bindLoggerAppenders(loggerName, List(appender -> serverLogLevel))
+        log
+      }
+      val channel =
+        new NetworkChannel(newChannelName, socket, Project structure s, auth, instance, logger)
       subscribe(channel)
-      channel.publishEventMessage(ChannelAcceptedEvent(channel.name))
     }
     server match {
       case Some(x) => // do nothing
       case _ =>
-        val x = Server.start("127.0.0.1", port, onIncomingSocket, s.log)
+        val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
+        val h = Hash.halfHashString(portfile.toURI.toString)
+        val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
+        val x = Server.start(host, port, onIncomingSocket, auth, portfile, tokenfile, s.log)
         Await.ready(x.ready, Duration("10s"))
         x.ready.value match {
           case Some(Success(_)) =>
@@ -109,9 +143,31 @@ private[sbt] final class CommandExchange {
     server = None
   }
 
+  // This is an interface to directly notify events.
+  private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
+    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
+    channels.foreach {
+      case c: ConsoleChannel =>
+      // c.publishEvent(event)
+      case c: NetworkChannel =>
+        try {
+          c.notifyEvent(method, params)
+        } catch {
+          case e: SocketException =>
+            toDel += c
+        }
+    }
+    toDel.toList match {
+      case Nil => // do nothing
+      case xs =>
+        lock.synchronized {
+          channelBuffer --= xs
+        }
+    }
+  }
+
   def publishEvent[A: JsonFormat](event: A): Unit = {
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-    val bytes = Serialization.serializeEvent(event)
     event match {
       case entry: StringEvent =>
         channels.foreach {
@@ -122,7 +178,7 @@ private[sbt] final class CommandExchange {
           case c: NetworkChannel =>
             try {
               if (entry.channelName == Some(c.name)) {
-                c.publishBytes(bytes)
+                c.publishEvent(event)
               }
             } catch {
               case e: SocketException =>
@@ -135,11 +191,48 @@ private[sbt] final class CommandExchange {
             c.publishEvent(event)
           case c: NetworkChannel =>
             try {
-              c.publishBytes(bytes)
+              c.publishEvent(event)
             } catch {
               case e: SocketException =>
                 toDel += c
             }
+        }
+    }
+    toDel.toList match {
+      case Nil => // do nothing
+      case xs =>
+        lock.synchronized {
+          channelBuffer --= xs
+        }
+    }
+  }
+
+  /**
+   * This publishes object events. The type information has been
+   * erased because it went through logging.
+   */
+  private[sbt] def publishObjectEvent(event: ObjectEvent[_]): Unit = {
+    import jsonFormat._
+    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
+    def json: JValue = JObject(
+      JField("type", JString(event.contentType)),
+      (Vector(JField("message", event.json), JField("level", JString(event.level.toString))) ++
+        (event.channelName.toVector map { channelName =>
+          JField("channelName", JString(channelName))
+        }) ++
+        (event.execId.toVector map { execId =>
+          JField("execId", JString(execId))
+        })): _*
+    )
+    channels.foreach {
+      case c: ConsoleChannel =>
+        c.publishEvent(json)
+      case c: NetworkChannel =>
+        try {
+          c.publishObjectEvent(event)
+        } catch {
+          case e: SocketException =>
+            toDel += c
         }
     }
     toDel.toList match {
@@ -165,14 +258,12 @@ private[sbt] final class CommandExchange {
           case c: ConsoleChannel => c.publishEventMessage(e)
         }
       case _ =>
-        // TODO do not do this on the calling thread
-        val bytes = Serialization.serializeEventMessage(event)
         channels.foreach {
           case c: ConsoleChannel =>
             c.publishEventMessage(event)
           case c: NetworkChannel =>
             try {
-              c.publishBytes(bytes)
+              c.publishEventMessage(event)
             } catch {
               case e: SocketException =>
                 toDel += c

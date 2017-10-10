@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 import sbt.internal.util.Types.const
@@ -57,19 +64,38 @@ object Def extends Init[Scope] with TaskMacroExtra {
           ref => displayBuildRelative(currentBuild, multi, ref)
       ))
 
+  /**
+   * Returns a String expression for the given [[Reference]] (BuildRef, [[ProjectRef]], etc)
+   * relative to the current project.
+   */
+  def displayRelativeReference(current: ProjectRef, project: Reference): String =
+    displayRelative(current, project, false)
+
+  @deprecated("Use displayRelativeReference", "1.1.0")
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String =
+    displayRelative(current, project, true)
+
+  /**
+   * Constructs the String of a given [[Reference]] relative to current.
+   * Note that this no longer takes "multi" parameter, and omits the subproject id at all times.
+   */
+  private[sbt] def displayRelative(current: ProjectRef,
+                                   project: Reference,
+                                   trailingSlash: Boolean): String = {
+    val trailing = if (trailingSlash) " /" else ""
     project match {
-      case BuildRef(current.build)      => "{.}/"
-      case `current`                    => if (multi) current.project + "/" else ""
-      case ProjectRef(current.build, x) => x + "/"
-      case _                            => Reference.display(project) + "/"
+      case BuildRef(current.build)      => "ThisBuild" + trailing
+      case `current`                    => ""
+      case ProjectRef(current.build, x) => x + trailing
+      case _                            => Reference.display(project) + trailing
     }
+  }
 
   def displayBuildRelative(currentBuild: URI, multi: Boolean, project: Reference): String =
     project match {
-      case BuildRef(`currentBuild`)      => "{.}/"
-      case ProjectRef(`currentBuild`, x) => x + "/"
-      case _                             => Reference.display(project) + "/"
+      case BuildRef(`currentBuild`)      => "ThisBuild /"
+      case ProjectRef(`currentBuild`, x) => x + " /"
+      case _                             => Reference.display(project) + " /"
     }
 
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
@@ -79,6 +105,9 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String =
     Scope.displayMasked(scoped.scope, scoped.key.label, mask)
+
+  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask, showZeroConfig: Boolean): String =
+    Scope.displayMasked(scoped.scope, scoped.key.label, mask, showZeroConfig)
 
   def withColor(s: String, color: Option[String]): String = {
     val useColor = ConsoleAppender.formatEnabledInEnv

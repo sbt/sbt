@@ -1,6 +1,10 @@
 /*
- * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 package internal
 package server
@@ -110,18 +114,19 @@ object SettingQuery {
         toJson(value)
       })
 
-  def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse = {
+  def handleSettingQueryEither(req: SettingQuery,
+                               structure: BuildStructure): Either[String, SettingQuerySuccess] = {
     val key = Parser.parse(req.setting, scopedKeyParser(structure))
 
-    val result =
-      for {
-        key <- key
-        json <- getSettingJsonValue(structure, key)
-      } yield SettingQuerySuccess(json, key.key.manifest.toString)
+    for {
+      key <- key
+      json <- getSettingJsonValue(structure, key)
+    } yield SettingQuerySuccess(json, key.key.manifest.toString)
+  }
 
-    result match {
+  def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse =
+    handleSettingQueryEither(req, structure) match {
       case Right(x) => x
       case Left(s)  => SettingQueryFailure(s)
     }
-  }
 }

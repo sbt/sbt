@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
@@ -22,6 +26,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
+import sbt.internal.server.LanguageServerReporter
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -186,7 +191,7 @@ object Defaults extends BuildCommon {
       },
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
-      version :== "0.1-SNAPSHOT",
+      version :== "0.1.0-SNAPSHOT",
       classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
@@ -263,9 +268,11 @@ object Defaults extends BuildCommon {
         .getOrElse(GCUtil.defaultForceGarbageCollection),
       minForcegcInterval :== GCUtil.defaultMinForcegcInterval,
       interactionService :== CommandLineUIService,
+      serverHost := "127.0.0.1",
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
-        .## % 1000)
+        .## % 1000),
+      serverAuthentication := Set(ServerAuthentication.Token),
     ))
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -1398,6 +1405,14 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
+      val prev = i.previousResult
+      prev.analysis.toOption map { analysis =>
+        i.setup.reporter match {
+          case r: LanguageServerReporter =>
+            r.resetPrevious(analysis)
+          case _ => ()
+        }
+      }
       incCompiler.compile(i, s.log)
     } finally x.close() // workaround for #937
   }
@@ -1437,7 +1452,7 @@ object Defaults extends BuildCommon {
         compileOrder.value
       ),
       compilerReporter := {
-        new ManagedLoggedReporter(
+        new LanguageServerReporter(
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value)
@@ -2211,7 +2226,6 @@ object Classpaths {
       val ref = thisProjectRef.value
       if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") } else
         Def.task {
-          val cfg = config.value
           IvyActions.publish(ivyModule.value, config.value, s.log)
         }
     } tag (Tags.Publish, Tags.Network)
@@ -2332,13 +2346,20 @@ object Classpaths {
       else Def.task((evictionWarningOptions in update).value)
     }.value
 
+    val extracted = (Project extract state0)
+    val isPlugin = sbtPlugin.value
+    val thisRef = thisProjectRef.value
+    val label =
+      if (isPlugin) Reference.display(thisRef)
+      else Def.displayRelativeReference(extracted.currentRef, thisRef)
+
     LibraryManagement.cachedUpdate(
       // LM API
       lm = dependencyResolution.value,
       // Ivy-free ModuleDescriptor
       module = ivyModule.value,
       s.cacheStoreFactory.sub(updateCacheName.value),
-      Reference.display(thisProjectRef.value),
+      label = label,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
       skip = (skip in update).value,

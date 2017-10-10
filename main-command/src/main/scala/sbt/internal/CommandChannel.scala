@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package internal
 
@@ -16,6 +23,7 @@ abstract class CommandChannel {
     commandQueue.add(exec)
   def poll: Option[Exec] = Option(commandQueue.poll)
 
+  def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit
   def publishEvent[A: JsonFormat](event: A): Unit
   def publishEventMessage(event: EventMessage): Unit
   def publishBytes(bytes: Array[Byte]): Unit

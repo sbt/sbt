@@ -1,6 +1,7 @@
 sbt
-Copyright (c) 2008-2014 Typesafe Inc, Mark Harrah, Grzegorz Kossakowski, Josh Suereth, Indrajit Raychaudhuri, Eugene Yokota, and other contributors.
-Licensed under BSD-style license (see LICENSE)
+Copyright 2011 - 2017, Lightbend, Inc.
+Copyright 2008 - 2010, Mark Harrah
+Licensed under BSD-3-Clause license (see LICENSE)
 
 Portions based on code from the Scala compiler.  Portions of the Scala
 library are distributed with the launcher.
@@ -33,4 +34,3 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 

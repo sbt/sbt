@@ -1,0 +1,74 @@
+package sbt.internal.protocol
+@target(Scala)
+
+## A general message as defined by JSON-RPC.
+interface JsonRpcMessage 
+@generateCodec(false)
+{
+  jsonrpc: String!
+}
+
+type JsonRpcRequestMessage implements JsonRpcMessage 
+@generateCodec(false)
+{
+  jsonrpc: String!
+
+  ## The request id.
+  id: String!
+
+  ## The method to be invoked.
+  method: String!
+
+  ## The method's params.
+  params: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+
+  #xtostring s"""JsonRpcRequestMessage($jsonrpc, $id, $method, ${sbt.protocol.Serialization.compactPrintJsonOpt(params)}})"""
+}
+
+type JsonRpcResponseMessage implements JsonRpcMessage
+@generateCodec(false)
+{
+  jsonrpc: String!
+
+  ## The request id.
+  id: String
+
+  ## The result of a request. This can be omitted in
+  ## the case of an error.
+  result: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+
+  ## The error object in case a request fails.
+  error: sbt.internal.protocol.JsonRpcResponseError
+
+  #xtostring s"""JsonRpcResponseMessage($jsonrpc, $id, ${sbt.protocol.Serialization.compactPrintJsonOpt(result)}, $error)"""
+}
+
+type JsonRpcResponseError
+@generateCodec(false)
+{
+  ## A number indicating the error type that occurred.
+  code: Long!
+
+  ## A string providing a short description of the error.
+  message: String!
+
+  ## A Primitive or Structured value that contains additional
+  ## information about the error. Can be omitted.
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+
+  #xtostring s"""JsonRpcResponseError($code, $message, ${sbt.protocol.Serialization.compactPrintJsonOpt(data)})"""
+}
+
+type JsonRpcNotificationMessage implements JsonRpcMessage
+@generateCodec(false)
+{
+  jsonrpc: String!
+
+  ## The method to be invoked.
+  method: String!
+
+  ## The method's params.
+  params: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+
+  #xtostring s"""JsonRpcNotificationMessage($jsonrpc, $method, ${sbt.protocol.Serialization.compactPrintJsonOpt(params)})"""
+}
