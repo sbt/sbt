@@ -17,6 +17,12 @@ This is a hotfix release for sbt 1.0.x series.
 
 - Fixes unused import warnings. [#3533][3533] by [@razvan-panda][@razvan-panda]
 
+### Contributors
+
+A huge thank you to everyone who's helped improve sbt and Zinc 1 by using them, reporting bugs, improving our documentation, porting plugins, and submitting and reviewing pull requests.
+
+This release was brought to you by 19 contributors, according to `git shortlog -sn --no-merges v1.0.1..v1.0.2` on sbt, zinc, librarymanagement, and website: Dale Wijnand, Eugene Yokota, Kenji Yoshida (xuwei-k), Antonio Cunei, David Pratt, Karol Cz (kczulko), Amanj Sherwany, Emanuele Blanco, Eric Peters, Guillaume Bort, James Roper, Joost de Vries, Marko Elezovic, Martynas Mickevičius, Michael Stringer, Răzvan Flavius Panda, Peter Vlugter, Philippus Baalman, and Wiesław Popielarski. Thank you!
+
   [@dwijnand]: https://github.com/dwijnand
   [@cunei]: https://github.com/cunei
   [@eed3si9n]: https://github.com/eed3si9n
