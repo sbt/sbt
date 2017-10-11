@@ -81,7 +81,6 @@ class LanguageServerReporter(
   private[sbt] def resetPrevious(analysis: CompileAnalysis): Unit = {
     import sbt.internal.langserver.codec.JsonProtocol._
     val files = analysis.readSourceInfos.getAllSourceInfos.keySet.asScala
-    println(files)
     files foreach { f =>
       val params = PublishDiagnosticsParams(f.toURI.toString, Vector())
       exchange.notifyEvent("textDocument/publishDiagnostics", params)
