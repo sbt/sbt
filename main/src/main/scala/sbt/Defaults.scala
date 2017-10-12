@@ -552,7 +552,7 @@ object Defaults extends BuildCommon {
       val trigMsg = triggeredMessage.value
       new Watched {
         val scoped = watchTransitiveSources in base
-        val key = ScopedKey(scoped.scope, scoped.key)
+        val key = scoped.scopedKey
         override def pollInterval = interval
         override def watchingMessage(s: WatchState) = msg(s)
         override def triggeredMessage(s: WatchState) = trigMsg(s)
