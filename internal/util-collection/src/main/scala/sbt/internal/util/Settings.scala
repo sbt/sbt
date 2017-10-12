@@ -534,6 +534,14 @@ trait Init[Scope] {
     }
   }
 
+  /** Abstractly defines a value of type `T`.
+   *
+   * Specifically it defines a node in a task graph,
+   * where the `dependencies` represents dependent nodes,
+   * and `evaluate` represents the calculation based on the existing body of knowledge.
+   *
+   * @tparam T the type of the value this defines.
+   */
   sealed trait Initialize[T] {
     def dependencies: Seq[ScopedKey[_]]
     def apply[S](g: T => S): Initialize[S]
@@ -698,6 +706,10 @@ trait Init[Scope] {
 
   private[this] def deps(ls: Seq[Initialize[_]]): Seq[ScopedKey[_]] = ls.flatMap(_.dependencies)
 
+  /** An `Initialize[T]` associated with a `ScopedKey[S]`.
+   * @tparam S the type of the associated `ScopedKey`
+   * @tparam T the type of the value this `Initialize` defines.
+   */
   sealed trait Keyed[S, T] extends Initialize[T] {
     def scopedKey: ScopedKey[S]
     def transform: S => T
@@ -724,6 +736,9 @@ trait Init[Scope] {
   private[this] final class GetValue[S, T](val scopedKey: ScopedKey[S], val transform: S => T)
       extends Keyed[S, T]
 
+  /** A `Keyed` where the type of the value and the associated `ScopedKey` are the same.
+   * @tparam T the type of both the value this `Initialize` defines and the type of the associated `ScopedKey`.
+   */
   trait KeyedInitialize[T] extends Keyed[T, T] {
     final val transform = idFun[T]
   }
