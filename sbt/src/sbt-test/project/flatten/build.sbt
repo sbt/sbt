@@ -17,7 +17,10 @@ def unpackageSettings(name: String) = Seq(
   unmanagedSourceDirectories := (baseDirectory.value / name) :: Nil,
   excludeFilter in unmanagedResources := (includeFilter in unmanagedSources).value,
   unmanagedResourceDirectories := unmanagedSourceDirectories.value,
-  unpackage := IO.unzip(artifactPath in packageSrc value, baseDirectory.value / name)
+  unpackage := {
+    IO.unzip(artifactPath in packageSrc value, baseDirectory.value / name)
+    IO.delete(baseDirectory.value / name / "META-INF")
+  }
 )
 
 val unpackage = TaskKey[Unit]("unpackage")

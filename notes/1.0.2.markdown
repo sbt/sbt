@@ -1,0 +1,43 @@
+This is a hotfix release for sbt 1.0.x series.
+
+### Bug fixes
+
+- Fixes terminal echo issue. [#3507][3507] by [@kczulko][@kczulko]
+- Fixes `deliver` task, and adds `makeIvyXml` as a more sensibly named task. [#3487][3487] by [@cunei][@cunei]
+- Replaces the deprecated use of `OkUrlFactory`, and fixes connection leaks. [lm#164][lm164] by [@dpratt][@dpratt]
+- Refixes false positive in DSL checker for setting keys. [#3513][3513] by [@dwijnand][@dwijnand]
+- Fixes `run` and `bgRun` not picking up changes to directories in the classpath. [#3517][3517] by [@dwijnand][@dwijnand]
+- Fixes `++` so it won't change the value of `crossScalaVersion`. [#3495][3495]/[#3526][3526] by [@dwijnand][@dwijnand]
+- Fixes sbt server missing some messages. [#3523][3523] by [@guillaumebort][@guillaumebort]
+- Refixes `consoleProject`. [zinc#386][zinc386] by [@dwijnand][@dwijnand]
+- Adds JVM flag `sbt.gigahorse` to enable/disable the internal use of Gigahorse to workaround NPE in `JavaNetAuthenticator` when used in conjunction with `repositories` override. [lm#167][lm167] by [@cunei][@cunei]
+- Adds JVM flag `sbt.server.autostart` to enable/disable the automatic starting of sbt server with the sbt shell. This also adds new `startServer` command to manually start the server. by [@eed3si9n][@eed3si9n]
+
+### Internal
+
+- Fixes unused import warnings. [#3533][3533] by [@razvan-panda][@razvan-panda]
+
+### Contributors
+
+A huge thank you to everyone who's helped improve sbt and Zinc 1 by using them, reporting bugs, improving our documentation, porting plugins, and submitting and reviewing pull requests.
+
+This release was brought to you by 19 contributors, according to `git shortlog -sn --no-merges v1.0.1..v1.0.2` on sbt, zinc, librarymanagement, and website: Dale Wijnand, Eugene Yokota, Kenji Yoshida (xuwei-k), Antonio Cunei, David Pratt, Karol Cz (kczulko), Amanj Sherwany, Emanuele Blanco, Eric Peters, Guillaume Bort, James Roper, Joost de Vries, Marko Elezovic, Martynas Mickevičius, Michael Stringer, Răzvan Flavius Panda, Peter Vlugter, Philippus Baalman, and Wiesław Popielarski. Thank you!
+
+  [@dwijnand]: https://github.com/dwijnand
+  [@cunei]: https://github.com/cunei
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dpratt]: https://github.com/dpratt
+  [@kczulko]: https://github.com/kczulko
+  [@razvan-panda]: https://github.com/razvan-panda
+  [@guillaumebort]: https://github.com/guillaumebort
+  [3487]: https://github.com/sbt/sbt/pull/3487
+  [lm164]: https://github.com/sbt/librarymanagement/pull/164
+  [3495]: https://github.com/sbt/sbt/issues/3495
+  [3526]: https://github.com/sbt/sbt/pull/3526
+  [3513]: https://github.com/sbt/sbt/pull/3513
+  [3517]: https://github.com/sbt/sbt/pull/3517
+  [3507]: https://github.com/sbt/sbt/pull/3507
+  [3533]: https://github.com/sbt/sbt/pull/3533
+  [3523]: https://github.com/sbt/sbt/pull/3523
+  [zinc386]: https://github.com/sbt/zinc/pull/386
+  [lm167]: https://github.com/sbt/librarymanagement/pull/167

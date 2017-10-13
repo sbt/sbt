@@ -1,11 +1,14 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import java.io.{ File, PrintWriter }
-import java.nio.file.FileSystems
 import java.net.{ URI, URL }
 import java.util.Optional
 import java.util.concurrent.{ TimeUnit, Callable }
@@ -23,6 +26,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
+import sbt.internal.server.LanguageServerReporter
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -82,7 +86,6 @@ import xsbti.compile.{
   CompileOrder,
   CompileResult,
   DefinesClass,
-  IncOptionsUtil,
   Inputs,
   MiniSetup,
   PerClasspathEntryLookup,
@@ -188,7 +191,7 @@ object Defaults extends BuildCommon {
       },
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
-      version :== "0.1-SNAPSHOT",
+      version :== "0.1.0-SNAPSHOT",
       classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
@@ -247,7 +250,7 @@ object Defaults extends BuildCommon {
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchService :== { () =>
-        FileSystems.getDefault.newWatchService
+        Watched.createWatchService()
       },
       logBuffered :== false,
       commands :== Nil,
@@ -265,9 +268,11 @@ object Defaults extends BuildCommon {
         .getOrElse(GCUtil.defaultForceGarbageCollection),
       minForcegcInterval :== GCUtil.defaultMinForcegcInterval,
       interactionService :== CommandLineUIService,
+      serverHost := "127.0.0.1",
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
-        .## % 1000)
+        .## % 1000),
+      serverAuthentication := Set(ServerAuthentication.Token),
     ))
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -316,7 +321,9 @@ object Defaults extends BuildCommon {
                                      includeFilter in unmanagedSources,
                                      excludeFilter in unmanagedSources).value,
     watchSources in ConfigGlobal ++= {
-      val bases = unmanagedSourceDirectories.value
+      val baseDir = baseDirectory.value
+      val bases = unmanagedSourceDirectories.value ++ (if (sourcesInBase.value) Seq(baseDir)
+                                                       else Seq.empty)
       val include = (includeFilter in unmanagedSources).value
       val exclude = (excludeFilter in unmanagedSources).value
       bases.map(b => new Source(b, include, exclude))
@@ -388,14 +395,7 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := {
-      if (ScalaInstance.isDotty(scalaVersion.value))
-        // Maintained at https://github.com/lampepfl/dotty/tree/master/sbt-bridge
-        ModuleID(scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value)
-          .withConfigurations(Some("component"))
-          .sources()
-      else ZincUtil.getDefaultBridgeModule(scalaVersion.value)
-    }
+    scalaCompilerBridgeSource := ZincUtil.getDefaultBridgeModule(scalaVersion.value)
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
@@ -501,19 +501,12 @@ object Defaults extends BuildCommon {
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
-    runMain := runMainTask(fullClasspath, runner in run).evaluated,
-    run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
+    runMain := foregroundRunMainTask.evaluated,
+    run := foregroundRunTask.evaluated,
     copyResources := copyResourcesTask.value,
     // note that we use the same runner and mainClass as plain run
-    bgRunMain := bgRunMainTask(exportedProductJars,
-                               fullClasspathAsJars,
-                               bgCopyClasspath in bgRunMain,
-                               runner in run).evaluated,
-    bgRun := bgRunTask(exportedProductJars,
-                       fullClasspathAsJars,
-                       mainClass in run,
-                       bgCopyClasspath in bgRun,
-                       runner in run).evaluated
+    mainBgRunMainTaskForConfig(This),
+    mainBgRunTaskForConfig(This)
   ) ++ inTask(run)(runnerSettings)
 
   private[this] lazy val configGlobal = globalDefaults(
@@ -614,19 +607,18 @@ object Defaults extends BuildCommon {
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
-    val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
+    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val binVersion = scalaBinaryVersion.value
     val compilerJar =
       if (ScalaInstance.isDotty(scalaVersion.value))
         file(ScalaArtifacts.dottyID(binVersion))
       else file(ScalaArtifacts.CompilerID)
-    val otherJars = allFiles.filterNot(x => x == libraryJar || x == compilerJar)
     new ScalaInstance(scalaVersion.value,
-                      makeClassLoader(state.value)(libraryJar :: compilerJar :: otherJars.toList),
+                      makeClassLoader(state.value)(allJars.toList),
                       libraryJar,
                       compilerJar,
-                      otherJars.toArray,
+                      allJars.toArray,
                       None)
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
@@ -1124,10 +1116,12 @@ object Defaults extends BuildCommon {
       toClean
     }
 
-  def bgRunMainTask(products: Initialize[Task[Classpath]],
-                    classpath: Initialize[Task[Classpath]],
-                    copyClasspath: Initialize[Boolean],
-                    scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] = {
+  def bgRunMainTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      copyClasspath: Initialize[Boolean],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[JobHandle]] = {
     val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
       Defaults.runMainParser(s, names getOrElse Nil))
     Def.inputTask {
@@ -1142,11 +1136,14 @@ object Defaults extends BuildCommon {
       }
     }
   }
-  def bgRunTask(products: Initialize[Task[Classpath]],
-                classpath: Initialize[Task[Classpath]],
-                mainClassTask: Initialize[Task[Option[String]]],
-                copyClasspath: Initialize[Boolean],
-                scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] = {
+
+  def bgRunTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      mainClassTask: Initialize[Task[Option[String]]],
+      copyClasspath: Initialize[Boolean],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[JobHandle]] = {
     import Def.parserToInput
     val parser = Def.spaceDelimited()
     Def.inputTask {
@@ -1161,22 +1158,27 @@ object Defaults extends BuildCommon {
       }
     }
   }
+
   // runMain calls bgRunMain in the background and waits for the result.
   def foregroundRunMainTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
-      service.waitFor(handle)
+      service.waitForTry(handle).get
     }
+
   // run calls bgRun in the background and waits for the result.
   def foregroundRunTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
       val handle = bgRun.evaluated
       val service = bgJobService.value
-      service.waitFor(handle)
+      service.waitForTry(handle).get
     }
-  def runMainTask(classpath: Initialize[Task[Classpath]],
-                  scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] = {
+
+  def runMainTask(
+      classpath: Initialize[Task[Classpath]],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[Unit]] = {
     val parser =
       loadForParser(discoveredMainClasses)((s, names) => runMainParser(s, names getOrElse Nil))
     Def.inputTask {
@@ -1184,9 +1186,12 @@ object Defaults extends BuildCommon {
       scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log).get
     }
   }
-  def runTask(classpath: Initialize[Task[Classpath]],
-              mainClassTask: Initialize[Task[Option[String]]],
-              scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] = {
+
+  def runTask(
+      classpath: Initialize[Task[Classpath]],
+      mainClassTask: Initialize[Task[Option[String]]],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[Unit]] = {
     import Def.parserToInput
     val parser = Def.spaceDelimited()
     Def.inputTask {
@@ -1194,7 +1199,9 @@ object Defaults extends BuildCommon {
       scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log).get
     }
   }
+
   def runnerTask: Setting[Task[ScalaRun]] = runner := runnerInit.value
+
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
@@ -1222,7 +1229,8 @@ object Defaults extends BuildCommon {
   }
 
   private def foreachJobTask(
-      f: (BackgroundJobService, JobHandle) => Unit): Initialize[InputTask[Unit]] = {
+      f: (BackgroundJobService, JobHandle) => Unit
+  ): Initialize[InputTask[Unit]] = {
     val parser: Initialize[State => Parser[Seq[JobHandle]]] = Def.setting { (s: State) =>
       val extracted = Project.extract(s)
       val service = extracted.get(bgJobService)
@@ -1237,6 +1245,7 @@ object Defaults extends BuildCommon {
       }
     }
   }
+
   def psTask: Initialize[Task[Seq[JobHandle]]] =
     Def.task {
       val xs = bgList.value
@@ -1246,9 +1255,11 @@ object Defaults extends BuildCommon {
       }
       xs
     }
+
   def bgStopTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
     manager.stop(handle)
   }
+
   def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
     manager.waitFor(handle)
   }
@@ -1299,17 +1310,25 @@ object Defaults extends BuildCommon {
         }
       ))
 
-  def mainBgRunTask =
-    bgRun := bgRunTask(exportedProductJars,
-                       fullClasspathAsJars in Runtime,
-                       mainClass in run,
-                       bgCopyClasspath in bgRun,
-                       runner in run).evaluated
-  def mainBgRunMainTask =
-    bgRunMain := bgRunMainTask(exportedProductJars,
-                               fullClasspathAsJars in Runtime,
-                               bgCopyClasspath in bgRunMain,
-                               runner in run).evaluated
+  def mainBgRunTask = mainBgRunTaskForConfig(Select(Runtime))
+  def mainBgRunMainTask = mainBgRunMainTaskForConfig(Select(Runtime))
+
+  private[this] def mainBgRunTaskForConfig(c: ScopeAxis[ConfigKey]) =
+    bgRun := bgRunTask(
+      exportedProductJars,
+      fullClasspathAsJars in (This, c, This),
+      mainClass in run,
+      bgCopyClasspath in bgRun,
+      runner in run
+    ).evaluated
+
+  private[this] def mainBgRunMainTaskForConfig(c: ScopeAxis[ConfigKey]) =
+    bgRunMain := bgRunMainTask(
+      exportedProductJars,
+      fullClasspathAsJars in (This, c, This),
+      bgCopyClasspath in bgRunMain,
+      runner in run
+    ).evaluated
 
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] = analysis match {
     case analysis: Analysis =>
@@ -1321,6 +1340,7 @@ object Defaults extends BuildCommon {
       ConsoleProject(state.value, (initialCommands in consoleProject).value)(streams.value.log)
       println()
     }
+
   def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
@@ -1345,6 +1365,7 @@ object Defaults extends BuildCommon {
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
     args => w.println((command +: args).mkString(" "))
+
   private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args => {
     val w = s.text(ExportStream)
     try exported(w, command)
@@ -1384,6 +1405,14 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
+      val prev = i.previousResult
+      prev.analysis.toOption map { analysis =>
+        i.setup.reporter match {
+          case r: LanguageServerReporter =>
+            r.resetPrevious(analysis)
+          case _ => ()
+        }
+      }
       incCompiler.compile(i, s.log)
     } finally x.close() // workaround for #937
   }
@@ -1423,7 +1452,7 @@ object Defaults extends BuildCommon {
         compileOrder.value
       ),
       compilerReporter := {
-        new ManagedLoggedReporter(
+        new LanguageServerReporter(
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value)
@@ -1535,16 +1564,21 @@ object Defaults extends BuildCommon {
   lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
 
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
-  lazy val configSettings
-    : Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
 
-  lazy val compileSettings
-    : Seq[Setting[_]] = configSettings ++ (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
+  lazy val configSettings: Seq[Setting[_]] =
+    Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++
+      Classpaths.compilerPluginConfig ++ deprecationSettings
+
+  lazy val compileSettings: Seq[Setting[_]] =
+    configSettings ++
+      (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++
+      Classpaths.addUnmanagedLibrary
+
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
-  lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++ inConfig(Test)(
-    testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
+  lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++
+    inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
 
   // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[_]] =
@@ -1692,8 +1726,9 @@ object Classpaths {
       config.file.get
     },
     packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
-    deliver := deliverTask(publishConfiguration).value,
-    deliverLocal := deliverTask(publishLocalConfiguration).value,
+    deliver := deliverTask(makeIvyXmlConfiguration).value,
+    deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
+    makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
     publish := publishTask(publishConfiguration, deliver).value,
     publishLocal := publishTask(publishLocalConfiguration, deliverLocal).value,
     publishM2 := publishTask(publishM2Configuration, deliverLocal).value
@@ -1873,6 +1908,17 @@ object Classpaths {
       .withProcess(pomPostProcess.value)
       .withFilterRepositories(pomIncludeRepository.value)
       .withAllRepositories(pomAllRepositories.value),
+    makeIvyXmlConfiguration := {
+      makeIvyXmlConfig(
+        publishMavenStyle.value,
+        sbt.Classpaths.deliverPattern(crossTarget.value),
+        if (isSnapshot.value) "integration" else "release",
+        ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+        checksums.in(publish).value.toVector,
+        ivyLoggingLevel.value,
+        isSnapshot.value
+      )
+    },
     publishConfiguration := {
       publishConfig(
         publishMavenStyle.value,
@@ -1884,6 +1930,18 @@ object Classpaths {
         getPublishTo(publishTo.value).name,
         ivyLoggingLevel.value,
         isSnapshot.value
+      )
+    },
+    makeIvyXmlLocalConfiguration := {
+      makeIvyXmlConfig(
+        false, //publishMavenStyle.value,
+        sbt.Classpaths.deliverPattern(crossTarget.value),
+        if (isSnapshot.value) "integration" else "release",
+        ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+        checksums.in(publish).value.toVector,
+        ivyLoggingLevel.value,
+        isSnapshot.value,
+        optResolverName = Some("local")
       )
     },
     publishLocalConfiguration := publishConfig(
@@ -2168,7 +2226,6 @@ object Classpaths {
       val ref = thisProjectRef.value
       if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") } else
         Def.task {
-          val cfg = config.value
           IvyActions.publish(ivyModule.value, config.value, s.log)
         }
     } tag (Tags.Publish, Tags.Network)
@@ -2289,13 +2346,20 @@ object Classpaths {
       else Def.task((evictionWarningOptions in update).value)
     }.value
 
+    val extracted = (Project extract state0)
+    val isPlugin = sbtPlugin.value
+    val thisRef = thisProjectRef.value
+    val label =
+      if (isPlugin) Reference.display(thisRef)
+      else Def.displayRelativeReference(extracted.currentRef, thisRef)
+
     LibraryManagement.cachedUpdate(
       // LM API
       lm = dependencyResolution.value,
       // Ivy-free ModuleDescriptor
       module = ivyModule.value,
       s.cacheStoreFactory.sub(updateCacheName.value),
-      Reference.display(thisProjectRef.value),
+      label = label,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
       skip = (skip in update).value,
@@ -2407,6 +2471,24 @@ object Classpaths {
                          artifacts,
                          checksums,
                          logging,
+                         overwrite)
+
+  def makeIvyXmlConfig(publishMavenStyle: Boolean,
+                       deliverIvyPattern: String,
+                       status: String,
+                       configurations: Vector[ConfigRef],
+                       checksums: Vector[String],
+                       logging: sbt.librarymanagement.UpdateLogging = UpdateLogging.DownloadOnly,
+                       overwrite: Boolean = false,
+                       optResolverName: Option[String] = None) =
+    PublishConfiguration(publishMavenStyle,
+                         Some(deliverIvyPattern),
+                         Some(status),
+                         Some(configurations),
+                         optResolverName,
+                         Vector.empty,
+                         checksums,
+                         Some(logging),
                          overwrite)
 
   def deliverPattern(outputPath: File): String =
@@ -2961,7 +3043,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    */
   def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
     libraryDependencies += {
-      val sbtV = (sbtBinaryVersion in update).value
+      val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
       val scalaV = (scalaBinaryVersion in update).value
       sbtPluginExtra(dependency, sbtV, scalaV)
     }

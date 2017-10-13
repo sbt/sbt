@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package internal
 package server
@@ -172,7 +179,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
   def query(setting: String): String = {
     import sbt.protocol._
-    val req: SettingQuery = protocol.SettingQuery(setting)
+    val req: SettingQuery = sbt.protocol.SettingQuery(setting)
     val rsp: SettingQueryResponse = server.SettingQuery.handleSettingQuery(req, structure)
     val bytes: Array[Byte] = Serialization serializeEventMessage rsp
     val payload: String = new String(bytes, java.nio.charset.StandardCharsets.UTF_8)
@@ -196,13 +203,13 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
       "scala.collection.Seq[java.lang.String]")
 
     "t/libraryDependencies" in qok(
-      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"crossVersion":{"type":"Disabled"}}]""",
+      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
       "scala.collection.Seq[sbt.librarymanagement.ModuleID]"
     )
 
     "scalaVersion" in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
     "t/scalacOptions" in qko(
-      s"Key {$baseUri}t/compile:scalacOptions is a task, can only query settings")
+      s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"t\\") / Compile / scalacOptions is a task, can only query settings""")
     "t/fooo" in qko(
       "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^")
   }

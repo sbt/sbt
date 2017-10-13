@@ -36,3 +36,20 @@ $ exists lib/target/scala-2.11
 # -$ exists lib/target/scala-2.12
 # -$ exists sbt-foo/target/scala-2.12
 # $ exists sbt-foo/target/scala-2.11
+
+> clean
+# Test legacy cross build with command support
+> + build
+
+# Uses the root project scala version config, which is only configured to build for Scala 2.12
+$ exists lib/target/scala-2.12
+-$ exists lib/target/scala-2.11
+$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-2.11
+
+> clean
+# Test ++ leaves crossScalaVersions unchanged
+> ++2.12.1
+> +extrasProj/compile
+$ exists extras/target/scala-2.11
+$ exists extras/target/scala-2.12

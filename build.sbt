@@ -1,6 +1,7 @@
 import Util._
 import Dependencies._
 import Sxr.sxr
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -8,7 +9,7 @@ def buildLevelSettings: Seq[Setting[_]] =
   inThisBuild(
     Seq(
       organization := "org.scala-sbt",
-      version := "1.0.1-SNAPSHOT",
+      version := "1.0.3-SNAPSHOT",
       description := "sbt is an interactive build tool",
       bintrayOrganization := Some("sbt"),
       bintrayRepository := {
@@ -38,13 +39,21 @@ def buildLevelSettings: Seq[Setting[_]] =
 
 def commonSettings: Seq[Setting[_]] =
   Seq[SettingsDefinition](
+    headerLicense := Some(HeaderLicense.Custom(
+      """|sbt
+         |Copyright 2011 - 2017, Lightbend, Inc.
+         |Copyright 2008 - 2010, Mark Harrah
+         |Licensed under BSD-3-Clause license (see LICENSE)
+         |""".stripMargin
+    )),
     scalaVersion := baseScalaVersion,
     componentID := None,
     resolvers += Resolver.typesafeIvyRepo("releases"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
     concurrentRestrictions in Global += Util.testExclusiveRestriction,
-    testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
     javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
@@ -66,7 +75,7 @@ def testedBaseSettings: Seq[Setting[_]] =
 
 val mimaSettings = Def settings (
   mimaPreviousArtifacts := Set(
-    organization.value % moduleName.value % "1.0.0-RC3"
+    organization.value % moduleName.value % "1.0.0"
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
   )
 )
@@ -131,6 +140,10 @@ val collectionProj = (project in file("internal") / "util-collection")
     name := "Collections",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Added private[sbt] method to capture State attributes.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.util.AttributeMap.setCond"),
+    ),
   )
   .configure(addSbtUtilPosition)
 
@@ -229,7 +242,7 @@ lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
   )
-  .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted)
+  .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted, addSbtLmCore)
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
   .dependsOn(sbtProj)
@@ -289,6 +302,14 @@ lazy val commandProj = (project in file("main-command"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      // Changed the signature of Server method. nacho cheese.
+      exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*"),
+      // Added method to ServerInstance. This is also internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerInstance.*"),
+      // Added method to CommandChannel. internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
+    )
   )
   .configure(
     addSbtIO,
@@ -360,6 +381,19 @@ lazy val mainProj = (project in file("main"))
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      // Changed the signature of NetworkChannel ctor. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.server.NetworkChannel.*"),
+      // ctor for ConfigIndex. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.ConfigIndex.*"),
+      // New and changed methods on KeyIndex. internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      // Removed unused val. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
+      // Removed unused def. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.Load.isProjectThis"),
+    )
   )
   .configure(
     addSbtIO,
@@ -382,8 +416,56 @@ lazy val sbtProj = (project in file("sbt"))
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     mimaSettings,
+    mimaBinaryIssueFilters ++= sbtIgnoredProblems,
   )
   .configure(addSbtCompilerBridge)
+
+lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
+  .settings(
+    crossPaths := false,
+    crossScalaVersions := Seq(baseScalaVersion),
+    skip in publish := true,
+    compile in Compile := {
+      val u = update.value
+      val log = streams.value.log
+      import sbt.internal.inc.Analysis
+      import scala.sys.process._
+      val exitCode = Process(s"npm run compile", Option(baseDirectory.value)) ! log
+      if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
+      Analysis.empty
+    },
+    update := {
+      val old = update.value
+      val t = target.value / "updated"
+      val base = baseDirectory.value
+      val log = streams.value.log
+      if (t.exists) ()
+      else {
+        import scala.sys.process._
+        val exitCode = Process("npm install", Option(base)) ! log
+        if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
+        IO.touch(t)
+      }
+      old
+    },
+    cleanFiles ++= {
+      val base = baseDirectory.value
+      Vector(
+        target.value / "updated",
+        base / "node_modules", base / "client" / "node_modules",
+        base / "client" / "server",
+        base / "client" / "out",
+        base / "server" / "node_modules") filter { _.exists }
+    }
+  )
+
+lazy val sbtIgnoredProblems = {
+  Seq(
+    // Added more items to Import trait.
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource")
+  )
+}
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed

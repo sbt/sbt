@@ -1,24 +1,22 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
-import Keys._
-import sbt.internal.util.complete.{ DefaultParsers, Parser }
-import sbt.internal.util.AttributeKey
-import DefaultParsers._
-import Def.{ ScopedKey, Setting }
-import sbt.internal.CommandStrings.{
-  CrossCommand,
-  CrossRestoreSessionCommand,
-  SwitchCommand,
-  crossHelp,
-  crossRestoreSessionHelp,
-  switchHelp
-}
 import java.io.File
 
+import sbt.Def.{ ScopedKey, Setting }
+import sbt.Keys._
+import sbt.internal.Act
+import sbt.internal.CommandStrings._
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.util.AttributeKey
+import sbt.internal.util.complete.DefaultParsers._
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
 import sbt.librarymanagement.CrossVersion
 
@@ -93,7 +91,7 @@ object Cross {
     (currentRef :: currentProject.aggregate.toList.flatMap(findAggregates)).distinct
   }
 
-  private def crossVersions(extracted: Extracted, proj: ProjectRef): Seq[String] = {
+  private def crossVersions(extracted: Extracted, proj: ResolvedReference): Seq[String] = {
     import extracted._
     (crossScalaVersions in proj get structure.data) getOrElse {
       // reading scalaVersion is a one-time deal
@@ -125,10 +123,13 @@ object Cross {
       case Left(cmd) => (resolveAggregates(x), cmd)
     }
 
+    val projCrossVersions = aggs map { proj =>
+      proj -> crossVersions(x, proj)
+    }
     // if we support scalaVersion, projVersions should be cached somewhere since
     // running ++2.11.1 is at the root level is going to mess with the scalaVersion for the aggregated subproj
-    val projVersions = (aggs flatMap { proj =>
-      crossVersions(x, proj) map { (proj.project, _) }
+    val projVersions = (projCrossVersions flatMap {
+      case (proj, versions) => versions map { proj.project -> _ }
     }).toList
 
     val verbose = if (args.verbose) "-v" else ""
@@ -136,19 +137,51 @@ object Cross {
     if (projVersions.isEmpty) {
       state
     } else {
-      // Group all the projects by scala version
-      val allCommands = projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
-        case (version, Seq(project)) =>
-          // If only one project for a version, issue it directly
-          Seq(s"$SwitchCommand $verbose $version $project/$aggCommand")
-        case (version, projects) if aggCommand.contains(" ") =>
-          // If the command contains a space, then the all command won't work because it doesn't support issuing
-          // commands with spaces, so revert to running the command on each project one at a time
-          s"$SwitchCommand $verbose $version" :: projects.map(project => s"$project/$aggCommand")
-        case (version, projects) =>
-          // First switch scala version, then use the all command to run the command on each project concurrently
-          Seq(s"$SwitchCommand $verbose $version",
-              projects.map(_ + "/" + aggCommand).mkString("all ", " ", ""))
+      // Detect whether a task or command has been issued
+      val allCommands = Parser.parse(aggCommand, Act.aggregatedKeyParser(x)) match {
+        case Left(_) =>
+          // It's definitely not a task, check if it's a valid command, because we don't want to emit the warning
+          // message below for typos.
+          val validCommand = Parser.parse(aggCommand, state.combinedParser).isRight
+
+          val distinctCrossConfigs = projCrossVersions.map(_._2.toSet).distinct
+          if (validCommand && distinctCrossConfigs.size > 1) {
+            state.log.warn(
+              "Issuing a cross building command, but not all sub projects have the same cross build " +
+                "configuration. This could result in subprojects cross building against Scala versions that they are " +
+                "not compatible with. Try issuing cross building command with tasks instead, since sbt will be able " +
+                "to ensure that cross building is only done using configured project and Scala version combinations " +
+                "that are configured.")
+            state.log.debug("Scala versions configuration is:")
+            projCrossVersions.foreach {
+              case (project, versions) => state.log.debug(s"$project: $versions")
+            }
+          }
+
+          // Execute using a blanket switch
+          projCrossVersions.toMap.apply(currentRef).flatMap { version =>
+            // Force scala version
+            Seq(s"$SwitchCommand $verbose $version!", aggCommand)
+          }
+
+        case Right(_) =>
+          // We have a key, we're likely to be able to cross build this using the per project behaviour.
+
+          // Group all the projects by scala version
+          projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
+            case (version, Seq(project)) =>
+              // If only one project for a version, issue it directly
+              Seq(s"$SwitchCommand $verbose $version $project/$aggCommand")
+            case (version, projects) if aggCommand.contains(" ") =>
+              // If the command contains a space, then the `all` command won't work because it doesn't support issuing
+              // commands with spaces, so revert to running the command on each project one at a time
+              s"$SwitchCommand $verbose $version" :: projects.map(project =>
+                s"$project/$aggCommand")
+            case (version, projects) =>
+              // First switch scala version, then use the all command to run the command on each project concurrently
+              Seq(s"$SwitchCommand $verbose $version",
+                  projects.map(_ + "/" + aggCommand).mkString("all ", " ", ""))
+          }
       }
 
       allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, x)
@@ -189,12 +222,14 @@ object Cross {
   }
 
   private def switchScalaVersion(switch: Switch, state: State): State = {
-    val x = Project.extract(state)
-    import x._
+    val extracted = Project.extract(state)
+    import extracted._
+
+    type ScalaVersion = String
 
     val (version, instance) = switch.version match {
       case ScalaHomeVersion(homePath, resolveVersion, _) =>
-        val home = IO.resolve(x.currentProject.base, homePath)
+        val home = IO.resolve(extracted.currentProject.base, homePath)
         if (home.exists()) {
           val instance = ScalaInstance(home)(state.classLoaderCache.apply _)
           val version = resolveVersion.getOrElse(instance.actualVersion)
@@ -205,10 +240,10 @@ object Cross {
       case NamedScalaVersion(v, _) => (v, None)
     }
 
-    val binaryVersion = CrossVersion.binaryScalaVersion(version)
-
-    def logSwitchInfo(included: Seq[(ProjectRef, Seq[String])],
-                      excluded: Seq[(ProjectRef, Seq[String])]) = {
+    def logSwitchInfo(
+        included: Seq[(ProjectRef, Seq[ScalaVersion])],
+        excluded: Seq[(ProjectRef, Seq[ScalaVersion])]
+    ) = {
 
       instance.foreach {
         case (home, instance) =>
@@ -226,7 +261,7 @@ object Cross {
       def detailedLog(msg: => String) =
         if (switch.verbose) state.log.info(msg) else state.log.debug(msg)
 
-      def logProject: (ProjectRef, Seq[String]) => Unit = (proj, scalaVersions) => {
+      def logProject: (ProjectRef, Seq[ScalaVersion]) => Unit = (proj, scalaVersions) => {
         val current = if (proj == currentRef) "*" else " "
         detailedLog(s"  $current ${proj.project} ${scalaVersions.mkString("(", ", ", ")")}")
       }
@@ -236,57 +271,67 @@ object Cross {
       excluded.foreach(logProject.tupled)
     }
 
-    val projects: Seq[Reference] = {
+    val projects: Seq[(ResolvedReference, Seq[ScalaVersion])] = {
       val projectScalaVersions =
-        structure.allProjectRefs.map(proj => proj -> crossVersions(x, proj))
+        structure.allProjectRefs.map(proj => proj -> crossVersions(extracted, proj))
       if (switch.version.force) {
         logSwitchInfo(projectScalaVersions, Nil)
-        structure.allProjectRefs ++ structure.units.keys.map(BuildRef.apply)
+        projectScalaVersions ++ structure.units.keys
+          .map(BuildRef.apply)
+          .map(proj => proj -> crossVersions(extracted, proj))
       } else {
+        val binaryVersion = CrossVersion.binaryScalaVersion(version)
 
         val (included, excluded) = projectScalaVersions.partition {
-          case (proj, scalaVersions) =>
+          case (_, scalaVersions) =>
             scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion)
         }
         logSwitchInfo(included, excluded)
-        included.map(_._1)
+        included
       }
     }
 
-    setScalaVersionForProjects(version, instance, projects, state, x)
+    setScalaVersionForProjects(version, instance, projects, state, extracted)
   }
 
-  private def setScalaVersionForProjects(version: String,
-                                         instance: Option[(File, ScalaInstance)],
-                                         projects: Seq[Reference],
-                                         state: State,
-                                         extracted: Extracted): State = {
+  private def setScalaVersionForProjects(
+      version: String,
+      instance: Option[(File, ScalaInstance)],
+      projects: Seq[(ResolvedReference, Seq[String])],
+      state: State,
+      extracted: Extracted
+  ): State = {
     import extracted._
 
-    val newSettings = projects.flatMap { project =>
-      val scope = Scope(Select(project), Zero, Zero, Zero)
+    val newSettings = projects.flatMap {
+      case (project, scalaVersions) =>
+        val scope = Scope(Select(project), Zero, Zero, Zero)
 
-      instance match {
-        case Some((home, inst)) =>
-          Seq(
-            scalaVersion in scope := version,
-            scalaHome in scope := Some(home),
-            scalaInstance in scope := inst
-          )
-        case None =>
-          Seq(
-            scalaVersion in scope := version,
-            scalaHome in scope := None
-          )
-      }
+        instance match {
+          case Some((home, inst)) =>
+            Seq(
+              scalaVersion in scope := version,
+              crossScalaVersions in scope := scalaVersions,
+              scalaHome in scope := Some(home),
+              scalaInstance in scope := inst
+            )
+          case None =>
+            Seq(
+              scalaVersion in scope := version,
+              crossScalaVersions in scope := scalaVersions,
+              scalaHome in scope := None
+            )
+        }
     }
 
     val filterKeys: Set[AttributeKey[_]] = Set(scalaVersion, scalaHome, scalaInstance).map(_.key)
 
+    val projectsContains: Reference => Boolean = projects.map(_._1).toSet.contains
+
     // Filter out any old scala version settings that were added, this is just for hygiene.
     val filteredRawAppend = session.rawAppend.filter(_.key match {
       case ScopedKey(Scope(Select(ref), Zero, Zero, Zero), key)
-          if filterKeys.contains(key) && projects.contains(ref) =>
+          if filterKeys.contains(key) && projectsContains(ref) =>
         false
       case _ => true
     })

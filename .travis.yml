@@ -1,5 +1,6 @@
-# Use Docker-based container (instead of OpenVZ)
 sudo: false
+dist: trusty
+group: stable
 
 cache:
   directories:
@@ -16,7 +17,7 @@ matrix:
 
 env:
   matrix:
-    - SBT_CMD=";mimaReportBinaryIssues ;scalafmt::test ;test:scalafmt::test ;sbt:scalafmt::test ;test:compile ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests"
+    - SBT_CMD=";mimaReportBinaryIssues ;scalafmt::test ;test:scalafmt::test ;sbt:scalafmt::test ;headerCheck ;test:headerCheck ;test:compile ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests"
     - SBT_CMD="scripted actions/*"
     - SBT_CMD="scripted apiinfo/* compiler-project/* ivy-deps-management/*"
     - SBT_CMD="scripted dependency-management/*1of4"
@@ -25,14 +26,20 @@ env:
     - SBT_CMD="scripted dependency-management/*4of4"
     - SBT_CMD="scripted java/* package/* reporter/* run/* project-load/*"
     - SBT_CMD="scripted project/*1of2"
-    - SBT_CMD="scripted project/*2of2"
-    - SBT_CMD="scripted source-dependencies/*"
+    - SBT_CMD="scripted project/*2of2 server/*"
+    - SBT_CMD="scripted source-dependencies/*1of3"
+    - SBT_CMD="scripted source-dependencies/*2of3"
+    - SBT_CMD="scripted source-dependencies/*3of3"
     - SBT_CMD="scripted tests/*"
     - SBT_CMD="repoOverrideTest:scripted dependency-management/*"
 
 notifications:
   email:
     - sbt-dev-bot@googlegroups.com
+
+# Undo _JAVA_OPTIONS environment variable
+before_script:
+  - _JAVA_OPTIONS=
 
 script:
   # It doesn't need that much memory because compile and run are forked

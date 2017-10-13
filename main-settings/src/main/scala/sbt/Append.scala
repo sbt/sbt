@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 import java.io.File
@@ -6,6 +13,8 @@ import scala.annotation.implicitNotFound
 import sbt.internal.util.Attributed
 import Def.Initialize
 import reflect.internal.annotations.compileTimeOnly
+import sbt.internal.io.Source
+import sbt.io.{ AllPassFilter, NothingFilter }
 
 object Append {
   @implicitNotFound(
@@ -95,5 +104,12 @@ object Append {
     new Sequence[Seq[T], Option[T], Option[T]] {
       def appendValue(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a :+ _)
       def appendValues(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a :+ _)
+    }
+  implicit def appendSource: Sequence[Seq[Source], Seq[File], File] =
+    new Sequence[Seq[Source], Seq[File], File] {
+      def appendValue(a: Seq[Source], b: File): Seq[Source] =
+        appendValues(a, Seq(b))
+      def appendValues(a: Seq[Source], b: Seq[File]): Seq[Source] =
+        a ++ b.map(new Source(_, AllPassFilter, NothingFilter))
     }
 }

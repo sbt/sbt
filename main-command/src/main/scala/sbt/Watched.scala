@@ -1,24 +1,30 @@
-/* sbt -- Simple Build Tool
- * Copyright 2009, 2010  Mikko Peltonen, Stuart Roebuck, Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
-import BasicCommandStrings.ClearOnFailure
-import State.FailureWall
-import annotation.tailrec
+import java.io.File
 import java.nio.file.FileSystems
 
-import scala.concurrent.duration._
-
-import sbt.io.WatchService
+import sbt.BasicCommandStrings.ClearOnFailure
+import sbt.State.FailureWall
 import sbt.internal.io.{ Source, SourceModificationWatch, WatchState }
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.Types.const
+import sbt.io._
+
+import scala.annotation.tailrec
+import scala.concurrent.duration._
+import scala.util.Properties
 
 trait Watched {
 
   /** The files watched when an action is run with a preceeding ~ */
-  def watchSources(s: State): Seq[Source] = Nil
+  def watchSources(s: State): Seq[Watched.WatchSource] = Nil
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
   /**
@@ -34,7 +40,7 @@ trait Watched {
   private[sbt] def triggeredMessage(s: WatchState): String = Watched.defaultTriggeredMessage(s)
 
   /** The `WatchService` to use to monitor the file system. */
-  private[sbt] def watchService(): WatchService = FileSystems.getDefault.newWatchService()
+  private[sbt] def watchService(): WatchService = Watched.createWatchService()
 }
 
 object Watched {
@@ -43,6 +49,30 @@ object Watched {
   val defaultTriggeredMessage: WatchState => String = const("")
   val clearWhenTriggered: WatchState => String = const(clearScreen)
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
+
+  type WatchSource = Source
+  object WatchSource {
+
+    /**
+     * Creates a new `WatchSource` for watching files, with the given filters.
+     *
+     * @param base          The base directory from which to include files.
+     * @param includeFilter Choose what children of `base` to include.
+     * @param excludeFilter Choose what children of `base` to exclude.
+     * @return An instance of `Source`.
+     */
+    def apply(base: File, includeFilter: FileFilter, excludeFilter: FileFilter): Source =
+      new Source(base, includeFilter, excludeFilter)
+
+    /**
+     * Creates a new `WatchSource` for watching files.
+     *
+     * @param base          The base directory from which to include files.
+     * @return An instance of `Source`.
+     */
+    def apply(base: File): Source =
+      apply(base, AllPassFilter, NothingFilter)
+  }
 
   private[this] class AWatched extends Watched
 
@@ -96,4 +126,18 @@ object Watched {
     AttributeKey[WatchState]("watch state", "Internal: tracks state for continuous execution.")
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
+
+  def createWatchService(): WatchService = {
+    sys.props.get("sbt.watch.mode") match {
+      case Some("polling") =>
+        new PollingWatchService(PollDelay)
+      case Some("nio") =>
+        FileSystems.getDefault.newWatchService()
+      case _ if Properties.isMac =>
+        // WatchService is slow on macOS - use old polling mode
+        new PollingWatchService(PollDelay)
+      case _ =>
+        FileSystems.getDefault.newWatchService()
+    }
+  }
 }

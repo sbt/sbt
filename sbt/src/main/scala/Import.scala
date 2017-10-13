@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 trait Import {
@@ -50,6 +57,8 @@ trait Import {
   type RichFile = sbt.io.RichFile
   type SimpleFileFilter = sbt.io.SimpleFileFilter
   type SimpleFilter = sbt.io.SimpleFilter
+  type WatchSource = sbt.internal.io.Source
+  val WatchSource = sbt.internal.io.Source
 
   // sbt.util
   type AbstractLogger = sbt.util.AbstractLogger

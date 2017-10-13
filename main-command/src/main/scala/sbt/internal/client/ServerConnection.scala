@@ -1,6 +1,10 @@
 /*
- * Copyright (C) 2016 Lightbend Inc. <http://www.typesafe.com>
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 package internal
 package client
@@ -30,8 +34,8 @@ abstract class ServerConnection(connection: Socket) {
             bytesRead = in.read(readBuffer)
             buffer = buffer ++ readBuffer.toVector.take(bytesRead)
             // handle un-framing
-            val delimPos = buffer.indexOf(delimiter)
-            if (delimPos > 0) {
+            var delimPos = buffer.indexOf(delimiter)
+            while (delimPos > -1) {
               val chunk = buffer.take(delimPos)
               buffer = buffer.drop(delimPos + 1)
 
@@ -47,6 +51,7 @@ abstract class ServerConnection(connection: Socket) {
                     case event: StringEvent  => onLogEntry(event)
                   }
                 )
+              delimPos = buffer.indexOf(delimiter)
             }
 
           } catch {

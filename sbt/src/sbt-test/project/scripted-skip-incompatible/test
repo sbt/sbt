@@ -1,0 +1,17 @@
+# Setup failing test that should be skipped when tests are discovered
+$ copy-file changes/Fail.scala src/sbt-test/group/skipped/changes/Fail.scala
+$ copy-file changes/build.properties src/sbt-test/group/skipped/project/build.properties
+$ copy-file changes/test src/sbt-test/group/skipped/test
+
+# Should fail when run explicitly
+-> scripted group/skipped
+
+# Should be skipped when discovered
+> scripted
+
+# Setup the same test without a project/build.properties file
+$ copy-file changes/Fail.scala src/sbt-test/group/not-skipped/changes/Fail.scala
+$ copy-file changes/test src/sbt-test/group/not-skipped/test
+
+# Running discovered tests should fail
+-> scripted

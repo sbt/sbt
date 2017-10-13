@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package internal
 
@@ -54,7 +61,7 @@ private[sbt] final class DefinedSbtValues(val sbtFiles: Seq[compiler.EvalDefinit
       file <- sbtFiles
       m = file.enclosingModule
       v <- file.valNames
-    } yield s"import ${m}.${v}"
+    } yield s"import ${m}.`${v}`"
   }
   def generated: Seq[File] =
     sbtFiles flatMap (_.generated)

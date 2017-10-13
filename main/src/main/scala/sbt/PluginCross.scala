@@ -1,10 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
- * Copyright 2012 Johannes Rudolph
- *
- * This was basically copied from the sbt source code and then adapted to use
- * `sbtVersion in pluginCrossBuild`.
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import sbt.internal.util.complete.{ Parser, DefaultParsers }
@@ -15,9 +15,8 @@ import Def.ScopedKey
 import sbt.internal.Load
 import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
-import sbt.librarymanagement.Configurations._
 import sbt.librarymanagement.VersionNumber
-import Project.{ inConfig, inScope }
+import Project.{ inScope }
 
 /**
  * Module responsible for plugin cross building.

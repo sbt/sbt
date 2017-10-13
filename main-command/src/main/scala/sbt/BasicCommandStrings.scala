@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import sbt.util.Level
@@ -160,6 +164,12 @@ $AliasCommand name=
   def Shell = "shell"
   def ShellDetailed =
     "Provides an interactive prompt and network server from which commands can be run."
+
+  def StartServer = "startServer"
+  def StartServerDetailed =
+    s"""$StartServer
+	Starts the server if it has not been started. This is intended to be used with
+	-Dsbt.server.autostart=false."""
 
   def OldShell = "oldshell"
   def OldShellDetailed = "Provides an interactive prompt from which commands can be run."

@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt.std
 
 class TaskPosSpec {
@@ -152,6 +159,15 @@ class TaskPosSpec {
   }
 
   locally {
+    import sbt._, Def._
+    def withKey(foo: => SettingKey[String]) = {
+      Def.task { if (true) foo.value }
+    }
+    val foo = settingKey[String]("")
+    withKey(foo)
+  }
+
+  locally {
     import sbt._
     import sbt.Def._
     val foo = settingKey[String]("")
@@ -170,5 +186,18 @@ class TaskPosSpec {
     val baz = Def.task[Seq[String]] {
       (1 to 10).map(_ => foo.value)
     }
+  }
+
+  locally {
+    import sbt._, Def._
+    def withKey(bar: => SettingKey[Int]) = {
+      Def.task {
+        List(42).map { _ =>
+          if (true) bar.value
+        }
+      }
+    }
+    val bar = settingKey[Int]("bar")
+    withKey(bar)
   }
 }

@@ -1,8 +1,15 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt.internal.testing
 
 import sbt.testing.Status
 
-import _root_.sjsonnew.{ deserializationError, serializationError, Builder, JsonFormat, Unbuilder }
+import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 
 trait StatusFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val StatusFormat: JsonFormat[Status] = new JsonFormat[Status] {

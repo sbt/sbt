@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2008, 2009, 2010, 2011  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import sbt.internal.{
@@ -101,7 +105,9 @@ object StandardMain {
     val previous = TrapExit.installManager()
     try {
       try {
-        MainLoop.runLogged(s)
+        try {
+          MainLoop.runLogged(s)
+        } finally exchange.shutdown
       } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
     } finally TrapExit.uninstallManager(previous)
   }
@@ -159,9 +165,6 @@ object BuiltinCommands {
 
   def DefaultCommands: Seq[Command] =
     Seq(
-      ignore,
-      help,
-      completionsCommand,
       about,
       tasks,
       settingsCommand,
@@ -169,9 +172,6 @@ object BuiltinCommands {
       templateCommand,
       projects,
       project,
-      reboot,
-      read,
-      history,
       set,
       sessionCommand,
       inspect,
@@ -182,35 +182,21 @@ object BuiltinCommands {
       PluginCross.pluginCross,
       PluginCross.pluginSwitch,
       Cross.crossRestoreSession,
-      setOnFailure,
-      clearOnFailure,
-      stashOnFailure,
-      popOnFailure,
       setLogLevel,
       plugin,
       plugins,
       writeSbtVersion,
       notifyUsersAboutShell,
-      ifLast,
-      multi,
       shell,
-      oldshell,
-      BasicCommands.client,
-      continuous,
+      startServer,
       eval,
-      alias,
-      append,
       last,
       lastGrep,
       export,
       boot,
-      nop,
-      call,
-      exit,
-      early,
       initialize,
       act
-    ) ++ compatCommands
+    ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
     WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
@@ -736,6 +722,12 @@ object BuiltinCommands {
     if (exec.commandLine.trim.isEmpty) newState
     else newState.clearGlobalLog
   }
+
+  def startServer: Command =
+    Command.command(StartServer, Help.more(StartServer, StartServerDetailed)) { s0 =>
+      val exchange = StandardMain.exchange
+      exchange.runServer(s0)
+    }
 
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
   private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()

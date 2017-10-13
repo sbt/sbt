@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 package internal
 
@@ -324,8 +328,10 @@ private[sbt] object Load {
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
     val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k)).toVector
     val projectsMap = projects.mapValues(_.defined.keySet)
-    val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap)
-    val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap)
+    val configsMap: Map[String, Seq[Configuration]] =
+      projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
+    val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
+    val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap, configsMap)
     new StructureIndex(
       Index.stringToKeyMap(attributeKeys),
       Index.taskToKeyMap(data),
@@ -356,12 +362,6 @@ private[sbt] object Load {
       scopeLocal = structure.scopeLocal
     )
   }
-
-  def isProjectThis(s: Setting[_]): Boolean =
-    s.key.scope.project match {
-      case This | Select(ThisProject) => true
-      case _                          => false
-    }
 
   def buildConfigurations(
       loaded: LoadedBuild,

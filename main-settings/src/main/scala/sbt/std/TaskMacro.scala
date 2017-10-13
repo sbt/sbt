@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package std
 
@@ -54,7 +61,7 @@ object FullInstance
                                  KeyRanks.DTask)
 
   def flatten[T](in: Initialize[Task[Initialize[Task[T]]]]): Initialize[Task[T]] = {
-    import Scoped._, TupleSyntax._
+    import TupleSyntax._
     (in, settingsData, Def.capturedTransformations) {
       (a: Task[Initialize[Task[T]]], data: Task[SS], f) =>
         import TaskExtra.multT2Task
@@ -63,7 +70,7 @@ object FullInstance
   }
 
   def flattenFun[S, T](in: Initialize[Task[S => Initialize[Task[T]]]]): Initialize[S => Task[T]] = {
-    import Scoped._, TupleSyntax._
+    import TupleSyntax._
     (in, settingsData, Def.capturedTransformations) {
       (a: Task[S => Initialize[Task[T]]], data: Task[SS], f) => (s: S) =>
         import TaskExtra.multT2Task

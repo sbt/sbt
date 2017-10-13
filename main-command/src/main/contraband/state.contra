@@ -12,3 +12,7 @@ type Exec {
 type CommandSource {
   channelName: String!
 }
+
+enum ServerAuthentication {
+  Token
+}

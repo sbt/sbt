@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2008, 2009  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt.internal.util
 
 import jline.console.ConsoleReader
@@ -120,7 +124,9 @@ private[sbt] object JLine {
   def usingTerminal[T](f: jline.Terminal => T): T =
     withTerminal { t =>
       t.restore
-      f(t)
+      val result = f(t)
+      t.restore
+      result
     }
 
   def createReader(): ConsoleReader = createReader(None, JLine.makeInputStream(true))

@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import java.io.File
@@ -37,7 +41,7 @@ import sbt.internal.{
   LogManager
 }
 import sbt.io.{ FileFilter, WatchService }
-import sbt.internal.io.{ Source, WatchState }
+import sbt.internal.io.WatchState
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
@@ -127,13 +131,15 @@ object Keys {
   val historyPath = SettingKey(BasicKeys.historyPath)
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
   val serverPort = SettingKey(BasicKeys.serverPort)
+  val serverHost = SettingKey(BasicKeys.serverHost)
+  val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
-  val watchSources = taskKey[Seq[Source]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
-  val watchTransitiveSources = taskKey[Seq[Source]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
+  val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
+  val watchTransitiveSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
   val watchingMessage = settingKey[WatchState => String]("The message to show when triggered execution waits for sources to change.").withRank(DSetting)
   val triggeredMessage = settingKey[WatchState => String]("The message to show before triggered execution executes an action after sources change.").withRank(DSetting)
 
@@ -363,6 +369,8 @@ object Keys {
   val publishLocalConfiguration = taskKey[PublishConfiguration]("Configuration for publishing to the local Ivy repository.").withRank(DTask)
   val publishM2Configuration = taskKey[PublishConfiguration]("Configuration for publishing to the local Maven repository.").withRank(DTask)
   val makePomConfiguration = settingKey[MakePomConfiguration]("Configuration for generating a pom.").withRank(DSetting)
+  val makeIvyXmlConfiguration = taskKey[PublishConfiguration]("Configuration for generating ivy.xml.").withRank(DSetting)
+  val makeIvyXmlLocalConfiguration = taskKey[PublishConfiguration]("Configuration for generating ivy.xml.").withRank(DSetting)
   val packagedArtifacts = taskKey[Map[Artifact, File]]("Packages all artifacts for publishing and maps the Artifact definition to the generated file.").withRank(CTask)
   val publishMavenStyle = settingKey[Boolean]("Configures whether to generate and publish a pom (true) or Ivy file (false).").withRank(BSetting)
   val credentials = taskKey[Seq[Credentials]]("The credentials to use for updating and publishing.").withRank(BMinusTask)
@@ -370,6 +378,8 @@ object Keys {
   val makePom = taskKey[File]("Generates a pom for publishing when publishing Maven-style.").withRank(BPlusTask)
   val deliver = taskKey[File]("Generates the Ivy file for publishing to a repository.").withRank(BTask)
   val deliverLocal = taskKey[File]("Generates the Ivy file for publishing to the local repository.").withRank(BTask)
+  // makeIvyXml is currently identical to the confusingly-named "deliver", which may be deprecated in the future
+  val makeIvyXml = taskKey[File]("Generates the Ivy file for publishing to a repository.").withRank(BTask)
   val publish = taskKey[Unit]("Publishes artifacts to a repository.").withRank(APlusTask)
   val publishLocal = taskKey[Unit]("Publishes artifacts to the local Ivy repository.").withRank(APlusTask)
   val publishM2 = taskKey[Unit]("Publishes artifacts to the local Maven repository.").withRank(ATask)
