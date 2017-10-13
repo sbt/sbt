@@ -38,7 +38,34 @@
         "scopeName": "source.scala",
         "path": "./syntaxes/Scala.tmLanguage"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "scalaOutline.refresh",
+        "title": "Refresh Scala Outline",
+        "icon": {
+          "dark": "images/dark/icon-refresh.svg",
+          "light": "images/light/icon-refresh.svg"
+        }
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "scalaOutline",
+          "name": "Scala Outline"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "scalaOutline.refresh",
+          "when": "view == scalaOutline",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "activationEvents": [
     "workspaceContains:build.sbt"
