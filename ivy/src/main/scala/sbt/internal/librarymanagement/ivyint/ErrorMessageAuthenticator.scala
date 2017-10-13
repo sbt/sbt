@@ -1,6 +1,7 @@
 package sbt.internal.librarymanagement
 package ivyint
 
+import java.lang.reflect.InvocationTargetException
 import java.net.{ Authenticator, PasswordAuthentication }
 
 import org.apache.ivy.util.Message
@@ -14,16 +15,39 @@ object ErrorMessageAuthenticator {
   private var securityWarningLogged = false
 
   private def originalAuthenticator: Option[Authenticator] = {
-    try {
+    if (isJavaVersion9Plus) getDefaultAuthenticator else getTheAuthenticator
+  }
+
+  private[this] def getTheAuthenticator: Option[Authenticator] = {
+    withJavaReflectErrorHandling {
       val field = classOf[Authenticator].getDeclaredField("theAuthenticator")
       field.setAccessible(true)
       Option(field.get(null).asInstanceOf[Authenticator])
-    } catch {
-      // TODO - Catch more specific errors.
-      case t: Throwable =>
-        Message.debug("Error occurred while getting the original authenticator: " + t.getMessage)
-        None
     }
+  }
+
+  private[this] def getDefaultAuthenticator: Option[Authenticator] =
+    withJavaReflectErrorHandling {
+      val method = classOf[Authenticator].getDeclaredMethod("getDefault")
+      Option(method.invoke(null).asInstanceOf[Authenticator])
+    }
+
+  private[this] def withJavaReflectErrorHandling[A](t: => Option[A]): Option[A] = {
+    try t
+    catch {
+      case e: ReflectiveOperationException => handleReflectionException(e)
+      case e: SecurityException            => handleReflectionException(e)
+      case e: InvocationTargetException    => handleReflectionException(e)
+      case e: ExceptionInInitializerError  => handleReflectionException(e)
+      case e: IllegalArgumentException     => handleReflectionException(e)
+      case e: NullPointerException         => handleReflectionException(e)
+      case e: ClassCastException           => handleReflectionException(e)
+    }
+  }
+
+  private[this] def handleReflectionException(t: Throwable) = {
+    Message.debug("Error occurred while getting the original authenticator: " + t.getMessage)
+    None
   }
 
   private lazy val ivyOriginalField = {
@@ -76,6 +100,15 @@ object ErrorMessageAuthenticator {
       }
     doInstallIfIvy(originalAuthenticator)
   }
+
+  private[this] def isJavaVersion9Plus = javaVersion > 8
+  private[this] def javaVersion = {
+    // See Oracle section 1.5.3 at:
+    // https://docs.oracle.com/javase/8/docs/technotes/guides/versioning/spec/versioning2.html
+    val version = sys.props("java.specification.version").split("\\.").map(_.toInt)
+    if (version(0) == 1) version(1) else version(0)
+  }
+
 }
 
 /**
