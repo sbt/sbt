@@ -19,6 +19,9 @@ package backend
 
 import sbt._
 
+import scala.language.implicitConversions
+import scala.language.reflectiveCalls
+
 object SbtUpdateReport {
   type OrganizationArtifactReport = {
     def modules: Seq[ModuleReport]

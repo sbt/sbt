@@ -1,9 +1,16 @@
 ScriptedPlugin.scriptedSettings
 
-libraryDependencies += "com.github.mdr" %% "ascii-graphs" % "0.0.3"
+libraryDependencies ++= Seq(
+  "com.github.mdr" %% "ascii-graphs" % "0.0.3",
+  "org.specs2"     %% "specs2"       % "2.3.11" % Test
+)
 
-libraryDependencies += "org.specs2" %% "specs2" % "2.3.11" % "test"
-
-scalacOptions ++= Seq("-deprecation", "-unchecked")
+scalacOptions ++= Seq(
+  "-deprecation",
+  "-encoding",
+  "UTF-8",
+  "-feature",
+  "-unchecked"
+)
 
 ScalariformSupport.formatSettings
