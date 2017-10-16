@@ -14,11 +14,13 @@
  *    limitations under the License.
  */
 
-package sbt
+package net.virtualvoid.sbt.graph
 
-/** Accessors to private[sbt] symbols. */
-object SbtAccess {
-  val unmanagedScalaInstanceOnly = Defaults.unmanagedScalaInstanceOnly
+import sbinary.{ Format, DefaultProtocol }
 
-  def getTerminalWidth: Int = internal.util.JLine.usingTerminal(_.getWidth)
+object ModuleGraphProtocol extends DefaultProtocol {
+  implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
+  implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
+  implicit val ModuleFormat: Format[Module] = asProduct6(Module)(Module.unapply(_).get)
+  implicit val ModuleGraphFormat: Format[ModuleGraph] = asProduct2(ModuleGraph.apply _)(ModuleGraph.unapply(_).get)
 }

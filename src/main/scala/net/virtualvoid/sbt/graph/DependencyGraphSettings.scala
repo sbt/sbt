@@ -16,10 +16,13 @@
 
 package net.virtualvoid.sbt.graph
 
+import compat._
+import sbt.librarymanagement._
+
 import sbt._
 import Keys._
 
-import CrossVersion._
+import sbt.CrossVersion._
 
 import sbt.complete.Parser
 
@@ -35,21 +38,26 @@ object DependencyGraphSettings {
   import DependencyGraphKeys._
   import ModuleGraphProtocol._
 
-  def graphSettings = Seq(
+  def graphSettings = baseSettings ++ ingnoreMissingSettings ++ reportSettings
+
+  def baseSettings = Seq(
     ivyReportFunction := ivyReportFunctionTask.value,
-    updateConfiguration in ignoreMissingUpdate := {
-      val config = updateConfiguration.value
-      new UpdateConfiguration(config.retrieve, true, config.logging)
-    },
-    ignoreMissingUpdateT,
-    filterScalaLibrary in Global := true) ++ Seq(Compile, Test, IntegrationTest, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
+    filterScalaLibrary in Global := true)
+
+  def reportSettings =
+    Seq(Compile, Test, IntegrationTest, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
     ivyReport := {
       Def.task {
-        ivyReportFunction.value.apply(config.toString)
+        val ivyReportF = ivyReportFunction.value
+
+        ivyReportF(config.toString)
       }.dependsOn(ignoreMissingUpdate)
     }.value,
+
+    // ivyReport := { Def.task { ivyReportFunction.value.apply(config.toString) } dependsOn (ignoreMissingUpdate) }.value,
+
     crossProjectId := sbt.CrossVersion(
       scalaVersion.value,
       scalaBinaryVersion.value)(projectID.value),
@@ -58,9 +66,10 @@ object DependencyGraphSettings {
       val root = crossProjectId.value
       val config = configuration.value
 
-      update.configuration(config.name).map(report ⇒
+      update.configuration(convertConfig(config)).map(report ⇒
         SbtUpdateReport.fromConfigurationReport(report, root)).getOrElse(ModuleGraph.empty)
     },
+
     moduleGraphIvyReport := {
       IvyReport.fromReportFile(absoluteReportPath(ivyReport.value))
     },
@@ -216,7 +225,7 @@ object DependencyGraphSettings {
   type HasModule = {
     val module: ModuleID
   }
-  def crossName(ivyModule: IvySbt#Module) =
+  def crossName(ivyModule: ModuleDescriptor) =
     ivyModule.moduleSettings match {
       case ic: InlineConfiguration ⇒ ic.module.name
       case hm: HasModule if hm.getClass.getName == "sbt.InlineConfigurationWithExcludes" ⇒ hm.module.name
@@ -231,47 +240,4 @@ object DependencyGraphSettings {
       case _ ⇒ None
     }
   }
-
-  /**
-   * This is copied directly from sbt/main/Defaults.java and then changed to update the UpdateConfiguration
-   * to ignore missing artifacts.
-   */
-  def ignoreMissingUpdateT =
-    ignoreMissingUpdate := Def.task {
-      val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
-      val isRoot = executionRoots.value contains resolvedScoped.value
-      val s = streams.value
-      val scalaProvider = appConfiguration.value.provider.scalaProvider
-
-      // Only substitute unmanaged jars for managed jars when the major.minor parts of the versions the same for:
-      //   the resolved Scala version and the scalaHome version: compatible (weakly- no qualifier checked)
-      //   the resolved Scala version and the declared scalaVersion: assume the user intended scalaHome to override anything with scalaVersion
-      def subUnmanaged(subVersion: String, jars: Seq[File]) = (sv: String) ⇒
-        (partialVersion(sv), partialVersion(subVersion), partialVersion(scalaVersion.value)) match {
-          case (Some(res), Some(sh), _) if res == sh     ⇒ jars
-          case (Some(res), _, Some(decl)) if res == decl ⇒ jars
-          case _                                         ⇒ Nil
-        }
-
-      val subScalaJars: String ⇒ Seq[File] = SbtAccess.unmanagedScalaInstanceOnly.value match {
-        case Some(si) ⇒ subUnmanaged(si.version, si.jars)
-        case None     ⇒ sv ⇒ if (scalaProvider.version == sv) scalaProvider.jars else Nil
-      }
-
-      val transform: UpdateReport ⇒ UpdateReport =
-        r ⇒ Classpaths.substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
-
-      val show = Reference.display(thisProjectRef.value)
-
-      Classpaths.cachedUpdate(
-        cacheFile = s.cacheDirectory,
-        label = show,
-        module = ivyModule.value,
-        config = (updateConfiguration in ignoreMissingUpdate).value,
-        transform = transform,
-        skip = (skip in update).value,
-        force = isRoot,
-        depsUpdated = depsUpdated,
-        log = s.log)
-    }.value
 }

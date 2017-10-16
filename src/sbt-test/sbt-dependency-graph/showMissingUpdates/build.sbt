@@ -1,7 +1,6 @@
-scalaVersion := "2.9.2"
+scalaVersion := "2.12.3"
 
-libraryDependencies +=
-  "at.blub" % "blib" % "1.2.3" % "test"
+libraryDependencies += "at.blub" % "blib" % "1.2.3" % Test
 
 TaskKey[Unit]("check") := {
   val report = (ivyReport in Test).value

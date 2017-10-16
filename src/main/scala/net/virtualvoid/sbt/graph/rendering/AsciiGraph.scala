@@ -17,11 +17,12 @@
 package net.virtualvoid.sbt.graph
 package rendering
 
-import com.github.mdr.ascii.layout._
+import com.github.mdr.ascii.graph.Graph
+import com.github.mdr.ascii.layout.GraphLayout
 
 object AsciiGraph {
   def asciiGraph(graph: ModuleGraph): String =
-    Layouter.renderGraph(buildAsciiGraph(graph))
+    GraphLayout.renderGraph(buildAsciiGraph(graph))
 
   private def buildAsciiGraph(moduleGraph: ModuleGraph): Graph[String] = {
     def renderVertex(module: Module): String =
@@ -31,7 +32,7 @@ object AsciiGraph {
         module.error.map("\nerror: " + _).getOrElse("") +
         module.evictedByVersion.map(_ formatted "\nevicted by: %s").getOrElse("")
 
-    val vertices = moduleGraph.nodes.map(renderVertex).toList
+    val vertices = moduleGraph.nodes.map(renderVertex).toSet
     val edges = moduleGraph.edges.toList.map { case (from, to) ⇒ (renderVertex(moduleGraph.module(from)), renderVertex(moduleGraph.module(to))) }
     Graph(vertices, edges)
   }

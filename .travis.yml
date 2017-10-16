@@ -2,4 +2,12 @@ sudo: false
 language: scala
 jdk: oraclejdk7
 script:
-- sbt test scripted
+# pending https://github.com/mdr/ascii-graphs/pull/11
+- git clone git://github.com/MasseGuillaume/ascii-graphs.git
+- pushd ascii-graphs
+- git checkout 2.12
+- sbt "+ publishLocal"
+- popd
+
+- sbt ";^test ;^scripted"
+
