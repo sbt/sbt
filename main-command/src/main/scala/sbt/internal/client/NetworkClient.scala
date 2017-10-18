@@ -111,7 +111,7 @@ class NetworkClient(arguments: List[String]) { self =>
     try {
       connection.publish(bytes)
     } catch {
-      case e: SocketException =>
+      case _: SocketException =>
       // log.debug(e.getMessage)
       // toDel += client
     }

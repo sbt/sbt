@@ -46,7 +46,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
     event match {
       case e: ConsolePromptEvent =>
         askUserThread match {
-          case Some(x) => //
+          case Some(_) =>
           case _ =>
             val x = makeAskUserThread(e.state)
             askUserThread = Some(x)
@@ -56,7 +56,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
         e.lastSource match {
           case Some(src) if src.channelName != name =>
             askUserThread match {
-              case Some(x) =>
+              case Some(_) =>
               // keep listening while network-origin command is running
               // make sure to test Windows and Cygwin, if you uncomment
               // shutdown()
