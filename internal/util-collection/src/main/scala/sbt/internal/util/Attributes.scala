@@ -229,7 +229,9 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
     }
 
   def entries: Iterable[AttributeEntry[_]] =
-    for ((k: AttributeKey[kt], v) <- backing) yield AttributeEntry(k, v.asInstanceOf[kt])
+    backing.collect {
+      case (k: AttributeKey[kt], v) => AttributeEntry(k, v.asInstanceOf[kt])
+    }
 
   private[sbt] def setCond[T](k: AttributeKey[T], opt: Option[T]): AttributeMap =
     opt match {
