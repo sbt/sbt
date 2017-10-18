@@ -59,7 +59,7 @@ object AList {
   }
 
   /** AList for the arbitrary arity data structure KList. */
-  def klist[KL[M[_]] <: KList[M] { type Transform[N[_]] = KL[N] }]: AList[KL] = new AList[KL] {
+  def klist[KL[M[_]] <: KList.Aux[M, KL]]: AList[KL] = new AList[KL] {
     def transform[M[_], N[_]](k: KL[M], f: M ~> N) = k.transform(f)
     def foldr[M[_], T](k: KL[M], f: (M[_], T) => T, init: T): T = k.foldr(f, init)
     override def apply[M[_], C](k: KL[M], f: KL[Id] => C)(implicit app: Applicative[M]): M[C] = k.apply(f)(app)
