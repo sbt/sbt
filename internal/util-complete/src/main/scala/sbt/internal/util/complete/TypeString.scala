@@ -32,7 +32,7 @@ private[sbt] object TypeString {
   def cleanup(typeString: String): String =
     parse(typeString, typeStringParser) match {
       case Right(ts) => ts.toString
-      case Left(err) => typeString
+      case Left(_)   => typeString
     }
 
   /**
