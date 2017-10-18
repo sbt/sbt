@@ -386,7 +386,8 @@ class ScriptedRunner {
   ): Unit = {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
-    val scriptedTests = get(tests, resourceBaseDirectory, logger).map(st => (st.group, st.name))
+    val scriptedTests =
+      get(tests, resourceBaseDirectory, _ => true, logger).map(st => (st.group, st.name))
     val scriptedRunners = runner.batchScriptedRunner(scriptedTests, prescripted, instances, logger)
     val parallelRunners = scriptedRunners.toParArray
     val pool = new java.util.concurrent.ForkJoinPool(instances)
