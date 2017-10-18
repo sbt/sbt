@@ -577,8 +577,7 @@ trait Init[Scope] {
     def join[T](inits: Seq[Initialize[T]]): Initialize[Seq[T]] = uniform(inits)(idFun)
 
     def joinAny[M[_]](inits: Seq[Initialize[M[T]] forSome { type T }]): Initialize[Seq[M[_]]] =
-      join(inits.asInstanceOf[Seq[Initialize[M[Any]]]])
-        .asInstanceOf[Initialize[Seq[M[T] forSome { type T }]]]
+      join(inits.asInstanceOf[Seq[Initialize[M[_]]]])
   }
 
   object SettingsDefinition {
