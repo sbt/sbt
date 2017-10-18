@@ -165,7 +165,7 @@ trait TaskExtra {
           Result.tryValues[S](tx :: Nil, x)
       })
     def ||[T >: S](alt: Task[T]): Task[T] = flatMapR {
-      case Value(v) => task(v); case Inc(i) => alt
+      case Value(v) => task(v); case Inc(_) => alt
     }
     def &&[T](alt: Task[T]): Task[T] = flatMap(_ => alt)
   }
@@ -242,7 +242,7 @@ object TaskExtra extends TaskExtra {
       case Seq()     => sys.error("Cannot reduce empty sequence")
       case Seq(x)    => x
       case Seq(x, y) => reducePair(x, y, f)
-      case z =>
+      case _ =>
         val (a, b) = i.splitAt(i.size / 2)
         reducePair(reduced(a, f), reduced(b, f), f)
     }
@@ -254,7 +254,7 @@ object TaskExtra extends TaskExtra {
     val incs = failuresM(a)(in)
     if (incs.isEmpty) expectedFailure else incs
   }
-  def failM[T]: Result[T] => Incomplete = { case Inc(i) => i; case x => expectedFailure }
+  def failM[T]: Result[T] => Incomplete = { case Inc(i) => i; case _ => expectedFailure }
 
   def expectedFailure = throw Incomplete(None, message = Some("Expected dependency to fail."))
 

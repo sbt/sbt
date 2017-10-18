@@ -34,7 +34,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   val hostname =
     try InetAddress.getLocalHost.getHostName
     catch {
-      case x: IOException => "localhost"
+      case _: IOException => "localhost"
     }
 
   /**The dir in which we put all result files. Is equal to the given dir + "/test-reports"*/

@@ -36,7 +36,7 @@ final class SbtHandler(directory: File,
 
   def onSbtInstance(i: Option[SbtInstance])(f: (Process, IPC.Server) => Unit): Option[SbtInstance] =
     i match {
-      case Some(ai @ SbtInstance(process, server)) if server.isClosed =>
+      case Some(SbtInstance(_, server)) if server.isClosed =>
         finish(i)
         onNewSbtInstance(f)
       case Some(SbtInstance(process, server)) =>
@@ -66,7 +66,7 @@ final class SbtHandler(directory: File,
         send("exit", server)
         process.exitValue()
       } catch {
-        case e: IOException => process.destroy()
+        case _: IOException => process.destroy()
       }
     case None =>
   }
@@ -85,7 +85,7 @@ final class SbtHandler(directory: File,
     val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }
     thread.start()
     try { receive("Remote sbt initialization failed", server) } catch {
-      case e: java.net.SocketException => throw new TestFailed("Remote sbt initialization failed")
+      case _: java.net.SocketException => throw new TestFailed("Remote sbt initialization failed")
     }
     p
   }
