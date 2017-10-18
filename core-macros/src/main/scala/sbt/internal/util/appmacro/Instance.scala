@@ -32,6 +32,9 @@ import scala.reflect._
 import macros._
 
 object Instance {
+  type Aux[M0[_]] = Instance { type M[x] = M0[x] }
+  type Aux2[M0[_], N[_]] = Instance { type M[x] = M0[N[x]] }
+
   final val ApplyName = "app"
   final val FlattenName = "flatten"
   final val PureName = "pure"
@@ -204,19 +207,18 @@ object Instance {
 
   import Types._
 
-  implicit def applicativeInstance[A[_]](
-      implicit ap: Applicative[A]): Instance { type M[x] = A[x] } = new Instance {
-    type M[x] = A[x]
-    def app[K[L[x]], Z](in: K[A], f: K[Id] => Z)(implicit a: AList[K]) = a.apply[A, Z](in, f)
-    def map[S, T](in: A[S], f: S => T) = ap.map(f, in)
-    def pure[S](s: () => S): M[S] = ap.pure(s())
-  }
+  implicit def applicativeInstance[A[_]](implicit ap: Applicative[A]): Instance.Aux[A] =
+    new Instance {
+      type M[x] = A[x]
+      def app[K[L[x]], Z](in: K[A], f: K[Id] => Z)(implicit a: AList[K]) = a.apply[A, Z](in, f)
+      def map[S, T](in: A[S], f: S => T) = ap.map(f, in)
+      def pure[S](s: () => S): M[S] = ap.pure(s())
+    }
 
-  type AI[A[_]] = Instance { type M[x] = A[x] }
-  def compose[A[_], B[_]](implicit a: AI[A], b: AI[B]): Instance { type M[x] = A[B[x]] } =
+  def compose[A[_], B[_]](implicit a: Aux[A], b: Aux[B]): Instance.Aux2[A, B] =
     new Composed[A, B](a, b)
   // made a public, named, unsealed class because of trouble with macros and inference when the Instance is not an object
-  class Composed[A[_], B[_]](a: AI[A], b: AI[B]) extends Instance {
+  class Composed[A[_], B[_]](a: Aux[A], b: Aux[B]) extends Instance {
     type M[x] = A[B[x]]
     def pure[S](s: () => S): A[B[S]] = a.pure(() => b.pure(s))
     def map[S, T](in: M[S], f: S => T): M[T] = a.map(in, (bv: B[S]) => b.map(bv, f))
