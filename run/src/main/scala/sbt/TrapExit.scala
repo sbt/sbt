@@ -162,7 +162,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       executionThread.start() // thread actually evaluating `f`
       finish(app, log)
     } catch {
-      case e: InterruptedException => // here, the thread that started the run has been interrupted, not the main thread of the executing code
+      case _: InterruptedException => // here, the thread that started the run has been interrupted, not the main thread of the executing code
         cancel(executionThread, app, log)
     } finally app.cleanup()
   }
