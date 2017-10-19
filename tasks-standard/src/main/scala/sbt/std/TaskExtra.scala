@@ -118,7 +118,7 @@ trait TaskExtra {
   }
 
   final implicit def multT2Task[A, B](in: (Task[A], Task[B])) =
-    multInputTask[({ type l[L[x]] = (L[A], L[B]) })#l](in)(AList.tuple2[A, B])
+    multInputTask[λ[L[x] => (L[A], L[B])]](in)(AList.tuple2[A, B])
 
   final implicit def multInputTask[K[L[X]]](tasks: K[Task])(implicit a: AList[K]): MultiInTask[K] =
     new MultiInTask[K] {
@@ -248,7 +248,7 @@ object TaskExtra extends TaskExtra {
     }
 
   def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
-    multInputTask[({ type l[L[x]] = (L[S], L[S]) })#l]((a, b))(AList.tuple2[S, S]) map f.tupled
+    multInputTask[λ[L[x] => (L[S], L[S])]]((a, b))(AList.tuple2[S, S]) map f.tupled
 
   def anyFailM[K[L[x]]](implicit a: AList[K]): K[Result] => Seq[Incomplete] = in => {
     val incs = failuresM(a)(in)

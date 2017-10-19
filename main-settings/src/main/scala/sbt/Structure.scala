@@ -441,7 +441,7 @@ object Scoped {
       )
 
     private[this] def onTasks[T](f: K[Task] => Task[T]): App[T] =
-      Def.app[({ type l[L[x]] = K[(L ∙ Task)#l] })#l, Task[T]](inputs)(f)(AList.asplit[K, Task](a))
+      Def.app[λ[L[x] => K[(L ∙ Task)#l]], Task[T]](inputs)(f)(AList.asplit[K, Task](a))
 
     def flatMap[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMap(convert(f)))
     def flatMapR[T](f: Fun[Result, Task[T]]): App[T] = onTasks(_.flatMapR(convert(f)))

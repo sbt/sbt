@@ -204,7 +204,7 @@ abstract class EvaluateSettings[Scope] {
     new MixedNode[ConstK[Unit]#l, T]((), _ => f(), AList.empty)
 
   private[this] def single[S, T](in: INode[S], f: S => T): INode[T] =
-    new MixedNode[({ type l[L[x]] = L[S] })#l, T](in, f, AList.single[S])
+    new MixedNode[λ[L[x] => L[S]], T](in, f, AList.single[S])
 
   private[this] final class BindNode[S, T](in: INode[S], f: S => INode[T]) extends INode[T] {
     protected def dependsOn = in :: Nil

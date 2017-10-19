@@ -101,14 +101,14 @@ trait Init[Scope] {
   def bind[S, T](in: Initialize[S])(f: S => Initialize[T]): Initialize[T] = new Bind(f, in)
 
   def map[S, T](in: Initialize[S])(f: S => T): Initialize[T] =
-    new Apply[({ type l[L[x]] = L[S] })#l, T](f, in, AList.single[S])
+    new Apply[λ[L[x] => L[S]], T](f, in, AList.single[S])
 
   def app[K[L[x]], T](inputs: K[Initialize])(f: K[Id] => T)(
       implicit alist: AList[K]
   ): Initialize[T] = new Apply[K, T](f, inputs, alist)
 
   def uniform[S, T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] =
-    new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
+    new Apply[λ[L[x] => List[L[S]]], T](f, inputs.toList, AList.seq[S])
 
   /**
    * The result of this initialization is the validated `key`.
@@ -560,7 +560,7 @@ trait Init[Scope] {
     def zip[S](o: Initialize[S]): Initialize[(T, S)] = zipTupled(o)(idFun)
     def zipWith[S, U](o: Initialize[S])(f: (T, S) => U): Initialize[U] = zipTupled(o)(f.tupled)
     private[this] def zipTupled[S, U](o: Initialize[S])(f: ((T, S)) => U): Initialize[U] =
-      new Apply[({ type l[L[x]] = (L[T], L[S]) })#l, U](f, (this, o), AList.tuple2[T, S])
+      new Apply[λ[L[x] => (L[T], L[S])], U](f, (this, o), AList.tuple2[T, S])
 
     /** A fold on the static attributes of this and nested Initializes. */
     private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S

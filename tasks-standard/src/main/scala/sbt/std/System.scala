@@ -58,7 +58,7 @@ object Transform {
   }
 
   def uniform[T, D](tasks: Seq[Task[D]])(f: Seq[Result[D]] => Either[Task[T], T]): Node[Task, T] =
-    toNode[T, ({ type l[L[x]] = List[L[D]] })#l](tasks.toList)(f)(AList.seq[D])
+    toNode[T, λ[L[x] => List[L[D]]]](tasks.toList)(f)(AList.seq[D])
 
   def toNode[T, k[L[x]]](inputs: k[Task])(f: k[Result] => Either[Task[T], T])(
       implicit a: AList[k]): Node[Task, T] = new Node[Task, T] {
