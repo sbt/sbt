@@ -13,10 +13,9 @@ trait TypeFunctions {
   sealed trait ConstK[A] { type l[L[x]] = A }
   sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
   sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
-  sealed trait P1of2[M[_, _], A] { type Apply[B] = M[A, B]; type Flip[B] = M[B, A] }
 
-  final val left = new (Id ~> P1of2[Left, Nothing]#Flip) { def apply[T](t: T) = Left(t) }
-  final val right = new (Id ~> P1of2[Right, Nothing]#Apply) { def apply[T](t: T) = Right(t) }
+  final val left = new (Id ~> Left[?, Nothing]) { def apply[T](t: T) = Left(t) }
+  final val right = new (Id ~> Right[Nothing, ?]) { def apply[T](t: T) = Right(t) }
   final val some = new (Id ~> Some) { def apply[T](t: T) = Some(t) }
   final def idFun[T] = (t: T) => t
   final def const[A, B](b: B): A => B = _ => b

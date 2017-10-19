@@ -145,6 +145,9 @@ val collectionProj = (project in file("internal") / "util-collection")
       // Added private[sbt] method to capture State attributes.
       exclude[ReversedMissingMethodProblem]("sbt.internal.util.AttributeMap.setCond"),
 
+      // Dropped in favour of kind-projector's inline type lambda syntax
+      exclude[MissingClassProblem]("sbt.internal.util.TypeFunctions$P1of2"),
+
       // Dropped in favour of plain scala.Function, and its compose method
       exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
