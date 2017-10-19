@@ -515,10 +515,7 @@ object Project extends ProjectExtra {
   def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
     ScopedKey(Scope.fillTaskAxis(scoped.scope, scoped.key), scoped.key)
 
-  def mapScope(f: Scope => Scope) = new (ScopedKey ~> ScopedKey) {
-    def apply[T](key: ScopedKey[T]) =
-      ScopedKey(f(key.scope), key.key)
-  }
+  def mapScope(f: Scope => Scope) = λ[ScopedKey ~> ScopedKey](k => ScopedKey(f(k.scope), k.key))
 
   def transform(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
     val f = mapScope(g)

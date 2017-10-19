@@ -156,9 +156,7 @@ trait Init[Scope] {
   def empty(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
     new Settings0(Map.empty, delegates)
 
-  def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
-    def apply[T](k: ScopedKey[T]): T = getValue(s, k)
-  }
+  def asTransform(s: Settings[Scope]): ScopedKey ~> Id = λ[ScopedKey ~> Id](k => getValue(s, k))
 
   def getValue[T](s: Settings[Scope], k: ScopedKey[T]) =
     s.get(k.scope, k.key) getOrElse (throw new InvalidReference(k))
@@ -246,13 +244,11 @@ trait Init[Scope] {
 
     type ValidatedSettings[T] = Either[Seq[Undefined], SettingSeq[T]]
 
-    val f = new (SettingSeq ~> ValidatedSettings) {
-      def apply[T](ks: Seq[Setting[T]]) = {
-        val (undefs, valid) = Util.separate(ks.zipWithIndex) {
-          case (s, i) => s validateKeyReferenced refMap(s, i == 0)
-        }
-        if (undefs.isEmpty) Right(valid) else Left(undefs.flatten)
+    val f = λ[SettingSeq ~> ValidatedSettings] { (ks: Seq[Setting[_]]) =>
+      val (undefs, valid) = Util.separate(ks.zipWithIndex) {
+        case (s, i) => s validateKeyReferenced refMap(s, i == 0)
       }
+      if (undefs.isEmpty) Right(valid) else Left(undefs.flatten)
     }
 
     type Undefs[_] = Seq[Undefined]
@@ -685,23 +681,15 @@ trait Init[Scope] {
     case Right(x)     => x
   }
 
-  private[this] lazy val getValidated =
-    new (ValidatedInit ~> Initialize) { def apply[T](v: ValidatedInit[T]) = handleUndefined[T](v) }
+  private[this] lazy val getValidated = λ[ValidatedInit ~> Initialize](handleUndefined(_))
 
   // mainly for reducing generated class count
   private[this] def validateKeyReferencedT(g: ValidateKeyRef) =
-    new (Initialize ~> ValidatedInit) {
-      def apply[T](i: Initialize[T]) = i validateKeyReferenced g
-    }
+    λ[Initialize ~> ValidatedInit](_ validateKeyReferenced g)
 
-  private[this] def mapReferencedT(g: MapScoped) =
-    new (Initialize ~> Initialize) { def apply[T](i: Initialize[T]) = i mapReferenced g }
-
-  private[this] def mapConstantT(g: MapConstant) =
-    new (Initialize ~> Initialize) { def apply[T](i: Initialize[T]) = i mapConstant g }
-
-  private[this] def evaluateT(g: Settings[Scope]) =
-    new (Initialize ~> Id) { def apply[T](i: Initialize[T]) = i evaluate g }
+  private[this] def mapReferencedT(g: MapScoped) = λ[Initialize ~> Initialize](_ mapReferenced g)
+  private[this] def mapConstantT(g: MapConstant) = λ[Initialize ~> Initialize](_ mapConstant g)
+  private[this] def evaluateT(g: Settings[Scope]) = λ[Initialize ~> Id](_ evaluate g)
 
   private[this] def deps(ls: Seq[Initialize[_]]): Seq[ScopedKey[_]] = ls.flatMap(_.dependencies)
 
@@ -853,9 +841,7 @@ trait Init[Scope] {
     def validateKeyReferenced(g: ValidateKeyRef) = {
       val tx = alist.transform(inputs, validateKeyReferencedT(g))
       val undefs = alist.toList(tx).flatMap(_.left.toSeq.flatten)
-      val get = new (ValidatedInit ~> Initialize) {
-        def apply[B](vr: ValidatedInit[B]) = vr.right.get
-      }
+      val get = λ[ValidatedInit ~> Initialize](_.right.get)
       if (undefs.isEmpty) Right(new Apply(f, alist.transform(tx, get), alist)) else Left(undefs)
     }
 

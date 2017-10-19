@@ -57,12 +57,13 @@ private[sbt] final class Execute[A[_] <: AnyRef](
   private[this] val viewCache = pMap[A, Node[A, ?]]
   private[this] val results = pMap[A, Result]
 
-  private[this] val getResult: A ~> Result = new (A ~> Result) {
-    def apply[T](a: A[T]): Result[T] = view.inline(a) match {
-      case Some(v) => Value(v())
-      case None    => results(a)
+  private[this] val getResult: A ~> Result = λ[A ~> Result](
+    a =>
+      view.inline(a) match {
+        case Some(v) => Value(v())
+        case None    => results(a)
     }
-  }
+  )
   private[this] var progressState: progress.S = progress.initial
 
   private[this] type State = State.Value

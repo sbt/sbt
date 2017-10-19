@@ -148,6 +148,10 @@ val collectionProj = (project in file("internal") / "util-collection")
       // Dropped in favour of kind-projector's inline type lambda syntax
       exclude[MissingClassProblem]("sbt.internal.util.TypeFunctions$P1of2"),
 
+      // Dropped in favour of kind-projector's polymorphic lambda literals
+      exclude[MissingClassProblem]("sbt.internal.util.Param"),
+      exclude[MissingClassProblem]("sbt.internal.util.Param$"),
+
       // Dropped in favour of plain scala.Function, and its compose method
       exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
@@ -431,6 +435,10 @@ lazy val sbtProj = (project in file("sbt"))
       // Added more items to Import trait.
       exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
       exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
+
+      // Dropped in favour of kind-projector's polymorphic lambda literals
+      exclude[DirectMissingMethodProblem]("sbt.Import.Param"),
+      exclude[DirectMissingMethodProblem]("sbt.package.Param"),
 
       // Dropped in favour of plain scala.Function, and its compose method
       exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),

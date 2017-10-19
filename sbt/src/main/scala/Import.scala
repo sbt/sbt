@@ -166,8 +166,6 @@ trait Import {
   val NoPosition = sbt.internal.util.NoPosition
   val PMap = sbt.internal.util.PMap
   type PMap[K[_], V[_]] = sbt.internal.util.PMap[K, V]
-  val Param = sbt.internal.util.Param
-  type Param[A[_], B[_]] = sbt.internal.util.Param[A, B]
   type RMap[K[_], V[_]] = sbt.internal.util.RMap[K, V]
   val RangePosition = sbt.internal.util.RangePosition
   type RangePosition = sbt.internal.util.RangePosition

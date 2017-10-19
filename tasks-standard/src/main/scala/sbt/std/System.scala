@@ -37,9 +37,7 @@ object Transform {
 
   /** Applies `map`, returning the result if defined or returning the input unchanged otherwise.*/
   implicit def getOrId(map: Task ~>| Task): Task ~> Task =
-    new (Task ~> Task) {
-      def apply[T](in: Task[T]): Task[T] = map(in).getOrElse(in)
-    }
+    λ[Task ~> Task](in => map(in).getOrElse(in))
 
   def apply(dummies: DummyTaskMap) = taskToNode(getOrId(dummyMap(dummies)))
 

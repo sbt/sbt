@@ -32,27 +32,25 @@ abstract class EvaluateSettings[Scope] {
   private[this] def getStatic[T](key: ScopedKey[T]): INode[T] =
     static get key getOrElse sys.error("Illegal reference to key " + key)
 
-  private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) {
-    def apply[T](i: Initialize[T]): INode[T] = i match {
-      case k: Keyed[s, T] @unchecked => single(getStatic(k.scopedKey), k.transform)
-      case a: Apply[k, T] @unchecked =>
-        new MixedNode[k, T](
-          a.alist.transform[Initialize, INode](a.inputs, transform),
-          a.f,
-          a.alist
-        )
-      case b: Bind[s, T] @unchecked           => new BindNode[s, T](transform(b.in), x => transform(b.f(x)))
-      case v: Value[T] @unchecked             => constant(v.value)
-      case v: ValidationCapture[T] @unchecked => strictConstant(v.key)
-      case t: TransformCapture                => strictConstant(t.f)
-      case o: Optional[s, T] @unchecked =>
-        o.a match {
-          case None    => constant(() => o.f(None))
-          case Some(i) => single[s, T](transform(i), x => o.f(Some(x)))
-        }
-      case x if x == StaticScopes =>
-        strictConstant(allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
-    }
+  private[this] val transform: Initialize ~> INode = λ[Initialize ~> INode] {
+    case k: Keyed[s, A1$] @unchecked => single(getStatic(k.scopedKey), k.transform)
+    case a: Apply[k, A1$] @unchecked =>
+      new MixedNode[k, A1$](
+        a.alist.transform[Initialize, INode](a.inputs, transform),
+        a.f,
+        a.alist
+      )
+    case b: Bind[s, A1$] @unchecked           => new BindNode[s, A1$](transform(b.in), x => transform(b.f(x)))
+    case v: Value[A1$] @unchecked             => constant(v.value)
+    case v: ValidationCapture[A1$] @unchecked => strictConstant(v.key)
+    case t: TransformCapture                  => strictConstant(t.f)
+    case o: Optional[s, A1$] @unchecked =>
+      o.a match {
+        case None    => constant(() => o.f(None))
+        case Some(i) => single[s, A1$](transform(i), x => o.f(Some(x)))
+      }
+    case x if x == StaticScopes =>
+      strictConstant(allScopes.asInstanceOf[A1$]) // can't convince scalac that StaticScopes => T == Set[Scope]
   }
 
   private[this] lazy val roots: Seq[INode[_]] = compiledSettings flatMap { cs =>
@@ -84,7 +82,7 @@ abstract class EvaluateSettings[Scope] {
         if (key.key.isLocal) ss else ss.set(key.scope, key.key, node.get)
     }
 
-  private[this] val getValue = new (INode ~> Id) { def apply[T](node: INode[T]) = node.get }
+  private[this] val getValue = λ[INode ~> Id](_.get)
 
   private[this] def submitEvaluate(node: INode[_]) = submit(node.evaluate())
 
