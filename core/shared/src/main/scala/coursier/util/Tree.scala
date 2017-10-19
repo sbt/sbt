@@ -1,73 +1,35 @@
 package coursier.util
 
-import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
 
 object Tree {
 
   def apply[T](roots: IndexedSeq[T])(children: T => Seq[T], show: T => String): String = {
 
-    val buffer = new StringBuilder
-    val printLine: (String) => Unit = { line =>
-      buffer.append(line).append('\n')
-    }
-
-    def last[E, O](seq: Seq[E])(f: E => O) =
-      seq.takeRight(1).map(f)
-    def init[E, O](seq: Seq[E])(f: E => O) =
-      seq.dropRight(1).map(f)
-
-    /*
-     * Add elements to the stack
-     * @param elems elements to add
-     * @param isLast a list that contains whether an element is the last in its siblings or not.
-     */
-    def childrenWithLast(elems: Seq[T],
-                         isLast: Seq[Boolean]): Seq[(T, Seq[Boolean])] = {
-
-      val isNotLast = isLast :+ false
-
-      init(elems)(_ -> isNotLast) ++
-        last(elems)(_ -> (isLast :+ true))
-    }
-
     /**
-      * Has to end with a "─"
+      * Recursively go down the resolution for the elems to construct the tree for print out.
+      *
+      * @param elems     Seq of Elems that have been resolved
+      * @param ancestors a set of Elems to keep track for cycle detection
+      * @param prefix    prefix for the print out
+      * @param acc       accumulation method on a string
       */
-    def showLine(isLast: Seq[Boolean]): String = {
-      val initPrefix = init(isLast) {
-        case true => "   "
-        case false => "│  "
-      }.mkString
+    def recursivePrint(elems: Seq[T], ancestors: Set[T], prefix: String, acc: String => Unit): Unit = {
+      val unseenElems: Seq[T] = elems.filterNot(ancestors.contains)
+      val unseenElemsLen = unseenElems.length
+      for ((elem, idx) <- unseenElems.iterator.zipWithIndex) {
+        val isLast = idx == unseenElemsLen - 1
+        val tee = if (isLast) "└─ " else "├─ "
+        acc(prefix + tee + show(elem))
 
-      val lastPrefix = last(isLast) {
-        case true => "└─ "
-        case false => "├─ "
-      }.mkString
-
-      initPrefix + lastPrefix
-    }
-
-    // Depth-first traverse
-    @tailrec
-    def helper(stack: Seq[(T, Seq[Boolean])], seen: Set[T]): Unit = {
-      stack match {
-        case (elem, isLast) +: next =>
-          printLine(showLine(isLast) + show(elem))
-
-          if (!seen(elem))
-            helper(childrenWithLast(children(elem), isLast) ++ next,
-                   seen + elem)
-          else
-            helper(next, seen)
-        case Seq() =>
+        val extraPrefix = if (isLast) "   " else "│  "
+        recursivePrint(children(elem), ancestors + elem, prefix + extraPrefix, acc)
       }
     }
 
-    helper(childrenWithLast(roots, Vector[Boolean]()), Set.empty)
-
-    buffer
-      .dropRight(1) // drop last appended '\n'
-      .toString
+    val b = new ArrayBuffer[String]
+    recursivePrint(roots, Set(), "", b += _)
+    b.mkString("\n")
   }
 
 }
