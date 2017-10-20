@@ -156,7 +156,7 @@ import TemplateCommandUtil.templateCommand
 
 object BuiltinCommands {
   def initialAttributes = AttributeMap.empty
-
+  import BasicCommands.exit
   def ConsoleCommands: Seq[Command] =
     Seq(ignore, exit, IvyConsole.command, setLogLevel, early, act, nop)
 

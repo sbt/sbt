@@ -254,7 +254,7 @@ object Defaults extends BuildCommon {
         FileSystems.getDefault.newWatchService
       },
       logBuffered :== false,
-      commands :== Nil,
+      commands :== previousAnalysisCommand :: Nil,
       showSuccess :== true,
       showTiming :== true,
       timingFormat :== Aggregation.defaultFormat,
@@ -494,6 +494,7 @@ object Defaults extends BuildCommon {
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
+    //previousAnalysis := previousAnalysisTask.evaluated,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
@@ -640,6 +641,7 @@ object Defaults extends BuildCommon {
         testResultLogger :== TestResultLogger.Default,
         testFilter in testOnly :== (selectedFilter _)
       ))
+  import Configurations.Test
   lazy val testTasks
     : Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(
     testQuick) ++ testDefaults ++ Seq(
@@ -1029,6 +1031,7 @@ object Defaults extends BuildCommon {
                              art.value)).asFile
     }
 
+  import Configurations._
   def artifactSetting: Initialize[Artifact] =
     Def.setting {
       val a = artifact.value
@@ -1387,6 +1390,91 @@ object Defaults extends BuildCommon {
     }
     analysisResult.analysis
   }
+  lazy val previousAnalysis = Def.inputKey[String]("gets previous analysis")
+  lazy val previousAnalysisParser = Def.setting {
+    Parsers.StringBasic
+  }
+  lazy val previousAnalysisCommand = Command.single("previousAnalysis") { (state, definition) =>
+    val responseId = state.currentCommand.flatMap(_.execId)
+    state.log.warn(s"definition content: $definition, and id: $responseId")
+    import sbt.internal.langserver.TextDocumentPositionParams
+    import sbt.internal.langserver.codec.JsonProtocol._
+    import sjsonnew.support.scalajson.unsafe.{ Parser => JsonParser, Converter }
+    val input =
+      Converter.fromJsonUnsafe[TextDocumentPositionParams](JsonParser.parseUnsafe(definition))
+    state.log.err(input.toString)
+    val updatedState = Project.updateCurrent(state).reload
+    val aggrAnal = {
+      val e = Project.extract(updatedState)
+      val skey = (Keys.compile in Compile).scopedKey
+      val tasks = e.structure.data.scopes
+        .map { scope =>
+          e.structure.data.get(scope, skey.key)
+        }
+        .collect {
+          case Some(t) => Aggregation.KeyValue(skey, t)
+        }
+        .toSeq
+      state.log.warn(s"tasks $tasks")
+      val complete = Aggregation.timedRun(updatedState, tasks, sbt.std.Transform.DummyTaskMap(Nil))
+      state.log.warn("here")
+      val r = complete.results.toEither.toOption.map { results =>
+        state.log.warn("and there")
+        results.map(_.value)
+      }
+      r
+    }.getOrElse(Seq.empty)
+    state.log.warn(s"aggregated analysis $aggrAnal")
+
+    val analysis = {
+      val compile = Keys.compile in Compile
+      Project.runTask(compile, updatedState, true).collect {
+        case (newstate @ _, Value(analysis)) =>
+          analysis
+      }
+    }.orElse {
+        state.log.warn("analysis not found")
+        None
+      }
+      .collect { case a: Analysis => a }
+    state.log.warn(s"analysis: $analysis")
+    analysis
+      .foreach { analysis =>
+        analysis.relations.allSources.headOption.foreach { whatever =>
+          state.log.warn(s"found $whatever")
+        }
+      }
+    val commandAnalysis = state.get(Keys.analysis)
+    state.log.warn(s"command analysis: $commandAnalysis")
+    val previousCompile = Project.runTask(Keys.previousCompile in Compile, updatedState).collect {
+      case (newstate @ _, Value(v)) if v.analysis.isPresent => v.analysis.get
+    }
+    state.log.warn(s"previous analysis: $previousCompile")
+    val cmdSrc = state.currentCommand.flatMap(_.source)
+    import sbt.internal.langserver.{ Location, Position, Range }
+    val params = Location(input.textDocument.uri, Range(Position(0, 0), Position(0, 10)))
+    val cname = cmdSrc.map(_.channelName).get
+    val chnl = StandardMain.exchange.channels.collectFirst {
+      case c if c.name == cname => c
+    }
+    chnl.foreach(_.publishEvent(params, responseId))
+    state
+  }
+  def previousAnalysisTask = Def.inputTask {
+    val s = streams.value
+    import sbt.internal.langserver.TextDocumentPositionParams
+    import sbt.internal.langserver.codec.JsonProtocol._
+    import sjsonnew.support.scalajson.unsafe.{ Parser => JsonParser, Converter }
+    val rawInput = previousAnalysisParser.parsed
+    s.log.warn(s"########### $rawInput")
+    val input =
+      Converter.fromJsonUnsafe[TextDocumentPositionParams](JsonParser.parseUnsafe(rawInput))
+    s.log.err(input.toString)
+    val analysis = compile.value match { case a: Analysis => a }
+    analysis.apis.external
+    "HELLO MAMMA! It's me Cross-Hair!"
+  }
+
   def compileIncrementalTask = Def.task {
     // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
     compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
@@ -1671,6 +1759,7 @@ object Classpaths {
   }
 
   def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
+  import Configurations.Test
   lazy val defaultPackages: Seq[TaskKey[File]] =
     for (task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
   lazy val defaultArtifactTasks: Seq[TaskKey[File]] = makePom +: defaultPackages
@@ -1704,6 +1793,7 @@ object Classpaths {
                   pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
     pkgTasks.map(pkg => key in pkg.scope in pkg).join
 
+  import Configurations.Test
   private[this] def publishGlobalDefaults =
     Defaults.globalDefaults(
       Seq(
@@ -3199,6 +3289,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    * Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
    * This is useful for reducing test:compile time when not running test.
    */
+  import Configurations.Test
   def noTestCompletion(config: Configuration = Test): Setting[_] =
     inConfig(config)(Seq(definedTests := detectTests.value)).head
 

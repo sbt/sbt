@@ -12,7 +12,7 @@ implicit lazy val InitializeResultFormat: JsonFormat[sbt.internal.langserver.Ini
       unbuilder.beginObject(js)
       val capabilities = unbuilder.readField[Option[sbt.internal.langserver.ServerCapabilities]]("capabilities")
       unbuilder.endObject()
-      sbt.internal.langserver.InitializeResult(capabilities)
+      sbt.internal.langserver.InitializeResult(capabilities.get)
       case None =>
       deserializationError("Expected JsObject but found None")
     }

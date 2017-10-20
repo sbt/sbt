@@ -35,10 +35,8 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
 
   protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
-
     import sbt.internal.langserver.codec.JsonProtocol._
     import internalJsonProtocol._
-
     def json =
       request.params.getOrElse(
         throw LangServerError(ErrorCodes.InvalidParams,
@@ -60,6 +58,12 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         langRespond(InitializeResult(serverCapabilities), Option(request.id))
       case "textDocument/didSave" =>
         append(Exec("compile", Some(request.id), Some(CommandSource(name))))
+      case "textDocument/definition" =>
+        import sjsonnew.support.scalajson.unsafe.CompactPrinter
+        append(
+          Exec("previousAnalysis " + CompactPrinter(json),
+               Some(request.id),
+               Some(CommandSource(name))))
       case "sbt/exec" =>
         val param = Converter.fromJson[SbtExecParams](json).get
         append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
@@ -68,7 +72,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         val param = Converter.fromJson[Q](json).get
         onSettingQuery(Option(request.id), param)
       }
-      case _ => ()
+      case garbage => log.err(s"Dig in this pile: $garbage")
     }
   }
 
@@ -141,6 +145,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   private[sbt] lazy val serverCapabilities: ServerCapabilities = {
     ServerCapabilities(textDocumentSync =
                          TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
-                       hoverProvider = false)
+                       hoverProvider = true,
+                       definitionProvider = true)
   }
 }

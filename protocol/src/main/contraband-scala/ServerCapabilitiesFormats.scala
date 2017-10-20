@@ -11,8 +11,9 @@ implicit lazy val ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.S
       case Some(js) =>
       unbuilder.beginObject(js)
       val hoverProvider = unbuilder.readField[Option[Boolean]]("hoverProvider")
+      val definitionProvider = unbuilder.readField[Option[Boolean]]("definitionProvider")
       unbuilder.endObject()
-      sbt.internal.langserver.ServerCapabilities(hoverProvider)
+      sbt.internal.langserver.ServerCapabilities.apply(None, hoverProvider, definitionProvider)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -20,6 +21,7 @@ implicit lazy val ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.S
   override def write[J](obj: sbt.internal.langserver.ServerCapabilities, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("hoverProvider", obj.hoverProvider)
+    builder.addField("definitionProvider", obj.definitionProvider)
     builder.endObject()
   }
 }

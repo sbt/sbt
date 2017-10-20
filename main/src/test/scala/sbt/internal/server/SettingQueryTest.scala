@@ -161,11 +161,11 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
     val settings: Seq[Setting[_]] = finalTransforms(
       buildConfigurations(loadedBuild, getRootProject(units), config.injectSettings))
-    val delegates: Scope => Seq[Scope] = defaultDelegates(loadedBuild)
+    val delegates = defaultDelegates(loadedBuild)
     val scopeLocal: ScopeLocal = EvaluateTask.injectStreams
     val display: Show[ScopedKey[_]] = Project showLoadingKey loadedBuild
 
-    val data: Settings[Scope] = Def.make(settings)(delegates, scopeLocal, display)
+    val data = Def.make(settings)(delegates, scopeLocal, display)
     val extra: KeyIndex => BuildUtil[_] = index => BuildUtil(baseUri, units, index, data)
 
     val index: StructureIndex = structureIndex(data, settings, extra, units)

@@ -18,4 +18,6 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.langserver.codec.InitializeResultFormats
   with sbt.internal.langserver.codec.PublishDiagnosticsParamsFormats
   with sbt.internal.langserver.codec.SbtExecParamsFormats
+  with sbt.internal.langserver.codec.TextDocumentIdentifierFormats
+  with sbt.internal.langserver.codec.TextDocumentPositionParamsFormats
 object JsonProtocol extends JsonProtocol
