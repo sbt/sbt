@@ -7,27 +7,23 @@ object Deps {
 
   def quasiQuotes = "org.scalamacros" %% "quasiquotes" % "2.1.0"
   def fastParse = "com.lihaoyi" %% "fastparse" % SharedVersions.fastParse
-  def jsoup = "org.jsoup" % "jsoup" % "1.10.2"
+  def jsoup = "org.jsoup" % "jsoup" % "1.10.3"
   def scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
   def scalazConcurrent = "org.scalaz" %% "scalaz-concurrent" % SharedVersions.scalaz
   def caseApp = "com.github.alexarchambault" %% "case-app" % "1.1.3"
-  def caseApp12 = "com.github.alexarchambault" %% "case-app" % "1.2.0-M3"
+  def caseApp12 = "com.github.alexarchambault" %% "case-app" % "1.2.0"
   def http4sBlazeServer = "org.http4s" %% "http4s-blaze-server" % SharedVersions.http4s
   def http4sDsl = "org.http4s" %% "http4s-dsl" % SharedVersions.http4s
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.25"
   def okhttpUrlConnection = "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
   def sbtLauncherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  def typesafeConfig = "com.typesafe" % "config" % "1.3.1"
-  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M5"
+  def typesafeConfig = "com.typesafe" % "config" % "1.3.2"
+  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M6"
 
   def sbtPgp = Def.setting {
     val sbtv = CrossVersion.binarySbtVersion(sbtVersion.value)
     val sv = scalaBinaryVersion.value
-    val ver = sv match {
-      case "2.10" => "1.0.1"
-      case "2.12" => "1.1.0-M1"
-      case _ => "foo" // unused
-    }
+    val ver = "1.1.0"
     sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)
   }
 
@@ -35,7 +31,7 @@ object Deps {
 
     val version =
       if (scalaBinaryVersion.value == "2.10") "0.9.5"
-      else "0.9.6"
+      else "0.9.7"
 
     "org.scala-lang.modules" %% "scala-async" % version
   }

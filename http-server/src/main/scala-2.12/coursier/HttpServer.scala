@@ -315,14 +315,22 @@ object HttpServerApp extends ServerApp {
         if (usage)
           app.usageAsked()
 
-        val extraArgs0 = remainingArgs ++ extraArgs
+        t match {
+          case Left(err) =>
+            app.error(err)
+            sys.error("unreached")
 
-        if (extraArgs0.nonEmpty)
-          Console.err.println(
-            s"Warning: ignoring extra arguments passed on the command-line (${extraArgs0.mkString(", ")})"
-          )
+          case Right(opts) =>
 
-        HttpServer.server(t)
+            val extraArgs0 = remainingArgs ++ extraArgs
+
+            if (extraArgs0.nonEmpty)
+              Console.err.println(
+                s"Warning: ignoring extra arguments passed on the command-line (${extraArgs0.mkString(", ")})"
+              )
+
+            HttpServer.server(opts)
+        }
     }
 
 }
