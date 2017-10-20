@@ -48,7 +48,7 @@ object Transform {
       case Pure(eval, _)       => uniform(Nil)(_ => Right(eval()))
       case m: Mapped[t, k]     => toNode[t, k](m.in)(right ∙ m.f)(m.alist)
       case m: FlatMapped[t, k] => toNode[t, k](m.in)(left ∙ m.f)(m.alist)
-      case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) ∙ all)
+      case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) compose all)
       case Join(in, f)         => uniform(in)(f)
     }
     def inline[T](t: Task[T]) = t.work match {

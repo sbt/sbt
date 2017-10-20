@@ -133,7 +133,6 @@ trait Import {
   type FeedbackProvidedException = sbt.internal.util.FeedbackProvidedException
   type FilePosition = sbt.internal.util.FilePosition
   type FilterLogger = sbt.internal.util.FilterLogger
-  type Fn1[A, B] = sbt.internal.util.Fn1[A, B]
   val FullLogger = sbt.internal.util.FullLogger
   type FullLogger = sbt.internal.util.FullLogger
   val FullReader = sbt.internal.util.FullReader

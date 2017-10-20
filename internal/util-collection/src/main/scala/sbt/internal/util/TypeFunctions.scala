@@ -29,10 +29,6 @@ trait TypeFunctions {
         def apply[T](mg: M[G[T]]): N[G[T]] = f(mg)
     } */
 
-  implicit def toFn1[A, B](f: A => B): Fn1[A, B] = new Fn1[A, B] {
-    def ∙[C](g: C => A) = f compose g
-  }
-
   type Endo[T] = T => T
   type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
 }
@@ -51,8 +47,4 @@ object ~> {
   import TypeFunctions._
   val Id: Id ~> Id = new (Id ~> Id) { def apply[T](a: T): T = a }
   implicit def tcIdEquals: (Id ~> Id) = Id
-}
-
-trait Fn1[A, B] {
-  def ∙[C](g: C => A): C => B
 }

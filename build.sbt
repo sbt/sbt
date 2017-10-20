@@ -143,6 +143,11 @@ val collectionProj = (project in file("internal") / "util-collection")
     mimaBinaryIssueFilters ++= Seq(
       // Added private[sbt] method to capture State attributes.
       exclude[ReversedMissingMethodProblem]("sbt.internal.util.AttributeMap.setCond"),
+
+      // Dropped in favour of plain scala.Function, and its compose method
+      exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.Types.toFn1"),
     ),
   )
   .configure(addSbtUtilPosition)
@@ -418,7 +423,14 @@ lazy val sbtProj = (project in file("sbt"))
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     mimaSettings,
-    mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    mimaBinaryIssueFilters ++= Vector(
+      // Added more items to Import trait.
+      exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
+      exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
+
+      // Dropped in favour of plain scala.Function, and its compose method
+      exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),
+    )
   )
   .configure(addSbtCompilerBridge)
 
@@ -460,14 +472,6 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
         base / "server" / "node_modules") filter { _.exists }
     }
   )
-
-lazy val sbtIgnoredProblems = {
-  Seq(
-    // Added more items to Import trait.
-    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
-    exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource")
-  )
-}
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
