@@ -7,7 +7,6 @@ plugins_(
   "com.typesafe.sbt"  % "sbt-proguard"    % "0.2.3",
   "com.github.gseitz" % "sbt-release"     % "1.0.5",
   "org.scala-js"      % "sbt-scalajs"     % "0.6.19",
-  "org.scoverage"     % "sbt-scoverage"   % "1.4.0",
   "io.get-coursier"   % "sbt-shading"     % coursierVersion,
   "org.xerial.sbt"    % "sbt-sonatype"    % "1.1",
   "com.timushev.sbt"  % "sbt-updates"     % "0.3.0",
