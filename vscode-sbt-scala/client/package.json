@@ -19,25 +19,25 @@
   ],
   "contributes": {
     "languages": [
-        {
-            "id": "scala",
-            "aliases": [
-                "Scala",
-                "scala"
-            ],
-            "extensions": [
-                ".scala",
-                ".sbt"
-            ],
-            "configuration": "./language-configuration.json"
-        }
+      {
+        "id": "scala",
+        "aliases": [
+          "Scala",
+          "scala"
+        ],
+        "extensions": [
+          ".scala",
+          ".sbt"
+        ],
+        "configuration": "./language-configuration.json"
+      }
     ],
     "grammars": [
-        {
-            "language": "scala",
-            "scopeName": "source.scala",
-            "path": "./syntaxes/Scala.tmLanguage"
-        }
+      {
+        "language": "scala",
+        "scopeName": "source.scala",
+        "path": "./syntaxes/Scala.tmLanguage"
+      }
     ]
   },
   "activationEvents": [
