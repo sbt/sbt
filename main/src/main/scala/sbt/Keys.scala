@@ -449,6 +449,9 @@ object Keys {
   val interactionService = taskKey[InteractionService]("Service used to ask for user input through the current user interface(s).").withRank(CTask)
   val insideCI = SettingKey[Boolean]("insideCI", "Determines if the SBT is running in a Continuous Integration environment", AMinusSetting)
 
+  // sbt server internal
+  val collectAnalyses = taskKey[Unit]("Collect analysis file locations for later use.")
+
   // special
   val sessionVars = AttributeKey[SessionVar.Map]("sessionVars", "Bindings that exist for the duration of the session.", Invisible)
   val parallelExecution = settingKey[Boolean]("Enables (true) or disables (false) parallel execution of tasks.").withRank(BMinusSetting)
