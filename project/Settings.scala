@@ -3,11 +3,9 @@ import sbt._
 import sbt.Keys._
 import sbt.ScriptedPlugin._
 
+import com.lightbend.sbt.SbtProguard.autoImport._
 import com.typesafe.sbt.pgp._
-import com.typesafe.sbt.SbtProguard._
 import coursier.ShadingPlugin.autoImport._
-
-import xerial.sbt.Pack.{packAutoSettings, packExcludeArtifactTypes}
 
 import Aliases._
 
@@ -225,10 +223,6 @@ object Settings {
         PgpKeys.publishLocalSigned := PgpKeys.publishLocalSigned.in(Shading).value
       )
   
-  lazy val generatePack = packAutoSettings :+ {
-    packExcludeArtifactTypes += "pom"
-  }
-
   lazy val proguardedArtifact = Def.setting {
     Artifact(
       moduleName.value,
@@ -240,7 +234,7 @@ object Settings {
 
   lazy val proguardedJar = Def.task {
 
-    val results = ProguardKeys.proguard.in(Proguard).value
+    val results = proguard.in(Proguard).value
 
     results match {
       case Seq(f) => f

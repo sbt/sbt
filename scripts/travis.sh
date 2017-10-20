@@ -129,6 +129,17 @@ checkBinaryCompatibility() {
 
 testLauncherJava6() {
   sbt ++${SCALA_VERSION} cli/pack
+
+  # Via docker, getting errors like
+  #   standard_init_linux.go:178: exec user process caused "exec format error"
+  # because of the initial empty line in the sbt-pack launchers.
+  # Required until something like https://github.com/xerial/sbt-pack/pull/120
+  # gets merged.
+  local DIR="cli/target/pack/bin"
+  mv "$DIR/coursier" "$DIR/coursier.orig"
+  sed '1{/^$/d}' < "$DIR/coursier.orig" > "$DIR/coursier"
+  chmod +x "$DIR/coursier"
+
   docker run -it --rm \
     -v $(pwd)/cli/target/pack:/opt/coursier \
     -e CI=true \

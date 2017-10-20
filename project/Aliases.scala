@@ -4,8 +4,6 @@ import sbt.Defaults.itSettings
 import sbt.Keys._
 import sbt.ScriptedPlugin.{scriptedConf, scriptedLaunchConf, scriptedSbt, scriptedSettings}
 
-import com.typesafe.sbt.SbtProguard.proguardSettings
-
 object Aliases {
 
   def libs = libraryDependencies
@@ -30,8 +28,6 @@ object Aliases {
   )
 
   def hasITs = itSettings
-
-  def proguard = proguardSettings
 
   def ShadingPlugin = coursier.ShadingPlugin
 

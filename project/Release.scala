@@ -3,15 +3,24 @@ import java.nio.file.Files
 import java.util.regex.Pattern
 
 import com.typesafe.sbt.pgp.PgpKeys
-import sbt._
+import sbt.{ProcessLogger => _, _}
 import sbt.Keys._
 import sbt.Package.ManifestAttributes
 import sbtrelease.ReleasePlugin.autoImport._
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
 import scala.io._
+import scala.sys.process.ProcessLogger
 
 object Release {
+
+  // adapted from https://github.com/sbt/sbt-release/blob/eccd4cb7b9818b2a731380fe31c399dc9cb7375b/src/main/scala/ReleaseExtra.scala#L239-L243
+  private def toProcessLogger(st: State): ProcessLogger =
+    new ProcessLogger {
+      def err(s: => String) = st.log.info(s)
+      def out(s: => String) = st.log.info(s)
+      def buffer[T](f: => T) = st.log.buffer(f)
+    }
 
   implicit final class StateOps(val state: State) extends AnyVal {
     def vcs: sbtrelease.Vcs =
@@ -112,9 +121,11 @@ object Release {
 
     val vcs = state.vcs
 
+    val log = toProcessLogger(state)
+
     for (f <- scriptFiles) {
       updateVersionInScript(f, releaseVer)
-      vcs.add(f.getAbsolutePath).!!(state.log)
+      vcs.add(f.getAbsolutePath).!!(log)
     }
 
     state
@@ -130,10 +141,11 @@ object Release {
     )
 
     val vcs = state.vcs
+    val log = toProcessLogger(state)
 
     for ((f, output) <- scriptFiles) {
       sbt.Process(Seq(f.getAbsolutePath, "-f")).!!(state.log)
-      vcs.add(output.getAbsolutePath).!!(state.log)
+      vcs.add(output.getAbsolutePath).!!(log)
     }
 
     state
@@ -163,6 +175,8 @@ object Release {
 
   val updateTutReadme = ReleaseStep { state =>
 
+    val log = toProcessLogger(state)
+
     val previousVer = state.get(previousReleaseVersion).getOrElse {
       sys.error(s"${previousReleaseVersion.label} key not set")
     }
@@ -177,17 +191,19 @@ object Release {
     val newContent = pattern.replaceAllIn(content, releaseVer)
     Files.write(readmeFile.toPath, newContent.getBytes(StandardCharsets.UTF_8))
 
-    state.vcs.add(readmeFile.getAbsolutePath).!!(state.log)
+    state.vcs.add(readmeFile.getAbsolutePath).!!(log)
 
     state
   }
 
   val stageReadme = ReleaseStep { state =>
 
+    val log = toProcessLogger(state)
+
     val baseDir = Project.extract(state).get(baseDirectory.in(ThisBuild))
     val processedReadmeFile = baseDir / "README.md"
 
-    state.vcs.add(processedReadmeFile.getAbsolutePath).!!(state.log)
+    state.vcs.add(processedReadmeFile.getAbsolutePath).!!(log)
 
     state
   }
@@ -198,6 +214,7 @@ object Release {
   val updatePluginsSbt = ReleaseStep { state =>
 
     val vcs = state.vcs
+    val log = toProcessLogger(state)
 
     val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
       sys.error(s"${ReleaseKeys.versions.label} key not set")
@@ -221,7 +238,7 @@ object Release {
 
       val newContent = coursierVersionPattern.replaceAllIn(content, "def coursierVersion0 = \"" + releaseVer + "\"")
       Files.write(f.toPath, newContent.getBytes(StandardCharsets.UTF_8))
-      vcs.add(f.getAbsolutePath).!!(state.log)
+      vcs.add(f.getAbsolutePath).!!(log)
     }
 
     state
@@ -232,6 +249,7 @@ object Release {
   val updateMimaVersions = ReleaseStep { state =>
 
     val vcs = state.vcs
+    val log = toProcessLogger(state)
 
     val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
       sys.error(s"${ReleaseKeys.versions.label} key not set")
@@ -258,7 +276,7 @@ object Release {
     )
 
     Files.write(mimaScalaFile.toPath, newContent.getBytes(StandardCharsets.UTF_8))
-    vcs.add(mimaScalaFile.getAbsolutePath).!!(state.log)
+    vcs.add(mimaScalaFile.getAbsolutePath).!!(log)
 
     state
   }
@@ -266,11 +284,13 @@ object Release {
   val commitUpdates = ReleaseStep(
     action = { state =>
 
+      val log = toProcessLogger(state)
+
       val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
         sys.error(s"${ReleaseKeys.versions.label} key not set")
       }
 
-      state.vcs.commit(s"Updates for $releaseVer", sign = true).!(state.log)
+      state.vcs.commit(s"Updates for $releaseVer", sign = true).!(log)
 
       state
     },
@@ -311,6 +331,8 @@ object Release {
   // tagRelease from sbt-release seem to use the next version (snapshot one typically) rather than the released one :/
   val reallyTagRelease = ReleaseStep { state =>
 
+    val log = toProcessLogger(state)
+
     val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
       sys.error(s"${ReleaseKeys.versions.label} key not set")
     }
@@ -319,7 +341,7 @@ object Release {
 
     val tag = "v" + releaseVer
 
-    state.vcs.tag(tag, s"Releasing $tag", sign).!(state.log)
+    state.vcs.tag(tag, s"Releasing $tag", sign).!(log)
 
     state
   }
