@@ -78,7 +78,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
 
       val (errors, failures, tests) = (count(TStatus.Error), count(TStatus.Failure), events.size)
 
-      /** Junit XML reports don't differentiate between ignored, skipped or pending tests */
+      /* Junit XML reports don't differentiate between ignored, skipped or pending tests */
       val ignoredSkippedPending = count(TStatus.Ignored) + count(TStatus.Skipped) + count(
         TStatus.Pending)
 

@@ -48,7 +48,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
         Scope.display(
           key.scope,
           withColor(key.key.label, keyNameColor),
-          ref => displayRelative(current, multi, ref)
+          ref => displayRelativeReference(current, ref)
       ))
 
   def showBuildRelativeKey(
