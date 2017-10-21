@@ -31,7 +31,7 @@ object IPC {
     def createServer(attempts: Int): ServerSocket =
       if (attempts > 0)
         try { new ServerSocket(nextPort, 1, loopback) } catch {
-          case NonFatal(e) => createServer(attempts - 1)
+          case NonFatal(_) => createServer(attempts - 1)
         } else
         sys.error("Could not connect to socket: maximum attempts exceeded")
     createServer(10)

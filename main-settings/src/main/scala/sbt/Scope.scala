@@ -275,7 +275,7 @@ object Scope {
         case Select(conf) => index.config(configProj, conf); case _ => withZeroAxis(scope.config)
       }
       val tLin = scope.task match {
-        case t @ Select(task) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
+        case t @ Select(_) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
       }
       val eLin = withZeroAxis(scope.extra)
       for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)

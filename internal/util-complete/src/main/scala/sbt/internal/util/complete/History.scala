@@ -56,5 +56,5 @@ object History {
     new History(lines.toIndexedSeq, path, sys.error)
 
   def number(s: String): Option[Int] =
-    try { Some(s.toInt) } catch { case e: NumberFormatException => None }
+    try { Some(s.toInt) } catch { case _: NumberFormatException => None }
 }
