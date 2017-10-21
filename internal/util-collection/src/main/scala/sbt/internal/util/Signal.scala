@@ -16,7 +16,7 @@ object Signals {
       try {
         val signals = new Signals0
         signals.withHandler(signal, handler, action)
-      } catch { case e: LinkageError => Right(action()) }
+      } catch { case _: LinkageError => Right(action()) }
 
     result match {
       case Left(e)  => throw e
@@ -61,7 +61,7 @@ object Signals {
     try {
       val signals = new Signals0
       signals.supported(signal)
-    } catch { case e: LinkageError => false }
+    } catch { case _: LinkageError => false }
 }
 
 // Must only be referenced using a
@@ -70,7 +70,7 @@ object Signals {
 private final class Signals0 {
   def supported(signal: String): Boolean = {
     import sun.misc.Signal
-    try { new Signal(signal); true } catch { case e: IllegalArgumentException => false }
+    try { new Signal(signal); true } catch { case _: IllegalArgumentException => false }
   }
 
   // returns a LinkageError in `action` as Left(t) in order to avoid it being

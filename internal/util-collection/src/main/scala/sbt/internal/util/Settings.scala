@@ -793,7 +793,7 @@ trait Init[Scope] {
     // proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
     private[this] def trapBadRef[A](run: => A): Option[A] =
       try Some(run)
-      catch { case e: InvalidReference => None }
+      catch { case _: InvalidReference => None }
 
     private[sbt] def processAttributes[B](init: B)(f: (B, AttributeMap) => B): B = a match {
       case None    => init

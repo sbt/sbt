@@ -157,7 +157,7 @@ object Tests {
         case Listeners(listeners)     => testListeners ++= listeners
         case Setup(setupFunction)     => setup += setupFunction
         case Cleanup(cleanupFunction) => cleanup += cleanupFunction
-        case a: Argument              => // now handled by whatever constructs `runners`
+        case _: Argument              => // now handled by whatever constructs `runners`
       }
     }
 
