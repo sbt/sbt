@@ -89,6 +89,17 @@ trait StateOps {
    */
   def reboot(full: Boolean): State
 
+  /**
+   * Reboots sbt.  A reboot restarts execution from the entry point of the launcher.
+   * A reboot is designed to be as close as possible to actually restarting the JVM without actually doing so.
+   * Because the JVM is not restarted, JVM exit hooks are not run.
+   * State.exitHooks should be used instead and those will be run before rebooting.
+   * If `full` is true, the boot directory is deleted before starting again.
+   * If `currentOnly` is true, the artifacts for the current sbt version is deleted.
+   * This command is currently implemented to not return, but may be implemented in the future to only reboot at the next command processing step.
+   */
+  private[sbt] def reboot(full: Boolean, currentOnly: Boolean): State
+
   /** Sets the next command processing action to do.*/
   def setNext(n: State.Next): State
 
@@ -248,12 +259,18 @@ object State {
     def baseDir: File = s.configuration.baseDirectory
     def setNext(n: Next) = s.copy(next = n)
     def continue = setNext(Continue)
-    def reboot(full: Boolean) = {
-      runExitHooks();
-      throw new xsbti.FullReload(
-        (s.remainingCommands map { case e: Exec => e.commandLine }).toArray,
-        full)
+
+    /** Implementation of reboot. */
+    def reboot(full: Boolean): State = reboot(full, false)
+
+    /** Implementation of reboot. */
+    private[sbt] def reboot(full: Boolean, currentOnly: Boolean): State = {
+      runExitHooks()
+      val rs = s.remainingCommands map { case e: Exec => e.commandLine }
+      if (currentOnly) throw new RebootCurrent(rs)
+      else throw new xsbti.FullReload(rs.toArray, full)
     }
+
     def reload = runExitHooks().setNext(new Return(defaultReload(s)))
     def clearGlobalLog = setNext(ClearGlobalLog)
     def keepLastLog = setNext(KeepLastLog)
@@ -320,3 +337,5 @@ object State {
   private[sbt] def getBoolean(s: State, key: AttributeKey[Boolean], default: Boolean): Boolean =
     s.get(key) getOrElse default
 }
+
+private[sbt] final class RebootCurrent(val arguments: List[String]) extends RuntimeException
