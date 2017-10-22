@@ -14,7 +14,7 @@ import java.net.URLClassLoader
 import java.util.concurrent.Callable
 
 import sbt.internal.inc.classpath.ClasspathUtilities
-import sbt.io.{ Hash, IO }
+import sbt.io.IO
 import sbt.internal.librarymanagement._
 import sbt.internal.util.FullLogger
 import sbt.librarymanagement._
@@ -290,7 +290,6 @@ private object ZincLMHelper {
     val updateConfiguration = defaultUpdateConfiguration(retrieveDirectory, noSource)
     val dependencies = prettyPrintDependency(module)
     logger.info(s"Attempting to fetch $dependencies.")
-    val clockForCache = LogicalClock.unknown
     dependencyResolution.update(module, updateConfiguration, warningConf, logger) match {
       case Left(unresolvedWarning) =>
         logger.debug(s"Couldn't retrieve module(s) ${prettyPrintDependency(module)}.")
