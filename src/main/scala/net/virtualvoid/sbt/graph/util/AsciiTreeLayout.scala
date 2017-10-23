@@ -5,6 +5,8 @@
  */
 package net.virtualvoid.sbt.graph.util
 
+import sbt.dependencygraph.SbtAccess
+
 object AsciiTreeLayout {
   // [info] foo
   // [info]   +-bar
@@ -52,7 +54,7 @@ object AsciiTreeLayout {
   }
 
   def defaultColumnSize: Int = {
-    val termWidth = sbt.SbtAccess.getTerminalWidth
+    val termWidth = SbtAccess.getTerminalWidth
     if (termWidth > 20) termWidth - 8
     else 80 // ignore termWidth
   }
