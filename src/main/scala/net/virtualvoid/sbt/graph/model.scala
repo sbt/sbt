@@ -16,11 +16,9 @@
 
 package net.virtualvoid.sbt.graph
 
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File }
-import java.util.Base64
+import java.io.File
 
-import sbinary.{ JavaInput, JavaOutput }
-import sjsonnew.{ Builder, Unbuilder }
+import sbinary.{ DefaultProtocol, Format }
 
 import scala.collection.mutable.{ HashMap, MultiMap, Set }
 
@@ -69,27 +67,9 @@ case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
     nodes.filter(n ⇒ !edges.exists(_._2 == n.id)).sortBy(_.id.idString)
 }
 
-import sbinary.{ Format, DefaultProtocol }
-object ModuleGraphProtocol extends DefaultProtocol {
+object ModuleGraphProtocol extends DefaultProtocol with ModuleGraphProtocolCompat {
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
   implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
   implicit val ModuleFormat: Format[Module] = asProduct6(Module)(Module.unapply(_).get)
   implicit val ModuleGraphFormat: Format[ModuleGraph] = asProduct2(ModuleGraph.apply _)(ModuleGraph.unapply(_).get)
-
-  //
-  implicit def sjsonNewAndShinyTransformAndTranspileAdapterFactoryModuleImplementation[T](implicit format: Format[T]): sjsonnew.JsonFormat[T] =
-    new sjsonnew.JsonFormat[T] {
-      // note, how this is simpler to write than to learn any sjonnew protocol syntax
-      def write[J](obj: T, builder: Builder[J]): Unit = {
-        val baos = new ByteArrayOutputStream()
-        format.writes(new JavaOutput(baos), obj)
-        val str = Base64.getEncoder.encodeToString(baos.toByteArray)
-        builder.writeString(str)
-      }
-      def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T = {
-        val str = unbuilder.readString(jsOpt.get)
-        val bais = new ByteArrayInputStream(Base64.getDecoder.decode(str))
-        format.reads(new JavaInput(bais))
-      }
-    }
 }
