@@ -16,18 +16,18 @@
 
 package net.virtualvoid.sbt.graph
 
+import scala.language.reflectiveCalls
+
 import sbt._
 import Keys._
-import CrossVersion._
 import sbt.complete.Parser
 import org.apache.ivy.core.resolve.ResolveOptions
 import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
 import net.virtualvoid.sbt.graph.rendering.{ AsciiGraph, DagreHTML }
 import net.virtualvoid.sbt.graph.util.IOUtil
-
 import internal.librarymanagement._
 import librarymanagement._
-
+import sbt.dependencygraph.DependencyGraphSbtCompat
 import sbt.dependencygraph.DependencyGraphSbtCompat.Implicits._
 
 object DependencyGraphSettings {
@@ -37,7 +37,7 @@ object DependencyGraphSettings {
   def graphSettings = Seq(
     ivyReportFunction := ivyReportFunctionTask.value,
     updateConfiguration in ignoreMissingUpdate := updateConfiguration.value.withMissingOk(true),
-    ignoreMissingUpdate := update.value,
+    ignoreMissingUpdate := DependencyGraphSbtCompat.updateTask(ignoreMissingUpdate).value,
     filterScalaLibrary in Global := true) ++ Seq(Compile, Test, IntegrationTest, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
@@ -198,41 +198,4 @@ object DependencyGraphSettings {
       case _ ⇒ None
     }
   }
-
-  /**
-   * This is copied directly from sbt/main/Defaults.scala and then changed to update the UpdateConfiguration
-   * to ignore missing artifacts.
-   */
-  /*def ignoreMissingUpdateT =
-    ignoreMissingUpdate := {
-      // FIXME: remove busywork
-
-      val scalaVersion = Keys.scalaVersion.value
-      val unmanagedScalaInstanceOnly = SbtAccess.unmanagedScalaInstanceOnly.value
-      val scalaOrganization = Keys.scalaOrganization.value
-
-      val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
-      val isRoot = executionRoots.value contains resolvedScoped.value
-      val s = streams.value
-      val scalaProvider = appConfiguration.value.provider.scalaProvider
-
-      // Only substitute unmanaged jars for managed jars when the major.minor parts of the versions the same for:
-      //   the resolved Scala version and the scalaHome version: compatible (weakly- no qualifier checked)
-      //   the resolved Scala version and the declared scalaVersion: assume the user intended scalaHome to override anything with scalaVersion
-      def subUnmanaged(subVersion: String, jars: Seq[File]) = (sv: String) ⇒
-        (partialVersion(sv), partialVersion(subVersion), partialVersion(scalaVersion)) match {
-          case (Some(res), Some(sh), _) if res == sh     ⇒ jars
-          case (Some(res), _, Some(decl)) if res == decl ⇒ jars
-          case _                                         ⇒ Nil
-        }
-      val subScalaJars: String ⇒ Seq[File] = unmanagedScalaInstanceOnly match {
-        case Some(si) ⇒ subUnmanaged(si.version, si.allJars)
-        case None     ⇒ sv ⇒ if (scalaProvider.version == sv) scalaProvider.jars else Nil
-      }
-      val transform: UpdateReport ⇒ UpdateReport = r ⇒ Classpaths.substituteScalaFiles(scalaOrganization, r)(subScalaJars)
-
-      val show = Reference.display(thisProjectRef.value)
-      SbtAccess.cachedUpdater(
-        s.cacheDirectory, show, ivyModule.value, (updateConfiguration in ignoreMissingUpdate).value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
-    }*/
 }
