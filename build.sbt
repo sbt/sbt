@@ -9,7 +9,8 @@ libraryDependencies ++= {
     Nil
 }
 
-libraryDependencies += "org.specs2" %% "specs2-core" % "3.9.1" % "test"
+
+libraryDependencies += "org.specs2" %% "specs2-core" % "3.9.5" % Test
 
 libraryDependencies += Defaults.sbtPluginExtra(
   "com.dwijnand" % "sbt-compat" % "1.1.0",
@@ -17,22 +18,13 @@ libraryDependencies += Defaults.sbtPluginExtra(
   (scalaBinaryVersion in update).value
 )
 
-scalacOptions ++= Seq("-deprecation", "-unchecked")
+crossSbtVersions := Seq("1.0.2", "0.13.16")
+
+scalacOptions ++= Seq(
+  "-deprecation",
+  "-encoding", "UTF-8",
+  "-feature",
+  "-unchecked"
+)
 
 ScalariformSupport.formatSettings
-
-crossSbtVersions := Seq("1.0.1", "0.13.16")
-
-//sbtVersion in pluginCrossBuild := "1.0.0"
-
-/*
-Try to prevent silly warnings
-
-libraryDependencies += ("org.scala-sbt" %% "main-settings" % "1.0.1-SNAPSHOT")//.excludeAll(ExclusionRule(organization = "org.scala-sbt"))
-
-libraryDependencies += "org.scala-sbt" %% "command" % "1.0.0"force()
-libraryDependencies += "org.scala-sbt" %% "completion" % "1.0.0"force()
-libraryDependencies += "org.scala-sbt" %% "task-system" % "1.0.0"force()
-libraryDependencies += "org.scala-sbt" %% "core-macros" % "1.0.0" force()
-
-*/
