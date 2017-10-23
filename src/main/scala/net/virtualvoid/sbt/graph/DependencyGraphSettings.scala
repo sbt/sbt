@@ -28,6 +28,8 @@ import net.virtualvoid.sbt.graph.util.IOUtil
 import internal.librarymanagement._
 import librarymanagement._
 
+import sbt.dependencygraph.DependencyGraphSbtCompat.Implicits._
+
 object DependencyGraphSettings {
   import DependencyGraphKeys._
   import ModuleGraphProtocol._
