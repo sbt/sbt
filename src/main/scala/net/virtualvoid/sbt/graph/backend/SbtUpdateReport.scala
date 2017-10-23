@@ -17,6 +17,9 @@
 package net.virtualvoid.sbt.graph
 package backend
 
+import scala.language.implicitConversions
+import scala.language.reflectiveCalls
+
 import sbt._
 
 object SbtUpdateReport {
