@@ -18,7 +18,7 @@ package net.virtualvoid.sbt.graph
 
 import java.io.File
 
-import sbinary.{ DefaultProtocol, Format }
+import sbinary.Format
 
 import scala.collection.mutable.{ HashMap, MultiMap, Set }
 
@@ -67,7 +67,9 @@ case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
     nodes.filter(n ⇒ !edges.exists(_._2 == n.id)).sortBy(_.id.idString)
 }
 
-object ModuleGraphProtocol extends DefaultProtocol with ModuleGraphProtocolCompat {
+object ModuleGraphProtocol extends ModuleGraphProtocolCompat {
+  import sbinary.DefaultProtocol._
+
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
   implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
   implicit val ModuleFormat: Format[Module] = asProduct6(Module)(Module.unapply(_).get)

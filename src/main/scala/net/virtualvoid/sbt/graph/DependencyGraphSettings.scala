@@ -21,7 +21,6 @@ import scala.language.reflectiveCalls
 import sbt._
 import Keys._
 import sbt.complete.Parser
-import org.apache.ivy.core.resolve.ResolveOptions
 import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
 import net.virtualvoid.sbt.graph.rendering.{ AsciiGraph, DagreHTML }
 import net.virtualvoid.sbt.graph.util.IOUtil
@@ -34,11 +33,16 @@ object DependencyGraphSettings {
   import DependencyGraphKeys._
   import ModuleGraphProtocol._
 
-  def graphSettings = Seq(
+  def graphSettings = baseSettings ++ reportSettings
+
+  def baseSettings = Seq(
     ivyReportFunction := ivyReportFunctionTask.value,
     updateConfiguration in ignoreMissingUpdate := updateConfiguration.value.withMissingOk(true),
     ignoreMissingUpdate := DependencyGraphSbtCompat.updateTask(ignoreMissingUpdate).value,
-    filterScalaLibrary in Global := true) ++ Seq(Compile, Test, IntegrationTest, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
+    filterScalaLibrary in Global := true)
+
+  def reportSettings =
+    Seq(Compile, Test, IntegrationTest, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
     ivyReport := { Def.task { ivyReportFunction.value.apply(config.toString) } dependsOn (ignoreMissingUpdate) }.value,
@@ -78,11 +82,12 @@ object DependencyGraphSettings {
     },
     dependencyList := printFromGraph(rendering.FlatList.render(_, _.id.idString)).value,
     dependencyStats := printFromGraph(rendering.Statistics.renderModuleStatsList).value,
-    dependencyDotHeader := """digraph "dependency-graph" {
-                             |    graph[rankdir="LR"]
-                             |    edge [
-                             |        arrowtail="none"
-                             |    ]""".stripMargin,
+    dependencyDotHeader :=
+      """|digraph "dependency-graph" {
+         |    graph[rankdir="LR"]
+         |    edge [
+         |        arrowtail="none"
+         |    ]""".stripMargin,
     dependencyDotNodeLabel := { (organisation: String, name: String, version: String) ⇒
       """%s<BR/><B>%s</B><BR/>%s""".format(organisation, name, version)
     },
@@ -93,22 +98,14 @@ object DependencyGraphSettings {
     licenseInfo := showLicenseInfo(moduleGraph.value, streams.value)) ++ AsciiGraph.asciiGraphSetttings)
 
   def ivyReportFunctionTask = Def.task {
-    // FIXME: and remove busywork after https://github.com/sbt/sbt/issues/3299 is fixed
-    val target = Keys.target.value
+    val crossTarget = Keys.crossTarget.value
     val projectID = Keys.projectID.value
     val ivyModule = Keys.ivyModule.value
 
-    sbtVersion.value match {
-      case Version(0, min, fix, _) if min > 12 || (min == 12 && fix >= 3) ⇒
-        (c: String) ⇒ file("%s/resolution-cache/reports/%s-%s-%s.xml".format(target, projectID.organization, crossName(ivyModule), c))
-        case Version(0, min, fix, _) if min == 12 && fix >= 1 && fix < 3 ⇒
-        ivyModule.withModule(streams.value.log) { (i, moduleDesc, _) ⇒
-          val id = ResolveOptions.getDefaultResolveId(moduleDesc)
-          (c: String) ⇒ file("%s/resolution-cache/reports/%s/%s-resolved.xml" format (target, id, c))
-        }
-      case _ ⇒
-        val home = appConfiguration.value.provider.scalaProvider.launcher.ivyHome
-        (c: String) ⇒ file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
+    (config: String) ⇒ {
+      val org = projectID.organization
+      val name = crossName(ivyModule)
+      file(s"${crossTarget}/resolution-cache/reports/$org-$name-$config.xml")
     }
   }
 
@@ -150,7 +147,7 @@ object DependencyGraphSettings {
       graph.nodes.filter(_.isUsed).groupBy(_.license).toSeq.sortBy(_._1).map {
         case (license, modules) ⇒
           license.getOrElse("No license specified") + "\n" +
-            modules.map("\t %s" format _.id.idString).mkString("\n")
+            modules.map(_.id.idString formatted "\t %s").mkString("\n")
       }.mkString("\n\n")
     streams.log.info(output)
   }
