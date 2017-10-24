@@ -6,15 +6,18 @@ Visualize your project's dependencies.
 
 ## Usage Instructions
 
-Since sbt-dependency-graph is an informational tool rather than one that changes your build, you will more than likely wish to
+sbt-dependency-graph is an informational tool rather than one that changes your build, so you will more than likely wish to
 install it as a [global plugin] so that you can use it in any SBT project without the need to explicitly add it to each one. To do
-this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
+this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt` for sbt 0.13 or `~/.sbt/1.0/plugins/plugins.sbt` for sbt 1.0:
 
 ```scala
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")
 ```
 
 To add the plugin only to a single project, put this line into `project/plugins.sbt` of your project, instead.
+
+The plugin currently supports sbt versions >= 0.13.6 and sbt 1.0.x. For versions supporting older versions of sbt see
+the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tree/v0.8.2#compatibility-notes).
 
 ## Main Tasks
 
