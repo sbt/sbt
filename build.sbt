@@ -34,7 +34,7 @@ def buildLevelSettings: Seq[Setting[_]] =
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
       scalafmtOnCompile := true,
-      scalafmtVersion := "1.2.0",
+      scalafmtVersion := "1.3.0",
     ))
 
 def commonSettings: Seq[Setting[_]] =
