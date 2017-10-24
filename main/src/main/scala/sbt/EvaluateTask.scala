@@ -460,6 +460,7 @@ object EvaluateTask {
     onResult(result, log) { v =>
       if (show) println("Result: " + v); v
     }
+
   def onResult[T, S](result: Result[T], log: Logger)(f: T => S): S =
     result match {
       case Value(v) => f(v)
