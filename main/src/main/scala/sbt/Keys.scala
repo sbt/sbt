@@ -307,7 +307,7 @@ object Keys {
   val organization = settingKey[String]("Organization/group ID.").withRank(APlusSetting)
   val organizationName = settingKey[String]("Organization full/formal name.").withRank(BMinusSetting)
   val organizationHomepage = settingKey[Option[URL]]("Organization homepage.").withRank(BMinusSetting)
-  val developers = settingKey[List[Developer]]("List of developers implicated in the project").withRank(BMinusSetting)
+  val developers = settingKey[Seq[Developer]]("List of developers implicated in the project").withRank(BMinusSetting)
   val apiURL = settingKey[Option[URL]]("Base URL for API documentation.").withRank(BMinusSetting)
   val entryApiURL = AttributeKey[URL]("entryApiURL", "Base URL for the API documentation for a classpath entry.")
   val apiMappings = taskKey[Map[File, URL]]("Mappings from classpath entry to API documentation base URL.").withRank(BMinusSetting)
