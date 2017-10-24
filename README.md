@@ -4,23 +4,20 @@
 
 Visualize your project's dependencies.
 
-## Preliminaries
-
-The plugin works best with sbt >= 0.13.6. See the [compatibility notes](#compatibility-notes) to use this plugin with an older version of sbt.
-
 ## Usage Instructions
 
-Since sbt-dependency-graph is an informational tool rather than one that changes your build, you will more than likely wish to
+sbt-dependency-graph is an informational tool rather than one that changes your build, so you will more than likely wish to
 install it as a [global plugin] so that you can use it in any SBT project without the need to explicitly add it to each one. To do
-this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
+this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt` for sbt 0.13 or `~/.sbt/1.0/plugins/plugins.sbt` for sbt 1.0:
 
 ```scala
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")
 ```
 
 To add the plugin only to a single project, put this line into `project/plugins.sbt` of your project, instead.
 
-This plugin is an auto-plugin which will be automatically enabled starting from sbt 0.13.5.
+The plugin currently supports sbt versions >= 0.13.6 and sbt 1.0.x. For versions supporting older versions of sbt see
+the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tree/v0.8.2#compatibility-notes).
 
 ## Main Tasks
 
@@ -66,20 +63,6 @@ dependencyDotFile := file("dependencies.dot") //render dot file to `./dependenci
 
  * [#19]: There's an unfixed bug with graph generation for particular layouts. Workaround:
    Use `dependency-tree` instead of `dependency-graph`.
- * [#39]: When using sbt-dependency-graph with sbt < 0.13.6.
-
-## Compatibility notes
-
- * sbt < 0.13.6: The plugin will fall back on the old ivy report XML backend which suffers from [#39].
- * sbt < 0.13.5: Old versions of sbt have no `AutoPlugin` support, you need to add
-
-```scala
-net.virtualvoid.sbt.graph.DependencyGraphSettings.graphSettings
-```
-
-   to your `build.sbt` or (`~/.sbt/0.13/user.sbt` for global configuration) to enable the plugin.
- * sbt <= 0.12.x: Old versions of sbt are not actively supported any more. Please use the old version from the [0.7 branch](https://github.com/jrudolph/sbt-dependency-graph/tree/0.7).
-
 
 ## License
 
@@ -88,4 +71,3 @@ Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_lic
 [global plugin]: http://www.scala-sbt.org/0.13/tutorial/Using-Plugins.html#Global+plugins
 [global build configuration]: http://www.scala-sbt.org/0.13/docs/Global-Settings.html
 [#19]: https://github.com/jrudolph/sbt-dependency-graph/issues/19
-[#39]: https://github.com/jrudolph/sbt-dependency-graph/issues/39

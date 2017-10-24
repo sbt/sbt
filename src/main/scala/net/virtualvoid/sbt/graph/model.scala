@@ -18,7 +18,9 @@ package net.virtualvoid.sbt.graph
 
 import java.io.File
 
-import scala.collection.mutable.{ MultiMap, HashMap, Set }
+import sbinary.Format
+
+import scala.collection.mutable.{ HashMap, MultiMap, Set }
 
 case class ModuleId(organisation: String,
                     name: String,
@@ -65,8 +67,9 @@ case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
     nodes.filter(n ⇒ !edges.exists(_._2 == n.id)).sortBy(_.id.idString)
 }
 
-import sbinary.{ Format, DefaultProtocol }
-object ModuleGraphProtocol extends DefaultProtocol {
+object ModuleGraphProtocol extends ModuleGraphProtocolCompat {
+  import sbinary.DefaultProtocol._
+
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
   implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
   implicit val ModuleFormat: Format[Module] = asProduct6(Module)(Module.unapply(_).get)

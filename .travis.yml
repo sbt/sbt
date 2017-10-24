@@ -2,4 +2,4 @@ sudo: false
 language: scala
 jdk: oraclejdk7
 script:
-- sbt test scripted
+- sbt ";^test ;^scripted"
