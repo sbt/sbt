@@ -23,7 +23,6 @@ the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tr
 
  * `dependencyTree`: Shows an ASCII tree representation of the project's dependencies
  * `dependencyBrowseGraph`: Opens a browser window with a visualization of the dependency graph (courtesy of graphlib-dot + dagre-d3).
- * `dependencyGraph`: Shows an ASCII graph of the project's dependencies on the sbt console
  * `dependencyList`: Shows a flat list of all transitive dependencies on the sbt console (sorted by organization and name)
  * `whatDependsOn <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
@@ -33,6 +32,7 @@ the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tr
    Use e.g. [yEd](http://www.yworks.com/en/products_yed_about.html) to format the graph to your needs.
  * `dependencyDot`: Generates a .dot file with the project's dependencies to `target/dependencies-<config>.dot`.
     Use [graphviz](http://www.graphviz.org/) to render it to your preferred graphic format.
+ * `dependencyGraph`: Shows an ASCII graph of the project's dependencies on the sbt console (only supported on sbt 0.13)
  * `ivyReport`: let's ivy generate the resolution report for you project. Use
    `show ivyReport` for the filename of the generated report
 
