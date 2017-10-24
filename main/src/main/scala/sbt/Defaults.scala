@@ -254,7 +254,7 @@ object Defaults extends BuildCommon {
         FileSystems.getDefault.newWatchService
       },
       logBuffered :== false,
-      commands :== previousAnalysisCommand :: Nil,
+      commands :== /*previousAnalysisCommand ::*/ Nil,
       showSuccess :== true,
       showTiming :== true,
       timingFormat :== Aggregation.defaultFormat,
@@ -494,7 +494,7 @@ object Defaults extends BuildCommon {
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
-    //previousAnalysis := previousAnalysisTask.evaluated,
+    previousAnalysis := previousAnalysisTask.evaluated,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
@@ -1390,9 +1390,9 @@ object Defaults extends BuildCommon {
     }
     analysisResult.analysis
   }
-  lazy val previousAnalysis = Def.inputKey[String]("gets previous analysis")
+  lazy val previousAnalysis = Def.inputKey[Unit]("gets previous analysis")
   lazy val previousAnalysisParser = Def.setting {
-    Parsers.StringBasic
+    Parsers.spaceDelimited("<vscode-definition>")
   }
   lazy val previousAnalysisCommand = Command.single("previousAnalysis") { (state, definition) =>
     val responseId = state.currentCommand.flatMap(_.execId)
@@ -1461,18 +1461,84 @@ object Defaults extends BuildCommon {
     state
   }
   def previousAnalysisTask = Def.inputTask {
-    val s = streams.value
+    val universe = state.value
     import sbt.internal.langserver.TextDocumentPositionParams
     import sbt.internal.langserver.codec.JsonProtocol._
     import sjsonnew.support.scalajson.unsafe.{ Parser => JsonParser, Converter }
-    val rawInput = previousAnalysisParser.parsed
-    s.log.warn(s"########### $rawInput")
-    val input =
-      Converter.fromJsonUnsafe[TextDocumentPositionParams](JsonParser.parseUnsafe(rawInput))
-    s.log.err(input.toString)
-    val analysis = compile.value match { case a: Analysis => a }
+    val rawDefinition = previousAnalysisParser.parsed
+    universe.log.warn(s"########### $rawDefinition")
+    val definition =
+      Converter.fromJsonUnsafe[TextDocumentPositionParams](
+        JsonParser.parseUnsafe(rawDefinition.head))
+    val analysis = previousCompile.value.analysis.toOption
+      .map {
+        case a: Analysis => a
+      }
+      .getOrElse {
+        compile.value match {
+          case a: Analysis => a
+        }
+      }
+    val srcs = sources.value
+    universe.log.warn(
+      srcs
+        .map { f =>
+          f.getAbsolutePath
+        }
+        .mkString(scala.util.Properties.lineSeparator))
+    srcs
+      .collectFirst {
+        case file if definition.textDocument.uri.endsWith(file.getAbsolutePath) =>
+          universe.log.warn(s"matches ${definition.textDocument.uri}")
+          new URI(definition.textDocument.uri)
+      }
+      .map { uri =>
+        import java.nio.file._
+        Files
+          .lines(Paths.get(uri))
+          .skip(definition.position.line)
+          .findFirst
+          .toOption
+          .map { line =>
+            universe.log.warn(s"######## $line")
+            import scala.tools.reflect.{ ToolBox, ToolBoxError }
+            val tb =
+              scala.reflect.runtime.universe.runtimeMirror(this.getClass.getClassLoader).mkToolBox()
+            def isIdentifier(identifier: String): Boolean =
+              try {
+                tb.parse(s"val $identifier = 0")
+                true
+              } catch {
+                case _: ToolBoxError => false
+              }
+            def find(fragment: String, left: Int, right: Int, dir: Boolean): Option[String] = {
+              if (left == right + 1 && dir) None
+              else if (left == -1 && !dir) find(fragment, 0, right + 1, true)
+              else if (right == fragment.length + 1 && dir) Some(fragment.slice(left, right - 1))
+              else if (!isIdentifier(fragment.slice(left, right)) && !dir)
+                find(fragment, left - 1, right + 1, true)
+              else if (!isIdentifier(fragment.slice(left, right)) && dir)
+                Some(fragment.slice(left, right - 1))
+              else
+                find(fragment, if (dir) left else left - 1, if (dir) right + 1 else right, dir)
+            }
+            universe.log.err(
+              s"got you ${find(line, definition.position.character.toInt, definition.position.character.toInt + 1, false)}")
+          }
+      }
     analysis.apis.external
-    "HELLO MAMMA! It's me Cross-Hair!"
+    import sbt.internal.langserver.{ Location, Position, Range }
+    val params = Location(definition.textDocument.uri, Range(Position(0, 0), Position(0, 10)))
+    for {
+      command <- universe.currentCommand
+      source <- command.source
+      origChannelName = source.channelName
+      channel <- StandardMain.exchange.channels.collectFirst {
+        case c if c.name == origChannelName => c
+      }
+    } yield {
+      channel.publishEvent(params, command.execId)
+    }
   }
 
   def compileIncrementalTask = Def.task {
