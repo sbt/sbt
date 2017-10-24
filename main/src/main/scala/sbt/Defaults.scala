@@ -494,6 +494,8 @@ object Defaults extends BuildCommon {
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
     consoleQuick := consoleQuickTask.value,
+    sendLibraryDependencies := sendLibraryDependenciesTask.evaluated,
+    sendProjects := sendProjectsTask.evaluated,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
     // This fork options, scoped to the configuration is used for tests
@@ -1362,6 +1364,47 @@ object Defaults extends BuildCommon {
                               (cleanupCommands in task).value)()(s.log).get
       println()
     }
+
+  lazy val sendProjects =
+    Def.inputKey[Unit]("Retrieves the existing sbt projects and sends them over the wire")
+  lazy val sendProjectsTask = Def.inputTask {
+    def publishResponse[A: JsonFormat](resp: A): Unit = {
+      val st = state.value
+      val responseId = st.currentCommand.flatMap(_.execId)
+      val cmdSrc = st.currentCommand.flatMap(_.source)
+      val cname = cmdSrc.map(_.channelName).getOrElse(???)
+      val chnl = StandardMain.exchange.channels.collectFirst {
+        case c if c.name == cname => c
+      }
+      st.log.info(s"responseId: $responseId, cmdSrc: $cmdSrc, cname: $cname, chnl: $chnl")
+      chnl.foreach(_.publishEvent(resp, responseId))
+    }
+
+    val projects = loadedBuild.value.allProjectRefs.map(_._1.project)
+    import sjsonnew.BasicJsonProtocol._
+    publishResponse(projects)
+  }
+
+  lazy val sendLibraryDependencies =
+    Def.inputKey[Unit]("Retrieves the library dependencies and sends them over the wire")
+  lazy val sendLibraryDependenciesTask = Def.inputTask {
+    def publishResponse[A: JsonFormat](resp: A): Unit = {
+      val st = state.value
+      val responseId = st.currentCommand.flatMap(_.execId)
+      val cmdSrc = st.currentCommand.flatMap(_.source)
+      val cname = cmdSrc.map(_.channelName).getOrElse(???)
+      val chnl = StandardMain.exchange.channels.collectFirst {
+        case c if c.name == cname => c
+      }
+      st.log.info(s"responseId: $responseId, cmdSrc: $cmdSrc, cname: $cname, chnl: $chnl")
+      chnl.foreach(_.publishEvent(resp, responseId))
+    }
+
+    import sjsonnew.BasicJsonProtocol._
+    val cp = dependencyClasspath.value
+    val resp = cp.seq.map(_.data.toString())
+    publishResponse(resp)
+  }
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
     args => w.println((command +: args).mkString(" "))
