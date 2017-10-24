@@ -41,8 +41,14 @@ $HelpCommand <regular expression>
   def CompletionsBrief = (CompletionsCommand, CompletionsDetailed)
 
   def templateBrief = (TemplateCommand, "Creates a new sbt build.")
-  def templateDetailed = TemplateCommand + """ [--options] <template>
-  Create a new sbt build based on the given template."""
+  def templateDetailed =
+    TemplateCommand + """ [--options] <template>
+  Create a new sbt build based on the given template.
+  sbt provides out-of-the-box support for Giter8 templates. See foundweekends.org/giter8/ for details.
+  
+  Example:
+    sbt new scala/scala-seed.g8
+  """
 
   def HistoryHelpBrief =
     (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")

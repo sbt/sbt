@@ -87,10 +87,20 @@ object BasicCommands {
   }
 
   def runHelp(s: State, h: Help)(arg: Option[String]): State = {
-    val message = try Help.message(h, arg)
+
+    val (extraArgs, remainingCommands) = s.remainingCommands match {
+      case xs :+ exec if exec.commandLine == "shell" => (xs, exec :: Nil)
+      case xs                                        => (xs, Nil)
+    }
+
+    val topic = (arg.toList ++ extraArgs.map(_.commandLine)) match {
+      case Nil => None
+      case xs  => Some(xs.mkString(" "))
+    }
+    val message = try Help.message(h, topic)
     catch { case NonFatal(ex) => ex.toString }
     System.out.println(message)
-    s
+    s.copy(remainingCommands = remainingCommands)
   }
 
   def completionsCommand: Command =
