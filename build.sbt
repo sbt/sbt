@@ -454,12 +454,7 @@ lazy val proguardedCli = Seq(
       Nil
   },
   addBootstrapInProguardedJar,
-  packagedArtifacts ++= {
-    if (scalaBinaryVersion.value == "2.11")
-      Map(proguardedArtifact.value -> proguardedJar.value)
-    else
-      Map()
-  }
+  addProguardedJar
 )
 
 lazy val sharedTestResources = {

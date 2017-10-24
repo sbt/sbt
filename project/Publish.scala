@@ -5,20 +5,27 @@ import sbt.Keys._
 object Publish {
 
   lazy val dontPublish = Seq(
-    publish := (),
-    publishLocal := (),
+    publish := {},
+    publishLocal := {},
     publishArtifact := false
   )
 
   def dontPublishIn(sbv: String*) = Seq(
-    publish := {
-      if (!sbv.contains(scalaBinaryVersion.value))
-        publish.value
-    },
-    publishLocal := {
-      if (!sbv.contains(scalaBinaryVersion.value))
-        publishLocal.value
-    },
+    // Doesn't work, the second publish or publishLocal seem not to reference the previous implementation of the key.
+    // This only seems to prevent ivy.xml files to be published locally anyway…
+    // See also similar case in Settings.scala.
+    // publish := Def.taskDyn {
+    //   if (sbv.contains(scalaBinaryVersion.value))
+    //     Def.task(())
+    //   else
+    //     publish
+    // },
+    // publishLocal := Def.taskDyn {
+    //   if (sbv.contains(scalaBinaryVersion.value))
+    //     Def.task(())
+    //   else
+    //     publishLocal
+    // },
     publishArtifact := {
       !sbv.contains(scalaBinaryVersion.value) && publishArtifact.value
     }
