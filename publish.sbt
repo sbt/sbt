@@ -1,8 +1,8 @@
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
   Some {
-    if (version.value.trim.endsWith("SNAPSHOT")) "snapshots" at nexus + "content/repositories/snapshots"
-    else                                         "releases"  at nexus + "service/local/staging/deploy/maven2"
+    if (version.value.trim.contains("+")) "snapshots" at nexus + "content/repositories/snapshots"
+    else                                  "releases"  at nexus + "service/local/staging/deploy/maven2"
   }
 }
 
