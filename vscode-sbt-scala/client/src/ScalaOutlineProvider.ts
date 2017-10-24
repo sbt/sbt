@@ -39,22 +39,20 @@ export class ScalaOutlineProvider implements TreeDataProvider<OutlineNode> {
             i.collapsibleState = TreeItemCollapsibleState.None;
         else
             i.collapsibleState = TreeItemCollapsibleState.Collapsed;
-        // TODO don't hardcode the range here
-        let range = new Range(new Position(2, 5), new Position(5, 5));
-        i.command = {
-            command: "scalaOutline.select",
-            title: "",
-            arguments: [this.editor, range]
+        if (node.tpe == OutlineType.Dependency) {
+            // TODO don't hardcode the range here
+            let range = new Range(new Position(2, 5), new Position(5, 5));
+            i.command = {
+                command: "scalaOutline.select",
+                title: "",
+                arguments: [this.editor, range]
+            }
         }
         return i;
     }
 
     async getChildren(node?: OutlineNode): Promise<OutlineNode[]> {
-        if (node)
-            return node.children;
-        else {
-            return this.rootNodes;
-        }
+        return node ? node.children : this.rootNodes;
     }
 
     /**
@@ -62,14 +60,26 @@ export class ScalaOutlineProvider implements TreeDataProvider<OutlineNode> {
      */
     refresh() {
         this.updateNodes();
-        this.emitter.fire();
+    }
+
+    /**
+     * Retrieves the library dependencies of a the project with the given name.
+     */
+    private async libDepsOfProject(projectName: string): Promise<OutlineNode[]> {
+        let ts = new CancellationTokenSource;
+        let resp = await this.connection.sendRequest<string[]>("sbt/exec", { commandLine: `sendLibraryDependencies ${projectName}` }, ts.token)
+        return resp.map(n => new OutlineNode(n, OutlineType.Dependency))
     }
 
     private async updateNodes(): Promise<void> {
         this.editor = window.activeTextEditor;
         let ts = new CancellationTokenSource;
-        let resp = await this.connection.sendRequest<string[]>("sbt/dependencies", ts.token)
-        this.rootNodes = resp.map(n => new OutlineNode(n))
+        let resp = await this.connection.sendRequest<string[]>("sbt/exec", { commandLine: "sendProjects" }, ts.token)
+        this.rootNodes = await Promise.all(resp.map(async name => {
+            let cs = await this.libDepsOfProject(name);
+            return new OutlineNode(name, OutlineType.Project, cs);
+        }))
+        this.emitter.fire();
     }
 }
 
@@ -80,10 +90,12 @@ export class ScalaOutlineProvider implements TreeDataProvider<OutlineNode> {
 class OutlineNode {
     children?: OutlineNode[];
     str: string;
+    tpe: OutlineType;
 
-    constructor(str: string, children?: OutlineNode[]) {
+    constructor(str: string, tpe: OutlineType, children?: OutlineNode[]) {
         this.children = children ? children : [];
         this.str = str;
+        this.tpe = tpe;
     }
 
     addChild(child: OutlineNode) {
@@ -91,6 +103,10 @@ class OutlineNode {
     }
 
     toString(): string {
-        return `OutlineNode(${this.str})`;
+        return `OutlineNode(${this.str}, ${this.tpe})`;
     }
+}
+enum OutlineType {
+    Project,
+    Dependency
 }

@@ -68,11 +68,6 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         val param = Converter.fromJson[Q](json).get
         onSettingQuery(Option(request.id), param)
       }
-      case "sbt/dependencies" =>
-        // TODO run dependencyClasspath here
-        import sjsonnew.BasicJsonProtocol._
-        val resp = List("a", "b")
-        langRespond(resp, Some(request.id))
       case _ => ()
     }
   }
