@@ -67,7 +67,7 @@ export class ScalaOutlineProvider implements TreeDataProvider<OutlineNode> {
      */
     private async libDepsOfProject(projectName: string): Promise<OutlineNode[]> {
         let ts = new CancellationTokenSource;
-        let resp = await this.connection.sendRequest<string[]>("sbt/exec", { commandLine: `sendLibraryDependencies ${projectName}` }, ts.token)
+        let resp = await this.connection.sendRequest<string[]>("sbt/exec", { commandLine: `${projectName}/sendLibraryDependencies` }, ts.token)
         return resp.map(n => new OutlineNode(n, OutlineType.Dependency))
     }
 

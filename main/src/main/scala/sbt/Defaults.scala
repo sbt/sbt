@@ -1401,8 +1401,7 @@ object Defaults extends BuildCommon {
     }
 
     import sjsonnew.BasicJsonProtocol._
-    val cp = dependencyClasspath.value
-    val resp = cp.seq.map(_.data.toString())
+    val resp = dependencyClasspath.value.seq.map(_.data.toString())
     publishResponse(resp)
   }
 
