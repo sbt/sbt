@@ -309,6 +309,8 @@ lazy val commandProj = (project in file("main-command"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerInstance.*"),
       // Added method to CommandChannel. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
+      // Added an overload to reboot. The overload is private[sbt].
+      exclude[ReversedMissingMethodProblem]("sbt.StateOps.reboot"),
     )
   )
   .configure(
