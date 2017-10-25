@@ -14,7 +14,7 @@ supported on sbt 1.0. Use `dependencyBrowseGraph`, instead.
 This is a maintenance release [fixing](https://github.com/jrudolph/sbt-dependency-graph/issues/89) `dependencyBrowseGraph`
 in the latest Chrome versions. Thanks [@chtefi](https://github.com/chtefi)!
 
-## Version 0.8.1
+## Version 0.8.1 (2016-01-08)
 
 This is a maintenance release fixing a regression in 0.8.0 and adding two small features.
 
@@ -26,7 +26,7 @@ All changes:
  * [#85](https://github.com/jrudolph/sbt-dependency-graph/issues/85): Added new task `dependencyList` which prints a
    flat, deduplicated list of all the transitive dependencies.
 
-## Version 0.8.0
+## Version 0.8.0 (2015-11-26)
 
 sbt-dependency-graph is finally an AutoPlugin and can now show the dependency graph in the browser directly.
 
@@ -50,7 +50,7 @@ sbt-dependency-graph is finally an AutoPlugin and can now show the dependency gr
  - fixed [#77](https://github.com/jrudolph/sbt-dependency-graph/issues/77)
 
 
-## Version 0.7.5
+## Version 0.7.5 (2015-03-30)
 
 This is a maintenance release adding support for sbt 0.13.8.
 
@@ -63,11 +63,11 @@ All changes:
  * [#44](https://github.com/jrudolph/sbt-dependency-graph/issues/44): Only match scala lib by org/name.
    Thanks [@2beaucoup](https://github.com/2beaucoup) for the fix.
 
-## Version 0.7.4
+## Version 0.7.4 (2013-06-26)
 
 This is a maintenance release fixing an exception when generating graphs without a terminal [#32](https://github.com/jrudolph/sbt-dependency-graph/issues/32).
 
-## Version 0.7.3
+## Version 0.7.3 (2013-04-28)
 
 This is a maintenance release. Following issues have been fixed:
 
@@ -77,7 +77,7 @@ This is a maintenance release. Following issues have been fixed:
     Make it work again with sbt 0.12.3. The path of the dependency resolution file changed in sbt 0.12.3.
     Thanks [ebowman](https://github.com/ebowman) for the fix.
 
-## Version 0.7.2
+## Version 0.7.2 (2013-03-02)
 
 This is a maintenance release. Following issues have been fixed:
 
@@ -93,7 +93,7 @@ New features in this version:
  * `dependency-dot`: create dot file from dependency graph. Contributed by
     [berleon](https://github.com/berleon).
 
-## Version 0.7.0
+## Version 0.7.0 (2012-10-24)
 
 New features in this version:
 
@@ -108,7 +108,7 @@ New features in this version:
   * Works with sbt 0.12.1. The ivy report files were moved to a new location making an update necessary.
 
 
-## Version 0.6.0
+## Version 0.6.0 (2012-05-23)
 
 New features in this version:
 
@@ -122,3 +122,9 @@ New features in this version:
     Scala 2.9.2 broke the plugin in 0.5.2, because it wouldn't find the ivy report xml file
     any more. This was fixed.
   * All tasks are scoped by configuration.
+
+## Version 0.5.2 (2012-02-13)
+
+## Version 0.5.1 (2011-11-18)
+
+## Version 0.5 (2011-11-15)
