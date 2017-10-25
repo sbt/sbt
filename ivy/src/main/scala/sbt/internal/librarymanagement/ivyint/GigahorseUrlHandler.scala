@@ -9,7 +9,7 @@ import scala.util.control.NonFatal
 import okhttp3.{ MediaType, OkUrlFactory, Request, RequestBody }
 import okhttp3.internal.http.HttpDate
 
-import okhttp3._
+import okhttp3.{ JavaNetAuthenticator => _, _ }
 import okio._
 
 import org.apache.ivy.util.{ CopyProgressEvent, CopyProgressListener, Message }
@@ -198,7 +198,7 @@ class GigahorseUrlHandler extends AbstractURLHandler {
 object GigahorseUrlHandler {
   import gigahorse.HttpClient
   import gigahorse.support.okhttp.Gigahorse
-  import okhttp3.{ OkHttpClient, JavaNetAuthenticator }
+  import okhttp3.OkHttpClient
 
   // This is requires to access the constructor of URLInfo.
   private[sbt] class SbtUrlInfo(available: Boolean,
@@ -219,7 +219,7 @@ object GigahorseUrlHandler {
     http
       .underlying[OkHttpClient]
       .newBuilder()
-      .authenticator(new JavaNetAuthenticator)
+      .authenticator(new sbt.internal.librarymanagement.JavaNetAuthenticator)
       .followRedirects(true)
       .followSslRedirects(true)
       .build
