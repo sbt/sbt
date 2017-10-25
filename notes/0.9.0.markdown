@@ -1,0 +1,7 @@
+This version (finally!) adds support for sbt 1.0. sbt-dependency-graph depends on a lot of internals from sbt to do its
+work which is why it was quite an effort to do the migration. Thanks [@MasseGuillaume](https://github.com/MasseGuillaume) from Scala Center,
+[@2m](https://github.com/2m), and [@xuwei-k](https://github.com/xuwei-k) for helping out with the effort.
+
+The plugin is cross-built for sbt 0.13 (and will continued to be for while). The `dependencyGraph` task is currently not
+supported on sbt 1.0. Use `dependencyBrowseGraph`, instead.
+
