@@ -385,7 +385,11 @@ object Tests {
       defined(subclasses, d.baseClasses, d.isModule) ++
         defined(annotations, d.annotations, d.isModule)
 
-    val discovered = Discovery(firsts(subclasses), firsts(annotations))(definitions)
+    val discovered = Discovery(firsts(subclasses), firsts(annotations))(definitions.filter {
+      case c: ClassLike =>
+        c.topLevel
+      case _ => false
+    })
     // TODO: To pass in correct explicitlySpecified and selectors
     val tests = for ((df, di) <- discovered; fingerprint <- toFingerprints(di))
       yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
