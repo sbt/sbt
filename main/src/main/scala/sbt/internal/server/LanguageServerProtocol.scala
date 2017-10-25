@@ -61,7 +61,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
       case "textDocument/definition" =>
         import sjsonnew.support.scalajson.unsafe.CompactPrinter
         append(
-          Exec("previousAnalysis " + CompactPrinter(json),
+          Exec(s"vscDefinition ${CompactPrinter(json)}",
                Some(request.id),
                Some(CommandSource(name))))
       case "sbt/exec" =>
@@ -145,7 +145,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   private[sbt] lazy val serverCapabilities: ServerCapabilities = {
     ServerCapabilities(textDocumentSync =
                          TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
-                       hoverProvider = true,
+                       hoverProvider = false,
                        definitionProvider = true)
   }
 }
