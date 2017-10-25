@@ -61,7 +61,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
       case "textDocument/definition" =>
         import sjsonnew.support.scalajson.unsafe.CompactPrinter
         append(
-          Exec(s"vscDefinition ${CompactPrinter(json)}",
+          Exec(s"lspDefinition ${CompactPrinter(json)}",
                Some(request.id),
                Some(CommandSource(name))))
       case "sbt/exec" =>
