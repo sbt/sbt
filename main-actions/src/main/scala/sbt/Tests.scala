@@ -9,6 +9,7 @@ import sbt.internal.inc.Analysis
 import TaskExtra._
 import sbt.internal.util.FeedbackProvidedException
 import xsbti.api.Definition
+import xsbti.api.ClassLike
 import xsbti.compile.CompileAnalysis
 import ConcurrentRestrictions.Tag
 
