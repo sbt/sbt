@@ -1,0 +1,10 @@
+> compile
+$ exists target/scala-2.12/resolution-cache/
+$ exists target/streams/
+$ exists target/scala-2.12/classes/A.class
+
+> compile::clean
+# it should clean only class files
+$ exists target/scala-2.12/resolution-cache/
+$ exists target/streams/
+$ absent target/scala-2.12/classes/A.class
