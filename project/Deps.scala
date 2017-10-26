@@ -40,8 +40,8 @@ object Deps {
 
   def jarjarTransitiveDeps = Seq(
     "com.google.code.findbugs" % "jsr305" % "2.0.2",
-    "org.ow2.asm" % "asm-commons" % "5.0.3",
-    "org.ow2.asm" % "asm-util" % "5.0.3",
+    "org.ow2.asm" % "asm-commons" % SharedVersions.asm,
+    "org.ow2.asm" % "asm-util" % SharedVersions.asm,
     "org.slf4j" % "slf4j-api" % "1.7.25"
   )
 
