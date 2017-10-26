@@ -144,7 +144,7 @@ object Release {
     val log = toProcessLogger(state)
 
     for ((f, output) <- scriptFiles) {
-      sbt.Process(Seq(f.getAbsolutePath, "-f")).!!(state.log)
+      sys.process.Process(Seq(f.getAbsolutePath, "-f")).!!(log)
       vcs.add(output.getAbsolutePath).!!(log)
     }
 

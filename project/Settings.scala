@@ -48,7 +48,7 @@ object Settings {
           Seq()
       }
     },
-    javacOptions in Keys.doc := Seq()
+    javacOptions.in(Keys.doc) := Seq()
   )
 
   lazy val shared = javaScalaPluginShared ++ Seq(
@@ -113,8 +113,8 @@ object Settings {
   )
 
   lazy val noTests = Seq(
-    test in Test := (),
-    testOnly in Test := ()
+    test.in(Test) := {},
+    testOnly.in(Test) := {}
   )
 
   lazy val utest = Seq(
@@ -157,19 +157,28 @@ object Settings {
 
     Seq(
       baseDirectory := {
+        val baseDir = baseDirectory.value
+
         if (sbtScalaVersionMatch.value)
-          baseDirectory.value
+          baseDir
         else
-          baseDirectory.value / "target" / "dummy"
+          baseDir / "target" / "dummy"
       },
-      publish := {
-        if (sbtScalaVersionMatch.value)
-          publish.value
-      },
-      publishLocal := {
-        if (sbtScalaVersionMatch.value)
-          publishLocal.value
-      },
+      // Doesn't work, the second publish or publishLocal seem not to reference the previous implementation of the key.
+      // This only seems to prevent ivy.xml files to be published locally anyway…
+      // See also similar case in Publish.scala.
+      // publish := Def.taskDyn {
+      //   if (sbtScalaVersionMatch.value)
+      //     publish
+      //   else
+      //     Def.task(())
+      // },
+      // publishLocal := Def.taskDyn {
+      //   if (sbtScalaVersionMatch.value)
+      //     publishLocal
+      //   else
+      //     Def.task(())
+      // },
       publishArtifact := {
         sbtScalaVersionMatch.value && publishArtifact.value
       }
@@ -197,7 +206,7 @@ object Settings {
       sbtVersion := {
         scalaBinaryVersion.value match {
           case "2.10" => "0.13.8"
-          case "2.12" => "1.0.0-RC3"
+          case "2.12" => "1.0.1"
           case _ => sbtVersion.value
         }
       },
@@ -213,7 +222,7 @@ object Settings {
   lazy val shading =
     inConfig(_root_.coursier.ShadingPlugin.Shading)(PgpSettings.projectSettings) ++
        // ytf does this have to be repeated here?
-       // Can't figure out why configuration get lost without this in particular...
+       // Can't figure out why configuration gets lost without this in particular...
       _root_.coursier.ShadingPlugin.projectSettings ++
       Seq(
         shadingNamespace := "coursier.shaded",
@@ -242,6 +251,23 @@ object Settings {
         throw new Exception("Found no proguarded files. Expected one.")
       case _ =>
         throw new Exception("Found several proguarded files. Don't know how to publish all of them.")
+    }
+  }
+
+  lazy val addProguardedJar = {
+
+    val extra = Def.taskDyn[Map[Artifact, File]] {
+      if (scalaBinaryVersion.value == "2.11")
+        Def.task(Map(proguardedArtifact.value -> proguardedJar.value))
+      else
+        Def.task(Map())
+    }
+
+    packagedArtifacts ++= {
+      if (scalaBinaryVersion.value == "2.11")
+        extra.value
+      else
+        Map()
     }
   }
 
