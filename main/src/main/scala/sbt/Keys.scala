@@ -445,6 +445,7 @@ object Keys {
   val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile' and 'update'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.").withRank(BSetting)
   val templateResolverInfos = settingKey[Seq[TemplateResolverInfo]]("Template resolvers used for 'new'.").withRank(BSetting)
   val interactionService = taskKey[InteractionService]("Service used to ask for user input through the current user interface(s).").withRank(CTask)
+  val insideCI = SettingKey[Boolean]("insideCI", "Determines if the SBT is running in a Continuous Integration environment", AMinusSetting)
 
   // special
   val sessionVars = AttributeKey[SessionVar.Map]("sessionVars", "Bindings that exist for the duration of the session.", Invisible)
