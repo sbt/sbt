@@ -187,6 +187,13 @@ object Command {
 
   def spacedC(name: String, c: Parser[Char]): Parser[String] =
     ((c & opOrIDSpaced(name)) ~ c.+) map { case (f, rem) => (f +: rem).mkString }
+
+  implicit class CommandWithName(cmd: Command) {
+    def commandName: Option[String] = cmd match {
+      case sc: SimpleCommand => Some(sc.name)
+      case _                 => None
+    }
+  }
 }
 
 trait Help {
