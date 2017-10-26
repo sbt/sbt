@@ -28,12 +28,9 @@ final case class Value[+T](value: T) extends Result[T] {
 
 object Result {
   type Id[X] = X
-  val tryValue = new (Result ~> Id) {
-    def apply[T](r: Result[T]): T =
-      r match {
-        case Value(v) => v
-        case Inc(i)   => throw i
-      }
+  val tryValue = λ[Result ~> Id] {
+    case Value(v) => v
+    case Inc(i)   => throw i
   }
   def tryValues[S](r: Seq[Result[Unit]], v: Result[S]): S = {
     r foreach tryValue[Unit]
