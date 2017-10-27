@@ -363,7 +363,14 @@ object Defaults extends BuildCommon {
   lazy val outputConfigPaths = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
+  ) ++ inTask(compile)(
+    // This is defined here because it depends on classDirectory
+    Seq(
+      cleanFiles := Def.taskDyn { cleanFilesTask(classDirectory.value) }.value,
+      clean := cleanTask.value
+    )
   )
+
   def addBaseSources = Seq(
     unmanagedSources := {
       val srcs = unmanagedSources.value
@@ -517,9 +524,9 @@ object Defaults extends BuildCommon {
     ))
 
   lazy val projectTasks: Seq[Setting[_]] = Seq(
-    cleanFiles := cleanFilesTask.value,
+    cleanFiles := Def.taskDyn { cleanFilesTask(managedDirectory.value, target.value) }.value,
     cleanKeepFiles := historyPath.value.toVector,
-    clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
+    clean := cleanTask.value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value
@@ -1098,12 +1105,10 @@ object Defaults extends BuildCommon {
   }
 
   /** Implements `cleanFiles` task. */
-  def cleanFilesTask: Initialize[Task[Vector[File]]] =
+  def cleanFilesTask(filesAndDirs: File*): Initialize[Task[Vector[File]]] =
     Def.task {
-      val filesAndDirs = Vector(managedDirectory.value, target.value)
-      val preserve = cleanKeepFiles.value
-      val (dirs, fs) = filesAndDirs.filter(_.exists).partition(_.isDirectory)
-      val preserveSet = preserve.filter(_.exists).toSet
+      val (dirs, fs) = filesAndDirs.toVector.filter(_.exists).partition(_.isDirectory)
+      val preserveSet = cleanKeepFiles.value.filter(_.exists).toSet
       // performance reasons, only the direct items under `filesAndDirs` are allowed to be preserved.
       val dirItems = dirs flatMap { _.glob("*").get }
       (preserveSet diff dirItems.toSet) match {
@@ -1115,6 +1120,11 @@ object Defaults extends BuildCommon {
       val toClean = (dirItems filterNot { preserveSet(_) }) ++ fs
       toClean
     }
+
+  def cleanTask: Initialize[Task[Unit]] =
+    Def.task {
+      IO.delete(cleanFiles.value)
+    } tag (Tags.Clean)
 
   def bgRunMainTask(
       products: Initialize[Task[Classpath]],
