@@ -446,6 +446,17 @@ lazy val sbtProj = (project in file("sbt"))
   )
   .configure(addSbtCompilerBridge)
 
+def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = {
+  val npm = if (sbt.internal.util.Util.isWindows) "npm.cmd" else "npm"
+  import scala.sys.process._
+  try {
+    val exitCode = Process(s"$npm $command", Option(base)) ! log
+    if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
+  } catch {
+    case e: java.io.IOException => log.warn("failed to run npm " + e.getMessage)
+  }
+}
+
 lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   .settings(
     crossPaths := false,
@@ -453,12 +464,8 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
     skip in publish := true,
     compile in Compile := {
       val u = update.value
-      val log = streams.value.log
-      import sbt.internal.inc.Analysis
-      import scala.sys.process._
-      val exitCode = Process(s"npm run compile", Option(baseDirectory.value)) ! log
-      if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
-      Analysis.empty
+      runNpm("run compile", baseDirectory.value, streams.value.log)
+      sbt.internal.inc.Analysis.empty
     },
     update := {
       val old = update.value
@@ -467,9 +474,7 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
       val log = streams.value.log
       if (t.exists) ()
       else {
-        import scala.sys.process._
-        val exitCode = Process("npm install", Option(base)) ! log
-        if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
+        runNpm("install", base, log)
         IO.touch(t)
       }
       old
