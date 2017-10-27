@@ -1,10 +1,19 @@
-> compile
+> test:compile
 $ exists target/scala-2.12/resolution-cache/
 $ exists target/streams/
 $ exists target/scala-2.12/classes/A.class
+$ exists target/scala-2.12/test-classes/B.class
 
-> compile::clean
-# it should clean only class files
+> compile:compile::clean
 $ exists target/scala-2.12/resolution-cache/
 $ exists target/streams/
+$ exists target/scala-2.12/test-classes/B.class
+# it should clean only class files
 $ absent target/scala-2.12/classes/A.class
+
+> test:compile::clean
+$ exists target/scala-2.12/resolution-cache/
+$ exists target/streams/
+# it should clean both compile and test classes
+$ absent target/scala-2.12/classes/A.class
+$ absent target/scala-2.12/test-classes/B.class
