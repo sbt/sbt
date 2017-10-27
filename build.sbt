@@ -85,7 +85,8 @@ lazy val `proxy-tests` = project
 lazy val paths = project
   .settings(
     pureJava,
-    dontPublish
+    dontPublish,
+    addDirectoriesSources
   )
 
 lazy val cache = project
@@ -461,6 +462,14 @@ lazy val sharedTestResources = {
   unmanagedResourceDirectories.in(Test) += baseDirectory.in(LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources"
 }
 
-lazy val addPathsSources = {
-  unmanagedSourceDirectories.in(Compile) ++= unmanagedSourceDirectories.in(Compile).in(paths).value
+// Using directly the sources of directories, rather than depending on it.
+// This is required to use it from the bootstrap module, whose jar is launched as is (so shouldn't require dependencies).
+// This is done for the other use of it too, from the cache module, not to have to manage two ways of depending on it.
+lazy val addDirectoriesSources = {
+  unmanagedSourceDirectories.in(Compile) += baseDirectory.in(LocalRootProject).value / "directories" / "src" / "main" / "java"
 }
+
+lazy val addPathsSources = Seq(
+  addDirectoriesSources,
+  unmanagedSourceDirectories.in(Compile) ++= unmanagedSourceDirectories.in(Compile).in(paths).value
+)

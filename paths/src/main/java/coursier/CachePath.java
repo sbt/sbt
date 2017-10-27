@@ -85,18 +85,7 @@ public class CachePath {
     }
 
     public static File defaultCacheDirectory() {
-
-        // cache this method result so that it's only ever computed once?
-
-        String path = System.getenv("COURSIER_CACHE");
-
-        if (path == null)
-          path = System.getProperty("coursier.cache");
-
-        if (path == null)
-            path = System.getProperty("user.home") + "/.coursier/cache/v1"; // shouldn't have put a "v1" component here...
-
-        return new File(path).getAbsoluteFile();
+        return new File(CoursierPaths.cacheDirectory(), "v1");
     }
 
     private static ConcurrentHashMap<File, Object> processStructureLocks = new ConcurrentHashMap<File, Object>();

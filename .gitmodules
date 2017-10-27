@@ -1,3 +1,6 @@
 [submodule "tests/metadata"]
 	path = tests/metadata
 	url = https://github.com/coursier/test-metadata.git
+[submodule "directories"]
+	path = directories
+	url = https://github.com/soc/directories.git
