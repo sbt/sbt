@@ -206,7 +206,7 @@ object Settings {
       sbtVersion := {
         scalaBinaryVersion.value match {
           case "2.10" => "0.13.8"
-          case "2.12" => "1.0.1"
+          case "2.12" => "1.0.2"
           case _ => sbtVersion.value
         }
       },
