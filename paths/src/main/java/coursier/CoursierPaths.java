@@ -30,18 +30,19 @@ public final class CoursierPaths {
         if (path == null)
             path = System.getProperty("coursier.cache");
 
-        String xdgPath = coursierDirectories.projectCacheDir;
-        File xdgDir = new File(xdgPath);
+        File baseXdgDir = new File(coursierDirectories.projectCacheDir);
+        File xdgDir = new File(baseXdgDir, "v1");
+        String xdgPath = xdgDir.getAbsolutePath();
 
         if (path == null) {
-            if (xdgDir.isDirectory())
+            if (baseXdgDir.isDirectory())
               path = xdgPath;
         }
 
         if (path == null) {
             File coursierDotFile = new File(System.getProperty("user.home") + "/.coursier");
             if (coursierDotFile.isDirectory())
-                path = System.getProperty("user.home") + "/.coursier/cache/";
+                path = System.getProperty("user.home") + "/.coursier/cache/v1/";
         }
 
         if (path == null) {
@@ -49,12 +50,7 @@ public final class CoursierPaths {
             xdgDir.mkdirs();
         }
 
-        File coursierCacheDirectory = new File(path).getAbsoluteFile();
-
-        if (coursierCacheDirectory.getName().equals("v1"))
-            coursierCacheDirectory = coursierCacheDirectory.getParentFile();
-
-        return coursierCacheDirectory;
+        return new File(path).getAbsoluteFile();
     }
 
     public static File cacheDirectory() {
