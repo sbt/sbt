@@ -34,10 +34,8 @@ object ShadingPlugin extends AutoPlugin {
     transitive = true
   )
 
-  // make that a setting?
   val shadingNamespace = SettingKey[String]("shading-namespace")
 
-  // make that a setting?
   val shadeNamespaces = SettingKey[Set[String]]("shade-namespaces")
 
   val toShadeJars = TaskKey[Seq[File]]("to-shade-jars")
