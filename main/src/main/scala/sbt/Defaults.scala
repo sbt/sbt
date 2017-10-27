@@ -1121,6 +1121,11 @@ object Defaults extends BuildCommon {
       toClean
     }
 
+  def cleanFilesTask: Initialize[Task[Vector[File]]] =
+    Def.taskDyn {
+      cleanFilesTask(managedDirectory.value, target.value)
+    }
+
   def cleanTask: Initialize[Task[Unit]] =
     Def.task {
       IO.delete(cleanFiles.value)
