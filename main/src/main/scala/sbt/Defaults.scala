@@ -366,6 +366,7 @@ object Defaults extends BuildCommon {
   ) ++ inTask(compile)(
     // This is defined here because it depends on classDirectory
     Seq(
+      cleanKeepFiles := Seq(),
       cleanFiles := Def.taskDyn { cleanFilesTask(classDirectory.value) }.value,
       clean := cleanTask.value
     )

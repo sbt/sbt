@@ -1,17 +1,22 @@
-$ touch target/cant-touch-it
+$ touch target/cant-touch-this
 
 > test:compile
 $ exists target/scala-2.12/classes/A.class
 $ exists target/scala-2.12/test-classes/B.class
 
 > test:compile::clean
-$ exists target/cant-touch-it
+$ exists target/cant-touch-this
 # it should clean only compile classes
 $ exists target/scala-2.12/classes/A.class
+$ exists target/scala-2.12/classes/X.class
 $ absent target/scala-2.12/test-classes/B.class
 
+# compiling everything again, but now cleaning only compile classes
+> test:compile
 > compile:compile::clean
-$ exists target/cant-touch-it
+$ exists target/cant-touch-this
 # it should clean only compile classes
 $ absent target/scala-2.12/classes/A.class
-$ absent target/scala-2.12/test-classes/B.class
+$ exists target/scala-2.12/test-classes/B.class
+# and X has to be kept, because of the cleanKeepFiles override
+$ exists target/scala-2.12/classes/X.class
