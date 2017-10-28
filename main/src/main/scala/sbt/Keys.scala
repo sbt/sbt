@@ -178,7 +178,7 @@ object Keys {
   // Output paths
   val classDirectory = settingKey[File]("Directory for compiled classes and copied resources.").withRank(AMinusSetting)
   val cleanFiles = taskKey[Seq[File]]("The files to recursively delete during a clean.").withRank(BSetting)
-  val cleanKeepFiles = settingKey[Seq[File]]("Files or directories to keep during a clean. Must be direct children of target.").withRank(CSetting)
+  val cleanKeepFiles = settingKey[Seq[File]]("Files or directories to keep during a clean. Must be direct children of cleanFiles.").withRank(CSetting)
   val crossPaths = settingKey[Boolean]("If true, enables cross paths, which distinguish input and output directories for cross-building.").withRank(ASetting)
   val taskTemporaryDirectory = settingKey[File]("Directory used for temporary files for tasks that is deleted after each task execution.").withRank(DSetting)
 
