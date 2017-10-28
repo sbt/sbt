@@ -196,8 +196,6 @@ object CoursierPlugin extends AutoPlugin {
       withClassifiers = true,
       sbtClassifiers = true
     ).value,
-    makeIvyXmlBefore(needsIvyXmlLocal, shadedConfigOpt),
-    makeIvyXmlBefore(needsIvyXml, shadedConfigOpt),
     update := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = false
@@ -280,7 +278,8 @@ object CoursierPlugin extends AutoPlugin {
     // Tests artifacts from Maven repositories are given this type.
     // Adding it here so that these work straightaway.
     classpathTypes += "test-jar"
-  )
+  ) ++
+    (needsIvyXml ++ needsIvyXmlLocal).map(makeIvyXmlBefore(_, shadedConfigOpt))
 
   override lazy val buildSettings = super.buildSettings ++ Seq(
     coursierParallelDownloads := 6,

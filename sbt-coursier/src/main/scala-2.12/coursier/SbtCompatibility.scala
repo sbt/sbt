@@ -16,7 +16,28 @@ object SbtCompatibility {
 
   type IvySbt = sbt.internal.librarymanagement.IvySbt
 
-  def needsIvyXmlLocal = sbt.Keys.publishLocalConfiguration
-  def needsIvyXml = sbt.Keys.publishConfiguration
+  lazy val needsIvyXmlLocal = Seq(sbt.Keys.publishLocalConfiguration) ++ {
+    try {
+      val cls = sbt.Keys.getClass
+      val m = cls.getMethod("makeIvyXmlLocalConfiguration")
+      val task = m.invoke(sbt.Keys).asInstanceOf[sbt.TaskKey[sbt.PublishConfiguration]]
+      List(task)
+    } catch {
+      case _: Throwable => // FIXME Too wide
+        Nil
+    }
+  }
+
+  lazy val needsIvyXml = Seq(sbt.Keys.publishConfiguration) ++ {
+    try {
+      val cls = sbt.Keys.getClass
+      val m = cls.getMethod("makeIvyXmlConfiguration")
+      val task = m.invoke(sbt.Keys).asInstanceOf[sbt.TaskKey[sbt.PublishConfiguration]]
+      List(task)
+    } catch {
+      case _: Throwable => // FIXME Too wide
+        Nil
+    }
+  }
 
 }
