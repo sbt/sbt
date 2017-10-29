@@ -1,0 +1,4 @@
+> help
+$ copy-file changes/build.properties project/build.properties
+> reload
+> checkSbtVersionWarning

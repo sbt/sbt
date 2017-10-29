@@ -273,6 +273,7 @@ object Defaults extends BuildCommon {
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
         .## % 1000),
       serverAuthentication := Set(ServerAuthentication.Token),
+      insideCI :== sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI"),
     ))
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -1746,12 +1747,10 @@ object Classpaths {
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
         excludeDependencies :== Nil,
-        ivyLoggingLevel :== {
-          // This will suppress "Resolving..." logs on Jenkins and Travis.
-          if (sys.env.get("BUILD_NUMBER").isDefined || sys.env.get("CI").isDefined)
-            UpdateLogging.Quiet
-          else UpdateLogging.Default
-        },
+        ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
+        if (insideCI.value)
+          UpdateLogging.Quiet
+        else UpdateLogging.Default),
         ivyXML :== NodeSeq.Empty,
         ivyValidate :== false,
         moduleConfigurations :== Nil,
