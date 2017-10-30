@@ -1,6 +1,8 @@
 package sbt
 package lsp
 
+import sbt.internal.langserver.ErrorCodes
+
 object Definition {
   import java.net.URI
   import Keys._
@@ -64,8 +66,9 @@ object Definition {
 
     def asClassObjectIdentifier(sym: String) = Seq(s".$sym", s".$sym$$", s"$$$sym", s"$$$sym$$")
     import java.io.File
-    def markPosition(file: File, sym: String): Option[(File, Int, Int, Int)] = {
-      val potentials = Seq(s"object $sym", s"trait $sym", s"class $sym")
+    def markPosition(file: File, sym: String): Seq[(File, Int, Int, Int)] = {
+      val potentials =
+        Seq(s"object $sym", s"trait $sym ", s"trait $sym[", s"class $sym ", s"class $sym[")
       import java.nio.file._
       import scala.collection.JavaConverters._
       Files
@@ -73,14 +76,12 @@ object Definition {
         .iterator
         .asScala
         .zipWithIndex
-        .collectFirst {
+        .collect {
           case (line, lineNumber) if potentials.exists(line.contains) =>
             val from = line.indexOf(sym)
             (file, lineNumber, from, from + sym.length)
         }
-        .orElse {
-          None
-        }
+        .toSeq
     }
   }
 
@@ -113,71 +114,78 @@ object Definition {
           JsonRpcResponseError(ErrorCodes.ParseError, "Incorrect definition request", None))
         None
       }
-    import sbt.librarymanagement.Configurations.Compile
-    val analysisOpt = (previousCompile in Compile).value.analysis.toOption
-      .map {
-        case a: Analysis => a
-      }
-      .orElse {
-        Option {
-          compile.value match {
-            case a: Analysis => a
-          }
+    lazy val analysisOpt = {
+      val root = Project.extract(universe)
+      import sbt.librarymanagement.Configurations.Compile
+      import sbt.internal.Aggregation
+      val skey = (Keys.previousCompile in Compile).scopedKey
+      val tasks = root.structure.data.scopes
+        .map { scope =>
+          root.structure.data.get(scope, skey.key)
+        }
+        .collect {
+          case Some(task) => Aggregation.KeyValue(skey, task)
+        }
+        .toSeq
+      import sbt.std.Transform.DummyTaskMap
+      val complete =
+        Aggregation.timedRun(universe.copy(remainingCommands = Nil), tasks, DummyTaskMap(Nil))
+      complete.results.toEither.toOption.map { results =>
+        results.map(_.value.analysis.toOption).collect {
+          case Some(analysis: Analysis) =>
+            analysis
         }
       }
-    for {
-      definition <- definitionOpt
-      analysis <- analysisOpt
-    } yield {
+    }.getOrElse(Seq.empty)
+
+    definitionOpt.map { definition =>
       val srcs = sources.value
       srcs
         .collectFirst {
           case file if definition.textDocument.uri.endsWith(file.getAbsolutePath) =>
             new URI(definition.textDocument.uri)
         }
-        .map { uri =>
+        .flatMap { uri =>
           import java.nio.file._
           Files
             .lines(Paths.get(uri))
             .skip(definition.position.line)
             .findFirst
             .toOption
-            .map { line =>
-              universe.log.debug(s"$LspDefinitionLogHead found line: $line")
-              textProcessor
-                .identifier(line, definition.position.character.toInt)
-                .map { sym =>
-                  val potentialIdentifiers = textProcessor.asClassObjectIdentifier(sym)
-                  val internalPotentials = analysis.apis.allInternalClasses.collect {
-                    case n if potentialIdentifiers.exists(n.endsWith) => n
+        }
+        .flatMap { line =>
+          universe.log.debug(s"$LspDefinitionLogHead found line: $line")
+          textProcessor
+            .identifier(line, definition.position.character.toInt)
+            .map { sym =>
+              val potentialIdentifiers = textProcessor.asClassObjectIdentifier(sym)
+              val locations = analysisOpt.flatMap { analysis =>
+                val internalPotentials = analysis.apis.allInternalClasses.collect {
+                  case n if potentialIdentifiers.exists(n.endsWith) => n
+                }
+                val externalPotentials = analysis.apis.allExternals.collect {
+                  case n if potentialIdentifiers.exists(n.endsWith) => n
+                }
+                val potentialCls = (internalPotentials ++ externalPotentials)
+                universe.log.debug(s"$LspDefinitionLogHead potentials: $potentialCls")
+                potentialCls
+                  .flatMap { cname =>
+                    universe.log.debug(
+                      s"$LspDefinitionLogHead classes ${analysis.relations.classes}")
+                    analysis.relations.definesClass(cname) ++ analysis.relations
+                      .libraryDefinesClass(cname)
                   }
-                  val externalPotentials = analysis.apis.allExternals.collect {
-                    case n if potentialIdentifiers.exists(n.endsWith) => n
-                  }
-                  val potentialCls = (internalPotentials ++ externalPotentials)
-                  universe.log.debug(s"$LspDefinitionLogHead potentials: $potentialCls")
-                  val potentials = potentialCls
-                    .flatMap { cname =>
-                      analysis.relations.definesClass(cname)
-                    }
-                    .map { file =>
-                      textProcessor.markPosition(file, sym).orElse(Some((file, 0, 0, 0)))
-                    }
-                    .collect {
-                      case Some((file, line, from, to)) =>
+                  .flatMap { file =>
+                    textProcessor.markPosition(file, sym).collect {
+                      case (file, line, from, to) =>
                         import sbt.internal.langserver.{ Location, Position, Range }
                         Location(file.toURI.toURL.toString,
                                  Range(Position(line, from), Position(line, to)))
                     }
-                  import sbt.internal.langserver.codec.JsonProtocol._
-                  send(universe)(potentials.toArray)
-                }
-                .orElse {
-                  import sbt.internal.langserver.codec.JsonProtocol._
-                  import sbt.internal.langserver.{ Location }
-                  send(universe)(Array.empty[Location])
-                  None
-                }
+                  }
+              }
+              import sbt.internal.langserver.codec.JsonProtocol._
+              send(universe)(locations.toArray)
             }
         }
     }
