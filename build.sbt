@@ -34,7 +34,7 @@ def buildLevelSettings: Seq[Setting[_]] =
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
       scalafmtOnCompile := true,
-      scalafmtVersion := "1.2.0",
+      scalafmtVersion := "1.3.0",
     ))
 
 def commonSettings: Seq[Setting[_]] =
@@ -51,6 +51,7 @@ def commonSettings: Seq[Setting[_]] =
     resolvers += Resolver.typesafeIvyRepo("releases"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
+    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),
     concurrentRestrictions in Global += Util.testExclusiveRestriction,
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
@@ -143,6 +144,18 @@ val collectionProj = (project in file("internal") / "util-collection")
     mimaBinaryIssueFilters ++= Seq(
       // Added private[sbt] method to capture State attributes.
       exclude[ReversedMissingMethodProblem]("sbt.internal.util.AttributeMap.setCond"),
+
+      // Dropped in favour of kind-projector's inline type lambda syntax
+      exclude[MissingClassProblem]("sbt.internal.util.TypeFunctions$P1of2"),
+
+      // Dropped in favour of kind-projector's polymorphic lambda literals
+      exclude[MissingClassProblem]("sbt.internal.util.Param"),
+      exclude[MissingClassProblem]("sbt.internal.util.Param$"),
+
+      // Dropped in favour of plain scala.Function, and its compose method
+      exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.Types.toFn1"),
     ),
   )
   .configure(addSbtUtilPosition)
@@ -309,6 +322,8 @@ lazy val commandProj = (project in file("main-command"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerInstance.*"),
       // Added method to CommandChannel. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
+      // Added an overload to reboot. The overload is private[sbt].
+      exclude[ReversedMissingMethodProblem]("sbt.StateOps.reboot"),
     )
   )
   .configure(
@@ -391,6 +406,8 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       // Removed unused val. internal.
       exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
+      // Removed unused def. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.Load.isProjectThis"),
     )
   )
   .configure(
@@ -414,7 +431,18 @@ lazy val sbtProj = (project in file("sbt"))
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     mimaSettings,
-    mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    mimaBinaryIssueFilters ++= Vector(
+      // Added more items to Import trait.
+      exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
+      exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
+
+      // Dropped in favour of kind-projector's polymorphic lambda literals
+      exclude[DirectMissingMethodProblem]("sbt.Import.Param"),
+      exclude[DirectMissingMethodProblem]("sbt.package.Param"),
+
+      // Dropped in favour of plain scala.Function, and its compose method
+      exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),
+    )
   )
   .configure(addSbtCompilerBridge)
 
@@ -425,19 +453,23 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
     skip in publish := true,
     compile in Compile := {
       val u = update.value
+      val log = streams.value.log
       import sbt.internal.inc.Analysis
       import scala.sys.process._
-      Process(s"npm run compile", Option(baseDirectory.value)).!
+      val exitCode = Process(s"npm run compile", Option(baseDirectory.value)) ! log
+      if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
       Analysis.empty
     },
     update := {
       val old = update.value
       val t = target.value / "updated"
       val base = baseDirectory.value
+      val log = streams.value.log
       if (t.exists) ()
       else {
         import scala.sys.process._
-        Process("npm install", Option(base)).!
+        val exitCode = Process("npm install", Option(base)) ! log
+        if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
         IO.touch(t)
       }
       old
@@ -452,14 +484,6 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
         base / "server" / "node_modules") filter { _.exists }
     }
   )
-
-lazy val sbtIgnoredProblems = {
-  Seq(
-    // Added more items to Import trait.
-    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
-    exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource")
-  )
-}
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed

@@ -71,7 +71,7 @@ object Sync {
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
     val dups = relation.reverseMap.filter {
-      case (target, srcs) =>
+      case (_, srcs) =>
         srcs.size >= 2 && srcs.exists(!_.isDirectory)
     } map {
       case (target, srcs) =>

@@ -27,7 +27,7 @@ trait AList[K[L[x]]] {
 }
 
 object AList {
-  type Empty = AList[({ type l[L[x]] = Unit })#l]
+  type Empty = AList[ConstK[Unit]#l]
 
   /** AList for Unit, which represents a sequence that is always empty.*/
   val empty: Empty = new Empty {
@@ -37,7 +37,7 @@ object AList {
     def traverse[M[_], N[_], P[_]](in: Unit, f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Unit] = np.pure(())
   }
 
-  type SeqList[T] = AList[({ type l[L[x]] = List[L[T]] })#l]
+  type SeqList[T] = AList[λ[L[x] => List[L[T]]]]
 
   /** AList for a homogeneous sequence. */
   def seq[T]: SeqList[T] = new SeqList[T] {
@@ -59,7 +59,7 @@ object AList {
   }
 
   /** AList for the arbitrary arity data structure KList. */
-  def klist[KL[M[_]] <: KList[M] { type Transform[N[_]] = KL[N] }]: AList[KL] = new AList[KL] {
+  def klist[KL[M[_]] <: KList.Aux[M, KL]]: AList[KL] = new AList[KL] {
     def transform[M[_], N[_]](k: KL[M], f: M ~> N) = k.transform(f)
     def foldr[M[_], T](k: KL[M], f: (M[_], T) => T, init: T): T = k.foldr(f, init)
     override def apply[M[_], C](k: KL[M], f: KL[Id] => C)(implicit app: Applicative[M]): M[C] = k.apply(f)(app)
@@ -67,7 +67,7 @@ object AList {
     override def toList[M[_]](k: KL[M]) = k.toList
   }
 
-  type Single[A] = AList[({ type l[L[x]] = L[A] })#l]
+  type Single[A] = AList[λ[L[x] => L[A]]]
 
   /** AList for a single value. */
   def single[A]: Single[A] = new Single[A] {
@@ -76,7 +76,7 @@ object AList {
     def traverse[M[_], N[_], P[_]](a: M[A], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[P[A]] = f(a)
   }
 
-  type ASplit[K[L[x]], B[x]] = AList[({ type l[L[x]] = K[(L ∙ B)#l] })#l]
+  type ASplit[K[L[x]], B[x]] = AList[λ[L[x] => K[(L ∙ B)#l]]]
 
   /** AList that operates on the outer type constructor `A` of a composition `[x] A[B[x]]` for type constructors `A` and `B`*/
   def asplit[K[L[x]], B[x]](base: AList[K]): ASplit[K, B] = new ASplit[K, B] {

@@ -61,7 +61,7 @@ private[sbt] final class DefinedSbtValues(val sbtFiles: Seq[compiler.EvalDefinit
       file <- sbtFiles
       m = file.enclosingModule
       v <- file.valNames
-    } yield s"import ${m}.${v}"
+    } yield s"import ${m}.`${v}`"
   }
   def generated: Seq[File] =
     sbtFiles flatMap (_.generated)

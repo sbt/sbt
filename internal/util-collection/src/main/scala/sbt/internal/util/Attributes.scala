@@ -196,11 +196,9 @@ object AttributeMap {
   def apply(entries: AttributeEntry[_]*): AttributeMap = empty ++ entries
 
   /** Presents an `AttributeMap` as a natural transformation. */
-  implicit def toNatTrans(map: AttributeMap): AttributeKey ~> Id = new (AttributeKey ~> Id) {
-    def apply[T](key: AttributeKey[T]): T = map(key)
-  }
-
+  implicit def toNatTrans(map: AttributeMap): AttributeKey ~> Id = λ[AttributeKey ~> Id](map(_))
 }
+
 private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
     extends AttributeMap {
 
@@ -229,7 +227,9 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
     }
 
   def entries: Iterable[AttributeEntry[_]] =
-    for ((k: AttributeKey[kt], v) <- backing) yield AttributeEntry(k, v.asInstanceOf[kt])
+    backing.collect {
+      case (k: AttributeKey[kt], v) => AttributeEntry(k, v.asInstanceOf[kt])
+    }
 
   private[sbt] def setCond[T](k: AttributeKey[T], opt: Option[T]): AttributeMap =
     opt match {

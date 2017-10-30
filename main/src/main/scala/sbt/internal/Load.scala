@@ -291,12 +291,12 @@ private[sbt] object Load {
   // 3. resolvedScoped is replaced with the defining key as a value
   // Note: this must be idempotent.
   def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
-    def mapSpecial(to: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) {
-      def apply[T](key: ScopedKey[T]) =
+    def mapSpecial(to: ScopedKey[_]) = λ[ScopedKey ~> ScopedKey](
+      (key: ScopedKey[_]) =>
         if (key.key == streams.key)
           ScopedKey(Scope.fillTaskAxis(Scope.replaceThis(to.scope)(key.scope), to.key), key.key)
         else key
-    }
+    )
     def setDefining[T] =
       (key: ScopedKey[T], value: T) =>
         value match {
@@ -304,13 +304,13 @@ private[sbt] object Load {
           case ik: InputTask[t] => ik.mapTask(tk => setDefinitionKey(tk, key)).asInstanceOf[T]
           case _                => value
       }
-    def setResolved(defining: ScopedKey[_]) = new (ScopedKey ~> Option) {
-      def apply[T](key: ScopedKey[T]): Option[T] =
+    def setResolved(defining: ScopedKey[_]) = λ[ScopedKey ~> Option](
+      (key: ScopedKey[_]) =>
         key.key match {
-          case resolvedScoped.key => Some(defining.asInstanceOf[T])
+          case resolvedScoped.key => Some(defining.asInstanceOf[A1$])
           case _                  => None
-        }
-    }
+      }
+    )
     ss.map(s =>
       s mapConstant setResolved(s.key) mapReferenced mapSpecial(s.key) mapInit setDefining)
   }
@@ -362,12 +362,6 @@ private[sbt] object Load {
       scopeLocal = structure.scopeLocal
     )
   }
-
-  def isProjectThis(s: Setting[_]): Boolean =
-    s.key.scope.project match {
-      case This | Select(ThisProject) => true
-      case _                          => false
-    }
 
   def buildConfigurations(
       loaded: LoadedBuild,

@@ -24,7 +24,7 @@ trait JsonRpcRequestMessageFormats {
             val id = try {
               unbuilder.readField[String]("id")
             } catch {
-              case _ => unbuilder.readField[Long]("id").toString
+              case _: Throwable => unbuilder.readField[Long]("id").toString
             }
             val method = unbuilder.readField[String]("method")
             val params = unbuilder.lookupField("params") map {

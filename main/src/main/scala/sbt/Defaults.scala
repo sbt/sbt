@@ -9,7 +9,6 @@ package sbt
 
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import java.io.{ File, PrintWriter }
-import java.nio.file.FileSystems
 import java.net.{ URI, URL }
 import java.util.Optional
 import java.util.concurrent.{ TimeUnit, Callable }
@@ -251,7 +250,7 @@ object Defaults extends BuildCommon {
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchService :== { () =>
-        FileSystems.getDefault.newWatchService
+        Watched.createWatchService()
       },
       logBuffered :== false,
       commands :== Nil,
@@ -274,6 +273,7 @@ object Defaults extends BuildCommon {
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
         .## % 1000),
       serverAuthentication := Set(ServerAuthentication.Token),
+      insideCI :== sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI"),
     ))
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -555,7 +555,7 @@ object Defaults extends BuildCommon {
       val trigMsg = triggeredMessage.value
       new Watched {
         val scoped = watchTransitiveSources in base
-        val key = ScopedKey(scoped.scope, scoped.key)
+        val key = scoped.scopedKey
         override def pollInterval = interval
         override def watchingMessage(s: WatchState) = msg(s)
         override def triggeredMessage(s: WatchState) = trigMsg(s)
@@ -610,19 +610,18 @@ object Defaults extends BuildCommon {
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
-    val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
+    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val binVersion = scalaBinaryVersion.value
     val compilerJar =
       if (ScalaInstance.isDotty(scalaVersion.value))
         file(ScalaArtifacts.dottyID(binVersion))
       else file(ScalaArtifacts.CompilerID)
-    val otherJars = allFiles.filterNot(x => x == libraryJar || x == compilerJar)
     new ScalaInstance(scalaVersion.value,
-                      makeClassLoader(state.value)(libraryJar :: compilerJar :: otherJars.toList),
+                      makeClassLoader(state.value)(allJars.toList),
                       libraryJar,
                       compilerJar,
-                      otherJars.toArray,
+                      allJars.toArray,
                       None)
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
@@ -1758,12 +1757,10 @@ object Classpaths {
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
         excludeDependencies :== Nil,
-        ivyLoggingLevel :== {
-          // This will suppress "Resolving..." logs on Jenkins and Travis.
-          if (sys.env.get("BUILD_NUMBER").isDefined || sys.env.get("CI").isDefined)
-            UpdateLogging.Quiet
-          else UpdateLogging.Default
-        },
+        ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
+        if (insideCI.value)
+          UpdateLogging.Quiet
+        else UpdateLogging.Default),
         ivyXML :== NodeSeq.Empty,
         ivyValidate :== false,
         moduleConfigurations :== Nil,

@@ -29,9 +29,10 @@ final case class Scope(project: ScopeAxis[Reference],
   def in(config: ConfigKey): Scope = copy(config = Select(config))
   def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
 
-  override def toString: String = {
-    if (extra == This) s"$project / $config / $task"
-    else s"Scope($project, $config, $task, $extra)"
+  override def toString: String = this match {
+    case Scope(Zero, Zero, Zero, Zero) => "Global"
+    case Scope(_, _, _, This)          => s"$project / $config / $task"
+    case _                             => s"Scope($project, $config, $task, $extra)"
   }
 }
 object Scope {
@@ -97,8 +98,7 @@ object Scope {
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject =>
-        RootProject(current) // Is this right? It was an inexhaustive match before..
+      case ThisProject         => ThisProject // haven't exactly "resolved" anything..
     }
   def resolveBuild(current: URI, uri: URI): URI =
     if (!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
@@ -118,13 +118,11 @@ object Scope {
                         rootProject: URI => String,
                         ref: ProjectReference): ProjectRef =
     ref match {
-      case LocalRootProject => ProjectRef(current, rootProject(current))
-      case LocalProject(id) => ProjectRef(current, id)
-      case RootProject(uri) =>
-        val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
+      case LocalRootProject    => ProjectRef(current, rootProject(current))
+      case LocalProject(id)    => ProjectRef(current, id)
+      case RootProject(uri)    => val u = resolveBuild(current, uri); ProjectRef(u, rootProject(u))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject =>
-        ProjectRef(current, rootProject(current)) // Is this right? It was an inexhaustive match before..
+      case ThisProject         => sys.error("Cannot resolve ThisProject w/o the current project")
     }
   def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
     ref match {
@@ -277,7 +275,7 @@ object Scope {
         case Select(conf) => index.config(configProj, conf); case _ => withZeroAxis(scope.config)
       }
       val tLin = scope.task match {
-        case t @ Select(task) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
+        case t @ Select(_) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
       }
       val eLin = withZeroAxis(scope.extra)
       for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)

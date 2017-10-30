@@ -56,7 +56,8 @@ import StandardMain._
 
 import java.io.{ File, IOException }
 import java.net.URI
-import java.util.Locale
+import java.util.{ Locale, Properties }
+
 import scala.util.control.NonFatal
 import BasicCommandStrings.{ Shell, TemplateCommand }
 import CommandStrings.BootCommand
@@ -165,9 +166,6 @@ object BuiltinCommands {
 
   def DefaultCommands: Seq[Command] =
     Seq(
-      ignore,
-      help,
-      completionsCommand,
       about,
       tasks,
       settingsCommand,
@@ -175,9 +173,6 @@ object BuiltinCommands {
       templateCommand,
       projects,
       project,
-      reboot,
-      read,
-      history,
       set,
       sessionCommand,
       inspect,
@@ -188,36 +183,21 @@ object BuiltinCommands {
       PluginCross.pluginCross,
       PluginCross.pluginSwitch,
       Cross.crossRestoreSession,
-      setOnFailure,
-      clearOnFailure,
-      stashOnFailure,
-      popOnFailure,
       setLogLevel,
       plugin,
       plugins,
       writeSbtVersion,
       notifyUsersAboutShell,
-      ifLast,
-      multi,
       shell,
-      oldshell,
       startServer,
-      BasicCommands.client,
-      continuous,
       eval,
-      alias,
-      append,
       last,
       lastGrep,
       export,
       boot,
-      nop,
-      call,
-      exit,
-      early,
       initialize,
       act
-    ) ++ compatCommands
+    ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
     WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
@@ -693,7 +673,26 @@ object BuiltinCommands {
   def loadProjectImpl: Command =
     Command(LoadProjectImpl)(_ => Project.loadActionParser)(doLoadProject)
 
+  def checkSBTVersionChanged(state: State): Unit = {
+    import sbt.io.syntax._
+    val app = state.configuration.provider
+    val buildProps = state.baseDir / "project" / "build.properties"
+    // First try reading the sbt version from build.properties file.
+    val sbtVersionOpt = if (buildProps.exists) {
+      val buildProperties = new Properties()
+      IO.load(buildProperties, buildProps)
+      Option(buildProperties.getProperty("sbt.version"))
+    } else None
+
+    sbtVersionOpt.foreach(version =>
+      if (version != app.id.version()) {
+        state.log.warn(s"""sbt version mismatch, current: ${app.id
+          .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
+    })
+  }
+
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
+    checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
     val s = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)

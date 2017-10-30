@@ -118,7 +118,7 @@ trait TaskExtra {
   }
 
   final implicit def multT2Task[A, B](in: (Task[A], Task[B])) =
-    multInputTask[({ type l[L[x]] = (L[A], L[B]) })#l](in)(AList.tuple2[A, B])
+    multInputTask[λ[L[x] => (L[A], L[B])]](in)(AList.tuple2[A, B])
 
   final implicit def multInputTask[K[L[X]]](tasks: K[Task])(implicit a: AList[K]): MultiInTask[K] =
     new MultiInTask[K] {
@@ -165,7 +165,7 @@ trait TaskExtra {
           Result.tryValues[S](tx :: Nil, x)
       })
     def ||[T >: S](alt: Task[T]): Task[T] = flatMapR {
-      case Value(v) => task(v); case Inc(i) => alt
+      case Value(v) => task(v); case Inc(_) => alt
     }
     def &&[T](alt: Task[T]): Task[T] = flatMap(_ => alt)
   }
@@ -242,19 +242,19 @@ object TaskExtra extends TaskExtra {
       case Seq()     => sys.error("Cannot reduce empty sequence")
       case Seq(x)    => x
       case Seq(x, y) => reducePair(x, y, f)
-      case z =>
+      case _ =>
         val (a, b) = i.splitAt(i.size / 2)
         reducePair(reduced(a, f), reduced(b, f), f)
     }
 
   def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
-    multInputTask[({ type l[L[x]] = (L[S], L[S]) })#l]((a, b))(AList.tuple2[S, S]) map f.tupled
+    multInputTask[λ[L[x] => (L[S], L[S])]]((a, b))(AList.tuple2[S, S]) map f.tupled
 
   def anyFailM[K[L[x]]](implicit a: AList[K]): K[Result] => Seq[Incomplete] = in => {
     val incs = failuresM(a)(in)
     if (incs.isEmpty) expectedFailure else incs
   }
-  def failM[T]: Result[T] => Incomplete = { case Inc(i) => i; case x => expectedFailure }
+  def failM[T]: Result[T] => Incomplete = { case Inc(i) => i; case _ => expectedFailure }
 
   def expectedFailure = throw Incomplete(None, message = Some("Expected dependency to fail."))
 
