@@ -10,6 +10,18 @@ General note: always explicitly set the scala version at the sbt prompt, like
 Some modules of coursier are only built in specific scala versions (sbt plugins in 2.10 and 2.12, cli and web modules in 2.11, …). coursier doesn't use sbt-doge
 to handle that for now (but any help to make it work would be welcome).
 
+The sources of coursier rely on some git submodules. Clone the sources of coursier via
+```
+$ git clone --recursive https://github.com/coursier/coursier.git
+```
+or run
+```
+$ git submodule update --init --recursive
+```
+from the coursier sources to initialize them.
+
+The latter command also needs to be run whenever these submodules are updated.
+
 ## Compile and run the CLI
 
 ```
