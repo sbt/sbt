@@ -45,7 +45,13 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
   /** Add the correct Scala library jar to the boot classpath if `addLibrary` is true.*/
   def createBootClasspath(addLibrary: Boolean) =
     {
-      val originalBoot = System.getProperty("sun.boot.class.path", "")
+      def findBoot: String = {
+        import scala.collection.JavaConverters._
+        System.getProperties.asScala.iterator.collectFirst {
+          case (k, v) if k.endsWith(".boot.class.path") => v
+        }.getOrElse("")
+      }
+      val originalBoot = System.getProperty("sun.boot.class.path", findBoot)
       if (addLibrary) {
         val newBootPrefix = if (originalBoot.isEmpty) "" else originalBoot + File.pathSeparator
         newBootPrefix + scalaInstance.libraryJar.getAbsolutePath
