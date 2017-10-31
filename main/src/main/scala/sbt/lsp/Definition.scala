@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package lsp
 
@@ -39,32 +46,20 @@ object Definition {
         }
     }
 
-    private def find(fragment: String, left: Int, right: Int, dir: Boolean): Option[String] = {
-      if (left == -1 && !dir) find(fragment, 0, right, true)
-      else if (right > fragment.length && dir)
-        Some(fragment.slice(left, fragment.length).trim)
-      else if (!isIdentifier(fragment.slice(left, right)) && !dir)
-        find(fragment, left + 1, right, true)
-      else if (!isIdentifier(fragment.slice(left, right)) && dir)
-        Some(fragment.slice(left, right - 1).trim)
-      else
-        find(fragment, if (dir) left else left - 1, if (dir) right + 1 else right, dir)
+    def identifier(line: String, point: Int): Option[String] = {
+      val potentials = for {
+        from <- 0 to point
+        to <- point + 1 to line.length
+        fragment = line.slice(from, to).trim if isIdentifier(fragment)
+      } yield fragment
+      potentials.toSeq match {
+        case Nil        => None
+        case potentials => Some(potentials.maxBy(_.length))
+      }
     }
-
-    private def findCorrectIdentifier(fragment: String, point: Int) = Option {
-      if (isIdentifier(fragment.slice(point, point + 1))) (point, point + 1)
-      else if (isIdentifier(fragment.slice(point - 1, point + 1))) (point - 1, point + 1)
-      else if (isIdentifier(fragment.slice(point, point + 2))) (point, point + 2)
-      else null
-    }
-
-    def identifier(line: String, character: Int): Option[String] =
-      findCorrectIdentifier(line, character)
-        .flatMap {
-          case (left, right) => find(line, left, right, false)
-        }
 
     def asClassObjectIdentifier(sym: String) = Seq(s".$sym", s".$sym$$", s"$$$sym", s"$$$sym$$")
+
     import java.io.File
     def markPosition(file: File, sym: String): Seq[(File, Int, Int, Int)] = {
       val potentials =
@@ -85,6 +80,49 @@ object Definition {
     }
   }
 
+  import sbt.internal.langserver.TextDocumentPositionParams
+  private def getDefinition(rawDefinition: Option[String]): Option[TextDocumentPositionParams] =
+    rawDefinition.flatMap { rawDefinition =>
+      import sbt.internal.langserver.codec.JsonProtocol._
+      import sjsonnew.support.scalajson.unsafe.{ Parser => JsonParser, Converter }
+      JsonParser
+        .parseFromString(rawDefinition)
+        .flatMap { jsonDefinition =>
+          Converter.fromJson[TextDocumentPositionParams](jsonDefinition)
+        }
+        .toOption
+    }
+
+  private def getAnalyses(universe: State): Seq[Analysis] = {
+    val root = Project.extract(universe)
+    import sbt.librarymanagement.Configurations.Compile
+    import sbt.internal.Aggregation
+    val skey = (Keys.previousCompile in Compile).scopedKey
+    val tasks = root.structure.data.scopes
+      .map { scope =>
+        root.structure.data.get(scope, skey.key)
+      }
+      .collect {
+        case Some(task) => Aggregation.KeyValue(skey, task)
+      }
+      .toSeq
+    import sbt.std.Transform.DummyTaskMap
+    val complete =
+      Aggregation.timedRun(universe.copy(remainingCommands = Nil), tasks, DummyTaskMap(Nil))
+    complete.results.toEither.toOption.map { results =>
+      results.map(_.value.analysis.toOption).collect {
+        case Some(analysis: Analysis) =>
+          analysis
+      }
+    }
+  }.getOrElse(Seq.empty)
+
+  private def potentialClsOrTraitOrObj(potentials: Seq[String]): PartialFunction[String, String] = {
+    case potentialClassOrTraitOrObject
+        if potentials.exists(potentialClassOrTraitOrObject.endsWith) =>
+      potentialClassOrTraitOrObject
+  }
+
   lazy val lspDefinition = Def.inputKey[Unit]("language server protocol definition request task")
   def lspDefinitionTask = Def.inputTask {
     val LspDefinitionLogHead = "lsp-definition"
@@ -94,17 +132,58 @@ object Definition {
       spaceDelimited("<lsp-definition>").parsed
     }
     universe.log.debug(s"$LspDefinitionLogHead raw request: $rawDefinition")
-    val definitionOpt = rawDefinition.headOption
-      .flatMap { rawDefinition =>
-        import sbt.internal.langserver.TextDocumentPositionParams
-        import sbt.internal.langserver.codec.JsonProtocol._
-        import sjsonnew.support.scalajson.unsafe.{ Parser => JsonParser, Converter }
-        JsonParser
-          .parseFromString(rawDefinition)
-          .flatMap { jsonDefinition =>
-            Converter.fromJson[TextDocumentPositionParams](jsonDefinition)
+    val definition = getDefinition(rawDefinition.headOption)
+    lazy val analyses = getAnalyses(universe)
+
+    definition
+      .map { definition =>
+        val srcs = sources.value
+        srcs
+          .collectFirst {
+            case file if definition.textDocument.uri.endsWith(file.getAbsolutePath) =>
+              new URI(definition.textDocument.uri)
           }
-          .toOption
+          .flatMap { uri =>
+            import java.nio.file._
+            Files
+              .lines(Paths.get(uri))
+              .skip(definition.position.line)
+              .findFirst
+              .toOption
+          }
+          .flatMap { line =>
+            universe.log.debug(s"$LspDefinitionLogHead found line: $line")
+            textProcessor
+              .identifier(line, definition.position.character.toInt)
+              .map { sym =>
+                val selectPotentials =
+                  potentialClsOrTraitOrObj(textProcessor.asClassObjectIdentifier(sym))
+                val locations = analyses.flatMap { analysis =>
+                  val classes =
+                    (analysis.apis.allInternalClasses ++ analysis.apis.allExternals).collect {
+                      selectPotentials
+                    }
+                  universe.log.debug(s"$LspDefinitionLogHead potentials: $classes")
+                  classes
+                    .flatMap { className =>
+                      universe.log.debug(
+                        s"$LspDefinitionLogHead classes ${analysis.relations.classes}")
+                      analysis.relations.definesClass(className) ++ analysis.relations
+                        .libraryDefinesClass(className)
+                    }
+                    .flatMap { classFile =>
+                      textProcessor.markPosition(classFile, sym).collect {
+                        case (file, line, from, to) =>
+                          import sbt.internal.langserver.{ Location, Position, Range }
+                          Location(file.toURI.toURL.toString,
+                                   Range(Position(line, from), Position(line, to)))
+                      }
+                    }
+                }
+                import sbt.internal.langserver.codec.JsonProtocol._
+                send(universe)(locations.toArray)
+              }
+          }
       }
       .orElse {
         import sbt.internal.protocol.JsonRpcResponseError
@@ -114,80 +193,5 @@ object Definition {
           JsonRpcResponseError(ErrorCodes.ParseError, "Incorrect definition request", None))
         None
       }
-    lazy val analysisOpt = {
-      val root = Project.extract(universe)
-      import sbt.librarymanagement.Configurations.Compile
-      import sbt.internal.Aggregation
-      val skey = (Keys.previousCompile in Compile).scopedKey
-      val tasks = root.structure.data.scopes
-        .map { scope =>
-          root.structure.data.get(scope, skey.key)
-        }
-        .collect {
-          case Some(task) => Aggregation.KeyValue(skey, task)
-        }
-        .toSeq
-      import sbt.std.Transform.DummyTaskMap
-      val complete =
-        Aggregation.timedRun(universe.copy(remainingCommands = Nil), tasks, DummyTaskMap(Nil))
-      complete.results.toEither.toOption.map { results =>
-        results.map(_.value.analysis.toOption).collect {
-          case Some(analysis: Analysis) =>
-            analysis
-        }
-      }
-    }.getOrElse(Seq.empty)
-
-    definitionOpt.map { definition =>
-      val srcs = sources.value
-      srcs
-        .collectFirst {
-          case file if definition.textDocument.uri.endsWith(file.getAbsolutePath) =>
-            new URI(definition.textDocument.uri)
-        }
-        .flatMap { uri =>
-          import java.nio.file._
-          Files
-            .lines(Paths.get(uri))
-            .skip(definition.position.line)
-            .findFirst
-            .toOption
-        }
-        .flatMap { line =>
-          universe.log.debug(s"$LspDefinitionLogHead found line: $line")
-          textProcessor
-            .identifier(line, definition.position.character.toInt)
-            .map { sym =>
-              val potentialIdentifiers = textProcessor.asClassObjectIdentifier(sym)
-              val locations = analysisOpt.flatMap { analysis =>
-                val internalPotentials = analysis.apis.allInternalClasses.collect {
-                  case n if potentialIdentifiers.exists(n.endsWith) => n
-                }
-                val externalPotentials = analysis.apis.allExternals.collect {
-                  case n if potentialIdentifiers.exists(n.endsWith) => n
-                }
-                val potentialCls = (internalPotentials ++ externalPotentials)
-                universe.log.debug(s"$LspDefinitionLogHead potentials: $potentialCls")
-                potentialCls
-                  .flatMap { cname =>
-                    universe.log.debug(
-                      s"$LspDefinitionLogHead classes ${analysis.relations.classes}")
-                    analysis.relations.definesClass(cname) ++ analysis.relations
-                      .libraryDefinesClass(cname)
-                  }
-                  .flatMap { file =>
-                    textProcessor.markPosition(file, sym).collect {
-                      case (file, line, from, to) =>
-                        import sbt.internal.langserver.{ Location, Position, Range }
-                        Location(file.toURI.toURL.toString,
-                                 Range(Position(line, from), Position(line, to)))
-                    }
-                  }
-              }
-              import sbt.internal.langserver.codec.JsonProtocol._
-              send(universe)(locations.toArray)
-            }
-        }
-    }
   }
 }
