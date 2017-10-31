@@ -191,6 +191,7 @@ object Settings {
   lazy val plugin =
     javaScalaPluginShared ++
     divertThingsPlugin ++
+    withScriptedTests ++
     Seq(
       scriptedLaunchOpts ++= Seq(
         "-Xmx1024M",

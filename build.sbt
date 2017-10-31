@@ -240,7 +240,7 @@ lazy val `sbt-shared` = project
 
 lazy val `sbt-coursier` = project
   .dependsOn(coreJvm, cache, extra, `sbt-shared`)
-  .enablePlugins(ScriptedPlugin)
+  .disablePlugins(ScriptedPlugin)
   .settings(
     plugin,
     utest
@@ -248,7 +248,7 @@ lazy val `sbt-coursier` = project
 
 lazy val `sbt-pgp-coursier` = project
   .dependsOn(`sbt-coursier`)
-  .enablePlugins(ScriptedPlugin)
+  .disablePlugins(ScriptedPlugin)
   .settings(
     plugin,
     libs ++= {
@@ -261,7 +261,8 @@ lazy val `sbt-pgp-coursier` = project
   )
 
 lazy val `sbt-shading` = project
-  .enablePlugins(ScriptedPlugin, ShadingPlugin)
+  .enablePlugins(ShadingPlugin)
+  .disablePlugins(ScriptedPlugin)
   .dependsOn(`sbt-coursier`)
   .settings(
     plugin,
