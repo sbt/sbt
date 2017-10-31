@@ -16,8 +16,5 @@ fi
   --no-default \
   -r central \
   -r sonatype:releases \
-  -d "\${user.home}/.coursier/bootstrap/$VERSION" \
   -f -o coursier \
-  -M coursier.cli.Coursier \
-  -D coursier.cache="\${user.home}/.coursier/cache/$CACHE_VERSION" \
   "$@"
