@@ -112,7 +112,14 @@ validateReadme() {
   # check that tut runs fine, and that the README doesn't change after a `sbt tut`
   mv README.md README.md.orig
 
-  sbt ++${SCALA_VERSION} tut
+
+  if is212; then
+    TUT_SCALA_VERSION="2.12.1" # Later versions seem to make tut not see the coursier binaries
+  else
+    TUT_SCALA_VERSION="$SCALA_VERSION"
+  fi
+
+  sbt ++${TUT_SCALA_VERSION} tut
 
   if cmp -s README.md.orig README.md; then
     echo "README.md doesn't change"
