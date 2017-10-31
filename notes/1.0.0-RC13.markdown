@@ -1,0 +1,13 @@
+### Changes
+
+* Fix `java.lang.IncompatibleClassChangeError` exception with Java 9 ([#678])
+* Fix "Missing Ivy XML" errors, with sbt >= 1.0.2, when publishing with sbt-pgp ([#679])
+* Use [OS-specific directory](https://github.com/soc/directories) by default for the cache of coursier. Note that if a `~/.coursier` already exists on your machine, it will be peaked by coursier instead of the OS-specific directory. If it doesn't, the OS-specific directory will be created and used ([#676], thanks to [@soc])
+
+
+[#676]: https://github.com/alexarchambault/coursier/pull/676
+[#678]: https://github.com/alexarchambault/coursier/pull/678
+[#679]: https://github.com/alexarchambault/coursier/pull/679
+
+[@soc]: https://github.com/soc
+

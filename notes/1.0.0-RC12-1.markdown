@@ -1,0 +1,5 @@
+
+Simply a convenience release, aiming at having the actual next release (`1.0.0-RC13`) be fine with Java 9. See the release notes for `1.0.0-RC13` for the actual list of changes.
+
+The particularity of `1.0.0-RC12-1` is that its sbt-shading plugin generates code that is fine with Java 9, but it itself doesn't run fine in Java 9. On the other hand, `1.0.0-RC13` is fine in both cases (generates code fine with Java 9, and can itself run with Java 9).
+

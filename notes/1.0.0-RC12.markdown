@@ -1,0 +1,13 @@
+### Changes
+
+* Fix small glitch when reading exclusions from POMs ([#648])
+* More careful handling of dependencies between tasks in sbt plugin, via `Def.taskDyn` ([#651])
+* Filter out sbt preloaded repos by default (these don't bring much when sbt-coursier is enabled, set the `coursierKeepPreloaded` setting to `true` to re-enabled, [#651])
+* Add helper to make it easy to bump sbt-coursier version if sbt-coursier is loaded from `project/project/plugins.sbt` (add a `addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-RC12")` in `project/project/plugins.sbt`, then just a `addSbtCoursier` in `project/plugins.sbt` - [#651])
+* Fix `MatchError` when using cross version patch with sbt 1.0 ([#658])
+
+
+[#648]: https://github.com/alexarchambault/coursier/pull/648
+[#651]: https://github.com/alexarchambault/coursier/pull/651
+[#658]: https://github.com/alexarchambault/coursier/pull/658
+
