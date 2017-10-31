@@ -69,7 +69,7 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
   def bootClasspathFor(classpath: Seq[File]) = bootClasspath(hasLibrary(classpath))
 
   import Path._
-  def extClasspath: Seq[File] = (IO.parseClasspath(System.getProperty("java.ext.dirs", "")) * "*.jar").get
+  def extClasspath: Seq[File] = List("java.ext.dirs", "scala.ext.dirs").flatMap(k => (IO.parseClasspath(System.getProperty(k, "")) * "*.jar").get)
 }
 object CompilerArguments {
   val BootClasspathOption = "-bootclasspath"
