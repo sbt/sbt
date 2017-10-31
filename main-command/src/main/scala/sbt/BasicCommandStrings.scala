@@ -194,7 +194,7 @@ $AliasCommand name=
       deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
     def FailureWallDeprecated = deprecatedAlias(FailureWall, BasicCommandStrings.FailureWall)
     private[this] def deprecatedAlias(oldName: String, newName: String): String =
-      s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in 0.14.0"
+      s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in a later version"
   }
 
   def FailureWall = "resumeFromFailure"
