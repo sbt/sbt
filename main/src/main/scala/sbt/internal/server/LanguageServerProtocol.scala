@@ -34,6 +34,15 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   protected def log: Logger
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
 
+  protected def onNotification(notification: JsonRpcNotificationMessage): Unit = {
+    log.debug(s"onNotification: $notification")
+    notification.method match {
+      case "textDocument/didSave" =>
+        append(Exec(";compile; collectAnalyses", None, Some(CommandSource(name))))
+      case _ => ()
+    }
+  }
+
   protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
     import sbt.internal.langserver.codec.JsonProtocol._
     import internalJsonProtocol._
@@ -57,8 +66,6 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         setInitialized(true)
         append(Exec(s"collectAnalyses", Some(request.id), Some(CommandSource(name))))
         langRespond(InitializeResult(serverCapabilities), Option(request.id))
-      case "textDocument/didSave" =>
-        append(Exec(";compile; collectAnalyses", Some(request.id), Some(CommandSource(name))))
       case "textDocument/definition" =>
         import scala.concurrent.ExecutionContext.Implicits.global
         Definition.lspDefinition(json, request.id, CommandSource(name), log)
