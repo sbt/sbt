@@ -1,8 +1,8 @@
-# Cookbook of stuff done while developing coursier
+# Cookbook of stuff to do while developing coursier
 
 General note: always explicitly set the scala version at the sbt prompt, like
 ```
-> ++2.12.1
+> ++2.12.4
 > ++2.11.11
 > ++2.10.6
 ```
@@ -45,13 +45,13 @@ cache, …).
 
 ```
 $ sbt
-> ++2.12.1
+> ++2.12.4
 > sbt-plugins/publishLocal
 > sbt-coursier/scripted sbt-coursier/simple
 > sbt-shading/scripted sbt-shading/shading
 ```
 
-`++2.12.1` sets the scala version, which automatically builds the plugins for sbt 1.0. For sbt 0.13, do `++2.10.6`.
+`++2.12.4` sets the scala version, which automatically builds the plugins for sbt 1.0. For sbt 0.13, do `++2.10.6`.
 
 `sbt-plugins/publishLocal` publishes locally the plugins *and their dependencies*, which scripted seems not to do automatically.
 
@@ -59,7 +59,7 @@ $ sbt
 
 ```
 $ sbt
-> ++2.12.1
+> ++2.12.4
 > sbt-plugins/publishLocal
 > sbt-coursier/scripted
 > sbt-shading/scripted
@@ -71,7 +71,7 @@ Use `++2.10.6` for sbt 0.13. See discussion above too.
 
 ```
 $ sbt
-> ++2.12.1
+> ++2.12.4
 > testsJVM/testOnly coursier.util.TreeTests
 > testsJVM/test
 ```
@@ -83,7 +83,7 @@ To run the tests each time the sources change, prefix the test commands with
 `~`, like
 ```
 $ sbt
-> ++2.12.1
+> ++2.12.4
 > ~testsJVM/testOnly coursier.util.TreeTests
 > ~testsJVM/test
 ```
@@ -100,7 +100,7 @@ $ npm install
 JS tests can then be run like JVM tests, like
 ```
 $ sbt
-> ++2.12.1
+> ++2.12.4
 > testsJS/testOnly coursier.util.TreeTests
 > testsJS/test
 ```
@@ -109,4 +109,31 @@ Like for the JVM tests, prefix test commands with `~` to watch sources (see abov
 
 ## Run integration tests
 
-…
+### Main tests
+
+Run the small web repositories with:
+```
+$ scripts/launch-test-repo.sh --port 8080 --list-pages
+$ scripts/launch-test-repo.sh --port 8081
+```
+
+Both of these commands spawn a web server in the background.
+
+Run the main ITs with
+```
+$ sbt ++2.12.4 testsJVM/it:test
+```
+
+### Nexus proxy tests
+
+Start the test Nexus servers with
+```
+$ scripts/launch-proxies.sh
+```
+
+This spawns two docker-based Nexus servers in the background (a Nexus 2 and a Nexus 3).
+
+Then run the proxy ITs with
+```
+$ sbt ++2.12.4 proxy-tests/it:test
+```
