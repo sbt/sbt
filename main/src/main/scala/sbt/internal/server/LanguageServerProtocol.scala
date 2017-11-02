@@ -34,6 +34,23 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   protected def log: Logger
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
 
+  protected def onNotification(notification: JsonRpcNotificationMessage): Unit = {
+
+    import sbt.internal.langserver.codec.JsonProtocol._
+    import internalJsonProtocol._
+
+    def json =
+      notification.params.getOrElse(
+        throw LangServerError(ErrorCodes.InvalidParams,
+                              s"param is expected on '${notification.method}' method."))
+    log.debug(s"onNotification: $notification")
+    notification.method match {
+      case "textDocument/didSave" =>
+        append(Exec("compile", None, Some(CommandSource(name))))
+      case _ => ()
+    }
+  }
+
   protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
 
     import sbt.internal.langserver.codec.JsonProtocol._
@@ -58,8 +75,6 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         } else ()
         setInitialized(true)
         langRespond(InitializeResult(serverCapabilities), Option(request.id))
-      case "textDocument/didSave" =>
-        append(Exec("compile", Some(request.id), Some(CommandSource(name))))
       case "sbt/exec" =>
         val param = Converter.fromJson[SbtExecParams](json).get
         append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
