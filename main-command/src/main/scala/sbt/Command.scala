@@ -25,6 +25,11 @@ sealed trait Command {
 
   def tags: AttributeMap
   def tag[T](key: AttributeKey[T], value: T): Command
+
+  def nameOption: Option[String] = this match {
+    case sc: SimpleCommand => Some(sc.name)
+    case _                 => None
+  }
 }
 
 private[sbt] final class SimpleCommand(
@@ -187,13 +192,6 @@ object Command {
 
   def spacedC(name: String, c: Parser[Char]): Parser[String] =
     ((c & opOrIDSpaced(name)) ~ c.+) map { case (f, rem) => (f +: rem).mkString }
-
-  implicit class CommandWithName(val cmd: Command) extends AnyVal {
-    def nameOption: Option[String] = cmd match {
-      case sc: SimpleCommand => Some(sc.name)
-      case _                 => None
-    }
-  }
 }
 
 trait Help {
