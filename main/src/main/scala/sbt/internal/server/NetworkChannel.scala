@@ -166,14 +166,22 @@ final class NetworkChannel(val name: String,
 
     def handleBody(chunk: Vector[Byte]): Unit = {
       if (isLanguageServerProtocol) {
-        Serialization.deserializeJsonRequest(chunk) match {
-          case Right(req) =>
+        Serialization.deserializeJsonMessage(chunk) match {
+          case Right(Right(req)) =>
             try {
               onRequestMessage(req)
             } catch {
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
                 langError(Option(req.id), code, message)
+            }
+          case Right(Left(ntf)) =>
+            try {
+              onNotification(ntf)
+            } catch {
+              case LangServerError(code, message) =>
+                log.debug(s"sending error: $code: $message")
+                langError(None, code, message) // new id?
             }
           case Left(errorDesc) =>
             val msg = s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
