@@ -93,7 +93,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
         "",
         "To force scalaVersion, add the following:",
-        "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }",
+        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))",
         "Run 'evicted' to see detailed eviction warnings"
       )
   }
@@ -109,7 +109,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t    +- com.example:foo:0.1.0                              (depends on 2.10.2)",
         "",
         "To force scalaVersion, add the following:",
-        "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }",
+        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))",
         "Run 'evicted' to see detailed eviction warnings"
       )
   }
