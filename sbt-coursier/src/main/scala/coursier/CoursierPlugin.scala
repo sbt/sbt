@@ -9,7 +9,7 @@ object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 
-  override def requires = sbt.plugins.IvyPlugin
+  override def requires = sbt.plugins.JvmPlugin
 
   object autoImport {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
@@ -153,6 +153,11 @@ object CoursierPlugin extends AutoPlugin {
     shadedConfigOpt: Option[(String, String)],
     packageConfigs: Seq[(Configuration, String)]
   ) = hackHack ++ Seq(
+    clean := {
+      clean.value
+      Tasks.resolutionsCache.clear()
+      Tasks.reportsCache.clear()
+    },
     coursierResolvers := Tasks.coursierResolversTask.value,
     coursierRecursiveResolvers := Tasks.coursierRecursiveResolversTask.value,
     coursierSbtResolvers := {

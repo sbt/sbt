@@ -398,7 +398,7 @@ object Tasks {
     }
   }
 
-  private final case class ResolutionCacheKey(
+  private[coursier] final case class ResolutionCacheKey(
     project: Project,
     repositories: Seq[Repository],
     userEnabledProfiles: Set[String],
@@ -406,7 +406,7 @@ object Tasks {
     sbtClassifiers: Boolean
   )
 
-  private final case class ReportCacheKey(
+  private[coursier] final case class ReportCacheKey(
     project: Project,
     resolution: Map[Set[String], Resolution],
     withClassifiers: Boolean,
@@ -414,10 +414,10 @@ object Tasks {
     ignoreArtifactErrors: Boolean
   )
 
-  private val resolutionsCache = new mutable.HashMap[ResolutionCacheKey, Map[Set[String], Resolution]]
+  private[coursier] val resolutionsCache = new mutable.HashMap[ResolutionCacheKey, Map[Set[String], Resolution]]
   // these may actually not need to be cached any more, now that the resolutions
   // are cached
-  private val reportsCache = new mutable.HashMap[ReportCacheKey, UpdateReport]
+  private[coursier] val reportsCache = new mutable.HashMap[ReportCacheKey, UpdateReport]
 
   private def forcedScalaModules(
     scalaOrganization: String,
