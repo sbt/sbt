@@ -1,4 +1,4 @@
-# Cookbook of stuff to do while developing coursier
+# Cookbook of stuff to do while developing on coursier
 
 General note: always explicitly set the scala version at the sbt prompt, like
 ```
