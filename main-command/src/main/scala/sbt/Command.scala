@@ -25,6 +25,11 @@ sealed trait Command {
 
   def tags: AttributeMap
   def tag[T](key: AttributeKey[T], value: T): Command
+
+  def nameOption: Option[String] = this match {
+    case sc: SimpleCommand => Some(sc.name)
+    case _                 => None
+  }
 }
 
 private[sbt] final class SimpleCommand(
