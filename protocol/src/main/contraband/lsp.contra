@@ -117,3 +117,13 @@ type PublishDiagnosticsParams {
 type SbtExecParams {
   commandLine: String!
 }
+
+# Notifications
+
+type LogMessageParams {
+  ## The message type. See MessageType.
+  type: Long
+
+  ## The actual message.
+  message: String
+}
