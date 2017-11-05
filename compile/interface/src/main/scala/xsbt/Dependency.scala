@@ -63,7 +63,13 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
               case Some((f, className, inOutDir)) =>
                 if (inOutDir && on.isJavaDefined) registerTopLevelSym(on)
                 f match {
-                  case ze: ZipArchive#Entry => for (zip <- ze.underlyingSource; zipFile <- Option(zip.file).filterNot(_.isDirectory)) binaryDependency(zipFile, className)
+                  case ze: ZipArchive#Entry =>
+                    // Scala 2.10/2.11 give back $JAVA_HOME as the underlying source for the platform classloader
+                    // See https://github.com/scala/scala/pull/6113. Treating that as not having an underlying source
+                    // is the least bad option for now. We would not trigger a recompile if the JDK is updated, but that
+                    // is better than recompiling *every* time, which seems to happen if we let the directory propagate
+                    // to `binaryDependency`.
+                    for (zip <- ze.underlyingSource; zipFile <- Option(zip.file).filterNot(_.isDirectory)) binaryDependency(zipFile, className)
                   case pf: PlainFile        => binaryDependency(pf.file, className)
                   case _                    => ()
                 }
