@@ -105,6 +105,14 @@ object LogManager {
     }
   }
 
+  // to change from global being the default to overriding, switch the order of state.get and data.get
+  def getOr[T](key: AttributeKey[T],
+               data: Settings[Scope],
+               scope: Scope,
+               state: State,
+               default: T): T =
+    data.get(scope, key) orElse state.get(key) getOrElse default
+
   // This is the main function that is used to generate the logger for tasks.
   def defaultLogger(
       data: Settings[Scope],
@@ -121,13 +129,10 @@ object LogManager {
     val execId: Option[String] = execOpt flatMap { _.execId }
     val log = LogExchange.logger(loggerName, channelName, execId)
     val scope = task.scope
-    // to change from global being the default to overriding, switch the order of state.get and data.get
-    def getOr[T](key: AttributeKey[T], default: T): T =
-      data.get(scope, key) orElse state.get(key) getOrElse default
-    val screenLevel = getOr(logLevel.key, Level.Info)
-    val backingLevel = getOr(persistLogLevel.key, Level.Debug)
-    val screenTrace = getOr(traceLevel.key, defaultTraceLevel(state))
-    val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
+    val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
+    val backingLevel = getOr(persistLogLevel.key, data, scope, state, Level.Debug)
+    val screenTrace = getOr(traceLevel.key, data, scope, state, defaultTraceLevel(state))
+    val backingTrace = getOr(persistTraceLevel.key, data, scope, state, Int.MaxValue)
     val extraBacked = state.globalLogging.backed :: relay :: Nil
     val consoleOpt = consoleLocally(state, console)
     val config = MainAppender.MainAppenderConfig(
@@ -184,6 +189,9 @@ object LogManager {
       relay: Appender,
       extra: List[Appender]
   ): ManagedLogger = {
+    val scope = task.scope
+    val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
+    val backingLevel = getOr(persistLogLevel.key, data, scope, state, Level.Debug)
     val execOpt = state.currentCommand
     val loggerName: String = s"bg-${task.key.label}-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
@@ -193,7 +201,7 @@ object LogManager {
     val consoleOpt = consoleLocally(state, console)
     LogExchange.bindLoggerAppenders(
       loggerName,
-      (consoleOpt.toList map { _ -> Level.Debug }) ::: (relay -> Level.Debug) :: Nil)
+      (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil)
     log
   }
 
