@@ -2,7 +2,7 @@ val newContents = "bbbbbbbbb"
 
 val rootContentFile = "root.txt"
 
-scalaVersion := "2.10.2"
+scalaVersion := "2.10.7"
 
 scalacOptions in (Compile, doc) := Seq("-doc-root-content", rootContentFile)
 
