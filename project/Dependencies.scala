@@ -123,4 +123,6 @@ object Dependencies {
   val log4jSlf4jImpl = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
   // specify all of log4j modules to prevent misalignment
   val log4jDependencies = Vector(log4jApi, log4jCore, log4jSlf4jImpl)
+
+  val scalaCacheCaffeine = "com.github.cb372" %% "scalacache-caffeine" % "0.20.0"
 }

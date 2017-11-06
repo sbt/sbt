@@ -132,6 +132,7 @@ object Defaults extends BuildCommon {
       Seq(
         managedDirectory := baseDirectory.value / "lib_managed"
       ))
+  import Keys.test
   private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter
@@ -496,6 +497,7 @@ object Defaults extends BuildCommon {
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
     lspDefinition := lspDefinitionTask.evaluated,
+    lspCollectAnalyses := lspCollectAnalysesTask.value,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,

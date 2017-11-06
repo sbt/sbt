@@ -55,9 +55,10 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
           else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
         } else ()
         setInitialized(true)
+        append(Exec(s"lspCollectAnalyses", Some(request.id), Some(CommandSource(name))))
         langRespond(InitializeResult(serverCapabilities), Option(request.id))
       case "textDocument/didSave" =>
-        append(Exec("compile", Some(request.id), Some(CommandSource(name))))
+        append(Exec(";compile; lspCollectAnalyses", Some(request.id), Some(CommandSource(name))))
       case "textDocument/definition" =>
         import sjsonnew.support.scalajson.unsafe.CompactPrinter
         append(

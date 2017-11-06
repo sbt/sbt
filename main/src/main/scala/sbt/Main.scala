@@ -101,6 +101,9 @@ final class ConsoleMain extends xsbti.AppMain {
 
 object StandardMain {
   private[sbt] lazy val exchange = new CommandExchange()
+  import scalacache._
+  import scalacache.caffeine._
+  private[sbt] val cache: Cache[Any] = CaffeineCache[Any]
 
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
@@ -132,6 +135,9 @@ object StandardMain {
       Exec(x, None)
     }
     val initAttrs = BuiltinCommands.initialAttributes
+    import scalacache.modes.scalaFuture._
+    import scala.concurrent.ExecutionContext.Implicits.global
+    cache.removeAll()
     val s = State(
       configuration,
       initialDefinitions,
