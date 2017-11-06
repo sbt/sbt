@@ -283,7 +283,7 @@ object EvictionWarning {
       out += "Scala version was updated by one of library dependencies:"
       out ++= (a.scalaEvictions flatMap { _.lines })
       out += "To force scalaVersion, add the following:"
-      out += "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }"
+      out += "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
     }
 
     if (a.directEvictions.nonEmpty || a.transitiveEvictions.nonEmpty) {
