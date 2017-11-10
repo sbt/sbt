@@ -207,18 +207,18 @@ checkJava() {
   local good_enough="$(echo "$java_version >= $required_version" | bc)"
   if [[ "$java_version" == "" ]]; then
     echo
-    echo No java installations was detected.
-    echo Please go to http://www.java.com/getjava/ and download
+    echo "No Java Development Kit (JDK) installation was detected."
+    echo Please go to http://www.oracle.com/technetwork/java/javase/downloads/ and download.
     echo
     exit 1
   elif [[ "$good_enough" != "1" ]]; then
     echo
-    echo The java installation you have is not up to date
+    echo "The Java Development Kit (JDK) installation you have is not up to date."
     echo $script_name requires at least version $required_version+, you have
     echo version $java_version
     echo
-    echo Please go to http://www.java.com/getjava/ and download
-    echo a valid Java Runtime and install before running $script_name.
+    echo Please go to http://www.oracle.com/technetwork/java/javase/downloads/ and download
+    echo a valid JDK and install before running $script_name.
     echo
     exit 1
   fi
