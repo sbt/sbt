@@ -496,7 +496,6 @@ object Defaults extends BuildCommon {
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
-    lspDefinition := lspDefinitionTask.evaluated,
     lspCollectAnalyses := lspCollectAnalysesTask.value,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,

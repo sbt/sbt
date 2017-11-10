@@ -7,6 +7,8 @@
 
 package sbt.lsp
 
+import sbt.internal.inc.Analysis
+
 class DefinitionTest extends org.specs2.mutable.Specification {
   import Definition.textProcessor
 
@@ -135,8 +137,8 @@ class DefinitionTest extends org.specs2.mutable.Specification {
         .flatMap(_ => cache.get(Definition.AnalysesKey))
 
       actual.collect {
-        case Some(s) => s.asInstanceOf[Set[(String, Boolean)]]
-      } should contain("Test.scala" -> true).await
+        case Some(s) => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
+      } should contain[((String, Boolean), Option[Analysis])]("Test.scala" -> true -> None).await
     }
     "replace cache data in cache" in {
       import scalacache.caffeine._
@@ -154,8 +156,8 @@ class DefinitionTest extends org.specs2.mutable.Specification {
         .flatMap(_ => cache.get(Definition.AnalysesKey))
 
       actual.collect {
-        case Some(s) => s.asInstanceOf[Set[(String, Boolean)]]
-      } should contain("Test.scala" -> true).await
+        case Some(s) => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
+      } should contain[((String, Boolean), Option[Analysis])]("Test.scala" -> true -> None).await
     }
     "cache more data in cache" in {
       import scalacache.caffeine._
@@ -174,8 +176,10 @@ class DefinitionTest extends org.specs2.mutable.Specification {
         .flatMap(_ => cache.get(Definition.AnalysesKey))
 
       actual.collect {
-        case Some(s) => s.asInstanceOf[Set[(String, Boolean)]]
-      } should contain("Test.scala" -> true, "OtherTest.scala" -> false).await
+        case Some(s) => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
+      } should contain[((String, Boolean), Option[Analysis])](
+        "Test.scala" -> true -> None,
+        "OtherTest.scala" -> false -> None).await
     }
   }
 }

@@ -60,11 +60,8 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
       case "textDocument/didSave" =>
         append(Exec(";compile; lspCollectAnalyses", Some(request.id), Some(CommandSource(name))))
       case "textDocument/definition" =>
-        import sjsonnew.support.scalajson.unsafe.CompactPrinter
-        append(
-          Exec(s"lspDefinition ${CompactPrinter(json)}",
-               Some(request.id),
-               Some(CommandSource(name))))
+        import scala.concurrent.ExecutionContext.Implicits.global
+        sbt.lsp.Definition.lspDefinition(json, request.id, CommandSource(name), log)
       case "sbt/exec" =>
         val param = Converter.fromJson[SbtExecParams](json).get
         append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
@@ -73,7 +70,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         val param = Converter.fromJson[Q](json).get
         onSettingQuery(Option(request.id), param)
       }
-      case garbage => log.err(s"Dig in this pile: $garbage")
+      case unhandledRequest => log.info(s"Unhandled request received: $unhandledRequest")
     }
   }
 
