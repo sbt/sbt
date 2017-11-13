@@ -118,12 +118,12 @@ if /I "%JAVA_VERSION%" GEQ "%required_version%" (
   exit /B 0
 )
 echo.
-echo The java installation you have is not up to date
+echo The Java Development Kit (JDK) installation you have is not up to date.
 echo sbt requires at least version %required_version%+, you have
 echo version %JAVA_VERSION%
 echo.
-echo Please go to http://www.java.com/getjava/ and download
-echo a valid Java Runtime and install before running sbt.
+echo Please go to http://www.oracle.com/technetwork/java/javase/downloads/ and download
+echo a valid JDK and install before running sbt.
 echo.
 exit /B 1
 
