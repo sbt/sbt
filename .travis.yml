@@ -1,6 +1,11 @@
+dist: trusty
+addons:
+  apt:
+    packages:
+    - fakeroot
 language: scala
 script:
-  - sbt -Dsbt.build.version=1.0.0-M1 ++$TRAVIS_SCALA_VERSION rpm:packageBin debian:packageBin universal:packageBin
+  - sbt -Dsbt.build.version=1.0.3 ++$TRAVIS_SCALA_VERSION rpm:packageBin debian:packageBin universal:packageBin
 scala:
   - 2.10.3
 jdk:
