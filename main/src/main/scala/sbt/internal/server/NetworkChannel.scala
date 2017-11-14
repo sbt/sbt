@@ -16,7 +16,7 @@ import sjsonnew._
 import scala.annotation.tailrec
 import sbt.protocol._
 import sbt.internal.langserver.ErrorCodes
-import sbt.internal.util.ObjectEvent
+import sbt.internal.util.{ ObjectEvent, StringEvent }
 import sbt.internal.util.codec.JValueFormats
 import sbt.util.Logger
 
@@ -227,7 +227,10 @@ final class NetworkChannel(val name: String,
 
   def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = {
     if (isLanguageServerProtocol) {
-      langRespond(event, execId)
+      event match {
+        case entry: StringEvent => logMessage(entry.level, entry.message)
+        case _                  => langRespond(event, execId)
+      }
     } else {
       contentType match {
         case SbtX1Protocol =>
@@ -241,11 +244,19 @@ final class NetworkChannel(val name: String,
   def publishEvent[A: JsonFormat](event: A): Unit = publishEvent(event, None)
 
   def publishEventMessage(event: EventMessage): Unit = {
-    contentType match {
-      case SbtX1Protocol =>
-        val bytes = Serialization.serializeEventMessage(event)
-        publishBytes(bytes, true)
-      case _ =>
+    if (isLanguageServerProtocol) {
+      event match {
+        case entry: LogEvent        => logMessage(entry.level, entry.message)
+        case entry: ExecStatusEvent => logMessage("debug", entry.status)
+        case _                      => ()
+      }
+    } else {
+      contentType match {
+        case SbtX1Protocol =>
+          val bytes = Serialization.serializeEventMessage(event)
+          publishBytes(bytes, true)
+        case _ => ()
+      }
     }
   }
 
