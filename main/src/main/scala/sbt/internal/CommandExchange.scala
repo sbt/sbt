@@ -26,7 +26,7 @@ import sbt.internal.server._
 import sbt.internal.langserver.{ LogMessageParams, MessageType }
 import sbt.internal.util.{ StringEvent, ObjectEvent, MainAppender }
 import sbt.internal.util.codec.JValueFormats
-import sbt.protocol.{ EventMessage, Serialization }
+import sbt.protocol.{ EventMessage, ExecStatusEvent }
 import sbt.util.{ Level, Logger, LogExchange }
 
 /**
@@ -170,10 +170,11 @@ private[sbt] final class CommandExchange {
   def publishEvent[A: JsonFormat](event: A): Unit = {
     val broadcastStringMessage = true
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
+
     event match {
       case entry: StringEvent =>
         val params = toLogMessageParams(entry)
-        channels.foreach {
+        channels collect {
           case c: ConsoleChannel =>
             if (broadcastStringMessage) {
               c.publishEvent(event)
@@ -201,7 +202,7 @@ private[sbt] final class CommandExchange {
             }
         }
       case _ =>
-        channels.foreach {
+        channels collect {
           case c: ConsoleChannel =>
             c.publishEvent(event)
           case c: NetworkChannel =>
@@ -243,7 +244,7 @@ private[sbt] final class CommandExchange {
           JField("execId", JString(execId))
         })): _*
     )
-    channels.foreach {
+    channels collect {
       case c: ConsoleChannel =>
         c.publishEvent(json)
       case c: NetworkChannel =>
@@ -268,16 +269,32 @@ private[sbt] final class CommandExchange {
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
     event match {
       // Special treatment for ConsolePromptEvent since it's hand coded without codec.
-      case e: ConsolePromptEvent =>
+      case entry: ConsolePromptEvent =>
         channels collect {
-          case c: ConsoleChannel => c.publishEventMessage(e)
+          case c: ConsoleChannel => c.publishEventMessage(entry)
         }
-      case e: ConsoleUnpromptEvent =>
+      case entry: ConsoleUnpromptEvent =>
         channels collect {
-          case c: ConsoleChannel => c.publishEventMessage(e)
+          case c: ConsoleChannel => c.publishEventMessage(entry)
+        }
+      case entry: ExecStatusEvent =>
+        channels collect {
+          case c: ConsoleChannel =>
+            if (entry.channelName.isEmpty || entry.channelName == Some(c.name)) {
+              c.publishEventMessage(event)
+            }
+          case c: NetworkChannel =>
+            try {
+              if (entry.channelName == Some(c.name)) {
+                c.publishEventMessage(event)
+              }
+            } catch {
+              case e: SocketException =>
+                toDel += c
+            }
         }
       case _ =>
-        channels.foreach {
+        channels collect {
           case c: ConsoleChannel =>
             c.publishEventMessage(event)
           case c: NetworkChannel =>
