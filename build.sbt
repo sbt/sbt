@@ -12,6 +12,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers += Resolver.sbtPluginRepo("releases"),
   resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
@@ -45,7 +46,7 @@ val mimaSettings = Def settings (
 )
 
 lazy val lmRoot = (project in file("."))
-  .aggregate(lmCore, lmIvy)
+  .aggregate(lmCore, lmIvy, lmCoursier)
   .settings(
     inThisBuild(
       Seq(
@@ -257,6 +258,22 @@ lazy val lmIvy = (project in file("ivy"))
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.InlineIvyConfiguration.copy*"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.IvyPaths.copy*"),
     ),
+  )
+
+lazy val lmCoursier = (project in file("coursier"))
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .dependsOn(lmCore)
+  .settings(
+    commonSettings,
+    crossScalaVersions := Seq(scala212, scala211),
+    name := "librarymanagement-coursier",
+    libraryDependencies ++= Seq(coursier, coursierCache, scalaTest, scalaCheck),
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
+    scalacOptions in (Compile, console) --=
+      Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint")
   )
 
 lazy val lmScriptedTest = (project in file("scripted-test"))
