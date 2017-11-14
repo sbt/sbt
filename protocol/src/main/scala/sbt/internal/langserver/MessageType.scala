@@ -25,10 +25,10 @@ object MessageType {
 
   def fromLevelString(level: String): Long = {
     level.toLowerCase match {
-      case "debug" => Log
       case "info"  => Info
       case "warn"  => Warning
       case "error" => Error
+      case _       => Log
     }
   }
 }
