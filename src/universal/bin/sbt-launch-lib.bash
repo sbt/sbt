@@ -229,7 +229,7 @@ copyRt() {
   if [[ "$at_least_9" == "1" ]]; then
     rtexport=$(rt_export_file)
     java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
-      -jar "$rtexport" --rt-ext-dir)
+      -jar "$rtexport" --rt-ext-dir | grep -v Listening)
     java9_rt=$(echo "$java9_ext/rt.jar")
     vlog "[copyRt] java9_rt = '$java9_rt'"
     if [[ ! -f "$java9_rt" ]]; then
