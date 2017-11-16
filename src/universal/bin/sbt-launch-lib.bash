@@ -118,7 +118,7 @@ get_mem_opts () {
 }
 
 get_gc_opts () {
-  local older_than_9="$(echo "$java_version < 9" | bc)"
+  local older_than_9="$(expr $java_version "<" 9)"
 
   if [[ "$older_than_9" == "1" ]]; then
     # don't need to worry about gc
@@ -204,7 +204,7 @@ syncPreloaded() {
 checkJava() {
   local required_version="$1"
   # Now check to see if it's a good enough version
-  local good_enough="$(echo "$java_version >= $required_version" | bc)"
+  local good_enough="$(expr $java_version ">=" $required_version)"
   if [[ "$java_version" == "" ]]; then
     echo
     echo "No Java Development Kit (JDK) installation was detected."
@@ -225,7 +225,7 @@ checkJava() {
 }
 
 copyRt() {
-  local at_least_9="$(echo "$java_version >= 9" | bc)"
+  local at_least_9="$(expr $java_version ">=" 9)"
   if [[ "$at_least_9" == "1" ]]; then
     rtexport=$(rt_export_file)
     java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
