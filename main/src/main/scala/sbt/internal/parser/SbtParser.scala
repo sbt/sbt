@@ -142,7 +142,9 @@ private[sbt] object SbtParser {
     val wrapperFile = new BatchSourceFile(reporterId, code)
     val unit = new CompilationUnit(wrapperFile)
     val parser = new syntaxAnalyzer.UnitParser(unit)
-    val parsedTrees = parser.templateStats()
+    val parsedTrees = SbtParser.synchronized { // see https://github.com/scala/bug/issues/10605
+      parser.templateStats()
+    }
     parser.accept(scala.tools.nsc.ast.parser.Tokens.EOF)
     globalReporter.throwParserErrorsIfAny(reporter, filePath)
     parsedTrees -> reporterId
