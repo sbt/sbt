@@ -2,7 +2,7 @@ Steps to publish
 ================
 
 ```
-$ sbt -Dsbt.build.version=1.0.0-M1 -Dsbt.build.offline=true
+$ sbt -Dsbt.build.version=1.0.3 -Dsbt.build.offline=true
 > universal:publish
 > debian:publish
 > rpm:publish
