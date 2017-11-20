@@ -780,7 +780,7 @@ object Defaults extends BuildCommon {
       val (dirs, files) = preserve.filter(_.exists).flatMap(_.***.get).partition(_.isDirectory)
       val mappings = files.zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
       IO.move(mappings)
-      IO.delete(clean)
+      clean.foreach(root => IO.delete((root.*** --- root).get))
       IO.createDirectories(dirs) // recreate empty directories
       IO.move(mappings.map(_.swap))
     }
