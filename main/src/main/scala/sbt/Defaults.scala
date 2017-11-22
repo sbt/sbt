@@ -1935,8 +1935,10 @@ object Classpaths {
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         packagedArtifacts.in(publish).value.toVector,
-        checksums.in(publish).value.toVector,
-        getPublishTo(publishTo.value).name,
+        checksums.in(publish).value.toVector, { //resolvername: not required if publishTo is false
+          val publishToOption = publishTo.value
+          if (publishArtifact.value) getPublishTo(publishToOption).name else "local"
+        },
         ivyLoggingLevel.value,
         isSnapshot.value
       )
