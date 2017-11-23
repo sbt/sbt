@@ -376,16 +376,25 @@ lazy val mainProj = (project in file("main"))
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt"))
   .dependsOn(mainProj, scriptedSbtProj % "test->test")
+  .enablePlugins(BuildInfoPlugin)
   .settings(
     baseSettings,
     name := "sbt",
     normalizedName := "sbt",
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
+    javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    addBuildInfoToConfig(Test),
+    buildInfoObject in Test := "TestBuildInfo",
+    buildInfoKeys in Test := Seq[BuildInfoKey](fullClasspath in Compile),
+    connectInput in run in Test := true,
   )
   .configure(addSbtCompilerBridge)
+
+commands in Global += Command.single("sbtOn")((state, dir) =>
+  s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state)
 
 lazy val sbtIgnoredProblems = {
   Seq(
