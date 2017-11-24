@@ -13,8 +13,10 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Hashtable
+import java.util.concurrent.TimeUnit.NANOSECONDS
 
 import scala.collection.mutable.ListBuffer
+import scala.util.Properties
 import scala.xml.{ Elem, Node => XNode, XML }
 import testing.{
   Event => TEvent,
@@ -23,6 +25,7 @@ import testing.{
   OptionalThrowable,
   TestSelector
 }
+import util.Logger
 import sbt.protocol.testing.TestResult
 
 /**
@@ -30,14 +33,27 @@ import sbt.protocol.testing.TestResult
  * report format.
  * @param outputDir path to the dir in which a folder with results is generated
  */
-class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
+class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends TestsListener {
+  // This constructor is for binary compatibility with older versions of sbt.
+  def this(outputDir: String) = this(outputDir, null)
 
   /**Current hostname so we know which machine executed the tests*/
-  val hostname =
-    try InetAddress.getLocalHost.getHostName
+  val hostname = {
+    val start = System.nanoTime
+    val name = try InetAddress.getLocalHost.getHostName
     catch {
       case _: IOException => "localhost"
     }
+    val elapsed = System.nanoTime - start
+    if ((NANOSECONDS.toSeconds(elapsed) >= 4) && Properties.isMac && logger != null) {
+      logger.warn(
+        s"Getting the hostname $name was slow (${elapsed / 1.0e6} ms). " +
+          "This is likely because the computer's hostname is not set. You can set the " +
+          "hostname with the command: scutil --set HostName $(scutil --get LocalHostName)."
+      )
+    }
+    name
+  }
 
   /**The dir in which we put all result files. Is equal to the given dir + "/test-reports"*/
   val targetDir = new File(outputDir + "/test-reports/")
