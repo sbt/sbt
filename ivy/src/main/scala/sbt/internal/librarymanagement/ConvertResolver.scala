@@ -399,7 +399,7 @@ private[sbt] object ConvertResolver {
           val overwriteWarning =
             if (destination contains "-SNAPSHOT") s"Attempting to overwrite $destination"
             else
-              "Attempting to overwrite $destination (non-SNAPSHOT)\n\tYou need to remove it from the cache manually to take effect."
+              s"Attempting to overwrite $destination (non-SNAPSHOT)\n\tYou need to remove it from the cache manually to take effect."
           import org.apache.ivy.util.Message
           Message.warn(overwriteWarning)
           super.put(source, destination, true)
