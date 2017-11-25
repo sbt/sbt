@@ -96,7 +96,8 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
         disp
     }
 
-    val urlHandler: URLHandler = if (configuration.updateOptions.gigahorse) gigahorseUrlHandler else basicUrlHandler
+    val urlHandler: URLHandler =
+      if (configuration.updateOptions.gigahorse) gigahorseUrlHandler else basicUrlHandler
 
     // Only set the urlHandler for the http/https protocols so we do not conflict with any other plugins
     // that might register other protocol handlers.
