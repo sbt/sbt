@@ -1,0 +1,51 @@
+This is a hotfix release for sbt 1.0.x series.
+
+### Bug fixes
+
+- Fixes undercompilation of value classes when the underlying type changes. [zinc#444][zinc444] by [@smarter][@smarter]
+- Fixes `ArrayIndexOutOfBoundsException` on Ivy when running on Java 9. [ivy#27][ivy27] by [@xuwei-k][@xuwei-k]
+- Fixes Java 9 warning by upgrading to launcher 1.0.2. [ivy#26][ivy26]/[launcher#45][launcher45] by [@dwijnand][@dwijnand]
+- Fixes `run` outputing debug level logs. [#3655][3655]/[#3717][3717] by [@cunei][@cunei]
+- Fixes performance regression caused by classpath hashing. [zinc#452][zinc452] by [@jvican][@jvican]
+- Fixes performance regression of `testQuick`. [#3680][3680]/[#3720][3720] by [@OlegYch][@OlegYch]
+- Disables Ivy log4j caller location calculation for performance regression reported in [#3711][3711]. [util#132][util132] by [@leonardehrenfried][@leonardehrenfried]
+- Works around Scala compiler's `templateStats()` not being thread-safe. [#3743][3743] by [@cunei][@cunei]
+- Fixes "Attempting to overwrite" error message. [lm#174][lm174] by [@dwijnand][@dwijnand]
+- Fixes incorrect eviction warning message. [lm#179][lm179] by [@xuwei-k][@xuwei-k]
+- Registers Ivy protocol only for `http:` and `https:` to be more plugin friendly. [lm183][lm183] by [@tpunder][@tpunder]
+
+### Enhancement
+
+- Adds Scala 2.13.0-M2 support. [zinc#453][zinc453] by [@eed3si9n][@eed3si9n] and [@jan0sch][@jan0sch]
+
+### Internal
+
+- Improves Zinc scripted testing. [zinc440][zinc#440] by [@jvican][@jvican]
+
+  [@dwijnand]: https://github.com/dwijnand
+  [@cunei]: https://github.com/cunei
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@jvican]: https://github.com/jvican
+  [@OlegYch]: https://github.com/OlegYch
+  [@leonardehrenfried]: https://github.com/leonardehrenfried
+  [@xuwei-k]: https://github.com/xuwei-k
+  [@tpunder]: https://github.com/tpunder
+  [@smarter]: https://github.com/smarter
+  [@jan0sch]: https://github.com/jan0sch
+  [3655]: https://github.com/sbt/sbt/issues/3655
+  [3717]: https://github.com/sbt/sbt/pull/3717
+  [ivy26]: https://github.com/sbt/ivy/pull/26
+  [ivy27]: https://github.com/sbt/ivy/pull/27
+  [launcher45]: https://github.com/sbt/launcher/pull/45
+  [3680]: https://github.com/sbt/sbt/issues/3680
+  [3720]: https://github.com/sbt/sbt/pull/3720
+  [3743]: https://github.com/sbt/sbt/pull/3743
+  [3711]: https://github.com/sbt/sbt/issues/3711
+  [util132]: https://github.com/sbt/util/pull/132
+  [lm174]: https://github.com/sbt/librarymanagement/pull/174
+  [lm179]: https://github.com/sbt/librarymanagement/pull/179
+  [lm183]: https://github.com/sbt/librarymanagement/pull/183
+  [zinc452]: https://github.com/sbt/zinc/pull/452
+  [zinc444]: https://github.com/sbt/zinc/pull/444
+  [zinc453]: https://github.com/sbt/zinc/pull/453
+  [zinc440]: https://github.com/sbt/zinc/pull/440
