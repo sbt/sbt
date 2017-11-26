@@ -51,7 +51,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     def apply[T](lockFile: File, run: Callable[T]) = run.call()
   }
 
-  lazy val structure: BuildStructure = {
+  lazy val buildStructure: BuildStructure = {
     val projectSettings: Seq[Setting[_]] = Seq(scalaVersion := "2.12.1")
 
     val appConfig: AppConfiguration = new AppConfiguration {
@@ -180,7 +180,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
   def query(setting: String): String = {
     import sbt.protocol._
     val req: SettingQuery = sbt.protocol.SettingQuery(setting)
-    val rsp: SettingQueryResponse = server.SettingQuery.handleSettingQuery(req, structure)
+    val rsp: SettingQueryResponse = server.SettingQuery.handleSettingQuery(req, buildStructure)
     val bytes: Array[Byte] = Serialization serializeEventMessage rsp
     val payload: String = new String(bytes, java.nio.charset.StandardCharsets.UTF_8)
     payload
