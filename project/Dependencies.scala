@@ -103,7 +103,7 @@ object Dependencies {
   val jline = "jline" % "jline" % "2.14.4"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
-  val specs2 = "org.specs2" %% "specs2" % "2.4.17"
+  val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
