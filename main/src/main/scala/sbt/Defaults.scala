@@ -132,7 +132,6 @@ object Defaults extends BuildCommon {
       Seq(
         managedDirectory := baseDirectory.value / "lib_managed"
       ))
-  import Keys.test
   private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter
@@ -645,7 +644,6 @@ object Defaults extends BuildCommon {
         testResultLogger :== TestResultLogger.Default,
         testFilter in testOnly :== (selectedFilter _)
       ))
-  import Configurations.Test
   lazy val testTasks
     : Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(
     testQuick) ++ testDefaults ++ Seq(
@@ -1035,7 +1033,6 @@ object Defaults extends BuildCommon {
                              art.value)).asFile
     }
 
-  import Configurations._
   def artifactSetting: Initialize[Artifact] =
     Def.setting {
       val a = artifact.value
@@ -1394,7 +1391,6 @@ object Defaults extends BuildCommon {
     }
     analysisResult.analysis
   }
-
   def compileIncrementalTask = Def.task {
     // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
     compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
@@ -1679,7 +1675,6 @@ object Classpaths {
   }
 
   def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
-  import Configurations.Test
   lazy val defaultPackages: Seq[TaskKey[File]] =
     for (task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
   lazy val defaultArtifactTasks: Seq[TaskKey[File]] = makePom +: defaultPackages
@@ -1713,7 +1708,6 @@ object Classpaths {
                   pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
     pkgTasks.map(pkg => key in pkg.scope in pkg).join
 
-  import Configurations.Test
   private[this] def publishGlobalDefaults =
     Defaults.globalDefaults(
       Seq(
@@ -3207,7 +3201,6 @@ trait BuildExtra extends BuildCommon with DefExtra {
    * Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
    * This is useful for reducing test:compile time when not running test.
    */
-  import Configurations.Test
   def noTestCompletion(config: Configuration = Test): Setting[_] =
     inConfig(config)(Seq(definedTests := detectTests.value)).head
 

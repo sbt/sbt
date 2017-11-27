@@ -127,61 +127,51 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
   }
   "definition" should {
+    import scalacache.caffeine._
+    import scalacache.modes.sync._
     "cache data in cache" in {
-      import scalacache.caffeine._
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
       val useBinary = true
 
-      import scalacache.modes.scalaFuture._
-      val actual = Definition
-        .updateCache(cache)(cacheFile, useBinary)
-        .flatMap(_ => cache.get(Definition.AnalysesKey))
+      Definition.updateCache(cache)(cacheFile, useBinary)
+
+      val actual = cache.get(Definition.AnalysesKey)
 
       actual.collect {
-        case Some(s) => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      } should contain[((String, Boolean), Option[Analysis])]("Test.scala" -> true -> None).await
+        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
+      }.get should contain("Test.scala" -> true -> None)
     }
     "replace cache data in cache" in {
-      import scalacache.caffeine._
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
       val useBinary = true
       val falseUseBinary = false
 
-      import scalacache.modes.scalaFuture._
-      val actual = Definition
-        .updateCache(cache)(cacheFile, falseUseBinary)
-        .flatMap { _ =>
-          Definition.updateCache(cache)(cacheFile, useBinary)
-        }
-        .flatMap(_ => cache.get(Definition.AnalysesKey))
+      Definition.updateCache(cache)(cacheFile, falseUseBinary)
+      Definition.updateCache(cache)(cacheFile, useBinary)
+
+      val actual = cache.get(Definition.AnalysesKey)
 
       actual.collect {
-        case Some(s) => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      } should contain[((String, Boolean), Option[Analysis])]("Test.scala" -> true -> None).await
+        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
+      }.get should contain("Test.scala" -> true -> None)
     }
     "cache more data in cache" in {
-      import scalacache.caffeine._
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
       val useBinary = true
       val otherCacheFile = "OtherTest.scala"
       val otherUseBinary = false
 
-      import scalacache.modes.scalaFuture._
-      val actual = Definition
-        .updateCache(cache)(otherCacheFile, otherUseBinary)
-        .flatMap { _ =>
-          Definition.updateCache(cache)(cacheFile, useBinary)
-        }
-        .flatMap(_ => cache.get(Definition.AnalysesKey))
+      Definition.updateCache(cache)(otherCacheFile, otherUseBinary)
+      Definition.updateCache(cache)(cacheFile, useBinary)
+
+      val actual = cache.get(Definition.AnalysesKey)
 
       actual.collect {
-        case Some(s) => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      } should contain[((String, Boolean), Option[Analysis])](
-        "Test.scala" -> true -> None,
-        "OtherTest.scala" -> false -> None).await
+        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
+      }.get should contain("Test.scala" -> true -> None, "OtherTest.scala" -> false -> None)
     }
   }
 }
