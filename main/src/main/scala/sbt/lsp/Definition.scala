@@ -18,7 +18,7 @@ import scala.util.matching.Regex.MatchIterator
 import java.nio.file.{ Files, Paths }
 import sbt.StandardMain
 
-object Definition {
+private[sbt] object Definition {
   import java.net.URI
   import Keys._
   import sbt.internal.inc.Analysis
@@ -54,8 +54,33 @@ object Definition {
         }
     }
 
-    def identifier(line: String, point: Int): Option[String] = {
-      val whiteSpaceReg = "\\s+".r
+    private def findInBackticks(line: String, point: Int): Option[String] = {
+      val (even, odd) = line.zipWithIndex
+        .collect {
+          case (char, backtickIndex) if char == '`' =>
+            backtickIndex
+        }
+        .zipWithIndex
+        .partition { bs =>
+          val (_, index) = bs
+          index % 2 == 0
+        }
+      even
+        .collect {
+          case (backtickIndex, _) => backtickIndex
+        }
+        .zip {
+          odd.collect {
+            case (backtickIndex, _) => backtickIndex + 1
+          }
+        }
+        .collectFirst {
+          case (from, to) if from <= point && point < to => line.slice(from, to)
+        }
+    }
+
+    def identifier(line: String, point: Int): Option[String] = findInBackticks(line, point).orElse {
+      val whiteSpaceReg = "(\\s|\\.)+".r
       val (zero, end) = fold(Seq.empty)(whiteSpaceReg.findAllIn(line))
         .collect {
           case (white, ind) => (ind, ind + white.length)
@@ -93,7 +118,10 @@ object Definition {
       Seq(s".$sym", s".$sym$$", s"$$$sym", s"$$$sym$$")
     def potentialClsOrTraitOrObj(sym: String): PartialFunction[String, String] = {
       import scala.reflect.NameTransformer
-      val encodedSym = NameTransformer.encode(sym)
+      val encodedSym = NameTransformer.encode(sym.toSeq match {
+        case '`' +: body :+ '`' => body.mkString
+        case noBackticked       => noBackticked.mkString
+      })
       val action: PartialFunction[String, String] = {
         case potentialClassOrTraitOrObject
             if asClassObjectIdentifier(encodedSym).exists(potentialClassOrTraitOrObject.endsWith) ||
@@ -113,9 +141,9 @@ object Definition {
     private[lsp] def classTraitObjectInLine(sym: String)(line: String): Seq[(String, Int)] = {
       import scala.util.matching.Regex.quote
       val potentials =
-        Seq(s"object +${quote(sym)}".r,
-            s"trait +${quote(sym)} *\\[?".r,
-            s"class +${quote(sym)} *\\[?".r)
+        Seq(s"object\\s+${quote(sym)}".r,
+            s"trait\\s+${quote(sym)} *\\[?".r,
+            s"class\\s+${quote(sym)} *\\[?".r)
       potentials
         .flatMap { reg =>
           fold(Seq.empty)(reg.findAllIn(line))
