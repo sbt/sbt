@@ -143,15 +143,21 @@ object Serialization {
     }
   }
 
-  private[sbt] def deserializeJsonRequest(
-      bytes: Seq[Byte]): Either[String, JsonRpcRequestMessage] = {
+  private[sbt] def deserializeJsonMessage(bytes: Seq[Byte])
+    : Either[String, Either[JsonRpcNotificationMessage, JsonRpcRequestMessage]] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json) =>
         import sbt.internal.protocol.codec.JsonRPCProtocol._
         Converter.fromJson[JsonRpcRequestMessage](json) match {
-          case Success(msg) => Right(msg)
-          case Failure(e)   => throw e
+          case Success(request) if (request.id.nonEmpty) => Right(Right(request))
+          case Failure(e)                                => throw e
+          case _ => {
+            Converter.fromJson[JsonRpcNotificationMessage](json) match {
+              case Success(notification) => Right(Left(notification))
+              case Failure(e)            => throw e
+            }
+          }
         }
       case Failure(e) =>
         Left(s"Parse error: ${e.getMessage}")
