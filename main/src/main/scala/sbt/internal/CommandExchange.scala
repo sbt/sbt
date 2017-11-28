@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
-import BasicKeys.{ serverHost, serverPort, serverAuthentication }
+import BasicKeys.{ serverHost, serverPort, serverAuthentication, serverConnectionType }
 import java.net.Socket
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
@@ -83,6 +83,7 @@ private[sbt] final class CommandExchange {
   }
 
   private def newChannelName: String = s"channel-${nextChannelId.incrementAndGet()}"
+  private def newNetworkName: String = s"network-${nextChannelId.incrementAndGet()}"
 
   /**
    * Check if a server instance is running already, and start one if it isn't.
@@ -100,19 +101,23 @@ private[sbt] final class CommandExchange {
       case Some(xs) => xs
       case None     => Set(ServerAuthentication.Token)
     }
+    lazy val connectionType = (s get serverConnectionType) match {
+      case Some(x) => x
+      case None    => ConnectionType.Tcp
+    }
     val serverLogLevel: Level.Value = Level.Debug
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
-      s.log.info(s"new client connected from: ${socket.getPort}")
+      val name = newNetworkName
+      s.log.info(s"new client connected: $name")
       val logger: Logger = {
-        val loggerName = s"network-${socket.getPort}"
-        val log = LogExchange.logger(loggerName, None, None)
-        LogExchange.unbindLoggerAppenders(loggerName)
+        val log = LogExchange.logger(name, None, None)
+        LogExchange.unbindLoggerAppenders(name)
         val appender = MainAppender.defaultScreen(s.globalLogging.console)
-        LogExchange.bindLoggerAppenders(loggerName, List(appender -> serverLogLevel))
+        LogExchange.bindLoggerAppenders(name, List(appender -> serverLogLevel))
         log
       }
       val channel =
-        new NetworkChannel(newChannelName, socket, Project structure s, auth, instance, logger)
+        new NetworkChannel(name, socket, Project structure s, auth, instance, logger)
       subscribe(channel)
     }
     server match {
@@ -121,7 +126,18 @@ private[sbt] final class CommandExchange {
         val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
         val h = Hash.halfHashString(portfile.toURI.toString)
         val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
-        val x = Server.start(host, port, onIncomingSocket, auth, portfile, tokenfile, s.log)
+        val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
+        val pipeName = "sbt-server-" + h
+        val connection =
+          ServerConnection(connectionType,
+                           host,
+                           port,
+                           auth,
+                           portfile,
+                           tokenfile,
+                           socketfile,
+                           pipeName)
+        val x = Server.start(connection, onIncomingSocket, s.log)
         Await.ready(x.ready, Duration("10s"))
         x.ready.value match {
           case Some(Success(_)) =>

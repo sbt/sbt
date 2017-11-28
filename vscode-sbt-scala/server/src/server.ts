@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as url from 'url';
 let net = require('net'),
   fs = require('fs'),
+  os = require('os'),
   stdin = process.stdin,
   stdout = process.stdout;
 
@@ -16,7 +17,17 @@ socket.on('data', (chunk: any) => {
 }).on('end', () => {
   stdin.pause();
 });
-socket.connect(u.port, '127.0.0.1');
+
+if (u.protocol == 'tcp:') {
+  socket.connect(u.port, '127.0.0.1');
+} else if (u.protocol == 'local:' && os.platform() == 'win32') {
+  let pipePath = '\\\\.\\pipe\\' + u.hostname;
+  socket.connect(pipePath);
+} else if (u.protocol == 'local:') {
+  socket.connect(u.path);
+} else {
+  throw 'Unknown protocol ' + u.protocol;
+}
 
 stdin.resume();
 stdin.on('data', (chunk: any) => {

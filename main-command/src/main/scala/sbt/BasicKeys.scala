@@ -33,6 +33,11 @@ object BasicKeys {
                                             "Method of authenticating server command.",
                                             10000)
 
+  val serverConnectionType =
+    AttributeKey[ConnectionType]("serverConnectionType",
+                                 "The wire protocol for the server command.",
+                                 10000)
+
   private[sbt] val interactive = AttributeKey[Boolean](
     "interactive",
     "True if commands are currently being entered from an interactive environment.",

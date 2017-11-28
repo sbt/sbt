@@ -272,7 +272,11 @@ object Defaults extends BuildCommon {
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
         .## % 1000),
-      serverAuthentication := Set(ServerAuthentication.Token),
+      serverConnectionType := ConnectionType.Local,
+      serverAuthentication := {
+        if (serverConnectionType.value == ConnectionType.Tcp) Set(ServerAuthentication.Token)
+        else Set()
+      },
       insideCI :== sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI"),
     ))
 

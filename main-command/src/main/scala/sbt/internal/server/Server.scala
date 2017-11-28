@@ -17,13 +17,14 @@ import java.security.SecureRandom
 import java.math.BigInteger
 import scala.concurrent.{ Future, Promise }
 import scala.util.{ Try, Success, Failure }
-import sbt.internal.util.ErrorHandling
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
 import sbt.io.syntax._
 import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
 import sbt.internal.protocol.codec._
+import sbt.internal.util.ErrorHandling
+import sbt.internal.util.Util.isWindows
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -38,31 +39,37 @@ private[sbt] object Server {
       with TokenFileFormats
   object JsonProtocol extends JsonProtocol
 
-  def start(host: String,
-            port: Int,
+  def start(connection: ServerConnection,
             onIncomingSocket: (Socket, ServerInstance) => Unit,
-            auth: Set[ServerAuthentication],
-            portfile: File,
-            tokenfile: File,
             log: Logger): ServerInstance =
     new ServerInstance { self =>
+      import connection._
       val running = new AtomicBoolean(false)
       val p: Promise[Unit] = Promise[Unit]()
       val ready: Future[Unit] = p.future
       private[this] val rand = new SecureRandom
       private[this] var token: String = nextToken
+      private[this] var serverSocketOpt: Option[ServerSocket] = None
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
           Try {
-            ErrorHandling.translate(s"server failed to start on $host:$port. ") {
-              new ServerSocket(port, 50, InetAddress.getByName(host))
+            ErrorHandling.translate(s"server failed to start on ${connection.shortName}. ") {
+              connection.connectionType match {
+                case ConnectionType.Local if isWindows =>
+                  new NGWin32NamedPipeServerSocket(pipeName)
+                case ConnectionType.Local =>
+                  prepareSocketfile()
+                  new NGUnixDomainServerSocket(socketfile.getAbsolutePath)
+                case ConnectionType.Tcp => new ServerSocket(port, 50, InetAddress.getByName(host))
+              }
             }
           } match {
             case Failure(e) => p.failure(e)
             case Success(serverSocket) =>
               serverSocket.setSoTimeout(5000)
-              log.info(s"sbt server started at $host:$port")
+              serverSocketOpt = Option(serverSocket)
+              log.info(s"sbt server started at ${connection.shortName}")
               writePortfile()
               running.set(true)
               p.success(())
@@ -74,6 +81,7 @@ private[sbt] object Server {
                   case _: SocketTimeoutException => // its ok
                 }
               }
+              serverSocket.close()
           }
         }
       }
@@ -106,7 +114,7 @@ private[sbt] object Server {
       private[this] def writeTokenfile(): Unit = {
         import JsonProtocol._
 
-        val uri = s"tcp://$host:$port"
+        val uri = connection.shortName
         val t = TokenFile(uri, token)
         val jsonToken = Converter.toJson(t).get
 
@@ -141,7 +149,7 @@ private[sbt] object Server {
       private[this] def writePortfile(): Unit = {
         import JsonProtocol._
 
-        val uri = s"tcp://$host:$port"
+        val uri = connection.shortName
         val p =
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
@@ -153,5 +161,32 @@ private[sbt] object Server {
         val json = Converter.toJson(p).get
         IO.write(portfile, CompactPrinter(json))
       }
+
+      private[sbt] def prepareSocketfile(): Unit = {
+        if (socketfile.exists) {
+          IO.delete(socketfile)
+        }
+        IO.createDirectory(socketfile.getParentFile)
+      }
     }
+}
+
+private[sbt] case class ServerConnection(
+    connectionType: ConnectionType,
+    host: String,
+    port: Int,
+    auth: Set[ServerAuthentication],
+    portfile: File,
+    tokenfile: File,
+    socketfile: File,
+    pipeName: String
+) {
+  def shortName: String = {
+    connectionType match {
+      case ConnectionType.Local if isWindows => s"local:$pipeName"
+      case ConnectionType.Local              => s"local://$socketfile"
+      case ConnectionType.Tcp                => s"tcp://$host:$port"
+      // case ConnectionType.Ssh                => s"ssh://$host:$port"
+    }
+  }
 }

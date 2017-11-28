@@ -23,6 +23,7 @@ import Keys.{
   serverHost,
   serverPort,
   serverAuthentication,
+  serverConnectionType,
   watch
 }
 import Scope.{ Global, ThisScope }
@@ -461,6 +462,7 @@ object Project extends ProjectExtra {
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
+    val connectionType: Option[ConnectionType] = get(serverConnectionType)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands,
                                                                        projectCommand)
@@ -471,6 +473,7 @@ object Project extends ProjectExtra {
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
         .setCond(serverAuthentication.key, authentication)
+        .setCond(serverConnectionType.key, connectionType)
         .put(historyPath.key, history)
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)
