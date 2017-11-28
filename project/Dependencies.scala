@@ -106,6 +106,8 @@ object Dependencies {
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+  val jna = "net.java.dev.jna" % "jna" % "4.1.0"
+  val jnaPlatform = "net.java.dev.jna" % "jna-platform" % "4.1.0"
 
   private def scala211Module(name: String, moduleVersion: String) = Def setting (
     scalaBinaryVersion.value match {

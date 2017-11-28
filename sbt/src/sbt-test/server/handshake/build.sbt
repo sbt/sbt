@@ -2,6 +2,7 @@ lazy val runClient = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
   .settings(
+    serverConnectionType in Global := ConnectionType.Tcp,
     scalaVersion := "2.12.3",
     serverPort in Global := 5123,
     libraryDependencies += "org.scala-sbt" %% "io" % "1.0.1",

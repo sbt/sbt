@@ -55,7 +55,7 @@ def commonSettings: Seq[Setting[_]] =
     concurrentRestrictions in Global += Util.testExclusiveRestriction,
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
-    javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
+    javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
     bintrayRepository := (bintrayRepository in ThisBuild).value,
@@ -309,7 +309,8 @@ lazy val commandProj = (project in file("main-command"))
   .settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
+    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi,
+      jna, jnaPlatform),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -324,7 +325,11 @@ lazy val commandProj = (project in file("main-command"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
       // Added an overload to reboot. The overload is private[sbt].
       exclude[ReversedMissingMethodProblem]("sbt.StateOps.reboot"),
-    )
+    ),
+    unmanagedSources in (Compile, headerCreate) := {
+      val old = (unmanagedSources in (Compile, headerCreate)).value
+      old filterNot { x => (x.getName startsWith "NG") || (x.getName == "ReferenceCountedFileDescriptor.java") }
+    },
   )
   .configure(
     addSbtIO,
