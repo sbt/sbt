@@ -168,34 +168,20 @@ private[sbt] final class CommandExchange {
   }
 
   def publishEvent[A: JsonFormat](event: A): Unit = {
-    val broadcastStringMessage = true
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
 
     event match {
       case entry: StringEvent =>
         val params = toLogMessageParams(entry)
         channels collect {
-          case c: ConsoleChannel =>
-            if (broadcastStringMessage) {
-              c.publishEvent(event)
-            } else {
-              if (entry.channelName.isEmpty || entry.channelName == Some(c.name)) {
-                c.publishEvent(event)
-              }
-            }
+          case c: ConsoleChannel => c.publishEvent(event)
           case c: NetworkChannel =>
             try {
               // Note that language server's LogMessageParams does not hold the execid,
               // so this is weaker than the StringMessage. We might want to double-send
               // in case we have a better client that can utilize the knowledge.
               import sbt.internal.langserver.codec.JsonProtocol._
-              if (broadcastStringMessage) {
-                c.langNotify("window/logMessage", params)
-              } else {
-                if (entry.channelName == Some(c.name)) {
-                  c.langNotify("window/logMessage", params)
-                }
-              }
+              c.langNotify("window/logMessage", params)
             } catch {
               case _: SocketException =>
                 toDel += c
