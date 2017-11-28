@@ -1,4 +1,5 @@
 // Copied from https://github.com/facebook/nailgun/blob/af623fddedfdca010df46302a0711ce0e2cc1ba6/nailgun-server/src/main/java/com/martiansoftware/nailgun/NGWin32NamedPipeSocket.java
+// Made change in `read` to read just the amount of bytes available.
 
 /*
 
@@ -124,12 +125,10 @@ public class NGWin32NamedPipeSocket extends Socket {
                 int lastError = API.GetLastError();
                 throw new IOException("GetOverlappedResult() failed for read operation: " + lastError);
             }
-            if (read.getValue() != len) {
-                throw new IOException("ReadFile() read less bytes than requested");
-            }
-            byte[] byteArray = readBuffer.getByteArray(0, len);
-            System.arraycopy(byteArray, 0, b, off, len);
-            return len;
+            int actualLen = read.getValue();
+            byte[] byteArray = readBuffer.getByteArray(0, actualLen);
+            System.arraycopy(byteArray, 0, b, off, actualLen);
+            return actualLen;
         }
     }
 
