@@ -481,6 +481,7 @@ object Defaults extends BuildCommon {
   def defaultCompileSettings: Seq[Setting[_]] =
     globalDefaults(enableBinaryCompileAnalysis := true)
 
+  import lsp.Definition._
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
     compileInputsSettings) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
@@ -498,6 +499,7 @@ object Defaults extends BuildCommon {
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
+    lspCollectAnalyses := lspCollectAnalysesTask.value,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,

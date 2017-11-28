@@ -13,8 +13,9 @@ implicit lazy val ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.S
       unbuilder.beginObject(js)
       val textDocumentSync = unbuilder.readField[Option[sbt.internal.langserver.TextDocumentSyncOptions]]("textDocumentSync")
       val hoverProvider = unbuilder.readField[Option[Boolean]]("hoverProvider")
+      val definitionProvider = unbuilder.readField[Option[Boolean]]("definitionProvider")
       unbuilder.endObject()
-      sbt.internal.langserver.ServerCapabilities(textDocumentSync, hoverProvider)
+      sbt.internal.langserver.ServerCapabilities(textDocumentSync, hoverProvider, definitionProvider)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -23,6 +24,7 @@ implicit lazy val ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.S
     builder.beginObject()
     builder.addField("textDocumentSync", obj.textDocumentSync)
     builder.addField("hoverProvider", obj.hoverProvider)
+    builder.addField("definitionProvider", obj.definitionProvider)
     builder.endObject()
   }
 }
