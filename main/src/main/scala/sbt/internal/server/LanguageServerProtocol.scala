@@ -138,6 +138,14 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
     publishBytes(bytes)
   }
 
+  def logMessage(level: String, message: String): Unit = {
+    import sbt.internal.langserver.codec.JsonProtocol._
+    langNotify(
+      "window/logMessage",
+      LogMessageParams(MessageType.fromLevelString(level), message)
+    )
+  }
+
   private[sbt] lazy val serverCapabilities: ServerCapabilities = {
     ServerCapabilities(textDocumentSync =
                          TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
