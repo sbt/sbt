@@ -31,7 +31,9 @@ sealed abstract class LogExchange {
       false,
       XLevel.DEBUG,
       name,
-      "true",
+      // disable the calculation of caller location as it is very expensive
+      // https://issues.apache.org/jira/browse/LOG4J2-153
+      "false",
       Array[AppenderRef](),
       null,
       config,
