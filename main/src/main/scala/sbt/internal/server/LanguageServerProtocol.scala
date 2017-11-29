@@ -39,7 +39,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
     notification.method match {
       case "textDocument/didSave" =>
         append(Exec(";compile; collectAnalyses", None, Some(CommandSource(name))))
-      case _ => ()
+      case u => log.debug(s"Unhandled notification received: $u")
     }
   }
 
