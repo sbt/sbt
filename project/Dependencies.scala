@@ -6,16 +6,16 @@ object Dependencies {
   val scala282 = "2.8.2"
   val scala292 = "2.9.2"
   val scala293 = "2.9.3"
-  val scala210 = "2.10.6"
-  val scala211 = "2.11.8"
-  val scala212 = "2.12.3"
+  val scala210 = "2.10.7"
+  val scala211 = "2.11.12"
+  val scala212 = "2.12.4"
   val baseScalaVersion = scala212
 
   // sbt modules
   private val ioVersion = "1.1.0"
-  private val utilVersion = "1.0.2"
-  private val lmVersion = "1.0.2"
-  private val zincVersion = "1.0.2"
+  private val utilVersion = "1.0.3"
+  private val lmVersion = "1.0.4"
+  private val zincVersion = "1.0.5"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -30,8 +30,8 @@ object Dependencies {
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
+  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.2"
+  val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.2"
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion

@@ -108,7 +108,9 @@ lazy val sbtRoot: Project = (project in file("."))
     Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {},
-    skip in publish := true
+    skip in publish := true,
+    commands in Global += Command.single("sbtOn")((state, dir) =>
+      s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
   )
 
 // This is used to configure an sbt-launcher for this version of sbt.
@@ -429,27 +431,37 @@ lazy val mainProj = (project in file("main"))
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt"))
   .dependsOn(mainProj, scriptedSbtProj % "test->test")
+  .enablePlugins(BuildInfoPlugin)
   .settings(
     baseSettings,
     name := "sbt",
     normalizedName := "sbt",
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
+    javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
-    mimaBinaryIssueFilters ++= Vector(
-      // Added more items to Import trait.
-      exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
-      exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
-
-      // Dropped in favour of kind-projector's polymorphic lambda literals
-      exclude[DirectMissingMethodProblem]("sbt.Import.Param"),
-      exclude[DirectMissingMethodProblem]("sbt.package.Param"),
-
-      // Dropped in favour of plain scala.Function, and its compose method
-      exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),
-    )
+    mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    addBuildInfoToConfig(Test),
+    buildInfoObject in Test := "TestBuildInfo",
+    buildInfoKeys in Test := Seq[BuildInfoKey](fullClasspath in Compile),
+    connectInput in run in Test := true,
   )
   .configure(addSbtCompilerBridge)
+
+lazy val sbtIgnoredProblems = {
+  Vector(
+    // Added more items to Import trait.
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
+
+    // Dropped in favour of kind-projector's polymorphic lambda literals
+    exclude[DirectMissingMethodProblem]("sbt.Import.Param"),
+    exclude[DirectMissingMethodProblem]("sbt.package.Param"),
+
+    // Dropped in favour of plain scala.Function, and its compose method
+    exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),
+  )
+}
 
 def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = {
   val npm = if (sbt.internal.util.Util.isWindows) "npm.cmd" else "npm"
