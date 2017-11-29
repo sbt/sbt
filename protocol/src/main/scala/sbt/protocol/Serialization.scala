@@ -15,6 +15,7 @@ import java.nio.ByteBuffer
 import scala.util.{ Success, Failure }
 import sbt.internal.util.StringEvent
 import sbt.internal.protocol.{
+  JsonRpcMessage,
   JsonRpcRequestMessage,
   JsonRpcResponseMessage,
   JsonRpcNotificationMessage
@@ -143,18 +144,17 @@ object Serialization {
     }
   }
 
-  private[sbt] def deserializeJsonMessage(bytes: Seq[Byte])
-    : Either[String, Either[JsonRpcNotificationMessage, JsonRpcRequestMessage]] = {
+  private[sbt] def deserializeJsonMessage(bytes: Seq[Byte]): Either[String, JsonRpcMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json) =>
         import sbt.internal.protocol.codec.JsonRPCProtocol._
         Converter.fromJson[JsonRpcRequestMessage](json) match {
-          case Success(request) if (request.id.nonEmpty) => Right(Right(request))
+          case Success(request) if (request.id.nonEmpty) => Right(request)
           case Failure(e)                                => throw e
           case _ => {
             Converter.fromJson[JsonRpcNotificationMessage](json) match {
-              case Success(notification) => Right(Left(notification))
+              case Success(notification) => Right(notification)
               case Failure(e)            => throw e
             }
           }

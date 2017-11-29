@@ -18,6 +18,7 @@ import sbt.protocol._
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.util.{ ObjectEvent, StringEvent }
 import sbt.internal.util.codec.JValueFormats
+import sbt.internal.protocol.{ JsonRpcRequestMessage, JsonRpcNotificationMessage }
 import sbt.util.Logger
 
 final class NetworkChannel(val name: String,
@@ -167,7 +168,7 @@ final class NetworkChannel(val name: String,
     def handleBody(chunk: Vector[Byte]): Unit = {
       if (isLanguageServerProtocol) {
         Serialization.deserializeJsonMessage(chunk) match {
-          case Right(Right(req)) =>
+          case Right(req: JsonRpcRequestMessage) =>
             try {
               onRequestMessage(req)
             } catch {
@@ -175,7 +176,7 @@ final class NetworkChannel(val name: String,
                 log.debug(s"sending error: $code: $message")
                 langError(Option(req.id), code, message)
             }
-          case Right(Left(ntf)) =>
+          case Right(ntf: JsonRpcNotificationMessage) =>
             try {
               onNotification(ntf)
             } catch {
@@ -183,6 +184,8 @@ final class NetworkChannel(val name: String,
                 log.debug(s"sending error: $code: $message")
                 langError(None, code, message) // new id?
             }
+          case Right(msg) =>
+            log.debug(s"Unhandled message: $msg")
           case Left(errorDesc) =>
             val msg = s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
             langError(None, ErrorCodes.ParseError, msg)
