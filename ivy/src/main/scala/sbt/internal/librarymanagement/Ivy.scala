@@ -80,16 +80,30 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
   }
 
   private lazy val basicUrlHandler: URLHandler = new BasicURLHandler
-  private lazy val gigahorseUrlHandler: URLHandler = {
-    val dispatcher = new URLHandlerDispatcher
-    val handler = new GigahorseUrlHandler
-    dispatcher.setDownloader("http", handler)
-    dispatcher.setDownloader("https", handler)
-    dispatcher
-  }
+  private lazy val gigahorseUrlHandler: URLHandler = new GigahorseUrlHandler
+
   private lazy val settings: IvySettings = {
-    if (configuration.updateOptions.gigahorse) URLHandlerRegistry.setDefault(gigahorseUrlHandler)
-    else URLHandlerRegistry.setDefault(basicUrlHandler)
+    val dispatcher: URLHandlerDispatcher = URLHandlerRegistry.getDefault match {
+      // If the default is already a URLHandlerDispatcher then just use that
+      case disp: URLHandlerDispatcher => disp
+
+      // Otherwise wrap the existing URLHandler in a URLHandlerDispatcher
+      // while retaining the existing URLHandler as the default.
+      case default =>
+        val disp: URLHandlerDispatcher = new URLHandlerDispatcher()
+        disp.setDefault(default)
+        URLHandlerRegistry.setDefault(disp)
+        disp
+    }
+
+    val urlHandler: URLHandler =
+      if (configuration.updateOptions.gigahorse) gigahorseUrlHandler else basicUrlHandler
+
+    // Only set the urlHandler for the http/https protocols so we do not conflict with any other plugins
+    // that might register other protocol handlers.
+    // For example https://github.com/frugalmechanic/fm-sbt-s3-resolver registers "s3"
+    dispatcher.setDownloader("http", urlHandler)
+    dispatcher.setDownloader("https", urlHandler)
 
     val is = new IvySettings
     is.setCircularDependencyStrategy(

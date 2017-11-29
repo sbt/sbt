@@ -3,11 +3,11 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala211 = "2.11.11"
-  val scala212 = "2.12.3"
+  val scala211 = "2.11.12"
+  val scala212 = "2.12.4"
 
-  private val ioVersion = "1.0.0"
-  private val utilVersion = "1.0.0"
+  private val ioVersion = "1.0.2"
+  private val utilVersion = "1.0.3"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -40,7 +40,7 @@ object Dependencies {
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-a3314352b638afbf0dca19f127e8263ed6f898bd"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-b18f59ea3bc914a297bb6f1a4f7fb0ace399e310"
   val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
