@@ -8,14 +8,14 @@ object Dependencies {
   val scala293 = "2.9.3"
   val scala210 = "2.10.6"
   val scala211 = "2.11.8"
-  val scala212 = "2.12.3"
+  val scala212 = "2.12.4"
   val baseScalaVersion = scala212
 
   // sbt modules
   private val ioVersion = "1.1.0"
   private val utilVersion = "1.0.2"
-  private val lmVersion = "1.0.2"
-  private val zincVersion = "1.0.2"
+  private val lmVersion = "1.0.3"
+  private val zincVersion = "1.0.3"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 

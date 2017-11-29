@@ -327,11 +327,13 @@ object Defaults extends BuildCommon {
                                      excludeFilter in unmanagedSources).value,
     watchSources in ConfigGlobal ++= {
       val baseDir = baseDirectory.value
-      val bases = unmanagedSourceDirectories.value ++ (if (sourcesInBase.value) Seq(baseDir)
-                                                       else Seq.empty)
+      val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
       val exclude = (excludeFilter in unmanagedSources).value
-      bases.map(b => new Source(b, include, exclude))
+      val baseSources =
+        if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
+        else Nil
+      bases.map(b => new Source(b, include, exclude)) ++ baseSources
     },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
