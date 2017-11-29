@@ -2981,7 +2981,7 @@ object Classpaths {
           case Predefined.SonatypeOSSSnapshots => Resolver.sonatypeRepo("snapshots")
           case unknown =>
             sys.error(
-              "Unknown predefined resolver '" + unknown + "'.  This resolver may only be supported in newer sbt versions.")
+              "Unknown predefined resolver '" + unknown + "'. This resolver may only be supported in newer sbt versions.")
         }
     }
   }
@@ -3016,11 +3016,16 @@ trait BuildExtra extends BuildCommon with DefExtra {
   /**
    * Adds Maven resolver plugin.
    */
+  @deprecated(
+    "Noop. sbt-maven-resolver is not currently maintained and hasn't been released for sbt 1.0.",
+    "1.0.5")
   def addMavenResolverPlugin: Setting[Seq[ModuleID]] =
-    libraryDependencies += sbtPluginExtra(
-      ModuleID("org.scala-sbt", "sbt-maven-resolver", sbtVersion.value),
-      sbtBinaryVersion.value,
-      scalaBinaryVersion.value)
+    libraryDependencies ++= {
+      sLog.value.warn(
+        "addMavenResolverPlugin is a noop. " +
+          "sbt-maven-resolver is not currently maintained and hasn't been released for sbt 1.0.")
+      Seq.empty[ModuleID]
+    }
 
   /**
    * Adds `dependency` as an sbt plugin for the specific sbt version `sbtVersion` and Scala version `scalaVersion`.
