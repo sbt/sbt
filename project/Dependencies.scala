@@ -12,10 +12,10 @@ object Dependencies {
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.1.0"
-  private val utilVersion = "1.0.3"
+  private val ioVersion = "1.1.1"
+  private val utilVersion = "1.1.0"
   private val lmVersion = "1.0.4"
-  private val zincVersion = "1.0.5"
+  private val zincVersion = "1.1.0-RC1"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -101,7 +101,7 @@ object Dependencies {
   }
 
   val jline = "jline" % "jline" % "2.14.4"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.4"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"
