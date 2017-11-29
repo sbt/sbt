@@ -2,8 +2,8 @@ language: scala
 jdk: oraclejdk8
 
 scala:
-  - 2.11.11
-  - 2.12.3
+  - 2.11.12
+  - 2.12.4
 
 script:
   - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION" mimaReportBinaryIssues scalafmt::test test:scalafmt::test test

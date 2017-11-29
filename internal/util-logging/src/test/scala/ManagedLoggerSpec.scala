@@ -20,6 +20,18 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     log.infoEvent(1)
   }
 
+  it should "validate performance improvement of disabling location calculation for async loggers" in {
+    val log = LogExchange.logger("foo")
+    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val before = System.currentTimeMillis()
+    1 to 10000 foreach { _ =>
+      log.debug("test")
+    }
+    val after = System.currentTimeMillis()
+
+    log.info(s"Peformance test took: ${after - before}ms")
+  }
+
   it should "support logging Throwable out of the box" in {
     import sbt.internal.util.codec.JsonProtocol._
     val log = LogExchange.logger("foo")
