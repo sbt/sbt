@@ -362,6 +362,12 @@ object VersionTests extends TestSuite {
 //      finally Locale.setDefault( orig )
 //    }
 
+    'specialStartChar - {
+      val items = Version("[1.2.0]").items
+      val expectedItems = Seq(Version.Literal("["), Version.Number(1), Version.Number(2), Version.Literal("]"))
+      assert(items == expectedItems)
+    }
+
   }
 
 }
