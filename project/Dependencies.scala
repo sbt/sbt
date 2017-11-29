@@ -3,11 +3,11 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala210 = "2.10.6"
+  val scala210 = "2.10.7"
   val scala211 = "2.11.12"
   val scala212 = "2.12.4"
 
-  private val ioVersion = "1.0.2"
+  private val ioVersion = "1.1.1"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
