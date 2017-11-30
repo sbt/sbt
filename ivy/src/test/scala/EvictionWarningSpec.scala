@@ -1,6 +1,9 @@
 package sbt.librarymanagement
 
 import sbt.internal.librarymanagement.BaseIvySpecification
+import sbt.internal.librarymanagement.cross.CrossVersionUtil
+import sbt.librarymanagement.syntax._
+import org.scalatest.Assertions._
 
 class EvictionWarningSpec extends BaseIvySpecification {
   // This is a specification to check the eviction warnings
@@ -41,6 +44,22 @@ class EvictionWarningSpec extends BaseIvySpecification {
   """Including two (suspect) transitively binary incompatible Scala libraries to direct dependencies
   """ should "be detected as eviction" in scalaLibTransitiveWarn2()
   it should "print out message about the eviction if it's enabled" in scalaLibTransitiveWarn3()
+
+  "Comparing sbt 0.x" should "use Second Segment Variation semantics" in {
+    val m1 = "org.scala-sbt" % "util-logging" % "0.13.16"
+    val m2 = "org.scala-sbt" % "util-logging" % "0.13.1"
+    assert(
+      EvictionWarningOptions
+        .defaultGuess((m1, Option(m2), Option(dummyScalaModuleInfo("2.10.6")))) == false)
+  }
+
+  "Comparing sbt 1.x" should "use Semantic Versioning semantics" in {
+    val m1 = "org.scala-sbt" % "util-logging_2.12" % "1.0.0"
+    val m2 = "org.scala-sbt" % "util-logging_2.12" % "1.1.0"
+    assert(
+      EvictionWarningOptions
+        .defaultGuess((m1, Option(m2), Option(dummyScalaModuleInfo("2.12.4")))))
+  }
 
   def akkaActor214 =
     ModuleID("com.typesafe.akka", "akka-actor", "2.1.4").withConfigurations(Some("compile")) cross CrossVersion.binary
@@ -265,4 +284,14 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "Run 'evicted' to see detailed eviction warnings"
       )
   }
+
+  def dummyScalaModuleInfo(v: String): ScalaModuleInfo =
+    ScalaModuleInfo(
+      scalaFullVersion = v,
+      scalaBinaryVersion = CrossVersionUtil.binaryScalaVersion(v),
+      configurations = Vector.empty,
+      checkExplicit = true,
+      filterImplicit = false,
+      overrideScalaVersion = true
+    )
 }
