@@ -84,7 +84,8 @@ object EvictionWarningOptions {
     )
 
   lazy val defaultGuess: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
-    guessSecondSegment orElse guessSemVer orElse guessFalse
+    guessSbtOne orElse guessSecondSegment orElse guessSemVer orElse guessFalse
+
   lazy val guessSecondSegment
     : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), Some(scalaModuleInfo))
@@ -98,6 +99,21 @@ object EvictionWarningOptions {
         case _ => false
       }
   }
+
+  lazy val guessSbtOne
+    : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+    case (m1, Some(m2), Some(scalaModuleInfo))
+        if (m2.organization == "org.scala-sbt") &&
+          (m2.name.endsWith("_" + scalaModuleInfo.scalaFullVersion) ||
+            m2.name.endsWith("_" + scalaModuleInfo.scalaBinaryVersion)) =>
+      (m1.revision, m2.revision) match {
+        case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
+          VersionNumber.SemVer
+            .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
+        case _ => false
+      }
+  }
+
   lazy val guessSemVer
     : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), _) =>
@@ -108,6 +124,7 @@ object EvictionWarningOptions {
         case _ => false
       }
   }
+
   lazy val guessFalse
     : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (_, _, _) => false
