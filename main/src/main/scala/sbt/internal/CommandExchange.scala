@@ -8,7 +8,7 @@
 package sbt
 package internal
 
-import java.net.SocketException
+import java.io.IOException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
@@ -170,7 +170,7 @@ private[sbt] final class CommandExchange {
         try {
           c.notifyEvent(method, params)
         } catch {
-          case _: SocketException =>
+          case _: IOException =>
             toDel += c
         }
     }
@@ -213,7 +213,7 @@ private[sbt] final class CommandExchange {
                 }
               }
             } catch {
-              case _: SocketException =>
+              case _: IOException =>
                 toDel += c
             }
         }
@@ -225,7 +225,7 @@ private[sbt] final class CommandExchange {
             try {
               c.publishEvent(event)
             } catch {
-              case _: SocketException =>
+              case _: IOException =>
                 toDel += c
             }
         }
@@ -267,7 +267,7 @@ private[sbt] final class CommandExchange {
         try {
           c.publishObjectEvent(event)
         } catch {
-          case _: SocketException =>
+          case _: IOException =>
             toDel += c
         }
     }
@@ -305,7 +305,7 @@ private[sbt] final class CommandExchange {
                 c.publishEventMessage(event)
               }
             } catch {
-              case e: SocketException =>
+              case e: IOException =>
                 toDel += c
             }
         }
@@ -317,7 +317,7 @@ private[sbt] final class CommandExchange {
             try {
               c.publishEventMessage(event)
             } catch {
-              case _: SocketException =>
+              case _: IOException =>
                 toDel += c
             }
         }

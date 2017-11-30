@@ -9,7 +9,8 @@ package sbt
 package internal
 package client
 
-import java.net.{ URI, Socket, InetAddress, SocketException }
+import java.io.IOException
+import java.net.{ URI, Socket, InetAddress }
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import scala.collection.mutable.ListBuffer
@@ -111,7 +112,7 @@ class NetworkClient(arguments: List[String]) { self =>
     try {
       connection.publish(bytes)
     } catch {
-      case _: SocketException =>
+      case _: IOException =>
       // log.debug(e.getMessage)
       // toDel += client
     }

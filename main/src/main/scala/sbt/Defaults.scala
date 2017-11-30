@@ -327,11 +327,13 @@ object Defaults extends BuildCommon {
                                      excludeFilter in unmanagedSources).value,
     watchSources in ConfigGlobal ++= {
       val baseDir = baseDirectory.value
-      val bases = unmanagedSourceDirectories.value ++ (if (sourcesInBase.value) Seq(baseDir)
-                                                       else Seq.empty)
+      val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
       val exclude = (excludeFilter in unmanagedSources).value
-      bases.map(b => new Source(b, include, exclude))
+      val baseSources =
+        if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
+        else Nil
+      bases.map(b => new Source(b, include, exclude)) ++ baseSources
     },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
@@ -777,21 +779,24 @@ object Defaults extends BuildCommon {
       }
       def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
         if (s contains c) Long.MinValue
-        else {
-          val x = {
-            import analysis.{ relations => rel, apis }
-            rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-              rel.externalDeps(c).map(stamp) +
-              (apis.internal.get(c) match {
-                case Some(x) => x.compilationTimestamp
-                case _       => Long.MinValue
-              })
-          }.max
-          if (x != Long.MinValue) {
-            stamps(c) = x
-          }
-          x
-        }
+        else
+          stamps.getOrElse(
+            c, {
+              val x = {
+                import analysis.{ relations => rel, apis }
+                rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
+                  rel.externalDeps(c).map(stamp) +
+                  (apis.internal.get(c) match {
+                    case Some(x) => x.compilationTimestamp
+                    case _       => Long.MinValue
+                  })
+              }.max
+              if (x != Long.MinValue) {
+                stamps(c) = x
+              }
+              x
+            }
+          )
       }
       def noSuccessYet(test: String) = succeeded.get(test) match {
         case None     => true

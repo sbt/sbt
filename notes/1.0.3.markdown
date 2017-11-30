@@ -1,0 +1,61 @@
+This is a hotfix release for sbt 1.0.x series.
+
+### Bug fixes
+
+- Fixes `~` recompiling in loop (when a source generator or sbt-buildinfo is present). [#3501][3501]/[#3634][3634] by [@dwijnand][@dwijnand]
+- Fixes undercompilation on inheritance on same source. [zinc#424][zinc424] by [@eed3si9n][@eed3si9n]
+- Fixes the compilation of package-protected objects. [zinc#431][zinc431] by [@jvican][@jvican]
+- Workaround for Java returning `null` for `getGenericParameterTypes`. [zinc#446][zinc446] by [@jvican][@jvican]
+- Fixes test detection regression. sbt 1.0.3 filters out nested objects/classes from the list, restoring compatibility with 0.13. [#3669][3669] by [@cunei][@cunei]
+- Uses Scala 2.12.4 for the build definition. This includes fix for runtime reflection of empty package members under Java 9. [#3587][3587] by [@eed3si9n][@eed3si9n]
+- Fixes extra `/` in Ivy style patterns. [lm#170][lm170] by [@laughedelic][@laughedelic]
+- Fixes "destination file exist" error message by including the file name. [lm171][lm171] by [@leonardehrenfried][@leonardehrenfried]
+- Fixes JDK 9 warning "Illegal reflective access" in library management module and Ivy. [lm173][lm173] by [@dwijnand][@dwijnand]
+
+### Improvements
+
+- Adds `sbt.watch.mode` system property to allow switching back to old polling behaviour for watch. See below for more details.
+
+#### Alternative watch mode
+
+sbt 1.0.0 introduced a new mechanism for watching for source changes based on the NIO `WatchService` in Java 1.7. On
+some platforms (namely macOS) this has led to long delays before changes are picked up. An alternative `WatchService`
+for these platforms is planned for sbt 1.1.0 ([#3527][3527]), in the meantime an option to select which watch service
+has been added.
+
+The new `sbt.watch.mode` JVM flag has been added with the following supported values:
+
+- `polling`: (default for macOS) poll the filesystem for changes (mechanism used in sbt 0.13).
+- `nio` (default for other platforms): use the NIO based `WatchService`.
+
+If you are experiencing long delays on a non-macOS machine then try adding `-Dsbt.watch.mode=polling` to your sbt
+options.
+
+[#3597][3597] by [@stringbean][@stringbean]
+
+### Contributors
+
+A huge thank you to everyone who's helped improve sbt and Zinc 1 by using them, reporting bugs, improving our documentation, porting builds, porting plugins, and submitting and reviewing pull requests.
+
+This release was brought to you by 15 contributors, according to `git shortlog -sn --no-merges v1.0.2..v1.0.3` on sbt, zinc, librarymanagement, util, io, and website: Eugene Yokota, Dale Wijnand, Michael Stringer, Jorge Vicente Cantero (jvican), Alexey Alekhin, Antonio Cunei, Andrey Artemov, Jeffrey Olchovy, Kenji Yoshida (xuwei-k), Dominik Winter, Long Jinwei, Arnout Engelen, Justin Kaeser, Leonard Ehrenfried, Sakib Hadžiavdić. Thank you!
+
+  [@dwijnand]: https://github.com/dwijnand
+  [@cunei]: https://github.com/cunei
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@jvican]: https://github.com/jvican
+  [@stringbean]: https://github.com/stringbean
+  [@laughedelic]: https://github.com/laughedelic
+  [@leonardehrenfried]: https://github.com/leonardehrenfried
+  [3669]: https://github.com/sbt/sbt/pull/3669
+  [3583]: https://github.com/sbt/sbt/issues/3583
+  [3587]: https://github.com/sbt/sbt/issues/3587
+  [3527]: https://github.com/sbt/sbt/issues/3527
+  [3597]: https://github.com/sbt/sbt/pull/3597
+  [3501]: https://github.com/sbt/sbt/issues/3501
+  [3634]: https://github.com/sbt/sbt/pull/3634
+  [lm170]: https://github.com/sbt/librarymanagement/pull/170
+  [lm171]: https://github.com/sbt/librarymanagement/pull/171
+  [lm173]: https://github.com/sbt/librarymanagement/pull/173
+  [zinc424]: https://github.com/sbt/zinc/pull/424
+  [zinc431]: https://github.com/sbt/zinc/pull/431
+  [zinc446]: https://github.com/sbt/zinc/pull/446
