@@ -110,7 +110,7 @@ object Version {
 
     def apply(s: String): (Item, Stream[(Separator, Item)]) = {
       def parseItem(s: Stream[Char]): (Item, Stream[Char]) = {
-        if (s.isEmpty || !s.head.letterOrDigit) (empty, s)
+        if (s.isEmpty) (empty, s)
         else if (s.head.isDigit) {
           def digits(b: StringBuilder, s: Stream[Char]): (String, Stream[Char]) =
             if (s.isEmpty || !s.head.isDigit) (b.result(), s)
@@ -122,18 +122,32 @@ object Version {
             else Number(digits0.toInt)
 
           (item, rem)
-        } else {
-          assert(s.head.letter)
-
+        } else if (s.head.letter) {
           def letters(b: StringBuilder, s: Stream[Char]): (String, Stream[Char]) =
-            if (s.isEmpty || !s.head.letter) (b.result().toLowerCase, s)
-            else letters(b + s.head, s.tail)
+            if (s.isEmpty || !s.head.letter)
+              (b.result().toLowerCase, s) // not specifying a Locale (error with scala js)
+            else
+              letters(b + s.head, s.tail)
 
           val (letters0, rem) = letters(new StringBuilder, s)
           val item =
             qualifiersMap.getOrElse(letters0, Literal(letters0))
 
           (item, rem)
+        } else {
+          val (sep, _) = parseSeparator(s)
+          if (sep == None) {
+            def other(b: StringBuilder, s: Stream[Char]): (String, Stream[Char]) =
+              if (s.isEmpty || s.head.isLetterOrDigit || parseSeparator(s)._1 != None)
+                (b.result().toLowerCase, s)  // not specifying a Locale (error with scala js)
+              else
+                other(b + s.head, s.tail)
+
+            val (item, rem0) = other(new StringBuilder, s)
+
+            (Literal(item), rem0)
+          } else
+            (empty, s)
         }
       }
 
