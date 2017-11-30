@@ -2,6 +2,7 @@ package sbt
 package librarymanagement
 
 import java.io.File
+import sbt.io.Milli.getModifiedTime
 
 /**
  * Provides extra methods for filtering the contents of an `UpdateReport`
@@ -10,7 +11,7 @@ import java.io.File
 final class RichUpdateReport(report: UpdateReport) {
   private[sbt] def recomputeStamps(): UpdateReport = {
     val files = report.cachedDescriptor +: allFiles
-    val stamps = files.map(f => (f, f.lastModified)).toMap
+    val stamps = files.map(f => (f, getModifiedTime(f))).toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
   }
 
