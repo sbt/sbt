@@ -3,10 +3,11 @@ package sbt.util
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
 import sbt.internal.util.UnitSpec
+import sbt.io.Milli.getModifiedTime
 
 class FileInfoSpec extends UnitSpec {
   val file = new java.io.File(".").getAbsoluteFile
-  val fileInfo: ModifiedFileInfo = FileModified(file, file.lastModified())
+  val fileInfo: ModifiedFileInfo = FileModified(file, getModifiedTime(file))
   val filesInfo = FilesInfo(Set(fileInfo))
 
   it should "round trip" in assertRoundTrip(filesInfo)

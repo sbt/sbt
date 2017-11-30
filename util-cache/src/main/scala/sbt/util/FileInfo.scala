@@ -8,6 +8,7 @@ import scala.util.control.NonFatal
 import sbt.io.Hash
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import CacheImplicits._
+import sbt.io.Milli.getModifiedTime
 
 sealed trait FileInfo { def file: File }
 sealed trait HashFileInfo extends FileInfo { def hash: List[Byte] }
@@ -88,7 +89,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): HashModifiedFileInfo =
-      FileHashModified(file.getAbsoluteFile, Hash(file).toList, file.lastModified)
+      FileHashModified(file.getAbsoluteFile, Hash(file).toList, getModifiedTime(file))
   }
 
   object hash extends Style {
@@ -145,7 +146,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): ModifiedFileInfo =
-      FileModified(file.getAbsoluteFile, file.lastModified)
+      FileModified(file.getAbsoluteFile, getModifiedTime(file))
   }
 
   object exists extends Style {
