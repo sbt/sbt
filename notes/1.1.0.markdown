@@ -9,6 +9,11 @@
 
 ### Fixes
 
+- Fixes over-compilation bug with Java 9. [zinc#450][zinc450] by [@retronym][@retronym]
+- Fixes handling of deeply nested Java classes. [zinc#423][zinc423] by [@romanowski][@romanowski]
+- Fixes JavaDoc not printing all errors. [zinc#415][zinc415] by [@raboof][@raboof]
+- Preserves JAR order in `ScalaInstance.otherJars`. [zinc#411][zinc411] by [@dwijnand][@dwijnand]
+- Fixes used name when it contains NL. [zinc#449][zinc449] by [@jilen][@jilen]
 - Fixes handling of `ThisProject`. [#3609][3609] by [@dwijnand][@dwijnand]
 - Escapes imports from sbt files, so if user creates a backquoted definition then task evalution will not fail. [#3635][3635] by [@panaeon][@panaeon]
 - Removes reference to version 0.14.0 from a warning message. [#3693][3693] by [@saniyatech][@saniyatech]
@@ -22,6 +27,8 @@
 - Adds a check for a change in sbt version before `reload`. [#1055][1055]/[#3673][3673] by [@RomanIakovlev][@RomanIakovlev]
 - Adds a new setting `insideCI`, which indicates that sbt is likely running in an Continuous Integration environment. [#3672][3672] by [@RomanIakovlev][@RomanIakovlev]
 - Adds `nameOption` to `Command` trait. [#3671][3671] by [@miklos-martin][@miklos-martin]
+- Adds POSIX persmission operations in IO, such as `IO.chmod(..)`. [io#76][io76] by [@eed3si9n][@eed3si9n]
+- Treat sbt 1 modules using Semantic Versioning in the eviction warning. [lm#188][lm188] by [@eed3si9n][@eed3si9n]
 - Uses kind-projector in the code. [#3650][3650] by [@dwijnand][@dwijnand]
 - Make `displayOnly` etc methods strict in `Completions`. [#3763][3763] by [@xuwei-k][@xuwei-k]
 
@@ -125,7 +132,10 @@ This allows you to define scripted tests that track the minimum supported sbt ve
   [@saniyatech]: https://github.com/saniyatech
   [@xuwei-k]: https://github.com/xuwei-k
   [@wpopielarski]: https://github.com/wpopielarski
-
+  [@retronym]: https://github.com/retronym
+  [@romanowski]: https://github.com/romanowski
+  [@raboof]: https://github.com/raboof
+  [@jilen]: https://github.com/jilen
   [vscode-sbt-scala]: https://marketplace.visualstudio.com/items?itemName=lightbend.vscode-sbt-scala
   [1812]: https://github.com/sbt/sbt/issues/1812
   [3524]: https://github.com/sbt/sbt/pull/3524
@@ -151,3 +161,10 @@ This allows you to define scripted tests that track the minimum supported sbt ve
   [3762]: https://github.com/sbt/sbt/pull/3762
   [3740]: https://github.com/sbt/sbt/pull/3740
   [3660]: https://github.com/sbt/sbt/pull/3660
+  [io76]: https://github.com/sbt/io/pull/76
+  [lm188]: https://github.com/sbt/librarymanagement/pull/188
+  [zinc450]: https://github.com/sbt/zinc/pull/450
+  [zinc423]: https://github.com/sbt/zinc/pull/423
+  [zinc415]: https://github.com/sbt/zinc/issues/415
+  [zinc411]: https://github.com/sbt/zinc/pull/411
+  [zinc449]: https://github.com/sbt/zinc/pull/449
