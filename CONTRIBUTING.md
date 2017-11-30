@@ -200,3 +200,22 @@ Building Documentation
 ======================
 
 The scala-sbt.org site documentation is a separate project [website](https://github.com/sbt/website). Follow [the steps in the README](https://github.com/sbt/website#scala-sbtorg) to generate the documentation.
+
+
+Note for maintainers
+====================
+
+Publishing VS Code Extensions
+-----------------------------
+
+https://code.visualstudio.com/docs/extensions/publish-extension
+
+```
+$ sbt
+> vscodePlugin/compile
+> exit
+cd vscode-sbt-scala/client
+# update version number in vscode-sbt-scala/client/package.json
+$ vsce package
+$ vsce publish
+```
