@@ -2,6 +2,7 @@ package sbt
 package librarymanagement
 
 import java.io.File
+import java.io.FileNotFoundException
 import sbt.io.Milli.getModifiedTime
 
 /**
@@ -11,7 +12,20 @@ import sbt.io.Milli.getModifiedTime
 final class RichUpdateReport(report: UpdateReport) {
   private[sbt] def recomputeStamps(): UpdateReport = {
     val files = report.cachedDescriptor +: allFiles
-    val stamps = files.map(f => (f, getModifiedTime(f))).toMap
+    val stamps = files
+      .map(
+        f =>
+          (f,
+           // TODO: this used to be a lastModified(), without error checking.
+           // On occasion, "files" contains files like "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml",
+           // which do not actually exist, so getModifiedTime() correctly throws an exception. For the moment, the behavior of
+           // lastModified() is reproduced, but the non-existent file should really not be there to begin with. so, FIXME.
+           try {
+             getModifiedTime(f)
+           } catch {
+             case _: FileNotFoundException => 0L
+           }))
+      .toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
   }
 
