@@ -47,6 +47,7 @@ import sbt.io.{
   DirectoryFilter,
   Hash
 }, Path._
+import sbt.io.Milli.getModifiedTime
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
   Compile,
@@ -2315,7 +2316,7 @@ object Classpaths {
         case Some(period) =>
           val fullUpdateOutput = cacheDirectory / "out"
           val now = System.currentTimeMillis
-          val diff = now - fullUpdateOutput.lastModified()
+          val diff = now - getModifiedTime(fullUpdateOutput)
           val elapsedDuration = new FiniteDuration(diff, TimeUnit.MILLISECONDS)
           fullUpdateOutput.exists() && elapsedDuration > period
       }

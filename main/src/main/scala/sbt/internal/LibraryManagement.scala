@@ -13,6 +13,7 @@ import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
+import sbt.io.Milli.getModifiedTime
 
 private[sbt] object LibraryManagement {
 
@@ -126,7 +127,7 @@ private[sbt] object LibraryManagement {
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
-    stamps.get(file).forall(_ == file.lastModified)
+    stamps.get(file).forall(_ == getModifiedTime(file))
 
   private[sbt] def transitiveScratch(
       lm: DependencyResolution,
