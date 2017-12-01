@@ -21,6 +21,7 @@ import java.net.URLClassLoader
 import Eval.{ getModule, getValue, WrapValName }
 
 import sbt.io.{ DirectoryFilter, FileFilter, GlobFilter, Hash, IO, Path }
+import sbt.io.Milli.getModifiedTime
 
 // TODO: provide a way to cleanup backing directory
 
@@ -485,7 +486,8 @@ private[sbt] object Eval {
   def filesModifiedBytes(fs: Array[File]): Array[Byte] =
     if (fs eq null) filesModifiedBytes(Array[File]()) else seqBytes(fs)(fileModifiedBytes)
   def fileModifiedBytes(f: File): Array[Byte] =
-    (if (f.isDirectory) filesModifiedBytes(f listFiles classDirFilter) else bytes(f.lastModified)) ++
+    (if (f.isDirectory) filesModifiedBytes(f listFiles classDirFilter)
+     else bytes(getModifiedTime(f))) ++
       bytes(f.getAbsolutePath)
   def fileExistsBytes(f: File): Array[Byte] =
     bytes(f.exists) ++
