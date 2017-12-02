@@ -13,7 +13,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
-import BasicKeys.{ serverHost, serverPort, serverAuthentication, serverConnectionType }
+import BasicKeys.{
+  serverHost,
+  serverPort,
+  serverAuthentication,
+  serverConnectionType,
+  serverLogLevel,
+  logLevel
+}
 import java.net.Socket
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
@@ -106,7 +113,10 @@ private[sbt] final class CommandExchange {
       case Some(x) => x
       case None    => ConnectionType.Tcp
     }
-    val serverLogLevel: Level.Value = Level.Debug
+    lazy val level: Level.Value = (s get serverLogLevel)
+      .orElse(s get logLevel)
+      .getOrElse(Level.Warn)
+
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
       s.log.info(s"new client connected: $name")
@@ -114,7 +124,7 @@ private[sbt] final class CommandExchange {
         val log = LogExchange.logger(name, None, None)
         LogExchange.unbindLoggerAppenders(name)
         val appender = MainAppender.defaultScreen(s.globalLogging.console)
-        LogExchange.bindLoggerAppenders(name, List(appender -> serverLogLevel))
+        LogExchange.bindLoggerAppenders(name, List(appender -> level))
         log
       }
       val channel =
