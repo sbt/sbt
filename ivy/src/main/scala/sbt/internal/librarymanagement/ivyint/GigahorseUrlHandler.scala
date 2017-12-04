@@ -16,7 +16,6 @@ import org.apache.ivy.util.{ CopyProgressEvent, CopyProgressListener, Message }
 import org.apache.ivy.util.url.{ AbstractURLHandler, BasicURLHandler, IvyAuthenticator, URLHandler }
 import org.apache.ivy.util.url.URLHandler._
 import sbt.io.IO
-import sbt.io.Milli.setModifiedTime
 
 // Copied from Ivy's BasicURLHandler.
 class GigahorseUrlHandler extends AbstractURLHandler {
@@ -150,7 +149,7 @@ class GigahorseUrlHandler extends AbstractURLHandler {
 
       val lastModified = lastModifiedTimestamp(response)
       if (lastModified > 0) {
-        setModifiedTime(dest, lastModified)
+        IO.setModifiedTime(dest, lastModified)
       }
 
       if (l != null) {

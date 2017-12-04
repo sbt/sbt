@@ -3,7 +3,7 @@ package librarymanagement
 
 import java.io.File
 import java.io.FileNotFoundException
-import sbt.io.Milli.getModifiedTime
+import sbt.io.IO.getModifiedTime
 
 /**
  * Provides extra methods for filtering the contents of an `UpdateReport`
