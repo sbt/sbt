@@ -47,7 +47,7 @@ import sbt.io.{
   DirectoryFilter,
   Hash
 }, Path._
-import sbt.io.Milli.getModifiedTime
+import sbt.io.IO.getModifiedTime
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
   Compile,

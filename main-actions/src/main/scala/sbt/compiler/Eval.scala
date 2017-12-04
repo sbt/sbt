@@ -21,7 +21,7 @@ import java.net.URLClassLoader
 import Eval.{ getModule, getValue, WrapValName }
 
 import sbt.io.{ DirectoryFilter, FileFilter, GlobFilter, Hash, IO, Path }
-import sbt.io.Milli.getModifiedTime
+import sbt.io.IO.getModifiedTime
 
 // TODO: provide a way to cleanup backing directory
 
