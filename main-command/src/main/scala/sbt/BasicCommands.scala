@@ -94,10 +94,13 @@ object BasicCommands {
   }
 
   def completionsCommand: Command =
-    Command(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(completionsParser)(
+    Command(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(_ => completionsParser)(
       runCompletions(_)(_))
 
-  def completionsParser(state: State): Parser[String] = {
+  @deprecated("No longer public", "1.1.1")
+  def completionsParser(state: State): Parser[String] = completionsParser
+
+  private[this] def completionsParser: Parser[String] = {
     val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq ++ s }
     val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
     token(quotedOrUnquotedSingleArgument ?? "" examples ("", " "))
@@ -175,19 +178,19 @@ object BasicCommands {
   }
 
   def reboot: Command =
-    Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(rebootOptionParser) {
+    Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(_ => rebootOptionParser) {
       case (s, (full, currentOnly)) =>
         s.reboot(full, currentOnly)
     }
 
   @deprecated("Use rebootOptionParser", "1.1.0")
-  def rebootParser(s: State): Parser[Boolean] =
-    rebootOptionParser(s) map { case (full, currentOnly) => full }
+  def rebootParser(s: State): Parser[Boolean] = rebootOptionParser map { case (full, _) => full }
 
-  private[sbt] def rebootOptionParser(s: State): Parser[(Boolean, Boolean)] =
-    token(
-      Space ~> (("full" ^^^ ((true, false))) |
-        ("dev" ^^^ ((false, true))))) ?? ((false, false))
+  private[sbt] def rebootOptionParser: Parser[(Boolean, Boolean)] = {
+    val fullOption = "full" ^^^ ((true, false))
+    val devOption = "dev" ^^^ ((false, true))
+    token(Space ~> (fullOption | devOption)) ?? ((false, false))
+  }
 
   def call: Command =
     Command(ApplyCommand, Help.more(ApplyCommand, ApplyDetailed))(_ => callParser) {

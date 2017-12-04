@@ -50,7 +50,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
           case _ =>
             val x = makeAskUserThread(e.state)
             askUserThread = Some(x)
-            x.start
+            x.start()
         }
       case e: ConsoleUnpromptEvent =>
         e.lastSource match {
@@ -70,7 +70,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
   def shutdown(): Unit =
     askUserThread match {
       case Some(x) if x.isAlive =>
-        x.interrupt
+        x.interrupt()
         askUserThread = None
       case _ => ()
     }
