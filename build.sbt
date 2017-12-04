@@ -303,6 +303,8 @@ lazy val protocolProj = (project in file("protocol"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     testedBaseSettings,
+    scalacOptions -= "-Ywarn-unused",
+    scalacOptions += "-Xlint:-unused",
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     managedSourceDirectories in Compile +=
