@@ -25,7 +25,7 @@ sealed trait Action[T] {
  * If `inline` is true, `f` will be evaluated on the scheduler thread without the overhead of normal scheduling when possible.
  * This is intended as an optimization for already evaluated values or very short pure computations.
  */
-final case class Pure[T](f: () => T, inline: Boolean) extends Action[T] {
+final case class Pure[T](f: () => T, `inline`: Boolean) extends Action[T] {
   private[sbt] def mapTask(f: Task ~> Task) = this
 }
 
