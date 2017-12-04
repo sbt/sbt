@@ -178,15 +178,16 @@ object Command {
     bs map (b => (b, distance(a, b))) filter (_._2 <= maxDistance) sortBy (_._2) take (maxSuggestions) map (_._1)
 
   def distance(a: String, b: String): Int =
-    EditDistance.levenshtein(a,
-                             b,
-                             insertCost = 1,
-                             deleteCost = 1,
-                             subCost = 2,
-                             transposeCost = 1,
-                             matchCost = -1,
-                             caseCost = 1,
-                             transpositions = true)
+    EditDistance.levenshtein(
+      a,
+      b,
+      insertCost = 1,
+      deleteCost = 1,
+      subCost = 2,
+      matchCost = -1,
+      caseCost = 1,
+      transpositions = true
+    )
 
   def spacedAny(name: String): Parser[String] = spacedC(name, any)
 

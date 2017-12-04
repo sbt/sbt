@@ -174,6 +174,11 @@ val completeProj = (project in file("internal") / "util-complete")
     name := "Completion",
     libraryDependencies += jline,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Changed signature or removed something in the internal pacakge
+      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.*"),
+    ),
   )
   .configure(addSbtIO, addSbtUtilControl)
 

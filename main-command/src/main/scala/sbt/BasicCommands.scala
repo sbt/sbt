@@ -236,10 +236,9 @@ object BasicCommands {
 
   def historyParser(s: State): Parser[() => State] =
     Command.applyEffect(HistoryCommands.actionParser) { histFun =>
-      val logError = (msg: String) => s.log.error(msg)
-      val hp = s get historyPath getOrElse None
+      val hp = (s get historyPath).flatten
       val lines = hp.toList.flatMap(p => IO.readLines(p)).toIndexedSeq
-      histFun(CHistory(lines, hp, logError)) match {
+      histFun(CHistory(lines, hp)) match {
         case Some(commands) =>
           commands foreach println //printing is more appropriate than logging
           (commands ::: s).continue
