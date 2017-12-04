@@ -8,7 +8,7 @@
 package sbt
 package internal
 
-import Def.{ showRelativeKey, ScopedKey }
+import Def.{ showRelativeKey2, ScopedKey }
 import Keys.sessionSettings
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import Aggregation.{ KeyValue, Values }
@@ -56,7 +56,7 @@ object Act {
                         keyMap: Map[String, AttributeKey[_]],
                         data: Settings[Scope]): Parser[ParsedKey] =
     scopedKeyFull(index, current, defaultConfigs, keyMap) flatMap { choices =>
-      select(choices, data)(showRelativeKey(current, index.buildURIs.size > 1))
+      select(choices, data)(showRelativeKey2(current))
     }
 
   def scopedKeyFull(index: KeyIndex,

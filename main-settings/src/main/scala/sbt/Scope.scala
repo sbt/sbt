@@ -201,23 +201,6 @@ object Scope {
     if (s == "") ""
     else s + " "
 
-  // sbt 0.12 style
-  def display012StyleMasked(scope: Scope,
-                            sep: String,
-                            showProject: Reference => String,
-                            mask: ScopeMask): String = {
-    import scope.{ project, config, task, extra }
-    val configPrefix = config.foldStrict(displayConfigKey012Style, "*:", ".:")
-    val taskPrefix = task.foldStrict(_.label + "::", "", ".::")
-    val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
-    val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-    mask.concatShow(projectPrefix012Style(project, showProject012Style),
-                    configPrefix,
-                    taskPrefix,
-                    sep,
-                    postfix)
-  }
-
   def equal(a: Scope, b: Scope, mask: ScopeMask): Boolean =
     (!mask.project || a.project == b.project) &&
       (!mask.config || a.config == b.config) &&
@@ -241,7 +224,7 @@ object Scope {
     (parts.take(1) ++ parts.drop(1).map(_.capitalize)).mkString
   }
 
-  // *Inherit functions should be immediate delegates and not include argument itself.  Transitivity will be provided by this method
+  @deprecated("Use variant without extraInherit", "1.1.1")
   def delegates[Proj](
       refs: Seq[(ProjectRef, Proj)],
       configurations: Proj => Seq[ConfigKey],
@@ -251,18 +234,47 @@ object Scope {
       configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey],
       taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
       extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]
+  ): Scope => Seq[Scope] =
+    delegates(
+      refs,
+      configurations,
+      resolve,
+      rootProject,
+      projectInherit,
+      configInherit,
+      taskInherit,
+    )
+
+  // *Inherit functions should be immediate delegates and not include argument itself.  Transitivity will be provided by this method
+  def delegates[Proj](
+      refs: Seq[(ProjectRef, Proj)],
+      configurations: Proj => Seq[ConfigKey],
+      resolve: Reference => ResolvedReference,
+      rootProject: URI => String,
+      projectInherit: ProjectRef => Seq[ProjectRef],
+      configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey],
+      taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
   ): Scope => Seq[Scope] = {
     val index = delegates(refs, configurations, projectInherit, configInherit)
     scope =>
-      indexedDelegates(resolve, index, rootProject, taskInherit, extraInherit)(scope)
+      indexedDelegates(resolve, index, rootProject, taskInherit)(scope)
   }
 
+  @deprecated("Use variant without extraInherit", "1.1.1")
   def indexedDelegates(
       resolve: Reference => ResolvedReference,
       index: DelegateIndex,
       rootProject: URI => String,
       taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
       extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]
+  )(rawScope: Scope): Seq[Scope] =
+    indexedDelegates(resolve, index, rootProject, taskInherit)(rawScope)
+
+  def indexedDelegates(
+      resolve: Reference => ResolvedReference,
+      index: DelegateIndex,
+      rootProject: URI => String,
+      taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
   )(rawScope: Scope): Seq[Scope] = {
     val scope = Scope.replaceThis(GlobalScope)(rawScope)
 

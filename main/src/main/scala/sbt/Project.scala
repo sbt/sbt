@@ -284,15 +284,14 @@ object Project extends ProjectExtra {
       structure: BuildStructure,
       keyNameColor: Option[String] = None
   ): Show[ScopedKey[_]] =
-    Def.showRelativeKey(session.current, structure.allProjects.size > 1, keyNameColor)
+    Def.showRelativeKey2(session.current, keyNameColor)
 
   def showLoadingKey(
       loaded: LoadedBuild,
       keyNameColor: Option[String] = None
   ): Show[ScopedKey[_]] =
-    Def.showRelativeKey(
+    Def.showRelativeKey2(
       ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head),
-      loaded.allProjectRefs.size > 1,
       keyNameColor
     )
 

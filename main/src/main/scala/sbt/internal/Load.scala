@@ -208,7 +208,6 @@ private[sbt] object Load {
       project => projectInherit(lb, project),
       (project, config) => configInherit(lb, project, config, rootProject),
       task => task.extend,
-      (project, extra) => Nil
     )
   }
 
