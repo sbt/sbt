@@ -13,7 +13,7 @@ import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
-import sbt.io.Milli.getModifiedTime
+import sbt.io.IO.getModifiedTime
 
 private[sbt] object LibraryManagement {
 
