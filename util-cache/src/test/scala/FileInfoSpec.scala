@@ -3,7 +3,7 @@ package sbt.util
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
 import sbt.internal.util.UnitSpec
-import sbt.io.Milli.getModifiedTime
+import sbt.io.IO.getModifiedTime
 
 class FileInfoSpec extends UnitSpec {
   val file = new java.io.File(".").getAbsoluteFile

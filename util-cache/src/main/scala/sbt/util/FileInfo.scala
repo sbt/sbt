@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 import sbt.io.Hash
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import CacheImplicits._
-import sbt.io.Milli.getModifiedTime
+import sbt.io.IO.getModifiedTime
 
 sealed trait FileInfo { def file: File }
 sealed trait HashFileInfo extends FileInfo { def hash: List[Byte] }
