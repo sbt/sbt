@@ -157,6 +157,11 @@ val collectionProj = (project in file("internal") / "util-collection")
       exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.Types.toFn1"),
+
+      // Instead of defining foldr in KList & overriding in KCons,
+      // it's now abstract in KList and defined in both KCons & KNil.
+      exclude[FinalMethodProblem]("sbt.internal.util.KNil.foldr"),
+      exclude[DirectAbstractMethodProblem]("sbt.internal.util.KList.foldr"),
     ),
   )
   .configure(addSbtUtilPosition)
