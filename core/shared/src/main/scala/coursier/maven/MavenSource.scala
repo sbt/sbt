@@ -149,10 +149,12 @@ final case class MavenSource(
         artifact(publication.`type`)
       def artifact(versioningType: String): Artifact = {
 
+        val versioningExtension = MavenSource.typeExtensions.getOrElse(versioningType, versioningType)
+
         val versioning = project
           .snapshotVersioning
           .flatMap(versioning =>
-            mavenVersioning(versioning, publication.classifier, versioningType)
+            mavenVersioning(versioning, publication.classifier, versioningExtension)
           )
 
         val path = dependency.module.organization.split('.').toSeq ++ Seq(

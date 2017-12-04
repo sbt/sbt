@@ -860,6 +860,46 @@ abstract class CentralTests extends TestSuite {
 
       * - resolutionCheck(mod, ver)
     }
+
+    'snapshotVersioningBundlePackaging - {
+      val mod = Module("org.talend.daikon", "daikon")
+      val ver = "0.19.0-SNAPSHOT"
+
+      val extraRepos = Seq(
+        MavenRepository("https://artifacts-oss.talend.com/nexus/content/repositories/TalendOpenSourceRelease"),
+        MavenRepository("https://artifacts-oss.talend.com/nexus/content/repositories/TalendOpenSourceSnapshot")
+      )
+
+      * - resolutionCheck(mod, ver, extraRepos = extraRepos)
+
+      * - {
+        if (isActualCentral)
+          withArtifacts(mod, ver, "*", extraRepos = extraRepos, transitive = true) { artifacts =>
+            val urls = artifacts.map(_.url).toSet
+            val expectedUrls = Set(
+              "https://artifacts-oss.talend.com/nexus/content/repositories/TalendOpenSourceRelease/com/cedarsoftware/json-io/4.9.9-TALEND/json-io-4.9.9-TALEND.jar",
+              "https://artifacts-oss.talend.com/nexus/content/repositories/TalendOpenSourceSnapshot/org/talend/daikon/daikon/0.19.0-SNAPSHOT/daikon-0.19.0-20171201.100416-43.jar",
+              "https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.5.3/jackson-annotations-2.5.3.jar",
+              "https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.5.3/jackson-core-2.5.3.jar",
+              "https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.5.3/jackson-databind-2.5.3.jar",
+              "https://repo1.maven.org/maven2/com/thoughtworks/paranamer/paranamer/2.7/paranamer-2.7.jar",
+              "https://repo1.maven.org/maven2/commons-codec/commons-codec/1.6/commons-codec-1.6.jar",
+              "https://repo1.maven.org/maven2/javax/inject/javax.inject/1/javax.inject-1.jar",
+              "https://repo1.maven.org/maven2/javax/servlet/javax.servlet-api/3.1.0/javax.servlet-api-3.1.0.jar",
+              "https://repo1.maven.org/maven2/org/apache/avro/avro/1.8.1/avro-1.8.1.jar",
+              "https://repo1.maven.org/maven2/org/apache/commons/commons-compress/1.8.1/commons-compress-1.8.1.jar",
+              "https://repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.4/commons-lang3-3.4.jar",
+              "https://repo1.maven.org/maven2/org/codehaus/jackson/jackson-core-asl/1.9.13/jackson-core-asl-1.9.13.jar",
+              "https://repo1.maven.org/maven2/org/codehaus/jackson/jackson-mapper-asl/1.9.13/jackson-mapper-asl-1.9.13.jar",
+              "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.12/slf4j-api-1.7.12.jar",
+              "https://repo1.maven.org/maven2/org/tukaani/xz/1.5/xz-1.5.jar",
+              "https://repo1.maven.org/maven2/org/xerial/snappy/snappy-java/1.1.1.3/snappy-java-1.1.1.3.jar"
+            )
+
+            assert(expectedUrls.forall(urls))
+          }
+      }
+    }
   }
 
 }
