@@ -9,7 +9,7 @@ package sbt
 package internal.testing
 
 import testing.{ Logger => TLogger }
-import sbt.internal.util.{ ManagedLogger, BufferedAppender }
+import sbt.internal.util.{ BufferedAppender, ConsoleAppender, ManagedLogger }
 import sbt.util.{ Level, LogExchange, ShowLines }
 import sbt.protocol.testing._
 import java.util.concurrent.atomic.AtomicInteger
@@ -89,7 +89,7 @@ object TestLogger {
       def debug(s: String) = log(Level.Debug, TestStringEvent(s))
       def trace(t: Throwable) = logger.trace(t)
       private def log(level: Level.Value, event: TestStringEvent) = logger.logEvent(level, event)
-      def ansiCodesSupported() = logger.ansiCodesSupported
+      def ansiCodesSupported() = ConsoleAppender.formatEnabledInEnv
     }
 
   private[sbt] def toTestItemEvent(event: TestEvent): TestItemEvent =

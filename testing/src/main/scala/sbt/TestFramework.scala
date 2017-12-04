@@ -52,8 +52,8 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
             case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
           })
         } catch {
-          case e: ClassNotFoundException =>
-            log.debug("Framework implementation '" + head + "' not present.");
+          case _: ClassNotFoundException =>
+            log.debug("Framework implementation '" + head + "' not present.")
             createFramework(loader, log, tail)
         }
       case Nil =>

@@ -25,7 +25,7 @@ trait TestReportListener {
   def endGroup(name: String, result: TestResult): Unit
 
   /** Used by the test framework for logging test results */
-  def contentLogger(test: TestDefinition): Option[ContentLogger] = None
+  def contentLogger(@deprecated("unused", "") test: TestDefinition): Option[ContentLogger] = None
 
 }
 
