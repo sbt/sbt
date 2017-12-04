@@ -11,6 +11,7 @@ import java.io.File
 import java.net.URI
 import java.util.Locale
 import Project._
+import BasicKeys.serverLogLevel
 import Keys.{
   stateBuildStructure,
   commands,
@@ -21,9 +22,11 @@ import Keys.{
   shellPrompt,
   templateResolverInfos,
   serverHost,
+  serverLog,
   serverPort,
   serverAuthentication,
   serverConnectionType,
+  logLevel,
   watch
 }
 import Scope.{ Global, ThisScope }
@@ -41,7 +44,7 @@ import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, 
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
-import sbt.util.Show
+import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
 
 import language.experimental.macros
@@ -463,6 +466,7 @@ object Project extends ProjectExtra {
     val port: Option[Int] = get(serverPort)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
+    val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands,
                                                                        projectCommand)
@@ -477,6 +481,7 @@ object Project extends ProjectExtra {
         .put(historyPath.key, history)
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)
+        .setCond(serverLogLevel, srvLogLevel)
     s.copy(
       attributes = newAttrs,
       definedCommands = newDefinedCommands

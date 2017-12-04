@@ -11,6 +11,7 @@ import java.io.File
 import sbt.internal.util.AttributeKey
 import sbt.internal.inc.classpath.ClassLoaderCache
 import sbt.librarymanagement.ModuleID
+import sbt.util.Level
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -37,6 +38,14 @@ object BasicKeys {
     AttributeKey[ConnectionType]("serverConnectionType",
                                  "The wire protocol for the server command.",
                                  10000)
+
+  // Unlike other BasicKeys, this is not used directly as a setting key,
+  // and severLog / logLevel is used instead.
+  private[sbt] val serverLogLevel =
+    AttributeKey[Level.Value]("serverLogLevel", "The log level for the server.", 10000)
+
+  private[sbt] val logLevel =
+    AttributeKey[Level.Value]("logLevel", "The amount of logging sent to the screen.", 10)
 
   private[sbt] val interactive = AttributeKey[Boolean](
     "interactive",
