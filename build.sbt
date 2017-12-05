@@ -285,6 +285,12 @@ lazy val actionsProj = (project in file("main-actions"))
     name := "Actions",
     libraryDependencies += sjsonNewScalaJson.value,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Removed unused private[sbt] nested class
+      exclude[MissingClassProblem]("sbt.Doc$Scaladoc"),
+      // Removed no longer used private[sbt] method
+      exclude[DirectMissingMethodProblem]("sbt.Doc.generate"),
+    ),
   )
   .configure(
     addSbtIO,

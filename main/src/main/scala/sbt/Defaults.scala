@@ -1533,7 +1533,7 @@ object Defaults extends BuildCommon {
       val cacheStore = s.cacheStoreFactory make "copy-resources"
       val mappings = (resources.value --- dirs) pair (rebase(dirs, t) | flat(t))
       s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t", "\n\t", ""))
-      Sync(cacheStore)(mappings)
+      Sync.sync(cacheStore)(mappings)
       mappings
     }
 
