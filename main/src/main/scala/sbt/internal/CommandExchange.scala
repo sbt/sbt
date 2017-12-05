@@ -152,11 +152,13 @@ private[sbt] final class CommandExchange {
         Await.ready(x.ready, Duration("10s"))
         x.ready.value match {
           case Some(Success(_)) =>
+            // rememeber to shutdown only when the server comes up
+            server = Some(x)
           case Some(Failure(e)) =>
             s.log.error(e.toString)
+            server = None
           case None => // this won't happen because we awaited
         }
-        server = Some(x)
     }
     s
   }

@@ -9,7 +9,7 @@ package sbt
 package internal
 package server
 
-import java.io.File
+import java.io.{ File, IOException }
 import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, Socket }
 import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.file.attribute.{ UserPrincipal, AclEntry, AclEntryPermission, AclEntryType }
@@ -54,15 +54,17 @@ private[sbt] object Server {
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
           Try {
-            ErrorHandling.translate(s"server failed to start on ${connection.shortName}. ") {
-              connection.connectionType match {
-                case ConnectionType.Local if isWindows =>
-                  new NGWin32NamedPipeServerSocket(pipeName)
-                case ConnectionType.Local =>
-                  prepareSocketfile()
-                  new NGUnixDomainServerSocket(socketfile.getAbsolutePath)
-                case ConnectionType.Tcp => new ServerSocket(port, 50, InetAddress.getByName(host))
-              }
+            connection.connectionType match {
+              case ConnectionType.Local if isWindows =>
+                // Named pipe already has an exclusive lock.
+                addServerError(new NGWin32NamedPipeServerSocket(pipeName))
+              case ConnectionType.Local =>
+                tryClient(new NGUnixDomainSocket(socketfile.getAbsolutePath))
+                prepareSocketfile()
+                addServerError(new NGUnixDomainServerSocket(socketfile.getAbsolutePath))
+              case ConnectionType.Tcp =>
+                tryClient(new Socket(InetAddress.getByName(host), port))
+                addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
             }
           } match {
             case Failure(e) => p.failure(e)
@@ -86,6 +88,24 @@ private[sbt] object Server {
         }
       }
       serverThread.start()
+
+      // Try the socket as a client to make sure that the server is not already up.
+      // f tries to connect to the server, and flip the result.
+      def tryClient(f: => Socket): Unit = {
+        if (portfile.exists) {
+          Try { f } match {
+            case Failure(e) => ()
+            case Success(socket) =>
+              socket.close()
+              throw new IOException("sbt server is already running.")
+          }
+        } else ()
+      }
+
+      def addServerError(f: => ServerSocket): ServerSocket =
+        ErrorHandling.translate(s"server failed to start on ${connection.shortName}. ") {
+          f
+        }
 
       override def authenticate(challenge: String): Boolean = synchronized {
         if (token == challenge) {
