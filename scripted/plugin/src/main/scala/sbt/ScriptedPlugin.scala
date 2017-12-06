@@ -13,7 +13,6 @@ import sbt.internal.util.complete.{ Parser, DefaultParsers }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ModuleUtilities
 import java.lang.reflect.Method
-import sbt.librarymanagement.CrossVersion.partialVersion
 
 object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -40,7 +39,7 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedSbt := (sbtVersion in pluginCrossBuild).value,
     sbtLauncher := getJars(ScriptedLaunchConf).map(_.get.head).value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
-    libraryDependencies ++= (partialVersion(scriptedSbt.value) match {
+    libraryDependencies ++= (CrossVersion.partialVersion(scriptedSbt.value) match {
       case Some((0, 13)) =>
         Seq(
           "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % ScriptedConf,
@@ -51,13 +50,15 @@ object ScriptedPlugin extends AutoPlugin {
           "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf,
           "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
         )
+      case Some((x, y)) => sys error s"Unknown sbt version ${scriptedSbt.value} ($x.$y)"
+      case None         => sys error s"Unknown sbt version ${scriptedSbt.value}"
     }),
     scriptedBufferLog := true,
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {
-      def use[A](x: A*): Unit = () // avoid unused warnings
+      def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
       val analysis = (compile in Test).value
       val pub = (publishLocal).value
       use(analysis, pub)
