@@ -487,8 +487,12 @@ private[sbt] object Eval {
     if (fs eq null) filesModifiedBytes(Array[File]()) else seqBytes(fs)(fileModifiedBytes)
   def fileModifiedBytes(f: File): Array[Byte] =
     (if (f.isDirectory) filesModifiedBytes(f listFiles classDirFilter)
-     else bytes(getModifiedTime(f))) ++
-      bytes(f.getAbsolutePath)
+     else
+       bytes(try {
+         getModifiedTime(f)
+       } catch {
+         case _: java.io.FileNotFoundException => 0L
+       })) ++ bytes(f.getAbsolutePath)
   def fileExistsBytes(f: File): Array[Byte] =
     bytes(f.exists) ++
       bytes(f.getAbsolutePath)
