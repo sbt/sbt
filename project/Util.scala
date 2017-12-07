@@ -197,7 +197,7 @@ object Licensed {
 
   def settings: Seq[Setting[_]] = Seq(
     notice := (baseDirectory.value / "NOTICE"),
-    unmanagedResources in Compile ++= notice.value +: extractLicenses.value,
+    unmanagedResources in Compile ++= extractLicenses.value,
     extractLicenses := extractLicenses0((baseDirectory in ThisBuild).value,
                                         notice.value,
                                         streams.value)
@@ -205,7 +205,7 @@ object Licensed {
   def extractLicenses0(base: File, note: File, s: TaskStreams): Seq[File] =
     if (!note.exists) Nil
     else
-      try { seePaths(base, IO.read(note)) } catch {
+      try { note +: seePaths(base, IO.read(note)) } catch {
         case NonFatal(e) => s.log.warn("Could not read NOTICE"); Nil
       }
 }
