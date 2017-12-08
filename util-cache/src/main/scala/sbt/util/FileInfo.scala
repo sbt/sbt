@@ -4,6 +4,7 @@
 package sbt.util
 
 import java.io.File
+import java.io.FileNotFoundException
 import scala.util.control.NonFatal
 import sbt.io.Hash
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
@@ -50,6 +51,15 @@ object FilesInfo {
 }
 
 object FileInfo {
+
+  def getModifiedTimeOrZero(file: File) = { // returns 0L if file does not exist
+    try {
+      getModifiedTime(file)
+    } catch {
+      case _: FileNotFoundException => 0L
+    }
+  }
+
   sealed trait Style {
     type F <: FileInfo
 
@@ -89,7 +99,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): HashModifiedFileInfo =
-      FileHashModified(file.getAbsoluteFile, Hash(file).toList, getModifiedTime(file))
+      FileHashModified(file.getAbsoluteFile, Hash(file).toList, getModifiedTimeOrZero(file))
   }
 
   object hash extends Style {
@@ -146,7 +156,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): ModifiedFileInfo =
-      FileModified(file.getAbsoluteFile, getModifiedTime(file))
+      FileModified(file.getAbsoluteFile, getModifiedTimeOrZero(file))
   }
 
   object exists extends Style {
