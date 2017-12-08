@@ -116,9 +116,7 @@ private[sbt] object SbtParser {
     scalacGlobalInitReporter = Some(new ConsoleReporter(settings))
 
     // Mix Positions, otherwise global ignores -Yrangepos
-    val global = new Global(settings, globalReporter) with Positions {
-      override protected def synchronizeNames = true // https://github.com/scala/bug/issues/10605
-    }
+    val global = new Global(settings, globalReporter) with Positions
     val run = new global.Run
     // Add required dummy unit for initialization...
     val initFile = new BatchSourceFile("<wrapper-init>", "")
@@ -151,7 +149,9 @@ private[sbt] object SbtParser {
     val wrapperFile = new BatchSourceFile(reporterId, code)
     val unit = new CompilationUnit(wrapperFile)
     val parser = new syntaxAnalyzer.UnitParser(unit)
-    val parsedTrees = parser.templateStats()
+    val parsedTrees = SbtParser.synchronized { // see https://github.com/scala/bug/issues/10605
+      parser.templateStats()
+    }
     parser.accept(scala.tools.nsc.ast.parser.Tokens.EOF)
     globalReporter.throwParserErrorsIfAny(reporter, filePath)
     parsedTrees -> reporterId
