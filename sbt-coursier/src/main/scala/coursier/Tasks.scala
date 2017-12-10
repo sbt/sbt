@@ -2,7 +2,7 @@ package coursier
 
 import java.io.{File, OutputStreamWriter}
 import java.net.URL
-import java.util.concurrent.{ExecutorService, Executors}
+import java.util.concurrent.{ConcurrentHashMap, ExecutorService, Executors}
 
 import coursier.core.{Authentication, Publication}
 import coursier.extra.Typelevel
@@ -414,10 +414,10 @@ object Tasks {
     ignoreArtifactErrors: Boolean
   )
 
-  private[coursier] val resolutionsCache = new mutable.HashMap[ResolutionCacheKey, Map[Set[String], Resolution]]
+  private[coursier] val resolutionsCache = new ConcurrentHashMap[ResolutionCacheKey, Map[Set[String], Resolution]]
   // these may actually not need to be cached any more, now that the resolutions
   // are cached
-  private[coursier] val reportsCache = new mutable.HashMap[ReportCacheKey, UpdateReport]
+  private[coursier] val reportsCache = new ConcurrentHashMap[ReportCacheKey, UpdateReport]
 
   private def forcedScalaModules(
     scalaOrganization: String,
@@ -679,108 +679,14 @@ object Tasks {
 
     val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
 
-    Def.task {
-      val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
-      val resolvers = resolversTask.value
-
-      val parentProjectCache: ProjectCache = coursierParentProjectCache.value
-        .get(resolvers)
-        .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
-        .getOrElse(Map.empty)
-
-      // TODO Warn about possible duplicated modules from source repositories?
-
-      val authenticationByHost = authenticationByHostTask.value
-
-      val fallbackDependenciesRepositories =
-        if (fallbackDependencies.isEmpty)
-          Nil
-        else {
-          val map = fallbackDependencies.map {
-            case (mod, ver, url, changing) =>
-              (mod, ver) -> ((url, changing))
-          }.toMap
-
-          Seq(
-            FallbackDependenciesRepository(map)
-          )
-        }
-
-      if (verbosityLevel >= 2) {
-        log.info("InterProjectRepository")
-        for (p <- interProjectDependencies)
-          log.info(s"  ${p.module}:${p.version}")
-      }
-
-      def withAuthenticationByHost(repo: Repository, credentials: Map[String, Authentication]): Repository = {
-
-        def httpHost(s: String) =
-          if (s.startsWith("http://") || s.startsWith("https://"))
-            Try(Cache.url(s).getHost).toOption
-          else
-            None
-
-        repo match {
-          case m: MavenRepository =>
-            if (m.authentication.isEmpty)
-              httpHost(m.root).flatMap(credentials.get).fold(m) { auth =>
-                m.copy(authentication = Some(auth))
-              }
-            else
-              m
-          case i: IvyRepository =>
-            if (i.authentication.isEmpty) {
-              val base = i.pattern.chunks.takeWhile {
-                case _: coursier.ivy.Pattern.Chunk.Const => true
-                case _ => false
-              }.map(_.string).mkString
-
-              httpHost(base).flatMap(credentials.get).fold(i) { auth =>
-                i.copy(authentication = Some(auth))
-              }
-            } else
-              i
-          case _ =>
-            repo
-        }
-      }
-
-      val internalRepositories = globalPluginsRepos :+ interProjectRepo
-
-      val repositories =
-        internalRepositories ++
-          resolvers.flatMap { resolver =>
-            FromSbt.repository(
-              resolver,
-              ivyProperties,
-              log,
-              authenticationByRepositoryId.get(resolver.name)
-            )
-          }.map(withAuthenticationByHost(_, authenticationByHost)) ++
-          fallbackDependenciesRepositories
-
-      def startRes(configs: Set[String]) = Resolution(
-        currentProject
-          .dependencies
-          .collect {
-            case (config, dep) if configs(config) =>
-              dep
-          }
-          .toSet,
-        filter = noOptionalFilter,
-        userActivations =
-          if (userEnabledProfiles.isEmpty)
-            None
-          else
-            Some(userEnabledProfiles.iterator.map(_ -> true).toMap),
-        forceVersions =
-          // order matters here
-          userForceVersions ++
-            (if (configs("compile") || configs("scala-tool")) forcedScalaModules(so, sv) else Map()) ++
-            interProjectDependencies.map(_.moduleVersion),
-        projectCache = parentProjectCache,
-        mapDependencies = if (typelevel && (configs("compile") || configs("scala-tool"))) typelevelOrgSwap else None
-      )
+    def resTask(
+      currentProject: Project,
+      fallbackDependencies: Seq[(Module, String, URL, Boolean)],
+      configGraphs: Seq[Set[String]],
+      repositories: Seq[Repository],
+      internalRepositories: Seq[Repository],
+      allStartRes: Map[Set[String], coursier.Resolution]
+    ) = Def.task {
 
       def resolution(startRes: Resolution) = {
 
@@ -893,25 +799,148 @@ object Tasks {
         res
       }
 
-      val allStartRes = configGraphs.map(configs => configs -> startRes(configs)).toMap
-
       // let's update only one module at once, for a better output
       // Downloads are already parallel, no need to parallelize further anyway
       synchronized {
+        allStartRes.map {
+          case (config, startRes) =>
+            config -> resolution(startRes)
+        }
+      }
+    }
 
-        resolutionsCache.getOrElseUpdate(
-          ResolutionCacheKey(
-            currentProject,
-            repositories,
-            userEnabledProfiles,
-            allStartRes,
-            sbtClassifiers
-          ),
-          allStartRes.map {
-            case (config, startRes) =>
-              config -> resolution(startRes)
+    Def.taskDyn {
+
+      val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
+
+      val resolvers = resolversTask.value
+
+      // TODO Warn about possible duplicated modules from source repositories?
+
+      val authenticationByHost = authenticationByHostTask.value
+
+      val fallbackDependenciesRepositories =
+        if (fallbackDependencies.isEmpty)
+          Nil
+        else {
+          val map = fallbackDependencies.map {
+            case (mod, ver, url, changing) =>
+              (mod, ver) -> ((url, changing))
+          }.toMap
+
+          Seq(
+            FallbackDependenciesRepository(map)
+          )
+        }
+
+      if (verbosityLevel >= 2) {
+        log.info("InterProjectRepository")
+        for (p <- interProjectDependencies)
+          log.info(s"  ${p.module}:${p.version}")
+      }
+
+      def withAuthenticationByHost(repo: Repository, credentials: Map[String, Authentication]): Repository = {
+
+        def httpHost(s: String) =
+          if (s.startsWith("http://") || s.startsWith("https://"))
+            Try(Cache.url(s).getHost).toOption
+          else
+            None
+
+        repo match {
+          case m: MavenRepository =>
+            if (m.authentication.isEmpty)
+              httpHost(m.root).flatMap(credentials.get).fold(m) { auth =>
+                m.copy(authentication = Some(auth))
+              }
+            else
+              m
+          case i: IvyRepository =>
+            if (i.authentication.isEmpty) {
+              val base = i.pattern.chunks.takeWhile {
+                case _: coursier.ivy.Pattern.Chunk.Const => true
+                case _ => false
+              }.map(_.string).mkString
+
+              httpHost(base).flatMap(credentials.get).fold(i) { auth =>
+                i.copy(authentication = Some(auth))
+              }
+            } else
+              i
+          case _ =>
+            repo
+        }
+      }
+
+      val internalRepositories = globalPluginsRepos :+ interProjectRepo
+
+      val repositories =
+        internalRepositories ++
+          resolvers.flatMap { resolver =>
+            FromSbt.repository(
+              resolver,
+              ivyProperties,
+              log,
+              authenticationByRepositoryId.get(resolver.name)
+            )
+          }.map(withAuthenticationByHost(_, authenticationByHost)) ++
+          fallbackDependenciesRepositories
+
+      val parentProjectCache: ProjectCache = coursierParentProjectCache.value
+        .get(resolvers)
+        .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
+        .getOrElse(Map.empty)
+
+      def startRes(configs: Set[String]) = Resolution(
+        currentProject
+          .dependencies
+          .collect {
+            case (config, dep) if configs(config) =>
+              dep
           }
-        )
+          .toSet,
+        filter = noOptionalFilter,
+        userActivations =
+          if (userEnabledProfiles.isEmpty)
+            None
+          else
+            Some(userEnabledProfiles.iterator.map(_ -> true).toMap),
+        forceVersions =
+          // order matters here
+          userForceVersions ++
+            (if (configs("compile") || configs("scala-tool")) forcedScalaModules(so, sv) else Map()) ++
+            interProjectDependencies.map(_.moduleVersion),
+        projectCache = parentProjectCache,
+        mapDependencies = if (typelevel && (configs("compile") || configs("scala-tool"))) typelevelOrgSwap else None
+      )
+
+      val allStartRes = configGraphs.map(configs => configs -> startRes(configs)).toMap
+
+      val key = ResolutionCacheKey(
+        currentProject,
+        repositories,
+        userEnabledProfiles,
+        allStartRes,
+        sbtClassifiers
+      )
+
+      Option(resolutionsCache.get(key)) match {
+        case Some(res) =>
+          Def.task(res)
+        case None =>
+          val t = resTask(
+            currentProject,
+            fallbackDependencies,
+            configGraphs,
+            repositories,
+            internalRepositories,
+            allStartRes
+          )
+
+          t.map { res =>
+            resolutionsCache.put(key, res)
+            res
+          }
       }
     }
   }
@@ -1115,7 +1144,7 @@ object Tasks {
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false,
     includeSignatures: Boolean = false
-  ) = Def.taskDyn {
+  ): Def.Initialize[sbt.Task[UpdateReport]] = Def.taskDyn {
 
     def grouped[K, V](map: Seq[(K, V)])(mapKey: K => K): Map[K, Seq[V]] =
       map.groupBy { case (k, _) => mapKey(k) }.map {
@@ -1205,9 +1234,8 @@ object Tasks {
       } else
         Def.task(None)
 
-    Def.task {
-      val currentProject = currentProjectTask.value
-      val res = resTask.value
+    def reportTask(currentProject: Project, res: Map[Set[String], Resolution]) = Def.task {
+
       val artifactFilesOrErrors0 = artifactFilesOrErrors0Task.value
       val classifiers = classifiersTask.value
       val configs = configsTask.value
@@ -1290,17 +1318,31 @@ object Tasks {
       // let's update only one module at once, for a better output
       // Downloads are already parallel, no need to parallelize further anyway
       synchronized {
+        report
+      }
+    }
 
-        reportsCache.getOrElseUpdate(
-          ReportCacheKey(
-            currentProject,
-            res,
-            withClassifiers,
-            sbtClassifiers,
-            ignoreArtifactErrors
-          ),
-          report
-        )
+    Def.taskDyn {
+
+      val currentProject = currentProjectTask.value
+      val res = resTask.value
+
+      val key = ReportCacheKey(
+        currentProject,
+        res,
+        withClassifiers,
+        sbtClassifiers,
+        ignoreArtifactErrors
+      )
+
+      Option(reportsCache.get(key)) match {
+        case Some(report) =>
+          Def.task(report)
+        case None =>
+          reportTask(currentProject, res).map { rep =>
+            reportsCache.put(key, rep)
+            rep
+          }
       }
     }
   }
