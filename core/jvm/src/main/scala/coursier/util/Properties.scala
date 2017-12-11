@@ -6,11 +6,16 @@ object Properties {
 
   private lazy val props = {
     val p = new JProperties()
-    p.load(
-      getClass
-        .getClassLoader
-        .getResourceAsStream("coursier/coursier.properties")
-    )
+    try {
+      p.load(
+        getClass
+          .getClassLoader
+          .getResourceAsStream("coursier/coursier.properties")
+      )
+    }
+    catch  {
+      case e: NullPointerException =>
+    }
     p
   }
 

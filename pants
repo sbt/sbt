@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Copyright 2015 Pants project contributors (see CONTRIBUTORS.md).
+# Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+# =============================== NOTE ===============================
+# This pants bootstrap script comes from the pantsbuild/setup
+# project and is intended to be checked into your code repository so
+# that any developer can check out your code and be building it with
+# pants with no prior setup needed.
+#
+# You can learn more here: https://pantsbuild.github.io/setup
+# ====================================================================
+
+set -e
+
+PYTHON=${PYTHON:-$(which python2.7)}
+
+PANTS_HOME="${PANTS_HOME:-${HOME}/.cache/pants/setup}"
+PANTS_BOOTSTRAP="${PANTS_HOME}/bootstrap-$(uname -s)-$(uname -m)"
+
+VENV_VERSION=15.0.2
+
+# This requirement is installed before pantsbuild.pants to hack around
+# interpreters that have newer setuptools already installed, effectively
+# re-installing an older setuptools and pinning low to a version known to be 
+# ingestable by both pants and pex for all reasonable versions of pants.
+# See:
+#   https://github.com/pantsbuild/pants/issues/3948
+#   https://github.com/pantsbuild/setup/issues/14
+#   https://github.com/pantsbuild/setup/issues/19
+SETUPTOOLS_REQUIREMENT="setuptools==5.4.1"
+
+VENV_PACKAGE=virtualenv-${VENV_VERSION}
+VENV_TARBALL=${VENV_PACKAGE}.tar.gz
+
+# The high-level flow:
+# 1.) Grab pants version from pants.ini or default to latest.
+# 2.) Check for a venv via a naming/path convention and execute if found.
+# 3.) Otherwise create venv and re-exec self.
+#
+# After that pants itself will handle making sure any requested plugins
+# are installed and up to date.
+
+function tempdir {
+  mktemp -d "$1"/pants.XXXXXX
+}
+
+# TODO(John Sirois): GC race loser tmp dirs leftover from bootstrap_XXX
+# functions.  Any tmp dir w/o a symlink pointing to it can go.
+
+function bootstrap_venv {
+  if [[ ! -d "${PANTS_BOOTSTRAP}/${VENV_PACKAGE}" ]]
+  then
+    (
+      mkdir -p "${PANTS_BOOTSTRAP}" && \
+      staging_dir=$(tempdir "${PANTS_BOOTSTRAP}") && \
+      cd "${staging_dir}" && \
+      curl -LO https://pypi.io/packages/source/v/virtualenv/${VENV_TARBALL} && \
+      tar -xzf ${VENV_TARBALL} && \
+      ln -s "${staging_dir}/${VENV_PACKAGE}" "${staging_dir}/latest" && \
+      mv "${staging_dir}/latest" "${PANTS_BOOTSTRAP}/${VENV_PACKAGE}"
+    ) 1>&2
+  fi
+  echo "${PANTS_BOOTSTRAP}/${VENV_PACKAGE}"
+}
+
+function bootstrap_pants {
+  pants_requirement="pantsbuild.pants"
+  pants_version=$(
+    grep -E "^[[:space:]]*pants_version" pants.ini 2>/dev/null | \
+      cut -f2 -d: | tr -d " "
+  )
+  if [[ -n "${pants_version}" ]]
+  then
+    pants_requirement="${pants_requirement}==${pants_version}"
+  else
+    pants_version="unspecified"
+  fi
+
+  if [[ ! -d "${PANTS_BOOTSTRAP}/${pants_version}" ]]
+  then
+    (
+      # NB: We setup the virtualenv with no setuptools to ensure our
+      # ${SETUPTOOLS_REQUIREMENT} wins.
+      venv_path="$(bootstrap_venv)" && \
+      staging_dir=$(tempdir "${PANTS_BOOTSTRAP}") && \
+      "${PYTHON}" "${venv_path}/virtualenv.py" --no-setuptools --no-download \
+        "${staging_dir}/install" && \
+      "${staging_dir}/install/bin/python" \
+        "${staging_dir}/install/bin/pip" install \
+          "${SETUPTOOLS_REQUIREMENT}" && \
+      "${staging_dir}/install/bin/python" \
+        "${staging_dir}/install/bin/pip" install \
+          "${pants_requirement}" && \
+      ln -s "${staging_dir}/install" "${staging_dir}/${pants_version}" && \
+      mv "${staging_dir}/${pants_version}" "${PANTS_BOOTSTRAP}/${pants_version}"
+    ) 1>&2
+  fi
+  echo "${PANTS_BOOTSTRAP}/${pants_version}"
+}
+pants_dir=$(bootstrap_pants) && \
+exec "${pants_dir}/bin/python" "${pants_dir}/bin/pants" "$@"

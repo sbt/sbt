@@ -137,3 +137,23 @@ Then run the proxy ITs with
 ```
 $ sbt ++2.12.4 proxy-tests/it:test
 ```
+
+### Build with Pants
+
+[Pants](https://github.com/pantsbuild/pants) build tool is also added to an experimental path to build the software
+
+Currently only the CLI command can be built via Pants with Scala 2.11.11.
+
+To iterate on code changes:
+
+```
+./pants run cli/src/main/scala-2.11:coursier-cli -- fetch --help
+```
+
+To build a distributable binary
+```
+./pants run cli/src/main/scala-2.11:coursier-cli
+
+# Artifact will be placed under dist/
+java -jar dist/coursier-cli.jar fetch --help
+```
