@@ -23,19 +23,25 @@ export function activate(context: ExtensionContext) {
 	let clientOptions: LanguageClientOptions = {
 		documentSelector: [{ language: 'scala', scheme: 'file' }, { language: 'java', scheme: 'file' }],
 		initializationOptions: () => { 
-			return {
-				token: discoverToken()
-			};
+			return discoverToken();
 		}
 	}
 		
 	// the port file is hardcoded to a particular location relative to the build.
-	function discoverToken(): String {
+	function discoverToken(): any {
 		let pf = path.join(workspace.rootPath, 'project', 'target', 'active.json');
 		let portfile = JSON.parse(fs.readFileSync(pf));
-		let tf = portfile.tokenfilePath;
-		let tokenfile = JSON.parse(fs.readFileSync(tf));
-		return tokenfile.token;
+
+		// if tokenfilepath exists, return the token.
+		if (portfile.hasOwnProperty('tokenfilePath')) {
+			let tf = portfile.tokenfilePath;
+			let tokenfile = JSON.parse(fs.readFileSync(tf));
+			return {
+				token: tokenfile.token
+			};
+		} else {
+      return {};
+		}
 	}
 
 	// Create the language client and start the client.

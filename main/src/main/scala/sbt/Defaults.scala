@@ -26,7 +26,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
-import sbt.internal.server.LanguageServerReporter
+import sbt.internal.server.{ LanguageServerReporter, Definition }
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -272,7 +272,12 @@ object Defaults extends BuildCommon {
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
         .## % 1000),
-      serverAuthentication := Set(ServerAuthentication.Token),
+      serverConnectionType := ConnectionType.Local,
+      serverAuthentication := {
+        if (serverConnectionType.value == ConnectionType.Tcp) Set(ServerAuthentication.Token)
+        else Set()
+      },
+      insideCI :== sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI"),
     ))
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -322,11 +327,13 @@ object Defaults extends BuildCommon {
                                      excludeFilter in unmanagedSources).value,
     watchSources in ConfigGlobal ++= {
       val baseDir = baseDirectory.value
-      val bases = unmanagedSourceDirectories.value ++ (if (sourcesInBase.value) Seq(baseDir)
-                                                       else Seq.empty)
+      val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
       val exclude = (excludeFilter in unmanagedSources).value
-      bases.map(b => new Source(b, include, exclude))
+      val baseSources =
+        if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
+        else Nil
+      bases.map(b => new Source(b, include, exclude)) ++ baseSources
     },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
@@ -493,6 +500,7 @@ object Defaults extends BuildCommon {
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
+    collectAnalyses := Definition.collectAnalysesTask.value,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
@@ -771,21 +779,24 @@ object Defaults extends BuildCommon {
       }
       def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
         if (s contains c) Long.MinValue
-        else {
-          val x = {
-            import analysis.{ relations => rel, apis }
-            rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-              rel.externalDeps(c).map(stamp) +
-              (apis.internal.get(c) match {
-                case Some(x) => x.compilationTimestamp
-                case _       => Long.MinValue
-              })
-          }.max
-          if (x != Long.MinValue) {
-            stamps(c) = x
-          }
-          x
-        }
+        else
+          stamps.getOrElse(
+            c, {
+              val x = {
+                import analysis.{ relations => rel, apis }
+                rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
+                  rel.externalDeps(c).map(stamp) +
+                  (apis.internal.get(c) match {
+                    case Some(x) => x.compilationTimestamp
+                    case _       => Long.MinValue
+                  })
+              }.max
+              if (x != Long.MinValue) {
+                stamps(c) = x
+              }
+              x
+            }
+          )
       }
       def noSuccessYet(test: String) = succeeded.get(test) match {
         case None     => true
@@ -1749,12 +1760,10 @@ object Classpaths {
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
         excludeDependencies :== Nil,
-        ivyLoggingLevel :== {
-          // This will suppress "Resolving..." logs on Jenkins and Travis.
-          if (sys.env.get("BUILD_NUMBER").isDefined || sys.env.get("CI").isDefined)
-            UpdateLogging.Quiet
-          else UpdateLogging.Default
-        },
+        ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
+        if (insideCI.value)
+          UpdateLogging.Quiet
+        else UpdateLogging.Default),
         ivyXML :== NodeSeq.Empty,
         ivyValidate :== false,
         moduleConfigurations :== Nil,

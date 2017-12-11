@@ -133,6 +133,8 @@ object Keys {
   val serverPort = SettingKey(BasicKeys.serverPort)
   val serverHost = SettingKey(BasicKeys.serverHost)
   val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
+  val serverConnectionType = SettingKey(BasicKeys.serverConnectionType)
+
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
@@ -445,6 +447,10 @@ object Keys {
   val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile' and 'update'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.").withRank(BSetting)
   val templateResolverInfos = settingKey[Seq[TemplateResolverInfo]]("Template resolvers used for 'new'.").withRank(BSetting)
   val interactionService = taskKey[InteractionService]("Service used to ask for user input through the current user interface(s).").withRank(CTask)
+  val insideCI = SettingKey[Boolean]("insideCI", "Determines if the SBT is running in a Continuous Integration environment", AMinusSetting)
+
+  // sbt server internal
+  val collectAnalyses = taskKey[Unit]("Collect analysis file locations for later use.")
 
   // special
   val sessionVars = AttributeKey[SessionVar.Map]("sessionVars", "Bindings that exist for the duration of the session.", Invisible)

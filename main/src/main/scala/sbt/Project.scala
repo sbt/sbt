@@ -23,6 +23,7 @@ import Keys.{
   serverHost,
   serverPort,
   serverAuthentication,
+  serverConnectionType,
   watch
 }
 import Scope.{ Global, ThisScope }
@@ -461,6 +462,7 @@ object Project extends ProjectExtra {
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
+    val connectionType: Option[ConnectionType] = get(serverConnectionType)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands,
                                                                        projectCommand)
@@ -471,6 +473,7 @@ object Project extends ProjectExtra {
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
         .setCond(serverAuthentication.key, authentication)
+        .setCond(serverConnectionType.key, connectionType)
         .put(historyPath.key, history)
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)
@@ -515,10 +518,7 @@ object Project extends ProjectExtra {
   def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
     ScopedKey(Scope.fillTaskAxis(scoped.scope, scoped.key), scoped.key)
 
-  def mapScope(f: Scope => Scope) = new (ScopedKey ~> ScopedKey) {
-    def apply[T](key: ScopedKey[T]) =
-      ScopedKey(f(key.scope), key.key)
-  }
+  def mapScope(f: Scope => Scope) = λ[ScopedKey ~> ScopedKey](k => ScopedKey(f(k.scope), k.key))
 
   def transform(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
     val f = mapScope(g)

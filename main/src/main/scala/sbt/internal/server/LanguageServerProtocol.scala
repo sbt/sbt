@@ -34,11 +34,18 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   protected def log: Logger
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
 
-  protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
+  protected def onNotification(notification: JsonRpcNotificationMessage): Unit = {
+    log.debug(s"onNotification: $notification")
+    notification.method match {
+      case "textDocument/didSave" =>
+        append(Exec(";compile; collectAnalyses", None, Some(CommandSource(name))))
+      case u => log.debug(s"Unhandled notification received: $u")
+    }
+  }
 
+  protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
     import sbt.internal.langserver.codec.JsonProtocol._
     import internalJsonProtocol._
-
     def json =
       request.params.getOrElse(
         throw LangServerError(ErrorCodes.InvalidParams,
@@ -57,9 +64,11 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
           else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
         } else ()
         setInitialized(true)
+        append(Exec(s"collectAnalyses", Some(request.id), Some(CommandSource(name))))
         langRespond(InitializeResult(serverCapabilities), Option(request.id))
-      case "textDocument/didSave" =>
-        append(Exec("compile", Some(request.id), Some(CommandSource(name))))
+      case "textDocument/definition" =>
+        import scala.concurrent.ExecutionContext.Implicits.global
+        Definition.lspDefinition(json, request.id, CommandSource(name), log)
       case "sbt/exec" =>
         val param = Converter.fromJson[SbtExecParams](json).get
         append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
@@ -68,7 +77,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
         val param = Converter.fromJson[Q](json).get
         onSettingQuery(Option(request.id), param)
       }
-      case _ => ()
+      case unhandledRequest => log.debug(s"Unhandled request received: $unhandledRequest")
     }
   }
 
@@ -138,9 +147,18 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
     publishBytes(bytes)
   }
 
+  def logMessage(level: String, message: String): Unit = {
+    import sbt.internal.langserver.codec.JsonProtocol._
+    langNotify(
+      "window/logMessage",
+      LogMessageParams(MessageType.fromLevelString(level), message)
+    )
+  }
+
   private[sbt] lazy val serverCapabilities: ServerCapabilities = {
     ServerCapabilities(textDocumentSync =
                          TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
-                       hoverProvider = false)
+                       hoverProvider = false,
+                       definitionProvider = true)
   }
 }

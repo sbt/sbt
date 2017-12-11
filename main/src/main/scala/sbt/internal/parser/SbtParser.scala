@@ -116,7 +116,9 @@ private[sbt] object SbtParser {
     scalacGlobalInitReporter = Some(new ConsoleReporter(settings))
 
     // Mix Positions, otherwise global ignores -Yrangepos
-    val global = new Global(settings, globalReporter) with Positions
+    val global = new Global(settings, globalReporter) with Positions {
+      override protected def synchronizeNames = true // https://github.com/scala/bug/issues/10605
+    }
     val run = new global.Run
     // Add required dummy unit for initialization...
     val initFile = new BatchSourceFile("<wrapper-init>", "")

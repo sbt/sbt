@@ -83,6 +83,9 @@ type ServerCapabilities {
 
   ## The server provides hover support.
   hoverProvider: Boolean
+
+  ## Goto definition
+  definitionProvider: Boolean
 }
 
 type TextDocumentSyncOptions {
@@ -96,6 +99,16 @@ type TextDocumentSyncOptions {
 type SaveOptions {
   ## The client is supposed to include the content on save.
   includeText: Boolean
+}
+
+# LogMessage Notification
+
+type LogMessageParams {
+  ## The message type.
+  type: Long!
+
+  ## The actual message
+  message: String!
 }
 
 # Document
@@ -116,4 +129,19 @@ type PublishDiagnosticsParams {
 ## Command to execute sbt command.
 type SbtExecParams {
   commandLine: String!
+}
+
+## Goto definition params model
+type TextDocumentPositionParams {
+	## The text document.
+	textDocument: sbt.internal.langserver.TextDocumentIdentifier!
+
+	## The position inside the text document.
+	position: sbt.internal.langserver.Position!
+}
+
+## Text documents are identified using a URI. On the protocol level, URIs are passed as strings.
+type TextDocumentIdentifier {
+	## The text document's URI.
+	uri: String!
 }

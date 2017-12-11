@@ -6,16 +6,16 @@ object Dependencies {
   val scala282 = "2.8.2"
   val scala292 = "2.9.2"
   val scala293 = "2.9.3"
-  val scala210 = "2.10.6"
-  val scala211 = "2.11.8"
-  val scala212 = "2.12.3"
+  val scala210 = "2.10.7"
+  val scala211 = "2.11.12"
+  val scala212 = "2.12.4"
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.1.0"
-  private val utilVersion = "1.0.2"
-  private val lmVersion = "1.0.2"
-  private val zincVersion = "1.0.2"
+  private val ioVersion = "1.1.1"
+  private val utilVersion = "1.1.0"
+  private val lmVersion = "1.1.0"
+  private val zincVersion = "1.1.0-RC1"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -30,8 +30,8 @@ object Dependencies {
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
+  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.2"
+  val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.2"
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
@@ -101,11 +101,13 @@ object Dependencies {
   }
 
   val jline = "jline" % "jline" % "2.14.4"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.4"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
-  val specs2 = "org.specs2" %% "specs2" % "2.4.17"
+  val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+  val jna = "net.java.dev.jna" % "jna" % "4.1.0"
+  val jnaPlatform = "net.java.dev.jna" % "jna-platform" % "4.1.0"
 
   private def scala211Module(name: String, moduleVersion: String) = Def setting (
     scalaBinaryVersion.value match {
@@ -123,4 +125,6 @@ object Dependencies {
   val log4jSlf4jImpl = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
   // specify all of log4j modules to prevent misalignment
   val log4jDependencies = Vector(log4jApi, log4jCore, log4jSlf4jImpl)
+
+  val scalaCacheCaffeine = "com.github.cb372" %% "scalacache-caffeine" % "0.20.0"
 }

@@ -108,6 +108,8 @@ object Scripted {
                  prescripted: File => Unit,
                  launchOpts: Seq[String]): Unit = {
     System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
+    // Force Log4J to not use a thread context classloader otherwise it throws a CCE
+    sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
     val bridgeClass = Class.forName("sbt.test.ScriptedRunner", true, loader)

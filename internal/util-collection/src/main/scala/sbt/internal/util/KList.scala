@@ -29,6 +29,9 @@ sealed trait KList[+M[_]] {
   /** Discards the heterogeneous type information and constructs a plain List from this KList's elements. */
   def toList: List[M[_]]
 }
+object KList {
+  type Aux[+M[_], Transform0[N[_]]] = KList[M] { type Transform[N[_]] = Transform0[N] }
+}
 
 final case class KCons[H, +T <: KList[M], +M[_]](head: M[H], tail: T) extends KList[M] {
   final type Transform[N[_]] = KCons[H, tail.Transform[N], N]

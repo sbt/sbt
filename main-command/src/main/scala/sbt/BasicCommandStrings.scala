@@ -123,14 +123,17 @@ $HelpCommand <regular expression>
 
   def RebootCommand = "reboot"
   def RebootDetailed =
-    RebootCommand + """ [full]
+    RebootCommand + """ [dev | full]
 
 	This command is equivalent to exiting sbt, restarting, and running the
 	  remaining commands with the exception that the JVM is not shut down.
 
-	If 'full' is specified, the boot directory (`~/.sbt/boot` by default)
-	  is deleted before restarting.  This forces an update of sbt and Scala
-	  and is useful when working with development versions of sbt or Scala."""
+	If 'dev' is specified, the current sbt artifacts from the boot directory
+	  (`~/.sbt/boot` by default) are deleted before restarting.
+	This forces an update of sbt and Scala, which is useful when working with development
+	  versions of sbt.
+	If 'full' is specified, the boot directory is wiped out before restarting.
+"""
 
   def Multi = ";"
   def MultiBrief =
@@ -197,7 +200,7 @@ $AliasCommand name=
       deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
     def FailureWallDeprecated = deprecatedAlias(FailureWall, BasicCommandStrings.FailureWall)
     private[this] def deprecatedAlias(oldName: String, newName: String): String =
-      s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in 0.14.0"
+      s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in a later version"
   }
 
   def FailureWall = "resumeFromFailure"

@@ -20,7 +20,7 @@ trait SplitExpression {
 
 trait SplitExpressionsBehavior extends SplitExpression { this: SpecificationLike =>
 
-  def newExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression): Unit = {
+  def newExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression) = {
 
     "parse a two settings without intervening blank line" in {
       val (imports, settings) = split("""version := "1.0"
