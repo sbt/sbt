@@ -217,8 +217,15 @@ lazy val doc = project
     tutTargetDirectory := baseDirectory.in(LocalRootProject).value
   )
 
+lazy val `sbt-shared` = project
+  .dependsOn(coreJvm, cache)
+  .settings(
+    plugin,
+    utest
+  )
+
 lazy val `sbt-coursier` = project
-  .dependsOn(coreJvm, cache, extra)
+  .dependsOn(coreJvm, cache, extra, `sbt-shared`)
   .settings(
     plugin,
     utest
@@ -307,6 +314,7 @@ lazy val jvm = project
     bootstrap,
     extra,
     cli,
+    `sbt-shared`,
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`,
@@ -343,6 +351,7 @@ lazy val `sbt-plugins` = project
     coreJvm,
     cache,
     extra,
+    `sbt-shared`,
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`
@@ -366,6 +375,7 @@ lazy val coursier = project
     bootstrap,
     extra,
     cli,
+    `sbt-shared`,
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`,

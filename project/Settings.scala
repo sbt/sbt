@@ -185,6 +185,9 @@ object Settings {
     )
   }
 
+  val sbt013Version = "0.13.8"
+  val sbt10Version = "1.0.2"
+
   lazy val plugin =
     javaScalaPluginShared ++
     divertThingsPlugin ++
@@ -205,8 +208,8 @@ object Settings {
       scalaVersion := appConfiguration.value.provider.scalaProvider.version, // required with sbt 0.13.16-M1, to avoid cyclic references
       sbtVersion := {
         scalaBinaryVersion.value match {
-          case "2.10" => "0.13.8"
-          case "2.12" => "1.0.2"
+          case "2.10" => sbt013Version
+          case "2.12" => sbt10Version
           case _ => sbtVersion.value
         }
       },
