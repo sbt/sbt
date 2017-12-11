@@ -24,6 +24,7 @@ import sbt.internal.langserver.{
 import sbt.internal.inc.JavaInterfaceUtil._
 import scala.collection.mutable
 import scala.collection.JavaConverters._
+import sbt.io.IO
 
 /**
  * Defines a compiler reporter that uses event logging provided by a [[ManagedLogger]].
@@ -82,7 +83,7 @@ class LanguageServerReporter(
     import sbt.internal.langserver.codec.JsonProtocol._
     val files = analysis.readSourceInfos.getAllSourceInfos.keySet.asScala
     files foreach { f =>
-      val params = PublishDiagnosticsParams(f.toURI.toString, Vector())
+      val params = PublishDiagnosticsParams(IO.toURI(f).toString, Vector())
       exchange.notifyEvent("textDocument/publishDiagnostics", params)
     }
   }
@@ -94,7 +95,7 @@ class LanguageServerReporter(
       problemsByFile.get(sourceFile) match {
         case Some(xs: List[Problem]) =>
           val ds = toDiagnostics(xs)
-          val params = PublishDiagnosticsParams(sourceFile.toURI.toString, ds)
+          val params = PublishDiagnosticsParams(IO.toURI(sourceFile).toString, ds)
           exchange.notifyEvent("textDocument/publishDiagnostics", params)
         case _ =>
       }

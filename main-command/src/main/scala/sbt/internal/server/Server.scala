@@ -174,7 +174,7 @@ private[sbt] object Server {
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
               writeTokenfile()
-              PortFile(uri, Option(tokenfile.toString), Option(tokenfile.toURI.toString))
+              PortFile(uri, Option(tokenfile.toString), Option(IO.toURI(tokenfile).toString))
             case _ =>
               PortFile(uri, None, None)
           }
