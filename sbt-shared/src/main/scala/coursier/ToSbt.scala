@@ -33,6 +33,18 @@ object ToSbt {
         Some(dependency.configuration)
       ).withExtraAttributes(
         dependency.module.attributes ++ extraProperties
+      ).withExclusions(
+        dependency
+          .exclusions
+          .toVector
+          .map {
+            case (org, name) =>
+              sbt.librarymanagement.InclExclRule()
+                .withOrganization(org)
+                .withName(name)
+          }
+      ).withIsTransitive(
+        dependency.transitive
       )
   }
 
