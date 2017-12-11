@@ -23,6 +23,10 @@ object SbtCompatibility {
       id.copy(configurations = configurations)
     def withExtraAttributes(extraAttributes: Map[String, String]): sbt.ModuleID =
       id.copy(extraAttributes = extraAttributes)
+    def withExclusions(exclusions: Seq[sbt.librarymanagement.InclExclRule]): sbt.ModuleID =
+      exclusions.foldLeft(id)((id0, rule) => id0.exclude(rule.org, rule.name))
+    def withIsTransitive(isTransitive: Boolean): sbt.ModuleID =
+      id.copy(isTransitive = isTransitive)
   }
 
   implicit class ArtifactOps(val artifact: sbt.Artifact) extends AnyVal {
