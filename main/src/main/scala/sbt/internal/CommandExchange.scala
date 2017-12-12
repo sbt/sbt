@@ -28,7 +28,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{ Success, Failure }
 import sbt.io.syntax._
-import sbt.io.Hash
+import sbt.io.{ Hash, IO }
 import sbt.internal.server._
 import sbt.internal.langserver.{ LogMessageParams, MessageType }
 import sbt.internal.util.{ StringEvent, ObjectEvent, MainAppender }
@@ -135,7 +135,7 @@ private[sbt] final class CommandExchange {
       case Some(_) => // do nothing
       case _ =>
         val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
-        val h = Hash.halfHashString(portfile.toURI.toString)
+        val h = Hash.halfHashString(IO.toURI(portfile).toString)
         val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
         val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
         val pipeName = "sbt-server-" + h
