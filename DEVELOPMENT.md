@@ -152,7 +152,7 @@ To iterate on code changes:
 
 To build a distributable binary
 ```
-./pants run cli/src/main/scala-2.11:coursier-cli
+./pants binary cli/src/main/scala-2.11:coursier-cli
 
 # Artifact will be placed under dist/
 java -jar dist/coursier-cli.jar fetch --help
