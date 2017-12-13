@@ -66,7 +66,7 @@ object Sync {
     else if (!target.exists) // we don't want to update the last modified time of an existing directory
       {
         IO.createDirectory(target)
-        IO.copyModifiedTime(source, target)
+        IO.copyLastModified(source, target)
       }
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
