@@ -162,7 +162,7 @@ val root = (project in file(".")).
           val x = IO.read(k)
           IO.write(t / "sbt.bat", x.replaceAllLiterally(
             "set INIT_SBT_VERSION=_TO_BE_REPLACED",
-            s"""set INIT_SBT_VERSION="$sbtVersionToRelease""""))
+            s"""set INIT_SBT_VERSION=$sbtVersionToRelease"""))
           (t / "sbt.bat", BinBat)
         case (k, v) => (k, v)
       }
