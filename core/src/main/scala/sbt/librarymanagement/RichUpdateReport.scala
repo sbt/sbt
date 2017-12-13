@@ -3,7 +3,7 @@ package librarymanagement
 
 import java.io.File
 import java.io.FileNotFoundException
-import sbt.io.IO.getModifiedTime
+import sbt.io.IO
 
 /**
  * Provides extra methods for filtering the contents of an `UpdateReport`
@@ -20,11 +20,10 @@ final class RichUpdateReport(report: UpdateReport) {
            // On occasion, "files" contains files like "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml",
            // which do not actually exist, so getModifiedTime() correctly throws an exception. For the moment, the behavior of
            // lastModified() is reproduced, but the non-existent file should really not be there to begin with. so, FIXME.
-           try {
-             getModifiedTime(f)
-           } catch {
-             case _: FileNotFoundException => 0L
-           }))
+           try IO.getModifiedTime(f)
+           catch { case _: FileNotFoundException => 0L }
+         )
+      )
       .toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
   }
