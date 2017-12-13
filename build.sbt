@@ -75,10 +75,9 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(
-    organization.value % moduleName.value % "1.0.0"
-      cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
-  )
+  mimaPreviousArtifacts := (0 to 4).map { v =>
+    organization.value % moduleName.value % s"1.0.$v" cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  }.toSet
 )
 
 lazy val sbtRoot: Project = (project in file("."))
