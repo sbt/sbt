@@ -54,12 +54,12 @@ final case class Extracted(structure: BuildStructure,
    * See `runAggregated` for that.
    */
   def runTask[T](key: TaskKey[T], state: State): (State, T) = {
-    val rkey = resolve(key.scopedKey)
+    val rkey = resolve(key)
     val config = extractedTaskConfig(this, structure, state)
     val value: Option[(State, Result[T])] =
       EvaluateTask(structure, key.scopedKey, state, currentRef, config)
     val (newS, result) = getOrError(rkey.scope, rkey.key, value)
-    (newS, EvaluateTask.processResult(result, newS.log))
+    (newS, EvaluateTask.processResult2(result))
   }
 
   /**
@@ -72,22 +72,22 @@ final case class Extracted(structure: BuildStructure,
    * This method requests execution of only the given task and does not aggregate execution.
    */
   def runInputTask[T](key: InputKey[T], input: String, state: State): (State, T) = {
-    val scopedKey = ScopedKey(
+    val key2 = Scoped.scopedSetting(
       Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, rootProject)(key.scope),
       key.key
     )
-    val rkey = resolve(scopedKey)
-    val inputTask = get(Scoped.scopedSetting(rkey.scope, rkey.key))
+    val rkey = resolve(key2)
+    val inputTask = get(rkey)
     val task = Parser.parse(input, inputTask.parser(state)) match {
       case Right(t)  => t
       case Left(msg) => sys.error(s"Invalid programmatic input:\n$msg")
     }
     val config = extractedTaskConfig(this, structure, state)
     EvaluateTask.withStreams(structure, state) { str =>
-      val nv = EvaluateTask.nodeView(state, str, rkey :: Nil)
+      val nv = EvaluateTask.nodeView(state, str, rkey.scopedKey :: Nil)
       val (newS, result) =
         EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
-      (newS, EvaluateTask.processResult(result, newS.log))
+      (newS, EvaluateTask.processResult2(result))
     }
   }
 
@@ -98,27 +98,29 @@ final case class Extracted(structure: BuildStructure,
    * Other axes are resolved to `Zero` if unspecified.
    */
   def runAggregated[T](key: TaskKey[T], state: State): State = {
-    val rkey = resolve(key.scopedKey)
+    val rkey = resolve(key)
     val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
     val tasks = Act.keyValues(structure)(keys)
-    Aggregation.runTasks(state,
-                         structure,
-                         tasks,
-                         DummyTaskMap(Nil),
-                         show = Aggregation.defaultShow(state, false))(showKey)
+    Aggregation.runTasks(
+      state,
+      tasks,
+      DummyTaskMap(Nil),
+      show = Aggregation.defaultShow(state, false),
+    )(showKey)
   }
 
-  private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
-    Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject))(key.scopedKey)
+  private[this] def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
+    key in Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope)
 
   private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(
-      implicit display: Show[ScopedKey[_]]): T =
+      implicit display: Show[ScopedKey[_]]
+  ): T =
     value getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
 
   private def getOrError[T](scope: Scope, key: AttributeKey[T])(
-      implicit display: Show[ScopedKey[_]]): T =
-    structure.data.get(scope, key) getOrElse sys.error(
-      display.show(ScopedKey(scope, key)) + " is undefined.")
+      implicit display: Show[ScopedKey[_]]
+  ): T =
+    getOrError(scope, key, structure.data.get(scope, key))(display)
 
   def append(settings: Seq[Setting[_]], state: State): State = {
     val appendSettings =

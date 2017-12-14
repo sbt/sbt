@@ -47,7 +47,7 @@ object Delegates extends Properties("delegates") {
     }
   }
   property("Initial scope present with all combinations of Global axes") = allAxes(
-    globalCombinations)
+    (s, ds, _) => globalCombinations(s, ds))
 
   property("initial scope first") = forAll { (keys: Keys) =>
     allDelegates(keys) { (scope, ds) =>
@@ -66,6 +66,7 @@ object Delegates extends Properties("delegates") {
         all(f(s, ds, _.project), f(s, ds, _.config), f(s, ds, _.task), f(s, ds, _.extra))
       }
   }
+
   def allDelegates(keys: Keys)(f: (Scope, Seq[Scope]) => Prop): Prop =
     all(keys.scopes map { scope =>
       val delegates = keys.env.delegates(scope)
@@ -73,16 +74,20 @@ object Delegates extends Properties("delegates") {
         ("Delegates:\n\t" + delegates.map(scope => Scope.display(scope, "_")).mkString("\n\t")) |:
         f(scope, delegates)
     }: _*)
+
   def alwaysZero(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Prop =
     (axis(s) != Zero) ||
       all(ds map { d =>
         (axis(d) == Zero): Prop
       }: _*)
-  def globalCombinations(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Prop = {
-    val mods = List[Scope => Scope](_.copy(project = Zero),
-                                    _.copy(config = Zero),
-                                    _.copy(task = Zero),
-                                    _.copy(extra = Zero))
+
+  def globalCombinations(s: Scope, ds: Seq[Scope]): Prop = {
+    val mods = List[Scope => Scope](
+      _.copy(project = Zero),
+      _.copy(config = Zero),
+      _.copy(task = Zero),
+      _.copy(extra = Zero),
+    )
     val modAndIdent = mods.map(_ :: idFun[Scope] :: Nil)
 
     def loop(cur: Scope, acc: List[Scope], rem: List[Seq[Scope => Scope]]): Seq[Scope] =

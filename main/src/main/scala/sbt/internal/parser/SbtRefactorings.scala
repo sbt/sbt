@@ -57,10 +57,7 @@ private[sbt] object SbtRefactorings {
     commands.flatMap {
       case (_, command) =>
         val map = toTreeStringMap(command)
-        map.flatMap {
-          case (name, statement) =>
-            treesToReplacements(split, name, command)
-        }
+        map.flatMap { case (name, _) => treesToReplacements(split, name, command) }
     }
 
   private def treesToReplacements(split: SbtParser, name: String, command: Seq[String]) =

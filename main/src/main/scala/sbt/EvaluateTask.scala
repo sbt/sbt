@@ -8,7 +8,7 @@
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
-import sbt.internal.util.{ Attributed, ErrorHandling, HList, RMap, Signals, Types }
+import sbt.internal.util.{ Attributed, ConsoleAppender, ErrorHandling, HList, RMap, Signals, Types }
 import sbt.util.{ Logger, Show }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 
@@ -247,7 +247,11 @@ object EvaluateTask {
     (executionRoots in Global) ::= dummyRoots
   )
 
-  def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): PluginData = {
+  @deprecated("Use variant which doesn't take a logger", "1.1.1")
+  def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): PluginData =
+    evalPluginDef(pluginDef, state)
+
+  def evalPluginDef(pluginDef: BuildStructure, state: State): PluginData = {
     val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
     val pluginKey = pluginData
     val config = extractedTaskConfig(Project.extract(state), pluginDef, state)
@@ -256,7 +260,7 @@ object EvaluateTask {
     val (newS, result) = evaluated getOrElse sys.error(
       "Plugin data does not exist for plugin definition at " + pluginDef.root)
     Project.runUnloadHooks(newS) // discard states
-    processResult(result, log)
+    processResult2(result)
   }
 
   /**
@@ -296,8 +300,8 @@ object EvaluateTask {
 
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
     val all = Incomplete linearize result
-    val keyed = for (Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) <- all)
-      yield (key, msg, ex)
+    val keyed =
+      all collect { case Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) => (key, msg, ex) }
 
     import ExceptionCategory._
     for ((key, msg, Some(ex)) <- keyed) {
@@ -312,7 +316,7 @@ object EvaluateTask {
     for ((key, msg, ex) <- keyed if (msg.isDefined || ex.isDefined)) {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
       val log = getStreams(key, streams).log
-      val display = contextDisplay(state, log.ansiCodesSupported)
+      val display = contextDisplay(state, ConsoleAppender.formatEnabledInEnv)
       log.error("(" + display.show(key) + ") " + msgString)
     }
   }
@@ -433,12 +437,21 @@ object EvaluateTask {
     case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
     case i                                                => i
   }
+
   type AnyCyclic = Execute[({ type A[_] <: AnyRef })#A]#CyclicException[_]
+
   def convertCyclicInc: Incomplete => Incomplete = {
-    case in @ Incomplete(_, _, _, _, Some(c: AnyCyclic)) =>
+    case in @ Incomplete(
+          _,
+          _,
+          _,
+          _,
+          Some(c: Execute[({ type A[_] <: AnyRef })#A @unchecked]#CyclicException[_])
+        ) =>
       in.copy(directCause = Some(new RuntimeException(convertCyclic(c))))
     case i => i
   }
+
   def convertCyclic(c: AnyCyclic): String =
     (c.caller, c.target) match {
       case (caller: Task[_], target: Task[_]) =>
@@ -448,7 +461,7 @@ object EvaluateTask {
     }
 
   def liftAnonymous: Incomplete => Incomplete = {
-    case i @ Incomplete(node, tpe, None, causes, None) =>
+    case i @ Incomplete(_, _, None, causes, None) =>
       causes.find(inc => inc.node.isEmpty && (inc.message.isDefined || inc.directCause.isDefined)) match {
         case Some(lift) => i.copy(directCause = lift.directCause, message = lift.message)
         case None       => i
@@ -456,12 +469,19 @@ object EvaluateTask {
     case i => i
   }
 
+  @deprecated("Use processResult2 which doesn't take the unused log param", "1.1.1")
   def processResult[T](result: Result[T], log: Logger, show: Boolean = false): T =
-    onResult(result, log) { v =>
+    processResult2(result, show)
+
+  def processResult2[T](result: Result[T], show: Boolean = false): T =
+    onResult(result) { v =>
       if (show) println("Result: " + v); v
     }
 
-  def onResult[T, S](result: Result[T], log: Logger)(f: T => S): S =
+  @deprecated("Use variant that doesn't take log", "1.1.1")
+  def onResult[T, S](result: Result[T], log: Logger)(f: T => S): S = onResult(result)(f)
+
+  def onResult[T, S](result: Result[T])(f: T => S): S =
     result match {
       case Value(v) => f(v)
       case Inc(inc) => throw inc

@@ -72,8 +72,7 @@ object Cross {
       } & spacedFirst(CrossCommand)
     }
 
-  private def crossRestoreSessionParser(state: State): Parser[String] =
-    token(CrossRestoreSessionCommand)
+  private def crossRestoreSessionParser: Parser[String] = token(CrossRestoreSessionCommand)
 
   private[sbt] def requireSession[T](p: State => Parser[T]): State => Parser[T] =
     s => if (s get sessionSettings isEmpty) failure("No project loaded") else p(s)
@@ -189,9 +188,10 @@ object Cross {
   }
 
   def crossRestoreSession: Command =
-    Command.arb(crossRestoreSessionParser, crossRestoreSessionHelp)(crossRestoreSessionImpl)
+    Command.arb(_ => crossRestoreSessionParser, crossRestoreSessionHelp)((s, _) =>
+      crossRestoreSessionImpl(s))
 
-  private def crossRestoreSessionImpl(state: State, arg: String): State = {
+  private def crossRestoreSessionImpl(state: State): State = {
     restoreCapturedSession(state, Project.extract(state))
   }
 

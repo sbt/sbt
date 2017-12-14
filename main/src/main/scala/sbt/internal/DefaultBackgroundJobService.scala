@@ -36,12 +36,15 @@ private[sbt] abstract class BackgroundJob {
   }
 
   def shutdown(): Unit
+
   // this should be true on construction and stay true until
   // the job is complete
   def isRunning(): Boolean
+
   // called after stop or on spontaneous exit, closing the result
   // removes the listener
   def onStop(listener: () => Unit)(implicit ex: ExecutionContext): Closeable
+
   // do we need this or is the spawning task good enough?
   // def tags: SomeType
 }
@@ -57,8 +60,8 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   private val serviceTempDir = IO.createTemporaryDirectory
 
   // hooks for sending start/stop events
-  protected def onAddJob(job: JobHandle): Unit = {}
-  protected def onRemoveJob(job: JobHandle): Unit = {}
+  protected def onAddJob(@deprecated("unused", "") job: JobHandle): Unit = ()
+  protected def onRemoveJob(@deprecated("unused", "") job: JobHandle): Unit = ()
 
   // this mutable state could conceptually go on State except
   // that then every task that runs a background job would have

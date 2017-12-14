@@ -26,7 +26,7 @@ class RelayAppender(name: String)
     val level = ConsoleAppender.toLevel(event.getLevel)
     val message = event.getMessage
     message match {
-      case o: ObjectMessage        => appendEvent(level, o.getParameter)
+      case o: ObjectMessage        => appendEvent(o.getParameter)
       case p: ParameterizedMessage => appendLog(level, p.getFormattedMessage)
       case r: RingBufferLogEvent   => appendLog(level, r.getFormattedMessage)
       case _                       => appendLog(level, message.toString)
@@ -35,7 +35,7 @@ class RelayAppender(name: String)
   def appendLog(level: Level.Value, message: => String): Unit = {
     exchange.publishEventMessage(LogEvent(level.toString, message))
   }
-  def appendEvent(level: Level.Value, event: AnyRef): Unit =
+  def appendEvent(event: AnyRef): Unit =
     event match {
       case x: StringEvent => {
         import JsonProtocol._

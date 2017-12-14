@@ -94,7 +94,7 @@ object GlobalPlugin {
       val nv = nodeView(state, str, roots)
       val config = EvaluateTask.extractedTaskConfig(Project.extract(state), structure, state)
       val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(nv)
-      (newS, processResult(result, newS.log))
+      (newS, processResult2(result))
     }
   }
   val globalPluginSettings = Project.inScope(Scope.GlobalScope in LocalRootProject)(

@@ -55,9 +55,9 @@ object ParseKey extends Properties("Key parser test") {
         ("Mask: " + mask) |:
         ("Current: " + structure.current) |:
         parse(structure, string) {
-        case Left(err)                  => false
-        case Right(sk) if hasZeroConfig => true
-        case Right(sk)                  => sk.scope.project == Select(structure.current)
+        case Left(_)                   => false
+        case Right(_) if hasZeroConfig => true
+        case Right(sk)                 => sk.scope.project == Select(structure.current)
       }
     }
 
@@ -70,7 +70,7 @@ object ParseKey extends Properties("Key parser test") {
       ("Key: " + displayPedantic(key)) |:
         ("Mask: " + mask) |:
         parse(structure, string) {
-        case Left(err) => false
+        case Left(_)   => false
         case Right(sk) => sk.scope.task == Zero
       }
   }
@@ -88,7 +88,7 @@ object ParseKey extends Properties("Key parser test") {
         ("Expected configuration: " + resolvedConfig.map(_.name)) |:
         parse(structure, string) {
         case Right(sk) => (sk.scope.config == resolvedConfig) || (sk.scope == Scope.GlobalScope)
-        case Left(err) => false
+        case Left(_)   => false
       }
     }
 
@@ -117,7 +117,7 @@ object ParseKey extends Properties("Key parser test") {
     ("Expected: " + displayFull(expected)) |:
       ("Mask: " + mask) |:
       parse(structure, s) {
-      case Left(err) => false
+      case Left(_) => false
       case Right(sk) =>
         (s"${sk}.key == ${expected}.key: ${sk.key == expected.key}") |:
           (s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}") |:

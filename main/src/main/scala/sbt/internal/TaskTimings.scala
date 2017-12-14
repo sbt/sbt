@@ -81,7 +81,7 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
     println(s"Total time: $total $unit")
     import collection.JavaConverters._
     def sumTimes(in: Seq[(Task[_], Long)]) = in.map(_._2).sum
-    val timingsByName = timings.asScala.toSeq.groupBy { case (t, time) => mappedName(t) } mapValues (sumTimes)
+    val timingsByName = timings.asScala.toSeq.groupBy { case (t, _) => mappedName(t) } mapValues (sumTimes)
     val times = timingsByName.toSeq
       .sortBy(_._2)
       .reverse

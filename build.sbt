@@ -421,17 +421,17 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // Changed the signature of NetworkChannel ctor. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.server.NetworkChannel.*"),
-      // ctor for ConfigIndex. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.ConfigIndex.*"),
+      // Changed signature or removed something in the internal pacakge
+      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
-      // Removed unused val. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
-      // Removed unused def. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.Load.isProjectThis"),
+
+      // Changed signature or removed private[sbt] methods
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
+      exclude[DirectMissingMethodProblem]("sbt.Plugins.topologicalSort"),
+      exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
     )
   )
   .configure(

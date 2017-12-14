@@ -324,6 +324,8 @@ object Scoped {
                 "0.13.2")
     def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 
+    def toSettingKey: SettingKey[Task[S]] = scopedSetting(scope, key)
+
     def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
     def ? : Initialize[Task[Option[S]]] = Def.optional(scopedKey) {
