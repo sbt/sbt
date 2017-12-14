@@ -23,5 +23,7 @@ install:
 
 test_script:
   - sbt "-Dsbt.build.version=1.0.4" universal:packageBin
-  - unzip target\universal\sbt.zip -d target\freshly-baked\
-  - citest\test.bat
+  - cd citest
+  - test.bat
+  - test1.bat
+  - test2.bat
