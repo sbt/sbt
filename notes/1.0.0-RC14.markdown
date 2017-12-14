@@ -1,0 +1,1 @@
+This release was almost as-is re-published as `1.0.0`. See the release notes for that version instead.

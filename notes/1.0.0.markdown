@@ -1,0 +1,30 @@
+### Changes
+
+* In the sbt plugin, clean the in-memory caches of coursier in the `clean` command (thanks to [@olivierdeckers], [#690])
+* Handle version intervals specifying only one version (like `[1.2.0]`, [#702])
+* In the CLI tool, take into account the `coursier.ivy.home` and `ivy.home` Java properties to locate the local Ivy2 repository ([#705], thanks to [@Mocuto])
+* Ensure support for artifacts with type `bundle` is fine with Maven snapshot versioning ([#706])
+* Fix `ExceptionInInitializerError` on FreeBSD ([#707], via [@soc]'s [directories])
+* Allow to build the CLI tool with [Pants] (thanks to [@wisechengyi], [#709])
+* In the sbt plugin, don't evaluate unnecessary tasks that incur IO ([#711])
+* Don't require adding a jboss repository in `plugins.sbt` or fail with a checksum error with some sbt plugins (sbt-assembly in particular, [#712])
+* Move some coursier data types to / from sbt data types conversions to a separate module, `sbt-shared` ([#712])
+
+
+[#690]: https://github.com/coursier/coursier/pull/690
+[#702]: https://github.com/coursier/coursier/pull/702
+[#705]: https://github.com/coursier/coursier/pull/705
+[#706]: https://github.com/coursier/coursier/pull/706
+[#707]: https://github.com/coursier/coursier/pull/707
+[#709]: https://github.com/coursier/coursier/pull/709
+[#711]: https://github.com/coursier/coursier/pull/711
+[#712]: https://github.com/coursier/coursier/pull/712
+
+[@olivierdeckers]: https://github.com/olivierdeckers
+[@Mocuto]: https://github.com/Mocuto
+[@soc]: https://github.com/soc
+[@wisechengyi]: https://github.com/wisechengyi
+
+[directories]: https://github.com/soc/directories
+[Pants]: https://www.pantsbuild.org
+
