@@ -10,7 +10,7 @@ final class Disabled private () extends sbt.librarymanagement.CrossVersion() wit
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: Disabled => true
+  case _: Disabled => true
   case _ => false
 }
 override def hashCode: Int = {

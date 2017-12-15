@@ -21,8 +21,7 @@ final class RichUpdateReport(report: UpdateReport) {
            // which do not actually exist, so getModifiedTime() correctly throws an exception. For the moment, the behavior of
            // lastModified() is reproduced, but the non-existent file should really not be there to begin with. so, FIXME.
            try IO.getModifiedTime(f)
-           catch { case _: FileNotFoundException => 0L }
-         )
+           catch { case _: FileNotFoundException => 0L })
       )
       .toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)

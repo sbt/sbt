@@ -10,7 +10,7 @@ abstract class SshAuthentication() extends Serializable {
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: SshAuthentication => true
+  case _: SshAuthentication => true
   case _ => false
 }
 override def hashCode: Int = {
