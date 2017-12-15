@@ -44,8 +44,13 @@ trait Watched {
 }
 
 object Watched {
-  val defaultWatchingMessage
-    : WatchState => String = _.count + ". Waiting for source changes... (press enter to interrupt)"
+  val defaultWatchingMessage: WatchState => String = ws =>
+    s"${ws.count}. Waiting for source changes... (press enter to interrupt)"
+
+  def projectWatchingMessage(projectId: String): WatchState => String =
+    ws =>
+      s"${ws.count}. Waiting for source changes in project $projectId... (press enter to interrupt)"
+
   val defaultTriggeredMessage: WatchState => String = const("")
   val clearWhenTriggered: WatchState => String = const(clearScreen)
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
@@ -70,8 +75,8 @@ object Watched {
      * @param base          The base directory from which to include files.
      * @return An instance of `Source`.
      */
-    def apply(base: File): Source =
-      apply(base, AllPassFilter, NothingFilter)
+    def apply(base: File): Source = apply(base, AllPassFilter, NothingFilter)
+
   }
 
   private[this] class AWatched extends Watched

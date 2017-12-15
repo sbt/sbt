@@ -530,6 +530,7 @@ object Defaults extends BuildCommon {
     clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
+    watchingMessage := Watched.projectWatchingMessage(thisProjectRef.value.project),
     watch := watchSetting.value
   )
 
