@@ -7,6 +7,8 @@ BRANCH="${BRANCH:-${TRAVIS_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}}"
 PUBLISH="${PUBLISH:-0}"
 SCALA_JS="${SCALA_JS:-0}"
 
+VERSION="$(grep -oP '(?<=")[^"]*(?!<")' < version.sbt)"
+
 JARJAR_VERSION="${JARJAR_VERSION:-1.0.1-coursier-SNAPSHOT}"
 
 is210() {
@@ -183,7 +185,7 @@ testSbtCoursierJava6() {
   mkdir -p foo/project
   cd foo
   echo 'libraryDependencies += "foo" % "bar" % "1.0"' >> build.sbt
-  echo 'addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-SNAPSHOT")' >> project/plugins.sbt
+  echo 'addSbtPlugin("io.get-coursier" % "sbt-coursier" % "'"$VERSION"'")' >> project/plugins.sbt
   echo 'sbt.version=0.13.15' >> project/build.properties
   docker run -it --rm \
     -v $HOME/.ivy2/local:/root/.ivy2/local \
@@ -201,7 +203,7 @@ clean_plugin_sbt() {
   mv plugins.sbt plugins.sbt0
   grep -v coursier plugins.sbt0 > plugins.sbt || true
   echo '
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-SNAPSHOT")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "'"$VERSION"'")
   ' >> plugins.sbt
 }
 
@@ -212,7 +214,7 @@ publish() {
 testBootstrap() {
   if is211; then
     sbt ++${SCALA_VERSION} echo/publishLocal "project cli" pack
-    cli/target/pack/bin/coursier bootstrap -o cs-echo io.get-coursier:echo:1.0.0-SNAPSHOT
+    cli/target/pack/bin/coursier bootstrap -o cs-echo io.get-coursier:echo:1.0.0
     if [ "$(./cs-echo foo)" != foo ]; then
       echo "Error: unexpected output from bootstrapped echo command." 1>&2
       exit 1
