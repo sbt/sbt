@@ -9,6 +9,7 @@ import java.io.File
 import sbt.io.{ IO, Path }
 import sbt.io.syntax._
 import Path._
+import sbt.io.IO
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   lazy val commands = commandMap
@@ -67,7 +68,8 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   def newer(a: String, b: String): Unit = {
     val pathA = fromString(a)
     val pathB = fromString(b)
-    val isNewer = pathA.exists && (!pathB.exists || pathA.lastModified > pathB.lastModified)
+    val isNewer = pathA.exists &&
+        (!pathB.exists || IO.getModifiedTime(pathA) > IO.getModifiedTime(pathB))
     if (!isNewer) {
       scriptError(s"$pathA is not newer than $pathB")
     }
