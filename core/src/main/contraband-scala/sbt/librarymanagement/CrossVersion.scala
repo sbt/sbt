@@ -11,7 +11,7 @@ abstract class CrossVersion() extends Serializable {
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: CrossVersion => true
+  case _: CrossVersion => true
   case _ => false
 }
 override def hashCode: Int = {
