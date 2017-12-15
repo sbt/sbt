@@ -9,7 +9,7 @@ import java.io.File
 import sbt.io.{ IO, Path }
 import sbt.io.syntax._
 import Path._
-import sbt.io.IO.getModifiedTime
+import sbt.io.IO
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   lazy val commands = commandMap
