@@ -10,7 +10,7 @@ final class TestInitEvent private () extends sbt.protocol.testing.TestMessage() 
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: TestInitEvent => true
+  case _: TestInitEvent => true
   case _ => false
 }
 override def hashCode: Int = {
