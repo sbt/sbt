@@ -11,7 +11,7 @@ abstract class EventMessage() extends Serializable {
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: EventMessage => true
+  case _: EventMessage => true
   case _ => false
 }
 override def hashCode: Int = {
