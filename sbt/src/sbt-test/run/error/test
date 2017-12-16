@@ -13,7 +13,6 @@ $ copy-file changes/ThreadRunError.scala src/main/scala/Run.scala
 $ copy-file changes/RunExplicitSuccess.scala src/main/scala/Run.scala
 > run
 
-# https://github.com/sbt/sbt/issues/3543
-# # explicitly calling System.exit(1) should fail the 'run' task
-# $ copy-file changes/RunExplicitFailure.scala src/main/scala/Run.scala
-# -> run
+# explicitly calling System.exit(1) should fail the 'run' task
+$ copy-file changes/RunExplicitFailure.scala src/main/scala/Run.scala
+-> run
