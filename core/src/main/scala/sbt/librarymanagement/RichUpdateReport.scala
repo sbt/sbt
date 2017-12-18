@@ -16,12 +16,11 @@ final class RichUpdateReport(report: UpdateReport) {
       .map(
         f =>
           (f,
-           // TODO: this used to be a lastModified(), without error checking.
-           // On occasion, "files" contains files like "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml",
-           // which do not actually exist, so getModifiedTime() correctly throws an exception. For the moment, the behavior of
-           // lastModified() is reproduced, but the non-existent file should really not be there to begin with. so, FIXME.
-           try IO.getModifiedTime(f)
-           catch { case _: FileNotFoundException => 0L })
+           // TODO: The list of files may also contain some odd files that do not actually exist like:
+           // "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml".
+           // IO.lastModified() will just return zero, but the list of files should not contain such
+           // files to begin with, in principle.
+           IO.lastModified(f)
       )
       .toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
