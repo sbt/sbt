@@ -1,5 +1,5 @@
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 import java.util.regex.Pattern
 
 import com.typesafe.sbt.pgp.PgpKeys
@@ -281,6 +281,35 @@ object Release {
     state
   }
 
+  val updateTestFixture = ReleaseStep(
+    action = { state =>
+
+      val initialVer = state.get(initialVersion).getOrElse {
+        sys.error(s"${initialVersion.label} key not set")
+      }
+      val (_, nextVer) = state.get(ReleaseKeys.versions).getOrElse {
+        sys.error(s"${ReleaseKeys.versions.label} key not set")
+      }
+
+      if (initialVer == nextVer)
+        state
+      else {
+        val vcs = state.vcs
+        val log = toProcessLogger(state)
+
+        val originalFile = Paths.get(s"tests/shared/src/test/resources/resolutions/io.get-coursier/coursier_2.11/$initialVer")
+        val originalContent = new String(Files.readAllBytes(originalFile), StandardCharsets.UTF_8)
+        val destFile = Paths.get(s"tests/shared/src/test/resources/resolutions/io.get-coursier/coursier_2.11/$nextVer")
+        val destContent = originalContent.replace(initialVer, nextVer)
+        log.out(s"Writing $destFile")
+        Files.write(destFile, destContent.getBytes(StandardCharsets.UTF_8))
+        vcs.add(destFile.toAbsolutePath.toString).!!(log)
+        vcs.cmd("rm", originalFile.toAbsolutePath.toString).!!(log)
+        state
+      }
+    }
+  )
+
   val commitUpdates = ReleaseStep(
     action = { state =>
 
@@ -367,6 +396,7 @@ object Release {
       stageReadme,
       updatePluginsSbt,
       updateMimaVersions,
+      updateTestFixture,
       commitUpdates,
       reallyTagRelease,
       setNextVersion,
