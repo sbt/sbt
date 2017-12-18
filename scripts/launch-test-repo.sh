@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION="${VERSION:-1.0.0-SNAPSHOT}"
+VERSION="1.0.0"
 
 cd "$(dirname "$0")/.."
 
