@@ -68,8 +68,8 @@ object SiteMap {
   // generates a string suitable for a sitemap file representing the last modified time of the given File
   private[this] def lastModifiedString(f: File): String = {
     val formatter = new java.text.SimpleDateFormat("yyyy-MM-dd")
-    // TODO: replace lastModified() with sbt.io.Milli.getModifiedTime(), once the build
-    // has been upgraded to a version of sbt that includes sbt.io.Milli.
+    // TODO: replace lastModified() with sbt.io.IO.lastModified(), once the build
+    // has been upgraded to a version of sbt that includes that call.
     formatter.format(new java.util.Date(f.lastModified))
   }
   // writes the provided XML node to `output` and then gzips it to `gzipped` if `gzip` is true
