@@ -30,7 +30,13 @@ def commonSettings: Seq[Setting[_]] = Seq(
 )
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "1.0.0"),
+  mimaPreviousArtifacts := Set(
+    "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
+    "1.1.0", "1.1.1",
+  ) map (version =>
+    organization.value %% moduleName.value % version
+      cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  ),
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     import com.typesafe.tools.mima.core.ProblemFilters._
