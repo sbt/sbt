@@ -21,4 +21,3 @@ install:
   - SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Dfile.encoding=UTF8
 test_script:
   - sbt "-Djna.nosys=true" "scripted actions/*"
-  - sbt "-Djna.nosys=true" "scripted server/*"
