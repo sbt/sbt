@@ -60,9 +60,7 @@ lazy val lmRoot = (project in file("."))
           Some(ScmInfo(url(s"https://github.com/$slug"), s"git@github.com:$slug.git"))
         },
         bintrayPackage := "librarymanagement",
-        scalafmtOnCompile := true,
         scalafmtOnCompile in Sbt := false,
-        scalafmtVersion := "1.2.0",
         git.baseVersion := baseVersion,
         version := {
           val v = version.value
