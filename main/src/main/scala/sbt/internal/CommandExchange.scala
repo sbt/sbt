@@ -13,7 +13,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
-import BasicKeys.{ serverHost, serverPort, serverAuthentication, serverConnectionType }
+import BasicKeys.{
+  serverHost,
+  serverPort,
+  serverAuthentication,
+  serverConnectionType,
+  serverLogLevel,
+  logLevel
+}
 import java.net.Socket
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
@@ -21,7 +28,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{ Success, Failure }
 import sbt.io.syntax._
-import sbt.io.Hash
+import sbt.io.{ Hash, IO }
 import sbt.internal.server._
 import sbt.internal.langserver.{ LogMessageParams, MessageType }
 import sbt.internal.util.{ StringEvent, ObjectEvent, MainAppender }
@@ -106,7 +113,10 @@ private[sbt] final class CommandExchange {
       case Some(x) => x
       case None    => ConnectionType.Tcp
     }
-    val serverLogLevel: Level.Value = Level.Debug
+    lazy val level: Level.Value = (s get serverLogLevel)
+      .orElse(s get logLevel)
+      .getOrElse(Level.Warn)
+
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
       s.log.info(s"new client connected: $name")
@@ -114,7 +124,7 @@ private[sbt] final class CommandExchange {
         val log = LogExchange.logger(name, None, None)
         LogExchange.unbindLoggerAppenders(name)
         val appender = MainAppender.defaultScreen(s.globalLogging.console)
-        LogExchange.bindLoggerAppenders(name, List(appender -> serverLogLevel))
+        LogExchange.bindLoggerAppenders(name, List(appender -> level))
         log
       }
       val channel =
@@ -125,7 +135,7 @@ private[sbt] final class CommandExchange {
       case Some(_) => // do nothing
       case _ =>
         val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
-        val h = Hash.halfHashString(portfile.toURI.toString)
+        val h = Hash.halfHashString(IO.toURI(portfile).toString)
         val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
         val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
         val pipeName = "sbt-server-" + h
@@ -142,11 +152,13 @@ private[sbt] final class CommandExchange {
         Await.ready(x.ready, Duration("10s"))
         x.ready.value match {
           case Some(Success(_)) =>
+            // rememeber to shutdown only when the server comes up
+            server = Some(x)
           case Some(Failure(e)) =>
             s.log.error(e.toString)
+            server = None
           case None => // this won't happen because we awaited
         }
-        server = Some(x)
     }
     s
   }

@@ -9,6 +9,7 @@ package sbt
 package internal
 package server
 
+import sbt.io.IO
 import sbt.internal.inc.MixedAnalyzingCompiler
 import sbt.internal.langserver.ErrorCodes
 import sbt.util.Logger
@@ -297,7 +298,7 @@ private[sbt] object Definition {
                   textProcessor.markPosition(classFile, sym).collect {
                     case (file, line, from, to) =>
                       import sbt.internal.langserver.{ Location, Position, Range }
-                      Location(file.toURI.toURL.toString,
+                      Location(IO.toURI(file).toString,
                                Range(Position(line, from), Position(line, to)))
                   }
                 }

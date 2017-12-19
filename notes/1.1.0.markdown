@@ -1,3 +1,13 @@
+### Changes since RC-1
+
+- Fixes Java compilation causing `NullPointerException` by making PositionImpl thread-safe. [zinc#465](https://github.com/sbt/zinc/pull/465) by [@eed3si9n][@eed3si9n]
+- Restores Scala 2.13.0-M1 support. #461 by @dwijnand
+- Fixes `PollingWatchService` by preventing concurrent modification of `keysWithEvents` map. [io#90](https://github.com/sbt/io/pull/90) by [@mechkg][@mechkg], which fixes `~` related issues [#3687](https://github.com/sbt/sbt/issues/3687), [#3695](https://github.com/sbt/sbt/issues/3695), and [#3775](https://github.com/sbt/sbt/issues/3775).
+- Fixed server spewing out debug level logs. [#3791](https://github.com/sbt/sbt/pull/3791) by [@eed3si9n][@eed3si9n]
+- Fixes the encoding of Unix-like file path to use `file:///`. [#3805](https://github.com/sbt/sbt/pull/3805) by [@eed3si9n][@eed3si9n]
+- Fixes Log4J2 initialization error during startup. [#3814](https://github.com/sbt/sbt/pull/3814) by [@dwijnand][@dwijnand]
+- Provides workaround for `File#lastModified()` losing millisecond-precision by using native code when possible. [io#92](https://github.com/sbt/io/pull/92) by [@cunei][@cunei]
+
 ### Features, fixes, changes with compatibility implications
 
 - sbt server feature is reworked in sbt 1.1.0. See below.
@@ -112,7 +122,7 @@ Currently this extension is able to:
 - Run `compile` at the root project when `*.scala` files are saved. [#3524][3524] by [@eed3si9n][@eed3si9n]
 - Display compiler errors.
 - Display log messages. [#3740][3740] by [@laughedelic][@laughedelic]
-- Jump to class definitions. [#3660][3660]
+- Jump to class definitions. [#3660][3660] by [@wpopielarski][@wpopielarski]
 
 ### Filtering scripted tests using `project/build.properties`
 
@@ -122,6 +132,7 @@ This allows you to define scripted tests that track the minimum supported sbt ve
 
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: http://github.com/dwijnand
+  [@cunei]: https://github.com/cunei
   [@jvican]: https://github.com/jvican
   [@Duhemm]: https://github.com/Duhemm
   [@jonas]: https://github.com/jonas
@@ -136,6 +147,7 @@ This allows you to define scripted tests that track the minimum supported sbt ve
   [@romanowski]: https://github.com/romanowski
   [@raboof]: https://github.com/raboof
   [@jilen]: https://github.com/jilen
+  [@mechkg]: https://github.com/mechkg
   [vscode-sbt-scala]: https://marketplace.visualstudio.com/items?itemName=lightbend.vscode-sbt-scala
   [1812]: https://github.com/sbt/sbt/issues/1812
   [3524]: https://github.com/sbt/sbt/pull/3524
