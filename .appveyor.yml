@@ -4,8 +4,6 @@ init:
   - git config --global core.autocrlf input
 
 install:
-  - cinst nodejs -params 'installdir=C:\\nodejs'
-  - SET PATH=C:\nodejs\bin;%PATH%
   - cinst jdk8 -params 'installdir=C:\\jdk8'
   - SET JAVA_HOME=C:\jdk8
   - SET PATH=C:\jdk8\bin;%PATH%
@@ -22,5 +20,5 @@ install:
   - SET PATH=C:\sbt\sbt\bin;%PATH%
   - SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Dfile.encoding=UTF8
 test_script:
-  - sbt "scripted actions/*"
-  - sbt "scripted server/*"
+  - sbt "-Djna.nosys=true" "scripted actions/*"
+  - sbt "-Djna.nosys=true" "scripted server/*"
