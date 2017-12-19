@@ -1,0 +1,23 @@
+build: off
+
+init:
+  - git config --global core.autocrlf input
+
+install:
+  - cinst jdk8 -params 'installdir=C:\\jdk8'
+  - SET JAVA_HOME=C:\jdk8
+  - SET PATH=C:\jdk8\bin;%PATH%
+
+  - ps: |
+      Add-Type -AssemblyName System.IO.Compression.FileSystem
+      if (!(Test-Path -Path "C:\sbt" )) {
+        (new-object System.Net.WebClient).DownloadFile(
+          'https://github.com/sbt/sbt/releases/download/v1.0.4/sbt-1.0.4.zip',
+          'C:\sbt-bin.zip'
+        )
+        [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\sbt-bin.zip", "C:\sbt")
+      }
+  - SET PATH=C:\sbt\sbt\bin;%PATH%
+  - SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Dfile.encoding=UTF8
+test_script:
+  - sbt "-Djna.nosys=true" "scripted actions/*"
