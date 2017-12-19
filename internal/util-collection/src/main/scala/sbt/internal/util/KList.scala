@@ -18,7 +18,7 @@ sealed trait KList[+M[_]] {
   def transform[N[_]](f: M ~> N): Transform[N]
 
   /** Folds this list using a function that operates on the homogeneous type of the elements of this list. */
-  def foldr[B](f: (M[_], B) => B, init: B): B = init // had trouble defining it in KNil
+  def foldr[B](f: (M[_], B) => B, init: B): B
 
   /** Applies `f` to the elements of this list in the applicative functor defined by `ap`. */
   def apply[N[x] >: M[x], Z](f: Transform[Id] => Z)(implicit ap: Applicative[N]): N[Z]
@@ -54,13 +54,14 @@ final case class KCons[H, +T <: KList[M], +M[_]](head: M[H], tail: T) extends KL
   override def foldr[B](f: (M[_], B) => B, init: B): B = f(head, tail.foldr(f, init))
 }
 
-sealed abstract class KNil extends KList[Nothing] {
+sealed abstract class KNil extends KList[NothingK] {
   final type Transform[N[_]] = KNil
-  final def transform[N[_]](f: Nothing ~> N): Transform[N] = KNil
+  final def transform[N[_]](f: NothingK ~> N): Transform[N] = KNil
+  final def foldr[B](f: (NothingK[_], B) => B, init: B): B = init
   final def toList = Nil
   final def apply[N[x], Z](f: KNil => Z)(implicit ap: Applicative[N]): N[Z] = ap.pure(f(KNil))
 
-  final def traverse[N[_], P[_]](f: Nothing ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[KNil] =
+  final def traverse[N[_], P[_]](f: NothingK ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[KNil] =
     np.pure(KNil)
 }
 

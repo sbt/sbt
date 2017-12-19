@@ -77,8 +77,7 @@ class ErrorSpec extends AbstractSpec {
       case exception: MessageOnlyException =>
         val error = exception.getMessage
         """(\d+)""".r.findFirstIn(error) match {
-          case Some(x) =>
-            true
+          case Some(_) => true
           case None =>
             println(s"Number not found in $error")
             false

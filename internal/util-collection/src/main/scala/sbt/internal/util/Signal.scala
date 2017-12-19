@@ -65,7 +65,7 @@ object Signals {
 }
 
 // Must only be referenced using a
-//   try { } catch { case e: LinkageError => ... }
+//   try { } catch { case _: LinkageError => ... }
 // block to
 private final class Signals0 {
   def supported(signal: String): Boolean = {

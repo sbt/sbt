@@ -99,7 +99,7 @@ object Graph {
       val withBar = childLines.zipWithIndex flatMap {
         case ((line, withBar), pos) if pos < (cs.size - 1) =>
           (line +: withBar) map { insertBar(_, 2 * (level + 1)) }
-        case ((line, withBar), pos) if withBar.lastOption.getOrElse(line).trim != "" =>
+        case ((line, withBar), _) if withBar.lastOption.getOrElse(line).trim != "" =>
           (line +: withBar) ++ Vector(twoSpaces * (level + 1))
         case ((line, withBar), _) => line +: withBar
       }

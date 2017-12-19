@@ -16,7 +16,7 @@ import sbt.internal.Load
 import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
 import sbt.librarymanagement.VersionNumber
-import Project.{ inScope }
+import Project.inScope
 
 /**
  * Module responsible for plugin cross building.
@@ -24,8 +24,7 @@ import Project.{ inScope }
 private[sbt] object PluginCross {
   lazy val pluginSwitch: Command = {
     def switchParser(state: State): Parser[(String, String)] = {
-      val knownVersions = Nil
-      lazy val switchArgs = token(NotSpace.examples(knownVersions: _*)) ~ (token(
+      lazy val switchArgs = token(NotSpace.examples()) ~ (token(
         Space ~> matched(state.combinedParser)) ?? "")
       lazy val nextSpaced = spacedFirst(PluginSwitchCommand)
       token(PluginSwitchCommand ~ OptSpace) flatMap { _ =>

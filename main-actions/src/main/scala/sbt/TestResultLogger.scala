@@ -133,17 +133,20 @@ object TestResultLogger {
            failuresCount,
            ignoredCount,
            canceledCount,
-           pendingCount) =
+           pendingCount,
+      ) =
         results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) {
-          case ((skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc),
-                (name @ _, testEvent)) =>
+          case (acc, (_, testEvent)) =>
+            val (skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc) =
+              acc
             (skippedAcc + testEvent.skippedCount,
              errorAcc + testEvent.errorCount,
              passedAcc + testEvent.passedCount,
              failureAcc + testEvent.failureCount,
              ignoredAcc + testEvent.ignoredCount,
              canceledAcc + testEvent.canceledCount,
-             pendingAcc + testEvent.pendingCount)
+             pendingAcc + testEvent.pendingCount,
+            )
         }
       val totalCount = failuresCount + errorsCount + skippedCount + passedCount
       val base =

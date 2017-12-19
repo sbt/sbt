@@ -34,12 +34,12 @@ object Test extends std.TaskExtra {
   val d2 = t3(a, b2, c) mapR f
   val f2: Values => Task[Any] = {
     case (Value(aa), Value(bb), Value(cc)) => task(aa + " " + bb + " " + cc)
-    case x                                 => d3
+    case _                                 => d3
   }
   lazy val d = t3(a, b, c) flatMapR f2
   val f3: Values => Task[Any] = {
     case (Value(aa), Value(bb), Value(cc)) => task(aa + " " + bb + " " + cc)
-    case x                                 => d2
+    case _                                 => d2
   }
   lazy val d3 = t3(a, b, c) flatMapR f3
 

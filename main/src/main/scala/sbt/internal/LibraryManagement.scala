@@ -37,18 +37,12 @@ private[sbt] object LibraryManagement {
   ): UpdateReport = {
 
     /* Resolve the module settings from the inputs. */
-    def resolve(inputs: UpdateInputs): UpdateReport = {
+    def resolve: UpdateReport = {
       import sbt.util.ShowLines._
 
       log.info(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
-        //try {
         lm.update(module, updateConfig, uwConfig, log)
-      // } catch {
-      //   case e: Throwable =>
-      //     e.printStackTrace
-      //     throw e
-      // }
       val report = reportOrUnresolved match {
         case Right(report0) => report0
         case Left(unresolvedWarning) =>
@@ -96,12 +90,12 @@ private[sbt] object LibraryManagement {
         import sbt.librarymanagement.LibraryManagementCodec._
         val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
           case (_, Some(out)) if upToDate(inChanged, out) => markAsCached(out)
-          case _                                          => resolve(updateInputs)
+          case _                                          => resolve
         }
         import scala.util.control.Exception.catching
         catching(classOf[NullPointerException], classOf[OutOfMemoryError])
           .withApply { t =>
-            val resolvedAgain = resolve(updateInputs)
+            val resolvedAgain = resolve
             val culprit = t.getClass.getSimpleName
             log.warn(s"Update task caching failed due to $culprit.")
             log.warn("Report the following output to sbt:")

@@ -100,10 +100,18 @@ object Package {
                                 org: String,
                                 orgName: String): PackageOption = {
     import Attributes.Name._
-    val attribKeys = Seq(IMPLEMENTATION_TITLE,
-                         IMPLEMENTATION_VERSION,
-                         IMPLEMENTATION_VENDOR,
-                         IMPLEMENTATION_VENDOR_ID)
+
+    // The ones in Attributes.Name are deprecated saying:
+    //   "Extension mechanism will be removed in a future release. Use class path instead."
+    val IMPLEMENTATION_VENDOR_ID = new Attributes.Name("Implementation-Vendor-Id")
+    val IMPLEMENTATION_URL = new Attributes.Name("Implementation-URL")
+
+    val attribKeys = Seq(
+      IMPLEMENTATION_TITLE,
+      IMPLEMENTATION_VERSION,
+      IMPLEMENTATION_VENDOR,
+      IMPLEMENTATION_VENDOR_ID,
+    )
     val attribVals = Seq(name, version, orgName, org)
     ManifestAttributes((attribKeys zip attribVals) ++ {
       homepage map (h => (IMPLEMENTATION_URL, h.toString))

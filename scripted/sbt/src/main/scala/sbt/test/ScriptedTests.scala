@@ -385,8 +385,11 @@ class ScriptedRunner {
       instances: Int
   ): Unit = {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
+    val sbtVersion = bootProperties.getName.dropWhile(!_.isDigit).dropRight(".jar".length)
+    val accept = isTestCompatible(resourceBaseDirectory, sbtVersion) _
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
-    val scriptedTests = get(tests, resourceBaseDirectory, logger).map(st => (st.group, st.name))
+    val scriptedTests =
+      get(tests, resourceBaseDirectory, accept, logger).map(st => (st.group, st.name))
     val scriptedRunners = runner.batchScriptedRunner(scriptedTests, prescripted, instances, logger)
     val parallelRunners = scriptedRunners.toParArray
     val pool = new java.util.concurrent.ForkJoinPool(instances)

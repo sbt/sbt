@@ -157,6 +157,11 @@ val collectionProj = (project in file("internal") / "util-collection")
       exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.Types.toFn1"),
+
+      // Instead of defining foldr in KList & overriding in KCons,
+      // it's now abstract in KList and defined in both KCons & KNil.
+      exclude[FinalMethodProblem]("sbt.internal.util.KNil.foldr"),
+      exclude[DirectAbstractMethodProblem]("sbt.internal.util.KList.foldr"),
     ),
   )
   .configure(addSbtUtilPosition)
@@ -169,6 +174,11 @@ val completeProj = (project in file("internal") / "util-complete")
     name := "Completion",
     libraryDependencies += jline,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Changed signature or removed something in the internal pacakge
+      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.*"),
+    ),
   )
   .configure(addSbtIO, addSbtUtilControl)
 
@@ -275,6 +285,12 @@ lazy val actionsProj = (project in file("main-actions"))
     name := "Actions",
     libraryDependencies += sjsonNewScalaJson.value,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Removed unused private[sbt] nested class
+      exclude[MissingClassProblem]("sbt.Doc$Scaladoc"),
+      // Removed no longer used private[sbt] method
+      exclude[DirectMissingMethodProblem]("sbt.Doc.generate"),
+    ),
   )
   .configure(
     addSbtIO,
@@ -293,6 +309,8 @@ lazy val protocolProj = (project in file("protocol"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     testedBaseSettings,
+    scalacOptions -= "-Ywarn-unused",
+    scalacOptions += "-Xlint:-unused",
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     managedSourceDirectories in Compile +=
@@ -345,7 +363,7 @@ lazy val commandProj = (project in file("main-command"))
 lazy val coreMacrosProj = (project in file("core-macros"))
   .dependsOn(collectionProj)
   .settings(
-    commonSettings,
+    baseSettings,
     name := "Core Macros",
     libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
     mimaSettings,
@@ -403,17 +421,17 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // Changed the signature of NetworkChannel ctor. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.server.NetworkChannel.*"),
-      // ctor for ConfigIndex. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.ConfigIndex.*"),
+      // Changed signature or removed something in the internal pacakge
+      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
-      // Removed unused val. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
-      // Removed unused def. internal.
-      exclude[DirectMissingMethodProblem]("sbt.internal.Load.isProjectThis"),
+
+      // Changed signature or removed private[sbt] methods
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
+      exclude[DirectMissingMethodProblem]("sbt.Plugins.topologicalSort"),
+      exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
     )
   )
   .configure(

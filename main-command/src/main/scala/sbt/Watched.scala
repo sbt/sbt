@@ -23,8 +23,8 @@ import scala.util.Properties
 
 trait Watched {
 
-  /** The files watched when an action is run with a preceeding ~ */
-  def watchSources(s: State): Seq[Watched.WatchSource] = Nil
+  /** The files watched when an action is run with a proceeding ~ */
+  def watchSources(@deprecated("unused", "") s: State): Seq[Watched.WatchSource] = Nil
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
   /**

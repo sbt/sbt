@@ -279,23 +279,29 @@ object Project extends ProjectExtra {
     showContextKey(state, None)
 
   def showContextKey(state: State, keyNameColor: Option[String]): Show[ScopedKey[_]] =
-    if (isProjectLoaded(state)) showContextKey(session(state), structure(state), keyNameColor)
+    if (isProjectLoaded(state)) showContextKey2(session(state), keyNameColor)
     else Def.showFullKey
 
+  @deprecated("Use showContextKey2 which doesn't take the unused structure param", "1.1.1")
   def showContextKey(
       session: SessionSettings,
       structure: BuildStructure,
       keyNameColor: Option[String] = None
   ): Show[ScopedKey[_]] =
-    Def.showRelativeKey(session.current, structure.allProjects.size > 1, keyNameColor)
+    showContextKey2(session, keyNameColor)
+
+  def showContextKey2(
+      session: SessionSettings,
+      keyNameColor: Option[String] = None
+  ): Show[ScopedKey[_]] =
+    Def.showRelativeKey2(session.current, keyNameColor)
 
   def showLoadingKey(
       loaded: LoadedBuild,
       keyNameColor: Option[String] = None
   ): Show[ScopedKey[_]] =
-    Def.showRelativeKey(
+    Def.showRelativeKey2(
       ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head),
-      loaded.allProjectRefs.size > 1,
       keyNameColor
     )
 
@@ -406,7 +412,7 @@ object Project extends ProjectExtra {
   def extract(state: State): Extracted = extract(session(state), structure(state))
 
   private[sbt] def extract(se: SessionSettings, st: BuildStructure): Extracted =
-    Extracted(st, se, se.current)(showContextKey(se, st))
+    Extracted(st, se, se.current)(showContextKey2(se))
 
   def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
     ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }

@@ -324,6 +324,8 @@ object Scoped {
                 "0.13.2")
     def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 
+    def toSettingKey: SettingKey[Task[S]] = scopedSetting(scope, key)
+
     def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
     def ? : Initialize[Task[Option[S]]] = Def.optional(scopedKey) {
@@ -379,8 +381,10 @@ object Scoped {
   sealed abstract class RichInitTaskBase[S, R[_]] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[R[T]]
 
-    def flatMap[T](f: S => Task[T]): Initialize[R[T]] = flatMapR(f compose successM)
-    def map[T](f: S => T): Initialize[R[T]] = mapR(f compose successM)
+    def flatMap[T](f: S => Task[T]): Initialize[R[T]] =
+      onTask(_.result flatMap (f compose successM))
+
+    def map[T](f: S => T): Initialize[R[T]] = onTask(_.result map (f compose successM))
     def andFinally(fin: => Unit): Initialize[R[S]] = onTask(_ andFinally fin)
     def doFinally(t: Task[Unit]): Initialize[R[S]] = onTask(_ doFinally t)
 
@@ -393,22 +397,23 @@ object Scoped {
     @deprecated(
       "Use the `result` method to create a task that returns the full Result of this task.  Then, call `flatMap` on the new task.",
       "0.13.0")
-    def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_ flatMapR f)
+    def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_.result flatMap f)
 
     @deprecated(
       "Use the `result` method to create a task that returns the full Result of this task.  Then, call `map` on the new task.",
       "0.13.0")
-    def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_ mapR f)
+    def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_.result map f)
 
     @deprecated(
       "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `flatMap` on the new task.",
       "0.13.0")
-    def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] = flatMapR(f compose failM)
+    def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] =
+      onTask(_.result flatMap (f compose failM))
 
     @deprecated(
       "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `map` on the new task.",
       "0.13.0")
-    def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = mapR(f compose failM)
+    def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = onTask(_.result map (f compose failM))
   }
 
   type AnyInitTask = Initialize[Task[T]] forSome { type T }

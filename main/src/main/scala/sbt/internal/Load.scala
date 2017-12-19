@@ -61,7 +61,7 @@ private[sbt] object Load {
       val globalBase = getGlobalBase(state)
       val base = baseDirectory.getCanonicalFile
       val rawConfig = defaultPreGlobal(state, base, globalBase, log)
-      val config0 = defaultWithGlobal(state, base, rawConfig, globalBase, log)
+      val config0 = defaultWithGlobal(state, base, rawConfig, globalBase)
       val config =
         if (isPlugin) enableSbtPlugin(config0) else config0.copy(extraBuilds = topLevelExtras)
       (base, config)
@@ -109,7 +109,7 @@ private[sbt] object Load {
       javaHome = None,
       scalac
     )
-    val evalPluginDef = EvaluateTask.evalPluginDef(log) _
+    val evalPluginDef: (BuildStructure, State) => PluginData = EvaluateTask.evalPluginDef _
     val delegates = defaultDelegates
     val pluginMgmt = PluginManagement(loader)
     val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
@@ -145,7 +145,6 @@ private[sbt] object Load {
       base: File,
       rawConfig: LoadBuildConfiguration,
       globalBase: File,
-      log: Logger
   ): LoadBuildConfiguration = {
     val globalPluginsDir = getGlobalPluginsDirectory(state, globalBase)
     val withGlobal = loadGlobal(state, base, globalPluginsDir, rawConfig)
@@ -208,7 +207,6 @@ private[sbt] object Load {
       project => projectInherit(lb, project),
       (project, config) => configInherit(lb, project, config, rootProject),
       task => task.extend,
-      (project, extra) => Nil
     )
   }
 
