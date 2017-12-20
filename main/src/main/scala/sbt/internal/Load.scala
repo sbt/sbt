@@ -82,7 +82,9 @@ private[sbt] object Load {
     val launcher = scalaProvider.launcher
     val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
     val loader = getClass.getClassLoader
-    val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
+    val monkeys =
+      sys.props.get("sbt.zinc.monkeys").toList.flatMap(ms => ms.split(",").toList.map(new File(_)))
+    val classpath = Attributed.blankSeq(monkeys ++ provider.mainClasspath ++ scalaProvider.jars)
     val ivyConfiguration =
       InlineIvyConfiguration()
         .withPaths(IvyPaths(baseDirectory, bootIvyHome(state.configuration)))
