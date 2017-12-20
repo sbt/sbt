@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2008, 2010, 2011  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt.internal.util
 package complete
 
@@ -276,7 +280,7 @@ object Parser extends ParserMain {
 
     def checkRepeated(invalidButOptional: => Parser[Seq[T]]): Parser[Seq[T]] =
       repeated match {
-        case i: Invalid if min == 0 => invalidButOptional
+        case _: Invalid if min == 0 => invalidButOptional
         case i: Invalid             => i
         case _ =>
           repeated.result match {
@@ -323,9 +327,7 @@ trait ParserMain {
     def !!!(msg: String): Parser[A] = onFailure(a, msg)
     def failOnException: Parser[A] = trapAndFail(a)
 
-    def unary_- = not(a, "Unexpected: " + a)
     def &(o: Parser[_]) = and(a, o)
-    def -(o: Parser[_]) = and(a, not(o, "Unexpected: " + o))
     def examples(s: String*): Parser[A] = examples(s.toSet)
 
     def examples(s: Set[String], check: Boolean = false): Parser[A] =
@@ -574,7 +576,7 @@ trait ParserMain {
     case (Invalid(af), Invalid(bf)) => Invalid(af ++ bf)
     case (Invalid(_), bv)           => bv
     case (av, Invalid(_))           => av
-    case (av, bv)                   => new HomParser(a, b)
+    case (_, _)                     => new HomParser(a, b)
   }
 
   def not(p: Parser[_], failMessage: String): Parser[Unit] = p.result match {
@@ -627,7 +629,7 @@ private final case class SoftInvalid(fail: Failure) extends ValidParser[Nothing]
 }
 
 private final class TrapAndFail[A](a: Parser[A]) extends ValidParser[A] {
-  def result = try { a.result } catch { case e: Exception           => None }
+  def result = try { a.result } catch { case _: Exception           => None }
   def resultEmpty = try { a.resultEmpty } catch { case e: Exception => fail(e) }
 
   def derive(c: Char) = try { trapAndFail(a derive c) } catch {
@@ -635,7 +637,7 @@ private final class TrapAndFail[A](a: Parser[A]) extends ValidParser[A] {
   }
 
   def completions(level: Int) = try { a.completions(level) } catch {
-    case e: Exception => Completions.nil
+    case _: Exception => Completions.nil
   }
 
   override def toString = "trap(" + a + ")"
@@ -647,7 +649,7 @@ private final class OnFailure[A](a: Parser[A], message: String) extends ValidPar
   def result = a.result
 
   def resultEmpty = a.resultEmpty match {
-    case f: Failure => mkFailure(message); case v: Value[A] => v
+    case _: Failure => mkFailure(message); case v: Value[A] => v
   }
 
   def derive(c: Char) = onFailure(a derive c, message)
@@ -681,7 +683,7 @@ private final class HomParser[A](a: Parser[A], b: Parser[A]) extends ValidParser
 }
 
 private final class HetParser[A, B](a: Parser[A], b: Parser[B]) extends ValidParser[Either[A, B]] {
-  lazy val result = tuple(a.result, b.result) map { case (a, b) => Left(a) }
+  lazy val result = tuple(a.result, b.result) map { case (a, _) => Left(a) }
   def derive(c: Char) = (a derive c) || (b derive c)
   lazy val resultEmpty = a.resultEmpty either b.resultEmpty
   def completions(level: Int) = a.completions(level) ++ b.completions(level)
@@ -695,7 +697,7 @@ private final class ParserSeq[T](a: Seq[Parser[T]], errors: => Seq[String])
   lazy val resultEmpty: Result[Seq[T]] = {
     val res = a.map(_.resultEmpty)
     val (failures, values) = separate(res)(_.toEither)
-    //		if(failures.isEmpty) Value(values) else mkFailures(failures.flatMap(_()) ++ errors)
+    //    if(failures.isEmpty) Value(values) else mkFailures(failures.flatMap(_()) ++ errors)
     if (values.nonEmpty) Value(values) else mkFailures(failures.flatMap(_()) ++ errors)
   }
 
@@ -804,8 +806,8 @@ private final class Not(delegate: Parser[_], failMessage: String) extends ValidP
   def result = None
 
   lazy val resultEmpty = delegate.resultEmpty match {
-    case f: Failure  => Value(())
-    case v: Value[_] => mkFailure(failMessage)
+    case _: Failure  => Value(())
+    case _: Value[_] => mkFailure(failMessage)
   }
 
   override def toString = " -(%s)".format(delegate)

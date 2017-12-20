@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 package internal
 
@@ -287,12 +291,12 @@ private[sbt] object Load {
   // 3. resolvedScoped is replaced with the defining key as a value
   // Note: this must be idempotent.
   def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
-    def mapSpecial(to: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) {
-      def apply[T](key: ScopedKey[T]) =
+    def mapSpecial(to: ScopedKey[_]) = λ[ScopedKey ~> ScopedKey](
+      (key: ScopedKey[_]) =>
         if (key.key == streams.key)
           ScopedKey(Scope.fillTaskAxis(Scope.replaceThis(to.scope)(key.scope), to.key), key.key)
         else key
-    }
+    )
     def setDefining[T] =
       (key: ScopedKey[T], value: T) =>
         value match {
@@ -300,13 +304,13 @@ private[sbt] object Load {
           case ik: InputTask[t] => ik.mapTask(tk => setDefinitionKey(tk, key)).asInstanceOf[T]
           case _                => value
       }
-    def setResolved(defining: ScopedKey[_]) = new (ScopedKey ~> Option) {
-      def apply[T](key: ScopedKey[T]): Option[T] =
+    def setResolved(defining: ScopedKey[_]) = λ[ScopedKey ~> Option](
+      (key: ScopedKey[_]) =>
         key.key match {
-          case resolvedScoped.key => Some(defining.asInstanceOf[T])
+          case resolvedScoped.key => Some(defining.asInstanceOf[A1$])
           case _                  => None
-        }
-    }
+      }
+    )
     ss.map(s =>
       s mapConstant setResolved(s.key) mapReferenced mapSpecial(s.key) mapInit setDefining)
   }
@@ -324,8 +328,10 @@ private[sbt] object Load {
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
     val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k)).toVector
     val projectsMap = projects.mapValues(_.defined.keySet)
-    val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap)
-    val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap)
+    val configsMap: Map[String, Seq[Configuration]] =
+      projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
+    val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
+    val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap, configsMap)
     new StructureIndex(
       Index.stringToKeyMap(attributeKeys),
       Index.taskToKeyMap(data),
@@ -356,12 +362,6 @@ private[sbt] object Load {
       scopeLocal = structure.scopeLocal
     )
   }
-
-  def isProjectThis(s: Setting[_]): Boolean =
-    s.key.scope.project match {
-      case This | Select(ThisProject) => true
-      case _                          => false
-    }
 
   def buildConfigurations(
       loaded: LoadedBuild,

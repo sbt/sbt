@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 package std
 
@@ -33,9 +37,7 @@ object Transform {
 
   /** Applies `map`, returning the result if defined or returning the input unchanged otherwise.*/
   implicit def getOrId(map: Task ~>| Task): Task ~> Task =
-    new (Task ~> Task) {
-      def apply[T](in: Task[T]): Task[T] = map(in).getOrElse(in)
-    }
+    λ[Task ~> Task](in => map(in).getOrElse(in))
 
   def apply(dummies: DummyTaskMap) = taskToNode(getOrId(dummyMap(dummies)))
 
@@ -44,7 +46,7 @@ object Transform {
       case Pure(eval, _)       => uniform(Nil)(_ => Right(eval()))
       case m: Mapped[t, k]     => toNode[t, k](m.in)(right ∙ m.f)(m.alist)
       case m: FlatMapped[t, k] => toNode[t, k](m.in)(left ∙ m.f)(m.alist)
-      case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) ∙ all)
+      case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) compose all)
       case Join(in, f)         => uniform(in)(f)
     }
     def inline[T](t: Task[T]) = t.work match {
@@ -54,7 +56,7 @@ object Transform {
   }
 
   def uniform[T, D](tasks: Seq[Task[D]])(f: Seq[Result[D]] => Either[Task[T], T]): Node[Task, T] =
-    toNode[T, ({ type l[L[x]] = List[L[D]] })#l](tasks.toList)(f)(AList.seq[D])
+    toNode[T, λ[L[x] => List[L[D]]]](tasks.toList)(f)(AList.seq[D])
 
   def toNode[T, k[L[x]]](inputs: k[Task])(f: k[Result] => Either[Task[T], T])(
       implicit a: AList[k]): Node[Task, T] = new Node[Task, T] {

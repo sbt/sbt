@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2008, 2009  Mark Harrah, Vesa Vilhonen
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import java.io.File
@@ -34,7 +38,7 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
       1
     }
     val exitCode = try process.exitValue()
-    catch { case e: InterruptedException => cancel() }
+    catch { case _: InterruptedException => cancel() }
     processExitCode(exitCode, "runner")
   }
 

@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import std._
@@ -154,7 +158,7 @@ object Tests {
         case Listeners(listeners)     => testListeners ++= listeners
         case Setup(setupFunction)     => setup += setupFunction
         case Cleanup(cleanupFunction) => cleanup += cleanupFunction
-        case a: Argument              => // now handled by whatever constructs `runners`
+        case _: Argument              => // now handled by whatever constructs `runners`
       }
     }
 

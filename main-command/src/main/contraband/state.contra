@@ -12,3 +12,14 @@ type Exec {
 type CommandSource {
   channelName: String!
 }
+
+enum ServerAuthentication {
+  Token
+}
+
+enum ConnectionType {
+  ## This uses Unix domain socket on POSIX, and named pipe on Windows.
+  Local
+  Tcp
+  # Ssh
+}

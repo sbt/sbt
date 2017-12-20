@@ -1,10 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2008 Mark Harrah
- *
- * Partially based on exit trapping in Nailgun by Pete Kirkham,
- * copyright 2004, Martian Software, Inc
- * licensed under Apache 2.0 License.
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import scala.reflect.Manifest
@@ -162,7 +162,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       executionThread.start() // thread actually evaluating `f`
       finish(app, log)
     } catch {
-      case e: InterruptedException => // here, the thread that started the run has been interrupted, not the main thread of the executing code
+      case _: InterruptedException => // here, the thread that started the run has been interrupted, not the main thread of the executing code
         cancel(executionThread, app, log)
     } finally app.cleanup()
   }

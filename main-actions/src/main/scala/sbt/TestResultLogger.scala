@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 import sbt.Tests.{ Output, Summary }
@@ -129,7 +136,7 @@ object TestResultLogger {
            pendingCount) =
         results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) {
           case ((skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc),
-                (name, testEvent)) =>
+                (name @ _, testEvent)) =>
             (skippedAcc + testEvent.skippedCount,
              errorAcc + testEvent.errorCount,
              passedAcc + testEvent.passedCount,

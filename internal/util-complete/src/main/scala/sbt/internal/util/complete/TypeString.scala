@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt.internal.util
 package complete
 
@@ -25,7 +32,7 @@ private[sbt] object TypeString {
   def cleanup(typeString: String): String =
     parse(typeString, typeStringParser) match {
       case Right(ts) => ts.toString
-      case Left(err) => typeString
+      case Left(_)   => typeString
     }
 
   /**

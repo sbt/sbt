@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
@@ -22,6 +26,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
+import sbt.internal.server.{ LanguageServerReporter, Definition }
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -186,7 +191,7 @@ object Defaults extends BuildCommon {
       },
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
-      version :== "0.1-SNAPSHOT",
+      version :== "0.1.0-SNAPSHOT",
       classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
@@ -263,9 +268,16 @@ object Defaults extends BuildCommon {
         .getOrElse(GCUtil.defaultForceGarbageCollection),
       minForcegcInterval :== GCUtil.defaultMinForcegcInterval,
       interactionService :== CommandLineUIService,
+      serverHost := "127.0.0.1",
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
-        .## % 1000)
+        .## % 1000),
+      serverConnectionType := ConnectionType.Local,
+      serverAuthentication := {
+        if (serverConnectionType.value == ConnectionType.Tcp) Set(ServerAuthentication.Token)
+        else Set()
+      },
+      insideCI :== sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI"),
     ))
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -488,6 +500,7 @@ object Defaults extends BuildCommon {
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
+    collectAnalyses := Definition.collectAnalysesTask.value,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
@@ -547,7 +560,7 @@ object Defaults extends BuildCommon {
       val trigMsg = triggeredMessage.value
       new Watched {
         val scoped = watchTransitiveSources in base
-        val key = ScopedKey(scoped.scope, scoped.key)
+        val key = scoped.scopedKey
         override def pollInterval = interval
         override def watchingMessage(s: WatchState) = msg(s)
         override def triggeredMessage(s: WatchState) = trigMsg(s)
@@ -1403,6 +1416,14 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
+      val prev = i.previousResult
+      prev.analysis.toOption map { analysis =>
+        i.setup.reporter match {
+          case r: LanguageServerReporter =>
+            r.resetPrevious(analysis)
+          case _ => ()
+        }
+      }
       incCompiler.compile(i, s.log)
     } finally x.close() // workaround for #937
   }
@@ -1442,7 +1463,7 @@ object Defaults extends BuildCommon {
         compileOrder.value
       ),
       compilerReporter := {
-        new ManagedLoggedReporter(
+        new LanguageServerReporter(
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value)
@@ -1739,12 +1760,10 @@ object Classpaths {
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
         excludeDependencies :== Nil,
-        ivyLoggingLevel :== {
-          // This will suppress "Resolving..." logs on Jenkins and Travis.
-          if (sys.env.get("BUILD_NUMBER").isDefined || sys.env.get("CI").isDefined)
-            UpdateLogging.Quiet
-          else UpdateLogging.Default
-        },
+        ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
+        if (insideCI.value)
+          UpdateLogging.Quiet
+        else UpdateLogging.Default),
         ivyXML :== NodeSeq.Empty,
         ivyValidate :== false,
         moduleConfigurations :== Nil,
@@ -2216,7 +2235,6 @@ object Classpaths {
       val ref = thisProjectRef.value
       if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") } else
         Def.task {
-          val cfg = config.value
           IvyActions.publish(ivyModule.value, config.value, s.log)
         }
     } tag (Tags.Publish, Tags.Network)
@@ -2297,7 +2315,7 @@ object Classpaths {
         case Some(period) =>
           val fullUpdateOutput = cacheDirectory / "out"
           val now = System.currentTimeMillis
-          val diff = now - fullUpdateOutput.lastModified()
+          val diff = now - IO.getModifiedTime(fullUpdateOutput)
           val elapsedDuration = new FiniteDuration(diff, TimeUnit.MILLISECONDS)
           fullUpdateOutput.exists() && elapsedDuration > period
       }
@@ -2337,13 +2355,20 @@ object Classpaths {
       else Def.task((evictionWarningOptions in update).value)
     }.value
 
+    val extracted = (Project extract state0)
+    val isPlugin = sbtPlugin.value
+    val thisRef = thisProjectRef.value
+    val label =
+      if (isPlugin) Reference.display(thisRef)
+      else Def.displayRelativeReference(extracted.currentRef, thisRef)
+
     LibraryManagement.cachedUpdate(
       // LM API
       lm = dependencyResolution.value,
       // Ivy-free ModuleDescriptor
       module = ivyModule.value,
       s.cacheStoreFactory.sub(updateCacheName.value),
-      Reference.display(thisProjectRef.value),
+      label = label,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
       skip = (skip in update).value,

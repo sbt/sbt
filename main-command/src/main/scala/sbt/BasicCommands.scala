@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 import sbt.util.Level
@@ -168,10 +175,19 @@ object BasicCommands {
   }
 
   def reboot: Command =
-    Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(rebootParser)((s, full) =>
-      s reboot full)
+    Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(rebootOptionParser) {
+      case (s, (full, currentOnly)) =>
+        s.reboot(full, currentOnly)
+    }
 
-  def rebootParser(s: State): Parser[Boolean] = token(Space ~> "full" ^^^ true) ?? false
+  @deprecated("Use rebootOptionParser", "1.1.0")
+  def rebootParser(s: State): Parser[Boolean] =
+    rebootOptionParser(s) map { case (full, currentOnly) => full }
+
+  private[sbt] def rebootOptionParser(s: State): Parser[(Boolean, Boolean)] =
+    token(
+      Space ~> (("full" ^^^ ((true, false))) |
+        ("dev" ^^^ ((false, true))))) ?? ((false, false))
 
   def call: Command =
     Command(ApplyCommand, Help.more(ApplyCommand, ApplyDetailed))(_ => callParser) {

@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, Act, Aggregation, SessionSettings }
@@ -8,6 +15,7 @@ import sbt.internal.util.complete.Parser
 import sbt.internal.util.AttributeKey
 import sbt.util.Show
 import std.Transform.DummyTaskMap
+import sbt.EvaluateTask.extractedTaskConfig
 
 final case class Extracted(structure: BuildStructure,
                            session: SessionSettings,
@@ -42,16 +50,16 @@ final case class Extracted(structure: BuildStructure,
    * If the project axis is not defined for the key, it is resolved to be the current project.
    * Other axes are resolved to `Zero` if unspecified.
    *
-   * This method requests execution of only the given task and does not aggregate execution.  See `runAggregated` for that.
+   * This method requests execution of only the given task and does not aggregate execution.
+   * See `runAggregated` for that.
    */
   def runTask[T](key: TaskKey[T], state: State): (State, T) = {
-    import EvaluateTask._
     val rkey = resolve(key.scopedKey)
     val config = extractedTaskConfig(this, structure, state)
     val value: Option[(State, Result[T])] =
-      apply(structure, key.scopedKey, state, currentRef, config)
+      EvaluateTask(structure, key.scopedKey, state, currentRef, config)
     val (newS, result) = getOrError(rkey.scope, rkey.key, value)
-    (newS, processResult(result, newS.log))
+    (newS, EvaluateTask.processResult(result, newS.log))
   }
 
   /**
@@ -64,25 +72,22 @@ final case class Extracted(structure: BuildStructure,
    * This method requests execution of only the given task and does not aggregate execution.
    */
   def runInputTask[T](key: InputKey[T], input: String, state: State): (State, T) = {
-    import EvaluateTask._
-
-    val scopedKey = Scoped.scopedSetting(
-      Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, structure.rootProject)(
-        key.scope),
+    val scopedKey = ScopedKey(
+      Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, rootProject)(key.scope),
       key.key
     )
-    val rkey = resolve(scopedKey.scopedKey)
+    val rkey = resolve(scopedKey)
     val inputTask = get(Scoped.scopedSetting(rkey.scope, rkey.key))
     val task = Parser.parse(input, inputTask.parser(state)) match {
       case Right(t)  => t
       case Left(msg) => sys.error(s"Invalid programmatic input:\n$msg")
     }
     val config = extractedTaskConfig(this, structure, state)
-    withStreams(structure, state) { str =>
-      val nv = nodeView(state, str, rkey :: Nil)
+    EvaluateTask.withStreams(structure, state) { str =>
+      val nv = EvaluateTask.nodeView(state, str, rkey :: Nil)
       val (newS, result) =
         EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
-      (newS, processResult(result, newS.log))
+      (newS, EvaluateTask.processResult(result, newS.log))
     }
   }
 
@@ -105,9 +110,11 @@ final case class Extracted(structure: BuildStructure,
 
   private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
     Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject))(key.scopedKey)
+
   private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(
       implicit display: Show[ScopedKey[_]]): T =
     value getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
+
   private def getOrError[T](scope: Scope, key: AttributeKey[T])(
       implicit display: Show[ScopedKey[_]]): T =
     structure.data.get(scope, key) getOrElse sys.error(

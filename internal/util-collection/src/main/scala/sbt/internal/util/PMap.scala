@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt.internal.util
 
 import collection.mutable
@@ -27,8 +31,7 @@ trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K, V] {
   def remove[T](k: K[T]): IMap[K, V]
   def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): IMap[K, V]
   def mapValues[V2[_]](f: V ~> V2): IMap[K, V2]
-  def mapSeparate[VL[_], VR[_]](f: V ~> ({ type l[T] = Either[VL[T], VR[T]] })#l)
-    : (IMap[K, VL], IMap[K, VR])
+  def mapSeparate[VL[_], VR[_]](f: V ~> λ[T => Either[VL[T], VR[T]]]): (IMap[K, VL], IMap[K, VR])
 }
 
 trait PMap[K[_], V[_]] extends (K ~> V) with RMap[K, V] {
@@ -65,7 +68,7 @@ object IMap {
     def mapValues[V2[_]](f: V ~> V2) =
       new IMap0[K, V2](backing.mapValues(x => f(x)))
 
-    def mapSeparate[VL[_], VR[_]](f: V ~> ({ type l[T] = Either[VL[T], VR[T]] })#l) = {
+    def mapSeparate[VL[_], VR[_]](f: V ~> λ[T => Either[VL[T], VR[T]]]) = {
       val mapped = backing.iterator.map {
         case (k, v) =>
           f(v) match {

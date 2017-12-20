@@ -1,0 +1,58 @@
+{
+  "name": "vscode-sbt-scala",
+  "displayName": "Scala (sbt)",
+  "version": "0.1.0",
+  "author": "Lightbend, Inc.",
+  "license": "BSD-3-Clause",
+  "publisher": "lightbend",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sbt/sbt"
+  },
+  "description": "Scala language support using sbt",
+  "icon": "images/sbt-logo-bgwhite-455x262.png",
+  "engines": {
+    "vscode": "^1.16.0"
+  },
+  "categories": [
+    "Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "scala",
+        "aliases": [
+          "Scala",
+          "scala"
+        ],
+        "extensions": [
+          ".scala",
+          ".sbt"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "scala",
+        "scopeName": "source.scala",
+        "path": "./syntaxes/Scala.tmLanguage"
+      }
+    ]
+  },
+  "activationEvents": [
+    "workspaceContains:build.sbt"
+  ],
+  "main": "./out/src/extension",
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./",
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "update-vscode": "node ./node_modules/vscode/bin/install",
+    "postinstall": "node ./node_modules/vscode/bin/install"
+  },
+  "dependencies": {
+    "vscode": "^1.1.5",
+    "vscode-languageclient": "^3.4.2"
+  }
+}

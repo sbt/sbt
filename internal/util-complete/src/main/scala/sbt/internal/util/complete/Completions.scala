@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt.internal.util
 package complete
 
@@ -147,16 +151,23 @@ object Completion {
   val empty: Completion = suggestion("")
   def single(c: Char): Completion = suggestion(c.toString)
 
-  // TODO: make strict in 0.13.0 to match DisplayOnly
-  def displayOnly(value: => String): Completion = new DisplayOnly(value)
+  def displayOnly(value: String): Completion = new DisplayOnly(value)
 
-  // TODO: make strict in 0.13.0 to match Token
-  def token(prepend: => String, append: => String): Completion =
+  def token(prepend: String, append: String): Completion =
     new Token(prepend + append, append)
 
   /** @since 0.12.1 */
   def tokenDisplay(append: String, display: String): Completion = new Token(display, append)
 
-  // TODO: make strict in 0.13.0 to match Suggestion
-  def suggestion(value: => String): Completion = new Suggestion(value)
+  def suggestion(value: String): Completion = new Suggestion(value)
+
+  @deprecated("No longer used. for binary compatibility", "1.1.0")
+  private[complete] def displayOnly(value: => String): Completion = new DisplayOnly(value)
+
+  @deprecated("No longer used. for binary compatibility", "1.1.0")
+  private[complete] def token(prepend: => String, append: => String): Completion =
+    new Token(prepend + append, append)
+
+  @deprecated("No longer used. for binary compatibility", "1.1.0")
+  private[complete] def suggestion(value: => String): Completion = new Suggestion(value)
 }

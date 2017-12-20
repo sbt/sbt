@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package compiler
 
@@ -478,7 +485,11 @@ private[sbt] object Eval {
   def filesModifiedBytes(fs: Array[File]): Array[Byte] =
     if (fs eq null) filesModifiedBytes(Array[File]()) else seqBytes(fs)(fileModifiedBytes)
   def fileModifiedBytes(f: File): Array[Byte] =
-    (if (f.isDirectory) filesModifiedBytes(f listFiles classDirFilter) else bytes(f.lastModified)) ++
+    (if (f.isDirectory) filesModifiedBytes(f listFiles classDirFilter)
+     else
+       bytes(
+         try IO.getModifiedTime(f)
+         catch { case _: java.io.FileNotFoundException => 0L })) ++
       bytes(f.getAbsolutePath)
   def fileExistsBytes(f: File): Array[Byte] =
     bytes(f.exists) ++

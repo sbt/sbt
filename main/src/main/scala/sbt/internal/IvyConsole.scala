@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 package internal
 
@@ -52,7 +56,7 @@ object IvyConsole {
                                           depSettings)
 
       val newStructure = Load.reapply(session.original ++ append, structure)
-      val newState = state.copy(remainingCommands = Exec("console-quick", None) :: Nil)
+      val newState = state.copy(remainingCommands = Exec(Keys.consoleQuick.key.label, None) :: Nil)
       Project.setProject(session, newStructure, newState)
     }
 

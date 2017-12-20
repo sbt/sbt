@@ -1,13 +1,18 @@
-/* sbt -- Simple Build Tool
- * Copyright 2008, 2009, 2010, 2011  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
+import java.util.Properties
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import jline.TerminalFactory
 
-import sbt.io.Using
+import sbt.io.{ IO, Using }
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.util.Logger
@@ -54,6 +59,10 @@ object MainLoop {
       case e: xsbti.FullReload =>
         deleteLastLog(logBacking)
         throw e // pass along a reboot request
+      case e: RebootCurrent =>
+        deleteLastLog(logBacking)
+        deleteCurrentArtifacts(state)
+        throw new xsbti.FullReload(e.arguments.toArray, false)
       case NonFatal(e) =>
         System.err.println(
           "sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file)
@@ -64,6 +73,28 @@ object MainLoop {
   /** Deletes the previous global log file. */
   def deleteLastLog(logBacking: GlobalLogBacking): Unit =
     logBacking.last.foreach(_.delete())
+
+  /** Deletes the current sbt artifacts from boot. */
+  private[sbt] def deleteCurrentArtifacts(state: State): Unit = {
+    import sbt.io.syntax._
+    val provider = state.configuration.provider
+    val appId = provider.id
+    // If we can obtain boot directory more accurately it'd be better.
+    val defaultBoot = BuildPaths.defaultGlobalBase / "boot"
+    val buildProps = state.baseDir / "project" / "build.properties"
+    // First try reading the sbt version from build.properties file.
+    val sbtVersionOpt = if (buildProps.exists) {
+      val buildProperties = new Properties()
+      IO.load(buildProperties, buildProps)
+      Option(buildProperties.getProperty("sbt.version"))
+    } else None
+    val sbtVersion = sbtVersionOpt.getOrElse(appId.version)
+    val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion
+    currentArtDirs.get foreach { dir =>
+      state.log.info(s"Deleting $dir")
+      IO.delete(dir)
+    }
+  }
 
   /** Runs the next sequence of commands with global logging in place. */
   def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
@@ -105,6 +136,7 @@ object MainLoop {
     ErrorHandling.wideConvert { state.process(processCommand) } match {
       case Right(s)                  => s
       case Left(t: xsbti.FullReload) => throw t
+      case Left(t: RebootCurrent)    => throw t
       case Left(t)                   => state.handleError(t)
     }
 

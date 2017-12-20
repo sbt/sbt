@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2009 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package xsbt
 
 import java.io.{ BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter }
@@ -27,7 +31,7 @@ object IPC {
     def createServer(attempts: Int): ServerSocket =
       if (attempts > 0)
         try { new ServerSocket(nextPort, 1, loopback) } catch {
-          case NonFatal(e) => createServer(attempts - 1)
+          case NonFatal(_) => createServer(attempts - 1)
         } else
         sys.error("Could not connect to socket: maximum attempts exceeded")
     createServer(10)

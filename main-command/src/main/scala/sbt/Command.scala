@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2009, 2010  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import sbt.internal.inc.ReflectUtilities
@@ -21,6 +25,11 @@ sealed trait Command {
 
   def tags: AttributeMap
   def tag[T](key: AttributeKey[T], value: T): Command
+
+  def nameOption: Option[String] = this match {
+    case sc: SimpleCommand => Some(sc.name)
+    case _                 => None
+  }
 }
 
 private[sbt] final class SimpleCommand(

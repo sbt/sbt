@@ -1,0 +1,6 @@
+> show serverPort
+> runClient
+
+-> shell
+
+$ exists ok.txt

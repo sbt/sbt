@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import java.net.URI
@@ -24,6 +28,12 @@ final case class Scope(project: ScopeAxis[Reference],
   def in(project: Reference): Scope = copy(project = Select(project))
   def in(config: ConfigKey): Scope = copy(config = Select(config))
   def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
+
+  override def toString: String = this match {
+    case Scope(Zero, Zero, Zero, Zero) => "Global"
+    case Scope(_, _, _, This)          => s"$project / $config / $task"
+    case _                             => s"Scope($project, $config, $task, $extra)"
+  }
 }
 object Scope {
   val ThisScope: Scope = Scope(This, This, This, This)
@@ -88,8 +98,7 @@ object Scope {
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject =>
-        RootProject(current) // Is this right? It was an inexhaustive match before..
+      case ThisProject         => ThisProject // haven't exactly "resolved" anything..
     }
   def resolveBuild(current: URI, uri: URI): URI =
     if (!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
@@ -109,13 +118,11 @@ object Scope {
                         rootProject: URI => String,
                         ref: ProjectReference): ProjectRef =
     ref match {
-      case LocalRootProject => ProjectRef(current, rootProject(current))
-      case LocalProject(id) => ProjectRef(current, id)
-      case RootProject(uri) =>
-        val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
+      case LocalRootProject    => ProjectRef(current, rootProject(current))
+      case LocalProject(id)    => ProjectRef(current, id)
+      case RootProject(uri)    => val u = resolveBuild(current, uri); ProjectRef(u, rootProject(u))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
-      case ThisProject =>
-        ProjectRef(current, rootProject(current)) // Is this right? It was an inexhaustive match before..
+      case ThisProject         => sys.error("Cannot resolve ThisProject w/o the current project")
     }
   def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
     ref match {
@@ -123,29 +130,92 @@ object Scope {
       case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
     }
 
-  def display(config: ConfigKey): String = config.name + ":"
+  def display(config: ConfigKey): String = guessConfigIdent(config.name) + " /"
+
+  private[sbt] val configIdents: Map[String, String] =
+    Map(
+      "it" -> "IntegrationTest",
+      "scala-tool" -> "ScalaTool",
+      "plugin" -> "CompilerPlugin"
+    )
+  private[sbt] val configIdentsInverse: Map[String, String] =
+    configIdents map { _.swap }
+
+  private[sbt] def guessConfigIdent(conf: String): String =
+    configIdents.applyOrElse(conf, (x: String) => x.capitalize)
+
+  private[sbt] def unguessConfigIdent(conf: String): String =
+    configIdentsInverse.applyOrElse(conf, (x: String) => x.take(1).toLowerCase + x.drop(1))
+
+  def displayConfigKey012Style(config: ConfigKey): String = config.name + ":"
 
   def display(scope: Scope, sep: String): String =
     displayMasked(scope, sep, showProject, ScopeMask())
 
-  def displayMasked(scope: Scope, sep: String, mask: ScopeMask): String =
-    displayMasked(scope, sep, showProject, mask)
-
   def display(scope: Scope, sep: String, showProject: Reference => String): String =
     displayMasked(scope, sep, showProject, ScopeMask())
 
-  def displayMasked(
-      scope: Scope,
-      sep: String,
-      showProject: Reference => String,
-      mask: ScopeMask
-  ): String = {
+  private[sbt] def displayPedantic(scope: Scope, sep: String): String =
+    displayMasked(scope, sep, showProject, ScopeMask(), true)
+
+  def displayMasked(scope: Scope, sep: String, mask: ScopeMask): String =
+    displayMasked(scope, sep, showProject, mask)
+
+  def displayMasked(scope: Scope, sep: String, mask: ScopeMask, showZeroConfig: Boolean): String =
+    displayMasked(scope, sep, showProject, mask, showZeroConfig)
+
+  def displayMasked(scope: Scope,
+                    sep: String,
+                    showProject: Reference => String,
+                    mask: ScopeMask): String =
+    displayMasked(scope, sep, showProject, mask, false)
+
+  /**
+   * unified slash style introduced in sbt 1.1.0.
+   * By default, sbt will no longer display the Zero-config,
+   * so `name` will render as `name` as opposed to `{uri}proj/Zero/name`.
+   * Technically speaking an unspecified configuration axis defaults to
+   * the scope delegation (first configuration defining the key, then Zero).
+   */
+  def displayMasked(scope: Scope,
+                    sep: String,
+                    showProject: Reference => String,
+                    mask: ScopeMask,
+                    showZeroConfig: Boolean): String = {
     import scope.{ project, config, task, extra }
-    val configPrefix = config.foldStrict(display, "*:", ".:")
+    val zeroConfig = if (showZeroConfig) "Zero /" else ""
+    val configPrefix = config.foldStrict(display, zeroConfig, "./")
+    val taskPrefix = task.foldStrict(_.label + " /", "", "./")
+    val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
+    val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
+    if (scope == GlobalScope) "Global / " + sep + postfix
+    else
+      mask.concatShow(appendSpace(projectPrefix(project, showProject)),
+                      appendSpace(configPrefix),
+                      appendSpace(taskPrefix),
+                      sep,
+                      postfix)
+  }
+
+  private[sbt] def appendSpace(s: String): String =
+    if (s == "") ""
+    else s + " "
+
+  // sbt 0.12 style
+  def display012StyleMasked(scope: Scope,
+                            sep: String,
+                            showProject: Reference => String,
+                            mask: ScopeMask): String = {
+    import scope.{ project, config, task, extra }
+    val configPrefix = config.foldStrict(displayConfigKey012Style, "*:", ".:")
     val taskPrefix = task.foldStrict(_.label + "::", "", ".::")
     val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
     val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-    mask.concatShow(projectPrefix(project, showProject), configPrefix, taskPrefix, sep, postfix)
+    mask.concatShow(projectPrefix012Style(project, showProject012Style),
+                    configPrefix,
+                    taskPrefix,
+                    sep,
+                    postfix)
   }
 
   def equal(a: Scope, b: Scope, mask: ScopeMask): Boolean =
@@ -154,13 +224,17 @@ object Scope {
       (!mask.task || a.task == b.task) &&
       (!mask.extra || a.extra == b.extra)
 
-  def projectPrefix(
-      project: ScopeAxis[Reference],
-      show: Reference => String = showProject
-  ): String =
+  def projectPrefix(project: ScopeAxis[Reference],
+                    show: Reference => String = showProject): String =
+    project.foldStrict(show, "Zero /", "./")
+
+  def projectPrefix012Style(project: ScopeAxis[Reference],
+                            show: Reference => String = showProject): String =
     project.foldStrict(show, "*/", "./")
 
-  def showProject = (ref: Reference) => Reference.display(ref) + "/"
+  def showProject = (ref: Reference) => Reference.display(ref) + " /"
+
+  def showProject012Style = (ref: Reference) => Reference.display(ref) + "/"
 
   def transformTaskName(s: String) = {
     val parts = s.split("-+")
@@ -201,7 +275,7 @@ object Scope {
         case Select(conf) => index.config(configProj, conf); case _ => withZeroAxis(scope.config)
       }
       val tLin = scope.task match {
-        case t @ Select(task) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
+        case t @ Select(_) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
       }
       val eLin = withZeroAxis(scope.extra)
       for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)

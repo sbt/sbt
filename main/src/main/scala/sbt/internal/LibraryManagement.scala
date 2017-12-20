@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt.internal
 
 import java.io.File
@@ -6,6 +13,7 @@ import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
+import sbt.io.IO
 
 private[sbt] object LibraryManagement {
 
@@ -119,7 +127,7 @@ private[sbt] object LibraryManagement {
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
-    stamps.get(file).forall(_ == file.lastModified)
+    stamps.get(file).forall(_ == IO.getModifiedTime(file))
 
   private[sbt] def transitiveScratch(
       lm: DependencyResolution,

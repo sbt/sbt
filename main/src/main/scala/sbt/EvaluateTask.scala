@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
@@ -456,6 +460,7 @@ object EvaluateTask {
     onResult(result, log) { v =>
       if (show) println("Result: " + v); v
     }
+
   def onResult[T, S](result: Result[T], log: Logger)(f: T => S): S =
     result match {
       case Value(v) => f(v)

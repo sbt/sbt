@@ -1,3 +1,4 @@
-Simple Build Tool: Collection Component
-Copyright 2010  Mark Harrah
-Licensed under BSD-style license (see LICENSE)
+sbt: Collection Component
+Copyright 2011 - 2017, Lightbend, Inc.
+Copyright 2008 - 2010, Mark Harrah
+Licensed under BSD-3-Clause license (see LICENSE)

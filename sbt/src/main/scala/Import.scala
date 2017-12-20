@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 trait Import {
@@ -126,7 +133,6 @@ trait Import {
   type FeedbackProvidedException = sbt.internal.util.FeedbackProvidedException
   type FilePosition = sbt.internal.util.FilePosition
   type FilterLogger = sbt.internal.util.FilterLogger
-  type Fn1[A, B] = sbt.internal.util.Fn1[A, B]
   val FullLogger = sbt.internal.util.FullLogger
   type FullLogger = sbt.internal.util.FullLogger
   val FullReader = sbt.internal.util.FullReader
@@ -160,8 +166,6 @@ trait Import {
   val NoPosition = sbt.internal.util.NoPosition
   val PMap = sbt.internal.util.PMap
   type PMap[K[_], V[_]] = sbt.internal.util.PMap[K, V]
-  val Param = sbt.internal.util.Param
-  type Param[A[_], B[_]] = sbt.internal.util.Param[A, B]
   type RMap[K[_], V[_]] = sbt.internal.util.RMap[K, V]
   val RangePosition = sbt.internal.util.RangePosition
   type RangePosition = sbt.internal.util.RangePosition

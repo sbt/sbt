@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import java.io.File
@@ -91,7 +95,7 @@ object Reference {
       case LocalRootProject    => "{<this>}<root>"
       case LocalProject(id)    => "{<this>}" + id
       case RootProject(uri)    => "{" + uri + " }<root>"
-      case ProjectRef(uri, id) => "{" + uri + "}" + id
+      case ProjectRef(uri, id) => s"""ProjectRef(uri("$uri"), "$id")"""
     }
 
   def buildURI(ref: ResolvedReference): URI = ref match {

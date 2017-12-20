@@ -1,6 +1,7 @@
-Simple Build Tool Launcher
-Copyright 2008, 2009, 2010  Mark Harrah, David MacIver
-Licensed under BSD-style license (see LICENSE)
+sbt Launcher
+Copyright 2011 - 2017, Lightbend, Inc.
+Copyright 2008 - 2010, Mark Harrah, David MacIver
+Licensed under BSD-3-Clause license (see LICENSE)
 
 Classes from the Scala library are distributed with the launcher.
 Copyright 2002-2013 EPFL, Lausanne

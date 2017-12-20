@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 package internal
 package parser
@@ -13,7 +20,7 @@ trait SplitExpression {
 
 trait SplitExpressionsBehavior extends SplitExpression { this: SpecificationLike =>
 
-  def newExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression): Unit = {
+  def newExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression) = {
 
     "parse a two settings without intervening blank line" in {
       val (imports, settings) = split("""version := "1.0"

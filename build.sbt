@@ -9,7 +9,7 @@ def buildLevelSettings: Seq[Setting[_]] =
   inThisBuild(
     Seq(
       organization := "org.scala-sbt",
-      version := "1.0.3-SNAPSHOT",
+      version := "1.1.0-SNAPSHOT",
       description := "sbt is an interactive build tool",
       bintrayOrganization := Some("sbt"),
       bintrayRepository := {
@@ -34,19 +34,28 @@ def buildLevelSettings: Seq[Setting[_]] =
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
       scalafmtOnCompile := true,
-      scalafmtVersion := "1.2.0",
+      scalafmtVersion := "1.3.0",
     ))
 
 def commonSettings: Seq[Setting[_]] =
   Seq[SettingsDefinition](
+    headerLicense := Some(HeaderLicense.Custom(
+      """|sbt
+         |Copyright 2011 - 2017, Lightbend, Inc.
+         |Copyright 2008 - 2010, Mark Harrah
+         |Licensed under BSD-3-Clause license (see LICENSE)
+         |""".stripMargin
+    )),
     scalaVersion := baseScalaVersion,
     componentID := None,
     resolvers += Resolver.typesafeIvyRepo("releases"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
+    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),
     concurrentRestrictions in Global += Util.testExclusiveRestriction,
-    testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-    javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
+    javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
     bintrayRepository := (bintrayRepository in ThisBuild).value,
@@ -66,10 +75,9 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := Set(
-    organization.value % moduleName.value % "1.0.0"
-      cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
-  )
+  mimaPreviousArtifacts := (0 to 4).map { v =>
+    organization.value % moduleName.value % s"1.0.$v" cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  }.toSet
 )
 
 lazy val sbtRoot: Project = (project in file("."))
@@ -99,7 +107,9 @@ lazy val sbtRoot: Project = (project in file("."))
     Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {},
-    skip in publish := true
+    skip in publish := true,
+    commands in Global += Command.single("sbtOn")((state, dir) =>
+      s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
   )
 
 // This is used to configure an sbt-launcher for this version of sbt.
@@ -132,6 +142,22 @@ val collectionProj = (project in file("internal") / "util-collection")
     name := "Collections",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Added private[sbt] method to capture State attributes.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.util.AttributeMap.setCond"),
+
+      // Dropped in favour of kind-projector's inline type lambda syntax
+      exclude[MissingClassProblem]("sbt.internal.util.TypeFunctions$P1of2"),
+
+      // Dropped in favour of kind-projector's polymorphic lambda literals
+      exclude[MissingClassProblem]("sbt.internal.util.Param"),
+      exclude[MissingClassProblem]("sbt.internal.util.Param$"),
+
+      // Dropped in favour of plain scala.Function, and its compose method
+      exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.Types.toFn1"),
+    ),
   )
   .configure(addSbtUtilPosition)
 
@@ -230,7 +256,7 @@ lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
   )
-  .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted)
+  .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted, addSbtLmCore)
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
   .dependsOn(sbtProj)
@@ -284,12 +310,27 @@ lazy val commandProj = (project in file("main-command"))
   .settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
+    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi,
+      jna, jnaPlatform),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      // Changed the signature of Server method. nacho cheese.
+      exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*"),
+      // Added method to ServerInstance. This is also internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.server.ServerInstance.*"),
+      // Added method to CommandChannel. internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
+      // Added an overload to reboot. The overload is private[sbt].
+      exclude[ReversedMissingMethodProblem]("sbt.StateOps.reboot"),
+    ),
+    unmanagedSources in (Compile, headerCreate) := {
+      val old = (unmanagedSources in (Compile, headerCreate)).value
+      old filterNot { x => (x.getName startsWith "NG") || (x.getName == "ReferenceCountedFileDescriptor.java") }
+    },
   )
   .configure(
     addSbtIO,
@@ -356,11 +397,24 @@ lazy val mainProj = (project in file("main"))
   .settings(
     testedBaseSettings,
     name := "Main",
-    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies,
+    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies ++ Seq(scalaCacheCaffeine),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
+    mimaBinaryIssueFilters ++= Vector(
+      // Changed the signature of NetworkChannel ctor. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.server.NetworkChannel.*"),
+      // ctor for ConfigIndex. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.ConfigIndex.*"),
+      // New and changed methods on KeyIndex. internal.
+      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      // Removed unused val. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
+      // Removed unused def. internal.
+      exclude[DirectMissingMethodProblem]("sbt.internal.Load.isProjectThis"),
+    )
   )
   .configure(
     addSbtIO,
@@ -393,16 +447,64 @@ lazy val sbtProj = (project in file("sbt"))
   )
   .configure(addSbtCompilerBridge)
 
-commands in Global += Command.single("sbtOn")((state, dir) =>
-  s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state)
-
 lazy val sbtIgnoredProblems = {
-  Seq(
+  Vector(
     // Added more items to Import trait.
     exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
-    exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource")
+    exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
+
+    // Dropped in favour of kind-projector's polymorphic lambda literals
+    exclude[DirectMissingMethodProblem]("sbt.Import.Param"),
+    exclude[DirectMissingMethodProblem]("sbt.package.Param"),
+
+    // Dropped in favour of plain scala.Function, and its compose method
+    exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),
   )
 }
+
+def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = {
+  val npm = if (sbt.internal.util.Util.isWindows) "npm.cmd" else "npm"
+  import scala.sys.process._
+  try {
+    val exitCode = Process(s"$npm $command", Option(base)) ! log
+    if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
+  } catch {
+    case e: java.io.IOException => log.warn("failed to run npm " + e.getMessage)
+  }
+}
+
+lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
+  .settings(
+    crossPaths := false,
+    crossScalaVersions := Seq(baseScalaVersion),
+    skip in publish := true,
+    compile in Compile := {
+      val u = update.value
+      runNpm("run compile", baseDirectory.value, streams.value.log)
+      sbt.internal.inc.Analysis.empty
+    },
+    update := {
+      val old = update.value
+      val t = target.value / "updated"
+      val base = baseDirectory.value
+      val log = streams.value.log
+      if (t.exists) ()
+      else {
+        runNpm("install", base, log)
+        IO.touch(t)
+      }
+      old
+    },
+    cleanFiles ++= {
+      val base = baseDirectory.value
+      Vector(
+        target.value / "updated",
+        base / "node_modules", base / "client" / "node_modules",
+        base / "client" / "server",
+        base / "client" / "out",
+        base / "server" / "node_modules") filter { _.exists }
+    }
+  )
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed

@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import scala.language.experimental.macros
@@ -33,6 +37,8 @@ sealed abstract class SettingKey[T]
     with Scoped.DefinableSetting[T] {
 
   val key: AttributeKey[T]
+
+  override def toString: String = s"SettingKey($scope / $key)"
 
   final def toTask: Initialize[Task[T]] = this apply inlineTask
 
@@ -105,6 +111,8 @@ sealed abstract class TaskKey[T]
 
   val key: AttributeKey[Task[T]]
 
+  override def toString: String = s"TaskKey($scope / $key)"
+
   def toTask: Initialize[Task[T]] = this
 
   def scopedKey: ScopedKey[Task[T]] = ScopedKey(scope, key)
@@ -171,6 +179,8 @@ sealed trait InputKey[T]
     with Scoped.DefinableSetting[InputTask[T]] {
 
   val key: AttributeKey[InputTask[T]]
+
+  override def toString: String = s"InputKey($scope / $key)"
 
   def scopedKey: ScopedKey[InputTask[T]] = ScopedKey(scope, key)
 
@@ -424,14 +434,10 @@ object Scoped {
 
     protected def convert[M[_], Ret](f: Fun[M, Ret]): K[M] => Ret
 
-    private[this] val inputs: K[App] =
-      a.transform(
-        keys,
-        new (ScopedTaskable ~> App) { def apply[T](in: ScopedTaskable[T]): App[T] = in.toTask }
-      )
+    private[this] val inputs: K[App] = a.transform(keys, λ[ScopedTaskable ~> App](_.toTask))
 
     private[this] def onTasks[T](f: K[Task] => Task[T]): App[T] =
-      Def.app[({ type l[L[x]] = K[(L ∙ Task)#l] })#l, Task[T]](inputs)(f)(AList.asplit[K, Task](a))
+      Def.app[λ[L[x] => K[(L ∙ Task)#l]], Task[T]](inputs)(f)(AList.asplit[K, Task](a))
 
     def flatMap[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMap(convert(f)))
     def flatMapR[T](f: Fun[Result, Task[T]]): App[T] = onTasks(_.flatMapR(convert(f)))

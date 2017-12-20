@@ -1,0 +1,21 @@
+package sbt.internal.protocol
+@target(Scala)
+@codecPackage("sbt.internal.protocol.codec")
+
+## This file should exist throughout the lifetime of the server.
+## It can be used to find out the transport protocol (port number etc).
+type PortFile {
+  ## URI of the sbt server.
+  uri: String!
+  tokenfilePath: String
+  tokenfileUri: String
+}
+
+type TokenFile {
+  uri: String!
+  token: String!
+}
+
+type InitializeOption {
+  token: String
+}

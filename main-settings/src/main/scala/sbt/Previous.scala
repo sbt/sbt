@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
+ */
+
 package sbt
 
 import Def.{ Initialize, ScopedKey }
@@ -14,9 +21,7 @@ import scala.util.control.NonFatal
  */
 private[sbt] final class Previous(streams: Streams, referenced: IMap[ScopedTaskKey, Referenced]) {
   private[this] val map = referenced.mapValues(toValue)
-  private[this] def toValue = new (Referenced ~> ReferencedValue) {
-    def apply[T](x: Referenced[T]) = new ReferencedValue(x)
-  }
+  private[this] def toValue = λ[Referenced ~> ReferencedValue](new ReferencedValue(_))
 
   private[this] final class ReferencedValue[T](referenced: Referenced[T]) {
     import referenced.{ stamped, task }

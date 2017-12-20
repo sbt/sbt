@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2017, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under BSD-3-Clause license (see LICENSE)
  */
+
 package sbt
 
 import sbt.internal.util.ErrorHandling.wideConvert
@@ -50,15 +54,16 @@ private[sbt] final class Execute[A[_] <: AnyRef](
   private[this] val reverse = idMap[A[_], Iterable[A[_]]]
   private[this] val callers = pMap[A, Compose[IDSet, A]#Apply]
   private[this] val state = idMap[A[_], State]
-  private[this] val viewCache = pMap[A, ({ type l[t] = Node[A, t] })#l]
+  private[this] val viewCache = pMap[A, Node[A, ?]]
   private[this] val results = pMap[A, Result]
 
-  private[this] val getResult: A ~> Result = new (A ~> Result) {
-    def apply[T](a: A[T]): Result[T] = view.inline(a) match {
-      case Some(v) => Value(v())
-      case None    => results(a)
+  private[this] val getResult: A ~> Result = λ[A ~> Result](
+    a =>
+      view.inline(a) match {
+        case Some(v) => Value(v())
+        case None    => results(a)
     }
-  }
+  )
   private[this] var progressState: progress.S = progress.initial
 
   private[this] type State = State.Value
