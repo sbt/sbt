@@ -10,7 +10,7 @@ package internal
 
 import java.io.IOException
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic._
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.{
@@ -48,6 +48,7 @@ private[sbt] final class CommandExchange {
   } getOrElse true
   private val lock = new AnyRef {}
   private var server: Option[ServerInstance] = None
+  private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
@@ -90,7 +91,6 @@ private[sbt] final class CommandExchange {
     else s
   }
 
-  private def newChannelName: String = s"channel-${nextChannelId.incrementAndGet()}"
   private def newNetworkName: String = s"network-${nextChannelId.incrementAndGet()}"
 
   /**
@@ -132,7 +132,8 @@ private[sbt] final class CommandExchange {
       subscribe(channel)
     }
     server match {
-      case Some(_) => // do nothing
+      case Some(_)                    => // do nothing
+      case None if !firstInstance.get => // there's another server
       case _ =>
         val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
         val h = Hash.halfHashString(IO.toURI(portfile).toString)
@@ -154,6 +155,11 @@ private[sbt] final class CommandExchange {
           case Some(Success(_)) =>
             // rememeber to shutdown only when the server comes up
             server = Some(x)
+          case Some(Failure(e: AlreadyRunningException)) =>
+            s.log.warn("sbt server could not start because there's another instance of sbt running on this build.")
+            s.log.warn("Running multiple instances is unsupported")
+            server = None
+            firstInstance.set(false)
           case Some(Failure(e)) =>
             s.log.error(e.toString)
             server = None
@@ -191,6 +197,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }
@@ -247,6 +254,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }
@@ -288,6 +296,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }
@@ -339,6 +348,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }
