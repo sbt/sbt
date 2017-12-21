@@ -128,6 +128,9 @@ object StandardMain {
   def initialState(configuration: xsbti.AppConfiguration,
                    initialDefinitions: Seq[Command],
                    preCommands: Seq[String]): State = {
+    // This is to workaround https://github.com/sbt/io/issues/110
+    sys.props.put("jna.nosys", "true")
+
     import BasicCommandStrings.isEarlyCommand
     val userCommands = configuration.arguments.map(_.trim)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
