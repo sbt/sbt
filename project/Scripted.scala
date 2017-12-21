@@ -37,6 +37,9 @@ trait ScriptedKeys {
 }
 
 object Scripted {
+  // This is to workaround https://github.com/sbt/io/issues/110
+  sys.props.put("jna.nosys", "true")
+
   lazy val MavenResolverPluginTest = config("mavenResolverPluginTest") extend Compile
   lazy val RepoOverrideTest = config("repoOverrideTest") extend Compile
 
