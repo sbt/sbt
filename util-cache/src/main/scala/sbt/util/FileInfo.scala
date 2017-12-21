@@ -90,7 +90,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): HashModifiedFileInfo =
-      FileHashModified(file.getAbsoluteFile, Hash(file).toList, IO.lastModified(file))
+      FileHashModified(file.getAbsoluteFile, Hash(file).toList, IO.getModifiedTimeOrZero(file))
   }
 
   object hash extends Style {
@@ -147,7 +147,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): ModifiedFileInfo =
-      FileModified(file.getAbsoluteFile, IO.lastModified(file))
+      FileModified(file.getAbsoluteFile, IO.getModifiedTimeOrZero(file))
   }
 
   object exists extends Style {

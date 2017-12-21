@@ -7,7 +7,7 @@ import sbt.io.IO
 
 class FileInfoSpec extends UnitSpec {
   val file = new java.io.File(".").getAbsoluteFile
-  val fileInfo: ModifiedFileInfo = FileModified(file, IO.lastModified(file))
+  val fileInfo: ModifiedFileInfo = FileModified(file, IO.getModifiedTimeOrZero(file))
   val filesInfo = FilesInfo(Set(fileInfo))
 
   it should "round trip" in assertRoundTrip(filesInfo)

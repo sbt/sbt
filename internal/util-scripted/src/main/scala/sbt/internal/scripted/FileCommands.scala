@@ -69,7 +69,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     val pathA = fromString(a)
     val pathB = fromString(b)
     val isNewer = pathA.exists &&
-      (!pathB.exists || IO.lastModified(pathA) > IO.lastModified(pathB))
+      (!pathB.exists || IO.getModifiedTimeOrZero(pathA) > IO.getModifiedTimeOrZero(pathB))
     if (!isNewer) {
       scriptError(s"$pathA is not newer than $pathB")
     }
