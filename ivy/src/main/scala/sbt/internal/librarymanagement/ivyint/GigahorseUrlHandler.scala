@@ -149,7 +149,7 @@ class GigahorseUrlHandler extends AbstractURLHandler {
 
       val lastModified = lastModifiedTimestamp(response)
       if (lastModified > 0) {
-        IO.setLastModified(dest, lastModified)
+        IO.setModifiedTimeOrFalse(dest, lastModified)
       }
 
       if (l != null) {
