@@ -11,7 +11,6 @@ import scala.annotation.tailrec
 import java.io.File
 import sbt.internal.inc.{ RawCompiler, ScalaInstance }
 
-import Predef.{ conforms => _, _ }
 import sbt.io.syntax._
 import sbt.io.IO
 
