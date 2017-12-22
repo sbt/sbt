@@ -66,8 +66,9 @@ object EscHelpers {
     } else {
       sb.append(s, start, escIndex)
       val next: Int =
+        if (escIndex + 1 >= s.length) skipESC(s, escIndex + 1)
         // If it's a CSI we skip past it and then look for a terminator.
-        if (isCSI(s.charAt(escIndex + 1))) skipESC(s, escIndex + 2)
+        else if (isCSI(s.charAt(escIndex + 1))) skipESC(s, escIndex + 2)
         else if (isAnsiTwoCharacterTerminator(s.charAt(escIndex + 1))) escIndex + 2
         else {
           // There could be non-ANSI character sequences we should make sure we handle here.

@@ -34,6 +34,16 @@ object Escapes extends Properties("Escapes") {
       !hasEscapeSequence(removed)
   }
 
+  private[this] final val ecs = ESC.toString
+  private val partialEscapeSequences =
+    Gen.oneOf(Gen const ecs, Gen const ecs ++ "[", Gen.choose('@', '_').map(ecs :+ _))
+
+  property("removeEscapeSequences handles partial escape sequences") =
+    forAll(partialEscapeSequences) { s =>
+      val removed: String = removeEscapeSequences(s)
+      s"Escape sequence removed: '$removed'" |: !hasEscapeSequence(removed)
+    }
+
   property("removeEscapeSequences returns string without escape sequences") =
     forAllNoShrink(genWithoutEscape, genEscapePairs) {
       (start: String, escapes: List[EscapeAndNot]) =>
