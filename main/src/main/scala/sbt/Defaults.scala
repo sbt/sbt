@@ -2315,7 +2315,7 @@ object Classpaths {
         case Some(period) =>
           val fullUpdateOutput = cacheDirectory / "out"
           val now = System.currentTimeMillis
-          val diff = now - IO.lastModified(fullUpdateOutput)
+          val diff = now - IO.getModifiedTimeOrZero(fullUpdateOutput)
           val elapsedDuration = new FiniteDuration(diff, TimeUnit.MILLISECONDS)
           fullUpdateOutput.exists() && elapsedDuration > period
       }

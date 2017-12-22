@@ -105,7 +105,7 @@ object Util {
     val timestamp = formatter.format(new Date)
     val content = versionLine(version) + "\ntimestamp=" + timestamp
     val f = dir / "xsbt.version.properties"
-    // TODO: replace lastModified() with sbt.io.IO.lastModified(), once the build
+    // TODO: replace lastModified() with sbt.io.IO.getModifiedTimeOrZero(), once the build
     // has been upgraded to a version of sbt that includes that call.
     if (!f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f, version)) {
       s.log.info("Writing version information to " + f + " :\n" + content)
