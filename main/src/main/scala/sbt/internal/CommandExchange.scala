@@ -26,7 +26,7 @@ import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.{ Success, Failure }
+import scala.util.{ Success, Failure, Try }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.internal.server._
@@ -150,7 +150,10 @@ private[sbt] final class CommandExchange {
                            socketfile,
                            pipeName)
         val x = Server.start(connection, onIncomingSocket, s.log)
-        Await.ready(x.ready, Duration("10s"))
+
+        // don't throw exception when it times out
+        val d = "10s"
+        Try(Await.ready(x.ready, Duration(d)))
         x.ready.value match {
           case Some(Success(_)) =>
             // rememeber to shutdown only when the server comes up
@@ -164,7 +167,10 @@ private[sbt] final class CommandExchange {
           case Some(Failure(e)) =>
             s.log.error(e.toString)
             server = None
-          case None => // this won't happen because we awaited
+          case None =>
+            s.log.warn(s"sbt server could not start in $d")
+            server = None
+            firstInstance.set(false)
         }
     }
     s
