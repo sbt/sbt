@@ -51,11 +51,6 @@ object FilesInfo {
 
 object FileInfo {
 
-  // returns 0L if file does not exist
-  private def getModifiedTimeOrZero(file: File) =
-    try IO.getModifiedTime(file)
-    catch { case _: FileNotFoundException => 0L }
-
   sealed trait Style {
     type F <: FileInfo
 
@@ -95,7 +90,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): HashModifiedFileInfo =
-      FileHashModified(file.getAbsoluteFile, Hash(file).toList, getModifiedTimeOrZero(file))
+      FileHashModified(file.getAbsoluteFile, Hash(file).toList, IO.getModifiedTimeOrZero(file))
   }
 
   object hash extends Style {
@@ -152,7 +147,7 @@ object FileInfo {
     }
 
     implicit def apply(file: File): ModifiedFileInfo =
-      FileModified(file.getAbsoluteFile, getModifiedTimeOrZero(file))
+      FileModified(file.getAbsoluteFile, IO.getModifiedTimeOrZero(file))
   }
 
   object exists extends Style {
