@@ -34,6 +34,7 @@ def buildLevelSettings: Seq[Setting[_]] =
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
       scalafmtOnCompile := true,
+      scalafmtOnCompile in Sbt := false,
       scalafmtVersion := "1.3.0",
     ))
 
@@ -310,8 +311,7 @@ lazy val commandProj = (project in file("main-command"))
   .settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi,
-      jna, jnaPlatform),
+    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -463,10 +463,9 @@ lazy val sbtIgnoredProblems = {
 }
 
 def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = {
-  val npm = if (sbt.internal.util.Util.isWindows) "npm.cmd" else "npm"
   import scala.sys.process._
   try {
-    val exitCode = Process(s"$npm $command", Option(base)) ! log
+    val exitCode = Process(s"npm $command", Option(base)) ! log
     if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
   } catch {
     case e: java.io.IOException => log.warn("failed to run npm " + e.getMessage)

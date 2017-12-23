@@ -97,7 +97,7 @@ private[sbt] object Server {
             case Failure(e) => ()
             case Success(socket) =>
               socket.close()
-              throw new IOException("sbt server is already running.")
+              throw new AlreadyRunningException()
           }
         } else ()
       }
@@ -210,3 +210,5 @@ private[sbt] case class ServerConnection(
     }
   }
 }
+
+private[sbt] class AlreadyRunningException extends IOException("sbt server is already running.")

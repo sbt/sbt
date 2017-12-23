@@ -29,7 +29,7 @@ import com.sun.jna.ptr.IntByReference;
 
 import com.sun.jna.win32.W32APIOptions;
 
-public interface NGWin32NamedPipeLibrary extends WinNT {
+public interface NGWin32NamedPipeLibrary extends Library, WinNT {
     int PIPE_ACCESS_DUPLEX = 3;
     int PIPE_UNLIMITED_INSTANCES = 255;
     int FILE_FLAG_FIRST_PIPE_INSTANCE = 524288;
