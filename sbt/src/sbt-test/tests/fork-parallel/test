@@ -1,17 +1,13 @@
 # The tests/fork-parallel test will currently always 
 # report success when run on less than four cores,
 # rather than  failing in one of the two cases as expected.
-#
 # TODO: Adjust this scripted test so that it works as
 # intended on less than four cores as well.
-#
+
 # To debug, it is possible to limit the number of cores
 # reported to sbt, and run the test, by using:
-# 
 #   taskset 0x00000003 sbt 'scripted tests/fork-parallel'
-# 
 # See: https://github.com/sbt/sbt/issues/3545
-#
 
 # This bit won't currently work when using less than four cores.
 # > test
