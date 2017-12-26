@@ -448,7 +448,6 @@ lazy val mainProj = (project in file("main"))
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt"))
   .dependsOn(mainProj, scriptedSbtProj % "test->test")
-  .enablePlugins(BuildInfoPlugin)
   .settings(
     baseSettings,
     name := "sbt",
@@ -459,6 +458,7 @@ lazy val sbtProj = (project in file("sbt"))
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
     addBuildInfoToConfig(Test),
+    BuildInfoPlugin.buildInfoDefaultSettings,
     buildInfoObject in Test := "TestBuildInfo",
     buildInfoKeys in Test := Seq[BuildInfoKey](fullClasspath in Compile),
     connectInput in run in Test := true,
