@@ -111,17 +111,6 @@ jar_library(
 )
 
 jar_library(
-    name = "jackson-module-scala",
-    jars = [
-        scala_jar(
-            name = "jackson-module-scala",
-            org = "com.fasterxml.jackson.module",
-            rev = "2.8.4",
-        ),
-    ],
-)
-
-jar_library(
     name = "caseapp",
     jars = [
         scala_jar(
@@ -167,5 +156,34 @@ jar_library(
             org = "io.get-coursier.scala-native",
             rev = "0.3.0-coursier-1",
         ),
+    ],
+)
+
+jar_library(
+    name = "utest",
+    jars = [
+        scala_jar(
+            name = "utest",
+            org = "com.lihaoyi",
+            rev = "0.5.4",
+        ),
+    ],
+)
+
+jar_library(
+    name = "async",
+    jars = [
+        scala_jar(
+            name = "scala-async",
+            org = "org.scala-lang.modules",
+            rev = "0.9.7",
+        ),
+    ],
+)
+
+jar_library(
+    name = "scalatest",
+    jars = [
+        scala_jar("org.scalatest", "scalatest", "3.0.0"),
     ],
 )

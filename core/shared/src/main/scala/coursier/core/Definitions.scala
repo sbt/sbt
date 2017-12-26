@@ -31,6 +31,9 @@ final case class Module(
   override def toString: String =
     s"$organization:$nameWithAttributes"
 
+  def orgName: String =
+    s"$organization:$name"
+
   override final lazy val hashCode = Module.unapply(this).get.hashCode()
 }
 

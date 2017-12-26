@@ -19,6 +19,9 @@ object Deps {
   def sbtLauncherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   def typesafeConfig = "com.typesafe" % "config" % "1.3.2"
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M6"
+  def jackson = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4"
+  def scalatest = "org.scalatest" %% "scalatest" % "3.0.0"
+  def junit = "junit" % "junit" % "4.12"
 
   def sbtPgp = Def.setting {
     val sbtv = CrossVersion.binarySbtVersion(sbtVersion.value)

@@ -153,7 +153,9 @@ lazy val cli = project
       if (scalaBinaryVersion.value == "2.11")
         Seq(
           Deps.caseApp,
-          Deps.argonautShapeless
+          Deps.argonautShapeless,
+          Deps.junit % "test", // to be able to run tests with pants
+          Deps.scalatest % "test"
         )
       else
         Seq()

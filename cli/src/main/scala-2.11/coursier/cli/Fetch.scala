@@ -7,7 +7,7 @@ import caseapp._
 
 import scala.language.reflectiveCalls
 
-final case class Fetch(
+case class Fetch(
   @Recurse
     options: FetchOptions
 ) extends App {

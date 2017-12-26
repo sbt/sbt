@@ -57,7 +57,7 @@ object Print {
     deps1.map(dependency(_, printExclusions)).mkString("\n")
   }
 
-  private def compatibleVersions(first: String, second: String): Boolean = {
+  def compatibleVersions(first: String, second: String): Boolean = {
     // too loose for now
     // e.g. RCs and milestones should not be considered compatible with subsequent non-RC or
     // milestone versions - possibly not with each other either

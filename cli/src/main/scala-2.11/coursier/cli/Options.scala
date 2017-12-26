@@ -49,7 +49,16 @@ final case class CommonOptions(
   @Help("Exclude module")
   @Value("organization:name")
   @Short("E")
+  @Help("Global level exclude")
     exclude: List[String] = Nil,
+
+  @Short("x")
+  @Help("Path to the local exclusion file. " +
+    "Syntax: <org:name>--<org:name>. `--` means minus. Example file content:\n\t" +
+    "\tcom.twitter.penguin:korean-text--com.twitter:util-tunable-internal_2.11\n\t" +
+    "\torg.apache.commons:commons-math--com.twitter.search:core-query-nodes\n\t" +
+    "Behavior: If root module A excludes module X, but root module B requires X, module X will still be fetched.")
+    localExcludeFile: String = "",
   @Help("Default scala version")
   @Short("e")
     scalaVersion: String = scala.util.Properties.versionNumberString,
@@ -83,6 +92,11 @@ final case class CommonOptions(
   @Value("profile")
   @Short("F")
     profile: List[String] = Nil,
+
+  @Help("Specify path for json output")
+  @Short("j")
+    jsonOutputFile: String = "",
+
   @Help("Swap the mainline Scala JARs by Typelevel ones")
     typelevel: Boolean = false,
   @Recurse
@@ -169,7 +183,7 @@ final case class IsolatedLoaderOptions(
 }
 
 object ArtifactOptions {
-  def defaultArtifactTypes = Set("jar", "bundle")
+  def defaultArtifactTypes = Set("jar", "bundle", "test-jar")
 }
 
 final case class ArtifactOptions(

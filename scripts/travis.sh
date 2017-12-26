@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ev
+set -evx
 
 SCALA_VERSION="${SCALA_VERSION:-${TRAVIS_SCALA_VERSION:-2.12.4}}"
 PULL_REQUEST="${PULL_REQUEST:-${TRAVIS_PULL_REQUEST:-false}}"
