@@ -213,7 +213,7 @@ publish() {
 
 testBootstrap() {
   if is211; then
-    sbt ++${SCALA_VERSION} echo/publishLocal "project cli" pack
+    sbt ++${SCALA_VERSION} "project cli" pack
     cli/target/pack/bin/coursier bootstrap -o cs-echo io.get-coursier:echo:1.0.0
     if [ "$(./cs-echo foo)" != foo ]; then
       echo "Error: unexpected output from bootstrapped echo command." 1>&2

@@ -302,9 +302,6 @@ lazy val okhttp = project
     libs += Deps.okhttpUrlConnection
   )
 
-lazy val echo = project
-  .settings(pureJava)
-
 lazy val jvm = project
   .dummy
   .aggregate(
@@ -323,8 +320,7 @@ lazy val jvm = project
     `sbt-launcher`,
     doc,
     `http-server`,
-    okhttp,
-    echo
+    okhttp
   )
   .settings(
     shared,
@@ -384,7 +380,6 @@ lazy val coursier = project
     `sbt-launcher`,
     web,
     doc,
-    echo,
     `http-server`,
     okhttp
   )
