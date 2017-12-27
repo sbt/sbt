@@ -12,9 +12,6 @@ object Deps {
   def scalazConcurrent = "org.scalaz" %% "scalaz-concurrent" % SharedVersions.scalaz
   def caseApp = "com.github.alexarchambault" %% "case-app" % "1.1.3"
   def caseApp12 = "com.github.alexarchambault" %% "case-app" % "1.2.0"
-  def http4sBlazeServer = "org.http4s" %% "http4s-blaze-server" % SharedVersions.http4s
-  def http4sDsl = "org.http4s" %% "http4s-dsl" % SharedVersions.http4s
-  def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.25"
   def okhttpUrlConnection = "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
   def sbtLauncherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   def typesafeConfig = "com.typesafe" % "config" % "1.3.2"
