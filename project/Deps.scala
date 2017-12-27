@@ -21,7 +21,7 @@ object Deps {
   def junit = "junit" % "junit" % "4.12"
 
   def sbtPgp = Def.setting {
-    val sbtv = CrossVersion.binarySbtVersion(sbtVersion.value)
+    val sbtv = CrossVersion.binarySbtVersion(sbtVersion.in(pluginCrossBuild).value)
     val sv = scalaBinaryVersion.value
     val ver = "1.1.0"
     sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)

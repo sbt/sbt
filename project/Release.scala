@@ -3,7 +3,7 @@ import java.nio.file.{Files, Paths}
 import java.util.regex.Pattern
 
 import com.typesafe.sbt.pgp.PgpKeys
-import sbt.{ProcessLogger => _, _}
+import sbt._
 import sbt.Keys._
 import sbt.Package.ManifestAttributes
 import sbtrelease.ReleasePlugin.autoImport._
@@ -157,7 +157,7 @@ object Release {
 
     val tag = scala.sys.process.Process(cmd)
       .!!
-      .linesIterator
+      .lines
       .toVector
       .lastOption
       .getOrElse {

@@ -1,7 +1,7 @@
 
 import sbt._
 import sbt.Keys._
-import sbt.ScriptedPlugin._
+import sbt.ScriptedPlugin.autoImport.{sbtLauncher, scriptedBufferLog, ScriptedLaunchConf, scriptedLaunchOpts}
 
 import com.lightbend.sbt.SbtProguard.autoImport._
 import com.typesafe.sbt.pgp._
@@ -27,6 +27,7 @@ object Settings {
     organization := "io.get-coursier",
     scalazBintrayRepository,
     sonatypeRepository("releases"),
+    crossScalaVersions := Seq("2.12.1", "2.11.11", "2.10.6"), // defined for all projects to trump sbt-doge
     scalacOptions ++= {
       val targetJvm = scalaBinaryVersion.value match {
         case "2.10" | "2.11" =>
@@ -53,7 +54,6 @@ object Settings {
 
   lazy val shared = javaScalaPluginShared ++ Seq(
     scalaVersion := "2.12.1",
-    crossScalaVersions := Seq("2.12.1", "2.11.11", "2.10.6"),
     libs ++= {
       if (scalaBinaryVersion.value == "2.10")
         Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
@@ -205,12 +205,11 @@ object Settings {
           case _ => false
         }
       },
-      scalaVersion := appConfiguration.value.provider.scalaProvider.version, // required with sbt 0.13.16-M1, to avoid cyclic references
-      sbtVersion := {
+      sbtVersion.in(pluginCrossBuild) := {
         scalaBinaryVersion.value match {
           case "2.10" => sbt013Version
           case "2.12" => sbt10Version
-          case _ => sbtVersion.value
+          case _ => sbtVersion.in(pluginCrossBuild).value
         }
       },
       resolvers ++= Seq(
@@ -266,12 +265,7 @@ object Settings {
         Def.task(Map())
     }
 
-    packagedArtifacts ++= {
-      if (scalaBinaryVersion.value == "2.11")
-        extra.value
-      else
-        Map()
-    }
+    packagedArtifacts ++= extra.value
   }
 
   lazy val Integration = config("it").extend(Test)
