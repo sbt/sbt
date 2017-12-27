@@ -49,8 +49,6 @@ integrationTestsRequirements() {
   # Required for ~/.ivy2/local repo tests
   sbt ++2.11.11 coreJVM/publishLocal cli/publishLocal
 
-  sbt ++2.12.4 http-server/publishLocal
-
   # Required for HTTP authentication tests
   launchTestRepo --port 8080 --list-pages
 

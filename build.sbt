@@ -276,24 +276,6 @@ lazy val `sbt-launcher` = project
     }
   )
 
-lazy val `http-server` = project
-  .enablePlugins(PackPlugin)
-  .settings(
-    shared,
-    dontPublishIn("2.10", "2.11"),
-    libs ++= {
-      if (scalaBinaryVersion.value == "2.12")
-        Seq(
-          Deps.http4sBlazeServer,
-          Deps.http4sDsl,
-          Deps.slf4jNop,
-          Deps.caseApp12
-        )
-      else
-        Nil
-    }
-  )
-
 lazy val okhttp = project
   .dependsOn(cache)
   .settings(
@@ -319,7 +301,6 @@ lazy val jvm = project
     `sbt-shading`,
     `sbt-launcher`,
     doc,
-    `http-server`,
     okhttp
   )
   .settings(
@@ -380,7 +361,6 @@ lazy val coursier = project
     `sbt-launcher`,
     web,
     doc,
-    `http-server`,
     okhttp
   )
   .settings(
