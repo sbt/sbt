@@ -273,25 +273,6 @@ lazy val `sbt-shading` = project
     libs ++= Deps.jarjarTransitiveDeps
   )
 
-lazy val `sbt-launcher` = project
-  .enablePlugins(PackPlugin)
-  .disablePlugins(ScriptedPlugin)
-  .dependsOn(cache)
-  .settings(
-    shared,
-    dontPublishIn("2.10", "2.12"),
-    libs ++= {
-      if (scalaBinaryVersion.value == "2.11")
-        Seq(
-          Deps.caseApp12,
-          Deps.sbtLauncherInterface,
-          Deps.typesafeConfig
-        )
-      else
-        Nil
-    }
-  )
-
 lazy val okhttp = project
   .dependsOn(cache)
   .disablePlugins(ScriptedPlugin)
@@ -317,7 +298,6 @@ lazy val jvm = project
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`,
-    `sbt-launcher`,
     doc,
     okhttp
   )
@@ -379,7 +359,6 @@ lazy val coursier = project
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`,
-    `sbt-launcher`,
     web,
     doc,
     okhttp
