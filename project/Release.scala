@@ -136,8 +136,7 @@ object Release {
     val baseDir = Project.extract(state).get(baseDirectory.in(ThisBuild))
     val scriptsDir = baseDir / "scripts"
     val scriptFiles = Seq(
-      (scriptsDir / "generate-launcher.sh") -> (baseDir / "coursier"),
-      (scriptsDir / "generate-sbt-launcher.sh") -> (baseDir / "csbt")
+      (scriptsDir / "generate-launcher.sh") -> (baseDir / "coursier")
     )
 
     val vcs = state.vcs
