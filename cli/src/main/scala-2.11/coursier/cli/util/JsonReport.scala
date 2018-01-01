@@ -1,6 +1,7 @@
 package coursier.cli.util
 
 import java.io.File
+import java.util.Objects
 
 import coursier.Artifact
 import coursier.core.{Attributes, Dependency, Resolution}
@@ -8,10 +9,10 @@ import coursier.util.Print
 
 import scala.collection.mutable
 import scala.collection.parallel.ParSeq
+import argonaut._
+import Argonaut._
 
-import argonaut._, Argonaut._
-
-final case class JsonPrintRequirement(fileByArtifact: collection.mutable.Map[String, File], depToArtifacts: Map[Dependency, Vector[Artifact]], conflictResolutionForRoots: Map[String, String])
+final case class JsonPrintRequirement(fileByArtifact: Map[String, File], depToArtifacts: Map[Dependency, Vector[Artifact]])
 
 final case class DepNode(coord: String, files: Vector[(String, String)], dependencies: Set[String])
 
@@ -163,4 +164,11 @@ final case class JsonElem(dep: Dependency,
       dependencies.map(JsonElem(_, artifacts, jsonPrintRequirement, resolution, colors, printExclusions, excluded = false)) ++
         (if (printExclusions) excluded else Nil)
     }
+
+    /**
+      * Override the hashcode to explicitly exclude `children`, because children will result in recursive hash on
+      * children's children, causing performance issue. Hash collision should be rare, but when that happens, the
+      * default equality check should take of the recursive aspect of `children`.
+      */
+    override def hashCode(): Int = Objects.hash(dep, requestedVersionStr, reconciledVersion, downloadedFiles)
 }

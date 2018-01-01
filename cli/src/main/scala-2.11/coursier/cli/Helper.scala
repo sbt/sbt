@@ -716,12 +716,12 @@ class Helper(
           a.isOptional && notFound
       }
 
-    val artifactToFile: collection.mutable.Map[String, File] = collection.mutable.Map()
-    val files0 = results.collect {
+    val artifactToFile = results.collect {
       case (artifact: Artifact, \/-(f)) =>
-        artifactToFile.put(artifact.url, f)
-        f
-    }
+        (artifact.url, f)
+    }.toMap
+
+    val files0 = artifactToFile.values.toSeq
 
     logger.foreach(_.stop())
 
@@ -769,9 +769,9 @@ class Helper(
 
       val artifacts: Seq[(Dependency, Artifact)] = res.dependencyArtifacts
 
-      val jsonReq = JsonPrintRequirement(artifactToFile, depToArtifacts, conflictResolutionForRoots)
+      val jsonReq = JsonPrintRequirement(artifactToFile, depToArtifacts)
       val roots = deps.toVector.map(JsonElem(_, artifacts, Option(jsonReq), res, printExclusions = verbosityLevel >= 1, excluded = false, colors = false))
-      val jsonStr = JsonReport(roots, jsonReq.conflictResolutionForRoots)(_.children, _.reconciledVersionStr, _.requestedVersionStr, _.downloadedFiles)
+      val jsonStr = JsonReport(roots, conflictResolutionForRoots)(_.children, _.reconciledVersionStr, _.requestedVersionStr, _.downloadedFiles)
 
       val pw = new PrintWriter(new File(jsonOutputFile))
       pw.write(jsonStr)
