@@ -342,9 +342,10 @@ object Defaults extends BuildCommon {
   ))
 
   lazy val projectTasks: Seq[Setting[_]] = Seq(
-    cleanFiles := cleanFilesTask.value,
+    cleanFiles := Seq(managedDirectory.value, target.value),
+    cleanFilesTask := cleanFilesImpl.value,
     cleanKeepFiles := historyPath.value.toVector,
-    clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
+    clean := (Def.task { IO.delete(cleanFilesTask.value) } tag (Tags.Clean)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value
@@ -780,8 +781,8 @@ object Defaults extends BuildCommon {
     pickMainClass(classes)
   }
 
-  /** Implements `cleanFiles` task. */
-  def cleanFilesTask: Initialize[Task[Vector[File]]] =
+  /** Implements `cleanFilesTask` */
+  def cleanFilesImpl: Initialize[Task[Vector[File]]] =
     Def.task {
       val filesAndDirs = Vector(managedDirectory.value, target.value)
       val preserve = cleanKeepFiles.value
