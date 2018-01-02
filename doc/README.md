@@ -91,6 +91,11 @@ Alternatively on OS X, install it via homebrew,
 $ brew install --HEAD coursier/formulas/coursier
 ```
 
+Or on Archlinux, install it from [AUR](https://aur.archlinux.org/packages/coursier/),
+```
+$ pacaur -S coursier
+```
+
 Run an application distributed via artifacts with
 ```
 $ ./coursier launch com.lihaoyi:ammonite_2.11.8:0.7.0
