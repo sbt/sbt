@@ -16,7 +16,7 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")
 
 To add the plugin only to a single project, put this line into `project/plugins.sbt` of your project, instead.
 
-The plugin currently supports sbt versions >= 0.13.6 and sbt 1.0.x. For versions supporting older versions of sbt see
+The plugin currently supports sbt versions >= 0.13.10 and sbt 1.0.x. For versions supporting older versions of sbt see
 the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tree/v0.8.2#compatibility-notes).
 
 ## Main Tasks
