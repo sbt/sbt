@@ -336,6 +336,19 @@ $ ./coursier launch net.sf.proguard:proguard-retrace:5.2.1 -M proguard.retrace.R
 --proxy-all="http://search.twitter.com" --record-mappings --verbose
 ```
 
+* SQLLine,
+
+```
+$ ./coursier launch \
+  sqlline:sqlline:1.3.0 \
+  org.postgresql:postgresql:42.1.4 \
+  -M sqlline.SqlLine -- \
+  -d org.postgresql.Driver \
+  -n USERNAME \
+  -p PASSWORD \
+  -u jdbc:postgresql://HOST:PORT/DATABASE
+```
+
 If you wish to pass additional argument to the artifact being launched, separate them from the coursier's parameters list with the "--", just like in the Wiremock example above.
 
 #### fetch
