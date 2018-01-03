@@ -3,9 +3,10 @@ lazy val check = taskKey[Unit]("Runs the check")
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
-    scalaVersion := "2.10.4",
+    scalaVersion := "2.10.7",
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
-    updateOptions := updateOptions.value.withCircularDependencyLevel(CircularDependencyLevel.Error)
+    updateOptions := updateOptions.value.withCircularDependencyLevel(CircularDependencyLevel.Error),
+    resolvers += Resolver.sonatypeRepo("staging")
   )
 
 lazy val a = project.

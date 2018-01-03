@@ -8,8 +8,9 @@ def commonSettings: Seq[Def.Setting[_]] =
     version := "0.1.0",
     ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
-    scalaVersion := "2.10.4",
-    fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
+    scalaVersion := "2.10.7",
+    fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
+    resolvers += Resolver.sonatypeRepo("staging")
   )
 
 def cachedResolutionSettings: Seq[Def.Setting[_]] =

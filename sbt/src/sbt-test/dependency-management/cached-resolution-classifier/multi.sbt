@@ -4,8 +4,9 @@ def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
-    scalaVersion := "2.10.4",
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    scalaVersion := "2.10.7",
+    resolvers += Resolver.sonatypeRepo("snapshots"),
+    resolvers += Resolver.sonatypeRepo("staging")
   )
 
 lazy val classifierTest = project.
@@ -63,9 +64,9 @@ lazy val root = (project in file(".")).
     organization in ThisBuild := "org.example",
     version in ThisBuild := "1.0",
     check := {
-      val acp = (externalDependencyClasspath in Compile in a).value.map {_.data.getName}.sorted
-      val bcp = (externalDependencyClasspath in Compile in b).value.map {_.data.getName}.sorted
-      val ccp = (externalDependencyClasspath in Compile in c).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"}
+      val acp = (externalDependencyClasspath in Compile in a).value.map {_.data.getName}.sorted filterNot { _ startsWith "scala-library" }
+      val bcp = (externalDependencyClasspath in Compile in b).value.map {_.data.getName}.sorted filterNot { _ startsWith "scala-library" }
+      val ccp = (externalDependencyClasspath in Compile in c).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"} filterNot { _ startsWith "scala-library" }
       if (!(acp contains "commons-io-1.4-sources.jar")) {
         sys.error("commons-io-1.4-sources not found when it should be included: " + acp.toString)
       }
@@ -83,9 +84,9 @@ lazy val root = (project in file(".")).
         "\n - b (plain)         " + bcpWithoutSource.toString +
         "\n - c (inter-project) " + ccpWithoutSource.toString)
       
-      val atestcp = (externalDependencyClasspath in Test in a).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
-      val btestcp = (externalDependencyClasspath in Test in b).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
-      val ctestcp = (externalDependencyClasspath in Test in c).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"} filterNot { _ == "commons-io-1.4.jar"}
+      val atestcp = (externalDependencyClasspath in Test in a).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"} filterNot { _ startsWith "scala-library" }
+      val btestcp = (externalDependencyClasspath in Test in b).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"} filterNot { _ startsWith "scala-library" }
+      val ctestcp = (externalDependencyClasspath in Test in c).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"} filterNot { _ == "commons-io-1.4.jar"} filterNot { _ startsWith "scala-library" }
       if (ctestcp contains "junit-4.11.jar") {
         sys.error("junit found when it should be excluded: " + ctestcp.toString)
       }

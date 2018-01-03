@@ -1,8 +1,8 @@
 name := "foo"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.7"
 
-crossScalaVersions := List("2.10.4", "2.11.0")
+crossScalaVersions := List("2.10.7", "2.11.0")
 
 incOptions := incOptions.value.withNewClassfileManager(
   sbt.inc.ClassfileManager.transactional(
