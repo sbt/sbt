@@ -754,7 +754,9 @@ object Project extends ProjectExtra {
     EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
   }
 
-  implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
+  def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
+
+  implicit def projectToLocalProject(p: Project): LocalProject = LocalProject(p.id)
 
   final class RichTaskSessionVar[S](i: Def.Initialize[Task[S]]) {
     import SessionVar.{ persistAndSet, resolveContext, set, transform => tx }
