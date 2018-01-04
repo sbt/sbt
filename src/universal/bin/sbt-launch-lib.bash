@@ -180,7 +180,7 @@ process_args () {
   }
 
   ## parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
-  java_version=$("$java_cmd" -version 2>&1 | grep ' version "' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
+  java_version=$("$java_cmd" -Xms128M -Xmx512M -version 2>&1 | grep ' version "' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
   vlog "[process_args] java_version = '$java_version'"
 }
 
