@@ -1,0 +1,32 @@
+### Improvements
+
+- Updates Scala version to 2.10.7 for Java 9 support. [#3848][3848] by [@eed3si9n][@eed3si9n]
+
+### Bug fixes
+
+- Backports logging and `clean` concurrency fix. [#2156][2156]/[#3834][3834] by [@dwijnand][@dwijnand]
+- Fixes over-compilation on Java 9 `scala.ext.dir`. [#3142][3142]/[#3701][3701] by [@retronym][@retronym]
+- Fixes `addSbtPlugin` to use the correct version of sbt. [#3393][3393]/[#3397][3397] by [@dwijnand][@dwijnand]
+- Changes the tuple enrichment deprecation warning messages. [#3455][3455] by [@olafurpg][@olafurpg]
+
+### Internal
+
+- Fixes the source code to be `doc` friendly. [#3401][3401] by [@dwijnand][@dwijnand]
+
+
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dwijnand]: http://github.com/dwijnand
+  [@cunei]: https://github.com/cunei
+  [@jvican]: https://github.com/jvican
+  [@Duhemm]: https://github.com/Duhemm
+  [@olafurpg]: https://github.com/olafurpg
+  [@retronym]: https://github.com/retronym
+  [3401]: https://github.com/sbt/sbt/pull/3401
+  [3393]: https://github.com/sbt/sbt/issues/3393
+  [3397]: https://github.com/sbt/sbt/pull/3397
+  [3455]: https://github.com/sbt/sbt/pull/3455
+  [3142]: https://github.com/sbt/sbt/issues/3142
+  [3701]: https://github.com/sbt/sbt/pull/3701
+  [2156]: https://github.com/sbt/sbt/issues/2156
+  [3834]: https://github.com/sbt/sbt/pull/3834
+  [3848]: https://github.com/sbt/sbt/pull/3848
