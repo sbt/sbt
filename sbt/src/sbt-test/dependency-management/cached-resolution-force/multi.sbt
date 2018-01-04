@@ -4,8 +4,9 @@ def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
-    scalaVersion := "2.10.4",
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    scalaVersion := "2.10.7",
+    resolvers += Resolver.sonatypeRepo("snapshots"),
+    resolvers += Resolver.sonatypeRepo("staging")
   )
 
 def cachedResolutionSettings: Seq[Def.Setting[_]] =

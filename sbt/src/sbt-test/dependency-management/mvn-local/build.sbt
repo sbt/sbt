@@ -2,7 +2,7 @@ def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
-    scalaVersion := "2.10.4",
+    scalaVersion := "2.10.7",
     organization in ThisBuild := "org.example",
     version in ThisBuild := "1.0-SNAPSHOT"
   )
