@@ -278,14 +278,14 @@ def bintrayRelease(repo: BintrayRepo, pkg: String, version: String, log: Logger)
   repo.release(pkg, version, log)
 
 
-lazy val scala210 = "2.10.6"
-lazy val scala212 = "2.12.2"
+lazy val scala210 = "2.10.7"
+lazy val scala212 = "2.12.4"
 lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
 lazy val jansi = {
   if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.4"
   else "org.fusesource.jansi" % "jansi" % "1.4"
 }
-lazy val scala212Jline = "jline" % "jline" % "2.14.1"
+lazy val scala212Jline = "jline" % "jline" % "2.14.5"
 lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
 lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
 lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
