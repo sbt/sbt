@@ -16,12 +16,9 @@ lazy val root = (project in file("."))
       assert(xs(4) startsWith "[info] The current project")
       assert(xs(5) startsWith "[info] The current project is built against Scala 2.12.4")
 
-      val ys = IO.readLines(file("err.txt")).toVector
+      val ys = IO.readLines(file("err.txt")).toVector.distinct
 
-      println(ys)
-
-      assert(ys.size == 2)
+      assert(ys.size == 1, s"ys has more than one item: $ys")
       assert(ys(0) startsWith "Java HotSpot(TM) 64-Bit Server VM warning")
-      assert(ys(1) startsWith "Java HotSpot(TM) 64-Bit Server VM warning")
     }
   )
