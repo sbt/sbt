@@ -687,7 +687,7 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
 
   def addUsedName(src: File, name: String): Relations =
     new MRelationsNameHashing(srcProd, binaryDep, internalDependencies = internalDependencies,
-      externalDependencies = externalDependencies, classes, names = names + (src, name))
+      externalDependencies = externalDependencies, classes, names = names + (src, name.replaceAllLiterally("\n", "")))
 
   override def inheritance: SourceDependencies =
     new SourceDependencies(internalDependencies.dependencies.getOrElse(DependencyByInheritance, Relation.empty), externalDependencies.dependencies.getOrElse(DependencyByInheritance, Relation.empty))
