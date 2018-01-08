@@ -7,6 +7,8 @@ unzip ..\target\universal\sbt.zip -d freshly-baked
 
 SETLOCAL
 
+"freshly-baked\sbt\bin\sbt" about
+
 SET JAVA_HOME=C:\jdk9
 SET PATH=C:\jdk9\bin;%PATH%
 SET SBT_OPTS=-Xmx4g -Dfile.encoding=UTF8

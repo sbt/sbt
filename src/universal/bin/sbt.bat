@@ -129,7 +129,7 @@ exit /B 1
 
 :copyrt
 if /I "%JAVA_VERSION%" GEQ "9" (
-  set rtexport=%SBT_HOME%java9-rt-export.jar
+  set rtexport=!SBT_HOME!java9-rt-export.jar
 
   "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "!rtexport!" --rt-ext-dir > "%TEMP%.\rtext.txt"
   set /p java9_ext= < "%TEMP%.\rtext.txt"
