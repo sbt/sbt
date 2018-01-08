@@ -10,7 +10,7 @@ package internal
 
 import java.io.IOException
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic._
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.{
@@ -26,7 +26,7 @@ import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.{ Success, Failure }
+import scala.util.{ Success, Failure, Try }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.internal.server._
@@ -48,6 +48,7 @@ private[sbt] final class CommandExchange {
 
   private val lock = new AnyRef {}
   private var server: Option[ServerInstance] = None
+  private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
@@ -131,7 +132,8 @@ private[sbt] final class CommandExchange {
       subscribe(channel)
     }
     server match {
-      case Some(_) => // do nothing
+      case Some(_)                    => // do nothing
+      case None if !firstInstance.get => // there's another server
       case _ =>
         val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
         val h = Hash.halfHashString(IO.toURI(portfile).toString)
@@ -148,15 +150,27 @@ private[sbt] final class CommandExchange {
                            socketfile,
                            pipeName)
         val x = Server.start(connection, onIncomingSocket, s.log)
-        Await.ready(x.ready, Duration("10s"))
+
+        // don't throw exception when it times out
+        val d = "10s"
+        Try(Await.ready(x.ready, Duration(d)))
         x.ready.value match {
           case Some(Success(_)) =>
             // rememeber to shutdown only when the server comes up
             server = Some(x)
+          case Some(Failure(e: AlreadyRunningException)) =>
+            s.log.warn(
+              "sbt server could not start because there's another instance of sbt running on this build.")
+            s.log.warn("Running multiple instances is unsupported")
+            server = None
+            firstInstance.set(false)
           case Some(Failure(e)) =>
             s.log.error(e.toString)
             server = None
-          case None => // this won't happen because we awaited
+          case None =>
+            s.log.warn(s"sbt server could not start in $d")
+            server = None
+            firstInstance.set(false)
         }
     }
     s
@@ -190,6 +204,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }
@@ -228,6 +243,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }
@@ -269,6 +285,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }
@@ -310,6 +327,7 @@ private[sbt] final class CommandExchange {
       case xs =>
         lock.synchronized {
           channelBuffer --= xs
+          ()
         }
     }
   }

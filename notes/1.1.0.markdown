@@ -1,12 +1,19 @@
+### Changes since RC-2
+
+- Provides workaround for `File#lastModified()` losing millisecond-precision by using native code when possible. [io#92](https://github.com/sbt/io/pull/92)/[io#106](https://github.com/sbt/io/pull/106) by [@cunei][@cunei]
+- Fixes `IO.relativize` not working with relative path. [io#108](https://github.com/sbt/io/pull/108) by [@dwijnand][@dwijnand]
+- Fixes `ClasspathFilter` that was causing `Class.forName` to not work in `run`. [zinc#473](https://github.com/sbt/zinc/pull/473) / [#3736](https://github.com/sbt/sbt/issues/3736) / [#3733](https://github.com/sbt/sbt/issues/3733) / [#3647](https://github.com/sbt/sbt/issues/3647) / [#3608](https://github.com/sbt/sbt/issues/3608) by [@ravwojdyla][@ravwojdyla]
+- Fixes JNA version mixup. [#3837](https://github.com/sbt/sbt/pull/3837) by [@eed3si9n][@eed3si9n]
+- Fixes warning message when multiple instances are detected. [#3828](https://github.com/sbt/sbt/pull/3828) by [@eed3si9n][@eed3si9n]
+
 ### Changes since RC-1
 
 - Fixes Java compilation causing `NullPointerException` by making PositionImpl thread-safe. [zinc#465](https://github.com/sbt/zinc/pull/465) by [@eed3si9n][@eed3si9n]
-- Restores Scala 2.13.0-M1 support. #461 by @dwijnand
+- Restores Scala 2.13.0-M1 support. #461 by [@dwijnand][@dwijnand]
 - Fixes `PollingWatchService` by preventing concurrent modification of `keysWithEvents` map. [io#90](https://github.com/sbt/io/pull/90) by [@mechkg][@mechkg], which fixes `~` related issues [#3687](https://github.com/sbt/sbt/issues/3687), [#3695](https://github.com/sbt/sbt/issues/3695), and [#3775](https://github.com/sbt/sbt/issues/3775).
 - Fixed server spewing out debug level logs. [#3791](https://github.com/sbt/sbt/pull/3791) by [@eed3si9n][@eed3si9n]
 - Fixes the encoding of Unix-like file path to use `file:///`. [#3805](https://github.com/sbt/sbt/pull/3805) by [@eed3si9n][@eed3si9n]
 - Fixes Log4J2 initialization error during startup. [#3814](https://github.com/sbt/sbt/pull/3814) by [@dwijnand][@dwijnand]
-- Provides workaround for `File#lastModified()` losing millisecond-precision by using native code when possible. [io#92](https://github.com/sbt/io/pull/92) by [@cunei][@cunei]
 
 ### Features, fixes, changes with compatibility implications
 
@@ -148,6 +155,7 @@ This allows you to define scripted tests that track the minimum supported sbt ve
   [@raboof]: https://github.com/raboof
   [@jilen]: https://github.com/jilen
   [@mechkg]: https://github.com/mechkg
+  [@ravwojdyla]: https://github.com/ravwojdyla
   [vscode-sbt-scala]: https://marketplace.visualstudio.com/items?itemName=lightbend.vscode-sbt-scala
   [1812]: https://github.com/sbt/sbt/issues/1812
   [3524]: https://github.com/sbt/sbt/pull/3524

@@ -121,7 +121,7 @@ private[sbt] object LibraryManagement {
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
-    stamps.get(file).forall(_ == IO.getModifiedTime(file))
+    stamps.get(file).forall(_ == IO.getModifiedTimeOrZero(file))
 
   private[sbt] def transitiveScratch(
       lm: DependencyResolution,
