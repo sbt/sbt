@@ -1933,12 +1933,20 @@ object Classpaths {
 
   @deprecated("Specify the classpath that includes internal dependencies", "0.13.0")
   def autoPlugins(report: UpdateReport): Seq[String] = autoPlugins(report, Nil)
+
+  @deprecated("Specify the jarTypes", "0.13.17")
   def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
-    {
-      val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
-      val plugins = classpath.ClasspathUtilities.compilerPlugins(pluginClasspath)
-      plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
-    }
+    autoPlugins(report, internalPluginClasspath, Set("jar", "bundle"))
+
+  def autoPlugins(
+    report: UpdateReport,
+    internalPluginClasspath: Seq[File],
+    jarTypes: Set[String]): Seq[String] = {
+    val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name) &&
+      artifactFilter(`type` = jarTypes)) ++ internalPluginClasspath
+    val plugins = classpath.ClasspathUtilities.compilerPlugins(pluginClasspath)
+    plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
+  }
 
   private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
     (thisProjectRef, settingsData, buildDependencies) flatMap { (ref, data, deps) =>
@@ -1948,7 +1956,7 @@ object Classpaths {
   lazy val compilerPluginConfig = Seq(
     scalacOptions := {
       val options = scalacOptions.value
-      val newPlugins = autoPlugins(update.value, internalCompilerPluginClasspath.value.files)
+      val newPlugins = autoPlugins(update.value, internalCompilerPluginClasspath.value.files, classpathTypes.value)
       val existing = options.toSet
       if (autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
     }
