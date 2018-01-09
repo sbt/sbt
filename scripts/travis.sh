@@ -165,6 +165,7 @@ testSbtCoursierJava6() {
 
   git clone https://github.com/alexarchambault/scalacheck-shapeless.git
   cd scalacheck-shapeless
+  git checkout e11ec8b2b069ee598b20ae3f3ad6e00f5edfd7ac
   cd project
   clean_plugin_sbt
   cd project
