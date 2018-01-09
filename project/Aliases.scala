@@ -39,6 +39,7 @@ object Aliases {
     }
 
     def tweakedScriptedTask = Def.inputTask {
+      import scala.language.reflectiveCalls
 
       val args = ScriptedPlugin
         .asInstanceOf[{
