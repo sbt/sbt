@@ -32,7 +32,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 val mimaSettings = Def settings (
   mimaPreviousArtifacts := Set(
     "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
-    "1.1.0", "1.1.1",
+    "1.1.0", "1.1.1", "1.1.2",
   ) map (version =>
     organization.value %% moduleName.value % version
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
