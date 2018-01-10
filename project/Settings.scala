@@ -10,6 +10,9 @@ import coursier.ShadingPlugin.autoImport._
 import Aliases._
 
 object Settings {
+  val scala212 = "2.12.4"
+  val scala211 = "2.11.12"
+  val scala210 = "2.10.7"
 
   lazy val scalazBintrayRepository = {
     resolvers += "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases"
@@ -27,7 +30,7 @@ object Settings {
     organization := "io.get-coursier",
     scalazBintrayRepository,
     sonatypeRepository("releases"),
-    crossScalaVersions := Seq("2.12.1", "2.11.11", "2.10.6"), // defined for all projects to trump sbt-doge
+    crossScalaVersions := Seq(scala212, scala211, scala210), // defined for all projects to trump sbt-doge
     scalacOptions ++= {
       val targetJvm = scalaBinaryVersion.value match {
         case "2.10" | "2.11" =>
@@ -53,7 +56,7 @@ object Settings {
   )
 
   lazy val shared = javaScalaPluginShared ++ Seq(
-    scalaVersion := "2.12.1",
+    scalaVersion := scala212,
     libs ++= {
       if (scalaBinaryVersion.value == "2.10")
         Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
@@ -187,6 +190,10 @@ object Settings {
 
   val sbt013Version = "0.13.8"
   val sbt10Version = "1.0.2"
+
+  val pluginOverrideCrossScalaVersion = Seq(
+    crossScalaVersions := Seq(scala212, scala210)
+  )
 
   lazy val plugin =
     javaScalaPluginShared ++
