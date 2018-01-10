@@ -120,10 +120,29 @@ final case class Extracted(structure: BuildStructure,
     structure.data.get(scope, key) getOrElse sys.error(
       display.show(ScopedKey(scope, key)) + " is undefined.")
 
-  def append(settings: Seq[Setting[_]], state: State): State = {
+  @deprecated("This discards session settings. Migrate to appendWithSession or appendWithoutSession.", "1.2.0")
+  def append(settings: Seq[Setting[_]], state: State): State =
+    appendWithoutSession(settings, state)
+
+  /** Appends the given settings to all the build state settings, including session settings. */
+  def appendWithSession(settings: Seq[Setting[_]], state: State): State =
+    appendImpl(settings, state, session.mergeSettings)
+
+  /**
+   * Appends the given settings to the original build state settings, discarding any settings
+   * appended to the session in the process.
+   */
+  def appendWithoutSession(settings: Seq[Setting[_]], state: State): State =
+    appendImpl(settings, state, session.original)
+
+  private[this] def appendImpl(
+      settings: Seq[Setting[_]],
+      state: State,
+      sessionSettings: Seq[Setting[_]],
+  ): State = {
     val appendSettings =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
-    val newStructure = Load.reapply(session.original ++ appendSettings, structure)
+    val newStructure = Load.reapply(sessionSettings ++ appendSettings, structure)
     Project.setProject(session, newStructure, state)
   }
 }
