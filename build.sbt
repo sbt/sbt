@@ -76,9 +76,11 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 val mimaSettings = Def settings (
-  mimaPreviousArtifacts := (0 to 4).map { v =>
-    organization.value % moduleName.value % s"1.0.$v" cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
-  }.toSet
+  mimaPreviousArtifacts := {
+    ((0 to 4).map(v => s"1.0.$v") ++ (0 to 0).map(v => s"1.1.$v")).map{ v =>
+      organization.value % moduleName.value % v cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+    }.toSet
+  }
 )
 
 lazy val sbtRoot: Project = (project in file("."))
@@ -318,6 +320,7 @@ lazy val commandProj = (project in file("main-command"))
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      exclude[DirectMissingMethodProblem]("sbt.BasicCommands.rebootOptionParser"),
       // Changed the signature of Server method. nacho cheese.
       exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*"),
       // Added method to ServerInstance. This is also internal.
@@ -379,6 +382,9 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     name := "Main Settings",
     resourceGenerators in Compile += generateToolboxClasspath.taskValue,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.Scope.display012StyleMasked"),
+    ),
   )
   .configure(
     addSbtIO,
@@ -449,6 +455,9 @@ lazy val sbtProj = (project in file("sbt"))
 
 lazy val sbtIgnoredProblems = {
   Vector(
+    exclude[MissingClassProblem]("buildinfo.BuildInfo"),
+    exclude[MissingClassProblem]("buildinfo.BuildInfo$"),
+
     // Added more items to Import trait.
     exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
     exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
