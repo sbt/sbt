@@ -5,11 +5,11 @@ import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import java.net.{MalformedURLException, URL}
 
 import coursier.core.Authentication
+import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
+import sbt.librarymanagement._
 import sbt.{CrossVersion, ModuleID, Resolver}
 
 import scalaz.{-\/, \/-}
-
-import SbtCompatibility._
 
 object FromSbt {
 
@@ -206,7 +206,7 @@ object FromSbt {
     authentication: Option[Authentication]
   ): Option[Repository] =
     resolver match {
-      case r: SbtCompatibility.MavenRepository =>
+      case r: sbt.librarymanagement.MavenRepository =>
         mavenRepositoryOpt(r.root, log, authentication)
 
       case r: sbt.FileRepository

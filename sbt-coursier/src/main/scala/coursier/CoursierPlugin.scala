@@ -1,6 +1,7 @@
 package coursier
 
-import sbt._
+import sbt.librarymanagement._
+import sbt.{ Configuration, Resolver, _ }
 import sbt.Keys._
 
 import SbtCompatibility._

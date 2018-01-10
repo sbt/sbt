@@ -4,12 +4,11 @@ import java.io.File
 import java.net.URL
 
 import coursier.core.Publication
+import sbt.librarymanagement.GetClassifiersModule
 import sbt.{Resolver, SettingKey, TaskKey}
 
 import scala.concurrent.duration.Duration
 import scalaz.\/
-
-import SbtCompatibility._
 
 object Keys {
   val coursierParallelDownloads = SettingKey[Int]("coursier-parallel-downloads")

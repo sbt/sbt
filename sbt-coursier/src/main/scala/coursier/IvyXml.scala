@@ -6,7 +6,7 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import scala.collection.JavaConverters._
 import scala.xml.{Node, PrefixedAttribute}
 
-import SbtCompatibility._
+import sbt.internal.librarymanagement.IvySbt
 
 object IvyXml {
 

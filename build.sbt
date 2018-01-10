@@ -235,7 +235,18 @@ lazy val `sbt-shared` = project
   .disablePlugins(ScriptedPlugin)
   .settings(
     plugin,
-    utest
+    utest,
+//  addSbtPlugin("com.dwijnand" % "sbt-compat" % "1.2.0")
+    libs ++= {
+      val dependency = "com.dwijnand" % "sbt-compat" % "1.2.0"
+      val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
+      val scalaV = (scalaBinaryVersion in update).value
+      val m = Defaults.sbtPluginExtra(dependency, sbtV, scalaV)
+      CrossVersion.partialVersion(scalaVersion.value).collect {
+        case (2, 10) => m
+        case (2, 12) => m
+      }.toList
+    }
   )
 
 lazy val `sbt-coursier` = project

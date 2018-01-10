@@ -10,7 +10,7 @@ import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
 import coursier.util.Print
-import coursier.SbtCompatibility._
+import sbt.librarymanagement._
 import sbt.{Classpaths, Def, Resolver, UpdateReport}
 import sbt.Keys._
 
@@ -61,7 +61,7 @@ object Tasks {
 
     def url(res: Resolver): Option[String] =
       res match {
-        case m: SbtCompatibility.MavenRepository =>
+        case m: sbt.librarymanagement.MavenRepository =>
           Some(m.root)
         case u: sbt.URLRepository =>
           u.patterns.artifactPatterns.headOption
@@ -351,11 +351,11 @@ object Tasks {
       // it puts it in all of them. See for example what happens to
       // the standalone JAR artifact of the coursier cli module.
       def allConfigsIfEmpty(configs: Iterable[ConfigRef]): Iterable[ConfigRef] =
-        if (configs.isEmpty) ivyConfs.filter(_.isPublic).map(_.toConfigRef) else configs
+        if (configs.isEmpty) ivyConfs.filter(_.isPublic).map(c => ConfigRef(c.name)) else configs
 
       val extraSbtArtifactsPublication = for {
         artifact <- extraSbtArtifacts
-        config <- allConfigsIfEmpty(artifact.configurations.map(x => x: ConfigRef))
+        config <- allConfigsIfEmpty(artifact.configurations.map(x => ConfigRef(x.name)))
         // FIXME If some configurations from artifact.configurations are not public, they may leak here :\
       } yield config.name -> artifactPublication(artifact)
 

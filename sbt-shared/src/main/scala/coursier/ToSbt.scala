@@ -4,8 +4,8 @@ import java.io.File
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
+import sbt.librarymanagement._
 import coursier.maven.MavenSource
-import SbtCompatibility._
 
 object ToSbt {
 

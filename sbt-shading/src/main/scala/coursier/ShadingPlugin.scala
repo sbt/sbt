@@ -3,10 +3,9 @@ package coursier
 import java.io.File
 
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
+import sbt.librarymanagement._
 import sbt.Keys._
 import sbt.{AutoPlugin, Compile, Configuration, SettingKey, TaskKey, inConfig}
-
-import SbtCompatibility._
 
 object ShadingPlugin extends AutoPlugin {
 
@@ -104,7 +103,7 @@ object ShadingPlugin extends AutoPlugin {
           configuration := baseSbtConfiguration, // wuw
           ivyConfigurations := ivyConfigurations.in(baseSbtConfiguration).value
             .filter(_.name != Shaded.name)
-            .map(c => c.withExtendsConfigs(c.extendsConfigs.filter(_.name != Shaded.name))),
+            .map(c => c.withExtendsConfigs(c.extendsConfigs.toVector.filter(_.name != Shaded.name))),
           libraryDependencies := libraryDependencies.in(baseSbtConfiguration).value.filter { dep =>
             val isShaded = dep.configurations.exists { mappings =>
               ivyXmlMappings(mappings).exists(_._1 == Shaded.name)
