@@ -144,3 +144,12 @@ def customCommands: Seq[Setting[_]] = Seq(
       state
   }
 )
+
+inThisBuild(Seq(
+  whitesourceProduct                   := "Lightbend Reactive Platform",
+  whitesourceAggregateProjectName      := "sbt-lm-master",
+  whitesourceAggregateProjectToken     := "9bde4ccbaab7401a91f8cda337af84365d379e13abaf473b85cb16e3f5c65cb6",
+  whitesourceIgnoredScopes             += "scalafmt",
+  whitesourceFailOnError               := sys.env.contains("WHITESOURCE_PASSWORD"), // fail if pwd is present
+  whitesourceForceCheckAllDependencies := true,
+))

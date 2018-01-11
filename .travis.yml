@@ -2,16 +2,24 @@ language: scala
 jdk: oraclejdk8
 
 scala:
-  - 2.11.11
-  - 2.12.3
+  - 2.11.12
+  - 2.12.4
 
 matrix:
   include:
-  - scala: 2.12.3
+  - scala: 2.12.4
     jdk: oraclejdk9
 
-script:
-  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M ";++$TRAVIS_SCALA_VERSION;mimaReportBinaryIssues;scalafmt::test;test:scalafmt::test;sbt:scalafmt::test;test"
+script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
+  ++$TRAVIS_SCALA_VERSION
+  mimaReportBinaryIssues
+  scalafmt::test test:scalafmt::test sbt:scalafmt::test
+  whitesourceCheckPolicies
+  test
+
+env:
+  global:
+    - secure: D9Ckfxq/5n+41REwuPBwb0CHRVSPtCJRN+N1FWNFjUnfCHZQCeclP8Ydp9ql/fZxICG8rnCOI5XW0j2YeAiR+abpQNmQ42pKMEjNT0VQDZ0I1lQfiDL071Kj+ui9AH+TqAvBT011u72ML52iDfV0WaL/Skf1Noh0lXc+IscRI56OLRv+YU5n5aNZhXon6AZHU11rRCg4aMwaHr+U9ISSUXc6OtJeFC/SAYNUNYEOZwTOJ4Y2+VrKAmKuIZ2jjkMF13eKMzXw5g+u8V3AmOpIm1RiyS2dAgAoc+r2ucF9RUMsfiZIF0XBu65iv9hZP5m0q11n6IFEKC9bpLsTYCAwX2MgVayoHvDQv1gkL/cA1gkqmf0Kkx3oc33aYLgsCydj2Lbg/myKD+GeHxr5WhyeSEee3Bwj+KGNwvjfcaPEECCor6yilKGdIsuYbfHzu8B8moNjwH7ui5f5w/1xuWrdaSA23LOIYbhP+2rM894JIYNNt5vlMLoYMzmC9N1E/qyBRYSdfMr+Uh8qI+j85hkKKgEffSu9f55IH6bk6Lq08Nc4d64KXUISDNJj59MrJcadatsS2vp+u39zR/iIewW4a017bAFfv57AJb6SwLdvASG+psFH8MRPD6xYPZKNw4Al/4YMc+oXONplSXyOu/jQYjSfK9tyvJwpoY7tLh6vEBc=
 
 cache:
   directories:
@@ -19,5 +27,5 @@ cache:
     - $HOME/.sbt
 
 before_cache:
-  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
-  - find $HOME/.sbt        -name "*.lock"               -print -delete
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt        -name "*.lock"               -delete
