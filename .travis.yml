@@ -16,8 +16,10 @@ matrix:
   fast_finish: true
 
 env:
+  global:
+    - secure: d3bu2KNwsVHwfhbGgO+gmRfDKBJhfICdCJFGWKf2w3Gv86AJZX9nuTYRxz0KtdvEHO5Xw8WTBZLPb2thSJqhw9OCm4J8TBAVqCP0ruUj4+aqBUFy4bVexQ6WKE6nWHs4JPzPk8c6uC1LG3hMuzlC8RGETXtL/n81Ef1u7NjyXjs=
   matrix:
-    - SBT_CMD=";mimaReportBinaryIssues ;scalafmt::test ;test:scalafmt::test ;sbt:scalafmt::test ;headerCheck ;test:headerCheck ;test:compile ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests"
+    - SBT_CMD=";mimaReportBinaryIssues ;scalafmt::test ;test:scalafmt::test ;sbt:scalafmt::test ;headerCheck ;test:headerCheck ;whitesourceCheckPolicies ;test:compile ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests"
     - SBT_CMD="scripted actions/*"
     - SBT_CMD="scripted apiinfo/* compiler-project/* ivy-deps-management/*"
     - SBT_CMD="scripted dependency-management/*1of4"
@@ -46,5 +48,5 @@ script:
   - sbt -J-XX:ReservedCodeCacheSize=128m -J-Xmx800M -J-Xms800M -J-server "$SBT_CMD"
 
 before_cache:
-  - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
-  - find $HOME/.sbt  -name "*.lock"               -print -delete
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt  -name "*.lock"               -delete
