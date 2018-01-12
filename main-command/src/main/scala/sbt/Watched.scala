@@ -99,7 +99,7 @@ object Watched {
     @tailrec def shouldTerminate: Boolean =
       (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)
     val sources = watched.watchSources(s)
-    val service = watched.watchService()
+    val service = s get ContinuousWatchService getOrElse watched.watchService()
     val watchState = s get ContinuousState getOrElse WatchState.empty(service, sources)
 
     if (watchState.count > 0)
@@ -120,15 +120,21 @@ object Watched {
 
     if (triggered) {
       printIfDefined(watched triggeredMessage newWatchState)
-      (ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
+      (ClearOnFailure :: next :: FailureWall :: repeat :: s)
+        .put(ContinuousState, newWatchState)
+        .put(ContinuousWatchService, service)
     } else {
       while (System.in.available() > 0) System.in.read()
       service.close()
-      s.remove(ContinuousState)
+      s.remove(ContinuousState).remove(ContinuousWatchService)
     }
   }
   val ContinuousState =
     AttributeKey[WatchState]("watch state", "Internal: tracks state for continuous execution.")
+
+  val ContinuousWatchService =
+    AttributeKey[WatchService]("watch service",
+                               "Internal: tracks watch service for continuous execution.")
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 
