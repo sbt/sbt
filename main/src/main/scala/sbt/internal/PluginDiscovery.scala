@@ -47,7 +47,7 @@ object PluginDiscovery {
       "sbt.plugins.IvyPlugin" -> sbt.plugins.IvyPlugin,
       "sbt.plugins.JvmPlugin" -> sbt.plugins.JvmPlugin,
       "sbt.plugins.CorePlugin" -> sbt.plugins.CorePlugin,
-      "sbt.plugins.ScriptedPlugin" -> sbt.plugins.ScriptedPlugin,
+      "sbt.ScriptedPlugin" -> sbt.ScriptedPlugin,
       "sbt.plugins.SbtPlugin" -> sbt.plugins.SbtPlugin,
       "sbt.plugins.JUnitXmlReportPlugin" -> sbt.plugins.JUnitXmlReportPlugin,
       "sbt.plugins.Giter8TemplatePlugin" -> sbt.plugins.Giter8TemplatePlugin

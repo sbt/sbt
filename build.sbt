@@ -268,6 +268,10 @@ lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
     name := "Scripted sbt",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // sbt.test package is renamed to sbt.scriptedtest.
+      exclude[MissingClassProblem]("sbt.test.*"),
+    ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted, addSbtLmCore)
 
@@ -278,11 +282,8 @@ lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
     name := "Scripted Plugin",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      // scripted plugin has moved into sbt mothership as sbt.plugins.ScriptedPlugin.
-      // sbt.ScriptedPlugin is still here for bincomat.
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedPlugin#autoImport*"),
-      exclude[IncompatibleResultTypeProblem]("sbt.ScriptedPlugin.requires"),
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedPlugin.scriptedParser"),
+      // scripted plugin has moved into sbt mothership.
+      exclude[MissingClassProblem]("sbt.ScriptedPlugin*")
     ),
   )
   .configure(addSbtCompilerClasspath)

@@ -6,7 +6,6 @@
  */
 
 package sbt
-package plugins
 
 import java.io.File
 import Def.Initialize
@@ -90,7 +89,12 @@ object ScriptedPlugin extends AutoPlugin {
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =
     Def.task {
       val loader = ClasspathUtilities.toLoader(scriptedClasspath.value, scalaInstance.value.loader)
-      ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
+      try {
+        ModuleUtilities.getObject("sbt.scriptedtest.ScriptedTests", loader)
+      } catch {
+        case _: ClassNotFoundException =>
+          ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
+      }
     }
 
   private[sbt] def scriptedRunTask: Initialize[Task[Method]] = Def.taskDyn {

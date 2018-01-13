@@ -115,7 +115,7 @@ object Scripted {
     sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
-    val bridgeClass = Class.forName("sbt.test.ScriptedRunner", true, loader)
+    val bridgeClass = Class.forName("sbt.scriptedtest.ScriptedRunner", true, loader)
     val bridge = bridgeClass.getDeclaredConstructor().newInstance().asInstanceOf[SbtScriptedRunner]
     try {
       // Using java.util.List to encode File => Unit.

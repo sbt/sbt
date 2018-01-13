@@ -6,7 +6,7 @@
  */
 
 package sbt
-package test
+package scriptedtest
 
 import java.io.{ File, IOException }
 import xsbt.IPC
