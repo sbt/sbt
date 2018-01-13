@@ -16,7 +16,7 @@ import java.lang.reflect.Method
 
 object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
-  override def trigger = allRequirements
+
   object autoImport {
     val ScriptedConf = Configurations.config("scripted-sbt") hide
     val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
