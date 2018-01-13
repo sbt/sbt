@@ -48,6 +48,12 @@ object ScriptedPlugin extends AutoPlugin {
   }
 
   import autoImport._
+
+  override lazy val globalSettings = Seq(
+    scriptedBufferLog := true,
+    scriptedLaunchOpts := Seq(),
+  )
+
   override lazy val projectSettings = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
     scriptedSbt := (sbtVersion in pluginCrossBuild).value,
@@ -67,7 +73,6 @@ object ScriptedPlugin extends AutoPlugin {
       case Some((x, y)) => sys error s"Unknown sbt version ${scriptedSbt.value} ($x.$y)"
       case None         => sys error s"Unknown sbt version ${scriptedSbt.value}"
     }),
-    scriptedBufferLog := true,
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedParallelInstances := 1,
@@ -79,17 +84,16 @@ object ScriptedPlugin extends AutoPlugin {
       val pub = (publishLocal).value
       use(analysis, pub)
     },
-    scriptedLaunchOpts := Seq(),
     scripted := scriptedTask.evaluated
   )
 
-  def scriptedTestsTask: Initialize[Task[AnyRef]] =
+  private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =
     Def.task {
       val loader = ClasspathUtilities.toLoader(scriptedClasspath.value, scalaInstance.value.loader)
       ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
     }
 
-  def scriptedRunTask: Initialize[Task[Method]] = Def.taskDyn {
+  private[sbt] def scriptedRunTask: Initialize[Task[Method]] = Def.taskDyn {
     val fCls = classOf[File]
     val bCls = classOf[Boolean]
     val asCls = classOf[Array[String]]
@@ -107,7 +111,7 @@ object ScriptedPlugin extends AutoPlugin {
   }
 
   import DefaultParsers._
-  case class ScriptedTestPage(page: Int, total: Int)
+  private[sbt] case class ScriptedTestPage(page: Int, total: Int)
 
   private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
 
@@ -152,7 +156,8 @@ object ScriptedPlugin extends AutoPlugin {
     //(token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
   }
-  def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
+
+  private[sbt] def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
     val args = scriptedParser(sbtTestDirectory.value).parsed
     scriptedDependencies.value
     try {
