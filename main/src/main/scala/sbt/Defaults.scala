@@ -1366,12 +1366,13 @@ object Defaults extends BuildCommon {
         (compilers in task).value.scalac match {
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
         }
-      (new Console(compiler))(cpFiles,
-                              (scalacOptions in task).value,
-                              loader,
-                              (initialCommands in task).value,
-                              (cleanupCommands in task).value)()(s.log).get
-      println()
+      val sc = (scalacOptions in task).value
+      val ic = (initialCommands in task).value
+      val cc = (cleanupCommands in task).value
+      JLine.usingTerminal { _ =>
+        (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
+        println()
+      }
     }
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
