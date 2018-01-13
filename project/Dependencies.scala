@@ -45,8 +45,8 @@ object Dependencies {
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   val scalaXml = scala211Module("scala-xml", "1.0.5")
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.1" % Test
-  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4" % Test
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.1"
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val sjsonnew = Def.setting {
     "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value
   }

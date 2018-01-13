@@ -1,9 +1,8 @@
-package sbt.librarymanagement
+package sbt.internal.librarymanagement
 
-import sbt.internal.librarymanagement.BaseIvySpecification
+import sbt.librarymanagement._
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.librarymanagement.syntax._
-import org.scalatest.Assertions._
 
 class EvictionWarningSpec extends BaseIvySpecification {
   // This is a specification to check the eviction warnings

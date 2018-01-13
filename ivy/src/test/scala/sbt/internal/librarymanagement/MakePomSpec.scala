@@ -66,8 +66,10 @@ class MakePomSpec extends UnitSpec {
   "foo+" should "convert to foo+" in beParsedAsError("foo+")
 
   val mp = new MakePom(ConsoleLogger())
-  def convertTo(s: String, expected: String): Unit =
+  def convertTo(s: String, expected: String): Unit = {
     MakePom.makeDependencyVersion(s) shouldBe expected
+    ()
+  }
   def beParsedAsError(s: String): Unit = {
     intercept[Throwable] {
       MakePom.makeDependencyVersion(s)

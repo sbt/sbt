@@ -1,8 +1,8 @@
-package sbt.librarymanagement
+package sbt.internal.librarymanagement
 
-import sbt.librarymanagement.ivy.UpdateOptions
-import sbt.internal.librarymanagement.BaseIvySpecification
+import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
+import sbt.librarymanagement.ivy.UpdateOptions
 import Resolver._
 
 class ModuleResolversTest extends BaseIvySpecification {

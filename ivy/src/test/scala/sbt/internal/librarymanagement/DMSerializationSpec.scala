@@ -1,13 +1,12 @@
-package sbt.librarymanagement
+package sbt.internal.librarymanagement
 
 import java.net.URL
 import java.io.File
 
-import sbt.internal._, librarymanagement._
+import sbt.librarymanagement._
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
 import org.scalatest.Assertion
-
 import LibraryManagementCodec._
 
 class DMSerializationSpec extends UnitSpec {

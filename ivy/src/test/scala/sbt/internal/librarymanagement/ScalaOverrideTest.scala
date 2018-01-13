@@ -1,12 +1,11 @@
-package sbt.librarymanagement
+package sbt.internal.librarymanagement
 
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor
 
-import sbt.internal.librarymanagement.UnitSpec
-
 import sbt.internal.librarymanagement.IvyScalaUtil.OverrideScalaMediator
-import ScalaArtifacts._
+import sbt.librarymanagement._
+import sbt.librarymanagement.ScalaArtifacts._
 
 class ScalaOverrideTest extends UnitSpec {
   val OtherOrgID = "other.org"

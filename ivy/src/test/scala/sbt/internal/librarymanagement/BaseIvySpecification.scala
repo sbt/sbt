@@ -3,13 +3,13 @@ package sbt.internal.librarymanagement
 import sbt.io.IO
 import sbt.io.syntax._
 import java.io.File
-import cross.CrossVersionUtil
 import sbt.internal.util.ConsoleLogger
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
+import cross.CrossVersionUtil
 import Configurations._
 
-trait BaseIvySpecification extends UnitSpec {
+trait BaseIvySpecification extends AbstractEngineSpec {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
@@ -22,6 +22,13 @@ trait BaseIvySpecification extends UnitSpec {
     IvyDependencyResolution(mkIvyConfiguration(uo))
 
   def configurations = Vector(Compile, Test, Runtime)
+
+  def module(moduleId: ModuleID,
+             deps: Vector[ModuleID],
+             scalaFullVersion: Option[String]): ModuleDescriptor = {
+    module(moduleId, deps, scalaFullVersion, UpdateOptions(), true)
+  }
+
   def module(moduleId: ModuleID,
              deps: Vector[ModuleID],
              scalaFullVersion: Option[String],
@@ -77,23 +84,28 @@ trait BaseIvySpecification extends UnitSpec {
       .withMetadataDirectory(metadataDirectory)
   }
 
-  def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {
-    // IO.delete(currentTarget)
-    val config = makeUpdateConfiguration(false, Some(currentDependency))
-    IvyActions.updateEither(module, config, UnresolvedWarningConfiguration(), log)
+  def updateEither(module: ModuleDescriptor): Either[UnresolvedWarning, UpdateReport] =
+    ivyUpdateEither(module)
+
+  def ivyUpdateEither(module: ModuleDescriptor): Either[UnresolvedWarning, UpdateReport] = {
+    module match {
+      case m: IvySbt#Module =>
+        val config = makeUpdateConfiguration(false, Some(currentDependency))
+        IvyActions.updateEither(m, config, UnresolvedWarningConfiguration(), log)
+    }
   }
 
+  def cleanCache: Unit = cleanIvyCache()
   def cleanIvyCache(): Unit = IO.delete(currentTarget / "cache")
 
-  def cleanCachedResolutionCache(module: IvySbt#Module): Unit =
-    IvyActions.cleanCachedResolutionCache(module, log)
-
-  def ivyUpdate(module: IvySbt#Module) =
-    ivyUpdateEither(module) match {
-      case Right(r) => r
-      case Left(w) =>
-        throw w.resolveException
+  override def cleanCachedResolutionCache(module: ModuleDescriptor): Unit = {
+    module match {
+      case m: IvySbt#Module => IvyActions.cleanCachedResolutionCache(m, log)
     }
+  }
+
+  def ivyUpdate(module: ModuleDescriptor): UpdateReport =
+    update(module)
 
   def mkPublishConfiguration(resolver: Resolver,
                              artifacts: Map[Artifact, File]): PublishConfiguration = {

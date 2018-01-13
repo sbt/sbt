@@ -3,27 +3,21 @@ package sbt.internal.librarymanagement
 import org.scalatest.LoneElement._
 import sbt.util.ShowLines
 import sbt.librarymanagement._
-import sbt.librarymanagement.ivy.UpdateOptions
+import sbt.librarymanagement.syntax._
 
-class CachedResolutionSpec extends BaseIvySpecification {
+abstract class ResolutionSpec extends AbstractEngineSpec {
   import ShowLines._
 
-  override val resolvers = Vector(
-    Resolver.mavenCentral,
-    Resolver.sbtPluginRepo("releases")
-  )
-
   "Resolving the same module twice" should "work" in {
-    cleanIvyCache()
+    cleanCache()
     val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      exampleModuleId("0.1.0"),
       Vector(commonsIo13),
-      Some("2.10.2"),
-      UpdateOptions().withCachedResolution(true)
+      Some("2.10.2")
     )
-    val report = ivyUpdate(m)
+    val report = update(m)
     cleanCachedResolutionCache(m)
-    val _ = ivyUpdate(m)
+    val _ = update(m)
     // first resolution creates the minigraph
     println(report)
     // second resolution reads from the minigraph
@@ -34,17 +28,16 @@ class CachedResolutionSpec extends BaseIvySpecification {
   "Resolving the unsolvable module should" should "not work" in {
     // log.setLevel(Level.Debug)
     val m = module(
-      ModuleID("com.example", "foo", "0.2.0").withConfigurations(Some("compile")),
+      exampleModuleId("0.2.0"),
       Vector(mavenCayennePlugin302),
-      Some("2.10.2"),
-      UpdateOptions().withCachedResolution(true)
+      Some("2.10.2")
     )
-    ivyUpdateEither(m) match {
+    updateEither(m) match {
       case Right(_) => sys.error("this should've failed")
       case Left(uw) =>
         println(uw.lines.mkString("\n"))
     }
-    ivyUpdateEither(m) match {
+    updateEither(m) match {
       case Right(_) => sys.error("this should've failed 2")
       case Left(uw) =>
         uw.lines should contain allOf ("\n\tNote: Unresolved dependencies path:",
@@ -61,18 +54,17 @@ class CachedResolutionSpec extends BaseIvySpecification {
   // #2046 says that netty:3.2.0.Final is incorrectly evicted by netty:3.2.1.Final
   "Resolving a module with a pseudo-conflict" should "work" in {
     // log.setLevel(Level.Debug)
-    cleanIvyCache()
+    cleanCache()
     val m = module(
-      ModuleID("com.example", "foo", "0.3.0").withConfigurations(Some("compile")),
+      exampleModuleId("0.3.0"),
       Vector(avro177, dataAvro1940, netty320),
-      Some("2.10.2"),
-      UpdateOptions().withCachedResolution(true)
+      Some("2.10.2")
     )
     // first resolution creates the minigraph
-    val _ = ivyUpdate(m)
+    val _ = update(m)
     cleanCachedResolutionCache(m)
     // second resolution reads from the minigraph
-    val report = ivyUpdate(m)
+    val report = update(m)
     val modules: Seq[String] = report.configurations.head.modules map { _.toString }
     assert(modules exists { x: String =>
       x contains """org.jboss.netty:netty:3.2.0.Final"""
@@ -83,40 +75,37 @@ class CachedResolutionSpec extends BaseIvySpecification {
   }
 
   "Resolving a module with sbt cross build" should "work" in {
-    cleanIvyCache()
+    cleanCache()
     val attributes013 = Map("e:sbtVersion" -> "0.13", "e:scalaVersion" -> "2.10")
     val attributes10 = Map("e:sbtVersion" -> "1.0", "e:scalaVersion" -> "2.12")
     val module013 = module(
-      ModuleID("com.example", "foo", "0.4.0").withConfigurations(Some("compile")),
+      exampleModuleId("0.4.0"),
       Vector(sbtRelease.withExtraAttributes(attributes013)),
-      Some("2.10.6"),
-      UpdateOptions().withCachedResolution(true)
+      Some("2.10.6")
     )
     val module10 = module(
-      ModuleID("com.example", "foo", "0.4.0").withConfigurations(Some("compile")),
+      exampleModuleId("0.4.1"),
       Vector(sbtRelease.withExtraAttributes(attributes10)),
-      Some("2.12.3"),
-      UpdateOptions().withCachedResolution(true)
+      Some("2.12.3")
     )
-    ivyUpdate(module013).configurations.head.modules.map(_.toString).loneElement should include(
+    update(module013).configurations.head.modules.map(_.toString).loneElement should include(
       "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.10, sbtVersion=0.13)"
     )
-    ivyUpdate(module10).configurations.head.modules.map(_.toString).loneElement should include(
+    update(module10).configurations.head.modules.map(_.toString).loneElement should include(
       "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.12, sbtVersion=1.0)"
     )
   }
 
-  def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3").withConfigurations(Some("compile"))
+  def exampleModuleId(v: String): ModuleID = ("com.example" % "foo" % v % Compile)
+
+  def commonsIo13 = ("commons-io" % "commons-io" % "1.3" % Compile)
   def mavenCayennePlugin302 =
-    ModuleID("org.apache.cayenne.plugins", "maven-cayenne-plugin", "3.0.2").withConfigurations(
-      Some("compile"))
-  def avro177 = ModuleID("org.apache.avro", "avro", "1.7.7").withConfigurations(Some("compile"))
+    ("org.apache.cayenne.plugins" % "maven-cayenne-plugin" % "3.0.2" % Compile)
+  def avro177 = ("org.apache.avro" % "avro" % "1.7.7" % Compile)
   def dataAvro1940 =
-    ModuleID("com.linkedin.pegasus", "data-avro", "1.9.40").withConfigurations(Some("compile"))
-  def netty320 =
-    ModuleID("org.jboss.netty", "netty", "3.2.0.Final").withConfigurations(Some("compile"))
-  def sbtRelease =
-    ModuleID("com.github.gseitz", "sbt-release", "1.0.6").withConfigurations(Some("compile"))
+    ("com.linkedin.pegasus" % "data-avro" % "1.9.40" % Compile)
+  def netty320 = ("org.jboss.netty" % "netty" % "3.2.0.Final" % Compile)
+  def sbtRelease = ("com.github.gseitz" % "sbt-release" % "1.0.6" % Compile)
 
   def defaultOptions = EvictionWarningOptions.default
 }
