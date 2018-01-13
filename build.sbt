@@ -272,11 +272,18 @@ lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted, addSbtLmCore)
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
-  .dependsOn(sbtProj)
+  .dependsOn(mainProj)
   .settings(
     baseSettings,
     name := "Scripted Plugin",
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // scripted plugin has moved into sbt mothership as sbt.plugins.ScriptedPlugin.
+      // sbt.ScriptedPlugin is still here for bincomat.
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedPlugin#autoImport*"),
+      exclude[IncompatibleResultTypeProblem]("sbt.ScriptedPlugin.requires"),
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedPlugin.scriptedParser"),
+    ),
   )
   .configure(addSbtCompilerClasspath)
 
@@ -417,7 +424,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
-  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj)
+  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj, scriptedSbtProj)
   .settings(
     testedBaseSettings,
     name := "Main",

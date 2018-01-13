@@ -6,13 +6,21 @@
  */
 
 package sbt
+package plugins
 
+import java.io.File
 import Def.Initialize
 import Keys._
 import sbt.internal.util.complete.{ Parser, DefaultParsers }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ModuleUtilities
 import java.lang.reflect.Method
+import sbt.librarymanagement._
+import sbt.librarymanagement.syntax._
+import sbt.io._
+import sbt.io.syntax._
+import Project._
+import Def._
 
 object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -38,6 +46,7 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedDependencies = TaskKey[Unit]("scripted-dependencies")
     val scripted = InputKey[Unit]("scripted")
   }
+
   import autoImport._
   override lazy val projectSettings = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
@@ -66,7 +75,7 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {
       def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
-      val analysis = (compile in Test).value
+      val analysis = (Keys.compile in Test).value
       val pub = (publishLocal).value
       use(analysis, pub)
     },
@@ -143,7 +152,6 @@ object ScriptedPlugin extends AutoPlugin {
     //(token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
   }
-
   def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
     val args = scriptedParser(sbtTestDirectory.value).parsed
     scriptedDependencies.value
@@ -164,6 +172,6 @@ object ScriptedPlugin extends AutoPlugin {
   }
 
   private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
-    PathFinder(Classpaths.managedJars(config, classpathTypes.value, update.value).map(_.data))
+    PathFinder(Classpaths.managedJars(config, classpathTypes.value, Keys.update.value).map(_.data))
   }
 }
