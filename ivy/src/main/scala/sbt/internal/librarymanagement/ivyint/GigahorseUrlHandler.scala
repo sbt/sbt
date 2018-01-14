@@ -242,6 +242,8 @@ object GigahorseUrlHandler {
         Message.debug("HTTP response status: " + status + " url=" + url)
         if (status == 407 /* PROXY_AUTHENTICATION_REQUIRED */ ) {
           Message.warn("Your proxy requires authentication.")
+        } else if (status == 401) {
+          Message.warn("CLIENT ERROR: 401 Unauthorized. Check your resolvers username and password.")
         } else if (String.valueOf(status).startsWith("4")) {
           Message.verbose("CLIENT ERROR: " + response.message() + " url=" + url)
         } else if (String.valueOf(status).startsWith("5")) {
