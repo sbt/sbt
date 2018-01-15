@@ -1,9 +1,9 @@
-package sbt.librarymanagement
+package sbt.internal.librarymanagement
 
 import java.io.File
 
 import org.apache.ivy.util.Message
-import sbt.internal.librarymanagement.{ BaseIvySpecification, IvyActions }
+import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.io.IO
 

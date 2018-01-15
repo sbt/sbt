@@ -1,8 +1,8 @@
-package sbt.librarymanagement
+package sbt.internal.librarymanagement
 
-import org.scalatest.Assertion
-import sbt.internal.librarymanagement.BaseIvySpecification
+import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
+import org.scalatest.Assertion
 import DependencyBuilders.OrganizationArtifactName
 
 class InclExclSpec extends BaseIvySpecification {

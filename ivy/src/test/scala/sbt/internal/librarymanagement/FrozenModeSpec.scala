@@ -1,7 +1,7 @@
-package sbt.librarymanagement
+package sbt.internal.librarymanagement
 
+import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.UpdateOptions
-import sbt.internal.librarymanagement._
 import sbt.librarymanagement.syntax._
 
 class FrozenModeSpec extends BaseIvySpecification {

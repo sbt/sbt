@@ -1,6 +1,6 @@
-package sbt.librarymanagement.ivy
+package sbt.internal.librarymanagement
 
-import sbt.internal.librarymanagement.UnitSpec
+import sbt.librarymanagement.ivy._
 
 class UpdateOptionsSpec extends UnitSpec {
 
