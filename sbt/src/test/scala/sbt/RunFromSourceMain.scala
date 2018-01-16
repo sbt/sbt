@@ -12,7 +12,7 @@ import scala.annotation.tailrec
 import xsbti._
 
 object RunFromSourceMain {
-  private val sbtVersion = "1.0.3" // "dev"
+  private val sbtVersion = "1.1.0" // "dev"
   private val scalaVersion = "2.12.4"
 
   def main(args: Array[String]): Unit = args match {
@@ -51,6 +51,8 @@ object RunFromSourceMain {
     def baseDirectory = baseDir
     def arguments = args.toArray
     def provider = new AppProvider { appProvider =>
+      def bootDirectory: File = file(sys.props("user.home")) / ".sbt" / "boot"
+      def scalaHome: File = bootDirectory / s"scala-$scalaVersion"
       def scalaProvider = new ScalaProvider { scalaProvider =>
         def scalaOrg = "org.scala-lang"
         def launcher = new Launcher {
@@ -60,15 +62,15 @@ object RunFromSourceMain {
           def app(id: xsbti.ApplicationID, version: String) = appProvider
           def topLoader = new java.net.URLClassLoader(Array(), null)
           def globalLock = noGlobalLock
-          def bootDirectory = file(sys.props("user.home")) / ".sbt" / "boot"
-          def ivyRepositories = Array()
-          def appRepositories = Array()
-          def isOverrideRepositories = false
+          def bootDirectory = appProvider.bootDirectory
           def ivyHome = file(sys.props("user.home")) / ".ivy2"
+          def ivyRepositories = Array(new PredefinedRepository { def id() = Predefined.Local })
+          def appRepositories = Array(new PredefinedRepository { def id() = Predefined.Local })
+          def isOverrideRepositories = false
           def checksums = Array("sha1", "md5")
         }
         def version = scalaVersion
-        def libDir: File = launcher.bootDirectory / s"scala-$version" / "lib"
+        def libDir: File = scalaHome / "lib"
         def jar(name: String): File = libDir / s"$name.jar"
         def libraryJar = jar("scala-library")
         def compilerJar = jar("scala-compiler")
@@ -86,6 +88,7 @@ object RunFromSourceMain {
         CrossValue.Disabled,
         Nil
       )
+      def appHome: File = scalaHome / id.groupID / id.name / id.version
 
       def mainClasspath =
         buildinfo.TestBuildInfo.fullClasspath.iterator
@@ -98,11 +101,11 @@ object RunFromSourceMain {
       def newMain = new xMain
 
       def components = new ComponentProvider {
-        def componentLocation(id: String) = ???
-        def component(componentID: String) = ???
-        def defineComponent(componentID: String, components: Array[File]) = ???
-        def addToComponent(componentID: String, components: Array[File]) = ???
-        def lockFile = ???
+        def componentLocation(id: String) = appHome / id
+        def component(id: String) = IO.listFiles(componentLocation(id), _.isFile)
+        def defineComponent(id: String, components: Array[File]) = ()
+        def addToComponent(id: String, components: Array[File]) = false
+        def lockFile = null
       }
     }
   }
