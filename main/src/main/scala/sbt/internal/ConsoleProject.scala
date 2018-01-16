@@ -48,7 +48,7 @@ object ConsoleProject {
       options,
       initCommands,
       cleanupCommands
-    )(Some(unit.loader), bindings)
+    )(Some(unit.loader), bindings).get
   }
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */
