@@ -468,6 +468,7 @@ lazy val sbtProj = (project in file("sbt"))
     buildInfoObject in Test := "TestBuildInfo",
     buildInfoKeys in Test := Seq[BuildInfoKey](fullClasspath in Compile),
     connectInput in run in Test := true,
+    outputStrategy in run in Test := Some(StdoutOutput),
   )
   .configure(addSbtCompilerBridge)
 
