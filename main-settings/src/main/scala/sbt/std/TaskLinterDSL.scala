@@ -48,6 +48,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
                     case _           => exprAtUseSite
                   }
                   uncheckedWrappers.add(removedSbtWrapper)
+                  ()
                 }
               case _ =>
             }

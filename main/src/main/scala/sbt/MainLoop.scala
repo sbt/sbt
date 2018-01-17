@@ -34,6 +34,7 @@ object MainLoop {
       runLoggedLoop(state, state.globalLogging.backing)
     } finally {
       Runtime.getRuntime.removeShutdownHook(shutdownHook)
+      ()
     }
   }
 

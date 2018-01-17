@@ -156,9 +156,9 @@ private[sbt] final class CommandExchange {
         Try(Await.ready(x.ready, Duration(d)))
         x.ready.value match {
           case Some(Success(_)) =>
-            // rememeber to shutdown only when the server comes up
+            // remember to shutdown only when the server comes up
             server = Some(x)
-          case Some(Failure(e: AlreadyRunningException)) =>
+          case Some(Failure(_: AlreadyRunningException)) =>
             s.log.warn(
               "sbt server could not start because there's another instance of sbt running on this build.")
             s.log.warn("Running multiple instances is unsupported")

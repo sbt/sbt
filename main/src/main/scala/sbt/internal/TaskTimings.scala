@@ -61,7 +61,7 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
     }
   }
   def ready(state: Unit, task: Task[_]) = ()
-  def workStarting(task: Task[_]) = timings.put(task, System.nanoTime)
+  def workStarting(task: Task[_]) = { timings.put(task, System.nanoTime); () }
   def workFinished[T](task: Task[T], result: Either[Task[T], Result[T]]) = {
     timings.put(task, System.nanoTime - timings.get(task))
     result.left.foreach { t =>

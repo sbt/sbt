@@ -500,7 +500,7 @@ object Defaults extends BuildCommon {
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
-    collectAnalyses := Definition.collectAnalysesTask.value,
+    collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
@@ -1373,7 +1373,7 @@ object Defaults extends BuildCommon {
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
     args => w.println((command +: args).mkString(" "))
 
-  private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args => {
+  private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = {
     val w = s.text(ExportStream)
     try exported(w, command)
     finally w.close() // workaround for #937

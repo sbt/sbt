@@ -75,8 +75,10 @@ private[sbt] object TemplateCommandUtil {
 
   private def runTemplate(info: TemplateResolverInfo,
                           arguments: List[String],
-                          loader: ClassLoader): Unit =
+                          loader: ClassLoader): Unit = {
     call(info.implementationClass, "run", loader)(classOf[Array[String]])(arguments.toArray)
+    ()
+  }
 
   private def infoLoader(
       info: TemplateResolverInfo,

@@ -152,7 +152,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
   def runManaged(f: Supplier[Unit], xlog: xsbti.Logger): Int = {
     val _ = running.incrementAndGet()
     try runManaged0(f, xlog)
-    finally running.decrementAndGet()
+    finally { running.decrementAndGet(); () }
   }
   private[this] def runManaged0(f: Supplier[Unit], xlog: xsbti.Logger): Int = {
     val log: Logger = xlog
@@ -264,6 +264,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
         val old = groups.putIfAbsent(groupID, new WeakReference(g))
         if (old.isEmpty) { // wasn't registered
           threadToApp.put(groupID, this)
+          ()
         }
       }
 
@@ -299,6 +300,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       threadToApp.remove(id)
       threads.remove(id)
       groups.remove(id)
+      ()
     }
 
     /** Final cleanup for this application after it has terminated. */

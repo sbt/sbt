@@ -9,8 +9,6 @@ package sbt
 package internal
 package server
 
-import sbt.internal.inc.Analysis
-
 class DefinitionTest extends org.specs2.mutable.Specification {
   import Definition.textProcessor
 
@@ -126,9 +124,12 @@ class DefinitionTest extends org.specs2.mutable.Specification {
       textProcessor.classTraitObjectInLine("B")("trait A  ") must be empty
     }
   }
+
   "definition" should {
+
     import scalacache.caffeine._
     import scalacache.modes.sync._
+
     "cache data in cache" in {
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
@@ -136,12 +137,11 @@ class DefinitionTest extends org.specs2.mutable.Specification {
 
       Definition.updateCache(cache)(cacheFile, useBinary)
 
-      val actual = cache.get(Definition.AnalysesKey)
+      val actual = Definition.AnalysesAccess.getFrom(cache)
 
-      actual.collect {
-        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      }.get should contain("Test.scala" -> true -> None)
+      actual.get should contain("Test.scala" -> true -> None)
     }
+
     "replace cache data in cache" in {
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
@@ -151,12 +151,11 @@ class DefinitionTest extends org.specs2.mutable.Specification {
       Definition.updateCache(cache)(cacheFile, falseUseBinary)
       Definition.updateCache(cache)(cacheFile, useBinary)
 
-      val actual = cache.get(Definition.AnalysesKey)
+      val actual = Definition.AnalysesAccess.getFrom(cache)
 
-      actual.collect {
-        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      }.get should contain("Test.scala" -> true -> None)
+      actual.get should contain("Test.scala" -> true -> None)
     }
+
     "cache more data in cache" in {
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
@@ -167,11 +166,9 @@ class DefinitionTest extends org.specs2.mutable.Specification {
       Definition.updateCache(cache)(otherCacheFile, otherUseBinary)
       Definition.updateCache(cache)(cacheFile, useBinary)
 
-      val actual = cache.get(Definition.AnalysesKey)
+      val actual = Definition.AnalysesAccess.getFrom(cache)
 
-      actual.collect {
-        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      }.get should contain("Test.scala" -> true -> None, "OtherTest.scala" -> false -> None)
+      actual.get should contain("Test.scala" -> true -> None, "OtherTest.scala" -> false -> None)
     }
   }
 }

@@ -71,11 +71,11 @@ object Sync {
   def copy(source: File, target: File): Unit =
     if (source.isFile)
       IO.copyFile(source, target, true)
-    else if (!target.exists) // we don't want to update the last modified time of an existing directory
-      {
-        IO.createDirectory(target)
-        IO.copyLastModified(source, target)
-      }
+    else if (!target.exists) { // we don't want to update the last modified time of an existing directory
+      IO.createDirectory(target)
+      IO.copyLastModified(source, target)
+      ()
+    }
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
     val dups = relation.reverseMap
