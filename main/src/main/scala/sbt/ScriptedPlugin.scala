@@ -27,23 +27,22 @@ object ScriptedPlugin extends AutoPlugin {
   object autoImport {
     val ScriptedConf = Configurations.config("scripted-sbt") hide
     val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
-    val scriptedSbt = SettingKey[String]("scripted-sbt")
-    val sbtLauncher = TaskKey[File]("sbt-launcher")
-    val sbtTestDirectory = SettingKey[File]("sbt-test-directory")
-    val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
-    val scriptedClasspath = TaskKey[PathFinder]("scripted-classpath")
-    val scriptedTests = TaskKey[AnyRef]("scripted-tests")
+
+    val scriptedSbt = settingKey[String]("")
+    val sbtLauncher = taskKey[File]("")
+    val sbtTestDirectory = settingKey[File]("")
+    val scriptedBufferLog = settingKey[Boolean]("")
+    val scriptedClasspath = taskKey[PathFinder]("")
+    val scriptedTests = taskKey[AnyRef]("")
     val scriptedBatchExecution =
       settingKey[Boolean]("Enables or disables batch execution for scripted.")
-    val scriptedParallelInstances =
-      settingKey[Int](
-        "Configures the number of scripted instances for parallel testing, only used in batch mode.")
-    val scriptedRun = TaskKey[Method]("scripted-run")
-    val scriptedLaunchOpts = SettingKey[Seq[String]](
-      "scripted-launch-opts",
-      "options to pass to jvm launching scripted tasks")
-    val scriptedDependencies = TaskKey[Unit]("scripted-dependencies")
-    val scripted = InputKey[Unit]("scripted")
+    val scriptedParallelInstances = settingKey[Int](
+      "Configures the number of scripted instances for parallel testing, only used in batch mode.")
+    val scriptedRun = taskKey[Method]("")
+    val scriptedLaunchOpts =
+      settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")
+    val scriptedDependencies = taskKey[Unit]("")
+    val scripted = inputKey[Unit]("")
   }
 
   import autoImport._
