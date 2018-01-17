@@ -80,17 +80,21 @@ object ScriptedPlugin extends AutoPlugin {
       ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
     }
 
-  private[this] val fCls = classOf[File]
-  private[this] val bCls = classOf[Boolean]
-  private[this] val asCls = classOf[Array[String]]
-  private[this] val lfCls = classOf[java.util.List[File]]
-  private[this] val iCls = classOf[Integer]
-
   def scriptedRunTask: Initialize[Task[Method]] = Def.taskDyn {
+    val fCls = classOf[File]
+    val bCls = classOf[Boolean]
+    val asCls = classOf[Array[String]]
+    val lfCls = classOf[java.util.List[File]]
+    val iCls = classOf[Int]
+
     val clazz = scriptedTests.value.getClass
-    if (scriptedBatchExecution.value)
-      Def.task(clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls))
-    else Def.task(clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls))
+    val method =
+      if (scriptedBatchExecution.value)
+        clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
+      else
+        clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
+
+    Def.task(method)
   }
 
   import DefaultParsers._
@@ -150,8 +154,8 @@ object ScriptedPlugin extends AutoPlugin {
       val log: java.lang.Boolean = scriptedBufferLog.value
       val launcher = sbtLauncher.value
       val opts = scriptedLaunchOpts.value.toArray
-      val empty = new java.util.ArrayList()
-      val instances: Integer = scriptedParallelInstances.value
+      val empty = new java.util.ArrayList[File]()
+      val instances: java.lang.Integer = scriptedParallelInstances.value
 
       if (scriptedBatchExecution.value)
         method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty, instances)

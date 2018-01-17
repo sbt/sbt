@@ -382,7 +382,7 @@ class ScriptedRunner {
       bootProps: File,
       launchOpts: Array[String],
       prescripted: java.util.List[File],
-      instances: Integer
+      instances: Int
   ): Unit = {
     val logger = ConsoleLogger()
     val addTestFile = (f: File) => { prescripted.add(f); () }
