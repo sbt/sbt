@@ -21,18 +21,15 @@ object ScriptedPlugin extends sbt.AutoPlugin {
 }
 
 trait ScriptedKeys {
-  lazy val publishAll = TaskKey[Unit]("publish-all")
-  lazy val publishLocalBinAll = taskKey[Unit]("")
-  lazy val scripted = InputKey[Unit]("scripted")
-  lazy val scriptedUnpublished = InputKey[Unit](
-    "scripted-unpublished",
-    "Execute scripted without publishing SBT first. Saves you some time when only your test has changed.")
-  lazy val scriptedSource = SettingKey[File]("scripted-source")
-  lazy val scriptedPrescripted = TaskKey[File => Unit]("scripted-prescripted")
-  lazy val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
-  lazy val scriptedLaunchOpts = SettingKey[Seq[String]](
-    "scripted-launch-opts",
-    "options to pass to jvm launching scripted tasks")
+  val publishAll = taskKey[Unit]("")
+  val publishLocalBinAll = taskKey[Unit]("")
+  val scripted = inputKey[Unit]("")
+  val scriptedUnpublished = inputKey[Unit]("Execute scripted without publishing sbt first. " +
+        "Saves you some time when only your test has changed")
+  val scriptedSource = settingKey[File]("")
+  val scriptedPrescripted = taskKey[File => Unit]("")
+  val scriptedBufferLog = settingKey[Boolean]("")
+  val scriptedLaunchOpts = settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")
 }
 
 object Scripted {
