@@ -537,11 +537,6 @@ def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   // publishLocalBinAll.value // TODO: Restore scripted needing only binary jars.
   publishAll.value
-  // These two projects need to be visible in a repo even if the default
-  // local repository is hidden, so we publish them to an alternate location and add
-  // that alternate repo to the running scripted test (in Scripted.scriptedpreScripted).
-  // (altLocalPublish in interfaceProj).value
-  // (altLocalPublish in compileInterfaceProj).value
   Scripted.doScripted(
     (sbtLaunchJar in bundledLauncherProj).value,
     (fullClasspath in scriptedSbtProj in Test).value,
@@ -599,7 +594,6 @@ def otherRootSettings =
     scripted := scriptedTask.evaluated,
     scriptedUnpublished := scriptedUnpublishedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
-    // scriptedPrescripted := { addSbtAlternateResolver _ },
     scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server"),
     publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
     publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
@@ -618,23 +612,6 @@ def otherRootSettings =
       scriptedUnpublished := scriptedUnpublishedTask.evaluated,
       scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
     ))
-
-// def addSbtAlternateResolver(scriptedRoot: File) = {
-//   val resolver = scriptedRoot / "project" / "AddResolverPlugin.scala"
-//   if (!resolver.exists) {
-//     IO.write(resolver, s"""import sbt._
-//                           |import Keys._
-//                           |
-//                           |object AddResolverPlugin extends AutoPlugin {
-//                           |  override def requires = sbt.plugins.JvmPlugin
-//                           |  override def trigger = allRequirements
-//                           |
-//                           |  override lazy val projectSettings = Seq(resolvers += alternativeLocalResolver)
-//                           |  lazy val alternativeLocalResolver = Resolver.file("$altLocalRepoName", file("$altLocalRepoPath"))(Resolver.ivyStylePatterns)
-//                           |}
-//                           |""".stripMargin)
-//   }
-// }
 
 lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
