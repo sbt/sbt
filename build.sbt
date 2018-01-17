@@ -624,7 +624,6 @@ def otherRootSettings =
     aggregate in bintrayRelease := false
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(
-      scriptedPrescripted := (_ => ()),
       scriptedLaunchOpts := List(
         "-Xmx1500M",
         "-Xms512M",

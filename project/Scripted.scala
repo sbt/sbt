@@ -13,11 +13,10 @@ object ScriptedPlugin extends sbt.AutoPlugin {
   }
 
   import autoImport._
-  import Scripted._
-  override def projectSettings = Seq(
+
+  override def globalSettings = super.globalSettings ++ Seq(
     scriptedBufferLog := true,
-    scriptedPrescripted := { _ =>
-      }
+    scriptedPrescripted := { _ => },
   )
 }
 
