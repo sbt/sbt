@@ -8,22 +8,24 @@
 package sbt
 
 import java.io.File
-import Def.Initialize
-import Keys._
-import sbt.internal.util.complete.{ Parser, DefaultParsers }
-import sbt.internal.inc.classpath.ClasspathUtilities
-import sbt.internal.inc.ModuleUtilities
 import java.lang.reflect.Method
-import sbt.librarymanagement._
-import sbt.librarymanagement.syntax._
+
 import sbt.io._
 import sbt.io.syntax._
-import Project._
+
+import sbt.internal.util.complete.{ Parser, DefaultParsers }
+
+import sbt.librarymanagement._
+import sbt.librarymanagement.syntax._
+
+import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.ModuleUtilities
+
 import Def._
+import Keys._
+import Project._
 
 object ScriptedPlugin extends AutoPlugin {
-  override def requires = plugins.JvmPlugin
-
   object autoImport {
     val ScriptedConf = Configurations.config("scripted-sbt") hide
     val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
@@ -44,7 +46,6 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedDependencies = taskKey[Unit]("")
     val scripted = inputKey[Unit]("")
   }
-
   import autoImport._
 
   override lazy val globalSettings = Seq(
@@ -113,10 +114,10 @@ object ScriptedPlugin extends AutoPlugin {
     Def.task(method)
   }
 
-  import DefaultParsers._
-  private[sbt] case class ScriptedTestPage(page: Int, total: Int)
+  private[sbt] final case class ScriptedTestPage(page: Int, total: Int)
 
   private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
+    import DefaultParsers._
 
     val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
     val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
@@ -124,15 +125,16 @@ object ScriptedPlugin extends AutoPlugin {
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
     }
-    val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet);
+    val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
 
     val id = charClass(c => !c.isWhitespace && c != '/').+.string
-    val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
+    val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
 
     // A parser for page definitions
     val pageP: Parser[ScriptedTestPage] = ("*" ~ NatBasic ~ "of" ~ NatBasic) map {
       case _ ~ page ~ _ ~ total => ScriptedTestPage(page, total)
     }
+
     // Grabs the filenames from a given test group in the current page definition.
     def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
       val files = pairMap(group).toSeq.sortBy(_.toLowerCase)
@@ -142,9 +144,11 @@ object ScriptedPlugin extends AutoPlugin {
       if (page.page == page.total) dropped
       else dropped.take(pageSize)
     }
+
     def nameP(group: String) = {
       token("*".id | id.examples(pairMap.getOrElse(group, Set.empty[String])))
     }
+
     val PagedIds: Parser[Seq[String]] =
       for {
         group <- groupP
@@ -152,10 +156,11 @@ object ScriptedPlugin extends AutoPlugin {
         files = pagedFilenames(group, page)
         // TODO -  Fail the parser if we don't have enough files for the given page size
         //if !files.isEmpty
-      } yield files map (f => group + '/' + f)
+      } yield files map (f => s"$group/$f")
 
     val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
     val testIdAsGroup = matched(testID) map (test => Seq(test))
+
     //(token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
   }
@@ -167,11 +172,11 @@ object ScriptedPlugin extends AutoPlugin {
       val method = scriptedRun.value
       val scriptedInstance = scriptedTests.value
       val dir = sbtTestDirectory.value
-      val log: java.lang.Boolean = scriptedBufferLog.value
+      val log = Boolean box scriptedBufferLog.value
       val launcher = sbtLauncher.value
       val opts = scriptedLaunchOpts.value.toArray
       val empty = new java.util.ArrayList[File]()
-      val instances: java.lang.Integer = scriptedParallelInstances.value
+      val instances = Int box scriptedParallelInstances.value
 
       if (scriptedBatchExecution.value)
         method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty, instances)
