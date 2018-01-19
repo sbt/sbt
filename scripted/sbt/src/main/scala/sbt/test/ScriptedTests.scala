@@ -324,8 +324,8 @@ class ScriptedRunner {
         prescripted.add(f); ()
     }) //new FullLogger(Logger.xlog2Log(log)))
   }
-  // This is called by sbt-scripted 0.13.x (the sbt host) when cross-compiling to sbt 0.13.x and 1.0.x
-  // See https://github.com/sbt/sbt/issues/3245
+
+  // This is called by sbt-scripted 0.13.x and 1.x (see https://github.com/sbt/sbt/issues/3245)
   def run(resourceBaseDirectory: File,
           bufferLog: Boolean,
           tests: Array[String],
@@ -372,6 +372,21 @@ class ScriptedRunner {
                   launchOpts,
                   addTestFile,
                   1)
+  }
+
+  // This is used by sbt-scripted sbt 1.x
+  def runInParallel(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      bootProps: File,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instances: Int
+  ): Unit = {
+    val logger = ConsoleLogger()
+    val addTestFile = (f: File) => { prescripted.add(f); () }
+    runInParallel(baseDir, bufferLog, tests, logger, bootProps, launchOpts, addTestFile, instances)
   }
 
   def runInParallel(
