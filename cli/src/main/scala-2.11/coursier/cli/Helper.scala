@@ -657,12 +657,12 @@ class Helper(
     }
   }
 
-  def fetch(
+  def fetchMap(
     sources: Boolean,
     javadoc: Boolean,
     artifactTypes: Set[String],
     subset: Set[Dependency] = null
-  ): Seq[File] = {
+  ): Map[String, File] = {
 
     val artifacts0 = artifacts(sources, javadoc, artifactTypes, subset).map { artifact =>
       artifact.copy(attributes = Attributes())
@@ -721,8 +721,6 @@ class Helper(
         (artifact.url, f)
     }.toMap
 
-    val files0 = artifactToFile.values.toSeq
-
     logger.foreach(_.stop())
 
     if (verbosityLevel >= 2)
@@ -777,7 +775,16 @@ class Helper(
       pw.write(jsonStr)
       pw.close()
     }
-    files0
+    artifactToFile
+  }
+
+  def fetch(
+    sources: Boolean,
+    javadoc: Boolean,
+    artifactTypes: Set[String],
+    subset: Set[Dependency] = null
+  ): Seq[File] = {
+    fetchMap(sources,javadoc,artifactTypes,subset).values.toSeq
   }
 
   def contextLoader = Thread.currentThread().getContextClassLoader

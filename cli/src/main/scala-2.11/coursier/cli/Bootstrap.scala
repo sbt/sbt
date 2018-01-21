@@ -119,31 +119,19 @@ final case class Bootstrap(
       }
 
     val (urls, files) =
-      if (options.standalone)
-        (
-          Seq.empty[String],
-          helper.fetch(
-            sources = false,
-            javadoc = false,
-            artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false)
-          )
-        )
-      else
-        (
-          helper.artifacts(
-            sources = false,
-            javadoc = false,
-            artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false)
-          ).map(_.url),
-          Seq.empty[File]
-        )
+      helper.fetchMap(
+        sources = false,
+        javadoc = false,
+        artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false)
+      ).toList.foldLeft((List.empty[String], List.empty[File])){
+        case ((urls, files), (url, file)) =>
+          if (options.standalone) (urls, file :: files)
+          else if (url.startsWith("file:/")) (urls, file :: files)
+          else (url :: urls, files)
+      }
 
     val isolatedUrls = isolatedArtifactFiles.map { case (k, (v, _)) => k -> v }
     val isolatedFiles = isolatedArtifactFiles.map { case (k, (_, v)) => k -> v }
-
-    val nonHttpUrls = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
-    if (nonHttpUrls.nonEmpty)
-      Console.err.println(s"Warning: non HTTP URLs:\n${nonHttpUrls.mkString("\n")}")
 
     val buffer = new ByteArrayOutputStream
 
