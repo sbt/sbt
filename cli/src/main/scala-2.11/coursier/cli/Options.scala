@@ -33,9 +33,6 @@ final case class CommonOptions(
   @Value("maven|sonatype:$repo|ivy2local|bintray:$org/$repo|bintray-ivy:$org/$repo|typesafe:ivy-$repo|typesafe:$repo|sbt-plugin:$repo|ivy:$pattern")
   @Short("r")
     repository: List[String] = Nil,
-  @Help("Source repository - for multiple repositories, separate with comma and/or add this option multiple times")
-  @Short("R")
-    sources: List[String] = Nil,
   @Help("Do not add default repositories (~/.ivy2/local, and Central)")
     noDefault: Boolean = false,
   @Help("Modify names in Maven repository paths for SBT plugins")
