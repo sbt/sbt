@@ -3,8 +3,6 @@ import Aliases._
 import Settings._
 import Publish._
 
-parallelExecution.in(Global) := false
-
 lazy val core = crossProject
   .disablePlugins(ScriptedPlugin)
   .jvmConfigure(_.enablePlugins(ShadingPlugin))
