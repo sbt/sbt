@@ -6,7 +6,7 @@ scala_library(
         "cache/src/main/scala:cache",
         "core:core",
         "extra/src/main/scala/coursier/extra:extra",
-        "extra/src/main/scala-2.11/coursier/extra:native",
+        "extra/src/main/scala-2.12/coursier/extra:native",
         ":util",
     ],
     sources = globs(

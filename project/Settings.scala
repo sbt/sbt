@@ -266,7 +266,7 @@ object Settings {
   lazy val addProguardedJar = {
 
     val extra = Def.taskDyn[Map[Artifact, File]] {
-      if (scalaBinaryVersion.value == "2.11")
+      if (scalaBinaryVersion.value == "2.12")
         Def.task(Map(proguardedArtifact.value -> proguardedJar.value))
       else
         Def.task(Map())

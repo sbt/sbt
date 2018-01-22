@@ -147,14 +147,14 @@ jar_library(
     name = "scala-native",
     jars = [
         jar(
-            name = "nativelib_native0.3_2.11",
+            name = "nativelib_native0.3_2.12",
             org = "org.scala-native",
-            rev = "0.3.3",
+            rev = "0.3.6",
         ),
         jar(
-            name = "tools_2.11",
-            org = "io.get-coursier.scala-native",
-            rev = "0.3.0-coursier-1",
+            name = "tools_2.12",
+            org = "org.scala-native",
+            rev = "0.3.6",
         ),
     ],
 )

@@ -47,7 +47,7 @@ launchProxyRepos() {
 
 integrationTestsRequirements() {
   # Required for ~/.ivy2/local repo tests
-  sbt ++2.11.11 coreJVM/publishLocal cli/publishLocal
+  sbt ++2.11.12 coreJVM/publishLocal ++2.12.4 cli/publishLocal
 
   # Required for HTTP authentication tests
   launchTestRepo --port 8080 --list-pages
@@ -134,32 +134,6 @@ checkBinaryCompatibility() {
   sbt ++${SCALA_VERSION} coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues
 }
 
-testLauncherJava6() {
-  sbt ++${SCALA_VERSION} "project cli" pack
-
-  # Via docker, getting errors like
-  #   standard_init_linux.go:178: exec user process caused "exec format error"
-  # because of the initial empty line in the sbt-pack launchers.
-  # Required until something like https://github.com/xerial/sbt-pack/pull/120
-  # gets merged.
-  local DIR="cli/target/pack/bin"
-  mv "$DIR/coursier" "$DIR/coursier.orig"
-  sed '1{/^$/d}' < "$DIR/coursier.orig" > "$DIR/coursier"
-  chmod +x "$DIR/coursier"
-
-  docker run -it --rm \
-    -v $(pwd)/cli/target/pack:/opt/coursier \
-    -e CI=true \
-    openjdk:6-jre \
-      /opt/coursier/bin/coursier fetch org.scalacheck::scalacheck:1.13.4
-
-  docker run -it --rm \
-    -v $(pwd)/cli/target/pack:/opt/coursier \
-    -e CI=true \
-    openjdk:6-jre \
-      /opt/coursier/bin/coursier launch --help
-}
-
 testSbtCoursierJava6() {
   sbt ++${SCALA_VERSION} coreJVM/publishLocal cache/publishLocal extra/publishLocal sbt-coursier/publishLocal
 
@@ -211,7 +185,7 @@ publish() {
 }
 
 testBootstrap() {
-  if is211; then
+  if is212; then
     sbt ++${SCALA_VERSION} "project cli" pack
     cli/target/pack/bin/coursier bootstrap -o cs-echo io.get-coursier:echo:1.0.0
     if [ "$(./cs-echo foo)" != foo ]; then
@@ -222,7 +196,7 @@ testBootstrap() {
 }
 
 testNativeBootstrap() {
-  if is211; then
+  if is212 && [ "$NATIVE" = "1" ]; then
     sbt ++${SCALA_VERSION} "project cli" pack
     cli/target/pack/bin/coursier bootstrap -S -o native-test io.get-coursier.scala-native::sandbox_native0.3:0.3.0-coursier-1
     if [ "$(./native-test)" != "Hello, World!" ]; then
@@ -275,10 +249,6 @@ else
 
     validateReadme
     checkBinaryCompatibility
-
-    if is211; then
-      testLauncherJava6
-    fi
   fi
 
   # Not using a jdk6 matrix entry with Travis as some sources of coursier require Java 7 to compile

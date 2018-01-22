@@ -124,12 +124,13 @@ lazy val extra = project
     coursierPrefix,
     shading,
     libs ++= {
-      if (scalaBinaryVersion.value == "2.11")
+      if (scalaBinaryVersion.value == "2.12")
         Seq(
           Deps.scalaNativeTools % "shaded",
-          // brought by only tools, so should be automaticaly shaded,
-	  // but issues in ShadingPlugin (with things published locally?)
-	  // seem to require explicit shading...
+          // Still applies?
+          //   brought by only tools, so should be automatically shaded,
+	        //   but issues in ShadingPlugin (with things published locally?)
+	        //   seem to require explicit shading...
           Deps.scalaNativeNir % "shaded",
           Deps.scalaNativeUtil % "shaded",
           Deps.fastParse % "shaded"
@@ -154,11 +155,11 @@ lazy val cli = project
   .enablePlugins(PackPlugin, SbtProguard)
   .settings(
     shared,
-    dontPublishIn("2.10", "2.12"),
+    dontPublishIn("2.10", "2.11"),
     coursierPrefix,
     unmanagedResources.in(Test) += packageBin.in(bootstrap).in(Compile).value,
     libs ++= {
-      if (scalaBinaryVersion.value == "2.11")
+      if (scalaBinaryVersion.value == "2.12")
         Seq(
           Deps.caseApp,
           Deps.argonautShapeless,
@@ -167,6 +168,12 @@ lazy val cli = project
         )
       else
         Seq()
+    },
+    mainClass.in(Compile) := {
+      if (scalaBinaryVersion.value == "2.12")
+        Some("coursier.cli.Coursier")
+      else
+        None
     },
     addBootstrapJarAsResource,
     proguardedCli
@@ -449,7 +456,7 @@ lazy val proguardedCli = Seq(
   javaOptions.in(Proguard, proguard) := Seq("-Xmx3172M"),
   artifactPath.in(Proguard) := proguardDirectory.in(Proguard).value / "coursier-standalone.jar",
   artifacts ++= {
-    if (scalaBinaryVersion.value == "2.11")
+    if (scalaBinaryVersion.value == "2.12")
       Seq(proguardedArtifact.value)
     else
       Nil
