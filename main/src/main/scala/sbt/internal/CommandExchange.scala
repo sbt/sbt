@@ -46,46 +46,41 @@ private[sbt] final class CommandExchange {
   private val autoStartServer =
     sys.props get "sbt.server.autostart" forall (_.toLowerCase == "true")
 
-  private val lock = new AnyRef {}
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
+  private val channelBufferLock = new AnyRef {}
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
 
   def channels: List[CommandChannel] = channelBuffer.toList
-  def subscribe(c: CommandChannel): Unit =
-    lock.synchronized {
-      channelBuffer.append(c)
-    }
+  def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized(channelBuffer.append(c))
 
   // periodically move all messages from all the channels
   @tailrec def blockUntilNextExec: Exec = {
     @tailrec def slurpMessages(): Unit =
-      (((None: Option[Exec]) /: channels) { _ orElse _.poll }) match {
+      channels.foldLeft(Option.empty[Exec]) { _ orElse _.poll } match {
+        case None => ()
         case Some(x) =>
           commandQueue.add(x)
           slurpMessages
-        case _ => ()
       }
     slurpMessages()
     Option(commandQueue.poll) match {
       case Some(x) => x
-      case _ =>
+      case None =>
         Thread.sleep(50)
         blockUntilNextExec
     }
   }
 
   def run(s: State): State = {
-    consoleChannel match {
-      case Some(_) => // do nothing
-      case _ =>
-        val x = new ConsoleChannel("console0")
-        consoleChannel = Some(x)
-        subscribe(x)
+    if (consoleChannel.isEmpty) {
+      val console0 = new ConsoleChannel("console0")
+      consoleChannel = Some(console0)
+      subscribe(console0)
     }
     if (autoStartServer) runServer(s)
     else s
@@ -97,25 +92,12 @@ private[sbt] final class CommandExchange {
    * Check if a server instance is running already, and start one if it isn't.
    */
   private[sbt] def runServer(s: State): State = {
-    lazy val port = (s get serverPort) match {
-      case Some(x) => x
-      case None    => 5001
-    }
-    lazy val host = (s get serverHost) match {
-      case Some(x) => x
-      case None    => "127.0.0.1"
-    }
-    lazy val auth: Set[ServerAuthentication] = (s get serverAuthentication) match {
-      case Some(xs) => xs
-      case None     => Set(ServerAuthentication.Token)
-    }
-    lazy val connectionType = (s get serverConnectionType) match {
-      case Some(x) => x
-      case None    => ConnectionType.Tcp
-    }
-    lazy val level: Level.Value = (s get serverLogLevel)
-      .orElse(s get logLevel)
-      .getOrElse(Level.Warn)
+    lazy val port = s.get(serverPort).getOrElse(5001)
+    lazy val host = s.get(serverHost).getOrElse("127.0.0.1")
+    lazy val auth: Set[ServerAuthentication] =
+      s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
+    lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
+    lazy val level = s.get(serverLogLevel).orElse(s.get(logLevel)).getOrElse(Level.Warn)
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
@@ -131,55 +113,50 @@ private[sbt] final class CommandExchange {
         new NetworkChannel(name, socket, Project structure s, auth, instance, logger)
       subscribe(channel)
     }
-    server match {
-      case Some(_)                    => // do nothing
-      case None if !firstInstance.get => // there's another server
-      case _ =>
-        val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
-        val h = Hash.halfHashString(IO.toURI(portfile).toString)
-        val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
-        val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
-        val pipeName = "sbt-server-" + h
-        val connection =
-          ServerConnection(connectionType,
-                           host,
-                           port,
-                           auth,
-                           portfile,
-                           tokenfile,
-                           socketfile,
-                           pipeName)
-        val x = Server.start(connection, onIncomingSocket, s.log)
-
-        // don't throw exception when it times out
-        val d = "10s"
-        Try(Await.ready(x.ready, Duration(d)))
-        x.ready.value match {
-          case Some(Success(_)) =>
-            // remember to shutdown only when the server comes up
-            server = Some(x)
-          case Some(Failure(_: AlreadyRunningException)) =>
-            s.log.warn(
-              "sbt server could not start because there's another instance of sbt running on this build.")
-            s.log.warn("Running multiple instances is unsupported")
-            server = None
-            firstInstance.set(false)
-          case Some(Failure(e)) =>
-            s.log.error(e.toString)
-            server = None
-          case None =>
-            s.log.warn(s"sbt server could not start in $d")
-            server = None
-            firstInstance.set(false)
-        }
+    if (server.isEmpty && firstInstance.get) {
+      val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
+      val h = Hash.halfHashString(IO.toURI(portfile).toString)
+      val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
+      val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
+      val pipeName = "sbt-server-" + h
+      val connection = ServerConnection(
+        connectionType,
+        host,
+        port,
+        auth,
+        portfile,
+        tokenfile,
+        socketfile,
+        pipeName,
+      )
+      val serverInstance = Server.start(connection, onIncomingSocket, s.log)
+      // don't throw exception when it times out
+      val d = "10s"
+      Try(Await.ready(serverInstance.ready, Duration(d)))
+      serverInstance.ready.value match {
+        case Some(Success(())) =>
+          // remember to shutdown only when the server comes up
+          server = Some(serverInstance)
+        case Some(Failure(_: AlreadyRunningException)) =>
+          s.log.warn(
+            "sbt server could not start because there's another instance of sbt running on this build.")
+          s.log.warn("Running multiple instances is unsupported")
+          server = None
+          firstInstance.set(false)
+        case Some(Failure(e)) =>
+          s.log.error(e.toString)
+          server = None
+        case None =>
+          s.log.warn(s"sbt server could not start in $d")
+          server = None
+          firstInstance.set(false)
+      }
     }
     s
   }
 
   def shutdown(): Unit = {
-    channels foreach { c =>
-      c.shutdown()
-    }
+    channels foreach (_.shutdown())
     // interrupt and kill the thread
     server.foreach(_.shutdown())
     server = None
@@ -202,7 +179,7 @@ private[sbt] final class CommandExchange {
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }
@@ -241,7 +218,7 @@ private[sbt] final class CommandExchange {
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }
@@ -283,7 +260,7 @@ private[sbt] final class CommandExchange {
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }
@@ -325,7 +302,7 @@ private[sbt] final class CommandExchange {
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }

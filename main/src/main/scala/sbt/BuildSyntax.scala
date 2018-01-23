@@ -11,7 +11,7 @@ import sbt.internal.DslEntry
 import sbt.librarymanagement.Configuration
 
 private[sbt] trait BuildSyntax {
-  import language.experimental.macros
+  import scala.language.experimental.macros
   def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
   def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
   def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
