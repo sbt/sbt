@@ -9,27 +9,31 @@ package sbt
 package scriptedtest
 
 import java.io.File
+import java.net.SocketException
 import java.util.Properties
+import java.util.concurrent.ForkJoinPool
 
-import scala.util.control.NonFatal
-import sbt.internal.scripted._
-import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
-import sbt.io.IO.wrapNull
-import sbt.io.FileFilter._
-import sbt.internal.io.Resources
-import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
-import sbt.util.{ AbstractLogger, Logger }
-
+import scala.collection.GenSeq
 import scala.collection.mutable
 import scala.collection.parallel.ForkJoinTaskSupport
-import scala.collection.parallel.mutable.ParSeq
+import scala.util.control.NonFatal
 
-final class ScriptedTests(resourceBaseDirectory: File,
-                          bufferLog: Boolean,
-                          launcher: File,
-                          launchOpts: Seq[String]) {
-  import sbt.io.syntax._
-  import ScriptedTests._
+import sbt.internal.scripted._
+import sbt.internal.io.Resources
+import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
+import sbt.io.syntax._
+import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
+import sbt.io.FileFilter._
+import sbt.util.{ AbstractLogger, Logger }
+
+final class ScriptedTests(
+    resourceBaseDirectory: File,
+    bufferLog: Boolean,
+    launcher: File,
+    launchOpts: Seq[String],
+) {
+  import ScriptedTests.{ TestRunner, emptyCallback }
+
   private val testResources = new Resources(resourceBaseDirectory)
 
   val ScriptFilename = "test"
@@ -37,14 +41,17 @@ final class ScriptedTests(resourceBaseDirectory: File,
 
   def scriptedTest(group: String, name: String, log: xsbti.Logger): Seq[TestRunner] =
     scriptedTest(group, name, Logger.xlog2Log(log))
+
   def scriptedTest(group: String, name: String, log: Logger): Seq[TestRunner] =
     singleScriptedTest(group, name, emptyCallback, log)
 
   /** Returns a sequence of test runners that have to be applied in the call site. */
-  def singleScriptedTest(group: String,
-                         name: String,
-                         prescripted: File => Unit,
-                         log: Logger): Seq[TestRunner] = {
+  def singleScriptedTest(
+      group: String,
+      name: String,
+      prescripted: File => Unit,
+      log: Logger,
+  ): Seq[TestRunner] = {
 
     // Test group and names may be file filters (like '*')
     for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
@@ -97,8 +104,8 @@ final class ScriptedTests(resourceBaseDirectory: File,
     val groupAndNameDirs = {
       for {
         (group, name) <- testGroupAndNames
-        groupDir <- resourceBaseDirectory.*(group).get
-        testDir <- groupDir.*(name).get
+        groupDir <- (resourceBaseDirectory * group).get
+        testDir <- (groupDir * name).get
       } yield (groupDir, testDir)
     }
 
@@ -318,8 +325,8 @@ final class ScriptedTests(resourceBaseDirectory: File,
             // Reload and initialize (to reload contents of .sbtrc files)
             val pluginImplementation = createAutoPlugin(name)
             IO.write(tempTestDir / "project" / "InstrumentScripted.scala", pluginImplementation)
-            val sbtHandlerError = "Missing sbt handler. Scripted is misconfigured."
-            val sbtHandler = handlers.getOrElse('>', sbtHandlerError).asInstanceOf[SbtHandler]
+            def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
+            val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
             val commandsToRun = ";reload;setUpScripted"
             val statement = Statement(commandsToRun, Nil, successExpected = true, line = -1)
 
@@ -368,7 +375,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
       label: String,
       testDirectory: File,
       preScriptedHook: File => Unit,
-      createHandlers: Map[Char, StatementHandler],
+      handlers: Map[Char, StatementHandler],
       runner: BatchScriptRunner,
       states: BatchScriptRunner.States,
       log: BufferedLogger
@@ -382,15 +389,15 @@ final class ScriptedTests(resourceBaseDirectory: File,
     }
 
     val pendingMark = if (pending) PendingLabel else ""
+
     def testFailed(t: Throwable): Option[String] = {
       if (pending) log.clear() else log.stop()
       log.error(s"x $label $pendingMark")
       if (!NonFatal(t)) throw t // We make sure fatal errors are rethrown
       if (t.isInstanceOf[TestException]) {
         t.getCause match {
-          case null | _: java.net.SocketException =>
-            log.error(" Cause of test exception: " + t.getMessage)
-          case _ => t.printStackTrace()
+          case null | _: SocketException => log.error(s" Cause of test exception: ${t.getMessage}")
+          case _                         => t.printStackTrace()
         }
       }
       if (pending) None else Some(label)
@@ -399,7 +406,6 @@ final class ScriptedTests(resourceBaseDirectory: File,
     import scala.util.control.Exception.catching
     catching(classOf[TestException]).withApply(testFailed).andFinally(log.clear).apply {
       preScriptedHook(testDirectory)
-      val handlers = createHandlers
       val parser = new TestScriptParser(handlers)
       val handlersAndStatements = parser.parse(file)
       runner.apply(handlersAndStatements, states)
@@ -421,6 +427,7 @@ object ScriptedTests extends ScriptedRunner {
   type TestRunner = () => Seq[Option[String]]
 
   val emptyCallback: File => Unit = _ => ()
+
   def main(args: Array[String]): Unit = {
     val directory = new File(args(0))
     val buffer = args(1).toBoolean
@@ -432,48 +439,52 @@ object ScriptedTests extends ScriptedRunner {
     val logger = ConsoleLogger()
     run(directory, buffer, tests, logger, bootProperties, Array(), emptyCallback)
   }
+
 }
 
+/** Runner for `scripted`. Not be confused with ScriptRunner. */
 class ScriptedRunner {
   // This is called by project/Scripted.scala
   // Using java.util.List[File] to encode File => Unit
-  def run(resourceBaseDirectory: File,
-          bufferLog: Boolean,
-          tests: Array[String],
-          bootProperties: File,
-          launchOpts: Array[String],
-          prescripted: java.util.List[File]): Unit = {
-
-    // Force Log4J to not use a thread context classloader otherwise it throws a CCE
-    sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
-
-    run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts, {
-      f: File =>
-        prescripted.add(f); ()
-    }) //new FullLogger(Logger.xlog2Log(log)))
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      bootProperties: File,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+  ): Unit = {
+    val logger = ConsoleLogger()
+    val addTestFile = (f: File) => { prescripted.add(f); () }
+    run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, addTestFile)
+    //new FullLogger(Logger.xlog2Log(log)))
   }
 
   // This is called by sbt-scripted 0.13.x and 1.x (see https://github.com/sbt/sbt/issues/3245)
-  def run(resourceBaseDirectory: File,
-          bufferLog: Boolean,
-          tests: Array[String],
-          bootProperties: File,
-          launchOpts: Array[String]): Unit =
-    run(resourceBaseDirectory,
-        bufferLog,
-        tests,
-        ConsoleLogger(),
-        bootProperties,
-        launchOpts,
-        ScriptedTests.emptyCallback)
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      bootProperties: File,
+      launchOpts: Array[String],
+  ): Unit = {
+    val logger = ConsoleLogger()
+    val prescripted = ScriptedTests.emptyCallback
+    run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, prescripted)
+  }
 
-  def run(resourceBaseDirectory: File,
-          bufferLog: Boolean,
-          tests: Array[String],
-          logger: AbstractLogger,
-          bootProperties: File,
-          launchOpts: Array[String],
-          prescripted: File => Unit): Unit = {
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      logger: AbstractLogger,
+      bootProperties: File,
+      launchOpts: Array[String],
+      prescripted: File => Unit,
+  ): Unit = {
+    // Force Log4J to not use a thread context classloader otherwise it throws a CCE
+    sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
+
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
     val sbtVersion = bootProperties.getName.dropWhile(!_.isDigit).dropRight(".jar".length)
     val accept = isTestCompatible(resourceBaseDirectory, sbtVersion) _
@@ -484,22 +495,15 @@ class ScriptedRunner {
     runAll(allTests)
   }
 
-  def runInParallel(resourceBaseDirectory: File,
-                    bufferLog: Boolean,
-                    tests: Array[String],
-                    bootProperties: File,
-                    launchOpts: Array[String],
-                    prescripted: java.util.List[File]): Unit = {
-    val logger = ConsoleLogger()
-    val addTestFile = (f: File) => { prescripted.add(f); () }
-    runInParallel(resourceBaseDirectory,
-                  bufferLog,
-                  tests,
-                  logger,
-                  bootProperties,
-                  launchOpts,
-                  addTestFile,
-                  1)
+  def runInParallel(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      bootProps: File,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+  ): Unit = {
+    runInParallel(baseDir, bufferLog, tests, bootProps, launchOpts, prescripted, 1)
   }
 
   // This is used by sbt-scripted sbt 1.x
@@ -518,54 +522,54 @@ class ScriptedRunner {
   }
 
   def runInParallel(
-      resourceBaseDirectory: File,
+      baseDir: File,
       bufferLog: Boolean,
       tests: Array[String],
       logger: AbstractLogger,
-      bootProperties: File,
+      bootProps: File,
       launchOpts: Array[String],
       prescripted: File => Unit,
       instances: Int
   ): Unit = {
-    val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
-    val sbtVersion = bootProperties.getName.dropWhile(!_.isDigit).dropRight(".jar".length)
-    val accept = isTestCompatible(resourceBaseDirectory, sbtVersion) _
+    val runner = new ScriptedTests(baseDir, bufferLog, bootProps, launchOpts)
+    val sbtVersion = bootProps.getName.dropWhile(!_.isDigit).dropRight(".jar".length)
+    val accept = isTestCompatible(baseDir, sbtVersion) _
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
     val scriptedTests =
-      get(tests, resourceBaseDirectory, accept, logger).map(st => (st.group, st.name))
+      get(tests, baseDir, accept, logger).map(st => (st.group, st.name))
     val scriptedRunners = runner.batchScriptedRunner(scriptedTests, prescripted, instances, logger)
     val parallelRunners = scriptedRunners.toParArray
-    val pool = new java.util.concurrent.ForkJoinPool(instances)
-    parallelRunners.tasksupport = new ForkJoinTaskSupport(pool)
-    runAllInParallel(parallelRunners)
+    parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
+    runAll(parallelRunners)
   }
 
-  private def reportErrors(errors: Seq[String]): Unit =
+  private def reportErrors(errors: GenSeq[String]): Unit =
     if (errors.nonEmpty) sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n")) else ()
 
-  def runAll(toRun: Seq[ScriptedTests.TestRunner]): Unit =
-    reportErrors(toRun.flatMap(test => test.apply().flatten.toSeq))
-
-  // We cannot reuse `runAll` because parallel collections != collections
-  def runAllInParallel(tests: ParSeq[ScriptedTests.TestRunner]): Unit = {
-    reportErrors(tests.flatMap(test => test.apply().flatten.toSeq).toList)
-  }
+  def runAll(toRun: GenSeq[ScriptedTests.TestRunner]): Unit =
+    reportErrors(toRun.flatMap(test => test.apply().flatten))
 
   @deprecated("No longer used", "1.1.0")
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     get(tests, baseDirectory, _ => true, log)
-  def get(tests: Seq[String],
-          baseDirectory: File,
-          accept: ScriptedTest => Boolean,
-          log: Logger): Seq[ScriptedTest] =
+
+  def get(
+      tests: Seq[String],
+      baseDirectory: File,
+      accept: ScriptedTest => Boolean,
+      log: Logger,
+  ): Seq[ScriptedTest] =
     if (tests.isEmpty) listTests(baseDirectory, accept, log) else parseTests(tests)
 
   @deprecated("No longer used", "1.1.0")
   def listTests(baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     listTests(baseDirectory, _ => true, log)
-  def listTests(baseDirectory: File,
-                accept: ScriptedTest => Boolean,
-                log: Logger): Seq[ScriptedTest] =
+
+  def listTests(
+      baseDirectory: File,
+      accept: ScriptedTest => Boolean,
+      log: Logger,
+  ): Seq[ScriptedTest] =
     (new ListTests(baseDirectory, accept, log)).listTests
 
   def parseTests(in: Seq[String]): Seq[ScriptedTest] =
@@ -575,7 +579,8 @@ class ScriptedRunner {
     }
 
   private def isTestCompatible(resourceBaseDirectory: File, sbtVersion: String)(
-      test: ScriptedTest): Boolean = {
+      test: ScriptedTest
+  ): Boolean = {
     import sbt.internal.librarymanagement.cross.CrossVersionUtil.binarySbtVersion
     val buildProperties = new Properties()
     val testDir = new File(new File(resourceBaseDirectory, test.group), test.name)
@@ -592,36 +597,38 @@ class ScriptedRunner {
 }
 
 final case class ScriptedTest(group: String, name: String) {
-  override def toString = group + "/" + name
+  override def toString = s"$group/$name"
 }
-private[sbt] object ListTests {
-  def list(directory: File, filter: java.io.FileFilter) = wrapNull(directory.listFiles(filter))
-}
-import ListTests._
-private[sbt] final class ListTests(baseDirectory: File,
-                                   accept: ScriptedTest => Boolean,
-                                   log: Logger) {
+
+private[sbt] final class ListTests(
+    baseDirectory: File,
+    accept: ScriptedTest => Boolean,
+    log: Logger,
+) {
+
   def filter = DirectoryFilter -- HiddenFileFilter
+
   def listTests: Seq[ScriptedTest] = {
-    list(baseDirectory, filter) flatMap { group =>
+    IO.listFiles(baseDirectory, filter) flatMap { group =>
       val groupName = group.getName
       listTests(group).map(ScriptedTest(groupName, _))
     }
   }
+
   private[this] def listTests(group: File): Set[String] = {
     val groupName = group.getName
-    val allTests = list(group, filter)
+    val allTests = IO.listFiles(group, filter)
     if (allTests.isEmpty) {
-      log.warn("No tests in test group " + groupName)
+      log.warn(s"No tests in test group $groupName")
       Set.empty
     } else {
       val (included, skipped) =
         allTests.toList.partition(test => accept(ScriptedTest(groupName, test.getName)))
       if (included.isEmpty)
-        log.warn("Test group " + groupName + " skipped.")
+        log.warn(s"Test group $groupName skipped.")
       else if (skipped.nonEmpty) {
-        log.warn("Tests skipped in group " + group.getName + ":")
-        skipped.foreach(testName => log.warn(" " + testName.getName))
+        log.warn(s"Tests skipped in group $groupName:")
+        skipped.foreach(testName => log.warn(s" ${testName.getName}"))
       }
       Set(included.map(_.getName): _*)
     }
