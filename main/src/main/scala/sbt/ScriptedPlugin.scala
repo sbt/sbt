@@ -181,6 +181,7 @@ object ScriptedPlugin extends AutoPlugin {
       if (scriptedBatchExecution.value)
         method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty, instances)
       else method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty)
+      ()
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
 
