@@ -20,4 +20,4 @@ install:
   - SET PATH=C:\sbt\sbt\bin;%PATH%
   - SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Dfile.encoding=UTF8
 test_script:
-  - sbt "scripted actions/* server/*"
+  - sbt "scripted actions/*" "testOnly sbt.ServerSpec"

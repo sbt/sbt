@@ -22,7 +22,7 @@ object RunFromSourceMain {
 
   // this arrangement is because Scala does not always properly optimize away
   // the tail recursion in a catch statement
-  @tailrec private def run(baseDir: File, args: Seq[String]): Unit =
+  @tailrec private[sbt] def run(baseDir: File, args: Seq[String]): Unit =
     runImpl(baseDir, args) match {
       case Some((baseDir, args)) => run(baseDir, args)
       case None                  => ()
