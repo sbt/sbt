@@ -6,10 +6,10 @@
  */
 
 package sbt
-package test
+package scriptedtest
 
 import sbt.internal.scripted._
-import sbt.test.BatchScriptRunner.States
+import sbt.scriptedtest.BatchScriptRunner.States
 
 /** Defines an alternative script runner that allows batch execution. */
 private[sbt] class BatchScriptRunner extends ScriptRunner {
