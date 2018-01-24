@@ -557,7 +557,6 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   )
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   // publishLocalBinAll.value // TODO: Restore scripted needing only binary jars.
   publishAll.value
   (sbtProj / Test / compile).value // make sure sbt.RunFromSourceMain is compiled
@@ -567,21 +566,20 @@ def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     (scalaInstance in scriptedSbtProj).value,
     scriptedSource.value,
     scriptedBufferLog.value,
-    result,
+    Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
     scriptedLaunchOpts.value
   )
 }
 
 def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   Scripted.doScripted(
     (sbtLaunchJar in bundledLauncherProj).value,
     (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value,
     scriptedSource.value,
     scriptedBufferLog.value,
-    result,
+    Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
     scriptedLaunchOpts.value
   )
