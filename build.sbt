@@ -318,6 +318,7 @@ lazy val actionsProj = (project in file("main-actions"))
 
 lazy val protocolProj = (project in file("protocol"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
     scalacOptions -= "-Ywarn-unused",
@@ -466,7 +467,7 @@ lazy val mainProj = (project in file("main"))
 lazy val sbtProj = (project in file("sbt"))
   .dependsOn(mainProj, scriptedSbtProj % "test->test")
   .settings(
-    baseSettings,
+    testedBaseSettings,
     name := "sbt",
     normalizedName := "sbt",
     crossScalaVersions := Seq(baseScalaVersion),
@@ -480,6 +481,7 @@ lazy val sbtProj = (project in file("sbt"))
     buildInfoKeys in Test := Seq[BuildInfoKey](fullClasspath in Compile),
     connectInput in run in Test := true,
     outputStrategy in run in Test := Some(StdoutOutput),
+    fork in Test := true,
   )
   .configure(addSbtCompilerBridge)
 
