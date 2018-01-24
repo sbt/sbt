@@ -8,11 +8,17 @@
 package sbt
 package scriptedtest
 
+import scala.collection.mutable
+
 import sbt.internal.scripted._
-import sbt.scriptedtest.BatchScriptRunner.States
+
+private[sbt] object BatchScriptRunner {
+  type States = mutable.HashMap[StatementHandler, StatementHandler#State]
+}
 
 /** Defines an alternative script runner that allows batch execution. */
 private[sbt] class BatchScriptRunner extends ScriptRunner {
+  import BatchScriptRunner.States
 
   /** Defines a method to run batched execution.
    *
@@ -57,9 +63,4 @@ private[sbt] class BatchScriptRunner extends ScriptRunner {
           throw new TestException(statement, "Command succeeded but failure was expected", null)
     }
   }
-}
-
-private[sbt] object BatchScriptRunner {
-  import scala.collection.mutable
-  type States = mutable.HashMap[StatementHandler, Any]
 }

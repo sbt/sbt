@@ -60,7 +60,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
               val handlers =
                 createScriptedHandlers(testDirectory, buffer, RemoteSbtCreatorKind.LauncherBased)
               val runner = new BatchScriptRunner
-              val states = new mutable.HashMap[StatementHandler, Any]()
+              val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
               commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
             }
             runOrHandleDisabled(label, testDirectory, singleTestRunner, buffer)
