@@ -4,3 +4,8 @@ node_modules/
 
 # tut backups?
 .*.swp
+
+# pants
+.pants.d
+.pants.workdir.file_lock
+.pids
