@@ -89,12 +89,12 @@ object TaskMacro {
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
   final val append1Migration =
-    "`<+=` operator is removed. Try `lhs += { x.value }`\n  or see http://www.scala-sbt.org/1.0/docs/Migrating-from-sbt-012x.html."
+    "`<+=` operator is removed. Try `lhs += { x.value }`\n  or see http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style."
   final val appendNMigration =
-    "`<++=` operator is removed. Try `lhs ++= { x.value }`\n  or see http://www.scala-sbt.org/1.0/docs/Migrating-from-sbt-012x.html."
+    "`<++=` operator is removed. Try `lhs ++= { x.value }`\n  or see http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style."
   final val assignMigration =
     """`<<=` operator is removed. Use `key := { x.value }` or `key ~= (old => { newValue })`.
-      |See http://www.scala-sbt.org/1.0/docs/Migrating-from-sbt-012x.html""".stripMargin
+      |See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style""".stripMargin
 
   import LinterDSL.{ Empty => EmptyLinter }
 
