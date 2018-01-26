@@ -24,10 +24,12 @@ def buildLevelSettings: Seq[Setting[_]] =
         Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
         Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
         Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
-        Developer("gkossakowski",
-                  "Grzegorz Kossakowski",
-                  "@gkossakowski",
-                  url("https://github.com/gkossakowski")),
+        Developer(
+          "gkossakowski",
+          "Grzegorz Kossakowski",
+          "@gkossakowski",
+          url("https://github.com/gkossakowski")
+        ),
         Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
       ),
       homepage := Some(url("https://github.com/sbt/sbt")),
