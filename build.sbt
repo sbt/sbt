@@ -361,32 +361,21 @@ lazy val coreMacrosProj = (project in file("core-macros"))
     mimaSettings,
   )
 
-/* Write all the compile-time dependencies of the spores macro to a file,
- * in order to read it from the created Toolbox to run the neg tests. */
-lazy val generateToolboxClasspath = Def.task {
-  val mainClassesDir = (classDirectory in Compile).value
-  val testClassesDir = (classDirectory in Test).value
-  val depsClasspath = (dependencyClasspath in Compile).value
-
-  val classpath = mainClassesDir +: testClassesDir +: (Attributed data depsClasspath) mkString ":"
-
-  val resourceDir = (resourceDirectory in Compile).value
-  val toolboxTestClasspath = resourceDir / "toolbox.classpath"
-
-  IO.write(toolboxTestClasspath, classpath)
-
-  streams.value.log.success("Wrote the classpath for the macro neg test suite.")
-
-  List(toolboxTestClasspath)
-}
-
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
   .dependsOn(completeProj, commandProj, stdTaskProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
     name := "Main Settings",
-    resourceGenerators in Test += generateToolboxClasspath.taskValue,
+    BuildInfoPlugin.buildInfoDefaultSettings,
+    addBuildInfoToConfig(Test),
+    buildInfoObject in Test := "TestBuildInfo",
+    buildInfoKeys in Test := Seq[BuildInfoKey](
+      classDirectory in Compile,
+      classDirectory in Test,
+      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
+      BuildInfoKey.map((dependencyClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
+    ),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       exclude[DirectMissingMethodProblem]("sbt.Scope.display012StyleMasked"),
