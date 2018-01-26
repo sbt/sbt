@@ -238,14 +238,16 @@ object State {
     def process(f: (Exec, State) => State): State = {
       def runCmd(cmd: Exec, remainingCommands: List[Exec]) = {
         log.debug(s"> $cmd")
-        f(cmd,
-          s.copy(remainingCommands = remainingCommands,
-                 currentCommand = Some(cmd),
-                 history = cmd :: s.history))
+        val s1 = s.copy(
+          remainingCommands = remainingCommands,
+          currentCommand = Some(cmd),
+          history = cmd :: s.history,
+        )
+        f(cmd, s1)
       }
       s.remainingCommands match {
-        case List()           => exit(true)
-        case List(x, xs @ _*) => runCmd(x, xs.toList)
+        case Nil     => exit(true)
+        case x :: xs => runCmd(x, xs)
       }
     }
     def :::(newCommands: List[String]): State = ++:(newCommands map { Exec(_, s.source) })
