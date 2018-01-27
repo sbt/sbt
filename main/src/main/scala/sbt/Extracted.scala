@@ -8,7 +8,6 @@
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, Act, Aggregation, SessionSettings }
-import Project._
 import Scope.GlobalScope
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.complete.Parser
@@ -43,7 +42,7 @@ final case class Extracted(structure: BuildStructure,
     structure.data.get(inCurrent(key.scope), key.key)
 
   private[this] def inCurrent[T](scope: Scope): Scope =
-    if (scope.project == This) scope.copy(project = Select(currentRef)) else scope
+    if (scope.project == This) scope in currentRef else scope
 
   /**
    * Runs the task specified by `key` and returns the transformed State and the resulting value of the task.
