@@ -2,8 +2,8 @@ package coursier.cli
 
 import java.io.{File, FileWriter}
 
-import coursier.cli.util.ReportNode
-import argonaut._, Argonaut._
+import argonaut.Argonaut._
+import coursier.cli.util.{DepNode, ReportNode}
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
@@ -215,7 +215,185 @@ class CliIntegrationTest extends FlatSpec {
           assert(node.conflict_resolution == Map("org.tukaani:xz:1.1" -> "org.tukaani:xz:1.2"))
         }
       }
-
   }
 
+  /**
+    * Result:
+    * |└─ org.apache.commons:commons-compress:1.5
+    * |   └─ org.tukaani:xz:1.2
+    */
+  "classifier tests" should "have tests.jar" in withFile() {
+    (excludeFile, _) =>
+      withFile() {
+        (jsonFile, _) => {
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath)
+          val fetchOpt = FetchOptions(common = commonOpt)
+
+          val fetch = new Fetch(fetchOpt) with TestOnlyExtraArgsApp
+          fetch.setRemainingArgs(Seq("org.apache.commons:commons-compress:1.5,classifier=tests"), Seq())
+          fetch.apply()
+
+          val node: ReportNode = getReportFromJson(jsonFile)
+
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.5")
+          assert(compressNode.isDefined)
+          assert(compressNode.get.files.head._1 == "tests")
+          assert(compressNode.get.files.head._2.contains("commons-compress-1.5-tests.jar"))
+          assert(compressNode.get.dependencies.contains("org.tukaani:xz:1.2"))
+        }
+      }
+  }
+
+  /**
+    * Result:
+    * |├─ org.apache.commons:commons-compress:1.5
+    * |│  └─ org.tukaani:xz:1.2
+    * |└─ org.apache.commons:commons-compress:1.5
+    * |   └─ org.tukaani:xz:1.2
+    */
+  "mixed vanilla and classifier " should "have tests.jar and .jar" in withFile() {
+    (excludeFile, _) =>
+      withFile() {
+        (jsonFile, _) => {
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath)
+          val fetchOpt = FetchOptions(common = commonOpt)
+
+          val fetch = new Fetch(fetchOpt) with TestOnlyExtraArgsApp
+          fetch.setRemainingArgs(
+            Seq("org.apache.commons:commons-compress:1.5,classifier=tests",
+              "org.apache.commons:commons-compress:1.5"),
+            Seq())
+          fetch.apply()
+
+          val node: ReportNode = getReportFromJson(jsonFile)
+
+          val compressNodes: Seq[DepNode] = node.dependencies
+            .filter(_.coord == "org.apache.commons:commons-compress:1.5")
+            .sortBy(_.files.head._1.length) // sort by first classifier length
+          assert(compressNodes.length == 2)
+          assert(compressNodes.head.files.head._1 == "")
+          assert(compressNodes.head.files.head._2.contains("commons-compress-1.5.jar"))
+
+          assert(compressNodes.last.files.head._1 == "tests")
+          assert(compressNodes.last.files.head._2.contains("commons-compress-1.5-tests.jar"))
+        }
+      }
+  }
+
+  /**
+    * Result:
+    * |└─ org.apache.commons:commons-compress:1.5
+    * |   └─ org.tukaani:xz:1.2 // should not be fetched
+    */
+  "intransitive" should "only fetch a single jar" in withFile() {
+    (_, _) =>
+      withFile() {
+        (jsonFile, _) => {
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath, intransitive = List("org.apache.commons:commons-compress:1.5"))
+          val fetchOpt = FetchOptions(common = commonOpt)
+
+          val fetch = new Fetch(fetchOpt) with TestOnlyExtraArgsApp
+          fetch.apply()
+
+          val node: ReportNode = getReportFromJson(jsonFile)
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.5")
+          assert(compressNode.isDefined)
+          assert(compressNode.get.files.head._1 == "")
+          assert(compressNode.get.files.head._2.contains("commons-compress-1.5.jar"))
+
+          assert(compressNode.get.dependencies.isEmpty)
+        }
+      }
+  }
+
+  /**
+    * Result:
+    * |└─ org.apache.commons:commons-compress:1.5
+    * |   └─ org.tukaani:xz:1.2
+    */
+  "intransitive classifier" should "only fetch a single tests jar" in withFile() {
+    (excludeFile, _) =>
+      withFile() {
+        (jsonFile, _) => {
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath, intransitive = List("org.apache.commons:commons-compress:1.5,classifier=tests"))
+          val fetchOpt = FetchOptions(common = commonOpt)
+
+          val fetch = new Fetch(fetchOpt) with TestOnlyExtraArgsApp
+          fetch.setRemainingArgs(Seq(), Seq())
+          fetch.apply()
+
+          val node: ReportNode = getReportFromJson(jsonFile)
+
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.5")
+          assert(compressNode.isDefined)
+          assert(compressNode.get.files.head._1 == "tests")
+          assert(compressNode.get.files.head._2.contains("commons-compress-1.5-tests.jar"))
+
+          assert(compressNode.get.dependencies.isEmpty)
+        }
+      }
+  }
+
+  /**
+    * Result:
+    * |└─ org.apache.commons:commons-compress:1.5 -> 1.4.1
+    * |   └─ org.tukaani:xz:1.0
+    */
+  "classifier with forced version" should "fetch tests jar" in withFile() {
+    (excludeFile, _) =>
+      withFile() {
+        (jsonFile, _) => {
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath, forceVersion = List("org.apache.commons:commons-compress:1.4.1"))
+          val fetchOpt = FetchOptions(common = commonOpt)
+
+          val fetch = new Fetch(fetchOpt) with TestOnlyExtraArgsApp
+          fetch.setRemainingArgs(Seq("org.apache.commons:commons-compress:1.5,classifier=tests"), Seq())
+          fetch.apply()
+
+          val node: ReportNode = getReportFromJson(jsonFile)
+
+          assert(!node.dependencies.exists(_.coord == "org.apache.commons:commons-compress:1.5"))
+
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.4.1")
+          assert(compressNode.isDefined)
+          assert(compressNode.get.files.head._1 == "tests")
+          assert(compressNode.get.files.head._2.contains("commons-compress-1.4.1-tests.jar"))
+
+          assert(compressNode.get.dependencies.size == 1)
+          assert(compressNode.get.dependencies.head == "org.tukaani:xz:1.0")
+        }
+      }
+  }
+
+  /**
+    * Result:
+    * |└─ org.apache.commons:commons-compress:1.5 -> 1.4.1
+    * |   └─ org.tukaani:xz:1.0 // should not be there
+    */
+  "intransitive, classifier, forced version" should "fetch a single tests jar" in withFile() {
+    (excludeFile, _) =>
+      withFile() {
+        (jsonFile, _) => {
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath,
+            intransitive = List("org.apache.commons:commons-compress:1.5,classifier=tests"),
+            forceVersion = List("org.apache.commons:commons-compress:1.4.1"))
+          val fetchOpt = FetchOptions(common = commonOpt)
+
+          val fetch = new Fetch(fetchOpt) with TestOnlyExtraArgsApp
+          fetch.setRemainingArgs(Seq(), Seq())
+          fetch.apply()
+
+          val node: ReportNode = getReportFromJson(jsonFile)
+
+          assert(!node.dependencies.exists(_.coord == "org.apache.commons:commons-compress:1.5"))
+
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.4.1")
+          assert(compressNode.isDefined)
+          assert(compressNode.get.files.head._1 == "tests")
+          assert(compressNode.get.files.head._2.contains("commons-compress-1.4.1-tests.jar"))
+
+          assert(compressNode.get.dependencies.isEmpty)
+        }
+      }
+  }
 }

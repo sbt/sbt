@@ -7,8 +7,23 @@ scala_library(
         "core:core",
         "extra/src/main/scala/coursier/extra:extra",
         "extra/src/main/scala-2.11/coursier/extra:native",
+        ":util",
     ],
-    sources = rglobs("*.scala"),
+    sources = globs(
+        "coursier/cli/scaladex/*.scala",
+        "coursier/cli/spark/*.scala",
+        "coursier/cli/*.scala",
+    ),
+)
+
+scala_library(
+    name = "util",
+    dependencies = [
+        "3rdparty/jvm:argonaut-shapeless",
+        "cache/src/main/scala:cache",
+        "core:core",
+    ],
+    sources = globs("coursier/cli/util/*.scala"),
 )
 
 jvm_binary(

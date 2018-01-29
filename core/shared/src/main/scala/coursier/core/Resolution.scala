@@ -1057,8 +1057,23 @@ final case class Resolution(
       (source, proj) <- projectCache
         .get(dep.moduleVersion)
         .toSeq
+
+      classifiers = {
+        if (!dep.attributes.classifier.isEmpty) {
+          val stringSeq: Seq[String] = overrideClassifiers.getOrElse(Seq()) ++ Seq(dep.attributes.classifier)
+          if (stringSeq.isEmpty) {
+            Option.empty
+          }
+          else {
+            Some(stringSeq)
+          }
+        } else {
+          overrideClassifiers
+        }
+      }
+
       artifact <- source
-        .artifacts(dep, proj, overrideClassifiers)
+        .artifacts(dep, proj, classifiers)
       if optional || !artifact.isOptional
     } yield dep -> artifact
 

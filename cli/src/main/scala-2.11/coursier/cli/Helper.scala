@@ -10,6 +10,7 @@ import coursier.cli.scaladex.Scaladex
 import coursier.cli.util.{JsonElem, JsonPrintRequirement, JsonReport}
 import coursier.extra.Typelevel
 import coursier.ivy.IvyRepository
+import coursier.util.Parse.ModuleRequirements
 import coursier.util.{Parse, Print}
 
 import scala.annotation.tailrec
@@ -83,9 +84,9 @@ class Helper(
   isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
   warnBaseLoaderNotFound: Boolean = true
 ) {
-  import common._
   import Helper.errPrintln
   import Util._
+  import common._
 
   val ttl0 =
     if (ttl.isEmpty)
@@ -152,7 +153,7 @@ class Helper(
   val (scaladexRawDependencies, otherRawDependencies) =
     rawDependencies.partition(s => s.contains("/") || !s.contains(":"))
 
-  val scaladexModuleVersionConfigs =
+  val scaladexDeps: List[Dependency] =
     if (scaladexRawDependencies.isEmpty)
       Nil
     else {
@@ -212,28 +213,8 @@ class Helper(
       res
         .collect { case \/-(l) => l }
         .flatten
-        .map { case (mod, ver) => (mod, ver, None) }
+        .map { case (mod, ver) => Dependency(mod, ver) }
     }
-
-
-  val (modVerCfgErrors, moduleVersionConfigs) =
-    Parse.moduleVersionConfigs(otherRawDependencies, scalaVersion)
-  val (intransitiveModVerCfgErrors, intransitiveModuleVersionConfigs) =
-    Parse.moduleVersionConfigs(intransitive, scalaVersion)
-
-  def allModuleVersionConfigs =
-    // FIXME Order of the dependencies is not respected here (scaladex ones go first)
-    scaladexModuleVersionConfigs ++ moduleVersionConfigs
-
-  prematureExitIf(modVerCfgErrors.nonEmpty) {
-    s"Cannot parse dependencies:\n" + modVerCfgErrors.map("  "+_).mkString("\n")
-  }
-
-  prematureExitIf(intransitiveModVerCfgErrors.nonEmpty) {
-    s"Cannot parse intransitive dependencies:\n" +
-      intransitiveModVerCfgErrors.map("  "+_).mkString("\n")
-  }
-
 
   val (forceVersionErrors, forceVersions0) = Parse.moduleVersions(forceVersion, scalaVersion)
 
@@ -265,12 +246,12 @@ class Helper(
 
   prematureExitIf(excludesWithAttr.nonEmpty) {
     s"Excluded modules with attributes not supported:\n" +
-    excludesWithAttr
-      .map("  " + _)
-      .mkString("\n")
+      excludesWithAttr
+        .map("  " + _)
+        .mkString("\n")
   }
 
-  val excludes: Set[(String, String)] = excludesNoAttr.map { mod =>
+  val globalExcludes: Set[(String, String)] = excludesNoAttr.map { mod =>
     (mod.organization, mod.name)
   }.toSet
 
@@ -296,30 +277,28 @@ class Helper(
       }).groupBy(_._1).mapValues(_.map(_._2).toSet).toMap
     }
 
-  val baseDependencies = allModuleVersionConfigs.map {
-    case (module, version, configOpt) =>
-      Dependency(
-        module,
-        version,
-        attributes = Attributes("", ""),
-        configuration = configOpt.getOrElse(defaultConfiguration),
-        exclusions = localExcludeMap.getOrElse(module.orgName, Set()) | excludes
-      )
+  val moduleReq = ModuleRequirements(globalExcludes, localExcludeMap, defaultConfiguration)
+
+  val (modVerCfgErrors: Seq[String], normalDeps: Seq[Dependency]) =
+    Parse.moduleVersionConfigs(otherRawDependencies, moduleReq, transitive=true, scalaVersion)
+
+  val (intransitiveModVerCfgErrors: Seq[String], intransitiveDeps: Seq[Dependency]) =
+    Parse.moduleVersionConfigs(intransitive, moduleReq, transitive=false, scalaVersion)
+
+  prematureExitIf(modVerCfgErrors.nonEmpty) {
+    s"Cannot parse dependencies:\n" + modVerCfgErrors.map("  "+_).mkString("\n")
   }
 
-  val intransitiveDependencies = intransitiveModuleVersionConfigs.map {
-    case (module, version, configOpt) =>
-      Dependency(
-        module,
-        version,
-        attributes = Attributes("", ""),
-        configuration = configOpt.getOrElse(defaultConfiguration),
-        exclusions = excludes,
-        transitive = false
-      )
+  prematureExitIf(intransitiveModVerCfgErrors.nonEmpty) {
+    s"Cannot parse intransitive dependencies:\n" +
+      intransitiveModVerCfgErrors.map("  "+_).mkString("\n")
   }
 
-  val dependencies = baseDependencies ++ intransitiveDependencies
+  val transitiveDeps: Seq[Dependency] =
+  // FIXME Order of the dependencies is not respected here (scaladex ones go first)
+    scaladexDeps ++ normalDeps
+
+  val allDependencies: Seq[Dependency] = transitiveDeps ++ intransitiveDeps
 
   val checksums = {
     val splitChecksumArgs = checksum.flatMap(_.split(',')).filter(_.nonEmpty)
@@ -335,7 +314,7 @@ class Helper(
   val userEnabledProfiles = profile.toSet
 
   val startRes = Resolution(
-    dependencies.toSet,
+    allDependencies.toSet,
     forceVersions = forceVersions,
     filter = Some(dep => keepOptional || !dep.optional),
     userActivations =
@@ -376,7 +355,7 @@ class Helper(
     errPrintln(
       s"  Dependencies:\n" +
         Print.dependenciesUnknownConfigs(
-          dependencies,
+          allDependencies,
           Map.empty,
           printExclusions = verbosityLevel >= 2
         )
@@ -507,7 +486,7 @@ class Helper(
     val depsStr =
       if (reverseTree || tree)
         Print.dependencyTree(
-          dependencies,
+          allDependencies,
           res,
           printExclusions = verbosityLevel >= 1,
           reverse = reverseTree
@@ -711,7 +690,7 @@ class Helper(
       val deps: Seq[Dependency] = Set(getDepArtifactsForClassifier(sources, javadoc, res).map(_._1): _*).toSeq
 
       // A map from requested org:name:version to reconciled org:name:version
-      val conflictResolutionForRoots: Map[String, String] = dependencies.map({ dep =>
+      val conflictResolutionForRoots: Map[String, String] = allDependencies.map({ dep =>
         val reconciledVersion: String = res.reconciledVersions
           .getOrElse(dep.module, dep.version)
         if (reconciledVersion != dep.version) {
@@ -842,7 +821,8 @@ class Helper(
 
         // Trying to get the main class of the first artifact
         val mainClassOpt = for {
-          (module, _, _) <- allModuleVersionConfigs.headOption
+          dep: Dependency <- transitiveDeps.headOption
+          module = dep.module
           mainClass <- mainClasses.collectFirst {
             case ((org, name), mainClass)
               if org == module.organization && (
@@ -854,7 +834,8 @@ class Helper(
         } yield mainClass
 
         def sameOrgOnlyMainClassOpt = for {
-          (module, _, _) <- allModuleVersionConfigs.headOption
+          dep: Dependency <- transitiveDeps.headOption
+          module = dep.module
           orgMainClasses = mainClasses.collect {
             case ((org, name), mainClass)
               if org == module.organization =>
