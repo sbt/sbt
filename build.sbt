@@ -219,7 +219,8 @@ lazy val web = project
     )
   )
 
-lazy val doc = project
+lazy val readme = project
+  .in(file("doc/readme"))
   .dependsOn(coreJvm, cache)
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(TutPlugin)
@@ -309,7 +310,7 @@ lazy val jvm = project
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`,
-    doc,
+    readme,
     okhttp
   )
   .settings(
@@ -372,7 +373,7 @@ lazy val coursier = project
     `sbt-pgp-coursier`,
     `sbt-shading`,
     web,
-    doc,
+    readme,
     okhttp
   )
   .settings(
