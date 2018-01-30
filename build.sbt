@@ -323,7 +323,7 @@ lazy val protocolProj = (project in file("protocol"))
     scalacOptions -= "-Ywarn-unused",
     scalacOptions += "-Xlint:-unused",
     name := "Protocol",
-    libraryDependencies ++= Seq(sjsonNewScalaJson.value),
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value, ipcSocket),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -355,6 +355,9 @@ lazy val commandProj = (project in file("main-command"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
       // Added an overload to reboot. The overload is private[sbt].
       exclude[ReversedMissingMethodProblem]("sbt.StateOps.reboot"),
+      // Replace nailgun socket stuff
+      exclude[MissingClassProblem]("sbt.internal.NG*"),
+      exclude[MissingClassProblem]("sbt.internal.ReferenceCountedFileDescriptor"),
     ),
     unmanagedSources in (Compile, headerCreate) := {
       val old = (unmanagedSources in (Compile, headerCreate)).value
