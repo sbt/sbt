@@ -43,9 +43,8 @@ private[sbt] class BatchScriptRunner extends ScriptRunner {
   def processStatement(handler: StatementHandler, statement: Statement, states: States): Unit = {
     val state = states(handler).asInstanceOf[handler.State]
     val nextState =
-      try { Right(handler(statement.command, statement.arguments, state)) } catch {
-        case e: Exception => Left(e)
-      }
+      try Right(handler(statement.command, statement.arguments, state))
+      catch { case e: Exception => Left(e) }
     nextState match {
       case Left(err) =>
         if (statement.successExpected) {
