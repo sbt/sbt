@@ -7,7 +7,6 @@
 
 package sbt
 
-import scala.Predef.{ conforms => _, _ }
 import java.io.File
 import java.util.jar.{ Attributes, Manifest }
 import scala.collection.JavaConverters._

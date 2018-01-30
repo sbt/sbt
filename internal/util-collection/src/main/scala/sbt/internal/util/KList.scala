@@ -10,7 +10,7 @@ package sbt.internal.util
 import Types._
 import Classes.Applicative
 
-/** Heterogeneous list with each element having type M[T] for some type T.*/
+/** A higher-kinded heterogeneous list of elements that share the same type constructor `M[_]`. */
 sealed trait KList[+M[_]] {
   type Transform[N[_]] <: KList[N]
 
