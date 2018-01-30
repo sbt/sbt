@@ -331,6 +331,6 @@ object EvictionWarning {
         }
       }
       if (out.isEmpty) Nil
-      else List("Here are other depedency conflicts that were resolved:", "") ::: out.toList
+      else List("Here are other dependency conflicts that were resolved:", "") ::: out.toList
     } else Nil
 }
