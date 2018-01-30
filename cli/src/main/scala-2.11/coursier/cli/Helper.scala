@@ -319,7 +319,7 @@ class Helper(
     filter = Some(dep => keepOptional || !dep.optional),
     userActivations =
       if (userEnabledProfiles.isEmpty) None
-      else Some(userEnabledProfiles.iterator.map(_ -> true).toMap),
+      else Some(userEnabledProfiles.iterator.map(p => if (p.startsWith("!")) p.drop(1) -> false else p -> true).toMap),
     mapDependencies = if (typelevel) Some(Typelevel.swap(_)) else None
   )
 
