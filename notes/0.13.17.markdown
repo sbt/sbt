@@ -8,6 +8,7 @@
 - Fixes over-compilation on Java 9 `scala.ext.dir`. [#3142][3142]/[#3701][3701] by [@retronym][@retronym]
 - Fixes `addSbtPlugin` to use the correct version of sbt. [#3393][3393]/[#3397][3397] by [@dwijnand][@dwijnand]
 - Changes the tuple enrichment deprecation warning messages. [#3455][3455] by [@olafurpg][@olafurpg]
+- Fixes `addCompilerPlugin(...)` so it can consume compiler plugins published to Ivy repository using sbt 1.x. [#3784][3784]/[#3855][3855] by [@eed3si9n][@eed3si9n]
 
 ### Internal
 
@@ -30,3 +31,5 @@
   [2156]: https://github.com/sbt/sbt/issues/2156
   [3834]: https://github.com/sbt/sbt/pull/3834
   [3848]: https://github.com/sbt/sbt/pull/3848
+  [3784]: https://github.com/sbt/sbt/issues/3784
+  [3855]: https://github.com/sbt/sbt/pull/3855
