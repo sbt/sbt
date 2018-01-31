@@ -114,7 +114,7 @@ private[sbt] final class CommandExchange {
       subscribe(channel)
     }
     if (server.isEmpty && firstInstance.get) {
-      val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
+      val portfile = s.baseDir / "project" / "target" / "active.json"
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
       val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
       val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
