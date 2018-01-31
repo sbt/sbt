@@ -111,6 +111,16 @@ $ ./coursier fetch org.apache.spark:spark-sql_2.11:1.6.1 com.twitter:algebird-sp
 ...
 ```
 
+If you use ZSH, simple tab-completions are available by copying the
+`scripts/_coursier` file into your completions directory, if you have one. If
+you do not, then you can install the completions with,
+```
+mkdir -p ~/.zsh/completion
+cp scripts/_coursier ~/.zsh/completion/
+echo 'fpath=(~/.zsh/completion $fpath)' >> ~/.zshrc
+echo 'autoload -Uz compinit ; compinit' >> ~/.zshrc
+```
+
 ### API
 
 Add to your `build.sbt`

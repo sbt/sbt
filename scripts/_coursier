@@ -1,0 +1,102 @@
+#compdef coursier
+
+_coursier() {
+  local -a cmds
+  
+  cmds=(
+    'bootstrap:generates tiny bootstrap launchers'
+    'fetch:fetches a set of dependencies'
+    'launch:fetches a set of dependencies and launches the `main` class'
+    'resolve:resolves dependencies'
+    'spark-submit:'
+  )
+
+  _arguments "1: :{_describe 'command' cmds}" '*:: :->args'
+
+  local artifactType=( {--artifact-type,-A}'[artifact types that should be retained, e.g. jar, src, doc, etc.; defaults to jar,bundle]:values:' )
+  local assemblyDependencies=( '--assembly-dependencies[assembly dependencies]:value:' )
+  local autoAssembly=( '--auto-assembly[generate Spark Yarn assembly (Spark 1.x) or fetch Spark Yarn jars, and supply those to Spark via conf]' )
+  local benchmark=( {--benchmark,-B}'[print the duration of each iteration of the resolution]:value:' )
+  local cache=( {--cache,-C}'[cache directory; defaults to environment variable COURSIER_CACHE or ~/.coursier/cache/v1]:value:' )
+  local checksum=( '--checksum[Checksums]:checksums:' )
+  local classifier=( {--classifier,-C}'[classifiers that should be fetched]:classifiers:' )
+  local classpath=( {--classpath,-p}'[print java -cp compatible output]' )
+  local defaultAssemblyDependencies=( '--default-assembly-dependencies[include default dependencies in Spark Yarn assembly or jars]:value:' )
+  local defaultConfiguration=( {--default-configuration,-c}'[default configuration]:configuration:' )
+  local dropInfoAttr=( '--drop-info-attr[drop module attributes starting with `info.` - these are sometimes used by projects built with SBT]' )
+  local exclude=( {--exclude,-E}'[exclude module]:organization-name:' )
+  local extraJars=( {--extra-jars,-J}'[extra JARs to be added in the classpath of the job]:value:_files' )
+  local force=( {--force,-f}'[fetch artifacts even if the resolution is errored]' )
+  local forceVersion=( {--force-version,-V}'[force module version]:organisation-name-version:' )
+  local intransitive=( '--intransitive[add intransitive dependencies]:value:' )
+  local isolated=( {--isolated,-I}'[isolated]:target-dependency:' )
+  local isolateTarget=( {--isolate-target,-i}'[comma-separated isolation targets]:value:' )
+  local javadoc=( {--javadoc,-D}'[fetch javadoc artifacts]' )
+  local javaOpt=( {--java-opt,-J}'[set Java command-line options in the generated launcher]:option:' )
+  local keepOptional=( '--keep-optional[keep optional dependencies]' )
+  local keepTarget=( '--keep-target[do not wipe native compilation target directory]' )
+  local mainClass=( {--main-class,-M}'[main class to be launched; optional if in manifest]:value:' )
+  local maxIdleTime=( '--max-idle-time[maximum idle time of spark-submit; time with no output]:seconds:' )
+  local maxIterations=( {--max-iterations,-N}'[maximum number of resolution iterations; specify a negative value for unlimited, default: 100]:value:' )
+  local mode=( {--mode,-m}'[download mode; default: missing, that is fetch things missing from cache]:mode:_modeOpts' )
+  local native=( {--native,-S}'[generate native launcher]' )
+  local noDefault=( '--no-default[do not add default repositories]' )
+  local noDefaultSubmitDependencies=( '--no-default-submit-dependencies[no default submit dependencies]' )
+  local output=( {--output,-o}'[output]:value:' )
+  local parallel=( {--parallel,-n}'[maximum number of parallel downloads; default 6]:value:' )
+  local profile=( {--profile,-F}'[enable profile]:profile:' )
+  local progress=( {--progress,-P}'[force display of progress bars]:progress:' )
+  local property=( {--property,-D}'[set Java properties in the generated launcher]:key-value:' )
+  local quiet=( {--quiet,-q}'[quiet output]' )
+  local repository=( {--repository,-r}'[repository; for multiple repositories, separate with comma and/or add this option multiple times]:repository:' )
+  local reverseTree=( {--reverse-tree,-T}'[print dependencies as an inversed tree; dependees as children]' )
+  local sbtPluginHack=( '--sbt-plugin-hack[modify names in Maven repository paths for SBT plugins]' )
+  local scalaVersion=( {--scala-version,-e}'[default Scala version]:version:' )
+  local sourcesR=( {--sources,-R}'[source repository; for multiple repositories, separate with comma and/or add this option multiple times]:value:' )
+  local sourcesS=( {--sources,-S}'[fetch source artifacts]' )
+  local sparkAssemblyDependencies=( '--spark-assembly-dependencies[Spark assembly dependencies]:value:' )
+  local sparkVersion=( '--spark-version[Spark version]:version:' )
+  local standalone=( {--standalone,-s}'[generate a standalone launcher, with all JARs included, instead of one downloading its dependencies on startup]' )
+  local submitDependencies=( '--submit-dependencies[submit dependencies]:value:' )
+  local target=( {--target,-d}'[native compilation target directory]:value:' )
+  local tree=( {--tree,-t}'[print dependencies as a tree]' )
+  local ttl=( {--ttl,-l}'[TTL duration, e.g. "24 hours"]:duration:' )
+  local typelevel=( '--typelevel[swap the mainline Scala JARs by Typelevel ones]' )
+  local verbose=( {--verbose,-v}'[increase verbosity; specify several times to increase more]' )
+  local yarnIdFile=( '--yarn-id-file[if master is yarn-cluster, write YARN app ID to a file]' )
+  local yarnVersion=( '--yarn-version[YARN version; only used with Spark 2]' )
+
+  case $words[1] in
+    bootstrap)
+      _arguments -C $artifactType $force $mainClass $utput $force $standalone $property $javaOpt $native $target $keepTarget $isolated $isolateTarget $keepOptional $mode $ttl $quiet $verbose $progress $maxIterations $repository $sourcesR $noDefault $sbtPluginHack $dropInfoAttr $forceVersion $exclude $scalaVersion $intransitive $classifier $defaultConfiguration $parallel $checksum $benchmark $tree $reverseTree $profile $typelevel $cache
+      ;;
+
+    launch)
+      _arguments -C $mainClass $extraJars $isolated $isolateTarget $keepOptional $mode $ttl $quiet $verbose $progress $maxIterations $repository $sourcesR $noDefault $sbtPluginHack $dropInfoAttr $forceVersion $exclude $scalaVersion $intransitive $classifier $defaultConfiguration $parallel $checksum $benchmark $tree $reverseTree $profile $typelevel $cache
+      ;;
+    
+    fetch)
+      _arguments -C $sourcesS $javadoc $classpath $artifactType $force $keepOptional $mode $ttl $quiet $verbose $progress $maxIterations $repository $sources $noDefault $sbtPluginHack $dropInfoAttr $forceVersion $exclude $scalaVersion $intransitive $classifier $defaultConfiguration $parallel $checksum $benchmark $tree $reverseTree $profile $typelevel $cache
+      ;;
+    
+    resolve)
+      _arguments -C $keepOptional $mode $ttl $quiet $verbose $progress $maxIterations $repository $sourcesR $noDefault $sbtPluginHack $dropInfoAttr $forceVersion $exclude $scalaVersion $intransitive $classifier $defaultConfiguration $parallel $checksum $benchmark $tree $reverseTree $profile $typelevel $cache
+      ;;
+    
+    spark-submit)
+      _arguments -C $mainClass $extraJars $yarnIdFile $autoAssembly $defaultAssemblyDependencies  $assemblyDependencies $sparkAssemblyDependencies $noDefaultSubmitDependencies $submitDependencies $sparkVersion $yarnVersion $maxIdleTime $artifactType $force $keepOptional $mode $ttl $quiet $verbose $progress $maxIterations $repository $sourcesR $noDefault $sbtPluginHack $dropInfoAttr $forceVersion $exclude $scalaVersion $intransitive $classifier $defaultConfiguration $parallel $checksum $benchmark $tree $reverseTree $profile $typelevel $cache
+      ;;
+    
+    *)
+      ;;
+
+  esac
+
+}
+
+_modeOpts() {
+  local options=( 'offline' 'update-changing' 'update' 'missing' 'force' )
+  _describe 'values' options
+}
+
+_coursier
