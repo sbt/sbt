@@ -39,7 +39,7 @@ abstract class CentralTests extends TestSuite {
     Resolution(
       deps,
       filter = filter,
-      userActivations = profiles.map(_.iterator.map(_ -> true).toMap)
+      userActivations = profiles.map(_.iterator.map(p => if (p.startsWith("!")) p.drop(1) -> false else p -> true).toMap)
     )
       .process
       .run(fetch0)
@@ -262,10 +262,16 @@ abstract class CentralTests extends TestSuite {
     }
 
     'spark - {
-      resolutionCheck(
+      * - resolutionCheck(
         Module("org.apache.spark", "spark-core_2.11"),
         "1.3.1",
         profiles = Some(Set("hadoop-2.2"))
+      )
+
+      'scala210 - resolutionCheck(
+        Module("org.apache.spark", "spark-core_2.10"),
+        "2.1.1",
+        profiles = Some(Set("hadoop-2.6", "scala-2.10", "!scala-2.11"))
       )
     }
 

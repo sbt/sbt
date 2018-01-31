@@ -396,4 +396,22 @@ class CliIntegrationTest extends FlatSpec {
         }
       }
   }
+
+  "profiles" should "be manually (de)activated" in withFile() {
+    (jsonFile, _) =>
+      val commonOpt = CommonOptions(
+        jsonOutputFile = jsonFile.getPath,
+        profile = List("scala-2.10", "!scala-2.11")
+      )
+      val fetchOpt = FetchOptions(common = commonOpt)
+
+      val fetch = new Fetch(fetchOpt) with TestOnlyExtraArgsApp
+      fetch.setRemainingArgs(Seq("org.apache.spark:spark-core_2.10:2.2.1"), Seq())
+      fetch.apply()
+
+      val node = getReportFromJson(jsonFile)
+
+      assert(node.dependencies.exists(_.coord.startsWith("org.scala-lang:scala-library:2.10.")))
+      assert(!node.dependencies.exists(_.coord.startsWith("org.scala-lang:scala-library:2.11.")))
+  }
 }
