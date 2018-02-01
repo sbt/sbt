@@ -11,7 +11,7 @@ import caseapp._
 import coursier.cli.util.Zip
 import coursier.internal.FileUtil
 
-final case class Bootstrap(
+case class Bootstrap(
   @Recurse
     artifactOptions: ArtifactOptions,
   @Recurse
@@ -96,26 +96,32 @@ final case class Bootstrap(
       options.isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, (Seq[String], Seq[File])])) {
         case ((done, acc), target) =>
           val subRes = helper.res.subset(isolatedDeps.getOrElse(target, Nil).toSet)
-          val subArtifacts = subRes.artifacts.map(_.url)
 
-          val filteredSubArtifacts = subArtifacts.diff(done)
+          val (done0, subUrls, subFiles) =
+            if (options.standalone) {
+              val subFiles0 = helper.fetch(
+                sources = false,
+                javadoc = false,
+                artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false),
+                subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
+              )
 
-          def subFiles0 = helper.fetch(
-            sources = false,
-            javadoc = false,
-            artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false),
-            subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
-          )
-
-          val (subUrls, subFiles) =
-            if (options.standalone)
-              (Nil, subFiles0)
-            else
-              (filteredSubArtifacts, Nil)
+              (done, Nil, subFiles0)
+            } else {
+              val subArtifacts0 = subRes.dependencyArtifacts.map(_._2)
+              val artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false)
+              val subArtifacts =
+                if (artifactTypes("*"))
+                  subArtifacts0
+                else
+                  subArtifacts0.filter(a => artifactTypes(a.`type`))
+              val filteredSubArtifacts = subArtifacts.map(_.url).diff(done)
+              (done ++ filteredSubArtifacts, filteredSubArtifacts, Nil)
+            }
 
           val updatedAcc = acc + (target -> (subUrls, subFiles))
 
-          (done ++ filteredSubArtifacts, updatedAcc)
+          (done0, updatedAcc)
       }
 
     val (urls, files) =
