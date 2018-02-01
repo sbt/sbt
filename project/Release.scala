@@ -115,8 +115,7 @@ object Release {
 
     val scriptsDir = Project.extract(state).get(baseDirectory.in(ThisBuild)) / "scripts"
     val scriptFiles = Seq(
-      scriptsDir / "generate-launcher.sh",
-      scriptsDir / "generate-sbt-launcher.sh"
+      scriptsDir / "generate-launcher.sh"
     )
 
     val vcs = state.vcs
@@ -183,7 +182,7 @@ object Release {
       sys.error(s"${ReleaseKeys.versions.label} key not set")
     }
 
-    val readmeFile = Project.extract(state).get(baseDirectory.in(ThisBuild)) / "doc" / "README.md"
+    val readmeFile = Project.extract(state).get(baseDirectory.in(ThisBuild)) / "doc" / "readme" / "README.md"
     val pattern = Pattern.quote(previousVer).r
 
     val content = Source.fromFile(readmeFile)(Codec.UTF8).mkString
