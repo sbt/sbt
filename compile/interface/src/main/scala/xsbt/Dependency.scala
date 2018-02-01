@@ -70,8 +70,8 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
                     // is better than recompiling *every* time, which seems to happen if we let the directory propagate
                     // to `binaryDependency`.
                     for (zip <- ze.underlyingSource; zipFile <- Option(zip.file).filterNot(_.isDirectory)) binaryDependency(zipFile, className)
-                  case pf: PlainFile        => binaryDependency(pf.file, className)
-                  case _                    => ()
+                  case pf: PlainFile => binaryDependency(pf.file, className)
+                  case _             => ()
                 }
               case None => ()
             }
