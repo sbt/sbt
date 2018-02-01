@@ -9,6 +9,7 @@ package sbt.internal.util
 package complete
 
 import java.io.File
+import org.scalatest.Assertion
 import sbt.io.IO
 
 class FileExamplesTest extends UnitSpec {
@@ -57,7 +58,8 @@ class FileExamplesTest extends UnitSpec {
   }
 
   def withDirectoryStructure[A](withCompletionPrefix: String = "")(
-      thunk: DirectoryStructure => A): Unit = {
+      thunk: DirectoryStructure => Assertion
+  ): Assertion = {
     IO.withTemporaryDirectory { tempDir =>
       val ds = new DirectoryStructure(withCompletionPrefix)
       ds.createSampleDirStructure(tempDir)
