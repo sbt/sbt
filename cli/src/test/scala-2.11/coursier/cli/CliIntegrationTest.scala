@@ -1,6 +1,7 @@
 package coursier.cli
 
-import java.io.{File, FileWriter}
+import java.io._
+import java.util.zip.ZipInputStream
 
 import argonaut.Argonaut._
 import coursier.cli.util.{DepNode, ReportNode}
@@ -413,5 +414,71 @@ class CliIntegrationTest extends FlatSpec {
 
       assert(node.dependencies.exists(_.coord.startsWith("org.scala-lang:scala-library:2.10.")))
       assert(!node.dependencies.exists(_.coord.startsWith("org.scala-lang:scala-library:2.11.")))
+  }
+
+  "bootstrap" should "not add POMs to the classpath" in withFile() {
+
+    def zipEntryContent(zis: ZipInputStream, path: String): Array[Byte] = {
+      val e = zis.getNextEntry
+      if (e == null)
+        throw new NoSuchElementException(s"Entry $path in zip file")
+      else if (e.getName == path)
+        coursier.Platform.readFullySync(zis)
+      else
+        zipEntryContent(zis, path)
+    }
+
+    (bootstrapFile, _) =>
+      val artifactOptions = ArtifactOptions()
+      val common = CommonOptions(
+        repository = List("bintray:scalameta/maven")
+      )
+      val isolatedLoaderOptions = IsolatedLoaderOptions(
+        isolateTarget = List("foo"),
+        isolated = List("foo:org.scalameta:trees_2.12:1.7.0")
+      )
+      val bootstrapOptions = BootstrapOptions(
+        output = bootstrapFile.getPath,
+        isolated = isolatedLoaderOptions,
+        force = true
+      )
+
+      val bootstrap = new Bootstrap(artifactOptions, bootstrapOptions) with TestOnlyExtraArgsApp
+      bootstrap.setRemainingArgs(Seq("com.geirsson:scalafmt-cli_2.12:1.4.0"), Seq())
+      bootstrap.apply()
+
+      var fis: InputStream = null
+
+      val content = try {
+        fis = new FileInputStream(bootstrapFile)
+        coursier.Platform.readFullySync(fis)
+      } finally {
+        if (fis != null) fis.close()
+      }
+
+      val actualContent = {
+        val header = Seq[Byte](0x50, 0x4b, 0x03, 0x04)
+        val idx = content.indexOfSlice(header)
+        if (idx < 0)
+          throw new Exception(s"ZIP header not found in ${bootstrapFile.getPath}")
+        else
+          content.drop(idx)
+      }
+
+      val zis = new ZipInputStream(new ByteArrayInputStream(actualContent))
+
+      val lines = new String(zipEntryContent(zis, "bootstrap-isolation-foo-jar-urls"), "UTF-8").lines.toVector
+
+      val extensions = lines
+        .map { l =>
+          val idx = l.lastIndexOf('.')
+          if (idx < 0)
+            l
+          else
+            l.drop(idx + 1)
+        }
+        .toSet
+
+      assert(extensions == Set("jar"))
   }
 }

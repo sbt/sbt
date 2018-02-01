@@ -158,6 +158,7 @@ lazy val cli = project
     shared,
     dontPublishIn("2.10", "2.12"),
     coursierPrefix,
+    unmanagedResources.in(Test) += packageBin.in(bootstrap).in(Compile).value,
     libs ++= {
       if (scalaBinaryVersion.value == "2.11")
         Seq(
