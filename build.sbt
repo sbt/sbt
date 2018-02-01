@@ -261,12 +261,27 @@ lazy val runProj = (project in file("run"))
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerClasspath)
 
+val sbtProjDepsCompileScopeFilter =
+  ScopeFilter(inDependencies(LocalProject("sbtProj"), includeRoot = false), inConfigurations(Compile))
+
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
   .dependsOn(commandProj)
   .settings(
     baseSettings,
     name := "Scripted sbt",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
+    resourceGenerators in Compile += Def task {
+      val mainClassDir = (classDirectory in Compile in LocalProject("sbtProj")).value
+      val testClassDir = (classDirectory in Test in LocalProject("sbtProj")).value
+      val classDirs = (classDirectory all sbtProjDepsCompileScopeFilter).value
+      val extDepsCp = (externalDependencyClasspath in Compile in LocalProject("sbtProj")).value
+
+      val cpStrings = (mainClassDir +: testClassDir +: classDirs) ++ extDepsCp.files map (_.toString)
+
+      val file = (resourceManaged in Compile).value / "RunFromSource.classpath"
+      IO.writeLines(file, cpStrings)
+      List(file)
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // sbt.test package is renamed to sbt.scriptedtest.
@@ -550,6 +565,7 @@ def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   // publishLocalBinAll.value // TODO: Restore scripted needing only binary jars.
   publishAll.value
+  (sbtProj / Test / compile).value // make sure sbt.RunFromSourceMain is compiled
   Scripted.doScripted(
     (sbtLaunchJar in bundledLauncherProj).value,
     (fullClasspath in scriptedSbtProj in Test).value,
