@@ -414,6 +414,15 @@ Welcome to the Ammonite Repl 0.7.0
 @
 ```
 
+Fetch with module level attributes, as opposed to e.g. `--classifier` is applied globally.
+```
+$ ./coursier fetch org.apache.avro:avro:1.7.4,classifier=tests --artifact-type test-jar,jar
+```
+
+Fetch and generate a machine readable json report. [Json Report Documentation](/doc/cli.md)
+```
+$ ./coursier fetch org.apache.avro:avro:1.7.4 --json-output-file report.json
+```
 
 ```tut:invisible
 // TODO options: repositories, sources/javadoc, attributes

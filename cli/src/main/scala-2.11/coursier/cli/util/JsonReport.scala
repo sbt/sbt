@@ -16,12 +16,25 @@ final case class JsonPrintRequirement(fileByArtifact: Map[String, File], depToAr
 
 final case class DepNode(coord: String, files: Vector[(String, String)], dependencies: Set[String])
 
-final case class ReportNode(conflict_resolution: Map[String, String], dependencies: Vector[DepNode])
+final case class ReportNode(conflict_resolution: Map[String, String], dependencies: Vector[DepNode], version: String)
 
+/**
+  * FORMAT_VERSION_NUMBER: Version number for identifying the export file format output. This
+  * version number should change when there is a change to the output format.
+  *
+  * Major Version 1.x.x : Increment this field when there is a major format change
+  * Minor Version x.1.x : Increment this field when there is a minor change that breaks backward
+  *   compatibility for an existing field or a field is removed.
+  * Patch version x.x.1 : Increment this field when a minor format change that just adds information
+  *   that an application can safely ignore.
+  *
+  * Note format changes in cli/README.md and update the Changelog section.
+  */
 object ReportNode {
   import argonaut.ArgonautShapeless._
   implicit val encodeJson = EncodeJson.of[ReportNode]
   implicit val decodeJson = DecodeJson.of[ReportNode]
+  val version = "0.0.1"
 }
 
 
@@ -54,7 +67,7 @@ object JsonReport {
       DepNode(reconciledVersionStr(r), getFiles(r).toVector, acc.toSet)
 
     })
-    val report = ReportNode(conflictResolutionForRoots, rootDeps.toVector)
+    val report = ReportNode(conflictResolutionForRoots, rootDeps.toVector, ReportNode.version)
     printer.pretty(report.asJson)
   }
 
