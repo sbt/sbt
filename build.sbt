@@ -40,32 +40,31 @@ def buildLevelSettings: Seq[Setting[_]] =
       scalafmtVersion := "1.3.0",
     ))
 
-def commonSettings: Seq[Setting[_]] =
-  Seq[SettingsDefinition](
-    headerLicense := Some(HeaderLicense.Custom(
-      """|sbt
-         |Copyright 2011 - 2017, Lightbend, Inc.
-         |Copyright 2008 - 2010, Mark Harrah
-         |Licensed under BSD-3-Clause license (see LICENSE)
-         |""".stripMargin
-    )),
-    scalaVersion := baseScalaVersion,
-    componentID := None,
-    resolvers += Resolver.typesafeIvyRepo("releases"),
-    resolvers += Resolver.sonatypeRepo("snapshots"),
-    resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
-    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),
-    concurrentRestrictions in Global += Util.testExclusiveRestriction,
-    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-    testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
-    javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
-    crossScalaVersions := Seq(baseScalaVersion),
-    bintrayPackage := (bintrayPackage in ThisBuild).value,
-    bintrayRepository := (bintrayRepository in ThisBuild).value,
-    publishArtifact in Test := false,
-    fork in compile := true,
-    fork in run := true
-  ) flatMap (_.settings)
+def commonSettings: Seq[Setting[_]] = Def settings (
+  headerLicense := Some(HeaderLicense.Custom(
+    """|sbt
+       |Copyright 2011 - 2017, Lightbend, Inc.
+       |Copyright 2008 - 2010, Mark Harrah
+       |Licensed under BSD-3-Clause license (see LICENSE)
+       |""".stripMargin
+  )),
+  scalaVersion := baseScalaVersion,
+  componentID := None,
+  resolvers += Resolver.typesafeIvyRepo("releases"),
+  resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
+  addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),
+  concurrentRestrictions in Global += Util.testExclusiveRestriction,
+  testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
+  testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
+  javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
+  crossScalaVersions := Seq(baseScalaVersion),
+  bintrayPackage := (bintrayPackage in ThisBuild).value,
+  bintrayRepository := (bintrayRepository in ThisBuild).value,
+  publishArtifact in Test := false,
+  fork in compile := true,
+  fork in run := true
+)
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
