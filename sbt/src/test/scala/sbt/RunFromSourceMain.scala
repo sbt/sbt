@@ -103,9 +103,31 @@ object RunFromSourceMain {
       def components = new ComponentProvider {
         def componentLocation(id: String) = appHome / id
         def component(id: String) = IO.listFiles(componentLocation(id), _.isFile)
-        def defineComponent(id: String, components: Array[File]) = ()
-        def addToComponent(id: String, components: Array[File]) = false
-        def lockFile = null
+
+        def defineComponent(id: String, files: Array[File]) = {
+          val location = componentLocation(id)
+          if (location.exists)
+            sys error s"Cannot redefine component. ID: $id, files: ${files mkString ","}"
+          else {
+            copy(files.toList, location)
+            ()
+          }
+        }
+
+        def addToComponent(id: String, files: Array[File]) =
+          copy(files.toList, componentLocation(id))
+
+        def lockFile = appHome / "sbt.components.lock"
+
+        private def copy(files: List[File], toDirectory: File): Boolean =
+          files exists (copy(_, toDirectory))
+
+        private def copy(file: File, toDirectory: File): Boolean = {
+          val to = toDirectory / file.getName
+          val missing = !to.exists
+          IO.copyFile(file, to)
+          missing
+        }
       }
     }
   }
