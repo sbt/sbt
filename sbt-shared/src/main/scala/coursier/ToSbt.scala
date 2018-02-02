@@ -5,6 +5,7 @@ import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
 import sbt.librarymanagement._
+import sbt.util.Logger
 import coursier.maven.MavenSource
 
 object ToSbt {
@@ -126,7 +127,7 @@ object ToSbt {
     res: Resolution,
     classifiersOpt: Option[Seq[String]],
     artifactFileOpt: (Module, String, Artifact) => Option[File],
-    log: sbt.Logger,
+    log: Logger,
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false
   ) = {
@@ -214,7 +215,7 @@ object ToSbt {
     configs: Map[String, Set[String]],
     classifiersOpt: Option[Seq[String]],
     artifactFileOpt: (Module, String, Artifact) => Option[File],
-    log: sbt.Logger,
+    log: Logger,
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false
   ): sbt.UpdateReport = {

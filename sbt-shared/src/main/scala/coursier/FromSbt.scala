@@ -8,6 +8,7 @@ import coursier.core.Authentication
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement._
 import sbt.librarymanagement.Resolver
+import sbt.util.Logger
 import sbt.{CrossVersion, ModuleID}
 
 import scalaz.{-\/, \/-}
@@ -176,7 +177,7 @@ object FromSbt {
 
   private def mavenRepositoryOpt(
     root: String,
-    log: sbt.Logger,
+    log: Logger,
     authentication: Option[Authentication]
   ): Option[MavenRepository] =
     try {
@@ -203,7 +204,7 @@ object FromSbt {
   def repository(
     resolver: Resolver,
     ivyProperties: Map[String, String],
-    log: sbt.Logger,
+    log: Logger,
     authentication: Option[Authentication]
   ): Option[Repository] =
     resolver match {

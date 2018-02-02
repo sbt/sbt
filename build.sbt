@@ -241,7 +241,7 @@ lazy val `sbt-shared` = project
     // because we don't publish for 2.11 the following declaration
     // is more wordy than usual
     libs ++= {
-      val dependency = "com.dwijnand" % "sbt-compat" % "1.2.1"
+      val dependency = "com.dwijnand" % "sbt-compat" % "1.2.2"
       val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
       val scalaV = (scalaBinaryVersion in update).value
       val m = Defaults.sbtPluginExtra(dependency, sbtV, scalaV)
