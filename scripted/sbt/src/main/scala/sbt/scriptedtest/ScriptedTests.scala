@@ -316,7 +316,7 @@ final class ScriptedTests(
     def runBatchTests = {
       groupedTests.map {
         case ((group, name), originalDir) =>
-          val label = s"$group / $name"
+          val label = s"$group/$name"
           println(s"Running $label")
           // Copy test's contents and reload the sbt instance to pick them up
           IO.copyDirectory(originalDir, tempTestDir)
