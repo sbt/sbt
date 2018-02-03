@@ -73,10 +73,10 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 Enable the SBT plugin by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.1-M1")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.1")
 ```
 to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plugins.sbt` file
-of an SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12 / 0.13.13 / 0.13.15 / 0.13.16-M1 / 1.0.1-M1-M5.
+of an SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12 / 0.13.13 / 0.13.15 / 0.13.16-M1 / 1.0.1-M5.
 
 
 ### Command-line
@@ -126,8 +126,8 @@ echo 'autoload -Uz compinit ; compinit' >> ~/.zshrc
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.1-M1",
-  "io.get-coursier" %% "coursier-cache" % "1.0.1-M1"
+  "io.get-coursier" %% "coursier" % "1.0.1",
+  "io.get-coursier" %% "coursier-cache" % "1.0.1"
 )
 ```
 
@@ -257,7 +257,7 @@ of the cache used by a particular project, in case you have any doubt about what
 
 Enable the SBT plugin globally by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.1-M1")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.1")
 ```
 to `~/.sbt/0.13/plugins/build.sbt`
 
@@ -434,7 +434,7 @@ The `bootstrap` generates tiny bootstrap launchers, able to pull their dependenc
 repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/coursier/coursier/blob/master/scripts/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
-    io.get-coursier:coursier-cli_2.11:1.0.1-M1 \
+    io.get-coursier:coursier-cli_2.11:1.0.1 \
     -b -f -o coursier \
     -M coursier.cli.Coursier
 ```
@@ -446,12 +446,12 @@ See `./coursier bootstrap --help` for a list of the available options.
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.1-M1",
-  "io.get-coursier" %% "coursier-cache" % "1.0.1-M1"
+  "io.get-coursier" %% "coursier" % "1.0.1",
+  "io.get-coursier" %% "coursier-cache" % "1.0.1"
 )
 ```
 
-The first module, `"io.get-coursier" %% "coursier" % "1.0.1-M1"`, mainly depends on
+The first module, `"io.get-coursier" %% "coursier" % "1.0.1"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
 definitions,
 mainly in [`Definitions.scala`](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
@@ -461,7 +461,7 @@ that expects to be given metadata, wrapped in any `Monad`, then feeds these to `
 you the final `Resolution`, wrapped in the same `Monad` it was given input. This final `Resolution` has all the dependencies,
 including the transitive ones.
 
-The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.1-M1"`, is precisely in charge of fetching
+The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.1"`, is precisely in charge of fetching
 these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them. It also fetches artifacts (JARs, etc.).
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
@@ -646,7 +646,7 @@ $ coursier resolve -t io.circe:circe-core_2.11:0.4.1
 From SBT, with sbt-coursier enabled, the command `coursierDependencyTree` prints the dependency tree of the various sub-projects,
 ```
 > coursierDependencyTree
-io.get-coursier:coursier_2.11:1.0.1-M1-SNAPSHOT
+io.get-coursier:coursier_2.11:1.0.1-SNAPSHOT
 ├─ com.lihaoyi:fastparse_2.11:0.3.7
 |  ├─ com.lihaoyi:fastparse-utils_2.11:0.3.7
 |  |  ├─ com.lihaoyi:sourcecode_2.11:0.1.1
@@ -711,7 +711,7 @@ same time, I'd recommend an extreme caution at first, like manually inspecting
 the metadata files and compare with previous ones, to ensure everything's fine.
 
 coursier publishes its artifacts with its own plugin enabled since version
-`1.0.1-M1-M2` though, without any apparent problem.
+`1.0.1-M2` though, without any apparent problem.
 
 #### No wait on locked file
 
@@ -809,15 +809,15 @@ $ cli/target/pack/bin/coursier
 
 The first releases were milestones like `0.1.0-M?`. As a launcher, basic Ivy
 repositories support, and an SBT plugin, were added in the mean time,
-coursier is now aiming directly at `1.0.1-M1`.
+coursier is now aiming directly at `1.0.1`.
 
 The last features I'd like to add until a feature freeze are mainly a
 better / nicer output, for both the command-line tools and the SBT plugin.
-These are tracked via GitHub [issues](https://github.com/coursier/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.1-M1), along with other points.
+These are tracked via GitHub [issues](https://github.com/coursier/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.1), along with other points.
 Milestones will keep being released until then.
 Then coursier should undergo `RC` releases, with no new features added, and
 only fixes and minor refactorings between them.
-Once RCs will be considered stable enough, `1.0.1-M1` should be released.
+Once RCs will be considered stable enough, `1.0.1` should be released.
 
 ## Contributors
 

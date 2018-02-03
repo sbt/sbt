@@ -1,4 +1,4 @@
-io.get-coursier:coursier_2.11:1.0.1-SNAPSHOT:compile
+io.get-coursier:coursier_2.11:1.0.2-SNAPSHOT:compile
 org.scala-lang:scala-library:2.11.11:default
 org.scala-lang.modules:scala-xml_2.11:1.0.6:default
 org.scalaz:scalaz-core_2.11:7.2.16:default
