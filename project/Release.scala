@@ -390,6 +390,7 @@ object Release {
       updateScripts,
       updateLaunchers,
       updateTutReadme,
+      releaseStepCommand(s"++${Settings.scala211}"),
       releaseStepCommand("tut"),
       stageReadme,
       updatePluginsSbt,
