@@ -198,8 +198,8 @@ testBootstrap() {
 testNativeBootstrap() {
   if is212 && [ "$NATIVE" = "1" ]; then
     sbt ++${SCALA_VERSION} "project cli" pack
-    cli/target/pack/bin/coursier bootstrap -S -o native-test io.get-coursier.scala-native::sandbox_native0.3:0.3.0-coursier-1
-    if [ "$(./native-test)" != "Hello, World!" ]; then
+    cli/target/pack/bin/coursier bootstrap -S -o native-echo io.get-coursier:echo_native0.3_2.11:1.0.1
+    if [ "$(./native-echo -n foo a)" != "foo a" ]; then
       echo "Error: unexpected output from native test bootstrap." 1>&2
       exit 1
     fi
