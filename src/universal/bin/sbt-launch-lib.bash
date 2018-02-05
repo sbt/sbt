@@ -179,8 +179,14 @@ process_args () {
     process_my_args "${myargs[@]}"
   }
 
-  ## parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
-  java_version=$("$java_cmd" -Xms128M -Xmx512M -version 2>&1 | tr '\r' '\n' | grep ' version "' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
+  ## parses java version from the -version output line, e.g.:
+  ## java version "10-ea" 2018-03-20 --> 10
+  ## openjdk version "9"             --> 9
+  ## java version "1.8.0_162"        --> 1.8
+  ## openjdk version "1.8.0_144"     --> 1.8
+  ## java version "1.7.0_151"        --> 1.7
+  ## java version "1.6.0_45"         --> 1.6
+  java_version=$("$java_cmd" -Xms128M -Xmx512M -version 2>&1 | tr '\r' '\n' | grep ' version "' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*/\1\2/; 1q')
   vlog "[process_args] java_version = '$java_version'"
 }
 
