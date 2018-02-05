@@ -24,9 +24,9 @@ object ToSbt {
       }
   }
 
-  val moduleId = caching[(Dependency, Map[String, String]), sbt.ModuleID] {
+  val moduleId = caching[(Dependency, Map[String, String]), ModuleID] {
     case (dependency, extraProperties) =>
-      sbt.ModuleID(
+      sbt.librarymanagement.ModuleID(
         dependency.module.organization,
         dependency.module.name,
         dependency.version
@@ -49,9 +49,9 @@ object ToSbt {
       )
   }
 
-  val artifact = caching[(Module, Map[String, String], Artifact), sbt.Artifact] {
+  val artifact = caching[(Module, Map[String, String], Artifact), sbt.librarymanagement.Artifact] {
     case (module, extraProperties, artifact) =>
-      sbt.Artifact(module.name)
+      sbt.librarymanagement.Artifact(module.name)
         // FIXME Get these two from publications
         .withType(artifact.attributes.`type`)
         .withExtension(MavenSource.typeExtension(artifact.attributes.`type`))
@@ -65,7 +65,7 @@ object ToSbt {
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
-  val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Artifact, Option[File])]), sbt.ModuleReport] {
+  val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Artifact, Option[File])]), ModuleReport] {
     case (dependency, dependees, project, artifacts) =>
 
     val sbtArtifacts = artifacts.collect {
@@ -218,7 +218,7 @@ object ToSbt {
     log: Logger,
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false
-  ): sbt.UpdateReport = {
+  ): UpdateReport = {
 
     val configReports = configs.map {
       case (config, extends0) =>
@@ -257,10 +257,10 @@ object ToSbt {
         )
     }
 
-    sbt.UpdateReport(
+    UpdateReport(
       null,
       configReports.toVector,
-      sbt.UpdateStats(-1L, -1L, -1L, cached = false),
+      UpdateStats(-1L, -1L, -1L, cached = false),
       Map.empty
     )
   }

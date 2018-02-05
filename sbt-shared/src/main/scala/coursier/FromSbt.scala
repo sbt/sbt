@@ -9,7 +9,6 @@ import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement._
 import sbt.librarymanagement.Resolver
 import sbt.util.Logger
-import sbt.{CrossVersion, ModuleID}
 
 import scalaz.{-\/, \/-}
 
