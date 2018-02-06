@@ -131,7 +131,7 @@ object Keys {
   // Command keys
   val historyPath = SettingKey(BasicKeys.historyPath)
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
-  val suppressServer = SettingKey(BasicKeys.suppressServer)
+  val autoStartServer = SettingKey(BasicKeys.autoStartServer)
   val serverPort = SettingKey(BasicKeys.serverPort)
   val serverHost = SettingKey(BasicKeys.serverHost)
   val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)

@@ -268,7 +268,7 @@ object Defaults extends BuildCommon {
         .getOrElse(GCUtil.defaultForceGarbageCollection),
       minForcegcInterval :== GCUtil.defaultMinForcegcInterval,
       interactionService :== CommandLineUIService,
-      suppressServer := false,
+      autoStartServer := true,
       serverHost := "127.0.0.1",
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
