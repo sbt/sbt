@@ -64,8 +64,10 @@ object RunFromSourceMain {
           def globalLock = noGlobalLock
           def bootDirectory = appProvider.bootDirectory
           def ivyHome = file(sys.props("user.home")) / ".ivy2"
-          def ivyRepositories = Array(new PredefinedRepository { def id() = Predefined.Local })
-          def appRepositories = Array(new PredefinedRepository { def id() = Predefined.Local })
+          final case class PredefRepo(id: Predefined) extends PredefinedRepository
+          import Predefined._
+          def ivyRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
+          def appRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
           def isOverrideRepositories = false
           def checksums = Array("sha1", "md5")
         }
