@@ -45,9 +45,12 @@ abstract class CentralTests extends TestSuite {
       .run(fetch0)
       .map { res =>
 
-        assert(res.metadataErrors.isEmpty)
-        assert(res.conflicts.isEmpty)
-        assert(res.isDone)
+        val metadataErrors = res.metadataErrors
+        val conflicts = res.conflicts
+        val isDone = res.isDone
+        assert(metadataErrors.isEmpty)
+        assert(conflicts.isEmpty)
+        assert(isDone)
 
         res
       }
@@ -180,9 +183,12 @@ abstract class CentralTests extends TestSuite {
   ): Future[T] = async {
     val res = await(resolve(deps, extraRepos = extraRepos))
 
-    assert(res.metadataErrors.isEmpty)
-    assert(res.conflicts.isEmpty)
-    assert(res.isDone)
+    val metadataErrors = res.metadataErrors
+    val conflicts = res.conflicts
+    val isDone = res.isDone
+    assert(metadataErrors.isEmpty)
+    assert(conflicts.isEmpty)
+    assert(isDone)
 
     val artifacts = classifierOpt
       .fold(res.dependencyArtifacts(withOptional = optional))(c => res.dependencyClassifiersArtifacts(Seq(c)))
@@ -575,9 +581,12 @@ abstract class CentralTests extends TestSuite {
 
           val res = await(resolve(deps))
 
-          assert(res.metadataErrors.isEmpty)
-          assert(res.conflicts.isEmpty)
-          assert(res.isDone)
+          val metadataErrors = res.metadataErrors
+          val conflicts = res.conflicts
+          val isDone = res.isDone
+          assert(metadataErrors.isEmpty)
+          assert(conflicts.isEmpty)
+          assert(isDone)
 
           val artifacts = res.artifacts
 
@@ -610,9 +619,12 @@ abstract class CentralTests extends TestSuite {
 
           val res = await(resolve(deps))
 
-          assert(res.metadataErrors.isEmpty)
-          assert(res.conflicts.isEmpty)
-          assert(res.isDone)
+          val metadataErrors = res.metadataErrors
+          val conflicts = res.conflicts
+          val isDone = res.isDone
+          assert(metadataErrors.isEmpty)
+          assert(conflicts.isEmpty)
+          assert(isDone)
 
           val dependencyArtifacts = res.dependencyArtifacts(withOptional = true)
 
