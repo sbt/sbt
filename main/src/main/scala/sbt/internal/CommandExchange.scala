@@ -14,6 +14,7 @@ import java.util.concurrent.atomic._
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.{
+  suppressServer,
   serverHost,
   serverPort,
   serverAuthentication,
@@ -87,7 +88,11 @@ private[sbt] final class CommandExchange {
         consoleChannel = Some(x)
         subscribe(x)
     }
-    if (autoStartServer) runServer(s)
+    val suppress = (s get suppressServer) match {
+      case Some(bool) => bool
+      case None       => false
+    }
+    if (autoStartServer && !suppress) runServer(s)
     else s
   }
 
