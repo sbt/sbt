@@ -29,6 +29,10 @@ public class Export {
             if (destination.equals("--rt-ext-dir")) {
                 String v = System.getProperty("java.vendor") + "_" + System.getProperty("java.version");
                 v = v.replaceAll("\\W", "_").toLowerCase();
+                /*
+                 * The launch script greps for output starting with "java9-rt-ext-" so changing this
+                 * string will require changing the grep command in sbt-launch-lib.bash.
+                 */
                 Path rtExtDir = Paths.get(globalBase, "java9-rt-ext-" + v);
                 System.out.println(rtExtDir.toString());
                 System.exit(0);

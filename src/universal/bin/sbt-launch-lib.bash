@@ -234,8 +234,9 @@ copyRt() {
   local at_least_9="$(expr $java_version ">=" 9)"
   if [[ "$at_least_9" == "1" ]]; then
     rtexport=$(rt_export_file)
+    # The grep for java9-rt-ext- matches the filename prefix printed in Export.java
     java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
-      -jar "$rtexport" --rt-ext-dir | grep -v Listening)
+      -jar "$rtexport" --rt-ext-dir | grep java9-rt-ext-)
     java9_rt=$(echo "$java9_ext/rt.jar")
     vlog "[copyRt] java9_rt = '$java9_rt'"
     if [[ ! -f "$java9_rt" ]]; then
