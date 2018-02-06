@@ -8,23 +8,19 @@
 package sbt
 package scriptedtest
 
-import java.io.{ File, IOException }
-import xsbt.IPC
+import java.io.IOException
+import java.net.SocketException
+
+import scala.sys.process.Process
 
 import sbt.internal.scripted.{ StatementHandler, TestFailed }
 
-import sbt.util.Logger
-import sbt.util.Logger._
-
-import scala.sys.process.{ BasicIO, Process }
+import xsbt.IPC
 
 final case class SbtInstance(process: Process, server: IPC.Server)
 
-final class SbtHandler(directory: File,
-                       launcher: File,
-                       log: Logger,
-                       launchOpts: Seq[String] = Seq())
-    extends StatementHandler {
+final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHandler {
+
   type State = Option[SbtInstance]
   def initialState = None
 
@@ -78,16 +74,9 @@ final class SbtHandler(directory: File,
       if (!resultMessage.toBoolean) throw new TestFailed(errorMessage)
     }
   def newRemote(server: IPC.Server): Process = {
-    val launcherJar = launcher.getAbsolutePath
-    val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
-    val args = "java" :: (launchOpts.toList ++ (globalBase :: "-jar" :: launcherJar :: ("<" + server.port) :: Nil))
-    val io = BasicIO(false, log).withInput(_.close())
-    val p = Process(args, directory) run (io)
-    val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }
-    thread.start()
-    try { receive("Remote sbt initialization failed", server) } catch {
-      case _: java.net.SocketException => throw new TestFailed("Remote sbt initialization failed")
-    }
+    val p = remoteSbtCreator.newRemote(server)
+    try receive("Remote sbt initialization failed", server)
+    catch { case _: SocketException => throw new TestFailed("Remote sbt initialization failed") }
     p
   }
   import java.util.regex.Pattern.{ quote => q }

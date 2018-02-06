@@ -64,8 +64,10 @@ object RunFromSourceMain {
           def globalLock = noGlobalLock
           def bootDirectory = appProvider.bootDirectory
           def ivyHome = file(sys.props("user.home")) / ".ivy2"
-          def ivyRepositories = Array(new PredefinedRepository { def id() = Predefined.Local })
-          def appRepositories = Array(new PredefinedRepository { def id() = Predefined.Local })
+          final case class PredefRepo(id: Predefined) extends PredefinedRepository
+          import Predefined._
+          def ivyRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
+          def appRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
           def isOverrideRepositories = false
           def checksums = Array("sha1", "md5")
         }
@@ -103,9 +105,31 @@ object RunFromSourceMain {
       def components = new ComponentProvider {
         def componentLocation(id: String) = appHome / id
         def component(id: String) = IO.listFiles(componentLocation(id), _.isFile)
-        def defineComponent(id: String, components: Array[File]) = ()
-        def addToComponent(id: String, components: Array[File]) = false
-        def lockFile = null
+
+        def defineComponent(id: String, files: Array[File]) = {
+          val location = componentLocation(id)
+          if (location.exists)
+            sys error s"Cannot redefine component. ID: $id, files: ${files mkString ","}"
+          else {
+            copy(files.toList, location)
+            ()
+          }
+        }
+
+        def addToComponent(id: String, files: Array[File]) =
+          copy(files.toList, componentLocation(id))
+
+        def lockFile = appHome / "sbt.components.lock"
+
+        private def copy(files: List[File], toDirectory: File): Boolean =
+          files exists (copy(_, toDirectory))
+
+        private def copy(file: File, toDirectory: File): Boolean = {
+          val to = toDirectory / file.getName
+          val missing = !to.exists
+          IO.copyFile(file, to)
+          missing
+        }
       }
     }
   }
