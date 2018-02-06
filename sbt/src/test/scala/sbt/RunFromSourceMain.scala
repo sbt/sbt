@@ -117,8 +117,10 @@ object RunFromSourceMain {
           def topLoader = new java.net.URLClassLoader(Array(), null)
           def globalLock = noGlobalLock
           def bootDirectory = RunFromSourceMain.bootDirectory
-          def ivyRepositories = Array()
-          def appRepositories = Array()
+          final case class PredefRepo(id: Predefined) extends PredefinedRepository
+          import Predefined._
+          def ivyRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
+          def appRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
           def isOverrideRepositories = false
           def ivyHome = file(sys.props("user.home")) / ".ivy2"
           def checksums = Array("sha1", "md5")
