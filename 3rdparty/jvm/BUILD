@@ -4,8 +4,8 @@ jar_library(
     name = "scala-xml",
     jars = [
         scala_jar(
-            name = "scala-xml",
             org = "org.scala-lang.modules",
+            name = "scala-xml",
             rev = "1.0.6",
         ),
     ],
@@ -15,8 +15,8 @@ jar_library(
     name = "quasiQuotes",
     jars = [
         scala_jar(
-            name = "quasiquotes",
             org = "org.scalamacros",
+            name = "quasiquotes",
             rev = "2.1.0",
         ),
     ],
@@ -26,8 +26,8 @@ jar_library(
     name = "fastParse",
     jars = [
         scala_jar(
-            name = "fastparse",
             org = "com.lihaoyi",
+            name = "fastparse",
             rev = "1.0.0",
         ),
     ],
@@ -37,8 +37,8 @@ jar_library(
     name = "scalaz-concurrent",
     jars = [
         scala_jar(
-            name = "scalaz-concurrent",
             org = "org.scalaz",
+            name = "scalaz-concurrent",
             rev = "7.2.16",
         ),
     ],
@@ -48,8 +48,8 @@ jar_library(
     name = "scalaz-core",
     jars = [
         scala_jar(
-            name = "scalaz-core",
             org = "org.scalaz",
+            name = "scalaz-core",
             rev = "7.2.16",
         ),
     ],
@@ -58,8 +58,8 @@ jar_library(
 jar_library(
     name = "jsoup",
     jars = [jar(
-        name = "jsoup",
         org = "org.jsoup",
+        name = "jsoup",
         rev = "1.10.3",
     )],
 )
@@ -70,8 +70,8 @@ jar_library(
     name = "cli",
     jars = [
         scala_jar(
-            name = "scalajs-cli",
             org = "org.scala-js",
+            name = "scalajs-cli",
             rev = SCALAJS_REV,
         ),
     ],
@@ -81,8 +81,8 @@ jar_library(
     name = "compiler",
     jars = [
         jar(
-            name = "scalajs-compiler_2.11.8",
             org = "org.scala-js",
+            name = "scalajs-compiler_2.11.8",
             rev = SCALAJS_REV,
         ),
     ],
@@ -92,8 +92,8 @@ jar_library(
     name = "library",
     jars = [
         scala_jar(
-            name = "scalajs-library",
             org = "org.scala-js",
+            name = "scalajs-library",
             rev = SCALAJS_REV,
         ),
     ],
@@ -103,8 +103,8 @@ jar_library(
     name = "dom",
     jars = [
         scala_jar(
-            name = "scalajs-dom_sjs0.6",
             org = "org.scala-js",
+            name = "scalajs-dom_sjs0.6",
             rev = "0.9.1",
         ),
     ],
@@ -114,9 +114,9 @@ jar_library(
     name = "caseapp",
     jars = [
         scala_jar(
-            name = "case-app",
             org = "com.github.alexarchambault",
-            rev = "1.1.3",
+            name = "case-app",
+            rev = "2.0.0-M3",
         ),
     ],
 )
@@ -125,9 +125,9 @@ jar_library(
     name = "argonaut-shapeless",
     jars = [
         scala_jar(
-            name = "argonaut-shapeless_6.2",
             org = "com.github.alexarchambault",
-            rev = "1.2.0-M6",
+            name = "argonaut-shapeless_6.2",
+            rev = "1.2.0-M8",
         ),
     ],
 )
@@ -136,8 +136,8 @@ jar_library(
     name = "soc",
     jars = [
         jar(
-            name = "directories",
             org = "io.github.soc",
+            name = "directories",
             rev = "5",
         ),
     ],
@@ -146,15 +146,20 @@ jar_library(
 jar_library(
     name = "scala-native",
     jars = [
-        jar(
-            name = "nativelib_native0.3_2.11",
+        scala_jar(
             org = "org.scala-native",
-            rev = "0.3.3",
+            name = "nir",
+            rev = "0.3.6",
         ),
-        jar(
-            name = "tools_2.11",
-            org = "io.get-coursier.scala-native",
-            rev = "0.3.0-coursier-1",
+        scala_jar(
+            org = "org.scala-native",
+            name = "tools",
+            rev = "0.3.6",
+        ),
+        scala_jar(
+            org = "org.scala-native",
+            name = "util",
+            rev = "0.3.6",
         ),
     ],
 )
@@ -163,8 +168,8 @@ jar_library(
     name = "utest",
     jars = [
         scala_jar(
-            name = "utest",
             org = "com.lihaoyi",
+            name = "utest",
             rev = "0.5.4",
         ),
     ],
@@ -174,8 +179,8 @@ jar_library(
     name = "async",
     jars = [
         scala_jar(
-            name = "scala-async",
             org = "org.scala-lang.modules",
+            name = "scala-async",
             rev = "0.9.7",
         ),
     ],

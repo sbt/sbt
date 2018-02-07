@@ -10,9 +10,9 @@ object Deps {
   def jsoup = "org.jsoup" % "jsoup" % "1.10.3"
   def scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
   def scalazConcurrent = "org.scalaz" %% "scalaz-concurrent" % SharedVersions.scalaz
-  def caseApp = "com.github.alexarchambault" %% "case-app" % "1.1.3"
+  def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M3"
   def okhttpUrlConnection = "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
-  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M6"
+  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M8"
   def jackson = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4"
   def scalatest = "org.scalatest" %% "scalatest" % "3.0.0"
   def junit = "junit" % "junit" % "4.12"
@@ -42,7 +42,7 @@ object Deps {
     "org.slf4j" % "slf4j-api" % "1.7.25"
   )
 
-  def scalaNativeNir = "io.get-coursier.scala-native" %% "nir" % SharedVersions.scalaNative
-  def scalaNativeTools = "io.get-coursier.scala-native" %% "tools" % SharedVersions.scalaNative
-  def scalaNativeUtil = "io.get-coursier.scala-native" %% "util" % SharedVersions.scalaNative
+  def scalaNativeNir = "org.scala-native" %% "nir" % SharedVersions.scalaNative
+  def scalaNativeTools = "org.scala-native" %% "tools" % SharedVersions.scalaNative
+  def scalaNativeUtil = "org.scala-native" %% "util" % SharedVersions.scalaNative
 }

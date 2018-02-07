@@ -8,7 +8,8 @@ import java.util.regex.Pattern
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
 import coursier.Cache
-import coursier.cli.{CommonOptions, Helper}
+import coursier.cli.Helper
+import coursier.cli.options.CommonOptions
 import coursier.cli.util.Zip
 import coursier.internal.FileUtil
 

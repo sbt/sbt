@@ -6,6 +6,7 @@ import java.net.{URL, URLClassLoader}
 import java.util.concurrent.Executors
 import java.util.jar.{Manifest => JManifest}
 
+import coursier.cli.options.{CommonOptions, IsolatedLoaderOptions}
 import coursier.cli.scaladex.Scaladex
 import coursier.cli.util.{JsonElem, JsonPrintRequirement, JsonReport}
 import coursier.extra.Typelevel
@@ -51,28 +52,6 @@ object Helper {
 
     mainClasses.toMap
   }
-}
-
-object Util {
-
-  def prematureExit(msg: String): Nothing = {
-    Console.err.println(msg)
-    sys.exit(255)
-  }
-
-  def prematureExitIf(cond: Boolean)(msg: => String): Unit =
-    if (cond)
-      prematureExit(msg)
-
-  def exit(msg: String): Nothing = {
-    Console.err.println(msg)
-    sys.exit(1)
-  }
-
-  def exitIf(cond: Boolean)(msg: => String): Unit =
-    if (cond)
-      exit(msg)
-
 }
 
 class Helper(
@@ -265,12 +244,12 @@ class Helper(
       lines.map({ str =>
         val parent_and_child = str.split("--")
         if (parent_and_child.length != 2) {
-          throw SoftExcludeParsingException(s"Failed to parse $str")
+          throw new SoftExcludeParsingException(s"Failed to parse $str")
         }
 
         val child_org_name = parent_and_child(1).split(":")
         if (child_org_name.length != 2) {
-          throw SoftExcludeParsingException(s"Failed to parse $child_org_name")
+          throw new SoftExcludeParsingException(s"Failed to parse $child_org_name")
         }
 
         (parent_and_child(0), (child_org_name(0), child_org_name(1)))
@@ -853,7 +832,3 @@ class Helper(
     mainClass
   }
 }
-
-case class SoftExcludeParsingException(private val message: String = "",
-                                       private val cause: Throwable = None.orNull)
-  extends Exception(message, cause)

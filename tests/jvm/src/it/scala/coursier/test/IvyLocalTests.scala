@@ -25,7 +25,7 @@ object IvyLocalTests extends TestSuite {
       'uniqueArtifacts - async {
 
         val res = await(CentralTests.resolve(
-          Set(Dependency(Module("io.get-coursier", "coursier-cli_2.11"), version, transitive = false)),
+          Set(Dependency(Module("io.get-coursier", "coursier-cli_2.12"), version, transitive = false)),
           extraRepos = extraRepos
         ))
 

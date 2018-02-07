@@ -2,7 +2,8 @@ package coursier.cli.spark
 
 import java.io.File
 
-import coursier.cli.{ CommonOptions, Helper }
+import coursier.cli.Helper
+import coursier.cli.options.CommonOptions
 
 object Submit {
 
