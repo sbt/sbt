@@ -10,6 +10,7 @@ scala_library(
         ":util",
     ],
     sources = globs(
+        "coursier/cli/options/*.scala",
         "coursier/cli/scaladex/*.scala",
         "coursier/cli/spark/*.scala",
         "coursier/cli/*.scala",
