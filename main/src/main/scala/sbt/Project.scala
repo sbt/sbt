@@ -21,6 +21,7 @@ import Keys.{
   sessionSettings,
   shellPrompt,
   templateResolverInfos,
+  autoStartServer,
   serverHost,
   serverLog,
   serverPort,
@@ -462,6 +463,7 @@ object Project extends ProjectExtra {
     val prompt = get(shellPrompt)
     val trs = (templateResolverInfos in Global get structure.data).toList.flatten
     val watched = get(watch)
+    val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
@@ -474,6 +476,7 @@ object Project extends ProjectExtra {
       s.attributes
         .setCond(Watched.Configuration, watched)
         .put(historyPath.key, history)
+        .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
         .setCond(serverAuthentication.key, authentication)

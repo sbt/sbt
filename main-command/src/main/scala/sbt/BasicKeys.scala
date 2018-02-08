@@ -39,6 +39,12 @@ object BasicKeys {
                                  "The wire protocol for the server command.",
                                  10000)
 
+  val autoStartServer =
+    AttributeKey[Boolean](
+      "autoStartServer",
+      "If true, the sbt server will startup automatically during interactive sessions.",
+      10000)
+
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.
   private[sbt] val serverLogLevel =
