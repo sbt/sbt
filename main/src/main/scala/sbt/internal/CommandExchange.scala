@@ -136,47 +136,44 @@ private[sbt] final class CommandExchange {
         new NetworkChannel(name, socket, Project structure s, auth, instance, logger)
       subscribe(channel)
     }
-    server match {
-      case Some(_)                    => // do nothing
-      case None if !firstInstance.get => // there's another server
-      case _ =>
-        val portfile = (new File(".")).getAbsoluteFile / "project" / "target" / "active.json"
-        val h = Hash.halfHashString(IO.toURI(portfile).toString)
-        val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
-        val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
-        val pipeName = "sbt-server-" + h
-        val connection =
-          ServerConnection(connectionType,
-                           host,
-                           port,
-                           auth,
-                           portfile,
-                           tokenfile,
-                           socketfile,
-                           pipeName)
-        val x = Server.start(connection, onIncomingSocket, s.log)
-
-        // don't throw exception when it times out
-        val d = "10s"
-        Try(Await.ready(x.ready, Duration(d)))
-        x.ready.value match {
-          case Some(Success(_)) =>
-            // rememeber to shutdown only when the server comes up
-            server = Some(x)
-          case Some(Failure(e: AlreadyRunningException)) =>
-            s.log.warn(
-              "sbt server could not start because there's another instance of sbt running on this build.")
-            s.log.warn("Running multiple instances is unsupported")
-            server = None
-            firstInstance.set(false)
-          case Some(Failure(e)) =>
-            s.log.error(e.toString)
-            server = None
-          case None =>
-            s.log.warn(s"sbt server could not start in $d")
-            server = None
-            firstInstance.set(false)
-        }
+    if (server.isEmpty && firstInstance.get) {
+      val portfile = s.baseDir / "project" / "target" / "active.json"
+      val h = Hash.halfHashString(IO.toURI(portfile).toString)
+      val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
+      val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
+      val pipeName = "sbt-server-" + h
+      val connection = ServerConnection(
+        connectionType,
+        host,
+        port,
+        auth,
+        portfile,
+        tokenfile,
+        socketfile,
+        pipeName,
+      )
+      val serverInstance = Server.start(connection, onIncomingSocket, s.log)
+      // don't throw exception when it times out
+      val d = "10s"
+      Try(Await.ready(serverInstance.ready, Duration(d)))
+      serverInstance.ready.value match {
+        case Some(Success(())) =>
+          // remember to shutdown only when the server comes up
+          server = Some(serverInstance)
+        case Some(Failure(_: AlreadyRunningException)) =>
+          s.log.warn(
+            "sbt server could not start because there's another instance of sbt running on this build.")
+          s.log.warn("Running multiple instances is unsupported")
+          server = None
+          firstInstance.set(false)
+        case Some(Failure(e)) =>
+          s.log.error(e.toString)
+          server = None
+        case None =>
+          s.log.warn(s"sbt server could not start in $d")
+          server = None
+          firstInstance.set(false)
+      }
     }
     s
   }

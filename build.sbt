@@ -294,10 +294,11 @@ lazy val actionsProj = (project in file("main-actions"))
 
 lazy val protocolProj = (project in file("protocol"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
     name := "Protocol",
-    libraryDependencies ++= Seq(sjsonNewScalaJson.value),
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value, ipcSocket),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -329,6 +330,9 @@ lazy val commandProj = (project in file("main-command"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.CommandChannel.*"),
       // Added an overload to reboot. The overload is private[sbt].
       exclude[ReversedMissingMethodProblem]("sbt.StateOps.reboot"),
+      // Replace nailgun socket stuff
+      exclude[MissingClassProblem]("sbt.internal.NG*"),
+      exclude[MissingClassProblem]("sbt.internal.ReferenceCountedFileDescriptor"),
     ),
     unmanagedSources in (Compile, headerCreate) := {
       val old = (unmanagedSources in (Compile, headerCreate)).value
@@ -438,7 +442,7 @@ lazy val sbtProj = (project in file("sbt"))
   .dependsOn(mainProj, scriptedSbtProj % "test->test")
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    baseSettings,
+    testedBaseSettings,
     name := "sbt",
     normalizedName := "sbt",
     crossScalaVersions := Seq(baseScalaVersion),
@@ -450,6 +454,8 @@ lazy val sbtProj = (project in file("sbt"))
     buildInfoObject in Test := "TestBuildInfo",
     buildInfoKeys in Test := Seq[BuildInfoKey](fullClasspath in Compile),
     connectInput in run in Test := true,
+    outputStrategy in run in Test := Some(StdoutOutput),
+    fork in Test := true,
   )
   .configure(addSbtCompilerBridge)
 

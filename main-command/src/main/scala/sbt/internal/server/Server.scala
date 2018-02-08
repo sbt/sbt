@@ -25,6 +25,7 @@ import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
 import sbt.internal.protocol.codec._
 import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
+import org.scalasbt.ipcsocket._
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -57,11 +58,11 @@ private[sbt] object Server {
             connection.connectionType match {
               case ConnectionType.Local if isWindows =>
                 // Named pipe already has an exclusive lock.
-                addServerError(new NGWin32NamedPipeServerSocket(pipeName))
+                addServerError(new Win32NamedPipeServerSocket(pipeName))
               case ConnectionType.Local =>
-                tryClient(new NGUnixDomainSocket(socketfile.getAbsolutePath))
+                tryClient(new UnixDomainSocket(socketfile.getAbsolutePath))
                 prepareSocketfile()
-                addServerError(new NGUnixDomainServerSocket(socketfile.getAbsolutePath))
+                addServerError(new UnixDomainServerSocket(socketfile.getAbsolutePath))
               case ConnectionType.Tcp =>
                 tryClient(new Socket(InetAddress.getByName(host), port))
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))

@@ -120,7 +120,9 @@ final case class Extracted(structure: BuildStructure,
     structure.data.get(scope, key) getOrElse sys.error(
       display.show(ScopedKey(scope, key)) + " is undefined.")
 
-  @deprecated("This discards session settings. Migrate to appendWithSession or appendWithoutSession.", "1.2.0")
+  @deprecated(
+    "This discards session settings. Migrate to appendWithSession or appendWithoutSession.",
+    "1.2.0")
   def append(settings: Seq[Setting[_]], state: State): State =
     appendWithoutSession(settings, state)
 
