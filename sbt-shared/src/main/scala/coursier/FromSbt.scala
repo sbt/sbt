@@ -162,7 +162,7 @@ object FromSbt {
     )
   }
 
-  private def mavenCompatibleBaseOpt(patterns: sbt.Patterns): Option[String] =
+  private def mavenCompatibleBaseOpt(patterns: Patterns): Option[String] =
     if (patterns.isMavenCompatible) {
       val baseIvyPattern = patterns.ivyPatterns.head.takeWhile(c => c != '[' && c != '(')
       val baseArtifactPattern = patterns.ivyPatterns.head.takeWhile(c => c != '[' && c != '(')
@@ -210,7 +210,7 @@ object FromSbt {
       case r: sbt.librarymanagement.MavenRepository =>
         mavenRepositoryOpt(r.root, log, authentication)
 
-      case r: sbt.FileRepository
+      case r: FileRepository
         if r.patterns.ivyPatterns.lengthCompare(1) == 0 &&
           r.patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
@@ -241,7 +241,7 @@ object FromSbt {
             mavenRepositoryOpt("file://" + mavenCompatibleBase, log, authentication)
         }
 
-      case r: sbt.URLRepository
+      case r: URLRepository
         if r.patterns.ivyPatterns.lengthCompare(1) == 0 &&
           r.patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
@@ -272,7 +272,7 @@ object FromSbt {
             mavenRepositoryOpt(mavenCompatibleBase, log, authentication)
         }
 
-      case raw: sbt.RawRepository if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
+      case raw: RawRepository if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
         None
 
       case other =>
