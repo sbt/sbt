@@ -94,11 +94,15 @@ lazy val utilControl = (project in internalPath / "util-control").settings(
   mimaSettings,
 )
 
-val utilPosition = (project in file("internal") / "util-position").settings(
-  commonSettings,
-  name := "Util Position",
-  mimaSettings,
-)
+val utilPosition = (project in file("internal") / "util-position")
+  .dependsOn(utilTesting % Test)
+  .settings(
+    commonSettings,
+    name := "Util Position",
+    scalacOptions += "-language:experimental.macros",
+    libraryDependencies += scalaReflect.value,
+    mimaSettings,
+  )
 
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging")
