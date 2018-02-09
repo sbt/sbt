@@ -2,7 +2,7 @@
 plugins_(
   "io.get-coursier"   % "sbt-coursier"    % coursierVersion,
   "com.typesafe"      % "sbt-mima-plugin" % "0.1.18",
-  "org.xerial.sbt"    % "sbt-pack"        % "0.9.1",
+  "org.xerial.sbt"    % "sbt-pack"        % "0.10.1",
   "com.jsuereth"      % "sbt-pgp"         % "1.1.0",
   "com.lightbend.sbt" % "sbt-proguard"    % "0.3.0",
   "com.github.gseitz" % "sbt-release"     % "1.0.6",
