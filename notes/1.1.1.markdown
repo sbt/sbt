@@ -1,0 +1,45 @@
+### Fixes
+
+- Fixes "Modified names for (class) is empty" error. [zinc#292][zinc292] / [zinc#484][zinc484] by [@jvican][@jvican]
+- Fixes tab completion in `console` while running in batch mode as `sbt console`. [#3841][3841]/[#3876][3876] by [@eed3si9n][@eed3si9n]
+- Fixes file timestamp retrieval of missing files on Windows. [#3871][3871] / [io#120][io120] by [@cunei][@cunei]
+- Aligns the errors thrown by file timestamp implementations. Fixes [#3894][3894] / [io#121][io121] by [@j-keck][@j-keck]
+- Adds file timestamps native support for FreeBSD. [#3894][3894] / [io#124][io124] by [@cunei][@cunei]
+- Fixes JDK 10 version string parsing. [launcher#209][launcher209] by [@2m][@2m]
+
+### Improvements
+
+- Deprecates `Extracted#append` in favour of `appendWithSession` or `appendWithoutSession`.  [#3865][3865] by [@dwijnand][@dwijnand]
+- Adds a new global `Boolean` setting called `autoStartServer`. See below.
+- Upgrades Scala versions used for sbt cross building `^^`. [#3923][3923] by [@dwijnand][@dwijnand]
+- Many documentation maintenance changes by [@xuwei-k][@xuwei-k]
+
+### autoStartServer setting
+
+sbt 1.1.1 adds a new global `Boolean` setting called `autoStartServer`, which is set to `true` by default.
+When set to `true`, sbt shell will automatically start sbt server. Otherwise, it will not start the server until `startSever` command is issued. This could be used to opt out of server for security reasons.
+
+[#3922][3922] by [@swaldman][@swaldman]
+
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dwijnand]: http://github.com/dwijnand
+  [@cunei]: https://github.com/cunei
+  [@jvican]: https://github.com/jvican
+  [@Duhemm]: https://github.com/Duhemm
+  [@j-keck]: https://github.com/j-keck
+  [@swaldman]: https://github.com/swaldman
+  [@xuwei-k]: https://github.com/xuwei-k
+  [@2m]: https://github.com/2m
+  [3871]: https://github.com/sbt/sbt/issues/3871
+  [io120]: https://github.com/sbt/io/pull/120
+  [3894]: https://github.com/sbt/sbt/issues/3894
+  [io121]: https://github.com/sbt/io/pull/121
+  [io124]: https://github.com/sbt/io/pull/124
+  [zinc292]: https://github.com/sbt/zinc/issues/292
+  [zinc484]: https://github.com/sbt/zinc/pull/484
+  [3865]: https://github.com/sbt/sbt/pull/3865
+  [3841]: https://github.com/sbt/sbt/issues/3841
+  [3876]: https://github.com/sbt/sbt/pull/3876
+  [3923]: https://github.com/sbt/sbt/pull/3923
+  [3922]: https://github.com/sbt/sbt/pull/3922
+  [launcher209]: https://github.com/sbt/sbt-launcher-package/pull/209
