@@ -108,7 +108,7 @@ object ServerSpec {
       val chunk0 = buffer.take(delimPos)
       buffer = buffer.drop(delimPos + 1)
       // remove \r at the end of line.
-      val chunk1 = if (chunk0.isEmpty || chunk0.last != RetByte) chunk0 else chunk0.dropRight(1)
+      val chunk1 = if (chunk0.lastOption contains RetByte) chunk0.dropRight(1) else chunk0
       Some(new String(chunk1.toArray, "utf-8"))
     } else None // no EOL yet, so skip this turn.
   }

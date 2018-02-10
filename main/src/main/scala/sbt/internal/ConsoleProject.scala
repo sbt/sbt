@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import sbt.util.Logger
+import sbt.internal.util.JLine
 import sbt.internal.inc.{ ScalaInstance, ZincUtil }
 import xsbti.compile.ClasspathOptionsUtil
 
@@ -42,13 +43,17 @@ object ConsoleProject {
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
-    // TODO - Hook up dsl classpath correctly...
-    (new Console(compiler))(
-      unit.classpath,
-      options,
-      initCommands,
-      cleanupCommands
-    )(Some(unit.loader), bindings).get
+
+    JLine.usingTerminal { _ =>
+      // TODO - Hook up dsl classpath correctly...
+      (new Console(compiler))(
+        unit.classpath,
+        options,
+        initCommands,
+        cleanupCommands
+      )(Some(unit.loader), bindings).get
+    }
+    ()
   }
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */

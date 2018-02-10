@@ -3,19 +3,15 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala282 = "2.8.2"
-  val scala292 = "2.9.2"
-  val scala293 = "2.9.3"
-  val scala210 = "2.10.7"
-  val scala211 = "2.11.12"
+  // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.4"
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.1.3"
+  private val ioVersion = "1.1.4"
   private val utilVersion = "1.1.2"
-  private val lmVersion = "1.1.2"
-  private val zincVersion = "1.1.0"
+  private val lmVersion = "1.1.3"
+  private val zincVersion = "1.1.1"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
