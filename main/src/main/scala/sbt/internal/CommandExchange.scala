@@ -14,6 +14,7 @@ import java.util.concurrent.atomic._
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.{
+  autoStartServer,
   serverHost,
   serverPort,
   serverAuthentication,
@@ -43,9 +44,8 @@ import sbt.util.{ Level, Logger, LogExchange }
  * this exchange, which could serve command request from either of the channel.
  */
 private[sbt] final class CommandExchange {
-  private val autoStartServer =
+  private val autoStartServerSysProp =
     sys.props get "sbt.server.autostart" forall (_.toLowerCase == "true")
-
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private var consoleChannel: Option[ConsoleChannel] = None
@@ -82,7 +82,11 @@ private[sbt] final class CommandExchange {
       consoleChannel = Some(console0)
       subscribe(console0)
     }
-    if (autoStartServer) runServer(s)
+    val autoStartServerAttr = (s get autoStartServer) match {
+      case Some(bool) => bool
+      case None       => true
+    }
+    if (autoStartServerSysProp && autoStartServerAttr) runServer(s)
     else s
   }
 
