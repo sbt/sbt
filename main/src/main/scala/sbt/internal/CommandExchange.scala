@@ -9,7 +9,6 @@ package sbt
 package internal
 
 import java.io.IOException
-import java.nio.file.Files
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic._
 import scala.collection.mutable.ListBuffer
@@ -24,7 +23,6 @@ import BasicKeys.{
   logLevel
 }
 import java.net.Socket
-import org.scalasbt.ipcsocket.UnixDomainSocketLibrary
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import scala.concurrent.Await
@@ -34,7 +32,7 @@ import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.internal.server._
 import sbt.internal.langserver.{ LogMessageParams, MessageType }
-import sbt.internal.util.{ StringEvent, ObjectEvent, MainAppender, Util }
+import sbt.internal.util.{ StringEvent, ObjectEvent, MainAppender }
 import sbt.internal.util.codec.JValueFormats
 import sbt.protocol.{ EventMessage, ExecStatusEvent }
 import sbt.util.{ Level, Logger, LogExchange }
@@ -141,19 +139,10 @@ private[sbt] final class CommandExchange {
     if (server.isEmpty && firstInstance.get) {
       val portfile = s.baseDir / "project" / "target" / "active.json"
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
-      val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
-      val socketfile = {
-        val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
-        connectionType match {
-          case ConnectionType.Local if !Util.isWindows =>
-            val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
-            if (socketfile.absolutePath.length > maxSocketLength)
-              Files.createTempFile("sbt-server", ".sock").toFile // assuming this is short enough..
-            else
-              socketfile
-          case _ => socketfile
-        }
-      }
+      val serverDir =
+        sys.env get "SBT_GLOBAL_SERVER_DIR" map file getOrElse BuildPaths.getGlobalBase(s) / "server"
+      val tokenfile = serverDir / h / "token.json"
+      val socketfile = serverDir / h / "sock"
       val pipeName = "sbt-server-" + h
       val connection = ServerConnection(
         connectionType,
