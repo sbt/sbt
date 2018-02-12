@@ -245,8 +245,9 @@ lazy val `sbt-shared` = project
     utest,
     // because we don't publish for 2.11 the following declaration
     // is more wordy than usual
+    // once support for sbt 0.13 is removed, this dependency can go away
     libs ++= {
-      val dependency = "com.dwijnand" % "sbt-compat" % "1.2.5"
+      val dependency = "com.dwijnand" % "sbt-compat" % "1.2.6"
       val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
       val scalaV = (scalaBinaryVersion in update).value
       val m = Defaults.sbtPluginExtra(dependency, sbtV, scalaV)

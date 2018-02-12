@@ -1,6 +1,7 @@
 package coursier
 
 import java.io.File
+import java.net.URL
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
@@ -61,7 +62,7 @@ object ToSbt {
             .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`))
         )
         // .withConfigurations(Vector())
-        .withUrl(Some(sbt.url(artifact.url)))
+        .withUrl(Some(new URL(artifact.url)))
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
@@ -83,7 +84,7 @@ object ToSbt {
 
     val callers = dependees.map {
       case (dependee, dependeeProj) =>
-        sbt.Caller(
+        Caller(
           ToSbt.moduleId(dependee, dependeeProj.properties.toMap),
           dependeeProj.configurations.keys.toVector.map(ConfigRef(_)),
           dependee.module.attributes ++ dependeeProj.properties,
@@ -95,7 +96,7 @@ object ToSbt {
         )
     }
 
-    sbt.ModuleReport(
+    ModuleReport(
       ToSbt.moduleId(dependency, project.properties.toMap),
       sbtArtifacts.toVector,
       sbtMissingArtifacts.toVector
@@ -250,7 +251,7 @@ object ToSbt {
           } else
             reports.toVector
 
-        sbt.ConfigurationReport(
+        ConfigurationReport(
           ConfigRef(config),
           reports0,
           Vector()
