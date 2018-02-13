@@ -157,3 +157,11 @@ To build a distributable binary
 # Artifact will be placed under dist/
 java -jar dist/coursier-cli.jar fetch --help
 ```
+
+# Merging PRs on GitHub
+
+Use either "Create merge commit" or "Squash and merge".
+
+Use "Create merge commit" if the commit list is clean enough (each commit has a clear message, and doesn't break simple compilation and test tasks).
+
+Use "Squash and merge" in the other cases.
