@@ -60,9 +60,16 @@ private[sbt] object Server {
                 // Named pipe already has an exclusive lock.
                 addServerError(new Win32NamedPipeServerSocket(pipeName))
               case ConnectionType.Local =>
-                tryClient(new UnixDomainSocket(socketfile.getAbsolutePath))
+                val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
+                val path = socketfile.getAbsolutePath
+                if (path.length > maxSocketLength)
+                  sys.error("socket file absolute path too long; " +
+                      "either switch to another connection type " +
+                      "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
+                      s"Current path: ${path}")
+                tryClient(new UnixDomainSocket(path))
                 prepareSocketfile()
-                addServerError(new UnixDomainServerSocket(socketfile.getAbsolutePath))
+                addServerError(new UnixDomainServerSocket(path))
               case ConnectionType.Tcp =>
                 tryClient(new Socket(InetAddress.getByName(host), port))
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
