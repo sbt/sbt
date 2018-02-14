@@ -106,12 +106,12 @@ get_mem_opts () {
     (( $codecache > 128 )) || codecache=128
     (( $codecache < 512 )) || codecache=512
     local class_metadata_size=$(( $codecache * 2 ))
-    local class_metadata_opt=$([[ "$java_version" < "1.8" ]] && echo "MaxPermSize" || echo "MaxMetaspaceSize")
+    local class_metadata_opt=$([[ "$java_version" < "8" ]] && echo "MaxPermSize" || echo "MaxMetaspaceSize")
 
     local arg_xms=$([[ "${java_args[@]}" == *-Xms* ]] && echo "" || echo "-Xms${mem}m")
     local arg_xmx=$([[ "${java_args[@]}" == *-Xmx* ]] && echo "" || echo "-Xmx${mem}m")
     local arg_rccs=$([[ "${java_args[@]}" == *-XX:ReservedCodeCacheSize* ]] && echo "" || echo "-XX:ReservedCodeCacheSize=${codecache}m")
-    local arg_meta=$([[ "${java_args[@]}" == *-XX:${class_metadata_opt}* && ! "$java_version" < "1.8" ]] && echo "" || echo "-XX:${class_metadata_opt}=${class_metadata_size}m")
+    local arg_meta=$([[ "${java_args[@]}" == *-XX:${class_metadata_opt}* && ! "$java_version" < "8" ]] && echo "" || echo "-XX:${class_metadata_opt}=${class_metadata_size}m")
 
     echo "${arg_xms} ${arg_xmx} ${arg_rccs} ${arg_meta}"
   fi
@@ -179,14 +179,9 @@ process_args () {
     process_my_args "${myargs[@]}"
   }
 
-  ## parses java version from the -version output line, e.g.:
-  ## java version "10-ea" 2018-03-20 --> 10
-  ## openjdk version "9"             --> 9
-  ## java version "1.8.0_162"        --> 1.8
-  ## openjdk version "1.8.0_144"     --> 1.8
-  ## java version "1.7.0_151"        --> 1.7
-  ## java version "1.6.0_45"         --> 1.6
-  java_version=$("$java_cmd" -Xms128M -Xmx512M -version 2>&1 | tr '\r' '\n' | grep ' version "' | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*/\1\2/; 1q')
+  ## parses java version from the -version output line
+  ## https://regex101.com/r/0r3kKb/1/tests
+  java_version=$("$java_cmd" -Xms128M -Xmx512M -version 2>&1 | tr '\r' '\n' | grep ' version "' | sed 's/.*version "\(1\.\)\?\([0-9]*\)\{0,1\}\(.*\)*/\2/; 1q')
   vlog "[process_args] java_version = '$java_version'"
 }
 
@@ -269,7 +264,7 @@ run() {
   argumentCount=$#
 
   # TODO - java check should be configurable...
-  checkJava "1.6"
+  checkJava "6"
 
   # Java 9 support
   copyRt
