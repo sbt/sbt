@@ -2,8 +2,6 @@ import Dependencies._
 import Path._
 //import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion = "1.0.0-SNAPSHOT"
-
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala212,
   // publishArtifact in packageDoc := false,
@@ -32,7 +30,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 val mimaSettings = Def settings (
   mimaPreviousArtifacts := Set(
     "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
-    "1.1.0", "1.1.1", "1.1.2",
+    "1.1.0", "1.1.1", "1.1.2", "1.1.3",
   ) map (version =>
     organization.value %% moduleName.value % version
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
@@ -61,7 +59,7 @@ lazy val lmRoot = (project in file("."))
         },
         bintrayPackage := "librarymanagement",
         scalafmtOnCompile in Sbt := false,
-        git.baseVersion := baseVersion,
+        git.baseVersion := "1.1.3",
         version := {
           val v = version.value
           if (v contains "SNAPSHOT") git.baseVersion.value
