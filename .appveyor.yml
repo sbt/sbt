@@ -27,3 +27,4 @@ test_script:
   - test.bat
   - test1.bat
   - test2.bat
+  - test3/test3.bat
