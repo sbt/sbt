@@ -38,7 +38,10 @@ private[sbt] class ParallelResolveEngine(settings: ResolveEngineSettings,
     val allDownloads = dependencies.par.flatMap { dep =>
       if (!(dep.isCompletelyEvicted || dep.hasProblem) &&
           dep.getModuleRevision != null) {
-        ParArray(downloadNodeArtifacts(dep, artifactFilter, options))
+        //don't block in global ec to avoid deadlocks
+        scala.concurrent.blocking {
+          ParArray(downloadNodeArtifacts(dep, artifactFilter, options))
+        }
       } else ParArray.empty[DownloadResult]
     }
 
