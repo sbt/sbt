@@ -2,7 +2,6 @@ import Dependencies._
 import Util._
 //import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion = "1.0.2-SNAPSHOT"
 def internalPath = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -55,7 +54,7 @@ lazy val utilRoot: Project = (project in file("."))
   .settings(
     inThisBuild(
       Seq(
-        git.baseVersion := baseVersion,
+        git.baseVersion := "1.1.2",
         version := {
           val v = version.value
           if (v contains "SNAPSHOT") git.baseVersion.value
