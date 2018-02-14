@@ -9,7 +9,7 @@ def buildLevelSettings: Seq[Setting[_]] =
   inThisBuild(
     Seq(
       organization := "org.scala-sbt",
-      version := "1.1.2-SNAPSHOT",
+      version := "1.2.0-SNAPSHOT",
       description := "sbt is an interactive build tool",
       bintrayOrganization := Some("sbt"),
       bintrayRepository := {
@@ -77,7 +77,10 @@ def testedBaseSettings: Seq[Setting[_]] =
 
 val mimaSettings = Def settings (
   mimaPreviousArtifacts := {
-    ((0 to 4).map(v => s"1.0.$v") ++ (0 to 0).map(v => s"1.1.$v")).map{ v =>
+    Seq(
+      "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
+      "1.1.0", "1.1.1",
+    ).map { v =>
       organization.value % moduleName.value % v cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
     }.toSet
   }

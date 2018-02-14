@@ -120,8 +120,10 @@ private[sbt] final class CommandExchange {
     if (server.isEmpty && firstInstance.get) {
       val portfile = s.baseDir / "project" / "target" / "active.json"
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
-      val tokenfile = BuildPaths.getGlobalBase(s) / "server" / h / "token.json"
-      val socketfile = BuildPaths.getGlobalBase(s) / "server" / h / "sock"
+      val serverDir =
+        sys.env get "SBT_GLOBAL_SERVER_DIR" map file getOrElse BuildPaths.getGlobalBase(s) / "server"
+      val tokenfile = serverDir / h / "token.json"
+      val socketfile = serverDir / h / "sock"
       val pipeName = "sbt-server-" + h
       val connection = ServerConnection(
         connectionType,
