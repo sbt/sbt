@@ -246,7 +246,6 @@ private[sbt] object ConvertResolver {
 
     import sbt.io.syntax._
     private def downloadChecksum(resource: Resource,
-                                 target: File,
                                  targetChecksumFile: File,
                                  algorithm: String): Boolean = {
       if (!ChecksumHelper.isKnownAlgorithm(algorithm))
@@ -278,7 +277,7 @@ private[sbt] object ConvertResolver {
           // Continue checking until we hit a failure
           val checksumFile = new File(targetPath.stripSuffix(PartEnd) + s".$algorithm")
           if (checked) checked
-          else downloadChecksum(resource, target, checksumFile, algorithm)
+          else downloadChecksum(resource, checksumFile, algorithm)
         }
         // -ivy deviation
         size

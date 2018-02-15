@@ -28,12 +28,11 @@ object IvyRetrieve {
 
   @deprecated("Internal only. No longer in use.", "0.13.6")
   def artifactReports(mid: ModuleID, artReport: Seq[ArtifactDownloadReport]): ModuleReport = {
-    val (resolved, missing) = artifacts(mid, artReport)
+    val (resolved, missing) = artifacts(artReport)
     ModuleReport(mid, resolved, missing)
   }
 
   private[sbt] def artifacts(
-      mid: ModuleID,
       artReport: Seq[ArtifactDownloadReport]
   ): (Vector[(Artifact, File)], Vector[Artifact]) = {
     val missing = new mutable.ListBuffer[Artifact]
@@ -180,7 +179,7 @@ object IvyRetrieve {
       case _ => Vector.empty
     }
     val callers = dep.getCallers(confReport.getConfiguration).toVector map { toCaller }
-    val (resolved, missing) = artifacts(moduleId, confReport getDownloadReports revId)
+    val (resolved, missing) = artifacts(confReport getDownloadReports revId)
 
     ModuleReport(
       moduleId,

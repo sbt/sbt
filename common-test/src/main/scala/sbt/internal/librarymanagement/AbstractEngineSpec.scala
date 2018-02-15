@@ -17,5 +17,5 @@ abstract class AbstractEngineSpec extends UnitSpec {
       case Left(w)  => throw w.resolveException
     }
 
-  def cleanCachedResolutionCache(module: ModuleDescriptor): Unit = ()
+  def cleanCachedResolutionCache(@deprecated("unused", "") module: ModuleDescriptor): Unit = ()
 }
