@@ -12,16 +12,18 @@ class EvictionWarningSpec extends BaseIvySpecification {
   it should "not be detected if it's disabled" in scalaVersionWarn2()
   it should "print out message about the eviction" in scalaVersionWarn3()
   it should "print out message about the eviction with callers" in scalaVersionWarn4()
+  it should "print out summary about the eviction if warn eviction summary enabled" in scalaVersionWarn5()
 
   """Non-eviction of overridden scala-library whose scalaVersion
-  """ should "not be detected if it's enabled" in scalaVersionWarn5()
-  it should "not be detected if it's disabled" in scalaVersionWarn6()
+  """ should "not be detected if it's enabled" in scalaVersionNoWarn1()
+  it should "not be detected if it's disabled" in scalaVersionNoWarn2()
 
   """Including two (suspect) binary incompatible Java libraries to direct dependencies
   """ should "be detected as eviction" in javaLibWarn1()
   it should "not be detected if it's disabled" in javaLibWarn2()
   it should "print out message about the eviction" in javaLibWarn3()
   it should "print out message about the eviction with callers" in javaLibWarn4()
+  it should "print out summary about the eviction if warn eviction summary enabled" in javaLibWarn5()
 
   """Including two (suspect) binary compatible Java libraries to direct dependencies
   """ should "not be detected as eviction" in javaLibNoWarn1()
@@ -35,6 +37,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
   """Including two (suspect) binary incompatible Scala libraries to direct dependencies
   """ should "be detected as eviction" in scalaLibWarn1()
   it should "print out message about the eviction" in scalaLibWarn2()
+  it should "print out summary about the eviction if warn eviction summary enabled" in scalaLibWarn3()
 
   """Including two (suspect) binary compatible Scala libraries to direct dependencies
   """ should "not be detected as eviction" in scalaLibNoWarn1()
@@ -43,6 +46,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
   """Including two (suspect) transitively binary incompatible Scala libraries to direct dependencies
   """ should "be detected as eviction" in scalaLibTransitiveWarn2()
   it should "print out message about the eviction if it's enabled" in scalaLibTransitiveWarn3()
+  it should "print out summary about the eviction if warn eviction summary enabled" in scalaLibTransitiveWarn4()
 
   "Comparing sbt 0.x" should "use Second Segment Variation semantics" in {
     val m1 = "org.scala-sbt" % "util-logging" % "0.13.16"
@@ -133,12 +137,22 @@ class EvictionWarningSpec extends BaseIvySpecification {
   }
 
   def scalaVersionWarn5() = {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
+    val report = ivyUpdate(m)
+    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
+      List(
+        "There may be incompatibilities among your library dependencies.",
+        "Run 'evicted' to see detailed eviction warnings"
+      )
+  }
+
+  def scalaVersionNoWarn1() = {
     val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report).scalaEvictions should have size (0)
   }
 
-  def scalaVersionWarn6() = {
+  def scalaVersionNoWarn2() = {
     val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withWarnScalaVersionEviction(false), report).scalaEvictions should have size (0)
@@ -188,6 +202,16 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t* commons-io:commons-io:2.4 is selected over 1.4",
         "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
         "",
+        "Run 'evicted' to see detailed eviction warnings"
+      )
+  }
+
+  def javaLibWarn5() = {
+    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
+      List(
+        "There may be incompatibilities among your library dependencies.",
         "Run 'evicted' to see detailed eviction warnings"
       )
   }
@@ -247,6 +271,17 @@ class EvictionWarningSpec extends BaseIvySpecification {
       )
   }
 
+  def scalaLibWarn3() = {
+    val deps = Vector(scala2104, akkaActor214, akkaActor234)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
+      List(
+        "There may be incompatibilities among your library dependencies.",
+        "Run 'evicted' to see detailed eviction warnings"
+      )
+  }
+
   def scalaLibNoWarn1() = {
     val deps = Vector(scala2104, akkaActor230, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
@@ -281,6 +316,16 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
         "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
         "",
+        "Run 'evicted' to see detailed eviction warnings"
+      )
+  }
+
+  def scalaLibTransitiveWarn4() = {
+    val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
+      List(
+        "There may be incompatibilities among your library dependencies.",
         "Run 'evicted' to see detailed eviction warnings"
       )
   }

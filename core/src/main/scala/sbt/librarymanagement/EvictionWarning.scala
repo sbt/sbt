@@ -11,6 +11,7 @@ final class EvictionWarningOptions private[sbt] (
     val warnScalaVersionEviction: Boolean,
     val warnDirectEvictions: Boolean,
     val warnTransitiveEvictions: Boolean,
+    val warnEvictionSummary: Boolean,
     val infoAllEvictions: Boolean,
     val showCallers: Boolean,
     val guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean]
@@ -23,6 +24,8 @@ final class EvictionWarningOptions private[sbt] (
     copy(warnDirectEvictions = warnDirectEvictions)
   def withWarnTransitiveEvictions(warnTransitiveEvictions: Boolean): EvictionWarningOptions =
     copy(warnTransitiveEvictions = warnTransitiveEvictions)
+  def withWarnEvictionSummary(warnEvictionSummary: Boolean): EvictionWarningOptions =
+    copy(warnEvictionSummary = warnEvictionSummary)
   def withInfoAllEvictions(infoAllEvictions: Boolean): EvictionWarningOptions =
     copy(infoAllEvictions = infoAllEvictions)
   def withShowCallers(showCallers: Boolean): EvictionWarningOptions =
@@ -37,6 +40,7 @@ final class EvictionWarningOptions private[sbt] (
       warnScalaVersionEviction: Boolean = warnScalaVersionEviction,
       warnDirectEvictions: Boolean = warnDirectEvictions,
       warnTransitiveEvictions: Boolean = warnTransitiveEvictions,
+      warnEvictionSummary: Boolean = warnEvictionSummary,
       infoAllEvictions: Boolean = infoAllEvictions,
       showCallers: Boolean = showCallers,
       guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
@@ -47,6 +51,7 @@ final class EvictionWarningOptions private[sbt] (
       warnScalaVersionEviction = warnScalaVersionEviction,
       warnDirectEvictions = warnDirectEvictions,
       warnTransitiveEvictions = warnTransitiveEvictions,
+      warnEvictionSummary = warnEvictionSummary,
       infoAllEvictions = infoAllEvictions,
       showCallers = showCallers,
       guessCompatible = guessCompatible
@@ -55,19 +60,23 @@ final class EvictionWarningOptions private[sbt] (
 
 object EvictionWarningOptions {
   def empty: EvictionWarningOptions =
-    new EvictionWarningOptions(Vector(),
-                               warnScalaVersionEviction = false,
-                               warnDirectEvictions = false,
-                               warnTransitiveEvictions = false,
-                               infoAllEvictions = false,
-                               showCallers = false,
-                               defaultGuess)
+    new EvictionWarningOptions(
+      Vector(),
+      warnScalaVersionEviction = false,
+      warnDirectEvictions = false,
+      warnTransitiveEvictions = false,
+      warnEvictionSummary = false,
+      infoAllEvictions = false,
+      showCallers = false,
+      defaultGuess
+    )
   def default: EvictionWarningOptions =
     new EvictionWarningOptions(
       Vector(Compile),
       warnScalaVersionEviction = true,
       warnDirectEvictions = true,
       warnTransitiveEvictions = true,
+      warnEvictionSummary = false,
       infoAllEvictions = false,
       showCallers = true,
       defaultGuess
@@ -78,8 +87,20 @@ object EvictionWarningOptions {
       warnScalaVersionEviction = true,
       warnDirectEvictions = true,
       warnTransitiveEvictions = true,
+      warnEvictionSummary = false,
       infoAllEvictions = true,
       showCallers = true,
+      defaultGuess
+    )
+  def summary: EvictionWarningOptions =
+    new EvictionWarningOptions(
+      Vector(Compile),
+      warnScalaVersionEviction = false,
+      warnDirectEvictions = false,
+      warnTransitiveEvictions = false,
+      warnEvictionSummary = true,
+      infoAllEvictions = false,
+      showCallers = false,
       defaultGuess
     )
 
@@ -303,6 +324,10 @@ object EvictionWarning {
   implicit val evictionWarningLines: ShowLines[EvictionWarning] = ShowLines { a: EvictionWarning =>
     import ShowLines._
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
+    if (a.options.warnEvictionSummary && a.allEvictions.nonEmpty) {
+      out += "There may be incompatibilities among your library dependencies."
+    }
+
     if (a.scalaEvictions.nonEmpty) {
       out += "Scala version was updated by one of library dependencies:"
       out ++= (a.scalaEvictions flatMap { _.lines })
@@ -317,7 +342,7 @@ object EvictionWarning {
       out ++= (a.transitiveEvictions flatMap { _.lines })
     }
 
-    if (a.allEvictions.nonEmpty && a.reportedEvictions.nonEmpty) {
+    if (a.allEvictions.nonEmpty && (a.options.warnEvictionSummary || a.reportedEvictions.nonEmpty)) {
       out += "Run 'evicted' to see detailed eviction warnings"
     }
 
