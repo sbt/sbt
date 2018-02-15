@@ -12,18 +12,30 @@ matrix:
     - script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
         - cd citest && ./test.sh
+      jdk: oraclejdk8
+
+    ## build using JDK 8, test using JDK 8, on macOS
+    - script:
+        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
+        - cd citest && ./test.sh
+      ## https://github.com/travis-ci/travis-ci/issues/2316
+      language: java
+      os: osx
+      osx_image: xcode9.2
 
     ## build using JDK 8, test using JDK 9
     - script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
         - jdk_switcher use oraclejdk9
         - cd citest && ./test.sh
+      jdk: oraclejdk8
 
     ## build using JDK 8, test using JDK 10
     - script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
         - citest/install-jdk10.sh
         - cd citest && ./test.sh
+      jdk: oraclejdk8
 
     - script:
         - sbt -Dsbt.build.version=$SBT_VER rpm:packageBin debian:packageBin
@@ -32,16 +44,18 @@ matrix:
           packages:
             - fakeroot
             - rpm
+      jdk: oraclejdk8
 
 scala:
   - 2.10.7
 
-jdk:
-  - oraclejdk8
-
-# Undo _JAVA_OPTIONS environment variable
-before_script:
-  - _JAVA_OPTIONS=
+before_install:
+  # https://github.com/travis-ci/travis-ci/issues/8408
+  - unset _JAVA_OPTIONS
+  - if [[ "$TRAVIS_OS_NAME" = "osx" ]]; then
+      brew update;
+      brew install sbt;
+    fi
 
 cache:
   directories:
