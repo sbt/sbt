@@ -4,8 +4,6 @@ import coursier.core.{Activation, Parse}
 import coursier.core.Activation.Os
 import utest._
 
-import scalaz.{-\/, \/-}
-
 object ActivationTests extends TestSuite {
 
   def parseVersion(s: String) = Parse.version(s).getOrElse(???)
@@ -210,7 +208,7 @@ object ActivationTests extends TestSuite {
           val activation = Activation(
             Nil,
             Os.empty,
-            Some(\/-(Seq(parseVersion("1.8.0_112"))))
+            Some(Right(Seq(parseVersion("1.8.0_112"))))
           )
 
           val isActive = activation.isActive(Map(), Os.empty, Some(jdkVersion))
@@ -222,7 +220,7 @@ object ActivationTests extends TestSuite {
           val activation = Activation(
             Nil,
             Os.empty,
-            Some(\/-(Seq(parseVersion("1.8.0_102"), parseVersion("1.8.0_112"))))
+            Some(Right(Seq(parseVersion("1.8.0_102"), parseVersion("1.8.0_112"))))
           )
 
           val isActive = activation.isActive(Map(), Os.empty, Some(jdkVersion))
@@ -235,7 +233,7 @@ object ActivationTests extends TestSuite {
           val activation = Activation(
             Nil,
             Os.empty,
-            Some(\/-(Seq(parseVersion("1.8.0_102"))))
+            Some(Right(Seq(parseVersion("1.8.0_102"))))
           )
 
           val isActive = activation.isActive(Map(), Os.empty, Some(jdkVersion))
@@ -248,7 +246,7 @@ object ActivationTests extends TestSuite {
           val activation = Activation(
             Nil,
             Os.empty,
-            Some(\/-(Seq(parseVersion("1.8.0_92"), parseVersion("1.8.0_102"))))
+            Some(Right(Seq(parseVersion("1.8.0_92"), parseVersion("1.8.0_102"))))
           )
 
           val isActive = activation.isActive(Map(), Os.empty, Some(jdkVersion))
@@ -260,7 +258,7 @@ object ActivationTests extends TestSuite {
           val activation = Activation(
             Nil,
             Os.empty,
-            Some(-\/(parseVersionInterval("[1.8,)")))
+            Some(Left(parseVersionInterval("[1.8,)")))
           )
 
           val isActive = activation.isActive(Map(), Os.empty, Some(jdkVersion))
@@ -272,7 +270,7 @@ object ActivationTests extends TestSuite {
           val activation = Activation(
             Nil,
             Os.empty,
-            Some(-\/(parseVersionInterval("[1.7,1.8)")))
+            Some(Left(parseVersionInterval("[1.7,1.8)")))
           )
 
           val isActive = activation.isActive(Map(), Os.empty, Some(jdkVersion))
@@ -290,7 +288,7 @@ object ActivationTests extends TestSuite {
           "requiredWithNegValue" -> Some("!bar")
         ),
         Os(None, Set("mac"), None, None),
-        Some(-\/(parseVersionInterval("[1.8,)")))
+        Some(Left(parseVersionInterval("[1.8,)")))
       )
 
       'match - {

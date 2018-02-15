@@ -208,10 +208,9 @@ These would mean that the resolution wasn't able to get metadata about some depe
 Then fetch and get local copies of the artifacts themselves (the JARs) with
 ```tut:silent
 import java.io.File
-import scalaz.\/
 import scalaz.concurrent.Task
 
-val localArtifacts: Seq[FileError \/ File] = Task.gatherUnordered(
+val localArtifacts: Seq[Either[FileError, File]] = Task.gatherUnordered(
   resolution.artifacts.map(Cache.file(_).run)
 ).unsafePerformSync
 ```
@@ -536,7 +535,7 @@ MavenRepository(
 
 Now that we have repositories, we're going to mix these with things from the `coursier-cache` module,
 for resolution to happen via the cache. We'll create a function
-of type `Seq[(Module, String)] => F[Seq[((Module, String), Seq[String] \/ (Artifact.Source, Project))]]`.
+of type `Seq[(Module, String)] => F[Seq[((Module, String), Either[Seq[String], (Artifact.Source, Project)])]]`.
 Given a sequence of dependencies, designated by their `Module` (organisation and name in most cases)
 and version (just a `String`), it gives either errors (`Seq[String]`) or metadata (`(Artifact.Source, Project)`),
 wrapping the whole in a monad `F`.
@@ -591,10 +590,9 @@ which are dependencies whose versions could not be unified.
 Then, if all went well, we can fetch and get local copies of the artifacts themselves (the JARs) with
 ```tut:silent
 import java.io.File
-import scalaz.\/
 import scalaz.concurrent.Task
 
-val localArtifacts: Seq[FileError \/ File] = Task.gatherUnordered(
+val localArtifacts: Seq[Either[FileError, File]] = Task.gatherUnordered(
   resolution.artifacts.map(Cache.file(_).run)
 ).unsafePerformSync
 ```

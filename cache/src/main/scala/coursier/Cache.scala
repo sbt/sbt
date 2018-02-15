@@ -1,10 +1,10 @@
 package coursier
 
 import java.math.BigInteger
-import java.net.{ HttpURLConnection, URL, URLConnection, URLStreamHandler, URLStreamHandlerFactory }
-import java.nio.channels.{ OverlappingFileLockException, FileLock }
+import java.net.{HttpURLConnection, URL, URLConnection, URLStreamHandler, URLStreamHandlerFactory}
+import java.nio.channels.{FileLock, OverlappingFileLockException}
 import java.security.MessageDigest
-import java.util.concurrent.{ Callable, ConcurrentHashMap, Executors, ExecutorService }
+import java.util.concurrent.{Callable, ConcurrentHashMap, ExecutorService, Executors}
 import java.util.regex.Pattern
 
 import coursier.core.Authentication
@@ -13,15 +13,14 @@ import coursier.internal.FileUtil
 import coursier.util.Base64.Encoder
 
 import scala.annotation.tailrec
-
-import scalaz._
-import scalaz.Scalaz.ToEitherOps
-import scalaz.concurrent.{ Task, Strategy }
-
-import java.io.{ Serializable => _, _ }
+import scalaz.Nondeterminism
+import scalaz.concurrent.{Strategy, Task}
+import java.io.{Serializable => _, _}
 import java.nio.charset.Charset
 
-import scala.concurrent.duration.{ Duration, DurationInt }
+import coursier.util.EitherT
+
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -83,9 +82,9 @@ object Cache {
     cache: File,
     file: File
   )(
-    f: => FileError \/ T,
-    ifLocked: => Option[FileError \/ T]
-  ): FileError \/ T = {
+    f: => Either[FileError, T],
+    ifLocked: => Option[Either[FileError, T]]
+  ): Either[FileError, T] = {
 
     val lockFile = CachePath.lockFile(file)
 
@@ -97,7 +96,7 @@ object Cache {
     }
 
     @tailrec
-    def loop(): FileError \/ T = {
+    def loop(): Either[FileError, T] = {
 
       val resOpt = {
         var lock: FileLock = null
@@ -133,8 +132,8 @@ object Cache {
     finally if (out != null) out.close()
   }
 
-  def withLockFor[T](cache: File, file: File)(f: => FileError \/ T): FileError \/ T =
-    withLockOr(cache, file)(f, Some(-\/(FileError.Locked(file))))
+  def withLockFor[T](cache: File, file: File)(f: => Either[FileError, T]): Either[FileError, T] =
+    withLockOr(cache, file)(f, Some(Left(FileError.Locked(file))))
 
 
   private def defaultRetryCount = 3
@@ -152,11 +151,11 @@ object Cache {
     logger: Option[Logger],
     retry: Int = retryCount
   )(
-    f: => FileError \/ T
-  ): FileError \/ T = {
+    f: => Either[FileError, T]
+  ): Either[FileError, T] = {
 
     @tailrec
-    def helper(retry: Int): FileError \/ T = {
+    def helper(retry: Int): Either[FileError, T] = {
 
       val resOpt =
         try {
@@ -164,20 +163,17 @@ object Cache {
           val prev = urlLocks.putIfAbsent(url, o)
 
           val res =
-            if (prev == null) {
-              val res =
-                try \/-(f)
-                catch {
-                  case nfe: FileNotFoundException if nfe.getMessage != null =>
-                    -\/(-\/(FileError.NotFound(nfe.getMessage)))
-                }
-                finally {
-                  urlLocks.remove(url)
-                }
-
-              res.merge[FileError \/ T]
-            } else
-              -\/(FileError.ConcurrentDownload(url))
+            if (prev == null)
+              try f
+              catch {
+                case nfe: FileNotFoundException if nfe.getMessage != null =>
+                  Left(FileError.NotFound(nfe.getMessage))
+              }
+              finally {
+                urlLocks.remove(url)
+              }
+            else
+              Left(FileError.ConcurrentDownload(url))
 
           Some(res)
         }
@@ -186,7 +182,7 @@ object Cache {
             // TODO If Cache is made an (instantiated) class at some point, allow to log that exception.
             None
           case NonFatal(e) =>
-            Some(-\/(
+            Some(Left(
               FileError.DownloadError(
                 s"Caught $e${Option(e.getMessage).fold("")(" (" + _ + ")")} while downloading $url"
               )
@@ -325,7 +321,7 @@ object Cache {
     url: String,
     authentication: Option[Authentication],
     logger0: Option[Logger]
-  ): FileError \/ Option[Long] = {
+  ): Either[FileError, Option[Long]] = {
 
     val logger = logger0.map(Logger.Extended(_))
 
@@ -350,14 +346,14 @@ object Cache {
             success = true
             logger.foreach(_.gettingLengthResult(url, len))
 
-            len.right
+            Right(len)
           } finally {
             if (!success)
               logger.foreach(_.gettingLengthResult(url, None))
           }
 
         case other =>
-          -\/(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
+          Left(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
       }
     } finally {
       if (conn != null)
@@ -373,7 +369,7 @@ object Cache {
     pool: ExecutorService,
     logger0: Option[Logger] = None,
     ttl: Option[Duration] = defaultTtl
-  ): Task[Seq[((File, String), FileError \/ Unit)]] = {
+  ): Task[Seq[((File, String), Either[FileError, Unit])]] = {
 
     implicit val pool0 = pool
 
@@ -391,13 +387,13 @@ object Cache {
     def fileLastModified(file: File): EitherT[Task, FileError, Option[Long]] =
       EitherT {
         Task {
-          \/- {
+          Right {
             val lastModified = file.lastModified()
             if (lastModified > 0L)
               Some(lastModified)
             else
               None
-          } : FileError \/ Option[Long]
+          } : Either[FileError, Option[Long]]
         }
       }
 
@@ -433,14 +429,14 @@ object Cache {
                   success = true
                   logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, res))
 
-                  res.right
+                  Right(res)
                 } finally {
                   if (!success)
                     logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, None))
                 }
 
               case other =>
-                -\/(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
+                Left(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
             }
           } finally {
             if (conn != null)
@@ -510,17 +506,17 @@ object Cache {
       EitherT {
         fileExists(file).flatMap {
           case false =>
-            Task.now(true.right)
+            Task.now(Right(true))
           case true =>
             checkNeeded.flatMap {
               case false =>
-                Task.now(false.right)
+                Task.now(Right(false))
               case true =>
                 check.run.flatMap {
-                  case \/-(false) =>
+                  case Right(false) =>
                     Task {
                       doTouchCheckFile(file)
-                      \/-(false)
+                      Right(false)
                     }
                   case other =>
                     Task.now(other)
@@ -559,7 +555,7 @@ object Cache {
 
           var lenOpt = Option.empty[Option[Long]]
 
-          def doDownload(): FileError \/ Unit =
+          def doDownload(): Either[FileError, Unit] =
             downloading(url, file, logger) {
 
               val alreadyDownloaded = tmp.length()
@@ -587,9 +583,9 @@ object Cache {
                 }
 
                 if (responseCode(conn) == Some(404))
-                  FileError.NotFound(url, permanent = Some(true)).left
+                  Left(FileError.NotFound(url, permanent = Some(true)))
                 else if (responseCode(conn) == Some(401))
-                  FileError.Unauthorized(url, realm = realm(conn)).left
+                  Left(FileError.Unauthorized(url, realm = realm(conn)))
                 else {
                   // TODO Use the safer getContentLengthLong when switching back to Java >= 7
                   for (len0 <- Option(conn.getContentLength) if len0 >= 0L) {
@@ -619,7 +615,7 @@ object Cache {
 
                   doTouchCheckFile(file)
 
-                  result.right
+                  Right(result)
                 }
               } finally {
                 if (conn != null)
@@ -627,11 +623,11 @@ object Cache {
               }
             }
 
-          def checkDownload(): Option[FileError \/ Unit] = {
+          def checkDownload(): Option[Either[FileError, Unit]] = {
 
             def progress(currentLen: Long): Unit =
               if (lenOpt.isEmpty) {
-                lenOpt = Some(contentLength(url, artifact.authentication, logger).toOption.flatten)
+                lenOpt = Some(contentLength(url, artifact.authentication, logger).right.toOption.flatten)
                 for (o <- lenOpt; len <- o)
                   logger.foreach(_.downloadLength(url, len, currentLen, watching = true))
               } else
@@ -639,7 +635,7 @@ object Cache {
 
             def done(): Unit =
               if (lenOpt.isEmpty) {
-                lenOpt = Some(contentLength(url, artifact.authentication, logger).toOption.flatten)
+                lenOpt = Some(contentLength(url, artifact.authentication, logger).right.toOption.flatten)
                 for (o <- lenOpt; len <- o)
                   logger.foreach(_.downloadLength(url, len, len, watching = true))
               } else
@@ -648,7 +644,7 @@ object Cache {
 
             if (file.exists()) {
               done()
-              Some(().right)
+              Some(Right(()))
             } else {
               // yes, Thread.sleep. 'tis our thread pool anyway.
               // (And the various resources make it not straightforward to switch to a more Task-based internal API here.)
@@ -658,7 +654,7 @@ object Cache {
 
               if (currentLen == 0L && file.exists()) { // check again if file exists in case it was created in the mean time
                 done()
-                Some(().right)
+                Some(Right(()))
               } else {
                 progress(currentLen)
                 None
@@ -668,7 +664,7 @@ object Cache {
 
           logger.foreach(_.downloadingArtifact(url, file))
 
-          var res: FileError \/ Unit = null
+          var res: Either[FileError, Unit] = null
 
           try {
             res = withLockOr(cache, file)(
@@ -691,37 +687,37 @@ object Cache {
 
       def validErrFileExists =
         EitherT {
-          Task {
-            (referenceFileExists && errFile0.exists()).right[FileError]
+          Task[Either[FileError, Boolean]] {
+            Right(referenceFileExists && errFile0.exists())
           }
         }
 
       def createErrFile =
         EitherT {
-          Task {
+          Task[Either[FileError, Unit]] {
             if (referenceFileExists) {
               if (!errFile0.exists())
                 FileUtil.write(errFile0, "".getBytes(UTF_8))
             }
 
-            ().right[FileError]
+            Right(())
           }
         }
 
       def deleteErrFile =
         EitherT {
-          Task {
+          Task[Either[FileError, Unit]] {
             if (errFile0.exists())
               errFile0.delete()
 
-            ().right[FileError]
+            Right(())
           }
         }
 
       def retainError =
         EitherT {
           remote(file, url).run.flatMap {
-            case err @ -\/(FileError.NotFound(_, Some(true))) =>
+            case err @ Left(FileError.NotFound(_, Some(true))) =>
               createErrFile.run.map(_ => err)
             case other =>
               deleteErrFile.run.map(_ => other)
@@ -732,7 +728,7 @@ object Cache {
         case CachePolicy.FetchMissing | CachePolicy.LocalOnly | CachePolicy.LocalUpdate | CachePolicy.LocalUpdateChanging =>
           validErrFileExists.flatMap { exists =>
             if (exists)
-              EitherT(Task.now(FileError.NotFound(url, Some(true)).left[Unit]))
+              EitherT(Task.now[Either[FileError, Unit]](Left(FileError.NotFound(url, Some(true)))))
             else
               retainError
           }
@@ -748,13 +744,13 @@ object Cache {
 
       // memo-ized
 
-      lazy val res =
+      lazy val res: Either[FileError, Boolean] =
         if (file.exists())
-          true.right[FileError]
+          Right(true)
         else if (referenceFileExists && errFile0.exists())
-          FileError.NotFound(url, Some(true)).left[Boolean]
+          Left(FileError.NotFound(url, Some(true)): FileError)
         else
-          false.right[FileError]
+          Right(false)
 
       EitherT(Task(res))
     }
@@ -764,9 +760,9 @@ object Cache {
         Task {
           if (file.exists()) {
             logger.foreach(_.foundLocally(url, file))
-            \/-(())
+            Right(())
           } else
-            -\/(FileError.NotFound(file.toString))
+            Left(FileError.NotFound(file.toString))
         }
       }
 
@@ -788,19 +784,19 @@ object Cache {
 
     val requiredArtifactCheck = artifact.extra.get("required") match {
       case None =>
-        EitherT(Task.now(().right[FileError]))
+        EitherT(Task.now[Either[FileError, Unit]](Right(())))
       case Some(required) =>
         cachePolicy0 match {
           case CachePolicy.LocalOnly | CachePolicy.LocalUpdateChanging | CachePolicy.LocalUpdate =>
             val file = localFile(required.url, cache, artifact.authentication.map(_.user))
             localInfo(file, required.url).flatMap {
               case true =>
-                EitherT(Task.now(().right[FileError]))
+                EitherT(Task.now[Either[FileError, Unit]](Right(())))
               case false =>
-                EitherT(Task.now(FileError.NotFound(file.toString).left[Unit]))
+                EitherT(Task.now[Either[FileError, Unit]](Left(FileError.NotFound(file.toString))))
             }
           case _ =>
-            EitherT(Task.now(().right[FileError]))
+            EitherT(Task.now[Either[FileError, Unit]](Right(())))
         }
     }
 
@@ -823,7 +819,7 @@ object Cache {
               case true =>
                 remoteKeepErrors(file, url)
               case false =>
-                EitherT(Task.now[FileError \/ Unit](().right))
+                EitherT(Task.now[Either[FileError, Unit]](Right(())))
             }
 
             cachePolicy0 match {
@@ -912,7 +908,7 @@ object Cache {
 
             sumOpt match {
               case None =>
-                FileError.ChecksumFormatError(sumType, sumFile.getPath).left
+                Left(FileError.ChecksumFormatError(sumType, sumFile.getPath))
 
               case Some(sum) =>
                 val md = MessageDigest.getInstance(sumType)
@@ -925,20 +921,20 @@ object Cache {
                 val calculatedSum = new BigInteger(1, digest)
 
                 if (sum == calculatedSum)
-                  ().right
+                  Right(())
                 else
-                  FileError.WrongChecksum(
+                  Left(FileError.WrongChecksum(
                     sumType,
                     calculatedSum.toString(16),
                     sum.toString(16),
                     localFile0.getPath,
                     sumFile.getPath
-                  ).left
+                  ))
             }
           }
 
         case None =>
-          Task.now(FileError.ChecksumNotFound(sumType, localFile0.getPath).left)
+          Task.now(Left(FileError.ChecksumNotFound(sumType, localFile0.getPath)))
       }
     }
   }
@@ -978,20 +974,20 @@ object Cache {
         }
 
         val ((f, _), res) = results.head
-        res.flatMap { _ =>
+        res.right.flatMap { _ =>
           checksum match {
             case None =>
               // FIXME All the checksums should be in the error, possibly with their URLs
               //       from artifact.checksumUrls
-              -\/(FileError.ChecksumNotFound(checksums0.last.get, ""))
-            case Some(c) => \/-((f, c))
+              Left(FileError.ChecksumNotFound(checksums0.last.get, ""))
+            case Some(c) => Right((f, c))
           }
         }
       }
     }
 
     res.flatMap {
-      case (f, None) => EitherT(Task.now[FileError \/ File](\/-(f)))
+      case (f, None) => EitherT(Task.now[Either[FileError, File]](Right(f)))
       case (f, Some(c)) =>
         validateChecksum(artifact, c, cache, pool).map(_ => f)
     }
@@ -1068,7 +1064,7 @@ object Cache {
         } else
           notFound(f)
 
-        EitherT.fromEither(Task.now[Either[String, String]](res))
+        EitherT(Task.now[Either[String, String]](res))
       }
   }
 
@@ -1102,7 +1098,7 @@ object Cache {
     withChecksums = false,
     withSignatures = false,
     dropInfoAttributes = true
-  ).getOrElse(
+  ).right.getOrElse(
     throw new Exception("Cannot happen")
   )
 

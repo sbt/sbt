@@ -1,13 +1,12 @@
 package coursier
 
-import java.io.{ File, FileNotFoundException, IOException }
-import java.net.{ HttpURLConnection, URL, URLConnection }
+import java.io.{File, FileNotFoundException, IOException}
+import java.net.{HttpURLConnection, URL, URLConnection}
+
+import coursier.util.EitherT
 
 import scala.language.higherKinds
-
-import scalaz.{ EitherT, Monad }
-import scalaz.syntax.monad._
-import scalaz.Scalaz.ToEitherOps
+import scalaz.Monad
 
 object FallbackDependenciesRepository {
 
@@ -106,14 +105,14 @@ final case class FallbackDependenciesRepository(
 
     val res = fallbacks
       .get((module, version))
-      .fold("No fallback URL found".left[(Artifact.Source, Project)]) {
+      .fold[Either[String, (Artifact.Source, Project)]](Left("No fallback URL found")) {
         case (url, _) =>
 
           val urlStr = url.toExternalForm
           val idx = urlStr.lastIndexOf('/')
 
           if (idx < 0 || urlStr.endsWith("/"))
-            s"$url doesn't point to a file".left
+            Left(s"$url doesn't point to a file")
           else {
             val (dirUrlStr, fileName) = urlStr.splitAt(idx + 1)
 
@@ -135,12 +134,12 @@ final case class FallbackDependenciesRepository(
                 Info.empty
               )
 
-              (source, proj).right
+              Right((source, proj))
             } else
-              s"$fileName not found under $dirUrlStr".left
+              Left(s"$fileName not found under $dirUrlStr")
           }
       }
 
-    EitherT(res.point)
+    EitherT(F.point(res))
   }
 }

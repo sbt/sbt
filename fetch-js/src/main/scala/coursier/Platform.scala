@@ -1,16 +1,13 @@
 package coursier
 
-import org.scalajs.dom.raw.{ Event, XMLHttpRequest }
+import coursier.util.EitherT
+import org.scalajs.dom.raw.{Event, XMLHttpRequest}
 
-import scala.concurrent.{ ExecutionContext, Promise, Future }
-
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
-
 import scala.scalajs.js
-import js.Dynamic.{ global => g }
-
+import js.Dynamic.{global => g}
 import scala.scalajs.js.timers._
-import scalaz.{ -\/, \/-, EitherT }
 
 object Platform {
 
@@ -80,9 +77,9 @@ object Platform {
     EitherT(
       Task { implicit ec =>
         get(artifact.url)
-          .map(\/-(_))
+          .map(Right(_))
           .recover { case e: Exception =>
-          -\/(e.toString + Option(e.getMessage).fold("")(" (" + _ + ")"))
+          Left(e.toString + Option(e.getMessage).fold("")(" (" + _ + ")"))
         }
       }
     )
@@ -104,11 +101,11 @@ object Platform {
       Task { implicit ec =>
         Future(logger.fetching(artifact.url))
           .flatMap(_ => get(artifact.url))
-          .map { s => logger.fetched(artifact.url); \/-(s) }
+          .map { s => logger.fetched(artifact.url); Right(s) }
           .recover { case e: Exception =>
             val msg = e.toString + Option(e.getMessage).fold("")(" (" + _ + ")")
             logger.other(artifact.url, msg)
-            -\/(msg)
+            Left(msg)
           }
       }
     )

@@ -2,7 +2,8 @@ package coursier.ivy
 
 import scala.language.implicitConversions
 
-import scalaz._, Scalaz._
+import scalaz.{Failure, Success, ValidationNel}
+import scalaz.Scalaz.{ToEitherOpsFromEither, ToFoldableOps, ToTraverseOps, ToValidationOps, vectorInstance}
 
 import fastparse.all._
 
@@ -12,7 +13,7 @@ final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty
 
   import PropertiesPattern.ChunkOrProperty
 
-  def substituteProperties(properties: Map[String, String]): String \/ Pattern = {
+  def substituteProperties(properties: Map[String, String]): Either[String, Pattern] = {
 
     val validation = chunks.toVector.traverseM[({ type L[X] = ValidationNel[String, X] })#L, Pattern.Chunk] {
       case ChunkOrProperty.Prop(name, alternativesOpt) =>
@@ -24,6 +25,7 @@ final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty
               case Some(alt) =>
                 PropertiesPattern(alt)
                   .substituteProperties(properties)
+                  .right
                   .map(_.chunks.toVector)
                   .validation
                   .toValidationNel
@@ -35,6 +37,7 @@ final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty
       case ChunkOrProperty.Opt(l @ _*) =>
         PropertiesPattern(l)
           .substituteProperties(properties)
+          .right
           .map(l => Vector(Pattern.Chunk.Opt(l.chunks: _*)))
           .validation
           .toValidationNel
@@ -47,7 +50,7 @@ final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty
 
     }.map(Pattern(_))
 
-    validation.disjunction.leftMap { notFoundProps =>
+    validation.toEither.left.map { notFoundProps =>
       s"Property(ies) not found: ${notFoundProps.toList.mkString(", ")}"
     }
   }
@@ -62,7 +65,7 @@ final case class Pattern(chunks: Seq[Pattern.Chunk]) {
 
   def string: String = chunks.map(_.string).mkString
 
-  def substituteVariables(variables: Map[String, String]): String \/ String = {
+  def substituteVariables(variables: Map[String, String]): Either[String, String] = {
 
     def helper(chunks: Seq[Chunk]): ValidationNel[String, Seq[Chunk.Const]] =
       chunks.toVector.traverseU[ValidationNel[String, Seq[Chunk.Const]]] {
@@ -87,11 +90,11 @@ final case class Pattern(chunks: Seq[Pattern.Chunk]) {
 
     validation match {
       case Failure(notFoundVariables) =>
-        s"Variables not found: ${notFoundVariables.toList.mkString(", ")}".left
+        Left(s"Variables not found: ${notFoundVariables.toList.mkString(", ")}")
       case Success(constants) =>
         val b = new StringBuilder
         constants.foreach(b ++= _.value)
-        b.result().right
+        Right(b.result())
     }
   }
 }
@@ -144,12 +147,12 @@ object PropertiesPattern {
   }
 
 
-  def parse(pattern: String): String \/ PropertiesPattern =
+  def parse(pattern: String): Either[String, PropertiesPattern] =
     parser.parse(pattern) match {
       case f: Parsed.Failure =>
-        f.msg.left
+        Left(f.msg)
       case Parsed.Success(v, _) =>
-        PropertiesPattern(v).right
+        Right(PropertiesPattern(v))
     }
 
 }

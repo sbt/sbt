@@ -8,7 +8,6 @@ import utest._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.DurationInt
-import scalaz.{-\/, \/-}
 import scalaz.concurrent.Task
 
 object ResolutionProcessTests extends TestSuite {
@@ -40,7 +39,7 @@ object ResolutionProcessTests extends TestSuite {
           case Seq(mv @ (`mod`, v)) =>
             Task.async { cb =>
               called.put(v, ())
-              cb(\/-(Seq((mv, -\/(Seq("w/e"))))))
+              cb(scalaz.\/-(Seq((mv, Left(Seq("w/e"))))))
             }
 
           case _ => sys.error(s"Cannot happen ($modVers)")

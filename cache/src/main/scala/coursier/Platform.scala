@@ -3,9 +3,10 @@ package coursier
 import java.io._
 import java.nio.charset.Charset
 
-import scala.language.implicitConversions
+import coursier.util.EitherT
 
-import scalaz._
+import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 import scalaz.concurrent.Task
 
 object Platform {
@@ -26,27 +27,30 @@ object Platform {
 
   private lazy val UTF_8 = Charset.forName("UTF-8")
 
-  def readFully(is: => InputStream) =
+  def readFully(is: => InputStream): Task[Either[String, String]] =
     Task {
-      \/.fromTryCatchNonFatal {
+      val t = Try {
         val is0 = is
         val b =
           try readFullySync(is0)
           finally is0.close()
 
         new String(b, UTF_8)
-      } .leftMap{
-        case e: java.io.FileNotFoundException if e.getMessage != null =>
-          s"Not found: ${e.getMessage}"
-        case e =>
-          s"$e${Option(e.getMessage).fold("")(" (" + _ + ")")}"
+      }
+
+      t match {
+        case Success(r) => Right(r)
+        case Failure(e: java.io.FileNotFoundException) if e.getMessage != null =>
+          Left(s"Not found: ${e.getMessage}")
+        case Failure(e) =>
+          Left(s"$e${Option(e.getMessage).fold("")(" (" + _ + ")")}")
       }
     }
 
   val artifact: Fetch.Content[Task] = { artifact =>
     EitherT {
       val conn = Cache.urlConnection(artifact.url, artifact.authentication)
-      readFully(conn.getInputStream())
+      readFully(conn.getInputStream)
     }
   }
 
