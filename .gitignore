@@ -8,4 +8,4 @@ src_managed
 .lib
 /template-project/project/boot
 *~
-
+/citest/freshly-baked/
