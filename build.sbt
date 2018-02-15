@@ -131,7 +131,7 @@ lazy val lmCommonTest = (project in file("common-test"))
 
 lazy val lmIvy = (project in file("ivy"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(lmCore, lmCommonTest)
+  .dependsOn(lmCore, lmCommonTest % Test)
   .settings(
     commonSettings,
     name := "librarymanagement-ivy",
