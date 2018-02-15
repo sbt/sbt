@@ -207,12 +207,8 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
       }
     }
 
-  /**
-   * Cleans cached resolution cache.
-   *
-   * @param md - module descriptor of the original Ivy graph.
-   */
-  private[sbt] def cleanCachedResolutionCache(md: ModuleDescriptor, log: Logger): Unit = {
+  /** Cleans cached resolution cache. */
+  private[sbt] def cleanCachedResolutionCache(): Unit = {
     if (!configuration.updateOptions.cachedResolution) ()
     else IvySbt.cachedResolutionResolveCache.clean()
   }
@@ -260,12 +256,9 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
         }
 
       val configs = configurations
-      moduleSettings.scalaModuleInfo match {
-        case Some(is) =>
-          val svc = configs.toVector filter Configurations.underScalaVersion map { _.name }
-          IvyScalaUtil.checkModule(baseModule, baseConfiguration, svc, getLog(configuration.log))(
-            is)
-        case _ => // do nothing
+      moduleSettings.scalaModuleInfo foreach { is =>
+        val svc = configs filter Configurations.underScalaVersion map { _.name }
+        IvyScalaUtil.checkModule(baseModule, svc, getLog(configuration.log))(is)
       }
       IvySbt.addExtraNamespace(baseModule)
       (baseModule, baseConfiguration)
@@ -278,8 +271,7 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
         "Default",
         ModuleDescriptor.DEFAULT_CONFIGURATION)
       log.debug(
-        "Using inline dependencies specified in Scala" + (if (ivyXML.isEmpty) "."
-                                                          else " and XML.")
+        s"Using inline dependencies specified in Scala${(if (ivyXML.isEmpty) "" else " and XML")}."
       )
 
       val parser = IvySbt.parseIvyXML(

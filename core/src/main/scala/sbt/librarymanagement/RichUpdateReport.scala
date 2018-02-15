@@ -2,7 +2,6 @@ package sbt
 package librarymanagement
 
 import java.io.File
-import java.io.FileNotFoundException
 import sbt.io.IO
 
 /**

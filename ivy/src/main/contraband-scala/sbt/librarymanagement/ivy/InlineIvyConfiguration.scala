@@ -76,6 +76,7 @@ final class InlineIvyConfiguration private (
 }
 object InlineIvyConfiguration {
   /** Provided for backward compatibility. */
+  @deprecated("Use an alternative apply", "1.2.0")
   def apply(
   paths:                sbt.librarymanagement.ivy.IvyPaths,
   resolvers:            Vector[sbt.librarymanagement.Resolver],

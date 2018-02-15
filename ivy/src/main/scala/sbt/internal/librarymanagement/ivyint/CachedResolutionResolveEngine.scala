@@ -65,10 +65,10 @@ private[sbt] class CachedResolutionResolveCache {
 
   def directDependencies(md0: ModuleDescriptor): Vector[DependencyDescriptor] =
     md0.getDependencies.toVector
+
   // Returns a vector of (module descriptor, changing, dd)
   def buildArtificialModuleDescriptors(
       md0: ModuleDescriptor,
-      data: ResolveData,
       prOpt: Option[ProjectResolver],
       log: Logger
   ): Vector[(DefaultModuleDescriptor, Boolean, DependencyDescriptor)] = {
@@ -80,9 +80,10 @@ private[sbt] class CachedResolutionResolveCache {
         s"""${x.getName}:${x.getType}:${x.getExt}:${x.getExtraAttributes}"""
       }
       log.debug(s"::: dd: $dd (artifacts: ${arts.mkString(",")})")
-      buildArtificialModuleDescriptor(dd, rootModuleConfigs, md0, prOpt, log)
+      buildArtificialModuleDescriptor(dd, rootModuleConfigs, md0, prOpt)
     }
   }
+
   def internalDependency(
       dd: DependencyDescriptor,
       prOpt: Option[ProjectResolver]
@@ -91,12 +92,12 @@ private[sbt] class CachedResolutionResolveCache {
       case Some(pr) => pr.getModuleDescriptor(dd.getDependencyRevisionId)
       case _        => None
     }
+
   def buildArtificialModuleDescriptor(
       dd: DependencyDescriptor,
       rootModuleConfigs: Vector[IvyConfiguration],
       parent: ModuleDescriptor,
-      prOpt: Option[ProjectResolver],
-      log: Logger
+      prOpt: Option[ProjectResolver]
   ): (DefaultModuleDescriptor, Boolean, DependencyDescriptor) = {
     def excludeRuleString(rule: ExcludeRule): String =
       s"""Exclude(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
@@ -363,7 +364,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val os = cache.extractOverrides(md0)
       val options1 = new ResolveOptions(options0)
       val data = new ResolveData(this, options1)
-      val mds = cache.buildArtificialModuleDescriptors(md0, data, projectResolver, log)
+      val mds = cache.buildArtificialModuleDescriptors(md0, projectResolver, log)
 
       def doWork(
           md: ModuleDescriptor,
@@ -475,15 +476,11 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       os: Vector[IvyOverride],
       log: Logger
   ): Either[ResolveException, UpdateReport] =
-    if (!missingOk && (results exists { _.isLeft })) Left(mergeErrors(md0, results collect {
-      case Left(re) => re
-    }, log))
+    if (!missingOk && (results exists { _.isLeft }))
+      Left(mergeErrors(md0, results collect { case Left(re)       => re }))
     else Right(mergeReports(md0, results collect { case Right(ur) => ur }, resolveTime, os, log))
-  def mergeErrors(
-      md0: ModuleDescriptor,
-      errors: Vector[ResolveException],
-      log: Logger
-  ): ResolveException = {
+
+  def mergeErrors(md0: ModuleDescriptor, errors: Vector[ResolveException]): ResolveException = {
     val messages = errors flatMap { _.messages }
     val failed = errors flatMap { _.failed }
     val failedPaths = errors flatMap {
@@ -497,6 +494,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     }
     new ResolveException(messages, failed, ListMap(failedPaths: _*))
   }
+
   def mergeReports(
       md0: ModuleDescriptor,
       reports: Vector[UpdateReport],
@@ -524,6 +522,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     }
     UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
   }
+
   // memory usage 62%, of which 58% is in mergeOrganizationArtifactReports
   def mergeConfigurationReports(
       rootModuleConf: ConfigRef,
@@ -752,12 +751,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         s":: merging module reports for $rootModuleConf: ${modules.head.module.organization}:${modules.head.module.name}"
       )
     }
-    def mergeModuleReports(
-        org: String,
-        name: String,
-        version: String,
-        xs: Vector[ModuleReport]
-    ): ModuleReport = {
+    def mergeModuleReports(xs: Vector[ModuleReport]): ModuleReport = {
       val completelyEvicted = xs forall { _.evicted }
       val allCallers = xs flatMap { _.callers }
       // Caller info is often repeated across the subprojects. We only need ModuleID info for later, so xs.head is ok.
@@ -773,9 +767,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     val merged = (modules groupBy { m =>
       (m.module.organization, m.module.name, m.module.revision)
     }).toSeq.toVector flatMap {
-      case ((org, name, version), xs) =>
+      case (_, xs) =>
         if (xs.size < 2) xs
-        else Vector(mergeModuleReports(org, name, version, xs))
+        else Vector(mergeModuleReports(xs))
     }
     val conflicts = merged filter { m =>
       !m.evicted && m.problem.isEmpty
@@ -805,26 +799,26 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       mr.callers forall { c =>
         em(c.caller)
       }
-    val reports
-      : Seq[((String, String), Vector[OrganizationArtifactReport])] = reports0.toSeq flatMap {
-      case (k, v) if !(pairs contains k) => Seq()
-      case ((organization, name), oars0) =>
-        val oars = oars0 map { oar =>
-          val (affected, unaffected) = oar.modules partition { mr =>
-            val x = !mr.evicted && mr.problem.isEmpty && isTransitivelyEvicted(mr)
-            if (x) {
-              log.debug(s""":::: transitively evicted $rootModuleConf: ${mr.module}""")
+    val reports: Seq[((String, String), Vector[OrganizationArtifactReport])] =
+      reports0.toSeq flatMap {
+        case (k, _) if !(pairs contains k) => Seq()
+        case ((organization, name), oars0) =>
+          val oars = oars0 map { oar =>
+            val (affected, unaffected) = oar.modules partition { mr =>
+              val x = !mr.evicted && mr.problem.isEmpty && isTransitivelyEvicted(mr)
+              if (x) {
+                log.debug(s""":::: transitively evicted $rootModuleConf: ${mr.module}""")
+              }
+              x
             }
-            x
+            val newlyEvicted = affected map {
+              _.withEvicted(true).withEvictedReason(Some("transitive-evict"))
+            }
+            if (affected.isEmpty) oar
+            else OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
           }
-          val newlyEvicted = affected map {
-            _.withEvicted(true).withEvictedReason(Some("transitive-evict"))
-          }
-          if (affected.isEmpty) oar
-          else OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
-        }
-        Seq(((organization, name), oars))
-    }
+          Seq(((organization, name), oars))
+      }
     Map(reports: _*)
   }
 

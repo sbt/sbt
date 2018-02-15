@@ -192,11 +192,18 @@ final class EvictionWarning private[sbt] (
 }
 
 object EvictionWarning {
+  @deprecated("Use variant that doesn't take an unused logger", "1.2.0")
   def apply(
       module: ModuleDescriptor,
       options: EvictionWarningOptions,
       report: UpdateReport,
       log: Logger
+  ): EvictionWarning = apply(module, options, report)
+
+  def apply(
+      module: ModuleDescriptor,
+      options: EvictionWarningOptions,
+      report: UpdateReport
   ): EvictionWarning = {
     val evictions = buildEvictions(options, report)
     processEvictions(module, options, evictions)

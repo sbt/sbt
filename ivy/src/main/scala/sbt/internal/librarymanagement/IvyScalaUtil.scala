@@ -6,7 +6,7 @@ package sbt.internal.librarymanagement
 import java.util.Collections.emptyMap
 import scala.collection.mutable.HashSet
 
-import org.apache.ivy.core.module.descriptor.{ Configuration => _, _ }
+import org.apache.ivy.core.module.descriptor._
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 import org.apache.ivy.plugins.namespace.NamespaceTransformer
@@ -19,7 +19,6 @@ object IvyScalaUtil {
   /** Performs checks/adds filters on Scala dependencies (if enabled in ScalaModuleInfo). */
   def checkModule(
       module: DefaultModuleDescriptor,
-      conf: String,
       scalaVersionConfigs: Vector[String],
       log: Logger
   )(check: ScalaModuleInfo): Unit = {

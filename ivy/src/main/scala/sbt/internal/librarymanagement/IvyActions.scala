@@ -51,8 +51,8 @@ object IvyActions {
    * This is called by clean.
    */
   private[sbt] def cleanCachedResolutionCache(module: IvySbt#Module, log: Logger): Unit =
-    module.withModule(log) { (ivy, md, default) =>
-      module.owner.cleanCachedResolutionCache(md, log)
+    module.withModule(log) { (_, _, _) =>
+      module.owner.cleanCachedResolutionCache()
     }
 
   /** Creates a Maven pom from the given Ivy configuration*/
@@ -188,7 +188,7 @@ object IvyActions {
       log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
     module.withModule(log) {
-      case (ivy, moduleDescriptor, defaultConf) =>
+      case (ivy, moduleDescriptor, _) =>
         // Warn about duplicated and inconsistent dependencies
         val iw = IvySbt.inconsistentDuplicateWarning(moduleDescriptor)
         iw.foreach(log.warn(_))
@@ -202,7 +202,7 @@ object IvyActions {
             val cache =
               metadataDirectory.getOrElse(sys.error("Missing directory for cached resolution."))
             cachedResolveAndRetrieve(inputs, cache)
-          } else resolveAndRetrieve(inputs, defaultConf)
+          } else resolveAndRetrieve(inputs)
         }
 
         // Convert to unresolved warning or retrieve update report
@@ -287,12 +287,10 @@ object IvyActions {
    * like its counterpart [[CachedResolutionResolveEngine.customResolve]].
    *
    * @param inputs The resolution inputs.
-   * @param defaultModuleConfiguration The default ivy configuration.
    * @return The result of the resolution.
    */
   private[this] def resolveAndRetrieve(
-      inputs: ResolutionInputs,
-      defaultModuleConfiguration: String
+      inputs: ResolutionInputs
   ): Either[ResolveException, UpdateReport] = {
     // Populate resolve options from the passed arguments
     val ivyInstance = inputs.ivy

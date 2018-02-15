@@ -219,7 +219,7 @@ private[sbt] case class SbtChainResolver(
         Message.warn(s"Choosing $resolver for ${resolvedModule.getId}")
         // Now that we know the real latest revision, let's force Ivy to use it
         val resolvedDescriptor = resolvedModule.getDescriptor
-        val artifactOpt = findFirstArtifactRef(resolvedDescriptor, descriptor, data, resolver)
+        val artifactOpt = findFirstArtifactRef(resolvedDescriptor, data, resolver)
         // If `None` do nothing -- modules without artifacts. Otherwise cache.
         artifactOpt.foreach { artifactRef =>
           val dep = toSystem(descriptor)
@@ -385,7 +385,6 @@ private[sbt] case class SbtChainResolver(
   /** Ported from BasicResolver#findFirstAirfactRef. */
   private[this] def findFirstArtifactRef(
       md: ModuleDescriptor,
-      dd: DependencyDescriptor,
       data: ResolveData,
       resolver: DependencyResolver
   ): Option[ResolvedResource] = {
