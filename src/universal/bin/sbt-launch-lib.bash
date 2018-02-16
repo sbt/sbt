@@ -146,6 +146,32 @@ is_function_defined() {
   declare -f "$1" > /dev/null
 }
 
+# parses JDK version from the -version output line.
+# 8 for 1.8.0_nn, 9 for 9-ea etc, and "no_java" for undetected
+jdk_version() {
+  local result
+  local lines=$("$java_cmd" -Xms32M -Xmx32M -version 2>&1 | tr '\r' '\n')
+  local IFS=$'\n'
+  for line in $lines; do
+    if [[ (-z $result) && ($line = *"version \""*) ]]
+    then
+      local ver=$(echo $line | sed -e 's/.*version "\(.*\)"\(.*\)/\1/; 1q')
+      # on macOS sed doesn't support '?'
+      if [[ $ver = "1."* ]]
+      then
+        result=$(echo $ver | sed -e 's/1\.\([0-9]*\)\(.*\)/\1/; 1q')
+      else
+        result=$(echo $ver | sed -e 's/\([0-9]*\)\(.*\)/\1/; 1q')
+      fi
+    fi
+  done
+  if [[ -z $result ]]
+  then
+    result=no_java
+  fi
+  echo "$result"
+}
+
 process_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -179,9 +205,7 @@ process_args () {
     process_my_args "${myargs[@]}"
   }
 
-  ## parses java version from the -version output line
-  ## https://regex101.com/r/0r3kKb/1/tests
-  java_version=$("$java_cmd" -Xms128M -Xmx512M -version 2>&1 | tr '\r' '\n' | grep ' version "' | sed 's/.*version "\(1\.\)\?\([0-9]*\)\{0,1\}\(.*\)*/\2/; 1q')
+  java_version="$(jdk_version)"
   vlog "[process_args] java_version = '$java_version'"
 }
 
