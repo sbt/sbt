@@ -127,12 +127,31 @@ process_my_args () {
 
     -sbt-create) sbt_create=true && shift ;;
 
+            new) sbt_new=true && addResidual "$1" && shift ;;
+
               *) addResidual "$1" && shift ;;
     esac
   done
   
   # Now, ensure sbt version is used.
   [[ "${sbt_version}XXX" != "XXX" ]] && addJava "-Dsbt.version=$sbt_version" 
+
+  # Confirm a user's intent if the current directory does not look like an sbt
+  # top-level directory and neither the -sbt-create option nor the "new"
+  # command was given.
+  [[ -f ./build.sbt || -d ./project || -n "$sbt_create" || -n "$sbt_new" ]] || {
+    echo "[warn] Neither build.sbt nor a 'project' directory in the current directory: $(pwd)"
+    while true; do
+      echo 'c) continue'
+      echo 'q) quit'
+
+      read -p '? ' || exit 1
+      case "$REPLY" in
+        c|C) break ;;
+        q|Q) exit 1 ;;
+      esac
+    done
+  }
 }
 
 loadConfigFile() {
