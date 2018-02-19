@@ -317,7 +317,7 @@ object DefaultParsers extends Parsers with ParserMain {
   /** Returns `true` if `s` parses successfully according to [[ID]].*/
   def validID(s: String): Boolean = {
     // Handwritten version of `matches(ID, s)` because validID turned up in profiling.
-    def isIdChar(c: Char): Boolean = Character.isLetterOrDigit(c) || (c == '_')
+    def isIdChar(c: Char): Boolean = Character.isLetterOrDigit(c) || (c == '-') || (c == '_')
     @tailrec def isRestIdChar(cur: Int, s: String, length: Int): Boolean =
       if (cur < length)
         isIdChar(s.charAt(cur)) && isRestIdChar(cur + 1, s, length)
