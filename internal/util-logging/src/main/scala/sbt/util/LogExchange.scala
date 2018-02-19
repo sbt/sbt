@@ -67,9 +67,15 @@ sealed abstract class LogExchange {
     import sbt.internal.util.codec.TraceEventShowLines._
     import sbt.internal.util.codec.SuccessEventShowLines._
 
-    registerStringCodec[Throwable]
-    registerStringCodec[TraceEvent]
-    registerStringCodec[SuccessEvent]
+    // Register these StringCodecs manually, because this method will be called at the very startup of sbt
+    // and we'll try not to initialize the universe in StringTypeTag.apply
+    // If these classes are moved around, both the fully qualified names and the strings need to be adapted.
+    // A better long-term solution could be to make StringTypeTag.apply a macro.
+    registerStringCodecByStringTypeTag[_root_.scala.Throwable](StringTypeTag("scala.Throwable"))
+    registerStringCodecByStringTypeTag[_root_.sbt.internal.util.TraceEvent](
+      StringTypeTag("sbt.internal.util.TraceEvent"))
+    registerStringCodecByStringTypeTag[_root_.sbt.internal.util.SuccessEvent](
+      StringTypeTag("sbt.internal.util.SuccessEvent"))
   }
 
   // This is a dummy layout to avoid casting error during PatternLayout.createDefaultLayout()
@@ -102,6 +108,10 @@ sealed abstract class LogExchange {
 
   def registerStringCodec[A: ShowLines: TypeTag]: Unit = {
     val tag = StringTypeTag[A]
+    registerStringCodecByStringTypeTag(tag)
+  }
+
+  private[sbt] def registerStringCodecByStringTypeTag[A: ShowLines](tag: StringTypeTag[A]): Unit = {
     val ev = implicitly[ShowLines[A]]
     val _ = getOrElseUpdateStringCodec(tag.key, ev)
   }
