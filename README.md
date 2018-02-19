@@ -131,6 +131,8 @@ libraryDependencies ++= Seq(
 )
 ```
 
+Note that the examples below are validated against the current sources of coursier. You may want to read the [documentation of the latest release](https://github.com/coursier/coursier/blob/v1.0.2/README.md#api) of coursier instead.
+
 Add an import for coursier,
 ```scala
 import coursier._
@@ -420,6 +422,8 @@ libraryDependencies ++= Seq(
   "io.get-coursier" %% "coursier-cache" % "1.0.1"
 )
 ```
+
+Note that the examples below are validated against the current sources of coursier. You may want to read the [documentation of the latest release](https://github.com/coursier/coursier/blob/v1.0.2/README.md#api-1) of coursier instead.
 
 The first module, `"io.get-coursier" %% "coursier" % "1.0.1"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
