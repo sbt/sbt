@@ -153,7 +153,7 @@ sbt uses two branches for development:
 - Development branch: `1.x` (this is also called "master")
 - Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
 
-If you're working on a bug fix, it's a good idea to start with the `1.$MINOR.x` branch. Since we can always safely merge from stable to `1.x`, but not other way around.
+If you're working on a bug fix, it's a good idea to start with the `1.$MINOR.x` branch, since we can always safely merge from stable to `1.x`, but not other way around.
 
 ### Instruction to build all modules from source
 
@@ -170,12 +170,11 @@ If you're working on a bug fix, it's a good idea to start with the `1.$MINOR.x` 
    $ ./sbt-allsources.sh
    ```
 
-3. To build the launcher and publish all components locally,
+3. To build and publish all components locally,
 
    ```
    $ ./sbt-allsources.sh
-   > ;{../io}/publishLocal; {../util}/publishLocal; {../librarymanagement}/publishLocal; {../zinc}/publishLocal
-   > publishLocal
+   sbt:sbtRoot> publishLocalAllModule
    ```
 
 ### Instruction to build just sbt
@@ -184,23 +183,24 @@ If the change you are making is contained in sbt/sbt, you could publishLocal on 
 
 ```
 $ sbt
-> publishLocal
+sbt:sbtRoot> publishLocal
 ```
 
 ### Using the locally built sbt
 
-To use the locally built sbt, set the version in `build.properties` file to `1.$MINOR.$PATCH-SNAPSHOT`, or pass it in as `-Dsbt-version` property.
+To use the locally built sbt, set the version in `build.properties` file to `1.$MINOR.$PATCH-SNAPSHOT`.
 
 ```
 $ cd ../hello
-$ sbt -Dsbt-version=1.1.2-SNAPSHOT
+$ sbt
+> compile
 ```
 
 ### Clearing out boot and local cache
 
-When you run a locally built sbt, the JAR artifacts will be now cached under `$HOME/.sbt/boot/scala-2.12.4/org.scala-sbt/sbt/1.$MINOR.$PATCh-SNAPSHOT` directory. To clear this out run: `reboot dev` command from sbt's session of your test application.
+When you run a locally built sbt, the JAR artifacts will be now cached under `$HOME/.sbt/boot/scala-2.12.4/org.scala-sbt/sbt/1.$MINOR.$PATCH-SNAPSHOT` directory. To clear this out run: `reboot dev` command from sbt's session of your test application.
 
-One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers. You can workaround that by using a version name like `1.$MONIR.$PATCH-LOCAL1`. A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanLocal` task.
+One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers. You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`. A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanLocal` task.
 
 ### Diagnosing build failures
 

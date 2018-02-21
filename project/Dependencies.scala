@@ -55,7 +55,7 @@ object Dependencies {
   def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID) =
     path match {
       case Some(f) => p dependsOn ProjectRef(file(f), projectName)
-      case None    => p settings (libraryDependencies += m)
+      case None    => p settings (libraryDependencies += m, dependencyOverrides += m)
     }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
