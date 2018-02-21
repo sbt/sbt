@@ -3,35 +3,70 @@
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
+  [sbt-contrib]: https://gitter.im/sbt/sbt-contrib
+  [Lightbend]: https://www.lightbend.com/
   [subscriptions]: https://www.lightbend.com/platform/subscription
   [327]: https://github.com/sbt/sbt/issues/327
+  [gitter]: https://gitter.im/sbt/sbt
+  [documentation]: https://github.com/sbt/website
+
+Support
+=======
+
+[Lightbend] sponsors sbt and encourages contributions from the active community. Enterprises can adopt it for mission critical systems with confidence because Lightbend stands behind sbt with commercial support and services.
+
+For community support please [ask] on StackOverflow with the tag "sbt".
+
+- State the problem or question clearly and provide enough context. Code examples and `build.sbt` are often useful when appropriately edited.
+- There's also [Gitter sbt/sbt room][gitter], but Stackoverflow is recommended so others can benefit from the answers.
+
+For professional support, [Lightbend], the maintainer of Scala compiler and sbt, provides:
+
+- [Lightbend Subscriptions][subscriptions], which includes Expert Support
+- Training
+- Consulting
+
+How to contribute to sbt
+========================
+
+There are lots of ways to contribute to sbt ecosystem depending on your interests and skill level.
+
+- Help someone at work or online help their build problem.
+- Answer StackOverflow questions.
+- Create plugins that extends sbt's feature.
+- Maintain and update [documentation].
+- Garden the issue tracker.
+- Report issues.
+- Patch the core (send pull requests to code).
+- On-ramp other contributors.
 
 Issues and Pull Requests
-========================
+------------------------
 
 When you find a bug in sbt we want to hear about it. Your bug reports play an important part in making sbt more reliable and usable.
 
 Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
 
-Preliminaries
---------------
+### Notes about Documentation
+
+Documentation fixes and contributions are as much welcome as to patching the core. Visit [the website project][documentation] to learn about how to contribute.
+
+### Preliminaries
 
 - Make sure your sbt version is up to date.
 - Search [StackOverflow] and [Issues] to see whether your bug has already been reported.
 - Open one case for each problem.
 - Proceed to the next steps for details.
 
-Where to get help and/or file a bug report
-------------------------------------------
+### Where to get help and/or file a bug report
 
-sbt project uses GitHub Issues as a publicly visible todo list. Please open a GitHub issue only when asked to do so.
+sbt project uses GitHub Issues as a publicly visible todo list. Please open a GitHub issue when you are 90% sure it's an actual bug.
 
 - If you need help with sbt, please [ask] on StackOverflow with the tag "sbt" and the name of the sbt plugin if any.
-- If you run into an issue, have an enhancement idea, or a general discussion, bring it up to [sbt-dev] Google Group first.
+- If you have an enhancement idea, or a general discussion, bring it up to [sbt-contrib].
 - If you need a faster response time, consider one of the [Lightbend subscriptions][subscriptions].
 
-What to report
---------------
+### What to report
 
 The developers need three things from you: **steps**, **problems**, and **expectations**.
 
@@ -81,10 +116,7 @@ Finally, thank you for taking the time to report a problem.
 Pull Requests
 -------------
 
-### Branch to work against
-
-Whether implementing a new feature, fixing a bug, or modifying documentation, please work against the latest development branch (currently, 1.0.x).
-See below for instructions on building sbt from source.
+See below for the branch to work against.
 
 ### Adding notes
 
@@ -111,73 +143,80 @@ Make sure you document each commit and squash them appropriately. You can use th
 * Scala's documentation on [Git Hygiene](https://github.com/scala/scala/tree/v2.12.0-M3#git-hygiene)
 * Play's documentation on [Working with Git](https://www.playframework.com/documentation/2.4.4/WorkingWithGit#Squashing-commits)
 
-Documentation
--------------
-
-Documentation fixes and contributions are as much welcome as to the source code itself. Visit [the website project](https://github.com/sbt/website) to learn about how to contribute.
-
 Build from source
 =================
+
+### Branch to work against
+
+sbt uses two branches for development:
+
+- Development branch: `1.x` (this is also called "master")
+- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
+
+If you're working on a bug fix, it's a good idea to start with the `1.$MINOR.x` branch, since we can always safely merge from stable to `1.x`, but not other way around.
+
+### Instruction to build all modules from source
 
 1. Install the current stable binary release of sbt (see [Setup]), which will be used to build sbt from source.
 2. Get the source code.
 
-		$ git clone git://github.com/sbt/sbt.git
-		$ cd sbt
+   ```
+   $ mkdir sbt-modules
+   $ cd sbt-modules
+   $ for i in sbt io util librarymanagement zinc; do \
+     git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b 1.1.x origin/1.1.x)
+   done
+   $ cd sbt
+   $ ./sbt-allsources.sh
+   ```
 
-3. The default branch is the development branch [1.0.x](https://github.com/sbt/sbt/tree/1.0.x), which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is [v0.13.13](https://github.com/sbt/sbt/tree/v0.13.13):
+3. To build and publish all components locally,
 
-		$ git checkout v0.13.13
+   ```
+   $ ./sbt-allsources.sh
+   sbt:sbtRoot> publishLocalAllModule
+   ```
 
-	Note that sbt is always built with the previous stable release.  For example, the [1.0.x](https://github.com/sbt/sbt/tree/1.0.x) branch is built with 0.13.13 and the [v0.13.13](https://github.com/sbt/sbt/tree/v0.13.13) tag is built with 0.13.12.
+### Instruction to build just sbt
 
-4. To build the launcher and publish all components locally,
+If the change you are making is contained in sbt/sbt, you could publishLocal on sbt/sbt:
 
-		$ sbt
-		> publishLocal
+```
+$ sbt
+sbt:sbtRoot> publishLocal
+```
 
-5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar at `<sbt>/launch/target/sbt-launch.jar`.
+### Using the locally built sbt
 
-	Directory `target` is removed by `clean` command. Second solution is using the artifact stored in the local ivy repository.
+To use the locally built sbt, set the version in `build.properties` file to `1.$MINOR.$PATCH-SNAPSHOT`.
 
-	The launcher is located in:
+```
+$ cd ../hello
+$ sbt
+> compile
+```
 
-    $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.9/jars/sbt-launch.jar
+### Clearing out boot and local cache
 
-	for v0.13.9 tag, or in:
+When you run a locally built sbt, the JAR artifacts will be now cached under `$HOME/.sbt/boot/scala-2.12.4/org.scala-sbt/sbt/1.$MINOR.$PATCH-SNAPSHOT` directory. To clear this out run: `reboot dev` command from sbt's session of your test application.
 
-    $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.10-SNAPSHOT/jars/sbt-launch.jar
+One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers. You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`. A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
 
-	for the development branch.
-
-## Modifying sbt
-
-1. When developing sbt itself, run `compile` when checking compilation only.
-
-2. To use your modified version of sbt in a project locally, run `publishLocal`.
-
-3. After each `publishLocal`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
-
-4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `1.0.0-SNAPSHOT`.
-
-## Diagnosing build failures
+### Diagnosing build failures
 
 Globally included plugins can interfere building `sbt`; if you are getting errors building sbt, try disabling all globally included plugins and try again.
 
-Running Tests
-=============
+### Running Tests
 
-sbt has an extensive test suite of Unit tests and Integration tests!
+sbt has a suite of unit tests and integration tests, also known as scripted tests.
 
-Unit / Functional tests
------------------------
+#### Unit / Functional tests
 
 Various functional and unit tests are defined throughout the
 project. To run all of them, run `sbt test`. You can run a single test
 suite with `sbt testOnly`
 
-Integration tests
------------------
+#### Integration tests
 
 Scripted integration tests reside in `sbt/src/sbt-test` and are
 written using the same testing infrastructure sbt plugin authors can
@@ -190,23 +229,11 @@ command. To run a single test, such as the test in
 
     sbt "scripted project/global-plugin"
 
-Please note that these tests run PAINFULLY slow if the version set in
-`build.sbt` is set to SNAPSHOT, as every time the scripted test boots
-up a test instance of sbt, remote mirrors are scanned for possible
-updates. It is recommended that you set the version suffix to
-`-devel`, as in `1.0.0-devel`.
+Other notes for maintainers
+---------------------------
 
-Building Documentation
-======================
+### Publishing VS Code Extensions
 
-The scala-sbt.org site documentation is a separate project [website](https://github.com/sbt/website). Follow [the steps in the README](https://github.com/sbt/website#scala-sbtorg) to generate the documentation.
-
-
-Note for maintainers
-====================
-
-Publishing VS Code Extensions
------------------------------
 
 https://code.visualstudio.com/docs/extensions/publish-extension
 
