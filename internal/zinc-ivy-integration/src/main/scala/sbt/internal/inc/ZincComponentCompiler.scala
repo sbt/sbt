@@ -91,7 +91,7 @@ private[sbt] object ZincComponentCompiler {
       compiledBridge(bridgeSources, scalaInstance, logger)
     }
 
-    private final case class ScalaArtifacts(compiler: File, library: File, others: Vector[File])
+    private case class ScalaArtifacts(compiler: File, library: File, others: Vector[File])
 
     private def getScalaArtifacts(scalaVersion: String, logger: xsbti.Logger): ScalaArtifacts = {
       def isPrefixedWith(artifact: File, prefix: String) = artifact.getName.startsWith(prefix)
