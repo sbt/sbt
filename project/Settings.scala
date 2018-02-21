@@ -277,4 +277,16 @@ object Settings {
 
   lazy val Integration = config("it").extend(Test)
 
+  def runCommand(cmd: Seq[String], dir: File): Unit = {
+    val b = new ProcessBuilder(cmd: _*)
+    b.directory(dir)
+    b.inheritIO()
+    val p = b.start()
+    val retCode = p.waitFor()
+    if (retCode != 0)
+      sys.error(s"Command ${cmd.mkString(" ")} failed (return code $retCode)")
+  }
+
+  val gitLock = new Object
+
 }

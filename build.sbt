@@ -467,14 +467,37 @@ lazy val proguardedCli = Seq(
 )
 
 lazy val sharedTestResources = {
-  unmanagedResourceDirectories.in(Test) += baseDirectory.in(LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources"
+  unmanagedResourceDirectories.in(Test) += {
+    val baseDir = baseDirectory.in(LocalRootProject).value
+    val testsMetadataDir = baseDir / "tests" / "metadata" / "https"
+    if (!testsMetadataDir.exists())
+      gitLock.synchronized {
+        if (!testsMetadataDir.exists()) {
+          val cmd = Seq("git", "submodule", "update", "--init", "--recursive", "--", "tests/metadata")
+          runCommand(cmd, baseDir)
+        }
+      }
+    baseDir / "tests" / "shared" / "src" / "test" / "resources"
+  }
 }
 
 // Using directly the sources of directories, rather than depending on it.
 // This is required to use it from the bootstrap module, whose jar is launched as is (so shouldn't require dependencies).
 // This is done for the other use of it too, from the cache module, not to have to manage two ways of depending on it.
 lazy val addDirectoriesSources = {
-  unmanagedSourceDirectories.in(Compile) += baseDirectory.in(LocalRootProject).value / "directories" / "src" / "main" / "java"
+  unmanagedSourceDirectories.in(Compile) += {
+    val baseDir = baseDirectory.in(LocalRootProject).value
+    val directoriesDir = baseDir / "directories" / "src" / "main" / "java"
+    if (!directoriesDir.exists())
+      gitLock.synchronized {
+        if (!directoriesDir.exists()) {
+          val cmd = Seq("git", "submodule", "update", "--init", "--recursive", "--", "directories")
+          runCommand(cmd, baseDir)
+        }
+      }
+
+    directoriesDir
+  }
 }
 
 lazy val addPathsSources = Seq(
