@@ -230,7 +230,7 @@ object Settings {
 
   lazy val shading =
     inConfig(_root_.coursier.ShadingPlugin.Shading)(PgpSettings.projectSettings) ++
-       // ytf does this have to be repeated here?
+       // Why does this have to be repeated here?
        // Can't figure out why configuration gets lost without this in particular...
       _root_.coursier.ShadingPlugin.projectSettings ++
       Seq(
