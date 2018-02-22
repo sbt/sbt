@@ -1,0 +1,51 @@
+### Changes
+
+* Allow to output resolution and fetch result in a JSON file ([#692], [#724], [#749], mainly to be used by [Pants], thanks to [@wisechengyi])
+* Move the echo helper project to [its own repository](https://github.com/coursier/echo) ([#719])
+* Move the http-server helper project to [its own repository](https://github.com/coursier/http-server) ([#720])
+* Move the sbt-launcher experimental project to [its own repository](https://github.com/coursier/sbt-launcher) ([#721], [#722])
+* Build coursier with sbt 1.0.x ([#629])
+* Mention installation on archlinux in the README ([#726], thanks to [@2m])
+* Add sqlline example in the README ([#727], thanks to [@mprudhom])
+* Replace some of our sbt 0.13 / 1.0 compatibility code with [@dwijnand]'s [sbt-compat](https://github.com/dwijnand/sbt-compat) ([#731], thanks to [@dwijnand])
+* Small tweaks in the build of coursier ([#729], [#730], thanks to [@dwijnand])
+* Automatically add non-http(s) artifacts in generated bootstraps ([#742], thanks to [@bosyi])
+* Add new syntax for classifiers for the CLI tools, like `org:name:0.1,classifier=foo` ([#735], thanks to [@wisechengyi])
+* Allow to deactivate Maven profiles from the CLI tools, like `--profile '!scala-2.11'` ([#761])
+* Reference less things directly under the `sbt._` namespace from the sbt plugins, to ease the use of coursier from sbt itself ([#746], [#763], [#764], thanks to [@leonardehrenfried])
+* Add ZSH completions ([#756], thanks to [@propensive])
+* Ensure POM files aren't added to the classpath by bootstraps ([#762])
+
+
+[#629]: https://github.com/coursier/coursier/pull/629
+[#692]: https://github.com/coursier/coursier/pull/692
+[#719]: https://github.com/coursier/coursier/pull/719
+[#720]: https://github.com/coursier/coursier/pull/720
+[#721]: https://github.com/coursier/coursier/pull/721
+[#722]: https://github.com/coursier/coursier/pull/722
+[#724]: https://github.com/coursier/coursier/pull/724
+[#726]: https://github.com/coursier/coursier/pull/726
+[#727]: https://github.com/coursier/coursier/pull/727
+[#729]: https://github.com/coursier/coursier/pull/729
+[#730]: https://github.com/coursier/coursier/pull/730
+[#731]: https://github.com/coursier/coursier/pull/731
+[#735]: https://github.com/coursier/coursier/pull/735
+[#742]: https://github.com/coursier/coursier/pull/742
+[#746]: https://github.com/coursier/coursier/pull/746
+[#749]: https://github.com/coursier/coursier/pull/749
+[#756]: https://github.com/coursier/coursier/pull/756
+[#761]: https://github.com/coursier/coursier/pull/761
+[#762]: https://github.com/coursier/coursier/pull/762
+[#763]: https://github.com/coursier/coursier/pull/763
+[#764]: https://github.com/coursier/coursier/pull/764
+
+[@2m]: https://github.com/2m
+[@bosyi]: https://github.com/bosyi
+[@dwijnand]: https://github.com/dwijnand
+[@leonardehrenfried]: https://github.com/leonardehrenfried
+[@mprudhom]: https://github.com/mprudhom
+[@propensive]: https://github.com/propensive
+[@wisechengyi]: https://github.com/wisechengyi
+
+[Pants]: https://www.pantsbuild.org
+
