@@ -57,6 +57,14 @@ def commonSettings: Seq[Setting[_]] =
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
     javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
+    scalacOptions in (Compile, doc) ++= {
+      Seq(
+        "-sourcepath",
+        (baseDirectory in LocalRootProject).value.getAbsolutePath,
+        "-doc-source-url",
+        s"""https://github.com/sbt/sbt/tree/${sys.process.Process("git rev-parse HEAD").lineStream_!.head}€{FILE_PATH}.scala"""
+      )
+    },
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
     bintrayRepository := (bintrayRepository in ThisBuild).value,
