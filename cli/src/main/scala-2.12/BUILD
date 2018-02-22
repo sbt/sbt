@@ -5,6 +5,7 @@ scala_library(
         "3rdparty/jvm:caseapp",
         "cache/src/main/scala:cache",
         "core:core",
+        "extra/src/main/scala/coursier:fallback-deps-repo",
         "extra/src/main/scala/coursier/extra:extra",
         "extra/src/main/scala-2.12/coursier/extra:native",
         ":util",

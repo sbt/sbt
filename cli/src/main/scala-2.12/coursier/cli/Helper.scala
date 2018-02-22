@@ -2,7 +2,7 @@ package coursier
 package cli
 
 import java.io.{File, OutputStreamWriter, PrintWriter}
-import java.net.{URL, URLClassLoader}
+import java.net.{URL, URLClassLoader, URLDecoder}
 import java.util.concurrent.Executors
 import java.util.jar.{Manifest => JManifest}
 
@@ -116,7 +116,7 @@ class Helper(
     repos
   }
 
-  val repositories = repositoriesValidation match {
+  val standardRepositories = repositoriesValidation match {
     case Success(repos) =>
       repos
     case Failure(errors) =>
@@ -125,14 +125,13 @@ class Helper(
       )
   }
 
-
   val loggerFallbackMode =
     !progress && TermDisplay.defaultFallbackMode
 
   val (scaladexRawDependencies, otherRawDependencies) =
     rawDependencies.partition(s => s.contains("/") || !s.contains(":"))
 
-  val scaladexDeps: List[Dependency] =
+  val scaladexDepsWithExtraParams: List[(Dependency, Map[String, String])] =
     if (scaladexRawDependencies.isEmpty)
       Nil
     else {
@@ -192,7 +191,7 @@ class Helper(
       res
         .collect { case \/-(l) => l }
         .flatten
-        .map { case (mod, ver) => Dependency(mod, ver) }
+        .map { case (mod, ver) => (Dependency(mod, ver), Map[String, String]()) }
     }
 
   val (forceVersionErrors, forceVersions0) = Parse.moduleVersions(forceVersion, scalaVersion)
@@ -258,10 +257,10 @@ class Helper(
 
   val moduleReq = ModuleRequirements(globalExcludes, localExcludeMap, defaultConfiguration)
 
-  val (modVerCfgErrors: Seq[String], normalDeps: Seq[Dependency]) =
+  val (modVerCfgErrors: Seq[String], normalDepsWithExtraParams: Seq[(Dependency, Map[String, String])]) =
     Parse.moduleVersionConfigs(otherRawDependencies, moduleReq, transitive=true, scalaVersion)
 
-  val (intransitiveModVerCfgErrors: Seq[String], intransitiveDeps: Seq[Dependency]) =
+  val (intransitiveModVerCfgErrors: Seq[String], intransitiveDepsWithExtraParams: Seq[(Dependency, Map[String, String])]) =
     Parse.moduleVersionConfigs(intransitive, moduleReq, transitive=false, scalaVersion)
 
   prematureExitIf(modVerCfgErrors.nonEmpty) {
@@ -273,11 +272,37 @@ class Helper(
       intransitiveModVerCfgErrors.map("  "+_).mkString("\n")
   }
 
-  val transitiveDeps: Seq[Dependency] =
+  val transitiveDepsWithExtraParams: Seq[(Dependency, Map[String, String])] =
   // FIXME Order of the dependencies is not respected here (scaladex ones go first)
-    scaladexDeps ++ normalDeps
+    scaladexDepsWithExtraParams ++ normalDepsWithExtraParams
 
-  val allDependencies: Seq[Dependency] = transitiveDeps ++ intransitiveDeps
+  val transitiveDeps: Seq[Dependency] = transitiveDepsWithExtraParams.map(dep => dep._1)
+
+  val allDependenciesWithExtraParams: Seq[(Dependency, Map[String, String])] =
+    transitiveDepsWithExtraParams ++ intransitiveDepsWithExtraParams
+
+  val allDependencies: Seq[Dependency] = allDependenciesWithExtraParams.map(dep => dep._1)
+
+  // Any dependencies with URIs should not be resolved with a pom so this is a
+  // hack to add all the deps with URIs to the FallbackDependenciesRepository
+  // which will be used during the resolve
+  val depsWithUrls: Map[(Module, String), (URL, Boolean)] = allDependenciesWithExtraParams
+    .flatMap {
+      case (dep, extraParams) =>
+        extraParams.get("url").map { url =>
+          dep.moduleVersion -> (new URL(URLDecoder.decode(url, "UTF-8")), true)
+        }
+    }.toMap
+
+  val depsWithUrlRepo: FallbackDependenciesRepository = FallbackDependenciesRepository(depsWithUrls)
+
+  // Prepend FallbackDependenciesRepository to the repository list
+  // so that dependencies with URIs are resolved against this repo
+  val repositories: Seq[Repository] = Seq(depsWithUrlRepo) ++ standardRepositories
+
+  for (((mod, version), _) <- depsWithUrls if forceVersions.get(mod).exists(_ != version))
+    throw new Exception(s"Cannot force a version that is different from the one specified " +
+      s"for the module ${mod}:${version} with url")
 
   val checksums = {
     val splitChecksumArgs = checksum.flatMap(_.split(',')).filter(_.nonEmpty)

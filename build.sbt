@@ -118,7 +118,7 @@ lazy val bootstrap = project
 lazy val extra = project
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(ShadingPlugin)
-  .dependsOn(coreJvm)
+  .dependsOn(coreJvm, cache)
   .settings(
     shared,
     coursierPrefix,

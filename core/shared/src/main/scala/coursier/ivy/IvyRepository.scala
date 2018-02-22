@@ -291,7 +291,9 @@ object IvyRepository {
 
     for {
       propertiesPattern <- PropertiesPattern.parse(pattern)
-      metadataPropertiesPatternOpt <- metadataPatternOpt.fold(Option.empty[PropertiesPattern].right[String])(PropertiesPattern.parse(_).map(Some(_)))
+      metadataPropertiesPatternOpt <- metadataPatternOpt
+        .fold(Option.empty[PropertiesPattern].right[String])(PropertiesPattern.parse(_)
+          .map(Some(_)))
 
       pattern <- propertiesPattern.substituteProperties(properties)
       metadataPatternOpt <- metadataPropertiesPatternOpt.fold(Option.empty[Pattern].right[String])(_.substituteProperties(properties).map(Some(_)))
