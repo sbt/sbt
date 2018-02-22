@@ -1,0 +1,12 @@
+### Changes
+
+* Reference less things directly under the `sbt._` namespace from the sbt plugins, to ease the use of coursier from sbt itself ([#766], [#771], thanks to [@leonardehrenfried])
+* Switch the cli to scala 2.12 and case-app 2.0.x ([#748])
+
+
+[#748]: https://github.com/coursier/coursier/pull/748
+[#766]: https://github.com/coursier/coursier/pull/766
+[#771]: https://github.com/coursier/coursier/pull/771
+
+[@leonardehrenfried]: https://github.com/leonardehrenfried
+
