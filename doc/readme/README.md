@@ -821,26 +821,7 @@ Once RCs will be considered stable enough, `1.0.1` should be released.
 
 ## Contributors
 
-- Claudio Bley ([@avdv](https://github.com/avdv))
-- Erem Boto ([@eboto](https://github.com/eboto))
-- Erik LaBianca ([@easel](https://github.com/easel))
-- Gabor Aranyossy ([@gaboraranyossy-da](https://github.com/gaboraranyossy-da))
-- Guillaume Massé ([@MasseGuillaume](https://github.com/MasseGuillaume))
-- Han Ju ([@darkjh](https://github.com/darkjh))
-- Jameel Al-Aziz ([@jalaziz](https://github.com/jalaziz))
-- Jentsch ([@Jentsch](https://github.com/Jentsch))
-- joriscode ([@joriscode](https://github.com/joriscode))
-- Kazuyoshi Kato ([@kzys](https://github.com/kzys))
-- Lars Hupel ([@larsrh](https://github.com/larsrh))
-- Mirco Dotta ([@dotta](https://github.com/dotta))
-- n4to4 ([@n4to4](https://github.com/n4to4))
-- Ólafur Páll Geirsson ([@olafurpg](https://github.com/olafurpg))
-- Rodrigo Fernandes ([@rtfpessoa](https://github.com/rtfpessoa))
-- Roman Iakovlev ([@RomanIakovlev](https://github.com/RomanIakovlev))
-- Ryo Fukumuro ([@rfkm](https://github.com/rfkm))
-- Sebastian Schuberth ([@sschuberth](https://github.com/sschuberth))
-- Simon Ochsenreither ([@soc](https://github.com/soc))
-- Your name here :-)
+See the [up-to-date list of contributors on GitHub](https://github.com/coursier/coursier/graphs/contributors).
 
 Don't hesitate to pick an issue to contribute, and / or ask for help for how to proceed
 on the [Gitter channel](https://gitter.im/coursier/coursier).
