@@ -456,7 +456,8 @@ lazy val sbtProj = (project in file("sbt"))
     addBuildInfoToConfig(Test),
     buildInfoObject in Test := "TestBuildInfo",
     buildInfoKeys in Test := Seq[BuildInfoKey](
-      BuildInfoKey.map(fullClasspath in Compile) { case (ident, cp) => ident -> cp.files },
+      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
+      BuildInfoKey.map((fullClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
     ),
     connectInput in run in Test := true,
     outputStrategy in run in Test := Some(StdoutOutput),
