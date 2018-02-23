@@ -1,10 +1,9 @@
 package coursier
 
-import scala.language.higherKinds
+import coursier.util.EitherT
 
-import scalaz.{EitherT, Monad}
-import scalaz.syntax.monad._
-import scalaz.syntax.std.option._
+import scala.language.higherKinds
+import scalaz.Monad
 
 final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
 
@@ -12,17 +11,19 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
     .map(proj => proj.moduleVersion -> proj)
     .toMap
 
-  def find[F[_]: Monad](
+  def find[F[_]](
     module: Module,
     version: String,
     fetch: Fetch.Content[F]
+  )(implicit
+    F: Monad[F]
   ): EitherT[F, String, (Artifact.Source, Project)] = {
 
     val res = map
       .get((module, version))
-      .toRightDisjunction("Not found")
       .map((Artifact.Source.empty, _))
+      .toRight("Not found")
 
-    EitherT(res.point)
+    EitherT(F.point(res))
   }
 }

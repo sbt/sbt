@@ -6,7 +6,9 @@ import coursier.core.Authentication
 import coursier.ivy.IvyRepository
 import coursier.util.Parse
 
-import scalaz._, Scalaz._
+import scalaz.{Validation, ValidationNel}
+import scalaz.Scalaz.vectorInstance
+import scalaz.Scalaz.{ToEitherOpsFromEither, ToNelOps, ToTraverseOps, ToValidationOps}
 
 object CacheParse {
 
@@ -18,7 +20,7 @@ object CacheParse {
     else {
       val repo = Parse.repository(s)
 
-      val url = repo.map {
+      val url = repo.right.map {
         case m: MavenRepository =>
           m.root
         case i: IvyRepository =>
@@ -32,13 +34,13 @@ object CacheParse {
       }
 
       val validatedUrl = try {
-        url.map(Cache.url)
+        url.right.map(Cache.url)
       } catch {
         case e: MalformedURLException =>
-          ("Error parsing URL " + url + Option(e.getMessage).fold("")(" (" + _ + ")")).left
+          Left("Error parsing URL " + url + Option(e.getMessage).fold("")(" (" + _ + ")"))
       }
 
-      validatedUrl.flatMap { url =>
+      validatedUrl.right.flatMap { url =>
         Option(url.getUserInfo) match {
           case None =>
             repo
@@ -52,7 +54,7 @@ object CacheParse {
                   url.getFile
                 ).toString
 
-                repo.map {
+                repo.right.map {
                   case m: MavenRepository =>
                     m.copy(
                       root = baseUrl,
@@ -73,7 +75,7 @@ object CacheParse {
                 }
 
               case _ =>
-                s"No password found in user info of URL $url".left
+                Left(s"No password found in user info of URL $url")
             }
         }
       }.validation

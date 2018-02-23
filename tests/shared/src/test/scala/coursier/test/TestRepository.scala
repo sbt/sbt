@@ -2,11 +2,10 @@ package coursier
 package test
 
 import coursier.core._
+import coursier.util.EitherT
 
 import scala.language.higherKinds
-
-import scalaz.{ Monad, EitherT }
-import scalaz.Scalaz._
+import scalaz.Monad
 
 final case class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
   val source = new core.Artifact.Source {
@@ -23,7 +22,9 @@ final case class TestRepository(projects: Map[(Module, String), Project]) extend
   )(implicit
     F: Monad[F]
   ) =
-    EitherT(F.point(
-      projects.get((module, version)).map((source, _)).toRightDisjunction("Not found")
-    ))
+    EitherT(
+      F.point(
+        projects.get((module, version)).map((source, _)).toRight("Not found")
+      )
+    )
 }

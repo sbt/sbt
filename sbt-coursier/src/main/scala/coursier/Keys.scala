@@ -8,7 +8,6 @@ import sbt.librarymanagement.GetClassifiersModule
 import sbt.{Resolver, SettingKey, TaskKey}
 
 import scala.concurrent.duration.Duration
-import scalaz.\/
 
 object Keys {
   val coursierParallelDownloads = SettingKey[Int]("coursier-parallel-downloads")
@@ -65,8 +64,8 @@ object Keys {
     "Prints dependencies and transitive dependencies as an inverted tree (dependees as children)"
   )
 
-  val coursierArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-artifacts")
-  val coursierSignedArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-signed-artifacts")
-  val coursierClassifiersArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-classifiers-artifacts")
-  val coursierSbtClassifiersArtifacts = TaskKey[Map[Artifact, FileError \/ File]]("coursier-sbt-classifiers-artifacts")
+  val coursierArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-artifacts")
+  val coursierSignedArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-signed-artifacts")
+  val coursierClassifiersArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-classifiers-artifacts")
+  val coursierSbtClassifiersArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-sbt-classifiers-artifacts")
 }

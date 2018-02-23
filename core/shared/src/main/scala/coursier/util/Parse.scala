@@ -6,8 +6,6 @@ import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
 
 import scala.collection.mutable.ArrayBuffer
-import scalaz.\/
-import scalaz.Scalaz.ToEitherOps
 
 object Parse {
 
@@ -354,35 +352,35 @@ object Parse {
                            defaultScalaVersion: String): (Seq[String], Seq[(Dependency, Map[String, String])]) =
     valuesAndErrors(moduleVersionConfig(_, req, transitive, defaultScalaVersion), l)
 
-  def repository(s: String): String \/ Repository =
+  def repository(s: String): Either[String, Repository] =
     if (s == "central")
-      MavenRepository("https://repo1.maven.org/maven2").right
+      Right(MavenRepository("https://repo1.maven.org/maven2"))
     else if (s.startsWith("sonatype:"))
-      MavenRepository(s"https://oss.sonatype.org/content/repositories/${s.stripPrefix("sonatype:")}").right
+      Right(MavenRepository(s"https://oss.sonatype.org/content/repositories/${s.stripPrefix("sonatype:")}"))
     else if (s.startsWith("bintray:"))
-      MavenRepository(s"https://dl.bintray.com/${s.stripPrefix("bintray:")}").right
+      Right(MavenRepository(s"https://dl.bintray.com/${s.stripPrefix("bintray:")}"))
     else if (s.startsWith("bintray-ivy:"))
-      IvyRepository.fromPattern(
+      Right(IvyRepository.fromPattern(
         s"https://dl.bintray.com/${s.stripPrefix("bintray-ivy:").stripSuffix("/")}/" +:
           coursier.ivy.Pattern.default
-      ).right
+      ))
     else if (s.startsWith("typesafe:ivy-"))
-      IvyRepository.fromPattern(
+      Right(IvyRepository.fromPattern(
         s"https://repo.typesafe.com/typesafe/ivy-${s.stripPrefix("typesafe:ivy-")}/" +:
           coursier.ivy.Pattern.default
-      ).right
+      ))
     else if (s.startsWith("typesafe:"))
-      MavenRepository(s"https://repo.typesafe.com/typesafe/${s.stripPrefix("typesafe:")}").right
+      Right(MavenRepository(s"https://repo.typesafe.com/typesafe/${s.stripPrefix("typesafe:")}"))
     else if (s.startsWith("sbt-plugin:"))
-      IvyRepository.fromPattern(
+      Right(IvyRepository.fromPattern(
         s"https://repo.scala-sbt.org/scalasbt/sbt-plugin-${s.stripPrefix("sbt-plugin:")}/" +:
           coursier.ivy.Pattern.default
-      ).right
+      ))
     else if (s.startsWith("ivy:"))
       IvyRepository.parse(s.stripPrefix("ivy:"))
     else if (s == "jitpack")
-      MavenRepository("https://jitpack.io").right
+      Right(MavenRepository("https://jitpack.io"))
     else
-      MavenRepository(s).right
+      Right(MavenRepository(s))
 
 }

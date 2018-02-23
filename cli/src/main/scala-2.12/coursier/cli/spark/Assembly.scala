@@ -14,7 +14,6 @@ import coursier.cli.util.Zip
 import coursier.internal.FileUtil
 
 import scala.collection.mutable
-import scalaz.\/-
 
 object Assembly {
 
@@ -273,8 +272,8 @@ object Assembly {
         // FIXME Acquire lock on tmpDest
         Assembly.make(jars, tmpDest, assemblyRules)
         FileUtil.atomicMove(tmpDest, dest)
-        \/-((dest, jars))
-      }.leftMap(_.describe).toEither
+        Right((dest, jars))
+      }.left.map(_.describe)
   }
 
 }

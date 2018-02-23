@@ -1,8 +1,9 @@
 package coursier
 
-import scala.language.higherKinds
+import coursier.util.EitherT
 
-import scalaz._
+import scala.language.higherKinds
+import scalaz.{Monad, Nondeterminism}
 
 object Fetch {
 
@@ -11,7 +12,7 @@ object Fetch {
 
   type MD = Seq[(
     (Module, String),
-    Seq[String] \/ (Artifact.Source, Project)
+    Either[Seq[String], (Artifact.Source, Project)]
   )]
 
   type Metadata[F[_]] = Seq[(Module, String)] => F[MD]
@@ -39,17 +40,18 @@ object Fetch {
     val lookups = repositories
       .map(repo => repo -> repo.find(module, version, fetch).run)
 
-    val task = lookups.foldLeft[F[Seq[String] \/ (Artifact.Source, Project)]](F.point(-\/(Nil))) {
-      case (acc, (repo, eitherProjTask)) =>
+    val task0 = lookups.foldLeft[F[Either[Seq[String], (Artifact.Source, Project)]]](F.point(Left(Nil))) {
+      case (acc, (_, eitherProjTask)) =>
         F.bind(acc) {
-          case -\/(errors) =>
-            F.map(eitherProjTask)(_.leftMap(error => error +: errors))
-          case res @ \/-(_) =>
+          case Left(errors) =>
+            F.map(eitherProjTask)(_.left.map(error => error +: errors))
+          case res @ Right(_) =>
             F.point(res)
         }
     }
 
-    EitherT(F.map(task)(_.leftMap(_.reverse)))
+    val task = F.map(task0)(e => e.left.map(_.reverse): Either[Seq[String], (Artifact.Source, Project)])
+    EitherT(task)
   }
 
   def from[F[_]](
@@ -62,14 +64,13 @@ object Fetch {
 
     modVers =>
       F.map(
-        F.gatherUnordered(
-          modVers.map { case (module, version) =>
-            def get(fetch: Content[F]) =
-              find(repositories, module, version, fetch)
-            F.map((get(fetch) /: extra)(_ orElse get(_))
-              .run)((module, version) -> _)
+        F.gatherUnordered {
+          modVers.map {
+            case (module, version) =>
+              def get(fetch: Content[F]) = find(repositories, module, version, fetch)
+              F.map((get(fetch) /: extra)(_ orElse get(_)).run)(d => (module, version) -> d)
           }
-        )
+        }
       )(_.toSeq)
   }
 

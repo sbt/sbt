@@ -25,30 +25,30 @@ object ParseTests extends TestSuite {
   val tests = TestSuite {
     "bintray-ivy:" - {
       val obtained = Parse.repository("bintray-ivy:scalameta/maven")
-      assert(obtained.exists(isIvyRepo))
+      assert(obtained.right.exists(isIvyRepo))
     }
     "bintray:" - {
       val obtained = Parse.repository("bintray:scalameta/maven")
-      assert(obtained.exists(isMavenRepo))
+      assert(obtained.right.exists(isMavenRepo))
     }
 
     "sbt-plugin:" - {
       val res = Parse.repository("sbt-plugin:releases")
-      assert(res.exists(isIvyRepo))
+      assert(res.right.exists(isIvyRepo))
     }
 
     "typesafe:ivy-" - {
       val res = Parse.repository("typesafe:ivy-releases")
-      assert(res.exists(isIvyRepo))
+      assert(res.right.exists(isIvyRepo))
     }
     "typesafe:" - {
       val res = Parse.repository("typesafe:releases")
-      assert(res.exists(isMavenRepo))
+      assert(res.right.exists(isMavenRepo))
     }
 
     "jitpack" - {
       val res = Parse.repository("jitpack")
-      assert(res.exists(isMavenRepo))
+      assert(res.right.exists(isMavenRepo))
     }
 
     // Module parsing tests

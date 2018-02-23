@@ -1,12 +1,11 @@
 package coursier.test
 
-import coursier.util.TestEscape
+import coursier.util.{EitherT, TestEscape}
 import coursier.{Fetch, Task}
 
-import scala.concurrent.{Promise, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import js.Dynamic.{global => g}
-import scalaz.{-\/, EitherT, \/-}
 
 package object compatibility {
 
@@ -40,10 +39,10 @@ package object compatibility {
 
       Task { implicit ec =>
         textResource0(path)
-          .map(\/-(_))
+          .map(Right(_))
           .recoverWith {
             case e: Exception =>
-              Future.successful(-\/(e.getMessage))
+              Future.successful(Left(e.getMessage))
           }
       }
     }

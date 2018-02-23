@@ -14,7 +14,7 @@ object IvyTests extends TestSuite {
       "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)" +
       "[revision]/[type]s/[artifact](-[classifier]).[ext]",
     dropInfoAttributes = true
-  ).getOrElse(
+  ).right.getOrElse(
     throw new Exception("Cannot happen")
   )
 

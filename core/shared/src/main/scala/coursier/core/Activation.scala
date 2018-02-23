@@ -1,12 +1,10 @@
 package coursier.core
 
-import scalaz.{-\/, \/, \/-}
-
 // Maven-specific
 final case class Activation(
   properties: Seq[(String, Option[String])],
   os: Activation.Os,
-  jdk: Option[VersionInterval \/ Seq[Version]]
+  jdk: Option[Either[VersionInterval, Seq[Version]]]
 ) {
 
   def isEmpty: Boolean = properties.isEmpty && os.isEmpty && jdk.isEmpty
@@ -35,9 +33,9 @@ final case class Activation(
     def fromOs = os.isActive(osInfo)
 
     def fromJdk = jdk.forall {
-      case -\/(itv) =>
+      case Left(itv) =>
         jdkVersion.exists(itv.contains)
-      case \/-(versions) =>
+      case Right(versions) =>
         jdkVersion.exists(versions.contains)
     }
 

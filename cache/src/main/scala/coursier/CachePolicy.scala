@@ -1,5 +1,7 @@
 package coursier
 
+import scalaz.{Failure, Success}
+
 sealed abstract class CachePolicy extends Product with Serializable
 
 object CachePolicy {
@@ -80,14 +82,14 @@ object CachePolicy {
       value.filter(_.nonEmpty).flatMap {
         str =>
           CacheParse.cachePolicies(str) match {
-            case scalaz.Success(Seq()) =>
+            case Success(Seq()) =>
               Console.err.println(
                 s"Warning: no mode found in $description, ignoring it."
               )
               None
-            case scalaz.Success(policies) =>
+            case Success(policies) =>
               Some(policies)
-            case scalaz.Failure(errors) =>
+            case Failure(errors) =>
               Console.err.println(
                 s"Warning: unrecognized mode in $description, ignoring it."
               )

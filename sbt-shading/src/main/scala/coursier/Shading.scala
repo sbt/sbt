@@ -11,8 +11,6 @@ import com.tonicsystems.jarjar.transform.jar.DefaultJarProcessor
 import coursier.core.Orders
 import sbt.file
 
-import scalaz.{\/, \/-}
-
 object Shading {
 
   // FIXME Also vaguely in cli
@@ -58,7 +56,7 @@ object Shading {
     currentProject: Project,
     res: Resolution,
     configs: Map[String, Set[String]],
-    artifactFilesOrErrors: Map[Artifact, FileError \/ File],
+    artifactFilesOrErrors: Map[Artifact, Either[FileError, File]],
     classpathTypes: Set[String],
     baseConfig: String,
     shadedConf: String,
@@ -101,7 +99,7 @@ object Shading {
 
     val artifactFilesOrErrors0 = artifactFilesOrErrors
       .collect {
-        case (a, \/-(f)) => a.url -> f
+        case (a, Right(f)) => a.url -> f
       }
 
     val compileDeps = configDependencies(baseConfig)

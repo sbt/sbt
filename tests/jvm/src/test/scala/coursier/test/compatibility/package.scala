@@ -3,11 +3,10 @@ package coursier.test
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
-import coursier.util.TestEscape
+import coursier.util.{EitherT, TestEscape}
 import coursier.{Cache, Fetch, Platform}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.{-\/, EitherT, \/, \/-}
 import scalaz.concurrent.Task
 
 package object compatibility {
@@ -49,20 +48,20 @@ package object compatibility {
 
       val init = EitherT[Task, String, Unit] {
         if (Files.exists(path))
-          Task.now(\/-(()))
+          Task.now(Right(()))
         else if (fillChunks)
-          Task[String \/ Unit] {
+          Task[Either[String, Unit]] {
             Files.createDirectories(path.getParent)
             def is() = Cache.urlConnection(artifact.url, artifact.authentication).getInputStream
             val b = Platform.readFullySync(is())
             Files.write(path, b)
-            \/-(())
+            Right(())
           }.handle {
             case e: Exception =>
-              -\/(e.toString)
+              Left(e.toString)
           }
         else
-          Task.now(-\/(s"not found: $path"))
+          Task.now(Left(s"not found: $path"))
       }
 
       init.flatMap { _ =>

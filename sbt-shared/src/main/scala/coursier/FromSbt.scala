@@ -10,8 +10,6 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.Resolver
 import sbt.util.Logger
 
-import scalaz.{-\/, \/-}
-
 object FromSbt {
 
   def sbtModuleIdName(
@@ -227,11 +225,11 @@ object FromSbt {
               dropInfoAttributes = true,
               authentication = authentication
             ) match {
-              case -\/(err) =>
+              case Left(err) =>
                 sys.error(
                   s"Cannot parse Ivy patterns ${r.patterns.artifactPatterns.head} and ${r.patterns.ivyPatterns.head}: $err"
                 )
-              case \/-(repo) =>
+              case Right(repo) =>
                 repo
             }
 
@@ -258,11 +256,11 @@ object FromSbt {
               dropInfoAttributes = true,
               authentication = authentication
             ) match {
-              case -\/(err) =>
+              case Left(err) =>
                 sys.error(
                   s"Cannot parse Ivy patterns ${r.patterns.artifactPatterns.head} and ${r.patterns.ivyPatterns.head}: $err"
                 )
-              case \/-(repo) =>
+              case Right(repo) =>
                 repo
             }
 

@@ -17,7 +17,6 @@ import sbt.Keys._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
-import scalaz.{-\/, \/-}
 import scalaz.concurrent.{Strategy, Task}
 
 object Tasks {
@@ -450,16 +449,16 @@ object Tasks {
     {
       s =>
         val p = PropertiesPattern.parse(s) match {
-          case -\/(err) =>
+          case Left(err) =>
             throw new Exception(s"Cannot parse pattern $s: $err")
-          case \/-(p) =>
+          case Right(p) =>
             p
         }
 
         p.substituteProperties(props ++ extraProps) match {
-          case -\/(err) =>
+          case Left(err) =>
             throw new Exception(err)
-          case \/-(p) =>
+          case Right(p) =>
             p
         }
     }
@@ -754,7 +753,9 @@ object Tasks {
             .process
             .run(fetch, maxIterations)
             .unsafePerformSyncAttempt
-            .leftMap(ex =>
+            .toEither
+            .left
+            .map(ex =>
               ResolutionError.UnknownException(ex)
                 .throwException()
             )
@@ -1042,11 +1043,11 @@ object Tasks {
 
           artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
 
-          Task.gatherUnordered(artifactFileOrErrorTasks).unsafePerformSyncAttempt match {
-            case -\/(ex) =>
+          Task.gatherUnordered(artifactFileOrErrorTasks).unsafePerformSyncAttempt.toEither match {
+            case Left(ex) =>
               ResolutionError.UnknownDownloadException(ex)
                 .throwException()
-            case \/-(l) =>
+            case Right(l) =>
               l.toMap
           }
         } finally {
@@ -1270,14 +1271,14 @@ object Tasks {
         }
 
         val artifactFiles = artifactFilesOrErrors0.collect {
-          case (artifact, \/-(file)) =>
+          case (artifact, Right(file)) =>
             artifact -> file
         }
 
         val artifactErrors = artifactFilesOrErrors0
           .toVector
           .collect {
-            case (a, -\/(err)) if !a.isOptional || !err.notFound =>
+            case (a, Left(err)) if !a.isOptional || !err.notFound =>
               a -> err
           }
 
@@ -1292,7 +1293,7 @@ object Tasks {
 
         // can be non empty only if ignoreArtifactErrors is true or some optional artifacts are not found
         val erroredArtifacts = artifactFilesOrErrors0.collect {
-          case (artifact, -\/(_)) =>
+          case (artifact, Left(_)) =>
             artifact
         }.toSet
 

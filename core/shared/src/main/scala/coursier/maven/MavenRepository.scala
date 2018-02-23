@@ -3,10 +3,10 @@ package coursier.maven
 import coursier.Fetch
 import coursier.core._
 import coursier.core.compatibility.encodeURIComponent
-import coursier.util.WebPage
+import coursier.util.{EitherT, WebPage}
 
 import scala.language.higherKinds
-import scalaz._
+import scalaz.Monad
 
 object MavenRepository {
   val SnapshotTimestamp = "(.*-)?[0-9]{8}\\.[0-9]{6}-[0-9]+".r
@@ -179,9 +179,9 @@ final case class MavenRepository(
 
       val res =
         if (files.contains("maven-metadata.xml"))
-          -\/("maven-metadata.xml found, not listing version from directory listing")
+          Left("maven-metadata.xml found, not listing version from directory listing")
         else if (rawVersions.isEmpty)
-          -\/(s"No versions found at $listingUrl")
+          Left(s"No versions found at $listingUrl")
         else {
           val parsedVersions = rawVersions.map(Version(_))
           val nonPreVersions = parsedVersions.filter(_.items.forall {
@@ -190,10 +190,10 @@ final case class MavenRepository(
           })
 
           if (nonPreVersions.isEmpty)
-            -\/(s"Found only pre-versions at $listingUrl")
+            Left(s"Found only pre-versions at $listingUrl")
           else {
             val latest = nonPreVersions.max
-            \/-(Versions(
+            Right(Versions(
               latest.repr,
               latest.repr,
               nonPreVersions.map(_.repr).toList,
@@ -214,16 +214,16 @@ final case class MavenRepository(
   ): EitherT[F, String, Versions] =
     EitherT(
       versionsArtifact(module) match {
-        case None => F.point(-\/("Not supported"))
+        case None => F.point(Left("Not supported"))
         case Some(artifact) =>
-          F.map(fetch(artifact).run)(eitherStr =>
+          F.map(fetch(artifact).run) { eitherStr =>
             for {
-              str <- eitherStr
-              xml <- \/.fromEither(compatibility.xmlParse(str))
-              _ <- if (xml.label == "metadata") \/-(()) else -\/("Metadata not found")
-              versions <- Pom.versions(xml)
+              str <- eitherStr.right
+              xml <- compatibility.xmlParse(str).right
+              _ <- (if (xml.label == "metadata") Right(()) else Left("Metadata not found")).right
+              versions <- Pom.versions(xml).right
             } yield versions
-          )
+          }
       }
     )
 
@@ -237,16 +237,16 @@ final case class MavenRepository(
 
     EitherT(
       snapshotVersioningArtifact(module, version) match {
-        case None => F.point(-\/("Not supported"))
+        case None => F.point(Left("Not supported"))
         case Some(artifact) =>
-          F.map(fetch(artifact).run)(eitherStr =>
+          F.map(fetch(artifact).run) { eitherStr =>
             for {
-              str <- eitherStr
-              xml <- \/.fromEither(compatibility.xmlParse(str))
-              _ <- if (xml.label == "metadata") \/-(()) else -\/("Metadata not found")
-              snapshotVersioning <- Pom.snapshotVersioning(xml)
+              str <- eitherStr.right
+              xml <- compatibility.xmlParse(str).right
+              _ <- (if (xml.label == "metadata") Right(()) else Left("Metadata not found")).right
+              snapshotVersioning <- Pom.snapshotVersioning(xml).right
             } yield snapshotVersioning
-          )
+          }
       }
     )
   }
@@ -269,7 +269,7 @@ final case class MavenRepository(
           versioningOption match {
             case None =>
               EitherT[F, String, Project](
-                F.point(-\/("No snapshot versioning value found"))
+                F.point(Left("No snapshot versioning value found"))
               )
             case versioning @ Some(_) =>
               findVersioning(module, version, versioning, fetch)
@@ -290,7 +290,7 @@ final case class MavenRepository(
       }
 
       // keep exact version used to get metadata, in case the one inside the metadata is wrong
-      F.map(res)(_.map(proj => proj.copy(actualVersionOpt = Some(version))))
+      F.map(res)(_.right.map(proj => proj.copy(actualVersionOpt = Some(version))))
     }
 
   private def artifactFor(url: String, changing: Boolean) =
@@ -314,9 +314,9 @@ final case class MavenRepository(
 
     def parseRawPom(str: String) =
       for {
-        xml <- \/.fromEither(compatibility.xmlParse(str))
-        _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
-        proj <- Pom.project(xml, relocationAsDependency = true)
+        xml <- compatibility.xmlParse(str).right
+        _ <- (if (xml.label == "project") Right(()) else Left("Project definition not found")).right
+        proj <- Pom.project(xml, relocationAsDependency = true).right
       } yield proj
 
     def isArtifact(fileName: String, prefix: String): Option[(String, String)] =
@@ -370,9 +370,9 @@ final case class MavenRepository(
     for {
       str <- fetch(requiringDirListingProjectArtifact)
       rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl, changing0)).run) {
-        e => \/-(e.toOption): String \/ Option[String]
+        e => Right(e.right.toOption): Either[String, Option[String]]
       })
-      proj0 <- EitherT(F.point[String \/ Project](parseRawPom(str)))
+      proj0 <- EitherT(F.point[Either[String, Project]](parseRawPom(str)))
     } yield {
 
       val foundPublications =
@@ -451,20 +451,20 @@ final case class MavenRepository(
             val eitherVersion = {
               val release = Version(versions0.release)
 
-              if (itv.contains(release)) \/-(versions0.release)
+              if (itv.contains(release)) Right(versions0.release)
               else {
                 val inInterval = versions0.available
                   .map(Version(_))
                   .filter(itv.contains)
 
-                if (inInterval.isEmpty) -\/(s"No version found for $version")
-                else \/-(inInterval.max.repr)
+                if (inInterval.isEmpty) Left(s"No version found for $version")
+                else Right(inInterval.max.repr)
               }
             }
 
             eitherVersion match {
-              case -\/(reason) => EitherT[F, String, (Artifact.Source, Project)](F.point(-\/(reason)))
-              case \/-(version0) =>
+              case Left(reason) => EitherT[F, String, (Artifact.Source, Project)](F.point(Left(reason)))
+              case Right(version0) =>
                 findNoInterval(module, version0, fetch)
                   .map(_.copy(versions = Some(versions0)))
                   .map((source, _))

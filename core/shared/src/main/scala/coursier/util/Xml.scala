@@ -2,8 +2,6 @@ package coursier.util
 
 import coursier.core.Versions
 
-import scalaz.{\/-, -\/, \/, Scalaz}
-
 object Xml {
 
   /** A representation of an XML node/document, with different implementations on JVM and JS */
@@ -23,10 +21,10 @@ object Xml {
       }
 
     lazy val attributesMap = attributes.map { case (_, k, v) => k -> v }.toMap
-    def attribute(name: String): String \/ String =
+    def attribute(name: String): Either[String, String] =
       attributesMap.get(name) match {
-        case None => -\/(s"Missing attribute $name")
-        case Some(value) => \/-(value)
+        case None => Left(s"Missing attribute $name")
+        case Some(value) => Right(value)
       }
   }
 
@@ -48,14 +46,11 @@ object Xml {
       else None
   }
 
-  def text(elem: Node, label: String, description: String) = {
-    import Scalaz.ToOptionOpsFromOption
-
+  def text(elem: Node, label: String, description: String): Either[String, String] =
     elem.children
       .find(_.label == label)
       .flatMap(_.children.collectFirst{case Text(t) => t})
-      .toRightDisjunction(s"$description not found")
-  }
+      .toRight(s"$description not found")
 
   def parseDateTime(s: String): Option[Versions.DateTime] =
     if (s.length == 14 && s.forall(_.isDigit))

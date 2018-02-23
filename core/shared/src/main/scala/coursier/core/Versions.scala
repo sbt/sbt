@@ -1,8 +1,5 @@
 package coursier.core
 
-import scalaz.{ -\/, \/, \/- }
-import scalaz.Scalaz.ToEitherOps
-
 final case class VersionInterval(
   from: Option[Version],
   to: Option[Version],
@@ -91,25 +88,25 @@ final case class VersionConstraint(
   interval: VersionInterval,
   preferred: Seq[Version]
 ) {
-  def blend: Option[VersionInterval \/ Version] =
+  def blend: Option[Either[VersionInterval, Version]] =
     if (interval.isValid) {
       val preferredInInterval = preferred.filter(interval.contains)
 
       if (preferredInInterval.isEmpty)
-        Some(interval.left)
+        Some(Left(interval))
       else
-        Some(preferredInInterval.max.right)
+        Some(Right(preferredInInterval.max))
     } else
       None
 
   def repr: Option[String] =
     blend.map {
-      case -\/(itv) =>
+      case Left(itv) =>
         if (itv == VersionInterval.zero)
           ""
         else
           itv.repr
-      case \/-(v) => v.repr
+      case Right(v) => v.repr
     }
 }
 
