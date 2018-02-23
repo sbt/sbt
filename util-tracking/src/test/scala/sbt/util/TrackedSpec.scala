@@ -6,9 +6,9 @@ import sbt.io.syntax._
 import CacheImplicits._
 
 import sjsonnew.IsoString
-import sbt.internal.util.UnitSpec
+import org.scalatest.FlatSpec
 
-class TrackedSpec extends UnitSpec {
+class TrackedSpec extends FlatSpec {
   "lastOutput" should "store the last output" in {
     withStore { store =>
       val value = 5

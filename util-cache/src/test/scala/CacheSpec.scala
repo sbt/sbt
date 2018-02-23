@@ -9,9 +9,9 @@ import sjsonnew.IsoString
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
-import sbt.internal.util.UnitSpec
+import org.scalatest.FlatSpec
 
-class CacheSpec extends UnitSpec {
+class CacheSpec extends FlatSpec {
 
   implicit val isoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
