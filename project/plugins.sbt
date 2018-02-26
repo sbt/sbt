@@ -5,11 +5,11 @@ plugins_(
   "org.xerial.sbt"    % "sbt-pack"        % "0.10.1",
   "com.jsuereth"      % "sbt-pgp"         % "1.1.0",
   "com.lightbend.sbt" % "sbt-proguard"    % "0.3.0",
-  "com.github.gseitz" % "sbt-release"     % "1.0.6",
+  "com.github.gseitz" % "sbt-release"     % "1.0.7",
   "org.scala-js"      % "sbt-scalajs"     % "0.6.20",
   "io.get-coursier"   % "sbt-shading"     % coursierVersion,
-  "org.xerial.sbt"    % "sbt-sonatype"    % "2.0",
-  "com.timushev.sbt"  % "sbt-updates"     % "0.3.3",
+  "org.xerial.sbt"    % "sbt-sonatype"    % "2.3",
+  "com.timushev.sbt"  % "sbt-updates"     % "0.3.4",
   "org.tpolecat"      % "tut-plugin"      % "0.6.1"
 )
 
