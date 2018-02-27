@@ -1,7 +1,7 @@
 package coursier.maven
 
 import coursier.core._
-import scalaz.Scalaz.{eitherMonad, listInstance, ToTraverseOps}
+import coursier.util.Traverse.TraverseOps
 
 object Pom {
   import coursier.util.Xml._
@@ -57,20 +57,23 @@ object Pom {
         .map(_.children.filter(_.label == "exclusion"))
         .getOrElse(Seq.empty)
 
-      xmlExclusions.toList.traverseU(module(_, defaultArtifactId = Some("*"))).right.map { exclusions =>
+      xmlExclusions
+        .eitherTraverse(module(_, defaultArtifactId = Some("*")))
+        .right
+        .map { exclusions =>
 
-        val optional = text(node, "optional", "").right.toSeq.contains("true")
+          val optional = text(node, "optional", "").right.toSeq.contains("true")
 
-        scopeOpt.getOrElse("") -> Dependency(
-          mod,
-          version0,
-          "",
-          exclusions.map(mod => (mod.organization, mod.name)).toSet,
-          Attributes(typeOpt.getOrElse(""), classifierOpt.getOrElse("")),
-          optional,
-          transitive = true
-        )
-      }
+          scopeOpt.getOrElse("") -> Dependency(
+            mod,
+            version0,
+            "",
+            exclusions.map(mod => (mod.organization, mod.name)).toSet,
+            Attributes(typeOpt.getOrElse(""), classifierOpt.getOrElse("")),
+            optional,
+            transitive = true
+          )
+        }
     }
 
   private def profileActivation(node: Node): (Option[Boolean], Activation) = {
@@ -125,7 +128,9 @@ object Pom {
       .getOrElse(Seq.empty)
 
     for {
-      deps <- xmlDeps.toList.traverseU(dependency).right
+      deps <- xmlDeps
+        .eitherTraverse(dependency)
+        .right
 
       depMgmts <- node
         .children
@@ -133,8 +138,7 @@ object Pom {
         .flatMap(_.children.find(_.label == "dependencies"))
         .map(_.children.filter(_.label == "dependency"))
         .getOrElse(Seq.empty)
-        .toList
-        .traverseU(dependency)
+        .eitherTraverse(dependency)
         .right
 
       properties <- node
@@ -142,8 +146,7 @@ object Pom {
         .find(_.label == "properties")
         .map(_.children.collect { case elem if elem.isElement => elem })
         .getOrElse(Seq.empty)
-        .toList
-        .traverseU(property)
+        .eitherTraverse(property)
         .right
 
     } yield Profile(id, activeByDefault, activation, deps, depMgmts, properties.toMap)
@@ -176,7 +179,7 @@ object Pom {
           .map(_.children.filter(_.label == "dependency"))
           .getOrElse(Seq.empty)
       )
-      deps <- xmlDeps.toList.traverseU(dependency).right
+      deps <- xmlDeps.eitherTraverse(dependency).right
 
       xmlDepMgmts <- point(
         pom.children
@@ -185,7 +188,7 @@ object Pom {
           .map(_.children.filter(_.label == "dependency"))
           .getOrElse(Seq.empty)
       )
-      depMgmts <- xmlDepMgmts.toList.traverseU(dependency).right
+      depMgmts <- xmlDepMgmts.eitherTraverse(dependency).right
 
       groupId <- Some(projModule.organization).filter(_.nonEmpty)
         .orElse(parentModuleOpt.map(_.organization).filter(_.nonEmpty))
@@ -211,7 +214,7 @@ object Pom {
           .map(_.children.collect{case elem if elem.isElement => elem})
           .getOrElse(Seq.empty)
       )
-      properties <- xmlProperties.toList.traverseU(property).right
+      properties <- xmlProperties.eitherTraverse(property).right
 
       xmlProfiles <- point(
         pom
@@ -220,7 +223,7 @@ object Pom {
           .map(_.children.filter(_.label == "profile"))
           .getOrElse(Seq.empty)
       )
-      profiles <- xmlProfiles.toList.traverseU(profile).right
+      profiles <- xmlProfiles.eitherTraverse(profile).right
 
       extraAttrs <- properties
         .collectFirst { case ("extraDependencyAttributes", s) => extraAttributes(s) }
@@ -307,7 +310,7 @@ object Pom {
       Project(
         finalProjModule,
         version,
-        (relocationDependencyOpt.toList ::: deps).map {
+        (relocationDependencyOpt.toSeq ++ deps).map {
           case (config, dep0) =>
             val dep = extraAttrsMap.get(dep0.moduleVersion).fold(dep0)(attrs =>
               dep0.copy(module = dep0.module.copy(attributes = attrs))
@@ -426,8 +429,7 @@ object Pom {
           .getOrElse(Seq.empty)
 
         xmlSnapshotVersions
-          .toList
-          .traverseU(snapshotVersion)
+          .eitherTraverse(snapshotVersion)
           .right
       }
     } yield {

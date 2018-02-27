@@ -1,11 +1,10 @@
 package coursier
 package test
 
-import utest._
-
-import coursier.maven.Pom
-
 import coursier.core.compatibility._
+import coursier.util.Traverse.TraverseOps
+import coursier.maven.Pom
+import utest._
 
 object PomParsingTests extends TestSuite {
 
@@ -217,7 +216,6 @@ object PomParsingTests extends TestSuite {
       assert(result == expected)
     }
     'beFineWithCommentsInProperties{
-      import scalaz.Scalaz.{eitherMonad, listInstance, ToTraverseOps}
 
       val properties =
         """
@@ -258,7 +256,7 @@ object PomParsingTests extends TestSuite {
       assert(node.label == "properties")
 
       val children = node.children.collect { case elem if elem.isElement => elem }
-      val props0 = children.toList.traverseU(Pom.property)
+      val props0 = children.eitherTraverse(Pom.property)
 
       assert(props0.isRight)
 

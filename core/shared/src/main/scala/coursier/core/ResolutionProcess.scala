@@ -4,7 +4,6 @@ package core
 import scala.annotation.tailrec
 import scala.language.higherKinds
 import scalaz.Monad
-import scalaz.Scalaz.{ToFunctorOps, ToBindOps}
 
 
 sealed abstract class ResolutionProcess {
@@ -191,8 +190,11 @@ object ResolutionProcess {
       .toVector
       .foldLeft(F.point(Vector.empty[((Module, String), Either[Seq[String], (Artifact.Source, Project)])])) {
         (acc, l) =>
-          for (v <- acc; e <- fetch(l))
-            yield v ++ e
+          F.bind(acc) { v =>
+            F.map(fetch(l)) { e =>
+              v ++ e
+            }
+          }
       }
   }
 
