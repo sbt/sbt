@@ -82,7 +82,7 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
 
       val bootstrapJar =
         Option(Thread.currentThread().getContextClassLoader.getResourceAsStream("bootstrap.jar")) match {
-          case Some(is) => Cache.readFullySync(is)
+          case Some(is) => FileUtil.readFully(is)
           case None =>
             Console.err.println(s"Error: bootstrap JAR not found")
             sys.exit(1)
@@ -165,7 +165,7 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
         entry.setTime(f.lastModified())
 
         outputZip.putNextEntry(entry)
-        outputZip.write(Cache.readFullySync(new FileInputStream(f)))
+        outputZip.write(FileUtil.readFully(new FileInputStream(f)))
         outputZip.closeEntry()
       }
 

@@ -2,8 +2,6 @@ package coursier.cli.util
 
 import java.util.zip.{ZipEntry, ZipInputStream}
 
-import coursier.Platform
-
 object Zip {
 
   def zipEntries(zipStream: ZipInputStream): Iterator[(ZipEntry, Array[Byte])] =
@@ -17,7 +15,7 @@ object Zip {
       def hasNext = nextEntry.nonEmpty
       def next() = {
         val ent = nextEntry.get
-        val data = Platform.readFullySync(zipStream)
+        val data = coursier.internal.FileUtil.readFully(zipStream)
 
         update()
 

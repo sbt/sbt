@@ -1127,20 +1127,6 @@ object Cache {
 
   var bufferSize = 1024*1024
 
-  def readFullySync(is: InputStream) = {
-    val buffer = new ByteArrayOutputStream()
-    val data = Array.ofDim[Byte](16384)
-
-    var nRead = is.read(data, 0, data.length)
-    while (nRead != -1) {
-      buffer.write(data, 0, nRead)
-      nRead = is.read(data, 0, data.length)
-    }
-
-    buffer.flush()
-    buffer.toByteArray
-  }
-
   def withContent(is: InputStream, f: (Array[Byte], Int) => Unit): Unit = {
     val data = Array.ofDim[Byte](16384)
 

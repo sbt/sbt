@@ -22,7 +22,7 @@ class CliBootstrapIntegrationTest extends FlatSpec with CliTestLib {
       if (e == null)
         throw new NoSuchElementException(s"Entry $path in zip file")
       else if (e.getName == path)
-        coursier.Platform.readFullySync(zis)
+        coursier.internal.FileUtil.readFully(zis)
       else
         zipEntryContent(zis, path)
     }
@@ -53,7 +53,7 @@ class CliBootstrapIntegrationTest extends FlatSpec with CliTestLib {
 
       val content = try {
         fis = new FileInputStream(bootstrapFile)
-        coursier.Platform.readFullySync(fis)
+        coursier.internal.FileUtil.readFully(fis)
       } finally {
         if (fis != null) fis.close()
       }
