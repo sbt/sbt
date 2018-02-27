@@ -45,7 +45,7 @@ abstract class CentralTests extends TestSuite {
       .run(fetch0)
       .map { res =>
 
-        val metadataErrors = res.metadataErrors
+        val metadataErrors = res.errors
         val conflicts = res.conflicts
         val isDone = res.isDone
         assert(metadataErrors.isEmpty)
@@ -183,7 +183,7 @@ abstract class CentralTests extends TestSuite {
   ): Future[T] = async {
     val res = await(resolve(deps, extraRepos = extraRepos))
 
-    val metadataErrors = res.metadataErrors
+    val metadataErrors = res.errors
     val conflicts = res.conflicts
     val isDone = res.isDone
     assert(metadataErrors.isEmpty)
@@ -581,7 +581,7 @@ abstract class CentralTests extends TestSuite {
 
           val res = await(resolve(deps))
 
-          val metadataErrors = res.metadataErrors
+          val metadataErrors = res.errors
           val conflicts = res.conflicts
           val isDone = res.isDone
           assert(metadataErrors.isEmpty)
@@ -619,7 +619,7 @@ abstract class CentralTests extends TestSuite {
 
           val res = await(resolve(deps))
 
-          val metadataErrors = res.metadataErrors
+          val metadataErrors = res.errors
           val conflicts = res.conflicts
           val isDone = res.isDone
           assert(metadataErrors.isEmpty)

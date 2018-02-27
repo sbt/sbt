@@ -320,10 +320,8 @@ object Cache {
   private def contentLength(
     url: String,
     authentication: Option[Authentication],
-    logger0: Option[Logger]
+    logger: Option[Logger]
   ): Either[FileError, Option[Long]] = {
-
-    val logger = logger0.map(Logger.Extended(_))
 
     var conn: URLConnection = null
 
@@ -367,13 +365,11 @@ object Cache {
     checksums: Set[String],
     cachePolicy: CachePolicy,
     pool: ExecutorService,
-    logger0: Option[Logger] = None,
+    logger: Option[Logger] = None,
     ttl: Option[Duration] = defaultTtl
   ): Task[Seq[((File, String), Either[FileError, Unit])]] = {
 
     implicit val pool0 = pool
-
-    val logger = logger0.map(Logger.Extended(_))
 
     // Reference file - if it exists, and we get not found errors on some URLs, we assume
     // we can keep track of these missing, and not try to get them again later.
@@ -960,7 +956,7 @@ object Cache {
         checksums = checksums0.collect { case Some(c) => c }.toSet,
         cachePolicy,
         pool,
-        logger0 = logger,
+        logger = logger,
         ttl = ttl
       ).map { results =>
         val checksum = checksums0.find {
@@ -1134,43 +1130,11 @@ object Cache {
     def downloadedArtifact(url: String, success: Boolean): Unit = {}
     def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit = {}
     def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]): Unit = {}
-  }
 
-  object Logger {
-    // adding new methods to this one, not to break bin compat in 2.10 / 2.11
-    abstract class Extended extends Logger {
-      def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit = {
-        downloadLength(url, totalLength, 0L, watching)
-      }
+    def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit = {}
 
-      def gettingLength(url: String): Unit = {}
-      def gettingLengthResult(url: String, length: Option[Long]): Unit = {}
-    }
-
-    object Extended {
-      def apply(logger: Logger): Extended =
-        logger match {
-          case e: Extended => e
-          case _ =>
-            new Extended {
-              override def foundLocally(url: String, f: File) =
-                logger.foundLocally(url, f)
-
-              override def downloadingArtifact(url: String, file: File) =
-                logger.downloadingArtifact(url, file)
-
-              override def downloadProgress(url: String, downloaded: Long) =
-                logger.downloadProgress(url, downloaded)
-
-              override def downloadedArtifact(url: String, success: Boolean) =
-                logger.downloadedArtifact(url, success)
-              override def checkingUpdates(url: String, currentTimeOpt: Option[Long]) =
-                logger.checkingUpdates(url, currentTimeOpt)
-              override def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]) =
-                logger.checkingUpdatesResult(url, currentTimeOpt, remoteTimeOpt)
-            }
-        }
-    }
+    def gettingLength(url: String): Unit = {}
+    def gettingLengthResult(url: String, length: Option[Long]): Unit = {}
   }
 
   var bufferSize = 1024*1024

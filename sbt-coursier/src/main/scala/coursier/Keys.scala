@@ -51,8 +51,6 @@ object Keys {
 
   private[coursier] val actualCoursierResolution = TaskKey[Resolution]("coursier-resolution")
 
-  @deprecated("Use coursierResolutions instead", "1.0.0-RC4")
-  val coursierResolution = actualCoursierResolution
   val coursierSbtClassifiersResolution = TaskKey[Resolution]("coursier-sbt-classifiers-resolution")
 
   val coursierDependencyTree = TaskKey[Unit](
