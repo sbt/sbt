@@ -3,10 +3,9 @@ package coursier
 import java.io.{File, FileNotFoundException, IOException}
 import java.net.{HttpURLConnection, URL, URLConnection}
 
-import coursier.util.EitherT
+import coursier.util.{EitherT, Monad}
 
 import scala.language.higherKinds
-import scalaz.Monad
 
 object FallbackDependenciesRepository {
 

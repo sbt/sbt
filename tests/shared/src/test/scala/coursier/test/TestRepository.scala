@@ -2,10 +2,9 @@ package coursier
 package test
 
 import coursier.core._
-import coursier.util.EitherT
+import coursier.util.{EitherT, Monad}
 
 import scala.language.higherKinds
-import scalaz.Monad
 
 final case class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
   val source = new core.Artifact.Source {

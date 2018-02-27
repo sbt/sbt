@@ -1,9 +1,8 @@
 package coursier
 
-import coursier.util.EitherT
+import coursier.util.{EitherT, Monad}
 
 import scala.language.higherKinds
-import scalaz.Monad
 
 final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
 

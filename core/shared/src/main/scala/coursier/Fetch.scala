@@ -1,9 +1,9 @@
 package coursier
 
-import coursier.util.EitherT
+import coursier.util.{EitherT, Monad}
 
 import scala.language.higherKinds
-import scalaz.{Monad, Nondeterminism}
+import scalaz.Nondeterminism
 
 object Fetch {
 
