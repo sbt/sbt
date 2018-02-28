@@ -361,33 +361,21 @@ lazy val coreMacrosProj = (project in file("core-macros"))
     mimaSettings,
   )
 
-/* Write all the compile-time dependencies of the spores macro to a file,
- * in order to read it from the created Toolbox to run the neg tests. */
-lazy val generateToolboxClasspath = Def.task {
-  val classpathAttributes = (dependencyClasspath in Compile).value
-  val dependenciesClasspath =
-    classpathAttributes.map(_.data.getAbsolutePath).mkString(":")
-  val scalaBinVersion = (scalaBinaryVersion in Compile).value
-  val targetDir = (target in Compile).value
-  val compiledClassesDir = targetDir / s"scala-$scalaBinVersion/classes"
-  val testClassesDir = targetDir / s"scala-$scalaBinVersion/test-classes"
-  val classpath = s"$compiledClassesDir:$testClassesDir:$dependenciesClasspath"
-  val resourceDir = (resourceDirectory in Compile).value
-  resourceDir.mkdir() // In case it doesn't exist
-  val toolboxTestClasspath = resourceDir / "toolbox.classpath"
-  IO.write(toolboxTestClasspath, classpath)
-  val result = List(toolboxTestClasspath.getAbsoluteFile)
-  streams.value.log.success("Wrote the classpath for the macro neg test suite.")
-  result
-}
-
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
   .dependsOn(completeProj, commandProj, stdTaskProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
     name := "Main Settings",
-    resourceGenerators in Compile += generateToolboxClasspath.taskValue,
+    BuildInfoPlugin.buildInfoDefaultSettings,
+    addBuildInfoToConfig(Test),
+    buildInfoObject in Test := "TestBuildInfo",
+    buildInfoKeys in Test := Seq[BuildInfoKey](
+      classDirectory in Compile,
+      classDirectory in Test,
+      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
+      BuildInfoKey.map((dependencyClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
+    ),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       exclude[DirectMissingMethodProblem]("sbt.Scope.display012StyleMasked"),
@@ -443,7 +431,6 @@ lazy val mainProj = (project in file("main"))
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt"))
   .dependsOn(mainProj, scriptedSbtProj % "test->test")
-  .enablePlugins(BuildInfoPlugin)
   .settings(
     testedBaseSettings,
     name := "sbt",
@@ -453,9 +440,13 @@ lazy val sbtProj = (project in file("sbt"))
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+    BuildInfoPlugin.buildInfoDefaultSettings,
     addBuildInfoToConfig(Test),
     buildInfoObject in Test := "TestBuildInfo",
-    buildInfoKeys in Test := Seq[BuildInfoKey](fullClasspath in Compile),
+    buildInfoKeys in Test := Seq[BuildInfoKey](
+      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
+      BuildInfoKey.map((fullClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
+    ),
     connectInput in run in Test := true,
     outputStrategy in run in Test := Some(StdoutOutput),
     fork in Test := true,
