@@ -92,11 +92,7 @@ object RunFromSourceMain {
       )
       def appHome: File = scalaHome / id.groupID / id.name / id.version
 
-      def mainClasspath =
-        buildinfo.TestBuildInfo.fullClasspath.iterator
-          .map(s => file(s.stripPrefix("Attributed(").stripSuffix(")")))
-          .toArray
-
+      def mainClasspath = buildinfo.TestBuildInfo.fullClasspath.toArray
       def loader = new java.net.URLClassLoader(mainClasspath map (_.toURI.toURL), null)
       def entryPoint = classOf[xMain]
       def mainClass = classOf[xMain]

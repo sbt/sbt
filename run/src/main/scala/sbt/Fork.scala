@@ -8,9 +8,13 @@
 package sbt
 
 import java.io.File
+import java.lang.ProcessBuilder.Redirect
+
 import scala.sys.process.Process
 import OutputStrategy._
 import sbt.internal.util.Util
+
+import java.lang.{ ProcessBuilder => JProcessBuilder }
 
 /**
  * Represents a command that can be forked.
@@ -45,13 +49,19 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       (classpathEnv map { value =>
         Fork.ClasspathEnvKey -> value
       })
-    val process = Process(command, workingDirectory, environment.toList: _*)
+    val jpb = new JProcessBuilder(command.toArray: _*)
+    workingDirectory foreach (jpb directory _)
+    environment foreach { case (k, v) => jpb.environment.put(k, v) }
+    if (connectInput)
+      jpb.redirectInput(Redirect.INHERIT)
+    val process = Process(jpb)
 
     outputStrategy.getOrElse(StdoutOutput) match {
-      case StdoutOutput        => process.run(connectInput)
-      case out: BufferedOutput => out.logger.buffer { process.run(out.logger, connectInput) }
-      case out: LoggedOutput   => process.run(out.logger, connectInput)
-      case out: CustomOutput   => (process #> out.output).run(connectInput)
+      case StdoutOutput => process.run(connectInput = false)
+      case out: BufferedOutput =>
+        out.logger.buffer { process.run(out.logger, connectInput = false) }
+      case out: LoggedOutput => process.run(out.logger, connectInput = false)
+      case out: CustomOutput => (process #> out.output).run(connectInput = false)
     }
   }
   private[this] def makeOptions(jvmOptions: Seq[String],
