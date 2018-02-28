@@ -11,7 +11,7 @@ object Common {
   val UpdateK1 = Command.command("UpdateK1") { st: State =>
     val ex = Project extract st
     import ex._
-    val session2 = BuiltinCommands.setThis(st, ex, Seq(k1 := {}), """k1 := {
+    val session2 = BuiltinCommands.setThis(ex, Seq(k1 := {}), """k1 := {
     |//
     |//
     |}""".stripMargin).session
@@ -24,7 +24,7 @@ object Common {
   val UpdateK3 = Command.command("UpdateK3") { st: State =>
     val ex = Project extract st
     import ex._
-    val session2 = BuiltinCommands.setThis(st, ex, Seq(k3 := {}), """k3 := {
+    val session2 = BuiltinCommands.setThis(ex, Seq(k3 := {}), """k3 := {
                                                                     |//
                                                                     |//
                                                                     |}""".stripMargin).session

@@ -331,6 +331,7 @@ final class NetworkChannel(val name: String,
     if (initialized) {
       append(
         Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
+      ()
     } else {
       log.warn(s"ignoring command $cmd before initialization")
     }

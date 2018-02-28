@@ -34,6 +34,7 @@ import sbt.util.Logger
 import sbt.protocol.testing.TestResult
 
 sealed trait TestOption
+
 object Tests {
 
   /**
@@ -227,7 +228,7 @@ object Tests {
       if (config.parallel)
         makeParallel(loader, runnables, setupTasks, config.tags) //.toSeq.join
       else
-        makeSerial(loader, runnables, setupTasks, config.tags)
+        makeSerial(loader, runnables, setupTasks)
     val taggedMainTasks = mainTasks.tagw(config.tags: _*)
     taggedMainTasks map processResults flatMap { results =>
       val cleanupTasks = fj(partApp(userCleanup) :+ frameworkCleanup(results.overall))
@@ -294,10 +295,20 @@ object Tests {
     }
   }
 
-  def makeSerial(loader: ClassLoader,
-                 runnables: Seq[TestRunnable],
-                 setupTasks: Task[Unit],
-                 tags: Seq[(Tag, Int)]): Task[List[(String, SuiteResult)]] = {
+  @deprecated("Use the variant without tags", "1.1.1")
+  def makeSerial(
+      loader: ClassLoader,
+      runnables: Seq[TestRunnable],
+      setupTasks: Task[Unit],
+      tags: Seq[(Tag, Int)],
+  ): Task[List[(String, SuiteResult)]] =
+    makeSerial(loader, runnables, setupTasks)
+
+  def makeSerial(
+      loader: ClassLoader,
+      runnables: Seq[TestRunnable],
+      setupTasks: Task[Unit],
+  ): Task[List[(String, SuiteResult)]] = {
     @tailrec
     def processRunnable(runnableList: List[TestRunnable],
                         acc: List[(String, SuiteResult)]): List[(String, SuiteResult)] =

@@ -47,6 +47,8 @@ object PluginDiscovery {
       "sbt.plugins.IvyPlugin" -> sbt.plugins.IvyPlugin,
       "sbt.plugins.JvmPlugin" -> sbt.plugins.JvmPlugin,
       "sbt.plugins.CorePlugin" -> sbt.plugins.CorePlugin,
+      "sbt.ScriptedPlugin" -> sbt.ScriptedPlugin,
+      "sbt.plugins.SbtPlugin" -> sbt.plugins.SbtPlugin,
       "sbt.plugins.JUnitXmlReportPlugin" -> sbt.plugins.JUnitXmlReportPlugin,
       "sbt.plugins.Giter8TemplatePlugin" -> sbt.plugins.Giter8TemplatePlugin
     )
@@ -65,7 +67,7 @@ object PluginDiscovery {
     new DiscoveredNames(discover[AutoPlugin], discover[BuildDef])
   }
 
-  // TODO: for 0.14.0, consider consolidating into a single file, which would make the classpath search 4x faster
+  // TODO: consider consolidating into a single file, which would make the classpath search 4x faster
   /** Writes discovered module `names` to zero or more files in `dir` as per [[writeDescriptor]] and returns the list of files written. */
   def writeDescriptors(names: DiscoveredNames, dir: File): Seq[File] = {
     import Paths._

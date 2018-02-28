@@ -8,7 +8,7 @@
 package sbt
 package internal
 
-import Def.{ showRelativeKey, ScopedKey }
+import Def.{ showRelativeKey2, ScopedKey }
 import Keys.sessionSettings
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import Aggregation.{ KeyValue, Values }
@@ -56,7 +56,7 @@ object Act {
                         keyMap: Map[String, AttributeKey[_]],
                         data: Settings[Scope]): Parser[ParsedKey] =
     scopedKeyFull(index, current, defaultConfigs, keyMap) flatMap { choices =>
-      select(choices, data)(showRelativeKey(current, index.buildURIs.size > 1))
+      select(choices, data)(showRelativeKey2(current))
     }
 
   def scopedKeyFull(index: KeyIndex,
@@ -100,7 +100,7 @@ object Act {
       conf <- configs(confAmb, defaultConfigs, proj, index)
     } yield
       for {
-        taskAmb <- taskAxis(conf, index.tasks(proj, conf), keyMap)
+        taskAmb <- taskAxis(index.tasks(proj, conf), keyMap)
         task = resolveTask(taskAmb)
         key <- key(index, proj, conf, task, keyMap)
         extra <- extraAxis(keyMap, IMap.empty)
@@ -161,6 +161,7 @@ object Act {
 
   def examples(p: Parser[String], exs: Set[String], label: String): Parser[String] =
     p !!! ("Expected " + label) examples exs
+
   def examplesStrict(p: Parser[String], exs: Set[String], label: String): Parser[String] =
     filterStrings(examples(p, exs, label), exs, label)
 
@@ -168,6 +169,7 @@ object Act {
     p.? map { opt =>
       toAxis(opt, ifNone)
     }
+
   def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
     opt match { case Some(t) => Select(t); case None => ifNone }
 
@@ -231,8 +233,8 @@ object Act {
     // This queries the key index so tab completion will list the build-level keys.
     val buildKeys: Set[String] =
       proj match {
-        case Some(ProjectRef(uri, id)) => index.keys(Some(BuildRef(uri)), conf, task)
-        case _                         => Set()
+        case Some(ProjectRef(uri, _)) => index.keys(Some(BuildRef(uri)), conf, task)
+        case _                        => Set()
       }
     val keys: Set[String] = index.keys(proj, conf, task) ++ buildKeys
     keyParser(keys)
@@ -255,9 +257,10 @@ object Act {
     optionalAxis(extras, Zero)
   }
 
-  def taskAxis(d: Option[String],
-               tasks: Set[AttributeKey[_]],
-               allKnown: Map[String, AttributeKey[_]]): Parser[ParsedAxis[AttributeKey[_]]] = {
+  def taskAxis(
+      tasks: Set[AttributeKey[_]],
+      allKnown: Map[String, AttributeKey[_]],
+  ): Parser[ParsedAxis[AttributeKey[_]]] = {
     val taskSeq = tasks.toSeq
     def taskKeys(f: AttributeKey[_] => String): Seq[(String, AttributeKey[_])] =
       taskSeq.map(key => (f(key), key))
@@ -380,7 +383,7 @@ object Act {
       def evaluate(kvs: Seq[ScopedKey[_]]): Parser[() => State] = {
         val preparedPairs = anyKeyValues(structure, kvs)
         val showConfig = Aggregation.defaultShow(state, showTasks = action == ShowAction)
-        evaluatingParser(state, structure, showConfig)(preparedPairs) map { evaluate => () =>
+        evaluatingParser(state, showConfig)(preparedPairs) map { evaluate => () =>
           {
             val keyStrings = preparedPairs.map(pp => showKey.show(pp.key)).mkString(", ")
             state.log.debug("Evaluating tasks: " + keyStrings)

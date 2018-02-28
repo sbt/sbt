@@ -48,6 +48,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
                     case _           => exprAtUseSite
                   }
                   uncheckedWrappers.add(removedSbtWrapper)
+                  ()
                 }
               case _ =>
             }
@@ -73,7 +74,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
             val (qualName, isSettingKey) =
               Option(qual.symbol)
                 .map(sym => (sym.name.decodedName.toString, qual.tpe <:< typeOf[SettingKey[_]]))
-                .getOrElse((ap.pos.lineContent, false))
+                .getOrElse((ap.pos.source.lineToString(ap.pos.line - 1), false))
 
             if (!isSettingKey && !shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
               if (insideIf && !isDynamicTask) {

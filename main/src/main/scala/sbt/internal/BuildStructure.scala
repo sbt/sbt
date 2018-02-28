@@ -172,9 +172,7 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin],
   private[this] lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
     autoPlugins
       .flatMap {
-        case DetectedAutoPlugin(name, ap, hasAutoImport) =>
-          if (hasAutoImport) Some(name)
-          else None
+        case DetectedAutoPlugin(name, _, hasAutoImport) => if (hasAutoImport) Some(name) else None
       }
       .partition(nonTopLevelPlugin)
 

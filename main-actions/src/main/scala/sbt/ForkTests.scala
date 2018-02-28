@@ -17,6 +17,7 @@ import sbt.io.IO
 import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
 import sbt.protocol.testing._
+import sbt.internal.util.ConsoleAppender
 
 private[sbt] object ForkTests {
   def apply(runners: Map[TestFramework, Runner],
@@ -78,7 +79,7 @@ private[sbt] object ForkTests {
           val is = new ObjectInputStream(socket.getInputStream)
 
           try {
-            val config = new ForkConfiguration(log.ansiCodesSupported, parallel)
+            val config = new ForkConfiguration(ConsoleAppender.formatEnabledInEnv, parallel)
             os.writeObject(config)
 
             val taskdefs = opts.tests.map(

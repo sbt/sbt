@@ -446,7 +446,7 @@ object Keys {
   val sbtDependency = settingKey[ModuleID]("Provides a definition for declaring the current version of sbt.").withRank(BMinusSetting)
   val sbtVersion = settingKey[String]("Provides the version of sbt.  This setting should not be modified.").withRank(AMinusSetting)
   val sbtBinaryVersion = settingKey[String]("Defines the binary compatibility version substring.").withRank(BPlusSetting)
-  val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile' and 'update'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.").withRank(BSetting)
+  val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile', 'update', and 'publish'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.").withRank(BSetting)
   val templateResolverInfos = settingKey[Seq[TemplateResolverInfo]]("Template resolvers used for 'new'.").withRank(BSetting)
   val interactionService = taskKey[InteractionService]("Service used to ask for user input through the current user interface(s).").withRank(CTask)
   val insideCI = SettingKey[Boolean]("insideCI", "Determines if the SBT is running in a Continuous Integration environment", AMinusSetting)

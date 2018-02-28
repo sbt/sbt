@@ -7,14 +7,17 @@
 
 package sbt
 
+import java.io.PrintWriter
 import java.util.Properties
+
+import jline.TerminalFactory
+
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import jline.TerminalFactory
 
 import sbt.io.{ IO, Using }
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
-import sbt.internal.util.complete.DefaultParsers
+import sbt.internal.util.complete.Parser
 import sbt.util.Logger
 import sbt.protocol._
 
@@ -25,15 +28,14 @@ object MainLoop {
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
     // the jline terminal in finally blocks, but hitting ctrl+c prevents finally blocks from being executed, in that
     // case the only way to restore the terminal is in a shutdown hook.
-    val shutdownHook = new Thread(new Runnable {
-      def run(): Unit = TerminalFactory.get().restore()
-    })
+    val shutdownHook = new Thread(() => TerminalFactory.get().restore())
 
     try {
       Runtime.getRuntime.addShutdownHook(shutdownHook)
       runLoggedLoop(state, state.globalLogging.backing)
     } finally {
       Runtime.getRuntime.removeShutdownHook(shutdownHook)
+      ()
     }
   }
 
@@ -99,7 +101,7 @@ object MainLoop {
   /** Runs the next sequence of commands with global logging in place. */
   def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
     Using.fileWriter(append = true)(logBacking.file) { writer =>
-      val out = new java.io.PrintWriter(writer)
+      val out = new PrintWriter(writer)
       val full = state.globalLogging.full
       val newLogging = state.globalLogging.newAppender(full, out, logBacking)
       // transferLevels(state, newLogging)
@@ -123,7 +125,7 @@ object MainLoop {
   final class KeepGlobalLog(val state: State) extends RunNext
   final class Return(val result: xsbti.MainResult) extends RunNext
 
-  /** Runs the next sequence of commands that doesn't require global logging changes.*/
+  /** Runs the next sequence of commands that doesn't require global logging changes. */
   @tailrec def run(state: State): RunNext =
     state.next match {
       case State.Continue       => run(next(state))
@@ -142,14 +144,11 @@ object MainLoop {
 
   /** This is the main function State transfer function of the sbt command processing. */
   def processCommand(exec: Exec, state: State): State = {
-    import DefaultParsers._
     val channelName = exec.source map (_.channelName)
-    StandardMain.exchange publishEventMessage ExecStatusEvent("Processing",
-                                                              channelName,
-                                                              exec.execId,
-                                                              Vector())
+    StandardMain.exchange publishEventMessage
+      ExecStatusEvent("Processing", channelName, exec.execId, Vector())
     val parser = Command combine state.definedCommands
-    val newState = parse(exec.commandLine, parser(state)) match {
+    val newState = Parser.parse(exec.commandLine, parser(state)) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log error errMsg

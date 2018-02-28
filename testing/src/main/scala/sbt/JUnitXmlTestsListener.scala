@@ -127,7 +127,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   val testSuite = new DynamicVariable(null: TestSuite)
 
   /**Creates the output Dir*/
-  override def doInit() = { targetDir.mkdirs() }
+  override def doInit() = { targetDir.mkdirs(); () }
 
   /**
    * Starts a new, initially empty Suite with the given name.

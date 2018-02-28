@@ -51,7 +51,7 @@ object ConsoleProject {
         options,
         initCommands,
         cleanupCommands
-      )(Some(unit.loader), bindings)
+      )(Some(unit.loader), bindings).get
     }
     ()
   }

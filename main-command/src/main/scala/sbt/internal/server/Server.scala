@@ -102,7 +102,7 @@ private[sbt] object Server {
       def tryClient(f: => Socket): Unit = {
         if (portfile.exists) {
           Try { f } match {
-            case Failure(e) => ()
+            case Failure(_) => ()
             case Success(socket) =>
               socket.close()
               throw new AlreadyRunningException()

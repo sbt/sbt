@@ -89,12 +89,12 @@ object TaskMacro {
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
   final val append1Migration =
-    "`<+=` operator is removed. Try `lhs += { x.value }`\n  or see http://www.scala-sbt.org/1.0/docs/Migrating-from-sbt-012x.html."
+    "`<+=` operator is removed. Try `lhs += { x.value }`\n  or see http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style."
   final val appendNMigration =
-    "`<++=` operator is removed. Try `lhs ++= { x.value }`\n  or see http://www.scala-sbt.org/1.0/docs/Migrating-from-sbt-012x.html."
+    "`<++=` operator is removed. Try `lhs ++= { x.value }`\n  or see http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style."
   final val assignMigration =
     """`<<=` operator is removed. Use `key := { x.value }` or `key ~= (old => { newValue })`.
-      |See http://www.scala-sbt.org/1.0/docs/Migrating-from-sbt-012x.html""".stripMargin
+      |See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style""".stripMargin
 
   import LinterDSL.{ Empty => EmptyLinter }
 
@@ -130,37 +130,41 @@ object TaskMacro {
   // These macros are there just so we can fail old operators like `<<=` and provide useful migration information.
 
   def fakeSettingAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(
-      app: c.Expr[Initialize[T]]): c.Expr[Setting[T]] =
-    ContextUtil.selectMacroImpl[Setting[T]](c) { (ts, pos) =>
-      c.abort(pos, assignMigration)
-    }
-  def fakeSettingAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
-      v: c.Expr[Initialize[V]])(a: c.Expr[Append.Value[S, V]]): c.Expr[Setting[S]] =
-    ContextUtil.selectMacroImpl[Setting[S]](c) { (ts, pos) =>
-      c.abort(pos, append1Migration)
-    }
-  def fakeSettingAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
-      vs: c.Expr[Initialize[V]])(a: c.Expr[Append.Values[S, V]]): c.Expr[Setting[S]] =
-    ContextUtil.selectMacroImpl[Setting[S]](c) { (ts, pos) =>
-      c.abort(pos, appendNMigration)
-    }
-  def fakeItaskAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(
-      app: c.Expr[Initialize[Task[T]]]): c.Expr[Setting[Task[T]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[T]]](c) { (ts, pos) =>
-      c.abort(pos, assignMigration)
-    }
-  def fakeTaskAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
-      v: c.Expr[Initialize[Task[V]]])(a: c.Expr[Append.Value[S, V]]): c.Expr[Setting[Task[S]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[S]]](c) { (ts, pos) =>
-      c.abort(pos, append1Migration)
-    }
-  def fakeTaskAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
-      vs: c.Expr[Initialize[Task[V]]])(a: c.Expr[Append.Values[S, V]]): c.Expr[Setting[Task[S]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[S]]](c) { (ts, pos) =>
-      c.abort(pos, appendNMigration)
-    }
+      @deprecated("unused", "") app: c.Expr[Initialize[T]]
+  ): c.Expr[Setting[T]] =
+    ContextUtil.selectMacroImpl[Setting[T]](c)((_, pos) => c.abort(pos, assignMigration))
 
-  /* Implementations of <<= macro variations for tasks and settings. These just get the source position of the call site.*/
+  def fakeSettingAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
+      @deprecated("unused", "") v: c.Expr[Initialize[V]])(
+      @deprecated("unused", "") a: c.Expr[Append.Value[S, V]]
+  ): c.Expr[Setting[S]] =
+    ContextUtil.selectMacroImpl[Setting[S]](c)((_, pos) => c.abort(pos, append1Migration))
+
+  def fakeSettingAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
+      @deprecated("unused", "") vs: c.Expr[Initialize[V]])(
+      @deprecated("unused", "") a: c.Expr[Append.Values[S, V]]
+  ): c.Expr[Setting[S]] =
+    ContextUtil.selectMacroImpl[Setting[S]](c)((_, pos) => c.abort(pos, appendNMigration))
+
+  def fakeItaskAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(
+      @deprecated("unused", "") app: c.Expr[Initialize[Task[T]]]
+  ): c.Expr[Setting[Task[T]]] =
+    ContextUtil.selectMacroImpl[Setting[Task[T]]](c)((_, pos) => c.abort(pos, assignMigration))
+
+  def fakeTaskAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
+      @deprecated("unused", "") v: c.Expr[Initialize[Task[V]]])(
+      @deprecated("unused", "") a: c.Expr[Append.Value[S, V]]
+  ): c.Expr[Setting[Task[S]]] =
+    ContextUtil.selectMacroImpl[Setting[Task[S]]](c)((_, pos) => c.abort(pos, append1Migration))
+
+  def fakeTaskAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(
+      @deprecated("unused", "") vs: c.Expr[Initialize[Task[V]]])(
+      @deprecated("unused", "") a: c.Expr[Append.Values[S, V]]
+  ): c.Expr[Setting[Task[S]]] =
+    ContextUtil.selectMacroImpl[Setting[Task[S]]](c)((_, pos) => c.abort(pos, appendNMigration))
+
+  // Implementations of <<= macro variations for tasks and settings.
+  // These just get the source position of the call site.
 
   def itaskAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(
       app: c.Expr[Initialize[Task[T]]]): c.Expr[Setting[Task[T]]] =
@@ -221,7 +225,7 @@ object TaskMacro {
           if typeArgs.nonEmpty && (typeArgs.head weak_<:< c.weakTypeOf[Task[_]])
             && (tpe weak_<:< c.weakTypeOf[Initialize[_]]) =>
         c.macroApplication match {
-          case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), _) =>
+          case Apply(Apply(TypeApply(Select(preT, _), _), _), _) =>
             val tree = Apply(
               TypeApply(Select(preT, TermName("+=").encodedName), TypeTree(typeArgs.head) :: Nil),
               Select(v.tree, TermName("taskValue").encodedName) :: Nil)
@@ -287,10 +291,14 @@ object TaskMacro {
       newName: String): c.Tree = {
     import c.universe._
     c.macroApplication match {
-      case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), _) =>
-        Apply(Apply(TypeApply(Select(preT, TermName(newName).encodedName), targs),
-                    init :: sourcePosition(c).tree :: Nil),
-              append :: Nil)
+      case Apply(Apply(TypeApply(Select(preT, _), targs), _), _) =>
+        Apply(
+          Apply(
+            TypeApply(Select(preT, TermName(newName).encodedName), targs),
+            init :: sourcePosition(c).tree :: Nil
+          ),
+          append :: Nil
+        )
       case x => ContextUtil.unexpectedTree(x)
     }
   }
@@ -299,10 +307,14 @@ object TaskMacro {
       newName: String): c.Tree = {
     import c.universe._
     c.macroApplication match {
-      case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), r) =>
-        Apply(Apply(TypeApply(Select(preT, TermName(newName).encodedName), targs),
-                    init :: sourcePosition(c).tree :: Nil),
-              r)
+      case Apply(Apply(TypeApply(Select(preT, _), targs), _), _) =>
+        Apply(
+          Apply(
+            TypeApply(Select(preT, TermName(newName).encodedName), targs),
+            init :: sourcePosition(c).tree :: Nil
+          ),
+          remove :: Nil
+        )
       case x => ContextUtil.unexpectedTree(x)
     }
   }

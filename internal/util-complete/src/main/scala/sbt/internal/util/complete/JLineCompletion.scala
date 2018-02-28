@@ -11,7 +11,7 @@ package complete
 import jline.console.ConsoleReader
 import jline.console.completer.{ Completer, CompletionHandler }
 import scala.annotation.tailrec
-import scala.collection.JavaConverters
+import scala.collection.JavaConverters._
 
 object JLineCompletion {
   def installCustomCompletor(reader: ConsoleReader, parser: Parser[_]): Unit =
@@ -154,7 +154,7 @@ object JLineCompletion {
       if (line.charAt(line.length - 1) != '\n')
         reader.println()
     }
-    reader.printColumns(JavaConverters.seqAsJavaList(columns.map(_.trim)))
+    reader.printColumns(columns.map(_.trim).asJava)
   }
 
   def hasNewline(s: String): Boolean = s.indexOf('\n') >= 0

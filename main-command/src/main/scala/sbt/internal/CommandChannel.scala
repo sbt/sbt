@@ -19,8 +19,7 @@ import sjsonnew.JsonFormat
  */
 abstract class CommandChannel {
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
-  def append(exec: Exec): Boolean =
-    commandQueue.add(exec)
+  def append(exec: Exec): Boolean = commandQueue.add(exec)
   def poll: Option[Exec] = Option(commandQueue.poll)
 
   def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit

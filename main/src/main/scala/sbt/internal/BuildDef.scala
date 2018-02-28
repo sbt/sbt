@@ -16,7 +16,7 @@ import sbt.internal.util.Attributed
 import sbt.internal.inc.ReflectUtilities
 
 trait BuildDef {
-  def projectDefinitions(baseDirectory: File): Seq[Project] = projects
+  def projectDefinitions(@deprecated("unused", "") baseDirectory: File): Seq[Project] = projects
   def projects: Seq[Project] = ReflectUtilities.allVals[Project](this).values.toSeq
   // TODO: Should we grab the build core settings here or in a plugin?
   def settings: Seq[Setting[_]] = Defaults.buildCore

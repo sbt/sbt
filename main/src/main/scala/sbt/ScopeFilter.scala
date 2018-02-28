@@ -104,7 +104,7 @@ object ScopeFilter {
 
     /** Selects all scopes that apply to a single project. Zero and build-level scopes are excluded. */
     def inAnyProject: ProjectFilter =
-      selectAxis(const { case p: ProjectRef => true; case _ => false })
+      selectAxis(const { case _: ProjectRef => true; case _ => false })
 
     /** Accepts all values for the task axis except Zero. */
     def inAnyTask: TaskFilter = selectAny[AttributeKey[_]]

@@ -31,8 +31,8 @@ object TaskRunnerForkTest extends Properties("TaskRunner Fork") {
       true
   }
   def runDoubleJoin(a: Int, b: Int, workers: Int): Unit = {
-    def inner(i: Int) = List.range(0, b).map(j => task(j).named(j.toString)).join
-    tryRun(List.range(0, a).map(inner).join, false, workers)
+    def inner = List.range(0, b).map(j => task(j).named(j.toString)).join
+    tryRun(List.range(0, a).map(_ => inner).join, false, workers)
   }
   property("fork and reduce") = forAll(TaskListGen, MaxWorkersGen) { (m: List[Int], workers: Int) =>
     m.nonEmpty ==> {

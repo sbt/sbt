@@ -23,8 +23,8 @@ import scala.util.Properties
 
 trait Watched {
 
-  /** The files watched when an action is run with a preceeding ~ */
-  def watchSources(s: State): Seq[Watched.WatchSource] = Nil
+  /** The files watched when an action is run with a proceeding ~ */
+  def watchSources(@deprecated("unused", "") s: State): Seq[Watched.WatchSource] = Nil
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
   /**
@@ -44,8 +44,13 @@ trait Watched {
 }
 
 object Watched {
-  val defaultWatchingMessage
-    : WatchState => String = _.count + ". Waiting for source changes... (press enter to interrupt)"
+  val defaultWatchingMessage: WatchState => String = ws =>
+    s"${ws.count}. Waiting for source changes... (press enter to interrupt)"
+
+  def projectWatchingMessage(projectId: String): WatchState => String =
+    ws =>
+      s"${ws.count}. Waiting for source changes in project $projectId... (press enter to interrupt)"
+
   val defaultTriggeredMessage: WatchState => String = const("")
   val clearWhenTriggered: WatchState => String = const(clearScreen)
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
@@ -70,8 +75,8 @@ object Watched {
      * @param base          The base directory from which to include files.
      * @return An instance of `Source`.
      */
-    def apply(base: File): Source =
-      apply(base, AllPassFilter, NothingFilter)
+    def apply(base: File): Source = apply(base, AllPassFilter, NothingFilter)
+
   }
 
   private[this] class AWatched extends Watched
@@ -94,7 +99,7 @@ object Watched {
     @tailrec def shouldTerminate: Boolean =
       (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)
     val sources = watched.watchSources(s)
-    val service = watched.watchService()
+    val service = s get ContinuousWatchService getOrElse watched.watchService()
     val watchState = s get ContinuousState getOrElse WatchState.empty(service, sources)
 
     if (watchState.count > 0)
@@ -115,15 +120,21 @@ object Watched {
 
     if (triggered) {
       printIfDefined(watched triggeredMessage newWatchState)
-      (ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
+      (ClearOnFailure :: next :: FailureWall :: repeat :: s)
+        .put(ContinuousState, newWatchState)
+        .put(ContinuousWatchService, service)
     } else {
       while (System.in.available() > 0) System.in.read()
       service.close()
-      s.remove(ContinuousState)
+      s.remove(ContinuousState).remove(ContinuousWatchService)
     }
   }
   val ContinuousState =
     AttributeKey[WatchState]("watch state", "Internal: tracks state for continuous execution.")
+
+  val ContinuousWatchService =
+    AttributeKey[WatchService]("watch service",
+                               "Internal: tracks watch service for continuous execution.")
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 

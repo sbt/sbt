@@ -132,7 +132,7 @@ private[sbt] object JLine {
   def createReader(): ConsoleReader = createReader(None, JLine.makeInputStream(true))
 
   def createReader(historyPath: Option[File], in: InputStream): ConsoleReader =
-    usingTerminal { t =>
+    usingTerminal { _ =>
       val cr = new ConsoleReader(in, System.out)
       cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
       cr.setBellEnabled(false)
