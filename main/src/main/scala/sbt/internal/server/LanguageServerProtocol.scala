@@ -21,10 +21,70 @@ import sbt.util.Logger
 
 private[sbt] case class LangServerError(code: Long, message: String) extends Throwable(message)
 
+private[sbt] object LanguageServerProtocol {
+  lazy val internalJsonProtocol = new InitializeOptionFormats with sjsonnew.BasicJsonProtocol {}
+
+  lazy val serverCapabilities: ServerCapabilities = {
+    ServerCapabilities(textDocumentSync =
+                         TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
+                       hoverProvider = false,
+                       definitionProvider = true)
+  }
+
+  lazy val handler: ServerHandler = ServerHandler({
+    case callback: ServerCallback =>
+      import callback._
+      ServerIntent(
+        {
+          import sbt.internal.langserver.codec.JsonProtocol._
+          import internalJsonProtocol._
+          def json(r: JsonRpcRequestMessage) =
+            r.params.getOrElse(
+              throw LangServerError(ErrorCodes.InvalidParams,
+                                    s"param is expected on '${r.method}' method."))
+
+          {
+            case r: JsonRpcRequestMessage if r.method == "initialize" =>
+              if (authOptions(ServerAuthentication.Token)) {
+                val param = Converter.fromJson[InitializeParams](json(r)).get
+                val optionJson = param.initializationOptions.getOrElse(
+                  throw LangServerError(ErrorCodes.InvalidParams,
+                                        "initializationOptions is expected on 'initialize' param."))
+                val opt = Converter.fromJson[InitializeOption](optionJson).get
+                val token = opt.token.getOrElse(sys.error("'token' is missing."))
+                if (authenticate(token)) ()
+                else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
+              } else ()
+              setInitialized(true)
+              appendExec(Exec(s"collectAnalyses", Some(r.id), Some(CommandSource(name))))
+              jsonRpcRespond(InitializeResult(serverCapabilities), Option(r.id))
+
+            case r: JsonRpcRequestMessage if r.method == "textDocument/definition" =>
+              import scala.concurrent.ExecutionContext.Implicits.global
+              Definition.lspDefinition(json(r), r.id, CommandSource(name), log)
+              ()
+            case r: JsonRpcRequestMessage if r.method == "sbt/exec" =>
+              val param = Converter.fromJson[SbtExecParams](json(r)).get
+              appendExec(Exec(param.commandLine, Some(r.id), Some(CommandSource(name))))
+              ()
+            case r: JsonRpcRequestMessage if r.method == "sbt/setting" =>
+              import sbt.protocol.codec.JsonProtocol._
+              val param = Converter.fromJson[Q](json(r)).get
+              onSettingQuery(Option(r.id), param)
+          }
+        }, {
+          case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
+            appendExec(Exec(";compile; collectAnalyses", None, Some(CommandSource(name))))
+            ()
+        }
+      )
+  })
+}
+
 /**
  * Implements Language Server Protocol <https://github.com/Microsoft/language-server-protocol>.
  */
-private[sbt] trait LanguageServerProtocol extends CommandChannel {
+private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
 
   lazy val internalJsonProtocol = new InitializeOptionFormats with sjsonnew.BasicJsonProtocol {}
 
@@ -34,54 +94,24 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   protected def log: Logger
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
 
-  protected def onNotification(notification: JsonRpcNotificationMessage): Unit = {
-    log.debug(s"onNotification: $notification")
-    notification.method match {
-      case "textDocument/didSave" =>
-        append(Exec(";compile; collectAnalyses", None, Some(CommandSource(name))))
-        ()
-      case u => log.debug(s"Unhandled notification received: $u")
-    }
-  }
+  protected lazy val callbackImpl: ServerCallback = new ServerCallback {
+    def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
+      self.jsonRpcRespond(event, execId)
 
-  protected def onRequestMessage(request: JsonRpcRequestMessage): Unit = {
-    import sbt.internal.langserver.codec.JsonProtocol._
-    import internalJsonProtocol._
-    def json =
-      request.params.getOrElse(
-        throw LangServerError(ErrorCodes.InvalidParams,
-                              s"param is expected on '${request.method}' method."))
-    log.debug(s"onRequestMessage: $request")
-    request.method match {
-      case "initialize" =>
-        if (authOptions(ServerAuthentication.Token)) {
-          val param = Converter.fromJson[InitializeParams](json).get
-          val optionJson = param.initializationOptions.getOrElse(
-            throw LangServerError(ErrorCodes.InvalidParams,
-                                  "initializationOptions is expected on 'initialize' param."))
-          val opt = Converter.fromJson[InitializeOption](optionJson).get
-          val token = opt.token.getOrElse(sys.error("'token' is missing."))
-          if (authenticate(token)) ()
-          else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
-        } else ()
-        setInitialized(true)
-        append(Exec(s"collectAnalyses", Some(request.id), Some(CommandSource(name))))
-        langRespond(InitializeResult(serverCapabilities), Option(request.id))
-      case "textDocument/definition" =>
-        import scala.concurrent.ExecutionContext.Implicits.global
-        Definition.lspDefinition(json, request.id, CommandSource(name), log)
-        ()
-      case "sbt/exec" =>
-        val param = Converter.fromJson[SbtExecParams](json).get
-        append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
-        ()
-      case "sbt/setting" => {
-        import sbt.protocol.codec.JsonProtocol._
-        val param = Converter.fromJson[Q](json).get
-        onSettingQuery(Option(request.id), param)
-      }
-      case unhandledRequest => log.debug(s"Unhandled request received: $unhandledRequest")
-    }
+    def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit =
+      self.jsonRpcRespondError(execId, code, message)
+
+    def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit =
+      self.jsonRpcNotify(method, params)
+
+    def appendExec(exec: Exec): Boolean = self.append(exec)
+    def log: Logger = self.log
+    def name: String = self.name
+    private[sbt] def authOptions: Set[ServerAuthentication] = self.authOptions
+    private[sbt] def authenticate(token: String): Boolean = self.authenticate(token)
+    private[sbt] def setInitialized(value: Boolean): Unit = self.setInitialized(value)
+    private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit =
+      self.onSettingQuery(execId, req)
   }
 
   /**
@@ -97,7 +127,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
       // LanguageServerReporter sends PublishDiagnosticsParams
       case "sbt.internal.langserver.PublishDiagnosticsParams" =>
       // val p = event.message.asInstanceOf[PublishDiagnosticsParams]
-      // langNotify("textDocument/publishDiagnostics", p)
+      // jsonRpcNotify("textDocument/publishDiagnostics", p)
       case "xsbti.Problem" =>
         () // ignore
       case _ =>
@@ -109,7 +139,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   /**
    * Respond back to Language Server's client.
    */
-  private[sbt] def langRespond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
+  private[sbt] def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
     val m =
       JsonRpcResponseMessage("2.0", execId, Option(Converter.toJson[A](event).get), None)
     val bytes = Serialization.serializeResponseMessage(m)
@@ -119,7 +149,9 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   /**
    * Respond back to Language Server's client.
    */
-  private[sbt] def langError(execId: Option[String], code: Long, message: String): Unit = {
+  private[sbt] def jsonRpcRespondError(execId: Option[String],
+                                       code: Long,
+                                       message: String): Unit = {
     val e = JsonRpcResponseError(code, message, None)
     val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
     val bytes = Serialization.serializeResponseMessage(m)
@@ -129,10 +161,10 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   /**
    * Respond back to Language Server's client.
    */
-  private[sbt] def langError[A: JsonFormat](execId: Option[String],
-                                            code: Long,
-                                            message: String,
-                                            data: A): Unit = {
+  private[sbt] def jsonRpcRespondError[A: JsonFormat](execId: Option[String],
+                                                      code: Long,
+                                                      message: String,
+                                                      data: A): Unit = {
     val e = JsonRpcResponseError(code, message, Option(Converter.toJson[A](data).get))
     val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
     val bytes = Serialization.serializeResponseMessage(m)
@@ -142,26 +174,19 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
   /**
    * Notify to Language Server's client.
    */
-  private[sbt] def langNotify[A: JsonFormat](method: String, params: A): Unit = {
+  private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
     val m =
       JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
-    log.debug(s"langNotify: $m")
+    log.debug(s"jsonRpcNotify: $m")
     val bytes = Serialization.serializeNotificationMessage(m)
     publishBytes(bytes)
   }
 
   def logMessage(level: String, message: String): Unit = {
     import sbt.internal.langserver.codec.JsonProtocol._
-    langNotify(
+    jsonRpcNotify(
       "window/logMessage",
       LogMessageParams(MessageType.fromLevelString(level), message)
     )
-  }
-
-  private[sbt] lazy val serverCapabilities: ServerCapabilities = {
-    ServerCapabilities(textDocumentSync =
-                         TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
-                       hoverProvider = false,
-                       definitionProvider = true)
   }
 }

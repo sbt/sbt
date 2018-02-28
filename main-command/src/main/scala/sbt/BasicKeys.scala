@@ -39,6 +39,11 @@ object BasicKeys {
                                  "The wire protocol for the server command.",
                                  10000)
 
+  val fullServerHandlers =
+    AttributeKey[Seq[ServerHandler]]("fullServerHandlers",
+                                     "Combines default server handlers and user-defined handlers.",
+                                     10000)
+
   val autoStartServer =
     AttributeKey[Boolean](
       "autoStartServer",
