@@ -48,7 +48,6 @@ lazy val utilRoot: Project = (project in file("."))
     utilRelation,
     utilCache,
     utilTracking,
-    utilTesting,
     utilScripted
   )
   .settings(
@@ -94,25 +93,24 @@ lazy val utilControl = (project in internalPath / "util-control").settings(
 )
 
 val utilPosition = (project in file("internal") / "util-position")
-  .dependsOn(utilTesting % Test)
   .settings(
     commonSettings,
     name := "Util Position",
     scalacOptions += "-language:experimental.macros",
-    libraryDependencies += scalaReflect.value,
+    libraryDependencies ++= Seq(scalaReflect.value, scalaTest),
     mimaSettings,
   )
 
-// logging
 lazy val utilLogging = (project in internalPath / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(utilInterface, utilTesting % Test)
+  .dependsOn(utilInterface)
   .settings(
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
     libraryDependencies ++=
       Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value),
+    libraryDependencies ++= Seq(scalaCheck, scalaTest),
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := { tpe =>
       val old = (contrabandFormatsForType in generateContrabands in Compile).value
@@ -122,45 +120,35 @@ lazy val utilLogging = (project in internalPath / "util-logging")
     },
     mimaSettings,
   )
+  .configure(addSbtIO)
 
-// Relation
 lazy val utilRelation = (project in internalPath / "util-relation")
-  .dependsOn(utilTesting % Test)
   .settings(
     commonSettings,
     name := "Util Relation",
+    libraryDependencies ++= Seq(scalaCheck),
     mimaSettings,
   )
 
 // Persisted caching based on sjson-new
 lazy val utilCache = (project in file("util-cache"))
-  .dependsOn(utilTesting % Test)
   .settings(
     commonSettings,
     name := "Util Cache",
     libraryDependencies ++=
       Seq(sjsonnewScalaJson.value, sjsonnewMurmurhash.value, scalaReflect.value),
+    libraryDependencies ++= Seq(scalaTest),
     mimaSettings,
   )
   .configure(addSbtIO)
 
 // Builds on cache to provide caching for filesystem-related operations
 lazy val utilTracking = (project in file("util-tracking"))
-  .dependsOn(utilCache, utilTesting % Test)
+  .dependsOn(utilCache)
   .settings(
     commonSettings,
     name := "Util Tracking",
-    mimaSettings,
-  )
-  .configure(addSbtIO)
-
-// Internal utility for testing
-lazy val utilTesting = (project in internalPath / "util-testing")
-  .settings(
-    commonSettings,
-    crossScalaVersions := Seq(scala210, scala211, scala212),
-    name := "Util Testing",
-    libraryDependencies ++= Seq(scalaCheck, scalatest),
+    libraryDependencies ++= Seq(scalaTest),
     mimaSettings,
   )
   .configure(addSbtIO)

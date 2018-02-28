@@ -9,9 +9,9 @@ import sjsonnew.{ Builder, deserializationError, IsoString, JsonFormat, Unbuilde
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
-import sbt.internal.util.UnitSpec
+import org.scalatest.FlatSpec
 
-class SingletonCacheSpec extends UnitSpec {
+class SingletonCacheSpec extends FlatSpec {
 
   case class ComplexType(val x: Int, y: String, z: List[Int])
   object ComplexType {

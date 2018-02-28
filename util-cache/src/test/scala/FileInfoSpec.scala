@@ -2,10 +2,10 @@ package sbt.util
 
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
-import sbt.internal.util.UnitSpec
+import org.scalatest.FlatSpec
 import sbt.io.IO
 
-class FileInfoSpec extends UnitSpec {
+class FileInfoSpec extends FlatSpec {
   val file = new java.io.File(".").getAbsoluteFile
   val fileInfo: ModifiedFileInfo = FileModified(file, IO.getModifiedTimeOrZero(file))
   val filesInfo = FilesInfo(Set(fileInfo))
