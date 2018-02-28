@@ -31,7 +31,7 @@ final class Configuration private[sbt] (
         (this.transitive == x.transitive)
     case _ => false
   }
-  override def hashCode: Int = {
+  override val hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + id.##) + name.##) + description.##) + isPublic.##) + extendsConfigs.##) + transitive.##)
   }
   override def toString: String = {
