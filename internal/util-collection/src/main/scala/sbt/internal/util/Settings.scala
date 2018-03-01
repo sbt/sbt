@@ -8,14 +8,16 @@
 package sbt.internal.util
 
 import scala.language.existentials
-
 import Types._
 import sbt.util.Show
+
+import scala.annotation.tailrec
 
 sealed trait Settings[Scope] {
   def data: Map[Scope, AttributeMap]
   def keys(scope: Scope): Set[AttributeKey[_]]
   def scopes: Set[Scope]
+  def attributeKeys: Set[AttributeKey[_]]
   def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope]
   def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T]
   def get[T](scope: Scope, key: AttributeKey[T]): Option[T]
@@ -24,28 +26,73 @@ sealed trait Settings[Scope] {
 }
 
 private final class Settings0[Scope](
-    val data: Map[Scope, AttributeMap],
+    keyDefs: Map[AttributeKey[_], Map[Scope, Any]],
     val delegates: Scope => Seq[Scope]
 ) extends Settings[Scope] {
 
-  def scopes: Set[Scope] = data.keySet
+  // TODO: get rid of direct accesses to data completely, so it can be removed from the API
+  lazy val data: Map[Scope, AttributeMap] = {
+    keyDefs.toSeq
+      .flatMap {
+        case (key: AttributeKey[Any], map) =>
+          map.map { case (scope, value: Any) => (scope, AttributeEntry[Any](key, value)) }
+      }
+      .groupBy(_._1)
+      .map {
+        case (scope, entries) => (scope, AttributeMap(entries.map(_._2)))
+      }
+      .toMap
+  }
+  lazy val scopes: Set[Scope] = {
+    // TODO: optimize
+    keyDefs.flatMap(_._2.keySet).toSet
+  }
+  def attributeKeys: Set[AttributeKey[_]] = keyDefs.keySet
+
   def keys(scope: Scope) = data(scope).keys.toSet
 
   def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] =
-    data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) }.toSeq
+    keyDefs.toIterator.flatMap {
+      case (key: AttributeKey[Any], map) =>
+        map.keys.map(scope => f(scope, key))
+    }.toSeq
 
-  def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
-    delegates(scope).toStream.flatMap(sc => getDirect(sc, key)).headOption
+  def get[T](scope: Scope, key: AttributeKey[T]): Option[T] = {
+    @tailrec
+    def find(map: Map[Scope, Any], scopes: Seq[Scope], size: Int, i: Int): Option[T] =
+      if (i < size) {
+        val current = scopes(i)
+        if (map.contains(current)) Some(map(current).asInstanceOf[T])
+        else find(map, scopes, size, i + 1)
+      } else None
+
+    keyDefs.get(key) match {
+      case Some(defs) =>
+        val delegationChain = delegates(scope)
+
+        if (defs.size == 1) {
+          val (scope, value) = defs.head
+          if (delegationChain.last == scope || delegationChain.head == scope)
+            // optimization when key is defined in Global (= last in chain)
+            // or not delegated at all (= first in chain)
+            Some(value.asInstanceOf[T])
+          else
+            delegationChain.find(_ == scope).map(_ => value.asInstanceOf[T])
+        } else
+          find(defs, delegationChain, delegationChain.size, 0)
+      case None => None
+    }
+  }
 
   def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope] =
     delegates(scope).toStream.find(sc => getDirect(sc, key).isDefined)
 
   def getDirect[T](scope: Scope, key: AttributeKey[T]): Option[T] =
-    (data get scope).flatMap(_ get key)
+    (keyDefs get key).flatMap(_.get(scope).asInstanceOf[Option[T]])
 
   def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope] = {
-    val map = data getOrElse (scope, AttributeMap.empty)
-    val newData = data.updated(scope, map.put(key, value))
+    val map = keyDefs.getOrElse(key, Map.empty)
+    val newData = keyDefs.updated(key, map + (scope -> value))
     new Settings0(newData, delegates)
   }
 }

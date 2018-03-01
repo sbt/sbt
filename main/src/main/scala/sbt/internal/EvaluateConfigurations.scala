@@ -316,7 +316,7 @@ object Index {
       .toSet
 
   def attributeKeys(settings: Settings[Scope]): Set[AttributeKey[_]] =
-    settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]]
+    settings.attributeKeys
 
   def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =
     stringToKeyMap0(settings)(_.label)
