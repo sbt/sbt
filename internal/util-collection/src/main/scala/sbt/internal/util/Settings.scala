@@ -85,7 +85,7 @@ private final class Settings0[Scope](
   }
 
   def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope] =
-    delegates(scope).toStream.find(sc => getDirect(sc, key).isDefined)
+    delegates(scope).find(sc => getDirect(sc, key).isDefined)
 
   def getDirect[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     (keyDefs get key).flatMap(_.get(scope).asInstanceOf[Option[T]])

@@ -10,8 +10,9 @@ package sbt
 import java.net.URI
 
 import sbt.internal.util.{ AttributeKey, AttributeMap, Dag }
-
 import sbt.io.IO
+
+import scala.collection.mutable.ArrayBuffer
 
 final case class Scope(project: ScopeAxis[Reference],
                        config: ScopeAxis[ConfigKey],
@@ -278,20 +279,50 @@ object Scope {
   )(rawScope: Scope): Seq[Scope] = {
     val scope = Scope.replaceThis(GlobalScope)(rawScope)
 
-    def nonProjectScopes(resolvedProj: ResolvedReference)(px: ScopeAxis[ResolvedReference]) = {
-      val p = px.toOption getOrElse resolvedProj
-      val configProj = p match {
-        case pr: ProjectRef => pr; case br: BuildRef => ProjectRef(br.build, rootProject(br.build))
-      }
-      val cLin = scope.config match {
-        case Select(conf) => index.config(configProj, conf); case _ => withZeroAxis(scope.config)
-      }
+    def nonProjectScopes(resolvedProj: ResolvedReference)(
+        pLin: Seq[ScopeAxis[ResolvedReference]]): Seq[Scope] = {
       val tLin = scope.task match {
-        case t @ Select(_) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
+        case t @ Select(k) =>
+          if (taskInherit(k).isEmpty) t :: Zero :: Nil
+          else linearize(t)(taskInherit)
+        case _ => withZeroAxis(scope.task)
       }
       val eLin = withZeroAxis(scope.extra)
-      for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
+
+      val res = new ArrayBuffer[Scope](pLin.size * 2 * tLin.size * eLin.size)
+
+      val pLinIt = pLin.iterator
+      while (pLinIt.hasNext) {
+        val px = pLinIt.next()
+        val p = px.toOption getOrElse resolvedProj
+        val configProj = p match {
+          case pr: ProjectRef => pr;
+          case br: BuildRef   => ProjectRef(br.build, rootProject(br.build))
+        }
+
+        val cLin = scope.config match {
+          case Select(conf) => index.config(configProj, conf)
+          case _            => withZeroAxis(scope.config)
+        }
+
+        val cLinIt = cLin.iterator
+        while (cLinIt.hasNext) {
+          val c = cLinIt.next()
+          val tLinIt = tLin.iterator
+          while (tLinIt.hasNext) {
+            val t = tLinIt.next()
+            val eLinIt = eLin.iterator
+            while (eLinIt.hasNext) {
+              val e = eLinIt.next()
+              res += Scope(px, c, t, e)
+            }
+          }
+        }
+      }
+
+      res.result()
     }
+
     scope.project match {
       case Zero | This => globalProjectDelegates(scope)
       case Select(proj) =>
@@ -301,7 +332,7 @@ object Scope {
             case pr: ProjectRef => index.project(pr)
             case br: BuildRef   => Select(br) :: Zero :: Nil
           }
-        projAxes flatMap nonProjectScopes(resolvedProj)
+        nonProjectScopes(resolvedProj)(projAxes)
     }
   }
 
