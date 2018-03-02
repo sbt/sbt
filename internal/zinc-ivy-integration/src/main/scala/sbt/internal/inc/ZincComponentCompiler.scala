@@ -140,11 +140,19 @@ private[sbt] object ZincComponentCompiler {
       val scalaLibrary = scalaArtifacts.library
       val jarsToLoad = (scalaCompiler +: scalaLibrary +: scalaArtifacts.others).toArray
       assert(jarsToLoad.forall(_.exists), "One or more jar(s) in the Scala instance do not exist.")
-      val loader = new URLClassLoader(toURLs(jarsToLoad), ClasspathUtilities.rootLoader)
+      val loaderLibraryOnly = ClasspathUtilities.toLoader(Vector(scalaLibrary))
+      val loader = ClasspathUtilities.toLoader(jarsToLoad.toVector filterNot { _ == scalaLibrary },
+                                               loaderLibraryOnly)
       val properties = ResourceLoader.getSafePropertiesFor("compiler.properties", loader)
       val loaderVersion = Option(properties.getProperty("version.number"))
       val scalaV = loaderVersion.getOrElse("unknown")
-      new ScalaInstance(scalaV, loader, scalaLibrary, scalaCompiler, jarsToLoad, loaderVersion)
+      new ScalaInstance(scalaV,
+                        loader,
+                        loaderLibraryOnly,
+                        scalaLibrary,
+                        scalaCompiler,
+                        jarsToLoad,
+                        loaderVersion)
     }
   }
 
