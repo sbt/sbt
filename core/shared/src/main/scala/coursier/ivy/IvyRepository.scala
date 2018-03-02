@@ -340,33 +340,4 @@ object IvyRepository {
       dropInfoAttributes,
       authentication
     )
-
-  @deprecated("Can now raise exceptions - use parse instead", "1.0.0-M13")
-  def apply(
-    pattern: String,
-    metadataPatternOpt: Option[String] = None,
-    changing: Option[Boolean] = None,
-    properties: Map[String, String] = Map.empty,
-    withChecksums: Boolean = true,
-    withSignatures: Boolean = true,
-    withArtifacts: Boolean = true,
-    // hack for SBT putting infos in properties
-    dropInfoAttributes: Boolean = false,
-    authentication: Option[Authentication] = None
-  ): IvyRepository =
-    parse(
-      pattern,
-      metadataPatternOpt,
-      changing,
-      properties,
-      withChecksums,
-      withSignatures,
-      withArtifacts,
-      dropInfoAttributes,
-      authentication
-    ) match {
-      case Right(repo) => repo
-      case Left(msg) =>
-        throw new IllegalArgumentException(s"Error while parsing Ivy patterns: $msg")
-    }
 }

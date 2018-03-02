@@ -127,10 +127,6 @@ final case class Missing(
     cont0(current0)
   }
 
-  @deprecated("Intended for internal use only", "1.0.0-RC7")
-  def uniqueModules: Missing =
-    this
-
 }
 
 final case class Continue(

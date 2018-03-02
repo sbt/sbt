@@ -1129,13 +1129,6 @@ object Cache {
 
     def downloadingArtifact(url: String, file: File): Unit = {}
 
-    @deprecated("extend Logger.Extended instead and use / override the variant with 4 arguments", "1.0.0-M10")
-    def downloadLength(url: String, length: Long): Unit = {}
-    @deprecated("extend Logger.Extended instead and use / override the variant with 4 arguments", "1.0.0-RC4")
-    def downloadLength(url: String, length: Long, alreadyDownloaded: Long): Unit = {
-      downloadLength(url, length)
-    }
-
     def downloadProgress(url: String, downloaded: Long): Unit = {}
 
     def downloadedArtifact(url: String, success: Boolean): Unit = {}
@@ -1147,7 +1140,7 @@ object Cache {
     // adding new methods to this one, not to break bin compat in 2.10 / 2.11
     abstract class Extended extends Logger {
       def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit = {
-        downloadLength(url, totalLength, 0L)
+        downloadLength(url, totalLength, 0L, watching)
       }
 
       def gettingLength(url: String): Unit = {}
@@ -1165,11 +1158,6 @@ object Cache {
 
               override def downloadingArtifact(url: String, file: File) =
                 logger.downloadingArtifact(url, file)
-
-              override def downloadLength(url: String, length: Long) =
-                logger.downloadLength(url, length)
-              override def downloadLength(url: String, length: Long, alreadyDownloaded: Long) =
-                logger.downloadLength(url, length, alreadyDownloaded)
 
               override def downloadProgress(url: String, downloaded: Long) =
                 logger.downloadProgress(url, downloaded)

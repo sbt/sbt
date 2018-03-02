@@ -11,10 +11,6 @@ object Parse {
 
   private def defaultScalaVersion = scala.util.Properties.versionNumberString
 
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def module(s: String): Either[String, Module] =
-    module(s, defaultScalaVersion)
-
   /**
     * Parses a module like
     *   org:name
@@ -69,10 +65,6 @@ object Parse {
     (errors, values)
   }
 
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def modules(l: Seq[String]): (Seq[String], Seq[Module]) =
-    modules(l, defaultScalaVersion)
-
   /**
     * Parses a sequence of coordinates.
     *
@@ -80,10 +72,6 @@ object Parse {
     */
   def modules(l: Seq[String], defaultScalaVersion: String): (Seq[String], Seq[Module]) =
     valuesAndErrors(module(_, defaultScalaVersion), l)
-
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def moduleVersion(s: String): Either[String, (Module, String)] =
-    moduleVersion(s, defaultScalaVersion)
 
   /**
     * Parses coordinates like
@@ -114,31 +102,6 @@ object Parse {
   class ModuleParseError(private val message: String = "",
                               private val cause: Throwable = None.orNull)
     extends Exception(message, cause)
-
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def moduleVersionConfig(s: String, defaultScalaVersion: String): Either[String, (Module, String, Option[String])] = {
-    val mvc: Either[String, (Dependency, Map[String, String])] =
-      moduleVersionConfig(s, ModuleRequirements(), transitive = true, defaultScalaVersion)
-    mvc match {
-      case Left(x) => Left(x)
-      case Right(depsWithParams) =>
-        val (dep, _) = depsWithParams
-        Right(dep.module, dep.version, Option(dep.configuration).filter(_.trim.nonEmpty))
-    }
-  }
-
-
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def moduleVersionConfig(s: String): Either[String, (Module, String, Option[String])] = {
-    val mvc: Either[String, (Dependency, Map[String, String])] =
-      moduleVersionConfig(s, ModuleRequirements(), transitive = true, defaultScalaVersion)
-    mvc match {
-      case Left(x) => Left(x)
-      case Right(depsWithParams) =>
-        val (dep, _) = depsWithParams
-        Right(dep.module, dep.version, Option(dep.configuration).filter(_.trim.nonEmpty))
-    }
-  }
 
   /**
     * Parses coordinates like
@@ -301,10 +264,6 @@ object Parse {
     else None
   }
 
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def moduleVersions(l: Seq[String]): (Seq[String], Seq[(Module, String)]) =
-    moduleVersions(l, defaultScalaVersion)
-
   /**
     * Parses a sequence of coordinates.
     *
@@ -312,23 +271,6 @@ object Parse {
     */
   def moduleVersions(l: Seq[String], defaultScalaVersion: String): (Seq[String], Seq[(Module, String)]) =
     valuesAndErrors(moduleVersion(_, defaultScalaVersion), l)
-
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def moduleVersionConfigs(l: Seq[String]): (Seq[String], Seq[(Module, String, Option[String])]) = {
-    val mvc: (Seq[String], Seq[(Dependency, Map[String, String])]) =
-      moduleVersionConfigs(l, ModuleRequirements(), transitive = true, defaultScalaVersion)
-    val errorsAndDeps = (mvc._1, mvc._2.map(d => d._1))
-    // convert empty config to None
-    (errorsAndDeps._1, errorsAndDeps._2.map(d => (d.module, d.version, Option(d.configuration).filter(_.trim.nonEmpty))))
-  }
-
-  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
-  def moduleVersionConfigs(l: Seq[String], defaultScalaVersion: String): (Seq[String], Seq[(Module, String, Option[String])]) = {
-    val mvc: (Seq[String], Seq[(Dependency, Map[String, String])]) =
-      moduleVersionConfigs(l, ModuleRequirements(), transitive = true, defaultScalaVersion)
-    val errorsAndDeps = (mvc._1, mvc._2.map(d => d._1))
-    (errorsAndDeps._1, errorsAndDeps._2.map(d => (d.module, d.version, Option(d.configuration).filter(_.trim.nonEmpty))))
-  }
 
   /**
     * Data holder for additional info that needs to be considered when parsing the module.
