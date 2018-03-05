@@ -1,0 +1,11 @@
+[@hvesalai]: https://github.com/hvesalai
+
+[#3982]: https://github.com/sbt/sbt/pull/3982
+
+### Fixes with compatibility implications
+
+### Improvements
+
+- Support non-echoing console for emacs  [#3982][] by [@hvesalai][]
+
+### Bug fixes
