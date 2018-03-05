@@ -1,7 +1,6 @@
 package coursier.util
 
 import scala.language.higherKinds
-import scalaz.Monad
 
 final case class EitherT[F[_], L, R](run: F[Either[L, R]]) {
 

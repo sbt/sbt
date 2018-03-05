@@ -374,7 +374,7 @@ object TermDisplay {
 class TermDisplay(
   out: Writer,
   val fallbackMode: Boolean = TermDisplay.defaultFallbackMode
-) extends Cache.Logger.Extended {
+) extends Cache.Logger {
 
   import TermDisplay._
 

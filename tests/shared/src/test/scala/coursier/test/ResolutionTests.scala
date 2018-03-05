@@ -251,7 +251,7 @@ object ResolutionTests extends TestSuite {
         assert(directDependencyErrors.isEmpty)
 
         // metadataErrors have that
-        assert(res.metadataErrors == Seq((Module("acme", "missing-pom"), "1.0.0") -> List("Not found")))
+        assert(res.errors == Seq((Module("acme", "missing-pom"), "1.0.0") -> List("Not found")))
       }
     }
     'single{

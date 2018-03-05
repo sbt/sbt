@@ -66,7 +66,7 @@ object FileUtil {
     }
   }
 
-  private def readFully(is: InputStream): Array[Byte] = {
+  def readFully(is: InputStream): Array[Byte] = {
     val buffer = new ByteArrayOutputStream
     val data = Array.ofDim[Byte](16384)
 

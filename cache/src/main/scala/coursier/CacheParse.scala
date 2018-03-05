@@ -4,19 +4,16 @@ import java.net.MalformedURLException
 
 import coursier.core.Authentication
 import coursier.ivy.IvyRepository
-import coursier.util.Parse
-
-import scalaz.{Validation, ValidationNel}
-import scalaz.Scalaz.vectorInstance
-import scalaz.Scalaz.{ToEitherOpsFromEither, ToNelOps, ToTraverseOps, ToValidationOps}
+import coursier.util.{Parse, ValidationNel}
+import coursier.util.Traverse.TraverseOps
 
 object CacheParse {
 
-  def repository(s: String): Validation[String, Repository] =
+  def repository(s: String): Either[String, Repository] =
     if (s == "ivy2local" || s == "ivy2Local")
-      Cache.ivy2Local.success
+      Right(Cache.ivy2Local)
     else if (s == "ivy2cache" || s == "ivy2Cache")
-      Cache.ivy2Cache.success
+      Right(Cache.ivy2Cache)
     else {
       val repo = Parse.repository(s)
 
@@ -78,34 +75,38 @@ object CacheParse {
                 Left(s"No password found in user info of URL $url")
             }
         }
-      }.validation
+      }
     }
 
   def repositories(l: Seq[String]): ValidationNel[String, Seq[Repository]] =
-    l.toVector.traverseU { s =>
-      repository(s).leftMap(_.wrapNel)
+    l.toVector.validationNelTraverse { s =>
+      ValidationNel.fromEither(repository(s))
     }
 
   def cachePolicies(s: String): ValidationNel[String, Seq[CachePolicy]] =
-    s.split(',').toVector.traverseM[({ type L[X] = ValidationNel[String, X] })#L, CachePolicy] {
-      case "offline" =>
-        Vector(CachePolicy.LocalOnly).successNel
-      case "update-local-changing" =>
-        Vector(CachePolicy.LocalUpdateChanging).successNel
-      case "update-local" =>
-        Vector(CachePolicy.LocalUpdate).successNel
-      case "update-changing" =>
-        Vector(CachePolicy.UpdateChanging).successNel
-      case "update" =>
-        Vector(CachePolicy.Update).successNel
-      case "missing" =>
-        Vector(CachePolicy.FetchMissing).successNel
-      case "force" =>
-        Vector(CachePolicy.ForceDownload).successNel
-      case "default" =>
-        Vector(CachePolicy.LocalOnly, CachePolicy.FetchMissing).successNel
-      case other =>
-        s"Unrecognized mode: $other".failureNel
-    }
+    s
+      .split(',')
+      .toVector
+      .validationNelTraverse[String, Seq[CachePolicy]] {
+        case "offline" =>
+          ValidationNel.success(Seq(CachePolicy.LocalOnly))
+        case "update-local-changing" =>
+          ValidationNel.success(Seq(CachePolicy.LocalUpdateChanging))
+        case "update-local" =>
+          ValidationNel.success(Seq(CachePolicy.LocalUpdate))
+        case "update-changing" =>
+          ValidationNel.success(Seq(CachePolicy.UpdateChanging))
+        case "update" =>
+          ValidationNel.success(Seq(CachePolicy.Update))
+        case "missing" =>
+          ValidationNel.success(Seq(CachePolicy.FetchMissing))
+        case "force" =>
+          ValidationNel.success(Seq(CachePolicy.ForceDownload))
+        case "default" =>
+          ValidationNel.success(Seq(CachePolicy.LocalOnly, CachePolicy.FetchMissing))
+        case other =>
+          ValidationNel.failure(s"Unrecognized mode: $other")
+      }
+      .map(_.flatten)
 
 }

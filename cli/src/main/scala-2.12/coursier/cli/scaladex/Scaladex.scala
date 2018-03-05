@@ -40,7 +40,7 @@ object Scaladex {
 
         val b = try {
           conn = new java.net.URL(url).openConnection().asInstanceOf[HttpURLConnection]
-          coursier.Platform.readFullySync(conn.getInputStream)
+          coursier.internal.FileUtil.readFully(conn.getInputStream)
         } finally {
           if (conn != null)
             coursier.Cache.closeConn(conn)

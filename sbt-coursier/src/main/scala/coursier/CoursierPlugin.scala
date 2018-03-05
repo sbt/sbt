@@ -41,9 +41,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierParentProjectCache = Keys.coursierParentProjectCache
     val coursierResolutions = Keys.coursierResolutions
 
-    @deprecated("Use coursierResolutions instead", "1.0.0-RC4")
-    val coursierResolution = Keys.actualCoursierResolution
-
     val coursierSbtClassifiersResolution = Keys.coursierSbtClassifiersResolution
 
     val coursierDependencyTree = Keys.coursierDependencyTree

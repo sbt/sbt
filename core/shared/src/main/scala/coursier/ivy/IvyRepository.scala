@@ -2,10 +2,9 @@ package coursier.ivy
 
 import coursier.Fetch
 import coursier.core._
-import coursier.util.{EitherT, WebPage}
+import coursier.util.{EitherT, Monad, WebPage}
 
 import scala.language.higherKinds
-import scalaz.Monad
 
 final case class IvyRepository(
   pattern: Pattern,

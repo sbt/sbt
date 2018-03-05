@@ -1,9 +1,8 @@
 package coursier
 
-import coursier.util.EitherT
+import coursier.util.{EitherT, Gather, Monad}
 
 import scala.language.higherKinds
-import scalaz.{Monad, Nondeterminism}
 
 object Fetch {
 
@@ -59,12 +58,12 @@ object Fetch {
     fetch: Content[F],
     extra: Content[F]*
   )(implicit
-    F: Nondeterminism[F]
+    F: Gather[F]
   ): Metadata[F] = {
 
     modVers =>
       F.map(
-        F.gatherUnordered {
+        F.gather {
           modVers.map {
             case (module, version) =>
               def get(fetch: Content[F]) = find(repositories, module, version, fetch)

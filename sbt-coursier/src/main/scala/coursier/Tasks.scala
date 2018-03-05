@@ -781,17 +781,17 @@ object Tasks {
           ).throwException()
         }
 
-        if (res.metadataErrors.nonEmpty) {
+        if (res.errors.nonEmpty) {
           val internalRepositoriesLen = internalRepositories.length
           val errors =
             if (repositories.length > internalRepositoriesLen)
             // drop internal repository errors
-              res.metadataErrors.map {
+              res.errors.map {
                 case (dep, errs) =>
                   dep -> errs.drop(internalRepositoriesLen)
               }
             else
-              res.metadataErrors
+              res.errors
 
           ResolutionError.MetadataDownloadErrors(errors)
             .throwException()

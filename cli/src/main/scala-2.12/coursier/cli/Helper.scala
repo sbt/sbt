@@ -17,7 +17,7 @@ import coursier.util.{Parse, Print}
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scalaz.concurrent.{Strategy, Task}
-import scalaz.{Failure, Nondeterminism, Success}
+import scalaz.Nondeterminism
 
 
 object Helper {
@@ -81,11 +81,11 @@ class Helper(
     if (common.mode.isEmpty)
       CachePolicy.default
     else
-      CacheParse.cachePolicies(common.mode) match {
-        case Success(cp) => cp
-        case Failure(errors) =>
+      CacheParse.cachePolicies(common.mode).either match {
+        case Right(cp) => cp
+        case Left(errors) =>
           prematureExit(
-            s"Error parsing modes:\n${errors.list.toList.map("  "+_).mkString("\n")}"
+            s"Error parsing modes:\n${errors.map("  "+_).mkString("\n")}"
           )
       }
 
@@ -116,12 +116,12 @@ class Helper(
     repos
   }
 
-  val standardRepositories = repositoriesValidation match {
-    case Success(repos) =>
+  val standardRepositories = repositoriesValidation.either match {
+    case Right(repos) =>
       repos
-    case Failure(errors) =>
+    case Left(errors) =>
       prematureExit(
-        s"Error with repositories:\n${errors.list.toList.map("  "+_).mkString("\n")}"
+        s"Error with repositories:\n${errors.map("  "+_).mkString("\n")}"
       )
   }
 
@@ -515,11 +515,11 @@ class Helper(
     errPrintln("\nMaximum number of iterations reached!")
   }
 
-  if (res.metadataErrors.nonEmpty) {
+  if (res.errors.nonEmpty) {
     anyError = true
     errPrintln(
       "\nError:\n" +
-      res.metadataErrors.map {
+      res.errors.map {
         case ((module, version), errors) =>
           s"  $module:$version\n${errors.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
       }.mkString("\n")

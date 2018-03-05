@@ -3,10 +3,9 @@ package coursier.maven
 import coursier.Fetch
 import coursier.core._
 import coursier.core.compatibility.encodeURIComponent
-import coursier.util.{EitherT, WebPage}
+import coursier.util.{EitherT, Monad, WebPage}
 
 import scala.language.higherKinds
-import scalaz.Monad
 
 object MavenRepository {
   val SnapshotTimestamp = "(.*-)?[0-9]{8}\\.[0-9]{6}-[0-9]+".r

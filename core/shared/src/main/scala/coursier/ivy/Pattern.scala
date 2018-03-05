@@ -1,11 +1,10 @@
 package coursier.ivy
 
-import scala.language.implicitConversions
-
-import scalaz.{Failure, Success, ValidationNel}
-import scalaz.Scalaz.{ToEitherOpsFromEither, ToFoldableOps, ToTraverseOps, ToValidationOps, vectorInstance}
-
+import coursier.util.Traverse.TraverseOps
+import coursier.util.ValidationNel
 import fastparse.all._
+
+import scala.language.implicitConversions
 
 final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
 
@@ -15,43 +14,43 @@ final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty
 
   def substituteProperties(properties: Map[String, String]): Either[String, Pattern] = {
 
-    val validation = chunks.toVector.traverseM[({ type L[X] = ValidationNel[String, X] })#L, Pattern.Chunk] {
+    val validation = chunks.validationNelTraverse[String, Seq[Pattern.Chunk]] {
       case ChunkOrProperty.Prop(name, alternativesOpt) =>
         properties.get(name) match {
           case Some(value) =>
-            Vector(Pattern.Chunk.Const(value)).successNel
+            ValidationNel.success(Seq(Pattern.Chunk.Const(value)))
           case None =>
             alternativesOpt match {
               case Some(alt) =>
-                PropertiesPattern(alt)
-                  .substituteProperties(properties)
-                  .right
-                  .map(_.chunks.toVector)
-                  .validation
-                  .toValidationNel
+                ValidationNel.fromEither(
+                  PropertiesPattern(alt)
+                    .substituteProperties(properties)
+                    .right
+                    .map(_.chunks.toVector)
+                )
               case None =>
-                name.failureNel
+                ValidationNel.failure(name)
             }
         }
 
       case ChunkOrProperty.Opt(l @ _*) =>
-        PropertiesPattern(l)
-          .substituteProperties(properties)
-          .right
-          .map(l => Vector(Pattern.Chunk.Opt(l.chunks: _*)))
-          .validation
-          .toValidationNel
+        ValidationNel.fromEither(
+          PropertiesPattern(l)
+            .substituteProperties(properties)
+            .right
+            .map(l => Seq(Pattern.Chunk.Opt(l.chunks: _*)))
+        )
 
       case ChunkOrProperty.Var(name) =>
-        Vector(Pattern.Chunk.Var(name)).successNel
+        ValidationNel.success(Seq(Pattern.Chunk.Var(name)))
 
       case ChunkOrProperty.Const(value) =>
-        Vector(Pattern.Chunk.Const(value)).successNel
+        ValidationNel.success(Seq(Pattern.Chunk.Const(value)))
 
-    }.map(Pattern(_))
+    }.map(c => Pattern(c.flatten))
 
-    validation.toEither.left.map { notFoundProps =>
-      s"Property(ies) not found: ${notFoundProps.toList.mkString(", ")}"
+    validation.either.left.map { notFoundProps =>
+      s"Property(ies) not found: ${notFoundProps.mkString(", ")}"
     }
   }
 }
@@ -68,30 +67,30 @@ final case class Pattern(chunks: Seq[Pattern.Chunk]) {
   def substituteVariables(variables: Map[String, String]): Either[String, String] = {
 
     def helper(chunks: Seq[Chunk]): ValidationNel[String, Seq[Chunk.Const]] =
-      chunks.toVector.traverseU[ValidationNel[String, Seq[Chunk.Const]]] {
+      chunks.validationNelTraverse[String, Seq[Chunk.Const]] {
         case Chunk.Var(name) =>
           variables.get(name) match {
             case Some(value) =>
-              Seq(Chunk.Const(value)).successNel
+              ValidationNel.success(Seq(Chunk.Const(value)))
             case None =>
-              name.failureNel
+              ValidationNel.failure(name)
           }
         case Chunk.Opt(l @ _*) =>
           val res = helper(l)
           if (res.isSuccess)
             res
           else
-            Seq().successNel
+            ValidationNel.success(Seq())
         case c: Chunk.Const =>
-          Seq(c).successNel
+          ValidationNel.success(Seq(c))
       }.map(_.flatten)
 
     val validation = helper(chunks)
 
-    validation match {
-      case Failure(notFoundVariables) =>
-        Left(s"Variables not found: ${notFoundVariables.toList.mkString(", ")}")
-      case Success(constants) =>
+    validation.either match {
+      case Left(notFoundVariables) =>
+        Left(s"Variables not found: ${notFoundVariables.mkString(", ")}")
+      case Right(constants) =>
         val b = new StringBuilder
         constants.foreach(b ++= _.value)
         Right(b.result())
