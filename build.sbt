@@ -40,7 +40,7 @@ def buildLevelSettings: Seq[Setting[_]] =
       scalafmtVersion := "1.3.0",
     ))
 
-def commonSettings: Seq[Setting[_]] = Def settings (
+def commonSettings: Seq[Setting[_]] = Def.settings(
   headerLicense := Some(HeaderLicense.Custom(
     """|sbt
        |Copyright 2011 - 2017, Lightbend, Inc.
