@@ -338,6 +338,11 @@ object Scoped {
       (this.? zipWith i)((x, y) => (x, y) map { case (a, b) => a getOrElse b })
   }
 
+  /** Enriches `Initialize[Task[S]]` types.
+   *
+   * @param i the original `Initialize[Task[S]]` value to enrich
+   * @tparam S the type of the underlying value
+   */
   final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
@@ -367,8 +372,14 @@ object Scoped {
     }
   }
 
+  /** Enriches `Initialize[InputTask[S]]` types.
+   *
+   * @param i the original `Initialize[InputTask[S]]` value to enrich
+   * @tparam S the type of the underlying value
+   */
   final class RichInitializeInputTask[S](i: Initialize[InputTask[S]])
       extends RichInitTaskBase[S, InputTask] {
+
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
 
     def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = {
@@ -378,6 +389,11 @@ object Scoped {
     }
   }
 
+  /** Enriches `Initialize[R[S]]` types. Abstracts over the specific task-like type constructor.
+   *
+   * @tparam S the type of the underlying vault
+   * @tparam R the task-like type constructor (either Task or InputTask)
+   */
   sealed abstract class RichInitTaskBase[S, R[_]] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[R[T]]
 
