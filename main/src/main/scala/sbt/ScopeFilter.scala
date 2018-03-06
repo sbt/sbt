@@ -10,7 +10,7 @@ package sbt
 import sbt.internal.{ Load, LoadedBuildUnit }
 import sbt.internal.util.{ AttributeKey, Dag, Types }
 
-import sbt.librarymanagement.Configuration
+import sbt.librarymanagement.{ Configuration, ConfigRef }
 
 import Types.const
 import Def.Initialize
@@ -152,6 +152,16 @@ object ScopeFilter {
     def inConfigurations(configs: Configuration*): ConfigurationFilter = {
       val cs = configs.map(_.name).toSet
       selectAxis[ConfigKey](const(c => cs(c.name)))
+    }
+
+    def inConfigurationsByKeys(keys: ConfigKey*): ConfigurationFilter = {
+      val cs = keys.toSet
+      selectAxis[ConfigKey](const(cs))
+    }
+
+    def inConfigurationsByRefs(refs: ConfigRef*): ConfigurationFilter = {
+      val cs = refs.map(r => ConfigKey(r.name)).toSet
+      selectAxis[ConfigKey](const(cs))
     }
 
     implicit def settingKeyAll[T](key: Initialize[T]): SettingKeyAll[T] = new SettingKeyAll[T](key)

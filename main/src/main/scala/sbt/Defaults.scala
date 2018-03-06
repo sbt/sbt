@@ -2705,6 +2705,17 @@ object Classpaths {
     visit(projectRef, conf)
     visited.toSeq
   }
+
+  def interSortConfigurations(
+      projectRef: ProjectRef,
+      conf: Configuration,
+      data: Settings[Scope],
+      deps: BuildDependencies
+  ): Seq[(ProjectRef, ConfigRef)] =
+    interSort(projectRef, conf, data, deps).map {
+      case (projectRef, configName) => (projectRef, ConfigRef(configName))
+    }
+
   private[sbt] def unmanagedDependencies0(projectRef: ProjectRef,
                                           conf: Configuration,
                                           data: Settings[Scope],
