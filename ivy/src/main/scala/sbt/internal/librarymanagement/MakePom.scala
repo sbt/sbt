@@ -425,7 +425,7 @@ class MakePom(val log: Logger) {
   def makeExclusion(exclRule: ExcludeRule): Either[String, NodeSeq] = {
     val m = exclRule.getId.getModuleId
     val (g, a) = (m.getOrganisation, m.getName)
-    if (g == null || g.isEmpty || g == "*" || a.isEmpty || a == "*")
+    if (g == null || g.isEmpty || a == null || a.isEmpty)
       Left(
         "Skipped generating '<exclusion/>' for %s. Dependency exclusion should have both 'org' and 'module' to comply with Maven POM's schema."
           .format(m)

@@ -27,6 +27,13 @@ class InclExclSpec extends BaseIvySpecification {
     )
   }
 
+  def testScalaLibraryIsMissing(report: UpdateReport): Assertion = {
+    assert(
+      !report.allModules.exists(_.name.contains("scala-library")),
+      "scala-library has not been excluded."
+    )
+  }
+
   def testScalahostIsMissing(report: UpdateReport): Assertion = {
     assert(
       !report.allModules.exists(_.name.contains("scalahost")),
@@ -64,5 +71,17 @@ class InclExclSpec extends BaseIvySpecification {
     val excluded = new OrganizationArtifactName("net.liftweb", "lift-json", CrossVersion.full)
     val report = getIvyReport(createMetaDep(excluded), scala2122)
     testScalahostIsMissing(report)
+  }
+
+  it should "exclude any version of scala-library via * artifact id" in {
+    val toExclude = ExclusionRule("org.scala-lang", "*")
+    val report = getIvyReport(createLiftDep(toExclude), scala210)
+    testScalaLibraryIsMissing(report)
+  }
+
+  it should "exclude any version of scala-library via * org id" in {
+    val toExclude = ExclusionRule("*", "scala-library")
+    val report = getIvyReport(createLiftDep(toExclude), scala210)
+    testScalaLibraryIsMissing(report)
   }
 }
