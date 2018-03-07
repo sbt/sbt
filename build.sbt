@@ -214,6 +214,11 @@ lazy val testingProj = (project in file("testing"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // private[sbt]
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("sbt.TestStatus.write"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.TestStatus.read"),
+    ),
   )
   .configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
 
