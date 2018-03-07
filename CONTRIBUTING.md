@@ -246,3 +246,12 @@ cd vscode-sbt-scala/client
 $ vsce package
 $ vsce publish
 ```
+
+## Signing the CLA
+
+Contributing to sbt requires you or your employer to sign the
+[Lightbend Contributor License Agreement](https://www.lightbend.com/contribute/cla).
+
+To make it easier to respect our license agreements, we have added an sbt task
+that takes care of adding the LICENSE headers to new files. Run `headerCreate`
+and sbt will put a copyright notice into it.
