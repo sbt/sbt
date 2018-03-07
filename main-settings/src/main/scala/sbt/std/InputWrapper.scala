@@ -8,9 +8,10 @@
 package sbt
 package std
 
-import language.experimental.macros
-import reflect.macros._
-import reflect.internal.annotations.compileTimeOnly
+import scala.language.experimental.macros
+
+import scala.annotation.compileTimeOnly
+import scala.reflect.macros._
 
 import Def.Initialize
 import sbt.internal.util.appmacro.ContextUtil

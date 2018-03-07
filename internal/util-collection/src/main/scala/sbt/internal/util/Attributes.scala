@@ -31,7 +31,8 @@ sealed trait AttributeKey[T] {
   def description: Option[String]
 
   /**
-   * In environments that support delegation, looking up this key when it has no associated value will delegate to the values associated with these keys.
+   * In environments that support delegation, looking up this key when it has no associated value
+   * will delegate to the values associated with these keys.
    * The delegation proceeds in order the keys are returned here.
    */
   def extend: Seq[AttributeKey[_]]
