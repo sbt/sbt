@@ -1999,7 +1999,7 @@ object Classpaths {
       ConflictWarning(conflictWarning.value, report, log)
       report
     },
-    evictionWarningOptions in update := (evictionWarningOptions in GlobalScope).value,
+    evictionWarningOptions in update := evictionWarningOptions.value,
     evictionWarningOptions in evicted := EvictionWarningOptions.full,
     evicted := {
       import ShowLines._
