@@ -7,19 +7,16 @@ final class Configuration private[sbt] (
     val name: String,
     val description: String,
     val isPublic: Boolean,
-    val extendsConfigs: Vector[sbt.librarymanagement.Configuration],
-    val transitive: Boolean)
-    extends sbt.librarymanagement.ConfigurationExtra
+    val extendsConfigs: Vector[Configuration],
+    val transitive: Boolean
+) extends ConfigurationExtra
     with Serializable {
 
   require(name != null, "name cannot be null")
-  require(name.size > 0, "name cannot be empty")
+  require(name.nonEmpty, "name cannot be empty")
   require(id != null, "id cannot be null")
-  require(id.size > 0, "id cannot be empty")
+  require(id.nonEmpty, "id cannot be empty")
   require(id.head.isUpper, s"id must be capitalized: $id")
-
-  private def this(id: String, name: String) =
-    this(id, name, "", true, Vector.empty, true)
 
   override def equals(o: Any): Boolean = o match {
     case x: Configuration =>
@@ -31,50 +28,48 @@ final class Configuration private[sbt] (
         (this.transitive == x.transitive)
     case _ => false
   }
-  override val hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (17 + id.##) + name.##) + description.##) + isPublic.##) + extendsConfigs.##) + transitive.##)
-  }
-  override def toString: String = {
-    name
-  }
-  protected[this] def copy(id: String = id,
-                           name: String = name,
-                           description: String = description,
-                           isPublic: Boolean = isPublic,
-                           extendsConfigs: Vector[sbt.librarymanagement.Configuration] =
-                             extendsConfigs,
-                           transitive: Boolean = transitive): Configuration = {
+
+  override val hashCode: Int =
+    37 * (37 * (37 * (37 * (37 * (37 * (17 +
+      id.##) + name.##) + description.##) + isPublic.##) + extendsConfigs.##) + transitive.##)
+
+  override def toString: String = name
+
+  protected[this] def copy(
+      id: String = id,
+      name: String = name,
+      description: String = description,
+      isPublic: Boolean = isPublic,
+      extendsConfigs: Vector[Configuration] = extendsConfigs,
+      transitive: Boolean = transitive
+  ): Configuration =
     new Configuration(id, name, description, isPublic, extendsConfigs, transitive)
-  }
 
-  def withDescription(description: String): Configuration = {
-    copy(description = description)
-  }
+  def withDescription(description: String): Configuration = copy(description = description)
 
-  def withIsPublic(isPublic: Boolean): Configuration = {
-    copy(isPublic = isPublic)
-  }
+  def withIsPublic(isPublic: Boolean): Configuration = copy(isPublic = isPublic)
 
-  def withExtendsConfigs(
-      extendsConfigs: Vector[sbt.librarymanagement.Configuration]): Configuration = {
+  def withExtendsConfigs(extendsConfigs: Vector[Configuration]): Configuration =
     copy(extendsConfigs = extendsConfigs)
-  }
 
-  def withTransitive(transitive: Boolean): Configuration = {
+  def withTransitive(transitive: Boolean): Configuration =
     copy(transitive = transitive)
-  }
 
   def toConfigRef: ConfigRef = ConfigRef(name)
 }
+
 object Configuration {
   // Don't call this directly. It's intended to be used from config macro.
   def of(id: String, name: String): Configuration =
     new Configuration(id, name, "", true, Vector.empty, true)
-  def of(id: String,
-         name: String,
-         description: String,
-         isPublic: Boolean,
-         extendsConfigs: Vector[sbt.librarymanagement.Configuration],
-         transitive: Boolean): Configuration =
+
+  def of(
+      id: String,
+      name: String,
+      description: String,
+      isPublic: Boolean,
+      extendsConfigs: Vector[Configuration],
+      transitive: Boolean
+  ): Configuration =
     new Configuration(id, name, description, isPublic, extendsConfigs, transitive)
 }
