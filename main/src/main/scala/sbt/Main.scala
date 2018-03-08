@@ -52,7 +52,6 @@ import xsbti.compile.CompilerCache
 import scala.annotation.tailrec
 import sbt.io.IO
 import sbt.io.syntax._
-import StandardMain._
 
 import java.io.{ File, IOException }
 import java.net.URI
@@ -69,34 +68,35 @@ final class xMain extends xsbti.AppMain {
     import BasicCommandStrings.runEarly
     import BuiltinCommands.defaults
     import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-    val state = initialState(
+    val state = StandardMain.initialState(
       configuration,
       Seq(defaults, early),
       runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
-    runManaged(state)
+    StandardMain.runManaged(state)
   }
 }
 
 final class ScriptMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
-    runManaged(
-      initialState(
-        configuration,
-        BuiltinCommands.ScriptCommands,
-        runEarly(Level.Error.toString) :: Script.Name :: Nil
-      ))
+    val state = StandardMain.initialState(
+      configuration,
+      BuiltinCommands.ScriptCommands,
+      runEarly(Level.Error.toString) :: Script.Name :: Nil
+    )
+    StandardMain.runManaged(state)
   }
 }
 
 final class ConsoleMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-    runManaged(
-      initialState(
-        configuration,
-        BuiltinCommands.ConsoleCommands,
-        IvyConsole.Name :: Nil
-      ))
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    val state = StandardMain.initialState(
+      configuration,
+      BuiltinCommands.ConsoleCommands,
+      IvyConsole.Name :: Nil
+    )
+    StandardMain.runManaged(state)
+  }
 }
 
 object StandardMain {
