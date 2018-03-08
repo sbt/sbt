@@ -1753,6 +1753,7 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         conflictWarning :== ConflictWarning.default("global"),
+        evictionWarningOptions := EvictionWarningOptions.default,
         compatibilityWarningOptions :== CompatibilityWarningOptions.default,
         homepage :== None,
         startYear :== None,
@@ -1988,7 +1989,6 @@ object Classpaths {
       val suffix = if (crossPaths.value) s"_$binVersion" else ""
       s"update_cache$suffix"
     },
-    evictionWarningOptions in update := EvictionWarningOptions.default,
     dependencyPositions := dependencyPositionsTask.value,
     unresolvedWarningConfiguration in update := UnresolvedWarningConfiguration(
       dependencyPositions.value),
@@ -1999,6 +1999,7 @@ object Classpaths {
       ConflictWarning(conflictWarning.value, report, log)
       report
     },
+    evictionWarningOptions in update := evictionWarningOptions.value,
     evictionWarningOptions in evicted := EvictionWarningOptions.full,
     evicted := {
       import ShowLines._
