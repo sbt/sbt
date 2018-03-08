@@ -110,6 +110,10 @@ lazy val lmCore = (project in file("core"))
       exclude[MissingClassProblem]("sbt.internal.librarymanagement.InlineConfigurationFunctions"),
       // dropped internal class parent (InlineConfigurationFunctions)
       exclude[MissingTypesProblem]("sbt.librarymanagement.ModuleDescriptorConfiguration$"),
+
+      // Configuration's copy method was never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Configuration.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Configuration.copy$default$*"),
     ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
