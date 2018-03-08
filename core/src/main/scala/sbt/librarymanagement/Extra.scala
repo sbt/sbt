@@ -30,15 +30,11 @@ private[librarymanagement] abstract class InclExclRuleFunctions {
 }
 
 private[librarymanagement] abstract class ArtifactTypeFilterExtra {
-  def types: Set[String]
   def inverted: Boolean
 
-  protected[this] def copy(
-      types: Set[String] = types,
-      inverted: Boolean = inverted
-  ): ArtifactTypeFilter
+  def withInverted(inverted: Boolean): ArtifactTypeFilter
 
-  def invert = copy(inverted = !inverted)
+  def invert = withInverted(!inverted)
 }
 
 private[librarymanagement] abstract class ArtifactTypeFilterFunctions {

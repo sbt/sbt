@@ -24,21 +24,14 @@ private[librarymanagement] abstract class ModuleIDExtra {
   def crossVersion: CrossVersion
   def branchName: Option[String]
 
-  protected[this] def copy(
-      organization: String = organization,
-      name: String = name,
-      revision: String = revision,
-      configurations: Option[String] = configurations,
-      isChanging: Boolean = isChanging,
-      isTransitive: Boolean = isTransitive,
-      isForce: Boolean = isForce,
-      explicitArtifacts: Vector[Artifact] = explicitArtifacts,
-      inclusions: Vector[InclusionRule] = inclusions,
-      exclusions: Vector[ExclusionRule] = exclusions,
-      extraAttributes: Map[String, String] = extraAttributes,
-      crossVersion: CrossVersion = crossVersion,
-      branchName: Option[String] = branchName
-  ): ModuleID
+  def withIsChanging(isChanging: Boolean): ModuleID
+  def withIsTransitive(isTransitive: Boolean): ModuleID
+  def withIsForce(isForce: Boolean): ModuleID
+  def withExplicitArtifacts(explicitArtifacts: Vector[Artifact]): ModuleID
+  def withExclusions(exclusions: Vector[InclExclRule]): ModuleID
+  def withExtraAttributes(extraAttributes: Map[String, String]): ModuleID
+  def withCrossVersion(crossVersion: CrossVersion): ModuleID
+  def withBranchName(branchName: Option[String]): ModuleID
 
   protected def toStringImpl: String =
     s"""$organization:$name:$revision""" +
@@ -78,14 +71,14 @@ private[librarymanagement] abstract class ModuleIDExtra {
   def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else Disabled())
 
   /** Specifies the cross-version behavior for this module.  See [CrossVersion] for details.*/
-  def cross(v: CrossVersion): ModuleID = copy(crossVersion = v)
+  def cross(v: CrossVersion): ModuleID = withCrossVersion(v)
 
   // () required for chaining
   /** Do not follow dependencies of this module.  Synonym for `intransitive`.*/
   def notTransitive() = intransitive()
 
   /** Do not follow dependencies of this module.  Synonym for `notTransitive`.*/
-  def intransitive() = copy(isTransitive = false)
+  def intransitive() = withIsTransitive(false)
 
   /**
    * Marks this dependency as "changing".  Ivy will always check if the metadata has changed and then if the artifact has changed,
@@ -93,13 +86,13 @@ private[librarymanagement] abstract class ModuleIDExtra {
    *
    * See the "Changes in artifacts" section of https://ant.apache.org/ivy/history/trunk/concept.html for full details.
    */
-  def changing() = copy(isChanging = true)
+  def changing() = withIsChanging(true)
 
   /**
    * Indicates that conflict resolution should only select this module's revision.
    * This prevents a newer revision from being pulled in by a transitive dependency, for example.
    */
-  def force() = copy(isForce = true)
+  def force() = withIsForce(true)
 
   /**
    * Specifies a URL from which the main artifact for this dependency can be downloaded.
@@ -116,13 +109,13 @@ private[librarymanagement] abstract class ModuleIDExtra {
    * these artifact definitions override the information in the dependency's published metadata.
    */
   def artifacts(newArtifacts: Artifact*) =
-    copy(explicitArtifacts = newArtifacts.toVector ++ explicitArtifacts)
+    withExplicitArtifacts(newArtifacts.toVector ++ explicitArtifacts)
 
   /**
    * Applies the provided exclusions to dependencies of this module.  Note that only exclusions that specify
    * both the exact organization and name and nothing else will be included in a pom.xml.
    */
-  def excludeAll(rules: ExclusionRule*) = copy(exclusions = this.exclusions ++ rules)
+  def excludeAll(rules: ExclusionRule*) = withExclusions(exclusions ++ rules)
 
   /** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
   def exclude(org: String, name: String) =
@@ -133,7 +126,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
    * This information will only be published in an ivy.xml and not in a pom.xml.
    */
   def extra(attributes: (String, String)*) =
-    copy(extraAttributes = this.extraAttributes ++ ModuleID.checkE(attributes))
+    withExtraAttributes(extraAttributes ++ ModuleID.checkE(attributes))
 
   /**
    * Not recommended for new use.  This method is not deprecated, but the `update-classifiers` task is preferred
@@ -176,9 +169,9 @@ private[librarymanagement] abstract class ModuleIDExtra {
   /**
    * Sets the Ivy branch of this module.
    */
-  def branch(branchName: String) = copy(branchName = Some(branchName))
+  def branch(branchName: String) = withBranchName(Some(branchName))
 
-  def branch(branchName: Option[String]) = copy(branchName = branchName)
+  def branch(branchName: Option[String]) = withBranchName(branchName)
 }
 
 private[librarymanagement] abstract class ModuleIDFunctions {

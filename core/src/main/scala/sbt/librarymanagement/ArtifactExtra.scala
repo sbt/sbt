@@ -7,28 +7,12 @@ import java.io.File
 import java.net.URL
 
 private[librarymanagement] abstract class ArtifactExtra {
-  def name: String
-  def `type`: String
-  def extension: String
-  def classifier: Option[String]
-  def configurations: Vector[ConfigRef]
-  def url: Option[URL]
   def extraAttributes: Map[String, String]
-  def checksum: Option[Checksum]
 
-  protected[this] def copy(
-      name: String = name,
-      `type`: String = `type`,
-      extension: String = extension,
-      classifier: Option[String] = classifier,
-      configurations: Vector[ConfigRef] = configurations,
-      url: Option[URL] = url,
-      extraAttributes: Map[String, String] = extraAttributes,
-      checksum: Option[Checksum] = checksum
-  ): Artifact
+  def withExtraAttributes(extraAttributes: Map[String, String]): Artifact
 
   def extra(attributes: (String, String)*) =
-    copy(extraAttributes = extraAttributes ++ ModuleID.checkE(attributes))
+    withExtraAttributes(extraAttributes ++ ModuleID.checkE(attributes))
 }
 
 import Configurations.{ Optional, Pom, Test }

@@ -114,6 +114,32 @@ lazy val lmCore = (project in file("core"))
       // Configuration's copy method was never meant to be public
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Configuration.copy"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Configuration.copy$default$*"),
+
+      // the data type copy methods were never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleReportExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleReportExtra.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleIDExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleIDExtra.copy$default$*"),
+
+      // these abstract classes are private[librarymanagement] so it's fine if they have more methods
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleReportExtra.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleIDExtra.*"),
+
+      // these abstract classes are private[librarymanagement] so they can lose these abstract methods
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.type"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.url"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.checksum"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.name"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.configurations"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.classifier"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.extension"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.types"),
     ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
