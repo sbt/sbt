@@ -43,7 +43,7 @@ final class PomConfiguration private (
 }
 object PomConfiguration {
   
-  def apply(file: java.io.File, autoScalaTools: Boolean): PomConfiguration = new PomConfiguration(false, None, file, autoScalaTools)
+  def apply(file: java.io.File, autoScalaTools: Boolean): PomConfiguration = new PomConfiguration(file, autoScalaTools)
   def apply(validate: Boolean, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo], file: java.io.File, autoScalaTools: Boolean): PomConfiguration = new PomConfiguration(validate, scalaModuleInfo, file, autoScalaTools)
   def apply(validate: Boolean, scalaModuleInfo: sbt.librarymanagement.ScalaModuleInfo, file: java.io.File, autoScalaTools: Boolean): PomConfiguration = new PomConfiguration(validate, Option(scalaModuleInfo), file, autoScalaTools)
 }

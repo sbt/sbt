@@ -38,6 +38,6 @@ final class Binary private (
 }
 object Binary {
   
-  def apply(): Binary = new Binary("", "")
+  def apply(): Binary = new Binary()
   def apply(prefix: String, suffix: String): Binary = new Binary(prefix, suffix)
 }

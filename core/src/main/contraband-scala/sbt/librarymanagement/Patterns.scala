@@ -45,6 +45,6 @@ final class Patterns private (
 }
 object Patterns extends sbt.librarymanagement.PatternsFunctions {
   
-  def apply(): Patterns = new Patterns(Vector.empty, Vector.empty, true, false, false)
+  def apply(): Patterns = new Patterns()
   def apply(ivyPatterns: Vector[String], artifactPatterns: Vector[String], isMavenCompatible: Boolean, descriptorOptional: Boolean, skipConsistencyCheck: Boolean): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
 }

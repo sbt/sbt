@@ -38,6 +38,6 @@ final class Full private (
 }
 object Full {
   
-  def apply(): Full = new Full("", "")
+  def apply(): Full = new Full()
   def apply(prefix: String, suffix: String): Full = new Full(prefix, suffix)
 }
