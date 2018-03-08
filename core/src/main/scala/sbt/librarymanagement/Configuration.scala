@@ -73,3 +73,19 @@ object Configuration {
   ): Configuration =
     new Configuration(id, name, description, isPublic, extendsConfigs, transitive)
 }
+
+/*
+Configuration isn't defined with Contraband.
+
+The reasons that block it from being made a Contraband type (AFAIK):
+ * its hashCode is a val, not a def
+ * it doesn't have companion apply methods, but "of" instead
+
+Other reasons that I don't think are blocking:
+ * it's constructor is private[sbt] (doesn't matter, Configuration.of is public)
+
+Reasons that are definitely not blocking:
+ * it has a custom toString, supported by Contraband
+ * it has init requirements, supported by Contraband via parent class
+ * it has other methods, supported by Contraband via parent class
+ */
