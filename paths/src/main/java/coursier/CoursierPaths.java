@@ -30,7 +30,7 @@ public final class CoursierPaths {
         if (path == null)
             path = System.getProperty("coursier.cache");
 
-        File baseXdgDir = new File(coursierDirectories.projectCacheDir);
+        File baseXdgDir = new File(coursierDirectories.cacheDir);
         File xdgDir = new File(baseXdgDir, "v1");
         String xdgPath = xdgDir.getAbsolutePath();
 
@@ -58,7 +58,7 @@ public final class CoursierPaths {
         if (cacheDirectory0 == null)
             synchronized (lock) {
                 if (cacheDirectory0 == null) {
-                    coursierDirectories = ProjectDirectories.fromProjectName("Coursier");
+                    coursierDirectories = ProjectDirectories.from(null, null, "Coursier");
                     cacheDirectory0 = computeCacheDirectory();
                 }
             }

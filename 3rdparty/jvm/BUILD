@@ -138,7 +138,7 @@ jar_library(
         jar(
             org = "io.github.soc",
             name = "directories",
-            rev = "5",
+            rev = "6",
         ),
     ],
 )
