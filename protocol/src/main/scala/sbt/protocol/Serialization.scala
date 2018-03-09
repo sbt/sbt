@@ -41,10 +41,7 @@ object Serialization {
     CompactPrinter(json).getBytes("UTF-8")
   }
 
-  /**
-   * This formats the message according to JSON-RPC.
-   * http://www.jsonrpc.org/specification
-   */
+  /** This formats the message according to JSON-RPC. http://www.jsonrpc.org/specification */
   private[sbt] def serializeResponseMessage(message: JsonRpcResponseMessage): Array[Byte] = {
     import sbt.internal.protocol.codec.JsonRPCProtocol._
     val json: JValue = Converter.toJson[JsonRpcResponseMessage](message).get
@@ -57,10 +54,7 @@ object Serialization {
       body).getBytes("UTF-8")
   }
 
-  /**
-   * This formats the message according to JSON-RPC.
-   * http://www.jsonrpc.org/specification
-   */
+  /** This formats the message according to JSON-RPC. http://www.jsonrpc.org/specification */
   private[sbt] def serializeNotificationMessage(
       message: JsonRpcNotificationMessage): Array[Byte] = {
     import sbt.internal.protocol.codec.JsonRPCProtocol._
