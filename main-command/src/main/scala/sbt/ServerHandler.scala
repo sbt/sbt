@@ -26,8 +26,8 @@ object ServerHandler {
 
   lazy val fallback: ServerHandler = ServerHandler({ handler =>
     ServerIntent(
-      { case x => handler.log.debug(s"Unhandled notification received: ${x.method}") },
-      { case x => handler.log.debug(s"Unhandled request received: ${x.method}") }
+      { case x => handler.log.debug(s"Unhandled notification received: ${x.method}: $x") },
+      { case x => handler.log.debug(s"Unhandled request received: ${x.method}: $x") }
     )
   })
 }
