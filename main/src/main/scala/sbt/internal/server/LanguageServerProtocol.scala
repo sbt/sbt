@@ -143,9 +143,11 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   }
 
   /** Respond back to Language Server's client. */
-  private[sbt] def jsonRpcRespondError(execId: Option[String],
-                                       code: Long,
-                                       message: String): Unit = {
+  private[sbt] def jsonRpcRespondError(
+      execId: Option[String],
+      code: Long,
+      message: String,
+  ): Unit = {
     val e = JsonRpcResponseError(code, message, None)
     val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
     val bytes = Serialization.serializeResponseMessage(m)
@@ -153,10 +155,12 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   }
 
   /** Respond back to Language Server's client. */
-  private[sbt] def jsonRpcRespondError[A: JsonFormat](execId: Option[String],
-                                                      code: Long,
-                                                      message: String,
-                                                      data: A): Unit = {
+  private[sbt] def jsonRpcRespondError[A: JsonFormat](
+      execId: Option[String],
+      code: Long,
+      message: String,
+      data: A,
+  ): Unit = {
     val e = JsonRpcResponseError(code, message, Option(Converter.toJson[A](data).get))
     val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
     val bytes = Serialization.serializeResponseMessage(m)
