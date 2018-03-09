@@ -10,6 +10,7 @@ package internal
 package server
 
 import sjsonnew.JsonFormat
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
 import sbt.protocol.{ SettingQuery => Q }
@@ -143,16 +144,8 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   }
 
   /** Respond back to Language Server's client. */
-  private[sbt] def jsonRpcRespondError(
-      execId: Option[String],
-      code: Long,
-      message: String,
-  ): Unit = {
-    val e = JsonRpcResponseError(code, message, None)
-    val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
-    val bytes = Serialization.serializeResponseMessage(m)
-    publishBytes(bytes)
-  }
+  private[sbt] def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit =
+    jsonRpcRespondErrorImpl(execId, code, message, None)
 
   /** Respond back to Language Server's client. */
   private[sbt] def jsonRpcRespondError[A: JsonFormat](
@@ -160,8 +153,16 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
       code: Long,
       message: String,
       data: A,
+  ): Unit =
+    jsonRpcRespondErrorImpl(execId, code, message, Option(Converter.toJson[A](data).get))
+
+  private[this] def jsonRpcRespondErrorImpl(
+      execId: Option[String],
+      code: Long,
+      message: String,
+      data: Option[JValue],
   ): Unit = {
-    val e = JsonRpcResponseError(code, message, Option(Converter.toJson[A](data).get))
+    val e = JsonRpcResponseError(code, message, data)
     val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
     val bytes = Serialization.serializeResponseMessage(m)
     publishBytes(bytes)
