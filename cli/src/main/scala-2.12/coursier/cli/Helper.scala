@@ -584,17 +584,33 @@ class Helper(
   }
 
   private def getDepArtifactsForClassifier(sources: Boolean, javadoc: Boolean, res0: Resolution): Seq[(Dependency, Artifact)] = {
-    if (classifier0.nonEmpty || sources || javadoc) {
-      var classifiers = classifier0
-      if (sources)
-        classifiers = classifiers + "sources"
-      if (javadoc)
-        classifiers = classifiers + "javadoc"
+    val raw: Seq[(Dependency, Artifact)] = if (hasOverrideClassifiers(sources, javadoc)) {
       //TODO: this function somehow gives duplicated things
-      res0.dependencyClassifiersArtifacts(classifiers.toVector.sorted)
+      res0.dependencyClassifiersArtifacts(overrideClassifiers(sources, javadoc).toVector.sorted)
     } else {
       res0.dependencyArtifacts(withOptional = true)
     }
+
+    raw.map({ case (dep, artifact) =>
+        (
+          dep.copy(
+            attributes = dep.attributes.copy(classifier = artifact.classifier)),
+          artifact
+        )
+    })
+  }
+
+  private def overrideClassifiers(sources: Boolean, javadoc:Boolean): Set[String] = {
+    var classifiers = classifier0
+    if (sources)
+      classifiers = classifiers + "sources"
+    if (javadoc)
+      classifiers = classifiers + "javadoc"
+    classifiers
+  }
+
+  private def hasOverrideClassifiers(sources: Boolean, javadoc: Boolean): Boolean = {
+    classifier0.nonEmpty || sources || javadoc
   }
 
   def fetchMap(
@@ -708,9 +724,17 @@ class Helper(
       val artifacts: Seq[(Dependency, Artifact)] = res.dependencyArtifacts
 
       val jsonReq = JsonPrintRequirement(artifactToFile, depToArtifacts)
-      val roots = deps.toVector.map(JsonElem(_, artifacts, Option(jsonReq), res, printExclusions = verbosityLevel >= 1, excluded = false, colors = false))
-      val jsonStr = JsonReport(roots, conflictResolutionForRoots)(_.children, _.reconciledVersionStr, _.requestedVersionStr, _.downloadedFiles)
-
+      val roots = deps.toVector.map(JsonElem(_, artifacts, Option(jsonReq), res, printExclusions = verbosityLevel >= 1, excluded = false, colors = false, overrideClassifiers = overrideClassifiers(sources, javadoc)))
+      val jsonStr = JsonReport(
+        roots,
+        conflictResolutionForRoots,
+        overrideClassifiers(sources, javadoc)
+      )(
+        _.children,
+        _.reconciledVersionStr,
+        _.requestedVersionStr,
+        _.downloadedFile
+      )
       val pw = new PrintWriter(new File(jsonOutputFile))
       pw.write(jsonStr)
       pw.close()

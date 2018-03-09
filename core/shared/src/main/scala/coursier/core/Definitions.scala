@@ -58,6 +58,14 @@ final case class Dependency(
   lazy val moduleVersion = (module, version)
 
   override lazy val hashCode = Dependency.unapply(this).get.hashCode()
+
+  def mavenPrefix: String = {
+    if (attributes.isEmpty)
+      module.orgName
+    else {
+      s"${module.orgName}:${attributes.packagingAndClassifier}"
+    }
+  }
 }
 
 // Maven-specific
@@ -65,6 +73,19 @@ final case class Attributes(
   `type`: String,
   classifier: String
 ) {
+  def packaging: String = if (`type`.isEmpty)
+      "jar"
+    else
+      `type`
+
+  def packagingAndClassifier: String = if (isEmpty) {
+      ""
+    } else if (classifier.isEmpty) {
+      packaging
+    } else {
+      s"$packaging:$classifier"
+    }
+
   def publication(name: String, ext: String): Publication =
     Publication(name, `type`, ext, classifier)
 

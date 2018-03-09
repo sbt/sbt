@@ -1,7 +1,7 @@
 package coursier.cli
 
 import java.io._
-import java.util.zip.ZipInputStream
+
 import java.net.URLEncoder.encode
 import argonaut.Argonaut._
 import coursier.cli.util.{DepNode, ReportNode}
@@ -26,6 +26,8 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
       case Right(report) => report
     }
   }
+
+  private val fileNameLength: DepNode => Int = _.file.getOrElse("").length
 
   "Normal fetch" should "get all files" in {
 
@@ -92,7 +94,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       // org.apache.commons:commons-compress:1.4.1 should not contain deps underneath it.
       val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.4.1")
-      assert(compressNode.isDefined)
+      assert(node.dependencies.exists(_.coord == "org.apache.commons:commons-compress:1.4.1"))
       assert(compressNode.get.dependencies.isEmpty)
     }
   }
@@ -200,10 +202,10 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
           val node: ReportNode = getReportFromJson(jsonFile)
 
-          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.5")
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:jar:tests:1.5")
+
           assert(compressNode.isDefined)
-          assert(compressNode.get.files.head._1 == "tests")
-          assert(compressNode.get.files.head._2.contains("commons-compress-1.5-tests.jar"))
+          compressNode.get.file.map(f => assert(f.contains("commons-compress-1.5-tests.jar"))).orElse(fail("Not Defined"))
           assert(compressNode.get.dependencies.contains("org.tukaani:xz:1.2"))
         }
       }
@@ -237,14 +239,15 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
           val node: ReportNode = getReportFromJson(jsonFile)
 
           val compressNodes: Seq[DepNode] = node.dependencies
-            .filter(_.coord == "org.apache.commons:commons-compress:1.5")
-            .sortBy(_.files.head._1.length) // sort by first classifier length
-          assert(compressNodes.length == 2)
-          assert(compressNodes.head.files.head._1 == "")
-          assert(compressNodes.head.files.head._2.contains("commons-compress-1.5.jar"))
+            .filter(_.coord.startsWith("org.apache.commons:commons-compress"))
+            .sortBy(_.coord.length) // sort by coord length
 
-          assert(compressNodes.last.files.head._1 == "tests")
-          assert(compressNodes.last.files.head._2.contains("commons-compress-1.5-tests.jar"))
+          assert(compressNodes.length == 2)
+          assert(compressNodes.head.coord == "org.apache.commons:commons-compress:1.5")
+          compressNodes.head.file.map( f => assert(f.contains("commons-compress-1.5.jar"))).orElse(fail("Not Defined"))
+
+          assert(compressNodes.last.coord == "org.apache.commons:commons-compress:jar:tests:1.5")
+          compressNodes.last.file.map( f => assert(f.contains("commons-compress-1.5-tests.jar"))).orElse(fail("Not Defined"))
         }
       }
   }
@@ -266,8 +269,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
           val node: ReportNode = getReportFromJson(jsonFile)
           val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.5")
           assert(compressNode.isDefined)
-          assert(compressNode.get.files.head._1 == "")
-          assert(compressNode.get.files.head._2.contains("commons-compress-1.5.jar"))
+          compressNode.get.file.map( f => assert(f.contains("commons-compress-1.5.jar"))).orElse(fail("Not Defined"))
 
           assert(compressNode.get.dependencies.isEmpty)
         }
@@ -290,10 +292,9 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
           val node: ReportNode = getReportFromJson(jsonFile)
 
-          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.5")
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:jar:tests:1.5")
           assert(compressNode.isDefined)
-          assert(compressNode.get.files.head._1 == "tests")
-          assert(compressNode.get.files.head._2.contains("commons-compress-1.5-tests.jar"))
+          compressNode.get.file.map( f => assert(f.contains("commons-compress-1.5-tests.jar"))).orElse(fail("Not Defined"))
 
           assert(compressNode.get.dependencies.isEmpty)
         }
@@ -321,10 +322,10 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
           assert(!node.dependencies.exists(_.coord == "org.apache.commons:commons-compress:1.5"))
 
-          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.4.1")
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:jar:tests:1.4.1")
+
           assert(compressNode.isDefined)
-          assert(compressNode.get.files.head._1 == "tests")
-          assert(compressNode.get.files.head._2.contains("commons-compress-1.4.1-tests.jar"))
+          compressNode.get.file.map( f => assert(f.contains("commons-compress-1.4.1-tests.jar"))).orElse(fail("Not Defined"))
 
           assert(compressNode.get.dependencies.size == 1)
           assert(compressNode.get.dependencies.head == "org.tukaani:xz:1.0")
@@ -352,10 +353,10 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
           assert(!node.dependencies.exists(_.coord == "org.apache.commons:commons-compress:1.5"))
 
-          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.4.1")
+          val compressNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:jar:tests:1.4.1")
+
           assert(compressNode.isDefined)
-          assert(compressNode.get.files.head._1 == "tests")
-          assert(compressNode.get.files.head._2.contains("commons-compress-1.4.1-tests.jar"))
+          compressNode.get.file.map( f => assert(f.contains("commons-compress-1.4.1-tests.jar"))).orElse(fail("Not Defined"))
 
           assert(compressNode.get.dependencies.isEmpty)
         }
@@ -379,6 +380,29 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       assert(node.dependencies.exists(_.coord.startsWith("org.scala-lang:scala-library:2.10.")))
       assert(!node.dependencies.exists(_.coord.startsWith("org.scala-lang:scala-library:2.11.")))
+  }
+
+  "com.spotify:helios-testing:0.9.193" should "have dependencies with classifiers" in withFile() {
+    (excludeFile, _) =>
+      withFile() {
+        (jsonFile, _) => {
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath)
+          val fetchOpt = FetchOptions(common = commonOpt)
+
+          val heliosCoord = "com.spotify:helios-testing:0.9.193"
+
+          Fetch(
+            fetchOpt,
+            RemainingArgs(Seq(heliosCoord), Seq())
+          )
+          val node: ReportNode = getReportFromJson(jsonFile)
+          val testEntry: DepNode = node.dependencies.find(_.coord == heliosCoord).get
+          assert(
+            testEntry.dependencies.exists(_.startsWith("com.spotify:docker-client:jar:shaded:")))
+          assert(
+            node.dependencies.exists(_.coord.startsWith("com.spotify:docker-client:jar:shaded:")))
+        }
+      }
   }
 
   /**
@@ -411,11 +435,10 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
           val depNodes: Seq[DepNode] = node.dependencies
             .filter(_.coord == "org.apache.commons:commons-compress:1.5")
-            .sortBy(_.files.head._1.length)
+            .sortBy(fileNameLength)
           assert(depNodes.length == 1)
 
-          val urlInJsonFile = depNodes.head.files.head._2
-          assert(depNodes.head.files.head._1 == "")
+          val urlInJsonFile = depNodes.head.file.get
           assert(urlInJsonFile.contains(path))
 
           // open jar and inspect contents
@@ -453,10 +476,9 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       val depNodes: Seq[DepNode] = node.dependencies
         .filter(_.coord == "org.apache.commons:commons-compress:1.5")
-        .sortBy(_.files.head._1.length)
+        .sortBy(fileNameLength)
       assert(depNodes.length == 1)
-      assert(depNodes.head.files.head._1 == "")
-      assert(depNodes.head.files.head._2.contains("junit/junit/4.12/junit-4.12.jar"))
+      depNodes.head.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))
     }
   }
 
@@ -487,10 +509,9 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       val depNodes: Seq[DepNode] = node.dependencies
         .filter(_.coord == "a:b:c")
-        .sortBy(_.files.head._1.length)
+        .sortBy(fileNameLength)
       assert(depNodes.length == 1)
-      assert(depNodes.head.files.head._1 == "")
-      assert(depNodes.head.files.head._2.contains("junit/junit/4.12/junit-4.12.jar"))
+      depNodes.head.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))
     }
   }
 
@@ -519,12 +540,96 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
       val node: ReportNode = getReportFromJson(jsonFile)
 
       val depNodes: Seq[DepNode] = node.dependencies
-        .filter(_.coord == "org.apache.commons:commons-compress:1.5")
-        .sortBy(_.files.head._1.length)
+        .filter(_.coord.startsWith("org.apache.commons:commons-compress:"))
+        .sortBy(fileNameLength)
+
+
+      val coords: Seq[String] = node.dependencies
+        .map(_.coord)
+        .sorted
+
       assert(depNodes.length == 1)
       // classifier doesn't matter when we have a url so it is not listed
-      assert(depNodes.head.files.head._1 == "")
-      assert(depNodes.head.files.head._2.contains("junit/junit/4.12/junit-4.12.jar"))
+      depNodes.head.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))
+    }
+  }
+
+  /**
+   * Result:
+   * |└─ org.apache.commons:commons-compress:1.5
+   * |   └─ org.tukaani:xz:1.2
+   * |└─ org.tukaani:xz:1.2 // with the file from the URL
+   */
+  "external dep url with classifier that is a transitive dep" should "fetch junit-4.12.jar and classifier gets thrown away" in withFile() {
+    (jsonFile, _) => {
+      val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath)
+      val fetchOpt = FetchOptions(common = commonOpt)
+
+      // encode path to different jar than requested
+      val externalUrl = encode("http://central.maven.org/maven2/junit/junit/4.12/junit-4.12.jar", "UTF-8")
+
+      Fetch.run(
+        fetchOpt,
+        RemainingArgs(
+          Seq(
+            "org.apache.commons:commons-compress:1.5",
+            "org.tukaani:xz:1.2,classifier=tests,url="+externalUrl
+          ),
+          Seq()
+        )
+      )
+
+      val node: ReportNode = getReportFromJson(jsonFile)
+      val depNodes: Seq[DepNode] = node.dependencies
+        .filter(_.coord.startsWith("org.tukaani:xz:"))
+        .sortBy(fileNameLength)
+      val coords: Seq[String] = node.dependencies.map(_.coord).sorted
+
+      assert(coords == Seq("org.apache.commons:commons-compress:1.5", "org.tukaani:xz:1.2"))
+      assert(depNodes.length == 1)
+      assert(depNodes.last.file.isDefined)
+      depNodes.last.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))
+    }
+  }
+
+  /**
+   * Result:
+   * |└─ org.apache.commons:commons-compress:1.5,classifier=sources
+   *     └─ org.tukaani:xz:1.2,classifier=sources
+   */
+  "classifier sources" should "fetch sources jar" in withFile() {
+    (jsonFile, _) => {
+      val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath)
+      val fetchOpt = FetchOptions(common = commonOpt, sources=true)
+
+      // encode path to different jar than requested
+
+      Fetch.run(
+        fetchOpt,
+        RemainingArgs(
+          Seq(
+            "org.apache.commons:commons-compress:1.5,classifier=sources"
+          ),
+          Seq()
+        )
+      )
+      val node: ReportNode = getReportFromJson(jsonFile)
+      val coords: Seq[String] = node.dependencies.map(_.coord).sorted
+      val depNodes: Seq[DepNode] = node.dependencies
+        .filter(_.coord.startsWith("org.apache.commons"))
+        .sortBy(fileNameLength)
+
+      assert(depNodes.length == 1)
+      assert(depNodes.head.file.isDefined)
+      depNodes.head.file.map(f => assert(f.contains("1.5-sources.jar"))).orElse(fail("Not Defined"))
+      depNodes.head.dependencies.foreach(d => {
+        assert(d.contains(":sources:"))
+      })
+
+      assert(coords == Seq(
+        "org.apache.commons:commons-compress:jar:sources:1.5",
+        "org.tukaani:xz:jar:sources:1.2")
+      )
     }
   }
 
@@ -559,24 +664,23 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       val compressNodes = depNodes
         .filter(_.coord == "org.apache.commons:commons-compress:1.5")
-        .sortBy(_.files.head._1.length)
+        .sortBy(fileNameLength)
       assert(compressNodes.length == 1)
-      assert(compressNodes.head.files.head._1 == "")
-      assert(compressNodes.head.files.head._2.contains("junit/junit/4.12/junit-4.12.jar"))
+      compressNodes.head.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))
 
       val jacksonMapperNodes = depNodes
         .filter(_.coord == "org.codehaus.jackson:jackson-mapper-asl:1.8.8")
-        .sortBy(_.files.head._1.length)
+        .sortBy(fileNameLength)
       assert(jacksonMapperNodes.length == 1)
-      assert(jacksonMapperNodes.head.files.head._2.contains("org/codehaus/jackson/jackson-mapper-asl/1.8.8/jackson-mapper-asl-1.8.8.jar"))
+      jacksonMapperNodes.head.file.map( f => assert(f.contains("org/codehaus/jackson/jackson-mapper-asl/1.8.8/jackson-mapper-asl-1.8.8.jar"))).orElse(fail("Not Defined"))
       assert(jacksonMapperNodes.head.dependencies.size == 1)
       assert(jacksonMapperNodes.head.dependencies.head == "org.codehaus.jackson:jackson-core-asl:1.8.8")
 
       val jacksonCoreNodes = depNodes
         .filter(_.coord == "org.codehaus.jackson:jackson-core-asl:1.8.8")
-        .sortBy(_.files.head._1.length)
+        .sortBy(fileNameLength)
       assert(jacksonCoreNodes.length == 1)
-      assert(jacksonCoreNodes.head.files.head._2.contains("org/codehaus/jackson/jackson-core-asl/1.8.8/jackson-core-asl-1.8.8.jar"))
+      jacksonCoreNodes.head.file.map( f => assert(f.contains("org/codehaus/jackson/jackson-core-asl/1.8.8/jackson-core-asl-1.8.8.jar"))).orElse(fail("Not Defined"))
     }
   }
 
@@ -634,8 +738,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       val depNodes: Seq[DepNode] = node.dependencies
       assert(depNodes.length == 1)
-      assert(depNodes.head.files.head._1 == "")
-      assert(depNodes.head.files.head._2.contains("junit/junit/4.12/junit-4.12.jar"))
+      depNodes.head.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))
     }
   }
 
@@ -666,10 +769,9 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       val depNodes: Seq[DepNode] = node.dependencies
         .filter(_.coord == "org.apache.commons:commons-compress:1.5")
-        .sortBy(_.files.head._1.length)
+        .sortBy(fileNameLength)
       assert(depNodes.length == 1)
-      assert(depNodes.head.files.head._1 == "")
-      assert(depNodes.head.files.head._2.contains("junit/junit/4.12/junit-4.12.jar"))
+      depNodes.head.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))
     }
   }
 
@@ -701,7 +803,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       val depNode = node.dependencies.find(_.coord == "org.apache.commons:commons-compress:1.5")
       assert(depNode.isDefined)
-      assert(depNode.get.files.head._2.contains("commons-compress-1.5.jar"))
+      depNode.get.file.map( f => assert(f.contains("commons-compress-1.5.jar"))).orElse(fail("Not Defined"))
 
       assert(depNode.get.dependencies.size == 1)
       assert(depNode.get.dependencies.head.contains("org.tukaani:xz:1.2"))
