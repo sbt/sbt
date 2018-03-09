@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import java.io.File
 import java.{ util => ju }
 
-abstract class ConfigurationReportExtra {
+private[librarymanagement] abstract class ConfigurationReportExtra {
   def configuration: ConfigRef
   def modules: Vector[ModuleReport]
   def details: Vector[OrganizationArtifactReport]
@@ -34,7 +34,7 @@ abstract class ConfigurationReportExtra {
     }, details)
 }
 
-abstract class ModuleReportExtra {
+private[librarymanagement] abstract class ModuleReportExtra {
   def module: ModuleID
   def artifacts: Vector[(Artifact, File)]
   def missingArtifacts: Vector[Artifact]
@@ -126,7 +126,7 @@ abstract class ModuleReportExtra {
   ): ModuleReport
 }
 
-abstract class UpdateReportExtra {
+private[librarymanagement] abstract class UpdateReportExtra {
   def cachedDescriptor: File
   def configurations: Vector[ConfigurationReport]
   def stats: UpdateStats

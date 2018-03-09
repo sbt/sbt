@@ -72,7 +72,7 @@ final class ModuleDescriptorConfiguration private (
     copy(conflictManager = conflictManager)
   }
 }
-object ModuleDescriptorConfiguration extends sbt.internal.librarymanagement.InlineConfigurationFunctions {
+object ModuleDescriptorConfiguration extends sbt.librarymanagement.InlineConfigurationFunctions {
   
   def apply(module: sbt.librarymanagement.ModuleID, moduleInfo: sbt.librarymanagement.ModuleInfo): ModuleDescriptorConfiguration = new ModuleDescriptorConfiguration(false, None, module, moduleInfo, Vector.empty, Vector.empty, Vector.empty, scala.xml.NodeSeq.Empty, sbt.librarymanagement.Configurations.default, Option(sbt.librarymanagement.Configurations.Compile), sbt.librarymanagement.ConflictManager.default)
   def apply(validate: Boolean, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo], module: sbt.librarymanagement.ModuleID, moduleInfo: sbt.librarymanagement.ModuleInfo, dependencies: Vector[sbt.librarymanagement.ModuleID], overrides: Vector[sbt.librarymanagement.ModuleID], excludes: Vector[sbt.librarymanagement.InclExclRule], ivyXML: scala.xml.NodeSeq, configurations: Vector[sbt.librarymanagement.Configuration], defaultConfiguration: Option[sbt.librarymanagement.Configuration], conflictManager: sbt.librarymanagement.ConflictManager): ModuleDescriptorConfiguration = new ModuleDescriptorConfiguration(validate, scalaModuleInfo, module, moduleInfo, dependencies, overrides, excludes, ivyXML, configurations, defaultConfiguration, conflictManager)

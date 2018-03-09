@@ -105,6 +105,12 @@ lazy val lmCore = (project in file("core"))
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
     },
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // internal class moved
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.InlineConfigurationFunctions"),
+      // dropped internal class parent (InlineConfigurationFunctions)
+      exclude[MissingTypesProblem]("sbt.librarymanagement.ModuleDescriptorConfiguration$"),
+    ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 

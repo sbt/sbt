@@ -9,7 +9,7 @@ import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import scala.collection.mutable.ListBuffer
 import sbt.librarymanagement.syntax._
 
-abstract class ModuleIDExtra {
+private[librarymanagement] abstract class ModuleIDExtra {
   def organization: String
   def name: String
   def revision: String
@@ -181,7 +181,7 @@ abstract class ModuleIDExtra {
   def branch(branchName: Option[String]) = copy(branchName = branchName)
 }
 
-abstract class ModuleIDFunctions {
+private[librarymanagement] abstract class ModuleIDFunctions {
 
   /** Prefixes all keys with `e:` if they are not already so prefixed. */
   def checkE(attributes: Seq[(String, String)]) =

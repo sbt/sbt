@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import java.io.File
 import java.net.URL
 
-abstract class ArtifactExtra {
+private[librarymanagement] abstract class ArtifactExtra {
   def name: String
   def `type`: String
   def extension: String
@@ -33,7 +33,7 @@ abstract class ArtifactExtra {
 
 import Configurations.{ Optional, Pom, Test }
 
-abstract class ArtifactFunctions {
+private[librarymanagement] abstract class ArtifactFunctions {
   def apply(name: String, extra: Map[String, String]): Artifact =
     Artifact(name, DefaultType, DefaultExtension, None, Vector.empty, None, extra, None)
   def apply(name: String, classifier: String): Artifact =
