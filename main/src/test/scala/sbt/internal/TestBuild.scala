@@ -113,7 +113,7 @@ abstract class TestBuild {
       (taskAxes, zero.toSet, single.toSet, multi.toSet)
     }
   }
-  final class Env(val builds: Seq[Build], val tasks: Seq[Taskk]) {
+  final class Env(val builds: Vector[Build], val tasks: Vector[Taskk]) {
     override def toString =
       "Env:\n  " + "  Tasks:\n    " + tasks.mkString("\n    ") + "\n" + builds.mkString("\n  ")
     val root = builds.head
@@ -129,20 +129,21 @@ abstract class TestBuild {
     def inheritConfig(ref: ResolvedReference, config: ConfigKey) =
       projectFor(ref).confMap(config.name).extendsConfigs map toConfigKey
     def inheritTask(task: AttributeKey[_]) = taskMap.get(task) match {
-      case None => Nil; case Some(t) => t.delegates map getKey
+      case None    => Vector()
+      case Some(t) => t.delegates.toVector map getKey
     }
-    def inheritProject(ref: ProjectRef) = project(ref).delegates
+    def inheritProject(ref: ProjectRef) = project(ref).delegates.toVector
     def resolve(ref: Reference) = Scope.resolveReference(root.uri, rootProject, ref)
     lazy val delegates: Scope => Seq[Scope] =
       Scope.delegates(
         allProjects,
-        (_: Proj).configurations.map(toConfigKey),
+        (_: Proj).configurations.toVector.map(toConfigKey),
         resolve,
         uri => buildMap(uri).root.id,
         inheritProject,
         inheritConfig,
         inheritTask,
-        (ref, mp) => Nil
+        (ref, mp) => Vector()
       )
     lazy val allFullScopes: Seq[Scope] =
       for {
@@ -262,13 +263,14 @@ abstract class TestBuild {
   implicit lazy val uriGen: Gen[URI] = for (sch <- idGen; ssp <- idGen; frag <- optIDGen)
     yield new URI(sch, ssp, frag.orNull)
 
-  implicit def envGen(implicit bGen: Gen[Build], tasks: Gen[Seq[Taskk]]): Gen[Env] =
-    for (i <- MaxBuildsGen; bs <- listOfN(i, bGen); ts <- tasks) yield new Env(bs, ts)
+  implicit def envGen(implicit bGen: Gen[Build], tasks: Gen[Vector[Taskk]]): Gen[Env] =
+    for (i <- MaxBuildsGen; bs <- containerOfN[Vector, Build](i, bGen); ts <- tasks)
+      yield new Env(bs, ts)
   implicit def buildGen(implicit uGen: Gen[URI], pGen: URI => Gen[Seq[Proj]]): Gen[Build] =
     for (u <- uGen; ps <- pGen(u)) yield new Build(u, ps)
 
-  def nGen[T](igen: Gen[Int])(implicit g: Gen[T]): Gen[List[T]] = igen flatMap { ig =>
-    listOfN(ig, g)
+  def nGen[T](igen: Gen[Int])(implicit g: Gen[T]): Gen[Vector[T]] = igen flatMap { ig =>
+    containerOfN[Vector, T](ig, g)
   }
 
   implicit def genProjects(build: URI)(implicit genID: Gen[String],
@@ -285,34 +287,37 @@ abstract class TestBuild {
 
   def genConfigs(implicit genName: Gen[String],
                  maxDeps: Gen[Int],
-                 count: Gen[Int]): Gen[Seq[Configuration]] =
+                 count: Gen[Int]): Gen[Vector[Configuration]] =
     genAcyclicDirect[Configuration, String](maxDeps, genName, count)(
       (key, deps) =>
         Configuration
           .of(key.capitalize, key)
           .withExtendsConfigs(deps.toVector))
 
-  def genTasks(implicit genName: Gen[String], maxDeps: Gen[Int], count: Gen[Int]): Gen[Seq[Taskk]] =
+  def genTasks(implicit genName: Gen[String],
+               maxDeps: Gen[Int],
+               count: Gen[Int]): Gen[Vector[Taskk]] =
     genAcyclicDirect[Taskk, String](maxDeps, genName, count)((key, deps) =>
       new Taskk(AttributeKey[String](key), deps))
 
   def genAcyclicDirect[A, T](maxDeps: Gen[Int], keyGen: Gen[T], max: Gen[Int])(
-      make: (T, Seq[A]) => A): Gen[Seq[A]] =
+      make: (T, Vector[A]) => A): Gen[Vector[A]] =
     genAcyclic[A, T](maxDeps, keyGen, max) { t =>
       Gen.const { deps =>
-        make(t, deps)
+        make(t, deps.toVector)
       }
     }
 
   def genAcyclic[A, T](maxDeps: Gen[Int], keyGen: Gen[T], max: Gen[Int])(
-      make: T => Gen[Seq[A] => A]): Gen[Seq[A]] =
+      make: T => Gen[Vector[A] => A]): Gen[Vector[A]] =
     max flatMap { count =>
-      listOfN(count, keyGen) flatMap { keys =>
+      containerOfN[Vector, T](count, keyGen) flatMap { keys =>
         genAcyclic(maxDeps, keys.distinct)(make)
       }
     }
-  def genAcyclic[A, T](maxDeps: Gen[Int], keys: List[T])(make: T => Gen[Seq[A] => A]): Gen[Seq[A]] =
-    genAcyclic(maxDeps, keys, Nil) flatMap { pairs =>
+  def genAcyclic[A, T](maxDeps: Gen[Int], keys: Vector[T])(
+      make: T => Gen[Vector[A] => A]): Gen[Vector[A]] =
+    genAcyclic(maxDeps, keys, Vector()) flatMap { pairs =>
       sequence(pairs.map { case (key, deps) => mapMake(key, deps, make) }) flatMap { inputs =>
         val made = new collection.mutable.HashMap[T, A]
         for ((key, deps, mk) <- inputs)
@@ -321,25 +326,25 @@ abstract class TestBuild {
       }
     }
 
-  def mapMake[A, T](key: T, deps: Seq[T], make: T => Gen[Seq[A] => A]): Gen[Inputs[A, T]] =
-    make(key) map { (mk: Seq[A] => A) =>
+  def mapMake[A, T](key: T, deps: Vector[T], make: T => Gen[Vector[A] => A]): Gen[Inputs[A, T]] =
+    make(key) map { (mk: Vector[A] => A) =>
       (key, deps, mk)
     }
 
   def genAcyclic[T](maxDeps: Gen[Int],
-                    names: List[T],
-                    acc: List[Gen[(T, Seq[T])]]): Gen[Seq[(T, Seq[T])]] =
+                    names: Vector[T],
+                    acc: Vector[Gen[(T, Vector[T])]]): Gen[Vector[(T, Vector[T])]] =
     names match {
-      case Nil => sequence(acc)
-      case x :: xs =>
+      case Vector() => sequence(acc)
+      case Vector(x, xs @ _*) =>
         val next = for (depCount <- maxDeps; d <- pick(depCount min xs.size, xs))
-          yield (x, d.toList)
-        genAcyclic(maxDeps, xs, next :: acc)
+          yield (x, d.toVector)
+        genAcyclic(maxDeps, xs.toVector, next +: acc)
     }
-  def sequence[T](gs: Seq[Gen[T]]): Gen[Seq[T]] = Gen.parameterized { prms =>
+  def sequence[T](gs: Vector[Gen[T]]): Gen[Vector[T]] = Gen.parameterized { prms =>
     delay(gs map { g =>
       g(prms, seed) getOrElse sys.error("failed generator")
     })
   }
-  type Inputs[A, T] = (T, Seq[T], Seq[A] => A)
+  type Inputs[A, T] = (T, Vector[T], Vector[A] => A)
 }
