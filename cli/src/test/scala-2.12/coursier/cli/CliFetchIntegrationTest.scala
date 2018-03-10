@@ -4,9 +4,13 @@ import java.io._
 
 import java.net.URLEncoder.encode
 import argonaut.Argonaut._
-import coursier.cli.util.{DepNode, ReportNode}
 import caseapp.core.RemainingArgs
 import coursier.cli.options._
+import coursier.cli.util.{DepNode, ReportNode}
+import coursier.internal.FileUtil
+import java.io._
+import java.net.URLEncoder.encode
+import java.nio.charset.StandardCharsets.UTF_8
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
@@ -809,4 +813,58 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
       assert(depNode.get.dependencies.head.contains("org.tukaani:xz:1.2"))
     }
   }
+
+  "Bad pom resolve" should "succeed with retry" in withTempDir("tmp_dir") {
+    dir => {
+      def runFetchJunit = {
+        val fetchOpt = FetchOptions(common = CommonOptions(cacheOptions = CacheOptions(cache = dir.getAbsolutePath)))
+        val fetch = Fetch(fetchOpt, RemainingArgs(Seq("junit:junit:4.12"), Seq()))
+        assert(fetch.files0.map(_.getName).toSet
+          .equals(Set("junit-4.12.jar", "hamcrest-core-1.3.jar")))
+        val junitJarPath = fetch.files0.map(_.getAbsolutePath()).filter(_.contains("junit-4.12.jar"))
+          .head
+        val junitPomFile = new File(junitJarPath.replace(".jar", ".pom"))
+        val junitPomShaFile = new File(junitJarPath.replace(".jar", ".pom.sha1"))
+        assert(junitPomFile.exists())
+        assert(junitPomShaFile.exists())
+        junitPomFile
+      }
+
+      val junitPomFile: File = runFetchJunit
+      val originalPomContent = FileUtil.readAllBytes(junitPomFile)
+
+      // Corrupt the pom content
+      FileUtil.write(junitPomFile, "bad pom".getBytes(UTF_8))
+
+      // Run fetch again and it should pass because of retrying om the bad pom.
+      val pom = runFetchJunit
+      assert(FileUtil.readAllBytes(pom).sameElements(originalPomContent))
+    }
+  }
+
+  "Bad jar resolve" should "succeed with retry" in withTempDir("tmp_dir") {
+    dir => {
+      def runFetchJunit = {
+        val fetchOpt = FetchOptions(common = CommonOptions(cacheOptions = CacheOptions(cache = dir.getAbsolutePath)))
+        val fetch = Fetch(fetchOpt, RemainingArgs(Seq("junit:junit:4.12"), Seq()))
+        assert(fetch.files0.map(_.getName).toSet
+          .equals(Set("junit-4.12.jar", "hamcrest-core-1.3.jar")))
+        val junitJarPath = fetch.files0.map(_.getAbsolutePath()).filter(_.contains("junit-4.12.jar"))
+          .head
+        val junitJarFile = new File(junitJarPath)
+        junitJarFile
+      }
+
+      val originalJunitJar: File = runFetchJunit
+      val originalJunitJarContent = FileUtil.readAllBytes(originalJunitJar)
+
+      // Corrupt the jar content
+      FileUtil.write(originalJunitJar, "bad jar".getBytes(UTF_8))
+
+      // Run fetch again and it should pass because of retrying on the bad jar.
+      val jar = runFetchJunit
+      assert(FileUtil.readAllBytes(jar).sameElements(originalJunitJarContent))
+    }
+  }
+
 }

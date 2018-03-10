@@ -95,7 +95,11 @@ final case class CommonOptions(
   @Help("Swap the mainline Scala JARs by Typelevel ones")
     typelevel: Boolean = false,
   @Recurse
-    cacheOptions: CacheOptions = CacheOptions()
+    cacheOptions: CacheOptions = CacheOptions(),
+
+  @Help("Retry limit for Checksum error when fetching a file")
+    retryCount: Int = 1
+
 ) {
   val verbosityLevel = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
   lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty).toSet

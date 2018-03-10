@@ -644,7 +644,8 @@ class Helper(
         checksums = checksums,
         logger = logger,
         pool = pool,
-        ttl = ttl0
+        ttl = ttl0,
+        retry = common.retryCount
       )
 
       (file(cachePolicies.head) /: cachePolicies.tail)(_ orElse file(_))

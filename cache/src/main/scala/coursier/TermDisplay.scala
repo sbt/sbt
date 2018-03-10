@@ -509,4 +509,7 @@ class TermDisplay(
     }
   }
 
+  // TODO(wisechengyi,alexarchambault): implement this
+  override def removedCorruptFile(url: String, file: File, reason: Option[FileError]): Unit = {}
+
 }

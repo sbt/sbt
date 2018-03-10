@@ -926,6 +926,14 @@ object Cache {
     }
   }
 
+
+  /**
+    * This method computes the task needed to get a file.
+    *
+    * Retry only applies to [[coursier.FileError.WrongChecksum]].
+    *
+    * [[coursier.FileError.DownloadError]] is handled separately at [[downloading]]
+    */
   def file[F[_]](
     artifact: Artifact,
     cache: File = default,
@@ -933,7 +941,8 @@ object Cache {
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool,
-    ttl: Option[Duration] = defaultTtl
+    ttl: Option[Duration] = defaultTtl,
+    retry: Int = 1
   )(implicit S: Schedulable[F]): EitherT[F, FileError, File] = {
 
     val checksums0 = if (checksums.isEmpty) Seq(None) else checksums
@@ -975,6 +984,35 @@ object Cache {
       case (f, None) => EitherT(S.point[Either[FileError, File]](Right(f)))
       case (f, Some(c)) =>
         validateChecksum(artifact, c, cache, pool).map(_ => f)
+    }.leftFlatMap {
+      case err: FileError.WrongChecksum =>
+        if (retry <= 0) {
+          EitherT(S.point(Left(err)))
+        }
+        else {
+          EitherT {
+            S.schedule[Either[FileError, Unit]](pool) {
+              val badFile = localFile(artifact.url, cache, artifact.authentication.map(_.user))
+              badFile.delete()
+              logger.foreach(_.removedCorruptFile(artifact.url, badFile, Some(err)))
+              Right(())
+            }
+          }.flatMap {
+            _ =>
+              file(
+                artifact,
+                cache,
+                cachePolicy,
+                checksums,
+                logger,
+                pool,
+                ttl,
+                retry - 1
+              )
+          }
+        }
+      case err =>
+        EitherT(S.point(Left(err)))
     }
   }
 
@@ -1123,6 +1161,8 @@ object Cache {
 
     def gettingLength(url: String): Unit = {}
     def gettingLengthResult(url: String, length: Option[Long]): Unit = {}
+
+    def removedCorruptFile(url: String, file: File, reason: Option[FileError]): Unit
   }
 
   var bufferSize = 1024*1024
