@@ -56,6 +56,6 @@ final class ScalaModuleInfo private (
 }
 object ScalaModuleInfo {
   
-  def apply(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Vector[sbt.librarymanagement.Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean): ScalaModuleInfo = new ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion, sbt.librarymanagement.ScalaArtifacts.Organization, sbt.librarymanagement.ScalaArtifacts.Artifacts)
+  def apply(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Vector[sbt.librarymanagement.Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean): ScalaModuleInfo = new ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion)
   def apply(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Vector[sbt.librarymanagement.Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, scalaOrganization: String, scalaArtifacts: scala.Vector[String]): ScalaModuleInfo = new ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion, scalaOrganization, scalaArtifacts)
 }

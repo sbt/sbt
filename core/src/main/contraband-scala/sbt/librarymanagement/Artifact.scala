@@ -56,6 +56,6 @@ final class Artifact private (
 }
 object Artifact extends sbt.librarymanagement.ArtifactFunctions {
   
-  def apply(name: String): Artifact = new Artifact(name, Artifact.DefaultType, Artifact.DefaultExtension, None, Vector.empty, None, Map.empty, None)
+  def apply(name: String): Artifact = new Artifact(name)
   def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Vector[sbt.librarymanagement.ConfigRef], url: Option[java.net.URL], extraAttributes: Map[String, String], checksum: Option[sbt.librarymanagement.Checksum]): Artifact = new Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum)
 }

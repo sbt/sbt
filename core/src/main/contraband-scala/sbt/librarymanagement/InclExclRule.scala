@@ -53,6 +53,6 @@ final class InclExclRule private (
 }
 object InclExclRule extends sbt.librarymanagement.InclExclRuleFunctions {
   
-  def apply(): InclExclRule = new InclExclRule("*", "*", "*", Vector.empty, sbt.librarymanagement.Disabled())
+  def apply(): InclExclRule = new InclExclRule()
   def apply(organization: String, name: String, artifact: String, configurations: Vector[sbt.librarymanagement.ConfigRef], crossVersion: sbt.librarymanagement.CrossVersion): InclExclRule = new InclExclRule(organization, name, artifact, configurations, crossVersion)
 }

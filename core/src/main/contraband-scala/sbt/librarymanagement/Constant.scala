@@ -29,6 +29,6 @@ final class Constant private (
 }
 object Constant {
   
-  def apply(): Constant = new Constant("")
+  def apply(): Constant = new Constant()
   def apply(value: String): Constant = new Constant(value)
 }

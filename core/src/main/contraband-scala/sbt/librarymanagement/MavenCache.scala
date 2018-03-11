@@ -45,6 +45,6 @@ final class MavenCache private (
 }
 object MavenCache {
   def apply(name: String, rootFile: java.io.File): MavenCache = new MavenCache(name, rootFile)
-  def apply(name: String, root: String, rootFile: java.io.File): MavenCache = new MavenCache(name, root, true, rootFile)
+  def apply(name: String, root: String, rootFile: java.io.File): MavenCache = new MavenCache(name, root, rootFile)
   def apply(name: String, root: String, localIfFile: Boolean, rootFile: java.io.File): MavenCache = new MavenCache(name, root, localIfFile, rootFile)
 }

@@ -40,7 +40,7 @@ final class ScmInfo private (
 }
 object ScmInfo {
   
-  def apply(browseUrl: java.net.URL, connection: String): ScmInfo = new ScmInfo(browseUrl, connection, None)
+  def apply(browseUrl: java.net.URL, connection: String): ScmInfo = new ScmInfo(browseUrl, connection)
   def apply(browseUrl: java.net.URL, connection: String, devConnection: Option[String]): ScmInfo = new ScmInfo(browseUrl, connection, devConnection)
   def apply(browseUrl: java.net.URL, connection: String, devConnection: String): ScmInfo = new ScmInfo(browseUrl, connection, Option(devConnection))
 }

@@ -1,6 +1,6 @@
 import Dependencies._
 import Path._
-//import com.typesafe.tools.mima.core._, ProblemFilters._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala212,
@@ -35,15 +35,6 @@ val mimaSettings = Def settings (
     organization.value %% moduleName.value % version
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
   ),
-  mimaBinaryIssueFilters ++= {
-    import com.typesafe.tools.mima.core._
-    import com.typesafe.tools.mima.core.ProblemFilters._
-    Seq(
-      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler#SbtUrlInfo.this"),
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler#SbtUrlInfo.this"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler.checkStatusCode")
-    )
-  }
 )
 
 lazy val lmRoot = (project in file("."))
@@ -114,6 +105,42 @@ lazy val lmCore = (project in file("core"))
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
     },
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // internal class moved
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.InlineConfigurationFunctions"),
+      // dropped internal class parent (InlineConfigurationFunctions)
+      exclude[MissingTypesProblem]("sbt.librarymanagement.ModuleDescriptorConfiguration$"),
+
+      // Configuration's copy method was never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Configuration.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.Configuration.copy$default$*"),
+
+      // the data type copy methods were never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleReportExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleReportExtra.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleIDExtra.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ModuleIDExtra.copy$default$*"),
+
+      // these abstract classes are private[librarymanagement] so it's fine if they have more methods
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleReportExtra.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.librarymanagement.ModuleIDExtra.*"),
+
+      // these abstract classes are private[librarymanagement] so they can lose these abstract methods
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.type"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.url"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.checksum"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.name"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.configurations"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.classifier"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactExtra.extension"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ArtifactTypeFilterExtra.types"),
+    ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
@@ -131,6 +158,11 @@ lazy val lmIvy = (project in file("ivy"))
     scalacOptions in (Compile, console) --=
       Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler#SbtUrlInfo.this"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler#SbtUrlInfo.this"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler.checkStatusCode"),
+    ),
   )
 
 def customCommands: Seq[Setting[_]] = Seq(

@@ -98,7 +98,7 @@ object InlineIvyConfiguration {
     .withResolutionCacheDir(resolutionCacheDir)
     .withLog(log)
   }
-  def apply(): InlineIvyConfiguration = new InlineIvyConfiguration(None, None, sbt.librarymanagement.ivy.UpdateOptions(), None, sbt.librarymanagement.Resolver.defaults, Vector.empty, Vector.empty, sbt.librarymanagement.ivy.IvyDefaults.defaultChecksums, false, None)
+  def apply(): InlineIvyConfiguration = new InlineIvyConfiguration()
   def apply(lock: Option[xsbti.GlobalLock], log: Option[xsbti.Logger], updateOptions: sbt.librarymanagement.ivy.UpdateOptions, paths: Option[sbt.librarymanagement.ivy.IvyPaths], resolvers: Vector[sbt.librarymanagement.Resolver], otherResolvers: Vector[sbt.librarymanagement.Resolver], moduleConfigurations: Vector[sbt.librarymanagement.ModuleConfiguration], checksums: Vector[String], managedChecksums: Boolean, resolutionCacheDir: Option[java.io.File]): InlineIvyConfiguration = new InlineIvyConfiguration(lock, log, updateOptions, paths, resolvers, otherResolvers, moduleConfigurations, checksums, managedChecksums, resolutionCacheDir)
   def apply(lock: xsbti.GlobalLock, log: xsbti.Logger, updateOptions: sbt.librarymanagement.ivy.UpdateOptions, paths: sbt.librarymanagement.ivy.IvyPaths, resolvers: Vector[sbt.librarymanagement.Resolver], otherResolvers: Vector[sbt.librarymanagement.Resolver], moduleConfigurations: Vector[sbt.librarymanagement.ModuleConfiguration], checksums: Vector[String], managedChecksums: Boolean, resolutionCacheDir: java.io.File): InlineIvyConfiguration = new InlineIvyConfiguration(Option(lock), Option(log), updateOptions, Option(paths), resolvers, otherResolvers, moduleConfigurations, checksums, managedChecksums, Option(resolutionCacheDir))
 }

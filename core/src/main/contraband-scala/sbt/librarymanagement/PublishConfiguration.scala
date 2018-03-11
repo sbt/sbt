@@ -75,7 +75,7 @@ final class PublishConfiguration private (
 }
 object PublishConfiguration {
   
-  def apply(): PublishConfiguration = new PublishConfiguration(true, None, None, None, None, Vector(), Vector("sha1", "md5"), None, false)
+  def apply(): PublishConfiguration = new PublishConfiguration()
   def apply(publishMavenStyle: Boolean, deliverIvyPattern: Option[String], status: Option[String], configurations: Option[scala.Vector[sbt.librarymanagement.ConfigRef]], resolverName: Option[String], artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], checksums: scala.Vector[String], logging: Option[sbt.librarymanagement.UpdateLogging], overwrite: Boolean): PublishConfiguration = new PublishConfiguration(publishMavenStyle, deliverIvyPattern, status, configurations, resolverName, artifacts, checksums, logging, overwrite)
   def apply(publishMavenStyle: Boolean, deliverIvyPattern: String, status: String, configurations: scala.Vector[sbt.librarymanagement.ConfigRef], resolverName: String, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], checksums: scala.Vector[String], logging: sbt.librarymanagement.UpdateLogging, overwrite: Boolean): PublishConfiguration = new PublishConfiguration(publishMavenStyle, Option(deliverIvyPattern), Option(status), Option(configurations), Option(resolverName), artifacts, checksums, Option(logging), overwrite)
 }

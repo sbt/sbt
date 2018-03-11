@@ -37,6 +37,6 @@ final class ConflictManager private (
 }
 object ConflictManager extends sbt.librarymanagement.ConflictManagerFunctions {
   
-  def apply(name: String): ConflictManager = new ConflictManager(name, "*", "*")
+  def apply(name: String): ConflictManager = new ConflictManager(name)
   def apply(name: String, organization: String, module: String): ConflictManager = new ConflictManager(name, organization, module)
 }

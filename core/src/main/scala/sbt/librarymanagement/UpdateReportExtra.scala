@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import java.io.File
 import java.{ util => ju }
 
-abstract class ConfigurationReportExtra {
+private[librarymanagement] abstract class ConfigurationReportExtra {
   def configuration: ConfigRef
   def modules: Vector[ModuleReport]
   def details: Vector[OrganizationArtifactReport]
@@ -34,7 +34,7 @@ abstract class ConfigurationReportExtra {
     }, details)
 }
 
-abstract class ModuleReportExtra {
+private[librarymanagement] abstract class ModuleReportExtra {
   def module: ModuleID
   def artifacts: Vector[(Artifact, File)]
   def missingArtifacts: Vector[Artifact]
@@ -53,6 +53,8 @@ abstract class ModuleReportExtra {
   def configurations: Vector[ConfigRef]
   def licenses: Vector[(String, Option[String])]
   def callers: Vector[Caller]
+
+  def withArtifacts(artifacts: Vector[(Artifact, File)]): ModuleReport
 
   protected[this] def arts: Vector[String] =
     artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
@@ -102,31 +104,10 @@ abstract class ModuleReportExtra {
   }
 
   def retrieve(f: (ModuleID, Artifact, File) => File): ModuleReport =
-    copy(artifacts = artifacts.map { case (art, file) => (art, f(module, art, file)) })
-
-  protected[this] def copy(
-      module: ModuleID = module,
-      artifacts: Vector[(Artifact, File)] = artifacts,
-      missingArtifacts: Vector[Artifact] = missingArtifacts,
-      status: Option[String] = status,
-      publicationDate: Option[ju.Calendar] = publicationDate,
-      resolver: Option[String] = resolver,
-      artifactResolver: Option[String] = artifactResolver,
-      evicted: Boolean = evicted,
-      evictedData: Option[String] = evictedData,
-      evictedReason: Option[String] = evictedReason,
-      problem: Option[String] = problem,
-      homepage: Option[String] = homepage,
-      extraAttributes: Map[String, String] = extraAttributes,
-      isDefault: Option[Boolean] = isDefault,
-      branch: Option[String] = branch,
-      configurations: Vector[ConfigRef] = configurations,
-      licenses: Vector[(String, Option[String])] = licenses,
-      callers: Vector[Caller] = callers
-  ): ModuleReport
+    withArtifacts(artifacts.map { case (art, file) => (art, f(module, art, file)) })
 }
 
-abstract class UpdateReportExtra {
+private[librarymanagement] abstract class UpdateReportExtra {
   def cachedDescriptor: File
   def configurations: Vector[ConfigurationReport]
   def stats: UpdateStats

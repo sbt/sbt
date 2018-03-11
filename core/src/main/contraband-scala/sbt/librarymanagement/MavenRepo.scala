@@ -36,6 +36,6 @@ final class MavenRepo private (
 }
 object MavenRepo {
   
-  def apply(name: String, root: String): MavenRepo = new MavenRepo(name, root, true)
+  def apply(name: String, root: String): MavenRepo = new MavenRepo(name, root)
   def apply(name: String, root: String, localIfFile: Boolean): MavenRepo = new MavenRepo(name, root, localIfFile)
 }

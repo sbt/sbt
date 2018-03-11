@@ -76,6 +76,6 @@ final class ModuleID private (
 }
 object ModuleID extends sbt.librarymanagement.ModuleIDFunctions {
   
-  def apply(organization: String, name: String, revision: String): ModuleID = new ModuleID(organization, name, revision, None, false, true, false, Vector.empty, Vector.empty, Vector.empty, Map.empty, sbt.librarymanagement.Disabled(), None)
+  def apply(organization: String, name: String, revision: String): ModuleID = new ModuleID(organization, name, revision)
   def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, isForce: Boolean, explicitArtifacts: Vector[sbt.librarymanagement.Artifact], inclusions: Vector[sbt.librarymanagement.InclExclRule], exclusions: Vector[sbt.librarymanagement.InclExclRule], extraAttributes: Map[String, String], crossVersion: sbt.librarymanagement.CrossVersion, branchName: Option[String]): ModuleID = new ModuleID(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, inclusions, exclusions, extraAttributes, crossVersion, branchName)
 }
