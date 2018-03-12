@@ -11,8 +11,6 @@ import coursier.util.{EitherT, Gather}
 import coursier.{Fetch, Module}
 import scalaz.concurrent.Task
 
-import scala.language.higherKinds
-
 object Scaladex {
 
   case class SearchResult(

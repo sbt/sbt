@@ -39,7 +39,12 @@ object Settings {
           Seq()
       }
   
-      targetJvm ++ Seq("-feature", "-deprecation")
+      targetJvm ++ Seq(
+        "-feature",
+        "-deprecation",
+        "-language:higherKinds",
+        "-language:implicitConversions"
+      )
     },
     javacOptions ++= {
       scalaBinaryVersion.value match {

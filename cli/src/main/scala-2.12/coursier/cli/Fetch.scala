@@ -6,8 +6,6 @@ import java.io.File
 import caseapp._
 import coursier.cli.options.FetchOptions
 
-import scala.language.reflectiveCalls
-
 final class Fetch(options: FetchOptions, args: RemainingArgs) {
 
   val helper = new Helper(options.common, args.all, ignoreErrors = options.artifactOptions.force)

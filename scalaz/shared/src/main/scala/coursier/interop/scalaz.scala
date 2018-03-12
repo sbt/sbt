@@ -2,8 +2,6 @@ package coursier.interop
 
 import coursier.util.{Gather, Monad}
 
-import scala.language.higherKinds
-
 object scalaz extends LowPriorityScalazImplicits {
 
   implicit def coursierMonadFromScalaz[F[_]](implicit M: _root_.scalaz.Monad[F]): Monad[F] =

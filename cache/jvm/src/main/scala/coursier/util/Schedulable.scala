@@ -2,8 +2,6 @@ package coursier.util
 
 import java.util.concurrent.{ExecutorService, Executors, ThreadFactory}
 
-import scala.language.higherKinds
-
 trait Schedulable[F[_]] extends Gather[F] {
   def schedule[A](pool: ExecutorService)(f: => A): F[A]
 }

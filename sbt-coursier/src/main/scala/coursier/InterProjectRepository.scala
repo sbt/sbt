@@ -2,8 +2,6 @@ package coursier
 
 import coursier.util.{EitherT, Monad}
 
-import scala.language.higherKinds
-
 final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
 
   private val map = projects

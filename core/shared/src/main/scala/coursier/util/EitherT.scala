@@ -1,7 +1,5 @@
 package coursier.util
 
-import scala.language.higherKinds
-
 final case class EitherT[F[_], L, R](run: F[Either[L, R]]) {
 
   def map[S](f: R => S)(implicit M: Monad[F]): EitherT[F, L, S] =

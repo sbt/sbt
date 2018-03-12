@@ -2,8 +2,6 @@ package coursier
 
 import coursier.util.{EitherT, Gather, Monad}
 
-import scala.language.higherKinds
-
 object Fetch {
 
   type Content[F[_]] = Artifact => EitherT[F, String, String]

@@ -4,8 +4,6 @@ package test
 import coursier.core._
 import coursier.util.{EitherT, Monad}
 
-import scala.language.higherKinds
-
 final case class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
   val source = new core.Artifact.Source {
     def artifacts(

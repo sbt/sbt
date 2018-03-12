@@ -6,7 +6,6 @@ import java.nio.charset.Charset
 import coursier.interop.scalaz._
 import coursier.util.EitherT
 
-import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 import scalaz.concurrent.Task
 
