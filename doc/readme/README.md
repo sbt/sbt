@@ -187,8 +187,7 @@ val start = Resolution(
 
 Create a fetch function able to get things from a few repositories via a local cache,
 ```tut:silent
-import coursier.interop.scalaz._
-import scalaz.concurrent.Task
+import coursier.util.Task
 
 val repositories = Seq(
   Cache.ivy2Local,
@@ -200,7 +199,9 @@ val fetch = Fetch.from(repositories, Cache.fetch[Task]())
 
 Then run the resolution per-se,
 ```tut:silent
-val resolution = start.process.run(fetch).unsafePerformSync
+import scala.concurrent.ExecutionContext.Implicits.global
+
+val resolution = start.process.run(fetch).unsafeRun()
 ```
 That will fetch and use metadata.
 
@@ -213,11 +214,11 @@ These would mean that the resolution wasn't able to get metadata about some depe
 Then fetch and get local copies of the artifacts themselves (the JARs) with
 ```tut:silent
 import java.io.File
-import scalaz.concurrent.Task
+import coursier.util.Gather
 
-val localArtifacts: Seq[Either[FileError, File]] = Task.gatherUnordered(
-  resolution.artifacts.map(Cache.file(_).run)
-).unsafePerformSync
+val localArtifacts: Seq[Either[FileError, File]] = Gather[Task].gather(
+  resolution.artifacts.map(Cache.file[Task](_).run)
+).unsafeRun()
 ```
 
 
@@ -547,7 +548,7 @@ Given a sequence of dependencies, designated by their `Module` (organisation and
 and version (just a `String`), it gives either errors (`Seq[String]`) or metadata (`(Artifact.Source, Project)`),
 wrapping the whole in a monad `F`.
 ```tut:silent
-val fetch = Fetch.from(repositories, Cache.fetch())
+val fetch = Fetch.from(repositories, Cache.fetch[Task]())
 ```
 
 The monad used by `Fetch.from` is `scalaz.concurrent.Task`, but the resolution process is not tied to a particular
@@ -573,7 +574,9 @@ resolution is particularly complex, in which case `maxIterations` could be incre
 
 Let's run the whole resolution,
 ```tut:silent
-val resolution = start.process.run(fetch).unsafePerformSync
+import scala.concurrent.ExecutionContext.Implicits.global
+
+val resolution = start.process.run(fetch).unsafeRun()
 ```
 
 To get additional feedback during the resolution, we can give the `Cache.default` method above
@@ -597,11 +600,11 @@ which are dependencies whose versions could not be unified.
 Then, if all went well, we can fetch and get local copies of the artifacts themselves (the JARs) with
 ```tut:silent
 import java.io.File
-import scalaz.concurrent.Task
+import coursier.util.Gather
 
-val localArtifacts: Seq[Either[FileError, File]] = Task.gatherUnordered(
-  resolution.artifacts.map(Cache.file(_).run)
-).unsafePerformSync
+val localArtifacts: Seq[Either[FileError, File]] = Gather[Task].gather(
+  resolution.artifacts.map(Cache.file[Task](_).run)
+).unsafeRun()
 ```
 
 We're using the `Cache.file` method, that can also be given a `Logger` (for more feedback) and a custom thread pool.
