@@ -41,7 +41,8 @@ lazy val tests = crossProject
   .disablePlugins(ScriptedPlugin)
   .dependsOn(core, cache % "test", scalaz)
   .jsSettings(
-    scalaJSStage.in(Global) := FastOptStage
+    scalaJSStage.in(Global) := FastOptStage,
+    testOptions := testOptions.dependsOn(runNpmInstallIfNeeded).value
   )
   .configs(Integration)
   .settings(

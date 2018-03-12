@@ -1,4 +1,6 @@
 
+import java.nio.file.Files
+
 import sbt._
 import sbt.Keys._
 import sbt.ScriptedPlugin.autoImport.{sbtLauncher, scriptedBufferLog, ScriptedLaunchConf, scriptedLaunchOpts}
@@ -44,6 +46,28 @@ object Settings {
     ),
     javacOptions.in(Keys.doc) := Seq()
   )
+
+  val runNpmInstallIfNeeded = Def.task {
+    val baseDir = baseDirectory.in(ThisBuild).value
+    val evFile = baseDir / "node_modules" / ".npm_run"
+    val log = streams.value.log
+    if (!evFile.exists()) {
+      val cmd = Seq("npm", "install")
+      val b = new ProcessBuilder(cmd: _*)
+      b.directory(baseDir)
+      b.inheritIO()
+      log.info(s"Running  ${cmd.mkString(" ")}")
+      val p = b.start()
+      val retCode = p.waitFor()
+      if (retCode == 0)
+        log.info(s"${cmd.mkString(" ")}  ran successfully")
+      else
+        sys.error(s"${cmd.mkString(" ")}  failed (return code $retCode)")
+
+      // Parent dir should have been created by npm install
+      Files.write(evFile.toPath, Array.emptyByteArray)
+    }
+  }
 
   lazy val shared = javaScalaPluginShared ++ Seq(
     scalaVersion := scala212,

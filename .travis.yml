@@ -1,6 +1,4 @@
 language: java
-install:
-  - npm install
 os:
   - osx
 script:

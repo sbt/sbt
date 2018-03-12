@@ -90,14 +90,9 @@ $ sbt
 
 ## Run unit tests (JS)
 
-The JS tests require node to be installed, and a few dependencies to have been
-fetched with
-```
-$ npm install
-```
-(run from the root of the coursier sources).
+The JS tests require node to be installed. They automatically run `npm install` from the root of the coursier sources if needed.
 
-JS tests can then be run like JVM tests, like
+JS tests can be run like JVM tests, like
 ```
 $ sbt
 > ++2.12.4
