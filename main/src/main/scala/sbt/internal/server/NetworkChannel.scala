@@ -240,7 +240,13 @@ final class NetworkChannel(val name: String,
     if (isLanguageServerProtocol) {
       event match {
         case entry: StringEvent => logMessage(entry.level, entry.message)
-        case _                  => langRespond(event, execId)
+        case entry: ExecStatusEvent =>
+          entry.exitCode match {
+            case None           => langRespond(event, entry.execId)
+            case Some(0)        => langRespond(event, entry.execId)
+            case Some(exitCode) => langError(entry.execId, exitCode, "")
+          }
+        case _ => langRespond(event, execId)
       }
     } else {
       contentType match {
