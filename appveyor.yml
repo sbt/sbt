@@ -18,8 +18,7 @@ install:
 build_script:
   - sbt ++2.11.12 clean compile coreJVM/publishLocal
   - sbt ++2.10.7 clean compile
-  - sbt ++2.12.4 coreJVM/publishLocal cacheJVM/publishLocal cli/publishLocal extra/publishLocal scalazJVM/publishLocal sbt-shared/publishLocal
-  - sbt ++2.10.7 coreJVM/publishLocal cacheJVM/publishLocal extra/publishLocal sbt-shared/publishLocal
+  - sbt ++2.12.4 coreJVM/publishLocal cacheJVM/publishLocal extra/publishLocal scalazJVM/publishLocal cli/publishLocal
 test_script:
   - ps: Start-Job -filepath .\scripts\start-it-auth-server.ps1 -ArgumentList $pwd
   - ps: Start-Sleep -s 15 # wait for the first server to have downloaded its dependencies
@@ -27,8 +26,8 @@ test_script:
   - sbt ++2.12.4 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
   - sbt ++2.11.12 testsJVM/test testsJVM/it:test
   - sbt ++2.10.7 testsJVM/test testsJVM/it:test
-  - sbt ++2.12.4 "sbt-coursier/scripted sbt-coursier/simple" sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*" # for sbt 1.0
-  - sbt ++2.10.7 "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*" sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*" "sbt-shading/scripted sbt-shading-0.13/*" # for sbt 0.13
+  - sbt ++2.12.4 "sbt-coursier/scripted sbt-coursier/simple" "sbt-shading/scripted sbt-shading/*" # for sbt 1.0
+  - sbt ++2.10.7 "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*" "sbt-shading/scripted sbt-shading/*" "sbt-shading/scripted sbt-shading-0.13/*" # for sbt 0.13
 branches:
   only:
     - master

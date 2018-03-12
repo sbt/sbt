@@ -277,7 +277,18 @@ lazy val `sbt-coursier` = project
   .disablePlugins(ScriptedPlugin)
   .settings(
     plugin,
-    utest
+    utest,
+    scriptedDependencies := {
+      scriptedDependencies.value
+
+      // TODO Get dependency projects automatically
+      // (but shouldn't scripted itself handle that…?)
+      publishLocal.in(coreJvm).value
+      publishLocal.in(cacheJvm).value
+      publishLocal.in(extra).value
+      publishLocal.in(`sbt-shared`).value
+      publishLocal.in(scalazJvm).value
+    }
   )
 
 lazy val `sbt-pgp-coursier` = project
@@ -291,6 +302,11 @@ lazy val `sbt-pgp-coursier` = project
           Seq(Deps.sbtPgp.value)
         case _ => Nil
       }
+    },
+    scriptedDependencies := {
+      scriptedDependencies.value
+      // TODO Get dependency projects automatically
+      scriptedDependencies.in(`sbt-coursier`).value
     }
   )
 
@@ -304,7 +320,12 @@ lazy val `sbt-shading` = project
     localM2Repository, // for a possibly locally published jarjar
     libs += Deps.jarjar % "shaded",
     // dependencies of jarjar-core - directly depending on these so that they don't get shaded
-    libs ++= Deps.jarjarTransitiveDeps
+    libs ++= Deps.jarjarTransitiveDeps,
+    scriptedDependencies := {
+      scriptedDependencies.value
+      // TODO Get dependency projects automatically
+      scriptedDependencies.in(`sbt-coursier`).value
+    }
   )
 
 lazy val okhttp = project
@@ -355,26 +376,6 @@ lazy val js = project
     shared,
     dontPublish,
     moduleName := "coursier-js"
-  )
-
-// run sbt-plugins/publishLocal to publish all that necessary for plugins
-lazy val `sbt-plugins` = project
-  .dummy
-  .disablePlugins(ScriptedPlugin)
-  .aggregate(
-    coreJvm,
-    cacheJvm,
-    scalazJvm,
-    extra,
-    `sbt-shared`,
-    `sbt-coursier`,
-    `sbt-pgp-coursier`,
-    `sbt-shading`
-  )
-  .settings(
-    shared,
-    pluginOverrideCrossScalaVersion,
-    dontPublish
   )
 
 lazy val coursier = project
