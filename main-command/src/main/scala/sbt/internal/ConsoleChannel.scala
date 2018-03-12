@@ -40,8 +40,6 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
 
   def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = ()
 
-  def publishEvent[A: JsonFormat](event: A): Unit = ()
-
   def publishEventMessage(event: EventMessage): Unit =
     event match {
       case e: ConsolePromptEvent =>

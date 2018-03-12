@@ -84,7 +84,14 @@ val mimaSettings = Def settings (
     ).map { v =>
       organization.value % moduleName.value % v cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
     }.toSet
-  }
+  },
+  mimaBinaryIssueFilters ++= Seq(
+    // Changes in the internal pacakge
+    exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+    exclude[FinalClassProblem]("sbt.internal.*"),
+    exclude[FinalMethodProblem]("sbt.internal.*"),
+    exclude[IncompatibleResultTypeProblem]("sbt.internal.*"),
+  ),
 )
 
 lazy val sbtRoot: Project = (project in file("."))
@@ -182,9 +189,6 @@ val completeProj = (project in file("internal") / "util-complete")
     libraryDependencies += jline,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      // Changed signature or removed something in the internal pacakge
-      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.*"),
     ),
   )
   .configure(addSbtIO, addSbtUtilControl)
@@ -453,12 +457,6 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // Changed signature or removed something in the internal package
-      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
-
-      // Made something final in the internal package
-      exclude[FinalClassProblem]("sbt.internal.*"),
-
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
 

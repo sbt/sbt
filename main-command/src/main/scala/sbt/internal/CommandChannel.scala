@@ -23,7 +23,7 @@ abstract class CommandChannel {
   def poll: Option[Exec] = Option(commandQueue.poll)
 
   def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit
-  def publishEvent[A: JsonFormat](event: A): Unit
+  final def publishEvent[A: JsonFormat](event: A): Unit = publishEvent(event, None)
   def publishEventMessage(event: EventMessage): Unit
   def publishBytes(bytes: Array[Byte]): Unit
   def shutdown(): Unit

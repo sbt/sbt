@@ -260,8 +260,6 @@ final class NetworkChannel(val name: String,
     }
   }
 
-  def publishEvent[A: JsonFormat](event: A): Unit = publishEvent(event, None)
-
   def publishEventMessage(event: EventMessage): Unit = {
     if (isLanguageServerProtocol) {
       event match {
