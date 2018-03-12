@@ -383,6 +383,8 @@ lazy val commandProj = (project in file("main-command"))
       // Replace nailgun socket stuff
       exclude[MissingClassProblem]("sbt.internal.NG*"),
       exclude[MissingClassProblem]("sbt.internal.ReferenceCountedFileDescriptor"),
+      // made private[sbt] method private[this]
+      exclude[DirectMissingMethodProblem]("sbt.State.handleException"),
     ),
     unmanagedSources in (Compile, headerCreate) := {
       val old = (unmanagedSources in (Compile, headerCreate)).value
