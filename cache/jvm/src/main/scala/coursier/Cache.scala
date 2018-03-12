@@ -10,11 +10,12 @@ import java.util.regex.Pattern
 import coursier.core.Authentication
 import coursier.ivy.IvyRepository
 import coursier.internal.FileUtil
-import coursier.util.Base64.Encoder
 
 import scala.annotation.tailrec
 import java.io.{Serializable => _, _}
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, StandardCopyOption}
+import java.util.Base64
 
 import coursier.util.{EitherT, Schedulable}
 
@@ -33,9 +34,6 @@ object Cache {
       case _ =>
     }
   }
-
-  // java.nio.charset.StandardCharsets.UTF_8 not available in Java 6
-  private val UTF_8 = Charset.forName("UTF-8")
 
   // Check SHA-1 if available, else be fine with no checksum
   val defaultChecksums = Seq(Some("SHA-1"), None)
@@ -268,7 +266,9 @@ object Cache {
   ).r
 
   private def basicAuthenticationEncode(user: String, password: String): String =
-    (user + ":" + password).getBytes(UTF_8).toBase64
+    Base64.getEncoder.encodeToString(
+      s"$user:$password".getBytes(UTF_8)
+    )
 
   /**
     * Returns a `java.net.URL` for `s`, possibly using the custom protocol handlers found under the
@@ -334,9 +334,8 @@ object Cache {
           var success = false
           try {
             c.setRequestMethod("HEAD")
-            val len = Some(c.getContentLength) // TODO Use getContentLengthLong when switching to Java >= 7
-              .filter(_ >= 0)
-              .map(_.toLong)
+            val len = Some(c.getContentLengthLong)
+              .filter(_ >= 0L)
 
             // TODO 404 Not found could be checked here
 
@@ -581,8 +580,7 @@ object Cache {
                 else if (responseCode(conn) == Some(401))
                   Left(FileError.Unauthorized(url, realm = realm(conn)))
                 else {
-                  // TODO Use the safer getContentLengthLong when switching back to Java >= 7
-                  for (len0 <- Option(conn.getContentLength) if len0 >= 0L) {
+                  for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
                     val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
                     logger.foreach(_.downloadLength(url, len, alreadyDownloaded, watching = false))
                   }
@@ -601,7 +599,7 @@ object Cache {
 
                   withStructureLock(cache) {
                     file.getParentFile.mkdirs()
-                    FileUtil.atomicMove(tmp, file)
+                    Files.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
                   }
 
                   for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)

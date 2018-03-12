@@ -31,32 +31,17 @@ object Settings {
     scalazBintrayRepository,
     sonatypeRepository("releases"),
     crossScalaVersions := Seq(scala212, scala211, scala210), // defined for all projects to trump sbt-doge
-    scalacOptions ++= {
-      val targetJvm = scalaBinaryVersion.value match {
-        case "2.10" | "2.11" =>
-          Seq("-target:jvm-1.6")
-        case _ =>
-          Seq()
-      }
-  
-      targetJvm ++ Seq(
-        "-feature",
-        "-deprecation",
-        "-language:higherKinds",
-        "-language:implicitConversions"
-      )
-    },
-    javacOptions ++= {
-      scalaBinaryVersion.value match {
-        case "2.10" | "2.11" =>
-          Seq(
-            "-source", "1.6",
-            "-target", "1.6"
-          )
-        case _ =>
-          Seq()
-      }
-    },
+    scalacOptions ++= Seq(
+      "-target:jvm-1.8",
+      "-feature",
+      "-deprecation",
+      "-language:higherKinds",
+      "-language:implicitConversions"
+    ),
+    javacOptions ++= Seq(
+      "-source", "1.8",
+      "-target", "1.8"
+    ),
     javacOptions.in(Keys.doc) := Seq()
   )
 

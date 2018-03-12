@@ -134,52 +134,6 @@ checkBinaryCompatibility() {
   sbt ++${SCALA_VERSION} coreJVM/mimaReportBinaryIssues cacheJVM/mimaReportBinaryIssues
 }
 
-testSbtCoursierJava6() {
-  sbt ++${SCALA_VERSION} coreJVM/publishLocal cache/publishLocal extra/publishLocal sbt-coursier/publishLocal
-
-  git clone https://github.com/alexarchambault/scalacheck-shapeless.git
-  cd scalacheck-shapeless
-  git checkout e11ec8b2b069ee598b20ae3f3ad6e00f5edfd7ac
-  cd project
-  clean_plugin_sbt
-  cd project
-  clean_plugin_sbt
-  cd ../..
-  docker run -it --rm \
-    -v $HOME/.ivy2/local:/root/.ivy2/local \
-    -v $(pwd):/root/project \
-    -v $(pwd)/../bin:/root/bin \
-    -e CI=true \
-    openjdk:6-jre \
-      /bin/bash -c "cd /root/project && /root/bin/sbt update"
-  cd ..
-
-  # ensuring resolution error doesn't throw NoSuchMethodError
-  mkdir -p foo/project
-  cd foo
-  echo 'libraryDependencies += "foo" % "bar" % "1.0"' >> build.sbt
-  echo 'addSbtPlugin("io.get-coursier" % "sbt-coursier" % "'"$VERSION"'")' >> project/plugins.sbt
-  echo 'sbt.version=0.13.15' >> project/build.properties
-  docker run -it --rm \
-    -v $HOME/.ivy2/local:/root/.ivy2/local \
-    -v $(pwd):/root/project \
-    -v $(pwd)/../bin:/root/bin \
-    -e CI=true \
-    openjdk:6-jre \
-      /bin/bash -c "cd /root/project && /root/bin/sbt update || true" | tee -a output
-  grep "coursier.ResolutionException: Encountered 1 error" output
-  echo "Ok, found ResolutionException in output"
-  cd ..
-}
-
-clean_plugin_sbt() {
-  mv plugins.sbt plugins.sbt0
-  grep -v coursier plugins.sbt0 > plugins.sbt || true
-  echo '
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "'"$VERSION"'")
-  ' >> plugins.sbt
-}
-
 publish() {
   sbt ++${SCALA_VERSION} publish
 }
@@ -231,10 +185,6 @@ else
     if is210 || is212; then
       runSbtCoursierTests
     fi
-
-    if is210; then
-      testSbtCoursierJava6
-    fi
   elif sbtShading; then
     if is210 || is212; then
       runSbtShadingTests
@@ -250,10 +200,6 @@ else
     validateReadme
     checkBinaryCompatibility
   fi
-
-  # Not using a jdk6 matrix entry with Travis as some sources of coursier require Java 7 to compile
-  # (even though it won't try to call Java 7 specific methods if it detects it runs under Java 6).
-  # The tests here check that coursier is nonetheless fine when run under Java 6.
 fi
 
 

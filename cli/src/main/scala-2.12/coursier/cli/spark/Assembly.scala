@@ -2,6 +2,8 @@ package coursier.cli.spark
 
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.math.BigInteger
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, StandardCopyOption}
 import java.security.MessageDigest
 import java.util.jar.{Attributes, JarFile, JarOutputStream, Manifest}
 import java.util.regex.Pattern
@@ -207,7 +209,7 @@ object Assembly {
     extraDependencies: Seq[String],
     options: CommonOptions,
     artifactTypes: Set[String],
-    checksumSeed: Array[Byte] = "v1".getBytes("UTF-8")
+    checksumSeed: Array[Byte] = "v1".getBytes(UTF_8)
   ): Either[String, (File, Seq[File])] = {
 
     val helper = sparkJarsHelper(scalaVersion, sparkVersion, yarnVersion, default, extraDependencies, options)
@@ -240,7 +242,7 @@ object Assembly {
     md.update(checksumSeed)
 
     for (c <- checksums.sorted) {
-      val b = c.getBytes("UTF-8")
+      val b = c.getBytes(UTF_8)
       md.update(b, 0, b.length)
     }
 
@@ -271,7 +273,7 @@ object Assembly {
         val tmpDest = new File(dest.getParentFile, s".${dest.getName}.part")
         // FIXME Acquire lock on tmpDest
         Assembly.make(jars, tmpDest, assemblyRules)
-        FileUtil.atomicMove(tmpDest, dest)
+        Files.move(tmpDest.toPath, dest.toPath, StandardCopyOption.ATOMIC_MOVE)
         Right((dest, jars))
       }.left.map(_.describe)
   }

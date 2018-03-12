@@ -1,6 +1,6 @@
 package coursier.test
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Paths}
 
 import coursier.interop.scalaz._
@@ -24,7 +24,7 @@ package object compatibility {
     }
     val is = res.openStream()
 
-    new String(Platform.readFullySync(is), "UTF-8")
+    new String(Platform.readFullySync(is), UTF_8)
   }
 
   private val baseRepo = {
@@ -81,7 +81,7 @@ package object compatibility {
     if (fillChunks) {
       val path0 = baseResources.resolve(path)
       Files.createDirectories(path0.getParent)
-      Files.write(path0, content.getBytes(StandardCharsets.UTF_8))
+      Files.write(path0, content.getBytes(UTF_8))
     }
 
 }

@@ -1,7 +1,7 @@
 package coursier
 
 import java.io._
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 
 import coursier.interop.scalaz._
 import coursier.util.EitherT
@@ -24,8 +24,6 @@ object Platform {
     buffer.flush()
     buffer.toByteArray
   }
-
-  private lazy val UTF_8 = Charset.forName("UTF-8")
 
   def readFully(is: => InputStream): Task[Either[String, String]] =
     Task {
