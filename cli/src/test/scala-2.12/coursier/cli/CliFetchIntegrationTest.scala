@@ -867,4 +867,30 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
     }
   }
 
+  "Wrong range partial artifact resolve" should "succeed with retry" in withTempDir("tmp_dir") {
+    dir => {
+      def runFetchJunit = {
+        val fetchOpt = FetchOptions(common = CommonOptions(mode = "force", cacheOptions = CacheOptions(cache = dir.getAbsolutePath)))
+        val fetch = Fetch(fetchOpt, RemainingArgs(Seq("junit:junit:4.6"), Seq()))
+        assert(fetch.files0.map(_.getName).toSet
+          .equals(Set("junit-4.6.jar")))
+        val junitJarPath = fetch.files0.map(_.getAbsolutePath()).filter(_.contains("junit-4.6.jar"))
+          .head
+        val junitJarFile = new File(junitJarPath)
+        junitJarFile
+      }
+
+      val originalJunitJar: File = runFetchJunit
+
+      val originalJunitJarContent = FileUtil.readAllBytes(originalJunitJar)
+
+      // Move the jar to partial (but complete) download
+      val newJunitJar: File = new File(originalJunitJar.getAbsolutePath + ".part")
+      originalJunitJar.renameTo(newJunitJar)
+
+      // Run fetch again and it should pass because of retrying on the partial jar.
+      val jar = runFetchJunit
+      assert(FileUtil.readAllBytes(jar).sameElements(originalJunitJarContent))
+    }
+  }
 }

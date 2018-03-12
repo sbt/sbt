@@ -198,6 +198,7 @@ object Cache {
   }
 
   private val partialContentResponseCode = 206
+  private val invalidPartialContentResponseCode = 416
 
   private val handlerClsCache = new ConcurrentHashMap[String, Option[URLStreamHandler]]
 
@@ -561,7 +562,8 @@ object Cache {
                   case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
                     conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
 
-                    (conn0.getResponseCode == partialContentResponseCode) && {
+                    ((conn0.getResponseCode == partialContentResponseCode)
+                       || (conn0.getResponseCode == invalidPartialContentResponseCode)) && {
                       val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
 
                       ackRange.startsWith(s"bytes $alreadyDownloaded-") || {
