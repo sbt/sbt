@@ -150,11 +150,6 @@ object CoursierPlugin extends AutoPlugin {
     }
   )
 
-  private val preloadedBase = {
-    val rawPattern = "file:///${sbt.preloaded-${sbt.global.base-${user.home}/.sbt}/preloaded/}"
-    Tasks.exceptionPatternParser().apply(rawPattern).string
-  }
-
   def coursierSettings(
     shadedConfigOpt: Option[(String, String)],
     packageConfigs: Seq[(Configuration, String)]
