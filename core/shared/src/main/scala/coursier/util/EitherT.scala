@@ -44,11 +44,6 @@ final case class EitherT[F[_], L, R](run: F[Either[L, R]]) {
       }
     )
 
-  def scalaz(implicit M: Monad[F]): _root_.scalaz.EitherT[F, L, R] =
-    _root_.scalaz.EitherT(
-      M.map(run)(_root_.scalaz.\/.fromEither)
-    )
-
 }
 
 object EitherT {

@@ -160,12 +160,15 @@ val start = Resolution(
 
 Create a fetch function able to get things from a few repositories via a local cache,
 ```scala
+import coursier.interop.scalaz._
+import scalaz.concurrent.Task
+
 val repositories = Seq(
   Cache.ivy2Local,
   MavenRepository("https://repo1.maven.org/maven2")
 )
 
-val fetch = Fetch.from(repositories, Cache.fetch())
+val fetch = Fetch.from(repositories, Cache.fetch[Task]())
 ```
 
 Then run the resolution per-se,
@@ -468,7 +471,7 @@ The resolution process will go on by giving successive `Resolution`s, until the 
 `start` above is only the initial state - it is far from over, as the `isDone` method on it tells,
 ```scala
 scala> start.isDone
-res4: Boolean = false
+res5: Boolean = false
 ```
 
 
@@ -507,7 +510,7 @@ scala> MavenRepository(
      |   "https://nexus.corp.com/content/repositories/releases",
      |   authentication = Some(Authentication("user", "pass"))
      | )
-res6: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,true,Some(Authentication(user, *******)))
+res7: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,true,Some(Authentication(user, *******)))
 ```
 
 Now that we have repositories, we're going to mix these with things from the `coursier-cache` module,

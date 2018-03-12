@@ -166,8 +166,8 @@ object Cache {
     dropInfoAttributes = true
   )
 
-  def fetch() = coursier.Cache.fetch()
-  def file(artifact: Artifact) = coursier.Cache.file(artifact)
+  def fetch[F[_]: coursier.util.Schedulable]() = coursier.Cache.fetch[F]()
+  def file[F[_]: coursier.util.Schedulable](artifact: Artifact) = coursier.Cache.file[F](artifact)
 }
 ```
 
@@ -187,12 +187,15 @@ val start = Resolution(
 
 Create a fetch function able to get things from a few repositories via a local cache,
 ```tut:silent
+import coursier.interop.scalaz._
+import scalaz.concurrent.Task
+
 val repositories = Seq(
   Cache.ivy2Local,
   MavenRepository("https://repo1.maven.org/maven2")
 )
 
-val fetch = Fetch.from(repositories, Cache.fetch())
+val fetch = Fetch.from(repositories, Cache.fetch[Task]())
 ```
 
 Then run the resolution per-se,

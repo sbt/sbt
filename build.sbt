@@ -30,7 +30,6 @@ lazy val core = crossProject
   .settings(
     shared,
     name := "coursier",
-    libs += CrossDeps.scalazCore.value,
     Mima.previousArtifacts,
     Mima.coreFilters
   )
@@ -40,7 +39,7 @@ lazy val coreJs = core.js
 
 lazy val tests = crossProject
   .disablePlugins(ScriptedPlugin)
-  .dependsOn(core, cache % "test")
+  .dependsOn(core, cache % "test", scalaz)
   .jsSettings(
     scalaJSStage.in(Global) := FastOptStage
   )
@@ -93,12 +92,30 @@ lazy val cache = crossProject
     shared,
     Mima.previousArtifacts,
     coursierPrefix,
-    libs += Deps.scalazConcurrent,
     Mima.cacheFilters
   )
 
 lazy val cacheJvm = cache.jvm
 lazy val cacheJs = cache.js
+
+lazy val scalaz = crossProject
+  .disablePlugins(ScriptedPlugin)
+  .dependsOn(cache)
+  .jvmSettings(
+    libs += Deps.scalazConcurrent
+  )
+  .jsSettings(
+    libs += CrossDeps.scalazCore.value
+  )
+  .settings(
+    name := "scalaz-interop",
+    shared,
+    Mima.previousArtifacts,
+    coursierPrefix
+  )
+
+lazy val scalazJvm = scalaz.jvm
+lazy val scalazJs = scalaz.js
 
 lazy val bootstrap = project
   .disablePlugins(ScriptedPlugin)
@@ -146,7 +163,7 @@ lazy val extra = project
   )
 
 lazy val cli = project
-  .dependsOn(coreJvm, cacheJvm, extra)
+  .dependsOn(coreJvm, cacheJvm, extra, scalazJvm)
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(PackPlugin, SbtProguard)
   .settings(
@@ -223,7 +240,7 @@ lazy val web = project
 
 lazy val readme = project
   .in(file("doc/readme"))
-  .dependsOn(coreJvm, cacheJvm)
+  .dependsOn(coreJvm, cacheJvm, scalazJvm)
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(TutPlugin)
   .settings(
@@ -255,7 +272,7 @@ lazy val `sbt-shared` = project
   )
 
 lazy val `sbt-coursier` = project
-  .dependsOn(coreJvm, cacheJvm, extra, `sbt-shared`)
+  .dependsOn(coreJvm, cacheJvm, extra, `sbt-shared`, scalazJvm)
   .disablePlugins(ScriptedPlugin)
   .settings(
     plugin,
@@ -307,6 +324,7 @@ lazy val jvm = project
     `proxy-tests`,
     paths,
     cacheJvm,
+    scalazJvm,
     bootstrap,
     extra,
     cli,
@@ -345,6 +363,7 @@ lazy val `sbt-plugins` = project
   .aggregate(
     coreJvm,
     cacheJvm,
+    scalazJvm,
     extra,
     `sbt-shared`,
     `sbt-coursier`,
@@ -376,6 +395,8 @@ lazy val coursier = project
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`,
+    scalazJvm,
+    scalazJs,
     web,
     readme,
     okhttp

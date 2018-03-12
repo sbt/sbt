@@ -4,6 +4,7 @@ package test
 import java.io.File
 import java.math.BigInteger
 
+import coursier.interop.scalaz._
 import utest._
 
 import scalaz.concurrent.Strategy

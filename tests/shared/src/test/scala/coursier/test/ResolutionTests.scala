@@ -2,6 +2,7 @@ package coursier
 package test
 
 import coursier.core.Repository
+import coursier.interop.scalaz._
 import coursier.maven.MavenRepository
 import utest._
 import scala.async.Async.{ async, await }

@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import coursier.{Fetch, Module}
 import coursier.core.ResolutionProcess
+import coursier.interop.scalaz._
 import utest._
 
 import scala.collection.JavaConverters._

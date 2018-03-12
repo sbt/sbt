@@ -3,6 +3,7 @@ package coursier.test
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
+import coursier.interop.scalaz._
 import coursier.util.{EitherT, TestEscape}
 import coursier.{Cache, Fetch, Platform}
 

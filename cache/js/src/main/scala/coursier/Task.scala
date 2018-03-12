@@ -1,7 +1,8 @@
 package coursier
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scalaz.{ Nondeterminism, Reducer }
+import coursier.util.Gather
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Minimal Future-based Task.
@@ -35,18 +36,14 @@ object Task {
       def runF(implicit ec: ExecutionContext) = Future.traverse(tasks)(_.runF)
     }
 
-  implicit val taskMonad: Nondeterminism[Task] =
-    new Nondeterminism[Task] {
-      def point[A](a: => A): Task[A] = Task.now(a)
+  implicit val gather: Gather[Task] =
+    new Gather[Task] {
+      def point[A](a: A): Task[A] = Task.now(a)
       def bind[A,B](fa: Task[A])(f: A => Task[B]): Task[B] = fa.flatMap(f)
-      override def reduceUnordered[A, M](fs: Seq[Task[A]])(implicit R: Reducer[A, M]): Task[M] =
+      def gather[A](elems: Seq[Task[A]]): Task[Seq[A]] = {
         Task { implicit ec =>
-          val f = Future.sequence(fs.map(_.runF))
-          f.map { l =>
-            (R.zero /: l)(R.snoc)
-          }
+          Future.sequence(elems.map(_.runF))
         }
-      def chooseAny[A](head: Task[A], tail: Seq[Task[A]]): Task[(A, Seq[Task[A]])] =
-        ???
+      }
     }
 }

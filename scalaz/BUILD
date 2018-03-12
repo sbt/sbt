@@ -1,8 +1,9 @@
 scala_library(
-    name = "cache",
+    name = "scalaz-interop",
     dependencies = [
         "core:core",
-        "paths/src/main/java:paths",
+        "cache:cache",
+        "3rdparty/jvm:scalaz-concurrent",
     ],
     sources = rglobs("jvm/*.scala", "shared/*.scala"),
 )

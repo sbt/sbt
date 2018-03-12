@@ -5,6 +5,7 @@ import java.io.File
 
 import coursier.cache.protocol.TestprotocolHandler
 import coursier.internal.FileUtil
+import coursier.interop.scalaz._
 
 import utest._
 

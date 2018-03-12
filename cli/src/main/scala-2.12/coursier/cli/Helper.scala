@@ -10,14 +10,14 @@ import coursier.cli.options.{CommonOptions, IsolatedLoaderOptions}
 import coursier.cli.scaladex.Scaladex
 import coursier.cli.util.{JsonElem, JsonPrintRequirement, JsonReport}
 import coursier.extra.Typelevel
+import coursier.interop.scalaz._
 import coursier.ivy.IvyRepository
 import coursier.util.Parse.ModuleRequirements
-import coursier.util.{Parse, Print}
+import coursier.util.{Gather, Parse, Print}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scalaz.concurrent.{Strategy, Task}
-import scalaz.Nondeterminism
 
 
 object Helper {
@@ -145,14 +145,14 @@ class Helper(
           None
 
       val fetchs = cachePolicies.map(p =>
-        Cache.fetch(cache, p, checksums = Nil, logger = logger, pool = pool, ttl = ttl0)
+        Cache.fetch[Task](cache, p, checksums = Nil, logger = logger, pool = pool, ttl = ttl0)
       )
 
       logger.foreach(_.init())
 
       val scaladex = Scaladex.cached(fetchs: _*)
 
-      val res = Nondeterminism[Task].gather(scaladexRawDependencies.map { s =>
+      val res = Gather[Task].gather(scaladexRawDependencies.map { s =>
         val deps = scaladex.dependencies(
           s,
           scalaVersion,
@@ -192,6 +192,7 @@ class Helper(
         .collect { case Right(l) => l }
         .flatten
         .map { case (mod, ver) => (Dependency(mod, ver), Map[String, String]()) }
+        .toList
     }
 
   val (forceVersionErrors, forceVersions0) = Parse.moduleVersions(forceVersion, scalaVersion)

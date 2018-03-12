@@ -8,6 +8,7 @@ scala_library(
         "extra/src/main/scala/coursier:fallback-deps-repo",
         "extra/src/main/scala/coursier/extra:extra",
         "extra/src/main/scala-2.12/coursier/extra:native",
+        "scalaz:scalaz-interop",
         ":util",
     ],
     sources = globs(
