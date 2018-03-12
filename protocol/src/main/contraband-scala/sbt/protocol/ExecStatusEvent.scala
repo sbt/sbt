@@ -23,7 +23,7 @@ final class ExecStatusEvent private (
   override def toString: String = {
     "ExecStatusEvent(" + status + ", " + channelName + ", " + execId + ", " + commandQueue + ")"
   }
-  protected[this] def copy(status: String = status, channelName: Option[String] = channelName, execId: Option[String] = execId, commandQueue: Vector[String] = commandQueue): ExecStatusEvent = {
+  private[this] def copy(status: String = status, channelName: Option[String] = channelName, execId: Option[String] = execId, commandQueue: Vector[String] = commandQueue): ExecStatusEvent = {
     new ExecStatusEvent(status, channelName, execId, commandQueue)
   }
   def withStatus(status: String): ExecStatusEvent = {

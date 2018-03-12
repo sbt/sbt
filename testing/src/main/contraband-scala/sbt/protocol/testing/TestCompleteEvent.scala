@@ -20,7 +20,7 @@ final class TestCompleteEvent private (
   override def toString: String = {
     "TestCompleteEvent(" + result + ")"
   }
-  protected[this] def copy(result: sbt.protocol.testing.TestResult = result): TestCompleteEvent = {
+  private[this] def copy(result: sbt.protocol.testing.TestResult = result): TestCompleteEvent = {
     new TestCompleteEvent(result)
   }
   def withResult(result: sbt.protocol.testing.TestResult): TestCompleteEvent = {

@@ -21,7 +21,7 @@ final class Location private (
   override def toString: String = {
     "Location(" + uri + ", " + range + ")"
   }
-  protected[this] def copy(uri: String = uri, range: sbt.internal.langserver.Range = range): Location = {
+  private[this] def copy(uri: String = uri, range: sbt.internal.langserver.Range = range): Location = {
     new Location(uri, range)
   }
   def withUri(uri: String): Location = {

@@ -21,7 +21,7 @@ final class Exec private (
   override def toString: String = {
     "Exec(" + commandLine + ", " + execId + ", " + source + ")"
   }
-  protected[this] def copy(commandLine: String = commandLine, execId: Option[String] = execId, source: Option[sbt.CommandSource] = source): Exec = {
+  private[this] def copy(commandLine: String = commandLine, execId: Option[String] = execId, source: Option[sbt.CommandSource] = source): Exec = {
     new Exec(commandLine, execId, source)
   }
   def withCommandLine(commandLine: String): Exec = {
