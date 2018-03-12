@@ -32,7 +32,8 @@ object Native {
             Seq(s"$binaryName$major$minor", s"$binaryName-$major.$minor")
         } :+ binaryName
 
-        Process("which" +: binaryNames).lines_!
+        Process("which" +: binaryNames)
+          .lineStream_!
           .map(new File(_))
           .headOption
           .getOrElse {
@@ -325,7 +326,7 @@ object Native {
     val compileOpts = {
       val includes = {
         val includedir =
-          Try(Process("llvm-config --includedir").lines_!)
+          Try(Process("llvm-config --includedir").lineStream_!)
             .getOrElse(Seq.empty)
         ("/usr/local/include" +: includedir).map(s => s"-I$s")
       }
@@ -392,7 +393,7 @@ object Native {
     val nativeCompileOptions = {
       val includes = {
         val includedir =
-          Try(Process("llvm-config --includedir").lines_!)
+          Try(Process("llvm-config --includedir").lineStream_!)
             .getOrElse(Seq.empty)
         ("/usr/local/include" +: includedir).map(s => s"-I$s")
       }
@@ -444,7 +445,7 @@ object Native {
     val nativeLinkingOptions = {
       val libs = {
         val libdir =
-          Try(Process("llvm-config --libdir").lines_!)
+          Try(Process("llvm-config --libdir").lineStream_!)
             .getOrElse(Seq.empty)
         ("/usr/local/lib" +: libdir).map(s => s"-L$s")
       }

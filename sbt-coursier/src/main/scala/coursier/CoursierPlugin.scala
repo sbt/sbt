@@ -81,7 +81,7 @@ object CoursierPlugin extends AutoPlugin {
       IvyXml.writeFiles(currentProject, shadedConfigOpt, ivySbt.value, streams.value.log)
     }).value
 
-  private val pluginIvySnapshotsBase = Resolver.SbtPluginRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
+  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
   // allows to get the actual repo list when sbt starts up
   private val hackHack = Seq(
@@ -93,25 +93,33 @@ object CoursierPlugin extends AutoPlugin {
 
       // hack to trigger https://github.com/sbt/sbt/blob/v1.0.1/main/src/main/scala/sbt/Defaults.scala#L2856,
       // to have the third case be used instead of the second one, at https://github.com/sbt/sbt/blob/v1.0.1/main/src/main/scala/sbt/Defaults.scala#L2069
-      // 😃🔫
       new xsbti.AppConfiguration {
         def provider() = {
+          import scala.language.reflectiveCalls
           val prov = app.provider()
+          val noWarningForDeprecatedStuffProv = prov.asInstanceOf[{
+            def mainClass(): Class[_ <: xsbti.AppMain]
+          }]
           new xsbti.AppProvider {
             def newMain() = prov.newMain()
             def components() = prov.components()
-            def mainClass() = prov.mainClass()
+            def mainClass() = noWarningForDeprecatedStuffProv.mainClass()
             def mainClasspath() = prov.mainClasspath()
             def loader() = prov.loader()
             def scalaProvider() = {
               val scalaProv = prov.scalaProvider()
+              val noWarningForDeprecatedStuffScalaProv = scalaProv.asInstanceOf[{
+                def libraryJar(): File
+                def compilerJar(): File
+              }]
+
               new xsbti.ScalaProvider {
                 def app(id: xsbti.ApplicationID) = scalaProv.app(id)
                 def loader() = scalaProv.loader()
                 def jars() = scalaProv.jars()
-                def libraryJar() = scalaProv.libraryJar()
+                def libraryJar() = noWarningForDeprecatedStuffScalaProv.libraryJar()
                 def version() = scalaProv.version()
-                def compilerJar() = scalaProv.compilerJar()
+                def compilerJar() = noWarningForDeprecatedStuffScalaProv.compilerJar()
                 def launcher() = {
                   val launch = scalaProv.launcher()
                   new xsbti.Launcher {
@@ -152,7 +160,7 @@ object CoursierPlugin extends AutoPlugin {
     packageConfigs: Seq[(Configuration, String)]
   ) = hackHack ++ Seq(
     clean := {
-      clean.value
+      val noWarningPlz = clean.value
       Tasks.resolutionsCache.clear()
       Tasks.reportsCache.clear()
     },

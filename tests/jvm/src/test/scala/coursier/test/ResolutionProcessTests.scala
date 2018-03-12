@@ -13,7 +13,7 @@ import scalaz.concurrent.Task
 
 object ResolutionProcessTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     'fetchAll - {
 

@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 object ChecksumTests extends TestSuite {
-  val tests = TestSuite {
+  val tests = Tests {
 
     'parse - {
 

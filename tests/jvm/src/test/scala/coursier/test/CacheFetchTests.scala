@@ -66,7 +66,7 @@ object CacheFetchTests extends TestSuite {
     assert(errors.isEmpty)
   }
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     // using scala-test would allow to put the below comments in the test names...
 

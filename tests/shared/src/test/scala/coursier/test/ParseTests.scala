@@ -22,7 +22,7 @@ object ParseTests extends TestSuite {
 
   val url = "file%3A%2F%2Fsome%2Fencoded%2Furl"
 
-  val tests = TestSuite {
+  val tests = Tests {
     "bintray-ivy:" - {
       val obtained = Parse.repository("bintray-ivy:scalameta/maven")
       assert(obtained.right.exists(isIvyRepo))

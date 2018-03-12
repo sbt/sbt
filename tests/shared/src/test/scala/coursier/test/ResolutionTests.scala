@@ -206,7 +206,7 @@ object ResolutionTests extends TestSuite {
     testRepository
   )
 
-  val tests = TestSuite {
+  val tests = Tests {
     'empty{
       async{
         val res = await(resolve0(

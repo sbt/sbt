@@ -8,7 +8,7 @@ object ExclusionsTests extends TestSuite {
   def exclusionsAdd(e1: Set[(String, String)], e2: Set[(String, String)]) =
     core.Exclusions.minimize(e1 ++ e2)
 
-  val tests = TestSuite {
+  val tests = Tests {
     val e1 = Set(("org1", "name1"))
     val e2 = Set(("org2", "name2"))
 

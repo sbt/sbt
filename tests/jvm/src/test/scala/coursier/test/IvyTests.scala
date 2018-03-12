@@ -18,7 +18,7 @@ object IvyTests extends TestSuite {
     throw new Exception("Cannot happen")
   )
 
-  val tests = TestSuite {
+  val tests = Tests {
     'dropInfoAttributes - {
       CentralTests.resolutionCheck(
         module = Module(

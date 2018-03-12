@@ -9,7 +9,7 @@ object MavenTests extends TestSuite {
 
   // only tested on the JVM for lack of support of XML attributes in the platform-dependent XML stubs
 
-  val tests = TestSuite {
+  val tests = Tests {
     'testSnapshotNoVersioning - {
 
       val dep = Dependency(

@@ -6,7 +6,7 @@ import utest._
 
 object PrintTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
     'ignoreAttributes - {
       val dep = Dependency(
         Module("org", "name"),

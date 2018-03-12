@@ -9,7 +9,7 @@ import scala.concurrent.{ Future, Promise }
 
 object JsTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
     'promise{
       val p = Promise[Unit]()
       Future(p.success(()))

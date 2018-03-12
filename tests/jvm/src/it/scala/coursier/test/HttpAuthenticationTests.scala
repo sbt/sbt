@@ -7,7 +7,7 @@ import coursier.maven.MavenRepository
 
 object HttpAuthenticationTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
     'httpAuthentication - {
       // requires an authenticated HTTP server to be running on localhost:8080 with user 'user'
       // and password 'pass'

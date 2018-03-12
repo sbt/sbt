@@ -22,7 +22,7 @@ object ActivationTests extends TestSuite {
   // - condition on OS or JDK, but no OS or JDK info provided (-> no match)
   // - negated OS infos (starting with "!") - not implemented yet
 
-  val tests = TestSuite {
+  val tests = Tests {
     'OS - {
       'fromProperties - {
         'MacOSX - {
