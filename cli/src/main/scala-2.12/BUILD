@@ -3,7 +3,7 @@ scala_library(
     dependencies = [
         "3rdparty/jvm:argonaut-shapeless",
         "3rdparty/jvm:caseapp",
-        "cache/src/main/scala:cache",
+        "cache:cache",
         "core:core",
         "extra/src/main/scala/coursier:fallback-deps-repo",
         "extra/src/main/scala/coursier/extra:extra",
@@ -22,7 +22,7 @@ scala_library(
     name = "util",
     dependencies = [
         "3rdparty/jvm:argonaut-shapeless",
-        "cache/src/main/scala:cache",
+        "cache:cache",
         "core:core",
     ],
     sources = globs("coursier/cli/util/*.scala"),

@@ -80,14 +80,14 @@ runSbtCoursierTests() {
 }
 
 runSbtShadingTests() {
-  sbt ++$SCALA_VERSION coreJVM/publishLocal cache/publishLocal extra/publishLocal sbt-shared/publishLocal sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*"
+  sbt ++$SCALA_VERSION coreJVM/publishLocal cacheJVM/publishLocal extra/publishLocal sbt-shared/publishLocal sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*"
   if [ "$SCALA_VERSION" = "2.10" ]; then
     sbt ++$SCALA_VERSION "sbt-shading/scripted sbt-shading-0.13/*"
   fi
 }
 
 jsCompile() {
-  sbt ++$SCALA_VERSION js/compile js/test:compile coreJS/fastOptJS fetch-js/fastOptJS testsJS/test:fastOptJS js/test:fastOptJS
+  sbt ++$SCALA_VERSION js/compile js/test:compile coreJS/fastOptJS cacheJS/fastOptJS testsJS/test:fastOptJS js/test:fastOptJS
 }
 
 jvmCompile() {
@@ -131,7 +131,7 @@ validateReadme() {
 }
 
 checkBinaryCompatibility() {
-  sbt ++${SCALA_VERSION} coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues
+  sbt ++${SCALA_VERSION} coreJVM/mimaReportBinaryIssues cacheJVM/mimaReportBinaryIssues
 }
 
 testSbtCoursierJava6() {

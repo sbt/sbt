@@ -38,21 +38,9 @@ lazy val core = crossProject
 lazy val coreJvm = core.jvm
 lazy val coreJs = core.js
 
-lazy val `fetch-js` = project
-  .disablePlugins(ScriptedPlugin)
-  .enablePlugins(ScalaJSPlugin)
-  .dependsOn(coreJs)
-  .settings(
-    shared,
-    dontPublish,
-    coursierPrefix
-  )
-
 lazy val tests = crossProject
   .disablePlugins(ScriptedPlugin)
-  .dependsOn(core)
-  .jvmConfigure(_.dependsOn(cache % "test"))
-  .jsConfigure(_.dependsOn(`fetch-js` % "test"))
+  .dependsOn(core, cache % "test")
   .jsSettings(
     scalaJSStage.in(Global) := FastOptStage
   )
@@ -92,17 +80,25 @@ lazy val paths = project
     addDirectoriesSources
   )
 
-lazy val cache = project
+lazy val cache = crossProject
   .disablePlugins(ScriptedPlugin)
-  .dependsOn(coreJvm)
+  .dependsOn(core)
+  .jvmSettings(
+    addPathsSources
+  )
+  .jsSettings(
+    name := "fetch-js"
+  )
   .settings(
     shared,
     Mima.previousArtifacts,
     coursierPrefix,
     libs += Deps.scalazConcurrent,
-    Mima.cacheFilters,
-    addPathsSources
+    Mima.cacheFilters
   )
+
+lazy val cacheJvm = cache.jvm
+lazy val cacheJs = cache.js
 
 lazy val bootstrap = project
   .disablePlugins(ScriptedPlugin)
@@ -118,7 +114,7 @@ lazy val bootstrap = project
 lazy val extra = project
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(ShadingPlugin)
-  .dependsOn(coreJvm, cache)
+  .dependsOn(coreJvm, cacheJvm)
   .settings(
     shared,
     coursierPrefix,
@@ -150,7 +146,7 @@ lazy val extra = project
   )
 
 lazy val cli = project
-  .dependsOn(coreJvm, cache, extra)
+  .dependsOn(coreJvm, cacheJvm, extra)
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(PackPlugin, SbtProguard)
   .settings(
@@ -182,7 +178,7 @@ lazy val cli = project
 lazy val web = project
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(ScalaJSPlugin)
-  .dependsOn(coreJs, `fetch-js`)
+  .dependsOn(coreJs, cacheJs)
   .settings(
     shared,
     dontPublish,
@@ -227,7 +223,7 @@ lazy val web = project
 
 lazy val readme = project
   .in(file("doc/readme"))
-  .dependsOn(coreJvm, cache)
+  .dependsOn(coreJvm, cacheJvm)
   .disablePlugins(ScriptedPlugin)
   .enablePlugins(TutPlugin)
   .settings(
@@ -238,7 +234,7 @@ lazy val readme = project
   )
 
 lazy val `sbt-shared` = project
-  .dependsOn(coreJvm, cache)
+  .dependsOn(coreJvm, cacheJvm)
   .disablePlugins(ScriptedPlugin)
   .settings(
     plugin,
@@ -259,7 +255,7 @@ lazy val `sbt-shared` = project
   )
 
 lazy val `sbt-coursier` = project
-  .dependsOn(coreJvm, cache, extra, `sbt-shared`)
+  .dependsOn(coreJvm, cacheJvm, extra, `sbt-shared`)
   .disablePlugins(ScriptedPlugin)
   .settings(
     plugin,
@@ -294,7 +290,7 @@ lazy val `sbt-shading` = project
   )
 
 lazy val okhttp = project
-  .dependsOn(cache)
+  .dependsOn(cacheJvm)
   .disablePlugins(ScriptedPlugin)
   .settings(
     shared,
@@ -310,7 +306,7 @@ lazy val jvm = project
     testsJvm,
     `proxy-tests`,
     paths,
-    cache,
+    cacheJvm,
     bootstrap,
     extra,
     cli,
@@ -332,7 +328,7 @@ lazy val js = project
   .disablePlugins(ScriptedPlugin)
   .aggregate(
     coreJs,
-    `fetch-js`,
+    cacheJs,
     testsJs,
     web
   )
@@ -348,7 +344,7 @@ lazy val `sbt-plugins` = project
   .disablePlugins(ScriptedPlugin)
   .aggregate(
     coreJvm,
-    cache,
+    cacheJvm,
     extra,
     `sbt-shared`,
     `sbt-coursier`,
@@ -367,12 +363,12 @@ lazy val coursier = project
   .aggregate(
     coreJvm,
     coreJs,
-    `fetch-js`,
     testsJvm,
     testsJs,
     `proxy-tests`,
     paths,
-    cache,
+    cacheJvm,
+    cacheJs,
     bootstrap,
     extra,
     cli,
