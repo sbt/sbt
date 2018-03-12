@@ -20,7 +20,8 @@ import sbt.internal.langserver._
 import sbt.internal.util.ObjectEvent
 import sbt.util.Logger
 
-private[sbt] case class LangServerError(code: Long, message: String) extends Throwable(message)
+private[sbt] final case class LangServerError(code: Long, message: String)
+    extends Throwable(message)
 
 private[sbt] object LanguageServerProtocol {
   lazy val internalJsonProtocol = new InitializeOptionFormats with sjsonnew.BasicJsonProtocol {}
