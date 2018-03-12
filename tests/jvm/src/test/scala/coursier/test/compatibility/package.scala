@@ -3,20 +3,14 @@ package coursier.test
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Paths}
 
-import coursier.interop.scalaz._
-import coursier.util.{EitherT, TestEscape}
+import coursier.util.{EitherT, Task, TestEscape}
 import coursier.{Cache, Fetch, Platform}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.concurrent.Task
 
 package object compatibility {
 
   implicit val executionContext = scala.concurrent.ExecutionContext.global
-
-  implicit class TaskExtensions[T](val underlying: Task[T]) extends AnyVal {
-    def runF: Future[T] = Future.successful(underlying.unsafePerformSync)
-  }
 
   def textResource(path: String)(implicit ec: ExecutionContext): Future[String] = Future {
     val res = Option(getClass.getClassLoader.getResource(path)).getOrElse {
@@ -49,9 +43,9 @@ package object compatibility {
 
       val init = EitherT[Task, String, Unit] {
         if (Files.exists(path))
-          Task.now(Right(()))
+          Task.point(Right(()))
         else if (fillChunks)
-          Task[Either[String, Unit]] {
+          Task.delay[Either[String, Unit]] {
             Files.createDirectories(path.getParent)
             def is() = Cache.urlConnection(artifact.url, artifact.authentication).getInputStream
             val b = Platform.readFullySync(is())
@@ -62,7 +56,7 @@ package object compatibility {
               Left(e.toString)
           }
         else
-          Task.now(Left(s"not found: $path"))
+          Task.point(Left(s"not found: $path"))
       }
 
       init.flatMap { _ =>

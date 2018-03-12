@@ -31,10 +31,10 @@ object JsTests extends TestSuite {
           assert(proj.parent == Some(Module("ch.qos.logback", "logback-parent"), "1.1.3"))
         }
         .run
-        .runF
-        .map{ res =>
+        .map { res =>
           assert(res.isRight)
         }
+        .future
     }
   }
 

@@ -3,11 +3,9 @@ package coursier
 import java.io._
 import java.nio.charset.StandardCharsets.UTF_8
 
-import coursier.interop.scalaz._
-import coursier.util.EitherT
+import coursier.util.{EitherT, Task}
 
 import scala.util.{Failure, Success, Try}
-import scalaz.concurrent.Task
 
 object Platform {
 
@@ -26,7 +24,7 @@ object Platform {
   }
 
   def readFully(is: => InputStream): Task[Either[String, String]] =
-    Task {
+    Task.delay {
       val t = Try {
         val is0 = is
         val b =

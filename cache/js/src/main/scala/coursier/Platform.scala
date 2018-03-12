@@ -1,6 +1,6 @@
 package coursier
 
-import coursier.util.EitherT
+import coursier.util.{EitherT, Task}
 import org.scalajs.dom.raw.{Event, XMLHttpRequest}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
