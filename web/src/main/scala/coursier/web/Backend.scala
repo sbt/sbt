@@ -185,7 +185,7 @@ class Backend($: BackendScope[Unit, State]) {
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
     // somehow discards the $.modState above. (Not a major problem as queue is used by default.)
-    Future(task)(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue).flatMap(_.future).foreach { res: Resolution =>
+    Future(task)(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue).flatMap(_.future()).foreach { res: Resolution =>
       $.modState{ s =>
         updateDepGraph(res)
         updateTree(res, "#deptree", reverse = s.reverseTree)

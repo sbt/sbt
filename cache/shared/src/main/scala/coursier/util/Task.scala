@@ -1,6 +1,6 @@
 package coursier.util
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 final case class Task[T](value: ExecutionContext => Future[T]) extends AnyVal {
 
@@ -25,6 +25,9 @@ object Task extends PlatformTask {
 
   def delay[A](a: => A): Task[A] =
     Task(ec => Future(a)(ec))
+
+  def never[A]: Task[A] =
+    Task(_ => Promise[A].future)
 
 }
 

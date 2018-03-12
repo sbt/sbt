@@ -2,7 +2,6 @@ package coursier
 package test
 
 import coursier.core.Repository
-import coursier.interop.scalaz._
 import coursier.maven.MavenRepository
 import utest._
 import scala.async.Async.{ async, await }
@@ -19,7 +18,7 @@ object ResolutionTests extends TestSuite {
     Resolution(deps, filter = filter, forceVersions = forceVersions)
       .process
       .run(Platform.fetch(repositories))
-      .future
+      .future()
 
   implicit class ProjectOps(val p: Project) extends AnyVal {
     def kv: (ModuleVersion, (Artifact.Source, Project)) = p.moduleVersion -> (testRepository.source, p)

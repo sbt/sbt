@@ -34,7 +34,7 @@ object JsTests extends TestSuite {
         .map { res =>
           assert(res.isRight)
         }
-        .future
+        .future()
     }
   }
 
