@@ -41,7 +41,7 @@ object Dependencies {
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-b18f59ea3bc914a297bb6f1a4f7fb0ace399e310"
-  val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
+  val jsch = "com.jcraft" % "jsch" % "0.1.54"
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   val scalaXml = scala211Module("scala-xml", "1.0.5")
