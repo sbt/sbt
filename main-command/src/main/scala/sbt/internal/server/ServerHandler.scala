@@ -6,6 +6,8 @@
  */
 
 package sbt
+package internal
+package server
 
 import sjsonnew.JsonFormat
 import sbt.internal.protocol._

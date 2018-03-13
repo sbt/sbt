@@ -42,6 +42,7 @@ import sbt.internal.{
 }
 import sbt.io.{ FileFilter, WatchService }
 import sbt.internal.io.WatchState
+import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin

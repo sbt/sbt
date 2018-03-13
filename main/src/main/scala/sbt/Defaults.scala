@@ -26,7 +26,12 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
-import sbt.internal.server.{ LanguageServerReporter, Definition, LanguageServerProtocol }
+import sbt.internal.server.{
+  LanguageServerReporter,
+  Definition,
+  LanguageServerProtocol,
+  ServerHandler
+}
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data

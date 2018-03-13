@@ -45,6 +45,7 @@ import sbt.internal.{
 import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, ~> }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
+import sbt.internal.server.ServerHandler
 import sbt.librarymanagement.Configuration
 import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat

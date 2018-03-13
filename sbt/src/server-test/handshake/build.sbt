@@ -1,3 +1,5 @@
+import sbt.internal.ServerHandler
+
 lazy val root = (project in file("."))
   .settings(
     Global / serverLog / logLevel := Level.Debug,
