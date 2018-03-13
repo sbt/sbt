@@ -94,27 +94,22 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
       val (_, isolatedArtifactFiles) =
         options.options.isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, (Seq[String], Seq[File])])) {
           case ((done, acc), target) =>
-            val subRes = helper.res.subset(isolatedDeps.getOrElse(target, Nil).toSet)
+
+            // TODO Add non regression test checking that optional artifacts indeed land in the isolated loader URLs
+
+            val m = helper.fetchMap(
+              sources = false,
+              javadoc = false,
+              artifactTypes = options.artifactOptions.artifactTypes(sources = false, javadoc = false),
+              subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
+            )
 
             val (done0, subUrls, subFiles) =
               if (options.options.standalone) {
-                val subFiles0 = helper.fetch(
-                  sources = false,
-                  javadoc = false,
-                  artifactTypes = options.artifactOptions.artifactTypes(sources = false, javadoc = false),
-                  subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
-                )
-
+                val subFiles0 = m.values.toSeq
                 (done, Nil, subFiles0)
               } else {
-                val subArtifacts0 = subRes.dependencyArtifacts.map(_._2)
-                val artifactTypes = options.artifactOptions.artifactTypes(sources = false, javadoc = false)
-                val subArtifacts =
-                  if (artifactTypes("*"))
-                    subArtifacts0
-                  else
-                    subArtifacts0.filter(a => artifactTypes(a.`type`))
-                val filteredSubArtifacts = subArtifacts.map(_.url).diff(done)
+                val filteredSubArtifacts = m.keys.toSeq.diff(done)
                 (done ++ filteredSubArtifacts, filteredSubArtifacts, Nil)
               }
 
