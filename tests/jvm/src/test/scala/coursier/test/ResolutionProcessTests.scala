@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import coursier.{Fetch, Module}
 import coursier.core.ResolutionProcess
+import coursier.interop.scalaz._
 import utest._
 
 import scala.collection.JavaConverters._
@@ -12,7 +13,7 @@ import scalaz.concurrent.Task
 
 object ResolutionProcessTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     'fetchAll - {
 

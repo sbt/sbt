@@ -4,13 +4,14 @@ package test
 import java.io.File
 import java.math.BigInteger
 
+import coursier.util.{Gather, Schedulable, Task}
 import utest._
 
-import scalaz.concurrent.Strategy
+import scala.concurrent.{ExecutionContext, Future}
 
 
 object ChecksumTests extends TestSuite {
-  val tests = TestSuite {
+  val tests = Tests {
 
     'parse - {
 
@@ -82,13 +83,13 @@ object ChecksumTests extends TestSuite {
 
       val cache = new File(cachePath)
 
-      def validate(artifact: Artifact, sumType: String) =
-        Cache.validateChecksum(
+      def validate(artifact: Artifact, sumType: String): Task[Either[FileError, Unit]] =
+        Cache.validateChecksum[Task](
           artifact,
           sumType,
           cache,
-          Strategy.DefaultExecutorService
-        ).run.unsafePerformSync
+          Schedulable.defaultThreadPool
+        ).run
 
       def artifact(url: String) = Artifact(
         url,
@@ -109,11 +110,14 @@ object ChecksumTests extends TestSuite {
         "http://abc.com/com/github/alexarchambault/coursier_2.11/1.0.0-M9/coursier_2.11-1.0.0-M9.pom"
       ).map(artifact)
 
-      def validateAll(sumType: String) =
-        for (artifact <- artifacts) {
-          val res = validate(artifact, sumType)
-          assert(res.isRight)
-        }
+      def validateAll(sumType: String): Future[Seq[Unit]] =
+        Gather[Task].gather(
+          artifacts.map { artifact =>
+            validate(artifact, sumType).map { res =>
+              assert(res.isRight)
+            }
+          }
+        ).future()(ExecutionContext.global)
 
       'sha1 - validateAll("SHA-1")
       'sha256 - validateAll("SHA-256")

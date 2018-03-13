@@ -6,11 +6,9 @@ import java.util.concurrent.ExecutorService
 
 import argonaut._, Argonaut._, ArgonautShapeless._
 import coursier.core.{Artifact, Attributes}
-import coursier.util.EitherT
+import coursier.interop.scalaz._
+import coursier.util.{EitherT, Gather}
 import coursier.{Fetch, Module}
-
-import scala.language.higherKinds
-import scalaz.Nondeterminism
 import scalaz.concurrent.Task
 
 object Scaladex {
@@ -48,7 +46,7 @@ object Scaladex {
 
         Right(new String(b, StandardCharsets.UTF_8))
       })(pool))
-    }, Nondeterminism[Task])
+    }, Gather[Task])
 
   def cached(fetch: Fetch.Content[Task]*): Scaladex[Task] =
     Scaladex({
@@ -59,13 +57,13 @@ object Scaladex {
           )
 
         (get(fetch.head) /: fetch.tail)(_ orElse get(_))
-    }, Nondeterminism[Task])
+    }, Gather[Task])
 }
 
 // TODO Add F[_] type param, change `fetch` type to `String => EitherT[F, String, String]`, adjust method signatures accordingly, ...
-case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondeterminism[F]) {
+case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], G: Gather[F]) {
 
-  private implicit def F0 = F
+  private implicit val G0 = G
 
   // quick & dirty API for querying scaladex
 
@@ -141,8 +139,8 @@ case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondet
     orgNameOrError.flatMap {
       case (ghOrg, ghRepo, artifactNames) =>
 
-        val moduleVersions = F.map(F.gather(artifactNames.map { artifactName =>
-          F.map(artifactInfos(ghOrg, ghRepo, artifactName).run) {
+        val moduleVersions = G.map(G.gather(artifactNames.map { artifactName =>
+          G.map(artifactInfos(ghOrg, ghRepo, artifactName).run) {
             case Left(err) =>
               logger(s"Cannot get infos about artifact $artifactName from $ghOrg/$ghRepo: $err, ignoring it")
               Nil
@@ -152,7 +150,7 @@ case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondet
           }
         }))(_.flatten)
 
-        EitherT(F.map(moduleVersions) { l =>
+        EitherT(G.map(moduleVersions) { l =>
           if (l.isEmpty)
             Left(s"No module found for $ghOrg/$ghRepo")
           else

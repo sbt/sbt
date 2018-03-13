@@ -2,7 +2,6 @@ package coursier.core
 
 import coursier.Fetch
 
-import scala.language.higherKinds
 import coursier.core.compatibility.encodeURIComponent
 import coursier.util.{EitherT, Monad}
 

@@ -8,7 +8,7 @@ import utest._
 
 object PomParsingTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
     'readClassifier{
       val depNode ="""
         <dependency>

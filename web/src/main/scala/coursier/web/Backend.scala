@@ -1,8 +1,8 @@
-package coursier
-package web
+package coursier.web
 
+import coursier.{Dependency, Fetch, MavenRepository, Module, Platform, Repository, Resolution}
 import coursier.maven.MavenSource
-
+import coursier.util.{Gather, Task}
 import japgolly.scalajs.react.vdom.{ TagMod, Attr }
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
 import japgolly.scalajs.react.{ ReactEventI, ReactComponentB, BackendScope }
@@ -34,11 +34,11 @@ final case class State(
 class Backend($: BackendScope[Unit, State]) {
 
   def fetch(
-    repositories: Seq[core.Repository],
+    repositories: Seq[Repository],
     fetch: Fetch.Content[Task]
   ): Fetch.Metadata[Task] = {
 
-    modVers => Task.gatherUnordered(
+    modVers => Gather[Task].gather(
       modVers.map { case (module, version) =>
         Fetch.find(repositories, module, version, fetch)
           .run
@@ -112,8 +112,8 @@ class Backend($: BackendScope[Unit, State]) {
         .get(dep.moduleVersion)
         .toSeq
         .flatMap{case (_, proj) =>
-          core.Resolution.finalDependencies(dep, proj)
-            .filter(resolution.filter getOrElse core.Resolution.defaultFilter)
+          coursier.core.Resolution.finalDependencies(dep, proj)
+            .filter(resolution.filter getOrElse coursier.core.Resolution.defaultFilter)
         }
 
     val minDependencies = resolution.minDependencies
@@ -185,7 +185,7 @@ class Backend($: BackendScope[Unit, State]) {
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
     // somehow discards the $.modState above. (Not a major problem as queue is used by default.)
-    Future(task)(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue).flatMap(_.runF).foreach { res: Resolution =>
+    Future(task)(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue).flatMap(_.future()).foreach { res: Resolution =>
       $.modState{ s =>
         updateDepGraph(res)
         updateTree(res, "#deptree", reverse = s.reverseTree)

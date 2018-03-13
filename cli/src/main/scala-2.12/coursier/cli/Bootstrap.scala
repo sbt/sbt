@@ -2,6 +2,7 @@ package coursier
 package cli
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File, FileInputStream, IOException}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermission
 import java.util.Properties
@@ -156,7 +157,7 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
         entry.setTime(time)
 
         outputZip.putNextEntry(entry)
-        outputZip.write(content.getBytes("UTF-8"))
+        outputZip.write(content.getBytes(UTF_8))
         outputZip.closeEntry()
       }
 
@@ -207,7 +208,7 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
         "exec java -jar " + options.options.javaOpt.map(s => "'" + s.replace("'", "\\'") + "'").mkString(" ") + " \"$0\" \"$@\""
       ).mkString("", "\n", "\n")
 
-      try FileUtil.write(output0, shellPreamble.getBytes("UTF-8") ++ buffer.toByteArray)
+      try FileUtil.write(output0, shellPreamble.getBytes(UTF_8) ++ buffer.toByteArray)
       catch { case e: IOException =>
         Console.err.println(s"Error while writing $output0${Option(e.getMessage).fold("")(" (" + _ + ")")}")
         sys.exit(1)

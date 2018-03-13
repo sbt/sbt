@@ -6,7 +6,7 @@ import utest._
 
 object VersionConstraintTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
     'parse{
       'empty{
         val c0 = Parse.versionConstraint("")

@@ -4,8 +4,6 @@ import coursier.Fetch
 import coursier.core._
 import coursier.util.{EitherT, Monad, WebPage}
 
-import scala.language.higherKinds
-
 final case class IvyRepository(
   pattern: Pattern,
   metadataPatternOpt: Option[Pattern],

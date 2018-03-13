@@ -9,7 +9,7 @@ import scala.concurrent.{ Future, Promise }
 
 object JsTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
     'promise{
       val p = Promise[Unit]()
       Future(p.success(()))
@@ -31,10 +31,10 @@ object JsTests extends TestSuite {
           assert(proj.parent == Some(Module("ch.qos.logback", "logback-parent"), "1.1.3"))
         }
         .run
-        .runF
-        .map{ res =>
+        .map { res =>
           assert(res.isRight)
         }
+        .future()
     }
   }
 

@@ -1,4 +1,6 @@
 
+import java.nio.file.Files
+
 import sbt._
 import sbt.Keys._
 import sbt.ScriptedPlugin.autoImport.{sbtLauncher, scriptedBufferLog, ScriptedLaunchConf, scriptedLaunchOpts}
@@ -31,29 +33,41 @@ object Settings {
     scalazBintrayRepository,
     sonatypeRepository("releases"),
     crossScalaVersions := Seq(scala212, scala211, scala210), // defined for all projects to trump sbt-doge
-    scalacOptions ++= {
-      val targetJvm = scalaBinaryVersion.value match {
-        case "2.10" | "2.11" =>
-          Seq("-target:jvm-1.6")
-        case _ =>
-          Seq()
-      }
-  
-      targetJvm ++ Seq("-feature", "-deprecation")
-    },
-    javacOptions ++= {
-      scalaBinaryVersion.value match {
-        case "2.10" | "2.11" =>
-          Seq(
-            "-source", "1.6",
-            "-target", "1.6"
-          )
-        case _ =>
-          Seq()
-      }
-    },
+    scalacOptions ++= Seq(
+      "-target:jvm-1.8",
+      "-feature",
+      "-deprecation",
+      "-language:higherKinds",
+      "-language:implicitConversions"
+    ),
+    javacOptions ++= Seq(
+      "-source", "1.8",
+      "-target", "1.8"
+    ),
     javacOptions.in(Keys.doc) := Seq()
   )
+
+  val runNpmInstallIfNeeded = Def.task {
+    val baseDir = baseDirectory.in(ThisBuild).value
+    val evFile = baseDir / "node_modules" / ".npm_run"
+    val log = streams.value.log
+    if (!evFile.exists()) {
+      val cmd = Seq("npm", "install")
+      val b = new ProcessBuilder(cmd: _*)
+      b.directory(baseDir)
+      b.inheritIO()
+      log.info(s"Running  ${cmd.mkString(" ")}")
+      val p = b.start()
+      val retCode = p.waitFor()
+      if (retCode == 0)
+        log.info(s"${cmd.mkString(" ")}  ran successfully")
+      else
+        sys.error(s"${cmd.mkString(" ")}  failed (return code $retCode)")
+
+      // Parent dir should have been created by npm install
+      Files.write(evFile.toPath, Array.emptyByteArray)
+    }
+  }
 
   lazy val shared = javaScalaPluginShared ++ Seq(
     scalaVersion := scala212,

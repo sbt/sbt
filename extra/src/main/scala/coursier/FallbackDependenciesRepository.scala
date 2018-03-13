@@ -5,8 +5,6 @@ import java.net.{HttpURLConnection, URL, URLConnection}
 
 import coursier.util.{EitherT, Monad}
 
-import scala.language.higherKinds
-
 object FallbackDependenciesRepository {
 
   def exists(url: URL): Boolean = {

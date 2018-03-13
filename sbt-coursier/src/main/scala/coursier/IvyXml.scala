@@ -1,5 +1,7 @@
 package coursier
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 import coursier.internal.FileUtil
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
@@ -52,7 +54,7 @@ object IvyXml {
     val content0 = rawContent(currentProject, shadedConfigOpt)
     cacheIvyFile.getParentFile.mkdirs()
     log.info(s"Writing Ivy file $cacheIvyFile")
-    FileUtil.write(cacheIvyFile, content0.getBytes("UTF-8"))
+    FileUtil.write(cacheIvyFile, content0.getBytes(UTF_8))
 
     // Just writing an empty file here... Are these only used?
     cacheIvyPropertiesFile.getParentFile.mkdirs()

@@ -1,13 +1,11 @@
 package coursier
 
 import java.io._
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 
-import coursier.util.EitherT
+import coursier.util.{EitherT, Task}
 
-import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
-import scalaz.concurrent.Task
 
 object Platform {
 
@@ -25,10 +23,8 @@ object Platform {
     buffer.toByteArray
   }
 
-  private lazy val UTF_8 = Charset.forName("UTF-8")
-
   def readFully(is: => InputStream): Task[Either[String, String]] =
-    Task {
+    Task.delay {
       val t = Try {
         val is0 = is
         val b =

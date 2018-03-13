@@ -4,7 +4,6 @@ package core
 import coursier.util.Monad
 
 import scala.annotation.tailrec
-import scala.language.higherKinds
 
 
 sealed abstract class ResolutionProcess {

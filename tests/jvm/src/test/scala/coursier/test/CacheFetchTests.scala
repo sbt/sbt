@@ -2,19 +2,21 @@ package coursier
 package test
 
 import java.io.File
+import java.nio.file.Files
 
 import coursier.cache.protocol.TestprotocolHandler
-import coursier.internal.FileUtil
-
+import coursier.util.Task
 import utest._
 
+import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration.Duration
 import scala.util.Try
 
 object CacheFetchTests extends TestSuite {
 
   def check(extraRepo: Repository): Unit = {
 
-    val tmpDir = FileUtil.createTempDirectory("coursier-cache-fetch-tests")
+    val tmpDir = Files.createTempDirectory("coursier-cache-fetch-tests").toFile
 
     def cleanTmpDir() = {
       def delete(f: File): Boolean =
@@ -30,36 +32,41 @@ object CacheFetchTests extends TestSuite {
         Console.err.println(s"Warning: unable to remove temporary directory $tmpDir")
     }
 
-    val res = try {
-      val fetch = Fetch.from(
-        Seq(
-          extraRepo,
-          MavenRepository("https://repo1.maven.org/maven2")
-        ),
-        Cache.fetch(
-          tmpDir
+    val fetch = Fetch.from(
+      Seq(
+        extraRepo,
+        MavenRepository("https://repo1.maven.org/maven2")
+      ),
+      Cache.fetch[Task](
+        tmpDir
+      )
+    )
+
+    val startRes = Resolution(
+      Set(
+        Dependency(
+          Module("com.github.alexarchambault", "coursier_2.11"), "1.0.0-M9-test"
         )
       )
+    )
 
-      val startRes = Resolution(
-        Set(
-          Dependency(
-            Module("com.github.alexarchambault", "coursier_2.11"), "1.0.0-M9-test"
-          )
-        )
-      )
+    val f = startRes
+      .process
+      .run(fetch)
+      .future()(ExecutionContext.global)
 
-      startRes.process.run(fetch).unsafePerformSync
-    } finally {
-      cleanTmpDir()
-    }
+    val res =
+      try Await.result(f, Duration.Inf)
+      finally {
+        cleanTmpDir()
+      }
 
     val errors = res.errors
 
     assert(errors.isEmpty)
   }
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     // using scala-test would allow to put the below comments in the test names...
 

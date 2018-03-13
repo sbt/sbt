@@ -54,7 +54,7 @@ abstract class CentralTests extends TestSuite {
 
         res
       }
-      .runF
+      .future
   }
 
   def resolutionCheck(
@@ -214,7 +214,7 @@ abstract class CentralTests extends TestSuite {
       assert(artifact.url.endsWith("." + extension))
     }
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     'logback - {
       async {

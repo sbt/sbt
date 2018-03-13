@@ -22,7 +22,7 @@ object DirectoryListingTests extends TestSuite {
   val module = Module("com.abc", "test")
   val version = "0.1"
 
-  val tests = TestSuite {
+  val tests = Tests {
     'withListing - {
       'jar - CentralTests.withArtifacts(
         module,

@@ -1,7 +1,7 @@
 package coursier.test
 
-import coursier.util.{EitherT, TestEscape}
-import coursier.{Fetch, Task}
+import coursier.util.{EitherT, Task, TestEscape}
+import coursier.Fetch
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js

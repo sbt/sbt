@@ -4,7 +4,7 @@ import utest._
 
 object IvyXmlTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
     "no truncation" - {
 
       val project = Project(

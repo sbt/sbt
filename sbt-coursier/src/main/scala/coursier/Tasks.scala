@@ -6,6 +6,7 @@ import java.util.concurrent.{ConcurrentHashMap, ExecutorService, Executors}
 
 import coursier.core.{Authentication, Publication}
 import coursier.extra.Typelevel
+import coursier.interop.scalaz._
 import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
@@ -1015,7 +1016,7 @@ object Tasks {
 
           val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
             def f(p: CachePolicy) =
-              Cache.file(
+              Cache.file[Task](
                 a,
                 cache,
                 p,

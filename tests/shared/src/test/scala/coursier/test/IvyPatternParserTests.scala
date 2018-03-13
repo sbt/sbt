@@ -8,7 +8,7 @@ import utest._
 
 object IvyPatternParserTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     'plugin - {
       val strPattern = "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"

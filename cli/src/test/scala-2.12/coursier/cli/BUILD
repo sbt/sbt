@@ -11,7 +11,7 @@ junit_tests(
 scala_library(
     name='lib',
     dependencies = [
-        "cache/src/main/scala:cache"
+        "cache:cache"
     ],
     sources = ["CliTestLib.scala"],
 )

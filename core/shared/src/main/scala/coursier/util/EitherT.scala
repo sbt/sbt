@@ -1,7 +1,5 @@
 package coursier.util
 
-import scala.language.higherKinds
-
 final case class EitherT[F[_], L, R](run: F[Either[L, R]]) {
 
   def map[S](f: R => S)(implicit M: Monad[F]): EitherT[F, L, S] =
@@ -42,11 +40,6 @@ final case class EitherT[F[_], L, R](run: F[Either[L, R]]) {
         case Right(r) =>
           M.point(Right(r))
       }
-    )
-
-  def scalaz(implicit M: Monad[F]): _root_.scalaz.EitherT[F, L, R] =
-    _root_.scalaz.EitherT(
-      M.map(run)(_root_.scalaz.\/.fromEither)
     )
 
 }

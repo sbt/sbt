@@ -14,7 +14,7 @@ object VersionTests extends TestSuite {
     versions.iterator.sliding(2).withPartial(false).forall{case Seq(a, b) => compare(a, b) < 0 }
 
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     'stackOverflow - {
       val s = "." * 100000

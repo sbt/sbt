@@ -5,7 +5,7 @@ import utest._
 
 object PropertiesTests extends TestSuite {
 
-  val tests = TestSuite {
+  val tests = Tests {
 
     'version - {
       assert(Properties.version.nonEmpty)

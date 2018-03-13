@@ -5,8 +5,6 @@ import coursier.core._
 import coursier.core.compatibility.encodeURIComponent
 import coursier.util.{EitherT, Monad, WebPage}
 
-import scala.language.higherKinds
-
 object MavenRepository {
   val SnapshotTimestamp = "(.*-)?[0-9]{8}\\.[0-9]{6}-[0-9]+".r
 

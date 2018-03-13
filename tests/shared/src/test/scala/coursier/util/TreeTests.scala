@@ -54,7 +54,7 @@ object TreeTests extends TestSuite {
   e.addChild(f)
 
 
-  val tests = TestSuite {
+  val tests = Tests {
     'basic {
       val str = Tree[Node](roots)(_.children, _.label)
       assert(str ==

@@ -4,8 +4,6 @@ import coursier.util.Traverse.TraverseOps
 import coursier.util.ValidationNel
 import fastparse.all._
 
-import scala.language.implicitConversions
-
 final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
 
   def string: String = chunks.map(_.string).mkString

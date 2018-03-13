@@ -1,6 +1,7 @@
 package coursier.cli
 
 import java.io._
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.zip.ZipInputStream
 
 import caseapp.core.RemainingArgs
@@ -69,7 +70,7 @@ class CliBootstrapIntegrationTest extends FlatSpec with CliTestLib {
 
       val zis = new ZipInputStream(new ByteArrayInputStream(actualContent))
 
-      val lines = new String(zipEntryContent(zis, "bootstrap-isolation-foo-jar-urls"), "UTF-8").lines.toVector
+      val lines = new String(zipEntryContent(zis, "bootstrap-isolation-foo-jar-urls"), UTF_8).lines.toVector
 
       val extensions = lines
         .map { l =>

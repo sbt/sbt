@@ -1,10 +1,9 @@
 package coursier
 
-import coursier.util.EitherT
+import coursier.util.{EitherT, Task}
 import org.scalajs.dom.raw.{Event, XMLHttpRequest}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.language.implicitConversions
 import scala.scalajs.js
 import js.Dynamic.{global => g}
 import scala.scalajs.js.timers._
