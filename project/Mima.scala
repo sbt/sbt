@@ -10,6 +10,7 @@ object Mima {
 
   // Important: the line with the "binary compatibility versions" comment below is matched during releases
   def binaryCompatibilityVersions = Set(
+    "1.1.0-M1",
     "" // binary compatibility versions
   )
 
