@@ -36,7 +36,7 @@ object ErrorCodes {
   val serverErrorStart = -32099L     // from LSP's spec code snippet
   val serverErrorEnd   = -32000L     // from LSP's spec code snippet
 
-  val UnknownErrorCode     = -32001L // Defined by LSP
+  val UnknownServerError   = -32001L // Defined by LSP
   val ServerNotInitialized = -32002L // Defined by LSP
 
 
