@@ -42,6 +42,7 @@ object ErrorCodes {
 
   // The remainder of the space is available for application defined errors.
   val RequestCancelled = -32800L     // Defined by LSP
+  val UnknownError     = -33000L     // A generic error, unknown if the user or server is at fault.
 
   // format: on
 }
