@@ -498,6 +498,7 @@ lazy val sbtProj = (project in file("sbt"))
     connectInput in run in Test := true,
     outputStrategy in run in Test := Some(StdoutOutput),
     fork in Test := true,
+    parallelExecution in Test := false,
   )
   .configure(addSbtCompilerBridge)
 

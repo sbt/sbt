@@ -26,7 +26,12 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
-import sbt.internal.server.{ LanguageServerReporter, Definition }
+import sbt.internal.server.{
+  LanguageServerReporter,
+  Definition,
+  LanguageServerProtocol,
+  ServerHandler
+}
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -277,6 +282,12 @@ object Defaults extends BuildCommon {
       serverAuthentication := {
         if (serverConnectionType.value == ConnectionType.Tcp) Set(ServerAuthentication.Token)
         else Set()
+      },
+      serverHandlers :== Nil,
+      fullServerHandlers := {
+        (Vector(LanguageServerProtocol.handler)
+          ++ serverHandlers.value
+          ++ Vector(ServerHandler.fallback))
       },
       insideCI :== sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI"),
     ))

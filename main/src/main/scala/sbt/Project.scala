@@ -27,6 +27,7 @@ import Keys.{
   serverPort,
   serverAuthentication,
   serverConnectionType,
+  fullServerHandlers,
   logLevel,
   watch
 }
@@ -44,6 +45,7 @@ import sbt.internal.{
 import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, ~> }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
+import sbt.internal.server.ServerHandler
 import sbt.librarymanagement.Configuration
 import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
@@ -475,6 +477,7 @@ object Project extends ProjectExtra {
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
     val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
+    val hs: Option[Seq[ServerHandler]] = get(fullServerHandlers)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands,
                                                                        projectCommand)
@@ -491,6 +494,7 @@ object Project extends ProjectExtra {
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)
         .setCond(serverLogLevel, srvLogLevel)
+        .setCond(fullServerHandlers.key, hs)
     s.copy(
       attributes = newAttrs,
       definedCommands = newDefinedCommands

@@ -42,6 +42,7 @@ import sbt.internal.{
 }
 import sbt.io.{ FileFilter, WatchService }
 import sbt.internal.io.WatchState
+import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
@@ -136,6 +137,8 @@ object Keys {
   val serverHost = SettingKey(BasicKeys.serverHost)
   val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
   val serverConnectionType = SettingKey(BasicKeys.serverConnectionType)
+  val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
+  val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
 
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)

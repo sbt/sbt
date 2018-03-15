@@ -20,6 +20,7 @@ import BasicKeys.{
   serverAuthentication,
   serverConnectionType,
   serverLogLevel,
+  fullServerHandlers,
   logLevel
 }
 import java.net.Socket
@@ -102,6 +103,7 @@ private[sbt] final class CommandExchange {
       s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
     lazy val level = s.get(serverLogLevel).orElse(s.get(logLevel)).getOrElse(Level.Warn)
+    lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
@@ -114,7 +116,7 @@ private[sbt] final class CommandExchange {
         log
       }
       val channel =
-        new NetworkChannel(name, socket, Project structure s, auth, instance, logger)
+        new NetworkChannel(name, socket, Project structure s, auth, instance, handlers, logger)
       subscribe(channel)
     }
     if (server.isEmpty && firstInstance.get) {
@@ -210,7 +212,7 @@ private[sbt] final class CommandExchange {
               // in case we have a better client that can utilize the knowledge.
               import sbt.internal.langserver.codec.JsonProtocol._
               if (broadcastStringMessage || (entry.channelName contains c.name))
-                c.langNotify("window/logMessage", params)
+                c.jsonRpcNotify("window/logMessage", params)
             } catch { case _: IOException => toDel += c }
         }
       case _ =>

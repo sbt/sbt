@@ -26,6 +26,7 @@ final class NetworkChannel(val name: String,
                            structure: BuildStructure,
                            auth: Set[ServerAuthentication],
                            instance: ServerInstance,
+                           handlers: Seq[ServerHandler],
                            val log: Logger)
     extends CommandChannel
     with LanguageServerProtocol {
@@ -76,7 +77,6 @@ final class NetworkChannel(val name: String,
           // contentType = ""
           state = SingleLine
         }
-
         def tillEndOfLine: Option[Vector[Byte]] = {
           val delimPos = buffer.indexOf(delimiter)
           if (delimPos > 0) {
@@ -165,6 +165,21 @@ final class NetworkChannel(val name: String,
       }
     }
 
+    private lazy val intents = {
+      val cb = callbackImpl
+      handlers.toVector map { h =>
+        h.handler(cb)
+      }
+    }
+    lazy val onRequestMessage: PartialFunction[JsonRpcRequestMessage, Unit] =
+      intents.foldLeft(PartialFunction.empty[JsonRpcRequestMessage, Unit]) {
+        case (f, i) => f orElse i.onRequest
+      }
+    lazy val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit] =
+      intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) {
+        case (f, i) => f orElse i.onNotification
+      }
+
     def handleBody(chunk: Vector[Byte]): Unit = {
       if (isLanguageServerProtocol) {
         Serialization.deserializeJsonMessage(chunk) match {
@@ -174,7 +189,7 @@ final class NetworkChannel(val name: String,
             } catch {
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
-                langError(Option(req.id), code, message)
+                jsonRpcRespondError(Option(req.id), code, message)
             }
           case Right(ntf: JsonRpcNotificationMessage) =>
             try {
@@ -182,13 +197,13 @@ final class NetworkChannel(val name: String,
             } catch {
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
-                langError(None, code, message) // new id?
+                jsonRpcRespondError(None, code, message) // new id?
             }
           case Right(msg) =>
             log.debug(s"Unhandled message: $msg")
           case Left(errorDesc) =>
             val msg = s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
-            langError(None, ErrorCodes.ParseError, msg)
+            jsonRpcRespondError(None, ErrorCodes.ParseError, msg)
         }
       } else {
         contentType match {
@@ -230,7 +245,7 @@ final class NetworkChannel(val name: String,
 
   private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
     if (isLanguageServerProtocol) {
-      langNotify(method, params)
+      jsonRpcNotify(method, params)
     } else {
       ()
     }
@@ -240,7 +255,7 @@ final class NetworkChannel(val name: String,
     if (isLanguageServerProtocol) {
       event match {
         case entry: StringEvent => logMessage(entry.level, entry.message)
-        case _                  => langRespond(event, execId)
+        case _                  => jsonRpcRespond(event, execId)
       }
     } else {
       contentType match {
@@ -341,8 +356,8 @@ final class NetworkChannel(val name: String,
     if (initialized) {
       import sbt.protocol.codec.JsonProtocol._
       SettingQuery.handleSettingQueryEither(req, structure) match {
-        case Right(x) => langRespond(x, execId)
-        case Left(s)  => langError(execId, ErrorCodes.InvalidParams, s)
+        case Right(x) => jsonRpcRespond(x, execId)
+        case Left(s)  => jsonRpcRespondError(execId, ErrorCodes.InvalidParams, s)
       }
     } else {
       log.warn(s"ignoring query $req before initialization")
