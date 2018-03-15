@@ -1,128 +1,151 @@
 package sbt.librarymanagement
 
 import sbt.internal.librarymanagement.UnitSpec
+import org.scalatest.Inside
 
-// This is a specification to check the version number parsing.
-class VersionNumberSpec extends UnitSpec {
-  "1" should "be parsed" in beParsedAs("1", Seq(1), Seq(), Seq())
-  it should "breakdown" in breakDownTo("1", Some(1))
-  it should "cascade" in generateCorrectCascadingNumbers("1", Seq("1"))
+// This is a specification to check VersionNumber and VersionNumberCompatibility.
+class VersionNumberSpec extends UnitSpec with Inside {
+  import VersionNumber.{ SemVer, SecondSegment }
 
-  "1.0" should "be parsed" in beParsedAs("1.0", Seq(1, 0), Seq(), Seq())
-  it should "breakdown" in breakDownTo("1.0", Some(1), Some(0))
-  it should "cascade" in generateCorrectCascadingNumbers("1.0", Seq("1.0"))
-
-  "1.0.0" should "be parsed" in beParsedAs("1.0.0", Seq(1, 0, 0), Seq(), Seq())
-  it should "breakdown" in breakDownTo("1.0.0", Some(1), Some(0), Some(0))
-  it should "cascade" in generateCorrectCascadingNumbers("1.0.0", Seq("1.0.0", "1.0"))
-  it should "be SemVer compat with 1.0.1" in beSemVerCompatWith("1.0.0", "1.0.1")
-  it should "be SemVer compat with 1.1.1" in beSemVerCompatWith("1.0.0", "1.1.1")
-  it should "not be SemVer compat with 2.0.0" in notBeSemVerCompatWith("1.0.0", "2.0.0")
-  it should "not be SemVer compat with 1.0.0-M1" in notBeSemVerCompatWith("1.0.0", "1.0.0-M1")
-  it should "be SecSeg compat with 1.0.1" in beSecSegCompatWith("1.0.0", "1.0.1")
-  it should "not be SecSeg compat with 1.1.1" in notBeSecSegCompatWith("1.0.0", "1.1.1")
-  it should "not be SecSeg compat with 2.0.0" in notBeSecSegCompatWith("1.0.0", "2.0.0")
-  it should "not be SecSeg compat with 1.0.0-M1" in notBeSecSegCompatWith("1.0.0", "1.0.0-M1")
-
-  "1.0.0.0" should "be parsed" in beParsedAs("1.0.0.0", Seq(1, 0, 0, 0), Seq(), Seq())
-  it should "breakdown" in breakDownTo("1.0.0.0", Some(1), Some(0), Some(0), Some(0))
-  it should "cascade" in generateCorrectCascadingNumbers("1.0.0.0", Seq("1.0.0.0", "1.0.0", "1.0"))
-
-  "0.12.0" should "be parsed" in beParsedAs("0.12.0", Seq(0, 12, 0), Seq(), Seq())
-  it should "breakdown" in breakDownTo("0.12.0", Some(0), Some(12), Some(0))
-  it should "cascade" in generateCorrectCascadingNumbers("0.12.0", Seq("0.12.0", "0.12"))
-  it should "not be SemVer compat with 0.12.0-RC1" in notBeSemVerCompatWith("0.12.0", "0.12.0-RC1")
-  it should "not be SemVer compat with 0.12.1" in notBeSemVerCompatWith("0.12.0", "0.12.1")
-  it should "not be SemVer compat with 0.12.1-M1" in notBeSemVerCompatWith("0.12.0", "0.12.1-M1")
-  it should "not be SecSeg compat with 0.12.0-RC1" in notBeSecSegCompatWith("0.12.0", "0.12.0-RC1")
-  it should "be SecSeg compat with 0.12.1" in beSecSegCompatWith("0.12.0", "0.12.1")
-  it should "be SecSeg compat with 0.12.1-M1" in beSecSegCompatWith("0.12.0", "0.12.1-M1")
-
-  "0.1.0-SNAPSHOT" should "be parsed" in beParsedAs("0.1.0-SNAPSHOT",
-                                                    Seq(0, 1, 0),
-                                                    Seq("SNAPSHOT"),
-                                                    Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-SNAPSHOT",
-                                                         Seq("0.1.0-SNAPSHOT", "0.1.0", "0.1"))
-  it should "be SemVer compat with 0.1.0-SNAPSHOT" in beSemVerCompatWith("0.1.0-SNAPSHOT",
-                                                                         "0.1.0-SNAPSHOT")
-  it should "not be SemVer compat with 0.1.0" in notBeSemVerCompatWith("0.1.0-SNAPSHOT", "0.1.0")
-  it should "be SemVer compat with 0.1.0-SNAPSHOT+001" in beSemVerCompatWith("0.1.0-SNAPSHOT",
-                                                                             "0.1.0-SNAPSHOT+001")
-  it should "be SecSeg compat with 0.1.0-SNAPSHOT" in beSecSegCompatWith("0.1.0-SNAPSHOT",
-                                                                         "0.1.0-SNAPSHOT")
-  it should "be not SecSeg compat with 0.1.0" in notBeSecSegCompatWith("0.1.0-SNAPSHOT", "0.1.0")
-  it should "be SecSeg compat with 0.1.0-SNAPSHOT+001" in beSecSegCompatWith("0.1.0-SNAPSHOT",
-                                                                             "0.1.0-SNAPSHOT+001")
-
-  "0.1.0-M1" should "be parsed" in beParsedAs("0.1.0-M1", Seq(0, 1, 0), Seq("M1"), Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-M1",
-                                                         Seq("0.1.0-M1", "0.1.0", "0.1"))
-
-  "0.1.0-RC1" should "be parsed" in beParsedAs("0.1.0-RC1", Seq(0, 1, 0), Seq("RC1"), Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-RC1",
-                                                         Seq("0.1.0-RC1", "0.1.0", "0.1"))
-
-  "0.1.0-MSERVER-1" should "be parsed" in beParsedAs("0.1.0-MSERVER-1",
-                                                     Seq(0, 1, 0),
-                                                     Seq("MSERVER", "1"),
-                                                     Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-MSERVER-1",
-                                                         Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))
-
-  "2.10.4-20140115-000117-b3a-sources" should "be parsed" in {
-    beParsedAs("2.10.4-20140115-000117-b3a-sources",
-               Seq(2, 10, 4),
-               Seq("20140115", "000117", "b3a", "sources"),
-               Seq())
+  version("1") { implicit v =>
+    parsesTo(Seq(1), Seq(), Seq())
+    breaksDownTo(Some(1))
+    cascadesTo(Seq("1"))
   }
-  it should "cascade" in generateCorrectCascadingNumbers(
-    "2.10.4-20140115-000117-b3a-sources",
-    Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
-  it should "be SemVer compat with 2.0.0" in beSemVerCompatWith(
-    "2.10.4-20140115-000117-b3a-sources",
-    "2.0.0")
-  it should "be not SecSeg compat with 2.0.0" in notBeSecSegCompatWith(
-    "2.10.4-20140115-000117-b3a-sources",
-    "2.0.0")
 
-  "20140115000117-b3a-sources" should "be parsed" in {
-    beParsedAs("20140115000117-b3a-sources", Seq(20140115000117L), Seq("b3a", "sources"), Seq())
+  version("1.0") { implicit v =>
+    parsesTo(Seq(1, 0), Seq(), Seq())
+    breaksDownTo(Some(1), Some(0))
+    cascadesTo(Seq("1.0"))
   }
-  it should "cascade" in generateCorrectCascadingNumbers("20140115000117-b3a-sources",
-                                                         Seq("20140115000117-b3a-sources"))
 
-  "1.0.0-alpha+001+002" should "be parsed" in {
-    beParsedAs("1.0.0-alpha+001+002", Seq(1, 0, 0), Seq("alpha"), Seq("+001", "+002"))
+  version("1.0.0") { implicit v =>
+    parsesTo(Seq(1, 0, 0), Seq(), Seq())
+    breaksDownTo(Some(1), Some(0), Some(0))
+    cascadesTo(Seq("1.0.0", "1.0"))
+
+    isCompatibleWith("1.0.1", SemVer)
+    isCompatibleWith("1.1.1", SemVer)
+    isNotCompatibleWith("2.0.0", SemVer)
+    isNotCompatibleWith("1.0.0-M1", SemVer)
+
+    isCompatibleWith("1.0.1", SecondSegment)
+    isNotCompatibleWith("1.1.1", SecondSegment)
+    isNotCompatibleWith("2.0.0", SecondSegment)
+    isNotCompatibleWith("1.0.0-M1", SecondSegment)
   }
-  it should "cascade" in generateCorrectCascadingNumbers(
-    "1.0.0-alpha+001+002",
-    Seq("1.0.0-alpha+001+002", "1.0.0", "1.0")
-  )
 
-  "non.space.!?string" should "be parsed" in {
-    beParsedAs("non.space.!?string", Seq(), Seq(), Seq("non.space.!?string"))
+  version("1.0.0.0") { implicit v =>
+    parsesTo(Seq(1, 0, 0, 0), Seq(), Seq())
+    breaksDownTo(Some(1), Some(0), Some(0), Some(0))
+    cascadesTo(Seq("1.0.0.0", "1.0.0", "1.0"))
   }
-  it should "cascade" in generateCorrectCascadingNumbers("non.space.!?string",
-                                                         Seq("non.space.!?string"))
 
-  "space !?string" should "be parsed as an error" in beParsedAsError("space !?string")
-  "blank string" should "be parsed as an error" in beParsedAsError("")
+  version("0.12.0") { implicit v =>
+    parsesTo(Seq(0, 12, 0), Seq(), Seq())
+    breaksDownTo(Some(0), Some(12), Some(0))
+    cascadesTo(Seq("0.12.0", "0.12"))
 
-  def beParsedAs(s: String, ns: Seq[Long], ts: Seq[String], es: Seq[String]) =
-    s match {
-      case VersionNumber(ns1, ts1, es1) if (ns1 == ns && ts1 == ts && es1 == es) =>
-        (VersionNumber(ns, ts, es).toString shouldBe s)
-        (VersionNumber(ns, ts, es) shouldBe VersionNumber(ns, ts, es))
+    isNotCompatibleWith("0.12.0-RC1", SemVer)
+    isNotCompatibleWith("0.12.1", SemVer)
+    isNotCompatibleWith("0.12.1-M1", SemVer)
+
+    isNotCompatibleWith("0.12.0-RC1", SecondSegment)
+    isCompatibleWith("0.12.1", SecondSegment)
+    isCompatibleWith("0.12.1-M1", SecondSegment)
+  }
+
+  version("0.1.0-SNAPSHOT") { implicit v =>
+    parsesTo(Seq(0, 1, 0), Seq("SNAPSHOT"), Seq())
+    cascadesTo(Seq("0.1.0-SNAPSHOT", "0.1.0", "0.1"))
+
+    isCompatibleWith("0.1.0-SNAPSHOT", SemVer)
+    isNotCompatibleWith("0.1.0", SemVer)
+    isCompatibleWith("0.1.0-SNAPSHOT+001", SemVer)
+
+    isCompatibleWith("0.1.0-SNAPSHOT", SecondSegment)
+    isNotCompatibleWith("0.1.0", SecondSegment)
+    isCompatibleWith("0.1.0-SNAPSHOT+001", SecondSegment)
+  }
+
+  version("0.1.0-M1") { implicit v =>
+    parsesTo(Seq(0, 1, 0), Seq("M1"), Seq())
+    cascadesTo(Seq("0.1.0-M1", "0.1.0", "0.1"))
+  }
+
+  version("0.1.0-RC1") { implicit v =>
+    parsesTo(Seq(0, 1, 0), Seq("RC1"), Seq())
+    cascadesTo(Seq("0.1.0-RC1", "0.1.0", "0.1"))
+  }
+
+  version("0.1.0-MSERVER-1") { implicit v =>
+    parsesTo(Seq(0, 1, 0), Seq("MSERVER", "1"), Seq())
+    cascadesTo(Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))
+  }
+
+  version("2.10.4-20140115-000117-b3a-sources") { implicit v =>
+    parsesTo(Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())
+    cascadesTo(Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
+    isCompatibleWith("2.0.0", SemVer)
+    isNotCompatibleWith("2.0.0", SecondSegment)
+  }
+
+  version("20140115000117-b3a-sources") { implicit v =>
+    parsesTo(Seq(20140115000117L), Seq("b3a", "sources"), Seq())
+    cascadesTo(Seq("20140115000117-b3a-sources"))
+  }
+
+  version("1.0.0-alpha+001+002") { implicit v =>
+    parsesTo(Seq(1, 0, 0), Seq("alpha"), Seq("+001", "+002"))
+    cascadesTo(Seq("1.0.0-alpha+001+002", "1.0.0", "1.0"))
+  }
+
+  version("non.space.!?string") { implicit v =>
+    parsesTo(Seq(), Seq(), Seq("non.space.!?string"))
+    cascadesTo(Seq("non.space.!?string"))
+  }
+
+  version("space !?string") { implicit v =>
+    parsesToError
+  }
+  version("") { implicit v =>
+    parsesToError
+  }
+
+  ////
+
+  // to be used as an implicit
+  final class VersionString(val value: String)
+
+  private[this] def version[A](s: String)(f: VersionString => A) = {
+    behavior of s"""Version "$s""""
+    f(new VersionString(s))
+  }
+
+  def parsesTo(ns: Seq[Long], ts: Seq[String], es: Seq[String])(implicit v: VersionString): Unit =
+    it should s"parse to ($ns, $ts, $es)" in inside(v.value) {
       case VersionNumber(ns1, ts1, es1) =>
-        sys.error(s"$ns1, $ts1, $es1")
+        (ns1 shouldBe ns)
+        (ts1 shouldBe ts)
+        (es1 shouldBe es)
+        (VersionNumber(ns, ts, es).toString shouldBe v.value)
+        (VersionNumber(ns, ts, es) shouldBe VersionNumber(ns, ts, es))
     }
-  def breakDownTo(s: String,
-                  major: Option[Long],
-                  minor: Option[Long] = None,
-                  patch: Option[Long] = None,
-                  buildNumber: Option[Long] = None) =
-    s match {
+
+  private[this] def parsesToError(implicit v: VersionString): Unit =
+    it should "parse as an error" in {
+      v.value should not matchPattern {
+        case s: String if VersionNumber.unapply(s).isDefined => // because of unapply overloading
+      }
+    }
+
+  private[this] def breaksDownTo(
+      major: Option[Long],
+      minor: Option[Long] = None,
+      patch: Option[Long] = None,
+      buildNumber: Option[Long] = None
+  )(implicit v: VersionString): Unit =
+    it should s"breakdown to ($major, $minor, $patch, $buildNumber)" in inside(v.value) {
       case VersionNumber(ns, ts, es) =>
         val v = VersionNumber(ns, ts, es)
         (v._1 shouldBe major)
@@ -130,21 +153,33 @@ class VersionNumberSpec extends UnitSpec {
         (v._3 shouldBe patch)
         (v._4 shouldBe buildNumber)
     }
-  def beParsedAsError(s: String): Unit =
-    s match {
-      case VersionNumber(_, _, _) => sys.error(s)
-      case _                      => ()
+
+  private[this] def cascadesTo(ns: Seq[String])(implicit v: VersionString) = {
+    it should s"cascade to $ns" in {
+      val versionNumbers = ns.toVector map VersionNumber.apply
+      VersionNumber(v.value).cascadingVersions shouldBe versionNumbers
     }
-  def beSemVerCompatWith(v1: String, v2: String) =
-    VersionNumber.SemVer.isCompatible(VersionNumber(v1), VersionNumber(v2)) shouldBe true
-  def notBeSemVerCompatWith(v1: String, v2: String) =
-    VersionNumber.SemVer.isCompatible(VersionNumber(v1), VersionNumber(v2)) shouldBe false
-  def beSecSegCompatWith(v1: String, v2: String) =
-    VersionNumber.SecondSegment.isCompatible(VersionNumber(v1), VersionNumber(v2)) shouldBe true
-  def notBeSecSegCompatWith(v1: String, v2: String) =
-    VersionNumber.SecondSegment.isCompatible(VersionNumber(v1), VersionNumber(v2)) shouldBe false
-  def generateCorrectCascadingNumbers(s: String, ns: Seq[String]) = {
-    val versionNumbers = ns.toVector map VersionNumber.apply
-    VersionNumber(s).cascadingVersions shouldBe versionNumbers
+  }
+
+  def isCompatibleWith(v2: String, vnc: VersionNumberCompatibility)(implicit v1: VersionString) =
+    checkCompat(true, vnc, v2)
+
+  def isNotCompatibleWith(v2: String, vnc: VersionNumberCompatibility)(implicit v1: VersionString) =
+    checkCompat(false, vnc, v2)
+
+  private[this] def checkCompat(
+      expectOutcome: Boolean,
+      vnc: VersionNumberCompatibility,
+      v2: String
+  )(implicit v1: VersionString) = {
+    val prefix = if (expectOutcome) "" else "NOT "
+    val compatibilityStrategy = vnc match {
+      case SemVer        => "SemVer"
+      case SecondSegment => "SecondSegment"
+      case _             => val s = vnc.name; if (s contains " ") s""""$s"""" else s
+    }
+    it should s"${prefix}be $compatibilityStrategy compatible with $v2" in {
+      vnc.isCompatible(VersionNumber(v1.value), VersionNumber(v2)) shouldBe expectOutcome
+    }
   }
 }
