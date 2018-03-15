@@ -20,7 +20,7 @@ final class SettingQuerySuccess private (
   override def toString: String = {
     "SettingQuerySuccess(" + value + ", " + contentType + ")"
   }
-  protected[this] def copy(value: sjsonnew.shaded.scalajson.ast.unsafe.JValue = value, contentType: String = contentType): SettingQuerySuccess = {
+  private[this] def copy(value: sjsonnew.shaded.scalajson.ast.unsafe.JValue = value, contentType: String = contentType): SettingQuerySuccess = {
     new SettingQuerySuccess(value, contentType)
   }
   def withValue(value: sjsonnew.shaded.scalajson.ast.unsafe.JValue): SettingQuerySuccess = {

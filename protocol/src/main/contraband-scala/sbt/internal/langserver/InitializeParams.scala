@@ -25,7 +25,7 @@ final class InitializeParams private (
   override def toString: String = {
     "InitializeParams(" + processId + ", " + rootPath + ", " + rootUri + ", " + initializationOptions + ", " + capabilities + ", " + trace + ")"
   }
-  protected[this] def copy(processId: Option[Long] = processId, rootPath: Option[String] = rootPath, rootUri: Option[String] = rootUri, initializationOptions: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = initializationOptions, capabilities: Option[sbt.internal.langserver.ClientCapabilities] = capabilities, trace: Option[String] = trace): InitializeParams = {
+  private[this] def copy(processId: Option[Long] = processId, rootPath: Option[String] = rootPath, rootUri: Option[String] = rootUri, initializationOptions: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = initializationOptions, capabilities: Option[sbt.internal.langserver.ClientCapabilities] = capabilities, trace: Option[String] = trace): InitializeParams = {
     new InitializeParams(processId, rootPath, rootUri, initializationOptions, capabilities, trace)
   }
   def withProcessId(processId: Option[Long]): InitializeParams = {

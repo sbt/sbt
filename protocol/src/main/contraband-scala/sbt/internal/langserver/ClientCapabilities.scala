@@ -18,7 +18,7 @@ override def hashCode: Int = {
 override def toString: String = {
   "ClientCapabilities()"
 }
-protected[this] def copy(): ClientCapabilities = {
+private[this] def copy(): ClientCapabilities = {
   new ClientCapabilities()
 }
 

@@ -37,7 +37,7 @@ object OutputStrategy {
     override def toString: String = {
       "BufferedOutput(" + logger + ")"
     }
-    protected[this] def copy(logger: Logger = logger): BufferedOutput = {
+    private[this] def copy(logger: Logger = logger): BufferedOutput = {
       new BufferedOutput(logger)
     }
     def withLogger(logger: Logger): BufferedOutput = {
@@ -63,7 +63,7 @@ object OutputStrategy {
     override def toString: String = {
       "LoggedOutput(" + logger + ")"
     }
-    protected[this] def copy(logger: Logger = logger): LoggedOutput = {
+    private[this] def copy(logger: Logger = logger): LoggedOutput = {
       new LoggedOutput(logger)
     }
     def withLogger(logger: Logger): LoggedOutput = {
@@ -91,7 +91,7 @@ object OutputStrategy {
     override def toString: String = {
       "CustomOutput(" + output + ")"
     }
-    protected[this] def copy(output: OutputStream = output): CustomOutput = {
+    private[this] def copy(output: OutputStream = output): CustomOutput = {
       new CustomOutput(output)
     }
     def withOutput(output: OutputStream): CustomOutput = {

@@ -63,7 +63,8 @@ private[sbt] object Server {
                 val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
                 val path = socketfile.getAbsolutePath
                 if (path.length > maxSocketLength)
-                  sys.error("socket file absolute path too long; " +
+                  sys.error(
+                    "socket file absolute path too long; " +
                       "either switch to another connection type " +
                       "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
                       s"Current path: ${path}")

@@ -203,6 +203,24 @@ lazy val testingProj = (project in file("testing"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // copy method was never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.EndTestGroupErrorEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.EndTestGroupErrorEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.EndTestGroupEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.EndTestGroupEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.StartTestGroupEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.StartTestGroupEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestCompleteEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestCompleteEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestInitEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestItemDetail.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestItemDetail.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestItemEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestItemEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy$default$1"),
+    )
   )
   .configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
 
@@ -251,6 +269,17 @@ lazy val runProj = (project in file("run"))
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // copy method was never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.ForkOptions.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.ForkOptions.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#BufferedOutput.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#BufferedOutput.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#CustomOutput.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#CustomOutput.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#LoggedOutput.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#LoggedOutput.copy$default$*"),
+    )
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerClasspath)
 
@@ -307,6 +336,31 @@ lazy val protocolProj = (project in file("protocol"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // copy method was never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ChannelAcceptedEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ChannelAcceptedEvent.copy$default$1"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ExecCommand.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ExecCommand.copy$default$1"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ExecCommand.copy$default$2"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ExecStatusEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ExecStatusEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ExecutionEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.ExecutionEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.InitCommand.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.InitCommand.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.LogEvent.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.LogEvent.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQuery.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQuery.copy$default$1"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQueryFailure.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQueryFailure.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQuerySuccess.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQuerySuccess.copy$default$*"),
+
+      // ignore missing methods in sbt.internal
+      exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+    )
   )
   .configure(addSbtUtilLogging)
 
@@ -336,6 +390,12 @@ lazy val commandProj = (project in file("main-command"))
       // Replace nailgun socket stuff
       exclude[MissingClassProblem]("sbt.internal.NG*"),
       exclude[MissingClassProblem]("sbt.internal.ReferenceCountedFileDescriptor"),
+
+      // copy method was never meant to be public
+      exclude[DirectMissingMethodProblem]("sbt.CommandSource.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.CommandSource.copy$default$*"),
+      exclude[DirectMissingMethodProblem]("sbt.Exec.copy"),
+      exclude[DirectMissingMethodProblem]("sbt.Exec.copy$default$*"),
     ),
     unmanagedSources in (Compile, headerCreate) := {
       val old = (unmanagedSources in (Compile, headerCreate)).value

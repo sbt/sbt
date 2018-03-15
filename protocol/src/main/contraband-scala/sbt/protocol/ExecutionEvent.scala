@@ -21,7 +21,7 @@ final class ExecutionEvent private (
   override def toString: String = {
     "ExecutionEvent(" + success + ", " + commandLine + ")"
   }
-  protected[this] def copy(success: String = success, commandLine: String = commandLine): ExecutionEvent = {
+  private[this] def copy(success: String = success, commandLine: String = commandLine): ExecutionEvent = {
     new ExecutionEvent(success, commandLine)
   }
   def withSuccess(success: String): ExecutionEvent = {
