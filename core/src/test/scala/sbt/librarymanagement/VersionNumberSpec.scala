@@ -51,7 +51,7 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
 
     assertIsNotCompatibleWith(v, "0.12.0-RC1", SecondSegment)
     assertIsCompatibleWith(v, "0.12.1", SecondSegment)
-    assertIsCompatibleWith(v, "0.12.1-M1", SecondSegment)
+    assertIsNotCompatibleWith(v, "0.12.1-M1", SecondSegment)
   }
 
   version("0.1.0-SNAPSHOT") { v =>
@@ -85,7 +85,7 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
   version("2.10.4-20140115-000117-b3a-sources") { v =>
     assertParsesTo(v, Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())
     assertCascadesTo(v, Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
-    assertIsCompatibleWith(v, "2.0.0", SemVer)
+    assertIsNotCompatibleWith(v, "2.0.0", SemVer)
     assertIsNotCompatibleWith(v, "2.0.0", SecondSegment)
   }
 
