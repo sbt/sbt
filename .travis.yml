@@ -15,6 +15,7 @@ script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
   mimaReportBinaryIssues
   scalafmt::test test:scalafmt::test sbt:scalafmt::test
   test
+  packagedArtifacts # ensure that all artifacts for publish package without failure
 
 cache:
   directories:
