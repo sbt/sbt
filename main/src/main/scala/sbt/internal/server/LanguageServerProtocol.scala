@@ -10,6 +10,7 @@ package internal
 package server
 
 import sjsonnew.JsonFormat
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
 import sbt.protocol.{ SettingQuery => Q }
@@ -81,9 +82,7 @@ private[sbt] object LanguageServerProtocol {
   })
 }
 
-/**
- * Implements Language Server Protocol <https://github.com/Microsoft/language-server-protocol>.
- */
+/** Implements Language Server Protocol <https://github.com/Microsoft/language-server-protocol>. */
 private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
 
   lazy val internalJsonProtocol = new InitializeOptionFormats with sjsonnew.BasicJsonProtocol {}
@@ -136,9 +135,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
     }
   }
 
-  /**
-   * Respond back to Language Server's client.
-   */
+  /** Respond back to Language Server's client. */
   private[sbt] def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
     val m =
       JsonRpcResponseMessage("2.0", execId, Option(Converter.toJson[A](event).get), None)
@@ -146,34 +143,32 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
     publishBytes(bytes)
   }
 
-  /**
-   * Respond back to Language Server's client.
-   */
-  private[sbt] def jsonRpcRespondError(execId: Option[String],
-                                       code: Long,
-                                       message: String): Unit = {
-    val e = JsonRpcResponseError(code, message, None)
+  /** Respond back to Language Server's client. */
+  private[sbt] def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit =
+    jsonRpcRespondErrorImpl(execId, code, message, None)
+
+  /** Respond back to Language Server's client. */
+  private[sbt] def jsonRpcRespondError[A: JsonFormat](
+      execId: Option[String],
+      code: Long,
+      message: String,
+      data: A,
+  ): Unit =
+    jsonRpcRespondErrorImpl(execId, code, message, Option(Converter.toJson[A](data).get))
+
+  private[this] def jsonRpcRespondErrorImpl(
+      execId: Option[String],
+      code: Long,
+      message: String,
+      data: Option[JValue],
+  ): Unit = {
+    val e = JsonRpcResponseError(code, message, data)
     val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
     val bytes = Serialization.serializeResponseMessage(m)
     publishBytes(bytes)
   }
 
-  /**
-   * Respond back to Language Server's client.
-   */
-  private[sbt] def jsonRpcRespondError[A: JsonFormat](execId: Option[String],
-                                                      code: Long,
-                                                      message: String,
-                                                      data: A): Unit = {
-    val e = JsonRpcResponseError(code, message, Option(Converter.toJson[A](data).get))
-    val m = JsonRpcResponseMessage("2.0", execId, None, Option(e))
-    val bytes = Serialization.serializeResponseMessage(m)
-    publishBytes(bytes)
-  }
-
-  /**
-   * Notify to Language Server's client.
-   */
+  /** Notify to Language Server's client. */
   private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
     val m =
       JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))

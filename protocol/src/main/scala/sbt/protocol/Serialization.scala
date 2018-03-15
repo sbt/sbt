@@ -8,7 +8,7 @@
 package sbt
 package protocol
 
-import sjsonnew.JsonFormat
+import sjsonnew.{ JsonFormat, JsonWriter }
 import sjsonnew.support.scalajson.unsafe.{ Parser, Converter, CompactPrinter }
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JValue, JObject, JString }
 import java.nio.ByteBuffer
@@ -41,37 +41,31 @@ object Serialization {
     CompactPrinter(json).getBytes("UTF-8")
   }
 
-  /**
-   * This formats the message according to JSON-RPC.
-   * http://www.jsonrpc.org/specification
-   */
+  /** This formats the message according to JSON-RPC. http://www.jsonrpc.org/specification */
   private[sbt] def serializeResponseMessage(message: JsonRpcResponseMessage): Array[Byte] = {
     import sbt.internal.protocol.codec.JsonRPCProtocol._
-    val json: JValue = Converter.toJson[JsonRpcResponseMessage](message).get
-    val body = CompactPrinter(json)
-    val bodyBytes = body.getBytes("UTF-8")
-
-    (s"Content-Length: ${bodyBytes.size}\r\n" +
-      s"Content-Type: $VsCode\r\n" +
-      "\r\n" +
-      body).getBytes("UTF-8")
+    serializeResponse(message)
   }
 
-  /**
-   * This formats the message according to JSON-RPC.
-   * http://www.jsonrpc.org/specification
-   */
+  /** This formats the message according to JSON-RPC. http://www.jsonrpc.org/specification */
   private[sbt] def serializeNotificationMessage(
-      message: JsonRpcNotificationMessage): Array[Byte] = {
+      message: JsonRpcNotificationMessage,
+  ): Array[Byte] = {
     import sbt.internal.protocol.codec.JsonRPCProtocol._
-    val json: JValue = Converter.toJson[JsonRpcNotificationMessage](message).get
-    val body = CompactPrinter(json)
-    val bodyBytes = body.getBytes("UTF-8")
+    serializeResponse(message)
+  }
 
-    (s"Content-Length: ${bodyBytes.size}\r\n" +
-      s"Content-Type: $VsCode\r\n" +
-      "\r\n" +
-      body).getBytes("UTF-8")
+  private[sbt] def serializeResponse[A: JsonWriter](message: A): Array[Byte] = {
+    val json: JValue = Converter.toJson[A](message).get
+    val body = CompactPrinter(json)
+    val bodyLength = body.getBytes("UTF-8").length
+
+    Iterator(
+      s"Content-Length: $bodyLength",
+      s"Content-Type: $VsCode",
+      "",
+      body
+    ).mkString("\r\n").getBytes("UTF-8")
   }
 
   /**
