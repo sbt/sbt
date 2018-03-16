@@ -18,7 +18,7 @@ abstract class CentralTests extends TestSuite {
 
   final def isActualCentral = centralBase == "https://repo1.maven.org/maven2"
 
-  val repositories = Seq[Repository](
+  lazy val repositories = Seq[Repository](
     MavenRepository(centralBase)
   )
 
@@ -63,7 +63,7 @@ abstract class CentralTests extends TestSuite {
     extraRepos: Seq[Repository] = Nil,
     configuration: String = "",
     profiles: Option[Set[String]] = None
-  ) =
+  ): Future[Unit] =
     async {
       val attrPathPart =
         if (module.attributes.isEmpty)
@@ -371,12 +371,13 @@ abstract class CentralTests extends TestSuite {
     }
 
     'versionInterval - {
-      // Warning: needs to be updated when new versions of org.webjars.bower:jquery and
-      // org.webjars.bower:jquery-mousewheel are published :-|
-      resolutionCheck(
-        Module("org.webjars.bower", "malihu-custom-scrollbar-plugin"),
-        "3.1.5"
-      )
+      if (isActualCentral)
+        resolutionCheck(
+          Module("org.webjars.bower", "malihu-custom-scrollbar-plugin"),
+          "3.1.5"
+        )
+      else
+        Future.successful(())
     }
 
     'latestRevision - {
@@ -721,6 +722,8 @@ abstract class CentralTests extends TestSuite {
               val urls = artifacts.map(_.url).toSet
               assert(urls == expectedTarGzArtifactUrls)
             }
+          else
+            Future.successful(())
         }
         * - {
           withArtifacts(mod, version, "tar.gz", attributes = Attributes("tar.gz", "bin"), classifierOpt = Some("bin"), transitive = true) { artifacts =>
@@ -739,6 +742,8 @@ abstract class CentralTests extends TestSuite {
               val urls = artifacts.map(_.url).toSet
               assert(urls == expectedZipArtifactUrls)
             }
+          else
+            Future.successful(())
         }
         * - {
           withArtifacts(mod, version, "zip", attributes = Attributes("zip", "bin"), classifierOpt = Some("bin"), transitive = true) { artifacts =>
@@ -837,6 +842,8 @@ abstract class CentralTests extends TestSuite {
       * - {
         if (isActualCentral) // doesn't work via proxies, which don't list all the upstream available versions
           resolutionCheck(mod, ver)
+        else
+          Future.successful(())
       }
     }
 
@@ -847,6 +854,8 @@ abstract class CentralTests extends TestSuite {
       * - {
         if (isActualCentral) // if false, the tests rely on things straight from Central, which can be updated sometimes…
           resolutionCheck(mod, ver)
+        else
+          Future.successful(())
       }
     }
 
@@ -872,6 +881,8 @@ abstract class CentralTests extends TestSuite {
             assert(mainArtifactOpt.nonEmpty)
             assert(mainArtifactOpt.forall(_.isOptional))
           }
+        else
+          Future.successful(())
       }
 
       * - withArtifacts(mod, ver, "jar", optional = false) { artifacts =>
@@ -894,6 +905,8 @@ abstract class CentralTests extends TestSuite {
             )
             assert(urls == expectedUrls)
           }
+        else
+          Future.successful(())
       }
     }
 
@@ -968,6 +981,8 @@ abstract class CentralTests extends TestSuite {
 
             assert(expectedUrls.forall(urls))
           }
+        else
+          Future.successful(())
       }
     }
   }

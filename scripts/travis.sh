@@ -39,12 +39,6 @@ launchTestRepo() {
   ./scripts/launch-test-repo.sh "$@"
 }
 
-launchProxyRepos() {
-  if [ "$(uname)" != "Darwin" ]; then
-    ./scripts/launch-proxies.sh
-  fi
-}
-
 integrationTestsRequirements() {
   # Required for ~/.ivy2/local repo tests
   sbt ++2.11.12 coreJVM/publishLocal ++2.12.4 cli/publishLocal
@@ -189,9 +183,6 @@ else
       runSbtShadingTests
     fi
   else
-    # Required for the proxy tests (currently CentralNexus2ProxyTests and CentralNexus3ProxyTests)
-    launchProxyRepos
-
     runJvmTests
 
     testBootstrap
