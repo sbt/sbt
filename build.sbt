@@ -318,7 +318,7 @@ lazy val dist = (project in file("dist"))
     exportRepo := {
       val old = exportRepo.value
       sbtVersionToRelease match {
-        case v if v.startsWith("1.0.") =>
+        case v if v.startsWith("1.") =>
           val zincBase = exportRepoDirectory.value / "org.scala-sbt" / "zinc_2.12"
           val zincVersion = (zincBase * DirectoryFilter).get.head.getName
           val utilBase = exportRepoDirectory.value / "org.scala-sbt" / "util-logging_2.12"
