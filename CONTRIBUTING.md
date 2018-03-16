@@ -188,10 +188,12 @@ sbt:sbtRoot> publishLocal
 
 ### Using the locally built sbt
 
-To use the locally built sbt, set the version in `build.properties` file to `1.$MINOR.$PATCH-SNAPSHOT`.
+The `publishLocal` above will build and publish version `1.$MINOR.$PATCH-SNAPSHOT` (e.g. 1.1.2-SNAPSHOT) to your local ivy repository.
+
+To use the locally built sbt, set the version in `build.properties` file in your project to `1.$MINOR.$PATCH-SNAPSHOT` then launch `sbt` (this can be the `sbt` launcher installed in your machine).
 
 ```
-$ cd ../hello
+$ cd $YOUR_OWN_PROJECT
 $ sbt
 > compile
 ```
