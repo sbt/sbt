@@ -371,12 +371,13 @@ abstract class CentralTests extends TestSuite {
     }
 
     'versionInterval - {
-      // Warning: needs to be updated when new versions of org.webjars.bower:jquery and
-      // org.webjars.bower:jquery-mousewheel are published :-|
-      resolutionCheck(
-        Module("org.webjars.bower", "malihu-custom-scrollbar-plugin"),
-        "3.1.5"
-      )
+      if (isActualCentral)
+        resolutionCheck(
+          Module("org.webjars.bower", "malihu-custom-scrollbar-plugin"),
+          "3.1.5"
+        )
+      else
+        Future.successful(())
     }
 
     'latestRevision - {
