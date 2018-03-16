@@ -18,7 +18,7 @@ abstract class CentralTests extends TestSuite {
 
   final def isActualCentral = centralBase == "https://repo1.maven.org/maven2"
 
-  val repositories = Seq[Repository](
+  lazy val repositories = Seq[Repository](
     MavenRepository(centralBase)
   )
 
