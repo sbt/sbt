@@ -10,7 +10,7 @@ import coursier.cli.util.{DepNode, ReportNode}
 import java.io._
 import java.net.URLEncoder.encode
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -817,81 +817,79 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
   "Bad pom resolve" should "succeed with retry" in withTempDir("tmp_dir") {
     dir => {
-      def runFetchJunit = {
+      def runFetchJunit() = {
         val fetchOpt = FetchOptions(common = CommonOptions(cacheOptions = CacheOptions(cache = dir.getAbsolutePath)))
         val fetch = Fetch(fetchOpt, RemainingArgs(Seq("junit:junit:4.12"), Seq()))
         assert(fetch.files0.map(_.getName).toSet
           .equals(Set("junit-4.12.jar", "hamcrest-core-1.3.jar")))
         val junitJarPath = fetch.files0.map(_.getAbsolutePath()).filter(_.contains("junit-4.12.jar"))
           .head
-        val junitPomFile = new File(junitJarPath.replace(".jar", ".pom"))
-        val junitPomShaFile = new File(junitJarPath.replace(".jar", ".pom.sha1"))
-        assert(junitPomFile.exists())
-        assert(junitPomShaFile.exists())
+        val junitPomFile = Paths.get(junitJarPath.replace(".jar", ".pom"))
+        val junitPomShaFile = Paths.get(junitJarPath.replace(".jar", ".pom.sha1"))
+        assert(Files.isRegularFile(junitPomFile))
+        assert(Files.isRegularFile(junitPomShaFile))
         junitPomFile
       }
 
-      val junitPomFile: File = runFetchJunit
-      val originalPomContent = Files.readAllBytes(junitPomFile.toPath)
+      val junitPomFile = runFetchJunit()
+      val originalPomContent = Files.readAllBytes(junitPomFile)
 
       // Corrupt the pom content
-      Files.write(junitPomFile.toPath, "bad pom".getBytes(UTF_8))
+      Files.write(junitPomFile, "bad pom".getBytes(UTF_8))
 
       // Run fetch again and it should pass because of retrying om the bad pom.
-      val pom = runFetchJunit
-      assert(Files.readAllBytes(pom.toPath).sameElements(originalPomContent))
+      val pom = runFetchJunit()
+      assert(Files.readAllBytes(pom).sameElements(originalPomContent))
     }
   }
 
   "Bad jar resolve" should "succeed with retry" in withTempDir("tmp_dir") {
     dir => {
-      def runFetchJunit = {
+      def runFetchJunit() = {
         val fetchOpt = FetchOptions(common = CommonOptions(cacheOptions = CacheOptions(cache = dir.getAbsolutePath)))
         val fetch = Fetch(fetchOpt, RemainingArgs(Seq("junit:junit:4.12"), Seq()))
         assert(fetch.files0.map(_.getName).toSet
           .equals(Set("junit-4.12.jar", "hamcrest-core-1.3.jar")))
         val junitJarPath = fetch.files0.map(_.getAbsolutePath()).filter(_.contains("junit-4.12.jar"))
           .head
-        val junitJarFile = new File(junitJarPath)
-        junitJarFile
+        Paths.get(junitJarPath)
       }
 
-      val originalJunitJar: File = runFetchJunit
-      val originalJunitJarContent = Files.readAllBytes(originalJunitJar.toPath)
+      val originalJunitJar = runFetchJunit()
+      val originalJunitJarContent = Files.readAllBytes(originalJunitJar)
 
       // Corrupt the jar content
-      Files.write(originalJunitJar.toPath, "bad jar".getBytes(UTF_8))
+      Files.write(originalJunitJar, "bad jar".getBytes(UTF_8))
 
       // Run fetch again and it should pass because of retrying on the bad jar.
-      val jar = runFetchJunit
-      assert(Files.readAllBytes(jar.toPath).sameElements(originalJunitJarContent))
+      val jar = runFetchJunit()
+      assert(Files.readAllBytes(jar).sameElements(originalJunitJarContent))
     }
   }
 
   "Wrong range partial artifact resolve" should "succeed with retry" in withTempDir("tmp_dir") {
     dir => {
-      def runFetchJunit = {
+      def runFetchJunit() = {
         val fetchOpt = FetchOptions(common = CommonOptions(mode = "force", cacheOptions = CacheOptions(cache = dir.getAbsolutePath)))
         val fetch = Fetch(fetchOpt, RemainingArgs(Seq("junit:junit:4.6"), Seq()))
         assert(fetch.files0.map(_.getName).toSet
           .equals(Set("junit-4.6.jar")))
         val junitJarPath = fetch.files0.map(_.getAbsolutePath()).filter(_.contains("junit-4.6.jar"))
           .head
-        val junitJarFile = new File(junitJarPath)
-        junitJarFile
+        Paths.get(junitJarPath)
       }
 
-      val originalJunitJar: File = runFetchJunit
+      val originalJunitJar = runFetchJunit()
 
-      val originalJunitJarContent = Files.readAllBytes(originalJunitJar.toPath)
+      val originalJunitJarContent = Files.readAllBytes(originalJunitJar)
 
       // Move the jar to partial (but complete) download
-      val newJunitJar: File = new File(originalJunitJar.getAbsolutePath + ".part")
-      originalJunitJar.renameTo(newJunitJar)
+      val newJunitJar = originalJunitJar.getParent.resolve(originalJunitJar.getFileName.toString + ".part")
+      Files.move(originalJunitJar, newJunitJar)
 
       // Run fetch again and it should pass because of retrying on the partial jar.
-      val jar = runFetchJunit
-      assert(Files.readAllBytes(jar.toPath).sameElements(originalJunitJarContent))
+      val jar = runFetchJunit()
+      assert(Files.readAllBytes(jar).sameElements(originalJunitJarContent))
     }
   }
 }
