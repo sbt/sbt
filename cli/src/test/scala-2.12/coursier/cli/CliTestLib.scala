@@ -1,7 +1,7 @@
 package coursier.cli
 
-import coursier.internal.FileUtil
 import java.io.{File, FileWriter}
+import java.nio.file.Files
 
 
 trait CliTestLib {
@@ -24,7 +24,7 @@ trait CliTestLib {
   def withTempDir(
       prefix: String
   )(testCode: File => Any) {
-    val dir = FileUtil.createTempDirectory(prefix) // create the fixture
+    val dir = Files.createTempDirectory(prefix).toFile // create the fixture
     try {
       testCode(dir) // "loan" the fixture to the test
     } finally {

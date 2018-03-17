@@ -1,13 +1,12 @@
 package coursier
 
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
 
-import coursier.internal.FileUtil
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
 import scala.collection.JavaConverters._
 import scala.xml.{Node, PrefixedAttribute}
-
 import sbt.internal.librarymanagement.IvySbt
 
 object IvyXml {
@@ -54,11 +53,11 @@ object IvyXml {
     val content0 = rawContent(currentProject, shadedConfigOpt)
     cacheIvyFile.getParentFile.mkdirs()
     log.info(s"Writing Ivy file $cacheIvyFile")
-    FileUtil.write(cacheIvyFile, content0.getBytes(UTF_8))
+    Files.write(cacheIvyFile.toPath, content0.getBytes(UTF_8))
 
     // Just writing an empty file here... Are these only used?
     cacheIvyPropertiesFile.getParentFile.mkdirs()
-    FileUtil.write(cacheIvyPropertiesFile, Array())
+    Files.write(cacheIvyPropertiesFile.toPath, Array.emptyByteArray)
   }
 
   def content(project0: Project, shadedConfigOpt: Option[String]): Node = {

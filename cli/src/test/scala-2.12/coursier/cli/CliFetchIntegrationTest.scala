@@ -7,10 +7,11 @@ import argonaut.Argonaut._
 import caseapp.core.RemainingArgs
 import coursier.cli.options._
 import coursier.cli.util.{DepNode, ReportNode}
-import coursier.internal.FileUtil
 import java.io._
 import java.net.URLEncoder.encode
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
+
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
@@ -831,14 +832,14 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
       }
 
       val junitPomFile: File = runFetchJunit
-      val originalPomContent = FileUtil.readAllBytes(junitPomFile)
+      val originalPomContent = Files.readAllBytes(junitPomFile.toPath)
 
       // Corrupt the pom content
-      FileUtil.write(junitPomFile, "bad pom".getBytes(UTF_8))
+      Files.write(junitPomFile.toPath, "bad pom".getBytes(UTF_8))
 
       // Run fetch again and it should pass because of retrying om the bad pom.
       val pom = runFetchJunit
-      assert(FileUtil.readAllBytes(pom).sameElements(originalPomContent))
+      assert(Files.readAllBytes(pom.toPath).sameElements(originalPomContent))
     }
   }
 
@@ -856,14 +857,14 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
       }
 
       val originalJunitJar: File = runFetchJunit
-      val originalJunitJarContent = FileUtil.readAllBytes(originalJunitJar)
+      val originalJunitJarContent = Files.readAllBytes(originalJunitJar.toPath)
 
       // Corrupt the jar content
-      FileUtil.write(originalJunitJar, "bad jar".getBytes(UTF_8))
+      Files.write(originalJunitJar.toPath, "bad jar".getBytes(UTF_8))
 
       // Run fetch again and it should pass because of retrying on the bad jar.
       val jar = runFetchJunit
-      assert(FileUtil.readAllBytes(jar).sameElements(originalJunitJarContent))
+      assert(Files.readAllBytes(jar.toPath).sameElements(originalJunitJarContent))
     }
   }
 
@@ -882,7 +883,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       val originalJunitJar: File = runFetchJunit
 
-      val originalJunitJarContent = FileUtil.readAllBytes(originalJunitJar)
+      val originalJunitJarContent = Files.readAllBytes(originalJunitJar.toPath)
 
       // Move the jar to partial (but complete) download
       val newJunitJar: File = new File(originalJunitJar.getAbsolutePath + ".part")
@@ -890,7 +891,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
 
       // Run fetch again and it should pass because of retrying on the partial jar.
       val jar = runFetchJunit
-      assert(FileUtil.readAllBytes(jar).sameElements(originalJunitJarContent))
+      assert(Files.readAllBytes(jar.toPath).sameElements(originalJunitJarContent))
     }
   }
 }

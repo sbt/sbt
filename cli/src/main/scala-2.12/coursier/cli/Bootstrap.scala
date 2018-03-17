@@ -203,7 +203,7 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
         "exec java -jar " + options.options.javaOpt.map(s => "'" + s.replace("'", "\\'") + "'").mkString(" ") + " \"$0\" \"$@\""
       ).mkString("", "\n", "\n")
 
-      try FileUtil.write(output0, shellPreamble.getBytes(UTF_8) ++ buffer.toByteArray)
+      try Files.write(output0.toPath, shellPreamble.getBytes(UTF_8) ++ buffer.toByteArray)
       catch { case e: IOException =>
         Console.err.println(s"Error while writing $output0${Option(e.getMessage).fold("")(" (" + _ + ")")}")
         sys.exit(1)
