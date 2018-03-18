@@ -4,6 +4,35 @@ import coursier.core.{ Attributes, Dependency, Module, Orders, Project, Resoluti
 
 object Print {
 
+  object Colors {
+    private val `with`: Colors = Colors(Console.RED, Console.YELLOW, Console.RESET)
+    private val `without`: Colors = Colors("", "", "")
+
+    def get(colors: Boolean): Colors = if (colors) `with` else `without`
+  }
+
+  case class Colors private(red: String, yellow: String, reset: String)
+
+  trait Renderable {
+    def repr(colors: Colors): String
+  }
+
+  trait Elem extends Renderable {
+    def dep: Dependency
+    def excluded: Boolean
+    def reconciledVersion: String
+    def children: Seq[Elem]
+  }
+
+  trait Parent extends Renderable {
+    def module: Module
+    def version: String
+    def dependsOn: Module
+    def wantVersion: String
+    def reconciledVersion: String
+    def excluding: Boolean
+  }
+
   def dependency(dep: Dependency): String =
     dependency(dep, printExclusions = false)
 
@@ -80,23 +109,27 @@ object Print {
     reverse: Boolean,
     colors: Boolean
   ): String = {
+    val colorsCase = Colors.get(colors)
 
-    val (red, yellow, reset) =
-      if (colors)
-        (Console.RED, Console.YELLOW, Console.RESET)
-      else
-        ("", "", "")
+    if (reverse) {
+      reverseTree(resolution.dependencies.toSeq, resolution, printExclusions).render(_.repr(colorsCase))
+    } else {
+      normalTree(roots, resolution, printExclusions).render(_.repr(colorsCase))
+    }
 
-    final case class Elem(dep: Dependency, excluded: Boolean) {
+  }
 
-      lazy val reconciledVersion = resolution.reconciledVersions
+  private def getElemFactory(resolution: Resolution, withExclusions: Boolean): Dependency => Elem = {
+    final case class ElemImpl(dep: Dependency, excluded: Boolean) extends Elem {
+
+      val reconciledVersion: String = resolution.reconciledVersions
         .getOrElse(dep.module, dep.version)
 
-      lazy val repr =
+      def repr(colors: Colors): String =
         if (excluded)
           resolution.reconciledVersions.get(dep.module) match {
             case None =>
-              s"$yellow(excluded)$reset ${dep.module}:${dep.version}"
+              s"${colors.yellow}(excluded)${colors.reset} ${dep.module}:${dep.version}"
             case Some(version) =>
               val versionMsg =
                 if (version == dep.version)
@@ -104,8 +137,8 @@ object Print {
                 else
                   s"version $version"
 
-                s"${dep.module}:${dep.version} " +
-                  s"$red(excluded, $versionMsg present anyway)$reset"
+              s"${dep.module}:${dep.version} " +
+                s"${colors.red}(excluded, $versionMsg present anyway)${colors.reset}"
           }
         else {
           val versionStr =
@@ -114,16 +147,16 @@ object Print {
             else {
               val assumeCompatibleVersions = compatibleVersions(dep.version, reconciledVersion)
 
-              (if (assumeCompatibleVersions) yellow else red) +
+              (if (assumeCompatibleVersions) colors.yellow else colors.red) +
                 s"${dep.version} -> $reconciledVersion" +
-                (if (assumeCompatibleVersions || colors) "" else " (possible incompatibility)") +
-                reset
+                (if (assumeCompatibleVersions) "" else " (possible incompatibility)") +
+                colors.reset
             }
 
           s"${dep.module}:$versionStr"
         }
 
-      lazy val children: Seq[Elem] =
+      val children: Seq[Elem] =
         if (excluded)
           Nil
         else {
@@ -146,81 +179,85 @@ object Print {
             }
             .map(_.moduleVersion)
             .filterNot(dependencies.map(_.moduleVersion).toSet).map {
-              case (mod, ver) =>
-                Elem(
-                  Dependency(mod, ver, "", Set.empty, Attributes("", ""), false, false),
-                  excluded = true
-                )
-            }
+            case (mod, ver) =>
+              ElemImpl(
+                Dependency(mod, ver, "", Set.empty, Attributes("", ""), false, false),
+                excluded = true
+              )
+          }
 
-          dependencies.map(Elem(_, excluded = false)) ++
-            (if (printExclusions) excluded else Nil)
+          dependencies.map(ElemImpl(_, excluded = false)) ++
+            (if (withExclusions) excluded else Nil)
         }
     }
 
-    if (reverse) {
+    a => ElemImpl(a, excluded = false)
+  }
 
-      final case class Parent(
-        module: Module,
-        version: String,
-        dependsOn: Module,
-        wantVersion: String,
-        gotVersion: String,
-        excluding: Boolean
-      ) {
-        lazy val repr: String =
-          if (excluding)
-            s"$yellow(excluded by)$reset $module:$version"
-          else if (wantVersion == gotVersion)
-            s"$module:$version"
-          else {
-            val assumeCompatibleVersions = compatibleVersions(wantVersion, gotVersion)
+  def normalTree(roots: Seq[Dependency], resolution: Resolution, withExclusions: Boolean): Tree[Elem] = {
+    val elemFactory = getElemFactory(resolution, withExclusions)
+    Tree[Elem](roots.toVector.map(elemFactory), (elem: Elem) => elem.children)
+  }
 
-            s"$module:$version " +
-              (if (assumeCompatibleVersions) yellow else red) +
-              s"(wants $dependsOn:$wantVersion, got $gotVersion)" +
-              reset
-          }
-      }
+  def reverseTree(roots: Seq[Dependency], resolution: Resolution, withExclusions: Boolean): Tree[Parent] = {
+    val elemFactory = getElemFactory(resolution, withExclusions)
 
-      val parents: Map[Module, Seq[Parent]] = {
-        val links = for {
-          dep <- resolution.dependencies.toVector
-          elem <- Elem(dep, excluded = false).children
+    final case class ParentImpl(
+                                 module: Module,
+                                 version: String,
+                                 dependsOn: Module,
+                                 wantVersion: String,
+                                 reconciledVersion: String,
+                                 excluding: Boolean
+                               ) extends Parent {
+      def repr(colors: Colors): String =
+        if (excluding)
+          s"${colors.yellow}(excluded by)${colors.reset} $module:$version"
+        else if (wantVersion == reconciledVersion)
+          s"$module:$version"
+        else {
+          val assumeCompatibleVersions = compatibleVersions(wantVersion, reconciledVersion)
+
+          s"$module:$version " +
+            (if (assumeCompatibleVersions) colors.yellow else colors.red) +
+            s"$dependsOn:$wantVersion -> $reconciledVersion" +
+            colors.reset
         }
-          yield elem.dep.module -> Parent(
-            dep.module,
-            dep.version,
-            elem.dep.module,
-            elem.dep.version,
-            elem.reconciledVersion,
-            elem.excluded
-          )
+    }
 
-        links
-          .groupBy(_._1)
-          .mapValues(_.map(_._2).distinct.sortBy(par => (par.module.organization, par.module.name)))
-          .iterator
-          .toMap
+    val parents: Map[Module, Seq[Parent]] = {
+      val links = for {
+        dep <- resolution.dependencies.toVector
+        elem <- elemFactory(dep).children
       }
+        yield elem.dep.module -> ParentImpl(
+          dep.module,
+          dep.version,
+          elem.dep.module,
+          elem.dep.version,
+          elem.reconciledVersion,
+          elem.excluded
+        )
 
-      def children(par: Parent) =
-        if (par.excluding)
-          Nil
-        else
-          parents.getOrElse(par.module, Nil)
+      links
+        .groupBy(_._1)
+        .mapValues(_.map(_._2).distinct.sortBy(par => (par.module.organization, par.module.name)))
+        .iterator
+        .toMap
+    }
 
-      Tree(
-        resolution
-          .dependencies
-          .toVector
-          .sortBy(dep => (dep.module.organization, dep.module.name, dep.version))
-          .map(dep =>
-            Parent(dep.module, dep.version, dep.module, dep.version, dep.version, excluding = false)
-          )
-      )(children, _.repr)
-    } else
-      Tree(roots.toVector.map(Elem(_, excluded = false)))(_.children, _.repr)
+    def children(par: Parent) =
+      if (par.excluding)
+        Nil
+      else
+        parents.getOrElse(par.module, Nil)
+
+    Tree[Parent](roots
+      .toVector
+      .sortBy(dep => (dep.module.organization, dep.module.name, dep.version))
+      .map(dep => {
+        ParentImpl(dep.module, dep.version, dep.module, dep.version, dep.version, excluding = false)
+      }), (par: Parent) => children(par))
   }
 
 }

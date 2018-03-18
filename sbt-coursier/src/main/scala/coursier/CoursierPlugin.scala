@@ -45,6 +45,7 @@ object CoursierPlugin extends AutoPlugin {
 
     val coursierDependencyTree = Keys.coursierDependencyTree
     val coursierDependencyInverseTree = Keys.coursierDependencyInverseTree
+    val coursierWhatDependsOn = Keys.coursierWhatDependsOn
 
     val coursierArtifacts = Keys.coursierArtifacts
     val coursierSignedArtifacts = Keys.coursierSignedArtifacts
@@ -65,7 +66,12 @@ object CoursierPlugin extends AutoPlugin {
     ).value,
     coursierDependencyInverseTree := Tasks.coursierDependencyTreeTask(
       inverse = true
-    ).value
+    ).value,
+    coursierWhatDependsOn := Def.inputTaskDyn {
+      import sbt.complete.DefaultParsers._
+      val input = token(SpaceClass ~ NotQuoted, "<arg>").parsed._2
+      Tasks.coursierWhatDependsOnTask(input)
+    }.evaluated
   )
 
   def makeIvyXmlBefore[T](

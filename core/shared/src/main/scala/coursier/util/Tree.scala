@@ -4,7 +4,15 @@ import scala.collection.mutable.ArrayBuffer
 
 object Tree {
 
-  def apply[T](roots: IndexedSeq[T])(children: T => Seq[T], show: T => String): String = {
+  def apply[A](roots: IndexedSeq[A])(children: A => Seq[A], show: A => String): String = {
+    Tree(roots, children).render(show)
+  }
+
+}
+
+case class Tree[A](roots: IndexedSeq[A], children: A => Seq[A]) {
+
+  def render(show: A => String): String = {
 
     /**
       * Recursively go down the resolution for the elems to construct the tree for print out.
@@ -14,8 +22,8 @@ object Tree {
       * @param prefix    prefix for the print out
       * @param acc       accumulation method on a string
       */
-    def recursivePrint(elems: Seq[T], ancestors: Set[T], prefix: String, acc: String => Unit): Unit = {
-      val unseenElems: Seq[T] = elems.filterNot(ancestors.contains)
+    def recursivePrint(elems: Seq[A], ancestors: Set[A], prefix: String, acc: String => Unit): Unit = {
+      val unseenElems: Seq[A] = elems.filterNot(ancestors.contains)
       val unseenElemsLen = unseenElems.length
       for ((elem, idx) <- unseenElems.iterator.zipWithIndex) {
         val isLast = idx == unseenElemsLen - 1

@@ -5,7 +5,7 @@ import java.net.URL
 
 import coursier.core.Publication
 import sbt.librarymanagement.GetClassifiersModule
-import sbt.{Resolver, SettingKey, TaskKey}
+import sbt.{InputKey, Resolver, SettingKey, TaskKey}
 
 import scala.concurrent.duration.Duration
 
@@ -62,6 +62,10 @@ object Keys {
     "Prints dependencies and transitive dependencies as an inverted tree (dependees as children)"
   )
 
+  val coursierWhatDependsOn = InputKey[String](
+    "coursier-what-depends-on",
+    "Prints dependencies and transitive dependencies as an inverted tree for a specific module (dependees as children)"
+  )
   val coursierArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-artifacts")
   val coursierSignedArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-signed-artifacts")
   val coursierClassifiersArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-classifiers-artifacts")

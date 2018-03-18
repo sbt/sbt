@@ -10,7 +10,8 @@ import coursier.interop.scalaz._
 import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
-import coursier.util.Print
+import coursier.util.Print.Colors
+import coursier.util.{Parse, Print}
 import sbt.librarymanagement._
 import sbt.{Classpaths, Def, Resolver, UpdateReport}
 import sbt.Keys._
@@ -1349,13 +1350,12 @@ object Tasks {
     }
   }
 
-  def coursierDependencyTreeTask(
-    inverse: Boolean,
+  case class ResolutionResult(configs: Set[String], resolution: Resolution, dependencies: Seq[Dependency])
+
+  private def coursierResolutionTask(
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false
-  ) = Def.taskDyn {
-
-    val projectName = thisProjectRef.value.project
+  ): Def.Initialize[sbt.Task[Seq[ResolutionResult]]] = Def.taskDyn {
 
     val currentProjectTask =
       if (sbtClassifiers)
@@ -1393,9 +1393,9 @@ object Tasks {
         val resolutions = resolutionsTask.value
 
         for {
-          (subGraphConfigs, res) <- resolutions
+          (subGraphConfigs, res) <- resolutions.toSeq
           if subGraphConfigs.exists(includedConfigs)
-        } {
+        } yield {
 
           val dependencies0 = currentProject.dependencies.collect {
             case (cfg, dep) if includedConfigs(cfg) && subGraphConfigs(cfg) => dep
@@ -1405,20 +1405,60 @@ object Tasks {
 
           val subRes = res.subset(dependencies0.toSet)
 
-          // use sbt logging?
-          println(
-            s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
-              Print.dependencyTree(
-                dependencies0,
-                subRes,
-                printExclusions = true,
-                inverse,
-                colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
-              )
-          )
+          ResolutionResult(subGraphConfigs, subRes, dependencies0)
         }
       }
     }
+  }
+
+  def coursierDependencyTreeTask(
+    inverse: Boolean,
+    sbtClassifiers: Boolean = false,
+    ignoreArtifactErrors: Boolean = false
+  ) = Def.task {
+    val projectName = thisProjectRef.value.project
+
+    val resolutions = coursierResolutionTask(sbtClassifiers, ignoreArtifactErrors).value
+    for (ResolutionResult(subGraphConfigs, resolution, dependencies) <- resolutions) {
+      // use sbt logging?
+      println(
+        s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
+          Print.dependencyTree(
+            dependencies,
+            resolution,
+            printExclusions = true,
+            inverse,
+            colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
+          )
+      )
+    }
+  }
+
+
+  def coursierWhatDependsOnTask(
+    moduleName: String,
+    sbtClassifiers: Boolean = false,
+    ignoreArtifactErrors: Boolean = false
+  ) = Def.task {
+    val module = Parse.module(moduleName, scalaVersion.value)
+      .right
+      .getOrElse(throw new RuntimeException(s"Could not parse module `$moduleName`"))
+
+    val projectName = thisProjectRef.value.project
+
+    val resolutions = coursierResolutionTask(sbtClassifiers, ignoreArtifactErrors).value
+    val result = new mutable.StringBuilder()
+    for (ResolutionResult(subGraphConfigs, resolution, _) <- resolutions) {
+      val roots: Seq[Dependency] = resolution.transitiveDependencies.filter(f => f.module == module)
+      val strToPrint = s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
+        Print.reverseTree(roots, resolution, withExclusions = true)
+          .render(_.repr(Colors.get(!sys.props.get("sbt.log.noformat").toSeq.contains("true"))));
+      println(strToPrint)
+      result.append(strToPrint)
+      result.append("\n")
+    }
+
+    result.toString
   }
 
 }
