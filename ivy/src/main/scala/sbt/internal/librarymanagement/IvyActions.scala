@@ -4,26 +4,29 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import ivyint.CachedResolutionResolveEngine
 
+import ivyint.CachedResolutionResolveEngine
 import org.apache.ivy.Ivy
 import org.apache.ivy.core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.core.deliver.DeliverOptions
 import org.apache.ivy.core.install.InstallOptions
 import org.apache.ivy.core.module.descriptor.{
-  Artifact => IArtifact,
+  DefaultModuleDescriptor,
   MDArtifact,
   ModuleDescriptor,
-  DefaultModuleDescriptor
+  Artifact => IArtifact
 }
 import org.apache.ivy.core.resolve.ResolveOptions
 import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver }
 import org.apache.ivy.util.filter.{ Filter => IvyFilter }
 import sbt.io.{ IO, PathFinder }
 import sbt.util.Logger
-import sbt.librarymanagement.{ ModuleDescriptorConfiguration => InlineConfiguration, _ }, syntax._
+import sbt.librarymanagement.{ ModuleDescriptorConfiguration => InlineConfiguration, _ }
+import syntax._
 import InternalDefaults._
 import UpdateClassifiersUtil._
+
+import scala.util.Try
 
 object IvyActions {
 
@@ -382,7 +385,11 @@ object IvyActions {
       report: UpdateReport,
       config: RetrieveConfiguration
   ): UpdateReport = {
-    val copyChecksums = ivy.getVariable(ConvertResolver.ManagedChecksums).toBoolean
+    val copyChecksums =
+      Option(ivy.getVariable(ConvertResolver.ManagedChecksums)) match {
+        case Some(x) => x.toBoolean
+        case _       => false
+      }
     val toRetrieve: Option[Vector[ConfigRef]] = config.configurationsToRetrieve
     val base = getRetrieveDirectory(config.retrieveDirectory)
     val pattern = getRetrievePattern(config.outputPattern)
