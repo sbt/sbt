@@ -7,114 +7,113 @@ import org.scalatest.Inside
 class VersionNumberSpec extends UnitSpec with Inside {
   import VersionNumber.{ SemVer, SecondSegment }
 
-  version("1") { implicit v =>
-    parsesTo(Seq(1), Seq(), Seq())
-    breaksDownTo(Some(1))
-    cascadesTo(Seq("1"))
+  version("1") { v =>
+    parsesTo(Seq(1), Seq(), Seq())(v)
+    breaksDownTo(Some(1))(v)
+    cascadesTo(Seq("1"))(v)
   }
 
-  version("1.0") { implicit v =>
-    parsesTo(Seq(1, 0), Seq(), Seq())
-    breaksDownTo(Some(1), Some(0))
-    cascadesTo(Seq("1.0"))
+  version("1.0") { v =>
+    parsesTo(Seq(1, 0), Seq(), Seq())(v)
+    breaksDownTo(Some(1), Some(0))(v)
+    cascadesTo(Seq("1.0"))(v)
   }
 
-  version("1.0.0") { implicit v =>
-    parsesTo(Seq(1, 0, 0), Seq(), Seq())
-    breaksDownTo(Some(1), Some(0), Some(0))
-    cascadesTo(Seq("1.0.0", "1.0"))
+  version("1.0.0") { v =>
+    parsesTo(Seq(1, 0, 0), Seq(), Seq())(v)
+    breaksDownTo(Some(1), Some(0), Some(0))(v)
+    cascadesTo(Seq("1.0.0", "1.0"))(v)
 
-    isCompatibleWith("1.0.1", SemVer)
-    isCompatibleWith("1.1.1", SemVer)
-    isNotCompatibleWith("2.0.0", SemVer)
-    isNotCompatibleWith("1.0.0-M1", SemVer)
+    isCompatibleWith("1.0.1", SemVer)(v)
+    isCompatibleWith("1.1.1", SemVer)(v)
+    isNotCompatibleWith("2.0.0", SemVer)(v)
+    isNotCompatibleWith("1.0.0-M1", SemVer)(v)
 
-    isCompatibleWith("1.0.1", SecondSegment)
-    isNotCompatibleWith("1.1.1", SecondSegment)
-    isNotCompatibleWith("2.0.0", SecondSegment)
-    isNotCompatibleWith("1.0.0-M1", SecondSegment)
+    isCompatibleWith("1.0.1", SecondSegment)(v)
+    isNotCompatibleWith("1.1.1", SecondSegment)(v)
+    isNotCompatibleWith("2.0.0", SecondSegment)(v)
+    isNotCompatibleWith("1.0.0-M1", SecondSegment)(v)
   }
 
-  version("1.0.0.0") { implicit v =>
-    parsesTo(Seq(1, 0, 0, 0), Seq(), Seq())
-    breaksDownTo(Some(1), Some(0), Some(0), Some(0))
-    cascadesTo(Seq("1.0.0.0", "1.0.0", "1.0"))
+  version("1.0.0.0") { v =>
+    parsesTo(Seq(1, 0, 0, 0), Seq(), Seq())(v)
+    breaksDownTo(Some(1), Some(0), Some(0), Some(0))(v)
+    cascadesTo(Seq("1.0.0.0", "1.0.0", "1.0"))(v)
   }
 
-  version("0.12.0") { implicit v =>
-    parsesTo(Seq(0, 12, 0), Seq(), Seq())
-    breaksDownTo(Some(0), Some(12), Some(0))
-    cascadesTo(Seq("0.12.0", "0.12"))
+  version("0.12.0") { v =>
+    parsesTo(Seq(0, 12, 0), Seq(), Seq())(v)
+    breaksDownTo(Some(0), Some(12), Some(0))(v)
+    cascadesTo(Seq("0.12.0", "0.12"))(v)
 
-    isNotCompatibleWith("0.12.0-RC1", SemVer)
-    isNotCompatibleWith("0.12.1", SemVer)
-    isNotCompatibleWith("0.12.1-M1", SemVer)
+    isNotCompatibleWith("0.12.0-RC1", SemVer)(v)
+    isNotCompatibleWith("0.12.1", SemVer)(v)
+    isNotCompatibleWith("0.12.1-M1", SemVer)(v)
 
-    isNotCompatibleWith("0.12.0-RC1", SecondSegment)
-    isCompatibleWith("0.12.1", SecondSegment)
-    isCompatibleWith("0.12.1-M1", SecondSegment)
+    isNotCompatibleWith("0.12.0-RC1", SecondSegment)(v)
+    isCompatibleWith("0.12.1", SecondSegment)(v)
+    isCompatibleWith("0.12.1-M1", SecondSegment)(v)
   }
 
-  version("0.1.0-SNAPSHOT") { implicit v =>
-    parsesTo(Seq(0, 1, 0), Seq("SNAPSHOT"), Seq())
-    cascadesTo(Seq("0.1.0-SNAPSHOT", "0.1.0", "0.1"))
+  version("0.1.0-SNAPSHOT") { v =>
+    parsesTo(Seq(0, 1, 0), Seq("SNAPSHOT"), Seq())(v)
+    cascadesTo(Seq("0.1.0-SNAPSHOT", "0.1.0", "0.1"))(v)
 
-    isCompatibleWith("0.1.0-SNAPSHOT", SemVer)
-    isNotCompatibleWith("0.1.0", SemVer)
-    isCompatibleWith("0.1.0-SNAPSHOT+001", SemVer)
+    isCompatibleWith("0.1.0-SNAPSHOT", SemVer)(v)
+    isNotCompatibleWith("0.1.0", SemVer)(v)
+    isCompatibleWith("0.1.0-SNAPSHOT+001", SemVer)(v)
 
-    isCompatibleWith("0.1.0-SNAPSHOT", SecondSegment)
-    isNotCompatibleWith("0.1.0", SecondSegment)
-    isCompatibleWith("0.1.0-SNAPSHOT+001", SecondSegment)
+    isCompatibleWith("0.1.0-SNAPSHOT", SecondSegment)(v)
+    isNotCompatibleWith("0.1.0", SecondSegment)(v)
+    isCompatibleWith("0.1.0-SNAPSHOT+001", SecondSegment)(v)
   }
 
-  version("0.1.0-M1") { implicit v =>
-    parsesTo(Seq(0, 1, 0), Seq("M1"), Seq())
-    cascadesTo(Seq("0.1.0-M1", "0.1.0", "0.1"))
+  version("0.1.0-M1") { v =>
+    parsesTo(Seq(0, 1, 0), Seq("M1"), Seq())(v)
+    cascadesTo(Seq("0.1.0-M1", "0.1.0", "0.1"))(v)
   }
 
-  version("0.1.0-RC1") { implicit v =>
-    parsesTo(Seq(0, 1, 0), Seq("RC1"), Seq())
-    cascadesTo(Seq("0.1.0-RC1", "0.1.0", "0.1"))
+  version("0.1.0-RC1") { v =>
+    parsesTo(Seq(0, 1, 0), Seq("RC1"), Seq())(v)
+    cascadesTo(Seq("0.1.0-RC1", "0.1.0", "0.1"))(v)
   }
 
-  version("0.1.0-MSERVER-1") { implicit v =>
-    parsesTo(Seq(0, 1, 0), Seq("MSERVER", "1"), Seq())
-    cascadesTo(Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))
+  version("0.1.0-MSERVER-1") { v =>
+    parsesTo(Seq(0, 1, 0), Seq("MSERVER", "1"), Seq())(v)
+    cascadesTo(Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))(v)
   }
 
-  version("2.10.4-20140115-000117-b3a-sources") { implicit v =>
-    parsesTo(Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())
-    cascadesTo(Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
-    isCompatibleWith("2.0.0", SemVer)
-    isNotCompatibleWith("2.0.0", SecondSegment)
+  version("2.10.4-20140115-000117-b3a-sources") { v =>
+    parsesTo(Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())(v)
+    cascadesTo(Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))(v)
+    isCompatibleWith("2.0.0", SemVer)(v)
+    isNotCompatibleWith("2.0.0", SecondSegment)(v)
   }
 
-  version("20140115000117-b3a-sources") { implicit v =>
-    parsesTo(Seq(20140115000117L), Seq("b3a", "sources"), Seq())
-    cascadesTo(Seq("20140115000117-b3a-sources"))
+  version("20140115000117-b3a-sources") { v =>
+    parsesTo(Seq(20140115000117L), Seq("b3a", "sources"), Seq())(v)
+    cascadesTo(Seq("20140115000117-b3a-sources"))(v)
   }
 
-  version("1.0.0-alpha+001+002") { implicit v =>
-    parsesTo(Seq(1, 0, 0), Seq("alpha"), Seq("+001", "+002"))
-    cascadesTo(Seq("1.0.0-alpha+001+002", "1.0.0", "1.0"))
+  version("1.0.0-alpha+001+002") { v =>
+    parsesTo(Seq(1, 0, 0), Seq("alpha"), Seq("+001", "+002"))(v)
+    cascadesTo(Seq("1.0.0-alpha+001+002", "1.0.0", "1.0"))(v)
   }
 
-  version("non.space.!?string") { implicit v =>
-    parsesTo(Seq(), Seq(), Seq("non.space.!?string"))
-    cascadesTo(Seq("non.space.!?string"))
+  version("non.space.!?string") { v =>
+    parsesTo(Seq(), Seq(), Seq("non.space.!?string"))(v)
+    cascadesTo(Seq("non.space.!?string"))(v)
   }
 
-  version("space !?string") { implicit v =>
-    parsesToError
+  version("space !?string") { v =>
+    parsesToError(v)
   }
-  version("") { implicit v =>
-    parsesToError
+  version("") { v =>
+    parsesToError(v)
   }
 
   ////
 
-  // to be used as an implicit
   final class VersionString(val value: String)
 
   private[this] def version[A](s: String)(f: VersionString => A) = {
