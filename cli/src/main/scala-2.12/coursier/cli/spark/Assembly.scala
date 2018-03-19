@@ -13,7 +13,6 @@ import coursier.Cache
 import coursier.cli.Helper
 import coursier.cli.options.CommonOptions
 import coursier.cli.util.Zip
-import coursier.internal.FileUtil
 
 import scala.collection.mutable
 
@@ -225,7 +224,7 @@ object Assembly {
           throw new Exception(s"SHA-1 file not found for ${a.url}")
       }
 
-      val sumOpt = Cache.parseRawChecksum(FileUtil.readAllBytes(f))
+      val sumOpt = Cache.parseRawChecksum(Files.readAllBytes(f.toPath))
 
       sumOpt match {
         case Some(sum) =>

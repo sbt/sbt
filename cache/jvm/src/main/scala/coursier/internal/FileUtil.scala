@@ -1,21 +1,12 @@
 package coursier.internal
 
-import java.io.{ByteArrayOutputStream, File, FileInputStream, FileOutputStream, InputStream}
-import java.nio.file.Files
+import java.io.{ByteArrayOutputStream, InputStream}
 
 object FileUtil {
 
-  def write(file: File, bytes: Array[Byte]): Unit = {
-    var fos: FileOutputStream = null
-    try {
-      fos = new FileOutputStream(file)
-      fos.write(bytes)
-      fos.close()
-    } finally {
-      if (fos != null) fos.close()
-    }
-  }
-
+  // Won't be necessary anymore with Java 9
+  // (https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html#readAllBytes--,
+  // via https://stackoverflow.com/questions/1264709/convert-inputstream-to-byte-array-in-java/37681322#37681322)
   def readFully(is: InputStream): Array[Byte] = {
     val buffer = new ByteArrayOutputStream
     val data = Array.ofDim[Byte](16384)
@@ -30,19 +21,5 @@ object FileUtil {
     buffer.flush()
     buffer.toByteArray
   }
-
-  def readAllBytes(file: File): Array[Byte] = {
-    var fis: FileInputStream = null
-    try {
-      fis = new FileInputStream(file)
-      readFully(fis)
-    } finally {
-      if (fis != null)
-        fis.close()
-    }
-  }
-
-  def createTempDirectory(prefix: String): File =
-    Files.createTempDirectory(prefix).toFile
 
 }

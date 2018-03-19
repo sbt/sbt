@@ -2,8 +2,7 @@ package coursier.cli
 
 import java.io.{BufferedReader, File, InputStream, InputStreamReader, PipedInputStream, PipedOutputStream, PrintStream}
 import java.nio.charset.StandardCharsets.UTF_8
-
-import coursier.internal.FileUtil
+import java.nio.file.Files
 
 import scala.util.control.NonFatal
 
@@ -56,7 +55,7 @@ object SparkOutputHelper {
                 if (!written) {
                   println(s"Detected YARN app ID $id")
                   Option(yarnAppFile.getParentFile).foreach(_.mkdirs())
-                  FileUtil.write(yarnAppFile, id.getBytes(UTF_8))
+                  Files.write(yarnAppFile.toPath, id.getBytes(UTF_8))
                   written = true
                 }
               }

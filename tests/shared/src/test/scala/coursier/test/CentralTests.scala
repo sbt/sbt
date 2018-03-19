@@ -54,7 +54,7 @@ abstract class CentralTests extends TestSuite {
 
         res
       }
-      .future
+      .future()
   }
 
   def resolutionCheck(

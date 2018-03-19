@@ -9,7 +9,6 @@ import java.util.regex.Pattern
 
 import coursier.core.Authentication
 import coursier.ivy.IvyRepository
-import coursier.internal.FileUtil
 
 import scala.annotation.tailrec
 import java.io.{Serializable => _, _}
@@ -689,7 +688,7 @@ object Cache {
           S.schedule[Either[FileError, Unit]](pool) {
             if (referenceFileExists) {
               if (!errFile0.exists())
-                FileUtil.write(errFile0, "".getBytes(UTF_8))
+                Files.write(errFile0.toPath, Array.emptyByteArray)
             }
 
             Right(())
@@ -891,7 +890,7 @@ object Cache {
           val sumFile = localFile(sumUrl, cache, artifact.authentication.map(_.user))
 
           S.schedule(pool) {
-            val sumOpt = parseRawChecksum(FileUtil.readAllBytes(sumFile))
+            val sumOpt = parseRawChecksum(Files.readAllBytes(sumFile.toPath))
 
             sumOpt match {
               case None =>
@@ -1038,7 +1037,7 @@ object Cache {
         def notFound(f: File) = Left(s"${f.getCanonicalPath} not found")
 
         def read(f: File) =
-          try Right(new String(FileUtil.readAllBytes(f), UTF_8))
+          try Right(new String(Files.readAllBytes(f.toPath), UTF_8))
           catch {
             case NonFatal(e) =>
               Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")
