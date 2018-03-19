@@ -105,6 +105,14 @@ lazy val lmCore = (project in file("core"))
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
     },
     mimaSettings,
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._, ProblemFilters._
+      Seq(
+        exclude[DirectMissingMethodProblem]("sbt.librarymanagement.EvictionWarningOptions.this"),
+        exclude[DirectMissingMethodProblem]("sbt.librarymanagement.EvictionWarningOptions.copy"),
+        exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.EvictionWarningOptions.copy$default$7")
+      )
+    }
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
@@ -115,6 +123,8 @@ lazy val lmCommonTest = (project in file("common-test"))
     skip in publish := true,
     name := "common-test",
     libraryDependencies ++= Seq(scalaTest, scalaCheck),
+    scalacOptions in (Compile, console) --=
+      Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
     mimaSettings,
   )
 
