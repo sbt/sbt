@@ -323,7 +323,7 @@ object State {
 
   import ExceptionCategory._
 
-  private[sbt] def handleException(t: Throwable, s: State, log: Logger): State = {
+  private[this] def handleException(t: Throwable, s: State, log: Logger): State = {
     ExceptionCategory(t) match {
       case AlreadyHandled => ()
       case m: MessageOnly => log.error(m.message)
