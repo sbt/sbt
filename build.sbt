@@ -451,8 +451,11 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      // Changed signature or removed something in the internal pacakge
+      // Changed signature or removed something in the internal package
       exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+
+      // Made something final in the internal package
+      exclude[FinalClassProblem]("sbt.internal.*"),
 
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),

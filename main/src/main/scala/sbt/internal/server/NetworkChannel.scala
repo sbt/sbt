@@ -46,18 +46,12 @@ final class NetworkChannel(val name: String,
   private val VsCodeOld = "application/vscode-jsonrpc; charset=utf8"
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
 
-  def setContentType(ct: String): Unit = synchronized {
-    _contentType = ct
-  }
+  def setContentType(ct: String): Unit = synchronized { _contentType = ct }
   def contentType: String = _contentType
 
-  protected def authenticate(token: String): Boolean = {
-    instance.authenticate(token)
-  }
+  protected def authenticate(token: String): Boolean = instance.authenticate(token)
 
-  protected def setInitialized(value: Boolean): Unit = {
-    initialized = value
-  }
+  protected def setInitialized(value: Boolean): Unit = initialized = value
 
   protected def authOptions: Set[ServerAuthentication] = auth
 
@@ -74,7 +68,6 @@ final class NetworkChannel(val name: String,
         var bytesRead = 0
         def resetChannelState(): Unit = {
           contentLength = 0
-          // contentType = ""
           state = SingleLine
         }
         def tillEndOfLine: Option[Vector[Byte]] = {
