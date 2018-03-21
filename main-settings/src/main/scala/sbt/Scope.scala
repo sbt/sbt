@@ -268,15 +268,22 @@ object Scope {
     val scope = Scope.replaceThis(GlobalScope)(rawScope)
 
     def nonProjectScopes(resolvedProj: ResolvedReference)(px: ScopeAxis[ResolvedReference]) = {
-      val p = px.toOption getOrElse resolvedProj
-      val configProj = p match {
-        case pr: ProjectRef => pr; case br: BuildRef => ProjectRef(br.build, rootProject(br.build))
-      }
       val cLin = scope.config match {
-        case Select(conf) => index.config(configProj, conf); case _ => withZeroAxis(scope.config)
+        case Zero | This => withZeroAxis(scope.config)
+        case Select(conf) =>
+          val p = px match {
+            case Select(s)   => s
+            case This | Zero => resolvedProj
+          }
+          val configProj = p match {
+            case pr: ProjectRef => pr
+            case br: BuildRef   => ProjectRef(br.build, rootProject(br.build))
+          }
+          index.config(configProj, conf)
       }
       val tLin = scope.task match {
-        case t @ Select(_) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
+        case Zero | This   => withZeroAxis(scope.task)
+        case t @ Select(_) => linearize(t)(taskInherit)
       }
       val eLin = withZeroAxis(scope.extra)
       for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
