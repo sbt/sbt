@@ -29,12 +29,13 @@ final case class Scope(project: ScopeAxis[Reference],
   def in(config: ConfigKey): Scope = copy(config = Select(config))
   def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
 
-  override def toString: String = this match {
-    case Scope(Zero, Zero, Zero, Zero) => "Global"
-    case Scope(_, _, _, This)          => s"$project / $config / $task"
-    case _                             => s"Scope($project, $config, $task, $extra)"
+  override def toString: String = {
+    if (this.extra == This) s"$project / $config / $task"
+    else if (this == Scope.GlobalScope) "Global"
+    else s"Scope($project, $config, $task, $extra)"
   }
 }
+
 object Scope {
   val ThisScope: Scope = Scope(This, This, This, This)
   val Global: Scope = Scope(Zero, Zero, Zero, Zero)
