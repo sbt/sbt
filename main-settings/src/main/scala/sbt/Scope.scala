@@ -299,7 +299,8 @@ object Scope {
     else ZeroList
 
   def withGlobalScope(base: Scope): Seq[Scope] =
-    if (base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
+    if (base == GlobalScope) GlobalScopeList else base :: GlobalScopeList
+
   def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ResolvedReference]] =
     ps ++ (ps flatMap rawBuild).distinct :+ Zero
 
@@ -349,7 +350,7 @@ object Scope {
 
   def globalProjectDelegates(scope: Scope): Seq[Scope] =
     if (scope == GlobalScope)
-      GlobalScope :: Nil
+      GlobalScopeList
     else
       for {
         c <- withZeroAxis(scope.config)
@@ -357,5 +358,6 @@ object Scope {
         e <- withZeroAxis(scope.extra)
       } yield Scope(Zero, c, t, e)
 
+  private val GlobalScopeList = GlobalScope :: Nil
   private val ZeroList = Zero :: Nil
 }
