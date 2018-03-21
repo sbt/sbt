@@ -288,15 +288,16 @@ object Scope {
         val projAxes: Seq[ScopeAxis[ResolvedReference]] =
           resolvedProj match {
             case pr: ProjectRef => index.project(pr)
-            case br: BuildRef   => Select(br) :: Zero :: Nil
+            case br: BuildRef   => Select(br) :: ZeroList
           }
         projAxes flatMap nonProjectScopes(resolvedProj)
     }
   }
 
   def withZeroAxis[T](base: ScopeAxis[T]): Seq[ScopeAxis[T]] =
-    if (base.isSelect) base :: Zero :: Nil
-    else Zero :: Nil
+    if (base.isSelect) base :: ZeroList
+    else ZeroList
+
   def withGlobalScope(base: Scope): Seq[Scope] =
     if (base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
   def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ResolvedReference]] =
@@ -336,15 +337,16 @@ object Scope {
       inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
     axis match {
       case Select(x)   => topologicalSort[T](x, appendZero)(inherit)
-      case Zero | This => if (appendZero) Zero :: Nil else Nil
+      case Zero | This => if (appendZero) ZeroList else Nil
     }
 
   def topologicalSort[T](node: T, appendZero: Boolean)(
       dependencies: T => Seq[T]): Seq[ScopeAxis[T]] = {
     val o = Dag.topologicalSortUnchecked(node)(dependencies).map(Select.apply)
-    if (appendZero) o ::: Zero :: Nil
+    if (appendZero) o ::: ZeroList
     else o
   }
+
   def globalProjectDelegates(scope: Scope): Seq[Scope] =
     if (scope == GlobalScope)
       GlobalScope :: Nil
@@ -354,4 +356,6 @@ object Scope {
         t <- withZeroAxis(scope.task)
         e <- withZeroAxis(scope.extra)
       } yield Scope(Zero, c, t, e)
+
+  private val ZeroList = Zero :: Nil
 }
