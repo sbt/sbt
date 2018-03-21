@@ -286,7 +286,7 @@ object Scope {
         case t @ Select(_) => linearize(t)(taskInherit)
       }
       val eLin = withZeroAxis(scope.extra)
-      for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
+      for (c <- cLin.iterator; t <- tLin.iterator; e <- eLin.iterator) yield Scope(px, c, t, e)
     }
     scope.project match {
       case Zero | This => globalProjectDelegates(scope)
