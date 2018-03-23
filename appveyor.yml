@@ -13,20 +13,20 @@ install:
       }
   - cmd: SET JAVA_HOME=C:\Program Files\Java\jdk1.8.0
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
-  - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
+  - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Xss2m
   - git submodule update --init --recursive
 build_script:
   - sbt ++2.11.12 clean compile coreJVM/publishLocal
   - sbt ++2.10.7 clean compile
-  - sbt ++2.12.4 coreJVM/publishLocal cacheJVM/publishLocal extra/publishLocal scalazJVM/publishLocal cli/publishLocal
+  - sbt ++2.12.5 coreJVM/publishLocal cacheJVM/publishLocal extra/publishLocal scalazJVM/publishLocal cli/publishLocal
 test_script:
   - ps: Start-Job -filepath .\scripts\start-it-auth-server.ps1 -ArgumentList $pwd
   - ps: Start-Sleep -s 15 # wait for the first server to have downloaded its dependencies
   - ps: Start-Job -filepath .\scripts\start-it-no-listing-server.ps1 -ArgumentList $pwd
-  - sbt ++2.12.4 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
+  - sbt ++2.12.5 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
   - sbt ++2.11.12 testsJVM/test testsJVM/it:test
   - sbt ++2.10.7 testsJVM/test testsJVM/it:test
-  - sbt ++2.12.4 "sbt-coursier/scripted sbt-coursier/simple" "sbt-shading/scripted sbt-shading/*" # for sbt 1.0
+  - sbt ++2.12.5 "sbt-coursier/scripted sbt-coursier/simple" "sbt-shading/scripted sbt-shading/*" # for sbt 1.0
   - sbt ++2.10.7 "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*" "sbt-shading/scripted sbt-shading/*" "sbt-shading/scripted sbt-shading-0.13/*" # for sbt 0.13
 branches:
   only:

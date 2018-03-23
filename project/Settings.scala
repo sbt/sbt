@@ -12,7 +12,7 @@ import coursier.ShadingPlugin.autoImport._
 import Aliases._
 
 object Settings {
-  val scala212 = "2.12.4"
+  val scala212 = "2.12.5"
   val scala211 = "2.11.12"
   val scala210 = "2.10.7"
 
