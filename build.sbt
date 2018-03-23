@@ -497,7 +497,6 @@ lazy val sbtProj = (project in file("sbt"))
     normalizedName := "sbt",
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
-    javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
     BuildInfoPlugin.buildInfoDefaultSettings,
@@ -506,10 +505,9 @@ lazy val sbtProj = (project in file("sbt"))
     buildInfoKeys in Test := Seq[BuildInfoKey](
       // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
       BuildInfoKey.map((fullClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
+      classDirectory in Compile,
+      classDirectory in Test,
     ),
-    connectInput in run in Test := true,
-    outputStrategy in run in Test := Some(StdoutOutput),
-    fork in Test := true,
   )
   .configure(addSbtCompilerBridge)
 
