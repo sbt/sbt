@@ -24,7 +24,7 @@ final class ExternalIvyConfiguration private (
   override def toString: String = {
     "ExternalIvyConfiguration(" + lock + ", " + log + ", " + updateOptions + ", " + baseDirectory + ", " + uri + ", " + extraResolvers + ")"
   }
-  protected[this] def copy(lock: Option[xsbti.GlobalLock] = lock, log: Option[xsbti.Logger] = log, updateOptions: sbt.librarymanagement.ivy.UpdateOptions = updateOptions, baseDirectory: Option[java.io.File] = baseDirectory, uri: Option[java.net.URI] = uri, extraResolvers: Vector[sbt.librarymanagement.Resolver] = extraResolvers): ExternalIvyConfiguration = {
+  private[this] def copy(lock: Option[xsbti.GlobalLock] = lock, log: Option[xsbti.Logger] = log, updateOptions: sbt.librarymanagement.ivy.UpdateOptions = updateOptions, baseDirectory: Option[java.io.File] = baseDirectory, uri: Option[java.net.URI] = uri, extraResolvers: Vector[sbt.librarymanagement.Resolver] = extraResolvers): ExternalIvyConfiguration = {
     new ExternalIvyConfiguration(lock, log, updateOptions, baseDirectory, uri, extraResolvers)
   }
   def withLock(lock: Option[xsbti.GlobalLock]): ExternalIvyConfiguration = {

@@ -31,7 +31,7 @@ final class ModuleID private (
   override def toString: String = {
     this.toStringImpl
   }
-  protected[this] def copy(organization: String = organization, name: String = name, revision: String = revision, configurations: Option[String] = configurations, isChanging: Boolean = isChanging, isTransitive: Boolean = isTransitive, isForce: Boolean = isForce, explicitArtifacts: Vector[sbt.librarymanagement.Artifact] = explicitArtifacts, inclusions: Vector[sbt.librarymanagement.InclExclRule] = inclusions, exclusions: Vector[sbt.librarymanagement.InclExclRule] = exclusions, extraAttributes: Map[String, String] = extraAttributes, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion, branchName: Option[String] = branchName): ModuleID = {
+  private[this] def copy(organization: String = organization, name: String = name, revision: String = revision, configurations: Option[String] = configurations, isChanging: Boolean = isChanging, isTransitive: Boolean = isTransitive, isForce: Boolean = isForce, explicitArtifacts: Vector[sbt.librarymanagement.Artifact] = explicitArtifacts, inclusions: Vector[sbt.librarymanagement.InclExclRule] = inclusions, exclusions: Vector[sbt.librarymanagement.InclExclRule] = exclusions, extraAttributes: Map[String, String] = extraAttributes, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion, branchName: Option[String] = branchName): ModuleID = {
     new ModuleID(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, inclusions, exclusions, extraAttributes, crossVersion, branchName)
   }
   def withOrganization(organization: String): ModuleID = {

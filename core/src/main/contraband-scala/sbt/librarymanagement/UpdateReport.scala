@@ -30,7 +30,7 @@ final class UpdateReport private (
   override def toString: String = {
     "Update report:\n\t" + stats + "\n" + configurations.mkString
   }
-  protected[this] def copy(cachedDescriptor: java.io.File = cachedDescriptor, configurations: Vector[sbt.librarymanagement.ConfigurationReport] = configurations, stats: sbt.librarymanagement.UpdateStats = stats, stamps: Map[java.io.File, Long] = stamps): UpdateReport = {
+  private[this] def copy(cachedDescriptor: java.io.File = cachedDescriptor, configurations: Vector[sbt.librarymanagement.ConfigurationReport] = configurations, stats: sbt.librarymanagement.UpdateStats = stats, stamps: Map[java.io.File, Long] = stamps): UpdateReport = {
     new UpdateReport(cachedDescriptor, configurations, stats, stamps)
   }
   def withCachedDescriptor(cachedDescriptor: java.io.File): UpdateReport = {

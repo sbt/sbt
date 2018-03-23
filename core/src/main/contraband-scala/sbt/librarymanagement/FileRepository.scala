@@ -23,7 +23,7 @@ final class FileRepository private (
   override def toString: String = {
     "FileRepository(" + name + ", " + patterns + ", " + configuration + ")"
   }
-  protected[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, configuration: sbt.librarymanagement.FileConfiguration = configuration): FileRepository = {
+  private[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, configuration: sbt.librarymanagement.FileConfiguration = configuration): FileRepository = {
     new FileRepository(name, patterns, configuration)
   }
   def withName(name: String): FileRepository = {

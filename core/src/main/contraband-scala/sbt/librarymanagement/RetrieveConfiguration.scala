@@ -23,7 +23,7 @@ final class RetrieveConfiguration private (
   override def toString: String = {
     "RetrieveConfiguration(" + retrieveDirectory + ", " + outputPattern + ", " + sync + ", " + configurationsToRetrieve + ")"
   }
-  protected[this] def copy(retrieveDirectory: Option[java.io.File] = retrieveDirectory, outputPattern: Option[String] = outputPattern, sync: Boolean = sync, configurationsToRetrieve: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurationsToRetrieve): RetrieveConfiguration = {
+  private[this] def copy(retrieveDirectory: Option[java.io.File] = retrieveDirectory, outputPattern: Option[String] = outputPattern, sync: Boolean = sync, configurationsToRetrieve: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurationsToRetrieve): RetrieveConfiguration = {
     new RetrieveConfiguration(retrieveDirectory, outputPattern, sync, configurationsToRetrieve)
   }
   def withRetrieveDirectory(retrieveDirectory: Option[java.io.File]): RetrieveConfiguration = {

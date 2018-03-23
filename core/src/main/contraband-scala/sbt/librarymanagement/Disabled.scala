@@ -19,7 +19,7 @@ override def hashCode: Int = {
 override def toString: String = {
   "Disabled()"
 }
-protected[this] def copy(): Disabled = {
+private[this] def copy(): Disabled = {
   new Disabled()
 }
 

@@ -20,7 +20,7 @@ final class ChainedResolver private (
   override def toString: String = {
     "ChainedResolver(" + name + ", " + resolvers + ")"
   }
-  protected[this] def copy(name: String = name, resolvers: Vector[sbt.librarymanagement.Resolver] = resolvers): ChainedResolver = {
+  private[this] def copy(name: String = name, resolvers: Vector[sbt.librarymanagement.Resolver] = resolvers): ChainedResolver = {
     new ChainedResolver(name, resolvers)
   }
   def withName(name: String): ChainedResolver = {

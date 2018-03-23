@@ -22,7 +22,7 @@ final class ModuleConfiguration private (
   override def toString: String = {
     "ModuleConfiguration(" + organization + ", " + name + ", " + revision + ", " + resolver + ")"
   }
-  protected[this] def copy(organization: String = organization, name: String = name, revision: String = revision, resolver: sbt.librarymanagement.Resolver = resolver): ModuleConfiguration = {
+  private[this] def copy(organization: String = organization, name: String = name, revision: String = revision, resolver: sbt.librarymanagement.Resolver = resolver): ModuleConfiguration = {
     new ModuleConfiguration(organization, name, revision, resolver)
   }
   def withOrganization(organization: String): ModuleConfiguration = {

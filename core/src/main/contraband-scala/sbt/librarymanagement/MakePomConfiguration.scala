@@ -26,7 +26,7 @@ final class MakePomConfiguration private (
   override def toString: String = {
     "MakePomConfiguration(" + file + ", " + moduleInfo + ", " + configurations + ", " + extra + ", " + process + ", " + filterRepositories + ", " + allRepositories + ", " + includeTypes + ")"
   }
-  protected[this] def copy(file: Option[java.io.File] = file, moduleInfo: Option[sbt.librarymanagement.ModuleInfo] = moduleInfo, configurations: Option[scala.Vector[sbt.librarymanagement.Configuration]] = configurations, extra: Option[scala.xml.NodeSeq] = extra, process: scala.Function1[scala.xml.Node, scala.xml.Node] = process, filterRepositories: scala.Function1[sbt.librarymanagement.MavenRepository, Boolean] = filterRepositories, allRepositories: Boolean = allRepositories, includeTypes: Set[String] = includeTypes): MakePomConfiguration = {
+  private[this] def copy(file: Option[java.io.File] = file, moduleInfo: Option[sbt.librarymanagement.ModuleInfo] = moduleInfo, configurations: Option[scala.Vector[sbt.librarymanagement.Configuration]] = configurations, extra: Option[scala.xml.NodeSeq] = extra, process: scala.Function1[scala.xml.Node, scala.xml.Node] = process, filterRepositories: scala.Function1[sbt.librarymanagement.MavenRepository, Boolean] = filterRepositories, allRepositories: Boolean = allRepositories, includeTypes: Set[String] = includeTypes): MakePomConfiguration = {
     new MakePomConfiguration(file, moduleInfo, configurations, extra, process, filterRepositories, allRepositories, includeTypes)
   }
   def withFile(file: Option[java.io.File]): MakePomConfiguration = {

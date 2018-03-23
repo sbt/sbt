@@ -21,7 +21,7 @@ final class SshConnection private (
   override def toString: String = {
     "SshConnection(" + authentication + ", " + hostname + ", " + port + ")"
   }
-  protected[this] def copy(authentication: Option[sbt.librarymanagement.SshAuthentication] = authentication, hostname: Option[String] = hostname, port: Option[Int] = port): SshConnection = {
+  private[this] def copy(authentication: Option[sbt.librarymanagement.SshAuthentication] = authentication, hostname: Option[String] = hostname, port: Option[Int] = port): SshConnection = {
     new SshConnection(authentication, hostname, port)
   }
   def withAuthentication(authentication: Option[sbt.librarymanagement.SshAuthentication]): SshConnection = {
