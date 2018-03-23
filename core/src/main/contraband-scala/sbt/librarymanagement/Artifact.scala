@@ -26,7 +26,7 @@ final class Artifact private (
   override def toString: String = {
     "Artifact(" + name + ", " + `type` + ", " + extension + ", " + classifier + ", " + configurations + ", " + url + ", " + extraAttributes + ", " + checksum + ")"
   }
-  protected[this] def copy(name: String = name, `type`: String = `type`, extension: String = extension, classifier: Option[String] = classifier, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, url: Option[java.net.URL] = url, extraAttributes: Map[String, String] = extraAttributes, checksum: Option[sbt.librarymanagement.Checksum] = checksum): Artifact = {
+  private[this] def copy(name: String = name, `type`: String = `type`, extension: String = extension, classifier: Option[String] = classifier, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, url: Option[java.net.URL] = url, extraAttributes: Map[String, String] = extraAttributes, checksum: Option[sbt.librarymanagement.Checksum] = checksum): Artifact = {
     new Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum)
   }
   def withName(name: String): Artifact = {

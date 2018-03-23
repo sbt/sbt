@@ -20,7 +20,7 @@ final class ConfigurationReportLite private (
   override def toString: String = {
     "ConfigurationReportLite(" + configuration + ", " + details + ")"
   }
-  protected[this] def copy(configuration: String = configuration, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReportLite = {
+  private[this] def copy(configuration: String = configuration, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReportLite = {
     new ConfigurationReportLite(configuration, details)
   }
   def withConfiguration(configuration: String): ConfigurationReportLite = {

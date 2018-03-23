@@ -20,7 +20,7 @@ final class URLRepository private (
   override def toString: String = {
     "URLRepository(" + name + ", " + patterns + ")"
   }
-  protected[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns): URLRepository = {
+  private[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns): URLRepository = {
     new URLRepository(name, patterns)
   }
   def withName(name: String): URLRepository = {

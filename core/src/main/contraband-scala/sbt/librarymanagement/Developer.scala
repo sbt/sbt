@@ -22,7 +22,7 @@ final class Developer private (
   override def toString: String = {
     "Developer(" + id + ", " + name + ", " + email + ", " + url + ")"
   }
-  protected[this] def copy(id: String = id, name: String = name, email: String = email, url: java.net.URL = url): Developer = {
+  private[this] def copy(id: String = id, name: String = name, email: String = email, url: java.net.URL = url): Developer = {
     new Developer(id, name, email, url)
   }
   def withId(id: String): Developer = {

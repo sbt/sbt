@@ -28,7 +28,7 @@ final class ModuleInfo private (
   override def toString: String = {
     "ModuleInfo(" + nameFormal + ", " + description + ", " + homepage + ", " + startYear + ", " + licenses + ", " + organizationName + ", " + organizationHomepage + ", " + scmInfo + ", " + developers + ")"
   }
-  protected[this] def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URL] = homepage, startYear: Option[Int] = startYear, licenses: Vector[scala.Tuple2[String, java.net.URL]] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URL] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
+  private[this] def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URL] = homepage, startYear: Option[Int] = startYear, licenses: Vector[scala.Tuple2[String, java.net.URL]] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URL] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
     new ModuleInfo(nameFormal, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers)
   }
   def withNameFormal(nameFormal: String): ModuleInfo = {

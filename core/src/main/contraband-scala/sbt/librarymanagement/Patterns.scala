@@ -24,7 +24,7 @@ final class Patterns private (
     "Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s, descriptorOptional=%s, skipConsistencyCheck=%s)".format(
     ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
   }
-  protected[this] def copy(ivyPatterns: Vector[String] = ivyPatterns, artifactPatterns: Vector[String] = artifactPatterns, isMavenCompatible: Boolean = isMavenCompatible, descriptorOptional: Boolean = descriptorOptional, skipConsistencyCheck: Boolean = skipConsistencyCheck): Patterns = {
+  private[this] def copy(ivyPatterns: Vector[String] = ivyPatterns, artifactPatterns: Vector[String] = artifactPatterns, isMavenCompatible: Boolean = isMavenCompatible, descriptorOptional: Boolean = descriptorOptional, skipConsistencyCheck: Boolean = skipConsistencyCheck): Patterns = {
     new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
   }
   def withIvyPatterns(ivyPatterns: Vector[String]): Patterns = {

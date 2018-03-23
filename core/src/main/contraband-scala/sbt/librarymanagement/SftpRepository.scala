@@ -23,7 +23,7 @@ final class SftpRepository private (
   override def toString: String = {
     "SftpRepository(" + name + ", " + patterns + ", " + connection + ")"
   }
-  protected[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, connection: sbt.librarymanagement.SshConnection = connection): SftpRepository = {
+  private[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, connection: sbt.librarymanagement.SshConnection = connection): SftpRepository = {
     new SftpRepository(name, patterns, connection)
   }
   def withName(name: String): SftpRepository = {

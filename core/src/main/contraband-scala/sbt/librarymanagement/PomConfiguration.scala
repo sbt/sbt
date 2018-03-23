@@ -22,7 +22,7 @@ final class PomConfiguration private (
   override def toString: String = {
     "PomConfiguration(" + validate + ", " + scalaModuleInfo + ", " + file + ", " + autoScalaTools + ")"
   }
-  protected[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): PomConfiguration = {
+  private[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): PomConfiguration = {
     new PomConfiguration(validate, scalaModuleInfo, file, autoScalaTools)
   }
   def withValidate(validate: Boolean): PomConfiguration = {

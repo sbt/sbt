@@ -25,7 +25,7 @@ final class Caller private (
   override def toString: String = {
     s"$caller"
   }
-  protected[this] def copy(caller: sbt.librarymanagement.ModuleID = caller, callerConfigurations: Vector[sbt.librarymanagement.ConfigRef] = callerConfigurations, callerExtraAttributes: Map[String, String] = callerExtraAttributes, isForceDependency: Boolean = isForceDependency, isChangingDependency: Boolean = isChangingDependency, isTransitiveDependency: Boolean = isTransitiveDependency, isDirectlyForceDependency: Boolean = isDirectlyForceDependency): Caller = {
+  private[this] def copy(caller: sbt.librarymanagement.ModuleID = caller, callerConfigurations: Vector[sbt.librarymanagement.ConfigRef] = callerConfigurations, callerExtraAttributes: Map[String, String] = callerExtraAttributes, isForceDependency: Boolean = isForceDependency, isChangingDependency: Boolean = isChangingDependency, isTransitiveDependency: Boolean = isTransitiveDependency, isDirectlyForceDependency: Boolean = isDirectlyForceDependency): Caller = {
     new Caller(caller, callerConfigurations, callerExtraAttributes, isForceDependency, isChangingDependency, isTransitiveDependency, isDirectlyForceDependency)
   }
   def withCaller(caller: sbt.librarymanagement.ModuleID): Caller = {

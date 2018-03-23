@@ -27,7 +27,7 @@ final class MavenCache private (
   override def toString: String = {
     s"cache:$name: ${rootFile.getAbsolutePath}"
   }
-  protected[this] def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile, rootFile: java.io.File = rootFile): MavenCache = {
+  private[this] def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile, rootFile: java.io.File = rootFile): MavenCache = {
     new MavenCache(name, root, localIfFile, rootFile)
   }
   def withName(name: String): MavenCache = {

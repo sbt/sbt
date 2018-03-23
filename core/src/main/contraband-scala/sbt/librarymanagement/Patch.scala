@@ -22,7 +22,7 @@ override def hashCode: Int = {
 override def toString: String = {
   "Patch()"
 }
-protected[this] def copy(): Patch = {
+private[this] def copy(): Patch = {
   new Patch()
 }
 

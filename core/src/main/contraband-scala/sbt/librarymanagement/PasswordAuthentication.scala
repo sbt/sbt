@@ -20,7 +20,7 @@ final class PasswordAuthentication private (
   override def toString: String = {
     "PasswordAuthentication(" + user + ", " + password + ")"
   }
-  protected[this] def copy(user: String = user, password: Option[String] = password): PasswordAuthentication = {
+  private[this] def copy(user: String = user, password: Option[String] = password): PasswordAuthentication = {
     new PasswordAuthentication(user, password)
   }
   def withUser(user: String): PasswordAuthentication = {

@@ -22,7 +22,7 @@ final class IvyFileConfiguration private (
   override def toString: String = {
     "IvyFileConfiguration(" + validate + ", " + scalaModuleInfo + ", " + file + ", " + autoScalaTools + ")"
   }
-  protected[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): IvyFileConfiguration = {
+  private[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): IvyFileConfiguration = {
     new IvyFileConfiguration(validate, scalaModuleInfo, file, autoScalaTools)
   }
   def withValidate(validate: Boolean): IvyFileConfiguration = {

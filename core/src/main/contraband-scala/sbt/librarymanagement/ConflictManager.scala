@@ -22,7 +22,7 @@ final class ConflictManager private (
   override def toString: String = {
     "ConflictManager(" + name + ", " + organization + ", " + module + ")"
   }
-  protected[this] def copy(name: String = name, organization: String = organization, module: String = module): ConflictManager = {
+  private[this] def copy(name: String = name, organization: String = organization, module: String = module): ConflictManager = {
     new ConflictManager(name, organization, module)
   }
   def withName(name: String): ConflictManager = {
