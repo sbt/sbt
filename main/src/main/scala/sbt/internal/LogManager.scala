@@ -229,8 +229,13 @@ object LogManager {
   //     s
   //   }
 
-  def setGlobalLogLevel(s: State, level: Level.Value): State =
-    s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
+  def setGlobalLogLevel(s: State, level: Level.Value): State = {
+    val s1 = s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
+    val gl = s1.globalLogging
+    LogExchange.unbindLoggerAppenders(gl.full.name)
+    LogExchange.bindLoggerAppenders(gl.full.name, (gl.backed -> level) :: Nil)
+    s1
+  }
 
   // This is the default implementation for the relay appender
   val defaultRelay: Unit => Appender = _ => defaultRelayImpl
