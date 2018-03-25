@@ -171,8 +171,6 @@ object Defaults extends BuildCommon {
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== false,
       javaOptions :== Nil,
-      sbtPlugin :== false,
-      isMetaBuild :== false,
       crossPaths :== true,
       sourcePositionMappers :== Nil,
       artifactClassifier in packageSrc :== Some(SourceClassifier),
@@ -216,7 +214,11 @@ object Defaults extends BuildCommon {
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
       pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
-      updateOptions := UpdateOptions(),
+      updateOptions := {
+        // This speeds up SNAPSHOT resolution for sbt itself
+        if (isMetaBuild.value) UpdateOptions().withLatestSnapshots(false)
+        else UpdateOptions()
+      },
       forceUpdatePeriod :== None
     )
 
@@ -295,6 +297,8 @@ object Defaults extends BuildCommon {
       aggregate :== true,
       maxErrors :== 100,
       fork :== false,
+      sbtPlugin :== false,
+      isMetaBuild :== false,
       initialize :== {},
       templateResolverInfos :== Nil,
       forcegc :== sys.props
