@@ -623,12 +623,15 @@ object Defaults extends BuildCommon {
       if (ScalaInstance.isDotty(scalaVersion.value))
         file(ScalaArtifacts.dottyID(binVersion))
       else file(ScalaArtifacts.CompilerID)
-    new ScalaInstance(scalaVersion.value,
-                      makeClassLoader(state.value)(allJars.toList),
-                      libraryJar,
-                      compilerJar,
-                      allJars.toArray,
-                      None)
+    new ScalaInstance(
+      scalaVersion.value,
+      makeClassLoader(state.value)(allJars.toList),
+      makeClassLoader(state.value)(List(libraryJar)),
+      libraryJar,
+      compilerJar,
+      allJars.toArray,
+      None
+    )
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
     ScalaInstance(dir)(makeClassLoader(state.value))
