@@ -71,7 +71,11 @@ case class TestServer(baseDirectory: File) {
   private val RetByte = '\r'.toByte
 
   hostLog("fork to a new sbt instance")
-  RunFromSourceMain.fork(baseDirectory)
+  import scala.concurrent.ExecutionContext.Implicits.global
+  Future {
+    RunFromSourceMain.fork(baseDirectory)
+    ()
+  }
   lazy val portfile = baseDirectory / "project" / "target" / "active.json"
 
   hostLog("wait 30s until the server is ready to respond")

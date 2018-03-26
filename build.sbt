@@ -497,6 +497,7 @@ lazy val sbtProj = (project in file("sbt"))
     normalizedName := "sbt",
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
+    javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
     BuildInfoPlugin.buildInfoDefaultSettings,
@@ -508,6 +509,9 @@ lazy val sbtProj = (project in file("sbt"))
       classDirectory in Compile,
       classDirectory in Test,
     ),
+    Test / run / connectInput := true,
+    Test / run / outputStrategy := Some(StdoutOutput),
+    Test / run / fork := true,
   )
   .configure(addSbtCompilerBridge)
 
