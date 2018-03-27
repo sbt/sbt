@@ -21,7 +21,7 @@ final class KeyFileAuthentication private (
   override def toString: String = {
     "KeyFileAuthentication(" + user + ", " + keyfile + ", " + password + ")"
   }
-  protected[this] def copy(user: String = user, keyfile: java.io.File = keyfile, password: Option[String] = password): KeyFileAuthentication = {
+  private[this] def copy(user: String = user, keyfile: java.io.File = keyfile, password: Option[String] = password): KeyFileAuthentication = {
     new KeyFileAuthentication(user, keyfile, password)
   }
   def withUser(user: String): KeyFileAuthentication = {

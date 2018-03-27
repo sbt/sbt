@@ -32,7 +32,7 @@ final class InclExclRule private (
   override def toString: String = {
     "InclExclRule(" + organization + ", " + name + ", " + artifact + ", " + configurations + ", " + crossVersion + ")"
   }
-  protected[this] def copy(organization: String = organization, name: String = name, artifact: String = artifact, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion): InclExclRule = {
+  private[this] def copy(organization: String = organization, name: String = name, artifact: String = artifact, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion): InclExclRule = {
     new InclExclRule(organization, name, artifact, configurations, crossVersion)
   }
   def withOrganization(organization: String): InclExclRule = {
@@ -53,6 +53,6 @@ final class InclExclRule private (
 }
 object InclExclRule extends sbt.librarymanagement.InclExclRuleFunctions {
   
-  def apply(): InclExclRule = new InclExclRule("*", "*", "*", Vector.empty, sbt.librarymanagement.Disabled())
+  def apply(): InclExclRule = new InclExclRule()
   def apply(organization: String, name: String, artifact: String, configurations: Vector[sbt.librarymanagement.ConfigRef], crossVersion: sbt.librarymanagement.CrossVersion): InclExclRule = new InclExclRule(organization, name, artifact, configurations, crossVersion)
 }

@@ -28,7 +28,7 @@ final class ModuleInfo private (
   override def toString: String = {
     "ModuleInfo(" + nameFormal + ", " + description + ", " + homepage + ", " + startYear + ", " + licenses + ", " + organizationName + ", " + organizationHomepage + ", " + scmInfo + ", " + developers + ")"
   }
-  protected[this] def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URL] = homepage, startYear: Option[Int] = startYear, licenses: Vector[scala.Tuple2[String, java.net.URL]] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URL] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
+  private[this] def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URL] = homepage, startYear: Option[Int] = startYear, licenses: Vector[scala.Tuple2[String, java.net.URL]] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URL] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
     new ModuleInfo(nameFormal, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers)
   }
   def withNameFormal(nameFormal: String): ModuleInfo = {
@@ -61,6 +61,6 @@ final class ModuleInfo private (
 }
 object ModuleInfo {
   
-  def apply(nameFormal: String): ModuleInfo = new ModuleInfo(nameFormal, "", None, None, Vector.empty, "", None, None, Vector.empty)
+  def apply(nameFormal: String): ModuleInfo = new ModuleInfo(nameFormal)
   def apply(nameFormal: String, description: String, homepage: Option[java.net.URL], startYear: Option[Int], licenses: Vector[scala.Tuple2[String, java.net.URL]], organizationName: String, organizationHomepage: Option[java.net.URL], scmInfo: Option[sbt.librarymanagement.ScmInfo], developers: Vector[sbt.librarymanagement.Developer]): ModuleInfo = new ModuleInfo(nameFormal, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers)
 }

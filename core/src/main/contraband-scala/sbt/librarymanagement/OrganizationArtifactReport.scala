@@ -33,7 +33,7 @@ final class OrganizationArtifactReport private (
     val details = modules map { _.detailReport }
     s"\t$organization:$name\n${details.mkString}\n"
   }
-  protected[this] def copy(organization: String = organization, name: String = name, modules: Vector[sbt.librarymanagement.ModuleReport] = modules): OrganizationArtifactReport = {
+  private[this] def copy(organization: String = organization, name: String = name, modules: Vector[sbt.librarymanagement.ModuleReport] = modules): OrganizationArtifactReport = {
     new OrganizationArtifactReport(organization, name, modules)
   }
   def withOrganization(organization: String): OrganizationArtifactReport = {

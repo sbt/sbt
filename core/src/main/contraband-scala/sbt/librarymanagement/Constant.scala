@@ -20,7 +20,7 @@ final class Constant private (
   override def toString: String = {
     "Constant(" + value + ")"
   }
-  protected[this] def copy(value: String = value): Constant = {
+  private[this] def copy(value: String = value): Constant = {
     new Constant(value)
   }
   def withValue(value: String): Constant = {
@@ -29,6 +29,6 @@ final class Constant private (
 }
 object Constant {
   
-  def apply(): Constant = new Constant("")
+  def apply(): Constant = new Constant()
   def apply(value: String): Constant = new Constant(value)
 }

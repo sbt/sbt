@@ -27,7 +27,7 @@ final class ArtifactTypeFilter private (
   override def toString: String = {
     "ArtifactTypeFilter(" + types + ", " + inverted + ")"
   }
-  protected[this] def copy(types: Set[String] = types, inverted: Boolean = inverted): ArtifactTypeFilter = {
+  private[this] def copy(types: Set[String] = types, inverted: Boolean = inverted): ArtifactTypeFilter = {
     new ArtifactTypeFilter(types, inverted)
   }
   def withTypes(types: Set[String]): ArtifactTypeFilter = {

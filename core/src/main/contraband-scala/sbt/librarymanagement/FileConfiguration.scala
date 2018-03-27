@@ -21,7 +21,7 @@ final class FileConfiguration private (
   override def toString: String = {
     "FileConfiguration(" + isLocal + ", " + isTransactional + ")"
   }
-  protected[this] def copy(isLocal: Boolean = isLocal, isTransactional: Option[Boolean] = isTransactional): FileConfiguration = {
+  private[this] def copy(isLocal: Boolean = isLocal, isTransactional: Option[Boolean] = isTransactional): FileConfiguration = {
     new FileConfiguration(isLocal, isTransactional)
   }
   def withIsLocal(isLocal: Boolean): FileConfiguration = {

@@ -20,7 +20,7 @@ final class IvyPaths private (
   override def toString: String = {
     "IvyPaths(" + baseDirectory + ", " + ivyHome + ")"
   }
-  protected[this] def copy(baseDirectory: java.io.File = baseDirectory, ivyHome: Option[java.io.File] = ivyHome): IvyPaths = {
+  private[this] def copy(baseDirectory: java.io.File = baseDirectory, ivyHome: Option[java.io.File] = ivyHome): IvyPaths = {
     new IvyPaths(baseDirectory, ivyHome)
   }
   def withBaseDirectory(baseDirectory: java.io.File): IvyPaths = {

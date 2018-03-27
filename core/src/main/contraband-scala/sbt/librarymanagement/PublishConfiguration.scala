@@ -27,7 +27,7 @@ final class PublishConfiguration private (
   override def toString: String = {
     "PublishConfiguration(" + publishMavenStyle + ", " + deliverIvyPattern + ", " + status + ", " + configurations + ", " + resolverName + ", " + artifacts + ", " + checksums + ", " + logging + ", " + overwrite + ")"
   }
-  protected[this] def copy(publishMavenStyle: Boolean = publishMavenStyle, deliverIvyPattern: Option[String] = deliverIvyPattern, status: Option[String] = status, configurations: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurations, resolverName: Option[String] = resolverName, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, checksums: scala.Vector[String] = checksums, logging: Option[sbt.librarymanagement.UpdateLogging] = logging, overwrite: Boolean = overwrite): PublishConfiguration = {
+  private[this] def copy(publishMavenStyle: Boolean = publishMavenStyle, deliverIvyPattern: Option[String] = deliverIvyPattern, status: Option[String] = status, configurations: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurations, resolverName: Option[String] = resolverName, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, checksums: scala.Vector[String] = checksums, logging: Option[sbt.librarymanagement.UpdateLogging] = logging, overwrite: Boolean = overwrite): PublishConfiguration = {
     new PublishConfiguration(publishMavenStyle, deliverIvyPattern, status, configurations, resolverName, artifacts, checksums, logging, overwrite)
   }
   def withPublishMavenStyle(publishMavenStyle: Boolean): PublishConfiguration = {
@@ -75,7 +75,7 @@ final class PublishConfiguration private (
 }
 object PublishConfiguration {
   
-  def apply(): PublishConfiguration = new PublishConfiguration(true, None, None, None, None, Vector(), Vector("sha1", "md5"), None, false)
+  def apply(): PublishConfiguration = new PublishConfiguration()
   def apply(publishMavenStyle: Boolean, deliverIvyPattern: Option[String], status: Option[String], configurations: Option[scala.Vector[sbt.librarymanagement.ConfigRef]], resolverName: Option[String], artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], checksums: scala.Vector[String], logging: Option[sbt.librarymanagement.UpdateLogging], overwrite: Boolean): PublishConfiguration = new PublishConfiguration(publishMavenStyle, deliverIvyPattern, status, configurations, resolverName, artifacts, checksums, logging, overwrite)
   def apply(publishMavenStyle: Boolean, deliverIvyPattern: String, status: String, configurations: scala.Vector[sbt.librarymanagement.ConfigRef], resolverName: String, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], checksums: scala.Vector[String], logging: sbt.librarymanagement.UpdateLogging, overwrite: Boolean): PublishConfiguration = new PublishConfiguration(publishMavenStyle, Option(deliverIvyPattern), Option(status), Option(configurations), Option(resolverName), artifacts, checksums, Option(logging), overwrite)
 }

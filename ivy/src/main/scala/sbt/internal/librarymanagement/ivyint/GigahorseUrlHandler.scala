@@ -51,7 +51,8 @@ class GigahorseUrlHandler extends AbstractURLHandler {
 
         if (checkStatusCode(url, response)) {
           val bodyCharset =
-            BasicURLHandler.getCharSetFromContentType(response.body().contentType().toString)
+            BasicURLHandler.getCharSetFromContentType(
+              Option(response.body().contentType()).map(_.toString).orNull)
           Some(
             new SbtUrlInfo(true,
                            response.body().contentLength(),

@@ -24,7 +24,7 @@ final class ExternalIvyConfiguration private (
   override def toString: String = {
     "ExternalIvyConfiguration(" + lock + ", " + log + ", " + updateOptions + ", " + baseDirectory + ", " + uri + ", " + extraResolvers + ")"
   }
-  protected[this] def copy(lock: Option[xsbti.GlobalLock] = lock, log: Option[xsbti.Logger] = log, updateOptions: sbt.librarymanagement.ivy.UpdateOptions = updateOptions, baseDirectory: Option[java.io.File] = baseDirectory, uri: Option[java.net.URI] = uri, extraResolvers: Vector[sbt.librarymanagement.Resolver] = extraResolvers): ExternalIvyConfiguration = {
+  private[this] def copy(lock: Option[xsbti.GlobalLock] = lock, log: Option[xsbti.Logger] = log, updateOptions: sbt.librarymanagement.ivy.UpdateOptions = updateOptions, baseDirectory: Option[java.io.File] = baseDirectory, uri: Option[java.net.URI] = uri, extraResolvers: Vector[sbt.librarymanagement.Resolver] = extraResolvers): ExternalIvyConfiguration = {
     new ExternalIvyConfiguration(lock, log, updateOptions, baseDirectory, uri, extraResolvers)
   }
   def withLock(lock: Option[xsbti.GlobalLock]): ExternalIvyConfiguration = {
@@ -60,7 +60,7 @@ final class ExternalIvyConfiguration private (
 }
 object ExternalIvyConfiguration {
   
-  def apply(): ExternalIvyConfiguration = new ExternalIvyConfiguration(None, None, sbt.librarymanagement.ivy.UpdateOptions(), None, None, Vector())
+  def apply(): ExternalIvyConfiguration = new ExternalIvyConfiguration()
   def apply(lock: Option[xsbti.GlobalLock], log: Option[xsbti.Logger], updateOptions: sbt.librarymanagement.ivy.UpdateOptions, baseDirectory: Option[java.io.File], uri: Option[java.net.URI], extraResolvers: Vector[sbt.librarymanagement.Resolver]): ExternalIvyConfiguration = new ExternalIvyConfiguration(lock, log, updateOptions, baseDirectory, uri, extraResolvers)
   def apply(lock: xsbti.GlobalLock, log: xsbti.Logger, updateOptions: sbt.librarymanagement.ivy.UpdateOptions, baseDirectory: java.io.File, uri: java.net.URI, extraResolvers: Vector[sbt.librarymanagement.Resolver]): ExternalIvyConfiguration = new ExternalIvyConfiguration(Option(lock), Option(log), updateOptions, Option(baseDirectory), Option(uri), extraResolvers)
 }

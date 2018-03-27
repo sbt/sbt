@@ -76,7 +76,7 @@ object Configurations {
     }
 }
 
-abstract class ConfigurationExtra {
+private[librarymanagement] abstract class ConfigurationExtra {
   def id: String
   def name: String
   def description: String
@@ -142,7 +142,7 @@ private[sbt] object ConfigurationMacro {
       .map(_.tree.asInstanceOf[c.Tree])
 }
 
-abstract class ConfigRefFunctions {
+private[librarymanagement] abstract class ConfigRefFunctions {
   implicit def configToConfigRef(c: Configuration): ConfigRef =
     c.toConfigRef
 }

@@ -27,7 +27,7 @@ final class ConfigurationReport private (
     (if (details.isEmpty) modules.mkString + details.flatMap(_.modules).filter(_.evicted).map("\t\t(EVICTED) " + _ + "\n").mkString
     else details.mkString)
   }
-  protected[this] def copy(configuration: sbt.librarymanagement.ConfigRef = configuration, modules: Vector[sbt.librarymanagement.ModuleReport] = modules, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReport = {
+  private[this] def copy(configuration: sbt.librarymanagement.ConfigRef = configuration, modules: Vector[sbt.librarymanagement.ModuleReport] = modules, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReport = {
     new ConfigurationReport(configuration, modules, details)
   }
   def withConfiguration(configuration: sbt.librarymanagement.ConfigRef): ConfigurationReport = {

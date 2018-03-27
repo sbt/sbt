@@ -21,7 +21,7 @@ final class MavenRepo private (
   override def toString: String = {
     s"$name: $root"
   }
-  protected[this] def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile): MavenRepo = {
+  private[this] def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile): MavenRepo = {
     new MavenRepo(name, root, localIfFile)
   }
   def withName(name: String): MavenRepo = {
@@ -36,6 +36,6 @@ final class MavenRepo private (
 }
 object MavenRepo {
   
-  def apply(name: String, root: String): MavenRepo = new MavenRepo(name, root, true)
+  def apply(name: String, root: String): MavenRepo = new MavenRepo(name, root)
   def apply(name: String, root: String, localIfFile: Boolean): MavenRepo = new MavenRepo(name, root, localIfFile)
 }

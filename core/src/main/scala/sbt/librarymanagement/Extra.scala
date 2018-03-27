@@ -5,7 +5,7 @@ package sbt.librarymanagement
 
 import sbt.librarymanagement.DependencyBuilders.{ Organization, OrganizationArtifactName }
 
-abstract class InclExclRuleFunctions {
+private[librarymanagement] abstract class InclExclRuleFunctions {
   def everything = InclExclRule("*", "*", "*", Vector.empty, Disabled())
 
   def apply(organization: String, name: String): InclExclRule =
@@ -29,24 +29,20 @@ abstract class InclExclRuleFunctions {
   }
 }
 
-abstract class ArtifactTypeFilterExtra {
-  def types: Set[String]
+private[librarymanagement] abstract class ArtifactTypeFilterExtra {
   def inverted: Boolean
 
-  protected[this] def copy(
-      types: Set[String] = types,
-      inverted: Boolean = inverted
-  ): ArtifactTypeFilter
+  def withInverted(inverted: Boolean): ArtifactTypeFilter
 
-  def invert = copy(inverted = !inverted)
+  def invert = withInverted(!inverted)
 }
 
-abstract class ArtifactTypeFilterFunctions {
+private[librarymanagement] abstract class ArtifactTypeFilterFunctions {
   def allow(types: Set[String]) = ArtifactTypeFilter(types, false)
   def forbid(types: Set[String]) = ArtifactTypeFilter(types, true)
 }
 
-abstract class ConflictManagerFunctions {
+private[librarymanagement] abstract class ConflictManagerFunctions {
   // To avoid NPE (or making the val's below lazy)
   // For case classes refchecks rewrites apply calls to constructor calls, we have to do it manually
   def apply(name: String, organization: String = "*", module: String = "*"): ConflictManager

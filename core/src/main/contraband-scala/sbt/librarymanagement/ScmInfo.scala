@@ -22,7 +22,7 @@ final class ScmInfo private (
   override def toString: String = {
     "ScmInfo(" + browseUrl + ", " + connection + ", " + devConnection + ")"
   }
-  protected[this] def copy(browseUrl: java.net.URL = browseUrl, connection: String = connection, devConnection: Option[String] = devConnection): ScmInfo = {
+  private[this] def copy(browseUrl: java.net.URL = browseUrl, connection: String = connection, devConnection: Option[String] = devConnection): ScmInfo = {
     new ScmInfo(browseUrl, connection, devConnection)
   }
   def withBrowseUrl(browseUrl: java.net.URL): ScmInfo = {
@@ -40,7 +40,7 @@ final class ScmInfo private (
 }
 object ScmInfo {
   
-  def apply(browseUrl: java.net.URL, connection: String): ScmInfo = new ScmInfo(browseUrl, connection, None)
+  def apply(browseUrl: java.net.URL, connection: String): ScmInfo = new ScmInfo(browseUrl, connection)
   def apply(browseUrl: java.net.URL, connection: String, devConnection: Option[String]): ScmInfo = new ScmInfo(browseUrl, connection, devConnection)
   def apply(browseUrl: java.net.URL, connection: String, devConnection: String): ScmInfo = new ScmInfo(browseUrl, connection, Option(devConnection))
 }

@@ -23,7 +23,7 @@ final class RetrieveConfiguration private (
   override def toString: String = {
     "RetrieveConfiguration(" + retrieveDirectory + ", " + outputPattern + ", " + sync + ", " + configurationsToRetrieve + ")"
   }
-  protected[this] def copy(retrieveDirectory: Option[java.io.File] = retrieveDirectory, outputPattern: Option[String] = outputPattern, sync: Boolean = sync, configurationsToRetrieve: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurationsToRetrieve): RetrieveConfiguration = {
+  private[this] def copy(retrieveDirectory: Option[java.io.File] = retrieveDirectory, outputPattern: Option[String] = outputPattern, sync: Boolean = sync, configurationsToRetrieve: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurationsToRetrieve): RetrieveConfiguration = {
     new RetrieveConfiguration(retrieveDirectory, outputPattern, sync, configurationsToRetrieve)
   }
   def withRetrieveDirectory(retrieveDirectory: Option[java.io.File]): RetrieveConfiguration = {
@@ -50,9 +50,9 @@ final class RetrieveConfiguration private (
 }
 object RetrieveConfiguration {
   
-  def apply(): RetrieveConfiguration = new RetrieveConfiguration(None, None, false, None)
-  def apply(retrieveDirectory: Option[java.io.File], outputPattern: Option[String]): RetrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, outputPattern, false, None)
-  def apply(retrieveDirectory: java.io.File, outputPattern: String): RetrieveConfiguration = new RetrieveConfiguration(Option(retrieveDirectory), Option(outputPattern), false, None)
+  def apply(): RetrieveConfiguration = new RetrieveConfiguration()
+  def apply(retrieveDirectory: Option[java.io.File], outputPattern: Option[String]): RetrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, outputPattern)
+  def apply(retrieveDirectory: java.io.File, outputPattern: String): RetrieveConfiguration = new RetrieveConfiguration(Option(retrieveDirectory), Option(outputPattern))
   def apply(retrieveDirectory: Option[java.io.File], outputPattern: Option[String], sync: Boolean, configurationsToRetrieve: Option[scala.Vector[sbt.librarymanagement.ConfigRef]]): RetrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, outputPattern, sync, configurationsToRetrieve)
   def apply(retrieveDirectory: java.io.File, outputPattern: String, sync: Boolean, configurationsToRetrieve: scala.Vector[sbt.librarymanagement.ConfigRef]): RetrieveConfiguration = new RetrieveConfiguration(Option(retrieveDirectory), Option(outputPattern), sync, Option(configurationsToRetrieve))
 }
