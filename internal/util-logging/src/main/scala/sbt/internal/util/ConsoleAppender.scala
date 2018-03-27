@@ -353,8 +353,10 @@ class ConsoleAppender private[ConsoleAppender] (
    * @param msg    The message to format
    * @return The formatted message.
    */
-  private def formatted(format: String, msg: String): String =
-    s"$reset${format}${msg}$reset"
+  private def formatted(format: String, msg: String): String = {
+    val builder = new java.lang.StringBuilder(reset.length * 2 + format.length + msg.length)
+    builder.append(reset).append(format).append(msg).append(reset).toString
+  }
 
   /**
    * Select the right color for the label given `level`.
@@ -388,9 +390,14 @@ class ConsoleAppender private[ConsoleAppender] (
   ): Unit =
     out.lockObject.synchronized {
       message.lines.foreach { line =>
-        val labeledLine =
-          s"$reset[${formatted(labelColor, label)}] ${formatted(messageColor, line)}"
-        write(labeledLine)
+        val builder = new java.lang.StringBuilder(
+          labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3)
+        def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
+        builder.append(reset).append('[')
+        fmted(labelColor, label)
+        builder.append("] ")
+        fmted(messageColor, line)
+        write(builder.toString)
       }
     }
 
