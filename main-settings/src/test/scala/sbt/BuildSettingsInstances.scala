@@ -92,9 +92,13 @@ object BuildSettingsInstances {
 
   type Key = K forSome { type K <: Scoped.ScopingSetting[K] with Scoped }
 
-  def genInputKey[A: Manifest]: Gen[InputKey[A]] = Gen.identifier map (InputKey[A](_))
-  def genSettingKey[A: Manifest]: Gen[SettingKey[A]] = Gen.identifier map (SettingKey[A](_))
-  def genTaskKey[A: Manifest]: Gen[TaskKey[A]] = Gen.identifier map (TaskKey[A](_))
+  final case class Label(value: String)
+  val genLabel: Gen[Label] = Gen.identifier map Label
+  implicit def arbLabel: Arbitrary[Label] = Arbitrary(genLabel)
+
+  def genInputKey[A: Manifest]: Gen[InputKey[A]] = genLabel map (x => InputKey[A](x.value))
+  def genSettingKey[A: Manifest]: Gen[SettingKey[A]] = genLabel map (x => SettingKey[A](x.value))
+  def genTaskKey[A: Manifest]: Gen[TaskKey[A]] = genLabel map (x => TaskKey[A](x.value))
 
   def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Arbitrary[K] = Arbitrary {
     Gen.frequency(

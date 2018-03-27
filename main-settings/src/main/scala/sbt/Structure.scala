@@ -17,7 +17,18 @@ import sbt.Def.{ Initialize, KeyedInitialize, ScopedKey, Setting, setting }
 import std.TaskExtra.{ task => mktask, _ }
 
 /** An abstraction on top of Settings for build configuration and task definition. */
-sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
+sealed trait Scoped extends Equals {
+  def scope: Scope
+  val key: AttributeKey[_]
+
+  override def equals(that: Any) =
+    (this eq that.asInstanceOf[AnyRef]) || (that match {
+      case that: Scoped => scope == that.scope && key == that.key && canEqual(that)
+      case _            => false
+    })
+
+  override def hashCode() = (scope, key).##
+}
 
 /** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks.*/
 sealed trait ScopedTaskable[T] extends Scoped {
@@ -95,6 +106,8 @@ sealed abstract class SettingKey[T]
 
   final def withRank(rank: Int): SettingKey[T] =
     SettingKey(AttributeKey.copyWithRank(key, rank))
+
+  def canEqual(that: Any): Boolean = that.isInstanceOf[SettingKey[_]]
 }
 
 /**
@@ -163,6 +176,8 @@ sealed abstract class TaskKey[T]
 
   final def withRank(rank: Int): TaskKey[T] =
     TaskKey(AttributeKey.copyWithRank(key, rank))
+
+  def canEqual(that: Any): Boolean = that.isInstanceOf[TaskKey[_]]
 }
 
 /**
@@ -195,6 +210,8 @@ sealed trait InputKey[T]
 
   final def withRank(rank: Int): InputKey[T] =
     InputKey(AttributeKey.copyWithRank(key, rank))
+
+  def canEqual(that: Any): Boolean = that.isInstanceOf[InputKey[_]]
 }
 
 /** Methods and types related to constructing settings, including keys, scopes, and initializations. */
