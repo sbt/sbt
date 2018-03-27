@@ -57,15 +57,41 @@ object BuildDSLInstances {
   implicit def arbAttrKey[A: Manifest]: Arbitrary[AttributeKey[_]] =
     Arbitrary(Gen.identifier map (AttributeKey[A](_)))
 
-  def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Arbitrary[K] =
-    Arbitrary(Gen.frequency(
-      5 -> keyGen,
-      1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
-    ))
+  implicit val arbAttributeMap: Arbitrary[AttributeMap] = Arbitrary {
+    Gen.frequency(
+      20 -> AttributeMap.empty,
+      1 -> {
+        for (name <- Gen.identifier; isModule <- arbitrary[Boolean])
+          yield
+            AttributeMap.empty
+              .put(AttributeKey[String]("name"), name)
+              .put(AttributeKey[Boolean]("isModule"), isModule)
+      }
+    )
+  }
+
+  implicit def arbScopeAxis[A: Arbitrary]: Arbitrary[ScopeAxis[A]] =
+    Arbitrary(Gen.oneOf[ScopeAxis[A]](This, Zero, arbitrary[A] map (Select(_))))
+
+  implicit def arbScope: Arbitrary[Scope] = Arbitrary(
+    for {
+      r <- arbitrary[ScopeAxis[Reference]]
+      c <- arbitrary[ScopeAxis[ConfigKey]]
+      t <- arbitrary[ScopeAxis[AttributeKey[_]]]
+      e <- arbitrary[ScopeAxis[AttributeMap]]
+    } yield Scope(r, c, t, e)
+  )
 
   def genInputKey[A: Manifest]: Gen[InputKey[A]] = Gen.identifier map (InputKey[A](_))
   def genSettingKey[A: Manifest]: Gen[SettingKey[A]] = Gen.identifier map (SettingKey[A](_))
   def genTaskKey[A: Manifest]: Gen[TaskKey[A]] = Gen.identifier map (TaskKey[A](_))
+
+  def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Arbitrary[K] = Arbitrary {
+    Gen.frequency(
+      5 -> keyGen,
+      1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
+    )
+  }
 
   implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = withScope(genInputKey[A])
   implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = withScope(genSettingKey[A])
@@ -88,29 +114,6 @@ object BuildDSLInstances {
     implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = Arbitrary(genSettingKey[A])
     implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = Arbitrary(genTaskKey[A])
   }
-
-  implicit def arbScopeAxis[A: Arbitrary]: Arbitrary[ScopeAxis[A]] =
-    Arbitrary(Gen.oneOf[ScopeAxis[A]](This, Zero, arbitrary[A] map (Select(_))))
-
-  implicit val arbAttributeMap: Arbitrary[AttributeMap] = Arbitrary {
-    Gen.frequency(
-      20 -> AttributeMap.empty,
-      1 -> (for (name <- Gen.identifier; isModule <- arbitrary[Boolean])
-        yield AttributeMap.empty
-            .put(AttributeKey[String]("name"), name)
-            .put(AttributeKey[Boolean]("isModule"), isModule)
-      )
-    )
-  }
-
-  implicit def arbScope: Arbitrary[Scope] = Arbitrary(
-    for {
-      r <- arbitrary[ScopeAxis[Reference]]
-      c <- arbitrary[ScopeAxis[ConfigKey]]
-      t <- arbitrary[ScopeAxis[AttributeKey[_]]]
-      e <- arbitrary[ScopeAxis[AttributeMap]]
-    } yield Scope(r, c, t, e)
-  )
 }
 import BuildDSLInstances._
 
