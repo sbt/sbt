@@ -13,7 +13,16 @@ import java.io.File
 import sbt.io.IO
 import sbt.SlashSyntax
 import sbt.{ Scope, ScopeAxis, Scoped, Select, This, Zero }, Scope.{ Global, ThisScope }
-import sbt.{ BuildRef, LocalProject, LocalRootProject, ProjectRef, Reference, RootProject, ThisBuild, ThisProject }
+import sbt.{
+  BuildRef,
+  LocalProject,
+  LocalRootProject,
+  ProjectRef,
+  Reference,
+  RootProject,
+  ThisBuild,
+  ThisProject
+}
 import sbt.ConfigKey
 import sbt.librarymanagement.syntax._
 import sbt.{ InputKey, SettingKey, TaskKey }
@@ -34,13 +43,13 @@ object BuildDSLInstances {
 
   implicit val arbReference: Arbitrary[Reference] = Arbitrary {
     Gen.frequency(
-      1 -> arbitrary[BuildRef],     // 96
-      100 -> ThisBuild,             // 10,271
-      3 -> LocalRootProject,        // 325
-      23 -> arbitrary[ProjectRef],  // 2,283
-      3 -> ThisProject,             // 299
-      4 -> arbitrary[LocalProject], // 436
-      11 -> arbitrary[RootProject], // 1,133
+      96 -> arbitrary[BuildRef],
+      10271 -> ThisBuild,
+      325 -> LocalRootProject,
+      2283 -> arbitrary[ProjectRef],
+      299 -> ThisProject,
+      436 -> arbitrary[LocalProject],
+      1133 -> arbitrary[RootProject],
     )
   }
 
