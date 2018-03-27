@@ -117,33 +117,6 @@ object BuildDSLInstances {
 }
 import BuildDSLInstances._
 
-object CustomEquality {
-  trait Eq[A] {
-    def equal(x: A, y: A): Boolean
-  }
-
-  // Avoid reimplementing equality for other standard classes.
-  trait EqualLowPriority {
-    implicit def universal[A] = (x: A, y: A) => x == y
-  }
-
-  object Eq extends EqualLowPriority {
-    def apply[A: Eq]: Eq[A] = implicitly
-
-    implicit def eqScoped[A <: Scoped]: Eq[A] = (x, y) => x.scope == y.scope && x.key == y.key
-  }
-
-  implicit class AnyWith_===[A](private val x: A) extends AnyVal {
-    def ===(y: A)(implicit z: Eq[A]): Boolean = z.equal(x, y)
-    def =?(y: A)(implicit z: Eq[A]): Prop = {
-      if (x === y) proved else falsified :| s"Expected $x but got $y"
-    }
-  }
-
-  def expectValue[A: Eq](expected: A)(x: A) =  expected =? x
-}
-import CustomEquality._
-
 object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   type Key[K] = Scoped.ScopingSetting[K] with Scoped
 
@@ -295,5 +268,10 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
         (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]], k: K) =>
           expectValue(k in ThisScope.copy(project = r, config = c, task = t))(r / c / t / k))
     check[InputKey[String]] && check[SettingKey[String]] && check[TaskKey[String]]
+  }
+
+  def expectValue(expected: Scoped)(x: Scoped) = {
+    val equals = x.scope == expected.scope && x.key == expected.key
+    if (equals) proved else falsified :| s"Expected $expected but got $x"
   }
 }
