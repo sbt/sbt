@@ -5,7 +5,7 @@ import sbt.librarymanagement.syntax._
 
 final case class ScalaVersion(full: String, binary: String)
 
-abstract class CrossVersionFunctions {
+private[librarymanagement] abstract class CrossVersionFunctions {
 
   /** Compatibility with 0.13 */
   final val Disabled = sbt.librarymanagement.Disabled

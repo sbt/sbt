@@ -22,7 +22,7 @@ final class UpdateStats private (
   override def toString: String = {
     Seq("Resolve time: " + resolveTime + " ms", "Download time: " + downloadTime + " ms", "Download size: " + downloadSize + " bytes").mkString(", ")
   }
-  protected[this] def copy(resolveTime: Long = resolveTime, downloadTime: Long = downloadTime, downloadSize: Long = downloadSize, cached: Boolean = cached): UpdateStats = {
+  private[this] def copy(resolveTime: Long = resolveTime, downloadTime: Long = downloadTime, downloadSize: Long = downloadSize, cached: Boolean = cached): UpdateStats = {
     new UpdateStats(resolveTime, downloadTime, downloadSize, cached)
   }
   def withResolveTime(resolveTime: Long): UpdateStats = {

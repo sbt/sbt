@@ -1,0 +1,22 @@
+{
+  "types": [
+    {
+      "name": "MakePomConfiguration",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "generateCodec": false,
+      "fields": [
+        { "name": "file",               "type": "java.io.File?"                                                   },
+        { "name": "moduleInfo",         "type": "sbt.librarymanagement.ModuleInfo?"                               },
+        { "name": "configurations",     "type": "scala.Vector[sbt.librarymanagement.Configuration]?"              },
+        { "name": "extra",              "type": "scala.xml.NodeSeq?"                                              },
+        { "name": "process",            "type": "scala.Function1[scala.xml.Node, scala.xml.Node]"                 },
+        { "name": "filterRepositories", "type": "scala.Function1[sbt.librarymanagement.MavenRepository, Boolean]" },
+        { "name": "allRepositories",    "type": "boolean"                                                         },
+        { "name": "includeTypes",       "type": "Set[String]"                                                     }
+      ],
+      "parentsCompanion": "sbt.librarymanagement.MakePomConfigurationFunctions"
+    }
+  ]
+}

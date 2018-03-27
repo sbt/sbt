@@ -21,7 +21,7 @@ final class ConfigRef private (
   override def toString: String = {
     name
   }
-  protected[this] def copy(name: String = name): ConfigRef = {
+  private[this] def copy(name: String = name): ConfigRef = {
     new ConfigRef(name)
   }
   def withName(name: String): ConfigRef = {

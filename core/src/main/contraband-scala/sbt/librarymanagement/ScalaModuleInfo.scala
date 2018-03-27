@@ -26,7 +26,7 @@ final class ScalaModuleInfo private (
   override def toString: String = {
     "ScalaModuleInfo(" + scalaFullVersion + ", " + scalaBinaryVersion + ", " + configurations + ", " + checkExplicit + ", " + filterImplicit + ", " + overrideScalaVersion + ", " + scalaOrganization + ", " + scalaArtifacts + ")"
   }
-  protected[this] def copy(scalaFullVersion: String = scalaFullVersion, scalaBinaryVersion: String = scalaBinaryVersion, configurations: Vector[sbt.librarymanagement.Configuration] = configurations, checkExplicit: Boolean = checkExplicit, filterImplicit: Boolean = filterImplicit, overrideScalaVersion: Boolean = overrideScalaVersion, scalaOrganization: String = scalaOrganization, scalaArtifacts: scala.Vector[String] = scalaArtifacts): ScalaModuleInfo = {
+  private[this] def copy(scalaFullVersion: String = scalaFullVersion, scalaBinaryVersion: String = scalaBinaryVersion, configurations: Vector[sbt.librarymanagement.Configuration] = configurations, checkExplicit: Boolean = checkExplicit, filterImplicit: Boolean = filterImplicit, overrideScalaVersion: Boolean = overrideScalaVersion, scalaOrganization: String = scalaOrganization, scalaArtifacts: scala.Vector[String] = scalaArtifacts): ScalaModuleInfo = {
     new ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion, scalaOrganization, scalaArtifacts)
   }
   def withScalaFullVersion(scalaFullVersion: String): ScalaModuleInfo = {
@@ -56,6 +56,6 @@ final class ScalaModuleInfo private (
 }
 object ScalaModuleInfo {
   
-  def apply(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Vector[sbt.librarymanagement.Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean): ScalaModuleInfo = new ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion, sbt.librarymanagement.ScalaArtifacts.Organization, sbt.librarymanagement.ScalaArtifacts.Artifacts)
+  def apply(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Vector[sbt.librarymanagement.Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean): ScalaModuleInfo = new ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion)
   def apply(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Vector[sbt.librarymanagement.Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, scalaOrganization: String, scalaArtifacts: scala.Vector[String]): ScalaModuleInfo = new ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion, scalaOrganization, scalaArtifacts)
 }

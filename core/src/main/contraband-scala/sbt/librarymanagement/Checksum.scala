@@ -20,7 +20,7 @@ final class Checksum private (
   override def toString: String = {
     "Checksum(" + digest + ", " + `type` + ")"
   }
-  protected[this] def copy(digest: String = digest, `type`: String = `type`): Checksum = {
+  private[this] def copy(digest: String = digest, `type`: String = `type`): Checksum = {
     new Checksum(digest, `type`)
   }
   def withDigest(digest: String): Checksum = {

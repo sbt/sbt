@@ -37,7 +37,7 @@ final class UpdateConfiguration private (
   override def toString: String = {
     "UpdateConfiguration(" + retrieveManaged + ", " + missingOk + ", " + logging + ", " + logicalClock + ", " + metadataDirectory + ", " + artifactFilter + ", " + offline + ", " + frozen + ")"
   }
-  protected[this] def copy(retrieveManaged: Option[sbt.librarymanagement.RetrieveConfiguration] = retrieveManaged, missingOk: Boolean = missingOk, logging: sbt.librarymanagement.UpdateLogging = logging, logicalClock: sbt.librarymanagement.LogicalClock = logicalClock, metadataDirectory: Option[java.io.File] = metadataDirectory, artifactFilter: Option[sbt.librarymanagement.ArtifactTypeFilter] = artifactFilter, offline: Boolean = offline, frozen: Boolean = frozen): UpdateConfiguration = {
+  private[this] def copy(retrieveManaged: Option[sbt.librarymanagement.RetrieveConfiguration] = retrieveManaged, missingOk: Boolean = missingOk, logging: sbt.librarymanagement.UpdateLogging = logging, logicalClock: sbt.librarymanagement.LogicalClock = logicalClock, metadataDirectory: Option[java.io.File] = metadataDirectory, artifactFilter: Option[sbt.librarymanagement.ArtifactTypeFilter] = artifactFilter, offline: Boolean = offline, frozen: Boolean = frozen): UpdateConfiguration = {
     new UpdateConfiguration(retrieveManaged, missingOk, logging, logicalClock, metadataDirectory, artifactFilter, offline, frozen)
   }
   def withRetrieveManaged(retrieveManaged: Option[sbt.librarymanagement.RetrieveConfiguration]): UpdateConfiguration = {
@@ -76,7 +76,7 @@ final class UpdateConfiguration private (
 }
 object UpdateConfiguration {
   
-  def apply(): UpdateConfiguration = new UpdateConfiguration(None, false, sbt.librarymanagement.UpdateLogging.Default, sbt.librarymanagement.LogicalClock.unknown, None, None, false, false)
+  def apply(): UpdateConfiguration = new UpdateConfiguration()
   def apply(retrieveManaged: Option[sbt.librarymanagement.RetrieveConfiguration], missingOk: Boolean, logging: sbt.librarymanagement.UpdateLogging, logicalClock: sbt.librarymanagement.LogicalClock, metadataDirectory: Option[java.io.File], artifactFilter: Option[sbt.librarymanagement.ArtifactTypeFilter], offline: Boolean, frozen: Boolean): UpdateConfiguration = new UpdateConfiguration(retrieveManaged, missingOk, logging, logicalClock, metadataDirectory, artifactFilter, offline, frozen)
   def apply(retrieveManaged: sbt.librarymanagement.RetrieveConfiguration, missingOk: Boolean, logging: sbt.librarymanagement.UpdateLogging, logicalClock: sbt.librarymanagement.LogicalClock, metadataDirectory: java.io.File, artifactFilter: sbt.librarymanagement.ArtifactTypeFilter, offline: Boolean, frozen: Boolean): UpdateConfiguration = new UpdateConfiguration(Option(retrieveManaged), missingOk, logging, logicalClock, Option(metadataDirectory), Option(artifactFilter), offline, frozen)
 }

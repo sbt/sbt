@@ -24,12 +24,12 @@ final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(n
   }
 }
 
-abstract class MavenRepositoryFunctions {
+private[librarymanagement] abstract class MavenRepositoryFunctions {
   def apply(name: String, root: String, localIfFile: Boolean = true): MavenRepository =
     MavenRepo(name, root, localIfFile)
 }
 
-abstract class PatternsFunctions {
+private[librarymanagement] abstract class PatternsFunctions {
   implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
 
   def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns: _*)
@@ -42,7 +42,7 @@ abstract class PatternsFunctions {
   }
 }
 
-trait SshBasedRepositoryExtra {
+private[librarymanagement] trait SshBasedRepositoryExtra {
 
   /** The object representing the configured ssh connection for this repository. */
   def connection: SshConnection
@@ -67,7 +67,7 @@ trait SshBasedRepositoryExtra {
     copy(KeyFileAuthentication(user, keyfile, password))
 }
 
-trait SshRepositoryExtra extends SshBasedRepositoryExtra {
+private[librarymanagement] trait SshRepositoryExtra extends SshBasedRepositoryExtra {
   def name: String
   def patterns: sbt.librarymanagement.Patterns
   def publishPermissions: Option[String]
@@ -78,7 +78,7 @@ trait SshRepositoryExtra extends SshBasedRepositoryExtra {
     SshRepository(name, connection, patterns, publishPermissions)
 }
 
-trait SftpRepositoryExtra extends SshBasedRepositoryExtra {
+private[librarymanagement] trait SftpRepositoryExtra extends SshBasedRepositoryExtra {
   def name: String
   def patterns: sbt.librarymanagement.Patterns
 
@@ -93,7 +93,7 @@ private[sbt] class FakeRepository(resolver: AnyRef, name: String) extends xsbti.
   def rawRepository = new RawRepository(resolver, name)
 }
 
-abstract class ResolverFunctions {
+private[librarymanagement] abstract class ResolverFunctions {
   private[sbt] def useSecureResolvers =
     sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
 

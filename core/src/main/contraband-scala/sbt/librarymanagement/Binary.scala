@@ -26,7 +26,7 @@ final class Binary private (
   override def toString: String = {
     "Binary(" + prefix + ", " + suffix + ")"
   }
-  protected[this] def copy(prefix: String = prefix, suffix: String = suffix): Binary = {
+  private[this] def copy(prefix: String = prefix, suffix: String = suffix): Binary = {
     new Binary(prefix, suffix)
   }
   def withPrefix(prefix: String): Binary = {
@@ -38,6 +38,6 @@ final class Binary private (
 }
 object Binary {
   
-  def apply(): Binary = new Binary("", "")
+  def apply(): Binary = new Binary()
   def apply(prefix: String, suffix: String): Binary = new Binary(prefix, suffix)
 }

@@ -572,7 +572,7 @@
              },
             { "name": "conflictManager",      "type": "sbt.librarymanagement.ConflictManager", "default": "sbt.librarymanagement.ConflictManager.default", "since": "0.0.1" }
           ],
-          "parentsCompanion": "sbt.internal.librarymanagement.InlineConfigurationFunctions"
+          "parentsCompanion": "sbt.librarymanagement.InlineConfigurationFunctions"
         }
       ]
     },

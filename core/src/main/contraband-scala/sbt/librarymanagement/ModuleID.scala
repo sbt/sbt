@@ -31,7 +31,7 @@ final class ModuleID private (
   override def toString: String = {
     this.toStringImpl
   }
-  protected[this] def copy(organization: String = organization, name: String = name, revision: String = revision, configurations: Option[String] = configurations, isChanging: Boolean = isChanging, isTransitive: Boolean = isTransitive, isForce: Boolean = isForce, explicitArtifacts: Vector[sbt.librarymanagement.Artifact] = explicitArtifacts, inclusions: Vector[sbt.librarymanagement.InclExclRule] = inclusions, exclusions: Vector[sbt.librarymanagement.InclExclRule] = exclusions, extraAttributes: Map[String, String] = extraAttributes, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion, branchName: Option[String] = branchName): ModuleID = {
+  private[this] def copy(organization: String = organization, name: String = name, revision: String = revision, configurations: Option[String] = configurations, isChanging: Boolean = isChanging, isTransitive: Boolean = isTransitive, isForce: Boolean = isForce, explicitArtifacts: Vector[sbt.librarymanagement.Artifact] = explicitArtifacts, inclusions: Vector[sbt.librarymanagement.InclExclRule] = inclusions, exclusions: Vector[sbt.librarymanagement.InclExclRule] = exclusions, extraAttributes: Map[String, String] = extraAttributes, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion, branchName: Option[String] = branchName): ModuleID = {
     new ModuleID(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, inclusions, exclusions, extraAttributes, crossVersion, branchName)
   }
   def withOrganization(organization: String): ModuleID = {
@@ -76,6 +76,6 @@ final class ModuleID private (
 }
 object ModuleID extends sbt.librarymanagement.ModuleIDFunctions {
   
-  def apply(organization: String, name: String, revision: String): ModuleID = new ModuleID(organization, name, revision, None, false, true, false, Vector.empty, Vector.empty, Vector.empty, Map.empty, sbt.librarymanagement.Disabled(), None)
+  def apply(organization: String, name: String, revision: String): ModuleID = new ModuleID(organization, name, revision)
   def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, isForce: Boolean, explicitArtifacts: Vector[sbt.librarymanagement.Artifact], inclusions: Vector[sbt.librarymanagement.InclExclRule], exclusions: Vector[sbt.librarymanagement.InclExclRule], extraAttributes: Map[String, String], crossVersion: sbt.librarymanagement.CrossVersion, branchName: Option[String]): ModuleID = new ModuleID(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, inclusions, exclusions, extraAttributes, crossVersion, branchName)
 }

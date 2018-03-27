@@ -22,7 +22,7 @@ final class IvyFileConfiguration private (
   override def toString: String = {
     "IvyFileConfiguration(" + validate + ", " + scalaModuleInfo + ", " + file + ", " + autoScalaTools + ")"
   }
-  protected[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): IvyFileConfiguration = {
+  private[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): IvyFileConfiguration = {
     new IvyFileConfiguration(validate, scalaModuleInfo, file, autoScalaTools)
   }
   def withValidate(validate: Boolean): IvyFileConfiguration = {
@@ -43,7 +43,7 @@ final class IvyFileConfiguration private (
 }
 object IvyFileConfiguration {
   
-  def apply(file: java.io.File, autoScalaTools: Boolean): IvyFileConfiguration = new IvyFileConfiguration(false, None, file, autoScalaTools)
+  def apply(file: java.io.File, autoScalaTools: Boolean): IvyFileConfiguration = new IvyFileConfiguration(file, autoScalaTools)
   def apply(validate: Boolean, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo], file: java.io.File, autoScalaTools: Boolean): IvyFileConfiguration = new IvyFileConfiguration(validate, scalaModuleInfo, file, autoScalaTools)
   def apply(validate: Boolean, scalaModuleInfo: sbt.librarymanagement.ScalaModuleInfo, file: java.io.File, autoScalaTools: Boolean): IvyFileConfiguration = new IvyFileConfiguration(validate, Option(scalaModuleInfo), file, autoScalaTools)
 }

@@ -16,6 +16,7 @@ script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
   scalafmt::test test:scalafmt::test sbt:scalafmt::test
   whitesourceCheckPolicies
   test
+  packagedArtifacts # ensure that all artifacts for publish package without failure
 
 env:
   global:
