@@ -32,7 +32,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 val mimaSettings = Def settings (
   mimaPreviousArtifacts := Set(
     "1.0.0", "1.0.1", "1.0.2", "1.0.3",
-    "1.1.0", "1.1.1", "1.1.2",
+    "1.1.0", "1.1.1", "1.1.2", "1.1.3"
   ) map (version =>
     organization.value %% moduleName.value % version
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
@@ -54,10 +54,10 @@ lazy val utilRoot: Project = (project in file("."))
   .settings(
     inThisBuild(
       Seq(
-        git.baseVersion := "1.1.2",
+        git.baseVersion := "1.1.4",
         version := {
           val v = version.value
-          if (v contains "SNAPSHOT") git.baseVersion.value
+          if (v contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
           else v
         },
         bintrayPackage := "util",
