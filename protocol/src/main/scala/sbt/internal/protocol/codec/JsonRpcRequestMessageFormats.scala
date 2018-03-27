@@ -24,7 +24,10 @@ trait JsonRpcRequestMessageFormats {
             val id = try {
               unbuilder.readField[String]("id")
             } catch {
-              case _: DeserializationException => unbuilder.readField[Long]("id").toString
+              case _: DeserializationException => {
+                val prefix = "\u2668" // Append prefix to show the original type was Number
+                prefix + unbuilder.readField[Long]("id").toString
+              }
             }
             val method = unbuilder.readField[String]("method")
             val params = unbuilder.lookupField("params") map {

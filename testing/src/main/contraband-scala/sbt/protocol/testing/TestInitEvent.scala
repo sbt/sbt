@@ -19,7 +19,7 @@ override def hashCode: Int = {
 override def toString: String = {
   "TestInitEvent()"
 }
-protected[this] def copy(): TestInitEvent = {
+private[this] def copy(): TestInitEvent = {
   new TestInitEvent()
 }
 

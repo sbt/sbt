@@ -25,7 +25,7 @@ final class JsonRpcRequestMessage private (
   override def toString: String = {
     s"""JsonRpcRequestMessage($jsonrpc, $id, $method, ${sbt.protocol.Serialization.compactPrintJsonOpt(params)}})"""
   }
-  protected[this] def copy(jsonrpc: String = jsonrpc, id: String = id, method: String = method, params: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = params): JsonRpcRequestMessage = {
+  private[this] def copy(jsonrpc: String = jsonrpc, id: String = id, method: String = method, params: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = params): JsonRpcRequestMessage = {
     new JsonRpcRequestMessage(jsonrpc, id, method, params)
   }
   def withJsonrpc(jsonrpc: String): JsonRpcRequestMessage = {

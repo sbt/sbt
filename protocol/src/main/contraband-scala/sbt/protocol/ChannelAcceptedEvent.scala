@@ -19,7 +19,7 @@ final class ChannelAcceptedEvent private (
   override def toString: String = {
     "ChannelAcceptedEvent(" + channelName + ")"
   }
-  protected[this] def copy(channelName: String = channelName): ChannelAcceptedEvent = {
+  private[this] def copy(channelName: String = channelName): ChannelAcceptedEvent = {
     new ChannelAcceptedEvent(channelName)
   }
   def withChannelName(channelName: String): ChannelAcceptedEvent = {

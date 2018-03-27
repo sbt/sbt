@@ -248,7 +248,13 @@ final class NetworkChannel(val name: String,
     if (isLanguageServerProtocol) {
       event match {
         case entry: StringEvent => logMessage(entry.level, entry.message)
-        case _                  => jsonRpcRespond(event, execId)
+        case entry: ExecStatusEvent =>
+          entry.exitCode match {
+            case None           => jsonRpcRespond(event, entry.execId)
+            case Some(0)        => jsonRpcRespond(event, entry.execId)
+            case Some(exitCode) => jsonRpcRespondError(entry.execId, exitCode, "")
+          }
+        case _ => jsonRpcRespond(event, execId)
       }
     } else {
       contentType match {
