@@ -37,7 +37,7 @@ object ConsoleOut {
         lockObject.print(OverwriteLine)
       lockObject.println(s)
       last = Some(s)
-      current = new java.lang.StringBuffer
+      current.setLength(0)
     }
   }
 
