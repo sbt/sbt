@@ -649,7 +649,7 @@ object InputKey {
     apply(AttributeKey[InputTask[T]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[T](akey: AttributeKey[InputTask[T]]): InputKey[T] =
-    new InputKey[T] { val key = akey; def scope = Scope.ThisScope }
+    Scoped.scopedInput(Scope.ThisScope, akey)
 }
 
 /** Constructs TaskKeys, which are associated with tasks to define a setting.*/
@@ -678,8 +678,7 @@ object TaskKey {
   ): TaskKey[T] =
     apply(AttributeKey[Task[T]](label, description, extendScoped(extend1, extendN), rank))
 
-  def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] =
-    new TaskKey[T] { val key = akey; def scope = Scope.ThisScope }
+  def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] = Scoped.scopedTask(Scope.ThisScope, akey)
 
   def local[T: Manifest]: TaskKey[T] = apply[T](AttributeKey.local[Task[T]])
 }
@@ -710,8 +709,7 @@ object SettingKey {
   ): SettingKey[T] =
     apply(AttributeKey[T](label, description, extendScoped(extend1, extendN), rank))
 
-  def apply[T](akey: AttributeKey[T]): SettingKey[T] =
-    new SettingKey[T] { val key = akey; def scope = Scope.ThisScope }
+  def apply[T](akey: AttributeKey[T]): SettingKey[T] = Scoped.scopedSetting(Scope.ThisScope, akey)
 
   def local[T: Manifest: OptJsonWriter]: SettingKey[T] = apply[T](AttributeKey.local[T])
 }
