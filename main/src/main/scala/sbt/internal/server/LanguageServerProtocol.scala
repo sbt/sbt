@@ -76,7 +76,7 @@ private[sbt] object LanguageServerProtocol {
           }
         }, {
           case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
-            appendExec(Exec(";compile; collectAnalyses", None, Some(CommandSource(name))))
+            appendExec(Exec(";Test/compile; collectAnalyses", None, Some(CommandSource(name))))
             ()
         }
       )

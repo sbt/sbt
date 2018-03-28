@@ -26,7 +26,7 @@ final class PortFile private (
   override def toString: String = {
     "PortFile(" + uri + ", " + tokenfilePath + ", " + tokenfileUri + ")"
   }
-  protected[this] def copy(uri: String = uri, tokenfilePath: Option[String] = tokenfilePath, tokenfileUri: Option[String] = tokenfileUri): PortFile = {
+  private[this] def copy(uri: String = uri, tokenfilePath: Option[String] = tokenfilePath, tokenfileUri: Option[String] = tokenfileUri): PortFile = {
     new PortFile(uri, tokenfilePath, tokenfileUri)
   }
   def withUri(uri: String): PortFile = {

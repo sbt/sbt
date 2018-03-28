@@ -9,6 +9,7 @@ package sbt
 
 import org.scalatest._
 import scala.concurrent._
+import scala.annotation.tailrec
 import java.io.{ InputStream, OutputStream }
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{ ThreadFactory, ThreadPoolExecutor }
@@ -23,18 +24,21 @@ class ServerSpec extends AsyncFlatSpec with Matchers {
         """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "handshake/name" } }""",
         out)
       Thread.sleep(100)
-
-      println(readFrame(in))
-      println(readFrame(in))
-      println(readFrame(in))
-      println(readFrame(in))
-      // println(readFrame(in))
-
-      writeLine("""{ "jsonrpc": "2.0", "id": 10, "method": "lunar/helo", "params": {} }""", out)
-      Thread.sleep(100)
-
-      assert(1 == 1)
+      assert(waitFor(in, 10) { s =>
+        s contains """"id":3"""
+      })
     }
+  }
+
+  @tailrec
+  private[this] def waitFor(in: InputStream, num: Int)(f: String => Boolean): Boolean = {
+    if (num < 0) false
+    else
+      readFrame(in) match {
+        case Some(x) if f(x) => true
+        case _ =>
+          waitFor(in, num - 1)(f)
+      }
   }
 }
 

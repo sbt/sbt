@@ -18,6 +18,7 @@ import scala.util.control.NonFatal
 import sbt.io.{ IO, Using }
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.internal.util.complete.Parser
+import sbt.internal.langserver.ErrorCodes
 import sbt.util.Logger
 import sbt.protocol._
 
@@ -154,13 +155,63 @@ object MainLoop {
         state.log error errMsg
         state.fail
     }
-    StandardMain.exchange publishEventMessage ExecStatusEvent(
+    val doneEvent = ExecStatusEvent(
       "Done",
       channelName,
       exec.execId,
-      newState.remainingCommands.toVector map (_.commandLine))
+      newState.remainingCommands.toVector map (_.commandLine),
+      exitCode(newState, state),
+    )
+    if (doneEvent.execId.isDefined) { // send back a response or error
+      import sbt.protocol.codec.JsonProtocol._
+      StandardMain.exchange publishEvent doneEvent
+    } else { // send back a notification
+      StandardMain.exchange publishEventMessage doneEvent
+    }
     newState
   }
 
   def logFullException(e: Throwable, log: Logger): Unit = State.logFullException(e, log)
+
+  private[this] type ExitCode = Option[Long]
+  private[this] object ExitCode {
+    def apply(n: Long): ExitCode = Option(n)
+    val Success: ExitCode = ExitCode(0)
+    val Unknown: ExitCode = None
+  }
+
+  private[this] def exitCode(state: State, prevState: State): ExitCode = {
+    exitCodeFromStateNext(state) match {
+      case ExitCode.Success => exitCodeFromStateOnFailure(state, prevState)
+      case x                => x
+    }
+  }
+
+  // State's "next" field indicates the next action for the command processor to take
+  // we'll use that to determine if the command failed
+  private[this] def exitCodeFromStateNext(state: State): ExitCode = {
+    state.next match {
+      case State.Continue       => ExitCode.Success
+      case State.ClearGlobalLog => ExitCode.Success
+      case State.KeepLastLog    => ExitCode.Success
+      case ret: State.Return =>
+        ret.result match {
+          case exit: xsbti.Exit  => ExitCode(exit.code().toLong)
+          case _: xsbti.Continue => ExitCode.Success
+          case _: xsbti.Reboot   => ExitCode.Success
+          case x =>
+            val clazz = if (x eq null) "" else " (class: " + x.getClass + ")"
+            state.log debug s"Unknown main result: $x$clazz"
+            ExitCode.Unknown
+        }
+    }
+  }
+
+  // the shell command specifies an onFailure so that if an exception is thrown
+  // it's handled by executing the shell again, instead of the state failing
+  // so we also use that to indicate that the execution failed
+  private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
+    if (prevState.onFailure.isDefined && state.onFailure.isEmpty) ExitCode(ErrorCodes.UnknownError)
+    else ExitCode.Success
+
 }

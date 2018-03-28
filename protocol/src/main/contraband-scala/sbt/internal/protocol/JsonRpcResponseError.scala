@@ -27,7 +27,7 @@ final class JsonRpcResponseError private (
   override def toString: String = {
     s"""JsonRpcResponseError($code, $message, ${sbt.protocol.Serialization.compactPrintJsonOpt(data)})"""
   }
-  protected[this] def copy(code: Long = code, message: String = message, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): JsonRpcResponseError = {
+  private[this] def copy(code: Long = code, message: String = message, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): JsonRpcResponseError = {
     new JsonRpcResponseError(code, message, data)
   }
   def withCode(code: Long): JsonRpcResponseError = {

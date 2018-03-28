@@ -21,7 +21,7 @@ final class TestItemEvent private (
   override def toString: String = {
     "TestItemEvent(" + result + ", " + detail + ")"
   }
-  protected[this] def copy(result: Option[sbt.protocol.testing.TestResult] = result, detail: Vector[sbt.protocol.testing.TestItemDetail] = detail): TestItemEvent = {
+  private[this] def copy(result: Option[sbt.protocol.testing.TestResult] = result, detail: Vector[sbt.protocol.testing.TestItemDetail] = detail): TestItemEvent = {
     new TestItemEvent(result, detail)
   }
   def withResult(result: Option[sbt.protocol.testing.TestResult]): TestItemEvent = {

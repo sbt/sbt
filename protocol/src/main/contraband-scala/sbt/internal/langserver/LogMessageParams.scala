@@ -22,7 +22,7 @@ final class LogMessageParams private (
   override def toString: String = {
     "LogMessageParams(" + `type` + ", " + message + ")"
   }
-  protected[this] def copy(`type`: Long = `type`, message: String = message): LogMessageParams = {
+  private[this] def copy(`type`: Long = `type`, message: String = message): LogMessageParams = {
     new LogMessageParams(`type`, message)
   }
   def withType(`type`: Long): LogMessageParams = {

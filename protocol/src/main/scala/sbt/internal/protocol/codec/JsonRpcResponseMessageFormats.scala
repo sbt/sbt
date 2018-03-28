@@ -7,8 +7,14 @@
 
 package sbt.internal.protocol.codec
 
-import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
+import _root_.sjsonnew.{
+  Builder,
+  DeserializationException,
+  JsonFormat,
+  Unbuilder,
+  deserializationError
+}
+import sjsonnew.shaded.scalajson.ast.unsafe._
 
 trait JsonRpcResponseMessageFormats {
   self: sbt.internal.util.codec.JValueFormats
@@ -46,10 +52,35 @@ trait JsonRpcResponseMessageFormats {
       }
       override def write[J](obj: sbt.internal.protocol.JsonRpcResponseMessage,
                             builder: Builder[J]): Unit = {
+        // Parse given id to Long or String judging by prefix
+        def parseId(str: String): Either[Long, String] = {
+          if (str.startsWith("\u2668")) Left(str.substring(1).toLong)
+          else Right(str)
+        }
+        def parseResult(jValue: JValue): JValue = jValue match {
+          case JObject(jFields) =>
+            val replaced = jFields map {
+              case field @ JField("execId", JString(str)) =>
+                parseId(str) match {
+                  case Right(strId) => field.copy(value = JString(strId))
+                  case Left(longId) => field.copy(value = JNumber(longId))
+                }
+              case other =>
+                other
+            }
+            JObject(replaced)
+          case other =>
+            other
+        }
         builder.beginObject()
         builder.addField("jsonrpc", obj.jsonrpc)
-        builder.addField("id", obj.id)
-        builder.addField("result", obj.result)
+        obj.id foreach { id =>
+          parseId(id) match {
+            case Right(strId) => builder.addField("id", strId)
+            case Left(longId) => builder.addField("id", longId)
+          }
+        }
+        builder.addField("result", obj.result map parseResult)
         builder.addField("error", obj.error)
         builder.endObject()
       }
