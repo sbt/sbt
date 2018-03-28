@@ -472,7 +472,7 @@ The resolution process will go on by giving successive `Resolution`s, until the 
 `start` above is only the initial state - it is far from over, as the `isDone` method on it tells,
 ```scala
 scala> start.isDone
-res6: Boolean = false
+res2: Boolean = false
 ```
 
 
@@ -511,7 +511,7 @@ scala> MavenRepository(
      |   "https://nexus.corp.com/content/repositories/releases",
      |   authentication = Some(Authentication("user", "pass"))
      | )
-res8: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,true,Some(Authentication(user, *******)))
+res4: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,true,Some(Authentication(user, *******)))
 ```
 
 Now that we have repositories, we're going to mix these with things from the `coursier-cache` module,
