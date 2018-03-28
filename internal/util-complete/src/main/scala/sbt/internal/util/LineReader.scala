@@ -90,6 +90,7 @@ private[sbt] object JLine {
   //  older Scala, since it shaded classes but not the system property
   private[sbt] def fixTerminalProperty(): Unit = {
     val newValue = System.getProperty(TerminalProperty) match {
+      case _ if isEmacsShell                                => "false"
       case "jline.UnixTerminal"                             => "unix"
       case null if System.getProperty("sbt.cygwin") != null => "unix"
       case "jline.WindowsTerminal"                          => "windows"
@@ -161,6 +162,13 @@ private[sbt] object JLine {
 
   val HandleCONT =
     !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
+
+  val isEmacsShell = {
+    import scala.util.Properties
+
+    (Properties.propOrElse("env.emacs", "") != "") || // same as scala.tools.nsc.Properties.isEmacsShell
+    Properties.envOrNone("INSIDE_EMACS").isDefined // preferred by emacs
+  }
 }
 
 private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration)
