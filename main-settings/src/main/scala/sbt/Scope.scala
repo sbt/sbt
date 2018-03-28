@@ -219,6 +219,7 @@ object Scope {
 
   def showProject012Style = (ref: Reference) => Reference.display(ref) + "/"
 
+  @deprecated("No longer used", "1.1.3")
   def transformTaskName(s: String) = {
     val parts = s.split("-+")
     (parts.take(1) ++ parts.drop(1).map(_.capitalize)).mkString
