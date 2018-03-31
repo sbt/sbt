@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -evx
 
-SCALA_VERSION="${SCALA_VERSION:-${TRAVIS_SCALA_VERSION:-2.12.4}}"
+SCALA_VERSION="${SCALA_VERSION:-${TRAVIS_SCALA_VERSION:-2.12.5}}"
 PULL_REQUEST="${PULL_REQUEST:-${TRAVIS_PULL_REQUEST:-false}}"
 BRANCH="${BRANCH:-${TRAVIS_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}}"
 PUBLISH="${PUBLISH:-0}"
@@ -41,7 +41,7 @@ launchTestRepo() {
 
 integrationTestsRequirements() {
   # Required for ~/.ivy2/local repo tests
-  sbt ++2.11.12 coreJVM/publishLocal ++2.12.4 cli/publishLocal
+  sbt ++2.11.12 coreJVM/publishLocal ++2.12.5 cli/publishLocal
 
   # Required for HTTP authentication tests
   launchTestRepo --port 8080 --list-pages
