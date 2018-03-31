@@ -1,0 +1,17 @@
+> g
+-> root/compile
+> a/compile
+> a/aa
+> b/compile
+> b/h
+> c/compile
+
+$ copy-file changes/basic.sbt basic.sbt
+> reload
+> g
+> root/compile
+> a/compile
+> a/aa
+> b/compile
+> b/h
+> c/compile

@@ -123,10 +123,10 @@ private[sbt] object EvaluateConfigurations {
       // Tracks all the files we generated from evaluating the sbt file.
       val allGeneratedFiles = (definitions.generated ++ dslEntries.flatMap(_.generated))
       loader => {
-        val projects =
-          definitions.values(loader).collect {
-            case p: Project => resolveBase(file.getParentFile, p)
-          }
+        val projects = definitions.values(loader).flatMap {
+          case p: CompositeProject => p.componentProjects.map(resolveBase(file.getParentFile, _))
+          case _                   => Nil
+        }
         val (settingsRaw, manipulationsRaw) =
           dslEntries map (_.result apply loader) partition {
             case DslEntry.ProjectSettings(_) => true
@@ -234,7 +234,7 @@ private[sbt] object EvaluateConfigurations {
     }
 
   private[this] def extractedValTypes: Seq[String] =
-    Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
+    Seq(classOf[CompositeProject], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
 
   private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)], file: Option[File]): compiler.EvalDefinitions =
     {

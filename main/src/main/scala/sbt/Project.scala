@@ -119,7 +119,13 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
     if (ts.isEmpty) Nil else s"$label: $ts" :: Nil
 }
 
-sealed trait Project extends ProjectDefinition[ProjectReference] {
+trait CompositeProject {
+  def componentProjects: Seq[Project]
+}
+
+sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeProject {
+  def componentProjects: Seq[Project] = this :: Nil
+
   private[sbt] def copy(
       id: String = id,
       base: File = base,
