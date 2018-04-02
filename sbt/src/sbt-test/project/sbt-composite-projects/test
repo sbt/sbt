@@ -15,3 +15,8 @@ $ copy-file changes/basic.sbt basic.sbt
 > b/compile
 > b/h
 > c/compile
+> check
+
+$ copy-file changes/shadow.sbt build.sbt
+> reload
+> check
