@@ -1373,10 +1373,8 @@ object Defaults extends BuildCommon {
       val sc = (scalacOptions in task).value
       val ic = (initialCommands in task).value
       val cc = (cleanupCommands in task).value
-      JLine.usingTerminal { _ =>
-        (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
-        println()
-      }
+      (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
+      println()
     }
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
