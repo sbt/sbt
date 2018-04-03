@@ -217,7 +217,7 @@ object Defaults extends BuildCommon {
       settingsData := buildStructure.value.data,
       trapExit :== true,
       connectInput :== false,
-      cancelable :== false,
+      cancelable :== true,
       taskCancelStrategy := { state: State =>
         if (cancelable.value) TaskCancellationStrategy.Signal
         else TaskCancellationStrategy.Null
