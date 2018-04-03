@@ -129,41 +129,27 @@ object VersionNumber {
      * Rule 2 we enforce with custom extractors.
      * Rule 4 we enforce by matching x = 0 & fully equals checking the two versions
      * Rule 6, 7 & 8 means version compatibility is determined by comparing the two X values
-     * Rule 9 means pre-release versions are fully equals checked
      */
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
 
     private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
       (v1, v2) match {
-        case (NormalVersion(0, _, _), NormalVersion(0, _, _))         => v1 == v2 // R4
-        case (NormalVersion(x1, _, _), NormalVersion(x2, _, _))       => x1 == x2 // R6, R7 & R8
-        case (PrereleaseVersion(_, _, _), PrereleaseVersion(_, _, _)) => v1 == v2 // R9
-        case _                                                        => false
+        case (NormalVersion(0, _, _), NormalVersion(0, _, _))   => v1 == v2 // R4
+        case (NormalVersion(x1, _, _), NormalVersion(x2, _, _)) => x1 == x2 // R6, R7 & R8
+        case _                                                  => false
       }
 
     // SemVer Spec Rule 10 (above)
     private[VersionNumber] def dropBuildMetadata(v: VersionNumber) =
       if (v.extras.isEmpty) v else VersionNumber(v.numbers, v.tags, Nil)
 
-    // SemVer Spec Rule 9 (above)
-    private[VersionNumber] def isPrerelease(v: VersionNumber): Boolean = v.tags.nonEmpty
-
     // An extractor for SemVer's "normal version number" - SemVer Spec Rule 2 & Rule 9 (above)
     private[VersionNumber] object NormalVersion {
       def unapply(v: VersionNumber): Option[(Long, Long, Long)] =
         PartialFunction.condOpt(v.numbers) {
           // NOTE! We allow the z to be missing, because of legacy like commons-io 1.3
-          case Seq(x, y, _*) if !isPrerelease(v) => (x, y, v._3 getOrElse 0)
-        }
-    }
-
-    // An extractor for SemVer's "pre-release versions" - SemVer Spec Rule 2 & Rule 9 (above)
-    private[VersionNumber] object PrereleaseVersion {
-      def unapply(v: VersionNumber): Option[(Long, Long, Long)] =
-        PartialFunction.condOpt(v.numbers) {
-          // NOTE! We allow the z to be missing, because of legacy like commons-io 1.3
-          case Seq(x, y, _*) if isPrerelease(v) => (x, y, v._3 getOrElse 0)
+          case Seq(x, y, _*) => (x, y, v._3 getOrElse 0)
         }
     }
   }
@@ -182,9 +168,8 @@ object VersionNumber {
 
     private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean = {
       (v1, v2) match {
-        case (NormalVersion(x1, y1, _), NormalVersion(x2, y2, _))     => (x1 == x2) && (y1 == y2)
-        case (PrereleaseVersion(_, _, _), PrereleaseVersion(_, _, _)) => v1 == v2 // R2 & R9
-        case _                                                        => false
+        case (NormalVersion(x1, y1, _), NormalVersion(x2, y2, _)) => (x1 == x2) && (y1 == y2)
+        case _                                                    => false
       }
     }
   }
