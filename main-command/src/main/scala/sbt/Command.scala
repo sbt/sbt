@@ -163,6 +163,16 @@ object Command {
           case Some(c) => c(state)
         })
 
+  def process(command: String, state: State): State = {
+    val parser = combine(state.definedCommands)
+    parse(command, parser(state)) match {
+      case Right(s) => s() // apply command.  command side effects happen here
+      case Left(errMsg) =>
+        state.log error errMsg
+        state.fail
+    }
+  }
+
   def invalidValue(label: String, allowed: Iterable[String])(value: String): String =
     s"Not a valid $label: $value" + similar(value, allowed)
 

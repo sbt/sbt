@@ -17,7 +17,6 @@ import scala.util.control.NonFatal
 
 import sbt.io.{ IO, Using }
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
-import sbt.internal.util.complete.Parser
 import sbt.internal.langserver.ErrorCodes
 import sbt.util.Logger
 import sbt.protocol._
@@ -148,13 +147,7 @@ object MainLoop {
     val channelName = exec.source map (_.channelName)
     StandardMain.exchange publishEventMessage
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
-    val parser = Command combine state.definedCommands
-    val newState = Parser.parse(exec.commandLine, parser(state)) match {
-      case Right(s) => s() // apply command.  command side effects happen here
-      case Left(errMsg) =>
-        state.log error errMsg
-        state.fail
-    }
+    val newState = Command.process(exec.commandLine, state)
     val doneEvent = ExecStatusEvent(
       "Done",
       channelName,
