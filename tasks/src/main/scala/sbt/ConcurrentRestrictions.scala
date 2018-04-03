@@ -122,7 +122,6 @@ object ConcurrentRestrictions {
    * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution.
    * @return a pair, with _1 being the CompletionService and _2 a function to shutdown the service.
    * @tparam A the task type
-   * @tparam G describes a set of tasks
    * @tparam R the type of data that will be computed by the CompletionService.
    */
   def completionService[A, R](tags: ConcurrentRestrictions[A],
