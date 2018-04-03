@@ -11,7 +11,6 @@ import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
 import sbt.internal.util.{ Attributed, ErrorHandling, HList, RMap, Signals, Types }
 import sbt.util.{ Logger, Show }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
-import java.util.concurrent.RejectedExecutionException
 
 import scala.concurrent.duration.Duration
 import java.io.File
@@ -388,11 +387,7 @@ object EvaluateTask {
           val results = x.runKeep(root)(service)
           storeValuesForPrevious(results, state, streams)
           applyResults(results, state, root)
-        } catch {
-          case _: RejectedExecutionException =>
-            (state, Inc(Incomplete(None, message = Some("cancelled"))))
-          case inc: Incomplete => (state, Inc(inc))
-        } finally shutdown()
+        } catch { case inc: Incomplete => (state, Inc(inc)) } finally shutdown()
       val replaced = transformInc(result)
       logIncResult(replaced, state, streams)
       (newState, replaced)

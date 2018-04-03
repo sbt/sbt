@@ -78,22 +78,21 @@ private[sbt] final class Execute[A[_] <: AnyRef](
     "State: " + state.toString + "\n\nResults: " + results + "\n\nCalls: " + callers + "\n\n"
 
   def run[T](root: A[T])(implicit strategy: Strategy): Result[T] =
-    try {
-      runKeep(root)(strategy)(root)
-    } catch {
-      case i: Incomplete                 => Inc(i)
-      case _: RejectedExecutionException => Inc(Incomplete(None, message = Some("cancelled")))
-    }
-  def runKeep[T](root: A[T])(implicit strategy: Strategy): RMap[A, Result] = {
-    assert(state.isEmpty, "Execute already running/ran.")
+    try { runKeep(root)(strategy)(root) } catch { case i: Incomplete => Inc(i) }
 
-    addNew(root)
-    processAll()
-    assert(results contains root, "No result for root node.")
-    val finalResults = triggers.onComplete(results)
-    progressState = progress.allCompleted(progressState, finalResults)
-    finalResults
-  }
+  def runKeep[T](root: A[T])(implicit strategy: Strategy): RMap[A, Result] =
+    try {
+      assert(state.isEmpty, "Execute already running/ran.")
+
+      addNew(root)
+      processAll()
+      assert(results contains root, "No result for root node.")
+      val finalResults = triggers.onComplete(results)
+      progressState = progress.allCompleted(progressState, finalResults)
+      finalResults
+    } catch {
+      case _: RejectedExecutionException => throw Incomplete(None, message = Some("cancelled"))
+    }
 
   def processAll()(implicit strategy: Strategy): Unit = {
     @tailrec def next(): Unit = {
