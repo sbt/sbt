@@ -7,8 +7,6 @@
 
 package sbt
 
-import java.util.concurrent.RejectedExecutionException
-
 import sbt.internal.util.ErrorHandling.wideConvert
 import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
 import sbt.internal.util.Types._
@@ -80,19 +78,16 @@ private[sbt] final class Execute[A[_] <: AnyRef](
   def run[T](root: A[T])(implicit strategy: Strategy): Result[T] =
     try { runKeep(root)(strategy)(root) } catch { case i: Incomplete => Inc(i) }
 
-  def runKeep[T](root: A[T])(implicit strategy: Strategy): RMap[A, Result] =
-    try {
-      assert(state.isEmpty, "Execute already running/ran.")
+  def runKeep[T](root: A[T])(implicit strategy: Strategy): RMap[A, Result] = {
+    assert(state.isEmpty, "Execute already running/ran.")
 
-      addNew(root)
-      processAll()
-      assert(results contains root, "No result for root node.")
-      val finalResults = triggers.onComplete(results)
-      progressState = progress.allCompleted(progressState, finalResults)
-      finalResults
-    } catch {
-      case _: RejectedExecutionException => throw Incomplete(None, message = Some("cancelled"))
-    }
+    addNew(root)
+    processAll()
+    assert(results contains root, "No result for root node.")
+    val finalResults = triggers.onComplete(results)
+    progressState = progress.allCompleted(progressState, finalResults)
+    finalResults
+  }
 
   def processAll()(implicit strategy: Strategy): Unit = {
     @tailrec def next(): Unit = {
