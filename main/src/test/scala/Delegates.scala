@@ -16,10 +16,10 @@ import Prop._
 import Gen._
 
 object Delegates extends Properties("delegates") {
-  property("generate non-empty configs") = forAll { (c: Seq[Configuration]) =>
+  property("generate non-empty configs") = forAll { (c: Vector[Configuration]) =>
     c.nonEmpty
   }
-  property("generate non-empty tasks") = forAll { (t: Seq[Taskk]) =>
+  property("generate non-empty tasks") = forAll { (t: Vector[Taskk]) =>
     t.nonEmpty
   }
 
@@ -46,6 +46,7 @@ object Delegates extends Properties("delegates") {
       global forall { _ == Zero }
     }
   }
+
   property("Initial scope present with all combinations of Global axes") = allAxes(
     globalCombinations)
 
@@ -54,9 +55,55 @@ object Delegates extends Properties("delegates") {
       ds.head == scope
     }
   }
+
   property("global scope last") = forAll { (keys: Keys) =>
     allDelegates(keys) { (_, ds) =>
       ds.last == Scope.GlobalScope
+    }
+  }
+
+  property("Project axis delegates to BuildRef then Zero") = forAll { (keys: Keys) =>
+    allDelegates(keys) { (key, ds) =>
+      key.project match {
+        case Zero => true // filtering out of testing
+        case Select(ProjectRef(uri, _)) =>
+          val buildScoped = key.copy(project = Select(BuildRef(uri)))
+          val idxKey = ds.indexOf(key)
+          val idxB = ds.indexOf(buildScoped)
+          val z = key.copy(project = Zero)
+          val idxZ = ds.indexOf(z)
+          if (z == Scope.GlobalScope) true
+          else {
+            (s"idxKey = $idxKey; idxB = $idxB; idxZ = $idxZ") |:
+              (idxKey < idxB) && (idxB < idxZ)
+          }
+        case Select(BuildRef(_)) =>
+          ds.indexOf(key) < ds.indexOf(key.copy(project = Zero))
+      }
+    }
+  }
+
+  property("Config axis delegates to parent configuration") = forAll { (keys: Keys) =>
+    allDelegates(keys) { (key, ds) =>
+      key.config match {
+        case Zero => true
+        case Select(config) if key.project.isSelect =>
+          val p = key.project.toOption.get
+          val r = keys.env.resolve(p)
+          val proj = keys.env.projectFor(r)
+          val inh: Vector[ConfigKey] = keys.env.inheritConfig(r, config)
+          val conf = proj.confMap(config.name)
+          if (inh.isEmpty) true
+          else {
+            val idxKey = ds.indexOf(key)
+            val parent = inh.head
+            val a = key.copy(config = Select(parent))
+            val idxA = ds.indexOf(a)
+            (s"idxKey = $idxKey; a = $a; idxA = $idxA") |:
+              idxKey < idxA
+          }
+        case _ => true
+      }
     }
   }
 
