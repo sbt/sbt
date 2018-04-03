@@ -1,10 +1,11 @@
 'use strict';
 
 import * as path from 'path';
+import { ExtensionContext, workspace, commands, TextEditor, window, Range, TextEditorRevealType, Selection } from 'vscode';
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import { ScalaOutlineProvider } from './ScalaOutlineProvider';
 
 let fs = require('fs');
-import { ExtensionContext, workspace } from 'vscode'; // workspace, 
-import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 
 export function activate(context: ExtensionContext) {
 	// The server is implemented in node
@@ -45,7 +46,23 @@ export function activate(context: ExtensionContext) {
 	}
 
 	// Create the language client and start the client.
-	let disposable = new LanguageClient('lspSbtScala', 'sbt Scala Language Server', serverOptions, clientOptions).start();
-	
+
+	let lc = new LanguageClient('lspSbtScala', 'sbt Scala Language Server', serverOptions, clientOptions)
+	let disposable = lc.start();
 	context.subscriptions.push(disposable);
+
+	registerScalaOutline(context, lc);
+}
+
+function registerScalaOutline(context: ExtensionContext, lc: LanguageClient) {
+	let p = new ScalaOutlineProvider(context, lc);
+	window.registerTreeDataProvider('scalaOutline', p);
+	commands.registerCommand("scalaOutline.select", (editor: TextEditor, range: Range) => {
+		editor.revealRange(range, TextEditorRevealType.Default)
+		editor.selection = new Selection(range.start, range.end);
+		commands.executeCommand("workbench.action.focusActiveEditorGroup");
+	})
+	commands.registerCommand("scalaOutline.refresh", () => {
+		p.refresh();
+	})
 }
