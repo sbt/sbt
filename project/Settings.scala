@@ -10,11 +10,9 @@ import com.typesafe.sbt.pgp._
 import coursier.ShadingPlugin.autoImport._
 
 import Aliases._
+import ScalaVersion._
 
 object Settings {
-  val scala212 = "2.12.5"
-  val scala211 = "2.11.12"
-  val scala210 = "2.10.7"
 
   lazy val scalazBintrayRepository = {
     resolvers += "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases"

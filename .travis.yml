@@ -8,7 +8,7 @@ script:
 #    - bash <(curl -s https://codecov.io/bash)
 matrix:
   include:
-    - env: SCALA_VERSION=2.12.5 NATIVE=1 PUBLISH=1
+    - env: SCALA_VERSION=2.12 NATIVE=1 PUBLISH=1
       os: linux
       jdk: oraclejdk8
       sudo: required
@@ -16,39 +16,39 @@ matrix:
       - curl https://raw.githubusercontent.com/scala-native/scala-native/master/scripts/travis_setup.sh | bash -x
       services:
         - docker
-    - env: SCALA_VERSION=2.11.12 PUBLISH=1
+    - env: SCALA_VERSION=2.11 PUBLISH=1
       os: linux
       jdk: oraclejdk8
       sudo: required
       services:
         - docker
-    - env: SCALA_VERSION=2.10.7 PUBLISH=1
+    - env: SCALA_VERSION=2.10 PUBLISH=1
       os: linux
       jdk: oraclejdk8
       sudo: required
       services:
         - docker
-    - env: SCALA_VERSION=2.12.5 SBT_COURSIER=1
+    - env: SCALA_VERSION=2.12 SBT_COURSIER=1
       os: linux
       jdk: oraclejdk8
-    - env: SCALA_VERSION=2.12.5 SBT_SHADING=1
+    - env: SCALA_VERSION=2.12 SBT_SHADING=1
       os: linux
       jdk: oraclejdk8
-    - env: SCALA_VERSION=2.10.7 SBT_COURSIER=1
+    - env: SCALA_VERSION=2.10 SBT_COURSIER=1
       os: linux
       jdk: oraclejdk8
       services:
         - docker
-    - env: SCALA_VERSION=2.10.7 SBT_SHADING=1
+    - env: SCALA_VERSION=2.10 SBT_SHADING=1
       os: linux
       jdk: oraclejdk8
-    - env: SCALA_VERSION=2.12.5 SCALA_JS=1
+    - env: SCALA_VERSION=2.12 SCALA_JS=1
       os: linux
       jdk: oraclejdk8
-    - env: SCALA_VERSION=2.11.12 SCALA_JS=1
+    - env: SCALA_VERSION=2.11 SCALA_JS=1
       os: linux
       jdk: oraclejdk8
-    - env: SCALA_VERSION=2.10.7 SCALA_JS=1
+    - env: SCALA_VERSION=2.10 SCALA_JS=1
       os: linux
       jdk: oraclejdk8
     - os: linux
