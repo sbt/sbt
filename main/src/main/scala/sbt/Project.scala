@@ -125,6 +125,27 @@ trait CompositeProject {
   def componentProjects: Seq[Project]
 }
 
+object CompositeProject {
+
+  /**
+   *  If two projects with the same id appear in `compositeProjects` and
+   *  in `compositeProjects.map(_.componentProjects)`, the one in
+   *  `compositeProjects` wins.
+   *  This is necessary for backward compatibility with the idiom:
+   *    lazy val foo = crossProject
+   *    lazy val fooJVM = foo.jvm.setting
+   */
+  def uniqueId(compositeProjects: Seq[Project]): Seq[Project] = {
+    for (p <- compositeProjects.flatMap(_.componentProjects)) yield {
+      compositeProjects.find(_.id == p.id) match {
+        case Some(overridingProject) => overridingProject
+        case None                    => p
+      }
+    }
+
+  }
+}
+
 sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeProject {
   def componentProjects: Seq[Project] = this :: Nil
 

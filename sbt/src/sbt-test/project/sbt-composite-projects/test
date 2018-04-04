@@ -1,22 +1,30 @@
 > g
 -> root/compile
-> a/compile
-> a/aa
-> b/compile
-> b/h
+> jvm/compile
+> jvm/aa
+> js/compile
+> js/h
 > c/compile
+> bar/compile
 
 $ copy-file changes/basic.sbt basic.sbt
 > reload
 > g
 > root/compile
-> a/compile
-> a/aa
-> b/compile
-> b/h
+> jvm/compile
+> jvm/aa
+> js/compile
+> js/h
 > c/compile
+> bar/compile
 > check
 
 $ copy-file changes/shadow.sbt build.sbt
 > reload
+> jvm/compile
+> jvm/aa
+> js/compile
+> js/h
+> c/compile
+> bar/compile
 > check
