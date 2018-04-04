@@ -10,6 +10,7 @@ package sbt
 import java.io.File
 import sbt.internal.util.AttributeKey
 import sbt.internal.inc.classpath.ClassLoaderCache
+import sbt.internal.server.ServerHandler
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
 
@@ -38,6 +39,11 @@ object BasicKeys {
     AttributeKey[ConnectionType]("serverConnectionType",
                                  "The wire protocol for the server command.",
                                  10000)
+
+  val fullServerHandlers =
+    AttributeKey[Seq[ServerHandler]]("fullServerHandlers",
+                                     "Combines default server handlers and user-defined handlers.",
+                                     10000)
 
   val autoStartServer =
     AttributeKey[Boolean](

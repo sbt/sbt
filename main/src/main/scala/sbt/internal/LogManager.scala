@@ -15,6 +15,7 @@ import Keys.{ logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, tr
 import scala.Console.{ BLUE, RESET }
 import sbt.internal.util.{
   AttributeKey,
+  ConsoleAppender,
   ConsoleOut,
   Settings,
   SuppressedTraceContext,
@@ -105,7 +106,7 @@ object LogManager {
 
     def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger = {
       val console = screen(task, state)
-      LogManager.backgroundLog(data, state, task, console, relay(()), extra(task).toList)
+      LogManager.backgroundLog(data, state, task, console, relay(()))
     }
   }
 
@@ -191,7 +192,6 @@ object LogManager {
       console: Appender,
       /* TODO: backed: Appender,*/
       relay: Appender,
-      extra: List[Appender]
   ): ManagedLogger = {
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
@@ -258,7 +258,7 @@ object LogManager {
       private[this] def slog: Logger =
         Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
 
-      override val ansiCodesSupported = slog.ansiCodesSupported
+      override val ansiCodesSupported = ConsoleAppender.formatEnabledInEnv
       override def trace(t: => Throwable) = slog.trace(t)
       override def success(message: => String) = slog.success(message)
       override def log(level: Level.Value, message: => String) = slog.log(level, message)

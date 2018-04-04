@@ -154,7 +154,8 @@ case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Bo
  * Auto-discovered modules for the build definition project.  These include modules defined in build definition sources
  * as well as modules in binary dependencies.
  *
- * @param builds The [[Build]]s detected in the build definition.  This does not include the default [[Build]] that sbt creates if none is defined.
+ * @param builds The [[BuildDef]]s detected in the build definition.
+ *               This does not include the default [[BuildDef]] that sbt creates if none is defined.
  */
 final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin],
                             val builds: DetectedModules[BuildDef]) {
@@ -172,9 +173,7 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin],
   private[this] lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
     autoPlugins
       .flatMap {
-        case DetectedAutoPlugin(name, ap, hasAutoImport) =>
-          if (hasAutoImport) Some(name)
-          else None
+        case DetectedAutoPlugin(name, _, hasAutoImport) => if (hasAutoImport) Some(name) else None
       }
       .partition(nonTopLevelPlugin)
 

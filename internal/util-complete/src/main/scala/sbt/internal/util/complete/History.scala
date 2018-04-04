@@ -11,11 +11,7 @@ package complete
 import History.number
 import java.io.File
 
-final class History private (
-    val lines: IndexedSeq[String],
-    val path: Option[File],
-    error: String => Unit
-) {
+final class History private (val lines: IndexedSeq[String], val path: Option[File]) {
   private def reversed = lines.reverse
 
   def all: Seq[String] = lines
@@ -52,8 +48,8 @@ final class History private (
 }
 
 object History {
-  def apply(lines: Seq[String], path: Option[File], error: String => Unit): History =
-    new History(lines.toIndexedSeq, path, sys.error)
+  def apply(lines: Seq[String], path: Option[File]): History =
+    new History(lines.toIndexedSeq, path)
 
   def number(s: String): Option[Int] =
     try { Some(s.toInt) } catch { case _: NumberFormatException => None }

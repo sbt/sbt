@@ -163,6 +163,16 @@ object Command {
           case Some(c) => c(state)
         })
 
+  def process(command: String, state: State): State = {
+    val parser = combine(state.definedCommands)
+    parse(command, parser(state)) match {
+      case Right(s) => s() // apply command.  command side effects happen here
+      case Left(errMsg) =>
+        state.log error errMsg
+        state.fail
+    }
+  }
+
   def invalidValue(label: String, allowed: Iterable[String])(value: String): String =
     s"Not a valid $label: $value" + similar(value, allowed)
 
@@ -178,15 +188,16 @@ object Command {
     bs map (b => (b, distance(a, b))) filter (_._2 <= maxDistance) sortBy (_._2) take (maxSuggestions) map (_._1)
 
   def distance(a: String, b: String): Int =
-    EditDistance.levenshtein(a,
-                             b,
-                             insertCost = 1,
-                             deleteCost = 1,
-                             subCost = 2,
-                             transposeCost = 1,
-                             matchCost = -1,
-                             caseCost = 1,
-                             transpositions = true)
+    EditDistance.levenshtein(
+      a,
+      b,
+      insertCost = 1,
+      deleteCost = 1,
+      subCost = 2,
+      matchCost = -1,
+      caseCost = 1,
+      transpositions = true
+    )
 
   def spacedAny(name: String): Parser[String] = spacedC(name, any)
 

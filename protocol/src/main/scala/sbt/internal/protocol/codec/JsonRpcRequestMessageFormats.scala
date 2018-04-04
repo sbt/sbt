@@ -8,7 +8,7 @@
 package sbt.internal.protocol.codec
 
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
-import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
+import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
 
 trait JsonRpcRequestMessageFormats {
   self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
@@ -24,7 +24,7 @@ trait JsonRpcRequestMessageFormats {
             val id = try {
               unbuilder.readField[String]("id")
             } catch {
-              case _: Throwable => {
+              case _: DeserializationException => {
                 val prefix = "\u2668" // Append prefix to show the original type was Number
                 prefix + unbuilder.readField[Long]("id").toString
               }

@@ -142,7 +142,6 @@ abstract class TestBuild {
         inheritProject,
         inheritConfig,
         inheritTask,
-        (ref, mp) => Nil
       )
     lazy val allFullScopes: Seq[Scope] =
       for {
@@ -213,7 +212,7 @@ abstract class TestBuild {
   }
 
   def structure(env: Env, settings: Seq[Setting[_]], current: ProjectRef): Structure = {
-    implicit val display = Def.showRelativeKey(current, env.allProjects.size > 1)
+    implicit val display = Def.showRelativeKey2(current)
     if (settings.isEmpty) {
       try {
         sys.error("settings is empty")

@@ -324,6 +324,8 @@ object Scoped {
                 "0.13.2")
     def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 
+    def toSettingKey: SettingKey[Task[S]] = scopedSetting(scope, key)
+
     def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
     def ? : Initialize[Task[Option[S]]] = Def.optional(scopedKey) {
@@ -336,6 +338,11 @@ object Scoped {
       (this.? zipWith i)((x, y) => (x, y) map { case (a, b) => a getOrElse b })
   }
 
+  /** Enriches `Initialize[Task[S]]` types.
+   *
+   * @param i the original `Initialize[Task[S]]` value to enrich
+   * @tparam S the type of the underlying value
+   */
   final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
@@ -365,8 +372,14 @@ object Scoped {
     }
   }
 
+  /** Enriches `Initialize[InputTask[S]]` types.
+   *
+   * @param i the original `Initialize[InputTask[S]]` value to enrich
+   * @tparam S the type of the underlying value
+   */
   final class RichInitializeInputTask[S](i: Initialize[InputTask[S]])
       extends RichInitTaskBase[S, InputTask] {
+
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
 
     def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = {
@@ -376,11 +389,18 @@ object Scoped {
     }
   }
 
+  /** Enriches `Initialize[R[S]]` types. Abstracts over the specific task-like type constructor.
+   *
+   * @tparam S the type of the underlying vault
+   * @tparam R the task-like type constructor (either Task or InputTask)
+   */
   sealed abstract class RichInitTaskBase[S, R[_]] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[R[T]]
 
-    def flatMap[T](f: S => Task[T]): Initialize[R[T]] = flatMapR(f compose successM)
-    def map[T](f: S => T): Initialize[R[T]] = mapR(f compose successM)
+    def flatMap[T](f: S => Task[T]): Initialize[R[T]] =
+      onTask(_.result flatMap (f compose successM))
+
+    def map[T](f: S => T): Initialize[R[T]] = onTask(_.result map (f compose successM))
     def andFinally(fin: => Unit): Initialize[R[S]] = onTask(_ andFinally fin)
     def doFinally(t: Task[Unit]): Initialize[R[S]] = onTask(_ doFinally t)
 
@@ -393,22 +413,23 @@ object Scoped {
     @deprecated(
       "Use the `result` method to create a task that returns the full Result of this task.  Then, call `flatMap` on the new task.",
       "0.13.0")
-    def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_ flatMapR f)
+    def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_.result flatMap f)
 
     @deprecated(
       "Use the `result` method to create a task that returns the full Result of this task.  Then, call `map` on the new task.",
       "0.13.0")
-    def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_ mapR f)
+    def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_.result map f)
 
     @deprecated(
       "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `flatMap` on the new task.",
       "0.13.0")
-    def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] = flatMapR(f compose failM)
+    def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] =
+      onTask(_.result flatMap (f compose failM))
 
     @deprecated(
       "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `map` on the new task.",
       "0.13.0")
-    def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = mapR(f compose failM)
+    def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = onTask(_.result map (f compose failM))
   }
 
   type AnyInitTask = Initialize[Task[T]] forSome { type T }
@@ -565,7 +586,7 @@ object Scoped {
 
 /** The sbt 0.10 style DSL was deprecated in 0.13.13, favouring the use of the '.value' macro.
  *
- * See http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html for how to migrate.
+ * See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
  */
 trait TupleSyntax {
   import Scoped._
@@ -628,7 +649,7 @@ object InputKey {
     apply(AttributeKey[InputTask[T]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[T](akey: AttributeKey[InputTask[T]]): InputKey[T] =
-    new InputKey[T] { val key = akey; def scope = Scope.ThisScope }
+    Scoped.scopedInput(Scope.ThisScope, akey)
 }
 
 /** Constructs TaskKeys, which are associated with tasks to define a setting.*/
@@ -657,8 +678,7 @@ object TaskKey {
   ): TaskKey[T] =
     apply(AttributeKey[Task[T]](label, description, extendScoped(extend1, extendN), rank))
 
-  def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] =
-    new TaskKey[T] { val key = akey; def scope = Scope.ThisScope }
+  def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] = Scoped.scopedTask(Scope.ThisScope, akey)
 
   def local[T: Manifest]: TaskKey[T] = apply[T](AttributeKey.local[Task[T]])
 }
@@ -689,8 +709,7 @@ object SettingKey {
   ): SettingKey[T] =
     apply(AttributeKey[T](label, description, extendScoped(extend1, extendN), rank))
 
-  def apply[T](akey: AttributeKey[T]): SettingKey[T] =
-    new SettingKey[T] { val key = akey; def scope = Scope.ThisScope }
+  def apply[T](akey: AttributeKey[T]): SettingKey[T] = Scoped.scopedSetting(Scope.ThisScope, akey)
 
   def local[T: Manifest: OptJsonWriter]: SettingKey[T] = apply[T](AttributeKey.local[T])
 }

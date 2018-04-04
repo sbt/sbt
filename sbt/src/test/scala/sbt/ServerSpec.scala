@@ -21,7 +21,7 @@ class ServerSpec extends AsyncFlatSpec with Matchers {
   "server" should "start" in {
     withBuildSocket("handshake") { (out, in, tkn) =>
       writeLine(
-        """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "root/name" } }""",
+        """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "handshake/name" } }""",
         out)
       Thread.sleep(100)
       assert(waitFor(in, 10) { s =>
@@ -100,6 +100,7 @@ object ServerSpec {
 
   def readFrame(in: InputStream): Option[String] = {
     val l = contentLength(in)
+    println(l)
     readLine(in)
     readLine(in)
     readContentLength(in, l)
@@ -113,7 +114,11 @@ object ServerSpec {
 
   def readLine(in: InputStream): Option[String] = {
     if (buffer.isEmpty) {
-      val bytesRead = in.read(readBuffer)
+      val bytesRead = try {
+        in.read(readBuffer)
+      } catch {
+        case _: java.io.IOException => 0
+      }
       if (bytesRead > 0) {
         buffer = buffer ++ readBuffer.toVector.take(bytesRead)
       }
@@ -168,11 +173,12 @@ object ServerSpec {
       else {
         if (n <= 0) sys.error(s"Timeout. $portfile is not found.")
         else {
+          println(s"  waiting for $portfile...")
           Thread.sleep(1000)
           waitForPortfile(n - 1)
         }
       }
-    waitForPortfile(10)
+    waitForPortfile(20)
     val (sk, tkn) = ClientSocket.socket(portfile)
     val out = sk.getOutputStream
     val in = sk.getInputStream
@@ -187,7 +193,7 @@ object ServerSpec {
       sendJsonRpc(
         """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }""",
         out)
-      shutdown()
+      // shutdown()
     }
   }
 }

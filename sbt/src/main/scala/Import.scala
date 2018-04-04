@@ -67,6 +67,7 @@ trait Import {
   type Cache[I, O] = sbt.util.Cache[I, O]
   val Cache = sbt.util.Cache
   val CacheImplicits = sbt.util.CacheImplicits
+  @deprecated("Use Tracked.inputChanged and Tracked.outputChanged instead", "1.0.1")
   type Changed[O] = sbt.util.Changed[O]
   type ChangeReport[T] = sbt.util.ChangeReport[T]
   val ChangeReport = sbt.util.ChangeReport

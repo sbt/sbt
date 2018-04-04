@@ -52,7 +52,6 @@ import xsbti.compile.CompilerCache
 import scala.annotation.tailrec
 import sbt.io.IO
 import sbt.io.syntax._
-import StandardMain._
 
 import java.io.{ File, IOException }
 import java.net.URI
@@ -69,34 +68,35 @@ final class xMain extends xsbti.AppMain {
     import BasicCommandStrings.runEarly
     import BuiltinCommands.defaults
     import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-    val state = initialState(
+    val state = StandardMain.initialState(
       configuration,
       Seq(defaults, early),
       runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
-    runManaged(state)
+    StandardMain.runManaged(state)
   }
 }
 
 final class ScriptMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
-    runManaged(
-      initialState(
-        configuration,
-        BuiltinCommands.ScriptCommands,
-        runEarly(Level.Error.toString) :: Script.Name :: Nil
-      ))
+    val state = StandardMain.initialState(
+      configuration,
+      BuiltinCommands.ScriptCommands,
+      runEarly(Level.Error.toString) :: Script.Name :: Nil
+    )
+    StandardMain.runManaged(state)
   }
 }
 
 final class ConsoleMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-    runManaged(
-      initialState(
-        configuration,
-        BuiltinCommands.ConsoleCommands,
-        IvyConsole.Name :: Nil
-      ))
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    val state = StandardMain.initialState(
+      configuration,
+      BuiltinCommands.ConsoleCommands,
+      IvyConsole.Name :: Nil
+    )
+    StandardMain.runManaged(state)
+  }
 }
 
 object StandardMain {
@@ -273,9 +273,9 @@ object BuiltinCommands {
       case _                => si.actualVersion
     }
 
-  private[this] def quiet[T](t: => T): Option[T] = try { Some(t) } catch {
-    case e: Exception => None
-  }
+  private[this] def quiet[T](t: => T): Option[T] =
+    try Some(t)
+    catch { case _: Exception => None }
 
   def settingsCommand: Command =
     showSettingLike(SettingsCommand,
@@ -400,7 +400,7 @@ object BuiltinCommands {
     // For correct behavior, we also need to re-inject a settings logger, as we'll be re-evaluating settings
     val loggerInject = LogManager.settingsLogger(s)
     val withLogger = newSession.appendRaw(loggerInject :: Nil)
-    val show = Project.showContextKey(newSession, structure)
+    val show = Project.showContextKey2(newSession)
     val newStructure = Load.reapply(withLogger.mergeSettings, structure)(show)
     Project.setProject(newSession, newStructure, s)
   }
@@ -424,19 +424,27 @@ object BuiltinCommands {
       )(cl)
       val setResult =
         if (all) SettingCompletions.setAll(extracted, settings)
-        else SettingCompletions.setThis(s, extracted, settings, arg)
+        else SettingCompletions.setThis(extracted, settings, arg)
       s.log.info(setResult.quietSummary)
       s.log.debug(setResult.verboseSummary)
       reapply(setResult.session, structure, s)
   }
 
+  @deprecated("Use variant that doesn't take a State", "1.1.1")
   def setThis(
       s: State,
       extracted: Extracted,
       settings: Seq[Def.Setting[_]],
       arg: String
   ): SetResult =
-    SettingCompletions.setThis(s, extracted, settings, arg)
+    setThis(extracted, settings, arg)
+
+  def setThis(
+      extracted: Extracted,
+      settings: Seq[Def.Setting[_]],
+      arg: String
+  ): SetResult =
+    SettingCompletions.setThis(extracted, settings, arg)
 
   def inspect: Command = Command(InspectCommand, inspectBrief, inspectDetailed)(Inspect.parser) {
     case (s, (option, sk)) =>
@@ -448,10 +456,10 @@ object BuiltinCommands {
     Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
       case (s, (pattern, Some(sks))) =>
         val (str, _, display) = extractLast(s)
-        Output.lastGrep(sks, str.streams(s), pattern, printLast(s))(display)
+        Output.lastGrep(sks, str.streams(s), pattern, printLast)(display)
         keepLastLog(s)
       case (s, (pattern, None)) =>
-        for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast(s))
+        for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast)
         keepLastLog(s)
     }
 
@@ -493,7 +501,7 @@ object BuiltinCommands {
       lastOnly_keys <- keysParser
       kvs = Act.keyValues(structure)(lastOnly_keys._2)
       f <- if (lastOnly_keys._1) success(() => s)
-      else Aggregation.evaluatingParser(s, structure, show)(kvs)
+      else Aggregation.evaluatingParser(s, show)(kvs)
     } yield
       () => {
         def export0(s: State): State = lastImpl(s, kvs, Some(ExportStream))
@@ -516,7 +524,7 @@ object BuiltinCommands {
   def last: Command = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
     case (s, Some(sks)) => lastImpl(s, sks, None)
     case (s, None) =>
-      for (logFile <- lastLogFile(s)) yield Output.last(logFile, printLast(s))
+      for (logFile <- lastLogFile(s)) yield Output.last(logFile, printLast)
       keepLastLog(s)
   }
 
@@ -525,7 +533,7 @@ object BuiltinCommands {
 
   private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State = {
     val (str, _, display) = extractLast(s)
-    Output.last(sks, str.streams(s), printLast(s), sid)(display)
+    Output.last(sks, str.streams(s), printLast, sid)(display)
     keepLastLog(s)
   }
 
@@ -550,7 +558,10 @@ object BuiltinCommands {
    */
   def isLastOnly(s: State): Boolean = s.history.previous.forall(_.commandLine == Shell)
 
-  def printLast(s: State): Seq[String] => Unit = _ foreach println
+  @deprecated("Use variant that doesn't take the state", "1.1.1")
+  def printLast(s: State): Seq[String] => Unit = printLast
+
+  def printLast: Seq[String] => Unit = _ foreach println
 
   def autoImports(extracted: Extracted): EvalImports =
     new EvalImports(imports(extracted), "<auto-imports>")
@@ -620,7 +631,7 @@ object BuiltinCommands {
     val extraUpdated = Project.updateExtraBuilds(s, f)
     try doLoadProject(extraUpdated, LoadAction.Current)
     catch {
-      case e: Exception =>
+      case _: Exception =>
         s.log.error("Project loading failed: reverting to previous state.")
         Project.setExtraBuilds(s, original)
     }

@@ -20,6 +20,7 @@ import BasicKeys.{
   serverAuthentication,
   serverConnectionType,
   serverLogLevel,
+  fullServerHandlers,
   logLevel
 }
 import java.net.Socket
@@ -44,49 +45,43 @@ import sbt.util.{ Level, Logger, LogExchange }
  * this exchange, which could serve command request from either of the channel.
  */
 private[sbt] final class CommandExchange {
-  private val autoStartServerSysProp = sys.props.get("sbt.server.autostart") map {
-    _.toLowerCase == "true"
-  } getOrElse true
-  private val lock = new AnyRef {}
+  private val autoStartServerSysProp =
+    sys.props get "sbt.server.autostart" forall (_.toLowerCase == "true")
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
+  private val channelBufferLock = new AnyRef {}
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
 
   def channels: List[CommandChannel] = channelBuffer.toList
-  def subscribe(c: CommandChannel): Unit =
-    lock.synchronized {
-      channelBuffer.append(c)
-    }
+  def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized(channelBuffer.append(c))
 
   // periodically move all messages from all the channels
   @tailrec def blockUntilNextExec: Exec = {
     @tailrec def slurpMessages(): Unit =
-      (((None: Option[Exec]) /: channels) { _ orElse _.poll }) match {
+      channels.foldLeft(Option.empty[Exec]) { _ orElse _.poll } match {
+        case None => ()
         case Some(x) =>
           commandQueue.add(x)
           slurpMessages
-        case _ => ()
       }
     slurpMessages()
     Option(commandQueue.poll) match {
       case Some(x) => x
-      case _ =>
+      case None =>
         Thread.sleep(50)
         blockUntilNextExec
     }
   }
 
   def run(s: State): State = {
-    consoleChannel match {
-      case Some(_) => // do nothing
-      case _ =>
-        val x = new ConsoleChannel("console0")
-        consoleChannel = Some(x)
-        subscribe(x)
+    if (consoleChannel.isEmpty) {
+      val console0 = new ConsoleChannel("console0")
+      consoleChannel = Some(console0)
+      subscribe(console0)
     }
     val autoStartServerAttr = (s get autoStartServer) match {
       case Some(bool) => bool
@@ -102,25 +97,13 @@ private[sbt] final class CommandExchange {
    * Check if a server instance is running already, and start one if it isn't.
    */
   private[sbt] def runServer(s: State): State = {
-    lazy val port = (s get serverPort) match {
-      case Some(x) => x
-      case None    => 5001
-    }
-    lazy val host = (s get serverHost) match {
-      case Some(x) => x
-      case None    => "127.0.0.1"
-    }
-    lazy val auth: Set[ServerAuthentication] = (s get serverAuthentication) match {
-      case Some(xs) => xs
-      case None     => Set(ServerAuthentication.Token)
-    }
-    lazy val connectionType = (s get serverConnectionType) match {
-      case Some(x) => x
-      case None    => ConnectionType.Tcp
-    }
-    lazy val level: Level.Value = (s get serverLogLevel)
-      .orElse(s get logLevel)
-      .getOrElse(Level.Warn)
+    lazy val port = s.get(serverPort).getOrElse(5001)
+    lazy val host = s.get(serverHost).getOrElse("127.0.0.1")
+    lazy val auth: Set[ServerAuthentication] =
+      s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
+    lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
+    lazy val level = s.get(serverLogLevel).orElse(s.get(logLevel)).getOrElse(Level.Warn)
+    lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
@@ -133,7 +116,7 @@ private[sbt] final class CommandExchange {
         log
       }
       val channel =
-        new NetworkChannel(name, socket, Project structure s, auth, instance, logger)
+        new NetworkChannel(name, socket, Project structure s, auth, instance, handlers, logger)
       subscribe(channel)
     }
     if (server.isEmpty && firstInstance.get) {
@@ -181,9 +164,7 @@ private[sbt] final class CommandExchange {
   }
 
   def shutdown(): Unit = {
-    channels foreach { c =>
-      c.shutdown()
-    }
+    channels foreach (_.shutdown())
     // interrupt and kill the thread
     server.foreach(_.shutdown())
     server = None
@@ -206,7 +187,7 @@ private[sbt] final class CommandExchange {
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }
@@ -222,48 +203,30 @@ private[sbt] final class CommandExchange {
         val params = toLogMessageParams(entry)
         channels collect {
           case c: ConsoleChannel =>
-            if (broadcastStringMessage) {
+            if (broadcastStringMessage || (entry.channelName forall (_ == c.name)))
               c.publishEvent(event)
-            } else {
-              if (entry.channelName.isEmpty || entry.channelName == Some(c.name)) {
-                c.publishEvent(event)
-              }
-            }
           case c: NetworkChannel =>
             try {
               // Note that language server's LogMessageParams does not hold the execid,
               // so this is weaker than the StringMessage. We might want to double-send
               // in case we have a better client that can utilize the knowledge.
               import sbt.internal.langserver.codec.JsonProtocol._
-              if (broadcastStringMessage) {
-                c.langNotify("window/logMessage", params)
-              } else {
-                if (entry.channelName == Some(c.name)) {
-                  c.langNotify("window/logMessage", params)
-                }
-              }
-            } catch {
-              case _: IOException =>
-                toDel += c
-            }
+              if (broadcastStringMessage || (entry.channelName contains c.name))
+                c.jsonRpcNotify("window/logMessage", params)
+            } catch { case _: IOException => toDel += c }
         }
       case _ =>
-        channels collect {
-          case c: ConsoleChannel =>
-            c.publishEvent(event)
+        channels foreach {
+          case c: ConsoleChannel => c.publishEvent(event)
           case c: NetworkChannel =>
-            try {
-              c.publishEvent(event)
-            } catch {
-              case _: IOException =>
-                toDel += c
-            }
+            try c.publishEvent(event)
+            catch { case _: IOException => toDel += c }
         }
     }
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }
@@ -305,7 +268,7 @@ private[sbt] final class CommandExchange {
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }
@@ -315,6 +278,11 @@ private[sbt] final class CommandExchange {
   // fanout publishEvent
   def publishEventMessage(event: EventMessage): Unit = {
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
+
+    def tryTo(x: => Unit, c: CommandChannel): Unit =
+      try x
+      catch { case _: IOException => toDel += c }
+
     event match {
       // Special treatment for ConsolePromptEvent since it's hand coded without codec.
       case entry: ConsolePromptEvent =>
@@ -328,36 +296,21 @@ private[sbt] final class CommandExchange {
       case entry: ExecStatusEvent =>
         channels collect {
           case c: ConsoleChannel =>
-            if (entry.channelName.isEmpty || entry.channelName == Some(c.name)) {
-              c.publishEventMessage(event)
-            }
+            if (entry.channelName forall (_ == c.name)) c.publishEventMessage(event)
           case c: NetworkChannel =>
-            try {
-              if (entry.channelName == Some(c.name)) {
-                c.publishEventMessage(event)
-              }
-            } catch {
-              case e: IOException =>
-                toDel += c
-            }
+            if (entry.channelName contains c.name) tryTo(c.publishEventMessage(event), c)
         }
       case _ =>
         channels collect {
-          case c: ConsoleChannel =>
-            c.publishEventMessage(event)
-          case c: NetworkChannel =>
-            try {
-              c.publishEventMessage(event)
-            } catch {
-              case _: IOException =>
-                toDel += c
-            }
+          case c: ConsoleChannel => c.publishEventMessage(event)
+          case c: NetworkChannel => tryTo(c.publishEventMessage(event), c)
         }
     }
+
     toDel.toList match {
       case Nil => // do nothing
       case xs =>
-        lock.synchronized {
+        channelBufferLock.synchronized {
           channelBuffer --= xs
           ()
         }

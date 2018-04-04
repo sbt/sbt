@@ -72,8 +72,7 @@ object Cross {
       } & spacedFirst(CrossCommand)
     }
 
-  private def crossRestoreSessionParser(state: State): Parser[String] =
-    token(CrossRestoreSessionCommand)
+  private def crossRestoreSessionParser: Parser[String] = token(CrossRestoreSessionCommand)
 
   private[sbt] def requireSession[T](p: State => Parser[T]): State => Parser[T] =
     s => if (s get sessionSettings isEmpty) failure("No project loaded") else p(s)
@@ -189,9 +188,10 @@ object Cross {
   }
 
   def crossRestoreSession: Command =
-    Command.arb(crossRestoreSessionParser, crossRestoreSessionHelp)(crossRestoreSessionImpl)
+    Command.arb(_ => crossRestoreSessionParser, crossRestoreSessionHelp)((s, _) =>
+      crossRestoreSessionImpl(s))
 
-  private def crossRestoreSessionImpl(state: State, arg: String): State = {
+  private def crossRestoreSessionImpl(state: State): State = {
     restoreCapturedSession(state, Project.extract(state))
   }
 
@@ -216,12 +216,30 @@ object Cross {
     Command.arb(requireSession(switchParser), switchHelp)(switchCommandImpl)
 
   private def switchCommandImpl(state: State, args: Switch): State = {
-    val switchedState = switchScalaVersion(args, state)
+    val x = Project.extract(state)
+    val (switchedState, affectedRefs) = switchScalaVersion(args, state)
 
-    args.command.toList ::: switchedState
+    val strictCmd =
+      if (args.version.force) {
+        // The Scala version was forced on the whole build, run as is
+        args.command
+      } else {
+        args.command.map { rawCmd =>
+          parseCommand(rawCmd) match {
+            case Right(_) => rawCmd // A project is specified, run as is
+            case Left(cmd) =>
+              resolveAggregates(x)
+                .intersect(affectedRefs)
+                .collect { case ProjectRef(_, proj) => s"$proj/$cmd" }
+                .mkString("all ", " ", "")
+          }
+        }
+      }
+
+    strictCmd.toList ::: switchedState
   }
 
-  private def switchScalaVersion(switch: Switch, state: State): State = {
+  private def switchScalaVersion(switch: Switch, state: State): (State, Seq[ResolvedReference]) = {
     val extracted = Project.extract(state)
     import extracted._
 
@@ -291,7 +309,7 @@ object Cross {
       }
     }
 
-    setScalaVersionForProjects(version, instance, projects, state, extracted)
+    (setScalaVersionForProjects(version, instance, projects, state, extracted), projects.map(_._1))
   }
 
   private def setScalaVersionForProjects(

@@ -1,13 +1,11 @@
-lazy val buildInfo = taskKey[Seq[File]]("The task that generates the build info.")
+scalaVersion := "2.11.8"
 
-lazy val root = (project in file("."))
-  .settings(
-    scalaVersion := "2.11.8",
-    buildInfo := {
-      val x = sourceManaged.value / "BuildInfo.scala"
-      IO.write(x, """object BuildInfo""")
-      x :: Nil
-    },
-    sourceGenerators in Compile += buildInfo,
-    sourceGenerators in Compile += Def.task { Nil }
-  )
+val buildInfo = taskKey[Seq[File]]("generates the build info")
+buildInfo := {
+  val file = sourceManaged.value / "BuildInfo.scala"
+  IO.write(file, "object BuildInfo")
+  file :: Nil
+}
+
+sourceGenerators in Compile += buildInfo
+sourceGenerators in Compile += Def.task { Nil }

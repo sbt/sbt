@@ -40,7 +40,7 @@ object Resolvers {
     val to = uniqueSubdirectoryFor(info.uri, in = info.staging)
 
     Some { () =>
-      creates(to) { IO.unzipURL(url, to) }
+      creates(to) { IO.unzipURL(url, to); () }
     }
   }
 

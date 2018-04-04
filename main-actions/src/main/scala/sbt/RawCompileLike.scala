@@ -7,10 +7,10 @@
 
 package sbt
 
+import scala.annotation.tailrec
 import java.io.File
 import sbt.internal.inc.{ RawCompiler, ScalaInstance }
 
-import Predef.{ conforms => _, _ }
 import sbt.io.syntax._
 import sbt.io.IO
 
@@ -30,7 +30,7 @@ object RawCompileLike {
   type Gen = (Seq[File], Seq[File], File, Seq[String], Int, ManagedLogger) => Unit
 
   private def optionFiles(options: Seq[String], fileInputOpts: Seq[String]): List[File] = {
-    @annotation.tailrec
+    @tailrec
     def loop(opt: List[String], result: List[File]): List[File] = {
       opt.dropWhile(!fileInputOpts.contains(_)) match {
         case List(_, fileOpt, tail @ _*) => {
@@ -46,6 +46,7 @@ object RawCompileLike {
 
   def cached(cacheStoreFactory: CacheStoreFactory, doCompile: Gen): Gen =
     cached(cacheStoreFactory, Seq(), doCompile)
+
   def cached(cacheStoreFactory: CacheStoreFactory,
              fileInputOpts: Seq[String],
              doCompile: Gen): Gen =
@@ -67,6 +68,7 @@ object RawCompileLike {
       }
       cachedComp(inputs)(exists(outputDirectory.allPaths.get.toSet))
     }
+
   def prepare(description: String, doCompile: Gen): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) => {
       if (sources.isEmpty)
@@ -79,20 +81,22 @@ object RawCompileLike {
         log.info(description.capitalize + " successful.")
       }
     }
+
   def filterSources(f: File => Boolean, doCompile: Gen): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) =>
       doCompile(sources filter f, classpath, outputDirectory, options, maxErrors, log)
 
   def rawCompile(instance: ScalaInstance, cpOptions: ClasspathOptions): Gen =
-    (sources, classpath, outputDirectory, options, maxErrors, log) => {
+    (sources, classpath, outputDirectory, options, _, log) => {
       val compiler = new RawCompiler(instance, cpOptions, log)
       compiler(sources, classpath, outputDirectory, options)
     }
+
   def compile(label: String,
               cacheStoreFactory: CacheStoreFactory,
               instance: ScalaInstance,
               cpOptions: ClasspathOptions): Gen =
     cached(cacheStoreFactory, prepare(label + " sources", rawCompile(instance, cpOptions)))
 
-  val nop: Gen = (sources, classpath, outputDirectory, options, maxErrors, log) => ()
+  val nop: Gen = (_, _, _, _, _, _) => ()
 }

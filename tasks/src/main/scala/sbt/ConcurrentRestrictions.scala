@@ -122,13 +122,12 @@ object ConcurrentRestrictions {
    * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution.
    * @return a pair, with _1 being the CompletionService and _2 a function to shutdown the service.
    * @tparam A the task type
-   * @tparam G describes a set of tasks
    * @tparam R the type of data that will be computed by the CompletionService.
    */
   def completionService[A, R](tags: ConcurrentRestrictions[A],
                               warn: String => Unit): (CompletionService[A, R], () => Unit) = {
     val pool = Executors.newCachedThreadPool()
-    (completionService[A, R](pool, tags, warn), () => pool.shutdownNow())
+    (completionService[A, R](pool, tags, warn), () => { pool.shutdownNow(); () })
   }
 
   /**
@@ -167,6 +166,7 @@ object ConcurrentRestrictions {
           if (running == 0) errorAddingToIdle()
           pending.add(new Enqueue(node, work))
         }
+        ()
       }
       private[this] def submitValid(node: A, work: () => R) = {
         running += 1
@@ -192,6 +192,7 @@ object ConcurrentRestrictions {
           if (!tried.isEmpty) {
             if (running == 0) errorAddingToIdle()
             pending.addAll(tried)
+            ()
           }
         } else {
           val next = pending.remove()

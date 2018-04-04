@@ -49,8 +49,13 @@ object InputTask {
     )
   }
 
-  implicit def inputTaskParsed[T](in: InputTask[T]): std.ParserInputTask[T] = ???
-  implicit def inputTaskInitParsed[T](in: Initialize[InputTask[T]]): std.ParserInputTask[T] = ???
+  implicit def inputTaskParsed[T](
+      @deprecated("unused", "") in: InputTask[T]
+  ): std.ParserInputTask[T] = ???
+
+  implicit def inputTaskInitParsed[T](
+      @deprecated("unused", "") in: Initialize[InputTask[T]]
+  ): std.ParserInputTask[T] = ???
 
   def make[T](p: State => Parser[Task[T]]): InputTask[T] = new InputTask[T](p)
 

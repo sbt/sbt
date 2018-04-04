@@ -21,9 +21,10 @@ import BasicCommandStrings._, BasicKeys._
 
 private[sbt] object TemplateCommandUtil {
   def templateCommand: Command =
-    Command(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)(runTemplate)
+    Command(TemplateCommand, templateBrief, templateDetailed)(_ => templateCommandParser)(
+      runTemplate)
 
-  private def templateCommandParser(state: State): Parser[Seq[String]] =
+  private def templateCommandParser: Parser[Seq[String]] =
     (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
 
   private def runTemplate(s0: State, inputArg: Seq[String]): State = {
@@ -84,8 +85,10 @@ private[sbt] object TemplateCommandUtil {
 
   private def runTemplate(info: TemplateResolverInfo,
                           arguments: List[String],
-                          loader: ClassLoader): Unit =
+                          loader: ClassLoader): Unit = {
     call(info.implementationClass, "run", loader)(classOf[Array[String]])(arguments.toArray)
+    ()
+  }
 
   private def infoLoader(
       info: TemplateResolverInfo,

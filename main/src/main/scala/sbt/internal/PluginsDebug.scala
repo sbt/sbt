@@ -57,7 +57,7 @@ private[sbt] class PluginsDebug(
     if (possible.nonEmpty) {
       val explained = possible.map(explainPluginEnable)
       val possibleString =
-        if (explained.size > 1)
+        if (explained.lengthCompare(1) > 0)
           explained.zipWithIndex
             .map { case (s, i) => s"$i. $s" }
             .mkString(s"Multiple plugins are available that can provide $notFoundKey:\n", "\n", "")
@@ -111,7 +111,7 @@ private[sbt] class PluginsDebug(
   }
 
   private[this] def multi(strs: Seq[String]): String =
-    strs.mkString(if (strs.size > 4) "\n\t" else ", ")
+    strs.mkString(if (strs.lengthCompare(4) > 0) "\n\t" else ", ")
 }
 
 private[sbt] object PluginsDebug {
@@ -377,7 +377,7 @@ private[sbt] object PluginsDebug {
   def explainPluginEnable(ps: PluginEnable): String =
     ps match {
       case PluginRequirements(plugin,
-                              context,
+                              _,
                               blockingExcludes,
                               enablingPlugins,
                               extraEnabledPlugins,
@@ -393,9 +393,8 @@ private[sbt] object PluginsDebug {
             note(willRemove(plugin, toBeRemoved.toList)) ::
             Nil
         parts.filterNot(_.isEmpty).mkString("\n")
-      case PluginImpossible(plugin, context, contradictions) =>
-        pluginImpossible(plugin, contradictions)
-      case PluginActivated(plugin, context) => s"Plugin ${plugin.label} already activated."
+      case PluginImpossible(plugin, _, contradictions) => pluginImpossible(plugin, contradictions)
+      case PluginActivated(plugin, _)                  => s"Plugin ${plugin.label} already activated."
     }
 
   /**

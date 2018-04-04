@@ -23,13 +23,13 @@ import java.util.concurrent.{
 object CompletionService {
   def apply[A, T](poolSize: Int): (CompletionService[A, T], () => Unit) = {
     val pool = Executors.newFixedThreadPool(poolSize)
-    (apply[A, T](pool), () => pool.shutdownNow())
+    (apply[A, T](pool), () => { pool.shutdownNow(); () })
   }
   def apply[A, T](x: Executor): CompletionService[A, T] =
     apply(new ExecutorCompletionService[T](x))
   def apply[A, T](completion: JCompletionService[T]): CompletionService[A, T] =
     new CompletionService[A, T] {
-      def submit(node: A, work: () => T) = CompletionService.submit(work, completion)
+      def submit(node: A, work: () => T) = { CompletionService.submit(work, completion); () }
       def take() = completion.take().get()
     }
   def submit[T](work: () => T, completion: JCompletionService[T]): () => T = {
