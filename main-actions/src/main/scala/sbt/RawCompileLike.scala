@@ -54,9 +54,8 @@ object RawCompileLike {
   ): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) => {
       type Inputs =
-        FilesInfo[HashFileInfo] :+: FilesInfo[ModifiedFileInfo] :+: Seq[File] :+: File :+: Seq[
-          String
-        ] :+: Int :+: HNil
+        FilesInfo[HashFileInfo] :+: FilesInfo[ModifiedFileInfo] :+: Seq[File] :+: File :+:
+          Seq[String] :+: Int :+: HNil
       val inputs
         : Inputs = hash(sources.toSet ++ optionFiles(options, fileInputOpts)) :+: lastModified(
         classpath.toSet

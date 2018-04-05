@@ -87,15 +87,14 @@ private[sbt] object ForkTests {
             val config = new ForkConfiguration(ConsoleAppender.formatEnabledInEnv, parallel)
             os.writeObject(config)
 
-            val taskdefs = opts.tests.map(
-              t =>
-                new TaskDef(
-                  t.name,
-                  forkFingerprint(t.fingerprint),
-                  t.explicitlySpecified,
-                  t.selectors
+            val taskdefs = opts.tests.map { t =>
+              new TaskDef(
+                t.name,
+                forkFingerprint(t.fingerprint),
+                t.explicitlySpecified,
+                t.selectors
               )
-            )
+            }
             os.writeObject(taskdefs.toArray)
 
             os.writeInt(runners.size)

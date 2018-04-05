@@ -67,11 +67,9 @@ object Package {
     }
     setVersion(main)
 
+    type Inputs = Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
     val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") {
-      (
-          inChanged,
-          inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
-      ) =>
+      (inChanged, inputs: Inputs) =>
         import exists.format
         val sources :+: _ :+: manifest :+: HNil = inputs
         inputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
