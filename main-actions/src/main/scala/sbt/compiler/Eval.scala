@@ -509,9 +509,20 @@ private[sbt] object Eval {
     if (f.isDirectory)
       (f listFiles classDirFilter) foreach { x =>
         fileModifiedHash(x, digester)
-      } else digester.update(bytes(IO.getModifiedTimeOrZero(f)))
+      } else digester.update(bytes(JavaMilli.getModifiedTimeOrZero(f)))
 
     digester.update(bytes(f.getAbsolutePath))
+  }
+
+  // This uses NIO instead of the JNA-based IO.getModifiedTimeOrZero for speed
+  object JavaMilli {
+    import java.nio.file.{ Files, NoSuchFileException }
+    def getModifiedTimeOrZero(f: File): Long =
+      try {
+        Files.getLastModifiedTime(f.toPath).toMillis
+      } catch {
+        case e: NoSuchFileException => 0L
+      }
   }
 
   def fileExistsBytes(f: File): Array[Byte] =
