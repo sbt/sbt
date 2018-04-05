@@ -18,6 +18,7 @@ import Tokens.{ EOF, NEWLINE, NEWLINES, SEMI }
 import java.io.File
 import java.nio.ByteBuffer
 import java.net.URLClassLoader
+import java.security.MessageDigest
 import Eval.{ getModule, getValue, WrapValName }
 
 import sbt.io.{ DirectoryFilter, FileFilter, GlobFilter, Hash, IO, Path }
@@ -159,12 +160,31 @@ final class Eval(optionsNoncp: Seq[String],
     // TODO - We also encode the source of the setting into the hash to avoid conflicts where the exact SAME setting
     // is defined in multiple evaluated instances with a backing.  This leads to issues with finding a previous
     // value on the classpath when compiling.
-    val hash = Hash.toHex(
-      Hash(bytes(
-        stringSeqBytes(content) :: optBytes(backing)(fileExistsBytes) :: stringSeqBytes(options) ::
-          seqBytes(classpath)(fileModifiedBytes) :: stringSeqBytes(imports.strings.map(_._1)) :: optBytes(
-          tpeName)(bytes) ::
-          bytes(ev.extraHash) :: Nil)))
+
+    // This is a hot path.
+    val digester = MessageDigest.getInstance("SHA")
+    content foreach { c =>
+      digester.update(bytes(c))
+    }
+    backing foreach { x =>
+      digester.update(fileExistsBytes(x))
+    }
+    options foreach { o =>
+      digester.update(bytes(o))
+    }
+    classpath foreach { f =>
+      fileModifiedHash(f, digester)
+    }
+    imports.strings.map(_._1) foreach { x =>
+      digester.update(bytes(x))
+    }
+    tpeName foreach { x =>
+      digester.update(bytes(x))
+    }
+    digester.update(bytes(ev.extraHash))
+    val d = digester.digest()
+
+    val hash = Hash.toHex(d)
     val moduleName = makeModuleName(hash)
 
     lazy val unit = {
@@ -482,13 +502,29 @@ private[sbt] object Eval {
   def seqBytes[T](s: Seq[T])(f: T => Array[Byte]): Array[Byte] = bytes(s map f)
   def bytes(b: Seq[Array[Byte]]): Array[Byte] = bytes(b.length) ++ b.flatten.toArray[Byte]
   def bytes(b: Boolean): Array[Byte] = Array[Byte](if (b) 1 else 0)
-  def filesModifiedBytes(fs: Array[File]): Array[Byte] =
-    if (fs eq null) filesModifiedBytes(Array[File]()) else seqBytes(fs)(fileModifiedBytes)
-  def fileModifiedBytes(f: File): Array[Byte] =
-    (if (f.isDirectory)
-       filesModifiedBytes(f listFiles classDirFilter)
-     else
-       bytes(IO.getModifiedTimeOrZero(f))) ++ bytes(f.getAbsolutePath)
+
+  // fileModifiedBytes is a hot method, taking up 0.85% of reload time
+  // This is a procedural version
+  def fileModifiedHash(f: File, digester: MessageDigest): Unit = {
+    if (f.isDirectory)
+      (f listFiles classDirFilter) foreach { x =>
+        fileModifiedHash(x, digester)
+      } else digester.update(bytes(JavaMilli.getModifiedTimeOrZero(f)))
+
+    digester.update(bytes(f.getAbsolutePath))
+  }
+
+  // This uses NIO instead of the JNA-based IO.getModifiedTimeOrZero for speed
+  object JavaMilli {
+    import java.nio.file.{ Files, NoSuchFileException }
+    def getModifiedTimeOrZero(f: File): Long =
+      try {
+        Files.getLastModifiedTime(f.toPath).toMillis
+      } catch {
+        case e: NoSuchFileException => 0L
+      }
+  }
+
   def fileExistsBytes(f: File): Array[Byte] =
     bytes(f.exists) ++
       bytes(f.getAbsolutePath)
