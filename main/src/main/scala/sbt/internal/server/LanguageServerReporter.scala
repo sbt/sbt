@@ -47,7 +47,7 @@ class LanguageServerReporter(
     problemsByFile.clear()
   }
 
-  override def log(problem: Problem): Unit = {
+  override def log(problem: Problem): Unit = synchronized {
     val pos = problem.position
     pos.sourceFile.toOption foreach { sourceFile: File =>
       problemsByFile.get(sourceFile) match {
