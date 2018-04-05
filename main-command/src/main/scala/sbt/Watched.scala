@@ -141,7 +141,7 @@ object Watched {
         FileSystems.getDefault.newWatchService()
       case _ if Properties.isMac =>
         // WatchService is slow on macOS - use old polling mode
-        new PollingWatchService(PollDelay)
+        new MacOSXWatchService()
       case _ =>
         FileSystems.getDefault.newWatchService()
     }
