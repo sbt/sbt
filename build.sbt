@@ -310,6 +310,10 @@ lazy val actionsProj = (project in file("main-actions"))
     name := "Actions",
     libraryDependencies += sjsonNewScalaJson.value,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.filesModifiedBytes"),
+      exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.fileModifiedBytes"),
+    )
   )
   .configure(
     addSbtIO,
