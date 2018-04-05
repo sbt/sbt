@@ -129,6 +129,9 @@ object VersionNumber {
      * Rule 2 we enforce with custom extractors.
      * Rule 4 we enforce by matching x = 0 & fully equals checking the two versions
      * Rule 6, 7 & 8 means version compatibility is determined by comparing the two X values
+     * Rule 9..
+     *   Dale thinks means pre-release versions are fully equals checked..
+     *   Eugene thinks means pre-releases before 1.0.0 are not compatible, if not they are..
      */
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
@@ -136,6 +139,7 @@ object VersionNumber {
     private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
       (v1, v2) match {
         case (NormalVersion(0, _, _), NormalVersion(0, _, _))   => v1 == v2 // R4
+        case (NormalVersion(_, 0, 0), NormalVersion(_, 0, 0))   => v1 == v2 // R9 maybe?
         case (NormalVersion(x1, _, _), NormalVersion(x2, _, _)) => x1 == x2 // R6, R7 & R8
         case _                                                  => false
       }
@@ -168,6 +172,7 @@ object VersionNumber {
 
     private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean = {
       (v1, v2) match {
+        case (NormalVersion(_, _, 0), NormalVersion(_, _, 0))     => v1 == v2 // R9 maybe?
         case (NormalVersion(x1, y1, _), NormalVersion(x2, y2, _)) => (x1 == x2) && (y1 == y2)
         case _                                                    => false
       }

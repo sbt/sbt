@@ -26,12 +26,12 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
     assertIsCompatibleWith(v, "1.0.1", SemVer)
     assertIsCompatibleWith(v, "1.1.1", SemVer)
     assertIsNotCompatibleWith(v, "2.0.0", SemVer)
-    assertIsCompatibleWith(v, "1.0.0-M1", SemVer)
+    assertIsNotCompatibleWith(v, "1.0.0-M1", SemVer)
 
     assertIsCompatibleWith(v, "1.0.1", SecondSegment)
     assertIsNotCompatibleWith(v, "1.1.1", SecondSegment)
     assertIsNotCompatibleWith(v, "2.0.0", SecondSegment)
-    assertIsCompatibleWith(v, "1.0.0-M1", SecondSegment)
+    assertIsNotCompatibleWith(v, "1.0.0-M1", SecondSegment)
   }
 
   version("1.0.0.0") { v =>
@@ -49,7 +49,7 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
     assertIsNotCompatibleWith(v, "0.12.1", SemVer)
     assertIsNotCompatibleWith(v, "0.12.1-M1", SemVer)
 
-    assertIsCompatibleWith(v, "0.12.0-RC1", SecondSegment)
+    assertIsNotCompatibleWith(v, "0.12.0-RC1", SecondSegment)
     assertIsCompatibleWith(v, "0.12.1", SecondSegment)
     assertIsCompatibleWith(v, "0.12.1-M1", SecondSegment)
   }
@@ -63,7 +63,7 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
     assertIsCompatibleWith(v, "0.1.0-SNAPSHOT+001", SemVer)
 
     assertIsCompatibleWith(v, "0.1.0-SNAPSHOT", SecondSegment)
-    assertIsCompatibleWith(v, "0.1.0", SecondSegment)
+    assertIsNotCompatibleWith(v, "0.1.0", SecondSegment)
     assertIsCompatibleWith(v, "0.1.0-SNAPSHOT+001", SecondSegment)
   }
 
