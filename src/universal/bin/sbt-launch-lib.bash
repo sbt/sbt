@@ -177,7 +177,7 @@ process_args () {
     case "$1" in
        -h|-help) usage; exit 1 ;;
     -v|-verbose) verbose=1 && shift ;;
-      -d|-debug) debug=1 && shift ;;
+      -d|-debug) debug=1 && addSbt "-debug" && shift ;;
 
            -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
            -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
