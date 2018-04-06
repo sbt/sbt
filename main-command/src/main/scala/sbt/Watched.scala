@@ -134,14 +134,14 @@ object Watched {
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 
   def createWatchService(): WatchService = {
+    def closeWatch = new MacOSXWatchService()
     sys.props.get("sbt.watch.mode") match {
       case Some("polling") =>
         new PollingWatchService(PollDelay)
       case Some("nio") =>
         FileSystems.getDefault.newWatchService()
-      case _ if Properties.isMac =>
-        // WatchService is slow on macOS - use old polling mode
-        new PollingWatchService(PollDelay)
+      case Some("closewatch")    => closeWatch
+      case _ if Properties.isMac => closeWatch
       case _ =>
         FileSystems.getDefault.newWatchService()
     }
