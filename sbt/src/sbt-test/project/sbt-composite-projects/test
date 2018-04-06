@@ -28,3 +28,13 @@ $ copy-file changes/shadow.sbt build.sbt
 > c/compile
 > bar/compile
 > check
+
+$ copy-file changes/shadowLazy.sbt build.sbt
+> reload
+> jvm/compile
+> jvm/aa
+> js/compile
+> js/h
+> c/compile
+> bar/compile
+> check

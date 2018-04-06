@@ -152,11 +152,18 @@ private[sbt] object EvaluateConfigurations {
     loader =>
       {
         val projects = {
-          val compositeProjects = definitions.values(loader).flatMap {
-            case p: CompositeProject => p.componentProjects.map(resolveBase(file.getParentFile, _))
-            case _                   => Nil
+
+          val projects = definitions.values(loader).collect {
+            case p: Project => p
           }
-          CompositeProject.uniqueId(compositeProjects)
+
+          val compositeProjects = definitions.values(loader).collect {
+            case p: CompositeProject => p
+          }
+
+          CompositeProject
+            .expand(projects, compositeProjects)
+            .map(resolveBase(file.getParentFile, _))
         }
         val (settingsRaw, manipulationsRaw) =
           dslEntries map (_.result apply loader) partition {
