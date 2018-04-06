@@ -99,24 +99,25 @@ goto end
 goto :eof
 
 :process
-rem parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
-"%_JAVACMD%" -Xmx512M -version 2> "%TEMP%\out.txt"
+rem Parses x out of 1.x; for example 8 out of java version 1.8.0_xx
+rem Otherwise, parses the major version; 9 out of java version 9-ea
 set JAVA_VERSION=0
->nul findstr /c:"version \"9" "%TEMP%\out.txt"
-if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=9)
->nul findstr /c:"version \"1.8" "%TEMP%\out.txt"
-if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.8)
->nul findstr /c:"version \"1.7" "%TEMP%\out.txt"
-if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.7)
->nul findstr /c:"version \"1.6" "%TEMP%\out.txt"
-if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.6)
->nul findstr /c:"version \"1.5" "%TEMP%\out.txt"
-if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.5)
+for /f "tokens=3" %%g in ('%_JAVACMD% -Xms32M -Xmx32M -version 2^>^&1 ^| findstr /i "version"') do (
+  set JAVA_VERSION=%%g
+)
+set JAVA_VERSION=%JAVA_VERSION:"=%
+for /f "delims=.-_ tokens=1-2" %%v in ("%JAVA_VERSION%") do (
+  if /I "%%v" EQU "1" (
+    set JAVA_VERSION=%%w
+  ) else (
+    set JAVA_VERSION=%%v
+  )
+)
 exit /B 0
 
 :checkjava
-set required_version=1.6
-if /I "%JAVA_VERSION%" GEQ "%required_version%" (
+set required_version=6
+if /I %JAVA_VERSION% GEQ %required_version% (
   exit /B 0
 )
 echo.
@@ -130,7 +131,7 @@ echo.
 exit /B 1
 
 :copyrt
-if /I "%JAVA_VERSION%" GEQ "9" (
+if /I %JAVA_VERSION% GEQ 9 (
   set rtexport=!SBT_HOME!java9-rt-export.jar
 
   "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "!rtexport!" --rt-ext-dir > "%TEMP%.\rtext.txt"
@@ -160,7 +161,7 @@ if "%INIT_SBT_VERSION%"=="" (
   )
 )
 set PRELOAD_SBT_JAR="%UserProfile%\.sbt\preloaded\org.scala-sbt\sbt\%INIT_SBT_VERSION%\jars\sbt.jar"
-if /I "%JAVA_VERSION%" GEQ "1.8" (
+if /I %JAVA_VERSION% GEQ 8 (
   where robocopy >nul 2>nul
   if %ERRORLEVEL% equ 0 (
     REM echo %PRELOAD_SBT_JAR%
