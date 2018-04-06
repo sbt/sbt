@@ -2168,6 +2168,7 @@ object Classpaths {
                 filterImplicit = false,
                 overrideScalaVersion = true).withScalaOrganization(scalaOrganization.value))
           },
+          dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
             val s = streams.value
