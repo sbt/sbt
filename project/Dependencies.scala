@@ -26,8 +26,9 @@ object Dependencies {
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.3"
-  val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.3"
+  val launcherVersion = "1.0.4"
+  val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
+  val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
   val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.0.0"
 
