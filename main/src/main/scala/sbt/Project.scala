@@ -152,7 +152,7 @@ private[sbt] object CompositeProject {
         case None                    => p
       }
     }
-  }
+  }.distinct
 
 }
 
