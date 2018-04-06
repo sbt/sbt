@@ -9,8 +9,8 @@ SETLOCAL
 
 "freshly-baked\sbt\bin\sbt" about
 
-SET JAVA_HOME=C:\jdk9
-SET PATH=C:\jdk9\bin;%PATH%
+SET JAVA_HOME=C:\jdk10
+SET PATH=C:\jdk10\bin;%PATH%
 SET SBT_OPTS=-Xmx4g -Dfile.encoding=UTF8
 
 "freshly-baked\sbt\bin\sbt" about

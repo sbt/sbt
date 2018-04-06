@@ -23,17 +23,17 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    ## build using JDK 8, test using JDK 9
+    ## build using JDK 8, test using OpenJDK 10
     - script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
-        - jdk_switcher use oraclejdk9
+        - citest/install-jdk.sh -F 10
         - cd citest && ./test.sh
       jdk: oraclejdk8
 
-    ## build using JDK 8, test using JDK 10
+    ## build using JDK 8, test using OpenJDK 11
     - script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
-        - citest/install-jdk10.sh
+        - citest/install-jdk.sh -F 11
         - cd citest && ./test.sh
       jdk: oraclejdk8
 
