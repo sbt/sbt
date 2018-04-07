@@ -17,11 +17,8 @@ import sbt.internal.inc.ReflectUtilities
 
 trait BuildDef {
   def projectDefinitions(@deprecated("unused", "") baseDirectory: File): Seq[Project] = projects
-  def projects: Seq[Project] = {
-    val projects = ReflectUtilities.allVals[Project](this).values.toSeq
-    val compositeProjects = ReflectUtilities.allVals[CompositeProject](this).values.toSeq
-    CompositeProject.expand(projects, compositeProjects)
-  }
+  def projects: Seq[Project] =
+    CompositeProject.expand(ReflectUtilities.allVals[CompositeProject](this).values.toSeq)
   // TODO: Should we grab the build core settings here or in a plugin?
   def settings: Seq[Setting[_]] = Defaults.buildCore
   def buildLoaders: Seq[BuildLoader.Components] = Nil

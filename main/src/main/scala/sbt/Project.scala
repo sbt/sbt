@@ -128,10 +128,10 @@ trait CompositeProject {
 private[sbt] object CompositeProject {
 
   /**
-   *  Expand user defined `projects` with the component projects of `compositeProjects`.
+   *  Expand user defined projects with the component projects of `compositeProjects`.
    *
-   *  If two projects with the same id appear in the user defined `projects` and
-   *  in `compositeProjects.componentProjects`, the one in `projects` wins.
+   *  If two projects with the same id appear in the user defined projects and
+   *  in `compositeProjects.componentProjects`, the user defined project wins.
    *  This is necessary for backward compatibility with the idioms:
    *  {{{
    *    lazy val foo = crossProject
@@ -145,11 +145,12 @@ private[sbt] object CompositeProject {
    *    lazy val fooJVM = foo.jvm.settings(...)
    *  }}}
    */
-  def expand(projects: Seq[Project], compositeProjects: Seq[CompositeProject]): Seq[Project] = {
+  def expand(compositeProjects: Seq[CompositeProject]): Seq[Project] = {
+    val userProjects = compositeProjects.collect { case p: Project => p }
     for (p <- compositeProjects.flatMap(_.componentProjects)) yield {
-      projects.find(_.id == p.id) match {
-        case Some(overridingProject) => overridingProject
-        case None                    => p
+      userProjects.find(_.id == p.id) match {
+        case Some(userProject) => userProject
+        case None              => p
       }
     }
   }.distinct
