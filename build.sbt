@@ -2,6 +2,11 @@ import Dependencies._
 import Path._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
+val _ = {
+  sys.props += ("line.separator" -> "\n")
+  sys.props += ("file.separaror" -> "/")
+}
+
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala212,
   // publishArtifact in packageDoc := false,
