@@ -212,7 +212,8 @@ object MainLoop {
   // it's handled by executing the shell again, instead of the state failing
   // so we also use that to indicate that the execution failed
   private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
-    if (prevState.onFailure.isDefined && state.onFailure.isEmpty) ExitCode(ErrorCodes.UnknownError)
+    if (prevState.onFailure.isDefined && state.onFailure.isEmpty)
+      ExitCode(ErrorCodes.UnknownErrorCode)
     else ExitCode.Success
 
 }
