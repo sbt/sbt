@@ -7,7 +7,7 @@ import java.net.URL
 import java.util.Collections
 
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
-import org.apache.ivy.core.resolve.ResolveData
+import org.apache.ivy.core.resolve.{ DownloadOptions, ResolveData }
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.plugins.repository.{ RepositoryCopyProgressListener, Resource, TransferEvent }
 import org.apache.ivy.plugins.resolver.{
@@ -30,6 +30,7 @@ import java.io.{ File, IOException }
 
 import org.apache.ivy.util.{ ChecksumHelper, FileUtil, Message }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
+import org.apache.ivy.core.report.DownloadReport
 import sbt.io.IO
 import sbt.util.Logger
 import sbt.librarymanagement._
@@ -181,7 +182,7 @@ private[sbt] object ConvertResolver {
           resolver
         }
         case repo: SshRepository => {
-          val resolver = new SshResolver with DescriptorRequired {
+          val resolver = new SshResolver with DescriptorRequired with ThreadSafeSshBasedResolver {
             override val managedChecksumsEnabled: Boolean = managedChecksums
             override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
           }
@@ -190,7 +191,7 @@ private[sbt] object ConvertResolver {
           resolver
         }
         case repo: SftpRepository => {
-          val resolver = new SFTPResolver
+          val resolver = new SFTPResolver with ThreadSafeSshBasedResolver
           initializeSSHResolver(resolver, repo, settings)
           resolver
         }
@@ -405,5 +406,16 @@ private[sbt] object ConvertResolver {
           super.put(source, destination, true)
       }
     }
+  }
+
+  private sealed trait ThreadSafeSshBasedResolver
+      extends org.apache.ivy.plugins.resolver.AbstractSshBasedResolver {
+//uncomment to test non-threadsafe behavior
+//    private def lock = new Object
+    private val lock = org.apache.ivy.plugins.repository.ssh.SshCache.getInstance
+    override def download(artifacts: Array[IArtifact], options: DownloadOptions): DownloadReport =
+      lock.synchronized {
+        super.download(artifacts, options)
+      }
   }
 }

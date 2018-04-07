@@ -3,8 +3,8 @@ import Path._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
 val _ = {
+  //https://github.com/sbt/contraband/issues/122
   sys.props += ("line.separator" -> "\n")
-  sys.props += ("file.separaror" -> "/")
 }
 
 def commonSettings: Seq[Setting[_]] = Seq(
