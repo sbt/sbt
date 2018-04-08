@@ -40,7 +40,6 @@ import sbt.internal.util.{
   Types
 }
 import sbt.util.{ Level, Logger, Show }
-
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.inc.ScalaInstance
 import sbt.compiler.EvalImports
@@ -52,7 +51,6 @@ import xsbti.compile.CompilerCache
 import scala.annotation.tailrec
 import sbt.io.IO
 import sbt.io.syntax._
-
 import java.io.{ File, IOException }
 import java.net.URI
 import java.util.{ Locale, Properties }
@@ -198,6 +196,7 @@ object BuiltinCommands {
       startServer,
       eval,
       last,
+      oldLastGrep,
       lastGrep,
       export,
       boot,
@@ -452,8 +451,15 @@ object BuiltinCommands {
       s
   }
 
+  @deprecated("Use `lastGrep` instead.", "1.2.0")
+  def oldLastGrep: Command =
+    lastGrepCommand(OldLastGrepCommand, oldLastGrepBrief, oldLastGrepDetailed)
+
   def lastGrep: Command =
-    Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
+    lastGrepCommand(LastGrepCommand, lastGrepBrief, lastGrepDetailed)
+
+  private def lastGrepCommand(name: String, briefHelp: (String, String), detail: String): Command =
+    Command(name, briefHelp, detail)(lastGrepParser) {
       case (s, (pattern, Some(sks))) =>
         val (str, _, display) = extractLast(s)
         Output.lastGrep(sks, str.streams(s), pattern, printLast)(display)

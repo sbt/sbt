@@ -57,9 +57,22 @@ $ShowCommand <task>
   def pluginsDetailed = pluginsBrief // TODO: expand
 
   val LastCommand = "last"
-  val LastGrepCommand = "last-grep"
+  val OldLastGrepCommand = "last-grep"
+  val LastGrepCommand = "lastGrep"
   val ExportCommand = "export"
   val ExportStream = "export"
+
+  val oldLastGrepBrief =
+    (OldLastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
+  val oldLastGrepDetailed =
+    s"""$OldLastGrepCommand <pattern>
+	Displays lines from the logging of previous commands that match `pattern`.
+
+$OldLastGrepCommand <pattern> [key]
+	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
+
+	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
+	See also '$LastCommand'."""
 
   val lastGrepBrief =
     (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
