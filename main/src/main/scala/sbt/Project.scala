@@ -121,7 +121,45 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
     if (ts.isEmpty) Nil else s"$label: $ts" :: Nil
 }
 
-sealed trait Project extends ProjectDefinition[ProjectReference] {
+trait CompositeProject {
+  def componentProjects: Seq[Project]
+}
+
+private[sbt] object CompositeProject {
+
+  /**
+   *  Expand user defined projects with the component projects of `compositeProjects`.
+   *
+   *  If two projects with the same id appear in the user defined projects and
+   *  in `compositeProjects.componentProjects`, the user defined project wins.
+   *  This is necessary for backward compatibility with the idioms:
+   *  {{{
+   *    lazy val foo = crossProject
+   *    lazy val fooJS = foo.js.settings(...)
+   *    lazy val fooJVM = foo.jvm.settings(...)
+   *  }}}
+   *  and the rarer:
+   *  {{{
+   *    lazy val fooJS = foo.js.settings(...)
+   *    lazy val foo = crossProject
+   *    lazy val fooJVM = foo.jvm.settings(...)
+   *  }}}
+   */
+  def expand(compositeProjects: Seq[CompositeProject]): Seq[Project] = {
+    val userProjects = compositeProjects.collect { case p: Project => p }
+    for (p <- compositeProjects.flatMap(_.componentProjects)) yield {
+      userProjects.find(_.id == p.id) match {
+        case Some(userProject) => userProject
+        case None              => p
+      }
+    }
+  }.distinct
+
+}
+
+sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeProject {
+  def componentProjects: Seq[Project] = this :: Nil
+
   private[sbt] def copy(
       id: String = id,
       base: File = base,

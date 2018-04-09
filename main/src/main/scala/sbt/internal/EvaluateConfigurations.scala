@@ -151,10 +151,12 @@ private[sbt] object EvaluateConfigurations {
     val allGeneratedFiles = (definitions.generated ++ dslEntries.flatMap(_.generated))
     loader =>
       {
-        val projects =
-          definitions.values(loader).collect {
-            case p: Project => resolveBase(file.getParentFile, p)
+        val projects = {
+          val compositeProjects = definitions.values(loader).collect {
+            case p: CompositeProject => p
           }
+          CompositeProject.expand(compositeProjects).map(resolveBase(file.getParentFile, _))
+        }
         val (settingsRaw, manipulationsRaw) =
           dslEntries map (_.result apply loader) partition {
             case DslEntry.ProjectSettings(_) => true
@@ -280,7 +282,10 @@ private[sbt] object EvaluateConfigurations {
   }
 
   private[this] def extractedValTypes: Seq[String] =
-    Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]])
+    Seq(classOf[CompositeProject],
+        classOf[InputKey[_]],
+        classOf[TaskKey[_]],
+        classOf[SettingKey[_]])
       .map(_.getName)
 
   private[this] def evaluateDefinitions(eval: Eval,
