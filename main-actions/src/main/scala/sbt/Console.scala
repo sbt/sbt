@@ -41,7 +41,9 @@ final class Console(compiler: AnalyzingCompiler) {
       implicit log: Logger): Try[Unit] = {
     def console0() =
       compiler.console(classpath, options, initialCommands, cleanupCommands, log)(loader, bindings)
-    JLine.withJLine(Run.executeTrapExit(console0, log))
+    JLine.usingTerminal { _ =>
+      Run.executeTrapExit(console0, log)
+    }
   }
 }
 
