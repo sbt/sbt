@@ -2887,7 +2887,8 @@ object Classpaths {
 
   def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] = {
     val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
-    val plugins = sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath)
+    val version = scalaVersion.value
+    val plugins = sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath, scalaInstance.isDotty(version))
     plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
   }
 
