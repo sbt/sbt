@@ -492,6 +492,10 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       exclude[DirectMissingMethodProblem]("sbt.Scope.display012StyleMasked"),
+
+      // added a method to a sealed trait
+      exclude[InheritedNewAbstractMethodProblem]("sbt.Scoped.canEqual"),
+      exclude[InheritedNewAbstractMethodProblem]("sbt.ScopedTaskable.canEqual"),
     ),
   )
   .configure(
