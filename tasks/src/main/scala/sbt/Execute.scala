@@ -8,7 +8,7 @@
 package sbt
 
 import sbt.internal.util.ErrorHandling.wideConvert
-import sbt.internal.util.{ DelegatingPMap, PMap, RMap, IDSet, ~> }
+import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
 import sbt.internal.util.Types._
 import Execute._
 
@@ -77,6 +77,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](
 
   def run[T](root: A[T])(implicit strategy: Strategy): Result[T] =
     try { runKeep(root)(strategy)(root) } catch { case i: Incomplete => Inc(i) }
+
   def runKeep[T](root: A[T])(implicit strategy: Strategy): RMap[A, Result] = {
     assert(state.isEmpty, "Execute already running/ran.")
 
