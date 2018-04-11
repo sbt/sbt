@@ -64,7 +64,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
           else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
         } else ()
         setInitialized(true)
-        append(Exec(s"collectAnalyses", Some(request.id), Some(CommandSource(name))))
+        append(Exec(s"collectAnalyses", None, Some(CommandSource(name))))
         langRespond(InitializeResult(serverCapabilities), Option(request.id))
       case "textDocument/definition" =>
         import scala.concurrent.ExecutionContext.Implicits.global
