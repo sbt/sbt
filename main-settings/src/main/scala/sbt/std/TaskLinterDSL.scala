@@ -27,6 +27,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
       private val taskKeyType = typeOf[sbt.TaskKey[_]]
       private val settingKeyType = typeOf[sbt.SettingKey[_]]
       private val inputKeyType = typeOf[sbt.InputKey[_]]
+      private val initializeType = typeOf[sbt.Def.Initialize[_]]
       private val uncheckedWrappers = MutableSet.empty[Tree]
       var insideIf: Boolean = false
       var insideAnon: Boolean = false
@@ -57,12 +58,19 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
       }
 
       @inline def isKey(tpe: Type): Boolean =
-        tpe <:< taskKeyType || tpe <:< settingKeyType || tpe <:< inputKeyType
+        tpe <:< initializeType || tpe <:< taskKeyType || tpe <:< settingKeyType || tpe <:< inputKeyType
 
       def detectAndErrorOnKeyMissingValue(i: Ident): Unit = {
         if (isKey(i.tpe)) {
           val keyName = i.name.decodedName.toString
           ctx.error(i.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
+        } else ()
+      }
+
+      def detectAndErrorOnKeyMissingValue(s: Select): Unit = {
+        if (isKey(s.tpe)) {
+          val keyName = s.name.decodedName.toString
+          ctx.error(s.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
         } else ()
       }
 
@@ -118,11 +126,13 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
                 // TODO: Consider using unused names analysis to be able to report on more cases
                 case ValDef(_, valName, _, rhs) if valName == termNames.WILDCARD =>
                   rhs match {
-                    case i: Ident => detectAndErrorOnKeyMissingValue(i)
-                    case _        => ()
+                    case i: Ident  => detectAndErrorOnKeyMissingValue(i)
+                    case s: Select => detectAndErrorOnKeyMissingValue(s)
+                    case _         => ()
                   }
-                case i: Ident => detectAndErrorOnKeyMissingValue(i)
-                case _        => ()
+                case i: Ident  => detectAndErrorOnKeyMissingValue(i)
+                case s: Select => detectAndErrorOnKeyMissingValue(s)
+                case t         => ()
               }
             }
             traverseTrees(stmts)
