@@ -15,9 +15,9 @@ import ast.parser.Tokens
 import reporters.{ ConsoleReporter, Reporter }
 import scala.reflect.internal.util.{ AbstractFileClassLoader, BatchSourceFile }
 import Tokens.{ EOF, NEWLINE, NEWLINES, SEMI }
-import java.io.{ File, FileNotFoundException, IOException }
+import java.io.{ File, IOException }
 import java.nio.ByteBuffer
-import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
+import java.nio.file.{ FileVisitResult, Files, Path => NioPath, SimpleFileVisitor }
 import java.nio.file.attribute.BasicFileAttributes
 import java.net.URLClassLoader
 import java.security.MessageDigest
@@ -508,14 +508,14 @@ private[sbt] object Eval {
   def fileModifiedHash(f: File, digester: MessageDigest): Unit = {
     Files.walkFileTree(
       f.toPath,
-      new SimpleFileVisitor[Path] {
-        override def visitFile(file: Path, attrs: BasicFileAttributes) = {
+      new SimpleFileVisitor[NioPath] {
+        override def visitFile(file: NioPath, attrs: BasicFileAttributes) = {
           if (classDirFilter accept file.toFile)
             digester.update(bytes(attrs.lastModifiedTime.toMillis))
           digester.update(bytes(file.toFile.getAbsolutePath))
           FileVisitResult.CONTINUE
         }
-        override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+        override def postVisitDirectory(dir: NioPath, exc: IOException): FileVisitResult = {
           if (exc eq null) {
             digester.update(bytes(dir.toFile.getAbsolutePath))
             FileVisitResult.CONTINUE
