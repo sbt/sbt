@@ -510,9 +510,10 @@ private[sbt] object Eval {
       f.toPath,
       new SimpleFileVisitor[NioPath] {
         override def visitFile(file: NioPath, attrs: BasicFileAttributes) = {
-          if (classDirFilter accept file.toFile)
+          val f = file.toFile
+          if (classDirFilter accept f)
             digester.update(bytes(attrs.lastModifiedTime.toMillis))
-          digester.update(bytes(file.toFile.getAbsolutePath))
+          digester.update(bytes(f.getAbsolutePath))
           FileVisitResult.CONTINUE
         }
         override def postVisitDirectory(dir: NioPath, exc: IOException): FileVisitResult = {
