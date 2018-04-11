@@ -518,7 +518,7 @@ private[sbt] object Eval {
         }
         override def postVisitDirectory(dir: NioPath, exc: IOException): FileVisitResult = {
           if (exc eq null) {
-            digester.update(bytes(dir.toFile.getAbsolutePath))
+            digester.update(bytes(dir.toAbsolutePath.toString))
             FileVisitResult.CONTINUE
           } else throw exc
         }
