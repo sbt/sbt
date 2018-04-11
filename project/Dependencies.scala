@@ -98,7 +98,7 @@ object Dependencies {
     "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value
   }
 
-  val jline = "jline" % "jline" % "2.14.4"
+  val jline = "jline" % "jline" % "2.14.6"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.4"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
