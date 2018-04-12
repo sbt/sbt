@@ -248,6 +248,7 @@ object Defaults extends BuildCommon {
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
+      watchAntiEntropy :== new FiniteDuration(40, TimeUnit.MILLISECONDS),
       watchService :== { () =>
         Watched.createWatchService()
       },
@@ -555,13 +556,15 @@ object Defaults extends BuildCommon {
     Def.setting {
       val getService = watchService.value
       val interval = pollInterval.value
+      val _antiEntropy = watchAntiEntropy.value
       val base = thisProjectRef.value
       val msg = watchingMessage.value
       val trigMsg = triggeredMessage.value
       new Watched {
         val scoped = watchTransitiveSources in base
         val key = scoped.scopedKey
-        override def pollInterval = interval
+        override def antiEntropy: FiniteDuration = _antiEntropy
+        override def pollInterval: FiniteDuration = interval
         override def watchingMessage(s: WatchState) = msg(s)
         override def triggeredMessage(s: WatchState) = trigMsg(s)
         override def watchService() = getService()
