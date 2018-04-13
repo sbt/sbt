@@ -329,7 +329,18 @@ object Defaults extends BuildCommon {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
-      val exclude = (excludeFilter in unmanagedSources).value
+      val exclude = (excludeFilter in unmanagedSources).value match {
+        case e =>
+          (managedSources in ThisScope).value match {
+            case l if l.nonEmpty =>
+              e || new FileFilter {
+                private val files = l.toSet
+                override def accept(pathname: File): Boolean = files.contains(pathname)
+                override def toString = s"ManagedSourcesFilter($files)"
+              }
+            case _ => e
+          }
+      }
       val baseSources =
         if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
         else Nil
@@ -341,7 +352,7 @@ object Defaults extends BuildCommon {
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
-    sources := Classpaths.concat(unmanagedSources, managedSources).value
+    sources := Classpaths.concatDistinct(unmanagedSources, managedSources).value
   )
   lazy val resourceConfigPaths = Seq(
     resourceDirectory := sourceDirectory.value / "resources",
