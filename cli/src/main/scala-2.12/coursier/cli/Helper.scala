@@ -43,7 +43,7 @@ object Helper {
       def attributeOpt(name: String) =
         Option(attributes.getValue(name))
 
-      val vendor = attributeOpt("Specification-Vendor").getOrElse("")
+      val vendor = attributeOpt("Implementation-Vendor-Id").getOrElse("")
       val title = attributeOpt("Specification-Title").getOrElse("")
       val mainClass = attributeOpt("Main-Class")
 

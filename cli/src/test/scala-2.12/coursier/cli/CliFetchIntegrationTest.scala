@@ -1,8 +1,8 @@
 package coursier.cli
 
 import java.io._
-
 import java.net.URLEncoder.encode
+
 import argonaut.Argonaut._
 import caseapp.core.RemainingArgs
 import coursier.cli.options._
@@ -13,12 +13,13 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Paths}
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.junit.JUnitRunner
+
 import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
-class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
+class CliFetchIntegrationTest extends FlatSpec with CliTestLib with Matchers {
 
   def getReportFromJson(f: File): ReportNode = {
     // Parse back the output json file
@@ -35,11 +36,46 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib {
   private val fileNameLength: DepNode => Int = _.file.getOrElse("").length
 
   "Normal fetch" should "get all files" in {
-
     val fetchOpt = FetchOptions(common = CommonOptions())
     val fetch = Fetch(fetchOpt, RemainingArgs(Seq("junit:junit:4.12"), Seq()))
     assert(fetch.files0.map(_.getName).toSet.equals(Set("junit-4.12.jar", "hamcrest-core-1.3.jar")))
+  }
 
+  "scalafmt-cli fetch" should "discover all main classes" in {
+    val fetchOpt = FetchOptions(common = CommonOptions())
+    val fetch = Fetch(fetchOpt, RemainingArgs(Seq("com.geirsson:scalafmt-cli_2.12:1.4.0"), Seq()))
+    Helper.mainClasses(fetch.helper.loader) should contain theSameElementsAs Map (
+      ("", "") -> "com.martiansoftware.nailgun.NGServer",
+      ("com.geirsson", "cli") -> "org.scalafmt.cli.Cli"
+    )
+  }
+
+  "scalafix-cli fetch" should "discover all main classes" in {
+    val fetchOpt = FetchOptions(common = CommonOptions())
+    val fetch = Fetch(fetchOpt, RemainingArgs(Seq("ch.epfl.scala:scalafix-cli_2.12.4:0.5.10"), Seq()))
+    Helper.mainClasses(fetch.helper.loader) should contain theSameElementsAs Map(
+      ("", "") -> "com.martiansoftware.nailgun.NGServer",
+      ("ch.epfl.scala", "cli") -> "scalafix.cli.Cli"
+    )
+  }
+
+  "ammonite fetch" should "discover all main classes" in {
+    val fetchOpt = FetchOptions(common = CommonOptions())
+    val fetch = Fetch(fetchOpt, RemainingArgs(Seq("com.lihaoyi:ammonite_2.12.4:1.1.0"), Seq()))
+    Helper.mainClasses(fetch.helper.loader) should contain theSameElementsAs Map(
+      ("", "Javassist") -> "javassist.CtClass",
+      ("" ,"Java Native Access (JNA)") -> "com.sun.jna.Native",
+      ("com.lihaoyi", "ammonite") -> "ammonite.Main"
+    )
+  }
+
+  "sssio fetch" should "discover all main classes" in {
+    val fetchOpt = FetchOptions(common = CommonOptions())
+    val fetch = Fetch(fetchOpt, RemainingArgs(Seq("lt.dvim.sssio:sssio_2.12:0.0.1"), Seq()))
+    Helper.mainClasses(fetch.helper.loader) should contain theSameElementsAs Map(
+      ("", "") -> "com.kenai.jffi.Main",
+      ("lt.dvim.sssio", "sssio") -> "lt.dvim.sssio.Sssio"
+    )
   }
 
   "Module level" should "exclude correctly" in withFile(
