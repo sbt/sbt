@@ -17,3 +17,9 @@ enum PluginTrigger {
   AllRequirements
   NoTrigger
 }
+
+type JavaVersion {
+  vendor: String
+  version: String!
+  #xcompanion def apply(version: String): JavaVersion = new JavaVersion(None, version)
+}
