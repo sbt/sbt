@@ -268,6 +268,8 @@ object Keys {
   val outputStrategy = settingKey[Option[sbt.OutputStrategy]]("Selects how to log output when running a main class.").withRank(DSetting)
   val connectInput = settingKey[Boolean]("If true, connects standard input when running a main class forked.").withRank(CSetting)
   val javaHome = settingKey[Option[File]]("Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.").withRank(ASetting)
+  val discoveredJavaHomes = settingKey[Map[String, File]]("Discovered Java home directories")
+  val additionalJavaHomes = settingKey[Map[String, File]]("Additional Java home directories")
   val javaOptions = taskKey[Seq[String]]("Options passed to a new JVM when forking.").withRank(BPlusTask)
   val envVars = taskKey[Map[String, String]]("Environment variables used when forking a new JVM").withRank(BTask)
 
