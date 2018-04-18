@@ -510,10 +510,12 @@ lazy val sbtProj = (project in file("sbt"))
     buildInfoKeys in Test := Seq[BuildInfoKey](
       // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
       BuildInfoKey.map((fullClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
+      classDirectory in Compile,
+      classDirectory in Test,
     ),
-    connectInput in run in Test := true,
-    outputStrategy in run in Test := Some(StdoutOutput),
-    fork in Test := true,
+    Test / run / connectInput := true,
+    Test / run / outputStrategy := Some(StdoutOutput),
+    Test / run / fork := true,
   )
   .configure(addSbtCompilerBridge)
 

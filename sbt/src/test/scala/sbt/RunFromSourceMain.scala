@@ -7,13 +7,33 @@
 
 package sbt
 
+import scala.util.Try
+import sbt.util.LogExchange
 import scala.annotation.tailrec
-
+import buildinfo.TestBuildInfo
 import xsbti._
 
 object RunFromSourceMain {
   private val sbtVersion = "1.0.3" // "dev"
   private val scalaVersion = "2.12.4"
+
+  def fork(workingDirectory: File): Try[Unit] = {
+    val fo = ForkOptions()
+      .withOutputStrategy(OutputStrategy.StdoutOutput)
+    fork(fo, workingDirectory)
+  }
+
+  def fork(fo0: ForkOptions, workingDirectory: File): Try[Unit] = {
+    val fo = fo0
+      .withWorkingDirectory(workingDirectory)
+    implicit val runner = new ForkRun(fo)
+    val cp = {
+      TestBuildInfo.test_classDirectory +: TestBuildInfo.fullClasspath
+    }
+    val options = Vector(workingDirectory.toString)
+    val log = LogExchange.logger("RunFromSourceMain.fork", None, None)
+    Run.run("sbt.RunFromSourceMain", cp, options, log)
+  }
 
   def main(args: Array[String]): Unit = args match {
     case Array()              => sys.error(s"Must specify working directory as the first argument")
