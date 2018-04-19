@@ -23,7 +23,7 @@ globalDepE in Global := "globalE"
 // ---------------- Derived settings
 
 // verify that deriving is transitive
-inScope(GlobalScope)(Seq(
+inScope(GlobalScope)(
   Def.derive(customA := customB.value + "-a"),
   Def.derive(customB := thisProject.value.id + "-b"),
   // verify that a setting with multiple triggers still only gets added once
@@ -36,7 +36,7 @@ inScope(GlobalScope)(Seq(
   //  if customE were added in Global because of name, there would be an error
   //  because description wouldn't be found
   Def.derive(customE := globalDepE.value + "-" + projectDepE.value)
-))
+)
 
 // ---------------- Projects
 

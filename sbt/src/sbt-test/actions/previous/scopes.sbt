@@ -22,7 +22,7 @@ x in subA in Compile := {
 }
 
 
-inConfig(Compile)(Seq(
+inConfig(Compile)(
 	y in subB := {
 		// verify that the referenced key gets delegated
 		val xty = (x in Test in y).previous getOrElse 0  // 13
@@ -31,7 +31,7 @@ inConfig(Compile)(Seq(
 		println(s"xcy=$xcy, xty=$xty")
 		xty * xcy
 	}
-))
+)
 
 def parser = {
 	import complete.DefaultParsers._

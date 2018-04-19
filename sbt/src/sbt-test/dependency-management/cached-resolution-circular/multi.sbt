@@ -41,8 +41,8 @@ lazy val c = project.
 
 lazy val root = (project in file(".")).
   settings(commonSettings).
-  settings(inThisBuild(Seq(
+  settings(inThisBuild(
     organization := "org.example",
     version := "1.0-SNAPSHOT",
     updateOptions := updateOptions.value.withCachedResolution(true)
-  )))
+  ))
