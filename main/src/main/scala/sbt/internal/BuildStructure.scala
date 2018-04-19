@@ -15,7 +15,7 @@ import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
 import sbt.io.syntax._
-import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
+import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Dag, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
