@@ -1126,22 +1126,21 @@ private[sbt] object Load {
 
   /** These are the settings defined when loading a project "meta" build. */
   val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(
-    Seq(
-      sbtPlugin :== true,
-      pluginData := {
-        val prod = (exportedProducts in Configurations.Runtime).value
-        val cp = (fullClasspath in Configurations.Runtime).value
-        val opts = (scalacOptions in Configurations.Compile).value
-        PluginData(
-          removeEntries(cp, prod),
-          prod,
-          Some(fullResolvers.value.toVector),
-          Some(update.value),
-          opts
-        )
-      },
-      onLoadMessage := ("Loading project definition from " + baseDirectory.value)
-    ))
+    sbtPlugin :== true,
+    pluginData := {
+      val prod = (exportedProducts in Configurations.Runtime).value
+      val cp = (fullClasspath in Configurations.Runtime).value
+      val opts = (scalacOptions in Configurations.Compile).value
+      PluginData(
+        removeEntries(cp, prod),
+        prod,
+        Some(fullResolvers.value.toVector),
+        Some(update.value),
+        opts
+      )
+    },
+    onLoadMessage := ("Loading project definition from " + baseDirectory.value)
+  )
 
   private[this] def removeEntries(
       cp: Seq[Attributed[File]],

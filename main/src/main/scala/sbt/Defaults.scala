@@ -134,9 +134,8 @@ object Defaults extends BuildCommon {
   def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
   def thisBuildCore: Seq[Setting[_]] =
     inScope(GlobalScope.copy(project = Select(ThisBuild)))(
-      Seq(
-        managedDirectory := baseDirectory.value / "lib_managed"
-      ))
+      managedDirectory := baseDirectory.value / "lib_managed"
+    )
   private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter
@@ -294,10 +293,9 @@ object Defaults extends BuildCommon {
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
     inTask(key)(
-      Seq(
-        tags := Seq(Tags.Test -> 1),
-        logBuffered := true
-      ))
+      tags := Seq(Tags.Test -> 1),
+      logBuffered := true
+    )
 
   // TODO: This should be on the new default settings for a project.
   def projectCore: Seq[Setting[_]] = Seq(
@@ -715,21 +713,19 @@ object Defaults extends BuildCommon {
   lazy val ConfigGlobal: Scope = ConfigZero
   def testTaskOptions(key: Scoped): Seq[Setting[_]] =
     inTask(key)(
-      Seq(
-        testListeners := {
-          TestLogger.make(streams.value.log,
-                          closeableTestLogger(streamsManager.value,
-                                              test in resolvedScoped.value.scope,
-                                              logBuffered.value)) +:
-            new TestStatusReporter(succeededFile(streams.in(test).value.cacheDirectory)) +:
-            testListeners.in(TaskZero).value
-        },
-        testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskZero).value,
-        testExecution := testExecutionTask(key).value
-      )) ++ inScope(GlobalScope)(
-      Seq(
-        derive(testGrouping := singleTestGroupDefault.value)
-      ))
+      testListeners := {
+        TestLogger.make(streams.value.log,
+                        closeableTestLogger(streamsManager.value,
+                                            test in resolvedScoped.value.scope,
+                                            logBuffered.value)) +:
+          new TestStatusReporter(succeededFile(streams.in(test).value.cacheDirectory)) +:
+          testListeners.in(TaskZero).value
+      },
+      testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskZero).value,
+      testExecution := testExecutionTask(key).value
+    ) ++ inScope(GlobalScope)(
+      derive(testGrouping := singleTestGroupDefault.value)
+    )
 
   private[this] def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(
       tdef: TestDefinition): TestLogger.PerTest = {
@@ -985,7 +981,7 @@ object Defaults extends BuildCommon {
     ))
 
   lazy val packageConfig: Seq[Setting[_]] =
-    inTask(packageBin)(Seq(
+    inTask(packageBin)(
       packageOptions := {
         val n = name.value
         val ver = version.value
@@ -997,14 +993,13 @@ object Defaults extends BuildCommon {
           Package.addImplManifestAttributes(n, ver, homepage.value, org, orgName) +:
           main.map(Package.MainClass.apply) ++: old
       }
-    )) ++
+    ) ++
       inTask(packageSrc)(
-        Seq(
-          packageOptions := Package.addSpecManifestAttributes(
-            name.value,
-            version.value,
-            organizationName.value) +: packageOptions.value
-        )) ++
+        packageOptions := Package.addSpecManifestAttributes(
+          name.value,
+          version.value,
+          organizationName.value) +: packageOptions.value
+      ) ++
       packageTaskSettings(packageBin, packageBinMappings) ++
       packageTaskSettings(packageSrc, packageSrcMappings) ++
       packageTaskSettings(packageDoc, packageDocMappings) ++
@@ -1081,14 +1076,13 @@ object Defaults extends BuildCommon {
 
   def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
     inTask(key)(
-      Seq(
-        key in TaskZero := packageTask.value,
-        packageConfiguration := packageConfigurationTask.value,
-        mappings := mappingsTask.value,
-        packagedArtifact := (artifact.value -> key.value),
-        artifact := artifactSetting.value,
-        artifactPath := artifactPathSetting(artifact).value
-      ))
+      key in TaskZero := packageTask.value,
+      packageConfiguration := packageConfigurationTask.value,
+      mappings := mappingsTask.value,
+      packagedArtifact := (artifact.value -> key.value),
+      artifact := artifactSetting.value,
+      artifactPath := artifactPathSetting(artifact).value
+    )
 
   def packageTask: Initialize[Task[File]] =
     Def.task {
@@ -1288,49 +1282,48 @@ object Defaults extends BuildCommon {
 
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] =
     inTask(key)(
-      Seq(
-        apiMappings ++= {
-          val dependencyCp = dependencyClasspath.value
-          val log = streams.value.log
-          if (autoAPIMappings.value) APIMappings.extract(dependencyCp, log).toMap
-          else Map.empty[File, URL]
-        },
-        fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
-        key in TaskZero := {
-          val s = streams.value
-          val cs: Compilers = compilers.value
-          val srcs = sources.value
-          val out = target.value
-          val sOpts = scalacOptions.value
-          val xapis = apiMappings.value
-          val hasScala = srcs.exists(_.name.endsWith(".scala"))
-          val hasJava = srcs.exists(_.name.endsWith(".java"))
-          val cp = data(dependencyClasspath.value).toList
-          val label = nameForSrc(configuration.value.name)
-          val fiOpts = fileInputOptions.value
-          val reporter = (compilerReporter in compile).value
-          (hasScala, hasJava) match {
-            case (true, _) =>
-              val options = sOpts ++ Opts.doc.externalAPI(xapis)
-              val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
-                case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
-              }, fiOpts)
-              runDoc(srcs, cp, out, options, maxErrors.value, s.log)
-            case (_, true) =>
-              val javadoc =
-                sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
-              javadoc.run(srcs.toList,
-                          cp,
-                          out,
-                          javacOptions.value.toList,
-                          IncToolOptionsUtil.defaultIncToolOptions(),
-                          s.log,
-                          reporter)
-            case _ => () // do nothing
-          }
-          out
+      apiMappings ++= {
+        val dependencyCp = dependencyClasspath.value
+        val log = streams.value.log
+        if (autoAPIMappings.value) APIMappings.extract(dependencyCp, log).toMap
+        else Map.empty[File, URL]
+      },
+      fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
+      key in TaskZero := {
+        val s = streams.value
+        val cs: Compilers = compilers.value
+        val srcs = sources.value
+        val out = target.value
+        val sOpts = scalacOptions.value
+        val xapis = apiMappings.value
+        val hasScala = srcs.exists(_.name.endsWith(".scala"))
+        val hasJava = srcs.exists(_.name.endsWith(".java"))
+        val cp = data(dependencyClasspath.value).toList
+        val label = nameForSrc(configuration.value.name)
+        val fiOpts = fileInputOptions.value
+        val reporter = (compilerReporter in compile).value
+        (hasScala, hasJava) match {
+          case (true, _) =>
+            val options = sOpts ++ Opts.doc.externalAPI(xapis)
+            val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
+              case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
+            }, fiOpts)
+            runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+          case (_, true) =>
+            val javadoc =
+              sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
+            javadoc.run(srcs.toList,
+                        cp,
+                        out,
+                        javacOptions.value.toList,
+                        IncToolOptionsUtil.defaultIncToolOptions(),
+                        s.log,
+                        reporter)
+          case _ => () // do nothing
         }
-      ))
+        out
+      }
+    )
 
   def mainBgRunTask = mainBgRunTaskForConfig(Select(Runtime))
   def mainBgRunMainTask = mainBgRunMainTaskForConfig(Select(Runtime))
@@ -1630,15 +1623,14 @@ object Defaults extends BuildCommon {
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
     inConfig(Compile)(
-      Seq(
-        scalacOptions := {
-          val old = scalacOptions.value
-          val existing = old.toSet
-          val d = "-deprecation"
-          if (sbtPlugin.value && !existing(d)) d :: old.toList
-          else old
-        }
-      ))
+      scalacOptions := {
+        val old = scalacOptions.value
+        val existing = old.toSet
+        val d = "-deprecation"
+        if (sbtPlugin.value && !existing(d)) d :: old.toList
+        else old
+      }
+    )
 }
 object Classpaths {
   import Keys._
@@ -2146,78 +2138,77 @@ object Classpaths {
   def sbtClassifiersTasks =
     sbtClassifiersGlobalDefaults ++
       inTask(updateSbtClassifiers)(
-        Seq(
-          externalResolvers := {
-            val explicit = buildStructure.value
-              .units(thisProjectRef.value.build)
-              .unit
-              .plugins
-              .pluginData
-              .resolvers
-            explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
-          },
-          ivyConfiguration := InlineIvyConfiguration(
-            paths = ivyPaths.value,
-            resolvers = externalResolvers.value.toVector,
-            otherResolvers = Vector.empty,
-            moduleConfigurations = Vector.empty,
-            lock = Option(lock(appConfiguration.value)),
-            checksums = checksums.value.toVector,
-            managedChecksums = false,
-            resolutionCacheDir = Some(crossTarget.value / "resolution-cache"),
-            updateOptions = UpdateOptions(),
-            log = streams.value.log
-          ),
-          ivySbt := ivySbt0.value,
-          classifiersModule := classifiersModuleTask.value,
-          // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
-          // to fix https://github.com/sbt/sbt/issues/2686
-          scalaVersion := appConfiguration.value.provider.scalaProvider.version,
-          scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
-          scalaModuleInfo := {
-            Some(
-              ScalaModuleInfo(
-                scalaVersion.value,
-                scalaBinaryVersion.value,
-                Vector(),
-                checkExplicit = false,
-                filterImplicit = false,
-                overrideScalaVersion = true).withScalaOrganization(scalaOrganization.value))
-          },
-          updateSbtClassifiers in TaskGlobal := (Def.task {
-            val lm = dependencyResolution.value
-            val s = streams.value
-            val is = ivySbt.value
-            val mod = classifiersModule.value
-            val c = updateConfiguration.value
-            val app = appConfiguration.value
-            val srcTypes = sourceArtifactTypes.value
-            val docTypes = docArtifactTypes.value
-            val log = s.log
-            val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
-            val uwConfig = (unresolvedWarningConfiguration in update).value
-            withExcludes(out, mod.classifiers, lock(app)) {
-              excludes =>
-                // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
-                LibraryManagement.transitiveScratch(
-                  lm,
-                  "sbt",
-                  GetClassifiersConfiguration(
-                    mod,
-                    excludes.toVector,
-                    c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
-                    srcTypes.toVector,
-                    docTypes.toVector
-                  ),
-                  uwConfig,
-                  log
-                ) match {
-                  case Left(_)   => ???
-                  case Right(ur) => ur
-                }
-            }
-          } tag (Tags.Update, Tags.Network)).value
-        )) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
+        externalResolvers := {
+          val explicit = buildStructure.value
+            .units(thisProjectRef.value.build)
+            .unit
+            .plugins
+            .pluginData
+            .resolvers
+          explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
+        },
+        ivyConfiguration := InlineIvyConfiguration(
+          paths = ivyPaths.value,
+          resolvers = externalResolvers.value.toVector,
+          otherResolvers = Vector.empty,
+          moduleConfigurations = Vector.empty,
+          lock = Option(lock(appConfiguration.value)),
+          checksums = checksums.value.toVector,
+          managedChecksums = false,
+          resolutionCacheDir = Some(crossTarget.value / "resolution-cache"),
+          updateOptions = UpdateOptions(),
+          log = streams.value.log
+        ),
+        ivySbt := ivySbt0.value,
+        classifiersModule := classifiersModuleTask.value,
+        // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
+        // to fix https://github.com/sbt/sbt/issues/2686
+        scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+        scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
+        scalaModuleInfo := {
+          Some(
+            ScalaModuleInfo(
+              scalaVersion.value,
+              scalaBinaryVersion.value,
+              Vector(),
+              checkExplicit = false,
+              filterImplicit = false,
+              overrideScalaVersion = true).withScalaOrganization(scalaOrganization.value))
+        },
+        updateSbtClassifiers in TaskGlobal := (Def.task {
+          val lm = dependencyResolution.value
+          val s = streams.value
+          val is = ivySbt.value
+          val mod = classifiersModule.value
+          val c = updateConfiguration.value
+          val app = appConfiguration.value
+          val srcTypes = sourceArtifactTypes.value
+          val docTypes = docArtifactTypes.value
+          val log = s.log
+          val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
+          val uwConfig = (unresolvedWarningConfiguration in update).value
+          withExcludes(out, mod.classifiers, lock(app)) {
+            excludes =>
+              // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
+              LibraryManagement.transitiveScratch(
+                lm,
+                "sbt",
+                GetClassifiersConfiguration(
+                  mod,
+                  excludes.toVector,
+                  c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
+                  srcTypes.toVector,
+                  docTypes.toVector
+                ),
+                uwConfig,
+                log
+              ) match {
+                case Left(_)   => ???
+                case Right(ur) => ur
+              }
+          }
+        } tag (Tags.Update, Tags.Network)).value
+      ) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
 
   def classifiersModuleTask: Initialize[Task[GetClassifiersModule]] =
     Def.task {
@@ -3245,7 +3236,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    * This is useful for reducing test:compile time when not running test.
    */
   def noTestCompletion(config: Configuration = Test): Setting[_] =
-    inConfig(config)(Seq(definedTests := detectTests.value)).head
+    inConfig(config)(definedTests := detectTests.value).head
 
   def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(
       f: ScopedKey[_] => Boolean): Seq[Setting[_]] =
