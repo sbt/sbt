@@ -472,9 +472,11 @@ lazy val proguardedCli = Seq(
   proguardVersion.in(Proguard) := SharedVersions.proguard,
   proguardOptions.in(Proguard) ++= Seq(
     "-dontwarn",
+    "-dontoptimize", // required since the switch to scala 2.12
     "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
     "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}",
-    "-adaptresourcefilenames **.properties"
+    "-adaptresourcefilenames **.properties",
+    """-keep class scala.Symbol { *; }"""
   ),
   javaOptions.in(Proguard, proguard) := Seq("-Xmx3172M"),
   artifactPath.in(Proguard) := proguardDirectory.in(Proguard).value / "coursier-standalone.jar",
