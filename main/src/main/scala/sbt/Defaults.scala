@@ -162,8 +162,7 @@ object Defaults extends BuildCommon {
       artifactClassifier in packageSrc :== Some(SourceClassifier),
       artifactClassifier in packageDoc :== Some(DocClassifier),
       includeFilter :== NothingFilter,
-      includeFilter in unmanagedSources :== ("*.java" | "*.scala") && new SimpleFileFilter(
-        _.isFile),
+      includeFilter in unmanagedSources :== ("*.java" | "*.scala") -- DirectoryFilter,
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
       bgList := { bgJobService.value.jobs },
