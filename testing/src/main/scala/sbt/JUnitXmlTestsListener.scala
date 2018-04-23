@@ -12,7 +12,6 @@ import java.net.InetAddress
 import java.util.Hashtable
 
 import scala.collection.mutable.ListBuffer
-import scala.util.DynamicVariable
 import scala.xml.{ Elem, Node => XNode, XML }
 import testing.{
   Event => TEvent,
@@ -124,21 +123,28 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   }
 
   /**The currently running test suite*/
-  val testSuite = new DynamicVariable(null: TestSuite)
+  private val testSuite = new InheritableThreadLocal[Option[TestSuite]] {
+    override def initialValue(): Option[TestSuite] = None
+  }
+
+  private def withTestSuite[T](f: TestSuite => T) =
+    testSuite.get().map(f).getOrElse(sys.error("no test suite"))
 
   /**Creates the output Dir*/
-  override def doInit() = { targetDir.mkdirs() }
+  override def doInit() = {
+    val _ = targetDir.mkdirs()
+  }
 
   /**
    * Starts a new, initially empty Suite with the given name.
    */
-  override def startGroup(name: String): Unit = testSuite.value_=(new TestSuite(name))
+  override def startGroup(name: String): Unit = testSuite.set(Some(new TestSuite(name)))
 
   /**
    * Adds all details for the given even to the current suite.
    */
   override def testEvent(event: TestEvent): Unit = for (e <- event.detail) {
-    testSuite.value.addEvent(e)
+    withTestSuite(_.addEvent(e))
   }
 
   /**
@@ -174,7 +180,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
       def selector = null
       def throwable = new OptionalThrowable(t)
     }
-    testSuite.value.addEvent(event)
+    withTestSuite(_.addEvent(event))
     writeSuite()
   }
 
@@ -191,10 +197,11 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   private[this] def normalizeName(s: String) = s.replaceAll("""\s+""", "-")
 
   private def writeSuite() = {
-    val file = new File(targetDir, s"${normalizeName(testSuite.value.name)}.xml").getAbsolutePath
+    val file = new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
     // TODO would be nice to have a logger and log this with level debug
     // System.err.println("Writing JUnit XML test report: " + file)
-    XML.save(file, testSuite.value.stop(), "UTF-8", true, null)
+    XML.save(file, withTestSuite(_.stop()), "UTF-8", true, null)
+    testSuite.remove()
   }
 
   /**Does nothing, as we write each file after a suite is done.*/
