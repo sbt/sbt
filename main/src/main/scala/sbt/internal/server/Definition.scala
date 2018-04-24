@@ -210,7 +210,8 @@ private[sbt] object Definition {
   private[sbt] def updateCache[F[_]](cache: Cache[Any])(cacheFile: String, useBinary: Boolean)(
       implicit
       mode: Mode[F],
-      flags: Flags): F[Any] = {
+      flags: Flags
+  ): F[Any] = {
     mode.M.flatMap(AnalysesAccess.getFrom(cache)) {
       case None =>
         AnalysesAccess.putIn(cache, Set(cacheFile -> useBinary -> None), Option(Duration.Inf))

@@ -9,8 +9,10 @@ package sbt
 
 object SelectMainClass {
   // Some(SimpleReader.readLine _)
-  def apply(promptIfMultipleChoices: Option[String => Option[String]],
-            mainClasses: Seq[String]): Option[String] = {
+  def apply(
+      promptIfMultipleChoices: Option[String => Option[String]],
+      mainClasses: Seq[String]
+  ): Option[String] = {
     mainClasses.toList match {
       case Nil         => None
       case head :: Nil => Some(head)

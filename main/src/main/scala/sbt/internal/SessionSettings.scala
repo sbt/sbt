@@ -40,8 +40,10 @@ final case class SessionSettings(
     currentEval: () => Eval
 ) {
 
-  assert(currentProject contains currentBuild,
-         s"Current build ($currentBuild) not associated with a current project.")
+  assert(
+    currentProject contains currentBuild,
+    s"Current build ($currentBuild) not associated with a current project."
+  )
 
   /**
    * Modifiy the current state.
@@ -52,9 +54,11 @@ final case class SessionSettings(
    * @return  A new SessionSettings object
    */
   def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings =
-    copy(currentBuild = build,
-         currentProject = currentProject.updated(build, project),
-         currentEval = eval)
+    copy(
+      currentBuild = build,
+      currentProject = currentProject.updated(build, project),
+      currentEval = eval
+    )
 
   /**
    * @return  The current ProjectRef with which we scope settings.
@@ -147,7 +151,8 @@ object SessionSettings {
     val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
     if (newSession.append.isEmpty && oldSettings.nonEmpty)
       oldState.log.warn(
-        "Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")
+        "Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings."
+      )
   }
 
   def removeRanges[T](in: Seq[T], ranges: Seq[(Int, Int)]): Seq[T] = {
@@ -197,10 +202,12 @@ object SessionSettings {
       reapply(newSession.copy(original = newSession.mergeSettings, append = Map.empty), s)
     }
 
-  def writeSettings(pref: ProjectRef,
-                    settings: List[SessionSetting],
-                    original: Seq[Setting[_]],
-                    structure: BuildStructure): (Seq[SessionSetting], Seq[Setting[_]]) = {
+  def writeSettings(
+      pref: ProjectRef,
+      settings: List[SessionSetting],
+      original: Seq[Setting[_]],
+      structure: BuildStructure
+  ): (Seq[SessionSetting], Seq[Setting[_]]) = {
     val project =
       Project.getProject(pref, structure).getOrElse(sys.error("Invalid project reference " + pref))
     val writeTo: File = BuildPaths
@@ -224,9 +231,10 @@ object SessionSettings {
         val RangePosition(_, r @ LineRange(start, end)) = s.pos
         settings find (_._1.key == s.key) match {
           case Some(ss @ (ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
-            val shifted = ns withPos RangePosition(path,
-                                                   LineRange(start - offs,
-                                                             start - offs + newLines.size))
+            val shifted = ns withPos RangePosition(
+              path,
+              LineRange(start - offs, start - offs + newLines.size)
+            )
             (offs + end - start - newLines.size, shifted :: olds, ss +: repl)
           case _ =>
             val shifted = s withPos RangePosition(path, r shift -offs)
@@ -324,9 +332,11 @@ save, save-all
   lazy val parser =
     token(Space) ~>
       (token("list-all" ^^^ new Print(true)) | token("list" ^^^ new Print(false)) | token(
-        "clear" ^^^ new Clear(false)) |
+        "clear" ^^^ new Clear(false)
+      ) |
         token("save-all" ^^^ new Save(true)) | token("save" ^^^ new Save(false)) | token(
-        "clear-all" ^^^ new Clear(true)) |
+        "clear-all" ^^^ new Clear(true)
+      ) |
         remove)
 
   lazy val remove = token("remove") ~> token(Space) ~> natSelect.map(ranges => new Remove(ranges))

@@ -46,11 +46,13 @@ object InitializeConvert extends Convert {
     Converted.Success(t)
   }
 
-  private def failTask[C <: blackbox.Context with Singleton](c: C)(
-      pos: c.Position): Converted[c.type] =
+  private def failTask[C <: blackbox.Context with Singleton](
+      c: C
+  )(pos: c.Position): Converted[c.type] =
     Converted.Failure(pos, "A setting cannot depend on a task")
-  private def failPrevious[C <: blackbox.Context with Singleton](c: C)(
-      pos: c.Position): Converted[c.type] =
+  private def failPrevious[C <: blackbox.Context with Singleton](
+      c: C
+  )(pos: c.Position): Converted[c.type] =
     Converted.Failure(pos, "A setting cannot depend on a task's previous value.")
 }
 
@@ -59,11 +61,14 @@ object SettingMacro {
   def settingMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
     Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
       Left(t),
-      Instance.idTransform[c.type])
+      Instance.idTransform[c.type]
+    )
 
-  def settingDynMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
-      t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
+  def settingDynMacroImpl[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
     Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
       Right(t),
-      Instance.idTransform[c.type])
+      Instance.idTransform[c.type]
+    )
 }

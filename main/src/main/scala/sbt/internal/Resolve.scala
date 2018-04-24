@@ -11,10 +11,12 @@ package internal
 import sbt.internal.util.AttributeKey
 
 object Resolve {
-  def apply(index: BuildUtil[_],
-            current: ScopeAxis[Reference],
-            key: AttributeKey[_],
-            mask: ScopeMask): Scope => Scope = {
+  def apply(
+      index: BuildUtil[_],
+      current: ScopeAxis[Reference],
+      key: AttributeKey[_],
+      mask: ScopeMask
+  ): Scope => Scope = {
     val rs =
       resolveProject(current, mask) _ ::
         resolveExtra(mask) _ ::
@@ -39,7 +41,8 @@ object Resolve {
     else scope.copy(extra = Zero)
 
   def resolveConfig[P](index: BuildUtil[P], key: AttributeKey[_], mask: ScopeMask)(
-      scope: Scope): Scope =
+      scope: Scope
+  ): Scope =
     if (mask.config)
       scope
     else {

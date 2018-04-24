@@ -26,9 +26,10 @@ sealed trait Converted[C <: blackbox.Context with Singleton] {
 }
 object Converted {
   def NotApplicable[C <: blackbox.Context with Singleton] = new NotApplicable[C]
-  final case class Failure[C <: blackbox.Context with Singleton](position: C#Position,
-                                                                 message: String)
-      extends Converted[C] {
+  final case class Failure[C <: blackbox.Context with Singleton](
+      position: C#Position,
+      message: String
+  ) extends Converted[C] {
     def isSuccess = false
     def transform(f: C#Tree => C#Tree): Converted[C] = new Failure(position, message)
   }
@@ -36,9 +37,10 @@ object Converted {
     def isSuccess = false
     def transform(f: C#Tree => C#Tree): Converted[C] = this
   }
-  final case class Success[C <: blackbox.Context with Singleton](tree: C#Tree,
-                                                                 finalTransform: C#Tree => C#Tree)
-      extends Converted[C] {
+  final case class Success[C <: blackbox.Context with Singleton](
+      tree: C#Tree,
+      finalTransform: C#Tree => C#Tree
+  ) extends Converted[C] {
     def isSuccess = true
     def transform(f: C#Tree => C#Tree): Converted[C] = Success(f(tree), finalTransform)
   }

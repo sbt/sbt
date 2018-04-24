@@ -20,14 +20,16 @@ import sbt.internal.util.Attributed.data
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
-final class BuildStructure(val units: Map[URI, LoadedBuildUnit],
-                           val root: URI,
-                           val settings: Seq[Setting[_]],
-                           val data: Settings[Scope],
-                           val index: StructureIndex,
-                           val streams: State => Streams,
-                           val delegates: Scope => Seq[Scope],
-                           val scopeLocal: ScopeLocal) {
+final class BuildStructure(
+    val units: Map[URI, LoadedBuildUnit],
+    val root: URI,
+    val settings: Seq[Setting[_]],
+    val data: Settings[Scope],
+    val index: StructureIndex,
+    val streams: State => Streams,
+    val delegates: Scope => Seq[Scope],
+    val scopeLocal: ScopeLocal
+) {
   val rootProject: URI => String = Load getRootProject units
   def allProjects: Seq[ResolvedProject] = units.values.flatMap(_.defined.values).toSeq
   def allProjects(build: URI): Seq[ResolvedProject] =
@@ -59,11 +61,12 @@ final class StructureIndex(
  * @param rootProjects The list of project IDs for the projects considered roots of this build.
  *                The first root project is used as the default in several situations where a project is not otherwise selected.
  */
-final class LoadedBuildUnit(val unit: BuildUnit,
-                            val defined: Map[String, ResolvedProject],
-                            val rootProjects: Seq[String],
-                            val buildSettings: Seq[Setting[_]])
-    extends BuildUnitBase {
+final class LoadedBuildUnit(
+    val unit: BuildUnit,
+    val defined: Map[String, ResolvedProject],
+    val rootProjects: Seq[String],
+    val buildSettings: Seq[Setting[_]]
+) extends BuildUnitBase {
 
   /**
    * The project to use as the default when one is not otherwise selected.
@@ -72,7 +75,8 @@ final class LoadedBuildUnit(val unit: BuildUnit,
   val root = rootProjects match {
     case Nil =>
       throw new java.lang.AssertionError(
-        "assertion failed: No root projects defined for build unit " + unit)
+        "assertion failed: No root projects defined for build unit " + unit
+      )
     case Seq(root, _*) => root
   }
 
@@ -157,8 +161,10 @@ case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Bo
  * @param builds The [[BuildDef]]s detected in the build definition.
  *               This does not include the default [[BuildDef]] that sbt creates if none is defined.
  */
-final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin],
-                            val builds: DetectedModules[BuildDef]) {
+final class DetectedPlugins(
+    val autoPlugins: Seq[DetectedAutoPlugin],
+    val builds: DetectedModules[BuildDef]
+) {
 
   /**
    * Sequence of import expressions for the build definition.
@@ -201,10 +207,12 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin],
  * @param loader The class loader for the build definition project, notably excluding classes used for .sbt files.
  * @param detected Auto-detected modules in the build definition.
  */
-final class LoadedPlugins(val base: File,
-                          val pluginData: PluginData,
-                          val loader: ClassLoader,
-                          val detected: DetectedPlugins) {
+final class LoadedPlugins(
+    val base: File,
+    val pluginData: PluginData,
+    val loader: ClassLoader,
+    val detected: DetectedPlugins
+) {
   def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
   def classpath = data(fullClasspath)
 }
@@ -215,10 +223,12 @@ final class LoadedPlugins(val base: File,
  * @param localBase The working location of the build on the filesystem.
  *        For local URIs, this is the same as `uri`, but for remote URIs, this is the local copy or workspace allocated for the build.
  */
-final class BuildUnit(val uri: URI,
-                      val localBase: File,
-                      val definitions: LoadedDefinitions,
-                      val plugins: LoadedPlugins) {
+final class BuildUnit(
+    val uri: URI,
+    val localBase: File,
+    val definitions: LoadedDefinitions,
+    val plugins: LoadedPlugins
+) {
   override def toString =
     if (uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase + ")")
 }
@@ -234,11 +244,12 @@ final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]) {
 }
 final class PartBuild(val root: URI, val units: Map[URI, PartBuildUnit])
 sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[_]] }
-final class PartBuildUnit(val unit: BuildUnit,
-                          val defined: Map[String, Project],
-                          val rootProjects: Seq[String],
-                          val buildSettings: Seq[Setting[_]])
-    extends BuildUnitBase {
+final class PartBuildUnit(
+    val unit: BuildUnit,
+    val defined: Map[String, Project],
+    val rootProjects: Seq[String],
+    val buildSettings: Seq[Setting[_]]
+) extends BuildUnitBase {
   def resolve(f: Project => ResolvedProject): LoadedBuildUnit =
     new LoadedBuildUnit(unit, defined mapValues f toMap, rootProjects, buildSettings)
   def resolveRefs(f: ProjectReference => ProjectRef): LoadedBuildUnit = resolve(_ resolve f)
@@ -251,29 +262,37 @@ object BuildStreams {
   final val BuildUnitPath = "$build"
   final val StreamsDirectory = "streams"
 
-  def mkStreams(units: Map[URI, LoadedBuildUnit],
-                root: URI,
-                data: Settings[Scope]): State => Streams = s => {
+  def mkStreams(
+      units: Map[URI, LoadedBuildUnit],
+      root: URI,
+      data: Settings[Scope]
+  ): State => Streams = s => {
     implicit val isoString: sjsonnew.IsoString[JValue] =
-      sjsonnew.IsoString.iso(sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
-                             sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe)
+      sjsonnew.IsoString.iso(
+        sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
+        sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
+      )
     (s get Keys.stateStreams) getOrElse {
-      std.Streams(path(units, root, data),
-                  displayFull,
-                  LogManager.construct(data, s),
-                  sjsonnew.support.scalajson.unsafe.Converter)
+      std.Streams(
+        path(units, root, data),
+        displayFull,
+        LogManager.construct(data, s),
+        sjsonnew.support.scalajson.unsafe.Converter
+      )
     }
   }
 
   def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(
-      scoped: ScopedKey[_]): File =
+      scoped: ScopedKey[_]
+  ): File =
     resolvePath(projectPath(units, root, scoped, data), nonProjectPath(scoped))
 
   def resolvePath(base: File, components: Seq[String]): File =
     (base /: components)((b, p) => new File(b, p))
 
   def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(
-      show: T => String): String =
+      show: T => String
+  ): String =
     axis match {
       case Zero => GlobalPath
       case This =>
@@ -292,10 +311,12 @@ object BuildStreams {
     a.entries.toSeq.sortBy(_.key.label).map {
       case AttributeEntry(key, value) => key.label + "=" + value.toString
     } mkString (" ")
-  def projectPath(units: Map[URI, LoadedBuildUnit],
-                  root: URI,
-                  scoped: ScopedKey[_],
-                  data: Settings[Scope]): File =
+  def projectPath(
+      units: Map[URI, LoadedBuildUnit],
+      root: URI,
+      scoped: ScopedKey[_],
+      data: Settings[Scope]
+  ): File =
     scoped.scope.project match {
       case Zero                             => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
       case Select(br @ BuildRef(uri))       => refTarget(br, units(uri).localBase, data) / BuildUnitPath

@@ -126,20 +126,24 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
     val buildUnit: BuildUnit = {
       val loadedPlugins: LoadedPlugins =
-        noPlugins(projectStandard(baseFile),
-                  config.copy(pluginManagement = config.pluginManagement.forPlugin))
+        noPlugins(
+          projectStandard(baseFile),
+          config.copy(pluginManagement = config.pluginManagement.forPlugin)
+        )
 
       val project: Project = {
         val project0 = Project("t", baseFile) settings projectSettings
         val fileToLoadedSbtFileMap = new mutable.HashMap[File, LoadedSbtFile]
         val autoPlugins = loadedPlugins.detected.deducePluginsFromProject(project0, state.log)
         val injectSettings = config.injectSettings
-        resolveProject(project0,
-                       autoPlugins,
-                       loadedPlugins,
-                       injectSettings,
-                       fileToLoadedSbtFileMap,
-                       state.log)
+        resolveProject(
+          project0,
+          autoPlugins,
+          loadedPlugins,
+          injectSettings,
+          fileToLoadedSbtFileMap,
+          state.log
+        )
       }
 
       val projects: Seq[Project] = Seq(project)
@@ -160,7 +164,8 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     val units: Map[URI, LoadedBuildUnit] = loadedBuild.units
 
     val settings: Seq[Setting[_]] = finalTransforms(
-      buildConfigurations(loadedBuild, getRootProject(units), config.injectSettings))
+      buildConfigurations(loadedBuild, getRootProject(units), config.injectSettings)
+    )
     val delegates: Scope => Seq[Scope] = defaultDelegates(loadedBuild)
     val scopeLocal: ScopeLocal = EvaluateTask.injectStreams
     val display: Show[ScopedKey[_]] = Project showLoadingKey loadedBuild
@@ -200,7 +205,8 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     "t/startYear" in qok("null", "scala.Option[Int]")
     "t/scalaArtifacts" in qok(
       """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
-      "scala.collection.Seq[java.lang.String]")
+      "scala.collection.Seq[java.lang.String]"
+    )
 
     "t/libraryDependencies" in qok(
       """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
@@ -209,8 +215,10 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
     "scalaVersion" in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
     "t/scalacOptions" in qko(
-      s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"t\\") / Compile / scalacOptions is a task, can only query settings""")
+      s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"t\\") / Compile / scalacOptions is a task, can only query settings"""
+    )
     "t/fooo" in qko(
-      "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^")
+      "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^"
+    )
   }
 }

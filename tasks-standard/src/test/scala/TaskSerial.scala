@@ -50,9 +50,11 @@ object TaskSerial extends Properties("task serial") {
   }
    */
 
-  def checkArbitrary(size: Int,
-                     restrictions: ConcurrentRestrictions[Task[_]],
-                     shouldSucceed: Boolean) = {
+  def checkArbitrary(
+      size: Int,
+      restrictions: ConcurrentRestrictions[Task[_]],
+      shouldSucceed: Boolean
+  ) = {
     val latch = task { new CountDownLatch(size) }
     def mktask = latch map { l =>
       l.countDown()
@@ -74,20 +76,26 @@ object TaskSerial extends Properties("task serial") {
 }
 
 object TaskTest {
-  def run[T](root: Task[T],
-             checkCycles: Boolean,
-             restrictions: ConcurrentRestrictions[Task[_]]): Result[T] = {
+  def run[T](
+      root: Task[T],
+      checkCycles: Boolean,
+      restrictions: ConcurrentRestrictions[Task[_]]
+  ): Result[T] = {
     val (service, shutdown) =
       completionService[Task[_], Completed](restrictions, (x: String) => System.err.println(x))
 
-    val x = new Execute[Task](Execute.config(checkCycles),
-                              Execute.noTriggers,
-                              ExecuteProgress.empty[Task])(taskToNode(idK[Task]))
+    val x = new Execute[Task](
+      Execute.config(checkCycles),
+      Execute.noTriggers,
+      ExecuteProgress.empty[Task]
+    )(taskToNode(idK[Task]))
     try { x.run(root)(service) } finally { shutdown() }
   }
-  def tryRun[T](root: Task[T],
-                checkCycles: Boolean,
-                restrictions: ConcurrentRestrictions[Task[_]]): T =
+  def tryRun[T](
+      root: Task[T],
+      checkCycles: Boolean,
+      restrictions: ConcurrentRestrictions[Task[_]]
+  ): T =
     run(root, checkCycles, restrictions) match {
       case Value(v) => v
       case Inc(i)   => throw i

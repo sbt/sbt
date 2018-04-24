@@ -113,8 +113,9 @@ object TrapExit {
    * Recurses into the causes of the given exception looking for a cause of type CauseType.  If one is found, `withType` is called with that cause.
    *  If not, `notType` is called with the root cause.
    */
-  private def withCause[CauseType <: Throwable, T](e: Throwable)(withType: CauseType => T)(
-      notType: Throwable => T)(implicit mf: Manifest[CauseType]): T = {
+  private def withCause[CauseType <: Throwable, T](
+      e: Throwable
+  )(withType: CauseType => T)(notType: Throwable => T)(implicit mf: Manifest[CauseType]): T = {
     val clazz = mf.runtimeClass
     if (clazz.isInstance(e))
       withType(e.asInstanceOf[CauseType])
@@ -348,8 +349,10 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     // takes a snapshot of the threads in `toProcess`, acquiring nested locks on each group to do so
     // the thread groups are accumulated in `accum` and then the threads in each are collected all at
     // once while they are all locked.  This is the closest thing to a snapshot that can be accomplished.
-    private[this] def threadsInGroups(toProcess: List[ThreadGroup],
-                                      accum: List[ThreadGroup]): List[Thread] = toProcess match {
+    private[this] def threadsInGroups(
+        toProcess: List[ThreadGroup],
+        accum: List[ThreadGroup]
+    ): List[Thread] = toProcess match {
       case group :: tail =>
         // ThreadGroup implementation synchronizes on its methods, so by synchronizing here, we can workaround its quirks somewhat
         group.synchronized {
@@ -521,9 +524,10 @@ private final class ExitCode {
  * The default uncaught exception handler for managed executions.
  * It logs the thread and the exception.
  */
-private final class LoggingExceptionHandler(log: Logger,
-                                            delegate: Option[Thread.UncaughtExceptionHandler])
-    extends Thread.UncaughtExceptionHandler {
+private final class LoggingExceptionHandler(
+    log: Logger,
+    delegate: Option[Thread.UncaughtExceptionHandler]
+) extends Thread.UncaughtExceptionHandler {
   def uncaughtException(t: Thread, e: Throwable): Unit = {
     log.error("(" + t.getName + ") " + e.toString)
     log.trace(e)

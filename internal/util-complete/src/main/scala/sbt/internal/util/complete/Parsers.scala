@@ -44,7 +44,8 @@ trait Parsers {
 
   /** Parses a single hexadecimal digit (0-9, a-f, A-F). */
   lazy val HexDigit = charClass(c => HexDigitSet(c.toUpper), "hex digit") examples HexDigitSet.map(
-    _.toString)
+    _.toString
+  )
 
   /** Parses a single letter, according to Char.isLetter, into a Char. */
   lazy val Letter = charClass(_.isLetter, "letter")

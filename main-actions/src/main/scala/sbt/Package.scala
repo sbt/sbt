@@ -49,9 +49,11 @@ object Package {
     }
   }
 
-  final class Configuration(val sources: Seq[(File, String)],
-                            val jar: File,
-                            val options: Seq[PackageOption])
+  final class Configuration(
+      val sources: Seq[(File, String)],
+      val jar: File,
+      val options: Seq[PackageOption]
+  )
   def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
@@ -65,9 +67,9 @@ object Package {
     }
     setVersion(main)
 
+    type Inputs = Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
     val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") {
-      (inChanged,
-       inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
+      (inChanged, inputs: Inputs) =>
         import exists.format
         val sources :+: _ :+: manifest :+: HNil = inputs
         inputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
@@ -95,11 +97,13 @@ object Package {
     val attribVals = Seq(name, version, orgName)
     ManifestAttributes(attribKeys zip attribVals: _*)
   }
-  def addImplManifestAttributes(name: String,
-                                version: String,
-                                homepage: Option[java.net.URL],
-                                org: String,
-                                orgName: String): PackageOption = {
+  def addImplManifestAttributes(
+      name: String,
+      version: String,
+      homepage: Option[java.net.URL],
+      org: String,
+      orgName: String
+  ): PackageOption = {
     import Attributes.Name._
 
     // The ones in Attributes.Name are deprecated saying:

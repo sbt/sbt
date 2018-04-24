@@ -49,8 +49,9 @@ abstract class JLine extends LineReader {
 
   private[this] def readLineDirect(prompt: String, mask: Option[Char]): Option[String] =
     if (handleCONT)
-      Signals.withHandler(() => resume(), signal = Signals.CONT)(() =>
-        readLineDirectRaw(prompt, mask))
+      Signals.withHandler(() => resume(), signal = Signals.CONT)(
+        () => readLineDirectRaw(prompt, mask)
+      )
     else
       readLineDirectRaw(prompt, mask)
 

@@ -29,8 +29,9 @@ object ContextUtil {
    * Given `myImplicitConversion(someValue).extensionMethod`, where `extensionMethod` is a macro that uses this
    * method, the result of this method is `f(<Tree of someValue>)`.
    */
-  def selectMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
-      f: (c.Expr[Any], c.Position) => c.Expr[T]): c.Expr[T] = {
+  def selectMacroImpl[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(f: (c.Expr[Any], c.Position) => c.Expr[T]): c.Expr[T] = {
     import c.universe._
     c.macroApplication match {
       case s @ Select(Apply(_, t :: Nil), _) => f(c.Expr[Any](t), s.pos)
@@ -211,12 +212,14 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   def changeOwner(tree: Tree, prev: Symbol, next: Symbol): Unit =
     new ChangeOwnerAndModuleClassTraverser(
       prev.asInstanceOf[global.Symbol],
-      next.asInstanceOf[global.Symbol]).traverse(tree.asInstanceOf[global.Tree])
+      next.asInstanceOf[global.Symbol]
+    ).traverse(tree.asInstanceOf[global.Tree])
 
   // Workaround copied from scala/async:can be removed once https://github.com/scala/scala/pull/3179 is merged.
-  private[this] class ChangeOwnerAndModuleClassTraverser(oldowner: global.Symbol,
-                                                         newowner: global.Symbol)
-      extends global.ChangeOwnerTraverser(oldowner, newowner) {
+  private[this] class ChangeOwnerAndModuleClassTraverser(
+      oldowner: global.Symbol,
+      newowner: global.Symbol
+  ) extends global.ChangeOwnerTraverser(oldowner, newowner) {
     override def traverse(tree: global.Tree): Unit = {
       tree match {
         case _: global.DefTree => change(tree.symbol.moduleClass)
@@ -248,7 +251,8 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
    * the type constructor `[x] List[x]`.
    */
   def extractTC(tcp: AnyRef with Singleton, name: String)(
-      implicit it: ctx.TypeTag[tcp.type]): ctx.Type = {
+      implicit it: ctx.TypeTag[tcp.type]
+  ): ctx.Type = {
     val itTpe = it.tpe.asInstanceOf[global.Type]
     val m = itTpe.nonPrivateMember(global.newTypeName(name))
     val tc = itTpe.memberInfo(m).asInstanceOf[ctx.universe.Type]
@@ -262,8 +266,10 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
    * Typically, `f` is a `Select` or `Ident`.
    * The wrapper is replaced with the result of `subWrapper(<Type of T>, <Tree of v>, <wrapper Tree>)`
    */
-  def transformWrappers(t: Tree,
-                        subWrapper: (String, Type, Tree, Tree) => Converted[ctx.type]): Tree = {
+  def transformWrappers(
+      t: Tree,
+      subWrapper: (String, Type, Tree, Tree) => Converted[ctx.type]
+  ): Tree = {
     // the main tree transformer that replaces calls to InputWrapper.wrap(x) with
     //  plain Idents that reference the actual input value
     object appTransformer extends Transformer {

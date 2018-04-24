@@ -134,7 +134,8 @@ final class ScriptedTests(
 
       def logTests(size: Int, how: String) =
         log.info(
-          f"Running $size / $totalSize (${size * 100D / totalSize}%3.2f%%) scripted tests with $how")
+          f"Running $size / $totalSize (${size * 100D / totalSize}%3.2f%%) scripted tests with $how"
+        )
       logTests(runFromSourceBasedTests.size, "RunFromSourceMain")
       logTests(launcherBasedTests.size, "sbt/launcher")
 

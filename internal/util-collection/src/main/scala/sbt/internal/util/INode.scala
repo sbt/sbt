@@ -170,8 +170,10 @@ abstract class EvaluateSettings[Scope] {
     }
 
     protected final def setValue(v: T): Unit = {
-      assert(state != Evaluated,
-             "Already evaluated (trying to set value to " + v + "): " + toString)
+      assert(
+        state != Evaluated,
+        "Already evaluated (trying to set value to " + v + "): " + toString
+      )
       if (v == null) sys.error("Setting value cannot be null: " + keyString)
       value = v
       state = Evaluated

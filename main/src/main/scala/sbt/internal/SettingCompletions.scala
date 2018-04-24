@@ -24,9 +24,11 @@ import DefaultParsers._
  * The verbose summary will typically use more vertical space and show full details,
  * while the quiet summary will be a couple of lines and truncate information.
  */
-private[sbt] class SetResult(val session: SessionSettings,
-                             val verboseSummary: String,
-                             val quietSummary: String)
+private[sbt] class SetResult(
+    val session: SessionSettings,
+    val verboseSummary: String,
+    val quietSummary: String
+)
 
 /** Defines methods for implementing the `set` command.*/
 private[sbt] object SettingCompletions {
@@ -41,9 +43,12 @@ private[sbt] object SettingCompletions {
     val r = relation(extracted.structure, true)
     val allDefs = Def
       .flattenLocals(
-        Def.compiled(extracted.structure.settings, true)(structure.delegates,
-                                                         structure.scopeLocal,
-                                                         implicitly[Show[ScopedKey[_]]]))
+        Def.compiled(extracted.structure.settings, true)(
+          structure.delegates,
+          structure.scopeLocal,
+          implicitly[Show[ScopedKey[_]]]
+        )
+      )
       .keys
     val projectScope = Load.projectScope(currentRef)
     def resolve(s: Setting[_]): Seq[Setting[_]] =
@@ -72,9 +77,11 @@ private[sbt] object SettingCompletions {
     val append =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newSession = session.appendSettings(append map (a => (a, arg.split('\n').toList)))
-    val r = relation(newSession.mergeSettings, true)(structure.delegates,
-                                                     structure.scopeLocal,
-                                                     implicitly)
+    val r = relation(newSession.mergeSettings, true)(
+      structure.delegates,
+      structure.scopeLocal,
+      implicitly
+    )
     setResult(newSession, r, append)
   }
 
@@ -149,9 +156,11 @@ private[sbt] object SettingCompletions {
   }
 
   /** Parser for a Scope+AttributeKey (ScopedKey). */
-  def scopedKeyParser(keyMap: Map[String, AttributeKey[_]],
-                      settings: Settings[Scope],
-                      context: ResolvedProject): Parser[ScopedKey[_]] = {
+  def scopedKeyParser(
+      keyMap: Map[String, AttributeKey[_]],
+      settings: Settings[Scope],
+      context: ResolvedProject
+  ): Parser[ScopedKey[_]] = {
     val cutoff = KeyRanks.MainCutoff
     val keyCompletions = fixedCompletions { (seen, level) =>
       completeKey(seen, keyMap, level, cutoff, 10).toSet
@@ -186,9 +195,11 @@ private[sbt] object SettingCompletions {
    * The completions are restricted to be more useful.  Currently, this parser will suggest
    * only known axis values for configurations and tasks and only in that order.
    */
-  def scopeParser(key: AttributeKey[_],
-                  settings: Settings[Scope],
-                  context: ResolvedProject): Parser[Scope] = {
+  def scopeParser(
+      key: AttributeKey[_],
+      settings: Settings[Scope],
+      context: ResolvedProject
+  ): Parser[Scope] = {
     val data = settings.data
     val allScopes = data.keys.toSeq
     val definedScopes = data.toSeq flatMap {
@@ -277,11 +288,13 @@ private[sbt] object SettingCompletions {
     completeDescribed(seen, true, applicable)(assignDescription)
   }
 
-  def completeKey(seen: String,
-                  keys: Map[String, AttributeKey[_]],
-                  level: Int,
-                  prominentCutoff: Int,
-                  detailLimit: Int): Seq[Completion] =
+  def completeKey(
+      seen: String,
+      keys: Map[String, AttributeKey[_]],
+      level: Int,
+      prominentCutoff: Int,
+      detailLimit: Int
+  ): Seq[Completion] =
     completeSelectDescribed(seen, level, keys, detailLimit)(_.description) {
       case (_, v) => v.rank <= prominentCutoff
     }
@@ -290,13 +303,15 @@ private[sbt] object SettingCompletions {
       seen: String,
       level: Int,
       definedChoices: Set[String],
-      allChoices: Map[String, T])(description: T => Option[String]): Seq[Completion] =
+      allChoices: Map[String, T]
+  )(description: T => Option[String]): Seq[Completion] =
     completeSelectDescribed(seen, level, allChoices, 10)(description) {
       case (k, _) => definedChoices(k)
     }
 
   def completeSelectDescribed[T](seen: String, level: Int, all: Map[String, T], detailLimit: Int)(
-      description: T => Option[String])(prominent: (String, T) => Boolean): Seq[Completion] = {
+      description: T => Option[String]
+  )(prominent: (String, T) => Boolean): Seq[Completion] = {
     val applicable = all.toSeq.filter { case (k, _) => k startsWith seen }
     val prominentOnly = applicable filter { case (k, v) => prominent(k, v) }
 
@@ -306,7 +321,8 @@ private[sbt] object SettingCompletions {
     completeDescribed(seen, showDescriptions, showKeys)(s => description(s).toList.mkString)
   }
   def completeDescribed[T](seen: String, showDescriptions: Boolean, in: Seq[(String, T)])(
-      description: T => String): Seq[Completion] = {
+      description: T => String
+  ): Seq[Completion] = {
     def appendString(id: String): String = id.stripPrefix(seen) + " "
     if (in.isEmpty)
       Nil
@@ -337,7 +353,8 @@ private[sbt] object SettingCompletions {
   def keyType[S](key: AttributeKey[_])(
       onSetting: Manifest[_] => S,
       onTask: Manifest[_] => S,
-      onInput: Manifest[_] => S)(implicit tm: Manifest[Task[_]], im: Manifest[InputTask[_]]): S = {
+      onInput: Manifest[_] => S
+  )(implicit tm: Manifest[Task[_]], im: Manifest[InputTask[_]]): S = {
     def argTpe = key.manifest.typeArguments.head
     val TaskClass = tm.runtimeClass
     val InputTaskClass = im.runtimeClass

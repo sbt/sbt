@@ -35,8 +35,9 @@ trait TupleBuilder {
   type Inputs[U <: Universe with Singleton] = List[Instance.Input[U]]
 
   /** Constructs a one-time use Builder for Context `c` and type constructor `tcType`. */
-  def make(c: blackbox.Context)(tcType: c.Type,
-                                inputs: Inputs[c.universe.type]): BuilderResult[c.type]
+  def make(
+      c: blackbox.Context
+  )(tcType: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type]
 }
 
 trait BuilderResult[C <: blackbox.Context with Singleton] {

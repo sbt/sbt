@@ -74,8 +74,10 @@ final case class Task[T](info: Info[T], work: Action[T]) {
  * @param attributes Arbitrary user-defined key/value pairs describing this task
  * @param post a transformation that takes the result of evaluating this task and produces user-defined key/value pairs.
  */
-final case class Info[T](attributes: AttributeMap = AttributeMap.empty,
-                         post: T => AttributeMap = const(AttributeMap.empty)) {
+final case class Info[T](
+    attributes: AttributeMap = AttributeMap.empty,
+    post: T => AttributeMap = const(AttributeMap.empty)
+) {
   import Info._
   def name = attributes.get(Name)
   def description = attributes.get(Description)

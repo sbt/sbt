@@ -24,7 +24,8 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
     "find valid standard scala identifier with comma" in {
       textProcessor.identifier("def foo(a: identifier, b: other) = ???", 13) must beSome(
-        "identifier")
+        "identifier"
+      )
     }
     "find valid standard short scala identifier when caret is set at the start of it" in {
       textProcessor.identifier("val a = 0", 4) must beSome("a")
@@ -88,11 +89,13 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
     "match class in line version 4" in {
       textProcessor.classTraitObjectInLine("A")("   class    A[A]  ") must contain(
-        ("class    A", 3))
+        ("class    A", 3)
+      )
     }
     "match class in line version 5" in {
       textProcessor.classTraitObjectInLine("A")("   class    A  [A] ") must contain(
-        ("class    A", 3))
+        ("class    A", 3)
+      )
     }
     "match class in line version 6" in {
       textProcessor.classTraitObjectInLine("A")("class A[A[_]] {") must contain(("class A", 0))
@@ -111,11 +114,13 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
     "match trait in line version 4" in {
       textProcessor.classTraitObjectInLine("A")("   trait    A[A]  ") must contain(
-        ("trait    A", 3))
+        ("trait    A", 3)
+      )
     }
     "match trait in line version 5" in {
       textProcessor.classTraitObjectInLine("A")("   trait    A  [A] ") must contain(
-        ("trait    A", 3))
+        ("trait    A", 3)
+      )
     }
     "match trait in line version 6" in {
       textProcessor.classTraitObjectInLine("A")("trait A[A[_]] {") must contain(("trait A", 0))

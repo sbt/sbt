@@ -21,8 +21,10 @@ object BasicCommandStrings {
   val TerminateAction: String = Exit
 
   def helpBrief =
-    (HelpCommand,
-     s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
+    (
+      HelpCommand,
+      s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>')."
+    )
   def helpDetailed = s"""$HelpCommand
 
 	Prints a help summary.
@@ -131,8 +133,10 @@ $HelpCommand <regular expression>
 
   def Multi = ";"
   def MultiBrief =
-    (Multi + " <command> (" + Multi + " <command>)*",
-     "Runs the provided semicolon-separated commands.")
+    (
+      Multi + " <command> (" + Multi + " <command>)*",
+      "Runs the provided semicolon-separated commands."
+    )
   def MultiDetailed =
     Multi + " command1 " + Multi + """ command2 ...
 

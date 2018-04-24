@@ -27,10 +27,11 @@ private[sbt] object LanguageServerProtocol {
   lazy val internalJsonProtocol = new InitializeOptionFormats with sjsonnew.BasicJsonProtocol {}
 
   lazy val serverCapabilities: ServerCapabilities = {
-    ServerCapabilities(textDocumentSync =
-                         TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
-                       hoverProvider = false,
-                       definitionProvider = true)
+    ServerCapabilities(
+      textDocumentSync = TextDocumentSyncOptions(true, 0, false, false, SaveOptions(false)),
+      hoverProvider = false,
+      definitionProvider = true
+    )
   }
 
   lazy val handler: ServerHandler = ServerHandler({
@@ -42,16 +43,22 @@ private[sbt] object LanguageServerProtocol {
           import internalJsonProtocol._
           def json(r: JsonRpcRequestMessage) =
             r.params.getOrElse(
-              throw LangServerError(ErrorCodes.InvalidParams,
-                                    s"param is expected on '${r.method}' method."))
+              throw LangServerError(
+                ErrorCodes.InvalidParams,
+                s"param is expected on '${r.method}' method."
+              )
+            )
 
           {
             case r: JsonRpcRequestMessage if r.method == "initialize" =>
               if (authOptions(ServerAuthentication.Token)) {
                 val param = Converter.fromJson[InitializeParams](json(r)).get
                 val optionJson = param.initializationOptions.getOrElse(
-                  throw LangServerError(ErrorCodes.InvalidParams,
-                                        "initializationOptions is expected on 'initialize' param."))
+                  throw LangServerError(
+                    ErrorCodes.InvalidParams,
+                    "initializationOptions is expected on 'initialize' param."
+                  )
+                )
                 val opt = Converter.fromJson[InitializeOption](optionJson).get
                 val token = opt.token.getOrElse(sys.error("'token' is missing."))
                 if (authenticate(token)) ()

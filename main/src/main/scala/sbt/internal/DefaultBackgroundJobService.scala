@@ -113,9 +113,11 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
 
   protected def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): ManagedLogger
 
-  def doRunInBackground(spawningTask: ScopedKey[_],
-                        state: State,
-                        start: (Logger, File) => BackgroundJob): JobHandle = {
+  def doRunInBackground(
+      spawningTask: ScopedKey[_],
+      state: State,
+      start: (Logger, File) => BackgroundJob
+  ): JobHandle = {
     val id = nextId.getAndIncrement()
     val logger = makeContext(id, spawningTask, state)
     val workingDir = serviceTempDir / s"job-$id"
@@ -132,7 +134,8 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   }
 
   override def runInBackground(spawningTask: ScopedKey[_], state: State)(
-      start: (Logger, File) => Unit): JobHandle = {
+      start: (Logger, File) => Unit
+  ): JobHandle = {
     pool.run(this, spawningTask, state)(start)
   }
 
@@ -155,7 +158,8 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     case _: DeadHandle @unchecked           => () // nothing to stop or wait for
     case other =>
       sys.error(
-        s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other")
+        s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other"
+      )
   }
 
   private def withHandleTry(job: JobHandle)(f: ThreadJobHandle => Try[Unit]): Try[Unit] =
@@ -163,8 +167,11 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       case handle: ThreadJobHandle @unchecked => f(handle)
       case _: DeadHandle @unchecked           => Try(()) // nothing to stop or wait for
       case other =>
-        Try(sys.error(
-          s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other"))
+        Try(
+          sys.error(
+            s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other"
+          )
+        )
     }
 
   override def stop(job: JobHandle): Unit =
@@ -363,7 +370,8 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
   }
 
   def run(manager: AbstractBackgroundJobService, spawningTask: ScopedKey[_], state: State)(
-      work: (Logger, File) => Unit): JobHandle = {
+      work: (Logger, File) => Unit
+  ): JobHandle = {
     def start(logger: Logger, workingDir: File): BackgroundJob = {
       val runnable = new BackgroundRunnable(spawningTask.key.label, { () =>
         work(logger, workingDir)

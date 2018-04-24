@@ -25,7 +25,8 @@ trait JsonRpcResponseMessageFormats {
     new JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] {
       override def read[J](
           jsOpt: Option[J],
-          unbuilder: Unbuilder[J]): sbt.internal.protocol.JsonRpcResponseMessage = {
+          unbuilder: Unbuilder[J]
+      ): sbt.internal.protocol.JsonRpcResponseMessage = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -50,8 +51,10 @@ trait JsonRpcResponseMessageFormats {
             deserializationError("Expected JsObject but found None")
         }
       }
-      override def write[J](obj: sbt.internal.protocol.JsonRpcResponseMessage,
-                            builder: Builder[J]): Unit = {
+      override def write[J](
+          obj: sbt.internal.protocol.JsonRpcResponseMessage,
+          builder: Builder[J]
+      ): Unit = {
         // Parse given id to Long or String judging by prefix
         def parseId(str: String): Either[Long, String] = {
           if (str.startsWith("\u2668")) Left(str.substring(1).toLong)

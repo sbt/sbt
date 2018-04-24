@@ -124,8 +124,10 @@ object ConcurrentRestrictions {
    * @tparam A the task type
    * @tparam R the type of data that will be computed by the CompletionService.
    */
-  def completionService[A, R](tags: ConcurrentRestrictions[A],
-                              warn: String => Unit): (CompletionService[A, R], () => Unit) = {
+  def completionService[A, R](
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit
+  ): (CompletionService[A, R], () => Unit) = {
     val pool = Executors.newCachedThreadPool()
     (completionService[A, R](pool, tags, warn), () => { pool.shutdownNow(); () })
   }
@@ -134,9 +136,11 @@ object ConcurrentRestrictions {
    * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution
    * and using the provided Executor to manage execution on threads.
    */
-  def completionService[A, R](backing: Executor,
-                              tags: ConcurrentRestrictions[A],
-                              warn: String => Unit): CompletionService[A, R] = {
+  def completionService[A, R](
+      backing: Executor,
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit
+  ): CompletionService[A, R] = {
 
     /** Represents submitted work for a task.*/
     final class Enqueue(val node: A, val work: () => R)
@@ -180,7 +184,8 @@ object ConcurrentRestrictions {
         tagState = tags.remove(tagState, node)
         if (!tags.valid(tagState))
           warn(
-            "Invalid restriction: removing a completed node from a valid system must result in a valid system.")
+            "Invalid restriction: removing a completed node from a valid system must result in a valid system."
+          )
         submitValid(new LinkedList)
       }
       private[this] def errorAddingToIdle() =

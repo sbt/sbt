@@ -17,13 +17,15 @@ class RichURI(uri: URI) {
    * Note that this method simply passes the individual components of this URI to the URI constructor
    * that accepts each component individually.  It is thus limited by the implementation restrictions of the relevant methods.
    */
-  def copy(scheme: String = uri.getScheme,
-           userInfo: String = uri.getUserInfo,
-           host: String = uri.getHost,
-           port: Int = uri.getPort,
-           path: String = uri.getPath,
-           query: String = uri.getQuery,
-           fragment: String = uri.getFragment) =
+  def copy(
+      scheme: String = uri.getScheme,
+      userInfo: String = uri.getUserInfo,
+      host: String = uri.getHost,
+      port: Int = uri.getPort,
+      path: String = uri.getPath,
+      query: String = uri.getQuery,
+      fragment: String = uri.getFragment
+  ) =
     new URI(scheme, userInfo, host, port, path, query, fragment)
 
   /** Returns `true` if the fragment of the URI is defined. */

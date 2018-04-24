@@ -20,18 +20,24 @@ import sbt.internal.util.ManagedLogger
 object Doc {
   import RawCompileLike._
 
-  def scaladoc(label: String,
-               cacheStoreFactory: CacheStoreFactory,
-               compiler: AnalyzingCompiler): Gen =
+  def scaladoc(
+      label: String,
+      cacheStoreFactory: CacheStoreFactory,
+      compiler: AnalyzingCompiler
+  ): Gen =
     scaladoc(label, cacheStoreFactory, compiler, Seq())
 
-  def scaladoc(label: String,
-               cacheStoreFactory: CacheStoreFactory,
-               compiler: AnalyzingCompiler,
-               fileInputOptions: Seq[String]): Gen =
-    cached(cacheStoreFactory,
-           fileInputOptions,
-           prepare(label + " Scala API documentation", compiler.doc))
+  def scaladoc(
+      label: String,
+      cacheStoreFactory: CacheStoreFactory,
+      compiler: AnalyzingCompiler,
+      fileInputOptions: Seq[String]
+  ): Gen =
+    cached(
+      cacheStoreFactory,
+      fileInputOptions,
+      prepare(label + " Scala API documentation", compiler.doc)
+    )
 
   @deprecated("Going away", "1.1.1")
   def javadoc(

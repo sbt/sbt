@@ -94,10 +94,12 @@ object PluginDiscovery {
    * Discovers the names of top-level modules listed in resources named `resourceName` as per [[binaryModuleNames]] or
    * available as analyzed source and extending from any of `subclasses` as per [[sourceModuleNames]].
    */
-  def binarySourceModuleNames(classpath: Seq[Attributed[File]],
-                              loader: ClassLoader,
-                              resourceName: String,
-                              subclasses: String*): Seq[String] =
+  def binarySourceModuleNames(
+      classpath: Seq[Attributed[File]],
+      loader: ClassLoader,
+      resourceName: String,
+      subclasses: String*
+  ): Seq[String] =
     (
       binaryModuleNames(data(classpath), loader, resourceName) ++
         (analyzed(classpath) flatMap (a => sourceModuleNames(a, subclasses: _*)))
@@ -120,9 +122,11 @@ object PluginDiscovery {
    * `classpath` and `loader` are both required to ensure that `loader`
    * doesn't bring in any resources outside of the intended `classpath`, such as from parent loaders.
    */
-  def binaryModuleNames(classpath: Seq[File],
-                        loader: ClassLoader,
-                        resourceName: String): Seq[String] = {
+  def binaryModuleNames(
+      classpath: Seq[File],
+      loader: ClassLoader,
+      resourceName: String
+  ): Seq[String] = {
     import collection.JavaConverters._
     loader.getResources(resourceName).asScala.toSeq.filter(onClasspath(classpath)) flatMap { u =>
       IO.readLinesURL(u).map(_.trim).filter(!_.isEmpty)
@@ -136,7 +140,8 @@ object PluginDiscovery {
   private[sbt] def binarySourceModules[T](
       data: PluginData,
       loader: ClassLoader,
-      resourceName: String)(implicit classTag: reflect.ClassTag[T]): DetectedModules[T] = {
+      resourceName: String
+  )(implicit classTag: reflect.ClassTag[T]): DetectedModules[T] = {
     val classpath = data.classpath
     val namesAndValues =
       if (classpath.isEmpty) Nil
@@ -148,9 +153,11 @@ object PluginDiscovery {
     new DetectedModules(namesAndValues)
   }
 
-  private[this] def loadModules[T: reflect.ClassTag](data: PluginData,
-                                                     names: Seq[String],
-                                                     loader: ClassLoader): Seq[(String, T)] =
+  private[this] def loadModules[T: reflect.ClassTag](
+      data: PluginData,
+      names: Seq[String],
+      loader: ClassLoader
+  ): Seq[(String, T)] =
     try ModuleUtilities.getCheckedObjects[T](names, loader)
     catch {
       case e: ExceptionInInitializerError =>
@@ -170,7 +177,8 @@ object PluginDiscovery {
       if (evictedStrings.isEmpty) ""
       else
         "\nNote that conflicts were resolved for some dependencies:\n\t" + evictedStrings.mkString(
-          "\n\t")
+          "\n\t"
+        )
     throw new IncompatiblePluginsException(msgBase + msgExtra, t)
   }
 }

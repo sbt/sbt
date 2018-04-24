@@ -67,18 +67,21 @@ object Command {
     new SimpleCommand(name, help, parser, AttributeMap.empty)
 
   def make(name: String, briefHelp: (String, String), detail: String)(
-      parser: State => Parser[() => State]): Command =
+      parser: State => Parser[() => State]
+  ): Command =
     make(name, Help(name, briefHelp, detail))(parser)
 
   // General command construction
 
   /** Construct a command with the given name, parser and effect. */
-  def apply[T](name: String, help: Help = Help.empty)(parser: State => Parser[T])(
-      effect: (State, T) => State): Command =
+  def apply[T](name: String, help: Help = Help.empty)(
+      parser: State => Parser[T]
+  )(effect: (State, T) => State): Command =
     make(name, help)(applyEffect(parser)(effect))
 
   def apply[T](name: String, briefHelp: (String, String), detail: String)(
-      parser: State => Parser[T])(effect: (State, T) => State): Command =
+      parser: State => Parser[T]
+  )(effect: (State, T) => State): Command =
     apply(name, Help(name, briefHelp, detail))(parser)(effect)
 
   // No-argument command construction
@@ -97,18 +100,21 @@ object Command {
     make(name, help)(state => token(trimmed(spacedAny(name)) map apply1(f, state)))
 
   def single(name: String, briefHelp: (String, String), detail: String)(
-      f: (State, String) => State): Command =
+      f: (State, String) => State
+  ): Command =
     single(name, Help(name, briefHelp, detail))(f)
 
   // Multi-argument command construction
 
   /** Construct a multi-argument command with the given name, tab completion display and effect. */
   def args(name: String, display: String, help: Help = Help.empty)(
-      f: (State, Seq[String]) => State): Command =
+      f: (State, Seq[String]) => State
+  ): Command =
     make(name, help)(state => spaceDelimited(display) map apply1(f, state))
 
   def args(name: String, briefHelp: (String, String), detail: String, display: String)(
-      f: (State, Seq[String]) => State): Command =
+      f: (State, Seq[String]) => State
+  ): Command =
     args(name, display, Help(name, briefHelp, detail))(f)
 
   // create ArbitraryCommand
@@ -120,7 +126,8 @@ object Command {
     customHelp(parser, const(help))
 
   def arb[T](parser: State => Parser[T], help: Help = Help.empty)(
-      effect: (State, T) => State): Command =
+      effect: (State, T) => State
+  ): Command =
     custom(applyEffect(parser)(effect), help)
 
   // misc Command object utilities
@@ -129,8 +136,9 @@ object Command {
 
   def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] = p map (t => () => f(t))
 
-  def applyEffect[T](parser: State => Parser[T])(
-      effect: (State, T) => State): State => Parser[() => State] =
+  def applyEffect[T](
+      parser: State => Parser[T]
+  )(effect: (State, T) => State): State => Parser[() => State] =
     s => applyEffect(parser(s))(t => effect(s, t))
 
   def combine(cmds: Seq[Command]): State => Parser[() => State] = {
@@ -140,7 +148,8 @@ object Command {
   }
 
   private[this] def separateCommands(
-      cmds: Seq[Command]): (Seq[SimpleCommand], Seq[ArbitraryCommand]) =
+      cmds: Seq[Command]
+  ): (Seq[SimpleCommand], Seq[ArbitraryCommand]) =
     Util.separate(cmds) { case s: SimpleCommand => Left(s); case a: ArbitraryCommand => Right(a) }
 
   private[this] def apply1[A, B, C](f: (A, B) => C, a: A): B => () => C = b => () => f(a, b)
@@ -155,13 +164,16 @@ object Command {
   }
 
   def simpleParser(
-      commandMap: Map[String, State => Parser[() => State]]): State => Parser[() => State] =
+      commandMap: Map[String, State => Parser[() => State]]
+  ): State => Parser[() => State] =
     state =>
-      token(OpOrID examples commandMap.keys.toSet) flatMap (id =>
-        (commandMap get id) match {
-          case None    => failure(invalidValue("command", commandMap.keys)(id))
-          case Some(c) => c(state)
-        })
+      token(OpOrID examples commandMap.keys.toSet) flatMap (
+          id =>
+            (commandMap get id) match {
+              case None    => failure(invalidValue("command", commandMap.keys)(id))
+              case Some(c) => c(state)
+            }
+    )
 
   def process(command: String, state: State): State = {
     val parser = combine(state.definedCommands)
@@ -181,10 +193,12 @@ object Command {
     if (suggested.isEmpty) "" else suggested.mkString(" (similar: ", ", ", ")")
   }
 
-  def suggestions(a: String,
-                  bs: Seq[String],
-                  maxDistance: Int = 3,
-                  maxSuggestions: Int = 3): Seq[String] =
+  def suggestions(
+      a: String,
+      bs: Seq[String],
+      maxDistance: Int = 3,
+      maxSuggestions: Int = 3
+  ): Seq[String] =
     bs map (b => (b, distance(a, b))) filter (_._2 <= maxDistance) sortBy (_._2) take (maxSuggestions) map (_._1)
 
   def distance(a: String, b: String): Int =
@@ -233,9 +247,11 @@ object Help {
   def apply(briefHelp: Seq[(String, String)], detailedHelp: Map[String, String]): Help =
     apply(briefHelp, detailedHelp, Set.empty[String])
 
-  def apply(briefHelp: Seq[(String, String)],
-            detailedHelp: Map[String, String],
-            more: Set[String]): Help =
+  def apply(
+      briefHelp: Seq[(String, String)],
+      detailedHelp: Map[String, String],
+      more: Set[String]
+  ): Help =
     new Help0(briefHelp, detailedHelp, more)
 
   def more(name: String, detailedHelp: String): Help =

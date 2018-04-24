@@ -337,8 +337,10 @@ object Scoped {
     def transform(f: S => S, source: SourcePosition): Setting[Task[S]] =
       set(scopedKey(_ map f), source)
 
-    @deprecated("No longer needed with new task syntax and SettingKey inheriting from Initialize.",
-                "0.13.2")
+    @deprecated(
+      "No longer needed with new task syntax and SettingKey inheriting from Initialize.",
+      "0.13.2"
+    )
     def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 
     def toSettingKey: SettingKey[Task[S]] = scopedSetting(scope, key)
@@ -401,8 +403,9 @@ object Scoped {
 
     def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = {
       import TupleSyntax._
-      (i, Initialize.joinAny[Task](tasks))((thisTask, deps) =>
-        thisTask.mapTask(_.dependsOn(deps: _*)))
+      (i, Initialize.joinAny[Task](tasks))(
+        (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*))
+      )
     }
   }
 
@@ -429,23 +432,27 @@ object Scoped {
 
     @deprecated(
       "Use the `result` method to create a task that returns the full Result of this task.  Then, call `flatMap` on the new task.",
-      "0.13.0")
+      "0.13.0"
+    )
     def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_.result flatMap f)
 
     @deprecated(
       "Use the `result` method to create a task that returns the full Result of this task.  Then, call `map` on the new task.",
-      "0.13.0")
+      "0.13.0"
+    )
     def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_.result map f)
 
     @deprecated(
       "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `flatMap` on the new task.",
-      "0.13.0")
+      "0.13.0"
+    )
     def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] =
       onTask(_.result flatMap (f compose failM))
 
     @deprecated(
       "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `map` on the new task.",
-      "0.13.0")
+      "0.13.0"
+    )
     def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = onTask(_.result map (f compose failM))
   }
 

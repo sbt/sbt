@@ -19,9 +19,11 @@ import sbt.io.IO
 
 object SettingGraph {
   def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(
-      implicit display: Show[ScopedKey[_]]): SettingGraph = {
+      implicit display: Show[ScopedKey[_]]
+  ): SettingGraph = {
     val cMap = flattenLocals(
-      compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
+      compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display)
+    )
     def loop(scoped: ScopedKey[_], generation: Int): SettingGraph = {
       val key = scoped.key
       val scope = scoped.scope
@@ -34,14 +36,16 @@ object SettingGraph {
       // val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
       // val reverse = reverseDependencies(cMap, scoped)
 
-      SettingGraph(display.show(scoped),
-                   definedIn,
-                   Project.scopedKeyData(structure, scope, key),
-                   key.description,
-                   basedir,
-                   depends map { (x: ScopedKey[_]) =>
-                     loop(x, generation + 1)
-                   })
+      SettingGraph(
+        display.show(scoped),
+        definedIn,
+        Project.scopedKeyData(structure, scope, key),
+        key.description,
+        basedir,
+        depends map { (x: ScopedKey[_]) =>
+          loop(x, generation + 1)
+        }
+      )
     }
     loop(scoped, generation)
   }

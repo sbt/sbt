@@ -32,8 +32,10 @@ object SettingQuery {
     new ParsedExplicitValue(v)
   }
 
-  def projectRef(index: KeyIndex,
-                 currentBuild: URI): Parser[ParsedExplicitAxis[ResolvedReference]] = {
+  def projectRef(
+      index: KeyIndex,
+      currentBuild: URI
+  ): Parser[ParsedExplicitAxis[ResolvedReference]] = {
     val global = token(Act.ZeroString ~ '/') ^^^ ParsedExplicitGlobal
     val trailing = '/' !!! "Expected '/' (if selecting a project)"
     global | explicitValue(Act.resolvedReference(index, currentBuild, trailing))
@@ -107,15 +109,21 @@ object SettingQuery {
 
   def toJson[A: JsonWriter](x: A): JValue = Converter toJsonUnsafe x
 
-  def getSettingJsonValue[A](structure: BuildStructure,
-                             key: Def.ScopedKey[A]): Either[String, JValue] =
-    getSettingValue(structure, key) flatMap (value =>
-      getJsonWriter(key.key) map { implicit jw: JsonWriter[A] =>
-        toJson(value)
-      })
+  def getSettingJsonValue[A](
+      structure: BuildStructure,
+      key: Def.ScopedKey[A]
+  ): Either[String, JValue] =
+    getSettingValue(structure, key) flatMap (
+        value =>
+          getJsonWriter(key.key) map { implicit jw: JsonWriter[A] =>
+            toJson(value)
+          }
+    )
 
-  def handleSettingQueryEither(req: SettingQuery,
-                               structure: BuildStructure): Either[String, SettingQuerySuccess] = {
+  def handleSettingQueryEither(
+      req: SettingQuery,
+      structure: BuildStructure
+  ): Either[String, SettingQuerySuccess] = {
     val key = Parser.parse(req.setting, scopedKeyParser(structure))
 
     for {
