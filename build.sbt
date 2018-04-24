@@ -220,6 +220,8 @@ lazy val testingProj = (project in file("testing"))
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestItemEvent.copy$default$*"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy$default$1"),
+      //no reason to use
+      exclude[DirectMissingMethodProblem]("sbt.JUnitXmlTestsListener.testSuite"),
     )
   )
   .configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
