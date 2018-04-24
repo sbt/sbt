@@ -32,13 +32,13 @@ private final class Settings0[Scope](
   def keys(scope: Scope) = data(scope).keys.toSet
 
   def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] =
-    data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) }.toSeq
+    data.flatMap { case (scope, map) => map.keys.iterator.map(k => f(scope, k)) }.toSeq
 
   def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     delegates(scope).toStream.flatMap(sc => getDirect(sc, key)).headOption
 
   def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope] =
-    delegates(scope).toStream.find(sc => getDirect(sc, key).isDefined)
+    delegates(scope).find(sc => getDirect(sc, key).isDefined)
 
   def getDirect[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     (data get scope).flatMap(_ get key)

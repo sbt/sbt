@@ -29,12 +29,13 @@ final case class Scope(project: ScopeAxis[Reference],
   def in(config: ConfigKey): Scope = copy(config = Select(config))
   def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
 
-  override def toString: String = this match {
-    case Scope(Zero, Zero, Zero, Zero) => "Global"
-    case Scope(_, _, _, This)          => s"$project / $config / $task"
-    case _                             => s"Scope($project, $config, $task, $extra)"
+  override def toString: String = {
+    if (this.extra == This) s"$project / $config / $task"
+    else if (this == Scope.GlobalScope) "Global"
+    else s"Scope($project, $config, $task, $extra)"
   }
 }
+
 object Scope {
   val ThisScope: Scope = Scope(This, This, This, This)
   val Global: Scope = Scope(Zero, Zero, Zero, Zero)
@@ -267,18 +268,25 @@ object Scope {
     val scope = Scope.replaceThis(GlobalScope)(rawScope)
 
     def nonProjectScopes(resolvedProj: ResolvedReference)(px: ScopeAxis[ResolvedReference]) = {
-      val p = px.toOption getOrElse resolvedProj
-      val configProj = p match {
-        case pr: ProjectRef => pr; case br: BuildRef => ProjectRef(br.build, rootProject(br.build))
-      }
       val cLin = scope.config match {
-        case Select(conf) => index.config(configProj, conf); case _ => withZeroAxis(scope.config)
+        case Zero | This => withZeroAxis(scope.config)
+        case Select(conf) =>
+          val p = px match {
+            case Select(s)   => s
+            case This | Zero => resolvedProj
+          }
+          val configProj = p match {
+            case pr: ProjectRef => pr
+            case br: BuildRef   => ProjectRef(br.build, rootProject(br.build))
+          }
+          index.config(configProj, conf)
       }
       val tLin = scope.task match {
-        case t @ Select(_) => linearize(t)(taskInherit); case _ => withZeroAxis(scope.task)
+        case Zero | This   => withZeroAxis(scope.task)
+        case t @ Select(_) => linearize(t)(taskInherit)
       }
       val eLin = withZeroAxis(scope.extra)
-      for (c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
+      for (c <- cLin.iterator; t <- tLin.iterator; e <- eLin.iterator) yield Scope(px, c, t, e)
     }
     scope.project match {
       case Zero | This => globalProjectDelegates(scope)
@@ -287,17 +295,19 @@ object Scope {
         val projAxes: Seq[ScopeAxis[ResolvedReference]] =
           resolvedProj match {
             case pr: ProjectRef => index.project(pr)
-            case br: BuildRef   => Select(br) :: Zero :: Nil
+            case br: BuildRef   => Select(br) :: ZeroList
           }
         projAxes flatMap nonProjectScopes(resolvedProj)
     }
   }
 
   def withZeroAxis[T](base: ScopeAxis[T]): Seq[ScopeAxis[T]] =
-    if (base.isSelect) base :: Zero :: Nil
-    else Zero :: Nil
+    if (base.isSelect) base :: ZeroList
+    else ZeroList
+
   def withGlobalScope(base: Scope): Seq[Scope] =
-    if (base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
+    if (base == GlobalScope) GlobalScopeList else base :: GlobalScopeList
+
   def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ResolvedReference]] =
     ps ++ (ps flatMap rawBuild).distinct :+ Zero
 
@@ -335,22 +345,26 @@ object Scope {
       inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
     axis match {
       case Select(x)   => topologicalSort[T](x, appendZero)(inherit)
-      case Zero | This => if (appendZero) Zero :: Nil else Nil
+      case Zero | This => if (appendZero) ZeroList else Nil
     }
 
   def topologicalSort[T](node: T, appendZero: Boolean)(
       dependencies: T => Seq[T]): Seq[ScopeAxis[T]] = {
     val o = Dag.topologicalSortUnchecked(node)(dependencies).map(Select.apply)
-    if (appendZero) o ::: Zero :: Nil
+    if (appendZero) o ::: ZeroList
     else o
   }
+
   def globalProjectDelegates(scope: Scope): Seq[Scope] =
     if (scope == GlobalScope)
-      GlobalScope :: Nil
+      GlobalScopeList
     else
       for {
         c <- withZeroAxis(scope.config)
         t <- withZeroAxis(scope.task)
         e <- withZeroAxis(scope.extra)
       } yield Scope(Zero, c, t, e)
+
+  private val GlobalScopeList = GlobalScope :: Nil
+  private val ZeroList = Zero :: Nil
 }
