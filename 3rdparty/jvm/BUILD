@@ -149,17 +149,17 @@ jar_library(
         scala_jar(
             org = "org.scala-native",
             name = "nir",
-            rev = "0.3.6",
+            rev = "0.3.7",
         ),
         scala_jar(
             org = "org.scala-native",
             name = "tools",
-            rev = "0.3.6",
+            rev = "0.3.7",
         ),
         scala_jar(
             org = "org.scala-native",
             name = "util",
-            rev = "0.3.6",
+            rev = "0.3.7",
         ),
     ],
 )
