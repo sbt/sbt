@@ -44,9 +44,11 @@ object Tests {
    * @param events The result of each test group (suite) executed during this test run.
    * @param summaries Explicit summaries directly provided by test frameworks.  This may be empty, in which case a default summary will be generated.
    */
-  final case class Output(overall: TestResult,
-                          events: Map[String, SuiteResult],
-                          summaries: Iterable[Summary])
+  final case class Output(
+      overall: TestResult,
+      events: Map[String, SuiteResult],
+      summaries: Iterable[Summary]
+  )
 
   /**
    * Summarizes a test run.
@@ -138,9 +140,11 @@ object Tests {
       val cleanup: Vector[ClassLoader => Unit],
       val testListeners: Vector[TestReportListener]
   )
-  private[sbt] def processOptions(config: Execution,
-                                  discovered: Vector[TestDefinition],
-                                  log: Logger): ProcessedOptions = {
+  private[sbt] def processOptions(
+      config: Execution,
+      discovered: Vector[TestDefinition],
+      log: Logger
+  ): ProcessedOptions = {
     import collection.mutable.{ HashSet, ListBuffer }
     val testFilters = new ListBuffer[String => Boolean]
     var orderedFilters = Seq[String => Boolean]()
@@ -168,7 +172,8 @@ object Tests {
     if (undefinedFrameworks.nonEmpty)
       log.warn(
         "Arguments defined for test frameworks that are not present:\n\t" + undefinedFrameworks
-          .mkString("\n\t"))
+          .mkString("\n\t")
+      )
 
     def includeTest(test: TestDefinition) =
       !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
@@ -177,10 +182,12 @@ object Tests {
       if (orderedFilters.isEmpty) filtered0
       else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
     val uniqueTests = distinctBy(tests)(_.name)
-    new ProcessedOptions(uniqueTests.toVector,
-                         setup.toVector,
-                         cleanup.toVector,
-                         testListeners.toVector)
+    new ProcessedOptions(
+      uniqueTests.toVector,
+      setup.toVector,
+      cleanup.toVector,
+      testListeners.toVector
+    )
   }
 
   private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] = {
@@ -188,33 +195,39 @@ object Tests {
     in.filter(t => seen.add(f(t)))
   }
 
-  def apply(frameworks: Map[TestFramework, Framework],
-            testLoader: ClassLoader,
-            runners: Map[TestFramework, Runner],
-            discovered: Vector[TestDefinition],
-            config: Execution,
-            log: ManagedLogger): Task[Output] = {
+  def apply(
+      frameworks: Map[TestFramework, Framework],
+      testLoader: ClassLoader,
+      runners: Map[TestFramework, Runner],
+      discovered: Vector[TestDefinition],
+      config: Execution,
+      log: ManagedLogger
+  ): Task[Output] = {
     val o = processOptions(config, discovered, log)
-    testTask(testLoader,
-             frameworks,
-             runners,
-             o.tests,
-             o.setup,
-             o.cleanup,
-             log,
-             o.testListeners,
-             config)
+    testTask(
+      testLoader,
+      frameworks,
+      runners,
+      o.tests,
+      o.setup,
+      o.cleanup,
+      log,
+      o.testListeners,
+      config
+    )
   }
 
-  def testTask(loader: ClassLoader,
-               frameworks: Map[TestFramework, Framework],
-               runners: Map[TestFramework, Runner],
-               tests: Vector[TestDefinition],
-               userSetup: Iterable[ClassLoader => Unit],
-               userCleanup: Iterable[ClassLoader => Unit],
-               log: ManagedLogger,
-               testListeners: Vector[TestReportListener],
-               config: Execution): Task[Output] = {
+  def testTask(
+      loader: ClassLoader,
+      frameworks: Map[TestFramework, Framework],
+      runners: Map[TestFramework, Runner],
+      tests: Vector[TestDefinition],
+      userSetup: Iterable[ClassLoader => Unit],
+      userCleanup: Iterable[ClassLoader => Unit],
+      log: ManagedLogger,
+      testListeners: Vector[TestReportListener],
+      config: Execution
+  ): Task[Output] = {
     def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn(actions.toSeq.fork(_()): _*)
     def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map { a => () =>
       a(loader)
@@ -239,31 +252,43 @@ object Tests {
   }
   type TestRunnable = (String, TestFunction)
 
-  private def createNestedRunnables(loader: ClassLoader,
-                                    testFun: TestFunction,
-                                    nestedTasks: Seq[TestTask]): Seq[(String, TestFunction)] =
+  private def createNestedRunnables(
+      loader: ClassLoader,
+      testFun: TestFunction,
+      nestedTasks: Seq[TestTask]
+  ): Seq[(String, TestFunction)] =
     nestedTasks.view.zipWithIndex map {
       case (nt, idx) =>
         val testFunDef = testFun.taskDef
-        (testFunDef.fullyQualifiedName,
-         TestFramework.createTestFunction(loader,
-                                          new TaskDef(testFunDef.fullyQualifiedName + "-" + idx,
-                                                      testFunDef.fingerprint,
-                                                      testFunDef.explicitlySpecified,
-                                                      testFunDef.selectors),
-                                          testFun.runner,
-                                          nt))
+        (
+          testFunDef.fullyQualifiedName,
+          TestFramework.createTestFunction(
+            loader,
+            new TaskDef(
+              testFunDef.fullyQualifiedName + "-" + idx,
+              testFunDef.fingerprint,
+              testFunDef.explicitlySpecified,
+              testFunDef.selectors
+            ),
+            testFun.runner,
+            nt
+          )
+        )
     }
 
-  def makeParallel(loader: ClassLoader,
-                   runnables: Iterable[TestRunnable],
-                   setupTasks: Task[Unit],
-                   tags: Seq[(Tag, Int)]): Task[Map[String, SuiteResult]] =
+  def makeParallel(
+      loader: ClassLoader,
+      runnables: Iterable[TestRunnable],
+      setupTasks: Task[Unit],
+      tags: Seq[(Tag, Int)]
+  ): Task[Map[String, SuiteResult]] =
     toTasks(loader, runnables.toSeq, tags).dependsOn(setupTasks)
 
-  def toTasks(loader: ClassLoader,
-              runnables: Seq[TestRunnable],
-              tags: Seq[(Tag, Int)]): Task[Map[String, SuiteResult]] = {
+  def toTasks(
+      loader: ClassLoader,
+      runnables: Seq[TestRunnable],
+      tags: Seq[(Tag, Int)]
+  ): Task[Map[String, SuiteResult]] = {
     val tasks = runnables.map { case (name, test) => toTask(loader, name, test, tags) }
     tasks.join.map(_.foldLeft(Map.empty[String, SuiteResult]) {
       case (sum, e) =>
@@ -275,10 +300,12 @@ object Tests {
     })
   }
 
-  def toTask(loader: ClassLoader,
-             name: String,
-             fun: TestFunction,
-             tags: Seq[(Tag, Int)]): Task[Map[String, SuiteResult]] = {
+  def toTask(
+      loader: ClassLoader,
+      name: String,
+      fun: TestFunction,
+      tags: Seq[(Tag, Int)]
+  ): Task[Map[String, SuiteResult]] = {
     val base = task { (name, fun.apply()) }
     val taggedBase = base.tagw(tags: _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)): _*)
     taggedBase flatMap {
@@ -310,8 +337,10 @@ object Tests {
       setupTasks: Task[Unit],
   ): Task[List[(String, SuiteResult)]] = {
     @tailrec
-    def processRunnable(runnableList: List[TestRunnable],
-                        acc: List[(String, SuiteResult)]): List[(String, SuiteResult)] =
+    def processRunnable(
+        runnableList: List[TestRunnable],
+        acc: List[(String, SuiteResult)]
+    ): List[(String, SuiteResult)] =
       runnableList match {
         case hd :: rst =>
           val testFun = hd._2
@@ -361,9 +390,11 @@ object Tests {
     ((TestResult.Passed: TestResult) /: results) { (acc, result) =>
       if (severity(acc) < severity(result)) result else acc
     }
-  def discover(frameworks: Seq[Framework],
-               analysis: CompileAnalysis,
-               log: Logger): (Seq[TestDefinition], Set[String]) =
+  def discover(
+      frameworks: Seq[Framework],
+      analysis: CompileAnalysis,
+      log: Logger
+  ): (Seq[TestDefinition], Set[String]) =
     discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
 
   def allDefs(analysis: CompileAnalysis) = analysis match {
@@ -379,9 +410,11 @@ object Tests {
         all
       }.toSeq
   }
-  def discover(fingerprints: Seq[Fingerprint],
-               definitions: Seq[Definition],
-               log: Logger): (Seq[TestDefinition], Set[String]) = {
+  def discover(
+      fingerprints: Seq[Fingerprint],
+      definitions: Seq[Definition],
+      log: Logger
+  ): (Seq[TestDefinition], Set[String]) = {
     val subclasses = fingerprints collect {
       case sub: SubclassFingerprint => (sub.superclassName, sub.isModule, sub)
     };
@@ -392,9 +425,11 @@ object Tests {
     log.debug("Annotation fingerprints: " + annotations)
 
     def firsts[A, B, C](s: Seq[(A, B, C)]): Set[A] = s.map(_._1).toSet
-    def defined(in: Seq[(String, Boolean, Fingerprint)],
-                names: Set[String],
-                IsModule: Boolean): Seq[Fingerprint] =
+    def defined(
+        in: Seq[(String, Boolean, Fingerprint)],
+        names: Set[String],
+        IsModule: Boolean
+    ): Seq[Fingerprint] =
       in collect { case (name, IsModule, print) if names(name) => print }
 
     def toFingerprints(d: Discovered): Seq[Fingerprint] =

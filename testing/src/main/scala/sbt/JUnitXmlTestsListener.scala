@@ -80,7 +80,8 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
 
       /** Junit XML reports don't differentiate between ignored, skipped or pending tests */
       val ignoredSkippedPending = count(TStatus.Ignored) + count(TStatus.Skipped) + count(
-        TStatus.Pending)
+        TStatus.Pending
+      )
 
       val result =
         <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>

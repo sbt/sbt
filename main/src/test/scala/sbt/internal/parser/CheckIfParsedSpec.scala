@@ -11,8 +11,8 @@ package parser
 
 abstract class CheckIfParsedSpec(
     implicit val splitter: SplitExpressions.SplitExpression =
-      EvaluateConfigurations.splitExpressions)
-    extends AbstractSpec {
+      EvaluateConfigurations.splitExpressions
+) extends AbstractSpec {
 
   this.getClass.getName should {
 

@@ -22,7 +22,8 @@ class ServerSpec extends AsyncFlatSpec with Matchers {
     withBuildSocket("handshake") { (out, in, tkn) =>
       writeLine(
         """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "handshake/name" } }""",
-        out)
+        out
+      )
       Thread.sleep(100)
       assert(waitFor(in, 10) { s =>
         s contains """"id":3"""
@@ -55,9 +56,11 @@ object ServerSpec {
   private val threadFactory = new ThreadFactory() {
     override def newThread(runnable: Runnable): Thread = {
       val thread =
-        new Thread(threadGroup,
-                   runnable,
-                   s"sbt-test-server-threads-${nextThreadId.getAndIncrement}")
+        new Thread(
+          threadGroup,
+          runnable,
+          s"sbt-test-server-threads-${nextThreadId.getAndIncrement}"
+        )
       // Do NOT setDaemon because then the code in TaskExit.scala in sbt will insta-kill
       // the backgrounded process, at least for the case of the run task.
       thread
@@ -84,8 +87,9 @@ object ServerSpec {
 
   def shutdown(): Unit = executor.shutdown()
 
-  def withBuildSocket(testBuild: String)(
-      f: (OutputStream, InputStream, Option[String]) => Future[Assertion]): Future[Assertion] = {
+  def withBuildSocket(
+      testBuild: String
+  )(f: (OutputStream, InputStream, Option[String]) => Future[Assertion]): Future[Assertion] = {
     IO.withTemporaryDirectory { temp =>
       IO.copyDirectory(serverTestBase / testBuild, temp / testBuild)
       withBuildSocket(temp / testBuild)(f)
@@ -162,8 +166,9 @@ object ServerSpec {
     writeEndLine
   }
 
-  def withBuildSocket(baseDirectory: File)(
-      f: (OutputStream, InputStream, Option[String]) => Future[Assertion]): Future[Assertion] = {
+  def withBuildSocket(
+      baseDirectory: File
+  )(f: (OutputStream, InputStream, Option[String]) => Future[Assertion]): Future[Assertion] = {
     backgroundRun(baseDirectory, Nil)
 
     val portfile = baseDirectory / "project" / "target" / "active.json"
@@ -185,14 +190,16 @@ object ServerSpec {
 
     sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { } } }""",
-      out)
+      out
+    )
 
     try {
       f(out, in, tkn)
     } finally {
       sendJsonRpc(
         """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }""",
-        out)
+        out
+      )
       // shutdown()
     }
   }

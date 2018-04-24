@@ -202,10 +202,12 @@ object Plugins extends PluginsFunctions {
               _.head subsetOf knowledge0
             })
             log.debug(
-              s"deducing auto plugins based on known facts ${knowledge0.toString} and clauses ${clauses.toString}")
+              s"deducing auto plugins based on known facts ${knowledge0.toString} and clauses ${clauses.toString}"
+            )
             Logic.reduce(
               clauses,
-              (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet) match {
+              (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet
+            ) match {
               case Left(problem) => throw AutoPluginException(problem)
               case Right(results) =>
                 log.debug(s"  :: deduced result: ${results}")
@@ -234,9 +236,11 @@ object Plugins extends PluginsFunctions {
 
   private[sbt] def topologicalSort(ns: List[AutoPlugin]): List[AutoPlugin] = {
     @tailrec
-    def doSort(found0: List[AutoPlugin],
-               notFound0: List[AutoPlugin],
-               limit0: Int): List[AutoPlugin] = {
+    def doSort(
+        found0: List[AutoPlugin],
+        notFound0: List[AutoPlugin],
+        limit0: Int
+    ): List[AutoPlugin] = {
       if (limit0 < 0) throw AutoPluginException(s"Failed to sort ${ns} topologically")
       else if (notFound0.isEmpty) found0
       else {
@@ -252,11 +256,9 @@ object Plugins extends PluginsFunctions {
 
   private[sbt] def translateMessage(e: LogicException) = e match {
     case ic: InitialContradictions =>
-      s"Contradiction in selected plugins.  These plugins were both included and excluded: ${literalsString(
-        ic.literals.toSeq)}"
+      s"Contradiction in selected plugins.  These plugins were both included and excluded: ${literalsString(ic.literals.toSeq)}"
     case io: InitialOverlap =>
-      s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisfied.  The directly selected plugins were: ${literalsString(
-        io.literals.toSeq)}"
+      s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisfied.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
     case cn: CyclicNegation =>
       s"Cycles in plugin requirements cannot involve excludes.  The problematic cycle is: ${literalsString(cn.cycle)}"
   }
@@ -273,9 +275,11 @@ object Plugins extends PluginsFunctions {
     throw AutoPluginException(message)
   }
 
-  private[this] def exclusionConflictError(requested: Plugins,
-                                           selected: Seq[AutoPlugin],
-                                           conflicting: Seq[AutoPlugin]): Unit = {
+  private[this] def exclusionConflictError(
+      requested: Plugins,
+      selected: Seq[AutoPlugin],
+      conflicting: Seq[AutoPlugin]
+  ): Unit = {
     def listConflicts(ns: Seq[AutoPlugin]) =
       (ns map { c =>
         val reasons = (if (flatten(requested) contains c) List("requested")
@@ -427,8 +431,9 @@ ${listConflicts(conflicting)}""")
     val pluginClazz = ap.getClass
     existsAutoImportVal(pluginClazz)
       .orElse(
-        catching(classOf[ClassNotFoundException]).opt(
-          Class.forName(s"${pluginClazz.getName}$autoImport$$", false, loader)))
+        catching(classOf[ClassNotFoundException])
+          .opt(Class.forName(s"${pluginClazz.getName}$autoImport$$", false, loader))
+      )
       .isDefined
   }
 

@@ -111,11 +111,13 @@ object LogManager {
   }
 
   // to change from global being the default to overriding, switch the order of state.get and data.get
-  def getOr[T](key: AttributeKey[T],
-               data: Settings[Scope],
-               scope: Scope,
-               state: State,
-               default: T): T =
+  def getOr[T](
+      key: AttributeKey[T],
+      data: Settings[Scope],
+      scope: Scope,
+      state: State,
+      default: T
+  ): T =
     data.get(scope, key) orElse state.get(key) getOrElse default
 
   // This is the main function that is used to generate the logger for tasks.
@@ -205,7 +207,8 @@ object LogManager {
     val consoleOpt = consoleLocally(state, console)
     LogExchange.bindLoggerAppenders(
       loggerName,
-      (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil)
+      (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil
+    )
     log
   }
 

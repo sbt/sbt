@@ -21,14 +21,15 @@ import sbt.internal.util.codec.JValueFormats
 import sbt.internal.protocol.{ JsonRpcRequestMessage, JsonRpcNotificationMessage }
 import sbt.util.Logger
 
-final class NetworkChannel(val name: String,
-                           connection: Socket,
-                           structure: BuildStructure,
-                           auth: Set[ServerAuthentication],
-                           instance: ServerInstance,
-                           handlers: Seq[ServerHandler],
-                           val log: Logger)
-    extends CommandChannel
+final class NetworkChannel(
+    val name: String,
+    connection: Socket,
+    structure: BuildStructure,
+    auth: Set[ServerAuthentication],
+    instance: ServerInstance,
+    handlers: Seq[ServerHandler],
+    val log: Logger
+) extends CommandChannel
     with LanguageServerProtocol {
   import NetworkChannel._
 
@@ -206,7 +207,8 @@ final class NetworkChannel(val name: String,
               .fold(
                 errorDesc =>
                   log.error(
-                    s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc),
+                    s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
+                ),
                 onCommand
               )
           case _ =>
@@ -342,7 +344,8 @@ final class NetworkChannel(val name: String,
   private def onExecCommand(cmd: ExecCommand) = {
     if (initialized) {
       append(
-        Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
+        Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name)))
+      )
       ()
     } else {
       log.warn(s"ignoring command $cmd before initialization")

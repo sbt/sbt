@@ -47,7 +47,8 @@ object Delegates extends Properties("delegates") {
     }
   }
   property("Initial scope present with all combinations of Global axes") = allAxes(
-    (s, ds, _) => globalCombinations(s, ds))
+    (s, ds, _) => globalCombinations(s, ds)
+  )
 
   property("initial scope first") = forAll { (keys: Keys) =>
     allDelegates(keys) { (scope, ds) =>

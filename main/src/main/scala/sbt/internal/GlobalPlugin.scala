@@ -41,8 +41,10 @@ object GlobalPlugin {
       injectInternalClasspath(Runtime, gp.internalClasspath),
       injectInternalClasspath(Compile, gp.internalClasspath)
     )
-  private[this] def injectInternalClasspath(config: Configuration,
-                                            cp: Seq[Attributed[File]]): Setting[_] =
+  private[this] def injectInternalClasspath(
+      config: Configuration,
+      cp: Seq[Attributed[File]]
+  ): Setting[_] =
     internalDependencyClasspath in config ~= { prev =>
       (prev ++ cp).distinct
     }
@@ -50,8 +52,10 @@ object GlobalPlugin {
   def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) = {
     val newInject =
       config.injectSettings.copy(global = config.injectSettings.global ++ globalPluginSettings)
-    val globalConfig = config.copy(injectSettings = newInject,
-                                   pluginManagement = config.pluginManagement.forGlobalPlugin)
+    val globalConfig = config.copy(
+      injectSettings = newInject,
+      pluginManagement = config.pluginManagement.forGlobalPlugin
+    )
     val (eval, structure) = Load(base, s, globalConfig)
     val session = Load.initialSession(structure, eval)
     (structure, Project.setProject(session, structure, s))
@@ -73,22 +77,26 @@ object GlobalPlugin {
       // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
       val updateReport = Def.taskDyn { Def.task { update.value } }.value
 
-      GlobalPluginData(projectID.value,
-                       projectDependencies.value,
-                       depMap,
-                       resolvers.value.toVector,
-                       (fullClasspath in Runtime).value,
-                       (prods ++ intcp).distinct)(updateReport)
+      GlobalPluginData(
+        projectID.value,
+        projectDependencies.value,
+        depMap,
+        resolvers.value.toVector,
+        (fullClasspath in Runtime).value,
+        (prods ++ intcp).distinct
+      )(updateReport)
     }
     val resolvedTaskInit = taskInit mapReferenced Project.mapScope(Scope replaceThis p)
     val task = resolvedTaskInit evaluate data
     val roots = resolvedTaskInit.dependencies
     evaluate(state, structure, task, roots)
   }
-  def evaluate[T](state: State,
-                  structure: BuildStructure,
-                  t: Task[T],
-                  roots: Seq[ScopedKey[_]]): (State, T) = {
+  def evaluate[T](
+      state: State,
+      structure: BuildStructure,
+      t: Task[T],
+      roots: Seq[ScopedKey[_]]
+  ): (State, T) = {
     import EvaluateTask._
     withStreams(structure, state) { str =>
       val nv = nodeView(state, str, roots)
@@ -105,13 +113,17 @@ object GlobalPlugin {
     version := "0.0"
   )
 }
-final case class GlobalPluginData(projectID: ModuleID,
-                                  dependencies: Seq[ModuleID],
-                                  descriptors: Map[ModuleRevisionId, ModuleDescriptor],
-                                  resolvers: Vector[Resolver],
-                                  fullClasspath: Classpath,
-                                  internalClasspath: Classpath)(val updateReport: UpdateReport)
-final case class GlobalPlugin(data: GlobalPluginData,
-                              structure: BuildStructure,
-                              inject: Seq[Setting[_]],
-                              base: File)
+final case class GlobalPluginData(
+    projectID: ModuleID,
+    dependencies: Seq[ModuleID],
+    descriptors: Map[ModuleRevisionId, ModuleDescriptor],
+    resolvers: Vector[Resolver],
+    fullClasspath: Classpath,
+    internalClasspath: Classpath
+)(val updateReport: UpdateReport)
+final case class GlobalPlugin(
+    data: GlobalPluginData,
+    structure: BuildStructure,
+    inject: Seq[Setting[_]],
+    base: File
+)

@@ -23,7 +23,8 @@ abstract class BackgroundJobService extends Closeable {
    *  then you could process.destroy() for example.
    */
   def runInBackground(spawningTask: ScopedKey[_], state: State)(
-      start: (Logger, File) => Unit): JobHandle
+      start: (Logger, File) => Unit
+  ): JobHandle
 
   /** Same as shutown. */
   def close(): Unit
@@ -51,7 +52,8 @@ object BackgroundJobService {
       {
         val stringIdParser: Parser[Seq[String]] = Space ~> token(
           NotSpace examples handles.map(_.id.toString).toSet,
-          description = "<job id>").+
+          description = "<job id>"
+        ).+
         stringIdParser.map { strings =>
           strings.map(Integer.parseInt(_)).flatMap(id => handles.find(_.id == id))
         }

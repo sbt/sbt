@@ -85,8 +85,10 @@ object Sync {
       sys.error("Duplicate mappings:" + dups.mkString)
   }
 
-  implicit def relationFormat[A, B](implicit af: JsonFormat[Map[A, Set[B]]],
-                                    bf: JsonFormat[Map[B, Set[A]]]): JsonFormat[Relation[A, B]] =
+  implicit def relationFormat[A, B](
+      implicit af: JsonFormat[Map[A, Set[B]]],
+      bf: JsonFormat[Map[B, Set[A]]]
+  ): JsonFormat[Relation[A, B]] =
     new JsonFormat[Relation[A, B]] {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Relation[A, B] =
         jsOpt match {
@@ -109,15 +111,18 @@ object Sync {
 
     }
 
-  def writeInfo[F <: FileInfo](store: CacheStore,
-                               relation: Relation[File, File],
-                               info: Map[File, F])(implicit infoFormat: JsonFormat[F]): Unit =
+  def writeInfo[F <: FileInfo](
+      store: CacheStore,
+      relation: Relation[File, File],
+      info: Map[File, F]
+  )(implicit infoFormat: JsonFormat[F]): Unit =
     store.write((relation, info))
 
   type RelationInfo[F] = (Relation[File, File], Map[File, F])
 
-  def readInfo[F <: FileInfo](store: CacheStore)(
-      implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+  def readInfo[F <: FileInfo](
+      store: CacheStore
+  )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
     try { readUncaught[F](store)(infoFormat) } catch {
       case _: IOException  => (Relation.empty[File, File], Map.empty[File, F])
       case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])
@@ -128,7 +133,8 @@ object Sync {
         }
     }
 
-  private def readUncaught[F <: FileInfo](store: CacheStore)(
-      implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+  private def readUncaught[F <: FileInfo](
+      store: CacheStore
+  )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
     store.read(default = (Relation.empty[File, File], Map.empty[File, F]))
 }

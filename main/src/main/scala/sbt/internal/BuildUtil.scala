@@ -48,10 +48,12 @@ final class BuildUtil[Proj](
     refOpt => configurations(projectForAxis(refOpt)).map(_.name)
 }
 object BuildUtil {
-  def apply(root: URI,
-            units: Map[URI, LoadedBuildUnit],
-            keyIndex: KeyIndex,
-            data: Settings[Scope]): BuildUtil[ResolvedProject] = {
+  def apply(
+      root: URI,
+      units: Map[URI, LoadedBuildUnit],
+      keyIndex: KeyIndex,
+      data: Settings[Scope]
+  ): BuildUtil[ResolvedProject] = {
     val getp = (build: URI, project: String) => Load.getProject(units, build, project)
     val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
     val aggregates = aggregationRelation(units)
@@ -72,8 +74,9 @@ object BuildUtil {
 
   def checkCycles(units: Map[URI, LoadedBuildUnit]): Unit = {
     def getRef(pref: ProjectRef) = units(pref.build).defined(pref.project)
-    def deps(proj: ResolvedProject)(
-        base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject] =
+    def deps(
+        proj: ResolvedProject
+    )(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject] =
       Dag.topologicalSort(proj)(p => base(p) map getRef)
     // check for cycles
     for ((_, lbu) <- units; proj <- lbu.defined.values) {

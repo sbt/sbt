@@ -14,18 +14,21 @@ import scala.reflect.macros._
 import sbt.util.OptJsonWriter
 
 private[sbt] object KeyMacro {
-  def settingKeyImpl[T: c.WeakTypeTag](c: blackbox.Context)(
-      description: c.Expr[String]): c.Expr[SettingKey[T]] =
+  def settingKeyImpl[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(description: c.Expr[String]): c.Expr[SettingKey[T]] =
     keyImpl2[T, SettingKey[T]](c) { (name, mf, ojw) =>
       c.universe.reify { SettingKey[T](name.splice, description.splice)(mf.splice, ojw.splice) }
     }
-  def taskKeyImpl[T: c.WeakTypeTag](c: blackbox.Context)(
-      description: c.Expr[String]): c.Expr[TaskKey[T]] =
+  def taskKeyImpl[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(description: c.Expr[String]): c.Expr[TaskKey[T]] =
     keyImpl[T, TaskKey[T]](c) { (name, mf) =>
       c.universe.reify { TaskKey[T](name.splice, description.splice)(mf.splice) }
     }
-  def inputKeyImpl[T: c.WeakTypeTag](c: blackbox.Context)(
-      description: c.Expr[String]): c.Expr[InputKey[T]] =
+  def inputKeyImpl[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(description: c.Expr[String]): c.Expr[InputKey[T]] =
     keyImpl[T, InputKey[T]](c) { (name, mf) =>
       c.universe.reify { InputKey[T](name.splice, description.splice)(mf.splice) }
     }
@@ -45,7 +48,8 @@ private[sbt] object KeyMacro {
     val enclosingValName = definingValName(
       c,
       methodName =>
-        s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`.""")
+        s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`."""
+    )
     c.Expr[String](Literal(Constant(enclosingValName)))
   }
 

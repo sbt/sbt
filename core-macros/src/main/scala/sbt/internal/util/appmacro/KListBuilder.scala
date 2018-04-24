@@ -13,8 +13,9 @@ import macros._
 
 /** A `TupleBuilder` that uses a KList as the tuple representation.*/
 object KListBuilder extends TupleBuilder {
-  def make(c: blackbox.Context)(mt: c.Type,
-                                inputs: Inputs[c.universe.type]): BuilderResult[c.type] =
+  def make(
+      c: blackbox.Context
+  )(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] =
     new BuilderResult[c.type] {
       val ctx: c.type = c
       val util = ContextUtil[c.type](c)
@@ -47,15 +48,20 @@ object KListBuilder extends TupleBuilder {
           case Nil => revBindings.reverse
         }
 
-      private[this] def makeKList(revInputs: Inputs[c.universe.type],
-                                  klist: Tree,
-                                  klistType: Type): Tree =
+      private[this] def makeKList(
+          revInputs: Inputs[c.universe.type],
+          klist: Tree,
+          klistType: Type
+      ): Tree =
         revInputs match {
           case in :: tail =>
             val next = ApplyTree(
-              TypeApply(Ident(kcons),
-                        TypeTree(in.tpe) :: TypeTree(klistType) :: TypeTree(mTC) :: Nil),
-              in.expr :: klist :: Nil)
+              TypeApply(
+                Ident(kcons),
+                TypeTree(in.tpe) :: TypeTree(klistType) :: TypeTree(mTC) :: Nil
+              ),
+              in.expr :: klist :: Nil
+            )
             makeKList(tail, next, appliedType(kconsTC, in.tpe :: klistType :: mTC :: Nil))
           case Nil => klist
         }

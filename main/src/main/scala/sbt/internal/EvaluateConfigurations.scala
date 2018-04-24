@@ -44,9 +44,11 @@ private[sbt] object EvaluateConfigurations {
   /**
    * This represents the parsed expressions in a build sbt, as well as where they were defined.
    */
-  private[this] final class ParsedFile(val imports: Seq[(String, Int)],
-                                       val definitions: Seq[(String, LineRange)],
-                                       val settings: Seq[(String, LineRange)])
+  private[this] final class ParsedFile(
+      val imports: Seq[(String, Int)],
+      val definitions: Seq[(String, LineRange)],
+      val settings: Seq[(String, LineRange)]
+  )
 
   /** The keywords we look for when classifying a string as a definition. */
   private[this] val DefinitionKeywords = Seq("lazy val ", "def ", "val ")
@@ -72,9 +74,11 @@ private[sbt] object EvaluateConfigurations {
    *
    * Note: This ignores any non-Setting[_] values in the file.
    */
-  def evaluateConfiguration(eval: Eval,
-                            src: File,
-                            imports: Seq[String]): LazyClassLoaded[Seq[Setting[_]]] =
+  def evaluateConfiguration(
+      eval: Eval,
+      src: File,
+      imports: Seq[String]
+  ): LazyClassLoaded[Seq[Setting[_]]] =
     evaluateConfiguration(eval, src, IO.readLines(src), imports, 0)
 
   /**
@@ -83,14 +87,17 @@ private[sbt] object EvaluateConfigurations {
    *
    * @param builtinImports  The set of import statements to add to those parsed in the .sbt file.
    */
-  private[this] def parseConfiguration(file: File,
-                                       lines: Seq[String],
-                                       builtinImports: Seq[String],
-                                       offset: Int): ParsedFile = {
+  private[this] def parseConfiguration(
+      file: File,
+      lines: Seq[String],
+      builtinImports: Seq[String],
+      offset: Int
+  ): ParsedFile = {
     val (importStatements, settingsAndDefinitions) = splitExpressions(file, lines)
     val allImports = builtinImports.map(s => (s, -1)) ++ addOffset(offset, importStatements)
     val (definitions, settings) = splitSettingsDefinitions(
-      addOffsetToRange(offset, settingsAndDefinitions))
+      addOffsetToRange(offset, settingsAndDefinitions)
+    )
     new ParsedFile(allImports, definitions, settings)
   }
 
@@ -104,11 +111,13 @@ private[sbt] object EvaluateConfigurations {
    *
    * @return Just the Setting[_] instances defined in the .sbt file.
    */
-  def evaluateConfiguration(eval: Eval,
-                            file: File,
-                            lines: Seq[String],
-                            imports: Seq[String],
-                            offset: Int): LazyClassLoaded[Seq[Setting[_]]] = {
+  def evaluateConfiguration(
+      eval: Eval,
+      file: File,
+      lines: Seq[String],
+      imports: Seq[String],
+      offset: Int
+  ): LazyClassLoaded[Seq[Setting[_]]] = {
     val l = evaluateSbtFile(eval, file, lines, imports, offset)
     loader =>
       l(loader).settings
@@ -124,11 +133,13 @@ private[sbt] object EvaluateConfigurations {
    * @return A function which can take an sbt classloader and return the raw types/configuration
    *         which was compiled/parsed for the given file.
    */
-  private[sbt] def evaluateSbtFile(eval: Eval,
-                                   file: File,
-                                   lines: Seq[String],
-                                   imports: Seq[String],
-                                   offset: Int): LazyClassLoaded[LoadedSbtFile] = {
+  private[sbt] def evaluateSbtFile(
+      eval: Eval,
+      file: File,
+      lines: Seq[String],
+      imports: Seq[String],
+      offset: Int
+  ): LazyClassLoaded[LoadedSbtFile] = {
     // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
     //        detection for which project project manipulations should be applied.
     val name = file.getPath
@@ -170,12 +181,14 @@ private[sbt] object EvaluateConfigurations {
           case DslEntry.ProjectManipulation(f) => f
         }
         // TODO -get project manipulations.
-        new LoadedSbtFile(settings,
-                          projects,
-                          importDefs,
-                          manipulations,
-                          definitions,
-                          allGeneratedFiles)
+        new LoadedSbtFile(
+          settings,
+          projects,
+          importDefs,
+          manipulations,
+          definitions,
+          allGeneratedFiles
+        )
       }
   }
 
@@ -208,19 +221,23 @@ private[sbt] object EvaluateConfigurations {
    * @return A method that given an sbt classloader, can return the actual [[sbt.internal.DslEntry]] defined by
    *         the expression, and the sequence of .class files generated.
    */
-  private[sbt] def evaluateDslEntry(eval: Eval,
-                                    name: String,
-                                    imports: Seq[(String, Int)],
-                                    expression: String,
-                                    range: LineRange): TrackedEvalResult[DslEntry] = {
+  private[sbt] def evaluateDslEntry(
+      eval: Eval,
+      name: String,
+      imports: Seq[(String, Int)],
+      expression: String,
+      range: LineRange
+  ): TrackedEvalResult[DslEntry] = {
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
     val result = try {
-      eval.eval(expression,
-                imports = new EvalImports(imports, name),
-                srcName = name,
-                tpeName = Some(SettingsDefinitionName),
-                line = range.start)
+      eval.eval(
+        expression,
+        imports = new EvalImports(imports, name),
+        srcName = name,
+        tpeName = Some(SettingsDefinitionName),
+        line = range.start
+      )
     } catch {
       case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
     }
@@ -249,11 +266,13 @@ private[sbt] object EvaluateConfigurations {
    */
   // Build DSL now includes non-Setting[_] type settings.
   // Note: This method is used by the SET command, so we may want to evaluate that sucker a bit.
-  def evaluateSetting(eval: Eval,
-                      name: String,
-                      imports: Seq[(String, Int)],
-                      expression: String,
-                      range: LineRange): LazyClassLoaded[Seq[Setting[_]]] =
+  def evaluateSetting(
+      eval: Eval,
+      name: String,
+      imports: Seq[(String, Int)],
+      expression: String,
+      range: LineRange
+  ): LazyClassLoaded[Seq[Setting[_]]] =
     evaluateDslEntry(eval, name, imports, expression, range).result andThen {
       case DslEntry.ProjectSettings(values) => values
       case _                                => Nil
@@ -265,7 +284,8 @@ private[sbt] object EvaluateConfigurations {
    */
   private[sbt] def splitExpressions(
       file: File,
-      lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) = {
+      lines: Seq[String]
+  ): (Seq[(String, Int)], Seq[(String, LineRange)]) = {
     val split = SbtParser(file, lines)
     // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
     // scala compiler rather than re-parsing.
@@ -273,7 +293,8 @@ private[sbt] object EvaluateConfigurations {
   }
 
   private[this] def splitSettingsDefinitions(
-      lines: Seq[(String, LineRange)]): (Seq[(String, LineRange)], Seq[(String, LineRange)]) =
+      lines: Seq[(String, LineRange)]
+  ): (Seq[(String, LineRange)], Seq[(String, LineRange)]) =
     lines partition { case (line, _) => isDefinition(line) }
 
   private[this] def isDefinition(line: String): Boolean = {
@@ -282,34 +303,41 @@ private[sbt] object EvaluateConfigurations {
   }
 
   private[this] def extractedValTypes: Seq[String] =
-    Seq(classOf[CompositeProject],
-        classOf[InputKey[_]],
-        classOf[TaskKey[_]],
-        classOf[SettingKey[_]])
-      .map(_.getName)
+    Seq(
+      classOf[CompositeProject],
+      classOf[InputKey[_]],
+      classOf[TaskKey[_]],
+      classOf[SettingKey[_]]
+    ).map(_.getName)
 
-  private[this] def evaluateDefinitions(eval: Eval,
-                                        name: String,
-                                        imports: Seq[(String, Int)],
-                                        definitions: Seq[(String, LineRange)],
-                                        file: Option[File]): compiler.EvalDefinitions = {
+  private[this] def evaluateDefinitions(
+      eval: Eval,
+      name: String,
+      imports: Seq[(String, Int)],
+      definitions: Seq[(String, LineRange)],
+      file: Option[File]
+  ): compiler.EvalDefinitions = {
     val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-    eval.evalDefinitions(convertedRanges,
-                         new EvalImports(imports, name),
-                         name,
-                         file,
-                         extractedValTypes)
+    eval.evalDefinitions(
+      convertedRanges,
+      new EvalImports(imports, name),
+      name,
+      file,
+      extractedValTypes
+    )
   }
 }
 
 object Index {
   def taskToKeyMap(data: Settings[Scope]): Map[Task[_], ScopedKey[Task[_]]] = {
 
-    val pairs = data.scopes flatMap (scope =>
-      data.data(scope).entries collect {
-        case AttributeEntry(key, value: Task[_]) =>
-          (value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]]))
-      })
+    val pairs = data.scopes flatMap (
+        scope =>
+          data.data(scope).entries collect {
+            case AttributeEntry(key, value: Task[_]) =>
+              (value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]]))
+          }
+    )
 
     pairs.toMap[Task[_], ScopedKey[Task[_]]]
   }
@@ -326,8 +354,9 @@ object Index {
   def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =
     stringToKeyMap0(settings)(_.label)
 
-  private[this] def stringToKeyMap0(settings: Set[AttributeKey[_]])(
-      label: AttributeKey[_] => String): Map[String, AttributeKey[_]] = {
+  private[this] def stringToKeyMap0(
+      settings: Set[AttributeKey[_]]
+  )(label: AttributeKey[_] => String): Map[String, AttributeKey[_]] = {
     val multiMap = settings.groupBy(label)
     val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect {
       case (k, xs) if xs.size > 1                                   => (k, xs)
@@ -336,7 +365,8 @@ object Index {
       multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
     else
       sys.error(
-        duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString ("Some keys were defined with the same name but different types: ", ", ", ""))
+        duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString ("Some keys were defined with the same name but different types: ", ", ", "")
+      )
   }
 
   private[this] type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]

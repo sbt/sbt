@@ -58,15 +58,15 @@ object ParseKey extends Properties("Key parser test") {
   }
 
   property(
-    "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero") =
-    forAll { (skm: StructureKeyMask) =>
-      import skm.{ structure, key }
-      val mask = ScopeMask(config = false)
-      val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
-      parseCheck(structure, key, mask)(
-        sk => (sk.scope.config == resolvedConfig) || (sk.scope == Scope.GlobalScope)
-      ) :| s"Expected configuration: ${resolvedConfig map (_.name)}"
-    }
+    "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero"
+  ) = forAll { (skm: StructureKeyMask) =>
+    import skm.{ structure, key }
+    val mask = ScopeMask(config = false)
+    val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
+    parseCheck(structure, key, mask)(
+      sk => (sk.scope.config == resolvedConfig) || (sk.scope == Scope.GlobalScope)
+    ) :| s"Expected configuration: ${resolvedConfig map (_.name)}"
+  }
 
   implicit val arbStructure: Arbitrary[Structure] = Arbitrary {
     for {

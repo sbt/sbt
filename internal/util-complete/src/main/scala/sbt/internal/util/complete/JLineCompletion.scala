@@ -91,7 +91,8 @@ object JLineCompletion {
   def appendNonEmpty(set: Set[String], add: String) = if (add.trim.isEmpty) set else set + add
 
   def customCompletor(
-      f: (String, Int) => (Seq[String], Seq[String])): (ConsoleReader, Int) => Boolean =
+      f: (String, Int) => (Seq[String], Seq[String])
+  ): (ConsoleReader, Int) => Boolean =
     (reader, level) => {
       val success = complete(beforeCursor(reader), reader => f(reader, level), reader)
       reader.flush()

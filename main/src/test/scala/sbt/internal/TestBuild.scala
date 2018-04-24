@@ -48,11 +48,13 @@ abstract class TestBuild {
     lazy val delegated = scopes map env.delegates
   }
 
-  sealed case class Structure(env: Env,
-                              current: ProjectRef,
-                              data: Settings[Scope],
-                              keyIndex: KeyIndex,
-                              keyMap: Map[String, AttributeKey[_]]) {
+  sealed case class Structure(
+      env: Env,
+      current: ProjectRef,
+      data: Settings[Scope],
+      keyIndex: KeyIndex,
+      keyMap: Map[String, AttributeKey[_]]
+  ) {
     override def toString =
       env.toString + "\n" + "current: " + current + "\nSettings:\n\t" + showData + keyMap.keys
         .mkString("All keys:\n\t", ", ", "")
@@ -64,13 +66,15 @@ abstract class TestBuild {
     }
     val extra: BuildUtil[Proj] = {
       val getp = (build: URI, project: String) => env.buildMap(build).projectMap(project)
-      new BuildUtil(keyIndex,
-                    data,
-                    env.root.uri,
-                    env.rootProject,
-                    getp,
-                    _.configurations.map(c => ConfigKey(c.name)),
-                    Relation.empty)
+      new BuildUtil(
+        keyIndex,
+        data,
+        env.root.uri,
+        env.rootProject,
+        getp,
+        _.configurations.map(c => ConfigKey(c.name)),
+        Relation.empty
+      )
     }
 
     lazy val allAttributeKeys: Set[AttributeKey[_]] = {
@@ -88,8 +92,10 @@ abstract class TestBuild {
       val taskAxesMappings =
         for ((scope, keys) <- data.data.toIterable; key <- keys.keys)
           yield
-            (ScopedKey(scope.copy(task = Zero), key), scope.task): (ScopedKey[_],
-                                                                    ScopeAxis[AttributeKey[_]])
+            (ScopedKey(scope.copy(task = Zero), key), scope.task): (
+                ScopedKey[_],
+                ScopeAxis[AttributeKey[_]]
+            )
 
       val taskAxes = Relation.empty ++ taskAxesMappings
       val zero = new HashSet[ScopedKey[_]]
@@ -270,10 +276,12 @@ abstract class TestBuild {
     listOfN(ig, g)
   }
 
-  implicit def genProjects(build: URI)(implicit genID: Gen[String],
-                                       maxDeps: Gen[Int],
-                                       count: Gen[Int],
-                                       confs: Gen[Seq[Configuration]]): Gen[Seq[Proj]] =
+  implicit def genProjects(build: URI)(
+      implicit genID: Gen[String],
+      maxDeps: Gen[Int],
+      count: Gen[Int],
+      confs: Gen[Seq[Configuration]]
+  ): Gen[Seq[Proj]] =
     genAcyclic(maxDeps, genID, count) { (id: String) =>
       for (cs <- confs) yield { (deps: Seq[Proj]) =>
         new Proj(id, deps.map { dep =>
@@ -282,21 +290,26 @@ abstract class TestBuild {
       }
     }
 
-  def genConfigs(implicit genName: Gen[String],
-                 maxDeps: Gen[Int],
-                 count: Gen[Int]): Gen[Seq[Configuration]] =
+  def genConfigs(
+      implicit genName: Gen[String],
+      maxDeps: Gen[Int],
+      count: Gen[Int]
+  ): Gen[Seq[Configuration]] =
     genAcyclicDirect[Configuration, String](maxDeps, genName, count)(
       (key, deps) =>
         Configuration
           .of(key.capitalize, key)
-          .withExtendsConfigs(deps.toVector))
+          .withExtendsConfigs(deps.toVector)
+    )
 
   def genTasks(implicit genName: Gen[String], maxDeps: Gen[Int], count: Gen[Int]): Gen[Seq[Taskk]] =
-    genAcyclicDirect[Taskk, String](maxDeps, genName, count)((key, deps) =>
-      new Taskk(AttributeKey[String](key), deps))
+    genAcyclicDirect[Taskk, String](maxDeps, genName, count)(
+      (key, deps) => new Taskk(AttributeKey[String](key), deps)
+    )
 
   def genAcyclicDirect[A, T](maxDeps: Gen[Int], keyGen: Gen[T], max: Gen[Int])(
-      make: (T, Seq[A]) => A): Gen[Seq[A]] =
+      make: (T, Seq[A]) => A
+  ): Gen[Seq[A]] =
     genAcyclic[A, T](maxDeps, keyGen, max) { t =>
       Gen.const { deps =>
         make(t, deps)
@@ -304,7 +317,8 @@ abstract class TestBuild {
     }
 
   def genAcyclic[A, T](maxDeps: Gen[Int], keyGen: Gen[T], max: Gen[Int])(
-      make: T => Gen[Seq[A] => A]): Gen[Seq[A]] =
+      make: T => Gen[Seq[A] => A]
+  ): Gen[Seq[A]] =
     max flatMap { count =>
       listOfN(count, keyGen) flatMap { keys =>
         genAcyclic(maxDeps, keys.distinct)(make)
@@ -325,9 +339,11 @@ abstract class TestBuild {
       (key, deps, mk)
     }
 
-  def genAcyclic[T](maxDeps: Gen[Int],
-                    names: List[T],
-                    acc: List[Gen[(T, Seq[T])]]): Gen[Seq[(T, Seq[T])]] =
+  def genAcyclic[T](
+      maxDeps: Gen[Int],
+      names: List[T],
+      acc: List[Gen[(T, Seq[T])]]
+  ): Gen[Seq[(T, Seq[T])]] =
     names match {
       case Nil => sequence(acc)
       case x :: xs =>

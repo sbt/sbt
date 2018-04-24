@@ -31,27 +31,33 @@ object InputWrapper {
   private[std] final val WrapPreviousName = "wrapPrevious_\u2603\u2603"
 
   @compileTimeOnly(
-    "`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task.")
+    "`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
+  )
   def wrapTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
-    "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting.")
+    "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
+  )
   def wrapInit_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
-    "`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task.")
+    "`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
+  )
   def wrapInitTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
-    "`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask.")
+    "`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask."
+  )
   def wrapInputTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
-    "`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask.")
+    "`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask."
+  )
   def wrapInitInputTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
-    "`previous` can only be called on a task within a task or input task definition macro, such as :=, +=, ++=, Def.task, or Def.inputTask.")
+    "`previous` can only be called on a task within a task or input task definition macro, such as :=, +=, ++=, Def.task, or Def.inputTask."
+  )
   def wrapPrevious_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   private[this] def implDetailError =
@@ -161,8 +167,9 @@ object InputWrapper {
     }
 
   /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value*/
-  def previousMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
-      format: c.Expr[sjsonnew.JsonFormat[T]]): c.Expr[Option[T]] = {
+  def previousMacroImpl[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(format: c.Expr[sjsonnew.JsonFormat[T]]): c.Expr[Option[T]] = {
     import c.universe._
     c.macroApplication match {
       case a @ Apply(Select(Apply(_, t :: Nil), _), _) =>
@@ -182,35 +189,42 @@ object InputWrapper {
 
 sealed abstract class MacroTaskValue[T] {
   @compileTimeOnly(
-    "`taskValue` can only be used within a setting macro, such as :=, +=, ++=, or Def.setting.")
+    "`taskValue` can only be used within a setting macro, such as :=, +=, ++=, or Def.setting."
+  )
   def taskValue: Task[T] = macro InputWrapper.taskValueMacroImpl[T]
 }
 sealed abstract class MacroValue[T] {
   @compileTimeOnly(
-    "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting.")
+    "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
+  )
   def value: T = macro InputWrapper.valueMacroImpl[T]
 }
 sealed abstract class ParserInput[T] {
   @compileTimeOnly(
-    "`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
+    "`parsed` can only be used within an input task macro, such as := or Def.inputTask."
+  )
   def parsed: T = macro ParserInput.parsedMacroImpl[T]
 }
 sealed abstract class InputEvaluated[T] {
   @compileTimeOnly(
-    "`evaluated` can only be used within an input task macro, such as := or Def.inputTask.")
+    "`evaluated` can only be used within an input task macro, such as := or Def.inputTask."
+  )
   def evaluated: T = macro InputWrapper.valueMacroImpl[T]
   @compileTimeOnly(
-    "`inputTaskValue` can only be used within an input task macro, such as := or Def.inputTask.")
+    "`inputTaskValue` can only be used within an input task macro, such as := or Def.inputTask."
+  )
   def inputTaskValue: InputTask[T] = macro InputWrapper.inputTaskValueMacroImpl[T]
 }
 sealed abstract class ParserInputTask[T] {
   @compileTimeOnly(
-    "`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
+    "`parsed` can only be used within an input task macro, such as := or Def.inputTask."
+  )
   def parsed: Task[T] = macro ParserInput.parsedInputMacroImpl[T]
 }
 sealed abstract class MacroPrevious[T] {
   @compileTimeOnly(
-    "`previous` can only be used within a task macro, such as :=, +=, ++=, or Def.task.")
+    "`previous` can only be used within a task macro, such as :=, +=, ++=, or Def.task."
+  )
   def previous(implicit format: sjsonnew.JsonFormat[T]): Option[T] =
     macro InputWrapper.previousMacroImpl[T]
 }
@@ -224,24 +238,29 @@ object ParserInput {
   private[std] val WrapInitName = "initParser_\u2603\u2603"
 
   @compileTimeOnly(
-    "`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
+    "`parsed` can only be used within an input task macro, such as := or Def.inputTask."
+  )
   def parser_\u2603\u2603[T](@deprecated("unused", "") i: Any): T =
     sys.error("This method is an implementation detail and should not be referenced.")
 
   @compileTimeOnly(
-    "`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
+    "`parsed` can only be used within an input task macro, such as := or Def.inputTask."
+  )
   def initParser_\u2603\u2603[T](@deprecated("unused", "") i: Any): T =
     sys.error("This method is an implementation detail and should not be referenced.")
 
-  private[std] def wrap[T: c.WeakTypeTag](c: blackbox.Context)(ts: c.Expr[Any],
-                                                               pos: c.Position): c.Expr[T] =
+  private[std] def wrap[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
     InputWrapper.wrapImpl[T, ParserInput.type](c, ParserInput, WrapName)(ts, pos)
-  private[std] def wrapInit[T: c.WeakTypeTag](c: blackbox.Context)(ts: c.Expr[Any],
-                                                                   pos: c.Position): c.Expr[T] =
+  private[std] def wrapInit[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
     InputWrapper.wrapImpl[T, ParserInput.type](c, ParserInput, WrapInitName)(ts, pos)
 
-  private[std] def inputParser[T: c.WeakTypeTag](c: blackbox.Context)(
-      t: c.Expr[InputTask[T]]): c.Expr[State => Parser[Task[T]]] =
+  private[std] def inputParser[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(t: c.Expr[InputTask[T]]): c.Expr[State => Parser[Task[T]]] =
     c.universe.reify(t.splice.parser)
 
   def parsedInputMacroImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[Task[T]] =
@@ -261,8 +280,9 @@ object ParserInput {
     wrap[Task[T]](c)(inputParser(c)(e), pos)
   }
 
-  private def wrapInitInputTask[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree,
-                                                                       pos: c.Position) = {
+  private def wrapInitInputTask[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(tree: c.Tree, pos: c.Position) = {
     val e = c.Expr[Initialize[InputTask[T]]](tree)
     wrapInit[Task[T]](c)(c.universe.reify { Def.toIParser(e.splice) }, pos)
   }

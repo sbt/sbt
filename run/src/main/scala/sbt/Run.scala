@@ -29,8 +29,8 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
       if (exitCode == 0) Success(())
       else
         Failure(
-          new RuntimeException(
-            s"""Nonzero exit code returned from $label: $exitCode""".stripMargin))
+          new RuntimeException(s"""Nonzero exit code returned from $label: $exitCode""".stripMargin)
+        )
     val process = fork(mainClass, classpath, options, log)
     def cancel() = {
       log.warn("Run canceled.")
@@ -77,10 +77,12 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
     if (trapExit) Run.executeTrapExit(execute(), log)
     else directExecute()
   }
-  private def run0(mainClassName: String,
-                   classpath: Seq[File],
-                   options: Seq[String],
-                   log: Logger): Unit = {
+  private def run0(
+      mainClassName: String,
+      classpath: Seq[File],
+      options: Seq[String],
+      log: Logger
+  ): Unit = {
     log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
     val loader = ClasspathUtilities.makeLoader(classpath, instance, nativeTmp)
     val main = getMainMethod(mainClassName, loader)
@@ -112,7 +114,8 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
 /** This module is an interface to starting the scala interpreter or runner.*/
 object Run {
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger)(
-      implicit runner: ScalaRun) =
+      implicit runner: ScalaRun
+  ) =
     runner.run(mainClass, classpath, options, log)
 
   /** Executes the given function, trapping calls to System.exit. */

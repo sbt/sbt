@@ -67,7 +67,8 @@ object MainLoop {
         throw new xsbti.FullReload(e.arguments.toArray, false)
       case NonFatal(e) =>
         System.err.println(
-          "sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file)
+          "sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file
+        )
         deleteLastLog(logBacking)
         throw e
     }

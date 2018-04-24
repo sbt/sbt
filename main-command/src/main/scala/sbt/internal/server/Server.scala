@@ -40,9 +40,11 @@ private[sbt] object Server {
       with TokenFileFormats
   object JsonProtocol extends JsonProtocol
 
-  def start(connection: ServerConnection,
-            onIncomingSocket: (Socket, ServerInstance) => Unit,
-            log: Logger): ServerInstance =
+  def start(
+      connection: ServerConnection,
+      onIncomingSocket: (Socket, ServerInstance) => Unit,
+      log: Logger
+  ): ServerInstance =
     new ServerInstance { self =>
       import connection._
       val running = new AtomicBoolean(false)
@@ -67,7 +69,8 @@ private[sbt] object Server {
                     "socket file absolute path too long; " +
                       "either switch to another connection type " +
                       "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
-                      s"Current path: ${path}")
+                      s"Current path: ${path}"
+                  )
                 tryClient(new UnixDomainSocket(path))
                 prepareSocketfile()
                 addServerError(new UnixDomainServerSocket(path))

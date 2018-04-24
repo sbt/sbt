@@ -80,7 +80,8 @@ object BasicCommands {
     val h = (Help.empty /: s.definedCommands)(
       (a, b) =>
         a ++ (try b.help(s)
-        catch { case NonFatal(_) => Help.empty }))
+        catch { case NonFatal(_) => Help.empty })
+    )
     val helpCommands = h.detail.keySet
     val spacedArg = singleArgument(helpCommands).?
     applyEffect(spacedArg)(runHelp(s, h))
@@ -95,7 +96,8 @@ object BasicCommands {
 
   def completionsCommand: Command =
     Command(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(_ => completionsParser)(
-      runCompletions(_)(_))
+      runCompletions(_)(_)
+    )
 
   @deprecated("No longer public", "1.1.1")
   def completionsParser(state: State): Parser[String] = completionsParser
@@ -118,8 +120,9 @@ object BasicCommands {
   def multiParser(s: State): Parser[List[String]] = {
     val nonSemi = token(charClass(_ != ';').+, hide = const(true))
     val semi = token(';' ~> OptSpace)
-    val part = semi flatMap (_ =>
-      matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace))
+    val part = semi flatMap (
+        _ => matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace)
+    )
     (part map (_.trim)).+ map (_.toList)
   }
 
@@ -135,16 +138,19 @@ object BasicCommands {
     matched(s.combinedParser | token(any, hide = const(true)))
 
   def ifLast: Command =
-    Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser)((s, arg) =>
-      if (s.remainingCommands.isEmpty) arg :: s else s)
+    Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser)(
+      (s, arg) => if (s.remainingCommands.isEmpty) arg :: s else s
+    )
 
   def append: Command =
     Command(AppendCommand, Help.more(AppendCommand, AppendLastDetailed))(otherCommandParser)(
-      (s, arg) => s.copy(remainingCommands = s.remainingCommands :+ Exec(arg, s.source)))
+      (s, arg) => s.copy(remainingCommands = s.remainingCommands :+ Exec(arg, s.source))
+    )
 
   def setOnFailure: Command =
-    Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser)((s, arg) =>
-      s.copy(onFailure = Some(Exec(arg, s.source))))
+    Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser)(
+      (s, arg) => s.copy(onFailure = Some(Exec(arg, s.source)))
+    )
 
   private[sbt] def compatCommands = Seq(
     Command.command(Compat.ClearOnFailure) { s =>
@@ -154,7 +160,8 @@ object BasicCommands {
     Command.arb(
       s =>
         token(Compat.OnFailure, hide = const(true))
-          .flatMap(_ => otherCommandParser(s))) { (s, arg) =>
+          .flatMap(_ => otherCommandParser(s))
+    ) { (s, arg) =>
       s.log.warn(Compat.OnFailureDeprecated)
       s.copy(onFailure = Some(Exec(arg, s.source)))
     },
@@ -167,8 +174,9 @@ object BasicCommands {
   def clearOnFailure: Command = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
   def stashOnFailure: Command =
-    Command.command(StashOnFailure)(s =>
-      s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten))
+    Command.command(StashOnFailure)(
+      s => s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten)
+    )
 
   def popOnFailure: Command = Command.command(PopOnFailure) { s =>
     val stack = s.get(OnFailureStack).getOrElse(Nil)
@@ -213,8 +221,9 @@ object BasicCommands {
   private[this] def className: Parser[String] = {
     val base = StringBasic & not('-' ~> any.*, "Class name cannot start with '-'.")
     def single(s: String) = Completions.single(Completion.displayOnly(s))
-    val compl = TokenCompletions.fixed((seen, _) =>
-      if (seen.startsWith("-")) Completions.nil else single("<class name>"))
+    val compl = TokenCompletions.fixed(
+      (seen, _) => if (seen.startsWith("-")) Completions.nil else single("<class name>")
+    )
     token(base, compl)
   }
 
@@ -402,7 +411,8 @@ object BasicCommands {
   }
 
   def delegateToAlias(name: String, orElse: Parser[() => State])(
-      state: State): Parser[() => State] =
+      state: State
+  ): Parser[() => State] =
     aliases(state, (nme, _) => nme == name).headOption match {
       case None         => orElse
       case Some((n, v)) => aliasBody(n, v)(state)

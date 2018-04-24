@@ -30,29 +30,37 @@ object DotGraph {
     val toString = packageOnly compose fToString(sourceRoots)
     apply(relations, outputDirectory, toString, toString)
   }
-  def apply(relations: Relations,
-            outputDir: File,
-            sourceToString: File => String,
-            externalToString: File => String): Unit = {
+  def apply(
+      relations: Relations,
+      outputDir: File,
+      sourceToString: File => String,
+      externalToString: File => String
+  ): Unit = {
     def file(name: String) = new File(outputDir, name)
     IO.createDirectory(outputDir)
-    generateGraph(file("int-class-deps"),
-                  "dependencies",
-                  relations.internalClassDep,
-                  identity[String],
-                  identity[String])
-    generateGraph(file("binary-dependencies"),
-                  "externalDependencies",
-                  relations.libraryDep,
-                  externalToString,
-                  sourceToString)
+    generateGraph(
+      file("int-class-deps"),
+      "dependencies",
+      relations.internalClassDep,
+      identity[String],
+      identity[String]
+    )
+    generateGraph(
+      file("binary-dependencies"),
+      "externalDependencies",
+      relations.libraryDep,
+      externalToString,
+      sourceToString
+    )
   }
 
-  def generateGraph[K, V](file: File,
-                          graphName: String,
-                          relation: Relation[K, V],
-                          keyToString: K => String,
-                          valueToString: V => String): Unit = {
+  def generateGraph[K, V](
+      file: File,
+      graphName: String,
+      relation: Relation[K, V],
+      keyToString: K => String,
+      valueToString: V => String
+  ): Unit = {
     import scala.collection.mutable.{ HashMap, HashSet }
     val mappedGraph = new HashMap[String, HashSet[String]]
     for ((key, values) <- relation.forwardMap; keyString = keyToString(key); value <- values)

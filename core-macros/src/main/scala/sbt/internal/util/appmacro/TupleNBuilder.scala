@@ -22,8 +22,9 @@ object TupleNBuilder extends TupleBuilder {
   final val MaxInputs = 11
   final val TupleMethodName = "tuple"
 
-  def make(c: blackbox.Context)(mt: c.Type,
-                                inputs: Inputs[c.universe.type]): BuilderResult[c.type] =
+  def make(
+      c: blackbox.Context
+  )(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] =
     new BuilderResult[c.type] {
       val util = ContextUtil[c.type](c)
       import c.universe._
@@ -34,8 +35,9 @@ object TupleNBuilder extends TupleBuilder {
       val ctx: c.type = c
       val representationC: PolyType = {
         val tcVariable: Symbol = newTCVariable(util.initialOwner)
-        val tupleTypeArgs = inputs.map(in =>
-          internal.typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type])
+        val tupleTypeArgs = inputs.map(
+          in => internal.typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type]
+        )
         val tuple = global.definitions.tupleType(tupleTypeArgs)
         internal.polyType(tcVariable :: Nil, tuple.asInstanceOf[Type])
       }
@@ -47,10 +49,12 @@ object TupleNBuilder extends TupleBuilder {
       }
       def extract(param: ValDef): List[ValDef] = bindTuple(param, Nil, inputs.map(_.local), 1)
 
-      def bindTuple(param: ValDef,
-                    revBindings: List[ValDef],
-                    params: List[ValDef],
-                    i: Int): List[ValDef] =
+      def bindTuple(
+          param: ValDef,
+          revBindings: List[ValDef],
+          params: List[ValDef],
+          i: Int
+      ): List[ValDef] =
         params match {
           case (x @ ValDef(mods, name, tpt, _)) :: xs =>
             val rhs = select(Ident(param.name), "_" + i.toString)

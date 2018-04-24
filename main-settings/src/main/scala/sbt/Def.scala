@@ -27,11 +27,13 @@ object Def extends Init[Scope] with TaskMacroExtra {
   val resolvedScoped = SettingKey[ScopedKey[_]](
     "resolved-scoped",
     "The ScopedKey for the referencing setting or task.",
-    KeyRanks.DSetting)
+    KeyRanks.DSetting
+  )
   private[sbt] val taskDefinitionKey = AttributeKey[ScopedKey[_]](
     "task-definition-key",
     "Internal: used to map a task back to its ScopedKey.",
-    Invisible)
+    Invisible
+  )
 
   lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
 
@@ -56,7 +58,8 @@ object Def extends Init[Scope] with TaskMacroExtra {
           key.scope,
           withColor(key.key.label, keyNameColor),
           ref => displayRelative2(current, ref)
-      ))
+      )
+    )
 
   @deprecated("Use showBuildRelativeKey2 which doesn't take the unused multi param", "1.1.1")
   def showBuildRelativeKey(
@@ -76,7 +79,8 @@ object Def extends Init[Scope] with TaskMacroExtra {
           key.scope,
           withColor(key.key.label, keyNameColor),
           ref => displayBuildRelative(currentBuild, ref)
-      ))
+      )
+    )
 
   /**
    * Returns a String expression for the given [[Reference]] (BuildRef, [[ProjectRef]], etc)
@@ -96,9 +100,11 @@ object Def extends Init[Scope] with TaskMacroExtra {
    * Constructs the String of a given [[Reference]] relative to current.
    * Note that this no longer takes "multi" parameter, and omits the subproject id at all times.
    */
-  private[sbt] def displayRelative(current: ProjectRef,
-                                   project: Reference,
-                                   trailingSlash: Boolean): String = {
+  private[sbt] def displayRelative(
+      current: ProjectRef,
+      project: Reference,
+      trailingSlash: Boolean
+  ): String = {
     val trailing = if (trailingSlash) " /" else ""
     project match {
       case BuildRef(current.build)      => "ThisBuild" + trailing
@@ -145,11 +151,14 @@ object Def extends Init[Scope] with TaskMacroExtra {
        else None) orElse
       s.dependencies
         .find(k => k.scope != ThisScope)
-        .map(k =>
-          s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}")
+        .map(
+          k =>
+            s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}"
+        )
 
   override def intersect(s1: Scope, s2: Scope)(
-      implicit delegates: Scope => Seq[Scope]): Option[Scope] =
+      implicit delegates: Scope => Seq[Scope]
+  ): Option[Scope] =
     if (s2 == GlobalScope) Some(s1) // s1 is more specific
     else if (s1 == GlobalScope) Some(s2) // s2 is more specific
     else super.intersect(s1, s2)
@@ -230,7 +239,8 @@ object Def extends Init[Scope] with TaskMacroExtra {
   private[sbt] def dummyTask[T](name: String): Task[T] = {
     import std.TaskExtra.{ task => newTask, _ }
     val base: Task[T] = newTask(
-      sys.error("Dummy task '" + name + "' did not get converted to a full task.")) named name
+      sys.error("Dummy task '" + name + "' did not get converted to a full task.")
+    ) named name
     base.copy(info = base.info.set(isDummyTask, true))
   }
 
@@ -240,13 +250,15 @@ object Def extends Init[Scope] with TaskMacroExtra {
   private[sbt] val isDummyTask = AttributeKey[Boolean](
     "is-dummy-task",
     "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.",
-    Invisible)
+    Invisible
+  )
 
   private[sbt] val (stateKey, dummyState) = dummy[State]("state", "Current build state.")
 
   private[sbt] val (streamsManagerKey, dummyStreamsManager) = Def.dummy[std.Streams[ScopedKey[_]]](
     "streams-manager",
-    "Streams manager, which provides streams for different contexts.")
+    "Streams manager, which provides streams for different contexts."
+  )
 }
 
 // these need to be mixed into the sbt package object

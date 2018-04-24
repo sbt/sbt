@@ -39,22 +39,26 @@ sealed trait SingleInTask[S] {
 
   @deprecated(
     "Use the `result` method to create a task that returns the full Result of this task.  Then, call `map` on the new task.",
-    "0.13.0")
+    "0.13.0"
+  )
   def mapR[T](f: Result[S] => T): Task[T]
 
   @deprecated(
     "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `flatMap` on the new task.",
-    "0.13.0")
+    "0.13.0"
+  )
   def flatFailure[T](f: Incomplete => Task[T]): Task[T]
 
   @deprecated(
     "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `mapFailure` on the new task.",
-    "0.13.0")
+    "0.13.0"
+  )
   def mapFailure[T](f: Incomplete => T): Task[T]
 
   @deprecated(
     "Use the `result` method to create a task that returns the full Result of this task.  Then, call `flatMap` on the new task.",
-    "0.13.0")
+    "0.13.0"
+  )
   def flatMapR[T](f: Result[S] => Task[T]): Task[T]
 }
 sealed trait TaskInfo[S] {
@@ -160,10 +164,12 @@ trait TaskExtra {
 
     def andFinally(fin: => Unit): Task[S] = mapR(x => Result.tryValue[S]({ fin; x }))
     def doFinally(t: Task[Unit]): Task[S] =
-      flatMapR(x =>
-        t.result.map { tx =>
-          Result.tryValues[S](tx :: Nil, x)
-      })
+      flatMapR(
+        x =>
+          t.result.map { tx =>
+            Result.tryValues[S](tx :: Nil, x)
+        }
+      )
     def ||[T >: S](alt: Task[T]): Task[T] = flatMapR {
       case Value(v) => task(v); case Inc(_) => alt
     }
@@ -175,8 +181,9 @@ trait TaskExtra {
     def named(s: String): Task[S] = in.copy(info = in.info.setName(s))
   }
 
-  final implicit def pipeToProcess[Key](t: Task[_])(implicit streams: Task[TaskStreams[Key]],
-                                                    key: Task[_] => Key): ProcessPipe =
+  final implicit def pipeToProcess[Key](
+      t: Task[_]
+  )(implicit streams: Task[TaskStreams[Key]], key: Task[_] => Key): ProcessPipe =
     new ProcessPipe {
       def #|(p: ProcessBuilder): Task[Int] = pipe0(None, p)
       def pipe(sid: String)(p: ProcessBuilder): Task[Int] = pipe0(Some(sid), p)
@@ -190,8 +197,9 @@ trait TaskExtra {
         }
     }
 
-  final implicit def binaryPipeTask[Key](in: Task[_])(implicit streams: Task[TaskStreams[Key]],
-                                                      key: Task[_] => Key): BinaryPipe =
+  final implicit def binaryPipeTask[Key](
+      in: Task[_]
+  )(implicit streams: Task[TaskStreams[Key]], key: Task[_] => Key): BinaryPipe =
     new BinaryPipe {
       def binary[T](f: BufferedInputStream => T): Task[T] = pipe0(None, f)
       def binary[T](sid: String)(f: BufferedInputStream => T): Task[T] = pipe0(Some(sid), f)
@@ -206,8 +214,9 @@ trait TaskExtra {
 
       private def toFile(f: File) = (in: InputStream) => IO.transfer(in, f)
     }
-  final implicit def textPipeTask[Key](in: Task[_])(implicit streams: Task[TaskStreams[Key]],
-                                                    key: Task[_] => Key): TextPipe = new TextPipe {
+  final implicit def textPipeTask[Key](
+      in: Task[_]
+  )(implicit streams: Task[TaskStreams[Key]], key: Task[_] => Key): TextPipe = new TextPipe {
     def text[T](f: BufferedReader => T): Task[T] = pipe0(None, f)
     def text[T](sid: String)(f: BufferedReader => T): Task[T] = pipe0(Some(sid), f)
 
@@ -216,8 +225,9 @@ trait TaskExtra {
         f(s.readText(key(in), sid))
       }
   }
-  final implicit def linesTask[Key](in: Task[_])(implicit streams: Task[TaskStreams[Key]],
-                                                 key: Task[_] => Key): TaskLines = new TaskLines {
+  final implicit def linesTask[Key](
+      in: Task[_]
+  )(implicit streams: Task[TaskStreams[Key]], key: Task[_] => Key): TaskLines = new TaskLines {
     def lines: Task[List[String]] = lines0(None)
     def lines(sid: String): Task[List[String]] = lines0(Some(sid))
 

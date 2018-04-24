@@ -16,9 +16,11 @@ import sbt.util.Show
 import std.Transform.DummyTaskMap
 import sbt.EvaluateTask.extractedTaskConfig
 
-final case class Extracted(structure: BuildStructure,
-                           session: SessionSettings,
-                           currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]]) {
+final case class Extracted(
+    structure: BuildStructure,
+    session: SessionSettings,
+    currentRef: ProjectRef
+)(implicit val showKey: Show[ScopedKey[_]]) {
   def rootProject = structure.rootProject
   lazy val currentUnit = structure units currentRef.build
   lazy val currentProject = currentUnit defined currentRef.project
@@ -123,7 +125,8 @@ final case class Extracted(structure: BuildStructure,
 
   @deprecated(
     "This discards session settings. Migrate to appendWithSession or appendWithoutSession.",
-    "1.2.0")
+    "1.2.0"
+  )
   def append(settings: Seq[Setting[_]], state: State): State =
     appendWithoutSession(settings, state)
 

@@ -39,7 +39,8 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedBatchExecution =
       settingKey[Boolean]("Enables or disables batch execution for scripted.")
     val scriptedParallelInstances = settingKey[Int](
-      "Configures the number of scripted instances for parallel testing, only used in batch mode.")
+      "Configures the number of scripted instances for parallel testing, only used in batch mode."
+    )
     val scriptedRun = taskKey[Method]("")
     val scriptedLaunchOpts =
       settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")

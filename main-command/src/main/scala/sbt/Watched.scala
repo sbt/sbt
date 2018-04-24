@@ -113,7 +113,8 @@ object Watched {
       } catch {
         case e: Exception =>
           s.log.error(
-            "Error occurred obtaining files to watch.  Terminating continuous execution...")
+            "Error occurred obtaining files to watch.  Terminating continuous execution..."
+          )
           s.handleError(e)
           (false, watchState)
       }
@@ -133,8 +134,10 @@ object Watched {
     AttributeKey[WatchState]("watch state", "Internal: tracks state for continuous execution.")
 
   val ContinuousWatchService =
-    AttributeKey[WatchService]("watch service",
-                               "Internal: tracks watch service for continuous execution.")
+    AttributeKey[WatchService](
+      "watch service",
+      "Internal: tracks watch service for continuous execution."
+    )
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 

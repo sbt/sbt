@@ -53,11 +53,13 @@ object Previous {
   private[sbt] val references = SettingKey[References](
     "previous-references",
     "Collects all static references to previous values of tasks.",
-    KeyRanks.Invisible)
+    KeyRanks.Invisible
+  )
   private[sbt] val cache = TaskKey[Previous](
     "previous-cache",
     "Caches previous values of tasks read from disk for the duration of a task execution.",
-    KeyRanks.Invisible)
+    KeyRanks.Invisible
+  )
 
   /** Records references to previous task value. This should be completely populated after settings finish loading. */
   private[sbt] final class References {
@@ -72,9 +74,11 @@ object Previous {
   }
 
   /** Persists values of tasks t where there is some task referencing it via t.previous. */
-  private[sbt] def complete(referenced: References,
-                            results: RMap[Task, Result],
-                            streams: Streams): Unit = {
+  private[sbt] def complete(
+      referenced: References,
+      results: RMap[Task, Result],
+      streams: Streams
+  ): Unit = {
     val map = referenced.getReferences
     def impl[T](key: ScopedKey[_], result: T): Unit =
       for (i <- map.get(key.asInstanceOf[ScopedTaskKey[T]])) {

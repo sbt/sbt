@@ -69,7 +69,8 @@ final class xMain extends xsbti.AppMain {
     val state = StandardMain.initialState(
       configuration,
       Seq(defaults, early),
-      runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
+      runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+    )
     StandardMain.runManaged(state)
   }
 }
@@ -119,13 +120,17 @@ object StandardMain {
     ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
   def initialGlobalLogging: GlobalLogging =
-    GlobalLogging.initial(MainAppender.globalDefault(console),
-                          File.createTempFile("sbt", ".log"),
-                          console)
+    GlobalLogging.initial(
+      MainAppender.globalDefault(console),
+      File.createTempFile("sbt", ".log"),
+      console
+    )
 
-  def initialState(configuration: xsbti.AppConfiguration,
-                   initialDefinitions: Seq[Command],
-                   preCommands: Seq[String]): State = {
+  def initialState(
+      configuration: xsbti.AppConfiguration,
+      initialDefinitions: Seq[Command],
+      preCommands: Seq[String]
+  ): State = {
     // This is to workaround https://github.com/sbt/io/issues/110
     sys.props.put("jna.nosys", "true")
 
@@ -277,21 +282,27 @@ object BuiltinCommands {
     catch { case _: Exception => None }
 
   def settingsCommand: Command =
-    showSettingLike(SettingsCommand,
-                    settingsPreamble,
-                    KeyRanks.MainSettingCutoff,
-                    key => !isTask(key.manifest))
+    showSettingLike(
+      SettingsCommand,
+      settingsPreamble,
+      KeyRanks.MainSettingCutoff,
+      key => !isTask(key.manifest)
+    )
 
   def tasks: Command =
-    showSettingLike(TasksCommand,
-                    tasksPreamble,
-                    KeyRanks.MainTaskCutoff,
-                    key => isTask(key.manifest))
+    showSettingLike(
+      TasksCommand,
+      tasksPreamble,
+      KeyRanks.MainTaskCutoff,
+      key => isTask(key.manifest)
+    )
 
-  def showSettingLike(command: String,
-                      preamble: String,
-                      cutoff: Int,
-                      keep: AttributeKey[_] => Boolean): Command =
+  def showSettingLike(
+      command: String,
+      preamble: String,
+      cutoff: Int,
+      keep: AttributeKey[_] => Boolean
+  ): Command =
     Command(command, settingsBrief(command), settingsDetailed(command))(showSettingParser(keep)) {
       case (s: State, (verbosity: Int, selected: Option[String])) =>
         if (selected.isEmpty) System.out.println(preamble)
@@ -302,8 +313,9 @@ object BuiltinCommands {
         if (prominentOnly) System.out.println(moreAvailableMessage(command, selected.isDefined))
         s
     }
-  def showSettingParser(keepKeys: AttributeKey[_] => Boolean)(
-      s: State): Parser[(Int, Option[String])] =
+  def showSettingParser(
+      keepKeys: AttributeKey[_] => Boolean
+  )(s: State): Parser[(Int, Option[String])] =
     verbosityParser ~ selectedParser(s, keepKeys).?
   def selectedParser(s: State, keepKeys: AttributeKey[_] => Boolean): Parser[String] =
     singleArgument(allTaskAndSettingKeys(s).filter(keepKeys).map(_.label).toSet)
@@ -338,16 +350,19 @@ object BuiltinCommands {
   def sortByRank(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.rank)
   def withDescription(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] =
     keys.filter(_.description.isDefined)
-  def isTask(mf: Manifest[_])(implicit taskMF: Manifest[Task[_]],
-                              inputMF: Manifest[InputTask[_]]): Boolean =
+  def isTask(
+      mf: Manifest[_]
+  )(implicit taskMF: Manifest[Task[_]], inputMF: Manifest[InputTask[_]]): Boolean =
     mf.runtimeClass == taskMF.runtimeClass || mf.runtimeClass == inputMF.runtimeClass
   def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
   def highPass(rankCutoff: Int) =
     (keys: Seq[AttributeKey[_]]) => sortByRank(keys).takeWhile(_.rank <= rankCutoff)
 
-  def tasksHelp(s: State,
-                filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]],
-                arg: Option[String]): String = {
+  def tasksHelp(
+      s: State,
+      filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]],
+      arg: Option[String]
+  ): String = {
     val commandAndDescription = taskDetail(filter(allTaskAndSettingKeys(s)))
     arg match {
       case Some(selected) => detail(selected, commandAndDescription.toMap)
@@ -618,8 +633,9 @@ object BuiltinCommands {
   }
 
   def projects: Command =
-    Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(s =>
-      projectsParser(s).?) {
+    Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(
+      s => projectsParser(s).?
+    ) {
       case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
       case (s, None)               => showProjects(s); s
     }
@@ -658,7 +674,8 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     val result = (SimpleReader.readLine(
-      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit)
+      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? "
+    ) getOrElse Quit)
       .toLowerCase(Locale.ENGLISH)
     def matches(s: String) = !result.isEmpty && (s startsWith result)
     def retry = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
@@ -684,8 +701,9 @@ object BuiltinCommands {
       Nil
 
   def loadProject: Command =
-    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)((s, arg) =>
-      loadProjectCommands(arg) ::: s)
+    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)(
+      (s, arg) => loadProjectCommands(arg) ::: s
+    )
 
   private[this] def loadProjectParser: State => Parser[String] =
     _ => matched(Project.loadActionParser)
@@ -707,11 +725,13 @@ object BuiltinCommands {
       Option(buildProperties.getProperty("sbt.version"))
     } else None
 
-    sbtVersionOpt.foreach(version =>
-      if (version != app.id.version()) {
-        state.log.warn(s"""sbt version mismatch, current: ${app.id
-          .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
-    })
+    sbtVersionOpt.foreach(
+      version =>
+        if (version != app.id.version()) {
+          state.log.warn(s"""sbt version mismatch, current: ${app.id
+            .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
+      }
+    )
   }
 
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
@@ -758,8 +778,10 @@ object BuiltinCommands {
     exchange publishEventMessage ConsolePromptEvent(s0)
     val exec: Exec = exchange.blockUntilNextExec
     val newState = s1
-      .copy(onFailure = Some(Exec(Shell, None)),
-            remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands)
+      .copy(
+        onFailure = Some(Exec(Shell, None)),
+        remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
+      )
       .setInteractive(true)
     exchange publishEventMessage ConsoleUnpromptEvent(exec.source)
     if (exec.commandLine.trim.isEmpty) newState

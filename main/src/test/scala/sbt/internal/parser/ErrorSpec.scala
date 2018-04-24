@@ -50,7 +50,8 @@ class ErrorSpec extends AbstractSpec {
         buildSbt.length,
         2,
         "fake.txt",
-        new MessageOnlyException("fake")) must throwA[MessageOnlyException]
+        new MessageOnlyException("fake")
+      ) must throwA[MessageOnlyException]
     }
 
     "handle xml error " in {

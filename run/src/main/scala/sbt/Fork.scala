@@ -64,9 +64,11 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       case out: CustomOutput => (process #> out.output).run(connectInput = false)
     }
   }
-  private[this] def makeOptions(jvmOptions: Seq[String],
-                                bootJars: Iterable[File],
-                                arguments: Seq[String]): Seq[String] = {
+  private[this] def makeOptions(
+      jvmOptions: Seq[String],
+      bootJars: Iterable[File],
+      arguments: Seq[String]
+  ): Seq[String] = {
     val boot =
       if (bootJars.isEmpty) None
       else

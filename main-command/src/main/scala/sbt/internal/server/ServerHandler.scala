@@ -34,14 +34,18 @@ object ServerHandler {
   })
 }
 
-final class ServerIntent(val onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
-                         val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]) {
+final class ServerIntent(
+    val onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
+    val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]
+) {
   override def toString: String = s"ServerIntent(...)"
 }
 
 object ServerIntent {
-  def apply(onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
-            onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]): ServerIntent =
+  def apply(
+      onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
+      onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]
+  ): ServerIntent =
     new ServerIntent(onRequest, onNotification)
 
   def request(onRequest: PartialFunction[JsonRpcRequestMessage, Unit]): ServerIntent =

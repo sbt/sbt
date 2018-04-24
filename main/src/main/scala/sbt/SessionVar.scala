@@ -28,7 +28,8 @@ object SessionVar {
   def emptyMap = Map(IMap.empty)
 
   def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(
-      implicit f: JsonFormat[T]): State = {
+      implicit f: JsonFormat[T]
+  ): State = {
     persist(key, state, value)(f)
     set(key, state, value)
   }
@@ -70,7 +71,8 @@ object SessionVar {
     get(key, state) orElse read(key, state)(f)
 
   def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(
-      implicit f: JsonFormat[T]): (State, Option[T]) =
+      implicit f: JsonFormat[T]
+  ): (State, Option[T]) =
     get(key, state) match {
       case s: Some[T] => (state, s)
       case None =>

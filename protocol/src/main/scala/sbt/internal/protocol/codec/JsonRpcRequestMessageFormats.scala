@@ -15,8 +15,10 @@ trait JsonRpcRequestMessageFormats {
   implicit lazy val JsonRpcRequestMessageFormat
     : JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.internal.protocol.JsonRpcRequestMessage = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.internal.protocol.JsonRpcRequestMessage = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -39,8 +41,10 @@ trait JsonRpcRequestMessageFormats {
             deserializationError("Expected JsObject but found None")
         }
       }
-      override def write[J](obj: sbt.internal.protocol.JsonRpcRequestMessage,
-                            builder: Builder[J]): Unit = {
+      override def write[J](
+          obj: sbt.internal.protocol.JsonRpcRequestMessage,
+          builder: Builder[J]
+      ): Unit = {
         builder.beginObject()
         builder.addField("jsonrpc", obj.jsonrpc)
         builder.addField("id", obj.id)

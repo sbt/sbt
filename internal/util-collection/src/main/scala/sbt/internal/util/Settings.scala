@@ -357,7 +357,8 @@ trait Init[Scope] {
       keys.map(u => showUndefined(u, validKeys, delegates)).mkString("\n\n  ", "\n\n  ", "")
     new Uninitialized(
       keys,
-      prefix + suffix + " to undefined setting" + suffix + ": " + keysString + "\n ")
+      prefix + suffix + " to undefined setting" + suffix + ": " + keysString + "\n "
+    )
   }
 
   final class Compiled[T](
@@ -374,8 +375,9 @@ trait Init[Scope] {
     val locals = compiled flatMap {
       case (key, comp) => if (key.key.isLocal) Seq[Compiled[_]](comp) else Nil
     }
-    val ordered = Dag.topologicalSort(locals)(_.dependencies.flatMap(dep =>
-      if (dep.key.isLocal) Seq[Compiled[_]](compiled(dep)) else Nil))
+    val ordered = Dag.topologicalSort(locals)(
+      _.dependencies.flatMap(dep => if (dep.key.isLocal) Seq[Compiled[_]](compiled(dep)) else Nil)
+    )
     def flatten(
         cmap: Map[ScopedKey[_], Flattened],
         key: ScopedKey[_],
@@ -383,7 +385,8 @@ trait Init[Scope] {
     ): Flattened =
       new Flattened(
         key,
-        deps.flatMap(dep => if (dep.key.isLocal) cmap(dep).dependencies else dep :: Nil))
+        deps.flatMap(dep => if (dep.key.isLocal) cmap(dep).dependencies else dep :: Nil)
+      )
 
     val empty = Map.empty[ScopedKey[_], Flattened]
 
@@ -415,7 +418,8 @@ trait Init[Scope] {
    * Intersects two scopes, returning the more specific one if they intersect, or None otherwise.
    */
   private[sbt] def intersect(s1: Scope, s2: Scope)(
-      implicit delegates: Scope => Seq[Scope]): Option[Scope] =
+      implicit delegates: Scope => Seq[Scope]
+  ): Option[Scope] =
     if (delegates(s1).contains(s2)) Some(s1) // s1 is more specific
     else if (delegates(s2).contains(s1)) Some(s2) // s2 is more specific
     else None

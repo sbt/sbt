@@ -26,8 +26,10 @@ private[sbt] object SbtRefactorings {
    *                 the first will be replaced and the other will be removed.
    * @return a SbtConfigFile with new lines which represent the contents of the refactored .sbt file.
    */
-  def applySessionSettings(configFile: SbtConfigFile,
-                           commands: Seq[SessionSetting]): SbtConfigFile = {
+  def applySessionSettings(
+      configFile: SbtConfigFile,
+      commands: Seq[SessionSetting]
+  ): SbtConfigFile = {
     val (file, lines) = configFile
     val split = SbtParser(FAKE_FILE, lines)
     val recordedCommands = recordCommands(commands, split)
@@ -37,8 +39,10 @@ private[sbt] object SbtRefactorings {
     (file, newContent.lines.toList)
   }
 
-  private def replaceFromBottomToTop(modifiedContent: String,
-                                     sortedRecordedCommands: Seq[(Int, String, String)]) = {
+  private def replaceFromBottomToTop(
+      modifiedContent: String,
+      sortedRecordedCommands: Seq[(Int, String, String)]
+  ) = {
     sortedRecordedCommands.foldLeft(modifiedContent) {
       case (acc, (from, old, replacement)) =>
         val before = acc.substring(0, from)
