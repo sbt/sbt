@@ -48,7 +48,7 @@ object Util {
           "-Yno-adapted-args",
           "-Ywarn-dead-code",
           "-Ywarn-numeric-widen",
-          "-Ywarn-unused:-patvars,-params,-implicits,_",
+          "-Ywarn-unused:-patvars,-implicits,_",
           "-Ywarn-unused-import"
         )
     }),
