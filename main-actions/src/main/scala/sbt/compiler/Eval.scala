@@ -15,8 +15,10 @@ import ast.parser.Tokens
 import reporters.{ ConsoleReporter, Reporter }
 import scala.reflect.internal.util.{ AbstractFileClassLoader, BatchSourceFile }
 import Tokens.{ EOF, NEWLINE, NEWLINES, SEMI }
-import java.io.{ File, FileNotFoundException }
+import java.io.{ File, IOException }
 import java.nio.ByteBuffer
+import java.nio.file.{ FileVisitResult, Files, Path => NioPath, SimpleFileVisitor }
+import java.nio.file.attribute.BasicFileAttributes
 import java.net.URLClassLoader
 import java.security.MessageDigest
 import Eval.{ getModule, getValue, WrapValName }
@@ -503,24 +505,25 @@ private[sbt] object Eval {
   def bytes(b: Seq[Array[Byte]]): Array[Byte] = bytes(b.length) ++ b.flatten.toArray[Byte]
   def bytes(b: Boolean): Array[Byte] = Array[Byte](if (b) 1 else 0)
 
-  // fileModifiedBytes is a hot method, taking up 0.85% of reload time
-  // This is a procedural version
   def fileModifiedHash(f: File, digester: MessageDigest): Unit = {
-    if (f.isDirectory)
-      (f listFiles classDirFilter) foreach { x =>
-        fileModifiedHash(x, digester)
-      } else digester.update(bytes(getModifiedTimeOrZero(f)))
-
-    digester.update(bytes(f.getAbsolutePath))
+    Files.walkFileTree(
+      f.toPath,
+      new SimpleFileVisitor[NioPath] {
+        override def visitFile(file: NioPath, attrs: BasicFileAttributes) = {
+          if (file endsWith ".class")
+            digester.update(bytes(attrs.lastModifiedTime.toMillis))
+          digester.update(bytes(file.toAbsolutePath.toString))
+          FileVisitResult.CONTINUE
+        }
+        override def postVisitDirectory(dir: NioPath, exc: IOException): FileVisitResult = {
+          if (exc eq null) {
+            digester.update(bytes(dir.toAbsolutePath.toString))
+            FileVisitResult.CONTINUE
+          } else throw exc
+        }
+      }
+    )
   }
-
-  // This uses NIO instead of the JNA-based IO.getModifiedTimeOrZero for speed
-  def getModifiedTimeOrZero(f: File): Long =
-    try {
-      sbt.io.JavaMilli.getModifiedTime(f.getPath)
-    } catch {
-      case _: FileNotFoundException => 0L
-    }
 
   def fileExistsBytes(f: File): Array[Byte] =
     bytes(f.exists) ++
