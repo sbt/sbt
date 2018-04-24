@@ -535,9 +535,9 @@ object Defaults extends BuildCommon {
     ))
 
   lazy val projectTasks: Seq[Setting[_]] = Seq(
-    cleanFiles := cleanFilesTask.value,
+    cleanFiles := Seq(managedDirectory.value, target.value),
     cleanKeepFiles := historyPath.value.toVector,
-    clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
+    clean := (Def.task { IO.delete(cleanFilesTask.value) } tag (Tags.Clean)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watchingMessage := Watched.projectWatchingMessage(thisProjectRef.value.project),
@@ -1113,23 +1113,20 @@ object Defaults extends BuildCommon {
     pickMainClass(classes)
   }
 
-  /** Implements `cleanFiles` task. */
-  def cleanFilesTask: Initialize[Task[Vector[File]]] =
+  /** Files that will be deleted by the `clean` task */
+  def cleanFilesTask: Initialize[Task[Seq[File]]] =
     Def.task {
-      val filesAndDirs = Vector(managedDirectory.value, target.value)
-      val preserve = cleanKeepFiles.value
-      val (dirs, fs) = filesAndDirs.filter(_.exists).partition(_.isDirectory)
-      val preserveSet = preserve.filter(_.exists).toSet
-      // performance reasons, only the direct items under `filesAndDirs` are allowed to be preserved.
+      val (dirs, files) = cleanFiles.value.filter(_.exists).partition(_.isDirectory)
+      val preserveSet = cleanKeepFiles.value.filter(_.exists).toSet
       val dirItems = dirs flatMap { _.glob("*").get }
-      (preserveSet diff dirItems.toSet) match {
-        case xs if xs.isEmpty => ()
-        case xs =>
-          sys.error(
-            s"cleanKeepFiles contains directory/file that are not directly under cleanFiles: $xs")
+      // for performance reasons, only the direct items under `cleanFiles` are allowed to be preserved
+      val wrongKeepFiles = preserveSet diff dirItems.toSet
+      if (wrongKeepFiles.nonEmpty) {
+        sys.error(
+          s"""cleanKeepFiles contains directory/file that are not directly under cleanFiles: ${wrongKeepFiles
+            .mkString(", ")}""")
       }
-      val toClean = (dirItems filterNot { preserveSet(_) }) ++ fs
-      toClean
+      (dirItems filterNot { preserveSet(_) }) ++ files
     }
 
   def bgRunMainTask(

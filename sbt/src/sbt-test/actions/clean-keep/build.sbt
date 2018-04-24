@@ -3,4 +3,3 @@ cleanKeepFiles ++= Seq(
 	target.value / "keepfile",
 	target.value / "keepdir"
 )
-

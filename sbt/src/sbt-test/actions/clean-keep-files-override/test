@@ -1,0 +1,8 @@
+$ touch target/keep/a target/deletefile target/deletedir/b
+$ exists target/keep/a target/deletefile target/deletedir/b
+
+> show cleanFiles
+> show cleanKeepFiles
+> clean
+$ absent target/deletefile target/deletedir/b
+$ exists target/keep/a 
