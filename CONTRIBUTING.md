@@ -1,33 +1,14 @@
   [StackOverflow]: http://stackoverflow.com/tags/sbt
-  [ask]: https://stackoverflow.com/questions/ask?tags=sbt
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
-  [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
   [sbt-contrib]: https://gitter.im/sbt/sbt-contrib
-  [Lightbend]: https://www.lightbend.com/
-  [subscriptions]: https://www.lightbend.com/platform/subscription
   [327]: https://github.com/sbt/sbt/issues/327
-  [gitter]: https://gitter.im/sbt/sbt
   [documentation]: https://github.com/sbt/website
 
-Support
-=======
+Contributing
+============
 
-[Lightbend] sponsors sbt and encourages contributions from the active community. Enterprises can adopt it for mission critical systems with confidence because Lightbend stands behind sbt with commercial support and services.
-
-For community support please [ask] on StackOverflow with the tag "sbt" (and the name of the sbt plugin(s) if any).
-
-- State the problem or question clearly and provide enough context. Code examples and `build.sbt` are often useful when appropriately edited.
-- There's also [Gitter sbt/sbt room][gitter], but Stackoverflow is recommended so others can benefit from the answers.
-
-For professional support, for instance if you need faster response times, [Lightbend], the maintainer of Scala compiler and sbt, provides:
-
-- [Lightbend Subscriptions][subscriptions], which includes Expert Support
-- Training
-- Consulting
-
-How to contribute to sbt
-========================
+(For support, see [SUPPORT](./SUPPORT.md))
 
 There are lots of ways to contribute to sbt ecosystem depending on your interests and skill level.
 
