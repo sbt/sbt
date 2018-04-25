@@ -239,8 +239,7 @@ Other notes for maintainers
 
 ### Publishing VS Code Extensions
 
-
-https://code.visualstudio.com/docs/extensions/publish-extension
+Reference https://code.visualstudio.com/docs/extensions/publish-extension
 
 ```
 $ sbt
