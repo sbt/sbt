@@ -118,7 +118,7 @@ See below for the branch to work against.
 
 ### Adding notes
 
-All pull requests are required to include a "Notes" file which documents the change.  This file should reside in the
+Most pull requests should include a "Notes" file which documents the change.  This file should reside in the
 directory:
 
     <sbt root>
