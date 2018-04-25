@@ -66,21 +66,21 @@ Documentation fixes and contributions are as much welcome as to patching the cor
 
 The developers need three things from you: **steps**, **problems**, and **expectations**.
 
-### Steps
+#### Steps
 
 The most important thing to remember about bug reporting is to clearly distinguish facts and opinions. What we need first is **the exact steps to reproduce your problems on our computers**. This is called *reproduction steps*, which is often shortened to "repro steps" or "steps." Describe your method of running sbt. Provide `build.sbt` that caused the problem and the version of sbt or Scala that was used. Provide sample Scala code if it's to do with incremental compilation. If possible, minimize the problem to reduce non-essential factors.
 
 Repro steps are the most important part of a bug report. If we cannot reproduce the problem in one way or the other, the problem can't be fixed. Telling us the error messages is not enough.
 
-### Problems
+#### Problems
 
 Next, describe the problems, or what *you think* is the problem. It might be "obvious" to you that it's a problem, but it could actually be an intentional behavior for some backward compatibility etc. For compilation errors, include the stack trace. The more raw info the better.
 
-### Expectations
+#### Expectations
 
 Same as the problems. Describe what *you think* should've happened.
 
-### Notes
+#### Notes
 
 Add an optional notes section to describe your analysis.
 
