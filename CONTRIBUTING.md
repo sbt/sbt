@@ -49,7 +49,7 @@ Effective bug reports are more likely to be fixed. These guidelines explain how 
 
 ### Notes about Documentation
 
-Documentation fixes and contributions are as much welcome as to patching the core. Visit [the website project][documentation] to learn about how to contribute.
+Documentation fixes and contributions are as much welcome as to patching the core. Visit [sbt/website][documentation] to learn about how to contribute.
 
 ### Preliminaries
 
