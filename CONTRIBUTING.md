@@ -82,7 +82,7 @@ Same as the problems. Describe what *you think* should've happened.
 
 #### Notes
 
-Add an optional notes section to describe your analysis.
+Add any optional notes section to describe your analysis.
 
 ### Subject
 
