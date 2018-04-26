@@ -448,9 +448,9 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib with Matchers {
 
   /**
    * Result:
-   * |└─ org.apache.commons:commons-compress:1.5
+   * |└─ a:b:c
    */
-  "local dep url" should "have coursier-fetch-test.jar" in withFile() {
+  "local file dep url" should "have coursier-fetch-test.jar and cached for second run" in withFile() {
     (jsonFile, _) => {
       withFile("tada", "coursier-fetch-test", ".jar") {
         (testFile, _) => {
@@ -458,7 +458,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib with Matchers {
           val encodedUrl = encode("file://" + path, "UTF-8")
 
 
-          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath)
+          val commonOpt = CommonOptions(jsonOutputFile = jsonFile.getPath, cacheFileArtifacts = true)
           val fetchOpt = FetchOptions(common = commonOpt)
 
           // fetch with encoded url set to temp jar
@@ -466,25 +466,47 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib with Matchers {
             fetchOpt,
             RemainingArgs(
               Seq(
-                "org.apache.commons:commons-compress:1.5,url=" + encodedUrl
+                "a:b:c,url=" + encodedUrl
               ),
               Seq()
             )
           )
 
-          val node: ReportNode = getReportFromJson(jsonFile)
+          val node1: ReportNode = getReportFromJson(jsonFile)
 
-          val depNodes: Seq[DepNode] = node.dependencies
-            .filter(_.coord == "org.apache.commons:commons-compress:1.5")
+          val depNodes1: Seq[DepNode] = node1.dependencies
+            .filter(_.coord == "a:b:c")
             .sortBy(fileNameLength)
-          assert(depNodes.length == 1)
+          assert(depNodes1.length == 1)
 
-          val urlInJsonFile = depNodes.head.file.get
-          assert(urlInJsonFile.contains(path))
+          val urlInJsonFile1 = depNodes1.head.file.get
+          assert(urlInJsonFile1.contains(path))
 
           // open jar and inspect contents
-          val fileContents = Source.fromFile(urlInJsonFile).getLines.mkString
-          assert(fileContents == "tada")
+          val fileContents1 = Source.fromFile(urlInJsonFile1).getLines.mkString
+          assert(fileContents1 == "tada")
+
+          testFile.delete()
+
+          Fetch.run(
+            fetchOpt,
+            RemainingArgs(
+              Seq(
+                "a:b:c,url=" + encodedUrl
+              ),
+              Seq()
+            )
+          )
+
+          val node2: ReportNode = getReportFromJson(jsonFile)
+
+          val depNodes2: Seq[DepNode] = node2.dependencies
+            .filter(_.coord == "a:b:c")
+            .sortBy(fileNameLength)
+          assert(depNodes2.length == 1)
+
+          val urlInJsonFile2 = depNodes2.head.file.get
+          assert(urlInJsonFile2.contains("coursier/cache") && urlInJsonFile2.contains(testFile.toString))
         }
       }
     }
@@ -525,7 +547,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib with Matchers {
 
   /**
    * Result:
-   * |└─ a:b:c
+   * |└─ h:i:j
    */
   "external dep url with arbitrary coords" should "fetch junit-4.12.jar" in withFile() {
     (jsonFile, _) => {
@@ -540,7 +562,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib with Matchers {
         fetchOpt,
         RemainingArgs(
           Seq(
-            "a:b:c,url=" + externalUrl
+            "h:i:j,url=" + externalUrl
           ),
           Seq()
         )
@@ -549,7 +571,7 @@ class CliFetchIntegrationTest extends FlatSpec with CliTestLib with Matchers {
       val node: ReportNode = getReportFromJson(jsonFile)
 
       val depNodes: Seq[DepNode] = node.dependencies
-        .filter(_.coord == "a:b:c")
+        .filter(_.coord == "h:i:j")
         .sortBy(fileNameLength)
       assert(depNodes.length == 1)
       depNodes.head.file.map( f => assert(f.contains("junit/junit/4.12/junit-4.12.jar"))).orElse(fail("Not Defined"))

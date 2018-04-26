@@ -37,8 +37,8 @@ object Cache {
   // Check SHA-1 if available, else be fine with no checksum
   val defaultChecksums = Seq(Some("SHA-1"), None)
 
-  def localFile(url: String, cache: File, user: Option[String]): File =
-    CachePath.localFile(url, cache, user.orNull)
+  def localFile(url: String, cache: File, user: Option[String], localArtifactsShouldBeCached: Boolean): File =
+    CachePath.localFile(url, cache, user.orNull, localArtifactsShouldBeCached)
 
   private def readFullyTo(
     in: InputStream,
@@ -363,7 +363,8 @@ object Cache {
     cachePolicy: CachePolicy,
     pool: ExecutorService,
     logger: Option[Logger],
-    ttl: Option[Duration]
+    ttl: Option[Duration],
+    localArtifactsShouldBeCached: Boolean
   )(implicit S: Schedulable[F]): F[Seq[((File, String), Either[FileError, Unit])]] = {
 
     // Reference file - if it exists, and we get not found errors on some URLs, we assume
@@ -371,7 +372,7 @@ object Cache {
     val referenceFileOpt = artifact
       .extra
       .get("metadata")
-      .map(a => localFile(a.url, cache, a.authentication.map(_.user)))
+      .map(a => localFile(a.url, cache, a.authentication.map(_.user), localArtifactsShouldBeCached))
 
     def referenceFileExists: Boolean = referenceFileOpt.exists(_.exists())
 
@@ -779,7 +780,7 @@ object Cache {
       case Some(required) =>
         cachePolicy0 match {
           case CachePolicy.LocalOnly | CachePolicy.LocalUpdateChanging | CachePolicy.LocalUpdate =>
-            val file = localFile(required.url, cache, artifact.authentication.map(_.user))
+            val file = localFile(required.url, cache, artifact.authentication.map(_.user), localArtifactsShouldBeCached)
             localInfo(file, required.url).flatMap {
               case true =>
                 EitherT(S.point[Either[FileError, Unit]](Right(())))
@@ -793,10 +794,10 @@ object Cache {
 
     val tasks =
       for (url <- urls) yield {
-        val file = localFile(url, cache, artifact.authentication.map(_.user))
+        val file = localFile(url, cache, artifact.authentication.map(_.user), localArtifactsShouldBeCached)
 
         def res =
-          if (url.startsWith("file:/")) {
+          if (url.startsWith("file:/") && !localArtifactsShouldBeCached) {
             // for debug purposes, flaky with URL-encoded chars anyway
             // def filtered(s: String) =
             //   s.stripPrefix("file:/").stripPrefix("//").stripSuffix("/")
@@ -879,15 +880,16 @@ object Cache {
     artifact: Artifact,
     sumType: String,
     cache: File,
-    pool: ExecutorService
+    pool: ExecutorService,
+    localArtifactsShouldBeCached: Boolean = false
   )(implicit S: Schedulable[F]): EitherT[F, FileError, Unit] = {
 
-    val localFile0 = localFile(artifact.url, cache, artifact.authentication.map(_.user))
+    val localFile0 = localFile(artifact.url, cache, artifact.authentication.map(_.user), localArtifactsShouldBeCached)
 
     EitherT {
       artifact.checksumUrls.get(sumType) match {
         case Some(sumUrl) =>
-          val sumFile = localFile(sumUrl, cache, artifact.authentication.map(_.user))
+          val sumFile = localFile(sumUrl, cache, artifact.authentication.map(_.user), localArtifactsShouldBeCached)
 
           S.schedule(pool) {
             val sumOpt = parseRawChecksum(Files.readAllBytes(sumFile.toPath))
@@ -941,7 +943,8 @@ object Cache {
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool,
     ttl: Option[Duration] = defaultTtl,
-    retry: Int = 1
+    retry: Int = 1,
+    localArtifactsShouldBeCached: Boolean = false
   )(implicit S: Schedulable[F]): EitherT[F, FileError, File] = {
 
     val checksums0 = if (checksums.isEmpty) Seq(None) else checksums
@@ -954,7 +957,8 @@ object Cache {
         cachePolicy,
         pool,
         logger = logger,
-        ttl = ttl
+        ttl = ttl,
+        localArtifactsShouldBeCached
       )) { results =>
         val checksum = checksums0.find {
           case None => true
@@ -982,7 +986,7 @@ object Cache {
     res.flatMap {
       case (f, None) => EitherT(S.point[Either[FileError, File]](Right(f)))
       case (f, Some(c)) =>
-        validateChecksum(artifact, c, cache, pool).map(_ => f)
+        validateChecksum(artifact, c, cache, pool, localArtifactsShouldBeCached).map(_ => f)
     }.leftFlatMap {
       case err: FileError.WrongChecksum =>
         if (retry <= 0) {
@@ -991,7 +995,7 @@ object Cache {
         else {
           EitherT {
             S.schedule[Either[FileError, Unit]](pool) {
-              val badFile = localFile(artifact.url, cache, artifact.authentication.map(_.user))
+              val badFile = localFile(artifact.url, cache, artifact.authentication.map(_.user), localArtifactsShouldBeCached)
               badFile.delete()
               logger.foreach(_.removedCorruptFile(artifact.url, badFile, Some(err)))
               Right(())

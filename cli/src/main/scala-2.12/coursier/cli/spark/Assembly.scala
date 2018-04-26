@@ -208,7 +208,8 @@ object Assembly {
     extraDependencies: Seq[String],
     options: CommonOptions,
     artifactTypes: Set[String],
-    checksumSeed: Array[Byte] = "v1".getBytes(UTF_8)
+    checksumSeed: Array[Byte] = "v1".getBytes(UTF_8),
+    localArtifactsShouldBeCached: Boolean = false
   ): Either[String, (File, Seq[File])] = {
 
     val helper = sparkJarsHelper(scalaVersion, sparkVersion, yarnVersion, default, extraDependencies, options)
@@ -219,7 +220,7 @@ object Assembly {
     val checksums = artifacts.map { a =>
       val f = a.checksumUrls.get("SHA-1") match {
         case Some(url) =>
-          Cache.localFile(url, helper.cache, a.authentication.map(_.user))
+          Cache.localFile(url, helper.cache, a.authentication.map(_.user), localArtifactsShouldBeCached)
         case None =>
           throw new Exception(s"SHA-1 file not found for ${a.url}")
       }

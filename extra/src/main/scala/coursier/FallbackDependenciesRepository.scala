@@ -7,7 +7,7 @@ import coursier.util.{EitherT, Monad}
 
 object FallbackDependenciesRepository {
 
-  def exists(url: URL): Boolean = {
+  def exists(url: URL, localArtifactsShouldBeCached: Boolean): Boolean = {
 
     // Sometimes HEAD attempts fail even though standard GETs are fine.
     // E.g. https://github.com/NetLogo/NetLogo/releases/download/5.3.1/NetLogo.jar
@@ -15,8 +15,14 @@ object FallbackDependenciesRepository {
 
     val protocolSpecificAttemptOpt = {
 
-      def ifFile: Boolean =
-        new File(url.getPath).exists() // FIXME Escaping / de-escaping needed here?
+      def ifFile: Option[Boolean] = {
+        if (localArtifactsShouldBeCached && !new File(url.getPath).exists()) {
+          val cachePath = coursier.Cache.default + "/file"  // Use '/file' here because the protocol becomes part of the cache path
+          Some(new File(cachePath, url.getPath).exists())
+        } else {
+          Some(new File(url.getPath).exists()) // FIXME Escaping / de-escaping needed here?
+        }
+      }
 
       def ifHttp: Option[Boolean] = {
         // HEAD request attempt, adapted from http://stackoverflow.com/questions/22541629/android-how-can-i-make-an-http-head-request/22545275#22545275
@@ -41,7 +47,7 @@ object FallbackDependenciesRepository {
       }
 
       url.getProtocol match {
-        case "file"           => Some(ifFile)
+        case "file"           => ifFile
         case "http" | "https" => ifHttp
         case _                => None
       }
@@ -71,7 +77,8 @@ object FallbackDependenciesRepository {
 }
 
 final case class FallbackDependenciesRepository(
-  fallbacks: Map[(Module, String), (URL, Boolean)]
+  fallbacks: Map[(Module, String), (URL, Boolean)],
+  localArtifactsShouldBeCached: Boolean = false
 ) extends Repository {
 
   private val source: Artifact.Source =
@@ -113,7 +120,7 @@ final case class FallbackDependenciesRepository(
           else {
             val (dirUrlStr, fileName) = urlStr.splitAt(idx + 1)
 
-            if (FallbackDependenciesRepository.exists(url)) {
+            if (FallbackDependenciesRepository.exists(url, localArtifactsShouldBeCached)) {
               val proj = Project(
                 module,
                 version,

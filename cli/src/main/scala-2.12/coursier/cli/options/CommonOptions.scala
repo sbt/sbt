@@ -98,7 +98,11 @@ final case class CommonOptions(
     cacheOptions: CacheOptions = CacheOptions(),
 
   @Help("Retry limit for Checksum error when fetching a file")
-    retryCount: Int = 1
+    retryCount: Int = 1,
+
+  @Help("Flag that specifies if a local artifact should be cached.")
+  @Short("cfa")
+    cacheFileArtifacts: Boolean = false
 
 ) {
   val verbosityLevel = Tag.unwrap(verbose) - (if (quiet) 1 else 0)

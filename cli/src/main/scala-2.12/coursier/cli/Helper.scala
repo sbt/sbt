@@ -295,7 +295,7 @@ class Helper(
         }
     }.toMap
 
-  val depsWithUrlRepo: FallbackDependenciesRepository = FallbackDependenciesRepository(depsWithUrls)
+  val depsWithUrlRepo: FallbackDependenciesRepository = FallbackDependenciesRepository(depsWithUrls, cacheFileArtifacts)
 
   // Prepend FallbackDependenciesRepository to the repository list
   // so that dependencies with URIs are resolved against this repo
@@ -646,7 +646,8 @@ class Helper(
         logger = logger,
         pool = pool,
         ttl = ttl0,
-        retry = common.retryCount
+        retry = common.retryCount,
+        cacheFileArtifacts
       )
 
       (file(cachePolicies.head) /: cachePolicies.tail)(_ orElse file(_))

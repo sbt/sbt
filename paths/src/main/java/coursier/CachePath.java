@@ -36,14 +36,14 @@ public class CachePath {
         return ch > 128 || " %$&+,:;=?@<>#%".indexOf(ch) >= 0;
     }
 
-    public static File localFile(String url, File cache, String user) throws MalformedURLException {
+    public static File localFile(String url, File cache, String user, boolean localArtifactsShouldBeCached) throws MalformedURLException {
 
         // use the File constructor accepting a URI in case of problem with the two cases below?
 
-        if (url.startsWith("file:///"))
+        if (url.startsWith("file:///") && !localArtifactsShouldBeCached)
             return new File(url.substring("file://".length()));
 
-        if (url.startsWith("file:/"))
+        if (url.startsWith("file:/") && !localArtifactsShouldBeCached)
             return new File(url.substring("file:".length()));
 
         String[] split = url.split(":", 2);

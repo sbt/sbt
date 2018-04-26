@@ -186,7 +186,8 @@ public class Bootstrap {
             if (protocol.equals("file") || protocol.equals(bootstrapProtocol)) {
                 localURLs.add(url);
             } else {
-                File dest = CachePath.localFile(url.toString(), cacheDir, null);
+                // fourth argument is false because we don't want to store local files when bootstrapping
+                File dest = CachePath.localFile(url.toString(), cacheDir, null, false);
 
                 if (dest.exists()) {
                     localURLs.add(dest.toURI().toURL());
@@ -200,7 +201,8 @@ public class Bootstrap {
             completionService.submit(new Callable<URL>() {
                 @Override
                 public URL call() throws Exception {
-                    final File dest = CachePath.localFile(url.toString(), cacheDir, null);
+                    // fourth argument is false because we don't want to store local files when bootstrapping
+                    final File dest = CachePath.localFile(url.toString(), cacheDir, null, false);
 
                     if (!dest.exists()) {
                         FileOutputStream out = null;
