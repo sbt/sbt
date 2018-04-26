@@ -428,6 +428,11 @@ lazy val commandProj = (project in file("main-command"))
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // dropped private[sbt] method
+      exclude[DirectMissingMethodProblem]("sbt.BasicCommands.compatCommands"),
+      // dropped mainly internal command strings holder
+      exclude[MissingClassProblem]("sbt.BasicCommandStrings$Compat$"),
+
       exclude[DirectMissingMethodProblem]("sbt.BasicCommands.rebootOptionParser"),
       // Changed the signature of Server method. nacho cheese.
       exclude[DirectMissingMethodProblem]("sbt.internal.server.Server.*"),
