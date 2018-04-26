@@ -285,11 +285,7 @@ object State {
     def log = s.globalLogging.full
     def handleError(t: Throwable): State = handleException(t, s, log)
     def fail = {
-      import BasicCommandStrings.Compat.{ FailureWall => CompatFailureWall }
-      val remaining =
-        s.remainingCommands.dropWhile(
-          c => c.commandLine != FailureWall && c.commandLine != CompatFailureWall
-        )
+      val remaining = s.remainingCommands.dropWhile(c => c.commandLine != FailureWall)
       if (remaining.isEmpty)
         applyOnFailure(s, Nil, exit(ok = false))
       else

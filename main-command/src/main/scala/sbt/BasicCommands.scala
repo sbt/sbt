@@ -152,25 +152,6 @@ object BasicCommands {
       (s, arg) => s.copy(onFailure = Some(Exec(arg, s.source)))
     )
 
-  private[sbt] def compatCommands = Seq(
-    Command.command(Compat.ClearOnFailure) { s =>
-      s.log.warn(Compat.ClearOnFailureDeprecated)
-      s.copy(onFailure = None)
-    },
-    Command.arb(
-      s =>
-        token(Compat.OnFailure, hide = const(true))
-          .flatMap(_ => otherCommandParser(s))
-    ) { (s, arg) =>
-      s.log.warn(Compat.OnFailureDeprecated)
-      s.copy(onFailure = Some(Exec(arg, s.source)))
-    },
-    Command.command(Compat.FailureWall) { s =>
-      s.log.warn(Compat.FailureWallDeprecated)
-      s
-    }
-  )
-
   def clearOnFailure: Command = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
   def stashOnFailure: Command =
