@@ -56,7 +56,7 @@ object BasicCommands {
     client,
     read,
     alias
-  ) ++ compatCommands
+  )
 
   def nop: Command = Command.custom(s => success(() => s))
   def ignore: Command = Command.command(FailureWall)(idFun)
