@@ -24,9 +24,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
     val isTask = convert.asPredicate(ctx)
     class traverser extends Traverser {
       private val unchecked = symbolOf[sbt.sbtUnchecked].asClass
-      private val taskKeyType = typeOf[sbt.TaskKey[_]]
-      private val settingKeyType = typeOf[sbt.SettingKey[_]]
-      private val inputKeyType = typeOf[sbt.InputKey[_]]
+      private val initializeType = typeOf[sbt.Def.Initialize[_]]
       private val uncheckedWrappers = MutableSet.empty[Tree]
       var insideIf: Boolean = false
       var insideAnon: Boolean = false
@@ -56,13 +54,27 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
         }
       }
 
-      @inline def isKey(tpe: Type): Boolean =
-        tpe <:< taskKeyType || tpe <:< settingKeyType || tpe <:< inputKeyType
+      @inline def isKey(tpe: Type): Boolean = isInitialize(tpe)
+      @inline def isInitialize(tpe: Type): Boolean = tpe <:< initializeType
 
       def detectAndErrorOnKeyMissingValue(i: Ident): Unit = {
         if (isKey(i.tpe)) {
           val keyName = i.name.decodedName.toString
           ctx.error(i.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
+        } else ()
+      }
+
+      def detectAndErrorOnKeyMissingValue(s: Select): Unit = {
+        if (isKey(s.tpe)) {
+          val keyName = s.name.decodedName.toString
+          ctx.error(s.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
+        } else ()
+      }
+
+      def detectAndErrorOnKeyMissingValue(a: Apply): Unit = {
+        if (isInitialize(a.tpe)) {
+          val expr = "X / y"
+          ctx.error(a.pos, TaskLinterDSLFeedback.missingValueForInitialize(expr))
         } else ()
       }
 
@@ -118,11 +130,15 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
                 // TODO: Consider using unused names analysis to be able to report on more cases
                 case ValDef(_, valName, _, rhs) if valName == termNames.WILDCARD =>
                   rhs match {
-                    case i: Ident => detectAndErrorOnKeyMissingValue(i)
-                    case _        => ()
+                    case i: Ident  => detectAndErrorOnKeyMissingValue(i)
+                    case s: Select => detectAndErrorOnKeyMissingValue(s)
+                    case a: Apply  => detectAndErrorOnKeyMissingValue(a)
+                    case _         => ()
                   }
-                case i: Ident => detectAndErrorOnKeyMissingValue(i)
-                case _        => ()
+                case i: Ident  => detectAndErrorOnKeyMissingValue(i)
+                case s: Select => detectAndErrorOnKeyMissingValue(s)
+                case a: Apply  => detectAndErrorOnKeyMissingValue(a)
+                case _         => ()
               }
             }
             traverseTrees(stmts)
@@ -161,14 +177,13 @@ object TaskLinterDSLFeedback {
   private final val startGreen = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.GREEN else ""
   private final val reset = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.RESET else ""
 
-  private final val ProblemHeader = s"${startRed}Problem${reset}"
-  private final val SolutionHeader = s"${startGreen}Solution${reset}"
+  private final val ProblemHeader = s"${startRed}problem${reset}"
+  private final val SolutionHeader = s"${startGreen}solution${reset}"
 
   def useOfValueInsideAnon(task: String) =
     s"""${startBold}The evaluation of `$task` inside an anonymous function is prohibited.$reset
        |
        |${ProblemHeader}: Task invocations inside anonymous functions are evaluated independently of whether the anonymous function is invoked or not.
-       |
        |${SolutionHeader}:
        |  1. Make `$task` evaluation explicit outside of the function body if you don't care about its evaluation.
        |  2. Use a dynamic task to evaluate `$task` and pass that value as a parameter to an anonymous function.
@@ -179,7 +194,6 @@ object TaskLinterDSLFeedback {
        |
        |${ProblemHeader}: `$task` is inside the if expression of a regular task.
        |  Regular tasks always evaluate task inside the bodies of if expressions.
-       |
        |${SolutionHeader}:
        |  1. If you only want to evaluate it when the if predicate is true or false, use a dynamic task.
        |  2. Otherwise, make the static evaluation explicit by evaluating `$task` outside the if expression.
@@ -188,8 +202,14 @@ object TaskLinterDSLFeedback {
   def missingValueForKey(key: String) =
     s"""${startBold}The key `$key` is not being invoked inside the task definition.$reset
        |
-       |${ProblemHeader}: Keys missing `.value` are not initialized and their dependency is not registered.
-       |
+       |${ProblemHeader}:  Keys missing `.value` are not initialized and their dependency is not registered.
        |${SolutionHeader}: Replace `$key` by `$key.value` or remove it if unused.
+    """.stripMargin
+
+  def missingValueForInitialize(expr: String) =
+    s"""${startBold}The setting/task `$expr` is not being invoked inside the task definition.$reset
+       |
+       |${ProblemHeader}:  Settings/tasks missing `.value` are not initialized and their dependency is not registered.
+       |${SolutionHeader}: Replace `$expr` by `($expr).value` or remove it if unused.
     """.stripMargin
 }
