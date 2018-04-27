@@ -4,7 +4,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.4"
+  val scala212 = "2.12.6"
   val baseScalaVersion = scala212
 
   // sbt modules
