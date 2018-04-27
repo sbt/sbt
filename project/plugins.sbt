@@ -1,4 +1,4 @@
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.6"
 scalacOptions ++= Seq("-feature", "-language:postfixOps")
 
 addSbtPlugin("com.typesafe"      % "sbt-mima-plugin" % "0.2.0")

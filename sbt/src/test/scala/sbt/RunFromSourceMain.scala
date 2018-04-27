@@ -13,7 +13,7 @@ import xsbti._
 
 object RunFromSourceMain {
   private val sbtVersion = "1.1.0" // "dev"
-  private val scalaVersion = "2.12.4"
+  private val scalaVersion = "2.12.6"
 
   def main(args: Array[String]): Unit = args match {
     case Array()              => sys.error(s"Must specify working directory as the first argument")
