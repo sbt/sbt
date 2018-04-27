@@ -14,8 +14,8 @@ import buildinfo.TestBuildInfo
 import xsbti._
 
 object RunFromSourceMain {
-  private val sbtVersion = "1.0.3" // "dev"
-  private val scalaVersion = "2.12.4"
+  private val sbtVersion = "1.1.0" // "dev"
+  private val scalaVersion = "2.12.6"
 
   def fork(workingDirectory: File): Try[Unit] = {
     val fo = ForkOptions()
