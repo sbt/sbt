@@ -38,7 +38,7 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
 
   Seq[Setting[_]](
     Global / cancelable := true,
-    ThisBuild / scalaVersion := "2.12.3",
+    ThisBuild / scalaVersion := "2.12.5",
     console / scalacOptions += "-deprecation",
     Compile / console / scalacOptions += "-Ywarn-numeric-widen",
     projA / Compile / console / scalacOptions += "-feature",
