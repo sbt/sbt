@@ -29,5 +29,18 @@ object Task extends PlatformTask {
   def never[A]: Task[A] =
     Task(_ => Promise[A].future)
 
+  def tailRecM[A, B](a: A)(fn: A => Task[Either[A, B]]): Task[B] =
+    Task[B] { implicit ec =>
+      def loop(a: A): Future[B] =
+        fn(a).future().flatMap {
+          case Right(b) =>
+            Future.successful(b)
+          case Left(a) =>
+            // this is safe because recursive
+            // flatMap is safe on Future
+            loop(a)
+        }
+      loop(a)
+    }
 }
 
