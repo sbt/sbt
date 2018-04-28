@@ -1,6 +1,6 @@
 import Dependencies._
 import Util._
-//import com.typesafe.tools.mima.core._, ProblemFilters._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def internalPath = file("internal")
 
@@ -117,6 +117,11 @@ lazy val utilLogging = (project in internalPath / "util-logging")
       else old(tpe)
     },
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.SuccessEvent.copy*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.TraceEvent.copy*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.StringEvent.copy*"),
+    ),
   )
 
 // Relation

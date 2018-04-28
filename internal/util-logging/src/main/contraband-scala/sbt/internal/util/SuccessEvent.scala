@@ -19,7 +19,7 @@ final class SuccessEvent private (
   override def toString: String = {
     "SuccessEvent(" + message + ")"
   }
-  protected[this] def copy(message: String = message): SuccessEvent = {
+  private[this] def copy(message: String = message): SuccessEvent = {
     new SuccessEvent(message)
   }
   def withMessage(message: String): SuccessEvent = {
