@@ -4,7 +4,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   val scala211 = "2.11.12"
-  val scala212 = "2.12.4"
+  val scala212 = "2.12.6"
 
   private val ioVersion = "1.1.3"
   private val utilVersion = "1.1.3"
@@ -45,8 +45,8 @@ object Dependencies {
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   val scalaXml = scala211Module("scala-xml", "1.0.5")
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.1" % Test
-  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4" % Test
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.5" % Test
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0" % Test
   val sjsonnew = Def.setting {
     "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value
   }
