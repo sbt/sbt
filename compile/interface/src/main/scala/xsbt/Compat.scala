@@ -149,7 +149,7 @@ abstract class Compat {
           import analyzer._ // this is where MEA lives in 2.11.x
           tree.attachments.all.collect {
             case att: MacroExpansionAttachment => att.expandee
-          } headOption
+          }.headOption
         }
       }
     }
