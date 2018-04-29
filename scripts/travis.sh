@@ -149,6 +149,19 @@ testBootstrap() {
       echo -e "Error: unexpected output from bootstrapped props command.\n$OUT" 1>&2
       exit 1
     fi
+
+    # assembly tests
+    ./coursier-test bootstrap -a -o cs-props-assembly -D other=thing -J -Dfoo=baz io.get-coursier:props:1.0.2
+    local OUT="$(./cs-props-assembly foo)"
+    if [ "$OUT" != baz ]; then
+      echo -e "Error: unexpected output from assembly props command.\n$OUT" 1>&2
+      exit 1
+    fi
+    local OUT="$(./cs-props-assembly other)"
+    if [ "$OUT" != thing ]; then
+      echo -e "Error: unexpected output from assembly props command.\n$OUT" 1>&2
+      exit 1
+    fi
   fi
 }
 

@@ -1,16 +1,17 @@
 package coursier
 package cli
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File, FileInputStream, IOException}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File, FileInputStream, FileOutputStream, IOException}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermission
 import java.util.Properties
+import java.util.jar.{JarFile, Attributes => JarAttributes}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
 import caseapp._
 import coursier.cli.options.BootstrapOptions
-import coursier.cli.util.Zip
+import coursier.cli.util.{Assembly, Zip}
 import coursier.internal.FileUtil
 
 import scala.collection.JavaConverters._
@@ -224,6 +225,52 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
     )
   }
 
+  private def defaultRules = Seq(
+    Assembly.Rule.Append("reference.conf"),
+    Assembly.Rule.AppendPattern("META-INF/services/.*"),
+    Assembly.Rule.Exclude("log4j.properties"),
+    Assembly.Rule.Exclude(JarFile.MANIFEST_NAME),
+    Assembly.Rule.ExcludePattern("META-INF/.*\\.[sS][fF]"),
+    Assembly.Rule.ExcludePattern("META-INF/.*\\.[dD][sS][aA]"),
+    Assembly.Rule.ExcludePattern("META-INF/.*\\.[rR][sS][aA]")
+  )
+
+  private def createAssemblyJar(
+    options: BootstrapOptions,
+    files: Seq[File],
+    javaOpts: Seq[String],
+    mainClass: String,
+    output: File
+  ): Unit = {
+
+    val parsedRules = options.options.rule.map { s =>
+      s.split(":", 2) match {
+        case Array("append", v) => Assembly.Rule.Append(v)
+        case Array("append-pattern", v) => Assembly.Rule.AppendPattern(v)
+        case Array("exclude", v) => Assembly.Rule.Exclude(v)
+        case Array("exclude-pattern", v) => Assembly.Rule.ExcludePattern(v)
+        case _ =>
+          sys.error(s"Malformed assembly rule: $s")
+      }
+    }
+
+    val rules =
+      (if (options.options.defaultRules) defaultRules else Nil) ++ parsedRules
+
+    val attrs = Seq(
+      JarAttributes.Name.MAIN_CLASS -> mainClass
+    )
+
+    val baos = new ByteArrayOutputStream
+    Assembly.make(files, baos, attrs, rules)
+
+    createJarBootstrap(
+      javaOpts,
+      output,
+      baos.toByteArray
+    )
+  }
+
   def run(options: BootstrapOptions, args: RemainingArgs): Unit = {
 
     val helper = new Helper(
@@ -262,6 +309,9 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
         }
       }
 
+      val javaOpts = options.options.javaOpt ++
+        properties0.map { case (k, v) => s"-D$k=$v" }
+
       val (urls, files) =
         helper.fetchMap(
           sources = false,
@@ -269,21 +319,23 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
           artifactTypes = options.artifactOptions.artifactTypes(sources = false, javadoc = false)
         ).toList.foldLeft((List.empty[String], List.empty[File])){
           case ((urls, files), (url, file)) =>
-            if (options.options.standalone) (urls, file :: files)
+            if (options.options.assembly || options.options.standalone) (urls, file :: files)
             else if (url.startsWith("file:/")) (urls, file :: files)
             else (url :: urls, files)
         }
 
-      createOneJarLikeJarBootstrap(
-        options,
-        helper,
-        mainClass,
-        options.options.javaOpt ++
-          properties0.map { case (k, v) => s"-D$k=$v" },
-        urls,
-        files,
-        output0
-      )
+      if (options.options.assembly)
+        createAssemblyJar(options, files, javaOpts, mainClass, output0)
+      else
+        createOneJarLikeJarBootstrap(
+          options,
+          helper,
+          mainClass,
+          javaOpts,
+          urls,
+          files,
+          output0
+        )
     }
   }
 
