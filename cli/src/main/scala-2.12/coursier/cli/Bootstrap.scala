@@ -200,7 +200,7 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
       // escaping of  javaOpt  possibly a bit loose :-|
       val shellPreamble = Seq(
         "#!/usr/bin/env sh",
-        "exec java -jar " + options.options.javaOpt.map(s => "'" + s.replace("'", "\\'") + "'").mkString(" ") + " \"$0\" \"$@\""
+        "exec java " + options.options.javaOpt.map(s => "'" + s.replace("'", "\\'") + "'").mkString(" ") + " -jar \"$0\" \"$@\""
       ).mkString("", "\n", "\n")
 
       try Files.write(output0.toPath, shellPreamble.getBytes(UTF_8) ++ buffer.toByteArray)
