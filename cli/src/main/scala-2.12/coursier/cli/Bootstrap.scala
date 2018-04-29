@@ -76,9 +76,10 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
       }
 
       val properties0 = validProperties.map { s =>
-        val idx = s.indexOf('=')
-        assert(idx >= 0)
-        (s.take(idx), s.drop(idx + 1))
+        s.split("=", 2) match {
+          case Array(k, v) => k -> v
+          case _ => sys.error("Cannot possibly happen")
+        }
       }
 
       val bootstrapJar =
@@ -197,10 +198,27 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
 
       outputZip.close()
 
-      // escaping of  javaOpt  possibly a bit loose :-|
+      val javaCmd = Seq("java") ++
+        options
+          .options
+          .javaOpt
+          // escaping possibly a bit loose :-|
+          .map(s => "'" + s.replace("'", "\\'") + "'") ++
+        properties0
+          .map {
+            case (k, v) =>
+              // escaping possibly a bit loose :-|
+              s"'-D$k=${v.replace("'", "\\'")}'"
+          } ++
+        Seq(
+          "-jar",
+          "\"$0\"",
+          "\"$@\""
+        )
+
       val shellPreamble = Seq(
         "#!/usr/bin/env sh",
-        "exec java " + options.options.javaOpt.map(s => "'" + s.replace("'", "\\'") + "'").mkString(" ") + " -jar \"$0\" \"$@\""
+        "exec " + javaCmd.mkString(" ")
       ).mkString("", "\n", "\n")
 
       try Files.write(output0.toPath, shellPreamble.getBytes(UTF_8) ++ buffer.toByteArray)

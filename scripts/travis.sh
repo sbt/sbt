@@ -138,9 +138,14 @@ testBootstrap() {
 
     # run via the launcher rather than via the sbt-pack scripts, because the latter interprets -Dfoo=baz itself
     # rather than passing it to coursier since https://github.com/xerial/sbt-pack/pull/118
-    ./coursier-test bootstrap -o cs-props -J -Dfoo=baz io.get-coursier:props:1.0.2
+    ./coursier-test bootstrap -o cs-props -D other=thing -J -Dfoo=baz io.get-coursier:props:1.0.2
     local OUT="$(./cs-props foo)"
     if [ "$OUT" != baz ]; then
+      echo -e "Error: unexpected output from bootstrapped props command.\n$OUT" 1>&2
+      exit 1
+    fi
+    local OUT="$(./cs-props other)"
+    if [ "$OUT" != thing ]; then
       echo -e "Error: unexpected output from bootstrapped props command.\n$OUT" 1>&2
       exit 1
     fi
