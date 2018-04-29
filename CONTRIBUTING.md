@@ -31,9 +31,10 @@ How to contribute to sbt
 
 There are lots of ways to contribute to sbt ecosystem depending on your interests and skill level.
 
-- Help someone at work or online help their build problem.
+- Help someone at work or online fix their build problem.
 - Answer StackOverflow questions.
-- Create plugins that extends sbt's feature.
+- Ask StackOverflow questions.
+- Create plugins that extend sbt's features.
 - Maintain and update [documentation].
 - Garden the issue tracker.
 - Report issues.
