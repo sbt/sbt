@@ -1,6 +1,6 @@
 package coursier.cli.spark
 
-import java.io.{File, FileInputStream, FileOutputStream}
+import java.io.{File, FileInputStream, FileOutputStream, OutputStream}
 import java.math.BigInteger
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, StandardCopyOption}
@@ -44,7 +44,7 @@ object Assembly {
     }
   }
 
-  def make(jars: Seq[File], output: File, rules: Seq[Rule]): Unit = {
+  def make(jars: Seq[File], output: OutputStream, attributes: Seq[(Attributes.Name, String)], rules: Seq[Rule]): Unit = {
 
     val rulesMap = rules.collect { case r: Rule.PathRule => r.path -> r }.toMap
     val excludePatterns = rules.collect { case Rule.ExcludePattern(p) => p }
@@ -52,13 +52,13 @@ object Assembly {
 
     val manifest = new Manifest
     manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
+    for ((k, v) <- attributes)
+      manifest.getMainAttributes.put(k, v)
 
-    var fos: FileOutputStream = null
     var zos: ZipOutputStream = null
 
     try {
-      fos = new FileOutputStream(output)
-      zos = new JarOutputStream(fos, manifest)
+      zos = new JarOutputStream(output, manifest)
 
       val concatenedEntries = new mutable.HashMap[String, ::[(ZipEntry, Array[Byte])]]
 
@@ -125,8 +125,6 @@ object Assembly {
     } finally {
       if (zos != null)
         zos.close()
-      if (fos != null)
-        fos.close()
     }
   }
 
@@ -272,7 +270,14 @@ object Assembly {
         dest.getParentFile.mkdirs()
         val tmpDest = new File(dest.getParentFile, s".${dest.getName}.part")
         // FIXME Acquire lock on tmpDest
-        Assembly.make(jars, tmpDest, assemblyRules)
+        var fos: FileOutputStream = null
+        try {
+          fos = new FileOutputStream(tmpDest)
+          Assembly.make(jars, fos, Nil, assemblyRules)
+        } finally {
+          if (fos != null)
+            fos.close()
+        }
         Files.move(tmpDest.toPath, dest.toPath, StandardCopyOption.ATOMIC_MOVE)
         Right((dest, jars))
       }.left.map(_.describe)
