@@ -3,10 +3,30 @@
 import * as path from 'path';
 
 let fs = require('fs');
+import * as vscode from 'vscode';
 import { ExtensionContext, workspace } from 'vscode'; // workspace, 
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 
-export function activate(context: ExtensionContext) {
+export async function activate(context: ExtensionContext) {
+	// Start sbt
+	const terminal = vscode.window.createTerminal(`sbt`);
+	terminal.show();
+	terminal.sendText("sbt");
+
+	function delay(ms: number) {
+		return new Promise(resolve => setTimeout(resolve, ms));
+	}
+
+	// Wait for SBT server to start
+	let retries = 30;
+	while (retries > 0) {
+		retries--;
+		await delay(1000);
+		if (fs.existsSync(path.join(workspace.rootPath, 'project', 'target', 'active.json'))) {
+			break;
+		}
+	}
+
 	// The server is implemented in node
 	let serverModule = context.asAbsolutePath(path.join('server', 'server.js'));
 	// The debug options for the server
