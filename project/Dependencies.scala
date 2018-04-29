@@ -4,14 +4,14 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.4"
+  val scala212 = "2.12.5"
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.1.4"
+  private val ioVersion = "1.1.6"
   private val utilVersion = "1.1.3"
   private val lmVersion = "1.1.4"
-  private val zincVersion = "1.1.3"
+  private val zincVersion = "1.1.5"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -26,8 +26,9 @@ object Dependencies {
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.3"
-  val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.3"
+  val launcherVersion = "1.0.4"
+  val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
+  val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
   val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.0.0"
 

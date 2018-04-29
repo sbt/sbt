@@ -239,6 +239,8 @@ lazy val testingProj = (project in file("testing"))
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestItemEvent.copy$default$*"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy$default$1"),
+      //no reason to use
+      exclude[DirectMissingMethodProblem]("sbt.JUnitXmlTestsListener.testSuite"),
     )
   )
   .configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
@@ -357,6 +359,9 @@ lazy val actionsProj = (project in file("main-actions"))
       exclude[MissingClassProblem]("sbt.Doc$Scaladoc"),
       // Removed no longer used private[sbt] method
       exclude[DirectMissingMethodProblem]("sbt.Doc.generate"),
+
+      exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.filesModifiedBytes"),
+      exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.fileModifiedBytes"),
     ),
   )
   .configure(
@@ -564,13 +569,15 @@ lazy val sbtProj = (project in file("sbt"))
     BuildInfoPlugin.buildInfoDefaultSettings,
     buildInfoObject in Test := "TestBuildInfo",
     buildInfoKeys in Test := Seq[BuildInfoKey](
+      version,
       // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
       BuildInfoKey.map((fullClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
+      classDirectory in Compile,
+      classDirectory in Test,
     ),
-    connectInput in run in Test := true,
-    outputStrategy in run in Test := Some(StdoutOutput),
-    fork in Test := true,
-    parallelExecution in Test := false,
+    Test / run / connectInput := true,
+    Test / run / outputStrategy := Some(StdoutOutput),
+    Test / run / fork := true,
   )
   .configure(addSbtCompilerBridge)
 
