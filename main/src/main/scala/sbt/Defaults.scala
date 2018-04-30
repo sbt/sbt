@@ -167,9 +167,7 @@ object Defaults extends BuildCommon {
       artifactClassifier in packageSrc :== Some(SourceClassifier),
       artifactClassifier in packageDoc :== Some(DocClassifier),
       includeFilter :== NothingFilter,
-      includeFilter in unmanagedSources :== ("*.java" | "*.scala") && new SimpleFileFilter(
-        _.isFile
-      ),
+      includeFilter in unmanagedSources :== ("*.java" | "*.scala") -- DirectoryFilter,
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
       bgList := { bgJobService.value.jobs },
@@ -1440,10 +1438,8 @@ object Defaults extends BuildCommon {
       val sc = (scalacOptions in task).value
       val ic = (initialCommands in task).value
       val cc = (cleanupCommands in task).value
-      JLine.usingTerminal { _ =>
-        (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
-        println()
-      }
+      (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
+      println()
     }
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
@@ -2269,6 +2265,7 @@ object Classpaths {
             ).withScalaOrganization(scalaOrganization.value)
           )
         },
+        dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
         updateSbtClassifiers in TaskGlobal := (Def.task {
           val lm = dependencyResolution.value
           val s = streams.value
@@ -2281,6 +2278,9 @@ object Classpaths {
           val log = s.log
           val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
           val uwConfig = (unresolvedWarningConfiguration in update).value
+          val depDir = dependencyCacheDirectory.value
+          val ivy = scalaModuleInfo.value
+          val st = state.value
           withExcludes(out, mod.classifiers, lock(app)) {
             excludes =>
               // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))

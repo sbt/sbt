@@ -65,7 +65,7 @@ private[sbt] object LanguageServerProtocol {
                 else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
               } else ()
               setInitialized(true)
-              appendExec(Exec(s"collectAnalyses", Some(r.id), Some(CommandSource(name))))
+              appendExec(Exec(s"collectAnalyses", None, Some(CommandSource(name))))
               jsonRpcRespond(InitializeResult(serverCapabilities), Option(r.id))
 
             case r: JsonRpcRequestMessage if r.method == "textDocument/definition" =>

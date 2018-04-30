@@ -25,6 +25,6 @@ object TestUtil {
     val mainClassesDir = buildinfo.TestBuildInfo.classDirectory
     val testClassesDir = buildinfo.TestBuildInfo.test_classDirectory
     val depsClasspath = buildinfo.TestBuildInfo.dependencyClasspath
-    mainClassesDir +: testClassesDir +: depsClasspath mkString ":"
+    mainClassesDir +: testClassesDir +: depsClasspath mkString java.io.File.pathSeparator
   }
 }
