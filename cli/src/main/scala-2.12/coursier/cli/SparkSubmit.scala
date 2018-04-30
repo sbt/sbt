@@ -6,7 +6,7 @@ import java.net.URLClassLoader
 import caseapp._
 import coursier.Dependency
 import coursier.cli.options.SparkSubmitOptions
-import coursier.cli.spark.{Assembly, Submit}
+import coursier.cli.spark.{SparkAssembly, Submit}
 
 
 /**
@@ -85,7 +85,7 @@ object SparkSubmit extends CaseApp[SparkSubmitOptions] {
     val (sparkYarnExtraConf, sparkBaseJars) =
       if (!options.autoAssembly || sparkVersion.startsWith("2.")) {
 
-        val assemblyJars = Assembly.sparkJars(
+        val assemblyJars = SparkAssembly.sparkJars(
           scalaVersion,
           sparkVersion,
           options.yarnVersion,
@@ -107,7 +107,7 @@ object SparkSubmit extends CaseApp[SparkSubmitOptions] {
         (extraConf, assemblyJars)
       } else {
 
-        val assemblyAndJarsOrError = Assembly.spark(
+        val assemblyAndJarsOrError = SparkAssembly.spark(
           scalaVersion,
           sparkVersion,
           options.yarnVersion,

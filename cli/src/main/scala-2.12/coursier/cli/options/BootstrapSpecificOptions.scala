@@ -29,6 +29,15 @@ final case class BootstrapSpecificOptions(
     target: String = "native-target",
   @Help("Don't wipe native compilation target directory (for debug purposes)")
     keepTarget: Boolean = false,
+  @Help("Generate an assembly rather than a bootstrap jar")
+  @Short("a")
+    assembly: Boolean = false,
+  @Help("Add assembly rule")
+  @Value("append:$path|append-pattern:$pattern|exclude:$path|exclude-pattern:$pattern")
+  @Short("R")
+    rule: List[String] = Nil,
+  @Help("Add default rules to assembly rule list")
+    defaultRules: Boolean = true,
   @Recurse
     isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
   @Recurse
