@@ -4,7 +4,7 @@ jar_library(
         jar(
             org = "org.scala-lang",
             name = "scala-library",
-            rev = "2.12.4",
+            rev = "2.12.6",
         ),
     ],
     scope = 'runtime'
@@ -16,7 +16,7 @@ jar_library(
         jar(
             org = "org.scala-lang",
             name = "scala-compiler",
-            rev = "2.12.4",
+            rev = "2.12.6",
         ),
     ],
 )

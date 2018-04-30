@@ -1,7 +1,7 @@
 
 object ScalaVersion {
 
-  def scala212 = "2.12.5"
+  def scala212 = "2.12.6"
   def scala211 = "2.11.12"
   def scala210 = "2.10.7"
 
