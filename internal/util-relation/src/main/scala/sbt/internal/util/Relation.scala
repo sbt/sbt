@@ -20,12 +20,14 @@ object Relation {
   /** Constructs a relation such that for every entry `_1 -> _2s` in `forward` and every `_2` in `_2s`, `(_1, _2)` is in the relation. */
   def reconstruct[A, B](forward: Map[A, Set[B]]): Relation[A, B] = {
     val reversePairs = for ((a, bs) <- forward.view; b <- bs.view) yield (b, a)
-    val reverse = (Map.empty[B, Set[A]] /: reversePairs) { case (m, (b, a)) => add(m, b, a :: Nil) }
+    val reverse = reversePairs.foldLeft(Map.empty[B, Set[A]]) {
+      case (m, (b, a)) => add(m, b, a :: Nil)
+    }
     make(forward filter { case (a, bs) => bs.nonEmpty }, reverse)
   }
 
   def merge[A, B](rels: Traversable[Relation[A, B]]): Relation[A, B] =
-    (Relation.empty[A, B] /: rels)(_ ++ _)
+    rels.foldLeft(Relation.empty[A, B])(_ ++ _)
 
   private[sbt] def remove[X, Y](map: M[X, Y], from: X, to: Y): M[X, Y] =
     map.get(from) match {
@@ -36,7 +38,7 @@ object Relation {
     }
 
   private[sbt] def combine[X, Y](a: M[X, Y], b: M[X, Y]): M[X, Y] =
-    (a /: b)((map, mapping) => add(map, mapping._1, mapping._2))
+    b.foldLeft(a)((map, mapping) => add(map, mapping._1, mapping._2))
 
   private[sbt] def add[X, Y](map: M[X, Y], from: X, to: Traversable[Y]): M[X, Y] =
     map.updated(from, get(map, from) ++ to)
@@ -151,14 +153,15 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]])
   def +(from: A, to: B) = this + (from, to :: Nil)
   def +(from: A, to: Traversable[B]) =
     if (to.isEmpty) this
-    else new MRelation(add(fwd, from, to), (rev /: to)((map, t) => add(map, t, from :: Nil)))
+    else new MRelation(add(fwd, from, to), to.foldLeft(rev)((map, t) => add(map, t, from :: Nil)))
 
-  def ++(rs: Traversable[(A, B)]) = ((this: Relation[A, B]) /: rs) { _ + _ }
+  def ++(rs: Traversable[(A, B)]) = rs.foldLeft(this: Relation[A, B]) { _ + _ }
   def ++(other: Relation[A, B]) =
     new MRelation[A, B](combine(fwd, other.forwardMap), combine(rev, other.reverseMap))
 
-  def --(ts: Traversable[A]): Relation[A, B] = ((this: Relation[A, B]) /: ts) { _ - _ }
-  def --(pairs: TraversableOnce[(A, B)]): Relation[A, B] = ((this: Relation[A, B]) /: pairs)(_ - _)
+  def --(ts: Traversable[A]): Relation[A, B] = ts.foldLeft(this: Relation[A, B]) { _ - _ }
+  def --(pairs: TraversableOnce[(A, B)]): Relation[A, B] =
+    pairs.foldLeft(this: Relation[A, B])(_ - _)
   def --(relations: Relation[A, B]): Relation[A, B] = --(relations.all)
 
   def -(pair: (A, B)): Relation[A, B] =
@@ -167,7 +170,7 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]])
   def -(t: A): Relation[A, B] =
     fwd.get(t) match {
       case Some(rs) =>
-        val upRev = (rev /: rs)((map, r) => remove(map, r, t))
+        val upRev = rs.foldLeft(rev)((map, r) => remove(map, r, t))
         new MRelation(fwd - t, upRev)
       case None => this
     }
