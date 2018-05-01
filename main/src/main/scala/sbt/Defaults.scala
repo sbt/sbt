@@ -10,11 +10,14 @@ package sbt
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
+import java.nio.file.Paths
 import java.util.Optional
-import java.util.concurrent.{ TimeUnit, Callable }
+import java.util.concurrent.{ Callable, TimeUnit }
+
 import Keys._
-import org.apache.ivy.core.module.{ descriptor, id }, descriptor.ModuleDescriptor,
-id.ModuleRevisionId
+import org.apache.ivy.core.module.{ descriptor, id }
+import descriptor.ModuleDescriptor
+import id.ModuleRevisionId
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import sbt.internal._
 import sbt.internal.CommandStrings.ExportStream
@@ -26,7 +29,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
-import sbt.internal.server.{ LanguageServerReporter, Definition }
+import sbt.internal.server.{ Definition, LanguageServerReporter }
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -35,27 +38,28 @@ import sbt.internal.util.Types._
 import sbt.io.syntax._
 import sbt.io.{
   AllPassFilter,
+  DirectoryFilter,
   FileFilter,
   GlobFilter,
+  Hash,
   HiddenFileFilter,
   IO,
   NameFilter,
   NothingFilter,
   Path,
   PathFinder,
-  SimpleFileFilter,
-  DirectoryFilter,
-  Hash
-}, Path._
+  SimpleFileFilter
+}
+import Path._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
   Compile,
   CompilerPlugin,
   IntegrationTest,
-  names,
   Provided,
   Runtime,
-  Test
+  Test,
+  names
 }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement._
@@ -64,16 +68,19 @@ import sbt.librarymanagement.syntax._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sbt.util.CacheImplicits._
+
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
-import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
-import sjsonnew.{ IsoLList, JsonFormat, LList, LNil, :*: }
+import Scope.{ GlobalScope, ThisScope, fillTaskAxis }
+import sjsonnew.{ :*:, IsoLList, JsonFormat, LList, LNil }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import std.TaskExtra._
-import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
-import xsbti.compile.{ IncToolOptionsUtil, AnalysisContents, IncOptions }
+import testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
+import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
 import xsbti.CrossValue
+
+import scala.util.matching.Regex
 
 // incremental compiler
 import xsbti.compile.{
@@ -154,6 +161,8 @@ object Defaults extends BuildCommon {
       scalaHome :== None,
       apiURL := None,
       javaHome :== None,
+      discoveredJavaHomes := discoverJavaHomes.value ++ additionalJavaHomes.value,
+      additionalJavaHomes := Map.empty,
       testForkedParallel :== false,
       javaOptions :== Nil,
       sbtPlugin :== false,
@@ -1625,6 +1634,28 @@ object Defaults extends BuildCommon {
           else old
         }
       ))
+
+  private case class JavaDiscoverConf(root: String, dirRexp: Regex, innerDir: String)
+  private final val JavaDiscoverConfigs = Seq(
+    JavaDiscoverConf("/usr/lib/jvm", "java-([0-9]+)-.*".r, ""), // most linux
+    JavaDiscoverConf("/Library/Java/JavaVirtualMachines",
+                     "jdk[1\\.]*([0-9]+)\\..*".r,
+                     "Contents/Home") // mac os
+  )
+
+  private[sbt] def discoverJavaHomes: Initialize[Map[String, File]] = Def.setting {
+    import scala.collection.breakOut
+    JavaDiscoverConfigs
+      .flatMap {
+        case JavaDiscoverConf(root, dirRexp, inner) =>
+          Option(new File(root).list())
+            .getOrElse(Array.empty[String])
+            .toSeq
+            .collect {
+              case dir @ dirRexp(ver) => ver -> Paths.get(root, dir, inner).toFile
+            }
+      }(breakOut)
+  }
 }
 object Classpaths {
   import Keys._
