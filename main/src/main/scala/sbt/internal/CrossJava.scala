@@ -10,7 +10,6 @@ package internal
 
 import java.io.File
 import scala.collection.immutable.ListMap
-import sbt.io.IO
 import sbt.io.syntax._
 
 private[sbt] object CrossJava {
@@ -43,6 +42,17 @@ private[sbt] object CrossJava {
         }
     }
   }
+
+  // expand Java versions to 1-8 to 1.x, and vice versa to accept both "1.8" and "8"
+  private val oneDot = Map((1 to 8).toVector flatMap { i =>
+    Vector(s"$i" -> s"1.$i", s"1.$i" -> s"$i")
+  }: _*)
+  def expandJavaHomes(hs: Map[JavaVersion, File]): Map[JavaVersion, File] =
+    hs flatMap {
+      case (k, v) =>
+        if (oneDot.contains(k.version)) Vector(k -> v, k.withVersion(oneDot(k.version)) -> v)
+        else Vector(k -> v)
+    }
 
   def wrapNull(a: Array[String]): Vector[String] =
     if (a eq null) Vector()
