@@ -957,9 +957,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     }: _*)
     // This emulates test-internal extending test configuration etc.
     val remappedConfigs: Map[String, Vector[String]] =
-      (remappedConfigs0 /: rootModuleConfs) { (acc0, c) =>
+      rootModuleConfs.foldLeft(remappedConfigs0) { (acc0, c) =>
         val ps = parentConfigs(c.getName)
-        (acc0 /: ps) { (acc, parent) =>
+        ps.foldLeft(acc0) { (acc, parent) =>
           val vs0 = acc.getOrElse(c.getName, Vector())
           val vs = acc.getOrElse(parent, Vector())
           acc.updated(c.getName, (vs0 ++ vs).distinct)

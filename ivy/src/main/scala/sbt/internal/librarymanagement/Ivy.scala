@@ -774,7 +774,7 @@ private[sbt] object IvySbt {
       elem: scala.xml.Elem,
       extra: Map[String, String]
   ): scala.xml.Elem =
-    (elem /: extra) {
+    extra.foldLeft(elem) {
       case (e, (key, value)) => e % new scala.xml.UnprefixedAttribute(key, value, scala.xml.Null)
     }
   private def hasInfo(module: ModuleID, x: scala.xml.NodeSeq) = {
