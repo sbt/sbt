@@ -49,7 +49,7 @@ object ConflictWarning {
         if (differentFullNames.size > 1) differentFullNames else Set.empty[String]
       }
     }
-    (Map.empty[(String, String), Set[String]] /: mismatches)(merge)
+    mismatches.foldLeft(Map.empty[(String, String), Set[String]])(merge)
   }
   private[this] def merge[A, B](m: Map[A, Set[B]], b: (A, Set[B])): Map[A, Set[B]] =
     if (b._2.isEmpty) m
