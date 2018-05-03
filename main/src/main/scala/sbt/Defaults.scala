@@ -2885,10 +2885,9 @@ object Classpaths {
                         excl: FileFilter): Classpath =
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
 
-  def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] = {
+  def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File], scalaVersion: String): Seq[String] = {
     val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
-    val version = scalaVersion.value
-    val plugins = sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath, scalaInstance.isDotty(version))
+    val plugins = sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath, ScalaInstance.isDotty(scalaVersion))
     plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
   }
 
@@ -2908,7 +2907,7 @@ object Classpaths {
   lazy val compilerPluginConfig = Seq(
     scalacOptions := {
       val options = scalacOptions.value
-      val newPlugins = autoPlugins(update.value, internalCompilerPluginClasspath.value.files)
+      val newPlugins = autoPlugins(update.value, internalCompilerPluginClasspath.value.files, scalaVersion.value)
       val existing = options.toSet
       if (autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
     }
