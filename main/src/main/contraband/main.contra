@@ -19,7 +19,11 @@ enum PluginTrigger {
 }
 
 type JavaVersion {
+  numbers: [Long]
   vendor: String
-  version: String!
-  #xcompanion def apply(version: String): JavaVersion = new JavaVersion(None, version)
+
+  #x def numberStr: String = numbers.mkString(".")
+  #xtostring vendor.map(_ + "@").getOrElse("") + numberStr
+
+  #xcompanion def apply(version: String): JavaVersion = sbt.internal.CrossJava.parseJavaVersion(version)
 }

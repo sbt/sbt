@@ -99,14 +99,23 @@ object Cross {
   }
 
   /**
-   * Parse the given command into either an aggregate command or a command for a project
+   * Parse the given command into a list of aggregate projects and command to issue.
    */
-  private def parseCommand(command: String): Either[String, (String, String)] = {
+  private[sbt] def parseSlashCommand(extracted: Extracted)(
+      command: String): (Seq[ProjectRef], String) = {
+    import extracted._
     import DefaultParsers._
     val parser = (OpOrID <~ charClass(_ == '/', "/")) ~ any.* map {
-      case project ~ cmd => (project, cmd.mkString)
+      case seg1 ~ cmd => (seg1, cmd.mkString)
     }
-    Parser.parse(command, parser).left.map(_ => command)
+    Parser.parse(command, parser) match {
+      case Right((seg1, cmd)) =>
+        structure.allProjectRefs.find(_.project == seg1) match {
+          case Some(proj) => (Seq(proj), cmd)
+          case _          => (resolveAggregates(extracted), command)
+        }
+      case _ => (resolveAggregates(extracted), command)
+    }
   }
 
   def crossBuild: Command =
@@ -115,12 +124,7 @@ object Cross {
   private def crossBuildCommandImpl(state: State, args: CrossArgs): State = {
     val x = Project.extract(state)
     import x._
-
-    val (aggs, aggCommand) = parseCommand(args.command) match {
-      case Right((project, cmd)) =>
-        (structure.allProjectRefs.filter(_.project == project), cmd)
-      case Left(cmd) => (resolveAggregates(x), cmd)
-    }
+    val (aggs, aggCommand) = parseSlashCommand(x)(args.command)
 
     val projCrossVersions = aggs map { proj =>
       proj -> crossVersions(x, proj)
