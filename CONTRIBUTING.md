@@ -12,9 +12,10 @@ Contributing
 
 There are lots of ways to contribute to sbt ecosystem depending on your interests and skill level.
 
-- Help someone at work or online help their build problem.
+- Help someone at work or online fix their build problem.
 - Answer StackOverflow questions.
-- Create plugins that extends sbt's feature.
+- Ask StackOverflow questions.
+- Create plugins that extend sbt's features.
 - Maintain and update [documentation].
 - Garden the issue tracker.
 - Report issues.
@@ -230,7 +231,7 @@ Afterwhich start sbt with a stable launcher: `sbt -sbt-jar ~/.sbt/launchers/1.1.
 
 ### Clearing out boot and local cache
 
-When you run a locally built sbt, the JAR artifacts will be now cached under `$HOME/.sbt/boot/scala-2.12.4/org.scala-sbt/sbt/1.$MINOR.$PATCH-SNAPSHOT` directory. To clear this out run: `reboot dev` command from sbt's session of your test application.
+When you run a locally built sbt, the JAR artifacts will be now cached under `$HOME/.sbt/boot/scala-2.12.6/org.scala-sbt/sbt/1.$MINOR.$PATCH-SNAPSHOT` directory. To clear this out run: `reboot dev` command from sbt's session of your test application.
 
 One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers. You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`. A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
 

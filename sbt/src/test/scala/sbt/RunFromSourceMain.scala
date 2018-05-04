@@ -15,7 +15,7 @@ import xsbti._
 
 object RunFromSourceMain {
   private val sbtVersion = "1.1.4" // TestBuildInfo.version
-  private val scalaVersion = "2.12.4"
+  private val scalaVersion = "2.12.6"
 
   def fork(workingDirectory: File): Try[Unit] = {
     val fo = ForkOptions()
@@ -67,12 +67,45 @@ object RunFromSourceMain {
     def apply[T](lockFile: File, run: java.util.concurrent.Callable[T]) = run.call()
   }
 
+  private lazy val bootDirectory: File = file(sys.props("user.home")) / ".sbt" / "boot"
+  private lazy val scalaHome: File = {
+    val scalaHome0 = bootDirectory / s"scala-$scalaVersion"
+    if (scalaHome0.exists) scalaHome0
+    else {
+      val target = new File("target").getAbsoluteFile
+      val fakeboot = target / "fakeboot"
+      val scalaHome1 = fakeboot / s"scala-$scalaVersion"
+      val scalaHome1Lib = scalaHome1 / "lib"
+      val scalaHome1Temp = scalaHome1 / "temp"
+      if (scalaHome1Lib.exists) ()
+      else {
+        IO.createDirectories(List(scalaHome1Lib, scalaHome1Temp))
+        val log = sbt.util.LogExchange.logger("run-from-source")
+        val lm = {
+          import sbt.librarymanagement.ivy.IvyDependencyResolution
+          val ivyConfig = InlineIvyConfiguration().withLog(log)
+          IvyDependencyResolution(ivyConfig)
+        }
+        val Name = """(.*)(\-[\d|\.]+)\.jar""".r
+        val module = "org.scala-lang" % "scala-compiler" % scalaVersion
+        lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
+          case Right(_) =>
+            (scalaHome1Temp ** "*.jar").get foreach { x =>
+              val Name(head, _) = x.getName
+              IO.copyFile(x, scalaHome1Lib / (head + ".jar"))
+            }
+          case Left(w) => sys.error(w.toString)
+        }
+      }
+      scalaHome1
+    }
+  }
+
   private def getConf(baseDir: File, args: Seq[String]): AppConfiguration = new AppConfiguration {
     def baseDirectory = baseDir
     def arguments = args.toArray
+
     def provider = new AppProvider { appProvider =>
-      def bootDirectory: File = file(sys.props("user.home")) / ".sbt" / "boot"
-      def scalaHome: File = bootDirectory / s"scala-$scalaVersion"
       def scalaProvider = new ScalaProvider { scalaProvider =>
         def scalaOrg = "org.scala-lang"
         def launcher = new Launcher {
@@ -82,7 +115,7 @@ object RunFromSourceMain {
           def app(id: xsbti.ApplicationID, version: String) = appProvider
           def topLoader = new java.net.URLClassLoader(Array(), null)
           def globalLock = noGlobalLock
-          def bootDirectory = appProvider.bootDirectory
+          def bootDirectory = RunFromSourceMain.bootDirectory
           def ivyHome = file(sys.props("user.home")) / ".ivy2"
           final case class PredefRepo(id: Predefined) extends PredefinedRepository
           import Predefined._
@@ -92,11 +125,14 @@ object RunFromSourceMain {
           def checksums = Array("sha1", "md5")
         }
         def version = scalaVersion
-        def libDir: File = scalaHome / "lib"
+        lazy val libDir: File = RunFromSourceMain.scalaHome / "lib"
         def jar(name: String): File = libDir / s"$name.jar"
-        def libraryJar = jar("scala-library")
-        def compilerJar = jar("scala-compiler")
-        def jars = libDir.listFiles(f => !f.isDirectory && f.getName.endsWith(".jar"))
+        lazy val libraryJar = jar("scala-library")
+        lazy val compilerJar = jar("scala-compiler")
+        lazy val jars = {
+          assert(libDir.exists)
+          libDir.listFiles(f => !f.isDirectory && f.getName.endsWith(".jar"))
+        }
         def loader = new java.net.URLClassLoader(jars map (_.toURI.toURL), null)
         def app(id: xsbti.ApplicationID) = appProvider
       }
