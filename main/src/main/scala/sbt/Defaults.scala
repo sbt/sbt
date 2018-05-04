@@ -2886,7 +2886,7 @@ object Classpaths {
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
 
 
-  @deprecated("The method only works for Scalac, use the overloaded version to support both Scalac and Dotty", "1.1.5")
+  @deprecated("The method only works for Scala 2, use the overloaded version to support both Scala 2 and Scala 3", "1.1.5")
   def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
     autoPlugins(report, internalPluginClasspath, isDotty = false)
 
