@@ -5,10 +5,10 @@
  * Licensed under BSD-3-Clause license (see LICENSE)
  */
 
-package sbt.internal
+package sbt
 
 import org.scalatest.FunSuite
-import sbt.internal.TestUtil._
+import sbt.TestUtil._
 
 import scala.tools.reflect.ToolBoxError
 
@@ -36,9 +36,8 @@ class ProjectNegSpec extends FunSuite {
         |import sbt._
         |import Process._
         |import Keys._
-        |import Project._
         |
-        |val root = project in new java.io.File(".")
+        |val root = project in file(".")
         |dependsOn(root)
       """.stripMargin
     }

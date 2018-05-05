@@ -5,7 +5,7 @@
  * Licensed under BSD-3-Clause license (see LICENSE)
  */
 
-package sbt.internal
+package sbt
 
 import scala.tools.reflect.ToolBox
 
