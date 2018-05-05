@@ -69,18 +69,19 @@ object RunFromSourceMain {
 
   private lazy val bootDirectory: File = file(sys.props("user.home")) / ".sbt" / "boot"
   private lazy val scalaHome: File = {
+    val log = sbt.util.LogExchange.logger("run-from-source")
     val scalaHome0 = bootDirectory / s"scala-$scalaVersion"
-    if (scalaHome0.exists) scalaHome0
+    if ((scalaHome0 / "lib").exists) scalaHome0
     else {
-      val target = new File("target").getAbsoluteFile
-      val fakeboot = target / "fakeboot"
+      log.info(s"""scalaHome ($scalaHome0) wasn't found""")
+      val fakeboot = file(sys.props("user.home")) / ".sbt" / "fakeboot"
       val scalaHome1 = fakeboot / s"scala-$scalaVersion"
       val scalaHome1Lib = scalaHome1 / "lib"
       val scalaHome1Temp = scalaHome1 / "temp"
-      if (scalaHome1Lib.exists) ()
+      if (scalaHome1Lib.exists) log.info(s"""using $scalaHome1 that was found""")
       else {
+        log.info(s"""creating $scalaHome1 by downloading scala-compiler $scalaVersion""")
         IO.createDirectories(List(scalaHome1Lib, scalaHome1Temp))
-        val log = sbt.util.LogExchange.logger("run-from-source")
         val lm = {
           import sbt.librarymanagement.ivy.IvyDependencyResolution
           val ivyConfig = InlineIvyConfiguration().withLog(log)
