@@ -233,14 +233,11 @@ object Cross {
         args.command
       } else {
         args.command.map { rawCmd =>
-          parseCommand(rawCmd) match {
-            case Right(_) => rawCmd // A project is specified, run as is
-            case Left(cmd) =>
-              resolveAggregates(x)
-                .intersect(affectedRefs)
-                .collect { case ProjectRef(_, proj) => s"$proj/$cmd" }
-                .mkString("all ", " ", "")
-          }
+          val (aggs, aggCommand) = parseSlashCommand(x)(rawCmd)
+          aggs
+            .intersect(affectedRefs)
+            .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
+            .mkString("all ", " ", "")
         }
       }
 
