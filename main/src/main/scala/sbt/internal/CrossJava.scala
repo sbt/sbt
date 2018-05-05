@@ -77,7 +77,8 @@ private[sbt] object CrossJava {
       val version: Parser[SwitchTarget] =
         (token(
           (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*)
-            .examples(knownVersions: _*) ~ "!".?) || token(StringBasic))
+            .examples(knownVersions: _*) ~ "!".?
+        ) || token(StringBasic))
           .map {
             case Left(((vendor, (v1, vs)), bang)) =>
               val force = bang.isDefined
@@ -101,14 +102,18 @@ private[sbt] object CrossJava {
     }
   }
 
-  private def getJavaHomes(extracted: Extracted,
-                           proj: ResolvedReference): Map[JavaVersion, File] = {
+  private def getJavaHomes(
+      extracted: Extracted,
+      proj: ResolvedReference
+  ): Map[JavaVersion, File] = {
     import extracted._
     (Keys.fullJavaHomes in proj get structure.data).get
   }
 
-  private def getCrossJavaVersions(extracted: Extracted,
-                                   proj: ResolvedReference): Seq[JavaVersion] = {
+  private def getCrossJavaVersions(
+      extracted: Extracted,
+      proj: ResolvedReference
+  ): Seq[JavaVersion] = {
     import extracted._
     import Keys._
     (crossJavaVersions in proj get structure.data).getOrElse(Nil)
@@ -235,7 +240,8 @@ private[sbt] object CrossJava {
                 "configuration. This could result in subprojects cross building against Java versions that they are " +
                 "not compatible with. Try issuing cross building command with tasks instead, since sbt will be able " +
                 "to ensure that cross building is only done using configured project and Java version combinations " +
-                "that are configured.")
+                "that are configured."
+            )
             state.log.debug("Java versions configuration is:")
             projCrossVersions.foreach {
               case (project, versions) => state.log.debug(s"$project: $versions")
@@ -259,12 +265,14 @@ private[sbt] object CrossJava {
             case (version, projects) if aggCommand.contains(" ") =>
               // If the command contains a space, then the `all` command won't work because it doesn't support issuing
               // commands with spaces, so revert to running the command on each project one at a time
-              s"$JavaSwitchCommand $verbose $version" :: projects.map(project =>
-                s"$project/$aggCommand")
+              s"$JavaSwitchCommand $verbose $version" :: projects
+                .map(project => s"$project/$aggCommand")
             case (version, projects) =>
               // First switch scala version, then use the all command to run the command on each project concurrently
-              Seq(s"$JavaSwitchCommand $verbose $version",
-                  projects.map(_ + "/" + aggCommand).mkString("all ", " ", ""))
+              Seq(
+                s"$JavaSwitchCommand $verbose $version",
+                projects.map(_ + "/" + aggCommand).mkString("all ", " ", "")
+              )
           }
       }
 

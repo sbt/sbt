@@ -101,8 +101,9 @@ object Cross {
   /**
    * Parse the given command into a list of aggregate projects and command to issue.
    */
-  private[sbt] def parseSlashCommand(extracted: Extracted)(
-      command: String): (Seq[ProjectRef], String) = {
+  private[sbt] def parseSlashCommand(
+      extracted: Extracted
+  )(command: String): (Seq[ProjectRef], String) = {
     import extracted._
     import DefaultParsers._
     val parser = (OpOrID <~ charClass(_ == '/', "/")) ~ any.* map {
