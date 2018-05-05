@@ -2884,15 +2884,18 @@ object Classpaths {
                         filter: FileFilter,
                         excl: FileFilter): Classpath =
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
-
-
-  @deprecated("The method only works for Scala 2, use the overloaded version to support both Scala 2 and Scala 3", "1.1.5")
+  @deprecated(
+    "The method only works for Scala 2, use the overloaded version to support both Scala 2 and Scala 3",
+    "1.1.5")
   def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
     autoPlugins(report, internalPluginClasspath, isDotty = false)
 
-  def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File], isDotty: Boolean): Seq[String] = {
+  def autoPlugins(report: UpdateReport,
+                  internalPluginClasspath: Seq[File],
+                  isDotty: Boolean): Seq[String] = {
     val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
-    val plugins = sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath, isDotty)
+    val plugins =
+      sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath, isDotty)
     plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
   }
 
@@ -2912,7 +2915,9 @@ object Classpaths {
   lazy val compilerPluginConfig = Seq(
     scalacOptions := {
       val options = scalacOptions.value
-      val newPlugins = autoPlugins(update.value, internalCompilerPluginClasspath.value.files, ScalaInstance.isDotty(scalaVersion.value))
+      val newPlugins = autoPlugins(update.value,
+                                   internalCompilerPluginClasspath.value.files,
+                                   ScalaInstance.isDotty(scalaVersion.value))
       val existing = options.toSet
       if (autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
     }
