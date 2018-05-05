@@ -12,7 +12,7 @@ import java.nio.file.FileSystems
 
 import sbt.BasicCommandStrings.ClearOnFailure
 import sbt.State.FailureWall
-import sbt.internal.io.{ EventMonitor, Source, SourceModificationWatch, WatchState }
+import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.Types.const
 import sbt.io._
@@ -119,7 +119,7 @@ object Watched {
           )
       case Some(eventMonitor) =>
         printIfDefined(watched watchingMessage eventMonitor.state)
-        val triggered = try eventMonitor.watch()
+        val triggered = try eventMonitor.awaitEvent()
         catch {
           case e: Exception =>
             log.error(
