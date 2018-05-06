@@ -27,6 +27,10 @@ final class VersionNumber private[sbt] (
     case _                => false
   }
 
+  def satisfies(selector: String): Boolean = {
+    SemanticSelector(selector).matches(this)
+  }
+
   /** A variant of mkString that returns the empty string if the sequence is empty. */
   private[this] def mkString1[A](xs: Seq[A], start: String, sep: String, end: String): String =
     if (xs.isEmpty) "" else xs.mkString(start, sep, end)
