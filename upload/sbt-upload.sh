@@ -10,24 +10,26 @@
 #
 # Required env vars:
 #
-# S3KEY -- API Key for the sbt-distribution-archive bucket
-# S3SECRET -- Secret corresponding to the API Key
+# SBT_DEPLOY_S3KEY -- API Key for the sbt-distribution-archive bucket
+# SBT_DEPLOY_S3SECRET -- Secret corresponding to the API Key
 #
 # POLR_USERNAME  -- Username for the polr shortener
 # POLR_PASSWORD  -- Password for the polr shortener
 #
-
-S3KEY='...'
-S3SECRET='...'
-POLR_USERNAME='...'
-POLR_PASSWORD='...'
+# These environment vars can be either defined by the caller, or directly
+# in the following lines, in place of the "your..." constants below.
+#
+SBT_DEPLOY_S3KEY="${SBT_DEPLOY_S3KEY:-yourSbtDeployS3key}"
+SBT_DEPLOY_S3SECRET="${SBT_DEPLOY_S3SECRET:-yourSbtDeployS3secret}"
+POLR_USERNAME="${POLR_USERNAME:-yourPolrUsername}"
+POLR_PASSWORD="${POLR_PASSWORD:-yourPolrPassword}"
 
 # Where to find the above information:
-# - for S3KEY/S3SECRET, you need the API credentials for the
+# - for SBT_DEPLOY_S3KEY/SBT_DEPLOY_S3SECRET, you need the API credentials for the
 # 'sbt-downloads' buckets on IBM's COS. Please ask @cunei for
 # details.
 #
-# Once you have S3KEY/S3SECRET, you can (and should) use those
+# Once you have SBT_DEPLOY_S3KEY/SBT_DEPLOY_S3SECRET, you can (and should) use those
 # values also in your favorite S3 GUI browser (like CyberDuck
 # or DragonDisk), in order to verify that the files are correctly
 # uploaded, or to perform maintenance within the storage bucket.
@@ -192,14 +194,14 @@ uploadS3() {
   S3CONTENTTYPE="$(file --brief --mime-type "$S3FILEPATH")"
   S3NOWDATE="$(date -R)"
   S3STRINGTOSIGN="PUT\n\n${S3CONTENTTYPE}\n${S3NOWDATE}\nx-amz-acl:public-read\n${S3RELATIVEPATH}"
-  S3SIGNATURE="$(echo -en ${S3STRINGTOSIGN} | openssl sha1 -hmac ${S3SECRET} -binary | base64)"
+  S3SIGNATURE="$(echo -en ${S3STRINGTOSIGN} | openssl sha1 -hmac ${SBT_DEPLOY_S3SECRET} -binary | base64)"
   echo "Uploading $S3FILEPATH"
   curl -X PUT -T "${S3FILEPATH}" \
     -H "Host: ${S3HOST}" \
     -H "Date: ${S3NOWDATE}" \
     -H "Content-Type: ${S3CONTENTTYPE}" \
     -H "x-amz-acl: public-read" \
-    -H "Authorization: AWS ${S3KEY}:${S3SIGNATURE}" \
+    -H "Authorization: AWS ${SBT_DEPLOY_S3KEY}:${S3SIGNATURE}" \
     "https://${S3HOST}${S3RELATIVEPATH}"
   if [ $? -ne 0 ]
   then
