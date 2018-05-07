@@ -20,7 +20,7 @@ matrix:
   include:
   - env: SBT_CMD="scripted java/*"
     before_install:
-      - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.9.6/install.sh | bash && . ~/.jabba/jabba.sh
+      - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
     install:
       - /home/travis/.jabba/bin/jabba install openjdk@1.10
 
