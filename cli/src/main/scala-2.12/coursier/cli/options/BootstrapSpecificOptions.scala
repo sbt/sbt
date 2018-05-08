@@ -38,6 +38,8 @@ final case class BootstrapSpecificOptions(
     rule: List[String] = Nil,
   @Help("Add default rules to assembly rule list")
     defaultRules: Boolean = true,
+  @Help("Add preamble")
+    preamble: Boolean = true,
   @Recurse
     isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
   @Recurse

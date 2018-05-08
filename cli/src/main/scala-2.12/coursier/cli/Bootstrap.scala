@@ -53,7 +53,20 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
     }
   }
 
-  private def createJarBootstrap(javaOpts: Seq[String], output: File, content: Array[Byte]): Unit = {
+  private def createJarBootstrap(javaOpts: Seq[String], output: File, content: Array[Byte], withPreamble: Boolean): Unit =
+    if (withPreamble)
+      createJarBootstrapWithPreamble(javaOpts, output, content)
+    else
+      createSimpleJarBootstrap(output, content)
+
+  private def createSimpleJarBootstrap(output: File, content: Array[Byte]): Unit =
+    try Files.write(output.toPath, content)
+    catch { case e: IOException =>
+      Console.err.println(s"Error while writing $output${Option(e.getMessage).fold("")(" (" + _ + ")")}")
+      sys.exit(1)
+    }
+
+  private def createJarBootstrapWithPreamble(javaOpts: Seq[String], output: File, content: Array[Byte]): Unit = {
 
     val javaCmd = Seq("java") ++
       javaOpts
@@ -221,7 +234,8 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
     createJarBootstrap(
       javaOpts,
       output,
-      buffer.toByteArray
+      buffer.toByteArray,
+      options.options.preamble
     )
   }
 
@@ -267,7 +281,8 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
     createJarBootstrap(
       javaOpts,
       output,
-      baos.toByteArray
+      baos.toByteArray,
+      options.options.preamble
     )
   }
 
