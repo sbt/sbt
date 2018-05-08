@@ -100,7 +100,7 @@ object Watched {
 
   def executeContinuously(watched: Watched, s: State, next: String, repeat: String): State = {
     @tailrec def shouldTerminate: Boolean =
-      watched.terminateWatch(System.in.read()) || shouldTerminate
+      (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)
     val log = s.log
     val logger = new EventMonitor.Logger {
       override def debug(msg: => Any): Unit = log.debug(msg.toString)
