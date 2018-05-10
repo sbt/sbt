@@ -5,9 +5,11 @@ import org.scalatest.{ FreeSpec, Matchers }
 class SemanticSelectorSpec extends FreeSpec with Matchers {
   semsel("<=1.2.3") { sel =>
     assertMatches(sel, "1.2.3")
+    assertMatches(sel, "1.2-beta")
     assertMatches(sel, "1.2.3-beta")
     assertMatches(sel, "1.2")
     assertMatches(sel, "1")
+    assertNotMatches(sel, "1.2.4-alpha")
     assertNotMatches(sel, "1.2.4")
     assertNotMatches(sel, "1.3")
     assertNotMatches(sel, "1.3.0")
@@ -15,68 +17,89 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
   }
 
   semsel("<=1.2") { sel =>
-    assertMatches(sel, "1.2.3")
+    assertMatches(sel, "1.2.345-beta")
     assertMatches(sel, "1.2.3-beta")
+    assertMatches(sel, "1.2.3")
     assertMatches(sel, "1.2")
     assertMatches(sel, "1")
     assertNotMatches(sel, "1.3.0")
+    assertNotMatches(sel, "1.3.0-alpha")
   }
 
   semsel("<=1") { sel =>
-    assertMatches(sel, "1.12.12")
-    assertMatches(sel, "1.12.12-alpha")
-    assertMatches(sel, "1.2")
+    assertMatches(sel, "1.234.567-alpha")
+    assertMatches(sel, "1.234.567")
+    assertMatches(sel, "1.234")
+    assertMatches(sel, "1.0.0-alpha")
+    assertMatches(sel, "1.0.0")
+    assertMatches(sel, "1.0")
+    assertMatches(sel, "1")
     assertNotMatches(sel, "2.0.0")
     assertNotMatches(sel, "2.0.0-alpha")
   }
 
   semsel("<1.2.3") { sel =>
+    assertMatches(sel, "1.2.3-alpha")
     assertMatches(sel, "1.2.2")
     assertMatches(sel, "1.2")
-    assertNotMatches(sel, "1.2.3-alpha")
+    assertMatches(sel, "1")
+    assertNotMatches(sel, "1.2.4-beta")
     assertNotMatches(sel, "1.2.3")
+    assertNotMatches(sel, "1.3")
+    assertNotMatches(sel, "2")
   }
 
   semsel("<1.2") { sel =>
+    assertMatches(sel, "1.2.0-alpha")
     assertMatches(sel, "1.1.23")
     assertMatches(sel, "1.1")
+    assertMatches(sel, "1")
+    assertNotMatches(sel, "1.3-beta")
+    assertNotMatches(sel, "1.2.0")
     assertNotMatches(sel, "1.2")
-    assertNotMatches(sel, "1.2.0-alpha")
+    assertNotMatches(sel, "2")
   }
 
   semsel("<1") { sel =>
+    assertMatches(sel, "1.0.0-beta")
+    assertMatches(sel, "0.9.9-beta")
     assertMatches(sel, "0.9.12")
     assertMatches(sel, "0.8")
+    assertMatches(sel, "0")
+    assertNotMatches(sel, "1.0.1-beta")
     assertNotMatches(sel, "1")
     assertNotMatches(sel, "1.0")
     assertNotMatches(sel, "1.0.0")
   }
 
   semsel(">=1.2.3") { sel =>
+    assertMatches(sel, "1.2.4-beta")
     assertMatches(sel, "1.2.3")
-    assertMatches(sel, "1.2.3-beta")
     assertMatches(sel, "1.3")
     assertMatches(sel, "2")
+    assertNotMatches(sel, "1.2.3-beta")
     assertNotMatches(sel, "1.2.2")
     assertNotMatches(sel, "1.2")
     assertNotMatches(sel, "1")
   }
 
   semsel(">=1.2") { sel =>
+    assertMatches(sel, "1.2.1-beta")
     assertMatches(sel, "1.2.0")
-    assertMatches(sel, "1.2.0-beta")
     assertMatches(sel, "1.2")
     assertMatches(sel, "2")
+    assertNotMatches(sel, "1.2.0-beta")
     assertNotMatches(sel, "1.1.23")
     assertNotMatches(sel, "1.1")
     assertNotMatches(sel, "1")
   }
 
   semsel(">=1") { sel =>
+    assertMatches(sel, "1.0.1-beta")
     assertMatches(sel, "1.0.0")
-    assertMatches(sel, "1.0.0-beta")
     assertMatches(sel, "1.0")
     assertMatches(sel, "1")
+    assertNotMatches(sel, "1.0.0-beta")
     assertNotMatches(sel, "0.9.9")
     assertNotMatches(sel, "0.1")
     assertNotMatches(sel, "0")
@@ -87,6 +110,7 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
     assertMatches(sel, "1.2.4-alpha")
     assertMatches(sel, "1.3")
     assertMatches(sel, "2")
+    assertNotMatches(sel, "1.2.3-alpha")
     assertNotMatches(sel, "1.2.3")
     assertNotMatches(sel, "1.2")
     assertNotMatches(sel, "1")
@@ -97,15 +121,18 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
     assertMatches(sel, "1.3.0-alpha")
     assertMatches(sel, "1.3")
     assertMatches(sel, "2")
+    assertNotMatches(sel, "1.2.0-alpha")
     assertNotMatches(sel, "1.2.9")
     assertNotMatches(sel, "1.2")
     assertNotMatches(sel, "1")
   }
 
   semsel(">1") { sel =>
+    assertMatches(sel, "2.0.0-alpha")
     assertMatches(sel, "2.0.0")
     assertMatches(sel, "2.0")
     assertMatches(sel, "2")
+    assertNotMatches(sel, "1.2.3-alpha")
     assertNotMatches(sel, "1.2.3")
     assertNotMatches(sel, "1.2")
     assertNotMatches(sel, "1")
@@ -113,17 +140,19 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
 
   semsel("1.2.3") { sel =>
     assertMatches(sel, "1.2.3")
-    assertMatches(sel, "1.2.3-alpha")
+    assertNotMatches(sel, "1.2.3-alpha")
     assertNotMatches(sel, "1.2")
     assertNotMatches(sel, "1.2.4")
   }
 
   Seq(".x", ".X", ".*", ".x.x", "").foreach { xrange =>
     semsel(s"1$xrange") { sel =>
+      assertMatches(sel, "1.2.3-alpha")
       assertMatches(sel, "1.0.0")
       assertMatches(sel, "1.0.1")
       assertMatches(sel, "1.1.1")
-      assertMatches(sel, "1.0.0-alpha")
+      assertNotMatches(sel, "1.0.0-alpha")
+      assertNotMatches(sel, "2.0.0-alpha")
       assertNotMatches(sel, "2.0.0")
       assertNotMatches(sel, "0.1.0")
     }
@@ -132,8 +161,10 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
   Seq(".x", ".X", ".*", "").foreach { xrange =>
     semsel(s"1.2$xrange") { sel =>
       assertMatches(sel, "1.2.0")
-      assertMatches(sel, "1.2.0-beta")
       assertMatches(sel, "1.2.3")
+      assertNotMatches(sel, "1.2.0-alpha")
+      assertNotMatches(sel, "1.2.0-beta")
+      assertNotMatches(sel, "1.3.0-beta")
       assertNotMatches(sel, "1.3.0")
       assertNotMatches(sel, "1.1.1")
     }
@@ -141,23 +172,27 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
 
   semsel("=1.2.3") { sel =>
     assertMatches(sel, "1.2.3")
-    assertMatches(sel, "1.2.3-alpha")
+    assertNotMatches(sel, "1.2.3-alpha")
     assertNotMatches(sel, "1.2")
     assertNotMatches(sel, "1.2.4")
   }
   semsel("=1.2") { sel =>
     assertMatches(sel, "1.2.0")
-    assertMatches(sel, "1.2.0-alpha")
     assertMatches(sel, "1.2")
     assertMatches(sel, "1.2.1")
     assertMatches(sel, "1.2.4")
+    assertNotMatches(sel, "1.1.0")
+    assertNotMatches(sel, "1.3.0")
+    assertNotMatches(sel, "1.2.0-alpha")
+    assertNotMatches(sel, "1.3.0-alpha")
   }
   semsel("=1") { sel =>
     assertMatches(sel, "1.0.0")
-    assertMatches(sel, "1.0.0-alpha")
     assertMatches(sel, "1.0")
     assertMatches(sel, "1.0.1")
     assertMatches(sel, "1.2.3")
+    assertNotMatches(sel, "1.0.0-alpha")
+    assertNotMatches(sel, "2.0.0")
   }
   semsel("1.2.3 || 2.0.0") { sel =>
     assertMatches(sel, "1.2.3")
@@ -235,12 +270,39 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
 
   semsel(">=1.x") { sel =>
     assertMatches(sel, "1.0.0")
-    assertMatches(sel, "1.0.0-beta")
     assertMatches(sel, "1.0")
     assertMatches(sel, "1")
+    assertNotMatches(sel, "1.0.0-beta")
     assertNotMatches(sel, "0.9.9")
     assertNotMatches(sel, "0.1")
     assertNotMatches(sel, "0")
+  }
+
+  semsel(">=1.2.3-beta") { sel =>
+    assertMatches(sel, "1.3-alpha")
+    assertMatches(sel, "1.2.3")
+    assertMatches(sel, "1.2.3-beta")
+    assertMatches(sel, "1.2.3-beta-2")
+    assertMatches(sel, "1.2.3-beta-gamma")
+    assertMatches(sel, "1.2.4")
+    assertMatches(sel, "1.3")
+    assertNotMatches(sel, "1.2.3-alpha")
+    assertNotMatches(sel, "1.2.2")
+  }
+
+  semsel(">=1.2.3-beta-2") { sel =>
+    assertMatches(sel, "1.3-alpha")
+    assertMatches(sel, "1.2.3")
+    assertMatches(sel, "1.2.3-beta-2")
+    assertMatches(sel, "1.2.3-beta-2-3")
+    assertMatches(sel, "1.2.3-beta-3")
+    assertMatches(sel, "1.2.3-beta-gamma")
+    assertMatches(sel, "1.2.4")
+    assertMatches(sel, "1.3")
+    assertNotMatches(sel, "1.2.3-alpha-3")
+    assertNotMatches(sel, "1.2.3-beta-1")
+    assertNotMatches(sel, "1.2.3-beta")
+    assertNotMatches(sel, "1.2.2")
   }
 
   Seq(
@@ -278,9 +340,15 @@ class SemanticSelectorSpec extends FreeSpec with Matchers {
     "1.0.0 -2.0.0",
     "1.0.0-2.0.0",
     "-",
-    // cannot specify pre-release or metadata
-    "1.2.3-alpha",
-    "1.2-alpha",
+    // minor and patch versions are required for pre-release version
+    "1.2-alpha-beta",
+    "1-beta",
+    "<=1.2-beta",
+    "<=1-beta",
+    "1.2-beta - 1.3-alpha",
+    "1.2.x-beta",
+    "1.x.*-beta",
+    // cannot specify metadata
     "1.2.3+meta"
   ).foreach { selectorStr =>
     semsel(selectorStr) { sel =>

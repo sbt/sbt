@@ -1,5 +1,7 @@
 package sbt.librarymanagement
 
+import scala.annotation.tailrec
+
 /**
  * Semantic version selector API to check if the VersionNumber satisfies
  * conditions described by semantic version selector.
@@ -43,9 +45,9 @@ object SemanticSelector {
    *
    * Comparators can be combined by spaces to form the intersection set of the comparators.
    * For example, `>1.2.3 <4.5.6` matches versions that are `greater than 1.2.3 AND less than 4.5.6`.
-    *
-    * The (intersection) set of comparators can combined by ` || ` (spaces are required) to form the
-    * union set of the intersection sets. So the semantic selector is in disjunctive normal form.
+   *
+   * The (intersection) set of comparators can combined by ` || ` (spaces are required) to form the
+   * union set of the intersection sets. So the semantic selector is in disjunctive normal form.
    *
    * Metadata and pre-release of VersionNumber are ignored.
    * So `1.0.0` matches any versions that have `1.0.0` as normal version with any pre-release version
@@ -141,7 +143,8 @@ object SemanticSelector {
       op: SemSelOperator,
       major: Option[Long],
       minor: Option[Long],
-      patch: Option[Long]
+      patch: Option[Long],
+      tags: Seq[String]
   ) {
     def matches(version: VersionNumber): Boolean = {
       // Fill empty fields of version specifier with 0 or max value of Long.
@@ -165,7 +168,11 @@ object SemanticSelector {
       val versionNumber =
         (version._1.getOrElse(0L), version._2.getOrElse(0L), version._3.getOrElse(0L))
       val selector = (major.getOrElse(assumed), minor.getOrElse(assumed), patch.getOrElse(assumed))
-      val cmp = implicitly[Ordering[(Long, Long, Long)]].compare(versionNumber, selector)
+      val normalVersionCmp =
+        implicitly[Ordering[(Long, Long, Long)]].compare(versionNumber, selector)
+      val cmp =
+        if (normalVersionCmp == 0) SemComparator.comparePreReleaseTags(version.tags, tags)
+        else normalVersionCmp
       op match {
         case Lte if cmp <= 0 => true
         case Lt if cmp < 0   => true
@@ -194,7 +201,8 @@ object SemanticSelector {
           case Some(v) => v.toString
         }
         .mkString(".")
-      s"$op$versionStr"
+      val tagsStr = if (tags.nonEmpty) s"-${tags.mkString("-")}" else ""
+      s"$op$versionStr$tagsStr"
     }
   }
   private[SemanticSelector] object SemComparator {
@@ -205,15 +213,16 @@ object SemanticSelector {
         (?:\.(\d+|[xX*])
           (?:\.(\d+|[xX*]))?
         )?
-      )$
+      )((?:-\w+)*)$
     """.r
     private[this] def parse(comparator: String): SemComparator = {
       comparator match {
-        case ComparatorRegex(rawOp, rawMajor, rawMinor, rawPatch) =>
+        case ComparatorRegex(rawOp, rawMajor, rawMinor, rawPatch, ts) =>
           val opStr = Option(rawOp)
           val major = Option(rawMajor)
           val minor = Option(rawMinor)
           val patch = Option(rawPatch)
+          val tags = splitDash(ts)
 
           // Trim wildcard(x, X, *) and re-parse it.
           // By trimming it, comparator realize the property like
@@ -223,6 +232,9 @@ object SemanticSelector {
             case None      => false
           }
           if (hasXrangeSelector) {
+            if (tags.nonEmpty)
+              throw new IllegalArgumentException(
+                s"Pre-release version requires major, minor, patch versions to be specified: $comparator")
             val numbers = Seq(major, minor, patch).takeWhile {
               case Some(str) => str.matches("\\d+")
               case None      => false
@@ -235,6 +247,9 @@ object SemanticSelector {
                 .mkString(".")
             )
           } else {
+            if (tags.nonEmpty && (major.isEmpty || minor.isEmpty || patch.isEmpty))
+              throw new IllegalArgumentException(
+                s"Pre-release version requires major, minor, patch versions to be specified: $comparator")
             val operator = opStr match {
               case Some("<")  => Lt
               case Some("<=") => Lte
@@ -249,10 +264,47 @@ object SemanticSelector {
               operator,
               major.map(_.toLong),
               minor.map(_.toLong),
-              patch.map(_.toLong)
+              patch.map(_.toLong),
+              tags
             )
           }
         case _ => throw new IllegalArgumentException(s"Invalid comparator: $comparator")
+      }
+    }
+    private[this] def splitOn[A](s: String, sep: Char): Vector[String] =
+      if (s eq null) Vector()
+      else s.split(sep).filterNot(_ == "").toVector
+    private[this] def splitDash(s: String) = splitOn(s, '-')
+
+    private[SemComparator] def comparePreReleaseTags(ts1: Seq[String], ts2: Seq[String]): Int = {
+      // > When major, minor, and patch are equal, a pre-release version has lower precedence than a normal version.
+      if (ts1.isEmpty && ts2.isEmpty) 0
+      else if (ts1.nonEmpty && ts2.isEmpty) -1 // ts1 is pre-release version
+      else if (ts1.isEmpty && ts2.nonEmpty) 1 // ts2 is pre-release version
+      else compareTags(ts1, ts2)
+    }
+
+    @tailrec
+    private[this] def compareTags(ts1: Seq[String], ts2: Seq[String]): Int = {
+      // > A larger set of pre-release fields has a higher precedence than a smaller set,
+      // > if all of the preceding identifiers are equal.
+      if (ts1.isEmpty && ts2.isEmpty) 0
+      else if (ts1.nonEmpty && ts2.isEmpty) 1
+      else if (ts1.isEmpty && ts2.nonEmpty) -1
+      else {
+        val ts1head = ts1.head
+        val ts2head = ts2.head
+        val cmp = (ts1head.matches("\\d+"), ts2head.matches("\\d+")) match {
+          // Identifiers consisting of only digits are compared numerically.
+          // Numeric identifiers always have lower precedence than non-numeric identifiers.
+          // Identifiers with letters are compared case insensitive lexical order.
+          case (true, true)   => implicitly[Ordering[Long]].compare(ts1head.toLong, ts2head.toLong)
+          case (false, true)  => 1
+          case (true, false)  => -1
+          case (false, false) => ts1head.toLowerCase.compareTo(ts2head.toLowerCase)
+        }
+        if (cmp == 0) compareTags(ts1.tail, ts2.tail)
+        else cmp
       }
     }
   }
