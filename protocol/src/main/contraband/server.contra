@@ -66,4 +66,5 @@ type SettingQueryFailure implements SettingQueryResponse {
 type ExecutionEvent {
   success: String!
   commandLine: String!
+  foo: String
 }

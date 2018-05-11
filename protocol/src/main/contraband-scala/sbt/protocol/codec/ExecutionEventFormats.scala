@@ -13,8 +13,9 @@ implicit lazy val ExecutionEventFormat: JsonFormat[sbt.protocol.ExecutionEvent] 
       unbuilder.beginObject(js)
       val success = unbuilder.readField[String]("success")
       val commandLine = unbuilder.readField[String]("commandLine")
+      val foo = unbuilder.readField[Option[String]]("foo")
       unbuilder.endObject()
-      sbt.protocol.ExecutionEvent(success, commandLine)
+      sbt.protocol.ExecutionEvent(success, commandLine, foo)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -23,6 +24,7 @@ implicit lazy val ExecutionEventFormat: JsonFormat[sbt.protocol.ExecutionEvent] 
     builder.beginObject()
     builder.addField("success", obj.success)
     builder.addField("commandLine", obj.commandLine)
+    builder.addField("foo", obj.foo)
     builder.endObject()
   }
 }
