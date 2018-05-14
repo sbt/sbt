@@ -63,6 +63,8 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
    * Each TestSuite gets its own output file.
    */
   class TestSuite(val name: String, timestamp: LocalDateTime) {
+    def this(name: String) = this(name, LocalDateTime.now())
+
     val events: ListBuffer[TEvent] = new ListBuffer()
 
     /**Adds one test result to this suite.*/
@@ -142,10 +144,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   /**
    * Starts a new, initially empty Suite with the given name.
    */
-  override def startGroup(name: String): Unit = {
-    val timestamp = LocalDateTime.now()
-    testSuite.set(Some(new TestSuite(name, timestamp)))
-  }
+  override def startGroup(name: String): Unit = testSuite.set(Some(new TestSuite(name)))
 
   /**
    * Adds all details for the given even to the current suite.
