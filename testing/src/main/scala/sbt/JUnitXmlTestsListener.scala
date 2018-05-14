@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, IOException, PrintWriter, StringWriter }
 import java.net.InetAddress
+import java.time.LocalDateTime
 import java.util.Hashtable
 
 import scala.collection.mutable.ListBuffer
@@ -59,7 +60,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
    * Gathers data for one Test Suite. We map test groups to TestSuites.
    * Each TestSuite gets its own output file.
    */
-  class TestSuite(val name: String) {
+  class TestSuite(val name: String, timestamp: LocalDateTime) {
     val events: ListBuffer[TEvent] = new ListBuffer()
 
     /**Adds one test result to this suite.*/
@@ -83,7 +84,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
       )
 
       val result =
-        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
+        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString } timestamp={timestamp.toString}>
                      { properties }
                      {
                        for (e <- events) yield <testcase classname={ name } name={
@@ -139,7 +140,10 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   /**
    * Starts a new, initially empty Suite with the given name.
    */
-  override def startGroup(name: String): Unit = testSuite.set(Some(new TestSuite(name)))
+  override def startGroup(name: String): Unit = {
+    val timestamp = LocalDateTime.now()
+    testSuite.set(Some(new TestSuite(name, timestamp)))
+  }
 
   /**
    * Adds all details for the given even to the current suite.
