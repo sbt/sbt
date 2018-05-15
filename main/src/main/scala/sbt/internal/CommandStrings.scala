@@ -280,16 +280,12 @@ $ProjectsCommand remove <URI>+
 
   def sbtrc = ".sbtrc"
 
-  def DefaultsCommand = "add-default-commands"
+  def DefaultsCommand = "addDefaultCommands"
   def DefaultsBrief = (DefaultsCommand, DefaultsDetailed)
   def DefaultsDetailed = "Registers default built-in commands"
 
-  def Load = "load"
-  def LoadLabel = "a project"
-  def LoadCommand = "load-commands"
-  def LoadCommandLabel = "commands"
-
-  def LoadFailed = "load-failed"
+  def LoadFailed = "loadFailed"
+  def OldLoadFailed = "load-failed"
 
   def LoadProjectImpl = "loadp"
   def LoadProject = "reload"
