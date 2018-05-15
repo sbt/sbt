@@ -357,7 +357,7 @@ object BuiltinCommands {
   }
 
   def taskStrings(key: AttributeKey[_]): Option[(String, String)] = key.description map { d =>
-    (key.label, d)
+    (key.label, d.split("\r?\n")(0))
   }
 
   def defaults = Command.command(DefaultsCommand) { s =>
