@@ -69,7 +69,8 @@ object BasicCommands {
   private[this] def earlyParser: State => Parser[String] = (s: State) => {
     val p1 = token(EarlyCommand + "(") flatMap (_ => otherCommandParser(s) <~ token(")"))
     val p2 = token("-") flatMap (_ => levelParser)
-    p1 | p2
+    val p3 = token("--") flatMap (_ => levelParser)
+    p1 | p2 | p3
   }
 
   private[this] def earlyHelp = Help(EarlyCommand, EarlyCommandBrief, EarlyCommandDetailed)
