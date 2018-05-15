@@ -156,11 +156,10 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   /**
    * called for each class or equivalent grouping
    *  We map one group to one Testsuite, so for each Group
-   *  we create an XML which implements the [[https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd JUnit xml
-   *  spec]], and looks like this:
+   *  we create [[https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd JUnit XML file]], and looks like this:
    *
    *  <?xml version="1.0" encoding="UTF-8" ?>
-   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23">
+   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23" timestamp="2018-01-01T10:00:00">
    *       <properties>
    *           <property name="os.name" value="Linux" />
    *           ...
