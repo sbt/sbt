@@ -23,7 +23,7 @@ import sbt.internal.util.HNil
 import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
-import sbt.util.Tracked.inputChanged
+import sbt.util.Tracked.{ inputChanged, outputChanged }
 
 sealed trait PackageOption
 object Package {
@@ -71,17 +71,18 @@ object Package {
        inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
         import exists.format
         val sources :+: _ :+: manifest :+: HNil = inputs
-        inputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
-          if (inChanged || outChanged)
+        outputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
+          if (inChanged || outChanged) {
             makeJar(sources.toSeq, jar.file, manifest, log)
-          else
+            jar.file
+          } else
             log.debug("Jar uptodate: " + jar.file)
         }
     }
 
     val map = conf.sources.toMap
     val inputs = map :+: lastModified(map.keySet) :+: manifest :+: HNil
-    cachedMakeJar(inputs)(exists(conf.jar))
+    cachedMakeJar(inputs)(() => exists(conf.jar))
   }
   def setVersion(main: Attributes): Unit = {
     val version = Attributes.Name.MANIFEST_VERSION
