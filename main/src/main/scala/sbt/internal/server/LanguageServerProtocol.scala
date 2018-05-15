@@ -39,6 +39,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
     notification.method match {
       case "textDocument/didSave" =>
         append(Exec(";Test/compile; collectAnalyses", None, Some(CommandSource(name))))
+        ()
       case u => log.debug(s"Unhandled notification received: $u")
     }
   }
@@ -69,9 +70,11 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel {
       case "textDocument/definition" =>
         import scala.concurrent.ExecutionContext.Implicits.global
         Definition.lspDefinition(json, request.id, CommandSource(name), log)
+        ()
       case "sbt/exec" =>
         val param = Converter.fromJson[SbtExecParams](json).get
         append(Exec(param.commandLine, Some(request.id), Some(CommandSource(name))))
+        ()
       case "sbt/setting" => {
         import sbt.protocol.codec.JsonProtocol._
         val param = Converter.fromJson[Q](json).get

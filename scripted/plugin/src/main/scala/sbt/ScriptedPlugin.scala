@@ -142,6 +142,7 @@ object ScriptedPlugin extends AutoPlugin {
         scriptedLaunchOpts.value.toArray,
         new java.util.ArrayList()
       )
+      ()
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
 

@@ -202,11 +202,10 @@ private[sbt] object SettingCompletions {
     val definedScopes = data.toSeq flatMap {
       case (scope, attrs) => if (attrs contains key) scope :: Nil else Nil
     }
-    scope(key, allScopes, definedScopes, context)
+    scope(allScopes, definedScopes, context)
   }
 
-  private[this] def scope(key: AttributeKey[_],
-                          allScopes: Seq[Scope],
+  private[this] def scope(allScopes: Seq[Scope],
                           definedScopes: Seq[Scope],
                           context: ResolvedProject): Parser[Scope] = {
     def axisParser[T](axis: Scope => ScopeAxis[T],

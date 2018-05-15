@@ -277,7 +277,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
       modifiedContent: String,
       imports: Seq[Tree]
   ): Seq[(String, Int)] = {
-    val toLineRange = imports map convertImport(modifiedContent)
+    val toLineRange = imports map convertImport
     val groupedByLineNumber = toLineRange.groupBy { case (_, lineNumber) => lineNumber }
     val mergedImports = groupedByLineNumber.map {
       case (l, seq) => (l, extractLine(modifiedContent, seq))
@@ -287,11 +287,10 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
 
   /**
    *
-   * @param modifiedContent - modifiedContent
    * @param t - tree
    * @return ((start,end),lineNumber)
    */
-  private def convertImport(modifiedContent: String)(t: Tree): ((Int, Int), Int) = {
+  private def convertImport(t: Tree): ((Int, Int), Int) = {
     val lineNumber = t.pos.line - 1
     ((t.pos.start, t.pos.end), lineNumber)
   }

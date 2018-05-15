@@ -18,7 +18,7 @@ private[sbt] class TestStatusReporter(f: File) extends TestsListener {
   private lazy val succeeded = TestStatus.read(f)
 
   def doInit = ()
-  def startGroup(name: String): Unit = { succeeded remove name }
+  def startGroup(name: String): Unit = { succeeded remove name; () }
   def testEvent(event: TestEvent): Unit = ()
   def endGroup(name: String, t: Throwable): Unit = ()
   def endGroup(name: String, result: TestResult): Unit = {

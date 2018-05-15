@@ -90,7 +90,7 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
     val currentThread = Thread.currentThread
     val oldLoader = Thread.currentThread.getContextClassLoader
     currentThread.setContextClassLoader(loader)
-    try { main.invoke(null, options.toArray[String]) } finally {
+    try { main.invoke(null, options.toArray[String]); () } finally {
       currentThread.setContextClassLoader(oldLoader)
     }
   }

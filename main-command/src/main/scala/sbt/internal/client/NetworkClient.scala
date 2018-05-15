@@ -126,6 +126,7 @@ object NetworkClient {
   def run(arguments: List[String]): Unit =
     try {
       new NetworkClient(arguments)
+      ()
     } catch {
       case NonFatal(e) => println(e.getMessage)
     }

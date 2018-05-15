@@ -85,8 +85,10 @@ object Package {
   }
   def setVersion(main: Attributes): Unit = {
     val version = Attributes.Name.MANIFEST_VERSION
-    if (main.getValue(version) eq null)
+    if (main.getValue(version) eq null) {
       main.put(version, "1.0")
+      ()
+    }
   }
   def addSpecManifestAttributes(name: String, version: String, orgName: String): PackageOption = {
     import Attributes.Name._

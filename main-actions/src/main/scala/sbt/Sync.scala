@@ -67,6 +67,7 @@ object Sync {
       {
         IO.createDirectory(target)
         IO.copyLastModified(source, target)
+        ()
       }
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
