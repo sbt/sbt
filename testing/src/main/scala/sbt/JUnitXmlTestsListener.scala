@@ -9,6 +9,9 @@ package sbt
 
 import java.io.{ File, IOException, PrintWriter, StringWriter }
 import java.net.InetAddress
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Hashtable
 
 import scala.collection.mutable.ListBuffer
@@ -59,7 +62,9 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
    * Gathers data for one Test Suite. We map test groups to TestSuites.
    * Each TestSuite gets its own output file.
    */
-  class TestSuite(val name: String) {
+  class TestSuite(val name: String, timestamp: LocalDateTime) {
+    def this(name: String) = this(name, LocalDateTime.now())
+
     val events: ListBuffer[TEvent] = new ListBuffer()
 
     /**Adds one test result to this suite.*/
@@ -83,7 +88,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
       )
 
       val result =
-        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
+        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString } timestamp={formatISO8601DateTime(timestamp)}>
                      { properties }
                      {
                        for (e <- events) yield <testcase classname={ name } name={
@@ -151,9 +156,10 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   /**
    * called for each class or equivalent grouping
    *  We map one group to one Testsuite, so for each Group
-   *  we create an XML like this:
+   *  we create [[https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd JUnit XML file]], and looks like this:
+   *
    *  <?xml version="1.0" encoding="UTF-8" ?>
-   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23">
+   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23" timestamp="2018-01-01T10:00:00">
    *       <properties>
    *           <property name="os.name" value="Linux" />
    *           ...
@@ -196,6 +202,12 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   // Here we normalize the name to ensure that it's a nicer filename, rather than
   // contort the user into not using spaces.
   private[this] def normalizeName(s: String) = s.replaceAll("""\s+""", "-")
+
+  /**
+   * Format the date, without milliseconds or the timezone, per the JUnit spec.
+   */
+  private[this] def formatISO8601DateTime(d: LocalDateTime): String =
+    d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
   private def writeSuite() = {
     val file = new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
