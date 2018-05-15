@@ -187,6 +187,7 @@ object BuiltinCommands {
       inspect,
       loadProjectImpl,
       loadFailed,
+      oldLoadFailed,
       Cross.crossBuild,
       Cross.switchVersion,
       PluginCross.pluginCross,
@@ -468,13 +469,21 @@ object BuiltinCommands {
 
   @deprecated("Use `lastGrep` instead.", "1.2.0")
   def oldLastGrep: Command =
-    lastGrepCommand(OldLastGrepCommand, oldLastGrepBrief, oldLastGrepDetailed)
+    lastGrepCommand(OldLastGrepCommand, oldLastGrepBrief, oldLastGrepDetailed, { s =>
+      s.log.warn(deprecationWarningText(OldLastGrepCommand, LastGrepCommand))
+      lastGrepParser(s)
+    })
 
   def lastGrep: Command =
-    lastGrepCommand(LastGrepCommand, lastGrepBrief, lastGrepDetailed)
+    lastGrepCommand(LastGrepCommand, lastGrepBrief, lastGrepDetailed, lastGrepParser)
 
-  private def lastGrepCommand(name: String, briefHelp: (String, String), detail: String): Command =
-    Command(name, briefHelp, detail)(lastGrepParser) {
+  private def lastGrepCommand(
+      name: String,
+      briefHelp: (String, String),
+      detail: String,
+      parser: State => Parser[(String, Option[AnyKeys])]
+  ): Command =
+    Command(name, briefHelp, detail)(parser) {
       case (s, (pattern, Some(sks))) =>
         val (str, _, display) = extractLast(s)
         Output.lastGrep(sks, str.streams(s), pattern, printLast)(display)
@@ -670,6 +679,18 @@ object BuiltinCommands {
     Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
   def loadFailed: Command = Command(LoadFailed)(loadProjectParser)(doLoadFailed)
+  @deprecated("Use `loadFailed` instead.", "1.2.0")
+  def oldLoadFailed: Command =
+    Command(OldLoadFailed) { s =>
+      s.log.warn(
+        deprecationWarningText(OldLoadFailed, LoadFailed)
+      )
+      loadProjectParser(s)
+    }(doLoadFailed)
+
+  private[this] def deprecationWarningText(oldCommand: String, newCommand: String) = {
+    s"The `$oldCommand` command is deprecated in favor of `$newCommand` and will be removed in a later version"
+  }
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
