@@ -6,6 +6,9 @@ script:
 # Uncomment once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 # after_success:
 #    - bash <(curl -s https://codecov.io/bash)
+addons:
+  apt:
+    update: true
 matrix:
   include:
     - env: SCALA_VERSION=2.12 NATIVE=1 PUBLISH=1
