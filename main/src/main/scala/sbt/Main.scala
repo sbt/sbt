@@ -197,7 +197,9 @@ object BuiltinCommands {
       plugin,
       plugins,
       writeSbtVersion,
+      oldWriteSbtVersion,
       notifyUsersAboutShell,
+      oldNotifyUsersAboutShell,
       shell,
       startServer,
       eval,
@@ -853,10 +855,17 @@ object BuiltinCommands {
     if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
       writeSbtVersionUnconditionally(state)
 
-  private def WriteSbtVersion = "write-sbt-version"
+  private def WriteSbtVersion = "writeSbtVersion"
+  private def OldWriteSbtVersion = "write-sbt-version"
 
   private def writeSbtVersion: Command =
     Command.command(WriteSbtVersion) { state =>
+      writeSbtVersion(state); state
+    }
+  @deprecated("Use `writeSbtVersion` instead", "1.2.0")
+  private def oldWriteSbtVersion: Command =
+    Command.command(OldWriteSbtVersion) { state =>
+      state.log.warn(deprecationWarningText(OldWriteSbtVersion, WriteSbtVersion))
       writeSbtVersion(state); state
     }
 
@@ -869,10 +878,17 @@ object BuiltinCommands {
       state.log info "Executing in batch mode. For better performance use sbt's shell"
   }
 
-  private def NotifyUsersAboutShell = "notify-users-about-shell"
+  private def NotifyUsersAboutShell = "notifyUsersAboutShell"
+  private def OldNotifyUsersAboutShell = "notify-users-about-shell"
 
   private def notifyUsersAboutShell: Command =
     Command.command(NotifyUsersAboutShell) { state =>
+      notifyUsersAboutShell(state); state
+    }
+  @deprecated("Use `notifyUsersAboutShell` instead", "1.2.0")
+  private def oldNotifyUsersAboutShell: Command =
+    Command.command(OldNotifyUsersAboutShell) { state =>
+      state.log.warn(deprecationWarningText(OldNotifyUsersAboutShell, NotifyUsersAboutShell))
       notifyUsersAboutShell(state); state
     }
 }
