@@ -202,8 +202,6 @@ if isScalaJs; then
   jsCompile
   runJsTests
 else
-  testBootstrap
-
   testNativeBootstrap
 
   integrationTestsRequirements
@@ -219,6 +217,8 @@ else
     fi
   else
     runJvmTests
+
+    testBootstrap
 
     validateReadme
     checkBinaryCompatibility
