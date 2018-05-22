@@ -1,0 +1,8 @@
+### Changes
+
+* Take into account `--property k=v` options when generating bootstraps (sets Java properties, [#850])
+* Allow to generate assemblies via the `bootstrap` command ([#850], pass the `--assembly` option to the `bootstrap` command)
+
+
+
+[#850]: https://github.com/coursier/coursier/pull/850

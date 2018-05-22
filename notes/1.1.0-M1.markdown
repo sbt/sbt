@@ -1,0 +1,36 @@
+### Changes
+
+* Remove some references to types directly under `sbt.` in `sbt-shared` module, to ease using coursier from sbt itself ([#775], thanks to [@leonardehrenfried])
+* Update points in `DEVELOPMENT.md` ([#777] thanks to [@baroquebobcat], [#776])
+* Automatically initialize and update submodules when compiling coursier ([#785])
+* Allow to specify the URL of a dependency via the CLI ([#774], thanks to [@dotordogh], use like `coursier fetch org:name:ver,url=https%3A%2F%2F…%2Ffoo.jar`)
+* `core` and `cache` modules don't depend on scalaz anymore ([#781], [#796], [#807])
+* Remove some deprecated methods ([#800], thanks to [@wisechengyi])
+* Switch to [directories] 6 ([#806])
+* Better handling of classifiers in JSON report ([#782], thanks to [@baroquebobcat])
+* Reattempt downloads in case of checksum error ([#797], thanks to [@wisechengyi])
+* Handle invalid partial content response code by retrying to download from start of file ([#795], thanks to [@rberenguel])
+
+
+[#774]: https://github.com/coursier/coursier/pull/774
+[#775]: https://github.com/coursier/coursier/pull/775
+[#776]: https://github.com/coursier/coursier/pull/776
+[#777]: https://github.com/coursier/coursier/pull/777
+[#781]: https://github.com/coursier/coursier/pull/781
+[#782]: https://github.com/coursier/coursier/pull/782
+[#785]: https://github.com/coursier/coursier/pull/785
+[#795]: https://github.com/coursier/coursier/pull/795
+[#796]: https://github.com/coursier/coursier/pull/796
+[#797]: https://github.com/coursier/coursier/pull/797
+[#800]: https://github.com/coursier/coursier/pull/800
+[#806]: https://github.com/coursier/coursier/pull/806
+[#807]: https://github.com/coursier/coursier/pull/807
+
+
+[@baroquebobcat]: https://github.com/baroquebobcat
+[@dotordogh]: https://github.com/dotordogh
+[@leonardehrenfried]: https://github.com/leonardehrenfried
+[@rberenguel]: https://github.com/rberenguel
+[@wisechengyi]: https://github.com/wisechengyi
+
+[directories]: https://github.com/soc/directories-jvm

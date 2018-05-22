@@ -1,0 +1,29 @@
+### Changes
+
+* Don't require manually launching docker images of Nexus 2 and 3 to run the integration tests ([#805])
+* Fixes in reverse tree printing ([#808], thanks to [@shanielh])
+* Require Java >= 8 from now on ([#817])
+* Update Travis CI scala-native setup ([#825], thanks to [@densh])
+* Switch to [directories] 10 ([#834])
+* Tweak main class discovering ([#841], thanks to [@2m])
+* Switch to scala-native 0.3.7, use its new build API ([#849], thanks to [@densh])
+* Allow to copy `file:/` artifacts to cache ([#831], thanks to [@dotordogh], enable with `--cache-file-artifacts` on the CLI)
+* Add `tailRecM` method on `coursier.util.Task` ([#846], thanks to [@johnynek] - even though `coursier.util.Task` is stacksafe for now)
+
+
+[#805]: https://github.com/coursier/coursier/pull/805
+[#808]: https://github.com/coursier/coursier/pull/808
+[#817]: https://github.com/coursier/coursier/pull/817
+[#825]: https://github.com/coursier/coursier/pull/825
+[#831]: https://github.com/coursier/coursier/pull/831
+[#834]: https://github.com/coursier/coursier/pull/834
+[#841]: https://github.com/coursier/coursier/pull/841
+[#846]: https://github.com/coursier/coursier/pull/846
+[#849]: https://github.com/coursier/coursier/pull/849
+
+
+[@2m]: https://github.com/2m
+[@densh]: https://github.com/densh
+[@dotordogh]: https://github.com/dotordogh
+[@johnynek]: https://github.com/johnynek
+[@shanielh]: https://github.com/shanielh

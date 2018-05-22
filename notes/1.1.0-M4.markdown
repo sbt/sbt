@@ -1,0 +1,11 @@
+### Changes
+
+* Allow not to add bash preamble in generated bootstraps ([#854], pass `--preamble=false` to the `bootstrap` command)
+* Have generated bootstraps pass options starting with `-J…` to Java rather than the launched app ([#852], thanks to [@2m])
+
+
+[#852]: https://github.com/coursier/coursier/pull/852
+[#854]: https://github.com/coursier/coursier/pull/854
+
+
+[@2m]: https://github.com/2m
