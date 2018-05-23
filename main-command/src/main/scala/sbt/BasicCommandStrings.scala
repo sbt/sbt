@@ -67,7 +67,7 @@ $HelpCommand <regular expression>
 	This will be used as the default level for logging from commands, settings, and tasks.
 	Any explicit `logLevel` configuration in a project overrides this setting.
 
--$level
+-$level OR --$level
 
 	Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
 	This is useful as a startup option:
@@ -77,7 +77,9 @@ $HelpCommand <regular expression>
 
   def runEarly(command: String) = s"$EarlyCommand($command)"
   private[sbt] def isEarlyCommand(s: String): Boolean = {
-    val levelOptions = Level.values.toSeq map { "-" + _ }
+    val levelOptions = Level.values.toSeq flatMap { elem =>
+      List("-" + elem, "--" + elem)
+    }
     (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
     (levelOptions contains s)
   }
