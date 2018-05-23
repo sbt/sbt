@@ -312,7 +312,7 @@ final class NetworkChannel(val name: String,
 
   def onCommand(command: CommandMessage): Unit = command match {
     case x: InitCommand  => onInitCommand(x)
-    case x: ExecCommand  => onExecCommand(x)
+    case x: ExecCommand  => onExecCommand(x); ()
     case x: SettingQuery => onSettingQuery(None, x)
   }
 

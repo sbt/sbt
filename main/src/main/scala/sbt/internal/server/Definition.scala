@@ -36,6 +36,7 @@ private[sbt] object Definition {
     } yield {
       channel.publishEvent(params, Option(execId))
     }
+    ()
   }
 
   object textProcessor {
@@ -228,7 +229,7 @@ private[sbt] object Definition {
     updateCache(StandardMain.cache)(cacheFile, useBinary)
   }
 
-  private[sbt] def getAnalyses(log: Logger): Future[Seq[Analysis]] = {
+  private[sbt] def getAnalyses(): Future[Seq[Analysis]] = {
     import scalacache.modes.scalaFuture._
     import scala.concurrent.ExecutionContext.Implicits.global
     StandardMain.cache
@@ -261,7 +262,7 @@ private[sbt] object Definition {
     val LspDefinitionLogHead = "lsp-definition"
     import sjsonnew.support.scalajson.unsafe.CompactPrinter
     log.debug(s"$LspDefinitionLogHead json request: ${CompactPrinter(jsonDefinition)}")
-    lazy val analyses = getAnalyses(log)
+    lazy val analyses = getAnalyses()
     val definition = getDefinition(jsonDefinition)
     definition
       .flatMap { definition =>

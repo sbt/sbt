@@ -128,7 +128,7 @@ object ConcurrentRestrictions {
   def completionService[A, R](tags: ConcurrentRestrictions[A],
                               warn: String => Unit): (CompletionService[A, R], () => Unit) = {
     val pool = Executors.newCachedThreadPool()
-    (completionService[A, R](pool, tags, warn), () => pool.shutdownNow())
+    (completionService[A, R](pool, tags, warn), () => { pool.shutdownNow(); () })
   }
 
   /**
@@ -167,6 +167,7 @@ object ConcurrentRestrictions {
           if (running == 0) errorAddingToIdle()
           pending.add(new Enqueue(node, work))
         }
+        ()
       }
       private[this] def submitValid(node: A, work: () => R) = {
         running += 1
@@ -192,6 +193,7 @@ object ConcurrentRestrictions {
           if (!tried.isEmpty) {
             if (running == 0) errorAddingToIdle()
             pending.addAll(tried)
+            ()
           }
         } else {
           val next = pending.remove()
