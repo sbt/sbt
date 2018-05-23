@@ -142,7 +142,7 @@ object DependencyGraphSettings {
   def printFromGraph(f: ModuleGraph ⇒ String) =
     Def.task { streams.value.log.info(f(moduleGraph.value)) }
 
-  def showLicenseInfo(graph: ModuleGraph, streams: TaskStreams) {
+  def showLicenseInfo(graph: ModuleGraph, streams: TaskStreams): Unit = {
     val output =
       graph.nodes.filter(_.isUsed).groupBy(_.license).toSeq.sortBy(_._1).map {
         case (license, modules) ⇒
