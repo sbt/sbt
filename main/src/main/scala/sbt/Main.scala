@@ -313,8 +313,14 @@ object BuiltinCommands {
       'v'.id.+.map(_.size + 1) |
         ("V" ^^^ Int.MaxValue)
     ))
+
+  def taskDetail(keys: Seq[AttributeKey[_]], firstOnly: Boolean): Seq[(String, String)] =
+    sortByLabel(withDescription(keys)) flatMap { t =>
+      taskStrings(t, firstOnly)
+    }
+
   def taskDetail(keys: Seq[AttributeKey[_]]): Seq[(String, String)] =
-    sortByLabel(withDescription(keys)) flatMap taskStrings
+    taskDetail(keys, false)
 
   def allTaskAndSettingKeys(s: State): Seq[AttributeKey[_]] = {
     val extracted = Project.extract(s)
@@ -349,16 +355,19 @@ object BuiltinCommands {
   def tasksHelp(s: State,
                 filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]],
                 arg: Option[String]): String = {
-    val commandAndDescription = taskDetail(filter(allTaskAndSettingKeys(s)))
+    val commandAndDescription = taskDetail(filter(allTaskAndSettingKeys(s)), true)
     arg match {
       case Some(selected) => detail(selected, commandAndDescription.toMap)
       case None           => aligned("  ", "   ", commandAndDescription) mkString ("\n", "\n", "")
     }
   }
 
-  def taskStrings(key: AttributeKey[_]): Option[(String, String)] = key.description map { d =>
-    (key.label, d)
-  }
+  def taskStrings(key: AttributeKey[_], firstOnly: Boolean): Option[(String, String)] =
+    key.description map { d =>
+      if (firstOnly) (key.label, d.split("\r?\n")(0)) else (key.label, d)
+    }
+
+  def taskStrings(key: AttributeKey[_]): Option[(String, String)] = taskStrings(key, false)
 
   def defaults = Command.command(DefaultsCommand) { s =>
     s.copy(definedCommands = DefaultCommands)
