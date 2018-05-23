@@ -1039,7 +1039,7 @@ private[sbt] object Load {
         // Grab all the settings we already loaded from sbt files
         def settings(files: Seq[File]): Seq[Setting[_]] = {
           if (files.nonEmpty)
-            log.info(s"${files.map(_.getName).mkString("Loading settings from ", ",", " ...")}")
+            log.info(s"${files.map(_.getName).mkString(s"Loading settings for project ${p.id} from ", ",", " ...")}")
           for {
             file <- files
             config <- (memoSettings get file).toSeq
