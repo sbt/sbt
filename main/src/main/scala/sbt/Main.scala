@@ -853,7 +853,7 @@ object BuiltinCommands {
     if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
       writeSbtVersionUnconditionally(state)
 
-  private def WriteSbtVersion = "write-sbt-version"
+  private def WriteSbtVersion = "writeSbtVersion"
 
   private def writeSbtVersion: Command =
     Command.command(WriteSbtVersion) { state =>
@@ -869,7 +869,7 @@ object BuiltinCommands {
       state.log info "Executing in batch mode. For better performance use sbt's shell"
   }
 
-  private def NotifyUsersAboutShell = "notify-users-about-shell"
+  private def NotifyUsersAboutShell = "notifyUsersAboutShell"
 
   private def notifyUsersAboutShell: Command =
     Command.command(NotifyUsersAboutShell) { state =>
