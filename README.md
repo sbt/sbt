@@ -66,10 +66,9 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
    4. [Extra protocols](#extra-protocols)
 5. [Limitations](#limitations)
 6. [FAQ](#faq)
-7. [Roadmap](#roadmap)
-8. [Development tips](#development-tips)
-9. [Contributors](#contributors)
-10. [Projects using coursier](#projects-using-coursier)
+7. [Development tips](#development-tips)
+8. [Contributors](#contributors)
+9. [Projects using coursier](#projects-using-coursier)
 
 ## Quick start
 
@@ -796,20 +795,6 @@ It can be run from another terminal with
 ```
 $ cli/target/pack/bin/coursier
 ```
-
-## Roadmap
-
-The first releases were milestones like `0.1.0-M?`. As a launcher, basic Ivy
-repositories support, and an SBT plugin, were added in the mean time,
-coursier is now aiming directly at `1.0.1`.
-
-The last features I'd like to add until a feature freeze are mainly a
-better / nicer output, for both the command-line tools and the SBT plugin.
-These are tracked via GitHub [issues](https://github.com/coursier/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.1), along with other points.
-Milestones will keep being released until then.
-Then coursier should undergo `RC` releases, with no new features added, and
-only fixes and minor refactorings between them.
-Once RCs will be considered stable enough, `1.0.1` should be released.
 
 ## Contributors
 
