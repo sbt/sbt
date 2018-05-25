@@ -53,6 +53,10 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 3. [Usage](#usage)
    1. [SBT plugin](#sbt-plugin-1)
    2. [Command-line](#command-line-1)
+      1. [launch](#launch)
+      2. [fetch](#fetch)
+      3. [bootstrap](#bootstrap)
+      4. [native bootstrap](#native-bootstrap)
    3. [API](#api-1)
    4. [Scala JS demo](#scala-js-demo)
 4. [Extra features](#extra-features)
@@ -404,9 +408,9 @@ $ ./coursier fetch org.apache.avro:avro:1.7.4 --json-output-file report.json
 
 
 
-### bootstrap
+#### bootstrap
 
-The `bootstrap` generates tiny bootstrap launchers, able to pull their dependencies from
+The `bootstrap` command generates tiny bootstrap launchers, able to pull their dependencies from
 repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/coursier/coursier/blob/master/scripts/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
@@ -416,6 +420,21 @@ $ ./coursier bootstrap \
 ```
 
 See `./coursier bootstrap --help` for a list of the available options.
+
+#### native bootstrap
+
+The `bootstrap` command can also generate [scala-native](http://scala-native.org) executables. This requires the corresponding scala-native app to publish its JARs, on Maven Central for example, and your environment to be [set up for scala-native](http://www.scala-native.org/en/latest/user/setup.html). One can then generate executables with a command like
+```
+$ ./coursier bootstrap \
+    --native \
+    io.get-coursier:echo_native0.3_2.11:1.0.1 \
+    -o echo-native
+[info] Linking (2354 ms)
+[info] Discovered 1291 classes and 9538 methods
+…
+$ ./echo-native hey
+hey
+```
 
 ### API
 
