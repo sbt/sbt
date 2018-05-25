@@ -53,6 +53,10 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 3. [Usage](#usage)
    1. [SBT plugin](#sbt-plugin-1)
    2. [Command-line](#command-line-1)
+      1. [launch](#launch)
+      2. [fetch](#fetch)
+      3. [bootstrap](#bootstrap)
+      4. [native bootstrap](#native-bootstrap)
    3. [API](#api-1)
    4. [Scala JS demo](#scala-js-demo)
 4. [Extra features](#extra-features)
@@ -62,10 +66,9 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
    4. [Extra protocols](#extra-protocols)
 5. [Limitations](#limitations)
 6. [FAQ](#faq)
-7. [Roadmap](#roadmap)
-8. [Development tips](#development-tips)
-9. [Contributors](#contributors)
-10. [Projects using coursier](#projects-using-coursier)
+7. [Development tips](#development-tips)
+8. [Contributors](#contributors)
+9. [Projects using coursier](#projects-using-coursier)
 
 ## Quick start
 
@@ -73,7 +76,7 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 Enable the SBT plugin by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.1")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.3")
 ```
 to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plugins.sbt` file
 of an SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12 / 0.13.13 / 0.13.15 / 0.13.16-M1 / 1.0.1-M5.
@@ -126,8 +129,8 @@ echo 'autoload -Uz compinit ; compinit' >> ~/.zshrc
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.1",
-  "io.get-coursier" %% "coursier-cache" % "1.0.1"
+  "io.get-coursier" %% "coursier" % "1.0.3",
+  "io.get-coursier" %% "coursier-cache" % "1.0.3"
 )
 ```
 
@@ -235,7 +238,7 @@ of the cache used by a particular project, in case you have any doubt about what
 
 Enable the SBT plugin globally by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.1")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.3")
 ```
 to `~/.sbt/0.13/plugins/build.sbt`
 
@@ -255,7 +258,7 @@ Download and run its launcher with
 $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
 
-The launcher itself weighs only 8 kB and can be easily embedded as is in other projects.
+The launcher itself weighs only 30 kB and can be easily embedded as is in other projects.
 It downloads the artifacts required to launch coursier on the first run.
 
 Alternatively on OS X, install it via homebrew, that puts the `coursier` launcher directly in your PATH,
@@ -404,32 +407,46 @@ $ ./coursier fetch org.apache.avro:avro:1.7.4 --json-output-file report.json
 
 
 
-### bootstrap
+#### bootstrap
 
-The `bootstrap` generates tiny bootstrap launchers, able to pull their dependencies from
+The `bootstrap` command generates tiny bootstrap launchers, able to pull their dependencies from
 repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/coursier/coursier/blob/master/scripts/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
-    io.get-coursier:coursier-cli_2.11:1.0.1 \
-    -b -f -o coursier \
-    -M coursier.cli.Coursier
+    io.get-coursier:coursier-cli_2.11:1.0.3 \
+    -f -o coursier
 ```
 
 See `./coursier bootstrap --help` for a list of the available options.
+
+#### native bootstrap
+
+The `bootstrap` command can also generate [scala-native](http://scala-native.org) executables. This requires the corresponding scala-native app to publish its JARs, on Maven Central for example, and your environment to be [set up for scala-native](http://www.scala-native.org/en/latest/user/setup.html). One can then generate executables with a command like
+```
+$ ./coursier bootstrap \
+    --native \
+    io.get-coursier:echo_native0.3_2.11:1.0.3 \
+    -o echo-native
+[info] Linking (2354 ms)
+[info] Discovered 1291 classes and 9538 methods
+…
+$ ./echo-native hey
+hey
+```
 
 ### API
 
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.1",
-  "io.get-coursier" %% "coursier-cache" % "1.0.1"
+  "io.get-coursier" %% "coursier" % "1.0.3",
+  "io.get-coursier" %% "coursier-cache" % "1.0.3"
 )
 ```
 
 Note that the examples below are validated against the current sources of coursier. You may want to read the [documentation of the latest release](https://github.com/coursier/coursier/blob/v1.1.0-M4/README.md#api-1) of coursier instead.
 
-The first module, `"io.get-coursier" %% "coursier" % "1.0.1"`, mainly depends on
+The first module, `"io.get-coursier" %% "coursier" % "1.0.3"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
 definitions,
 mainly in [`Definitions.scala`](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
@@ -439,7 +456,7 @@ that expects to be given metadata, wrapped in any `Monad`, then feeds these to `
 you the final `Resolution`, wrapped in the same `Monad` it was given input. This final `Resolution` has all the dependencies,
 including the transitive ones.
 
-The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.1"`, is precisely in charge of fetching
+The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.3"`, is precisely in charge of fetching
 these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them. It also fetches artifacts (JARs, etc.).
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
@@ -641,7 +658,7 @@ They highlight in red version bumps that may not be binary compatible, changing 
 
 ### Generating bootstrap launchers
 
-The `coursier bootstrap` command generates tiny bootstrap launchers (~12 kB). These are able to download their dependencies upon first launch, then launch the corresponding application. E.g. to generate a launcher for scalafmt,
+The `coursier bootstrap` command generates tiny bootstrap launchers (~30 kB). These are able to download their dependencies upon first launch, then launch the corresponding application. E.g. to generate a launcher for scalafmt,
 ```
 $ coursier bootstrap com.geirsson:scalafmt-cli_2.11:0.2.3 -o scalafmt
 ```
@@ -685,7 +702,7 @@ same time, I'd recommend an extreme caution at first, like manually inspecting
 the metadata files and compare with previous ones, to ensure everything's fine.
 
 coursier publishes its artifacts with its own plugin enabled since version
-`1.0.1-M2` though, without any apparent problem.
+`1.0.0-M2` though, without any apparent problem.
 
 #### No wait on locked file
 
@@ -778,20 +795,6 @@ It can be run from another terminal with
 ```
 $ cli/target/pack/bin/coursier
 ```
-
-## Roadmap
-
-The first releases were milestones like `0.1.0-M?`. As a launcher, basic Ivy
-repositories support, and an SBT plugin, were added in the mean time,
-coursier is now aiming directly at `1.0.1`.
-
-The last features I'd like to add until a feature freeze are mainly a
-better / nicer output, for both the command-line tools and the SBT plugin.
-These are tracked via GitHub [issues](https://github.com/coursier/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.1), along with other points.
-Milestones will keep being released until then.
-Then coursier should undergo `RC` releases, with no new features added, and
-only fixes and minor refactorings between them.
-Once RCs will be considered stable enough, `1.0.1` should be released.
 
 ## Contributors
 
