@@ -702,7 +702,7 @@ same time, I'd recommend an extreme caution at first, like manually inspecting
 the metadata files and compare with previous ones, to ensure everything's fine.
 
 coursier publishes its artifacts with its own plugin enabled since version
-`1.0.1-M2` though, without any apparent problem.
+`1.0.0-M2` though, without any apparent problem.
 
 #### No wait on locked file
 
