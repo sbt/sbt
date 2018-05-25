@@ -444,8 +444,7 @@ repositories on first launch. For example, the launcher of coursier is [generate
 ```
 $ ./coursier bootstrap \
     io.get-coursier:coursier-cli_2.11:1.0.1 \
-    -b -f -o coursier \
-    -M coursier.cli.Coursier
+    -f -o coursier
 ```
 
 See `./coursier bootstrap --help` for a list of the available options.
