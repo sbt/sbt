@@ -283,7 +283,7 @@ Download and run its launcher with
 $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
 
-The launcher itself weighs only 8 kB and can be easily embedded as is in other projects.
+The launcher itself weighs only 30 kB and can be easily embedded as is in other projects.
 It downloads the artifacts required to launch coursier on the first run.
 
 Alternatively on OS X, install it via homebrew, that puts the `coursier` launcher directly in your PATH,
@@ -675,7 +675,7 @@ They highlight in red version bumps that may not be binary compatible, changing 
 
 ### Generating bootstrap launchers
 
-The `coursier bootstrap` command generates tiny bootstrap launchers (~12 kB). These are able to download their dependencies upon first launch, then launch the corresponding application. E.g. to generate a launcher for scalafmt,
+The `coursier bootstrap` command generates tiny bootstrap launchers (~30 kB). These are able to download their dependencies upon first launch, then launch the corresponding application. E.g. to generate a launcher for scalafmt,
 ```
 $ coursier bootstrap com.geirsson:scalafmt-cli_2.11:0.2.3 -o scalafmt
 ```
