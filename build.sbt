@@ -2,6 +2,11 @@ import Dependencies._
 import Path._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
+val _ = {
+  //https://github.com/sbt/contraband/issues/122
+  sys.props += ("line.separator" -> "\n")
+}
+
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala212,
   // publishArtifact in packageDoc := false,
