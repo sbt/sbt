@@ -148,7 +148,9 @@ private[sbt] object SbtParser {
     reporter.reset()
     val wrapperFile = new BatchSourceFile(reporterId, code)
     val unit = new CompilationUnit(wrapperFile)
-    val parser = new syntaxAnalyzer.UnitParser(unit)
+    val parser = SbtParser.synchronized { // see https://github.com/sbt/sbt/issues/4148
+      new syntaxAnalyzer.UnitParser(unit)
+    }
     val parsedTrees = SbtParser.synchronized { // see https://github.com/scala/bug/issues/10605
       parser.templateStats()
     }
