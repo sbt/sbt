@@ -454,7 +454,7 @@ The `bootstrap` command can also generate [scala-native](http://scala-native.org
 ```
 $ ./coursier bootstrap \
     --native \
-    io.get-coursier:echo_native0.3_2.11:1.0.3 \
+    io.get-coursier:echo_native0.3_2.11:1.0.2 \
     -o echo-native
 [info] Linking (2354 ms)
 [info] Discovered 1291 classes and 9538 methods
