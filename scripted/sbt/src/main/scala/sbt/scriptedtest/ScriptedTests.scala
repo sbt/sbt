@@ -206,6 +206,7 @@ final class ScriptedTests(
       case "dependency-management/update-sbt-classifiers"           => LauncherBased // tbd
       case "dependency-management/url"                              => LauncherBased // tbd
       case "java/argfile"                                           => LauncherBased // sbt/Package$
+      case "java/cross"                                             => LauncherBased // sbt/Package$
       case "java/basic"                                             => LauncherBased // sbt/Package$
       case "java/varargs-main"                                      => LauncherBased // sbt/Package$
       case "package/lazy-name"                                      => LauncherBased // sbt/Package$

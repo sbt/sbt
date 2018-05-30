@@ -6,6 +6,7 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot
+    - $HOME/.jabba
 
 language: scala
 
@@ -14,6 +15,14 @@ jdk:
 
 matrix:
   fast_finish: true
+
+matrix:
+  include:
+  - env: SBT_CMD="scripted java/*"
+    before_install:
+      - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
+    install:
+      - /home/travis/.jabba/bin/jabba install openjdk@1.10
 
 env:
   global:
@@ -26,7 +35,7 @@ env:
     - SBT_CMD="scripted dependency-management/*2of4"
     - SBT_CMD="scripted dependency-management/*3of4"
     - SBT_CMD="scripted dependency-management/*4of4"
-    - SBT_CMD="scripted java/* package/* reporter/* run/* project-load/*"
+    - SBT_CMD="scripted package/* reporter/* run/* project-load/*"
     - SBT_CMD="scripted project/*1of2"
     - SBT_CMD="scripted project/*2of2"
     - SBT_CMD="scripted source-dependencies/*1of3"

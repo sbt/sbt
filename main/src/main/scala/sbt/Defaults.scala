@@ -69,6 +69,7 @@ import sbt.librarymanagement.syntax._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sbt.util.CacheImplicits._
+import scala.collection.immutable.ListMap
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
@@ -159,6 +160,9 @@ object Defaults extends BuildCommon {
       scalaHome :== None,
       apiURL := None,
       javaHome :== None,
+      discoveredJavaHomes := CrossJava.discoverJavaHomes,
+      javaHomes :== ListMap.empty,
+      fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== false,
       javaOptions :== Nil,
       sbtPlugin :== false,
