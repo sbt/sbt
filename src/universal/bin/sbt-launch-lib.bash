@@ -107,6 +107,9 @@ get_mem_opts () {
     (( $codecache > 128 )) || codecache=128
     (( $codecache < 512 )) || codecache=512
     local class_metadata_size=$(( $codecache * 2 ))
+    if [[ -z $java_version ]]; then
+        java_version=$(jdk_version)
+    fi
     local class_metadata_opt=$((( $java_version < 8 )) && echo "MaxPermSize" || echo "MaxMetaspaceSize")
 
     local arg_xms=$([[ "${java_args[@]}" == *-Xms* ]] && echo "" || echo "-Xms${mem}m")
