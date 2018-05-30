@@ -1,6 +1,7 @@
 # Build Status
 
 [![Build Status](https://travis-ci.org/sbt/sbt-launcher-package.svg?branch=master)](https://travis-ci.org/sbt/sbt-launcher-package)
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/sbt/sbt-launcher-package?branch=master&svg=true&retina=true)](https://ci.appveyor.com/project/sbt/sbt-launcher-package)
 
 sbt: the launcher
 ==================
