@@ -42,48 +42,45 @@ well as a snapshot version of scala, then run the sbt "about" command.
     [info] sbt, sbt plugins, and build definitions are using Scala 2.9.1
 
 Current -help output:
+```bash
+Usage: sbt [options]
 
-    Usage: sbt [options]
+  -h | -help         print this message
+  -v | -verbose      this runner is chattier
+  -d | -debug        set sbt log level to debug
+  -no-colors         disable ANSI color codes
+  -sbt-create        start sbt even if current directory contains no sbt project
+  -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
+  -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
+  -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
+  -mem    <integer>  set memory options (default: 1024, which is -Xms1024m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:MaxMetaspaceSize=256m)
+  -no-share          use all local caches; no sharing
+  -no-global         uses global caches, but does not use global ~/.sbt directory.
+  -jvm-debug <port>  Turn on JVM debugging, open at the given port.
+  -batch             Disable interactive mode
 
-      -h | -help         print this message
-      -v | -verbose      this runner is chattier
-      -d | -debug        set sbt log level to debug
-      -no-colors         disable ANSI color codes
-      -sbt-create        start sbt even if current directory contains no sbt project
-      -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
-      -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
-      -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
-      -mem    <integer>  set memory options (default: 1536, which is -Xms1536m -Xmx1536m -XX:MaxPermSize=384m -XX:ReservedCodeCacheSize=192m)
-      -no-share          use all local caches; no sharing
-      -offline           put sbt in offline mode
-      -jvm-debug <port>  Turn on JVM debugging, open at the given port.
+  # sbt version (default: from project/build.properties if present, else latest release)
+  -sbt-version  <version>   use the specified version of sbt
+  -sbt-jar      <path>      use the specified jar as the sbt launcher
+  -sbt-rc                   use an RC version of sbt
+  -sbt-snapshot             use a snapshot version of sbt
 
-      # sbt version (default: from project/build.properties if present, else latest release)
-      -sbt-version  <version>   use the specified version of sbt
-      -sbt-jar      <path>      use the specified jar as the sbt launcher
-      -sbt-rc                   use an RC version of sbt
-      -sbt-snapshot             use a snapshot version of sbt
+  # java version (default: java from PATH, currently openjdk version "1.8.0_172")
+  -java-home <path>         alternate JAVA_HOME
 
-      # scala version (default: latest release)
-      -28                       use 2.8.2
-      -29                       use 2.9.1
-      -210                      use 2.10.0-SNAPSHOT
-      -scala-home <path>        use the scala build at the specified directory
-      -scala-version <version>  use the specified version of scala
-
-      # java version (default: java from PATH, currently java version "1.6.0_29")
-      -java-home <path>         alternate JAVA_HOME
-
-      # jvm options and output control
-      JAVA_OPTS     environment variable, if unset uses "-Dfile.encoding=UTF8"
-      SBT_OPTS      environment variable, if unset uses "-XX:+CMSClassUnloadingEnabled"
-      .sbtopts      if this file exists in the sbt root, it is prepended to the runner args
-      -Dkey=val     pass -Dkey=val directly to the java runtime
-      -J-X          pass option -X directly to the java runtime (-J is stripped)
-
-    In the case of duplicated or conflicting options, the order above
-    shows precedence: JAVA_OPTS lowest, command line options highest.
-
+  # jvm options and output control
+  JAVA_OPTS          environment variable, if unset uses ""
+  .jvmopts           if this file exists in the current directory, its contents
+                     are appended to JAVA_OPTS
+  SBT_OPTS           environment variable, if unset uses ""
+  .sbtopts           if this file exists in the current directory, its contents
+                     are prepended to the runner args
+  /usr/local/etc/sbtopts   if this file exists, it is prepended to the runner args
+  -Dkey=val          pass -Dkey=val directly to the java runtime
+  -J-X               pass option -X directly to the java runtime
+                     (-J is stripped)
+  -S-X               add -X to sbt's scalacOptions (-S is stripped)
+```
 
 ## Native Packages ##
 
