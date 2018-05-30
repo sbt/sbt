@@ -222,7 +222,7 @@ object Keys {
   val scalaCompilerBridgeSource = settingKey[ModuleID]("Configures the module ID of the sources of the compiler bridge.").withRank(CSetting)
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
   val enableBinaryCompileAnalysis = settingKey[Boolean]("Writes the analysis file in binary format")
-  val crossJavaVersions = settingKey[Seq[JavaVersion]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
+  val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
 
   val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.").withRank(APlusTask)
   val console = taskKey[Unit]("Starts the Scala interpreter with the project classes on the classpath.").withRank(APlusTask)
@@ -272,9 +272,9 @@ object Keys {
   val outputStrategy = settingKey[Option[sbt.OutputStrategy]]("Selects how to log output when running a main class.").withRank(DSetting)
   val connectInput = settingKey[Boolean]("If true, connects standard input when running a main class forked.").withRank(CSetting)
   val javaHome = settingKey[Option[File]]("Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.").withRank(ASetting)
-  val discoveredJavaHomes = settingKey[Map[JavaVersion, File]]("Discovered Java home directories")
-  val javaHomes = settingKey[Map[JavaVersion, File]]("The user-defined additional Java home directories")
-  val fullJavaHomes = settingKey[Map[JavaVersion, File]]("Combines discoveredJavaHomes and custom javaHomes.").withRank(CTask)
+  val discoveredJavaHomes = settingKey[Map[String, File]]("Discovered Java home directories")
+  val javaHomes = settingKey[Map[String, File]]("The user-defined additional Java home directories")
+  val fullJavaHomes = settingKey[Map[String, File]]("Combines discoveredJavaHomes and custom javaHomes.").withRank(CTask)
 
   val javaOptions = taskKey[Seq[String]]("Options passed to a new JVM when forking.").withRank(BPlusTask)
   val envVars = taskKey[Map[String, String]]("Environment variables used when forking a new JVM").withRank(BTask)

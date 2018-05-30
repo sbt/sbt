@@ -5,7 +5,7 @@ val check = inputKey[Unit]("Runs the check")
 lazy val root = (project in file("."))
   .settings(
     ThisBuild / scalaVersion := "2.12.6",
-    crossJavaVersions := List(JavaVersion("1.8")),
+    crossJavaVersions := List("1.8"),
 
     // read out.txt and see if it starts with the passed in number
     check := {
