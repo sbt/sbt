@@ -69,7 +69,7 @@ declare -r win_sbt_opts_file="${sbt_home}/conf/sbtconfig.txt"
 
 usage() {
  cat <<EOM
-Usage: $script_name [options]
+Usage: `basename "$0"` [options]
 
   -h | -help         print this message
   -v | -verbose      this runner is chattier
@@ -79,7 +79,7 @@ Usage: $script_name [options]
   -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
   -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
-  -mem    <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
+  -mem    <integer>  set memory options (default: $sbt_default_mem, which is $(get_mem_opts))
   -no-share          use all local caches; no sharing
   -no-global         uses global caches, but does not use global ~/.sbt directory.
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.
