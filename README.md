@@ -76,7 +76,7 @@ Usage: sbt [options]
   SBT_OPTS           environment variable, if unset uses ""
   .sbtopts           if this file exists in the current directory, its contents
                      are prepended to the runner args
-  /usr/local/etc/sbtopts   if this file exists, it is prepended to the runner args
+  /etc/sbt/sbtopts   if this file exists, it is prepended to the runner args
   -Dkey=val          pass -Dkey=val directly to the java runtime
   -J-X               pass option -X directly to the java runtime
                      (-J is stripped)
