@@ -68,6 +68,9 @@ if "%~1" == "-jvm-debug" (
   if not "%~1" == "!JVM_DEBUG_PORT!" (
     set SBT_ARGS=!SBT_ARGS! %1
   )
+) else if /I "%~1" == "new" (
+  set sbt_new=true
+  set SBT_ARGS=!SBT_ARGS! %1
 ) else (
   set SBT_ARGS=!SBT_ARGS! %1
 )
@@ -75,6 +78,31 @@ if "%~1" == "-jvm-debug" (
 shift
 goto args_loop
 :args_end
+
+rem Confirm a user's intent if the current directory does not look like an sbt
+rem top-level directory and the "new" command was not given.
+if not exist build.sbt (
+  if not exist project\ (
+    if not defined sbt_new (
+      echo [warn] Neither build.sbt nor a 'project' directory in the current directory: %CD%
+      setlocal
+:confirm
+      echo c^) continue
+      echo q^) quit
+
+      set /P reply=?^ 
+      if /I "!reply!" == "c" (
+        goto confirm_end
+      ) else if /I "!reply!" == "q" (
+        exit /B 1
+      )
+
+      goto confirm
+:confirm_end
+      endlocal
+    )
+  )
+)
 
 if defined JVM_DEBUG_PORT (
   set _JAVA_OPTS=!_JAVA_OPTS! -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=!JVM_DEBUG_PORT!
