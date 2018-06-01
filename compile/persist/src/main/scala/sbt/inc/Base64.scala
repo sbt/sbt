@@ -34,7 +34,7 @@ private[sbt] object Java89Encoder {
 
   private val Base64_class = Class.forName("java.util.Base64")
   private val Base64_getEncoder = ensureAccessible(Base64_class.getMethod("getEncoder"))
-  private val Base64_getDecoder = ensureAccessible(Base64_class.getMethod("getEncoder"))
+  private val Base64_getDecoder = ensureAccessible(Base64_class.getMethod("getDecoder"))
   private val Base64_Encoder_class = Class.forName("java.util.Base64$Encoder")
   private val Base64_Decoder_class = Class.forName("java.util.Base64$Decoder")
   private val Base64_Encoder_encodeToString = ensureAccessible(Base64_Encoder_class.getMethod("encodeToString", classOf[Array[Byte]]))
