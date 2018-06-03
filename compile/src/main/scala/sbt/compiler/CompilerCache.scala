@@ -25,6 +25,7 @@ private final class CompilerCache(val maxInstances: Int) extends GlobalsCache {
     }
   }
   def clear(): Unit = synchronized { cache.clear() }
+  def relinquish(compiler: CachedCompiler): Unit = ()
 
   private[this] def dropSources(args: Seq[String]): Seq[String] =
     args.filterNot(arg => arg.endsWith(".scala") || arg.endsWith(".java"))
@@ -42,6 +43,7 @@ object CompilerCache {
   def apply(maxInstances: Int): GlobalsCache = new CompilerCache(maxInstances)
 
   val fresh: GlobalsCache = new GlobalsCache {
+    def relinquish(compiler: CachedCompiler): Unit = compiler.close()
     def clear(): Unit = ()
     def apply(args: Array[String], output: Output, forceNew: Boolean, c: CachedCompilerProvider, log: xLogger, reporter: Reporter): CachedCompiler =
       c.newCachedCompiler(args, output, log, reporter, /*resident = */ false)
