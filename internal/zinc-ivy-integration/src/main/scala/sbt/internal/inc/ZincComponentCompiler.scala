@@ -10,7 +10,6 @@ package internal
 package inc
 
 import java.io.File
-import java.net.URLClassLoader
 import java.util.concurrent.Callable
 
 import sbt.internal.inc.classpath.ClasspathUtilities
@@ -134,7 +133,6 @@ private[sbt] object ZincComponentCompiler {
 
     override def fetchScalaInstance(scalaVersion: String,
                                     logger: xsbti.Logger): xsbti.compile.ScalaInstance = {
-      import sbt.io.Path.toURLs
       val scalaArtifacts = getScalaArtifacts(scalaVersion, logger)
       val scalaCompiler = scalaArtifacts.compiler
       val scalaLibrary = scalaArtifacts.library
