@@ -459,7 +459,7 @@ object BuiltinCommands {
     val loggerInject = LogManager.settingsLogger(s)
     val withLogger = newSession.appendRaw(loggerInject :: Nil)
     val show = Project.showContextKey2(newSession)
-    val newStructure = Load.reapply(withLogger.mergeSettings, structure)(show)
+    val newStructure = Load.reapply(withLogger.mergeSettings, structure, s.log)(show)
     Project.setProject(newSession, newStructure, s)
   }
 

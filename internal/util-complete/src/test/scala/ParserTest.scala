@@ -121,8 +121,8 @@ object ParserTest extends Properties("Completing Parser") {
   property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
 }
 object ParserExample {
-  val ws = charClass(_.isWhitespace).+
-  val notws = charClass(!_.isWhitespace).+
+  val ws = charClass(_.isWhitespace, "whitespace").+
+  val notws = charClass(!_.isWhitespace, "not whitespace").+
 
   val name = token("test")
   val options = (ws ~> token("quick" | "failed" | "new")).*

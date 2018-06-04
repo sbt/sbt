@@ -166,7 +166,7 @@ trait Parsers {
     }, "non-double-quote-backslash character")
 
   /** Matches a single character that is valid somewhere in a URI. */
-  lazy val URIChar = charClass(alphanum) | chars("_-!.~'()*,;:$&+=?/[]@%#")
+  lazy val URIChar = charClass(alphanum, "alphanum") | chars("_-!.~'()*,;:$&+=?/[]@%#")
 
   /** Returns true if `c` is an ASCII letter or digit. */
   def alphanum(c: Char) =

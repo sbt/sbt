@@ -10,7 +10,6 @@ package sbt
 import java.io._
 
 import org.specs2.mutable.Specification
-
 import sbt.internal._
 import sbt.internal.util.{
   AttributeEntry,
@@ -20,6 +19,7 @@ import sbt.internal.util.{
   MainAppender,
   Settings
 }
+import sbt.util.Logger
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
 
@@ -103,7 +103,8 @@ object FakeState {
     val data: Settings[Scope] = Def.make(settings)(delegates, scopeLocal, Def.showFullKey)
     val extra: KeyIndex => BuildUtil[_] = (keyIndex) =>
       BuildUtil(base.toURI, Map.empty, keyIndex, data)
-    val structureIndex: StructureIndex = Load.structureIndex(data, settings, extra, Map.empty)
+    val structureIndex: StructureIndex =
+      Load.structureIndex(data, settings, extra, Map.empty, Logger.Null)
     val streams: (State) => BuildStreams.Streams = null
 
     val loadedDefinitions: LoadedDefinitions = new LoadedDefinitions(

@@ -267,7 +267,7 @@ private[sbt] object Load {
     }
     Project.checkTargets(data) foreach sys.error
     val index = timed("Load.apply: structureIndex", log) {
-      structureIndex(data, settings, loaded.extra(data), projects)
+      structureIndex(data, settings, loaded.extra(data), projects, log)
     }
     val streams = timed("Load.apply: mkStreams", log) { mkStreams(projects, loaded.root, data) }
     val bs = new BuildStructure(
@@ -321,7 +321,8 @@ private[sbt] object Load {
       data: Settings[Scope],
       settings: Seq[Setting[_]],
       extra: KeyIndex => BuildUtil[_],
-      projects: Map[URI, LoadedBuildUnit]
+      projects: Map[URI, LoadedBuildUnit],
+      log: Logger
   ): StructureIndex = {
     val keys = Index.allKeys(settings)
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
@@ -330,6 +331,7 @@ private[sbt] object Load {
     val configsMap: Map[String, Seq[Configuration]] =
       projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
     val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
+    checkConfigurations(keyIndex, log)
     val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap, configsMap)
     new StructureIndex(
       Index.stringToKeyMap(attributeKeys),
@@ -340,15 +342,33 @@ private[sbt] object Load {
     )
   }
 
+  private def checkConfigurations(keyIndex: KeyIndex, log: Logger): Unit = {
+    keyIndex.guessedConfigIdents
+      .collect {
+        // Filter out any global configurations since we don't have a way of fixing them.
+        // Chances are this is only going to be the Test configuration which will have guessed correctly.
+        case (Some(projectRef), config, guess) =>
+          (Reference.display(projectRef), config, guess)
+      }
+      .foreach {
+        case (project, config, guess) =>
+          log.warn(
+            s"""The project $project references an unknown configuration "$config" and was guessed to be "$guess"."""
+          )
+          log.warn("This configuration should be explicitly added to the project.")
+      }
+  }
+
   // Reevaluates settings after modifying them.  Does not recompile or reload any build components.
   def reapply(
       newSettings: Seq[Setting[_]],
-      structure: BuildStructure
+      structure: BuildStructure,
+      log: Logger
   )(implicit display: Show[ScopedKey[_]]): BuildStructure = {
     val transformed = finalTransforms(newSettings)
     val newData = Def.make(transformed)(structure.delegates, structure.scopeLocal, display)
     def extra(index: KeyIndex) = BuildUtil(structure.root, structure.units, index, newData)
-    val newIndex = structureIndex(newData, transformed, extra, structure.units)
+    val newIndex = structureIndex(newData, transformed, extra, structure.units, log)
     val newStreams = mkStreams(structure.units, structure.root, newData)
     new BuildStructure(
       units = structure.units,

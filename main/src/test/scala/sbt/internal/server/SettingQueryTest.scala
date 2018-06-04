@@ -16,7 +16,7 @@ import java.util.concurrent._
 
 import scala.collection.mutable
 
-import xsbti._
+import xsbti.{ Logger => _, _ }
 import sbt.io.IO
 import sbt.internal.util._
 import sbt.internal.BuildStreams.{ Streams => _, _ }
@@ -174,7 +174,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     val data: Settings[Scope] = Def.make(settings)(delegates, scopeLocal, display)
     val extra: KeyIndex => BuildUtil[_] = index => BuildUtil(baseUri, units, index, data)
 
-    val index: StructureIndex = structureIndex(data, settings, extra, units)
+    val index: StructureIndex = structureIndex(data, settings, extra, units, Logger.Null)
     val streams: State => Streams = mkStreams(units, baseUri, data)
 
     val structure: BuildStructure =
