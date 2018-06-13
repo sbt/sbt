@@ -10,6 +10,7 @@ package sbt
 import java.io.File
 import java.net.URI
 import java.util.Locale
+import scala.collection.immutable.ListMap
 import Project._
 import BasicKeys.serverLogLevel
 import Keys.{
@@ -29,7 +30,12 @@ import Keys.{
   serverConnectionType,
   fullServerHandlers,
   logLevel,
-  watch
+  watch,
+  unmanagedSourceDirectories,
+  crossTarget,
+  sourceDirectory,
+  scalaSource,
+  target,
 }
 import Scope.{ Global, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting, SettingsDefinition }
@@ -47,6 +53,8 @@ import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.internal.server.ServerHandler
 import sbt.librarymanagement.Configuration
+import sbt.librarymanagement.Configurations.{ Compile, Test }
+import sbt.librarymanagement.CrossVersion.partialVersion
 import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
 
@@ -155,6 +163,288 @@ private[sbt] object CompositeProject {
     }
   }.distinct
 
+}
+
+/**
+ * A project matrix is an implementation of a composite project
+ * that represents cross building across some axis (such as platform)
+ * and Scala version.
+ *
+ *  {{{
+ *  lazy val core = (projectMatrix in file("core"))
+ *    .scalaVersions("2.12.6", "2.11.12")
+ *    .settings(
+ *      name := "core"
+ *    )
+ *    .jvmPlatform()
+ *  }}}
+ */
+sealed trait ProjectMatrix extends CompositeProject {
+  def scalaVersions(sv: String*): ProjectMatrix
+
+  def id: String
+
+  /** The base directory for the project matrix.*/
+  def base: File
+
+  def withId(id: String): ProjectMatrix
+
+  /** Sets the base directory for this project matrix.*/
+  def in(dir: File): ProjectMatrix
+
+  /** Adds new configurations directly to this project.  To override an existing configuration, use `overrideConfigs`. */
+  def configs(cs: Configuration*): ProjectMatrix
+
+  /** Adds classpath dependencies on internal or external projects. */
+  def dependsOn(deps: MatrixClasspathDep[ProjectMatrixReference]*): ProjectMatrix
+
+  /**
+   * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
+   * the task will also be run in aggregated projects.
+   */
+  def aggregate(refs: ProjectMatrixReference*): ProjectMatrix
+
+  /** Appends settings to the current settings sequence for this project. */
+  def settings(ss: Def.SettingsDefinition*): ProjectMatrix
+
+  /**
+   * Sets the [[AutoPlugin]]s of this project.
+   * A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to enable on a project.
+   */
+  def enablePlugins(ns: Plugins*): ProjectMatrix
+
+  /** Disable the given plugins on this project. */
+  def disablePlugins(ps: AutoPlugin*): ProjectMatrix
+
+  def custom(
+      idPostfix: String,
+      directoryPostfix: String,
+      scalaVersions: Seq[String],
+      process: Project => Project
+  ): ProjectMatrix
+
+  def jvmPlatform(settings: Setting[_]*): ProjectMatrix
+
+  def jvm: ProjectFinder
+
+  def projectRefs: Seq[ProjectReference]
+}
+
+/** Represents a reference to a project matrix with an optional configuration string.
+ */
+sealed trait MatrixClasspathDep[MR <: ProjectMatrixReference] {
+  def matrix: MR; def configuration: Option[String]
+}
+
+trait ProjectFinder {
+  def apply(scalaVersion: String): Project
+  def get: Seq[Project]
+}
+
+object ProjectMatrix {
+  import sbt.io.syntax._
+
+  val jvmIdPostfix: String = "JVM"
+  val jvmDirectoryPostfix: String = "-jvm"
+
+  /** A row in the project matrix, typically representing a platform.
+   */
+  final class ProjectRow(
+      val idPostfix: String,
+      val directoryPostfix: String,
+      val scalaVersions: Seq[String],
+      val process: Project => Project
+  ) {}
+
+  final case class MatrixClasspathDependency(
+      matrix: ProjectMatrixReference,
+      configuration: Option[String]
+  ) extends MatrixClasspathDep[ProjectMatrixReference]
+
+  private final class ProjectMatrixDef(
+      val id: String,
+      val base: File,
+      val scalaVersions: Seq[String],
+      val rows: Seq[ProjectRow],
+      val aggregate: Seq[ProjectMatrixReference],
+      val dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]],
+      val settings: Seq[Def.Setting[_]],
+      val configurations: Seq[Configuration],
+      val plugins: Plugins
+  ) extends ProjectMatrix { self =>
+    lazy val projectMatrix: ListMap[(ProjectRow, String), Project] = {
+      ListMap((for {
+        r <- rows
+        svs = if (r.scalaVersions.nonEmpty) r.scalaVersions
+        else if (scalaVersions.nonEmpty) scalaVersions
+        else sys.error(s"project matrix $id must specify scalaVersions.")
+        sv <- svs
+      } yield {
+        val idPostfix = r.idPostfix + scalaVersionIdPostfix(sv)
+        val svDirPostfix = r.directoryPostfix + "-" + scalaVersionDirPostfix(sv)
+        val childId = self.id + idPostfix
+        val deps = dependencies map {
+          case MatrixClasspathDependency(matrix: LocalProjectMatrix, configuration) =>
+            ClasspathDependency(LocalProject(matrix.id + idPostfix), configuration)
+        }
+        val aggs = aggregate map {
+          case ref: LocalProjectMatrix => LocalProject(ref.id + idPostfix)
+        }
+        val p = Project(childId, new File(childId).getAbsoluteFile)
+          .dependsOn(deps: _*)
+          .aggregate(aggs: _*)
+          .setPlugins(plugins)
+          .configs(configurations: _*)
+          .settings(
+            Keys.scalaVersion := sv,
+            target := base.getAbsoluteFile / "target" / svDirPostfix.dropWhile(_ == '-'),
+            crossTarget := Keys.target.value,
+            sourceDirectory := base.getAbsoluteFile / "src",
+            inConfig(Compile)(makeSources(r.directoryPostfix, svDirPostfix)),
+            inConfig(Test)(makeSources(r.directoryPostfix, svDirPostfix)),
+          )
+          .settings(self.settings)
+        (r, sv) -> r.process(p)
+      }): _*)
+    }
+
+    override lazy val componentProjects: Seq[Project] = projectMatrix.values.toList
+
+    private def makeSources(dirPostfix: String, svDirPostfix: String): Setting[_] = {
+      unmanagedSourceDirectories ++= Seq(
+        scalaSource.value.getParentFile / s"scala${dirPostfix}",
+        scalaSource.value.getParentFile / s"scala$svDirPostfix"
+      )
+    }
+
+    private def scalaVersionIdPostfix(sv: String): String = {
+      scalaVersionDirPostfix(sv).toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "_")
+    }
+
+    private def scalaVersionDirPostfix(sv: String): String =
+      partialVersion(sv) match {
+        case Some((m, n)) => s"$m.$n"
+        case _            => sv
+      }
+
+    override def withId(id: String): ProjectMatrix = copy(id = id)
+
+    override def in(dir: File): ProjectMatrix = copy(base = dir)
+
+    override def configs(cs: Configuration*): ProjectMatrix =
+      copy(configurations = configurations ++ cs)
+
+    override def scalaVersions(sv: String*): ProjectMatrix =
+      copy(scalaVersions = sv)
+
+    override def aggregate(refs: ProjectMatrixReference*): ProjectMatrix =
+      copy(aggregate = (aggregate: Seq[ProjectMatrixReference]) ++ refs)
+
+    override def dependsOn(deps: MatrixClasspathDep[ProjectMatrixReference]*): ProjectMatrix =
+      copy(dependencies = dependencies ++ deps)
+
+    /** Appends settings to the current settings sequence for this project. */
+    override def settings(ss: Def.SettingsDefinition*): ProjectMatrix =
+      copy(settings = (settings: Seq[Def.Setting[_]]) ++ Def.settings(ss: _*))
+
+    override def enablePlugins(ns: Plugins*): ProjectMatrix =
+      setPlugins(ns.foldLeft(plugins)(Plugins.and))
+
+    override def disablePlugins(ps: AutoPlugin*): ProjectMatrix =
+      setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
+
+    def setPlugins(ns: Plugins): ProjectMatrix = copy(plugins = ns)
+
+    override def jvmPlatform(settings: Setting[_]*): ProjectMatrix =
+      custom(jvmIdPostfix, jvmDirectoryPostfix, Nil, { _.settings(settings) })
+
+    override def jvm: ProjectFinder = new ProjectFinder {
+      def get: Seq[Project] = projectMatrix.toSeq collect {
+        case ((r, sv), v) if r.idPostfix == jvmIdPostfix => v
+      }
+      def apply(sv: String): Project =
+        (projectMatrix.toSeq collect {
+          case ((r, `sv`), v) if r.idPostfix == jvmIdPostfix => v
+        }).headOption.getOrElse(sys.error(s"$sv was not found"))
+    }
+
+    override def projectRefs: Seq[ProjectReference] =
+      componentProjects map { case p => (p: ProjectReference) }
+
+    override def custom(
+        idPostfix: String,
+        directoryPostfix: String,
+        scalaVersions: Seq[String],
+        process: Project => Project
+    ): ProjectMatrix =
+      copy(rows = rows :+ new ProjectRow(idPostfix, directoryPostfix, scalaVersions, process))
+
+    def copy(
+        id: String = id,
+        base: File = base,
+        scalaVersions: Seq[String] = scalaVersions,
+        rows: Seq[ProjectRow] = rows,
+        aggregate: Seq[ProjectMatrixReference] = aggregate,
+        dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]] = dependencies,
+        settings: Seq[Setting[_]] = settings,
+        configurations: Seq[Configuration] = configurations,
+        plugins: Plugins = plugins
+    ): ProjectMatrix =
+      unresolved(
+        id,
+        base,
+        scalaVersions,
+        rows,
+        aggregate,
+        dependencies,
+        settings,
+        configurations,
+        plugins
+      )
+  }
+
+  def apply(id: String, base: File): ProjectMatrix = {
+    unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty)
+  }
+
+  private[sbt] def unresolved(
+      id: String,
+      base: File,
+      scalaVersions: Seq[String],
+      rows: Seq[ProjectRow],
+      aggregate: Seq[ProjectMatrixReference],
+      dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]],
+      settings: Seq[Def.Setting[_]],
+      configurations: Seq[Configuration],
+      plugins: Plugins
+  ): ProjectMatrix =
+    new ProjectMatrixDef(
+      id,
+      base,
+      scalaVersions,
+      rows,
+      aggregate,
+      dependencies,
+      settings,
+      configurations,
+      plugins
+    )
+
+  implicit def projectMatrixToLocalProjectMatrix(m: ProjectMatrix): LocalProjectMatrix =
+    LocalProjectMatrix(m.id)
+
+  import scala.reflect.macros._
+
+  def projectMatrixMacroImpl(c: blackbox.Context): c.Expr[ProjectMatrix] = {
+    import c.universe._
+    val enclosingValName = std.KeyMacro.definingValName(
+      c,
+      methodName =>
+        s"""$methodName must be directly assigned to a val, such as `val x = $methodName`. Alternatively, you can use `sbt.ProjectMatrix.apply`"""
+    )
+    val name = c.Expr[String](Literal(Constant(enclosingValName)))
+    reify { ProjectMatrix(name.splice, new File(name.splice)) }
+  }
 }
 
 sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeProject {
@@ -270,7 +560,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
   def disablePlugins(ps: AutoPlugin*): Project =
     setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
 
-  private[this] def setPlugins(ns: Plugins): Project = copy2(plugins = ns)
+  private[sbt] def setPlugins(ns: Plugins): Project = copy2(plugins = ns)
 
   /** Definitively set the [[AutoPlugin]]s for this project. */
   private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = copy2(autoPlugins = autos)
@@ -876,6 +1166,11 @@ trait ProjectExtra {
       p: T
   )(implicit ev: T => ProjectReference): ClasspathDependency = ClasspathDependency(p, None)
 
+  implicit def matrixClasspathDependency[T](
+      m: T
+  )(implicit ev: T => ProjectMatrixReference): ProjectMatrix.MatrixClasspathDependency =
+    ProjectMatrix.MatrixClasspathDependency(m, None)
+
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
   // Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now
   implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
@@ -923,4 +1218,6 @@ trait ProjectExtra {
    * The name of the val is used as the project ID and the name of the base directory of the project.
    */
   def project: Project = macro Project.projectMacroImpl
+
+  def projectMatrix: ProjectMatrix = macro ProjectMatrix.projectMatrixMacroImpl
 }

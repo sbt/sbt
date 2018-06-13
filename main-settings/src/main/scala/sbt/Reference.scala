@@ -49,6 +49,12 @@ final case object LocalRootProject extends ProjectReference
 /** Identifies the project for the current context. */
 final case object ThisProject extends ProjectReference
 
+/** Identifies a project matrix. */
+sealed trait ProjectMatrixReference
+
+/** Identifies a project in the current build context. */
+final case class LocalProjectMatrix(id: String) extends ProjectMatrixReference
+
 object ProjectRef {
   def apply(base: File, id: String): ProjectRef = ProjectRef(IO toURI base, id)
 }
