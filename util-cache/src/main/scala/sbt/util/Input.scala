@@ -16,7 +16,7 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
   val isoFormat: IsoString[J] = implicitly
 
   private def readFully(): String = {
-    Using.streamReader(input, IO.utf8) { reader =>
+    Using.streamReader((input, IO.utf8)) { reader =>
       val builder = new StringBuilder()
       val bufferSize = 1024
       val buffer = new Array[Char](bufferSize)
