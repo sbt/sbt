@@ -31,7 +31,8 @@ sealed trait AttributeKey[T] {
   def description: Option[String]
 
   /**
-   * In environments that support delegation, looking up this key when it has no associated value will delegate to the values associated with these keys.
+   * In environments that support delegation, looking up this key when it has no associated value
+   * will delegate to the values associated with these keys.
    * The delegation proceeds in order the keys are returned here.
    */
   def extend: Seq[AttributeKey[_]]
@@ -70,20 +71,26 @@ object AttributeKey {
   def apply[T: Manifest: OptJsonWriter](name: String, description: String): AttributeKey[T] =
     apply(name, description, Nil)
 
-  def apply[T: Manifest: OptJsonWriter](name: String,
-                                        description: String,
-                                        rank: Int): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](
+      name: String,
+      description: String,
+      rank: Int
+  ): AttributeKey[T] =
     apply(name, description, Nil, rank)
 
-  def apply[T: Manifest: OptJsonWriter](name: String,
-                                        description: String,
-                                        extend: Seq[AttributeKey[_]]): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](
+      name: String,
+      description: String,
+      extend: Seq[AttributeKey[_]]
+  ): AttributeKey[T] =
     apply(name, description, extend, Int.MaxValue)
 
-  def apply[T: Manifest: OptJsonWriter](name: String,
-                                        description: String,
-                                        extend: Seq[AttributeKey[_]],
-                                        rank: Int): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](
+      name: String,
+      description: String,
+      extend: Seq[AttributeKey[_]],
+      rank: Int
+  ): AttributeKey[T] =
     make(name, Some(description), extend, rank)
 
   private[sbt] def copyWithRank[T](a: AttributeKey[T], rank: Int): AttributeKey[T] =

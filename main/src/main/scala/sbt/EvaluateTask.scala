@@ -8,7 +8,7 @@
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
-import sbt.internal.util.{ Attributed, ErrorHandling, HList, RMap, Signals, Types }
+import sbt.internal.util.{ Attributed, ConsoleAppender, ErrorHandling, HList, RMap, Signals, Types }
 import sbt.util.{ Logger, Show }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 
@@ -172,9 +172,11 @@ object EvaluateTask {
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
 
-  def extractedTaskConfig(extracted: Extracted,
-                          structure: BuildStructure,
-                          state: State): EvaluateTaskConfig = {
+  def extractedTaskConfig(
+      extracted: Extracted,
+      structure: BuildStructure,
+      state: State
+  ): EvaluateTaskConfig = {
     val rs = restrictions(extracted, structure)
     val canceller = cancelStrategy(extracted, structure, state)
     val progress = executeProgress(extracted, structure, state)
@@ -193,10 +195,12 @@ object EvaluateTask {
   }
 
   def restrictions(extracted: Extracted, structure: BuildStructure): Seq[Tags.Rule] =
-    getSetting(Keys.concurrentRestrictions,
-               defaultRestrictions(extracted, structure),
-               extracted,
-               structure)
+    getSetting(
+      Keys.concurrentRestrictions,
+      defaultRestrictions(extracted, structure),
+      extracted,
+      structure
+    )
 
   def maxWorkers(extracted: Extracted, structure: BuildStructure): Int =
     if (getSetting(Keys.parallelExecution, true, extracted, structure))
@@ -207,22 +211,27 @@ object EvaluateTask {
   def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
     getSetting(Keys.cancelable, false, extracted, structure)
 
-  def cancelStrategy(extracted: Extracted,
-                     structure: BuildStructure,
-                     state: State): TaskCancellationStrategy =
+  def cancelStrategy(
+      extracted: Extracted,
+      structure: BuildStructure,
+      state: State
+  ): TaskCancellationStrategy =
     getSetting(Keys.taskCancelStrategy, { (_: State) =>
       TaskCancellationStrategy.Null
     }, extracted, structure)(state)
 
-  private[sbt] def executeProgress(extracted: Extracted,
-                                   structure: BuildStructure,
-                                   state: State): ExecuteProgress[Task] = {
+  private[sbt] def executeProgress(
+      extracted: Extracted,
+      structure: BuildStructure,
+      state: State
+  ): ExecuteProgress[Task] = {
     import Types.const
     val maker: State => Keys.TaskProgress = getSetting(
       Keys.executeProgress,
       const(new Keys.TaskProgress(defaultProgress)),
       extracted,
-      structure)
+      structure
+    )
     maker(state).progress
   }
   // TODO - Should this pull from Global or from the project itself?
@@ -230,15 +239,19 @@ object EvaluateTask {
     getSetting(Keys.forcegc in Global, GCUtil.defaultForceGarbageCollection, extracted, structure)
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def minForcegcInterval(extracted: Extracted, structure: BuildStructure): Duration =
-    getSetting(Keys.minForcegcInterval in Global,
-               GCUtil.defaultMinForcegcInterval,
-               extracted,
-               structure)
+    getSetting(
+      Keys.minForcegcInterval in Global,
+      GCUtil.defaultMinForcegcInterval,
+      extracted,
+      structure
+    )
 
-  def getSetting[T](key: SettingKey[T],
-                    default: T,
-                    extracted: Extracted,
-                    structure: BuildStructure): T =
+  def getSetting[T](
+      key: SettingKey[T],
+      default: T,
+      extracted: Extracted,
+      structure: BuildStructure
+  ): T =
     key in extracted.currentRef get structure.data getOrElse default
 
   def injectSettings: Seq[Setting[_]] = Seq(
@@ -247,16 +260,21 @@ object EvaluateTask {
     (executionRoots in Global) ::= dummyRoots
   )
 
-  def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): PluginData = {
+  @deprecated("Use variant which doesn't take a logger", "1.1.1")
+  def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): PluginData =
+    evalPluginDef(pluginDef, state)
+
+  def evalPluginDef(pluginDef: BuildStructure, state: State): PluginData = {
     val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
     val pluginKey = pluginData
     val config = extractedTaskConfig(Project.extract(state), pluginDef, state)
     val evaluated =
       apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, config)
     val (newS, result) = evaluated getOrElse sys.error(
-      "Plugin data does not exist for plugin definition at " + pluginDef.root)
+      "Plugin data does not exist for plugin definition at " + pluginDef.root
+    )
     Project.runUnloadHooks(newS) // discard states
-    processResult(result, log)
+    processResult2(result)
   }
 
   /**
@@ -264,26 +282,32 @@ object EvaluateTask {
    * If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
    * Task execution is configured according to settings defined in the loaded project.
    */
-  def apply[T](structure: BuildStructure,
-               taskKey: ScopedKey[Task[T]],
-               state: State,
-               ref: ProjectRef): Option[(State, Result[T])] =
-    apply[T](structure,
-             taskKey,
-             state,
-             ref,
-             extractedTaskConfig(Project.extract(state), structure, state))
+  def apply[T](
+      structure: BuildStructure,
+      taskKey: ScopedKey[Task[T]],
+      state: State,
+      ref: ProjectRef
+  ): Option[(State, Result[T])] =
+    apply[T](
+      structure,
+      taskKey,
+      state,
+      ref,
+      extractedTaskConfig(Project.extract(state), structure, state)
+    )
 
   /**
    * Evaluates `taskKey` and returns the new State and the result of the task wrapped in Some.
    * If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
    * `config` configures concurrency and canceling of task execution.
    */
-  def apply[T](structure: BuildStructure,
-               taskKey: ScopedKey[Task[T]],
-               state: State,
-               ref: ProjectRef,
-               config: EvaluateTaskConfig): Option[(State, Result[T])] = {
+  def apply[T](
+      structure: BuildStructure,
+      taskKey: ScopedKey[Task[T]],
+      state: State,
+      ref: ProjectRef,
+      config: EvaluateTaskConfig
+  ): Option[(State, Result[T])] = {
     withStreams(structure, state) { str =>
       for ((task, toNode) <- getTask(structure, taskKey, state, str, ref))
         yield runTask(task, state, str, structure.index.triggers, config)(toNode)
@@ -296,8 +320,8 @@ object EvaluateTask {
 
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
     val all = Incomplete linearize result
-    val keyed = for (Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) <- all)
-      yield (key, msg, ex)
+    val keyed =
+      all collect { case Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) => (key, msg, ex) }
 
     import ExceptionCategory._
     for ((key, msg, Some(ex)) <- keyed) {
@@ -312,7 +336,7 @@ object EvaluateTask {
     for ((key, msg, ex) <- keyed if (msg.isDefined || ex.isDefined)) {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
       val log = getStreams(key, streams).log
-      val display = contextDisplay(state, log.ansiCodesSupported)
+      val display = contextDisplay(state, ConsoleAppender.formatEnabledInEnv)
       log.error("(" + display.show(key) + ") " + msgString)
     }
   }
@@ -331,34 +355,41 @@ object EvaluateTask {
     try { f(str) } finally { str.close() }
   }
 
-  def getTask[T](structure: BuildStructure,
-                 taskKey: ScopedKey[Task[T]],
-                 state: State,
-                 streams: Streams,
-                 ref: ProjectRef): Option[(Task[T], NodeView[Task])] = {
+  def getTask[T](
+      structure: BuildStructure,
+      taskKey: ScopedKey[Task[T]],
+      state: State,
+      streams: Streams,
+      ref: ProjectRef
+  ): Option[(Task[T], NodeView[Task])] = {
     val thisScope = Load.projectScope(ref)
     val resolvedScope = Scope.replaceThis(thisScope)(taskKey.scope)
     for (t <- structure.data.get(resolvedScope, taskKey.key))
       yield (t, nodeView(state, streams, taskKey :: Nil))
   }
-  def nodeView[HL <: HList](state: State,
-                            streams: Streams,
-                            roots: Seq[ScopedKey[_]],
-                            dummies: DummyTaskMap = DummyTaskMap(Nil)): NodeView[Task] =
+  def nodeView[HL <: HList](
+      state: State,
+      streams: Streams,
+      roots: Seq[ScopedKey[_]],
+      dummies: DummyTaskMap = DummyTaskMap(Nil)
+  ): NodeView[Task] =
     Transform(
-      (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies)
+      (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
+    )
 
   def runTask[T](
       root: Task[T],
       state: State,
       streams: Streams,
       triggers: Triggers[Task],
-      config: EvaluateTaskConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) = {
+      config: EvaluateTaskConfig
+  )(implicit taskToNode: NodeView[Task]): (State, Result[T]) = {
     import ConcurrentRestrictions.{ completionService, tagged, tagsKey }
 
     val log = state.log
     log.debug(
-      s"Running task... Cancel: ${config.cancelStrategy}, check cycles: ${config.checkCycles}, forcegc: ${config.forceGarbageCollection}")
+      s"Running task... Cancel: ${config.cancelStrategy}, check cycles: ${config.checkCycles}, forcegc: ${config.forceGarbageCollection}"
+    )
     val tags =
       tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
@@ -379,9 +410,11 @@ object EvaluateTask {
       case _                => true
     }
     def run() = {
-      val x = new Execute[Task](Execute.config(config.checkCycles, overwriteNode),
-                                triggers,
-                                config.progressReporter)(taskToNode)
+      val x = new Execute[Task](
+        Execute.config(config.checkCycles, overwriteNode),
+        triggers,
+        config.progressReporter
+      )(taskToNode)
       val (newState, result) =
         try {
           val results = x.runKeep(root)(service)
@@ -406,15 +439,19 @@ object EvaluateTask {
     finally strat.onTaskEngineFinish(cancelState)
   }
 
-  private[this] def storeValuesForPrevious(results: RMap[Task, Result],
-                                           state: State,
-                                           streams: Streams): Unit =
+  private[this] def storeValuesForPrevious(
+      results: RMap[Task, Result],
+      state: State,
+      streams: Streams
+  ): Unit =
     for (referenced <- Previous.references in Global get Project.structure(state).data)
       Previous.complete(referenced, results, streams)
 
-  def applyResults[T](results: RMap[Task, Result],
-                      state: State,
-                      root: Task[T]): (State, Result[T]) =
+  def applyResults[T](
+      results: RMap[Task, Result],
+      state: State,
+      root: Task[T]
+  ): (State, Result[T]) =
     (stateTransform(results)(state), results(root))
   def stateTransform(results: RMap[Task, Result]): State => State =
     Function.chain(
@@ -433,12 +470,21 @@ object EvaluateTask {
     case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
     case i                                                => i
   }
+
   type AnyCyclic = Execute[({ type A[_] <: AnyRef })#A]#CyclicException[_]
+
   def convertCyclicInc: Incomplete => Incomplete = {
-    case in @ Incomplete(_, _, _, _, Some(c: AnyCyclic)) =>
+    case in @ Incomplete(
+          _,
+          _,
+          _,
+          _,
+          Some(c: Execute[({ type A[_] <: AnyRef })#A @unchecked]#CyclicException[_])
+        ) =>
       in.copy(directCause = Some(new RuntimeException(convertCyclic(c))))
     case i => i
   }
+
   def convertCyclic(c: AnyCyclic): String =
     (c.caller, c.target) match {
       case (caller: Task[_], target: Task[_]) =>
@@ -448,7 +494,7 @@ object EvaluateTask {
     }
 
   def liftAnonymous: Incomplete => Incomplete = {
-    case i @ Incomplete(node, tpe, None, causes, None) =>
+    case i @ Incomplete(_, _, None, causes, None) =>
       causes.find(inc => inc.node.isEmpty && (inc.message.isDefined || inc.directCause.isDefined)) match {
         case Some(lift) => i.copy(directCause = lift.directCause, message = lift.message)
         case None       => i
@@ -456,12 +502,19 @@ object EvaluateTask {
     case i => i
   }
 
+  @deprecated("Use processResult2 which doesn't take the unused log param", "1.1.1")
   def processResult[T](result: Result[T], log: Logger, show: Boolean = false): T =
-    onResult(result, log) { v =>
+    processResult2(result, show)
+
+  def processResult2[T](result: Result[T], show: Boolean = false): T =
+    onResult(result) { v =>
       if (show) println("Result: " + v); v
     }
 
-  def onResult[T, S](result: Result[T], log: Logger)(f: T => S): S =
+  @deprecated("Use variant that doesn't take log", "1.1.1")
+  def onResult[T, S](result: Result[T], log: Logger)(f: T => S): S = onResult(result)(f)
+
+  def onResult[T, S](result: Result[T])(f: T => S): S =
     result match {
       case Value(v) => f(v)
       case Inc(inc) => throw inc

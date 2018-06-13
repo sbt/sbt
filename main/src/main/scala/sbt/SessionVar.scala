@@ -28,7 +28,8 @@ object SessionVar {
   def emptyMap = Map(IMap.empty)
 
   def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(
-      implicit f: JsonFormat[T]): State = {
+      implicit f: JsonFormat[T]
+  ): State = {
     persist(key, state, value)(f)
     set(key, state, value)
   }
@@ -63,14 +64,15 @@ object SessionVar {
 
   def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: JsonFormat[T]): Option[T] =
     Project.structure(state).streams(state).use(key) { s =>
-      try { Some(s.getInput(key, DefaultDataID).read[T]) } catch { case NonFatal(e) => None }
+      try { Some(s.getInput(key, DefaultDataID).read[T]) } catch { case NonFatal(_) => None }
     }
 
   def load[T](key: ScopedKey[Task[T]], state: State)(implicit f: JsonFormat[T]): Option[T] =
     get(key, state) orElse read(key, state)(f)
 
   def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(
-      implicit f: JsonFormat[T]): (State, Option[T]) =
+      implicit f: JsonFormat[T]
+  ): (State, Option[T]) =
     get(key, state) match {
       case s: Some[T] => (state, s)
       case None =>

@@ -27,42 +27,60 @@ object Def extends Init[Scope] with TaskMacroExtra {
   val resolvedScoped = SettingKey[ScopedKey[_]](
     "resolved-scoped",
     "The ScopedKey for the referencing setting or task.",
-    KeyRanks.DSetting)
+    KeyRanks.DSetting
+  )
   private[sbt] val taskDefinitionKey = AttributeKey[ScopedKey[_]](
     "task-definition-key",
     "Internal: used to map a task back to its ScopedKey.",
-    Invisible)
+    Invisible
+  )
 
   lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
 
   def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
     Show[ScopedKey[_]]((key: ScopedKey[_]) => displayFull(key, keyNameColor))
 
+  @deprecated("Use showRelativeKey2 which doesn't take the unused multi param", "1.1.1")
   def showRelativeKey(
       current: ProjectRef,
       multi: Boolean,
       keyNameColor: Option[String] = None
   ): Show[ScopedKey[_]] =
-    Show[ScopedKey[_]](
-      key =>
-        Scope.display(
-          key.scope,
-          withColor(key.key.label, keyNameColor),
-          ref => displayRelative(current, multi, ref)
-      ))
+    showRelativeKey2(current, keyNameColor)
 
-  def showBuildRelativeKey(
-      currentBuild: URI,
-      multi: Boolean,
-      keyNameColor: Option[String] = None
+  def showRelativeKey2(
+      current: ProjectRef,
+      keyNameColor: Option[String] = None,
   ): Show[ScopedKey[_]] =
     Show[ScopedKey[_]](
       key =>
         Scope.display(
           key.scope,
           withColor(key.key.label, keyNameColor),
-          ref => displayBuildRelative(currentBuild, multi, ref)
-      ))
+          ref => displayRelative2(current, ref)
+      )
+    )
+
+  @deprecated("Use showBuildRelativeKey2 which doesn't take the unused multi param", "1.1.1")
+  def showBuildRelativeKey(
+      currentBuild: URI,
+      multi: Boolean,
+      keyNameColor: Option[String] = None,
+  ): Show[ScopedKey[_]] =
+    showBuildRelativeKey2(currentBuild, keyNameColor)
+
+  def showBuildRelativeKey2(
+      currentBuild: URI,
+      keyNameColor: Option[String] = None,
+  ): Show[ScopedKey[_]] =
+    Show[ScopedKey[_]](
+      key =>
+        Scope.display(
+          key.scope,
+          withColor(key.key.label, keyNameColor),
+          ref => displayBuildRelative(currentBuild, ref)
+      )
+    )
 
   /**
    * Returns a String expression for the given [[Reference]] (BuildRef, [[ProjectRef]], etc)
@@ -71,17 +89,22 @@ object Def extends Init[Scope] with TaskMacroExtra {
   def displayRelativeReference(current: ProjectRef, project: Reference): String =
     displayRelative(current, project, false)
 
-  @deprecated("Use displayRelativeReference", "1.1.0")
+  @deprecated("Use displayRelative2 which doesn't take the unused multi param", "1.1.1")
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String =
+    displayRelative2(current, project)
+
+  def displayRelative2(current: ProjectRef, project: Reference): String =
     displayRelative(current, project, true)
 
   /**
    * Constructs the String of a given [[Reference]] relative to current.
    * Note that this no longer takes "multi" parameter, and omits the subproject id at all times.
    */
-  private[sbt] def displayRelative(current: ProjectRef,
-                                   project: Reference,
-                                   trailingSlash: Boolean): String = {
+  private[sbt] def displayRelative(
+      current: ProjectRef,
+      project: Reference,
+      trailingSlash: Boolean
+  ): String = {
     val trailing = if (trailingSlash) " /" else ""
     project match {
       case BuildRef(current.build)      => "ThisBuild" + trailing
@@ -91,7 +114,11 @@ object Def extends Init[Scope] with TaskMacroExtra {
     }
   }
 
+  @deprecated("Use variant without multi", "1.1.1")
   def displayBuildRelative(currentBuild: URI, multi: Boolean, project: Reference): String =
+    displayBuildRelative(currentBuild, project)
+
+  def displayBuildRelative(currentBuild: URI, project: Reference): String =
     project match {
       case BuildRef(`currentBuild`)      => "ThisBuild /"
       case ProjectRef(`currentBuild`, x) => x + " /"
@@ -124,11 +151,14 @@ object Def extends Init[Scope] with TaskMacroExtra {
        else None) orElse
       s.dependencies
         .find(k => k.scope != ThisScope)
-        .map(k =>
-          s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}")
+        .map(
+          k =>
+            s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}"
+        )
 
   override def intersect(s1: Scope, s2: Scope)(
-      implicit delegates: Scope => Seq[Scope]): Option[Scope] =
+      implicit delegates: Scope => Seq[Scope]
+  ): Option[Scope] =
     if (s2 == GlobalScope) Some(s1) // s1 is more specific
     else if (s1 == GlobalScope) Some(s2) // s2 is more specific
     else super.intersect(s1, s2)
@@ -173,16 +203,31 @@ object Def extends Init[Scope] with TaskMacroExtra {
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T
 
-  implicit def macroValueI[T](in: Initialize[T]): MacroValue[T] = ???
-  implicit def macroValueIT[T](in: Initialize[Task[T]]): MacroValue[T] = ???
-  implicit def macroValueIInT[T](in: Initialize[InputTask[T]]): InputEvaluated[T] = ???
-  implicit def taskMacroValueIT[T](in: Initialize[Task[T]]): MacroTaskValue[T] = ???
-  implicit def macroPrevious[T](in: TaskKey[T]): MacroPrevious[T] = ???
+  implicit def macroValueI[T](@deprecated("unused", "") in: Initialize[T]): MacroValue[T] = ???
 
-  // The following conversions enable the types Parser[T], Initialize[Parser[T]], and Initialize[State => Parser[T]] to
-  //  be used in the inputTask macro as an input with an ultimate result of type T
-  implicit def parserInitToInput[T](p: Initialize[Parser[T]]): ParserInput[T] = ???
-  implicit def parserInitStateToInput[T](p: Initialize[State => Parser[T]]): ParserInput[T] = ???
+  implicit def macroValueIT[T](@deprecated("unused", "") in: Initialize[Task[T]]): MacroValue[T] =
+    ???
+
+  implicit def macroValueIInT[T](
+      @deprecated("unused", "") in: Initialize[InputTask[T]]
+  ): InputEvaluated[T] = ???
+
+  implicit def taskMacroValueIT[T](
+      @deprecated("unused", "") in: Initialize[Task[T]]
+  ): MacroTaskValue[T] = ???
+
+  implicit def macroPrevious[T](@deprecated("unused", "") in: TaskKey[T]): MacroPrevious[T] = ???
+
+  // The following conversions enable the types Parser[T], Initialize[Parser[T]], and
+  // Initialize[State => Parser[T]] to be used in the inputTask macro as an input with an ultimate
+  // result of type T
+  implicit def parserInitToInput[T](
+      @deprecated("unused", "") p: Initialize[Parser[T]]
+  ): ParserInput[T] = ???
+
+  implicit def parserInitStateToInput[T](
+      @deprecated("unused", "") p: Initialize[State => Parser[T]]
+  ): ParserInput[T] = ???
 
   def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
   def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
@@ -190,27 +235,43 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   private[sbt] def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) =
     (TaskKey[T](name, description, DTask), dummyTask(name))
+
   private[sbt] def dummyTask[T](name: String): Task[T] = {
     import std.TaskExtra.{ task => newTask, _ }
     val base: Task[T] = newTask(
-      sys.error("Dummy task '" + name + "' did not get converted to a full task.")) named name
+      sys.error("Dummy task '" + name + "' did not get converted to a full task.")
+    ) named name
     base.copy(info = base.info.set(isDummyTask, true))
   }
+
   private[sbt] def isDummy(t: Task[_]): Boolean =
     t.info.attributes.get(isDummyTask) getOrElse false
+
   private[sbt] val isDummyTask = AttributeKey[Boolean](
     "is-dummy-task",
     "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.",
-    Invisible)
+    Invisible
+  )
+
   private[sbt] val (stateKey, dummyState) = dummy[State]("state", "Current build state.")
+
   private[sbt] val (streamsManagerKey, dummyStreamsManager) = Def.dummy[std.Streams[ScopedKey[_]]](
     "streams-manager",
-    "Streams manager, which provides streams for different contexts.")
+    "Streams manager, which provides streams for different contexts."
+  )
 }
-// these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
+
+// these need to be mixed into the sbt package object
+// because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra {
-  implicit def macroValueT[T](in: Task[T]): std.MacroValue[T] = ???
-  implicit def macroValueIn[T](in: InputTask[T]): std.InputEvaluated[T] = ???
-  implicit def parserToInput[T](in: Parser[T]): std.ParserInput[T] = ???
-  implicit def stateParserToInput[T](in: State => Parser[T]): std.ParserInput[T] = ???
+  implicit def macroValueT[T](@deprecated("unused", "") in: Task[T]): std.MacroValue[T] = ???
+
+  implicit def macroValueIn[T](@deprecated("unused", "") in: InputTask[T]): std.InputEvaluated[T] =
+    ???
+
+  implicit def parserToInput[T](@deprecated("unused", "") in: Parser[T]): std.ParserInput[T] = ???
+
+  implicit def stateParserToInput[T](
+      @deprecated("unused", "") in: State => Parser[T]
+  ): std.ParserInput[T] = ???
 }

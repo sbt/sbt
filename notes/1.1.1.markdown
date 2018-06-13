@@ -17,7 +17,7 @@
 ### autoStartServer setting
 
 sbt 1.1.1 adds a new global `Boolean` setting called `autoStartServer`, which is set to `true` by default.
-When set to `true`, sbt shell will automatically start sbt server. Otherwise, it will not start the server until `startSever` command is issued. This could be used to opt out of server for security reasons.
+When set to `true`, sbt shell will automatically start sbt server. Otherwise, it will not start the server until `startServer` command is issued. This could be used to opt out of server for security reasons.
 
 [#3922][3922] by [@swaldman][@swaldman]
 

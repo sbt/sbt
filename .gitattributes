@@ -5,3 +5,7 @@
 # to native line endings on checkout.
 *.scala text
 *.java text
+
+# Exclude contraband generated files from diff (by default - you can see it if you want)
+**/contraband-scala/**/* -diff merge=ours
+**/contraband-scala/**/* linguist-generated=true

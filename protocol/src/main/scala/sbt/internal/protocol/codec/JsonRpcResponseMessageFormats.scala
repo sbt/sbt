@@ -7,7 +7,13 @@
 
 package sbt.internal.protocol.codec
 
-import _root_.sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
+import _root_.sjsonnew.{
+  Builder,
+  DeserializationException,
+  JsonFormat,
+  Unbuilder,
+  deserializationError
+}
 import sjsonnew.shaded.scalajson.ast.unsafe._
 
 trait JsonRpcResponseMessageFormats {
@@ -19,7 +25,8 @@ trait JsonRpcResponseMessageFormats {
     new JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] {
       override def read[J](
           jsOpt: Option[J],
-          unbuilder: Unbuilder[J]): sbt.internal.protocol.JsonRpcResponseMessage = {
+          unbuilder: Unbuilder[J]
+      ): sbt.internal.protocol.JsonRpcResponseMessage = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -27,7 +34,8 @@ trait JsonRpcResponseMessageFormats {
             val id = try {
               unbuilder.readField[Option[String]]("id")
             } catch {
-              case _: Throwable => unbuilder.readField[Option[Long]]("id") map { _.toString }
+              case _: DeserializationException =>
+                unbuilder.readField[Option[Long]]("id") map { _.toString }
             }
 
             val result = unbuilder.lookupField("result") map {
@@ -43,8 +51,10 @@ trait JsonRpcResponseMessageFormats {
             deserializationError("Expected JsObject but found None")
         }
       }
-      override def write[J](obj: sbt.internal.protocol.JsonRpcResponseMessage,
-                            builder: Builder[J]): Unit = {
+      override def write[J](
+          obj: sbt.internal.protocol.JsonRpcResponseMessage,
+          builder: Builder[J]
+      ): Unit = {
         // Parse given id to Long or String judging by prefix
         def parseId(str: String): Either[Long, String] = {
           if (str.startsWith("\u2668")) Left(str.substring(1).toLong)

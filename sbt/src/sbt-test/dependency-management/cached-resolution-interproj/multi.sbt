@@ -27,7 +27,7 @@ lazy val a = project.
 
 lazy val root = (project in file(".")).
   aggregate(a).
-  settings(inThisBuild(Seq(
+  settings(inThisBuild(
     organization := "org.example",
     version := "1.0",
     updateOptions := updateOptions.value.withCachedResolution(true),
@@ -49,4 +49,4 @@ lazy val root = (project in file(".")).
         sys.error("junit NOT found when it should be included: " + atestcp.toString)
       }
     }
-  )))
+  ))

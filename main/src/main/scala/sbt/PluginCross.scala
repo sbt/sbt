@@ -16,7 +16,7 @@ import sbt.internal.Load
 import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
 import sbt.librarymanagement.VersionNumber
-import Project.{ inScope }
+import Project.inScope
 
 /**
  * Module responsible for plugin cross building.
@@ -24,9 +24,9 @@ import Project.{ inScope }
 private[sbt] object PluginCross {
   lazy val pluginSwitch: Command = {
     def switchParser(state: State): Parser[(String, String)] = {
-      val knownVersions = Nil
-      lazy val switchArgs = token(NotSpace.examples(knownVersions: _*)) ~ (token(
-        Space ~> matched(state.combinedParser)) ?? "")
+      lazy val switchArgs = token(NotSpace.examples()) ~ (token(
+        Space ~> matched(state.combinedParser)
+      ) ?? "")
       lazy val nextSpaced = spacedFirst(PluginSwitchCommand)
       token(PluginSwitchCommand ~ OptSpace) flatMap { _ =>
         switchArgs & nextSpaced
@@ -47,7 +47,7 @@ private[sbt] object PluginCross {
         val add = List(sbtVersion in GlobalScope in pluginCrossBuild :== version) ++
           List(scalaVersion := scalaVersionSetting.value) ++
           inScope(GlobalScope.copy(project = Select(currentRef)))(
-            Seq(scalaVersion := scalaVersionSetting.value)
+            scalaVersion := scalaVersionSetting.value
           )
         val cleared = session.mergeSettings.filterNot(crossExclude)
         val newStructure = Load.reapply(cleared ++ add, structure)
@@ -59,8 +59,11 @@ private[sbt] object PluginCross {
     def crossParser(state: State): Parser[String] =
       token(PluginCrossCommand <~ OptSpace) flatMap { _ =>
         token(
-          matched(state.combinedParser &
-            spacedFirst(PluginCrossCommand)))
+          matched(
+            state.combinedParser &
+              spacedFirst(PluginCrossCommand)
+          )
+        )
       }
     def crossVersions(state: State): List[String] = {
       val x = Project.extract(state)

@@ -7,11 +7,9 @@
 
 package sbt.std
 
-import scala.reflect._
+import scala.tools.reflect.ToolBox
 
 object TestUtil {
-  import tools.reflect.ToolBox
-
   def eval(code: String, compileOptions: String = ""): Any = {
     val tb = mkToolbox(compileOptions)
     tb.eval(tb.parse(code))

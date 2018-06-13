@@ -7,6 +7,8 @@
 
 package sbt.internal.util
 
+import scala.collection.JavaConverters._
+
 /** A mutable set interface that uses object identity to test for set membership.*/
 trait IDSet[T] {
   def apply(t: T): Boolean
@@ -41,7 +43,7 @@ object IDSet {
     def +=(t: T) = { backing.put(t, Dummy); () }
     def ++=(t: Iterable[T]) = t foreach +=
     def -=(t: T) = if (backing.remove(t) eq null) false else true
-    def all = collection.JavaConverters.collectionAsScalaIterable(backing.keySet)
+    def all = backing.keySet.asScala
     def toList = all.toList
     def isEmpty = backing.isEmpty
 

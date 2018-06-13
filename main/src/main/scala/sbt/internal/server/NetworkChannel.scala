@@ -21,13 +21,15 @@ import sbt.internal.util.codec.JValueFormats
 import sbt.internal.protocol.{ JsonRpcRequestMessage, JsonRpcNotificationMessage }
 import sbt.util.Logger
 
-final class NetworkChannel(val name: String,
-                           connection: Socket,
-                           structure: BuildStructure,
-                           auth: Set[ServerAuthentication],
-                           instance: ServerInstance,
-                           val log: Logger)
-    extends CommandChannel
+final class NetworkChannel(
+    val name: String,
+    connection: Socket,
+    structure: BuildStructure,
+    auth: Set[ServerAuthentication],
+    instance: ServerInstance,
+    handlers: Seq[ServerHandler],
+    val log: Logger
+) extends CommandChannel
     with LanguageServerProtocol {
   import NetworkChannel._
 
@@ -45,18 +47,12 @@ final class NetworkChannel(val name: String,
   private val VsCodeOld = "application/vscode-jsonrpc; charset=utf8"
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
 
-  def setContentType(ct: String): Unit = synchronized {
-    _contentType = ct
-  }
+  def setContentType(ct: String): Unit = synchronized { _contentType = ct }
   def contentType: String = _contentType
 
-  protected def authenticate(token: String): Boolean = {
-    instance.authenticate(token)
-  }
+  protected def authenticate(token: String): Boolean = instance.authenticate(token)
 
-  protected def setInitialized(value: Boolean): Unit = {
-    initialized = value
-  }
+  protected def setInitialized(value: Boolean): Unit = initialized = value
 
   protected def authOptions: Set[ServerAuthentication] = auth
 
@@ -73,10 +69,8 @@ final class NetworkChannel(val name: String,
         var bytesRead = 0
         def resetChannelState(): Unit = {
           contentLength = 0
-          // contentType = ""
           state = SingleLine
         }
-
         def tillEndOfLine: Option[Vector[Byte]] = {
           val delimPos = buffer.indexOf(delimiter)
           if (delimPos > 0) {
@@ -165,6 +159,21 @@ final class NetworkChannel(val name: String,
       }
     }
 
+    private lazy val intents = {
+      val cb = callbackImpl
+      handlers.toVector map { h =>
+        h.handler(cb)
+      }
+    }
+    lazy val onRequestMessage: PartialFunction[JsonRpcRequestMessage, Unit] =
+      intents.foldLeft(PartialFunction.empty[JsonRpcRequestMessage, Unit]) {
+        case (f, i) => f orElse i.onRequest
+      }
+    lazy val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit] =
+      intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) {
+        case (f, i) => f orElse i.onNotification
+      }
+
     def handleBody(chunk: Vector[Byte]): Unit = {
       if (isLanguageServerProtocol) {
         Serialization.deserializeJsonMessage(chunk) match {
@@ -174,7 +183,7 @@ final class NetworkChannel(val name: String,
             } catch {
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
-                langError(Option(req.id), code, message)
+                jsonRpcRespondError(Option(req.id), code, message)
             }
           case Right(ntf: JsonRpcNotificationMessage) =>
             try {
@@ -182,13 +191,13 @@ final class NetworkChannel(val name: String,
             } catch {
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
-                langError(None, code, message) // new id?
+                jsonRpcRespondError(None, code, message) // new id?
             }
           case Right(msg) =>
             log.debug(s"Unhandled message: $msg")
           case Left(errorDesc) =>
             val msg = s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
-            langError(None, ErrorCodes.ParseError, msg)
+            jsonRpcRespondError(None, ErrorCodes.ParseError, msg)
         }
       } else {
         contentType match {
@@ -198,7 +207,8 @@ final class NetworkChannel(val name: String,
               .fold(
                 errorDesc =>
                   log.error(
-                    s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc),
+                    s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
+                ),
                 onCommand
               )
           case _ =>
@@ -230,7 +240,7 @@ final class NetworkChannel(val name: String,
 
   private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
     if (isLanguageServerProtocol) {
-      langNotify(method, params)
+      jsonRpcNotify(method, params)
     } else {
       ()
     }
@@ -242,11 +252,11 @@ final class NetworkChannel(val name: String,
         case entry: StringEvent => logMessage(entry.level, entry.message)
         case entry: ExecStatusEvent =>
           entry.exitCode match {
-            case None           => langRespond(event, entry.execId)
-            case Some(0)        => langRespond(event, entry.execId)
-            case Some(exitCode) => langError(entry.execId, exitCode, "")
+            case None           => jsonRpcRespond(event, entry.execId)
+            case Some(0)        => jsonRpcRespond(event, entry.execId)
+            case Some(exitCode) => jsonRpcRespondError(entry.execId, exitCode, "")
           }
-        case _ => langRespond(event, execId)
+        case _ => jsonRpcRespond(event, execId)
       }
     } else {
       contentType match {
@@ -257,8 +267,6 @@ final class NetworkChannel(val name: String,
       }
     }
   }
-
-  def publishEvent[A: JsonFormat](event: A): Unit = publishEvent(event, None)
 
   def publishEventMessage(event: EventMessage): Unit = {
     if (isLanguageServerProtocol) {
@@ -336,7 +344,9 @@ final class NetworkChannel(val name: String,
   private def onExecCommand(cmd: ExecCommand) = {
     if (initialized) {
       append(
-        Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
+        Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name)))
+      )
+      ()
     } else {
       log.warn(s"ignoring command $cmd before initialization")
     }
@@ -346,8 +356,8 @@ final class NetworkChannel(val name: String,
     if (initialized) {
       import sbt.protocol.codec.JsonProtocol._
       SettingQuery.handleSettingQueryEither(req, structure) match {
-        case Right(x) => langRespond(x, execId)
-        case Left(s)  => langError(execId, ErrorCodes.InvalidParams, s)
+        case Right(x) => jsonRpcRespond(x, execId)
+        case Left(s)  => jsonRpcRespondError(execId, ErrorCodes.InvalidParams, s)
       }
     } else {
       log.warn(s"ignoring query $req before initialization")

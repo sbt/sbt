@@ -1,10 +1,10 @@
 lazy val root = (project in file(".")).
-  settings(inThisBuild(List(
+  settings(inThisBuild(
       organization := "A",
       version := "1.0",
       ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy" / "cache")) ).value,
       externalResolvers := (baseDirectory map { base => Resolver.file("local", base / "ivy" / "local" asFile)(Resolver.ivyStylePatterns) :: Nil }).value
-    )),
+    ),
     mavenStyle,
     name := "Retrieve Test",
     libraryDependencies := (publishMavenStyle { style => if(style) mavenStyleDependencies else ivyStyleDependencies }).value

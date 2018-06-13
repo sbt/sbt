@@ -7,8 +7,7 @@
 
 package sbt.internal.util
 
-import org.scalacheck._
-import Prop._
+import org.scalacheck._, Prop._
 
 object SettingsTest extends Properties("settings") {
   val settingsExample: SettingsExample = SettingsExample()
@@ -160,7 +159,7 @@ object SettingsTest extends Properties("settings") {
   final def checkCircularReferences(intermediate: Int): Prop = {
     val ccr = new CCR(intermediate)
     try { evaluate(setting(chk, ccr.top) :: Nil); false } catch {
-      case e: java.lang.Exception => true
+      case _: java.lang.Exception => true
     }
   }
 
@@ -197,18 +196,18 @@ object SettingsTest extends Properties("settings") {
 
   def evaluate(settings: Seq[Setting[_]]): Settings[Scope] =
     try { make(settings)(delegates, scopeLocal, showFullKey) } catch {
-      case e: Throwable => e.printStackTrace; throw e
+      case e: Throwable => e.printStackTrace(); throw e
     }
 }
 // This setup is a workaround for module synchronization issues
 final class CCR(intermediate: Int) {
   import SettingsTest.settingsExample._
-  lazy val top = iterate(value(intermediate), intermediate)
-  def iterate(init: Initialize[Int], i: Int): Initialize[Int] =
+  lazy val top = iterate(value(intermediate))
+  def iterate(init: Initialize[Int]): Initialize[Int] =
     bind(init) { t =>
       if (t <= 0)
         top
       else
-        iterate(value(t - 1), t - 1)
+        iterate(value(t - 1))
     }
 }

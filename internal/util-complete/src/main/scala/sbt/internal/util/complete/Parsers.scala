@@ -12,14 +12,16 @@ import Parser._
 import java.io.File
 import java.net.URI
 import java.lang.Character.{
-  getType,
-  MATH_SYMBOL,
-  OTHER_SYMBOL,
+  CURRENCY_SYMBOL,
   DASH_PUNCTUATION,
-  OTHER_PUNCTUATION,
+  MATH_SYMBOL,
   MODIFIER_SYMBOL,
-  CURRENCY_SYMBOL
+  OTHER_PUNCTUATION,
+  OTHER_SYMBOL,
+  getType
 }
+
+import scala.annotation.tailrec
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers {
@@ -42,7 +44,8 @@ trait Parsers {
 
   /** Parses a single hexadecimal digit (0-9, a-f, A-F). */
   lazy val HexDigit = charClass(c => HexDigitSet(c.toUpper), "hex digit") examples HexDigitSet.map(
-    _.toString)
+    _.toString
+  )
 
   /** Parses a single letter, according to Char.isLetter, into a Char. */
   lazy val Letter = charClass(_.isLetter, "letter")
@@ -313,6 +316,16 @@ object DefaultParsers extends Parsers with ParserMain {
     apply(p)(s).resultEmpty.isValid
 
   /** Returns `true` if `s` parses successfully according to [[ID]].*/
-  def validID(s: String): Boolean = matches(ID, s)
+  def validID(s: String): Boolean = {
+    // Handwritten version of `matches(ID, s)` because validID turned up in profiling.
+    def isIdChar(c: Char): Boolean = Character.isLetterOrDigit(c) || (c == '-') || (c == '_')
+    @tailrec def isRestIdChar(cur: Int, s: String, length: Int): Boolean =
+      if (cur < length)
+        isIdChar(s.charAt(cur)) && isRestIdChar(cur + 1, s, length)
+      else
+        true
+
+    !s.isEmpty && Character.isLetter(s.charAt(0)) && isRestIdChar(1, s, s.length)
+  }
 
 }

@@ -50,7 +50,8 @@ class ErrorSpec extends AbstractSpec {
         buildSbt.length,
         2,
         "fake.txt",
-        new MessageOnlyException("fake")) must throwA[MessageOnlyException]
+        new MessageOnlyException("fake")
+      ) must throwA[MessageOnlyException]
     }
 
     "handle xml error " in {
@@ -77,8 +78,7 @@ class ErrorSpec extends AbstractSpec {
       case exception: MessageOnlyException =>
         val error = exception.getMessage
         """(\d+)""".r.findFirstIn(error) match {
-          case Some(x) =>
-            true
+          case Some(_) => true
           case None =>
             println(s"Number not found in $error")
             false

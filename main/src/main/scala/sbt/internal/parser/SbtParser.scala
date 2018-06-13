@@ -85,7 +85,8 @@ private[sbt] object SbtParser {
       val reporter = reporters.get(fileName)
       if (reporter == null) {
         scalacGlobalInitReporter.getOrElse(
-          sys.error(s"Sbt forgot to initialize `scalacGlobalInitReporter`."))
+          sys.error(s"Sbt forgot to initialize `scalacGlobalInitReporter`.")
+        )
       } else reporter
     }
 
@@ -139,9 +140,11 @@ private[sbt] object SbtParser {
    *                    The reporter id must be unique per parsing session.
    * @return
    */
-  private[sbt] def parse(code: String,
-                         filePath: String,
-                         reporterId0: Option[String]): (Seq[Tree], String) = {
+  private[sbt] def parse(
+      code: String,
+      filePath: String,
+      reporterId0: Option[String]
+  ): (Seq[Tree], String) = {
     import defaultGlobalForParser._
     val reporterId = reporterId0.getOrElse(s"$filePath-${Random.nextInt}")
     val reporter = globalReporter.getOrCreateReporter(reporterId)
@@ -206,7 +209,8 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
 
   private def splitExpressions(
       file: File,
-      lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
+      lines: Seq[String]
+  ): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
     import sbt.internal.parser.MissingBracketHandler.findMissingText
 
     val indexedLines = lines.toIndexedSeq
@@ -226,7 +230,8 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
       // Issue errors
       val positionLine = badTree.pos.line
       throw new MessageOnlyException(
-        s"""[$fileName]:$positionLine: Pattern matching in val statements is not supported""".stripMargin)
+        s"""[$fileName]:$positionLine: Pattern matching in val statements is not supported""".stripMargin
+      )
     }
 
     val (imports: Seq[Tree], statements: Seq[Tree]) = parsedTrees partition {
@@ -264,9 +269,9 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
       }
     val stmtTreeLineRange = statements flatMap convertStatement
     val importsLineRange = importsToLineRanges(content, imports)
-    (importsLineRange,
-     stmtTreeLineRange.map { case (stmt, _, lr)   => (stmt, lr) },
-     stmtTreeLineRange.map { case (stmt, tree, _) => (stmt, tree) })
+    (importsLineRange, stmtTreeLineRange.map { case (stmt, _, lr) => (stmt, lr) }, stmtTreeLineRange.map {
+      case (stmt, tree, _)                                        => (stmt, tree)
+    })
   }
 
   /**
@@ -279,7 +284,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
       modifiedContent: String,
       imports: Seq[Tree]
   ): Seq[(String, Int)] = {
-    val toLineRange = imports map convertImport(modifiedContent)
+    val toLineRange = imports map convertImport
     val groupedByLineNumber = toLineRange.groupBy { case (_, lineNumber) => lineNumber }
     val mergedImports = groupedByLineNumber.map {
       case (l, seq) => (l, extractLine(modifiedContent, seq))
@@ -288,12 +293,10 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
   }
 
   /**
-   *
-   * @param modifiedContent - modifiedContent
    * @param t - tree
-   * @return ((start,end),lineNumber)
+   * @return ((start, end), lineNumber)
    */
-  private def convertImport(modifiedContent: String)(t: Tree): ((Int, Int), Int) = {
+  private def convertImport(t: Tree): ((Int, Int), Int) = {
     val lineNumber = t.pos.line - 1
     ((t.pos.start, t.pos.end), lineNumber)
   }
@@ -304,8 +307,10 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
    * @param importsInOneLine - imports in line
    * @return - text
    */
-  private def extractLine(modifiedContent: String,
-                          importsInOneLine: Seq[((Int, Int), Int)]): String = {
+  private def extractLine(
+      modifiedContent: String,
+      importsInOneLine: Seq[((Int, Int), Int)]
+  ): String = {
     val (begin, end) = importsInOneLine.foldLeft((Int.MaxValue, Int.MinValue)) {
       case ((min, max), ((start, end), _)) =>
         (min.min(start), max.max(end))
@@ -337,7 +342,8 @@ private[sbt] object MissingBracketHandler {
       positionLine: Int,
       fileName: String,
       originalException: Throwable,
-      reporterId: Option[String] = Some(Random.nextInt.toString)): String = {
+      reporterId: Option[String] = Some(Random.nextInt.toString)
+  ): String = {
     findClosingBracketIndex(content, positionEnd) match {
       case Some(index) =>
         val text = content.substring(positionEnd, index + 1)
@@ -346,16 +352,19 @@ private[sbt] object MissingBracketHandler {
           case Success(_) =>
             text
           case Failure(_) =>
-            findMissingText(content,
-                            index + 1,
-                            positionLine,
-                            fileName,
-                            originalException,
-                            reporterId)
+            findMissingText(
+              content,
+              index + 1,
+              positionLine,
+              fileName,
+              originalException,
+              reporterId
+            )
         }
       case _ =>
         throw new MessageOnlyException(
-          s"""[$fileName]:$positionLine: ${originalException.getMessage}""".stripMargin)
+          s"""[$fileName]:$positionLine: ${originalException.getMessage}""".stripMargin
+        )
     }
   }
 

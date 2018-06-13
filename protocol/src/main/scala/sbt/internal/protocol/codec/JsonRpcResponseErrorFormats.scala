@@ -15,8 +15,10 @@ trait JsonRpcResponseErrorFormats {
   implicit lazy val JsonRpcResponseErrorFormat
     : JsonFormat[sbt.internal.protocol.JsonRpcResponseError] =
     new JsonFormat[sbt.internal.protocol.JsonRpcResponseError] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.internal.protocol.JsonRpcResponseError = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.internal.protocol.JsonRpcResponseError = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -31,8 +33,10 @@ trait JsonRpcResponseErrorFormats {
             deserializationError("Expected JsObject but found None")
         }
       }
-      override def write[J](obj: sbt.internal.protocol.JsonRpcResponseError,
-                            builder: Builder[J]): Unit = {
+      override def write[J](
+          obj: sbt.internal.protocol.JsonRpcResponseError,
+          builder: Builder[J]
+      ): Unit = {
         builder.beginObject()
         builder.addField("code", obj.code)
         builder.addField("message", obj.message)

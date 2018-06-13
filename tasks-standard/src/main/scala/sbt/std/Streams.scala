@@ -126,10 +126,12 @@ object Streams {
       synchronized { streams.values.foreach(_.close()); streams.clear() }
   }
 
-  def apply[Key, J: IsoString](taskDirectory: Key => File,
-                               name: Key => String,
-                               mkLogger: (Key, PrintWriter) => ManagedLogger,
-                               converter: SupportConverter[J]): Streams[Key] = new Streams[Key] {
+  def apply[Key, J: IsoString](
+      taskDirectory: Key => File,
+      name: Key => String,
+      mkLogger: (Key, PrintWriter) => ManagedLogger,
+      converter: SupportConverter[J]
+  ): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
       private[this] var opened: List[Closeable] = Nil
@@ -142,8 +144,9 @@ object Streams {
         make(a, sid)(f => new PlainOutput(new FileOutputStream(f), converter))
 
       def readText(a: Key, sid: String = default): BufferedReader =
-        make(a, sid)(f =>
-          new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset)))
+        make(a, sid)(
+          f => new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset))
+        )
 
       def readBinary(a: Key, sid: String = default): BufferedInputStream =
         make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
@@ -152,8 +155,13 @@ object Streams {
         make(a, sid)(
           f =>
             new PrintWriter(
-              new DeferredWriter(new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)))))
+              new DeferredWriter(
+                new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)
+                )
+              )
+          )
+        )
 
       def binary(sid: String = default): BufferedOutputStream =
         make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))

@@ -21,7 +21,8 @@ class ServerSpec extends AsyncFreeSpec with Matchers {
   "server" - {
     "should start" in withTestServer("handshake") { p =>
       p.writeLine(
-        """{ "jsonrpc": "2.0", "id": "3", "method": "sbt/setting", "params": { "setting": "root/name" } }""")
+        """{ "jsonrpc": "2.0", "id": "3", "method": "sbt/setting", "params": { "setting": "root/name" } }"""
+      )
       assert(p.waitForString(10) { s =>
         s contains """"id":"3""""
       })
@@ -29,7 +30,8 @@ class ServerSpec extends AsyncFreeSpec with Matchers {
 
     "return number id when number id is sent" in withTestServer("handshake") { p =>
       p.writeLine(
-        """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "root/name" } }""")
+        """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "root/name" } }"""
+      )
       assert(p.waitForString(10) { s =>
         s contains """"id":3"""
       })
@@ -97,7 +99,8 @@ case class TestServer(baseDirectory: File) {
 
   // initiate handshake
   sendJsonRpc(
-    """{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { } } }""")
+    """{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { } } }"""
+  )
 
   def test(f: TestServer => Future[Assertion]): Future[Assertion] = {
     f(this)
@@ -106,7 +109,8 @@ case class TestServer(baseDirectory: File) {
   def bye(): Unit = {
     hostLog("sending exit")
     sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }""")
+      """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }"""
+    )
   }
 
   def sendJsonRpc(message: String): Unit = {

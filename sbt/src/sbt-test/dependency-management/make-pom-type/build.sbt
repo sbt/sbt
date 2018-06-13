@@ -2,12 +2,12 @@ lazy val p1 = (project in file("p1")).
   settings(
     checkTask(expectedMongo),
     libraryDependencies += "org.mongodb" %% "casbah" % "2.4.1" pomOnly(),
-    inThisBuild(List(
+    inThisBuild(
       organization := "org.example",
       version := "1.0",
       scalaVersion := "2.9.2",
       autoScalaLibrary := false
-    ))
+    )
   )
 
 lazy val p2 = (project in file("p2")).

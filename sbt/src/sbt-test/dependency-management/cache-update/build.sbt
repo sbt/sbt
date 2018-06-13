@@ -4,7 +4,7 @@ dependencyOverrides in ThisBuild += "com.github.nscala-time" %% "nscala-time" % 
 lazy val root = (project in file("."))
   .dependsOn(p1 % Compile)
   .settings(
-    inThisBuild(List(
+    inThisBuild(
       organizationName := "eed3si9n",
       organizationHomepage := Some(url("http://example.com/")),
       homepage := Some(url("https://github.com/example/example")),
@@ -20,7 +20,7 @@ lazy val root = (project in file("."))
       version := "0.3.1-SNAPSHOT",
       description := "An HTTP client for Scala with Async Http Client underneath.",
       licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    )),
+    ),
     ivyPaths := IvyPaths(
       (baseDirectory in ThisBuild).value,
       Some((baseDirectory in LocalRootProject).value / "ivy-cache")

@@ -1,6 +1,6 @@
-inThisBuild(List(
+inThisBuild(
   crossScalaVersions := Seq("2.12.1", "2.11.8")
-))
+)
 
 lazy val rootProj = (project in file("."))
   .aggregate(libProj, fooPlugin)

@@ -30,10 +30,18 @@ import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
  * It is safe to use for its intended purpose: copying resources to a class output directory.
  */
 object Sync {
-  def apply(store: CacheStore,
-            inStyle: FileInfo.Style = FileInfo.lastModified,
-            outStyle: FileInfo.Style = FileInfo.exists)
-    : Traversable[(File, File)] => Relation[File, File] =
+  @deprecated("Use sync, which doesn't take the unused outStyle param", "1.1.1")
+  def apply(
+      store: CacheStore,
+      inStyle: FileInfo.Style = FileInfo.lastModified,
+      outStyle: FileInfo.Style = FileInfo.exists,
+  ): Traversable[(File, File)] => Relation[File, File] =
+    sync(store, inStyle)
+
+  def sync(
+      store: CacheStore,
+      inStyle: FileInfo.Style = FileInfo.lastModified,
+  ): Traversable[(File, File)] => Relation[File, File] =
     mappings => {
       val relation = Relation.empty ++ mappings
       noDuplicateTargets(relation)
@@ -63,26 +71,24 @@ object Sync {
   def copy(source: File, target: File): Unit =
     if (source.isFile)
       IO.copyFile(source, target, true)
-    else if (!target.exists) // we don't want to update the last modified time of an existing directory
-      {
-        IO.createDirectory(target)
-        IO.copyLastModified(source, target)
-      }
+    else if (!target.exists) { // we don't want to update the last modified time of an existing directory
+      IO.createDirectory(target)
+      IO.copyLastModified(source, target)
+      ()
+    }
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
-    val dups = relation.reverseMap.filter {
-      case (_, srcs) =>
-        srcs.size >= 2 && srcs.exists(!_.isDirectory)
-    } map {
-      case (target, srcs) =>
-        "\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t")
-    }
+    val dups = relation.reverseMap
+      .filter { case (_, srcs) => srcs.size >= 2 && srcs.exists(!_.isDirectory) }
+      .map { case (target, srcs) => "\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t") }
     if (dups.nonEmpty)
       sys.error("Duplicate mappings:" + dups.mkString)
   }
 
-  implicit def relationFormat[A, B](implicit af: JsonFormat[Map[A, Set[B]]],
-                                    bf: JsonFormat[Map[B, Set[A]]]): JsonFormat[Relation[A, B]] =
+  implicit def relationFormat[A, B](
+      implicit af: JsonFormat[Map[A, Set[B]]],
+      bf: JsonFormat[Map[B, Set[A]]]
+  ): JsonFormat[Relation[A, B]] =
     new JsonFormat[Relation[A, B]] {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Relation[A, B] =
         jsOpt match {
@@ -105,15 +111,18 @@ object Sync {
 
     }
 
-  def writeInfo[F <: FileInfo](store: CacheStore,
-                               relation: Relation[File, File],
-                               info: Map[File, F])(implicit infoFormat: JsonFormat[F]): Unit =
+  def writeInfo[F <: FileInfo](
+      store: CacheStore,
+      relation: Relation[File, File],
+      info: Map[File, F]
+  )(implicit infoFormat: JsonFormat[F]): Unit =
     store.write((relation, info))
 
   type RelationInfo[F] = (Relation[File, File], Map[File, F])
 
-  def readInfo[F <: FileInfo](store: CacheStore)(
-      implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+  def readInfo[F <: FileInfo](
+      store: CacheStore
+  )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
     try { readUncaught[F](store)(infoFormat) } catch {
       case _: IOException  => (Relation.empty[File, File], Map.empty[File, F])
       case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])
@@ -124,7 +133,8 @@ object Sync {
         }
     }
 
-  private def readUncaught[F <: FileInfo](store: CacheStore)(
-      implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+  private def readUncaught[F <: FileInfo](
+      store: CacheStore
+  )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
     store.read(default = (Relation.empty[File, File], Map.empty[File, F]))
 }

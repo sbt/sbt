@@ -56,7 +56,7 @@ object BasicCommands {
     client,
     read,
     alias
-  ) ++ compatCommands
+  )
 
   def nop: Command = Command.custom(s => success(() => s))
   def ignore: Command = Command.command(FailureWall)(idFun)
@@ -81,7 +81,8 @@ object BasicCommands {
     val h = (Help.empty /: s.definedCommands)(
       (a, b) =>
         a ++ (try b.help(s)
-        catch { case NonFatal(_) => Help.empty }))
+        catch { case NonFatal(_) => Help.empty })
+    )
     val helpCommands = h.detail.keySet
     val spacedArg = singleArgument(helpCommands).?
     applyEffect(spacedArg)(runHelp(s, h))
@@ -95,10 +96,14 @@ object BasicCommands {
   }
 
   def completionsCommand: Command =
-    Command(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(completionsParser)(
-      runCompletions(_)(_))
+    Command(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(_ => completionsParser)(
+      runCompletions(_)(_)
+    )
 
-  def completionsParser(state: State): Parser[String] = {
+  @deprecated("No longer public", "1.1.1")
+  def completionsParser(state: State): Parser[String] = completionsParser
+
+  private[this] def completionsParser: Parser[String] = {
     val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq ++ s }
     val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
     token(quotedOrUnquotedSingleArgument ?? "" examples ("", " "))
@@ -116,8 +121,9 @@ object BasicCommands {
   def multiParser(s: State): Parser[List[String]] = {
     val nonSemi = token(charClass(_ != ';').+, hide = const(true))
     val semi = token(';' ~> OptSpace)
-    val part = semi flatMap (_ =>
-      matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace))
+    val part = semi flatMap (
+        _ => matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace)
+    )
     (part map (_.trim)).+ map (_.toList)
   }
 
@@ -133,40 +139,26 @@ object BasicCommands {
     matched(s.combinedParser | token(any, hide = const(true)))
 
   def ifLast: Command =
-    Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser)((s, arg) =>
-      if (s.remainingCommands.isEmpty) arg :: s else s)
+    Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser)(
+      (s, arg) => if (s.remainingCommands.isEmpty) arg :: s else s
+    )
 
   def append: Command =
     Command(AppendCommand, Help.more(AppendCommand, AppendLastDetailed))(otherCommandParser)(
-      (s, arg) => s.copy(remainingCommands = s.remainingCommands :+ Exec(arg, s.source)))
+      (s, arg) => s.copy(remainingCommands = s.remainingCommands :+ Exec(arg, s.source))
+    )
 
   def setOnFailure: Command =
-    Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser)((s, arg) =>
-      s.copy(onFailure = Some(Exec(arg, s.source))))
-
-  private[sbt] def compatCommands = Seq(
-    Command.command(Compat.ClearOnFailure) { s =>
-      s.log.warn(Compat.ClearOnFailureDeprecated)
-      s.copy(onFailure = None)
-    },
-    Command.arb(
-      s =>
-        token(Compat.OnFailure, hide = const(true))
-          .flatMap(_ => otherCommandParser(s))) { (s, arg) =>
-      s.log.warn(Compat.OnFailureDeprecated)
-      s.copy(onFailure = Some(Exec(arg, s.source)))
-    },
-    Command.command(Compat.FailureWall) { s =>
-      s.log.warn(Compat.FailureWallDeprecated)
-      s
-    }
-  )
+    Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser)(
+      (s, arg) => s.copy(onFailure = Some(Exec(arg, s.source)))
+    )
 
   def clearOnFailure: Command = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
   def stashOnFailure: Command =
-    Command.command(StashOnFailure)(s =>
-      s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten))
+    Command.command(StashOnFailure)(
+      s => s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten)
+    )
 
   def popOnFailure: Command = Command.command(PopOnFailure) { s =>
     val stack = s.get(OnFailureStack).getOrElse(Nil)
@@ -176,19 +168,19 @@ object BasicCommands {
   }
 
   def reboot: Command =
-    Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(rebootOptionParser) {
+    Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(_ => rebootOptionParser) {
       case (s, (full, currentOnly)) =>
         s.reboot(full, currentOnly)
     }
 
   @deprecated("Use rebootOptionParser", "1.1.0")
-  def rebootParser(s: State): Parser[Boolean] =
-    rebootOptionParser(s) map { case (full, currentOnly) => full }
+  def rebootParser(s: State): Parser[Boolean] = rebootOptionParser map { case (full, _) => full }
 
-  private[sbt] def rebootOptionParser(s: State): Parser[(Boolean, Boolean)] =
-    token(
-      Space ~> (("full" ^^^ ((true, false))) |
-        ("dev" ^^^ ((false, true))))) ?? ((false, false))
+  private[sbt] def rebootOptionParser: Parser[(Boolean, Boolean)] = {
+    val fullOption = "full" ^^^ ((true, false))
+    val devOption = "dev" ^^^ ((false, true))
+    token(Space ~> (fullOption | devOption)) ?? ((false, false))
+  }
 
   def call: Command =
     Command(ApplyCommand, Help.more(ApplyCommand, ApplyDetailed))(_ => callParser) {
@@ -211,8 +203,9 @@ object BasicCommands {
   private[this] def className: Parser[String] = {
     val base = StringBasic & not('-' ~> any.*, "Class name cannot start with '-'.")
     def single(s: String) = Completions.single(Completion.displayOnly(s))
-    val compl = TokenCompletions.fixed((seen, _) =>
-      if (seen.startsWith("-")) Completions.nil else single("<class name>"))
+    val compl = TokenCompletions.fixed(
+      (seen, _) => if (seen.startsWith("-")) Completions.nil else single("<class name>")
+    )
     token(base, compl)
   }
 
@@ -237,10 +230,9 @@ object BasicCommands {
 
   def historyParser(s: State): Parser[() => State] =
     Command.applyEffect(HistoryCommands.actionParser) { histFun =>
-      val logError = (msg: String) => s.log.error(msg)
-      val hp = s get historyPath getOrElse None
+      val hp = (s get historyPath).flatten
       val lines = hp.toList.flatMap(p => IO.readLines(p)).toIndexedSeq
-      histFun(CHistory(lines, hp, logError)) match {
+      histFun(CHistory(lines, hp)) match {
         case Some(commands) =>
           commands foreach println //printing is more appropriate than logging
           (commands ::: s).continue
@@ -401,7 +393,8 @@ object BasicCommands {
   }
 
   def delegateToAlias(name: String, orElse: Parser[() => State])(
-      state: State): Parser[() => State] =
+      state: State
+  ): Parser[() => State] =
     aliases(state, (nme, _) => nme == name).headOption match {
       case None         => orElse
       case Some((n, v)) => aliasBody(n, v)(state)

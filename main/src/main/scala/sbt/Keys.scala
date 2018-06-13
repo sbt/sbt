@@ -42,6 +42,7 @@ import sbt.internal.{
 }
 import sbt.io.{ FileFilter, WatchService }
 import sbt.internal.io.WatchState
+import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
@@ -136,6 +137,8 @@ object Keys {
   val serverHost = SettingKey(BasicKeys.serverHost)
   val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
   val serverConnectionType = SettingKey(BasicKeys.serverConnectionType)
+  val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
+  val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
 
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
@@ -220,6 +223,7 @@ object Keys {
   val scalaCompilerBridgeSource = settingKey[ModuleID]("Configures the module ID of the sources of the compiler bridge.").withRank(CSetting)
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
   val enableBinaryCompileAnalysis = settingKey[Boolean]("Writes the analysis file in binary format")
+  val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
 
   val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.").withRank(APlusTask)
   val console = taskKey[Unit]("Starts the Scala interpreter with the project classes on the classpath.").withRank(APlusTask)
@@ -269,6 +273,10 @@ object Keys {
   val outputStrategy = settingKey[Option[sbt.OutputStrategy]]("Selects how to log output when running a main class.").withRank(DSetting)
   val connectInput = settingKey[Boolean]("If true, connects standard input when running a main class forked.").withRank(CSetting)
   val javaHome = settingKey[Option[File]]("Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.").withRank(ASetting)
+  val discoveredJavaHomes = settingKey[Map[String, File]]("Discovered Java home directories")
+  val javaHomes = settingKey[Map[String, File]]("The user-defined additional Java home directories")
+  val fullJavaHomes = settingKey[Map[String, File]]("Combines discoveredJavaHomes and custom javaHomes.").withRank(CTask)
+
   val javaOptions = taskKey[Seq[String]]("Options passed to a new JVM when forking.").withRank(BPlusTask)
   val envVars = taskKey[Map[String, String]]("Environment variables used when forking a new JVM").withRank(BTask)
 
@@ -447,7 +455,7 @@ object Keys {
   val sbtDependency = settingKey[ModuleID]("Provides a definition for declaring the current version of sbt.").withRank(BMinusSetting)
   val sbtVersion = settingKey[String]("Provides the version of sbt.  This setting should not be modified.").withRank(AMinusSetting)
   val sbtBinaryVersion = settingKey[String]("Defines the binary compatibility version substring.").withRank(BPlusSetting)
-  val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile' and 'update'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.").withRank(BSetting)
+  val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile', 'update', and 'publish'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.").withRank(BSetting)
   val templateResolverInfos = settingKey[Seq[TemplateResolverInfo]]("Template resolvers used for 'new'.").withRank(BSetting)
   val interactionService = taskKey[InteractionService]("Service used to ask for user input through the current user interface(s).").withRank(CTask)
   val insideCI = SettingKey[Boolean]("insideCI", "Determines if the SBT is running in a Continuous Integration environment", AMinusSetting)

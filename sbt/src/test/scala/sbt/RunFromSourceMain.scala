@@ -14,7 +14,7 @@ import buildinfo.TestBuildInfo
 import xsbti._
 
 object RunFromSourceMain {
-  private val sbtVersion = "1.1.0" // "dev"
+  private val sbtVersion = "1.1.4" // TestBuildInfo.version
   private val scalaVersion = "2.12.6"
 
   def fork(workingDirectory: File): Try[Unit] = {
@@ -117,12 +117,12 @@ object RunFromSourceMain {
           def topLoader = new java.net.URLClassLoader(Array(), null)
           def globalLock = noGlobalLock
           def bootDirectory = RunFromSourceMain.bootDirectory
+          def ivyHome = file(sys.props("user.home")) / ".ivy2"
           final case class PredefRepo(id: Predefined) extends PredefinedRepository
           import Predefined._
           def ivyRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
           def appRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
           def isOverrideRepositories = false
-          def ivyHome = file(sys.props("user.home")) / ".ivy2"
           def checksums = Array("sha1", "md5")
         }
         def version = scalaVersion
@@ -147,6 +147,7 @@ object RunFromSourceMain {
         CrossValue.Disabled,
         Nil
       )
+      def appHome: File = scalaHome / id.groupID / id.name / id.version
 
       def mainClasspath = buildinfo.TestBuildInfo.fullClasspath.toArray
       def loader = new java.net.URLClassLoader(mainClasspath map (_.toURI.toURL), null)
@@ -155,11 +156,33 @@ object RunFromSourceMain {
       def newMain = new xMain
 
       def components = new ComponentProvider {
-        def componentLocation(id: String) = ???
-        def component(componentID: String) = ???
-        def defineComponent(componentID: String, components: Array[File]) = ???
-        def addToComponent(componentID: String, components: Array[File]) = ???
-        def lockFile = ???
+        def componentLocation(id: String) = appHome / id
+        def component(id: String) = IO.listFiles(componentLocation(id), _.isFile)
+
+        def defineComponent(id: String, files: Array[File]) = {
+          val location = componentLocation(id)
+          if (location.exists)
+            sys error s"Cannot redefine component. ID: $id, files: ${files mkString ","}"
+          else {
+            copy(files.toList, location)
+            ()
+          }
+        }
+
+        def addToComponent(id: String, files: Array[File]) =
+          copy(files.toList, componentLocation(id))
+
+        def lockFile = appHome / "sbt.components.lock"
+
+        private def copy(files: List[File], toDirectory: File): Boolean =
+          files exists (copy(_, toDirectory))
+
+        private def copy(file: File, toDirectory: File): Boolean = {
+          val to = toDirectory / file.getName
+          val missing = !to.exists
+          IO.copyFile(file, to)
+          missing
+        }
       }
     }
   }

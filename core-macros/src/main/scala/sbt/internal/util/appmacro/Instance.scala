@@ -41,9 +41,11 @@ object Instance {
   final val MapName = "map"
   final val InstanceTCName = "M"
 
-  final class Input[U <: Universe with Singleton](val tpe: U#Type,
-                                                  val expr: U#Tree,
-                                                  val local: U#ValDef)
+  final class Input[U <: Universe with Singleton](
+      val tpe: U#Type,
+      val expr: U#Tree,
+      val local: U#ValDef
+  )
   trait Transform[C <: blackbox.Context with Singleton, N[_]] {
     def apply(in: C#Tree): C#Tree
   }

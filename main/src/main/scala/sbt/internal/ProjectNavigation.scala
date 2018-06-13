@@ -49,7 +49,8 @@ final class ProjectNavigation(s: State) {
       setProject(uri, to)
     else
       fail(
-        s"Invalid project name '$to' in build $uri (type 'projects' to list available projects).")
+        s"Invalid project name '$to' in build $uri (type 'projects' to list available projects)."
+      )
 
   def changeBuild(newBuild: URI): State =
     if (structure.units contains newBuild)

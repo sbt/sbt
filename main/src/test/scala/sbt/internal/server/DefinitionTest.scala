@@ -9,8 +9,6 @@ package sbt
 package internal
 package server
 
-import sbt.internal.inc.Analysis
-
 class DefinitionTest extends org.specs2.mutable.Specification {
   import Definition.textProcessor
 
@@ -26,7 +24,8 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
     "find valid standard scala identifier with comma" in {
       textProcessor.identifier("def foo(a: identifier, b: other) = ???", 13) must beSome(
-        "identifier")
+        "identifier"
+      )
     }
     "find valid standard short scala identifier when caret is set at the start of it" in {
       textProcessor.identifier("val a = 0", 4) must beSome("a")
@@ -90,11 +89,13 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
     "match class in line version 4" in {
       textProcessor.classTraitObjectInLine("A")("   class    A[A]  ") must contain(
-        ("class    A", 3))
+        ("class    A", 3)
+      )
     }
     "match class in line version 5" in {
       textProcessor.classTraitObjectInLine("A")("   class    A  [A] ") must contain(
-        ("class    A", 3))
+        ("class    A", 3)
+      )
     }
     "match class in line version 6" in {
       textProcessor.classTraitObjectInLine("A")("class A[A[_]] {") must contain(("class A", 0))
@@ -113,11 +114,13 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
     "match trait in line version 4" in {
       textProcessor.classTraitObjectInLine("A")("   trait    A[A]  ") must contain(
-        ("trait    A", 3))
+        ("trait    A", 3)
+      )
     }
     "match trait in line version 5" in {
       textProcessor.classTraitObjectInLine("A")("   trait    A  [A] ") must contain(
-        ("trait    A", 3))
+        ("trait    A", 3)
+      )
     }
     "match trait in line version 6" in {
       textProcessor.classTraitObjectInLine("A")("trait A[A[_]] {") must contain(("trait A", 0))
@@ -126,9 +129,12 @@ class DefinitionTest extends org.specs2.mutable.Specification {
       textProcessor.classTraitObjectInLine("B")("trait A  ") must be empty
     }
   }
+
   "definition" should {
+
     import scalacache.caffeine._
     import scalacache.modes.sync._
+
     "cache data in cache" in {
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
@@ -136,12 +142,11 @@ class DefinitionTest extends org.specs2.mutable.Specification {
 
       Definition.updateCache(cache)(cacheFile, useBinary)
 
-      val actual = cache.get(Definition.AnalysesKey)
+      val actual = Definition.AnalysesAccess.getFrom(cache)
 
-      actual.collect {
-        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      }.get should contain("Test.scala" -> true -> None)
+      actual.get should contain("Test.scala" -> true -> None)
     }
+
     "replace cache data in cache" in {
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
@@ -151,12 +156,11 @@ class DefinitionTest extends org.specs2.mutable.Specification {
       Definition.updateCache(cache)(cacheFile, falseUseBinary)
       Definition.updateCache(cache)(cacheFile, useBinary)
 
-      val actual = cache.get(Definition.AnalysesKey)
+      val actual = Definition.AnalysesAccess.getFrom(cache)
 
-      actual.collect {
-        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      }.get should contain("Test.scala" -> true -> None)
+      actual.get should contain("Test.scala" -> true -> None)
     }
+
     "cache more data in cache" in {
       val cache = CaffeineCache[Any]
       val cacheFile = "Test.scala"
@@ -167,11 +171,9 @@ class DefinitionTest extends org.specs2.mutable.Specification {
       Definition.updateCache(cache)(otherCacheFile, otherUseBinary)
       Definition.updateCache(cache)(cacheFile, useBinary)
 
-      val actual = cache.get(Definition.AnalysesKey)
+      val actual = Definition.AnalysesAccess.getFrom(cache)
 
-      actual.collect {
-        case s => s.asInstanceOf[Set[((String, Boolean), Option[Analysis])]]
-      }.get should contain("Test.scala" -> true -> None, "OtherTest.scala" -> false -> None)
+      actual.get should contain("Test.scala" -> true -> None, "OtherTest.scala" -> false -> None)
     }
   }
 }

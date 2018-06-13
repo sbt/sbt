@@ -1,33 +1,14 @@
   [StackOverflow]: http://stackoverflow.com/tags/sbt
-  [ask]: https://stackoverflow.com/questions/ask?tags=sbt
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
-  [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
   [sbt-contrib]: https://gitter.im/sbt/sbt-contrib
-  [Lightbend]: https://www.lightbend.com/
-  [subscriptions]: https://www.lightbend.com/platform/subscription
   [327]: https://github.com/sbt/sbt/issues/327
-  [gitter]: https://gitter.im/sbt/sbt
   [documentation]: https://github.com/sbt/website
 
-Support
-=======
+Contributing
+============
 
-[Lightbend] sponsors sbt and encourages contributions from the active community. Enterprises can adopt it for mission critical systems with confidence because Lightbend stands behind sbt with commercial support and services.
-
-For community support please [ask] on StackOverflow with the tag "sbt".
-
-- State the problem or question clearly and provide enough context. Code examples and `build.sbt` are often useful when appropriately edited.
-- There's also [Gitter sbt/sbt room][gitter], but Stackoverflow is recommended so others can benefit from the answers.
-
-For professional support, [Lightbend], the maintainer of Scala compiler and sbt, provides:
-
-- [Lightbend Subscriptions][subscriptions], which includes Expert Support
-- Training
-- Consulting
-
-How to contribute to sbt
-========================
+(For support, see [SUPPORT](./SUPPORT.md))
 
 There are lots of ways to contribute to sbt ecosystem depending on your interests and skill level.
 
@@ -48,9 +29,13 @@ When you find a bug in sbt we want to hear about it. Your bug reports play an im
 
 Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
 
+Please open a GitHub issue when you are 90% sure it's an actual bug.
+
+If you have an enhancement idea, or a general discussion, bring it up to [sbt-contrib].
+
 ### Notes about Documentation
 
-Documentation fixes and contributions are as much welcome as to patching the core. Visit [the website project][documentation] to learn about how to contribute.
+Documentation fixes and contributions are as much welcome as to patching the core. Visit [sbt/website][documentation] to learn about how to contribute.
 
 ### Preliminaries
 
@@ -59,35 +44,29 @@ Documentation fixes and contributions are as much welcome as to patching the cor
 - Open one case for each problem.
 - Proceed to the next steps for details.
 
-### Where to get help and/or file a bug report
-
-sbt project uses GitHub Issues as a publicly visible todo list. Please open a GitHub issue when you are 90% sure it's an actual bug.
-
-- If you need help with sbt, please [ask] on StackOverflow with the tag "sbt" and the name of the sbt plugin if any.
-- If you have an enhancement idea, or a general discussion, bring it up to [sbt-contrib].
-- If you need a faster response time, consider one of the [Lightbend subscriptions][subscriptions].
-
 ### What to report
 
 The developers need three things from you: **steps**, **problems**, and **expectations**.
 
-### Steps
+The most important thing to remember about bug reporting is to clearly distinguish facts and opinions.
 
-The most important thing to remember about bug reporting is to clearly distinguish facts and opinions. What we need first is **the exact steps to reproduce your problems on our computers**. This is called *reproduction steps*, which is often shortened to "repro steps" or "steps." Describe your method of running sbt. Provide `build.sbt` that caused the problem and the version of sbt or Scala that was used. Provide sample Scala code if it's to do with incremental compilation. If possible, minimize the problem to reduce non-essential factors.
+#### Steps
+
+What we need first is **the exact steps to reproduce your problems on our computers**. This is called *reproduction steps*, which is often shortened to "repro steps" or "steps." Describe your method of running sbt. Provide `build.sbt` that caused the problem and the version of sbt or Scala that was used. Provide sample Scala code if it's to do with incremental compilation. If possible, minimize the problem to reduce non-essential factors.
 
 Repro steps are the most important part of a bug report. If we cannot reproduce the problem in one way or the other, the problem can't be fixed. Telling us the error messages is not enough.
 
-### Problems
+#### Problems
 
 Next, describe the problems, or what *you think* is the problem. It might be "obvious" to you that it's a problem, but it could actually be an intentional behavior for some backward compatibility etc. For compilation errors, include the stack trace. The more raw info the better.
 
-### Expectations
+#### Expectations
 
 Same as the problems. Describe what *you think* should've happened.
 
-### Notes
+#### Notes
 
-Add an optional notes section to describe your analysis.
+Add any optional notes section to describe your analysis.
 
 ### Subject
 
@@ -121,7 +100,7 @@ See below for the branch to work against.
 
 ### Adding notes
 
-All pull requests are required to include a "Notes" file which documents the change.  This file should reside in the
+Most pull requests should include a "Notes" file which documents the change.  This file should reside in the
 directory:
 
     <sbt root>
@@ -199,11 +178,95 @@ $ sbt
 > compile
 ```
 
+### Using Jenkins sbt-snapshots nighties
+
+There is a Jenkins instance for sbt that every night builds and publishes (if successful) a timestamped version
+of sbt to http://jenkins.scala-sbt.org/sbt-snapshots and is available for 4-5 weeks. To use it do the following:
+
+1. Set the `sbt.version` in `project/build.properties`
+
+```bash
+echo "sbt.version=1.2.0-bin-20180423T192044" > project/build.properties
+```
+
+2. Create an sbt repositories file (`./repositories`) that includes that Maven repository:
+
+```properties
+[repositories]
+  local
+  local-preloaded-ivy: file:///${sbt.preloaded-${sbt.global.base-${user.home}/.sbt}/preloaded/}, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
+  local-preloaded: file:///${sbt.preloaded-${sbt.global.base-${user.home}/.sbt}/preloaded/}
+  maven-central
+  sbt-maven-releases: https://repo.scala-sbt.org/scalasbt/maven-releases/, bootOnly
+  sbt-maven-snapshots: https://repo.scala-sbt.org/scalasbt/maven-snapshots/, bootOnly
+  typesafe-ivy-releases: https://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
+  sbt-ivy-snapshots: https://repo.scala-sbt.org/scalasbt/ivy-snapshots/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
+  sbt-snapshots: https://jenkins.scala-sbt.org/sbt-snapshots
+```
+
+3. Start sbt with a stable launcher and the custom repositories file:
+
+```bash
+$ sbt -sbt-jar ~/.sbt/launchers/1.1.4/sbt-launch.jar -Dsbt.repository.config=repositories
+Getting org.scala-sbt sbt 1.2.0-bin-20180423T192044  (this may take some time)...
+downloading https://jenkins.scala-sbt.org/sbt-snapshots/org/scala-sbt/sbt/1.2.0-bin-20180423T192044/sbt-1.2.0-bin-20180423T192044.jar ...
+	[SUCCESSFUL ] org.scala-sbt#sbt;1.2.0-bin-20180423T192044!sbt.jar (139ms)
+...
+[info] sbt server started at local:///Users/dnw/.sbt/1.0/server/936e0f52ed9baf6b6d83/sock
+> show sbtVersion
+[info] 1.2.0-bin-20180423T192044
+```
+
+### Using Jenkins maven-snapshots nightlies
+
+As an alternative you can request a build that publishes to https://repo.scala-sbt.org/scalasbt/maven-snapshots
+and stays there forever by:
+
+1. Logging into https://jenkins.scala-sbt.org/job/sbt-validator/
+2. Clicking "Build with Parameters"
+3. Making sure `deploy_to_bintray` is enabled
+4. Hitting "Build"
+
+Afterwhich start sbt with a stable launcher: `sbt -sbt-jar ~/.sbt/launchers/1.1.4/sbt-launch.jar`
+
 ### Clearing out boot and local cache
 
 When you run a locally built sbt, the JAR artifacts will be now cached under `$HOME/.sbt/boot/scala-2.12.6/org.scala-sbt/sbt/1.$MINOR.$PATCH-SNAPSHOT` directory. To clear this out run: `reboot dev` command from sbt's session of your test application.
 
 One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers. You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`. A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
+
+### Running sbt "from source" - `sbtOn`
+
+In addition to locally publishing a build of sbt, there is an alternative, experimental launcher within sbt/sbt
+to be able to run sbt "from source", that is to compile sbt and run it from its resulting classfiles rather than
+from published jar files.
+
+Such a launcher is available within sbt/sbt's build through a custom `sbtOn` command that takes as its first
+argument the directory on which you want to run sbt, and the remaining arguments are passed _to_ that sbt
+instance. For example:
+
+I have setup a minimal sbt build in the directory `/s/t`, to run sbt on that directory I call:
+
+```bash
+> sbtOn /s/t
+[info] Packaging /d/sbt/scripted/sbt/target/scala-2.12/scripted-sbt_2.12-1.2.0-SNAPSHOT.jar ...
+[info] Done packaging.
+[info] Running (fork) sbt.RunFromSourceMain /s/t
+Listening for transport dt_socket at address: 5005
+[info] Loading settings from idea.sbt,global-plugins.sbt ...
+[info] Loading global plugins from /Users/dnw/.dotfiles/.sbt/1.0/plugins
+[info] Loading project definition from /s/t/project
+[info] Set current project to t (in build file:/s/t/)
+[info] sbt server started at local:///Users/dnw/.sbt/1.0/server/ce9baa494c7598e4d59b/sock
+> show baseDirectory
+[info] /s/t
+> exit
+[info] shutting down server
+[success] Total time: 19 s, completed 25-Apr-2018 15:04:58
+```
+
+Please note that this alternative launcher does _not_ have feature parity with sbt/launcher. (Meta)
+contributions welcome! :-D
 
 ### Diagnosing build failures
 
@@ -232,13 +295,17 @@ command. To run a single test, such as the test in
 
     sbt "scripted project/global-plugin"
 
+Profiling sbt
+-------------
+
+See [PROFILING](./PROFILING.md)
+
 Other notes for maintainers
 ---------------------------
 
 ### Publishing VS Code Extensions
 
-
-https://code.visualstudio.com/docs/extensions/publish-extension
+Reference https://code.visualstudio.com/docs/extensions/publish-extension
 
 ```
 $ sbt
@@ -249,3 +316,12 @@ cd vscode-sbt-scala/client
 $ vsce package
 $ vsce publish
 ```
+
+## Signing the CLA
+
+Contributing to sbt requires you or your employer to sign the
+[Lightbend Contributor License Agreement](https://www.lightbend.com/contribute/cla).
+
+To make it easier to respect our license agreements, we have added an sbt task
+that takes care of adding the LICENSE headers to new files. Run `headerCreate`
+and sbt will put a copyright notice into it.

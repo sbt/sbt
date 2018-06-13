@@ -1,7 +1,7 @@
 {
   "name": "vscode-sbt-scala",
   "displayName": "Scala (sbt)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Lightbend, Inc.",
   "license": "BSD-3-Clause",
   "publisher": "lightbend",

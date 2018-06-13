@@ -1,4 +1,4 @@
-(See the guidelines for contributing, linked above)
+- [ ] I've read the [CONTRIBUTING](https://github.com/sbt/sbt/blob/1.x/CONTRIBUTING.md) guidelines
 
 ## steps
 

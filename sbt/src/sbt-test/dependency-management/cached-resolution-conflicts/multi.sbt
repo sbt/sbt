@@ -1,12 +1,12 @@
 // https://github.com/sbt/sbt/issues/1710
 // https://github.com/sbt/sbt/issues/1760
 
-inThisBuild(Seq(
+inThisBuild(
   organization := "com.example",
   version := "0.1.0",
   scalaVersion := "2.10.4",
   updateOptions := updateOptions.value.withCachedResolution(true)
-))
+)
 
 def commonSettings: Seq[Def.Setting[_]] = Seq(
   ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),

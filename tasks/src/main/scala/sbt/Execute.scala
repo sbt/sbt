@@ -27,8 +27,10 @@ private[sbt] object Execute {
 
   def config(checkCycles: Boolean, overwriteNode: Incomplete => Boolean = const(false)): Config =
     new Config(checkCycles, overwriteNode)
-  final class Config private[sbt] (val checkCycles: Boolean,
-                                   val overwriteNode: Incomplete => Boolean)
+  final class Config private[sbt] (
+      val checkCycles: Boolean,
+      val overwriteNode: Incomplete => Boolean
+  )
 
   final val checkPreAndPostConditions =
     sys.props.get("sbt.execute.extrachecks").exists(java.lang.Boolean.parseBoolean)
@@ -40,14 +42,17 @@ private[sbt] trait NodeView[A[_]] {
   def apply[T](a: A[T]): Node[A, T]
   def inline[T](a: A[T]): Option[() => T]
 }
-final class Triggers[A[_]](val runBefore: collection.Map[A[_], Seq[A[_]]],
-                           val injectFor: collection.Map[A[_], Seq[A[_]]],
-                           val onComplete: RMap[A, Result] => RMap[A, Result])
+final class Triggers[A[_]](
+    val runBefore: collection.Map[A[_], Seq[A[_]]],
+    val injectFor: collection.Map[A[_], Seq[A[_]]],
+    val onComplete: RMap[A, Result] => RMap[A, Result]
+)
 
 private[sbt] final class Execute[A[_] <: AnyRef](
     config: Config,
     triggers: Triggers[A],
-    progress: ExecuteProgress[A])(implicit view: NodeView[A]) {
+    progress: ExecuteProgress[A]
+)(implicit view: NodeView[A]) {
   type Strategy = CompletionService[A[_], Completed]
 
   private[this] val forward = idMap[A[_], IDSet[A[_]]]
@@ -205,11 +210,12 @@ private[sbt] final class Execute[A[_] <: AnyRef](
     val v = register(node)
     val deps = dependencies(v) ++ runBefore(node)
     val active = IDSet[A[_]](deps filter notDone)
-    progressState = progress.registered(progressState,
-                                        node,
-                                        deps,
-                                        active.toList
-                                        /** active is mutable, so take a snapshot */
+    progressState = progress.registered(
+      progressState,
+      node,
+      deps,
+      active.toList
+      /** active is mutable, so take a snapshot */
     )
 
     if (active.isEmpty)
@@ -283,7 +289,8 @@ private[sbt] final class Execute[A[_] <: AnyRef](
     }
   }
   private[this] def rewrap[T](
-      rawResult: Either[Incomplete, Either[A[T], T]]): Either[A[T], Result[T]] =
+      rawResult: Either[Incomplete, Either[A[T], T]]
+  ): Either[A[T], Result[T]] =
     rawResult match {
       case Left(i)             => Right(Inc(i))
       case Right(Right(v))     => Right(Value(v))
@@ -361,8 +368,11 @@ private[sbt] final class Execute[A[_] <: AnyRef](
   // cyclic reference checking
 
   def snapshotCycleCheck(): Unit =
-    for ((called: A[c], callers) <- callers.toSeq; caller <- callers)
-      cycleCheck(caller.asInstanceOf[A[c]], called)
+    callers.toSeq foreach {
+      case (called: A[c], callers) =>
+        for (caller <- callers) cycleCheck(caller.asInstanceOf[A[c]], called)
+      case _ => ()
+    }
 
   def cycleCheck[T](node: A[T], target: A[T]): Unit = {
     if (node eq target) cyclic(node, target, "Cannot call self")
@@ -374,9 +384,11 @@ private[sbt] final class Execute[A[_] <: AnyRef](
     if (all contains target) cyclic(node, target, "Cyclic reference")
   }
   def cyclic[T](caller: A[T], target: A[T], msg: String) =
-    throw new Incomplete(Some(caller),
-                         message = Some(msg),
-                         directCause = Some(new CyclicException(caller, target, msg)))
+    throw new Incomplete(
+      Some(caller),
+      message = Some(msg),
+      directCause = Some(new CyclicException(caller, target, msg))
+    )
   final class CyclicException[T](val caller: A[T], val target: A[T], msg: String)
       extends Exception(msg)
 

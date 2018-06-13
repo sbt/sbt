@@ -27,7 +27,8 @@ class ParserWithExamplesTest extends UnitSpec {
         Set(
           suggestion("blue"),
           suggestion("red")
-        ))
+        )
+      )
       parserWithExamples.completions(0) shouldEqual validCompletions
     }
   }
@@ -38,7 +39,8 @@ class ParserWithExamplesTest extends UnitSpec {
       val derivedCompletions = Completions(
         Set(
           suggestion("lue")
-        ))
+        )
+      )
       parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
     }
   }
@@ -58,7 +60,8 @@ class ParserWithExamplesTest extends UnitSpec {
         Set(
           suggestion("lue"),
           suggestion("lock")
-        ))
+        )
+      )
       parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
     }
   }

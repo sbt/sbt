@@ -38,23 +38,29 @@ object PluginCommandTest extends Specification {
   "The `plugin` command" should {
 
     "should work for plugins within nested in one package" in {
-      val output = processCommand("plugin sbt.PluginCommandTestPlugin0",
-                                  PluginCommandTestPlugin0,
-                                  PluginCommandTestPlugin1)
+      val output = processCommand(
+        "plugin sbt.PluginCommandTestPlugin0",
+        PluginCommandTestPlugin0,
+        PluginCommandTestPlugin1
+      )
       output must contain("sbt.PluginCommandTestPlugin0 is activated.")
     }
 
     "should work for plugins nested more than one package" in {
-      val output = processCommand("plugin sbt.subpackage.PluginCommandTestPlugin1",
-                                  PluginCommandTestPlugin0,
-                                  PluginCommandTestPlugin1)
+      val output = processCommand(
+        "plugin sbt.subpackage.PluginCommandTestPlugin1",
+        PluginCommandTestPlugin0,
+        PluginCommandTestPlugin1
+      )
       output must contain("sbt.subpackage.PluginCommandTestPlugin1 is activated.")
     }
 
     "suggest a plugin when given an incorrect plugin with a similar name" in {
-      val output = processCommand("plugin PluginCommandTestPlugin0",
-                                  PluginCommandTestPlugin0,
-                                  PluginCommandTestPlugin1)
+      val output = processCommand(
+        "plugin PluginCommandTestPlugin0",
+        PluginCommandTestPlugin0,
+        PluginCommandTestPlugin1
+      )
       output must contain(
         "Not a valid plugin: PluginCommandTestPlugin0 (similar: sbt.PluginCommandTestPlugin0, sbt.subpackage.PluginCommandTestPlugin1)"
       )
@@ -123,14 +129,16 @@ object FakeState {
     val loadedBuildUnit = Load.resolveProjects(base.toURI, partBuildUnit, _ => testProject.id)
 
     val units = Map(base.toURI -> loadedBuildUnit)
-    val buildStructure = new BuildStructure(units,
-                                            base.toURI,
-                                            settings,
-                                            data,
-                                            structureIndex,
-                                            streams,
-                                            delegates,
-                                            scopeLocal)
+    val buildStructure = new BuildStructure(
+      units,
+      base.toURI,
+      settings,
+      data,
+      structureIndex,
+      streams,
+      delegates,
+      scopeLocal
+    )
 
     val attributes = AttributeMap.empty ++ AttributeMap(
       AttributeEntry(Keys.sessionSettings, sessionSettings),
@@ -145,9 +153,11 @@ object FakeState {
       List(),
       State.newHistory,
       attributes,
-      GlobalLogging.initial(MainAppender.globalDefault(ConsoleOut.systemOut),
-                            File.createTempFile("sbt", ".log"),
-                            ConsoleOut.systemOut),
+      GlobalLogging.initial(
+        MainAppender.globalDefault(ConsoleOut.systemOut),
+        File.createTempFile("sbt", ".log"),
+        ConsoleOut.systemOut
+      ),
       None,
       State.Continue
     )

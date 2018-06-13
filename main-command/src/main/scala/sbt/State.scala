@@ -238,14 +238,16 @@ object State {
     def process(f: (Exec, State) => State): State = {
       def runCmd(cmd: Exec, remainingCommands: List[Exec]) = {
         log.debug(s"> $cmd")
-        f(cmd,
-          s.copy(remainingCommands = remainingCommands,
-                 currentCommand = Some(cmd),
-                 history = cmd :: s.history))
+        val s1 = s.copy(
+          remainingCommands = remainingCommands,
+          currentCommand = Some(cmd),
+          history = cmd :: s.history,
+        )
+        f(cmd, s1)
       }
       s.remainingCommands match {
-        case List()           => exit(true)
-        case List(x, xs @ _*) => runCmd(x, xs.toList)
+        case Nil     => exit(true)
+        case x :: xs => runCmd(x, xs)
       }
     }
     def :::(newCommands: List[String]): State = ++:(newCommands map { Exec(_, s.source) })
@@ -283,10 +285,7 @@ object State {
     def log = s.globalLogging.full
     def handleError(t: Throwable): State = handleException(t, s, log)
     def fail = {
-      import BasicCommandStrings.Compat.{ FailureWall => CompatFailureWall }
-      val remaining =
-        s.remainingCommands.dropWhile(c =>
-          c.commandLine != FailureWall && c.commandLine != CompatFailureWall)
+      val remaining = s.remainingCommands.dropWhile(c => c.commandLine != FailureWall)
       if (remaining.isEmpty)
         applyOnFailure(s, Nil, exit(ok = false))
       else
@@ -321,7 +320,7 @@ object State {
 
   import ExceptionCategory._
 
-  private[sbt] def handleException(t: Throwable, s: State, log: Logger): State = {
+  private[this] def handleException(t: Throwable, s: State, log: Logger): State = {
     ExceptionCategory(t) match {
       case AlreadyHandled => ()
       case m: MessageOnly => log.error(m.message)

@@ -23,8 +23,8 @@ import scala.util.Properties
 
 trait Watched {
 
-  /** The files watched when an action is run with a preceeding ~ */
-  def watchSources(s: State): Seq[Watched.WatchSource] = Nil
+  /** The files watched when an action is run with a proceeding ~ */
+  def watchSources(@deprecated("unused", "") s: State): Seq[Watched.WatchSource] = Nil
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
   /**
@@ -50,8 +50,13 @@ trait Watched {
 }
 
 object Watched {
-  val defaultWatchingMessage
-    : WatchState => String = _.count + ". Waiting for source changes... (press enter to interrupt)"
+  val defaultWatchingMessage: WatchState => String = ws =>
+    s"${ws.count}. Waiting for source changes... (press enter to interrupt)"
+
+  def projectWatchingMessage(projectId: String): WatchState => String =
+    ws =>
+      s"${ws.count}. Waiting for source changes in project $projectId... (press enter to interrupt)"
+
   val defaultTriggeredMessage: WatchState => String = const("")
   val clearWhenTriggered: WatchState => String = const(clearScreen)
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
@@ -76,8 +81,8 @@ object Watched {
      * @param base          The base directory from which to include files.
      * @return An instance of `Source`.
      */
-    def apply(base: File): Source =
-      apply(base, AllPassFilter, NothingFilter)
+    def apply(base: File): Source = apply(base, AllPassFilter, NothingFilter)
+
   }
 
   private[this] class AWatched extends Watched
@@ -111,11 +116,13 @@ object Watched {
         (ClearOnFailure :: next :: FailureWall :: repeat :: s)
           .put(
             ContinuousEventMonitor,
-            EventMonitor(WatchState.empty(watched.watchService(), watched.watchSources(s)),
-                         watched.pollInterval,
-                         watched.antiEntropy,
-                         shouldTerminate,
-                         logger)
+            EventMonitor(
+              WatchState.empty(watched.watchService(), watched.watchSources(s)),
+              watched.pollInterval,
+              watched.antiEntropy,
+              shouldTerminate,
+              logger
+            )
           )
       case Some(eventMonitor) =>
         printIfDefined(watched watchingMessage eventMonitor.state)
@@ -123,8 +130,9 @@ object Watched {
         catch {
           case e: Exception =>
             log.error(
-              "Error occurred obtaining files to watch.  Terminating continuous execution...")
-            State.handleException(e, s, log)
+              "Error occurred obtaining files to watch.  Terminating continuous execution..."
+            )
+            s.handleError(e)
             false
         }
         if (triggered) {
@@ -139,16 +147,20 @@ object Watched {
   }
 
   val ContinuousEventMonitor =
-    AttributeKey[EventMonitor]("watch event monitor",
-                               "Internal: maintains watch state and monitor threads.")
+    AttributeKey[EventMonitor](
+      "watch event monitor",
+      "Internal: maintains watch state and monitor threads."
+    )
   @deprecated("Superseded by ContinuousEventMonitor", "1.1.5")
   val ContinuousState =
     AttributeKey[WatchState]("watch state", "Internal: tracks state for continuous execution.")
 
   @deprecated("Superseded by ContinuousEventMonitor", "1.1.5")
   val ContinuousWatchService =
-    AttributeKey[WatchService]("watch service",
-                               "Internal: tracks watch service for continuous execution.")
+    AttributeKey[WatchService](
+      "watch service",
+      "Internal: tracks watch service for continuous execution."
+    )
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 

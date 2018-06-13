@@ -1,0 +1,5 @@
+> ++2.11.11 compile
+
+$ exists core/target/scala-2.11
+-$ exists module/target/scala-2.11
+-$ exists module/target/scala-2.12

@@ -21,8 +21,10 @@ object BasicCommandStrings {
   val TerminateAction: String = Exit
 
   def helpBrief =
-    (HelpCommand,
-     s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
+    (
+      HelpCommand,
+      s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>')."
+    )
   def helpDetailed = s"""$HelpCommand
 
 	Prints a help summary.
@@ -133,8 +135,10 @@ $HelpCommand <regular expression>
 
   def Multi = ";"
   def MultiBrief =
-    (Multi + " <command> (" + Multi + " <command>)*",
-     "Runs the provided semicolon-separated commands.")
+    (
+      Multi + " <command> (" + Multi + " <command>)*",
+      "Runs the provided semicolon-separated commands."
+    )
   def MultiDetailed =
     Multi + " command1 " + Multi + """ command2 ...
 
@@ -184,20 +188,6 @@ $AliasCommand name=
 
   def StashOnFailure = "sbtStashOnFailure"
   def PopOnFailure = "sbtPopOnFailure"
-
-  // commands with poor choices for names since they clash with the usual conventions for command line options
-  //   these are not documented and are mainly internal commands and can be removed without a full deprecation cycle
-  object Compat {
-    def OnFailure = "-"
-    def ClearOnFailure = "--"
-    def FailureWall = "---"
-    def OnFailureDeprecated = deprecatedAlias(OnFailure, BasicCommandStrings.OnFailure)
-    def ClearOnFailureDeprecated =
-      deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
-    def FailureWallDeprecated = deprecatedAlias(FailureWall, BasicCommandStrings.FailureWall)
-    private[this] def deprecatedAlias(oldName: String, newName: String): String =
-      s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in a later version"
-  }
 
   def FailureWall = "resumeFromFailure"
 

@@ -16,8 +16,9 @@ import macros._
  * and `KList` for larger numbers of inputs. This builder cannot handle fewer than 2 inputs.
  */
 object MixedBuilder extends TupleBuilder {
-  def make(c: blackbox.Context)(mt: c.Type,
-                                inputs: Inputs[c.universe.type]): BuilderResult[c.type] = {
+  def make(
+      c: blackbox.Context
+  )(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = {
     val delegate = if (inputs.size > TupleNBuilder.MaxInputs) KListBuilder else TupleNBuilder
     delegate.make(c)(mt, inputs)
   }
