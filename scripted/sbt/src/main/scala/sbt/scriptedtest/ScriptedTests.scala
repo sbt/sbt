@@ -167,6 +167,7 @@ final class ScriptedTests(
       case "actions/external-doc"                                   => LauncherBased // sbt/Package$
       case "actions/input-task"                                     => LauncherBased // sbt/Package$
       case "actions/input-task-dyn"                                 => LauncherBased // sbt/Package$
+      case "compiler-project/dotty-compiler-plugin"                 => LauncherBased // sbt/Package$
       case "compiler-project/run-test"                              => LauncherBased // sbt/Package$
       case "compiler-project/src-dep-plugin"                        => LauncherBased // sbt/Package$
       case "dependency-management/artifact"                         => LauncherBased // tbd
