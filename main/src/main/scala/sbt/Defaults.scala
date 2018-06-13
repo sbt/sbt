@@ -259,6 +259,7 @@ object Defaults extends BuildCommon {
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
+      watchAntiEntropy :== new FiniteDuration(40, TimeUnit.MILLISECONDS),
       watchService :== { () =>
         Watched.createWatchService()
       },
@@ -352,7 +353,18 @@ object Defaults extends BuildCommon {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
-      val exclude = (excludeFilter in unmanagedSources).value
+      val exclude = (excludeFilter in unmanagedSources).value match {
+        case e =>
+          (managedSources in ThisScope).value match {
+            case l if l.nonEmpty =>
+              e || new FileFilter {
+                private val files = l.toSet
+                override def accept(pathname: File): Boolean = files.contains(pathname)
+                override def toString = s"ManagedSourcesFilter($files)"
+              }
+            case _ => e
+          }
+      }
       val baseSources =
         if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
         else Nil
@@ -364,7 +376,7 @@ object Defaults extends BuildCommon {
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
-    sources := Classpaths.concat(unmanagedSources, managedSources).value
+    sources := Classpaths.concatDistinct(unmanagedSources, managedSources).value
   )
   lazy val resourceConfigPaths = Seq(
     resourceDirectory := sourceDirectory.value / "resources",
@@ -593,13 +605,15 @@ object Defaults extends BuildCommon {
     Def.setting {
       val getService = watchService.value
       val interval = pollInterval.value
+      val _antiEntropy = watchAntiEntropy.value
       val base = thisProjectRef.value
       val msg = watchingMessage.value
       val trigMsg = triggeredMessage.value
       new Watched {
         val scoped = watchTransitiveSources in base
         val key = scoped.scopedKey
-        override def pollInterval = interval
+        override def antiEntropy: FiniteDuration = _antiEntropy
+        override def pollInterval: FiniteDuration = interval
         override def watchingMessage(s: WatchState) = msg(s)
         override def triggeredMessage(s: WatchState) = trigMsg(s)
         override def watchService() = getService()
@@ -3052,10 +3066,21 @@ object Classpaths {
       excl: FileFilter
   ): Classpath =
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
+  @deprecated(
+    "The method only works for Scala 2, use the overloaded version to support both Scala 2 and Scala 3",
+    "1.1.5"
+  )
+  def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
+    autoPlugins(report, internalPluginClasspath, isDotty = false)
 
-  def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] = {
+  def autoPlugins(
+      report: UpdateReport,
+      internalPluginClasspath: Seq[File],
+      isDotty: Boolean
+  ): Seq[String] = {
     val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
-    val plugins = sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath)
+    val plugins =
+      sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath, isDotty)
     plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
   }
 
@@ -3077,7 +3102,11 @@ object Classpaths {
   lazy val compilerPluginConfig = Seq(
     scalacOptions := {
       val options = scalacOptions.value
-      val newPlugins = autoPlugins(update.value, internalCompilerPluginClasspath.value.files)
+      val newPlugins = autoPlugins(
+        update.value,
+        internalCompilerPluginClasspath.value.files,
+        ScalaInstance.isDotty(scalaVersion.value)
+      )
       val existing = options.toSet
       if (autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
     }
