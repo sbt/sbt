@@ -246,9 +246,22 @@ object BuiltinCommands {
     } else "No project is currently loaded"
 
   def aboutPlugins(e: Extracted): String = {
-    def list(b: BuildUnit) = b.plugins.detected.autoPlugins.map(_.value.label)
-    val allPluginNames = e.structure.units.values.flatMap(u => list(u.unit)).toSeq.distinct
-    if (allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "")
+    def plugins(lbu: LoadedBuildUnit) =
+      lbu.unit.plugins.detected.autoPlugins
+        .map(_.value.label)
+
+    val allPluginNames =
+      e.structure.units.values
+        .flatMap(plugins)
+        .toList
+        .distinct
+        .sorted
+
+    if (allPluginNames.isEmpty)
+      ""
+    else
+      ("Available Plugins" +: allPluginNames)
+        .mkString("\n - ")
   }
 
   def aboutScala(s: State, e: Extracted): String = {
