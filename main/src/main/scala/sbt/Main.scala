@@ -105,13 +105,30 @@ object StandardMain {
   import scalacache.caffeine._
   private[sbt] lazy val cache: Cache[Any] = CaffeineCache[Any]
 
+  private[sbt] val shutdownHook = new Thread(new Runnable {
+    def run(): Unit = {
+      exchange.shutdown
+    }
+  })
+
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
     try {
       try {
+        val hooked = try {
+          Runtime.getRuntime.addShutdownHook(shutdownHook)
+          true
+        } catch {
+          case _: IllegalArgumentException => false
+        }
         try {
           MainLoop.runLogged(s)
-        } finally exchange.shutdown
+        } finally {
+          exchange.shutdown
+          if (hooked) {
+            Runtime.getRuntime.removeShutdownHook(shutdownHook)
+          }
+        }
       } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
     } finally TrapExit.uninstallManager(previous)
   }
