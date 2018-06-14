@@ -2,7 +2,12 @@ import Dependencies._
 import Path._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def commonSettings: Seq[Setting[_]] = Def settings (
+val _ = {
+  //https://github.com/sbt/contraband/issues/122
+  sys.props += ("line.separator" -> "\n")
+}
+
+def commonSettings: Seq[Setting[_]] = Def.settings(
   scalaVersion := scala212,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
@@ -31,7 +36,7 @@ def commonSettings: Seq[Setting[_]] = Def settings (
 val mimaSettings = Def settings (
   mimaPreviousArtifacts := Set(
     "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
-    "1.1.0", "1.1.1", "1.1.2", "1.1.3",
+    "1.1.0", "1.1.1", "1.1.2", "1.1.3", "1.1.4",
   ) map (version =>
     organization.value %% moduleName.value % version
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
@@ -54,7 +59,7 @@ lazy val lmRoot = (project in file("."))
         git.baseVersion := "1.2.0",
         version := {
           val v = version.value
-          if (v contains "SNAPSHOT") git.baseVersion.value
+          if (v contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
           else v
         }
       )),
@@ -215,7 +220,7 @@ lazy val lmIvy = (project in file("ivy"))
   .settings(
     commonSettings,
     name := "librarymanagement-ivy",
-    libraryDependencies ++= Seq(ivy, scalaTest % Test, scalaCheck % Test),
+    libraryDependencies ++= Seq(ivy),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",

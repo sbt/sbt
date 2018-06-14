@@ -85,8 +85,8 @@ private[sbt] case class SbtChainResolver(
       dd: DependencyDescriptor,
       data: ResolveData
   ): ResolvedModuleRevision = {
-    if (data.getOptions.getLog != LogOptions.LOG_QUIET)
-      Message.debug("Resolving " + dd.getDependencyRevisionId + " ...")
+    if (data.getOptions.getLog == LogOptions.LOG_DEFAULT)
+      Message.info("Resolving " + dd.getDependencyRevisionId + " ...")
     val gd = CustomSbtResolution.getDependency(dd, data)
     val mod = IvySbt.resetArtifactResolver(gd)
     mod
