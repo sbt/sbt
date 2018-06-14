@@ -2,10 +2,10 @@ package sbt.internal.librarymanagement
 
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.UpdateOptions
-import org.scalatest.Assertion
+import org.scalatest.{ Assertion, DiagrammedAssertions }
 import sbt.io.IO
 
-class OfflineModeSpec extends BaseIvySpecification {
+class OfflineModeSpec extends BaseIvySpecification with DiagrammedAssertions {
   private final def targetDir = Some(currentDependency)
   private final def onlineConf = makeUpdateConfiguration(false, targetDir)
   private final def offlineConf = makeUpdateConfiguration(true, targetDir)
@@ -37,18 +37,13 @@ class OfflineModeSpec extends BaseIvySpecification {
     assert(onlineResolution.isRight)
     assert(onlineResolution.right.exists(report => report.stats.resolveTime > 0))
 
-    // Compute an estimate to ensure that the second resolution does indeed use the cache
     val originalResolveTime = onlineResolution.right.get.stats.resolveTime
-    val estimatedCachedTime = originalResolveTime * 0.3
-
     val offlineResolution =
       IvyActions.updateEither(toResolve, offlineConf, warningConf, log)
-    assert(offlineResolution.isRight, s"Offline resolution has failed with $offlineResolution.")
+    assert(offlineResolution.isRight)
 
     val resolveTime = offlineResolution.right.get.stats.resolveTime
-    // Only check the estimate for the non cached resolution, otherwise resolution is cached
-    assert(resolveTime <= estimatedCachedTime,
-           "Offline resolution took more than 15% of normal resolution's running time.")
+    assert(originalResolveTime > resolveTime)
   }
 
   "Offline update configuration" should "reuse the caches when offline is enabled" in {
