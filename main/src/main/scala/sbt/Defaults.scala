@@ -1861,7 +1861,7 @@ object Classpaths {
         licenses :== Nil,
         developers :== Nil,
         scmInfo :== None,
-        offline :== false,
+        offline :== java.lang.Boolean.getBoolean("sbt.offline"),
         defaultConfiguration :== Some(Configurations.Compile),
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
