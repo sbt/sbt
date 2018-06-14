@@ -22,7 +22,7 @@ final class StringEvent private (
   override def toString: String = {
     "StringEvent(" + level + ", " + message + ", " + channelName + ", " + execId + ")"
   }
-  protected[this] def copy(level: String = level, message: String = message, channelName: Option[String] = channelName, execId: Option[String] = execId): StringEvent = {
+  private[this] def copy(level: String = level, message: String = message, channelName: Option[String] = channelName, execId: Option[String] = execId): StringEvent = {
     new StringEvent(level, message, channelName, execId)
   }
   def withLevel(level: String): StringEvent = {
