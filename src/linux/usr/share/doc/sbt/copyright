@@ -10,7 +10,7 @@ https://github.com/sbt/sbt-launcher-package
 
 The entire code base may be distributed under the terms of the BSD license, which appears immediately below.
 
-Copyright (c) 2011 - 2017, Paul Phillips, Lightbend, and other contributors.
+Copyright (c) 2011 - 2018, Paul Phillips, Lightbend, and other contributors.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

@@ -13,6 +13,7 @@ declare -a sbt_commands
 declare java_cmd=java
 declare java_version
 declare init_sbt_version=_to_be_replaced
+declare sbt_default_mem=1024
 
 declare SCRIPT=$0
 while [ -h "$SCRIPT" ] ; do
@@ -101,11 +102,14 @@ get_mem_opts () {
   else
     # a ham-fisted attempt to move some memory settings in concert
     # so they need not be messed around with individually.
-    local mem=${1:-1024}
+    local mem=${1:-$sbt_default_mem}
     local codecache=$(( $mem / 8 ))
     (( $codecache > 128 )) || codecache=128
     (( $codecache < 512 )) || codecache=512
     local class_metadata_size=$(( $codecache * 2 ))
+    if [[ -z $java_version ]]; then
+        java_version=$(jdk_version)
+    fi
     local class_metadata_opt=$((( $java_version < 8 )) && echo "MaxPermSize" || echo "MaxMetaspaceSize")
 
     local arg_xms=$([[ "${java_args[@]}" == *-Xms* ]] && echo "" || echo "-Xms${mem}m")
