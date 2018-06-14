@@ -22,7 +22,7 @@ final class TraceEvent private (
   override def toString: String = {
     "TraceEvent(" + level + ", " + message + ", " + channelName + ", " + execId + ")"
   }
-  protected[this] def copy(level: String = level, message: Throwable = message, channelName: Option[String] = channelName, execId: Option[String] = execId): TraceEvent = {
+  private[this] def copy(level: String = level, message: Throwable = message, channelName: Option[String] = channelName, execId: Option[String] = execId): TraceEvent = {
     new TraceEvent(level, message, channelName, execId)
   }
   def withLevel(level: String): TraceEvent = {
