@@ -214,7 +214,7 @@ object GigahorseUrlHandler {
 
   private val EmptyBuffer: Array[Byte] = new Array[Byte](0)
 
-  lazy val http: HttpClient = Gigahorse.http(Gigahorse.config)
+  lazy val http: HttpClient = Gigahorse.http(gigahorse.Config())
 
   private lazy val okHttpClient: OkHttpClient = {
     http
