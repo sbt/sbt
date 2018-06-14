@@ -115,10 +115,20 @@ object StandardMain {
     val previous = TrapExit.installManager()
     try {
       try {
-        try {
+        val hooked = try {
           Runtime.getRuntime.addShutdownHook(shutdownHook)
+          true
+        } catch {
+          case _: IllegalArgumentException => false
+        }
+        try {
           MainLoop.runLogged(s)
-        } finally exchange.shutdown
+        } finally {
+          exchange.shutdown
+          if (hooked) {
+            Runtime.getRuntime.removeShutdownHook(shutdownHook)
+          }
+        }
       } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
     } finally TrapExit.uninstallManager(previous)
   }
