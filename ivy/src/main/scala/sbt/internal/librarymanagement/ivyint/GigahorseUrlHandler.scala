@@ -198,8 +198,8 @@ class GigahorseUrlHandler extends AbstractURLHandler {
 
 object GigahorseUrlHandler {
   import gigahorse.HttpClient
-  import gigahorse.support.okhttp.Gigahorse
   import okhttp3.{ OkHttpClient, JavaNetAuthenticator }
+  import sbt.librarymanagement.Http
 
   // This is requires to access the constructor of URLInfo.
   private[sbt] class SbtUrlInfo(available: Boolean,
@@ -214,7 +214,7 @@ object GigahorseUrlHandler {
 
   private val EmptyBuffer: Array[Byte] = new Array[Byte](0)
 
-  lazy val http: HttpClient = Gigahorse.http(gigahorse.Config())
+  lazy val http: HttpClient = Http.http
 
   private lazy val okHttpClient: OkHttpClient = {
     http
