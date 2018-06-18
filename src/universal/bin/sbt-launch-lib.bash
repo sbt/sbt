@@ -253,6 +253,24 @@ checkJava() {
   fi
 }
 
+convertSbtOpts () {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -no-colors) converted_opts="${converted_opts} -Dsbt.log.noformat=true" && shift ;;
+       -no-share) converted_opts="${converted_opts} $noshare_opts" && shift ;;
+      -no-global) converted_opts="${converted_opts} -Dsbt.global.base=$(pwd)/project/.sbtboot" && shift ;;
+       -sbt-boot) require_arg path "$1" "$2" && converted_opts="${converted_opts} -Dsbt.boot.directory=$2" && shift 2 ;;
+        -sbt-dir) require_arg path "$1" "$2" && converted_opts="${converted_opts} -Dsbt.global.base=$2" && shift 2 ;;
+      -debug-inc) converted_opts="${converted_opts} -Dxsbt.inc.debug=true" && shift ;;
+          -batch) exec </dev/null && shift ;;
+
+     -sbt-create) sbt_create=true && shift ;;
+
+               *) addResidual "$1" && shift ;;
+    esac
+  done
+}
+
 copyRt() {
   local at_least_9="$(expr $java_version ">=" 9)"
   if [[ "$at_least_9" == "1" ]]; then
@@ -293,6 +311,14 @@ run() {
 
   # TODO - java check should be configurable...
   checkJava "6"
+
+  # handle SBT_OPTS options
+  if [ -n "$SBT_OPTS" ]; then
+    converted_opts=""
+    arrayed_sbt_opts=($SBT_OPTS)
+    convertSbtOpts ${arrayed_sbt_opts[@]}
+    SBT_OPTS=$converted_opts
+  fi
 
   # Java 9 support
   copyRt
