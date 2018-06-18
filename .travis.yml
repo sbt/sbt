@@ -50,7 +50,7 @@ notifications:
 
 # Undo _JAVA_OPTIONS environment variable
 before_script:
-  - _JAVA_OPTIONS=
+  - unset _JAVA_OPTIONS
 
 script:
   # It doesn't need that much memory because compile and run are forked

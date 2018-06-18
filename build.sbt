@@ -726,20 +726,12 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
 )
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(
-  inProjects(mainSettingsProj, mainProj, actionsProj, runProj, stdTaskProj),
+  inAnyProject -- inProjects(sbtRoot, sbtProj),
   inConfigurations(Test)
 )
 lazy val otherUnitTests = taskKey[Unit]("Unit test other projects")
 lazy val otherProjects: ScopeFilter = ScopeFilter(
   inProjects(
-    testingProj,
-    testAgentProj,
-    taskProj,
-    scriptedSbtProj,
-    scriptedPluginProj,
-    commandProj,
-    mainSettingsProj,
-    mainProj,
     sbtProj
   ),
   inConfigurations(Test)
