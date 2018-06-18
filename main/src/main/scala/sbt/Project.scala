@@ -270,7 +270,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
   def disablePlugins(ps: AutoPlugin*): Project =
     setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
 
-  private[this] def setPlugins(ns: Plugins): Project = copy2(plugins = ns)
+  private[sbt] def setPlugins(ns: Plugins): Project = copy2(plugins = ns)
 
   /** Definitively set the [[AutoPlugin]]s for this project. */
   private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = copy2(autoPlugins = autos)
