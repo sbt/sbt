@@ -20,6 +20,13 @@ object BasicKeys {
     "The location where command line history is persisted.",
     40
   )
+
+  val extraMetaSbtFiles = AttributeKey[Seq[File]](
+    "extraMetaSbtFile",
+    "Additional plugin.sbt files.",
+    10000
+  )
+
   val shellPrompt = AttributeKey[State => String](
     "shell-prompt",
     "The function that constructs the command prompt from the current build state.",

@@ -66,14 +66,41 @@ object BasicCommands {
   private[this] def levelParser: Parser[String] =
     Iterator(Level.Debug, Level.Info, Level.Warn, Level.Error) map (l => token(l.toString)) reduce (_ | _)
 
+  private[this] def addPluginSbtFileParser: Parser[File] = {
+    token(AddPluginSbtFileCommand) ~> (":" | "=" | Space) ~> (StringBasic).examples(
+      "/some/extra.sbt"
+    ) map {
+      new File(_)
+    }
+  }
+
+  private[this] def addPluginSbtFileStringParser: Parser[String] = {
+    token(
+      token(AddPluginSbtFileCommand) ~ (":" | "=" | Space) ~ (StringBasic)
+        .examples("/some/extra.sbt") map {
+        case s1 ~ s2 ~ s3 => s1 + s2 + s3
+      }
+    )
+  }
+
   private[this] def earlyParser: State => Parser[String] = (s: State) => {
     val p1 = token(EarlyCommand + "(") flatMap (_ => otherCommandParser(s) <~ token(")"))
-    val p2 = token("-") flatMap (_ => levelParser)
-    val p3 = token("--") flatMap (_ => levelParser)
+    val p2 = (token("-") | token("--")) flatMap (_ => levelParser)
+    val p3 = (token("-") | token("--")) flatMap (_ => addPluginSbtFileStringParser)
     p1 | p2 | p3
   }
 
   private[this] def earlyHelp = Help(EarlyCommand, EarlyCommandBrief, EarlyCommandDetailed)
+
+  /**
+   * Adds additional *.sbt to the plugin build.
+   * This must be combined with early command as: --addPluginSbtFile=/tmp/extra.sbt
+   */
+  def addPluginSbtFile: Command = Command.arb(_ => addPluginSbtFileParser, addPluginSbtFileHelp) {
+    (s, extraSbtFile) =>
+      val extraFiles = s.get(BasicKeys.extraMetaSbtFiles).toList.flatten
+      s.put(BasicKeys.extraMetaSbtFiles, extraFiles :+ extraSbtFile)
+  }
 
   def help: Command = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
 

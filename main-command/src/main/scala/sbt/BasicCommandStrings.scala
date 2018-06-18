@@ -83,7 +83,8 @@ $HelpCommand <regular expression>
       List("-" + elem, "--" + elem)
     }
     (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
-    (levelOptions contains s)
+    (levelOptions contains s) ||
+    (s.startsWith("-" + AddPluginSbtFileCommand) || s.startsWith("--" + AddPluginSbtFileCommand))
   }
 
   val EarlyCommand = "early"
@@ -95,6 +96,14 @@ $HelpCommand <regular expression>
 	Schedules an early command, which will be run before other commands on the command line.
 	The order is preserved between all early commands, so `sbt "early(a)" "early(b)"` executes `a` and `b` in order.
 """
+
+  def addPluginSbtFileHelp = {
+    val brief =
+      (s"--$AddPluginSbtFileCommand=<file>", "Adds the given *.sbt file to the plugin build.")
+    Help(brief)
+  }
+
+  val AddPluginSbtFileCommand = "addPluginSbtFile"
 
   def ReadCommand = "<"
   def ReadFiles = " file1 file2 ..."
