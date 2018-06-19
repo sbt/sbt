@@ -505,8 +505,8 @@ object BuiltinCommands {
     SettingCompletions.setThis(extracted, settings, arg)
 
   def inspect: Command = Command(InspectCommand, inspectBrief, inspectDetailed)(Inspect.parser) {
-    case (s, (option, sk)) =>
-      s.log.info(Inspect.output(s, option, sk))
+    case (s, f) =>
+      s.log.info(f())
       s
   }
 

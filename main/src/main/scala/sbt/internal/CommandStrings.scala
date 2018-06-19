@@ -120,10 +120,11 @@ $LastCommand <key>
       "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies."
     )
   val inspectDetailed = s"""
-    |$InspectCommand <key>
+    |$InspectCommand [-] <key>
     |
     |	For a plain setting, the value bound to the key argument is displayed using its toString method.
-    |	Otherwise, the type of task ("Task" or "Input task") is displayed.
+    |	For an alias, the command bound to the alias is displayed.
+    |	Otherwise, the type of the key ("Task" or "Input task") is displayed.
     |
     |	"Dependencies" shows the settings that this setting depends on.
     |
