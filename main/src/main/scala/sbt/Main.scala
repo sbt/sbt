@@ -216,6 +216,7 @@ object BuiltinCommands {
       setLogLevel,
       plugin,
       plugins,
+      addPluginSbtFile,
       writeSbtVersion,
       notifyUsersAboutShell,
       shell,

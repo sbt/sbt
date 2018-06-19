@@ -142,6 +142,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
           loadedPlugins,
           injectSettings,
           fileToLoadedSbtFileMap,
+          Nil,
           state.log
         )
       }
