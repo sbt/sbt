@@ -133,8 +133,6 @@ sbt uses two branches for development:
 - Development branch: `1.x` (this is also called "master")
 - Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
 
-If you're working on a bug fix, it's a good idea to start with the `1.$MINOR.x` branch, since we can always safely merge from stable to `1.x`, but not other way around.
-
 ### Instruction to build all modules from source
 
 1. Install the current stable binary release of sbt (see [Setup]), which will be used to build sbt from source.
@@ -144,7 +142,7 @@ If you're working on a bug fix, it's a good idea to start with the `1.$MINOR.x` 
    $ mkdir sbt-modules
    $ cd sbt-modules
    $ for i in sbt io util librarymanagement zinc; do \
-     git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b 1.1.x origin/1.1.x)
+     git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b 1.x origin/1.x)
    done
    $ cd sbt
    $ ./sbt-allsources.sh
