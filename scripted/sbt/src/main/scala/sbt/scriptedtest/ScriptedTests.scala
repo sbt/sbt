@@ -8,7 +8,7 @@
 package sbt
 package scriptedtest
 
-import java.io.File
+import java.io.{ File, FileNotFoundException }
 import java.net.SocketException
 import java.util.Properties
 import java.util.concurrent.ForkJoinPool
@@ -17,7 +17,6 @@ import scala.collection.GenSeq
 import scala.collection.mutable
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.control.NonFatal
-
 import sbt.internal.scripted._
 import sbt.internal.io.Resources
 import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
@@ -386,9 +385,15 @@ final class ScriptedTests(
     if (bufferLog) log.record()
 
     val (file, pending) = {
-      val normal = new File(testDirectory, ScriptFilename)
-      val pending = new File(testDirectory, PendingScriptFilename)
-      if (pending.isFile) (pending, true) else (normal, false)
+      val normal = (new File(testDirectory, ScriptFilename), false)
+      val normalScript = (new File(testDirectory, s"$ScriptFilename.script"), false)
+      val pending = (new File(testDirectory, PendingScriptFilename), true)
+      val pendingScript = (new File(testDirectory, s"$PendingScriptFilename.script"), true)
+
+      List(pending, pendingScript, normal, normalScript).find(_._1.isFile) match {
+        case Some(script) => script
+        case None         => throw new FileNotFoundException("no test scripts found")
+      }
     }
 
     val pendingMark = if (pending) PendingLabel else ""

@@ -120,7 +120,8 @@ object ScriptedPlugin extends AutoPlugin {
   private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
     import DefaultParsers._
 
-    val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
+    val scriptedFiles
+      : NameFilter = ("test": NameFilter) | "test.script" | "pending" | "pending.script"
     val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
       (f: File) =>
         val p = f.getParentFile
