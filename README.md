@@ -183,7 +183,7 @@ That will fetch and use metadata.
 
 Check for errors in
 ```scala
-val errors: Seq[((Module, String), Seq[String])] = resolution.metadataErrors
+val errors: Seq[((Module, String), Seq[String])] = resolution.errors
 ```
 These would mean that the resolution wasn't able to get metadata about some dependencies.
 
