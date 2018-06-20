@@ -8,20 +8,19 @@ object Deps {
   def quasiQuotes = "org.scalamacros" %% "quasiquotes" % "2.1.0"
   def fastParse = "com.lihaoyi" %% "fastparse" % SharedVersions.fastParse
   def jsoup = "org.jsoup" % "jsoup" % "1.10.3"
-  def scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
+  def scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.1.0"
   def scalazConcurrent = "org.scalaz" %% "scalaz-concurrent" % SharedVersions.scalaz
   def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M3"
   def okhttpUrlConnection = "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M8"
-  def jackson = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4"
-  def scalatest = "org.scalatest" %% "scalatest" % "3.0.0"
+  def scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
   def junit = "junit" % "junit" % "4.12"
-  def dockerClient = "com.spotify" % "docker-client" % "8.11.1"
+  def dockerClient = "com.spotify" % "docker-client" % "8.11.6"
 
   def sbtPgp = Def.setting {
     val sbtv = CrossVersion.binarySbtVersion(sbtVersion.in(pluginCrossBuild).value)
     val sv = scalaBinaryVersion.value
-    val ver = "1.1.0"
+    val ver = "1.1.1"
     sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)
   }
 

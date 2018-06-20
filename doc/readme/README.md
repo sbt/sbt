@@ -275,10 +275,6 @@ The SBT plugin has been tested only with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12
 Once enabled, the `update`, `updateClassifiers`, and `updateSbtClassifiers` commands are taken care of by coursier. These
 provide more output about what's going on than their default implementations do.
 
-```tut:invisible
-// TODO Change cache policy, sandboxing, parallel downloads, limitations
-```
-
 ### Command-line
 
 Download and run its launcher with
@@ -430,10 +426,6 @@ $ ./coursier fetch org.apache.avro:avro:1.7.4,classifier=tests --artifact-type t
 Fetch and generate a machine readable json report. [Json Report Documentation](/doc/cli.md)
 ```
 $ ./coursier fetch org.apache.avro:avro:1.7.4 --json-output-file report.json
-```
-
-```tut:invisible
-// TODO options: repositories, sources/javadoc, attributes
 ```
 
 #### bootstrap

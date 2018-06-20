@@ -6,7 +6,7 @@ jar_library(
         scala_jar(
             org = "org.scala-lang.modules",
             name = "scala-xml",
-            rev = "1.0.6",
+            rev = "1.1.0",
         ),
     ],
 )
@@ -39,7 +39,7 @@ jar_library(
         scala_jar(
             org = "org.scalaz",
             name = "scalaz-concurrent",
-            rev = "7.2.16",
+            rev = "7.2.24",
         ),
     ],
 )
@@ -50,7 +50,7 @@ jar_library(
         scala_jar(
             org = "org.scalaz",
             name = "scalaz-core",
-            rev = "7.2.16",
+            rev = "7.2.24",
         ),
     ],
 )
@@ -82,7 +82,7 @@ jar_library(
     jars = [
         jar(
             org = "org.scala-js",
-            name = "scalajs-compiler_2.11.8",
+            name = "scalajs-compiler_2.11.12",
             rev = SCALAJS_REV,
         ),
     ],
@@ -170,7 +170,7 @@ jar_library(
         scala_jar(
             org = "com.lihaoyi",
             name = "utest",
-            rev = "0.5.4",
+            rev = "0.6.4",
         ),
     ],
 )
@@ -189,6 +189,6 @@ jar_library(
 jar_library(
     name = "scalatest",
     jars = [
-        scala_jar("org.scalatest", "scalatest", "3.0.0"),
+        scala_jar("org.scalatest", "scalatest", "3.0.5"),
     ],
 )

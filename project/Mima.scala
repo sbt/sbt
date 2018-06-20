@@ -4,7 +4,7 @@ import sbt.Keys._
 
 import com.typesafe.tools.mima.plugin.MimaKeys._
 
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 object Mima {
 

@@ -3,7 +3,9 @@ import Aliases._
 import Settings._
 import Publish._
 
-lazy val core = crossProject
+import sbtcrossproject.CrossPlugin.autoImport.crossProject
+
+lazy val core = crossProject(JSPlatform, JVMPlatform)
   .disablePlugins(ScriptedPlugin)
   .jvmConfigure(_.enablePlugins(ShadingPlugin))
   .jvmSettings(
@@ -37,7 +39,7 @@ lazy val core = crossProject
 lazy val coreJvm = core.jvm
 lazy val coreJs = core.js
 
-lazy val tests = crossProject
+lazy val tests = crossProject(JSPlatform, JVMPlatform)
   .disablePlugins(ScriptedPlugin)
   .dependsOn(core, cache % "test", scalaz)
   .jsSettings(
@@ -83,7 +85,7 @@ lazy val paths = project
     addDirectoriesSources
   )
 
-lazy val cache = crossProject
+lazy val cache = crossProject(JSPlatform, JVMPlatform)
   .disablePlugins(ScriptedPlugin)
   .dependsOn(core)
   .jvmSettings(
@@ -102,7 +104,7 @@ lazy val cache = crossProject
 lazy val cacheJvm = cache.jvm
 lazy val cacheJs = cache.js
 
-lazy val scalaz = crossProject
+lazy val scalaz = crossProject(JSPlatform, JVMPlatform)
   .disablePlugins(ScriptedPlugin)
   .dependsOn(cache)
   .jvmSettings(
