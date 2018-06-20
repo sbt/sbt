@@ -66,6 +66,7 @@ import sbt.util._
 import sbt.util.CacheImplicits._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
+import scala.util.{ Success, Failure }
 import scala.xml.NodeSeq
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sjsonnew.{ IsoLList, JsonFormat, LList, LNil, :*: }
@@ -1160,7 +1161,12 @@ object Defaults extends BuildCommon {
           if (copyClasspath.value)
             service.copyClasspath(products.value, classpath.value, workingDir)
           else classpath.value
-        scalaRun.value.run(mainClass, data(cp), args, logger).get
+        scalaRun.value.run(mainClass, data(cp), args, logger) match {
+          case Success(_) => ()
+          case Failure(e) =>
+            e.setStackTrace(Array.empty)
+            throw e
+        }
       }
     }
   }
@@ -1182,7 +1188,12 @@ object Defaults extends BuildCommon {
           if (copyClasspath.value)
             service.copyClasspath(products.value, classpath.value, workingDir)
           else classpath.value
-        scalaRun.value.run(mainClass, data(cp), parser.parsed, logger).get
+        scalaRun.value.run(mainClass, data(cp), parser.parsed, logger) match {
+          case Success(_) => ()
+          case Failure(e) =>
+            e.setStackTrace(Array.empty)
+            throw e
+        }
       }
     }
   }
