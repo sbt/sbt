@@ -559,6 +559,8 @@ object Defaults extends BuildCommon {
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
     runMain := foregroundRunMainTask.evaluated,
     run := foregroundRunTask.evaluated,
+    fgRun := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
+    fgRunMain := runMainTask(fullClasspath, runner in run).evaluated,
     copyResources := copyResourcesTask.value,
     // note that we use the same runner and mainClass as plain run
     mainBgRunMainTaskForConfig(This),

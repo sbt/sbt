@@ -286,7 +286,9 @@ object Keys {
   val bgStop = inputKey[Unit]("Stop a background job by providing its ID.")
   val bgWaitFor = inputKey[Unit]("Wait for a background job to finish by providing its ID.")
   val bgRun = inputKey[JobHandle]("Start an application's default main class as a background job")
+  val fgRun = inputKey[Unit]("Start an application's default main class as a foreground job")
   val bgRunMain = inputKey[JobHandle]("Start a provided main class as a background job")
+  val fgRunMain = inputKey[Unit]("Start a provided main class as a foreground job")
   val bgCopyClasspath = settingKey[Boolean]("Copies classpath on bgRun to prevent conflict.")
 
   // Test Keys
