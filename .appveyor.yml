@@ -19,7 +19,7 @@ install:
   - SET PATH=C:\sbt\sbt\bin;%PATH%
   - SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Dfile.encoding=UTF8
 test_script:
-  - sbt "scripted actions/*" "testOnly sbt.ServerSpec"
+  - sbt "scripted actions/*1of2" "testOnly sbt.ServerSpec"
 
 cache:
   - '%USERPROFILE%\.ivy2\cache'
