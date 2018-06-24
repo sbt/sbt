@@ -10,14 +10,19 @@ package internal
 package client
 
 import java.io.IOException
-import java.net.{ URI, Socket, InetAddress }
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
+import scala.util.{ Success, Failure }
 import sbt.protocol._
+import sbt.internal.protocol._
+import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
 import sbt.internal.util.{ JLine, StringEvent, ConsoleAppender }
 import sbt.util.Level
+import sbt.io.syntax._
+import sbt.io.IO
+import sjsonnew.support.scalajson.unsafe.Converter
 
 class NetworkClient(arguments: List[String]) { self =>
   private val channelName = new AtomicReference("_")
@@ -28,64 +33,121 @@ class NetworkClient(arguments: List[String]) { self =>
 
   private val console = ConsoleAppender("thin1")
 
-  def usageError = sys.error("Expecting: sbt client 127.0.0.1:port")
   val connection = init()
+
   start()
 
+  // Open server connection based on the portfile
   def init(): ServerConnection = {
-    val u = arguments match {
-      case List(x) =>
-        if (x contains "://") new URI(x)
-        else new URI("tcp://" + x)
-      case _ => usageError
-    }
-    val host = Option(u.getHost) match {
-      case None    => usageError
-      case Some(x) => x
-    }
-    val port = Option(u.getPort) match {
-      case None               => usageError
-      case Some(x) if x == -1 => usageError
-      case Some(x)            => x
-    }
-    println(s"client on port $port")
-    val socket = new Socket(InetAddress.getByName(host), port)
-    new ServerConnection(socket) {
-      override def onEvent(event: EventMessage): Unit = self.onEvent(event)
-      override def onLogEntry(event: StringEvent): Unit = self.onLogEntry(event)
+    val portfile = (file("project") / "target" / "active.json").getAbsoluteFile
+    if (!portfile.exists) sys.error("server does not seem to be running.")
+    val (sk, tkn) = ClientSocket.socket(portfile)
+    val conn = new ServerConnection(sk) {
+      override def onNotification(msg: JsonRpcNotificationMessage): Unit = self.onNotification(msg)
+      override def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
+      override def onResponse(msg: JsonRpcResponseMessage): Unit = self.onResponse(msg)
       override def onShutdown(): Unit = {
         running.set(false)
       }
     }
+    // initiate handshake
+    val execId = UUID.randomUUID.toString
+    val initCommand = InitCommand(tkn, Option(execId))
+    conn.sendString(Serialization.serializeCommandAsJsonMessage(initCommand))
+    conn
   }
 
-  def onLogEntry(event: StringEvent): Unit = {
-    val level = event.level match {
-      case "debug" => Level.Debug
-      case "info"  => Level.Info
-      case "warn"  => Level.Warn
-      case "error" => Level.Error
-    }
-    console.appendLog(level, event.message)
-  }
-
-  def onEvent(event: EventMessage): Unit =
-    event match {
-      case e: ChannelAcceptedEvent =>
-        channelName.set(e.channelName)
-        println(event)
-      case e: ExecStatusEvent =>
-        status.set(e.status)
-        // println(event)
-        e.execId foreach { execId =>
-          if (e.status == "Done" && (pendingExecIds contains execId)) {
-            lock.synchronized {
-              pendingExecIds -= execId
-            }
+  /** Called on the response for a returning message. */
+  def onReturningReponse(msg: JsonRpcResponseMessage): Unit = {
+    def printResponse(): Unit = {
+      msg.result match {
+        case Some(result) =>
+          // ignore result JSON
+          console.success("completed")
+        case _ =>
+          msg.error match {
+            case Some(err) =>
+              // ignore err details
+              console.appendLog(Level.Error, "completed")
+            case _ => // ignore
           }
-        }
-      case e => println(e.toString)
+      }
     }
+    printResponse()
+  }
+
+  def onResponse(msg: JsonRpcResponseMessage): Unit = {
+    msg.id foreach {
+      case execId if pendingExecIds contains execId =>
+        onReturningReponse(msg)
+        lock.synchronized {
+          pendingExecIds -= execId
+        }
+      case _ =>
+    }
+  }
+
+  def onNotification(msg: JsonRpcNotificationMessage): Unit = {
+    def splitToMessage: Vector[(Level.Value, String)] =
+      (msg.method, msg.params) match {
+        case ("window/logMessage", Some(json)) =>
+          import sbt.internal.langserver.codec.JsonProtocol._
+          Converter.fromJson[LogMessageParams](json) match {
+            case Success(params) => splitLogMessage(params)
+            case Failure(e)      => Vector()
+          }
+        case ("textDocument/publishDiagnostics", Some(json)) =>
+          import sbt.internal.langserver.codec.JsonProtocol._
+          Converter.fromJson[PublishDiagnosticsParams](json) match {
+            case Success(params) => splitDiagnostics(params)
+            case Failure(e)      => Vector()
+          }
+        case _ =>
+          Vector(
+            (
+              Level.Warn,
+              s"unknown event: ${msg.method} " + Serialization.compactPrintJsonOpt(msg.params)
+            )
+          )
+      }
+    splitToMessage foreach {
+      case (level, msg) => console.appendLog(level, msg)
+    }
+  }
+
+  def splitLogMessage(params: LogMessageParams): Vector[(Level.Value, String)] = {
+    val level = messageTypeToLevel(params.`type`)
+    Vector((level, params.message))
+  }
+
+  def messageTypeToLevel(severity: Long): Level.Value = {
+    severity match {
+      case MessageType.Error   => Level.Error
+      case MessageType.Warning => Level.Warn
+      case MessageType.Info    => Level.Info
+      case MessageType.Log     => Level.Debug
+    }
+  }
+
+  def splitDiagnostics(params: PublishDiagnosticsParams): Vector[(Level.Value, String)] = {
+    val uri = new URI(params.uri)
+    val f = IO.toFile(uri)
+
+    params.diagnostics map { d =>
+      val level = d.severity match {
+        case Some(severity) => messageTypeToLevel(severity)
+        case _              => Level.Error
+      }
+      val line = d.range.start.line + 1
+      val offset = d.range.start.character + 1
+      val msg = s"$f:$line:$offset: ${d.message}"
+      (level, msg)
+    }
+  }
+
+  def onRequest(msg: JsonRpcRequestMessage): Unit = {
+    // ignore
+  }
 
   def start(): Unit = {
     val reader = JLine.simple(None, JLine.HandleCONT, injectThreadSleep = true)
@@ -93,12 +155,8 @@ class NetworkClient(arguments: List[String]) { self =>
       reader.readLine("> ", None) match {
         case Some("exit") =>
           running.set(false)
-        case Some(s) =>
-          val execId = UUID.randomUUID.toString
-          publishCommand(ExecCommand(s, execId))
-          lock.synchronized {
-            pendingExecIds += execId
-          }
+        case Some(s) if s.trim.nonEmpty =>
+          val execId = sendExecCommand(s)
           while (pendingExecIds contains execId) {
             Thread.sleep(100)
           }
@@ -107,10 +165,19 @@ class NetworkClient(arguments: List[String]) { self =>
     }
   }
 
-  def publishCommand(command: CommandMessage): Unit = {
-    val bytes = Serialization.serializeCommand(command)
+  def sendExecCommand(commandLine: String): String = {
+    val execId = UUID.randomUUID.toString
+    sendCommand(ExecCommand(commandLine, execId))
+    lock.synchronized {
+      pendingExecIds += execId
+    }
+    execId
+  }
+
+  def sendCommand(command: CommandMessage): Unit = {
     try {
-      connection.publish(bytes)
+      val s = Serialization.serializeCommandAsJsonMessage(command)
+      connection.sendString(s)
     } catch {
       case _: IOException =>
       // log.debug(e.getMessage)
