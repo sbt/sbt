@@ -1,0 +1,20 @@
+dist: trusty
+group: stable
+
+language: scala
+jdk: oraclejdk8
+
+script: sbt scripted
+
+# Undo _JAVA_OPTIONS environment variable
+before_script:
+  - unset _JAVA_OPTIONS
+
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt
+
+before_cache:
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt        -name "*.lock"               -delete
