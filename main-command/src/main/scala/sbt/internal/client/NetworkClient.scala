@@ -117,7 +117,8 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
 
   def splitLogMessage(params: LogMessageParams): Vector[(Level.Value, String)] = {
     val level = messageTypeToLevel(params.`type`)
-    Vector((level, params.message))
+    if (level == Level.Debug) Vector()
+    else Vector((level, params.message))
   }
 
   def messageTypeToLevel(severity: Long): Level.Value = {
