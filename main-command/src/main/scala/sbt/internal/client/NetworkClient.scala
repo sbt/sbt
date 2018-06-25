@@ -18,7 +18,7 @@ import scala.util.{ Success, Failure }
 import sbt.protocol._
 import sbt.internal.protocol._
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
-import sbt.internal.util.{ JLine, StringEvent, ConsoleAppender }
+import sbt.internal.util.{ JLine, ConsoleAppender }
 import sbt.util.Level
 import sbt.io.syntax._
 import sbt.io.IO
@@ -33,7 +33,7 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
 
   private val console = ConsoleAppender("thin1")
 
-  val connection = init()
+  lazy val connection = init()
 
   start()
 
@@ -151,9 +151,31 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
   }
 
   def start(): Unit = {
+    console.appendLog(Level.Info, "entering *experimental* thin client - BEEP WHIRR")
+    val userCommands = arguments filterNot { cmd =>
+      cmd.startsWith("-")
+    }
+    if (userCommands.isEmpty) shell()
+    else batchExecute(userCommands)
+  }
+
+  def batchExecute(userCommands: List[String]): Unit = {
+    userCommands foreach { cmd =>
+      println("> " + cmd)
+      val execId = sendExecCommand(cmd)
+      while (pendingExecIds contains execId) {
+        Thread.sleep(100)
+      }
+    }
+  }
+
+  def shell(): Unit = {
     val reader = JLine.simple(None, JLine.HandleCONT, injectThreadSleep = true)
     while (running.get) {
       reader.readLine("> ", None) match {
+        case Some("shutdown") =>
+          // `sbt -client shutdown` shuts down the server
+          sendExecCommand("exit")
         case Some("exit") =>
           running.set(false)
         case Some(s) if s.trim.nonEmpty =>
