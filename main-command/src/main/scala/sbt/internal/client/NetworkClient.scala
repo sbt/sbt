@@ -24,7 +24,7 @@ import sbt.io.syntax._
 import sbt.io.IO
 import sjsonnew.support.scalajson.unsafe.Converter
 
-class NetworkClient(arguments: List[String]) { self =>
+class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
   private val channelName = new AtomicReference("_")
   private val status = new AtomicReference("Ready")
   private val lock: AnyRef = new AnyRef {}
@@ -39,7 +39,7 @@ class NetworkClient(arguments: List[String]) { self =>
 
   // Open server connection based on the portfile
   def init(): ServerConnection = {
-    val portfile = (file("project") / "target" / "active.json").getAbsoluteFile
+    val portfile = baseDirectory / "project" / "target" / "active.json"
     if (!portfile.exists) sys.error("server does not seem to be running.")
     val (sk, tkn) = ClientSocket.socket(portfile)
     val conn = new ServerConnection(sk) {
@@ -190,9 +190,9 @@ class NetworkClient(arguments: List[String]) { self =>
 }
 
 object NetworkClient {
-  def run(arguments: List[String]): Unit =
+  def run(baseDirectory: File, arguments: List[String]): Unit =
     try {
-      new NetworkClient(arguments)
+      new NetworkClient(baseDirectory, arguments)
       ()
     } catch {
       case NonFatal(e) => println(e.getMessage)
