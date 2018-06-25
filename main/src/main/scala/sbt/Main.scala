@@ -78,7 +78,7 @@ final class xMain extends xsbti.AppMain {
       val args = userCommands.toList filterNot { cmd =>
         (cmd == DashClient) || (cmd == DashDashClient)
       }
-      NetworkClient.run(configuration.baseDirectory, args)
+      NetworkClient.run(configuration, args)
       Exit(0)
     } else {
       val state = StandardMain.initialState(

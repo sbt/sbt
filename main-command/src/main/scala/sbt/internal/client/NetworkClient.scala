@@ -9,12 +9,13 @@ package sbt
 package internal
 package client
 
-import java.io.IOException
+import java.io.{ File, IOException }
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 import scala.util.{ Success, Failure }
+import scala.sys.process.{ BasicIO, Process, ProcessLogger }
 import sbt.protocol._
 import sbt.internal.protocol._
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
@@ -24,7 +25,7 @@ import sbt.io.syntax._
 import sbt.io.IO
 import sjsonnew.support.scalajson.unsafe.Converter
 
-class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
+class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[String]) { self =>
   private val channelName = new AtomicReference("_")
   private val status = new AtomicReference("Ready")
   private val lock: AnyRef = new AnyRef {}
@@ -32,6 +33,7 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
   private val pendingExecIds = ListBuffer.empty[String]
 
   private val console = ConsoleAppender("thin1")
+  private def baseDirectory: File = configuration.baseDirectory
 
   lazy val connection = init()
 
@@ -40,7 +42,9 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
   // Open server connection based on the portfile
   def init(): ServerConnection = {
     val portfile = baseDirectory / "project" / "target" / "active.json"
-    if (!portfile.exists) sys.error("server does not seem to be running.")
+    if (!portfile.exists) {
+      forkServer(portfile)
+    }
     val (sk, tkn) = ClientSocket.socket(portfile)
     val conn = new ServerConnection(sk) {
       override def onNotification(msg: JsonRpcNotificationMessage): Unit = self.onNotification(msg)
@@ -55,6 +59,42 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
     val initCommand = InitCommand(tkn, Option(execId))
     conn.sendString(Serialization.serializeCommandAsJsonMessage(initCommand))
     conn
+  }
+
+  /**
+   * Forks another instance of sbt in the background.
+   * This instance must be shutdown explicitly via `sbt -client shutdown`
+   */
+  def forkServer(portfile: File): Unit = {
+    console.appendLog(Level.Info, "server was not detected. starting an instance")
+    val args = List[String]()
+    val launchOpts = List("-Xms2048M", "-Xmx2048M", "-Xss2M")
+    val launcherJarString = sys.props.get("java.class.path") match {
+      case Some(cp) =>
+        cp.split(File.pathSeparator)
+          .toList
+          .headOption
+          .getOrElse(sys.error("launcher JAR classpath not found"))
+      case _ => sys.error("property java.class.path expected")
+    }
+    val cmd = "java" :: launchOpts ::: "-jar" :: launcherJarString :: args
+    // val cmd = "sbt"
+    val io = BasicIO(false, ProcessLogger(_ => ()))
+    val _ = Process(cmd, baseDirectory).run(io)
+    def waitForPortfile(n: Int): Unit =
+      if (portfile.exists) {
+        console.appendLog(Level.Info, "server found")
+      } else {
+        if (n <= 0) sys.error(s"timeout. $portfile is not found.")
+        else {
+          Thread.sleep(1000)
+          if ((n - 1) % 10 == 0) {
+            console.appendLog(Level.Info, "waiting for the server...")
+          }
+          waitForPortfile(n - 1)
+        }
+      }
+    waitForPortfile(90)
   }
 
   /** Called on the response for a returning message. */
@@ -152,6 +192,7 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
 
   def start(): Unit = {
     console.appendLog(Level.Info, "entering *experimental* thin client - BEEP WHIRR")
+    val _ = connection
     val userCommands = arguments filterNot { cmd =>
       cmd.startsWith("-")
     }
@@ -162,7 +203,9 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
   def batchExecute(userCommands: List[String]): Unit = {
     userCommands foreach { cmd =>
       println("> " + cmd)
-      val execId = sendExecCommand(cmd)
+      val execId =
+        if (cmd == "shutdown") sendExecCommand("exit")
+        else sendExecCommand(cmd)
       while (pendingExecIds contains execId) {
         Thread.sleep(100)
       }
@@ -176,6 +219,8 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
         case Some("shutdown") =>
           // `sbt -client shutdown` shuts down the server
           sendExecCommand("exit")
+          Thread.sleep(100)
+          running.set(false)
         case Some("exit") =>
           running.set(false)
         case Some(s) if s.trim.nonEmpty =>
@@ -213,9 +258,9 @@ class NetworkClient(baseDirectory: File, arguments: List[String]) { self =>
 }
 
 object NetworkClient {
-  def run(baseDirectory: File, arguments: List[String]): Unit =
+  def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Unit =
     try {
-      new NetworkClient(baseDirectory, arguments)
+      new NetworkClient(configuration, arguments)
       ()
     } catch {
       case NonFatal(e) => println(e.getMessage)
