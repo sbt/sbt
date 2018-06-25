@@ -379,7 +379,10 @@ object Resolution {
         Seq(
           "project.parent.groupId"     -> parModule.organization,
           "project.parent.artifactId"  -> parModule.name,
-          "project.parent.version"     -> parVersion
+          "project.parent.version"     -> parVersion,
+          "parent.groupId"     -> parModule.organization,
+          "parent.artifactId"  -> parModule.name,
+          "parent.version"     -> parVersion
         )
     }
 

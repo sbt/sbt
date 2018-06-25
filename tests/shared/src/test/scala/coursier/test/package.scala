@@ -19,7 +19,10 @@ package object test {
     "project.packaging",
     "project.parent.groupId",
     "project.parent.artifactId",
-    "project.parent.version"
+    "project.parent.version",
+    "parent.groupId",
+    "parent.artifactId",
+    "parent.version"
   )
 
   implicit class ResolutionOps(val underlying: Resolution) extends AnyVal {
