@@ -1180,4 +1180,26 @@ object Cache {
     }
   }
 
+  object Dangerous {
+    /**
+      * m2 local isn't guaranteed to always work fine with coursier (it sometimes has only the
+      * metadata of some dependencies, and coursier isn't fine with that - coursier requires
+      * both the metadata and the JARs to be in the same repo)
+      * see https://github.com/coursier/coursier/pull/868#issuecomment-398779799
+      */
+    lazy val maven2Local = {
+
+      // TODO Add a small unit test for that repo…
+
+      // a bit touchy on Windows... - don't try to manually write down the URI with s"file://..."
+      val str = new File(sys.props("user.home")).toURI.toString
+      val homeUri =
+        if (str.endsWith("/"))
+          str
+        else
+          str + "/"
+
+      MavenRepository(homeUri + ".m2/repository")
+    }
+  }
 }
