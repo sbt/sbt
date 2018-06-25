@@ -38,8 +38,8 @@ lazy val root = (project in file("."))
     testFrameworks += new TestFramework("utest.runner.Framework"),
 
     commands += Command("inspectCheck", inspectBrief, inspectDetailed)(Inspect.parser) {
-      case (s, (option, sk)) =>
-        val actual = Inspect.output(s, option, sk)
+      case (s, f) =>
+        val actual = f()
         val expected = s"""Task: Unit
 Description:
 \tExecutes all tests.

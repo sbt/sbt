@@ -27,19 +27,18 @@ object Inspect {
   val Uses: Mode = UsesMode
   val Definitions: Mode = DefinitionsMode
 
-  def parser: State => Parser[(Inspect.Mode, ScopedKey[_])] =
+  def parser: State => Parser[() => String] =
     (s: State) =>
-      spacedModeParser(s) flatMap {
-        case opt @ (UsesMode | DefinitionsMode) =>
-          allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
-        case opt @ (DependencyTreeMode | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
+      spacedModeParser(s) flatMap { mode =>
+        commandHandler(s, mode) | keyHandler(s)(mode)
     }
-  val spacedModeParser: (State => Parser[Mode]) = (s: State) => {
+  val spacedModeParser: State => Parser[Mode] = (_: State) => {
+    val default = "-" ^^^ Details(false)
     val actual = "actual" ^^^ Details(true)
     val tree = "tree" ^^^ DependencyTree
     val uses = "uses" ^^^ Uses
     val definitions = "definitions" ^^^ Definitions
-    token(Space ~> (tree | actual | uses | definitions)) ?? Details(false)
+    token(Space ~> (default | tree | actual | uses | definitions)) ?? Details(false)
   }
 
   def allKeyParser(s: State): Parser[AttributeKey[_]] = {
@@ -51,7 +50,40 @@ object Inspect {
   val spacedKeyParser: State => Parser[ScopedKey[_]] = (s: State) =>
     Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 
-  def output(s: State, option: Mode, sk: Def.ScopedKey[_]): String = {
+  def keyHandler(s: State): Mode => Parser[() => String] = {
+    case opt @ (UsesMode | DefinitionsMode) =>
+      allKeyParser(s).map(key => () => keyOutput(s, opt, Def.ScopedKey(Global, key)))
+    case opt @ (DependencyTreeMode | Details(_)) =>
+      spacedKeyParser(s).map(key => () => keyOutput(s, opt, key))
+  }
+
+  def commandHandler(s: State, mode: Mode): Parser[() => String] = {
+    Space ~> commandParser(s).flatMap {
+      case (name, cmd) =>
+        cmd.tags.get(BasicCommands.CommandAliasKey) match {
+          case Some((_, aliasFor)) =>
+            def header = s"Alias for: $aliasFor"
+            Parser
+              .parse(" " ++ aliasFor, keyHandler(s)(mode))
+              .fold(
+                // If we can't find a task key for the alias target
+                // we don't display anymore information
+                _ => success(() => header),
+                success
+              )
+          case None =>
+            success(() => s"Command: $name")
+        }
+    }
+  }
+
+  def commandParser: State => Parser[(String, Command)] = { s =>
+    oneOf(s.definedCommands.map(cmd => cmd -> cmd.nameOption) collect {
+      case (cmd, Some(name)) => DefaultParsers.literal(name).map(_ -> cmd)
+    })
+  }
+
+  def keyOutput(s: State, option: Mode, sk: Def.ScopedKey[_]): String = {
     val extracted = Project.extract(s)
     import extracted._
     option match {
