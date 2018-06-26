@@ -216,7 +216,22 @@ private[sbt] case class SbtChainResolver(
       val firstHit = sortedRevisions.reverse.headOption
       firstHit.map { hit =>
         val (resolvedModule, resolver) = hit
-        Message.warn(s"Choosing $resolver for ${resolvedModule.getId}")
+        
+        if (resolvedModule.getId.getRevision.contains("SNAPSHOT")) {
+
+          Message.warn(
+            "Resolving a snapshot version. It's going to be slow unless you use `updateOptions := updateOptions.value.withLatestSnapshots(false)` options.")
+          val resolvers = sortedRevisions.map(_._2.getName)
+          sortedRevisions.foreach(h => {
+            val (module, resolver) = h
+            Message.info(
+              s"Out of ${sortedRevisions.size} candidates we found for ${module.getId} in ${resolvers
+                .mkString(" and ")}, we are choosing ${resolver}.")
+          })
+        } else {
+          Message.warn(s"Choosing $resolver for ${resolvedModule.getId}")
+        }
+
         // Now that we know the real latest revision, let's force Ivy to use it
         val resolvedDescriptor = resolvedModule.getDescriptor
         val artifactOpt = findFirstArtifactRef(resolvedDescriptor, data, resolver)
