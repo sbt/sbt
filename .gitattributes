@@ -1,11 +1,3 @@
-# Set default behaviour, in case users don't have core.autocrlf set.
-* text=auto
-
-# Explicitly declare text files we want to always be normalized and converted 
-# to native line endings on checkout.
-*.scala text
-*.java text
-
 # Exclude contraband generated files from diff (by default - you can see it if you want)
 **/contraband-scala/**/* -diff merge=ours
 **/contraband-scala/**/* linguist-generated=true
