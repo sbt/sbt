@@ -1,5 +1,7 @@
 package sbt.internal.librarymanagement.ivyint
 
+import java.util.concurrent.Executors
+
 import org.apache.ivy.core.event.EventManager
 import org.apache.ivy.core.event.download.PrepareDownloadEvent
 import org.apache.ivy.core.module.descriptor.Artifact
@@ -9,11 +11,17 @@ import org.apache.ivy.core.sort.SortEngine
 import org.apache.ivy.util.Message
 import org.apache.ivy.util.filter.Filter
 
-import scala.collection.parallel.mutable.ParArray
+import scala.concurrent.duration.Duration
+import scala.concurrent.{ Await, ExecutionContext, Future }
 
 private[ivyint] case class DownloadResult(dep: IvyNode,
                                           report: DownloadReport,
                                           totalSizeDownloaded: Long)
+
+object ParallelResolveEngine {
+  private val resolveExecutionContext =
+    ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+}
 
 /** Define an ivy [[ResolveEngine]] that resolves dependencies in parallel. */
 private[sbt] class ParallelResolveEngine(settings: ResolveEngineSettings,
@@ -24,30 +32,27 @@ private[sbt] class ParallelResolveEngine(settings: ResolveEngineSettings,
   override def downloadArtifacts(report: ResolveReport,
                                  artifactFilter: Filter,
                                  options: DownloadOptions): Unit = {
-
+    import scala.collection.JavaConverters._
     val start = System.currentTimeMillis
-    val dependencies0 = report.getDependencies
-    val dependencies = dependencies0
-      .toArray(new Array[IvyNode](dependencies0.size))
-    val artifacts = report.getArtifacts
-      .toArray(new Array[Artifact](report.getArtifacts.size))
-
-    getEventManager.fireIvyEvent(new PrepareDownloadEvent(artifacts))
-
-    // Farm out the dependencies for parallel download
-    val allDownloads = dependencies.par.flatMap { dep =>
-      if (!(dep.isCompletelyEvicted || dep.hasProblem) &&
-          dep.getModuleRevision != null) {
-        //don't block in global ec to avoid deadlocks
-        scala.concurrent.blocking {
-          ParArray(downloadNodeArtifacts(dep, artifactFilter, options))
-        }
-      } else ParArray.empty[DownloadResult]
+    report.getArtifacts match {
+      case typed: java.util.List[Artifact @unchecked] =>
+        new PrepareDownloadEvent(typed.asScala.toArray)
     }
-
-    // Force parallel downloads and compute total downloaded size
-    val totalSize = allDownloads.toArray.foldLeft(0L) {
-      case (size, download) =>
+    // Farm out the dependencies for parallel download
+    implicit val ec = ParallelResolveEngine.resolveExecutionContext
+    val allDownloadsFuture = Future.traverse(report.getDependencies.asScala) {
+      case dep: IvyNode =>
+        Future {
+          if (!(dep.isCompletelyEvicted || dep.hasProblem) &&
+              dep.getModuleRevision != null) {
+            Some(downloadNodeArtifacts(dep, artifactFilter, options))
+          } else None
+        }
+    }
+    val allDownloads = Await.result(allDownloadsFuture, Duration.Inf)
+    //compute total downloaded size
+    val totalSize = allDownloads.foldLeft(0L) {
+      case (size, Some(download)) =>
         val dependency = download.dep
         val moduleConfigurations = dependency.getRootModuleConfigurations
         moduleConfigurations.foreach { configuration =>
@@ -61,6 +66,7 @@ private[sbt] class ParallelResolveEngine(settings: ResolveEngineSettings,
         }
 
         size + download.totalSizeDownloaded
+      case (size, None) => size
     }
 
     report.setDownloadTime(System.currentTimeMillis() - start)
