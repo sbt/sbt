@@ -216,7 +216,7 @@ private[sbt] case class SbtChainResolver(
       val firstHit = sortedRevisions.reverse.headOption
       firstHit.map { hit =>
         val (resolvedModule, resolver) = hit
-        
+
         if (resolvedModule.getId.getRevision.contains("SNAPSHOT")) {
 
           Message.warn(
