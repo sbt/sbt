@@ -258,9 +258,19 @@ final public class ForkMain {
 				final Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
 				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 
+				Thread callDoneOnShutdown = new Thread() {
+                    @Override
+                    public void run() {
+                        runner.done();
+                    }
+                };
+                Runtime.getRuntime().addShutdownHook(callDoneOnShutdown);
+
 				runTestTasks(executor, tasks, loggers, os);
 
 				runner.done();
+
+				Runtime.getRuntime().removeShutdownHook(callDoneOnShutdown);
 			}
 			write(os, ForkTags.Done);
 			is.readObject();
