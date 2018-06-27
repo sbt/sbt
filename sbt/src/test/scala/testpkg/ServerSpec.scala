@@ -87,10 +87,13 @@ case class TestServer(baseDirectory: File) {
       if (n <= 0) sys.error(s"Timeout. $portfile is not found.")
       else {
         Thread.sleep(1000)
+        if ((n - 1) % 10 == 0) {
+          hostLog("waiting for the server...")
+        }
         waitForPortfile(n - 1)
       }
     }
-  waitForPortfile(30)
+  waitForPortfile(90)
 
   // make connection to the socket described in the portfile
   val (sk, tkn) = ClientSocket.socket(portfile)
