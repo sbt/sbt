@@ -154,6 +154,8 @@ object Defaults extends BuildCommon {
       classpathEntryDefinesClass :== FileValueCache(Locate.definesClass _).get,
       traceLevel in run :== 0,
       traceLevel in runMain :== 0,
+      traceLevel in bgRun :== 0,
+      traceLevel in fgRun :== 0,
       traceLevel in console :== Int.MaxValue,
       traceLevel in consoleProject :== Int.MaxValue,
       autoCompilerPlugins :== true,
