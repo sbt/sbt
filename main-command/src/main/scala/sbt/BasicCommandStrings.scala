@@ -194,6 +194,8 @@ $AliasCommand name=
 
   def Client = "client"
   def ClientDetailed = "Provides an interactive prompt from which commands can be run on a server."
+  def DashClient = "-client"
+  def DashDashClient = "--client"
 
   def StashOnFailure = "sbtStashOnFailure"
   def PopOnFailure = "sbtPopOnFailure"

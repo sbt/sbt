@@ -459,6 +459,9 @@ lazy val commandProj = (project in file("main-command"))
       exclude[DirectMissingMethodProblem]("sbt.CommandSource.copy$default$*"),
       exclude[DirectMissingMethodProblem]("sbt.Exec.copy"),
       exclude[DirectMissingMethodProblem]("sbt.Exec.copy$default$*"),
+
+      // internal
+      exclude[ReversedMissingMethodProblem]("sbt.internal.client.ServerConnection.*"),
     ),
     unmanagedSources in (Compile, headerCreate) := {
       val old = (unmanagedSources in (Compile, headerCreate)).value

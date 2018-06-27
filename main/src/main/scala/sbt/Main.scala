@@ -64,15 +64,30 @@ import CommandStrings.BootCommand
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommands.early
-    import BasicCommandStrings.runEarly
+    import BasicCommandStrings.{ runEarly, DashClient, DashDashClient }
     import BuiltinCommands.defaults
     import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-    val state = StandardMain.initialState(
-      configuration,
-      Seq(defaults, early),
-      runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-    )
-    StandardMain.runManaged(state)
+    import sbt.internal.client.NetworkClient
+
+    // if we detect -Dsbt.client=true or -client, run thin client.
+    val clientModByEnv = java.lang.Boolean.getBoolean("sbt.client")
+    val userCommands = configuration.arguments.map(_.trim)
+    if (clientModByEnv || (userCommands.exists { cmd =>
+          (cmd == DashClient) || (cmd == DashDashClient)
+        })) {
+      val args = userCommands.toList filterNot { cmd =>
+        (cmd == DashClient) || (cmd == DashDashClient)
+      }
+      NetworkClient.run(configuration, args)
+      Exit(0)
+    } else {
+      val state = StandardMain.initialState(
+        configuration,
+        Seq(defaults, early),
+        runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+      )
+      StandardMain.runManaged(state)
+    }
   }
 }
 
@@ -861,9 +876,6 @@ object BuiltinCommands {
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
   private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
 
-  private def isSbtProject(baseDir: File, projectDir: File) =
-    projectDir.exists() || (baseDir * "*.sbt").get.nonEmpty
-
   private def writeSbtVersionUnconditionally(state: State) = {
     val baseDir = state.baseDir
     val sbtVersion = BuiltinCommands.sbtVersion(state)
@@ -877,7 +889,7 @@ object BuiltinCommands {
     if (sbtVersionAbsent) {
       val warnMsg = s"No sbt.version set in project/build.properties, base directory: $baseDir"
       try {
-        if (isSbtProject(baseDir, projectDir)) {
+        if (isSbtBuild(baseDir)) {
           val line = s"sbt.version=$sbtVersion"
           IO.writeLines(buildProps, line :: buildPropsLines)
           state.log info s"Updated file $buildProps: set sbt.version to $sbtVersion"

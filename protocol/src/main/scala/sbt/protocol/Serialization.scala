@@ -12,6 +12,7 @@ import sjsonnew.{ JsonFormat, JsonWriter }
 import sjsonnew.support.scalajson.unsafe.{ Parser, Converter, CompactPrinter }
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JValue, JObject, JString }
 import java.nio.ByteBuffer
+import java.util.UUID
 import scala.util.{ Success, Failure }
 import sbt.internal.util.StringEvent
 import sbt.internal.protocol.{
@@ -33,6 +34,33 @@ object Serialization {
     import codec.JsonProtocol._
     val json: JValue = Converter.toJson[CommandMessage](command).get
     CompactPrinter(json).getBytes("UTF-8")
+  }
+
+  private[sbt] def serializeCommandAsJsonMessage(command: CommandMessage): String = {
+    import sjsonnew.BasicJsonProtocol._
+
+    command match {
+      case x: InitCommand =>
+        val execId = x.execId.getOrElse(UUID.randomUUID.toString)
+        val opt = x.token match {
+          case Some(t) =>
+            val json: JValue = Converter.toJson[String](t).get
+            val v = CompactPrinter(json)
+            s"""{ "token": $v }"""
+          case None => "{}"
+        }
+        s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "initialize", "params": { "initializationOptions": $opt } }"""
+      case x: ExecCommand =>
+        val execId = x.execId.getOrElse(UUID.randomUUID.toString)
+        val json: JValue = Converter.toJson[String](x.commandLine).get
+        val v = CompactPrinter(json)
+        s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "sbt/exec", "params": { "commandLine": $v } }"""
+      case x: SettingQuery =>
+        val execId = UUID.randomUUID.toString
+        val json: JValue = Converter.toJson[String](x.setting).get
+        val v = CompactPrinter(json)
+        s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "sbt/setting", "params": { "setting": $v } }"""
+    }
   }
 
   def serializeEventMessage(event: EventMessage): Array[Byte] = {
@@ -141,18 +169,25 @@ object Serialization {
   private[sbt] def deserializeJsonMessage(bytes: Seq[Byte]): Either[String, JsonRpcMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
-      case Success(json) =>
+      case Success(json @ JObject(fields)) =>
         import sbt.internal.protocol.codec.JsonRPCProtocol._
-        Converter.fromJson[JsonRpcRequestMessage](json) match {
-          case Success(request) if (request.id.nonEmpty) => Right(request)
-          case Failure(e)                                => throw e
-          case _ => {
+        if ((fields find { _.field == "method" }).isDefined) {
+          if ((fields find { _.field == "id" }).isDefined)
+            Converter.fromJson[JsonRpcRequestMessage](json) match {
+              case Success(request) => Right(request)
+              case Failure(e)       => Left(s"Conversion error: ${e.getMessage}")
+            } else
             Converter.fromJson[JsonRpcNotificationMessage](json) match {
               case Success(notification) => Right(notification)
-              case Failure(e)            => throw e
+              case Failure(e)            => Left(s"Conversion error: ${e.getMessage}")
             }
+        } else
+          Converter.fromJson[JsonRpcResponseMessage](json) match {
+            case Success(res) => Right(res)
+            case Failure(e)   => Left(s"Conversion error: ${e.getMessage}")
           }
-        }
+      case Success(json) =>
+        Left(s"Expected JSON object but found $json")
       case Failure(e) =>
         Left(s"Parse error: ${e.getMessage}")
     }

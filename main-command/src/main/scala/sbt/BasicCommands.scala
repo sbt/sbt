@@ -297,7 +297,7 @@ object BasicCommands {
         case e :: Nil if e.commandLine == "shell" => Nil
         case xs                                   => xs map (_.commandLine)
       })
-    NetworkClient.run(arguments)
+    NetworkClient.run(s0.configuration, arguments)
     "exit" :: s0.copy(remainingCommands = Nil)
   }
 
