@@ -35,10 +35,10 @@ private final class Settings0[Scope](
     data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) }.toSeq
 
   def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
-    delegates(scope).toStream.flatMap(sc => getDirect(sc, key)).headOption
+    delegates(scope).flatMap(sc => getDirect(sc, key)).headOption
 
   def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope] =
-    delegates(scope).toStream.find(sc => getDirect(sc, key).isDefined)
+    delegates(scope).find(sc => getDirect(sc, key).isDefined)
 
   def getDirect[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     (data get scope).flatMap(_ get key)
