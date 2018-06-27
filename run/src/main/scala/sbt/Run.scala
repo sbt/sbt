@@ -12,6 +12,7 @@ import java.lang.reflect.{ Method, Modifier }
 import Modifier.{ isPublic, isStatic }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.util.MessageOnlyException
 
 import sbt.io.Path
 
@@ -29,7 +30,9 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
       if (exitCode == 0) Success(())
       else
         Failure(
-          new RuntimeException(s"""Nonzero exit code returned from $label: $exitCode""".stripMargin)
+          new MessageOnlyException(
+            s"""Nonzero exit code returned from $label: $exitCode""".stripMargin
+          )
         )
     val process = fork(mainClass, classpath, options, log)
     def cancel() = {
@@ -124,6 +127,6 @@ object Run {
     if (exitCode == 0) {
       log.debug("Exited with code 0")
       Success(())
-    } else Failure(new RuntimeException("Nonzero exit code: " + exitCode))
+    } else Failure(new MessageOnlyException("Nonzero exit code: " + exitCode))
   }
 }

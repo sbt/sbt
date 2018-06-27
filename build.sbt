@@ -302,7 +302,7 @@ lazy val runProj = (project in file("run"))
       exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#LoggedOutput.copy$default$*"),
     )
   )
-  .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerClasspath)
+  .configure(addSbtIO, addSbtUtilLogging, addSbtUtilControl, addSbtCompilerClasspath)
 
 val sbtProjDepsCompileScopeFilter =
   ScopeFilter(inDependencies(LocalProject("sbtProj"), includeRoot = false), inConfigurations(Compile))
