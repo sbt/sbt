@@ -4,7 +4,7 @@
 package sbt.internal.util
 
 object StackTrace {
-  def isSbtClass(name: String) = name.startsWith("sbt") || name.startsWith("xsbt")
+  def isSbtClass(name: String) = name.startsWith("sbt.") || name.startsWith("xsbt.")
 
   /**
    * Return a printable representation of the stack trace associated

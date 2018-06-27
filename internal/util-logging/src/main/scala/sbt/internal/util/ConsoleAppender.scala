@@ -421,7 +421,7 @@ class ConsoleAppender private[ConsoleAppender] (
     }
 
   private def appendTraceEvent(te: TraceEvent): Unit = {
-    val traceLevel = getTrace
+    val traceLevel = if (getTrace < 0) Int.MaxValue else getTrace
     val throwableShowLines: ShowLines[Throwable] =
       ShowLines[Throwable]((t: Throwable) => {
         List(StackTrace.trimmed(t, traceLevel))

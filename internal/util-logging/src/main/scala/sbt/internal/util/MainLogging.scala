@@ -13,15 +13,20 @@ object MainAppender {
   def multiLogger(log: ManagedLogger, config: MainAppenderConfig): ManagedLogger = {
     import config._
     // TODO
-    // console setTrace screenTrace
     // backed setTrace backingTrace
     // multi: Logger
 
-    // val log = LogExchange.logger(loggerName)
     LogExchange.unbindLoggerAppenders(log.name)
     LogExchange.bindLoggerAppenders(
       log.name,
-      (consoleOpt.toList map { _ -> screenLevel }) :::
+      (consoleOpt.toList map { appender =>
+        appender match {
+          case a: ConsoleAppender =>
+            a.setTrace(screenTrace)
+          case _ => ()
+        }
+        appender -> screenLevel
+      }) :::
         List(backed -> backingLevel) :::
         (extra map { x =>
         (x -> Level.Info)
