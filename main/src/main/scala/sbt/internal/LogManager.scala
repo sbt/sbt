@@ -198,13 +198,19 @@ object LogManager {
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
     val backingLevel = getOr(persistLogLevel.key, data, scope, state, Level.Debug)
+    val screenTrace = getOr(traceLevel.key, data, scope, state, 0)
     val execOpt = state.currentCommand
     val loggerName: String = s"bg-${task.key.label}-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
     // val execId: Option[String] = execOpt flatMap { _.execId }
     val log = LogExchange.logger(loggerName, channelName, None)
     LogExchange.unbindLoggerAppenders(loggerName)
-    val consoleOpt = consoleLocally(state, console)
+    val consoleOpt = consoleLocally(state, console) map {
+      case a: ConsoleAppender =>
+        a.setTrace(screenTrace)
+        a
+      case a => a
+    }
     LogExchange.bindLoggerAppenders(
       loggerName,
       (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil
