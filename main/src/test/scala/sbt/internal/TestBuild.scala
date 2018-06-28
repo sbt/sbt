@@ -39,8 +39,8 @@ abstract class TestBuild {
   def chooseShrinkable(min: Int, max: Int): Gen[Int] =
     sized(sz => choose(min, (max min sz) max 1))
 
-  implicit val cGen = Arbitrary { genConfigs(idGen, MaxDepsGen, MaxConfigsGen) }
-  implicit val tGen = Arbitrary { genTasks(idGen, MaxDepsGen, MaxTasksGen) }
+  implicit val cGen = Arbitrary { genConfigs(scalaIDGen, MaxDepsGen, MaxConfigsGen) }
+  implicit val tGen = Arbitrary { genTasks(lowerIDGen, MaxDepsGen, MaxTasksGen) }
   val seed = rng.Seed.random
 
   final class Keys(val env: Env, val scopes: Seq[Scope]) {
@@ -119,7 +119,7 @@ abstract class TestBuild {
       (taskAxes, zero.toSet, single.toSet, multi.toSet)
     }
   }
-  final class Env(val builds: Vector[Build], val tasks: Vector[Taskk]) {
+  final case class Env(builds: Vector[Build], tasks: Vector[Taskk]) {
     override def toString =
       "Env:\n  " + "  Tasks:\n    " + tasks.mkString("\n    ") + "\n" + builds.mkString("\n  ")
     val root = builds.head
@@ -159,7 +159,7 @@ abstract class TestBuild {
   }
   def getKey: Taskk => AttributeKey[_] = _.key
   def toConfigKey: Configuration => ConfigKey = c => ConfigKey(c.name)
-  final class Build(val uri: URI, val projects: Seq[Proj]) {
+  final case class Build(uri: URI, projects: Seq[Proj]) {
     override def toString = "Build " + uri.toString + " :\n    " + projects.mkString("\n    ")
     val allProjects = projects map { p =>
       (ProjectRef(uri, p.id), p)
@@ -167,10 +167,10 @@ abstract class TestBuild {
     val root = projects.head
     val projectMap = mapBy(projects)(_.id)
   }
-  final class Proj(
-      val id: String,
-      val delegates: Seq[ProjectRef],
-      val configurations: Seq[Configuration]
+  final case class Proj(
+      id: String,
+      delegates: Seq[ProjectRef],
+      configurations: Seq[Configuration]
   ) {
     override def toString =
       "Project " + id + "\n      Delegates:\n        " + delegates.mkString("\n        ") +
@@ -178,7 +178,7 @@ abstract class TestBuild {
     val confMap = mapBy(configurations)(_.name)
   }
 
-  final class Taskk(val key: AttributeKey[String], val delegates: Seq[Taskk]) {
+  final case class Taskk(key: AttributeKey[String], delegates: Seq[Taskk]) {
     override def toString =
       key.label + " (delegates: " + delegates.map(_.key.label).mkString(", ") + ")"
   }
@@ -234,19 +234,17 @@ abstract class TestBuild {
     val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
     val projectsMap = env.builds.map(b => (b.uri, b.projects.map(_.id).toSet)).toMap
     val confs = for {
-      b <- env.builds.toVector
-      p <- b.projects.toVector
-      c <- p.configurations.toVector
-    } yield c
-    val confMap = confs.map(c => (c.name, Seq(c))).toMap
-    new Structure(env, current, data, KeyIndex(keys, projectsMap, confMap), keyMap)
+      b <- env.builds
+      p <- b.projects
+    } yield p.id -> p.configurations
+    val confMap = confs.toMap
+    Structure(env, current, data, KeyIndex(keys, projectsMap, confMap), keyMap)
   }
 
   implicit lazy val mkEnv: Gen[Env] = {
-    implicit val cGen = genConfigs(idGen, MaxDepsGen, MaxConfigsGen)
-    implicit val tGen = genTasks(idGen, MaxDepsGen, MaxTasksGen)
-    implicit val pGen = (uri: URI) => genProjects(uri)(idGen, MaxDepsGen, MaxProjectsGen, cGen)
-    envGen(buildGen(uriGen, pGen), tGen)
+    implicit val pGen = (uri: URI) =>
+      genProjects(uri)(idGen, MaxDepsGen, MaxProjectsGen, cGen.arbitrary)
+    envGen(buildGen(uriGen, pGen), tGen.arbitrary)
   }
 
   implicit def maskGen(implicit arbBoolean: Arbitrary[Boolean]): Gen[ScopeMask] = {
@@ -255,18 +253,69 @@ abstract class TestBuild {
       yield ScopeMask(project = p, config = c, task = t, extra = x)
   }
 
-  implicit lazy val idGen: Gen[String] =
+  val allChars: Seq[Char] = ((0x0000 to 0xD7FF) ++ (0xE000 to 0xFFFD)).map(_.toChar)
+
+  val letters: Seq[Char] = allChars.filter(_.isLetter)
+
+  val upperLetters: Gen[Char] = Gen.oneOf(letters.filter(_.isUpper))
+
+  val lowerLetters: Gen[Char] = Gen.oneOf(letters.filter(_.isLower))
+
+  val lettersAndDigits: Gen[Char] = Gen.oneOf(allChars.filter(_.isLetterOrDigit))
+
+  val scalaIDCharGen: Gen[Char] = {
+    val others = Gen.const('_')
+    frequency(19 -> lettersAndDigits, 1 -> others)
+  }
+
+  val idCharGen: Gen[Char] = {
+    val others = Gen.const('-')
+    frequency(19 -> scalaIDCharGen, 1 -> others)
+  }
+
+  def isIDChar(c: Char) = {
+    c.isLetterOrDigit || "-_".toSeq.contains(c)
+  }
+
+  val idGen: Gen[String] = idGen(upperLetters, idCharGen, _.isUpper)
+
+  val lowerIDGen: Gen[String] = idGen(lowerLetters, idCharGen, _.isLower)
+
+  val scalaIDGen: Gen[String] = idGen(upperLetters, scalaIDCharGen, _.isUpper)
+
+  def idGen(start: Gen[Char], end: Gen[Char], headFilter: Char => Boolean): Gen[String] = {
     for {
       size <- chooseShrinkable(1, MaxIDSize)
-      cs <- listOfN(size, alphaChar)
-    } yield {
-      val xs = cs.mkString
-      xs.take(1).toLowerCase + xs.drop(1)
-    }
+      idStart <- start
+      idEnd <- listOfN(size - 1, end)
+    } yield idStart + idEnd.mkString
+  } filter { id =>
+    // The filter ensure that shrinking works
+    id.headOption.exists(headFilter) && id.tail.forall(isIDChar)
+  }
 
-  implicit lazy val optIDGen: Gen[Option[String]] = frequency((1, idGen map some.fn), (1, None))
-  implicit lazy val uriGen: Gen[URI] = for (sch <- idGen; ssp <- idGen; frag <- optIDGen)
-    yield new URI(sch, ssp, frag.orNull)
+  val schemeGen: Gen[String] = {
+    for {
+      schemeStart <- alphaChar
+      schemeEnd <- listOf(frequency(19 -> alphaNumChar, 1 -> oneOf('+', '-', '.')))
+    } yield schemeStart + schemeEnd.mkString
+  }
+
+  val uriChar: Gen[Char] = {
+    frequency(9 -> alphaNumChar, 1 -> oneOf(";/?:@&=+$,-_.!~*'()".toSeq))
+  }
+
+  val uriStringGen: Gen[String] = nonEmptyListOf(uriChar).map(_.mkString)
+
+  val optIDGen: Gen[Option[String]] = oneOf(uriStringGen.map(some.fn), Gen.const(None))
+
+  val uriGen: Gen[URI] = {
+    for {
+      sch <- schemeGen
+      ssp <- uriStringGen
+      frag <- optIDGen
+    } yield new URI(sch, ssp, frag.orNull)
+  }
 
   implicit def envGen(implicit bGen: Gen[Build], tasks: Gen[Vector[Taskk]]): Gen[Env] =
     for (i <- MaxBuildsGen; bs <- containerOfN[Vector, Build](i, bGen); ts <- tasks)

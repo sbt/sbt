@@ -146,7 +146,7 @@ object BasicCommands {
   }
 
   def multiParser(s: State): Parser[List[String]] = {
-    val nonSemi = token(charClass(_ != ';').+, hide = const(true))
+    val nonSemi = token(charClass(_ != ';', "not ';'").+, hide = const(true))
     val semi = token(';' ~> OptSpace)
     val part = semi flatMap (
         _ => matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace)
