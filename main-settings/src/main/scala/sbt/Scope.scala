@@ -296,8 +296,9 @@ object Scope {
     val scope = Scope.replaceThis(GlobalScope)(rawScope)
 
     // This is a hot method that gets called many times
-    def expandDelegateScopes(resolvedProj: ResolvedReference)(
-        pLin: Seq[ScopeAxis[ResolvedReference]]): Vector[Scope] = {
+    def expandDelegateScopes(
+        resolvedProj: ResolvedReference
+    )(pLin: Seq[ScopeAxis[ResolvedReference]]): Vector[Scope] = {
       val tLin = scope.task match {
         case t @ Select(_) => linearize(t)(taskInherit)
         case _             => withZeroAxis(scope.task)
