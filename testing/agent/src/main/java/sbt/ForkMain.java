@@ -17,6 +17,7 @@ import java.net.Socket;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -257,9 +258,19 @@ final public class ForkMain {
 				final Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
 				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 
+				Thread callDoneOnShutdown = new Thread() {
+                    @Override
+                    public void run() {
+                        runner.done();
+                    }
+                };
+                Runtime.getRuntime().addShutdownHook(callDoneOnShutdown);
+
 				runTestTasks(executor, tasks, loggers, os);
 
 				runner.done();
+
+				Runtime.getRuntime().removeShutdownHook(callDoneOnShutdown);
 			}
 			write(os, ForkTags.Done);
 			is.readObject();
@@ -294,7 +305,7 @@ final public class ForkMain {
 					Task[] nestedTasks;
 					final TaskDef taskDef = task.taskDef();
 					try {
-						final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
+						final Collection<ForkEvent> eventList = new ConcurrentLinkedDeque<ForkEvent>();
 						final EventHandler handler = new EventHandler() { public void handle(final Event e){ eventList.add(new ForkEvent(e)); } };
 						logDebug(os, "  Running " + taskDef);
 						nestedTasks = task.execute(handler, loggers);

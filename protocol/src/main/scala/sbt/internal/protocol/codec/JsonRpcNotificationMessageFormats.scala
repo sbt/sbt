@@ -17,7 +17,8 @@ trait JsonRpcNotificationMessageFormats {
     new JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage] {
       override def read[J](
           jsOpt: Option[J],
-          unbuilder: Unbuilder[J]): sbt.internal.protocol.JsonRpcNotificationMessage = {
+          unbuilder: Unbuilder[J]
+      ): sbt.internal.protocol.JsonRpcNotificationMessage = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -32,8 +33,10 @@ trait JsonRpcNotificationMessageFormats {
             deserializationError("Expected JsObject but found None")
         }
       }
-      override def write[J](obj: sbt.internal.protocol.JsonRpcNotificationMessage,
-                            builder: Builder[J]): Unit = {
+      override def write[J](
+          obj: sbt.internal.protocol.JsonRpcNotificationMessage,
+          builder: Builder[J]
+      ): Unit = {
         builder.beginObject()
         builder.addField("jsonrpc", obj.jsonrpc)
         builder.addField("method", obj.method)

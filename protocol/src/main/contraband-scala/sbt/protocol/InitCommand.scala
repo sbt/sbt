@@ -20,7 +20,7 @@ final class InitCommand private (
   override def toString: String = {
     "InitCommand(" + token + ", " + execId + ")"
   }
-  protected[this] def copy(token: Option[String] = token, execId: Option[String] = execId): InitCommand = {
+  private[this] def copy(token: Option[String] = token, execId: Option[String] = execId): InitCommand = {
     new InitCommand(token, execId)
   }
   def withToken(token: Option[String]): InitCommand = {

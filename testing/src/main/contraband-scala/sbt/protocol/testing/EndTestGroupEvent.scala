@@ -21,7 +21,7 @@ final class EndTestGroupEvent private (
   override def toString: String = {
     "EndTestGroupEvent(" + name + ", " + result + ")"
   }
-  protected[this] def copy(name: String = name, result: sbt.protocol.testing.TestResult = result): EndTestGroupEvent = {
+  private[this] def copy(name: String = name, result: sbt.protocol.testing.TestResult = result): EndTestGroupEvent = {
     new EndTestGroupEvent(name, result)
   }
   def withName(name: String): EndTestGroupEvent = {

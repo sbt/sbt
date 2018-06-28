@@ -21,7 +21,7 @@ final class Exec private (
   override def toString: String = {
     "Exec(" + commandLine + ", " + execId + ", " + source + ")"
   }
-  protected[this] def copy(commandLine: String = commandLine, execId: Option[String] = execId, source: Option[sbt.CommandSource] = source): Exec = {
+  private[this] def copy(commandLine: String = commandLine, execId: Option[String] = execId, source: Option[sbt.CommandSource] = source): Exec = {
     new Exec(commandLine, execId, source)
   }
   def withCommandLine(commandLine: String): Exec = {
@@ -42,8 +42,8 @@ final class Exec private (
 }
 object Exec {
   def newExecId: String = java.util.UUID.randomUUID.toString
-  def apply(commandLine: String, source: Option[sbt.CommandSource]): Exec = new Exec(commandLine, None, source)
-  def apply(commandLine: String, source: sbt.CommandSource): Exec = new Exec(commandLine, None, Option(source))
+  def apply(commandLine: String, source: Option[sbt.CommandSource]): Exec = new Exec(commandLine, source)
+  def apply(commandLine: String, source: sbt.CommandSource): Exec = new Exec(commandLine, Option(source))
   def apply(commandLine: String, execId: Option[String], source: Option[sbt.CommandSource]): Exec = new Exec(commandLine, execId, source)
   def apply(commandLine: String, execId: String, source: sbt.CommandSource): Exec = new Exec(commandLine, Option(execId), Option(source))
 }

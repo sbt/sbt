@@ -9,7 +9,7 @@ package sbt
 package internal
 package server
 
-import java.io.File
+import java.io.{ File, IOException }
 import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, Socket }
 import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.file.attribute.{ UserPrincipal, AclEntry, AclEntryPermission, AclEntryType }
@@ -25,6 +25,7 @@ import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
 import sbt.internal.protocol.codec._
 import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
+import org.scalasbt.ipcsocket._
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -39,9 +40,11 @@ private[sbt] object Server {
       with TokenFileFormats
   object JsonProtocol extends JsonProtocol
 
-  def start(connection: ServerConnection,
-            onIncomingSocket: (Socket, ServerInstance) => Unit,
-            log: Logger): ServerInstance =
+  def start(
+      connection: ServerConnection,
+      onIncomingSocket: (Socket, ServerInstance) => Unit,
+      log: Logger
+  ): ServerInstance =
     new ServerInstance { self =>
       import connection._
       val running = new AtomicBoolean(false)
@@ -54,15 +57,26 @@ private[sbt] object Server {
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
           Try {
-            ErrorHandling.translate(s"server failed to start on ${connection.shortName}. ") {
-              connection.connectionType match {
-                case ConnectionType.Local if isWindows =>
-                  new NGWin32NamedPipeServerSocket(pipeName)
-                case ConnectionType.Local =>
-                  prepareSocketfile()
-                  new NGUnixDomainServerSocket(socketfile.getAbsolutePath)
-                case ConnectionType.Tcp => new ServerSocket(port, 50, InetAddress.getByName(host))
-              }
+            connection.connectionType match {
+              case ConnectionType.Local if isWindows =>
+                // Named pipe already has an exclusive lock.
+                addServerError(new Win32NamedPipeServerSocket(pipeName))
+              case ConnectionType.Local =>
+                val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
+                val path = socketfile.getAbsolutePath
+                if (path.length > maxSocketLength)
+                  sys.error(
+                    "socket file absolute path too long; " +
+                      "either switch to another connection type " +
+                      "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
+                      s"Current path: ${path}"
+                  )
+                tryClient(new UnixDomainSocket(path))
+                prepareSocketfile()
+                addServerError(new UnixDomainServerSocket(path))
+              case ConnectionType.Tcp =>
+                tryClient(new Socket(InetAddress.getByName(host), port))
+                addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
             }
           } match {
             case Failure(e) => p.failure(e)
@@ -86,6 +100,24 @@ private[sbt] object Server {
         }
       }
       serverThread.start()
+
+      // Try the socket as a client to make sure that the server is not already up.
+      // f tries to connect to the server, and flip the result.
+      def tryClient(f: => Socket): Unit = {
+        if (portfile.exists) {
+          Try { f } match {
+            case Failure(_) => ()
+            case Success(socket) =>
+              socket.close()
+              throw new AlreadyRunningException()
+          }
+        } else ()
+      }
+
+      def addServerError(f: => ServerSocket): ServerSocket =
+        ErrorHandling.translate(s"server failed to start on ${connection.shortName}. ") {
+          f
+        }
 
       override def authenticate(challenge: String): Boolean = synchronized {
         if (token == challenge) {
@@ -154,7 +186,7 @@ private[sbt] object Server {
           auth match {
             case _ if auth(ServerAuthentication.Token) =>
               writeTokenfile()
-              PortFile(uri, Option(tokenfile.toString), Option(tokenfile.toURI.toString))
+              PortFile(uri, Option(tokenfile.toString), Option(IO.toURI(tokenfile).toString))
             case _ =>
               PortFile(uri, None, None)
           }
@@ -190,3 +222,5 @@ private[sbt] case class ServerConnection(
     }
   }
 }
+
+private[sbt] class AlreadyRunningException extends IOException("sbt server is already running.")

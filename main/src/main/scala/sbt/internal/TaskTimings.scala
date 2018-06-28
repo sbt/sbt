@@ -52,16 +52,18 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
     if (!shutdown)
       start = System.nanoTime
   }
-  def registered(state: Unit,
-                 task: Task[_],
-                 allDeps: Iterable[Task[_]],
-                 pendingDeps: Iterable[Task[_]]) = {
+  def registered(
+      state: Unit,
+      task: Task[_],
+      allDeps: Iterable[Task[_]],
+      pendingDeps: Iterable[Task[_]]
+  ) = {
     pendingDeps foreach { t =>
       if (transformNode(t).isEmpty) anonOwners.put(t, task)
     }
   }
   def ready(state: Unit, task: Task[_]) = ()
-  def workStarting(task: Task[_]) = timings.put(task, System.nanoTime)
+  def workStarting(task: Task[_]) = { timings.put(task, System.nanoTime); () }
   def workFinished[T](task: Task[T], result: Either[Task[T], Result[T]]) = {
     timings.put(task, System.nanoTime - timings.get(task))
     result.left.foreach { t =>
@@ -81,7 +83,7 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
     println(s"Total time: $total $unit")
     import collection.JavaConverters._
     def sumTimes(in: Seq[(Task[_], Long)]) = in.map(_._2).sum
-    val timingsByName = timings.asScala.toSeq.groupBy { case (t, time) => mappedName(t) } mapValues (sumTimes)
+    val timingsByName = timings.asScala.toSeq.groupBy { case (t, _) => mappedName(t) } mapValues (sumTimes)
     val times = timingsByName.toSeq
       .sortBy(_._2)
       .reverse

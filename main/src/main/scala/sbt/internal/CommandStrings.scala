@@ -57,9 +57,22 @@ $ShowCommand <task>
   def pluginsDetailed = pluginsBrief // TODO: expand
 
   val LastCommand = "last"
-  val LastGrepCommand = "last-grep"
+  val OldLastGrepCommand = "last-grep"
+  val LastGrepCommand = "lastGrep"
   val ExportCommand = "export"
   val ExportStream = "export"
+
+  val oldLastGrepBrief =
+    (OldLastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
+  val oldLastGrepDetailed =
+    s"""$OldLastGrepCommand <pattern>
+	Displays lines from the logging of previous commands that match `pattern`.
+
+$OldLastGrepCommand <pattern> [key]
+	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
+
+	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
+	See also '$LastCommand'."""
 
   val lastGrepBrief =
     (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
@@ -102,13 +115,16 @@ $LastCommand <key>
 
   val InspectCommand = "inspect"
   val inspectBrief =
-    (s"$InspectCommand [tree|uses|definitions|actual] <key>",
-     "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
+    (
+      s"$InspectCommand [tree|uses|definitions|actual] <key>",
+      "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies."
+    )
   val inspectDetailed = s"""
-    |$InspectCommand <key>
+    |$InspectCommand [-] <key>
     |
     |	For a plain setting, the value bound to the key argument is displayed using its toString method.
-    |	Otherwise, the type of task ("Task" or "Input task") is displayed.
+    |	For an alias, the command bound to the alias is displayed.
+    |	Otherwise, the type of the key ("Task" or "Input task") is displayed.
     |
     |	"Dependencies" shows the settings that this setting depends on.
     |
@@ -265,16 +281,12 @@ $ProjectsCommand remove <URI>+
 
   def sbtrc = ".sbtrc"
 
-  def DefaultsCommand = "add-default-commands"
+  def DefaultsCommand = "addDefaultCommands"
   def DefaultsBrief = (DefaultsCommand, DefaultsDetailed)
   def DefaultsDetailed = "Registers default built-in commands"
 
-  def Load = "load"
-  def LoadLabel = "a project"
-  def LoadCommand = "load-commands"
-  def LoadCommandLabel = "commands"
-
-  def LoadFailed = "load-failed"
+  def LoadFailed = "loadFailed"
+  def OldLoadFailed = "load-failed"
 
   def LoadProjectImpl = "loadp"
   def LoadProject = "reload"
@@ -403,5 +415,30 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
   reloads the build. If <command> is provided, it is then executed.
 
   See also `help $CrossCommand`
+"""
+
+  val JavaCrossCommand = "java+"
+  val JavaSwitchCommand = "java++"
+
+  def javaCrossHelp: Help = Help.more(JavaCrossCommand, JavaCrossDetailed)
+  def javaSwitchHelp: Help = Help.more(JavaSwitchCommand, JavaSwitchDetailed)
+
+  def JavaCrossDetailed =
+    s"""$JavaCrossCommand <command>
+  Runs <command> for each JDK version specified for cross-JDK testing.
+  For each string in `crossJavaVersions` in the current project, this command sets the
+  `javaHome` of all projects to the corresponding Java home, reloads the build,
+  and executes <command>.  When finished, it reloads the build with the original
+  `javaHome`.
+  Note that `Test / fork := true` is needed for `javaHome` to be effective.
+  See also `help $JavaSwitchCommand`
+"""
+
+  def JavaSwitchDetailed =
+    s"""$JavaSwitchCommand <java-version>
+  Changes the JDK version and runs a command.
+  Sets the `javaHome` of all projects to <java-version> and
+  reloads the build. If <command> is provided, it is then executed.
+  See also `help $JavaSwitchCommand`
 """
 }

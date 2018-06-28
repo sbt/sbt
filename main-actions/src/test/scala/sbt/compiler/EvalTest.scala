@@ -38,7 +38,8 @@ class EvalTest extends Properties("eval") {
     val line = math.abs(l)
     val src = "mismatch"
     throws(classOf[RuntimeException])(
-      eval.eval(i.toString, tpeName = Some(BooleanType), line = line, srcName = src)) &&
+      eval.eval(i.toString, tpeName = Some(BooleanType), line = line, srcName = src)
+    ) &&
     hasErrors(line + 1, src)
   }
 
@@ -78,14 +79,17 @@ val p = {
   property("explicit import") = forAll(testImport("import math.abs" :: Nil))
   property("wildcard import") = forAll(testImport("import math._" :: Nil))
   property("comma-separated imports") = forAll(
-    testImport("import annotation._, math._, meta._" :: Nil))
+    testImport("import annotation._, math._, meta._" :: Nil)
+  )
   property("multiple imports") = forAll(
-    testImport("import annotation._" :: "import math._" :: "import meta._" :: Nil))
+    testImport("import annotation._" :: "import math._" :: "import meta._" :: Nil)
+  )
 
   private[this] def testImport(imports: Seq[String]): Int => Prop =
     i =>
       value(eval.eval("abs(" + i + ")", new EvalImports(imports.zipWithIndex, "imp"))) == math.abs(
-        i)
+        i
+    )
 
   private[this] def local(i: Int) = "{ class ETest(val i: Int); new ETest(" + i + ") }"
   val LocalType = "AnyRef{val i: Int}"

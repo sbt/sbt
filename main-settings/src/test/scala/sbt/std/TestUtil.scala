@@ -7,11 +7,9 @@
 
 package sbt.std
 
-import scala.reflect._
+import scala.tools.reflect.ToolBox
 
 object TestUtil {
-  import tools.reflect.ToolBox
-
   def eval(code: String, compileOptions: String = ""): Any = {
     val tb = mkToolbox(compileOptions)
     tb.eval(tb.parse(code))
@@ -24,9 +22,9 @@ object TestUtil {
   }
 
   lazy val toolboxClasspath: String = {
-    val resource = getClass.getClassLoader.getResource("toolbox.classpath")
-    val classpathFile = scala.io.Source.fromFile(resource.toURI)
-    val completeSporesCoreClasspath = classpathFile.getLines.mkString
-    completeSporesCoreClasspath
+    val mainClassesDir = buildinfo.TestBuildInfo.classDirectory
+    val testClassesDir = buildinfo.TestBuildInfo.test_classDirectory
+    val depsClasspath = buildinfo.TestBuildInfo.dependencyClasspath
+    mainClassesDir +: testClassesDir +: depsClasspath mkString java.io.File.pathSeparator
   }
 }

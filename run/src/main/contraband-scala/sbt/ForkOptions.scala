@@ -43,7 +43,7 @@ final class ForkOptions private (
   override def toString: String = {
     "ForkOptions(" + javaHome + ", " + outputStrategy + ", " + bootJars + ", " + workingDirectory + ", " + runJVMOptions + ", " + connectInput + ", " + envVars + ")"
   }
-  protected[this] def copy(javaHome: Option[java.io.File] = javaHome, outputStrategy: Option[sbt.OutputStrategy] = outputStrategy, bootJars: Vector[java.io.File] = bootJars, workingDirectory: Option[java.io.File] = workingDirectory, runJVMOptions: Vector[String] = runJVMOptions, connectInput: Boolean = connectInput, envVars: scala.collection.immutable.Map[String, String] = envVars): ForkOptions = {
+  private[this] def copy(javaHome: Option[java.io.File] = javaHome, outputStrategy: Option[sbt.OutputStrategy] = outputStrategy, bootJars: Vector[java.io.File] = bootJars, workingDirectory: Option[java.io.File] = workingDirectory, runJVMOptions: Vector[String] = runJVMOptions, connectInput: Boolean = connectInput, envVars: scala.collection.immutable.Map[String, String] = envVars): ForkOptions = {
     new ForkOptions(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars)
   }
   def withJavaHome(javaHome: Option[java.io.File]): ForkOptions = {
@@ -79,7 +79,7 @@ final class ForkOptions private (
 }
 object ForkOptions {
   
-  def apply(): ForkOptions = new ForkOptions(None, None, Vector(), None, Vector(), false, Map())
+  def apply(): ForkOptions = new ForkOptions()
   def apply(javaHome: Option[java.io.File], outputStrategy: Option[sbt.OutputStrategy], bootJars: Vector[java.io.File], workingDirectory: Option[java.io.File], runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String]): ForkOptions = new ForkOptions(javaHome, outputStrategy, bootJars, workingDirectory, runJVMOptions, connectInput, envVars)
   def apply(javaHome: java.io.File, outputStrategy: sbt.OutputStrategy, bootJars: Vector[java.io.File], workingDirectory: java.io.File, runJVMOptions: Vector[String], connectInput: Boolean, envVars: scala.collection.immutable.Map[String, String]): ForkOptions = new ForkOptions(Option(javaHome), Option(outputStrategy), bootJars, Option(workingDirectory), runJVMOptions, connectInput, envVars)
 }

@@ -17,3 +17,13 @@ enum PluginTrigger {
   AllRequirements
   NoTrigger
 }
+
+type JavaVersion {
+  numbers: [Long]
+  vendor: String
+
+  #x def numberStr: String = numbers.mkString(".")
+  #xtostring vendor.map(_ + "@").getOrElse("") + numberStr
+
+  #xcompanion def apply(version: String): JavaVersion = sbt.internal.CrossJava.parseJavaVersion(version)
+}

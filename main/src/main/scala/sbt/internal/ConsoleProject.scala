@@ -9,12 +9,14 @@ package sbt
 package internal
 
 import sbt.util.Logger
+import sbt.internal.util.JLine
 import sbt.internal.inc.{ ScalaInstance, ZincUtil }
 import xsbti.compile.ClasspathOptionsUtil
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(
-      implicit log: Logger): Unit = {
+      implicit log: Logger
+  ): Unit = {
     val extracted = Project extract state
     val cpImports = new Imports(extracted, state)
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
@@ -42,13 +44,17 @@ object ConsoleProject {
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
-    // TODO - Hook up dsl classpath correctly...
-    (new Console(compiler))(
-      unit.classpath,
-      options,
-      initCommands,
-      cleanupCommands
-    )(Some(unit.loader), bindings)
+
+    JLine.usingTerminal { _ =>
+      // TODO - Hook up dsl classpath correctly...
+      (new Console(compiler))(
+        unit.classpath,
+        options,
+        initCommands,
+        cleanupCommands
+      )(Some(unit.loader), bindings).get
+    }
+    ()
   }
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */

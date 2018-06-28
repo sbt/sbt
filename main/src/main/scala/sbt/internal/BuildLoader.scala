@@ -16,20 +16,24 @@ import sbt.internal.util.Types.{ const, idFun }
 import sbt.util.Logger
 import sbt.librarymanagement.ModuleID
 
-final class MultiHandler[S, T](builtIn: S => Option[T],
-                               root: Option[S => Option[T]],
-                               nonRoots: List[(URI, S => Option[T])],
-                               getURI: S => URI,
-                               log: S => Logger) {
+final class MultiHandler[S, T](
+    builtIn: S => Option[T],
+    root: Option[S => Option[T]],
+    nonRoots: List[(URI, S => Option[T])],
+    getURI: S => URI,
+    log: S => Logger
+) {
   def applyFun: S => Option[T] = apply
   def apply(info: S): Option[T] =
     (baseLoader(info), applyNonRoots(info)) match {
       case (None, Nil) => None
       case (None, xs @ (_, nr) :: ignored) =>
         if (ignored.nonEmpty)
-          warn("Using first of multiple matching non-root build resolvers for " + getURI(info),
-               log(info),
-               xs)
+          warn(
+            "Using first of multiple matching non-root build resolvers for " + getURI(info),
+            log(info),
+            xs
+          )
         Some(nr)
       case (Some(b), xs) =>
         if (xs.nonEmpty)
@@ -72,28 +76,34 @@ object BuildLoader {
   type Loader = LoadInfo => Option[() => BuildUnit]
   type TransformAll = PartBuild => PartBuild
 
-  final class Components(val resolver: Resolver,
-                         val builder: Builder,
-                         val transformer: Transformer,
-                         val full: Loader,
-                         val transformAll: TransformAll) {
+  final class Components(
+      val resolver: Resolver,
+      val builder: Builder,
+      val transformer: Transformer,
+      val full: Loader,
+      val transformAll: TransformAll
+  ) {
     def |(cs: Components): Components =
-      new Components(resolver | cs.resolver,
-                     builder | cs.builder,
-                     seq(transformer, cs.transformer),
-                     full | cs.full,
-                     transformAll andThen cs.transformAll)
+      new Components(
+        resolver | cs.resolver,
+        builder | cs.builder,
+        seq(transformer, cs.transformer),
+        full | cs.full,
+        transformAll andThen cs.transformAll
+      )
   }
   def transform(t: Transformer): Components = components(transformer = t)
   def resolve(r: Resolver): Components = components(resolver = r)
   def build(b: Builder): Components = components(builder = b)
   def full(f: Loader): Components = components(full = f)
   def transformAll(t: TransformAll) = components(transformAll = t)
-  def components(resolver: Resolver = const(None),
-                 builder: Builder = const(None),
-                 transformer: Transformer = _.unit,
-                 full: Loader = const(None),
-                 transformAll: TransformAll = idFun) =
+  def components(
+      resolver: Resolver = const(None),
+      builder: Builder = const(None),
+      transformer: Transformer = _.unit,
+      full: Loader = const(None),
+      transformAll: TransformAll = idFun
+  ) =
     new Components(resolver, builder, transformer, full, transformAll)
 
   def seq(a: Transformer, b: Transformer): Transformer = info => b(info.setUnit(a(info)))
@@ -103,47 +113,55 @@ object BuildLoader {
     def config: LoadBuildConfiguration
     def state: State
   }
-  final class ResolveInfo(val uri: URI,
-                          val staging: File,
-                          val config: LoadBuildConfiguration,
-                          val state: State)
-      extends Info
-  final class BuildInfo(val uri: URI,
-                        val base: File,
-                        val config: LoadBuildConfiguration,
-                        val state: State)
-      extends Info
-  final class TransformInfo(val uri: URI,
-                            val base: File,
-                            val unit: BuildUnit,
-                            val config: LoadBuildConfiguration,
-                            val state: State)
-      extends Info {
+  final class ResolveInfo(
+      val uri: URI,
+      val staging: File,
+      val config: LoadBuildConfiguration,
+      val state: State
+  ) extends Info
+  final class BuildInfo(
+      val uri: URI,
+      val base: File,
+      val config: LoadBuildConfiguration,
+      val state: State
+  ) extends Info
+  final class TransformInfo(
+      val uri: URI,
+      val base: File,
+      val unit: BuildUnit,
+      val config: LoadBuildConfiguration,
+      val state: State
+  ) extends Info {
     def setUnit(newUnit: BuildUnit): TransformInfo =
       new TransformInfo(uri, base, newUnit, config, state)
   }
 
-  final class LoadInfo(val uri: URI,
-                       val staging: File,
-                       val config: LoadBuildConfiguration,
-                       val state: State,
-                       val components: Components)
-      extends Info
+  final class LoadInfo(
+      val uri: URI,
+      val staging: File,
+      val config: LoadBuildConfiguration,
+      val state: State,
+      val components: Components
+  ) extends Info
 
-  def apply(base: Components,
-            fail: URI => Nothing,
-            s: State,
-            config: LoadBuildConfiguration): BuildLoader = {
+  def apply(
+      base: Components,
+      fail: URI => Nothing,
+      s: State,
+      config: LoadBuildConfiguration
+  ): BuildLoader = {
     def makeMulti[S <: Info, T](base: S => Option[T]) =
       new MultiHandler[S, T](base, None, Nil, _.uri, _.config.log)
-    new BuildLoader(fail,
-                    s,
-                    config,
-                    makeMulti(base.resolver),
-                    makeMulti(base.builder),
-                    base.transformer,
-                    makeMulti(base.full),
-                    base.transformAll)
+    new BuildLoader(
+      fail,
+      s,
+      config,
+      makeMulti(base.resolver),
+      makeMulti(base.builder),
+      base.transformer,
+      makeMulti(base.full),
+      base.transformAll
+    )
   }
 
   def componentLoader: Loader = (info: LoadInfo) => {

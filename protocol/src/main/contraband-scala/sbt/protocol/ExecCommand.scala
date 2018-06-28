@@ -21,7 +21,7 @@ final class ExecCommand private (
   override def toString: String = {
     "ExecCommand(" + commandLine + ", " + execId + ")"
   }
-  protected[this] def copy(commandLine: String = commandLine, execId: Option[String] = execId): ExecCommand = {
+  private[this] def copy(commandLine: String = commandLine, execId: Option[String] = execId): ExecCommand = {
     new ExecCommand(commandLine, execId)
   }
   def withCommandLine(commandLine: String): ExecCommand = {
@@ -36,7 +36,7 @@ final class ExecCommand private (
 }
 object ExecCommand {
   
-  def apply(commandLine: String): ExecCommand = new ExecCommand(commandLine, None)
+  def apply(commandLine: String): ExecCommand = new ExecCommand(commandLine)
   def apply(commandLine: String, execId: Option[String]): ExecCommand = new ExecCommand(commandLine, execId)
   def apply(commandLine: String, execId: String): ExecCommand = new ExecCommand(commandLine, Option(execId))
 }

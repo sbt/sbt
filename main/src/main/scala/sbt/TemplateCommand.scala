@@ -21,17 +21,31 @@ import BasicCommandStrings._, BasicKeys._
 
 private[sbt] object TemplateCommandUtil {
   def templateCommand: Command =
-    Command(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)(runTemplate)
+    Command(TemplateCommand, templateBrief, templateDetailed)(_ => templateCommandParser)(
+      runTemplate
+    )
 
-  private def templateCommandParser(state: State): Parser[Seq[String]] =
+  private def templateCommandParser: Parser[Seq[String]] =
     (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
 
-  private def runTemplate(state: State, inputArg: Seq[String]): State = {
+  private def runTemplate(s0: State, inputArg: Seq[String]): State = {
+    import BuildPaths._
+    val extracted0 = (Project extract s0)
+    val globalBase = getGlobalBase(s0)
+    val stagingDirectory = getStagingDirectory(s0, globalBase).getCanonicalFile
+    val templateStage = stagingDirectory / "new"
+    // This moves the target directory to a staging directory
+    // https://github.com/sbt/sbt/issues/2835
+    val state = extracted0.appendWithSession(
+      Seq(
+        Keys.target := templateStage
+      ),
+      s0
+    )
     val infos = (state get templateResolverInfos getOrElse Nil).toList
     val log = state.globalLogging.full
     val extracted = (Project extract state)
     val (s2, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
-    val globalBase = BuildPaths.getGlobalBase(state)
     val scalaModuleInfo = extracted.get(Keys.scalaModuleInfo in Keys.updateSbtClassifiers)
     val arguments = inputArg.toList ++
       (state.remainingCommands match {
@@ -63,19 +77,25 @@ private[sbt] object TemplateCommandUtil {
       case None    => System.err.println("Template not found for: " + arguments.mkString(" "))
     }
 
-  private def tryTemplate(info: TemplateResolverInfo,
-                          arguments: List[String],
-                          loader: ClassLoader): Boolean = {
+  private def tryTemplate(
+      info: TemplateResolverInfo,
+      arguments: List[String],
+      loader: ClassLoader
+  ): Boolean = {
     val resultObj = call(info.implementationClass, "isDefined", loader)(
       classOf[Array[String]]
     )(arguments.toArray)
     resultObj.asInstanceOf[Boolean]
   }
 
-  private def runTemplate(info: TemplateResolverInfo,
-                          arguments: List[String],
-                          loader: ClassLoader): Unit =
+  private def runTemplate(
+      info: TemplateResolverInfo,
+      arguments: List[String],
+      loader: ClassLoader
+  ): Unit = {
     call(info.implementationClass, "run", loader)(classOf[Array[String]])(arguments.toArray)
+    ()
+  }
 
   private def infoLoader(
       info: TemplateResolverInfo,

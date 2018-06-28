@@ -8,15 +8,17 @@
 package sbt.internal.protocol.codec
 
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
-import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
+import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
 
 trait JsonRpcRequestMessageFormats {
   self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
   implicit lazy val JsonRpcRequestMessageFormat
     : JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.internal.protocol.JsonRpcRequestMessage = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.internal.protocol.JsonRpcRequestMessage = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -24,7 +26,10 @@ trait JsonRpcRequestMessageFormats {
             val id = try {
               unbuilder.readField[String]("id")
             } catch {
-              case _: Throwable => unbuilder.readField[Long]("id").toString
+              case _: DeserializationException => {
+                val prefix = "\u2668" // Append prefix to show the original type was Number
+                prefix + unbuilder.readField[Long]("id").toString
+              }
             }
             val method = unbuilder.readField[String]("method")
             val params = unbuilder.lookupField("params") map {
@@ -36,8 +41,10 @@ trait JsonRpcRequestMessageFormats {
             deserializationError("Expected JsObject but found None")
         }
       }
-      override def write[J](obj: sbt.internal.protocol.JsonRpcRequestMessage,
-                            builder: Builder[J]): Unit = {
+      override def write[J](
+          obj: sbt.internal.protocol.JsonRpcRequestMessage,
+          builder: Builder[J]
+      ): Unit = {
         builder.beginObject()
         builder.addField("jsonrpc", obj.jsonrpc)
         builder.addField("id", obj.id)

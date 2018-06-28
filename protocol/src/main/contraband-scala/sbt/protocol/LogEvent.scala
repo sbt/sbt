@@ -21,7 +21,7 @@ final class LogEvent private (
   override def toString: String = {
     "LogEvent(" + level + ", " + message + ")"
   }
-  protected[this] def copy(level: String = level, message: String = message): LogEvent = {
+  private[this] def copy(level: String = level, message: String = message): LogEvent = {
     new LogEvent(level, message)
   }
   def withLevel(level: String): LogEvent = {

@@ -15,6 +15,7 @@ import Keys.{ logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, tr
 import scala.Console.{ BLUE, RESET }
 import sbt.internal.util.{
   AttributeKey,
+  ConsoleAppender,
   ConsoleOut,
   Settings,
   SuppressedTraceContext,
@@ -105,16 +106,18 @@ object LogManager {
 
     def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger = {
       val console = screen(task, state)
-      LogManager.backgroundLog(data, state, task, console, relay(()), extra(task).toList)
+      LogManager.backgroundLog(data, state, task, console, relay(()))
     }
   }
 
   // to change from global being the default to overriding, switch the order of state.get and data.get
-  def getOr[T](key: AttributeKey[T],
-               data: Settings[Scope],
-               scope: Scope,
-               state: State,
-               default: T): T =
+  def getOr[T](
+      key: AttributeKey[T],
+      data: Settings[Scope],
+      scope: Scope,
+      state: State,
+      default: T
+  ): T =
     data.get(scope, key) orElse state.get(key) getOrElse default
 
   // This is the main function that is used to generate the logger for tasks.
@@ -191,21 +194,27 @@ object LogManager {
       console: Appender,
       /* TODO: backed: Appender,*/
       relay: Appender,
-      extra: List[Appender]
   ): ManagedLogger = {
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
     val backingLevel = getOr(persistLogLevel.key, data, scope, state, Level.Debug)
+    val screenTrace = getOr(traceLevel.key, data, scope, state, 0)
     val execOpt = state.currentCommand
     val loggerName: String = s"bg-${task.key.label}-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
     // val execId: Option[String] = execOpt flatMap { _.execId }
     val log = LogExchange.logger(loggerName, channelName, None)
     LogExchange.unbindLoggerAppenders(loggerName)
-    val consoleOpt = consoleLocally(state, console)
+    val consoleOpt = consoleLocally(state, console) map {
+      case a: ConsoleAppender =>
+        a.setTrace(screenTrace)
+        a
+      case a => a
+    }
     LogExchange.bindLoggerAppenders(
       loggerName,
-      (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil)
+      (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil
+    )
     log
   }
 
@@ -229,8 +238,13 @@ object LogManager {
   //     s
   //   }
 
-  def setGlobalLogLevel(s: State, level: Level.Value): State =
-    s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
+  def setGlobalLogLevel(s: State, level: Level.Value): State = {
+    val s1 = s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
+    val gl = s1.globalLogging
+    LogExchange.unbindLoggerAppenders(gl.full.name)
+    LogExchange.bindLoggerAppenders(gl.full.name, (gl.backed -> level) :: Nil)
+    s1
+  }
 
   // This is the default implementation for the relay appender
   val defaultRelay: Unit => Appender = _ => defaultRelayImpl
@@ -253,7 +267,7 @@ object LogManager {
       private[this] def slog: Logger =
         Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
 
-      override val ansiCodesSupported = slog.ansiCodesSupported
+      override val ansiCodesSupported = ConsoleAppender.formatEnabledInEnv
       override def trace(t: => Throwable) = slog.trace(t)
       override def success(message: => String) = slog.success(message)
       override def log(level: Level.Value, message: => String) = slog.log(level, message)

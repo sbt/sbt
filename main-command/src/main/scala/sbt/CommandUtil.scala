@@ -15,6 +15,7 @@ import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.DefaultParsers._
 
 import sbt.io.IO
+import sbt.io.syntax._
 
 object CommandUtil {
   def readLines(files: Seq[File]): Seq[String] =
@@ -89,4 +90,7 @@ object CommandUtil {
     details.map { case (k, v) => k + "\n\n  " + v } mkString ("\n", "\n\n", "\n")
 
   final val HelpPatternFlags = Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+
+  private[sbt] def isSbtBuild(baseDir: File) =
+    (baseDir / "project").exists() || (baseDir * "*.sbt").get.nonEmpty
 }

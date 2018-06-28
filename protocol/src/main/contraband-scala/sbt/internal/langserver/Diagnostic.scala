@@ -38,7 +38,7 @@ final class Diagnostic private (
   override def toString: String = {
     "Diagnostic(" + range + ", " + severity + ", " + code + ", " + source + ", " + message + ")"
   }
-  protected[this] def copy(range: sbt.internal.langserver.Range = range, severity: Option[Long] = severity, code: Option[String] = code, source: Option[String] = source, message: String = message): Diagnostic = {
+  private[this] def copy(range: sbt.internal.langserver.Range = range, severity: Option[Long] = severity, code: Option[String] = code, source: Option[String] = source, message: String = message): Diagnostic = {
     new Diagnostic(range, severity, code, source, message)
   }
   def withRange(range: sbt.internal.langserver.Range): Diagnostic = {

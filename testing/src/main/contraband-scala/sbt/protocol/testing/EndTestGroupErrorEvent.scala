@@ -21,7 +21,7 @@ final class EndTestGroupErrorEvent private (
   override def toString: String = {
     "EndTestGroupErrorEvent(" + name + ", " + error + ")"
   }
-  protected[this] def copy(name: String = name, error: String = error): EndTestGroupErrorEvent = {
+  private[this] def copy(name: String = name, error: String = error): EndTestGroupErrorEvent = {
     new EndTestGroupErrorEvent(name, error)
   }
   def withName(name: String): EndTestGroupErrorEvent = {

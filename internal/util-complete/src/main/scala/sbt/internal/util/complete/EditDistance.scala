@@ -10,7 +10,7 @@ package complete
 
 import java.lang.Character.{ toLowerCase => lower }
 
-/** @author Paul Phillips*/
+/** @author Paul Phillips */
 object EditDistance {
 
   /**
@@ -24,7 +24,6 @@ object EditDistance {
       insertCost: Int = 1,
       deleteCost: Int = 1,
       subCost: Int = 1,
-      transposeCost: Int = 1,
       matchCost: Int = 0,
       caseCost: Int = 1,
       transpositions: Boolean = false

@@ -9,6 +9,7 @@ package sbt.internal.util
 
 trait TypeFunctions {
   type Id[X] = X
+  type NothingK[X] = Nothing
   sealed trait Const[A] { type Apply[B] = A }
   sealed trait ConstK[A] { type l[L[x]] = A }
   sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }

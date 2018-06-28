@@ -24,14 +24,14 @@ object LogicTest extends Properties("Logic") {
   property("Properly orders results.") = secure(expect(ordering, Set(B, A, C, E, F)))
   property("Detects cyclic negation") = secure(
     Logic.reduceAll(badClauses, Set()) match {
-      case Right(res)                      => false
-      case Left(err: Logic.CyclicNegation) => true
-      case Left(err)                       => sys.error(s"Expected cyclic error, got: $err")
+      case Right(_)                      => false
+      case Left(_: Logic.CyclicNegation) => true
+      case Left(err)                     => sys.error(s"Expected cyclic error, got: $err")
     }
   )
 
   def expect(result: Either[LogicException, Matched], expected: Set[Atom]) = result match {
-    case Left(err) => false
+    case Left(_) => false
     case Right(res) =>
       val actual = res.provenSet
       if (actual != expected)

@@ -26,7 +26,7 @@ final class Range private (
   override def toString: String = {
     "Range(" + start + ", " + end + ")"
   }
-  protected[this] def copy(start: sbt.internal.langserver.Position = start, end: sbt.internal.langserver.Position = end): Range = {
+  private[this] def copy(start: sbt.internal.langserver.Position = start, end: sbt.internal.langserver.Position = end): Range = {
     new Range(start, end)
   }
   def withStart(start: sbt.internal.langserver.Position): Range = {

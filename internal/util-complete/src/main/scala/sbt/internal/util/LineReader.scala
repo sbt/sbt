@@ -49,8 +49,9 @@ abstract class JLine extends LineReader {
 
   private[this] def readLineDirect(prompt: String, mask: Option[Char]): Option[String] =
     if (handleCONT)
-      Signals.withHandler(() => resume(), signal = Signals.CONT)(() =>
-        readLineDirectRaw(prompt, mask))
+      Signals.withHandler(() => resume(), signal = Signals.CONT)(
+        () => readLineDirectRaw(prompt, mask)
+      )
     else
       readLineDirectRaw(prompt, mask)
 
@@ -132,7 +133,7 @@ private[sbt] object JLine {
   def createReader(): ConsoleReader = createReader(None, JLine.makeInputStream(true))
 
   def createReader(historyPath: Option[File], in: InputStream): ConsoleReader =
-    usingTerminal { t =>
+    usingTerminal { _ =>
       val cr = new ConsoleReader(in, System.out)
       cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
       cr.setBellEnabled(false)

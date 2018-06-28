@@ -9,7 +9,7 @@ final class ClientCapabilities private () extends Serializable {
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: ClientCapabilities => true
+  case _: ClientCapabilities => true
   case _ => false
 }
 override def hashCode: Int = {
@@ -18,7 +18,7 @@ override def hashCode: Int = {
 override def toString: String = {
   "ClientCapabilities()"
 }
-protected[this] def copy(): ClientCapabilities = {
+private[this] def copy(): ClientCapabilities = {
   new ClientCapabilities()
 }
 

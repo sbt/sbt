@@ -61,11 +61,10 @@ object Aggregation {
 
   def applyTasks[T](
       s: State,
-      structure: BuildStructure,
       ps: Values[Parser[Task[T]]],
       show: ShowConfig
   )(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
-    Command.applyEffect(seqParser(ps))(ts => runTasks(s, structure, ts, DummyTaskMap(Nil), show))
+    Command.applyEffect(seqParser(ps))(ts => runTasks(s, ts, DummyTaskMap(Nil), show))
 
   private def showRun[T](complete: Complete[T], show: ShowConfig)(
       implicit display: Show[ScopedKey[_]]
@@ -103,11 +102,12 @@ object Aggregation {
     Complete(start, stop, result, newS)
   }
 
-  def runTasks[HL <: HList, T](s: State,
-                               structure: BuildStructure,
-                               ts: Values[Task[T]],
-                               extra: DummyTaskMap,
-                               show: ShowConfig)(implicit display: Show[ScopedKey[_]]): State = {
+  def runTasks[HL <: HList, T](
+      s: State,
+      ts: Values[Task[T]],
+      extra: DummyTaskMap,
+      show: ShowConfig
+  )(implicit display: Show[ScopedKey[_]]): State = {
     val complete = timedRun[T](s, ts, extra)
     showRun(complete, show)
     complete.results match {
@@ -128,33 +128,26 @@ object Aggregation {
       key in currentRef get structure.data getOrElse true
     if (get(showSuccess)) {
       if (get(showTiming)) {
-        val msg = timingString(start, stop, "", structure.data, currentRef, log)
+        val msg = timingString(start, stop, structure.data, currentRef)
         if (success) log.success(msg) else log.error(msg)
       } else if (success)
         log.success("")
     }
   }
+
   private def timingString(
       startTime: Long,
       endTime: Long,
-      s: String,
       data: Settings[Scope],
       currentRef: ProjectRef,
-      log: Logger
   ): String = {
     val format = timingFormat in currentRef get data getOrElse defaultFormat
-    timing(format, startTime, endTime, "", log)
+    timing(format, startTime, endTime)
   }
-  def timing(
-      format: java.text.DateFormat,
-      startTime: Long,
-      endTime: Long,
-      s: String,
-      log: Logger
-  ): String = {
-    val ss = if (s.isEmpty) "" else s + " "
+
+  def timing(format: java.text.DateFormat, startTime: Long, endTime: Long): String = {
     val nowString = format.format(new java.util.Date(endTime))
-    "Total " + ss + "time: " + (endTime - startTime + 500) / 1000 + " s, completed " + nowString
+    "Total time: " + (endTime - startTime + 500) / 1000 + " s, completed " + nowString
   }
 
   def defaultFormat: DateFormat = {
@@ -164,20 +157,19 @@ object Aggregation {
 
   def applyDynamicTasks[I](
       s: State,
-      structure: BuildStructure,
       inputs: Values[InputTask[I]],
       show: ShowConfig
   )(implicit display: Show[ScopedKey[_]]): Parser[() => State] = {
     val parsers = for (KeyValue(k, it) <- inputs)
       yield it.parser(s).map(v => KeyValue(k, v))
     Command.applyEffect(seq(parsers)) { roots =>
-      runTasks(s, structure, roots, DummyTaskMap(Nil), show)
+      runTasks(s, roots, DummyTaskMap(Nil), show)
     }
   }
 
-  def evaluatingParser(s: State, structure: BuildStructure, show: ShowConfig)(
-      keys: Seq[KeyValue[_]]
-  )(implicit display: Show[ScopedKey[_]]): Parser[() => State] = {
+  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[_]])(
+      implicit display: Show[ScopedKey[_]]
+  ): Parser[() => State] = {
 
     // to make the call sites clearer
     def separate[L](in: Seq[KeyValue[_]])(
@@ -210,12 +202,12 @@ object Aggregation {
           val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
           failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")
         } else
-          applyDynamicTasks(s, structure, maps(inputTasks)(castToAny), show)
+          applyDynamicTasks(s, maps(inputTasks)(castToAny), show)
       } else {
         val base =
           if (tasks.isEmpty) success(() => s)
           else
-            applyTasks(s, structure, maps(tasks)(x => success(castToAny(x))), show)
+            applyTasks(s, maps(tasks)(x => success(castToAny(x))), show)
         base.map { res => () =>
           val newState = res()
           if (show.settingValues && settings.nonEmpty) printSettings(settings, show.print)
@@ -236,8 +228,9 @@ object Aggregation {
       reverse: Boolean
   ): Seq[ProjectRef] = {
     val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
-    resRef.toList.flatMap(ref =>
-      if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref))
+    resRef.toList.flatMap(
+      ref => if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
+    )
   }
 
   def aggregate[T, Proj](

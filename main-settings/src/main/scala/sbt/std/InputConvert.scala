@@ -8,11 +8,11 @@
 package sbt
 package std
 
-import reflect.macros._
+import scala.reflect.macros._
 
-import Def.Initialize
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.appmacro.{ Convert, Converted }
+import Def.Initialize
 
 object InputInitConvert extends Convert {
   def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
@@ -46,14 +46,13 @@ object TaskConvert extends Convert {
 
 /** Converts an input `Tree` of type `Initialize[T]`, `Initialize[Task[T]]`, or `Task[T]` into a `Tree` of type `Initialize[Task[T]]`.*/
 object FullConvert extends Convert {
-  import InputWrapper._
   def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
     nme match {
-      case WrapInitTaskName => Converted.Success[c.type](in)
-      case WrapPreviousName => Converted.Success[c.type](in)
-      case WrapInitName     => wrapInit[T](c)(in)
-      case WrapTaskName     => wrapTask[T](c)(in)
-      case _                => Converted.NotApplicable[c.type]
+      case InputWrapper.WrapInitTaskName => Converted.Success[c.type](in)
+      case InputWrapper.WrapPreviousName => Converted.Success[c.type](in)
+      case InputWrapper.WrapInitName     => wrapInit[T](c)(in)
+      case InputWrapper.WrapTaskName     => wrapTask[T](c)(in)
+      case _                             => Converted.NotApplicable[c.type]
     }
 
   private def wrapInit[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {

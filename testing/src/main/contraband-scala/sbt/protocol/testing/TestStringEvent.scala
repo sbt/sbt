@@ -19,7 +19,7 @@ final class TestStringEvent private (
   override def toString: String = {
     value
   }
-  protected[this] def copy(value: String = value): TestStringEvent = {
+  private[this] def copy(value: String = value): TestStringEvent = {
     new TestStringEvent(value)
   }
   def withValue(value: String): TestStringEvent = {

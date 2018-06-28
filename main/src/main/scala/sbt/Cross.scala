@@ -72,8 +72,7 @@ object Cross {
       } & spacedFirst(CrossCommand)
     }
 
-  private def crossRestoreSessionParser(state: State): Parser[String] =
-    token(CrossRestoreSessionCommand)
+  private def crossRestoreSessionParser: Parser[String] = token(CrossRestoreSessionCommand)
 
   private[sbt] def requireSession[T](p: State => Parser[T]): State => Parser[T] =
     s => if (s get sessionSettings isEmpty) failure("No project loaded") else p(s)
@@ -100,14 +99,24 @@ object Cross {
   }
 
   /**
-   * Parse the given command into either an aggregate command or a command for a project
+   * Parse the given command into a list of aggregate projects and command to issue.
    */
-  private def parseCommand(command: String): Either[String, (String, String)] = {
+  private[sbt] def parseSlashCommand(
+      extracted: Extracted
+  )(command: String): (Seq[ProjectRef], String) = {
+    import extracted._
     import DefaultParsers._
     val parser = (OpOrID <~ charClass(_ == '/', "/")) ~ any.* map {
-      case project ~ cmd => (project, cmd.mkString)
+      case seg1 ~ cmd => (seg1, cmd.mkString)
     }
-    Parser.parse(command, parser).left.map(_ => command)
+    Parser.parse(command, parser) match {
+      case Right((seg1, cmd)) =>
+        structure.allProjectRefs.find(_.project == seg1) match {
+          case Some(proj) => (Seq(proj), cmd)
+          case _          => (resolveAggregates(extracted), command)
+        }
+      case _ => (resolveAggregates(extracted), command)
+    }
   }
 
   def crossBuild: Command =
@@ -116,12 +125,7 @@ object Cross {
   private def crossBuildCommandImpl(state: State, args: CrossArgs): State = {
     val x = Project.extract(state)
     import x._
-
-    val (aggs, aggCommand) = parseCommand(args.command) match {
-      case Right((project, cmd)) =>
-        (structure.allProjectRefs.filter(_.project == project), cmd)
-      case Left(cmd) => (resolveAggregates(x), cmd)
-    }
+    val (aggs, aggCommand) = parseSlashCommand(x)(args.command)
 
     val projCrossVersions = aggs map { proj =>
       proj -> crossVersions(x, proj)
@@ -151,7 +155,8 @@ object Cross {
                 "configuration. This could result in subprojects cross building against Scala versions that they are " +
                 "not compatible with. Try issuing cross building command with tasks instead, since sbt will be able " +
                 "to ensure that cross building is only done using configured project and Scala version combinations " +
-                "that are configured.")
+                "that are configured."
+            )
             state.log.debug("Scala versions configuration is:")
             projCrossVersions.foreach {
               case (project, versions) => state.log.debug(s"$project: $versions")
@@ -175,12 +180,14 @@ object Cross {
             case (version, projects) if aggCommand.contains(" ") =>
               // If the command contains a space, then the `all` command won't work because it doesn't support issuing
               // commands with spaces, so revert to running the command on each project one at a time
-              s"$SwitchCommand $verbose $version" :: projects.map(project =>
-                s"$project/$aggCommand")
+              s"$SwitchCommand $verbose $version" :: projects
+                .map(project => s"$project/$aggCommand")
             case (version, projects) =>
               // First switch scala version, then use the all command to run the command on each project concurrently
-              Seq(s"$SwitchCommand $verbose $version",
-                  projects.map(_ + "/" + aggCommand).mkString("all ", " ", ""))
+              Seq(
+                s"$SwitchCommand $verbose $version",
+                projects.map(_ + "/" + aggCommand).mkString("all ", " ", "")
+              )
           }
       }
 
@@ -189,9 +196,11 @@ object Cross {
   }
 
   def crossRestoreSession: Command =
-    Command.arb(crossRestoreSessionParser, crossRestoreSessionHelp)(crossRestoreSessionImpl)
+    Command.arb(_ => crossRestoreSessionParser, crossRestoreSessionHelp)(
+      (s, _) => crossRestoreSessionImpl(s)
+    )
 
-  private def crossRestoreSessionImpl(state: State, arg: String): State = {
+  private def crossRestoreSessionImpl(state: State): State = {
     restoreCapturedSession(state, Project.extract(state))
   }
 
@@ -216,12 +225,27 @@ object Cross {
     Command.arb(requireSession(switchParser), switchHelp)(switchCommandImpl)
 
   private def switchCommandImpl(state: State, args: Switch): State = {
-    val switchedState = switchScalaVersion(args, state)
+    val x = Project.extract(state)
+    val (switchedState, affectedRefs) = switchScalaVersion(args, state)
 
-    args.command.toList ::: switchedState
+    val strictCmd =
+      if (args.version.force) {
+        // The Scala version was forced on the whole build, run as is
+        args.command
+      } else {
+        args.command.map { rawCmd =>
+          val (aggs, aggCommand) = parseSlashCommand(x)(rawCmd)
+          aggs
+            .intersect(affectedRefs)
+            .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
+            .mkString("all ", " ", "")
+        }
+      }
+
+    strictCmd.toList ::: switchedState
   }
 
-  private def switchScalaVersion(switch: Switch, state: State): State = {
+  private def switchScalaVersion(switch: Switch, state: State): (State, Seq[ResolvedReference]) = {
     val extracted = Project.extract(state)
     import extracted._
 
@@ -291,7 +315,7 @@ object Cross {
       }
     }
 
-    setScalaVersionForProjects(version, instance, projects, state, extracted)
+    (setScalaVersionForProjects(version, instance, projects, state, extracted), projects.map(_._1))
   }
 
   private def setScalaVersionForProjects(

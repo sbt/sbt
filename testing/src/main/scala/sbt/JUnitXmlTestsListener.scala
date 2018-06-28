@@ -9,10 +9,14 @@ package sbt
 
 import java.io.{ File, IOException, PrintWriter, StringWriter }
 import java.net.InetAddress
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Hashtable
+import java.util.concurrent.TimeUnit.NANOSECONDS
 
 import scala.collection.mutable.ListBuffer
-import scala.util.DynamicVariable
+import scala.util.Properties
 import scala.xml.{ Elem, Node => XNode, XML }
 import testing.{
   Event => TEvent,
@@ -21,6 +25,7 @@ import testing.{
   OptionalThrowable,
   TestSelector
 }
+import util.Logger
 import sbt.protocol.testing.TestResult
 
 /**
@@ -28,14 +33,27 @@ import sbt.protocol.testing.TestResult
  * report format.
  * @param outputDir path to the dir in which a folder with results is generated
  */
-class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
+class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends TestsListener {
+  // This constructor is for binary compatibility with older versions of sbt.
+  def this(outputDir: String) = this(outputDir, null)
 
   /**Current hostname so we know which machine executed the tests*/
-  val hostname =
-    try InetAddress.getLocalHost.getHostName
+  val hostname = {
+    val start = System.nanoTime
+    val name = try InetAddress.getLocalHost.getHostName
     catch {
       case _: IOException => "localhost"
     }
+    val elapsed = System.nanoTime - start
+    if ((NANOSECONDS.toSeconds(elapsed) >= 4) && Properties.isMac && logger != null) {
+      logger.warn(
+        s"Getting the hostname $name was slow (${elapsed / 1.0e6} ms). " +
+          "This is likely because the computer's hostname is not set. You can set the " +
+          "hostname with the command: scutil --set HostName $(scutil --get LocalHostName)."
+      )
+    }
+    name
+  }
 
   /**The dir in which we put all result files. Is equal to the given dir + "/test-reports"*/
   val targetDir = new File(outputDir + "/test-reports/")
@@ -60,7 +78,9 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
    * Gathers data for one Test Suite. We map test groups to TestSuites.
    * Each TestSuite gets its own output file.
    */
-  class TestSuite(val name: String) {
+  class TestSuite(val name: String, timestamp: LocalDateTime) {
+    def this(name: String) = this(name, LocalDateTime.now())
+
     val events: ListBuffer[TEvent] = new ListBuffer()
 
     /**Adds one test result to this suite.*/
@@ -80,10 +100,11 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
 
       /** Junit XML reports don't differentiate between ignored, skipped or pending tests */
       val ignoredSkippedPending = count(TStatus.Ignored) + count(TStatus.Skipped) + count(
-        TStatus.Pending)
+        TStatus.Pending
+      )
 
       val result =
-        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
+        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString } timestamp={formatISO8601DateTime(timestamp)}>
                      { properties }
                      {
                        for (e <- events) yield <testcase classname={ name } name={
@@ -124,29 +145,37 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   }
 
   /**The currently running test suite*/
-  val testSuite = new DynamicVariable(null: TestSuite)
+  private val testSuite = new InheritableThreadLocal[Option[TestSuite]] {
+    override def initialValue(): Option[TestSuite] = None
+  }
+
+  private def withTestSuite[T](f: TestSuite => T) =
+    testSuite.get().map(f).getOrElse(sys.error("no test suite"))
 
   /**Creates the output Dir*/
-  override def doInit() = { targetDir.mkdirs() }
+  override def doInit() = {
+    val _ = targetDir.mkdirs()
+  }
 
   /**
    * Starts a new, initially empty Suite with the given name.
    */
-  override def startGroup(name: String): Unit = testSuite.value_=(new TestSuite(name))
+  override def startGroup(name: String): Unit = testSuite.set(Some(new TestSuite(name)))
 
   /**
    * Adds all details for the given even to the current suite.
    */
   override def testEvent(event: TestEvent): Unit = for (e <- event.detail) {
-    testSuite.value.addEvent(e)
+    withTestSuite(_.addEvent(e))
   }
 
   /**
    * called for each class or equivalent grouping
    *  We map one group to one Testsuite, so for each Group
-   *  we create an XML like this:
+   *  we create [[https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd JUnit XML file]], and looks like this:
+   *
    *  <?xml version="1.0" encoding="UTF-8" ?>
-   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23">
+   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23" timestamp="2018-01-01T10:00:00">
    *       <properties>
    *           <property name="os.name" value="Linux" />
    *           ...
@@ -174,7 +203,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
       def selector = null
       def throwable = new OptionalThrowable(t)
     }
-    testSuite.value.addEvent(event)
+    withTestSuite(_.addEvent(event))
     writeSuite()
   }
 
@@ -190,11 +219,18 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   // contort the user into not using spaces.
   private[this] def normalizeName(s: String) = s.replaceAll("""\s+""", "-")
 
+  /**
+   * Format the date, without milliseconds or the timezone, per the JUnit spec.
+   */
+  private[this] def formatISO8601DateTime(d: LocalDateTime): String =
+    d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+
   private def writeSuite() = {
-    val file = new File(targetDir, s"${normalizeName(testSuite.value.name)}.xml").getAbsolutePath
+    val file = new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
     // TODO would be nice to have a logger and log this with level debug
     // System.err.println("Writing JUnit XML test report: " + file)
-    XML.save(file, testSuite.value.stop(), "UTF-8", true, null)
+    XML.save(file, withTestSuite(_.stop()), "UTF-8", true, null)
+    testSuite.remove()
   }
 
   /**Does nothing, as we write each file after a suite is done.*/

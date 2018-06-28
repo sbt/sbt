@@ -26,7 +26,7 @@ final class Position private (
   override def toString: String = {
     "Position(" + line + ", " + character + ")"
   }
-  protected[this] def copy(line: Long = line, character: Long = character): Position = {
+  private[this] def copy(line: Long = line, character: Long = character): Position = {
     new Position(line, character)
   }
   def withLine(line: Long): Position = {

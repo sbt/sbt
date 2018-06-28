@@ -23,7 +23,7 @@ final class PublishDiagnosticsParams private (
   override def toString: String = {
     "PublishDiagnosticsParams(" + uri + ", " + diagnostics + ")"
   }
-  protected[this] def copy(uri: String = uri, diagnostics: Vector[sbt.internal.langserver.Diagnostic] = diagnostics): PublishDiagnosticsParams = {
+  private[this] def copy(uri: String = uri, diagnostics: Vector[sbt.internal.langserver.Diagnostic] = diagnostics): PublishDiagnosticsParams = {
     new PublishDiagnosticsParams(uri, diagnostics)
   }
   def withUri(uri: String): PublishDiagnosticsParams = {

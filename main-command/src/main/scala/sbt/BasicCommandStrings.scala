@@ -21,8 +21,10 @@ object BasicCommandStrings {
   val TerminateAction: String = Exit
 
   def helpBrief =
-    (HelpCommand,
-     s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
+    (
+      HelpCommand,
+      s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>')."
+    )
   def helpDetailed = s"""$HelpCommand
 
 	Prints a help summary.
@@ -73,7 +75,7 @@ $HelpCommand <regular expression>
 	This will be used as the default level for logging from commands, settings, and tasks.
 	Any explicit `logLevel` configuration in a project overrides this setting.
 
--$level
+-$level OR --$level
 
 	Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
 	This is useful as a startup option:
@@ -83,9 +85,12 @@ $HelpCommand <regular expression>
 
   def runEarly(command: String) = s"$EarlyCommand($command)"
   private[sbt] def isEarlyCommand(s: String): Boolean = {
-    val levelOptions = Level.values.toSeq map { "-" + _ }
+    val levelOptions = Level.values.toSeq flatMap { elem =>
+      List("-" + elem, "--" + elem)
+    }
     (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
-    (levelOptions contains s)
+    (levelOptions contains s) ||
+    (s.startsWith("-" + AddPluginSbtFileCommand) || s.startsWith("--" + AddPluginSbtFileCommand))
   }
 
   val EarlyCommand = "early"
@@ -97,6 +102,14 @@ $HelpCommand <regular expression>
 	Schedules an early command, which will be run before other commands on the command line.
 	The order is preserved between all early commands, so `sbt "early(a)" "early(b)"` executes `a` and `b` in order.
 """
+
+  def addPluginSbtFileHelp = {
+    val brief =
+      (s"--$AddPluginSbtFileCommand=<file>", "Adds the given *.sbt file to the plugin build.")
+    Help(brief)
+  }
+
+  val AddPluginSbtFileCommand = "addPluginSbtFile"
 
   def ReadCommand = "<"
   def ReadFiles = " file1 file2 ..."
@@ -137,8 +150,10 @@ $HelpCommand <regular expression>
 
   def Multi = ";"
   def MultiBrief =
-    (Multi + " <command> (" + Multi + " <command>)*",
-     "Runs the provided semicolon-separated commands.")
+    (
+      Multi + " <command> (" + Multi + " <command>)*",
+      "Runs the provided semicolon-separated commands."
+    )
   def MultiDetailed =
     Multi + " command1 " + Multi + """ command2 ...
 
@@ -185,23 +200,11 @@ $AliasCommand name=
 
   def Client = "client"
   def ClientDetailed = "Provides an interactive prompt from which commands can be run on a server."
+  def DashClient = "-client"
+  def DashDashClient = "--client"
 
   def StashOnFailure = "sbtStashOnFailure"
   def PopOnFailure = "sbtPopOnFailure"
-
-  // commands with poor choices for names since they clash with the usual conventions for command line options
-  //   these are not documented and are mainly internal commands and can be removed without a full deprecation cycle
-  object Compat {
-    def OnFailure = "-"
-    def ClearOnFailure = "--"
-    def FailureWall = "---"
-    def OnFailureDeprecated = deprecatedAlias(OnFailure, BasicCommandStrings.OnFailure)
-    def ClearOnFailureDeprecated =
-      deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
-    def FailureWallDeprecated = deprecatedAlias(FailureWall, BasicCommandStrings.FailureWall)
-    private[this] def deprecatedAlias(oldName: String, newName: String): String =
-      s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in a later version"
-  }
 
   def FailureWall = "resumeFromFailure"
 

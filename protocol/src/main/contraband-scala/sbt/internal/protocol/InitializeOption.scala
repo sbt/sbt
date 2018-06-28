@@ -19,7 +19,7 @@ final class InitializeOption private (
   override def toString: String = {
     "InitializeOption(" + token + ")"
   }
-  protected[this] def copy(token: Option[String] = token): InitializeOption = {
+  private[this] def copy(token: Option[String] = token): InitializeOption = {
     new InitializeOption(token)
   }
   def withToken(token: Option[String]): InitializeOption = {

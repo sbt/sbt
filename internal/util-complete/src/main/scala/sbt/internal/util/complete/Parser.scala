@@ -209,7 +209,11 @@ object Parser extends ParserMain {
     a.ifValid {
       a.result match {
         case Some(av) => success(f(av))
-        case None     => new MapParser(a, f)
+        case None =>
+          a match {
+            case m: MapParser[_, A] => m.map(f)
+            case _                  => new MapParser(a, f)
+          }
       }
     }
 
@@ -275,8 +279,10 @@ object Parser extends ParserMain {
       revAcc: List[T]
   ): Parser[Seq[T]] = {
     assume(min >= 0, "Minimum must be greater than or equal to zero (was " + min + ")")
-    assume(max >= min,
-           "Minimum must be less than or equal to maximum (min: " + min + ", max: " + max + ")")
+    assume(
+      max >= min,
+      "Minimum must be less than or equal to maximum (min: " + min + ", max: " + max + ")"
+    )
 
     def checkRepeated(invalidButOptional: => Parser[Seq[T]]): Parser[Seq[T]] =
       repeated match {
@@ -381,8 +387,8 @@ trait ParserMain {
   }
 
   /** Presents a Char range as a Parser.  A single Char is parsed only if it is in the given range.*/
-  implicit def range(r: collection.immutable.NumericRange[Char]): Parser[Char] =
-    charClass(r contains _).examples(r.map(_.toString): _*)
+  implicit def range(r: collection.immutable.NumericRange[Char], label: String): Parser[Char] =
+    charClass(r contains _, label).examples(r.map(_.toString): _*)
 
   /** Defines a Parser that parses a single character only if it is contained in `legal`.*/
   def chars(legal: String): Parser[Char] = {
@@ -394,7 +400,7 @@ trait ParserMain {
    * Defines a Parser that parses a single character only if the predicate `f` returns true for that character.
    * If this parser fails, `label` is used as the failure message.
    */
-  def charClass(f: Char => Boolean, label: String = "<unspecified>"): Parser[Char] =
+  def charClass(f: Char => Boolean, label: String): Parser[Char] =
     new CharacterClass(f, label)
 
   /** Presents a single Char `ch` as a Parser that only parses that exact character. */
@@ -744,6 +750,7 @@ private final class MapParser[A, B](a: Parser[A], f: A => B) extends ValidParser
   def completions(level: Int) = a.completions(level)
   override def isTokenStart = a.isTokenStart
   override def toString = "map(" + a + ")"
+  def map[C](g: B => C) = new MapParser[A, C](a, f.andThen(g))
 }
 
 private final class Filter[T](p: Parser[T], f: T => Boolean, seen: String, msg: String => String)
@@ -836,10 +843,12 @@ private final class ParserWithExamples[T](
 ) extends ValidParser[T] {
 
   def derive(c: Char) =
-    examples(delegate derive c,
-             exampleSource.withAddedPrefix(c.toString),
-             maxNumberOfExamples,
-             removeInvalidExamples)
+    examples(
+      delegate derive c,
+      exampleSource.withAddedPrefix(c.toString),
+      maxNumberOfExamples,
+      removeInvalidExamples
+    )
 
   def result = delegate.result
 

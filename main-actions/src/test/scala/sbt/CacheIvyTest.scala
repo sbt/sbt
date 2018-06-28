@@ -37,19 +37,21 @@ class CacheIvyTest extends Properties("CacheIvy") {
       content = converter.toJsonUnsafe(value)
   }
 
-  private def testCache[T: JsonFormat, U](f: (SingletonCache[T], CacheStore) => U)(
-      implicit cache: SingletonCache[T]): U = {
+  private def testCache[T: JsonFormat, U](
+      f: (SingletonCache[T], CacheStore) => U
+  )(implicit cache: SingletonCache[T]): U = {
     val store = new InMemoryStore(Converter)
     f(cache, store)
   }
 
-  private def cachePreservesEquality[T: JsonFormat](m: T,
-                                                    eq: (T, T) => Prop,
-                                                    str: T => String): Prop = testCache[T, Prop] {
-    (cache, store) =>
-      cache.write(store, m)
-      val out = cache.read(store)
-      eq(out, m) :| s"Expected: ${str(m)}" :| s"Got: ${str(out)}"
+  private def cachePreservesEquality[T: JsonFormat](
+      m: T,
+      eq: (T, T) => Prop,
+      str: T => String
+  ): Prop = testCache[T, Prop] { (cache, store) =>
+    cache.write(store, m)
+    val out = cache.read(store)
+    eq(out, m) :| s"Expected: ${str(m)}" :| s"Got: ${str(out)}"
   }
 
   implicit val arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(

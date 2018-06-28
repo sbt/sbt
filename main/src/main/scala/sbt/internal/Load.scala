@@ -61,7 +61,7 @@ private[sbt] object Load {
       val globalBase = getGlobalBase(state)
       val base = baseDirectory.getCanonicalFile
       val rawConfig = defaultPreGlobal(state, base, globalBase, log)
-      val config0 = defaultWithGlobal(state, base, rawConfig, globalBase, log)
+      val config0 = defaultWithGlobal(state, base, rawConfig, globalBase)
       val config =
         if (isPlugin) enableSbtPlugin(config0) else config0.copy(extraBuilds = topLevelExtras)
       (base, config)
@@ -109,7 +109,7 @@ private[sbt] object Load {
       javaHome = None,
       scalac
     )
-    val evalPluginDef = EvaluateTask.evalPluginDef(log) _
+    val evalPluginDef: (BuildStructure, State) => PluginData = EvaluateTask.evalPluginDef _
     val delegates = defaultDelegates
     val pluginMgmt = PluginManagement(loader)
     val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
@@ -145,7 +145,6 @@ private[sbt] object Load {
       base: File,
       rawConfig: LoadBuildConfiguration,
       globalBase: File,
-      log: Logger
   ): LoadBuildConfiguration = {
     val globalPluginsDir = getGlobalPluginsDirectory(state, globalBase)
     val withGlobal = loadGlobal(state, base, globalPluginsDir, rawConfig)
@@ -208,7 +207,6 @@ private[sbt] object Load {
       project => projectInherit(lb, project),
       (project, config) => configInherit(lb, project, config, rootProject),
       task => task.extend,
-      (project, extra) => Nil
     )
   }
 
@@ -269,7 +267,7 @@ private[sbt] object Load {
     }
     Project.checkTargets(data) foreach sys.error
     val index = timed("Load.apply: structureIndex", log) {
-      structureIndex(data, settings, loaded.extra(data), projects)
+      structureIndex(data, settings, loaded.extra(data), projects, log)
     }
     val streams = timed("Load.apply: mkStreams", log) { mkStreams(projects, loaded.root, data) }
     val bs = new BuildStructure(
@@ -311,8 +309,9 @@ private[sbt] object Load {
           case _                  => None
       }
     )
-    ss.map(s =>
-      s mapConstant setResolved(s.key) mapReferenced mapSpecial(s.key) mapInit setDefining)
+    ss.map(
+      s => s mapConstant setResolved(s.key) mapReferenced mapSpecial(s.key) mapInit setDefining
+    )
   }
 
   def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
@@ -322,7 +321,8 @@ private[sbt] object Load {
       data: Settings[Scope],
       settings: Seq[Setting[_]],
       extra: KeyIndex => BuildUtil[_],
-      projects: Map[URI, LoadedBuildUnit]
+      projects: Map[URI, LoadedBuildUnit],
+      log: Logger
   ): StructureIndex = {
     val keys = Index.allKeys(settings)
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
@@ -331,6 +331,7 @@ private[sbt] object Load {
     val configsMap: Map[String, Seq[Configuration]] =
       projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
     val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
+    checkConfigurations(keyIndex, log)
     val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap, configsMap)
     new StructureIndex(
       Index.stringToKeyMap(attributeKeys),
@@ -341,15 +342,33 @@ private[sbt] object Load {
     )
   }
 
+  private def checkConfigurations(keyIndex: KeyIndex, log: Logger): Unit = {
+    keyIndex.guessedConfigIdents
+      .collect {
+        // Filter out any global configurations since we don't have a way of fixing them.
+        // Chances are this is only going to be the Test configuration which will have guessed correctly.
+        case (Some(projectRef), config, guess) =>
+          (Reference.display(projectRef), config, guess)
+      }
+      .foreach {
+        case (project, config, guess) =>
+          log.warn(
+            s"""The project $project references an unknown configuration "$config" and was guessed to be "$guess"."""
+          )
+          log.warn("This configuration should be explicitly added to the project.")
+      }
+  }
+
   // Reevaluates settings after modifying them.  Does not recompile or reload any build components.
   def reapply(
       newSettings: Seq[Setting[_]],
-      structure: BuildStructure
+      structure: BuildStructure,
+      log: Logger
   )(implicit display: Show[ScopedKey[_]]): BuildStructure = {
     val transformed = finalTransforms(newSettings)
     val newData = Def.make(transformed)(structure.delegates, structure.scopeLocal, display)
     def extra(index: KeyIndex) = BuildUtil(structure.root, structure.units, index, newData)
-    val newIndex = structureIndex(newData, transformed, extra, structure.units)
+    val newIndex = structureIndex(newData, transformed, extra, structure.units, log)
     val newStreams = mkStreams(structure.units, structure.root, newData)
     new BuildStructure(
       units = structure.units,
@@ -561,8 +580,10 @@ private[sbt] object Load {
 
   def checkProjectBase(buildBase: File, projectBase: File): Unit = {
     checkDirectory(projectBase)
-    assert(buildBase == projectBase || IO.relativize(buildBase, projectBase).isDefined,
-           s"Directory $projectBase is not contained in build root $buildBase")
+    assert(
+      buildBase == projectBase || IO.relativize(buildBase, projectBase).isDefined,
+      s"Directory $projectBase is not contained in build root $buildBase"
+    )
   }
 
   def checkBuildBase(base: File) = checkDirectory(base)
@@ -583,8 +604,10 @@ private[sbt] object Load {
     }
   }
 
-  def checkAll(referenced: Map[URI, List[ProjectReference]],
-               builds: Map[URI, PartBuildUnit]): Unit = {
+  def checkAll(
+      referenced: Map[URI, List[ProjectReference]],
+      builds: Map[URI, PartBuildUnit]
+  ): Unit = {
     val rootProject = getRootProject(builds)
     for ((uri, refs) <- referenced; ref <- refs) {
       val ProjectRef(refURI, refID) = Scope.resolveProjectRef(uri, rootProject, ref)
@@ -711,7 +734,8 @@ private[sbt] object Load {
           createRoot,
           uri,
           config.pluginManagement.context,
-          Nil
+          Nil,
+          s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil)
         )
       val loadedProjectsRaw = timed("Load.loadUnit: loadedProjectsRaw", log) {
         loadProjects(initialProjects, !hasRootAlreadyDefined)
@@ -720,12 +744,15 @@ private[sbt] object Load {
       //        here on, so the autogenerated build aggregated can be removed from this code. ( I think)
       // We may actually want to move it back here and have different flags in loadTransitive...
       val hasRoot = loadedProjectsRaw.projects.exists(_.base == normBase) || defsScala.exists(
-        _.rootProject.isDefined)
+        _.rootProject.isDefined
+      )
       val (loadedProjects, defaultBuildIfNone, keepClassFiles) =
         if (hasRoot)
-          (loadedProjectsRaw.projects,
-           BuildDef.defaultEmpty,
-           loadedProjectsRaw.generatedConfigClassFiles)
+          (
+            loadedProjectsRaw.projects,
+            BuildDef.defaultEmpty,
+            loadedProjectsRaw.generatedConfigClassFiles
+          )
         else {
           val existingIDs = loadedProjectsRaw.projects.map(_.id)
           val refs = existingIDs.map(id => ProjectRef(uri, id))
@@ -734,9 +761,11 @@ private[sbt] object Load {
           val defaultProjects = timed("Load.loadUnit: defaultProjects", log) {
             loadProjects(projectsFromBuild(b, normBase), false)
           }
-          (defaultProjects.projects ++ loadedProjectsRaw.projects,
-           b,
-           defaultProjects.generatedConfigClassFiles ++ loadedProjectsRaw.generatedConfigClassFiles)
+          (
+            defaultProjects.projects ++ loadedProjectsRaw.projects,
+            b,
+            defaultProjects.generatedConfigClassFiles ++ loadedProjectsRaw.generatedConfigClassFiles
+          )
         }
       // Now we clean stale class files.
       // TODO - this may cause issues with multiple sbt clients, but that should be deprecated pending sbt-server anyway
@@ -836,7 +865,8 @@ private[sbt] object Load {
       makeOrDiscoverRoot: Boolean,
       buildUri: URI,
       context: PluginManagement.Context,
-      generatedConfigClassFiles: Seq[File]
+      generatedConfigClassFiles: Seq[File],
+      extraSbtFiles: Seq[File]
   ): LoadedProjects =
     /*timed(s"Load.loadTransitive(${ newProjects.map(_.id) })", log)*/ {
       // load all relevant configuration files (.sbt, as .scala already exists at this point)
@@ -861,7 +891,11 @@ private[sbt] object Load {
         val autoPlugins: Seq[AutoPlugin] =
           try plugins.detected.deducePluginsFromProject(p1, log)
           catch { case e: AutoPluginException => throw translateAutoPluginException(e, p) }
-        val p2 = this.resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, log)
+        val extra =
+          if (context.globalPluginProject) extraSbtFiles
+          else Nil
+        val p2 =
+          this.resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, extra, log)
         val projectLevelExtra =
           if (expand) autoPlugins flatMap {
             _.derivedProjects(p2) map { _.setProjectOrigin(ProjectOrigin.DerivedProject) }
@@ -880,7 +914,8 @@ private[sbt] object Load {
               (root, rest, files, generated)
             case DiscoveredProjects(None, rest, files, generated) => (p, rest, files, generated)
           }
-        val (finalRoot, projectLevelExtra) = finalizeProject(root, files, true)
+        val (finalRoot, projectLevelExtra) =
+          finalizeProject(root, files, true)
         (finalRoot, discovered ++ projectLevelExtra, generated)
       }
 
@@ -902,14 +937,20 @@ private[sbt] object Load {
             false,
             buildUri,
             context,
-            generated ++ generatedConfigClassFiles
+            generated ++ generatedConfigClassFiles,
+            Nil
           )
         case Nil if makeOrDiscoverRoot =>
           log.debug(s"[Loading] Scanning directory ${buildBase}")
-          discover(AddSettings.defaultSbtFiles, buildBase) match {
+          val auto =
+            if (context.globalPluginProject)
+              AddSettings.seq(AddSettings.defaultSbtFiles, AddSettings.sbtFiles(extraSbtFiles: _*))
+            else AddSettings.defaultSbtFiles
+          discover(auto, buildBase) match {
             case DiscoveredProjects(Some(root), discovered, files, generated) =>
               log.debug(
-                s"[Loading] Found root project ${root.id} w/ remaining ${discovered.map(_.id).mkString(",")}")
+                s"[Loading] Found root project ${root.id} w/ remaining ${discovered.map(_.id).mkString(",")}"
+              )
               val (finalRoot, projectLevelExtra) =
                 timed(s"Load.loadTransitive: finalizeProject($root)", log) {
                   finalizeProject(root, files, true)
@@ -926,7 +967,8 @@ private[sbt] object Load {
                 false,
                 buildUri,
                 context,
-                generated ++ generatedConfigClassFiles
+                generated ++ generatedConfigClassFiles,
+                Nil
               )
             // Here we need to create a root project...
             case DiscoveredProjects(None, discovered, files, generated) =>
@@ -944,6 +986,7 @@ private[sbt] object Load {
                 false,
                 buildUri,
                 context,
+                Nil,
                 Nil
               )
               val otherGenerated = otherProjects.generatedConfigClassFiles
@@ -959,18 +1002,22 @@ private[sbt] object Load {
               }
               val result = root +: (acc ++ otherProjects.projects)
               log.debug(
-                s"[Loading] Done in ${buildBase}, returning: ${result.map(_.id).mkString("(", ", ", ")")}")
+                s"[Loading] Done in ${buildBase}, returning: ${result.map(_.id).mkString("(", ", ", ")")}"
+              )
               LoadedProjects(result, generated ++ otherGenerated ++ generatedConfigClassFiles)
           }
         case Nil =>
           log.debug(
-            s"[Loading] Done in ${buildBase}, returning: ${acc.map(_.id).mkString("(", ", ", ")")}")
+            s"[Loading] Done in ${buildBase}, returning: ${acc.map(_.id).mkString("(", ", ", ")")}"
+          )
           LoadedProjects(acc, generatedConfigClassFiles)
       }
     }
 
-  private[this] def translateAutoPluginException(e: AutoPluginException,
-                                                 project: Project): AutoPluginException =
+  private[this] def translateAutoPluginException(
+      e: AutoPluginException,
+      project: Project
+  ): AutoPluginException =
     e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")
 
   /**
@@ -1001,6 +1048,7 @@ private[sbt] object Load {
    * @param globalUserSettings All the settings contributed from the ~/.sbt/<version> directory
    * @param memoSettings A recording of all loaded files (our files should reside in there).  We should need not load any
    *                     sbt file to resolve a project.
+   * @param extraSbtFiles Extra *.sbt files.
    * @param log  A logger to report auto-plugin issues to.
    */
   private[sbt] def resolveProject(
@@ -1009,6 +1057,7 @@ private[sbt] object Load {
       loadedPlugins: LoadedPlugins,
       globalUserSettings: InjectSettings,
       memoSettings: mutable.Map[File, LoadedSbtFile],
+      extraSbtFiles: Seq[File],
       log: Logger
   ): Project =
     timed(s"Load.resolveProject(${p.id})", log) {
@@ -1026,7 +1075,9 @@ private[sbt] object Load {
         // Grab all the settings we already loaded from sbt files
         def settings(files: Seq[File]): Seq[Setting[_]] = {
           if (files.nonEmpty)
-            log.info(s"${files.map(_.getName).mkString("Loading settings from ", ",", " ...")}")
+            log.info(
+              s"${files.map(_.getName).mkString(s"Loading settings for project ${p.id} from ", ",", " ...")}"
+            )
           for {
             file <- files
             config <- (memoSettings get file).toSeq
@@ -1045,7 +1096,17 @@ private[sbt] object Load {
               b ++ expandSettings(add)
             }
         }
-        expandSettings(AddSettings.allDefaults)
+        val auto =
+          if (extraSbtFiles.nonEmpty)
+            AddSettings.seq(
+              AddSettings.autoPlugins,
+              AddSettings.buildScalaFiles,
+              AddSettings.userSettings,
+              AddSettings.defaultSbtFiles,
+              AddSettings.sbtFiles(extraSbtFiles: _*),
+            )
+          else AddSettings.allDefaults
+        expandSettings(auto)
       }
       // Finally, a project we can use in buildStructure.
       p.copy(settings = allSettings)
@@ -1128,22 +1189,21 @@ private[sbt] object Load {
 
   /** These are the settings defined when loading a project "meta" build. */
   val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(
-    Seq(
-      sbtPlugin :== true,
-      pluginData := {
-        val prod = (exportedProducts in Configurations.Runtime).value
-        val cp = (fullClasspath in Configurations.Runtime).value
-        val opts = (scalacOptions in Configurations.Compile).value
-        PluginData(
-          removeEntries(cp, prod),
-          prod,
-          Some(fullResolvers.value.toVector),
-          Some(update.value),
-          opts
-        )
-      },
-      onLoadMessage := ("Loading project definition from " + baseDirectory.value)
-    ))
+    sbtPlugin :== true,
+    pluginData := {
+      val prod = (exportedProducts in Configurations.Runtime).value
+      val cp = (fullClasspath in Configurations.Runtime).value
+      val opts = (scalacOptions in Configurations.Compile).value
+      PluginData(
+        removeEntries(cp, prod),
+        prod,
+        Some(fullResolvers.value.toVector),
+        Some(update.value),
+        opts
+      )
+    },
+    onLoadMessage := ("Loading project definition from " + baseDirectory.value)
+  )
 
   private[this] def removeEntries(
       cp: Seq[Attributed[File]],
@@ -1160,7 +1220,8 @@ private[sbt] object Load {
       injectSettings = config.injectSettings.copy(
         global = autoPluginSettings ++ config.injectSettings.global,
         project = config.pluginManagement.inject ++ config.injectSettings.project
-      ))
+      )
+    )
 
   def activateGlobalPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
     config.globalPlugin match {
@@ -1269,8 +1330,9 @@ private[sbt] object Load {
   def initialSession(structure: BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
     val session = s get Keys.sessionSettings
     val currentProject = session map (_.currentProject) getOrElse Map.empty
-    val currentBuild = session map (_.currentBuild) filter (uri =>
-      structure.units.keys exists (uri ==)) getOrElse structure.root
+    val currentBuild = session map (_.currentBuild) filter (
+        uri => structure.units.keys exists (uri ==)
+    ) getOrElse structure.root
     new SessionSettings(
       currentBuild,
       projectMap(structure, currentProject),

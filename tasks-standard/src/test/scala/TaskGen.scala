@@ -24,9 +24,11 @@ object TaskGen extends std.TaskExtra {
   def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] = {
     val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
     val dummies = std.Transform.DummyTaskMap(Nil)
-    val x = new Execute[Task](Execute.config(checkCycles),
-                              Execute.noTriggers,
-                              ExecuteProgress.empty[Task])(std.Transform(dummies))
+    val x = new Execute[Task](
+      Execute.config(checkCycles),
+      Execute.noTriggers,
+      ExecuteProgress.empty[Task]
+    )(std.Transform(dummies))
     try { x.run(root)(service) } finally { shutdown() }
   }
   def tryRun[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): T =

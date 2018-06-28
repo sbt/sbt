@@ -11,7 +11,7 @@ package complete
 import jline.console.ConsoleReader
 import jline.console.completer.{ Completer, CompletionHandler }
 import scala.annotation.tailrec
-import scala.collection.JavaConverters
+import scala.collection.JavaConverters._
 
 object JLineCompletion {
   def installCustomCompletor(reader: ConsoleReader, parser: Parser[_]): Unit =
@@ -91,7 +91,8 @@ object JLineCompletion {
   def appendNonEmpty(set: Set[String], add: String) = if (add.trim.isEmpty) set else set + add
 
   def customCompletor(
-      f: (String, Int) => (Seq[String], Seq[String])): (ConsoleReader, Int) => Boolean =
+      f: (String, Int) => (Seq[String], Seq[String])
+  ): (ConsoleReader, Int) => Boolean =
     (reader, level) => {
       val success = complete(beforeCursor(reader), reader => f(reader, level), reader)
       reader.flush()
@@ -154,7 +155,7 @@ object JLineCompletion {
       if (line.charAt(line.length - 1) != '\n')
         reader.println()
     }
-    reader.printColumns(JavaConverters.seqAsJavaList(columns.map(_.trim)))
+    reader.printColumns(columns.map(_.trim).asJava)
   }
 
   def hasNewline(s: String): Boolean = s.indexOf('\n') >= 0

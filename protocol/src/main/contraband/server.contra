@@ -43,6 +43,7 @@ type ExecStatusEvent implements EventMessage {
   channelName: String
   execId: String
   commandQueue: [String]
+  exitCode: Long @since("1.1.2")
 }
 
 interface SettingQueryResponse implements EventMessage {}

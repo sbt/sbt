@@ -11,7 +11,7 @@ abstract class CommandMessage() extends Serializable {
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: CommandMessage => true
+  case _: CommandMessage => true
   case _ => false
 }
 override def hashCode: Int = {

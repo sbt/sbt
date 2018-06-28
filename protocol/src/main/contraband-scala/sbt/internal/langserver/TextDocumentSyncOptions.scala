@@ -23,7 +23,7 @@ final class TextDocumentSyncOptions private (
   override def toString: String = {
     "TextDocumentSyncOptions(" + openClose + ", " + change + ", " + willSave + ", " + willSaveWaitUntil + ", " + save + ")"
   }
-  protected[this] def copy(openClose: Option[Boolean] = openClose, change: Option[Long] = change, willSave: Option[Boolean] = willSave, willSaveWaitUntil: Option[Boolean] = willSaveWaitUntil, save: Option[sbt.internal.langserver.SaveOptions] = save): TextDocumentSyncOptions = {
+  private[this] def copy(openClose: Option[Boolean] = openClose, change: Option[Long] = change, willSave: Option[Boolean] = willSave, willSaveWaitUntil: Option[Boolean] = willSaveWaitUntil, save: Option[sbt.internal.langserver.SaveOptions] = save): TextDocumentSyncOptions = {
     new TextDocumentSyncOptions(openClose, change, willSave, willSaveWaitUntil, save)
   }
   def withOpenClose(openClose: Option[Boolean]): TextDocumentSyncOptions = {

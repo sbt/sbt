@@ -30,6 +30,6 @@ object JUnitXmlReportPlugin extends AutoPlugin {
   // It might be a good idea to derive this setting into specific test scopes.
   override lazy val projectSettings: Seq[Setting[_]] =
     Seq(
-      testListeners += new JUnitXmlTestsListener(target.value.getAbsolutePath)
+      testListeners += new JUnitXmlTestsListener(target.value.getAbsolutePath, streams.value.log)
     )
 }

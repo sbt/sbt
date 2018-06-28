@@ -23,7 +23,7 @@ final class TextDocumentPositionParams private (
   override def toString: String = {
     "TextDocumentPositionParams(" + textDocument + ", " + position + ")"
   }
-  protected[this] def copy(textDocument: sbt.internal.langserver.TextDocumentIdentifier = textDocument, position: sbt.internal.langserver.Position = position): TextDocumentPositionParams = {
+  private[this] def copy(textDocument: sbt.internal.langserver.TextDocumentIdentifier = textDocument, position: sbt.internal.langserver.Position = position): TextDocumentPositionParams = {
     new TextDocumentPositionParams(textDocument, position)
   }
   def withTextDocument(textDocument: sbt.internal.langserver.TextDocumentIdentifier): TextDocumentPositionParams = {

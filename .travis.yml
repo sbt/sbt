@@ -6,6 +6,7 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot
+    - $HOME/.jabba
 
 language: scala
 
@@ -15,18 +16,28 @@ jdk:
 matrix:
   fast_finish: true
 
+matrix:
+  include:
+  - env: SBT_CMD="scripted java/*"
+    before_install:
+      - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
+    install:
+      - /home/travis/.jabba/bin/jabba install openjdk@1.10
+
 env:
+  global:
+    - secure: d3bu2KNwsVHwfhbGgO+gmRfDKBJhfICdCJFGWKf2w3Gv86AJZX9nuTYRxz0KtdvEHO5Xw8WTBZLPb2thSJqhw9OCm4J8TBAVqCP0ruUj4+aqBUFy4bVexQ6WKE6nWHs4JPzPk8c6uC1LG3hMuzlC8RGETXtL/n81Ef1u7NjyXjs=
   matrix:
-    - SBT_CMD=";mimaReportBinaryIssues ;scalafmt::test ;test:scalafmt::test ;sbt:scalafmt::test ;headerCheck ;test:headerCheck ;test:compile ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests"
+    - SBT_CMD=";mimaReportBinaryIssues ;scalafmt::test ;test:scalafmt::test ;sbt:scalafmt::test ;headerCheck ;test:headerCheck ;whitesourceCheckPolicies ;test:compile ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests; doc"
     - SBT_CMD="scripted actions/*"
     - SBT_CMD="scripted apiinfo/* compiler-project/* ivy-deps-management/*"
     - SBT_CMD="scripted dependency-management/*1of4"
     - SBT_CMD="scripted dependency-management/*2of4"
     - SBT_CMD="scripted dependency-management/*3of4"
     - SBT_CMD="scripted dependency-management/*4of4"
-    - SBT_CMD="scripted java/* package/* reporter/* run/* project-load/*"
+    - SBT_CMD="scripted package/* reporter/* run/* project-load/*"
     - SBT_CMD="scripted project/*1of2"
-    - SBT_CMD="scripted project/*2of2 server/*"
+    - SBT_CMD="scripted project/*2of2"
     - SBT_CMD="scripted source-dependencies/*1of3"
     - SBT_CMD="scripted source-dependencies/*2of3"
     - SBT_CMD="scripted source-dependencies/*3of3"
@@ -39,12 +50,12 @@ notifications:
 
 # Undo _JAVA_OPTIONS environment variable
 before_script:
-  - _JAVA_OPTIONS=
+  - unset _JAVA_OPTIONS
 
 script:
   # It doesn't need that much memory because compile and run are forked
   - sbt -J-XX:ReservedCodeCacheSize=128m -J-Xmx800M -J-Xms800M -J-server "$SBT_CMD"
 
 before_cache:
-  - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
-  - find $HOME/.sbt  -name "*.lock"               -print -delete
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt  -name "*.lock"               -delete

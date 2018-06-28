@@ -48,7 +48,7 @@ object Util {
           "-Yno-adapted-args",
           "-Ywarn-dead-code",
           "-Ywarn-numeric-widen",
-          "-Ywarn-unused:-patvars,-params,-implicits,_",
+          "-Ywarn-unused:-patvars,-implicits,_",
           "-Ywarn-unused-import"
         )
     }),
@@ -105,6 +105,8 @@ object Util {
     val timestamp = formatter.format(new Date)
     val content = versionLine(version) + "\ntimestamp=" + timestamp
     val f = dir / "xsbt.version.properties"
+    // TODO: replace lastModified() with sbt.io.IO.getModifiedTimeOrZero(), once the build
+    // has been upgraded to a version of sbt that includes that call.
     if (!f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f, version)) {
       s.log.info("Writing version information to " + f + " :\n" + content)
       IO.write(f, content)

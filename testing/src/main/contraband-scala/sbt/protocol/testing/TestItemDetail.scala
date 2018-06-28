@@ -31,7 +31,7 @@ final class TestItemDetail private (
   override def toString: String = {
     "TestItemDetail(" + fullyQualifiedName + ", " + status + ", " + duration + ")"
   }
-  protected[this] def copy(fullyQualifiedName: String = fullyQualifiedName, status: sbt.testing.Status = status, duration: Option[Long] = duration): TestItemDetail = {
+  private[this] def copy(fullyQualifiedName: String = fullyQualifiedName, status: sbt.testing.Status = status, duration: Option[Long] = duration): TestItemDetail = {
     new TestItemDetail(fullyQualifiedName, status, duration)
   }
   def withFullyQualifiedName(fullyQualifiedName: String): TestItemDetail = {

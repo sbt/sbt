@@ -20,7 +20,7 @@ final class TokenFile private (
   override def toString: String = {
     "TokenFile(" + uri + ", " + token + ")"
   }
-  protected[this] def copy(uri: String = uri, token: String = token): TokenFile = {
+  private[this] def copy(uri: String = uri, token: String = token): TokenFile = {
     new TokenFile(uri, token)
   }
   def withUri(uri: String): TokenFile = {

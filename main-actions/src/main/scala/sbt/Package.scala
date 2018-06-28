@@ -7,7 +7,6 @@
 
 package sbt
 
-import scala.Predef.{ conforms => _, _ }
 import java.io.File
 import java.util.jar.{ Attributes, Manifest }
 import scala.collection.JavaConverters._
@@ -23,7 +22,7 @@ import sbt.internal.util.HNil
 import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
-import sbt.util.Tracked.inputChanged
+import sbt.util.Tracked.{ inputChanged, outputChanged }
 
 sealed trait PackageOption
 object Package {
@@ -50,9 +49,11 @@ object Package {
     }
   }
 
-  final class Configuration(val sources: Seq[(File, String)],
-                            val jar: File,
-                            val options: Seq[PackageOption])
+  final class Configuration(
+      val sources: Seq[(File, String)],
+      val jar: File,
+      val options: Seq[PackageOption]
+  )
   def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
@@ -66,27 +67,30 @@ object Package {
     }
     setVersion(main)
 
+    type Inputs = Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
     val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") {
-      (inChanged,
-       inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
+      (inChanged, inputs: Inputs) =>
         import exists.format
         val sources :+: _ :+: manifest :+: HNil = inputs
-        inputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
-          if (inChanged || outChanged)
+        outputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
+          if (inChanged || outChanged) {
             makeJar(sources.toSeq, jar.file, manifest, log)
-          else
+            jar.file
+          } else
             log.debug("Jar uptodate: " + jar.file)
         }
     }
 
     val map = conf.sources.toMap
     val inputs = map :+: lastModified(map.keySet) :+: manifest :+: HNil
-    cachedMakeJar(inputs)(exists(conf.jar))
+    cachedMakeJar(inputs)(() => exists(conf.jar))
   }
   def setVersion(main: Attributes): Unit = {
     val version = Attributes.Name.MANIFEST_VERSION
-    if (main.getValue(version) eq null)
+    if (main.getValue(version) eq null) {
       main.put(version, "1.0")
+      ()
+    }
   }
   def addSpecManifestAttributes(name: String, version: String, orgName: String): PackageOption = {
     import Attributes.Name._
@@ -94,16 +98,26 @@ object Package {
     val attribVals = Seq(name, version, orgName)
     ManifestAttributes(attribKeys zip attribVals: _*)
   }
-  def addImplManifestAttributes(name: String,
-                                version: String,
-                                homepage: Option[java.net.URL],
-                                org: String,
-                                orgName: String): PackageOption = {
+  def addImplManifestAttributes(
+      name: String,
+      version: String,
+      homepage: Option[java.net.URL],
+      org: String,
+      orgName: String
+  ): PackageOption = {
     import Attributes.Name._
-    val attribKeys = Seq(IMPLEMENTATION_TITLE,
-                         IMPLEMENTATION_VERSION,
-                         IMPLEMENTATION_VENDOR,
-                         IMPLEMENTATION_VENDOR_ID)
+
+    // The ones in Attributes.Name are deprecated saying:
+    //   "Extension mechanism will be removed in a future release. Use class path instead."
+    val IMPLEMENTATION_VENDOR_ID = new Attributes.Name("Implementation-Vendor-Id")
+    val IMPLEMENTATION_URL = new Attributes.Name("Implementation-URL")
+
+    val attribKeys = Seq(
+      IMPLEMENTATION_TITLE,
+      IMPLEMENTATION_VERSION,
+      IMPLEMENTATION_VENDOR,
+      IMPLEMENTATION_VENDOR_ID,
+    )
     val attribVals = Seq(name, version, orgName, org)
     ManifestAttributes((attribKeys zip attribVals) ++ {
       homepage map (h => (IMPLEMENTATION_URL, h.toString))

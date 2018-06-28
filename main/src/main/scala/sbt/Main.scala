@@ -14,6 +14,7 @@ import sbt.internal.{
   BuildUnit,
   CommandExchange,
   CommandStrings,
+  CrossJava,
   DefaultBackgroundJobService,
   EvaluateConfigurations,
   Inspect,
@@ -40,7 +41,6 @@ import sbt.internal.util.{
   Types
 }
 import sbt.util.{ Level, Logger, Show }
-
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.inc.ScalaInstance
 import sbt.compiler.EvalImports
@@ -52,8 +52,6 @@ import xsbti.compile.CompilerCache
 import scala.annotation.tailrec
 import sbt.io.IO
 import sbt.io.syntax._
-import StandardMain._
-
 import java.io.{ File, IOException }
 import java.net.URI
 import java.util.{ Locale, Properties }
@@ -66,52 +64,86 @@ import CommandStrings.BootCommand
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommands.early
-    import BasicCommandStrings.runEarly
+    import BasicCommandStrings.{ runEarly, DashClient, DashDashClient }
     import BuiltinCommands.defaults
     import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-    val state = initialState(
-      configuration,
-      Seq(defaults, early),
-      runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
-    runManaged(state)
+    import sbt.internal.client.NetworkClient
+
+    // if we detect -Dsbt.client=true or -client, run thin client.
+    val clientModByEnv = java.lang.Boolean.getBoolean("sbt.client")
+    val userCommands = configuration.arguments.map(_.trim)
+    if (clientModByEnv || (userCommands.exists { cmd =>
+          (cmd == DashClient) || (cmd == DashDashClient)
+        })) {
+      val args = userCommands.toList filterNot { cmd =>
+        (cmd == DashClient) || (cmd == DashDashClient)
+      }
+      NetworkClient.run(configuration, args)
+      Exit(0)
+    } else {
+      val state = StandardMain.initialState(
+        configuration,
+        Seq(defaults, early),
+        runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+      )
+      StandardMain.runManaged(state)
+    }
   }
 }
 
 final class ScriptMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
-    runManaged(
-      initialState(
-        configuration,
-        BuiltinCommands.ScriptCommands,
-        runEarly(Level.Error.toString) :: Script.Name :: Nil
-      ))
+    val state = StandardMain.initialState(
+      configuration,
+      BuiltinCommands.ScriptCommands,
+      runEarly(Level.Error.toString) :: Script.Name :: Nil
+    )
+    StandardMain.runManaged(state)
   }
 }
 
 final class ConsoleMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-    runManaged(
-      initialState(
-        configuration,
-        BuiltinCommands.ConsoleCommands,
-        IvyConsole.Name :: Nil
-      ))
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    val state = StandardMain.initialState(
+      configuration,
+      BuiltinCommands.ConsoleCommands,
+      IvyConsole.Name :: Nil
+    )
+    StandardMain.runManaged(state)
+  }
 }
 
 object StandardMain {
   private[sbt] lazy val exchange = new CommandExchange()
   import scalacache._
   import scalacache.caffeine._
-  private[sbt] val cache: Cache[Any] = CaffeineCache[Any]
+  private[sbt] lazy val cache: Cache[Any] = CaffeineCache[Any]
+
+  private[sbt] val shutdownHook = new Thread(new Runnable {
+    def run(): Unit = {
+      exchange.shutdown
+    }
+  })
 
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
     try {
       try {
+        val hooked = try {
+          Runtime.getRuntime.addShutdownHook(shutdownHook)
+          true
+        } catch {
+          case _: IllegalArgumentException => false
+        }
         try {
           MainLoop.runLogged(s)
-        } finally exchange.shutdown
+        } finally {
+          exchange.shutdown
+          if (hooked) {
+            Runtime.getRuntime.removeShutdownHook(shutdownHook)
+          }
+        }
       } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
     } finally TrapExit.uninstallManager(previous)
   }
@@ -121,13 +153,20 @@ object StandardMain {
     ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
   def initialGlobalLogging: GlobalLogging =
-    GlobalLogging.initial(MainAppender.globalDefault(console),
-                          File.createTempFile("sbt", ".log"),
-                          console)
+    GlobalLogging.initial(
+      MainAppender.globalDefault(console),
+      File.createTempFile("sbt", ".log"),
+      console
+    )
 
-  def initialState(configuration: xsbti.AppConfiguration,
-                   initialDefinitions: Seq[Command],
-                   preCommands: Seq[String]): State = {
+  def initialState(
+      configuration: xsbti.AppConfiguration,
+      initialDefinitions: Seq[Command],
+      preCommands: Seq[String]
+  ): State = {
+    // This is to workaround https://github.com/sbt/io/issues/110
+    sys.props.put("jna.nosys", "true")
+
     import BasicCommandStrings.isEarlyCommand
     val userCommands = configuration.arguments.map(_.trim)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
@@ -135,9 +174,6 @@ object StandardMain {
       Exec(x, None)
     }
     val initAttrs = BuiltinCommands.initialAttributes
-    import scalacache.modes.scalaFuture._
-    import scala.concurrent.ExecutionContext.Implicits.global
-    cache.removeAll()
     val s = State(
       configuration,
       initialDefinitions,
@@ -184,20 +220,25 @@ object BuiltinCommands {
       inspect,
       loadProjectImpl,
       loadFailed,
+      oldLoadFailed,
       Cross.crossBuild,
       Cross.switchVersion,
+      CrossJava.switchJavaHome,
+      CrossJava.crossJavaHome,
       PluginCross.pluginCross,
       PluginCross.pluginSwitch,
       Cross.crossRestoreSession,
       setLogLevel,
       plugin,
       plugins,
+      addPluginSbtFile,
       writeSbtVersion,
       notifyUsersAboutShell,
       shell,
       startServer,
       eval,
       last,
+      oldLastGrep,
       lastGrep,
       export,
       boot,
@@ -238,9 +279,22 @@ object BuiltinCommands {
     } else "No project is currently loaded"
 
   def aboutPlugins(e: Extracted): String = {
-    def list(b: BuildUnit) = b.plugins.detected.autoPlugins.map(_.value.label)
-    val allPluginNames = e.structure.units.values.flatMap(u => list(u.unit)).toSeq.distinct
-    if (allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "")
+    def plugins(lbu: LoadedBuildUnit) =
+      lbu.unit.plugins.detected.autoPlugins
+        .map(_.value.label)
+
+    val allPluginNames =
+      e.structure.units.values
+        .flatMap(plugins)
+        .toList
+        .distinct
+        .sorted
+
+    if (allPluginNames.isEmpty)
+      ""
+    else
+      ("Available Plugins" +: allPluginNames)
+        .mkString("\n - ")
   }
 
   def aboutScala(s: State, e: Extracted): String = {
@@ -273,26 +327,32 @@ object BuiltinCommands {
       case _                => si.actualVersion
     }
 
-  private[this] def quiet[T](t: => T): Option[T] = try { Some(t) } catch {
-    case e: Exception => None
-  }
+  private[this] def quiet[T](t: => T): Option[T] =
+    try Some(t)
+    catch { case _: Exception => None }
 
   def settingsCommand: Command =
-    showSettingLike(SettingsCommand,
-                    settingsPreamble,
-                    KeyRanks.MainSettingCutoff,
-                    key => !isTask(key.manifest))
+    showSettingLike(
+      SettingsCommand,
+      settingsPreamble,
+      KeyRanks.MainSettingCutoff,
+      key => !isTask(key.manifest)
+    )
 
   def tasks: Command =
-    showSettingLike(TasksCommand,
-                    tasksPreamble,
-                    KeyRanks.MainTaskCutoff,
-                    key => isTask(key.manifest))
+    showSettingLike(
+      TasksCommand,
+      tasksPreamble,
+      KeyRanks.MainTaskCutoff,
+      key => isTask(key.manifest)
+    )
 
-  def showSettingLike(command: String,
-                      preamble: String,
-                      cutoff: Int,
-                      keep: AttributeKey[_] => Boolean): Command =
+  def showSettingLike(
+      command: String,
+      preamble: String,
+      cutoff: Int,
+      keep: AttributeKey[_] => Boolean
+  ): Command =
     Command(command, settingsBrief(command), settingsDetailed(command))(showSettingParser(keep)) {
       case (s: State, (verbosity: Int, selected: Option[String])) =>
         if (selected.isEmpty) System.out.println(preamble)
@@ -303,8 +363,9 @@ object BuiltinCommands {
         if (prominentOnly) System.out.println(moreAvailableMessage(command, selected.isDefined))
         s
     }
-  def showSettingParser(keepKeys: AttributeKey[_] => Boolean)(
-      s: State): Parser[(Int, Option[String])] =
+  def showSettingParser(
+      keepKeys: AttributeKey[_] => Boolean
+  )(s: State): Parser[(Int, Option[String])] =
     verbosityParser ~ selectedParser(s, keepKeys).?
   def selectedParser(s: State, keepKeys: AttributeKey[_] => Boolean): Parser[String] =
     singleArgument(allTaskAndSettingKeys(s).filter(keepKeys).map(_.label).toSet)
@@ -313,8 +374,14 @@ object BuiltinCommands {
       'v'.id.+.map(_.size + 1) |
         ("V" ^^^ Int.MaxValue)
     ))
+
+  def taskDetail(keys: Seq[AttributeKey[_]], firstOnly: Boolean): Seq[(String, String)] =
+    sortByLabel(withDescription(keys)) flatMap { t =>
+      taskStrings(t, firstOnly)
+    }
+
   def taskDetail(keys: Seq[AttributeKey[_]]): Seq[(String, String)] =
-    sortByLabel(withDescription(keys)) flatMap taskStrings
+    taskDetail(keys, false)
 
   def allTaskAndSettingKeys(s: State): Seq[AttributeKey[_]] = {
     val extracted = Project.extract(s)
@@ -339,26 +406,32 @@ object BuiltinCommands {
   def sortByRank(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.rank)
   def withDescription(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] =
     keys.filter(_.description.isDefined)
-  def isTask(mf: Manifest[_])(implicit taskMF: Manifest[Task[_]],
-                              inputMF: Manifest[InputTask[_]]): Boolean =
+  def isTask(
+      mf: Manifest[_]
+  )(implicit taskMF: Manifest[Task[_]], inputMF: Manifest[InputTask[_]]): Boolean =
     mf.runtimeClass == taskMF.runtimeClass || mf.runtimeClass == inputMF.runtimeClass
   def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
   def highPass(rankCutoff: Int) =
     (keys: Seq[AttributeKey[_]]) => sortByRank(keys).takeWhile(_.rank <= rankCutoff)
 
-  def tasksHelp(s: State,
-                filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]],
-                arg: Option[String]): String = {
-    val commandAndDescription = taskDetail(filter(allTaskAndSettingKeys(s)))
+  def tasksHelp(
+      s: State,
+      filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]],
+      arg: Option[String]
+  ): String = {
+    val commandAndDescription = taskDetail(filter(allTaskAndSettingKeys(s)), true)
     arg match {
       case Some(selected) => detail(selected, commandAndDescription.toMap)
       case None           => aligned("  ", "   ", commandAndDescription) mkString ("\n", "\n", "")
     }
   }
 
-  def taskStrings(key: AttributeKey[_]): Option[(String, String)] = key.description map { d =>
-    (key.label, d)
-  }
+  def taskStrings(key: AttributeKey[_], firstOnly: Boolean): Option[(String, String)] =
+    key.description map { d =>
+      if (firstOnly) (key.label, d.split("\r?\n")(0)) else (key.label, d)
+    }
+
+  def taskStrings(key: AttributeKey[_]): Option[(String, String)] = taskStrings(key, false)
 
   def defaults = Command.command(DefaultsCommand) { s =>
     s.copy(definedCommands = DefaultCommands)
@@ -400,8 +473,8 @@ object BuiltinCommands {
     // For correct behavior, we also need to re-inject a settings logger, as we'll be re-evaluating settings
     val loggerInject = LogManager.settingsLogger(s)
     val withLogger = newSession.appendRaw(loggerInject :: Nil)
-    val show = Project.showContextKey(newSession, structure)
-    val newStructure = Load.reapply(withLogger.mergeSettings, structure)(show)
+    val show = Project.showContextKey2(newSession)
+    val newStructure = Load.reapply(withLogger.mergeSettings, structure, s.log)(show)
     Project.setProject(newSession, newStructure, s)
   }
 
@@ -424,34 +497,57 @@ object BuiltinCommands {
       )(cl)
       val setResult =
         if (all) SettingCompletions.setAll(extracted, settings)
-        else SettingCompletions.setThis(s, extracted, settings, arg)
+        else SettingCompletions.setThis(extracted, settings, arg)
       s.log.info(setResult.quietSummary)
       s.log.debug(setResult.verboseSummary)
       reapply(setResult.session, structure, s)
   }
 
+  @deprecated("Use variant that doesn't take a State", "1.1.1")
   def setThis(
       s: State,
       extracted: Extracted,
       settings: Seq[Def.Setting[_]],
       arg: String
   ): SetResult =
-    SettingCompletions.setThis(s, extracted, settings, arg)
+    setThis(extracted, settings, arg)
+
+  def setThis(
+      extracted: Extracted,
+      settings: Seq[Def.Setting[_]],
+      arg: String
+  ): SetResult =
+    SettingCompletions.setThis(extracted, settings, arg)
 
   def inspect: Command = Command(InspectCommand, inspectBrief, inspectDetailed)(Inspect.parser) {
-    case (s, (option, sk)) =>
-      s.log.info(Inspect.output(s, option, sk))
+    case (s, f) =>
+      s.log.info(f())
       s
   }
 
+  @deprecated("Use `lastGrep` instead.", "1.2.0")
+  def oldLastGrep: Command =
+    lastGrepCommand(OldLastGrepCommand, oldLastGrepBrief, oldLastGrepDetailed, { s =>
+      s.log.warn(deprecationWarningText(OldLastGrepCommand, LastGrepCommand))
+      lastGrepParser(s)
+    })
+
   def lastGrep: Command =
-    Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
+    lastGrepCommand(LastGrepCommand, lastGrepBrief, lastGrepDetailed, lastGrepParser)
+
+  private def lastGrepCommand(
+      name: String,
+      briefHelp: (String, String),
+      detail: String,
+      parser: State => Parser[(String, Option[AnyKeys])]
+  ): Command =
+    Command(name, briefHelp, detail)(parser) {
       case (s, (pattern, Some(sks))) =>
         val (str, _, display) = extractLast(s)
-        Output.lastGrep(sks, str.streams(s), pattern, printLast(s))(display)
+        Output.lastGrep(sks, str.streams(s), pattern, printLast)(display)
         keepLastLog(s)
       case (s, (pattern, None)) =>
-        for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast(s))
+        for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast)
         keepLastLog(s)
     }
 
@@ -493,7 +589,7 @@ object BuiltinCommands {
       lastOnly_keys <- keysParser
       kvs = Act.keyValues(structure)(lastOnly_keys._2)
       f <- if (lastOnly_keys._1) success(() => s)
-      else Aggregation.evaluatingParser(s, structure, show)(kvs)
+      else Aggregation.evaluatingParser(s, show)(kvs)
     } yield
       () => {
         def export0(s: State): State = lastImpl(s, kvs, Some(ExportStream))
@@ -516,7 +612,7 @@ object BuiltinCommands {
   def last: Command = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
     case (s, Some(sks)) => lastImpl(s, sks, None)
     case (s, None) =>
-      for (logFile <- lastLogFile(s)) yield Output.last(logFile, printLast(s))
+      for (logFile <- lastLogFile(s)) yield Output.last(logFile, printLast)
       keepLastLog(s)
   }
 
@@ -525,7 +621,7 @@ object BuiltinCommands {
 
   private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State = {
     val (str, _, display) = extractLast(s)
-    Output.last(sks, str.streams(s), printLast(s), sid)(display)
+    Output.last(sks, str.streams(s), printLast, sid)(display)
     keepLastLog(s)
   }
 
@@ -550,7 +646,10 @@ object BuiltinCommands {
    */
   def isLastOnly(s: State): Boolean = s.history.previous.forall(_.commandLine == Shell)
 
-  def printLast(s: State): Seq[String] => Unit = _ foreach println
+  @deprecated("Use variant that doesn't take the state", "1.1.1")
+  def printLast(s: State): Seq[String] => Unit = printLast
+
+  def printLast: Seq[String] => Unit = _ foreach println
 
   def autoImports(extracted: Extracted): EvalImports =
     new EvalImports(imports(extracted), "<auto-imports>")
@@ -601,8 +700,9 @@ object BuiltinCommands {
   }
 
   def projects: Command =
-    Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(s =>
-      projectsParser(s).?) {
+    Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(
+      s => projectsParser(s).?
+    ) {
       case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
       case (s, None)               => showProjects(s); s
     }
@@ -620,7 +720,7 @@ object BuiltinCommands {
     val extraUpdated = Project.updateExtraBuilds(s, f)
     try doLoadProject(extraUpdated, LoadAction.Current)
     catch {
-      case e: Exception =>
+      case _: Exception =>
         s.log.error("Project loading failed: reverting to previous state.")
         Project.setExtraBuilds(s, original)
     }
@@ -637,11 +737,24 @@ object BuiltinCommands {
     Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
   def loadFailed: Command = Command(LoadFailed)(loadProjectParser)(doLoadFailed)
+  @deprecated("Use `loadFailed` instead.", "1.2.0")
+  def oldLoadFailed: Command =
+    Command(OldLoadFailed) { s =>
+      s.log.warn(
+        deprecationWarningText(OldLoadFailed, LoadFailed)
+      )
+      loadProjectParser(s)
+    }(doLoadFailed)
+
+  private[this] def deprecationWarningText(oldCommand: String, newCommand: String) = {
+    s"The `$oldCommand` command is deprecated in favor of `$newCommand` and will be removed in a later version"
+  }
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     val result = (SimpleReader.readLine(
-      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit)
+      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? "
+    ) getOrElse Quit)
       .toLowerCase(Locale.ENGLISH)
     def matches(s: String) = !result.isEmpty && (s startsWith result)
     def retry = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
@@ -667,8 +780,9 @@ object BuiltinCommands {
       Nil
 
   def loadProject: Command =
-    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)((s, arg) =>
-      loadProjectCommands(arg) ::: s)
+    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)(
+      (s, arg) => loadProjectCommands(arg) ::: s
+    )
 
   private[this] def loadProjectParser: State => Parser[String] =
     _ => matched(Project.loadActionParser)
@@ -690,11 +804,13 @@ object BuiltinCommands {
       Option(buildProperties.getProperty("sbt.version"))
     } else None
 
-    sbtVersionOpt.foreach(version =>
-      if (version != app.id.version()) {
-        state.log.warn(s"""sbt version mismatch, current: ${app.id
-          .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
-    })
+    sbtVersionOpt.foreach(
+      version =>
+        if (version != app.id.version()) {
+          state.log.warn(s"""sbt version mismatch, current: ${app.id
+            .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
+      }
+    )
   }
 
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
@@ -741,8 +857,10 @@ object BuiltinCommands {
     exchange publishEventMessage ConsolePromptEvent(s0)
     val exec: Exec = exchange.blockUntilNextExec
     val newState = s1
-      .copy(onFailure = Some(Exec(Shell, None)),
-            remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands)
+      .copy(
+        onFailure = Some(Exec(Shell, None)),
+        remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
+      )
       .setInteractive(true)
     exchange publishEventMessage ConsoleUnpromptEvent(exec.source)
     if (exec.commandLine.trim.isEmpty) newState
@@ -758,9 +876,6 @@ object BuiltinCommands {
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
   private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
 
-  private def isSbtProject(baseDir: File, projectDir: File) =
-    projectDir.exists() || (baseDir * "*.sbt").get.nonEmpty
-
   private def writeSbtVersionUnconditionally(state: State) = {
     val baseDir = state.baseDir
     val sbtVersion = BuiltinCommands.sbtVersion(state)
@@ -774,7 +889,7 @@ object BuiltinCommands {
     if (sbtVersionAbsent) {
       val warnMsg = s"No sbt.version set in project/build.properties, base directory: $baseDir"
       try {
-        if (isSbtProject(baseDir, projectDir)) {
+        if (isSbtBuild(baseDir)) {
           val line = s"sbt.version=$sbtVersion"
           IO.writeLines(buildProps, line :: buildPropsLines)
           state.log info s"Updated file $buildProps: set sbt.version to $sbtVersion"
@@ -793,7 +908,7 @@ object BuiltinCommands {
     if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
       writeSbtVersionUnconditionally(state)
 
-  private def WriteSbtVersion = "write-sbt-version"
+  private def WriteSbtVersion = "writeSbtVersion"
 
   private def writeSbtVersion: Command =
     Command.command(WriteSbtVersion) { state =>
@@ -809,7 +924,7 @@ object BuiltinCommands {
       state.log info "Executing in batch mode. For better performance use sbt's shell"
   }
 
-  private def NotifyUsersAboutShell = "notify-users-about-shell"
+  private def NotifyUsersAboutShell = "notifyUsersAboutShell"
 
   private def notifyUsersAboutShell: Command =
     Command.command(NotifyUsersAboutShell) { state =>

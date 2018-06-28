@@ -1,7 +1,7 @@
-# https://github.com/sbt/sbt/issues/3545
-# > test
-# -> check
+# Note: this test is meaningless on less than four cores
 
+> test
+-> check
 > clean
 > set testForkedParallel := true
 > test

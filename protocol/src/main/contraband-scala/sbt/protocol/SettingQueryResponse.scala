@@ -10,7 +10,7 @@ abstract class SettingQueryResponse() extends sbt.protocol.EventMessage() with S
 
 
 override def equals(o: Any): Boolean = o match {
-  case x: SettingQueryResponse => true
+  case _: SettingQueryResponse => true
   case _ => false
 }
 override def hashCode: Int = {

@@ -1,6 +1,5 @@
 target/
 __pycache__
-toolbox.classpath
 out
 node_modules
 vscode-sbt-scala/client/server

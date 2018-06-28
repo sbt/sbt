@@ -13,6 +13,7 @@ import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
+import sbt.io.IO
 
 private[sbt] object LibraryManagement {
 
@@ -36,18 +37,12 @@ private[sbt] object LibraryManagement {
   ): UpdateReport = {
 
     /* Resolve the module settings from the inputs. */
-    def resolve(inputs: UpdateInputs): UpdateReport = {
+    def resolve: UpdateReport = {
       import sbt.util.ShowLines._
 
       log.info(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
-        //try {
         lm.update(module, updateConfig, uwConfig, log)
-      // } catch {
-      //   case e: Throwable =>
-      //     e.printStackTrace
-      //     throw e
-      // }
       val report = reportOrUnresolved match {
         case Right(report0) => report0
         case Left(unresolvedWarning) =>
@@ -95,12 +90,12 @@ private[sbt] object LibraryManagement {
         import sbt.librarymanagement.LibraryManagementCodec._
         val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
           case (_, Some(out)) if upToDate(inChanged, out) => markAsCached(out)
-          case _                                          => resolve(updateInputs)
+          case _                                          => resolve
         }
         import scala.util.control.Exception.catching
         catching(classOf[NullPointerException], classOf[OutOfMemoryError])
           .withApply { t =>
-            val resolvedAgain = resolve(updateInputs)
+            val resolvedAgain = resolve
             val culprit = t.getClass.getSimpleName
             log.warn(s"Update task caching failed due to $culprit.")
             log.warn("Report the following output to sbt:")
@@ -126,7 +121,7 @@ private[sbt] object LibraryManagement {
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
-    stamps.get(file).forall(_ == file.lastModified)
+    stamps.get(file).forall(_ == IO.getModifiedTimeOrZero(file))
 
   private[sbt] def transitiveScratch(
       lm: DependencyResolution,
