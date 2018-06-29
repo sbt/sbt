@@ -431,8 +431,6 @@ object Tasks {
       Module(scalaOrganization, "scalap") -> scalaVersion
     )
 
-  private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
-
   private[coursier] def exceptionPatternParser(): String => coursier.ivy.Pattern = {
 
     val props = sys.props.toMap
@@ -571,7 +569,6 @@ object Tasks {
   def resolutionsTask(
     sbtClassifiers: Boolean = false
   ): Def.Initialize[sbt.Task[Map[Set[String], coursier.Resolution]]] = Def.taskDyn {
-
     val projectName = thisProjectRef.value.project
 
     val sv = scalaVersion.value
@@ -605,6 +602,7 @@ object Tasks {
     val cachePolicies = coursierCachePolicies.value
     val ttl = coursierTtl.value
     val cache = coursierCache.value
+    val createLogger = coursierLoggerFactory.value
 
     val log = streams.value.log
 
@@ -692,7 +690,7 @@ object Tasks {
       def resolution(startRes: Resolution) = {
 
         var pool: ExecutorService = null
-        var resLogger: TermDisplay = null
+        var resLogger: Cache.Logger = null
 
         val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
@@ -954,7 +952,6 @@ object Tasks {
     ignoreArtifactErrors: Boolean = false,
     includeSignatures: Boolean = false
   ) = Def.taskDyn {
-
     val projectName = thisProjectRef.value.project
 
     val parallelDownloads = coursierParallelDownloads.value
@@ -962,6 +959,7 @@ object Tasks {
     val cachePolicies = coursierCachePolicies.value
     val ttl = coursierTtl.value
     val cache = coursierCache.value
+    val createLogger = coursierLoggerFactory.value
 
     val log = streams.value.log
 
@@ -1007,7 +1005,7 @@ object Tasks {
       synchronized {
 
         var pool: ExecutorService = null
-        var artifactsLogger: TermDisplay = null
+        var artifactsLogger: Cache.Logger = null
 
         val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 

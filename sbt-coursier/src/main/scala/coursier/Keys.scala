@@ -17,6 +17,7 @@ object Keys {
   val coursierCachePolicies = SettingKey[Seq[CachePolicy]]("coursier-cache-policies")
   val coursierTtl = SettingKey[Option[Duration]]("coursier-ttl")
   val coursierKeepPreloaded = SettingKey[Boolean]("coursier-keep-preloaded", "Whether to take into account sbt preloaded repositories or not")
+  val coursierLoggerFactory = SettingKey[() => Cache.Logger]("coursier-logger-factory")
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
 

@@ -410,13 +410,7 @@ class TermDisplay(
     else
       1000L / 60
 
-  /***
-    *
-    * @param beforeOutput: called before any output is printed, iff something else is outputed.
-    *                      (That is, if that `TermDisplay` doesn't print any progress,
-    *                      `initialMessage` won't be printed either.)
-    */
-  def init(beforeOutput: => Unit): Unit = {
+  override def init(beforeOutput: => Unit): Unit = {
     updateRunnableOpt = Some(new UpdateDisplayRunnable(beforeOutput, out, width, fallbackMode0))
 
     updateRunnable.init()
@@ -426,11 +420,7 @@ class TermDisplay(
   def init(): Unit =
     init(())
 
-  /**
-    *
-    * @return whether any message was printed by this `TermDisplay`
-    */
-  def stopDidPrintSomething(): Boolean = {
+  override def stopDidPrintSomething(): Boolean = {
     scheduler.shutdown()
     scheduler.awaitTermination(2 * refreshInterval, TimeUnit.MILLISECONDS)
     updateRunnable.stop()

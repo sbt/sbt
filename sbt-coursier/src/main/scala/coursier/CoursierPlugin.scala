@@ -1,5 +1,6 @@
 package coursier
 
+import java.io.OutputStreamWriter
 import sbt.librarymanagement._
 import sbt.{ Configuration, Resolver, _ }
 import sbt.Keys._
@@ -51,6 +52,8 @@ object CoursierPlugin extends AutoPlugin {
     val coursierSignedArtifacts = Keys.coursierSignedArtifacts
     val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
     val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
+
+    val coursierLoggerFactory = Keys.coursierLoggerFactory
 
     val coursierVersion = coursier.util.Properties.version
     val addSbtCoursier = {
@@ -306,7 +309,8 @@ object CoursierPlugin extends AutoPlugin {
     coursierCredentials := Map.empty,
     coursierCache := Cache.default,
     coursierReorderResolvers := true,
-    coursierKeepPreloaded := false
+    coursierKeepPreloaded := false,
+    coursierLoggerFactory := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++
