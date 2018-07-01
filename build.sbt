@@ -597,6 +597,9 @@ lazy val sbtIgnoredProblems = {
     exclude[DirectMissingMethodProblem]("sbt.Import.Param"),
     exclude[DirectMissingMethodProblem]("sbt.package.Param"),
 
+    exclude[ReversedMissingMethodProblem]("sbt.Import.SemanticSelector"),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$SemanticSelector_="),
+
     // Dropped in favour of plain scala.Function, and its compose method
     exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),
   )
