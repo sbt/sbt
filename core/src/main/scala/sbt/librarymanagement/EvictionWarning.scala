@@ -70,17 +70,7 @@ object EvictionWarningOptions {
       showCallers = false,
       defaultGuess
     )
-  def default: EvictionWarningOptions =
-    new EvictionWarningOptions(
-      Vector(Compile),
-      warnScalaVersionEviction = true,
-      warnDirectEvictions = true,
-      warnTransitiveEvictions = true,
-      warnEvictionSummary = false,
-      infoAllEvictions = false,
-      showCallers = true,
-      defaultGuess
-    )
+  def default: EvictionWarningOptions = summary
   def full: EvictionWarningOptions =
     new EvictionWarningOptions(
       Vector(Compile),
