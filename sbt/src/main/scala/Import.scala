@@ -317,6 +317,8 @@ trait Import {
   type ScalaVersion = sbt.librarymanagement.ScalaVersion
   val ScmInfo = sbt.librarymanagement.ScmInfo
   type ScmInfo = sbt.librarymanagement.ScmInfo
+  val SemanticSelector = sbt.librarymanagement.SemanticSelector
+  type SemanticSelector = sbt.librarymanagement.SemanticSelector
   val SftpRepository = sbt.librarymanagement.SftpRepository
   type SftpRepository = sbt.librarymanagement.SftpRepository
   type SshBasedRepository = sbt.librarymanagement.SshBasedRepository
