@@ -10,6 +10,7 @@ package internal
 
 import java.io.File
 import scala.collection.immutable.ListMap
+import scala.annotation.tailrec
 import sbt.io.Path
 import sbt.io.syntax._
 import sbt.Cross._
@@ -299,47 +300,78 @@ private[sbt] object CrossJava {
   }
 
   def discoverJavaHomes: ListMap[String, File] = {
-    import JavaDiscoverConfig._
-    val configs = Vector(jabba, linux, macOS)
-    ListMap(configs flatMap { _.javaHomes }: _*)
+    ListMap(JavaDiscoverConfig.configs flatMap { _.javaHomes } sortWith (versionOrder): _*)
   }
 
   sealed trait JavaDiscoverConf {
     def javaHomes: Vector[(String, File)]
   }
 
-  object JavaDiscoverConfig {
-    val linux = new JavaDiscoverConf {
-      val base: File = file("/usr") / "lib" / "jvm"
-      val JavaHomeDir = """java-([0-9]+)-.*""".r
-      def javaHomes: Vector[(String, File)] =
-        wrapNull(base.list()).collect {
-          case dir @ JavaHomeDir(ver) => JavaVersion(ver).toString -> (base / dir)
+  def versionOrder(left: (_, File), right: (_, File)): Boolean =
+    versionOrder(left._2.getName, right._2.getName)
+
+  // Sort version strings, considering 1.8.0 < 1.8.0_45 < 1.8.0_212
+  @tailrec
+  def versionOrder(left: String, right: String): Boolean = {
+    val Pattern = """.*?([0-9]+)(.*)""".r
+    left match {
+      case Pattern(leftNumber, leftRest) =>
+        right match {
+          case Pattern(rightNumber, rightRest) =>
+            if (Integer.parseInt(leftNumber) < Integer.parseInt(rightNumber)) true
+            else if (Integer.parseInt(leftNumber) > Integer.parseInt(rightNumber)) false
+            else versionOrder(leftRest, rightRest)
+          case _ =>
+            false
         }
+      case _ =>
+        true
+    }
+  }
+
+  object JavaDiscoverConfig {
+    class LinuxDiscoverConfig(base: File) extends JavaDiscoverConf {
+      def candidates = wrapNull(base.list())
+      val JavaHomeDir = """(java-|jdk)(1\.)?([0-9]+).*""".r
+      def javaHomes: Vector[(String, File)] =
+        candidates
+          .collect {
+            case dir @ JavaHomeDir(_, m, n) =>
+              JavaVersion(nullBlank(m) + n).toString -> (base / dir)
+          }
     }
 
-    val macOS = new JavaDiscoverConf {
+    class MacOsDiscoverConfig extends JavaDiscoverConf {
       val base: File = file("/Library") / "Java" / "JavaVirtualMachines"
       val JavaHomeDir = """jdk-?(1\.)?([0-9]+).*""".r
       def javaHomes: Vector[(String, File)] =
-        wrapNull(base.list()).collect {
-          case dir @ JavaHomeDir(m, n) =>
-            JavaVersion(nullBlank(m) + n).toString -> (base / dir / "Contents" / "Home")
-        }
+        wrapNull(base.list())
+          .collect {
+            case dir @ JavaHomeDir(m, n) =>
+              JavaVersion(nullBlank(m) + n).toString -> (base / dir / "Contents" / "Home")
+          }
     }
 
-    // See https://github.com/shyiko/jabba
-    val jabba = new JavaDiscoverConf {
+    class JabbaDiscoverConfig extends JavaDiscoverConf {
       val base: File = Path.userHome / ".jabba" / "jdk"
       val JavaHomeDir = """([\w\-]+)\@(1\.)?([0-9]+).*""".r
+
       def javaHomes: Vector[(String, File)] =
-        wrapNull(base.list()).collect {
-          case dir @ JavaHomeDir(vendor, m, n) =>
-            val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
-            if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
-            else v -> (base / dir)
-        }
+        wrapNull(base.list())
+          .collect {
+            case dir @ JavaHomeDir(vendor, m, n) =>
+              val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
+              if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
+              else v -> (base / dir)
+          }
     }
+
+    val configs = Vector(
+      new JabbaDiscoverConfig,
+      new LinuxDiscoverConfig(file("/usr") / "java"),
+      new LinuxDiscoverConfig(file("/usr") / "lib" / "jvm"),
+      new MacOsDiscoverConfig
+    )
   }
 
   def nullBlank(s: String): String =
