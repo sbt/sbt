@@ -300,14 +300,15 @@ private[sbt] object CrossJava {
   }
 
   def discoverJavaHomes: ListMap[String, File] = {
-    import JavaDiscoverConfig._
-    val configs = Vector(jabba, linux, macOS)
-    ListMap(configs flatMap { _.javaHomes }: _*)
+    ListMap(JavaDiscoverConfig.configs flatMap { _.javaHomes } sortWith (versionOrder): _*)
   }
 
   sealed trait JavaDiscoverConf {
     def javaHomes: Vector[(String, File)]
   }
+
+  def versionOrder(left: (_, File), right: (_, File)): Boolean =
+    versionOrder(left._2.getName, right._2.getName)
 
   // Sort version strings, considering 1.8.0 < 1.8.0_45 < 1.8.0_212
   @tailrec
@@ -329,36 +330,34 @@ private[sbt] object CrossJava {
   }
 
   object JavaDiscoverConfig {
-    val linux = new JavaDiscoverConf {
-      val base: File = file("/usr") / "lib" / "jvm"
-      val JavaHomeDir = """java-([0-9]+)-.*""".r
+    class LinuxDiscoverConfig(base: File) extends JavaDiscoverConf {
+      def candidates = wrapNull(base.list())
+      val JavaHomeDir = """(java-|jdk)(1\.)?([0-9]+).*""".r
       def javaHomes: Vector[(String, File)] =
-        wrapNull(base.list())
-          .sortWith(versionOrder)
+        candidates
           .collect {
-            case dir @ JavaHomeDir(ver) => JavaVersion(ver).toString -> (base / dir)
+            case dir @ JavaHomeDir(_, m, n) =>
+              JavaVersion(nullBlank(m) + n).toString -> (base / dir)
           }
     }
 
-    val macOS = new JavaDiscoverConf {
+    class MacOsDiscoverConfig extends JavaDiscoverConf {
       val base: File = file("/Library") / "Java" / "JavaVirtualMachines"
       val JavaHomeDir = """jdk-?(1\.)?([0-9]+).*""".r
       def javaHomes: Vector[(String, File)] =
         wrapNull(base.list())
-          .sortWith(versionOrder)
           .collect {
             case dir @ JavaHomeDir(m, n) =>
               JavaVersion(nullBlank(m) + n).toString -> (base / dir / "Contents" / "Home")
           }
     }
 
-    // See https://github.com/shyiko/jabba
-    val jabba = new JavaDiscoverConf {
+    class JabbaDiscoverConfig extends JavaDiscoverConf {
       val base: File = Path.userHome / ".jabba" / "jdk"
       val JavaHomeDir = """([\w\-]+)\@(1\.)?([0-9]+).*""".r
+
       def javaHomes: Vector[(String, File)] =
         wrapNull(base.list())
-          .sortWith(versionOrder)
           .collect {
             case dir @ JavaHomeDir(vendor, m, n) =>
               val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
@@ -366,6 +365,13 @@ private[sbt] object CrossJava {
               else v -> (base / dir)
           }
     }
+
+    val configs = Vector(
+      new JabbaDiscoverConfig,
+      new LinuxDiscoverConfig(file("/usr") / "java"),
+      new LinuxDiscoverConfig(file("/usr") / "lib" / "jvm"),
+      new MacOsDiscoverConfig
+    )
   }
 
   def nullBlank(s: String): String =
