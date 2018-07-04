@@ -528,7 +528,6 @@ object BuiltinCommands {
   @deprecated("Use `lastGrep` instead.", "1.2.0")
   def oldLastGrep: Command =
     lastGrepCommand(OldLastGrepCommand, oldLastGrepBrief, oldLastGrepDetailed, { s =>
-      s.log.warn(deprecationWarningText(OldLastGrepCommand, LastGrepCommand))
       lastGrepParser(s)
     })
 
@@ -541,14 +540,21 @@ object BuiltinCommands {
       detail: String,
       parser: State => Parser[(String, Option[AnyKeys])]
   ): Command =
-    Command(name, briefHelp, detail)(parser) {
-      case (s, (pattern, Some(sks))) =>
-        val (str, _, display) = extractLast(s)
-        Output.lastGrep(sks, str.streams(s), pattern, printLast)(display)
-        keepLastLog(s)
-      case (s, (pattern, None)) =>
-        for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast)
-        keepLastLog(s)
+    Command(name, briefHelp, detail)(parser) { (s: State, sks: (String, Option[AnyKeys])) =>
+      {
+        if (name == OldLastGrepCommand)
+          s.log.warn(deprecationWarningText(OldLastGrepCommand, LastGrepCommand))
+
+        (s, sks) match {
+          case (s, (pattern, Some(sks))) =>
+            val (str, _, display) = extractLast(s)
+            Output.lastGrep(sks, str.streams(s), pattern, printLast)(display)
+            keepLastLog(s)
+          case (s, (pattern, None)) =>
+            for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast)
+            keepLastLog(s)
+        }
+      }
     }
 
   def extractLast(s: State): (BuildStructure, Select[ProjectRef], Show[Def.ScopedKey[_]]) = {
@@ -740,11 +746,13 @@ object BuiltinCommands {
   @deprecated("Use `loadFailed` instead.", "1.2.0")
   def oldLoadFailed: Command =
     Command(OldLoadFailed) { s =>
+      loadProjectParser(s)
+    } { (s: State, loadArg: String) =>
       s.log.warn(
         deprecationWarningText(OldLoadFailed, LoadFailed)
       )
-      loadProjectParser(s)
-    }(doLoadFailed)
+      doLoadFailed(s, loadArg)
+    }
 
   private[this] def deprecationWarningText(oldCommand: String, newCommand: String) = {
     s"The `$oldCommand` command is deprecated in favor of `$newCommand` and will be removed in a later version"
