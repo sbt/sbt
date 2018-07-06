@@ -7,7 +7,13 @@ let fs = require('fs'),
 	os = require('os');
 import * as vscode from 'vscode';
 import { ExtensionContext, workspace } from 'vscode'; // workspace, 
-import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import {
+  LanguageClient,
+  LanguageClientOptions,
+  RevealOutputChannelOn,
+  ServerOptions,
+  TransportKind
+} from 'vscode-languageclient';
 
 let terminal: vscode.Terminal = null;
 
@@ -53,6 +59,7 @@ export async function activate(context: ExtensionContext) {
 	// Options to control the language client
 	let clientOptions: LanguageClientOptions = {
 		documentSelector: [{ language: 'scala', scheme: 'file' }, { language: 'java', scheme: 'file' }],
+		revealOutputChannelOn: RevealOutputChannelOn.Never,
 		initializationOptions: () => { 
 			return discoverToken();
 		}
