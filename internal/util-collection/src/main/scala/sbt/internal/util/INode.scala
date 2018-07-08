@@ -61,8 +61,8 @@ abstract class EvaluateSettings[Scope] {
     }): Seq[INode[_]]
   }
 
-  private[this] var running = new AtomicInteger
-  private[this] var cancel = new AtomicBoolean(false)
+  private[this] val running = new AtomicInteger
+  private[this] val cancel = new AtomicBoolean(false)
 
   def run(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = {
     assert(running.get() == 0, "Already running")
