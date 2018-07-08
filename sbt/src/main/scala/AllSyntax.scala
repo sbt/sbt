@@ -10,10 +10,7 @@ package sbt
 // Todo share this this io.syntax
 private[sbt] trait IOSyntax0 extends IOSyntax1 {
   implicit def alternative[A, B](f: A => Option[B]): Alternative[A, B] =
-    new Alternative[A, B] {
-      def |(g: A => Option[B]) =
-        (a: A) => f(a) orElse g(a)
-    }
+    g => a => f(a) orElse g(a)
 }
 private[sbt] trait Alternative[A, B] {
   def |(g: A => Option[B]): A => Option[B]
