@@ -246,7 +246,7 @@ final public class ForkMain {
 				if (framework == null)
 					continue;
 
-				final ArrayList<TaskDef> filteredTests = new ArrayList<TaskDef>();
+				final ArrayList<TaskDef> filteredTests = new ArrayList<>();
 				for (final Fingerprint testFingerprint : framework.fingerprints()) {
 					for (final TaskDef test : tests) {
 						// TODO: To pass in correct explicitlySpecified and selectors
@@ -258,12 +258,7 @@ final public class ForkMain {
 				final Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
 				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 
-				Thread callDoneOnShutdown = new Thread() {
-                    @Override
-                    public void run() {
-                        runner.done();
-                    }
-                };
+				Thread callDoneOnShutdown = new Thread(() -> runner.done());
                 Runtime.getRuntime().addShutdownHook(callDoneOnShutdown);
 
 				runTestTasks(executor, tasks, loggers, os);
@@ -278,14 +273,14 @@ final public class ForkMain {
 
 		private void runTestTasks(final ExecutorService executor, final Task[] tasks, final Logger[] loggers, final ObjectOutputStream os) {
 			if( tasks.length > 0 ) {
-				final List<Future<Task[]>> futureNestedTasks = new ArrayList<Future<Task[]>>();
+				final List<Future<Task[]>> futureNestedTasks = new ArrayList<>();
 				for( final Task task : tasks ) {
 					futureNestedTasks.add(runTest(executor, task, loggers, os));
 				}
 
 				// Note: this could be optimized further, we could have a callback once a test finishes that executes immediately the nested tasks
 				//       At the moment, I'm especially interested in JUnit, which doesn't have nested tasks.
-				final List<Task> nestedTasks = new ArrayList<Task>();
+				final List<Task> nestedTasks = new ArrayList<>();
 				for( final Future<Task[]> futureNestedTask : futureNestedTasks ) {
 					try {
 						nestedTasks.addAll( Arrays.asList(futureNestedTask.get()));
@@ -298,28 +293,25 @@ final public class ForkMain {
 		}
 
 		private Future<Task[]> runTest(final ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os) {
-			return executor.submit(new Callable<Task[]>() {
-				@Override
-				public Task[] call() {
-					ForkEvent[] events;
-					Task[] nestedTasks;
-					final TaskDef taskDef = task.taskDef();
-					try {
-						final Collection<ForkEvent> eventList = new ConcurrentLinkedDeque<ForkEvent>();
-						final EventHandler handler = new EventHandler() { public void handle(final Event e){ eventList.add(new ForkEvent(e)); } };
-						logDebug(os, "  Running " + taskDef);
-						nestedTasks = task.execute(handler, loggers);
-						if(nestedTasks.length > 0 || eventList.size() > 0)
-							logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
-						events = eventList.toArray(new ForkEvent[eventList.size()]);
-					}
-					catch (final Throwable t) {
-						nestedTasks = new Task[0];
-						events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
-					}
-					writeEvents(os, taskDef, events);
-					return nestedTasks;
+			return executor.submit(() -> {
+				ForkEvent[] events;
+				Task[] nestedTasks;
+				final TaskDef taskDef = task.taskDef();
+				try {
+					final Collection<ForkEvent> eventList = new ConcurrentLinkedDeque<>();
+					final EventHandler handler = new EventHandler() { public void handle(final Event e){ eventList.add(new ForkEvent(e)); } };
+					logDebug(os, "  Running " + taskDef);
+					nestedTasks = task.execute(handler, loggers);
+					if(nestedTasks.length > 0 || eventList.size() > 0)
+						logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
+					events = eventList.toArray(new ForkEvent[eventList.size()]);
 				}
+				catch (final Throwable t) {
+					nestedTasks = new Task[0];
+					events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
+				}
+				writeEvents(os, taskDef, events);
+				return nestedTasks;
 			});
 		}
 
