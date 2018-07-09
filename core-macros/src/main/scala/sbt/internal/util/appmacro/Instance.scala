@@ -49,9 +49,7 @@ object Instance {
   trait Transform[C <: blackbox.Context with Singleton, N[_]] {
     def apply(in: C#Tree): C#Tree
   }
-  def idTransform[C <: blackbox.Context with Singleton]: Transform[C, Id] = new Transform[C, Id] {
-    def apply(in: C#Tree): C#Tree = in
-  }
+  def idTransform[C <: blackbox.Context with Singleton]: Transform[C, Id] = in => in
 
   /**
    * Implementation of a macro that provides a direct syntax for applicative functors and monads.

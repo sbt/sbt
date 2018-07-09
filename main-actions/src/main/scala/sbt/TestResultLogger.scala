@@ -58,10 +58,7 @@ object TestResultLogger {
 
   /** Creates a `TestResultLogger` using a given function. */
   def apply(f: (Logger, Output, String) => Unit): TestResultLogger =
-    new TestResultLogger {
-      override def run(log: Logger, results: Output, taskName: String) =
-        f(log, results, taskName)
-    }
+    (log, results, taskName) => f(log, results, taskName)
 
   /** Creates a `TestResultLogger` that ignores its input and always performs the same logging. */
   def const(f: Logger => Unit) = apply((l, _, _) => f(l))

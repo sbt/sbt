@@ -418,9 +418,7 @@ object TaskMacro {
   private[this] def iInitializeMacro[M[_], T](c: blackbox.Context)(t: c.Expr[T])(
       f: c.Expr[T] => c.Expr[M[T]]
   )(implicit tt: c.WeakTypeTag[T], mt: c.WeakTypeTag[M[T]]): c.Expr[Initialize[M[T]]] = {
-    val inner: Transform[c.type, M] = new Transform[c.type, M] {
-      def apply(in: c.Tree): c.Tree = f(c.Expr[T](in)).tree
-    }
+    val inner: Transform[c.type, M] = (in: c.Tree) => f(c.Expr[T](in)).tree
     val cond = c.Expr[T](conditionInputTaskTree(c)(t.tree))
     Instance
       .contImpl[T, M](c, InitializeInstance, InputInitConvert, MixedBuilder, EmptyLinter)(
@@ -464,9 +462,7 @@ object TaskMacro {
   private[this] def iParserMacro[M[_], T](c: blackbox.Context)(t: c.Expr[T])(
       f: c.Expr[T] => c.Expr[M[T]]
   )(implicit tt: c.WeakTypeTag[T], mt: c.WeakTypeTag[M[T]]): c.Expr[State => Parser[M[T]]] = {
-    val inner: Transform[c.type, M] = new Transform[c.type, M] {
-      def apply(in: c.Tree): c.Tree = f(c.Expr[T](in)).tree
-    }
+    val inner: Transform[c.type, M] = (in: c.Tree) => f(c.Expr[T](in)).tree
     Instance.contImpl[T, M](c, ParserInstance, ParserConvert, MixedBuilder, LinterDSL.Empty)(
       Left(t),
       inner

@@ -120,10 +120,8 @@ object StandardMain {
   import scalacache.caffeine._
   private[sbt] lazy val cache: Cache[Any] = CaffeineCache[Any]
 
-  private[sbt] val shutdownHook = new Thread(new Runnable {
-    def run(): Unit = {
-      exchange.shutdown
-    }
+  private[sbt] val shutdownHook = new Thread(() => {
+    exchange.shutdown
   })
 
   def runManaged(s: State): xsbti.MainResult = {
