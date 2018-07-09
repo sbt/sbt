@@ -18,7 +18,7 @@ and works fairly well.
    `ln -s ~/Applications/async-profiler/profiler.sh $HOME/bin/profiler.sh`
    `ln -s ~/Applications/async-profiler/build $HOME/bin/build`
 
-Next, close all Java appliations and anything that may affect the profiling, and run sbt in one terminal:
+Next, close all Java applications and anything that may affect the profiling, and run sbt in one terminal:
 
 ```
 $ sbt exit

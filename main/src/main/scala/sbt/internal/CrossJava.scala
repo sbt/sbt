@@ -26,7 +26,7 @@ import sbt.internal.CommandStrings.{
 }
 
 private[sbt] object CrossJava {
-  // parses jabaa style version number adopt@1.8
+  // parses jabba style version number adopt@1.8
   def parseJavaVersion(version: String): JavaVersion = {
     def splitDot(s: String): Vector[Long] =
       Option(s) match {
