@@ -348,7 +348,6 @@ lazy val scriptedSbtOldProj = (project in file("scripted-sbt-old"))
   )
 
 lazy val scriptedPluginProj = (project in file("scripted-plugin"))
-  .dependsOn(mainProj)
   .settings(
     baseSettings,
     name := "Scripted Plugin",
@@ -358,7 +357,6 @@ lazy val scriptedPluginProj = (project in file("scripted-plugin"))
       exclude[MissingClassProblem]("sbt.ScriptedPlugin*")
     ),
   )
-  .configure(addSbtCompilerClasspath)
 
 // Implementation and support code for defining actions.
 lazy val actionsProj = (project in file("main-actions"))
@@ -538,7 +536,8 @@ lazy val mainSettingsProj = (project in file("main-settings"))
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
-  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj, scriptedSbtReduxProj)
+  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj,
+    scriptedSbtReduxProj, scriptedPluginProj)
   .settings(
     testedBaseSettings,
     name := "Main",

@@ -2190,6 +2190,16 @@ object Classpaths {
         val isDotty = ScalaInstance.isDotty(version)
         ScalaArtifacts.toolDependencies(sbtOrg, version, isDotty) ++ pluginAdjust
       }
+    },
+    dependencyOverrides ++= {
+      val old = dependencyOverrides.value
+      val isPlugin = sbtPlugin.value
+      val app = appConfiguration.value
+      val id = app.provider.id
+      val sv = (sbtVersion in pluginCrossBuild).value
+      val base = ModuleID(id.groupID, "scripted-plugin", sv).withCrossVersion(CrossVersion.binary)
+      if (isPlugin) Seq(base)
+      else Seq()
     }
   )
 

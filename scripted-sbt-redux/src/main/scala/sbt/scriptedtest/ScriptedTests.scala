@@ -218,6 +218,7 @@ final class ScriptedTests(
       case "project/extra"                                          => LauncherBased // tbd
       case "project/flatten"                                        => LauncherBased // sbt/Package$
       case "project/generated-root-no-publish"                      => LauncherBased // tbd
+      case "project/giter8-plugin"                                  => LauncherBased // tbd
       case "project/lib"                                            => LauncherBased // sbt/Package$
       case "project/scripted-plugin"                                => LauncherBased // tbd
       case "project/scripted-skip-incompatible"                     => LauncherBased // sbt/Package$
