@@ -15,10 +15,7 @@ object Util {
 
   def crossBuild: Seq[Setting[_]] =
     Seq(
-      crossPaths := (scalaBinaryVersion.value match {
-        case "2.10" => false
-        case _      => true
-      })
+      crossPaths := true
     )
 
   lazy val javaOnlySettings: Seq[Setting[_]] = Seq(
@@ -29,33 +26,24 @@ object Util {
 
   lazy val baseScalacOptions = Seq(
     scalacOptions ++= Seq("-Xelide-below", "0"),
-    scalacOptions ++= (CrossVersion partialVersion scalaVersion.value match {
-      case Some((2, 9)) | Some((2, 8)) =>
-        Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
-      case _ =>
-        Seq(
-          "-encoding",
-          "utf8",
-          "-deprecation",
-          "-feature",
-          "-unchecked",
-          "-Xlint",
-          "-language:existentials",
-          "-language:higherKinds",
-          "-language:implicitConversions",
-          "-language:postfixOps",
-          "-Xfuture",
-          "-Yno-adapted-args",
-          "-Ywarn-dead-code",
-          "-Ywarn-numeric-widen",
-          "-Ywarn-unused:-patvars,-implicits,_",
-          "-Ywarn-unused-import"
-        )
-    }),
-    scalacOptions ++= (CrossVersion partialVersion scalaVersion.value match {
-      case Some((2, 10)) => Seq("-deprecation", "-Xlint")
-      case _             => Seq()
-    })
+    scalacOptions ++= Seq(
+      "-encoding",
+      "utf8",
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Xlint",
+      "-language:existentials",
+      "-language:higherKinds",
+      "-language:implicitConversions",
+      "-language:postfixOps",
+      "-Xfuture",
+      "-Yno-adapted-args",
+      "-Ywarn-dead-code",
+      "-Ywarn-numeric-widen",
+      "-Ywarn-unused:-patvars,-implicits,_",
+      "-Ywarn-unused-import"
+    )
   )
 
   def projectComponent: Setting[_] =

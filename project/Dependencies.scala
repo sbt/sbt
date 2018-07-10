@@ -106,10 +106,7 @@ object Dependencies {
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
   private def scala211Module(name: String, moduleVersion: String) = Def setting (
-    scalaBinaryVersion.value match {
-      case "2.9" | "2.10" => Nil
-      case _              => ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
-    }
+    ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
   )
 
   val scalaXml = scala211Module("scala-xml", "1.0.6")

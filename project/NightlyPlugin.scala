@@ -18,23 +18,11 @@ object NightlyPlugin extends AutoPlugin {
   import autoImport._
 
   override def buildSettings: Seq[Setting[_]] = Seq(
-    // Avoid 2.9.x precompiled
-    // Avoid 2.8.x precompiled
-    includeTestDependencies := {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, n)) if n >= 10 => true
-        case _                       => false
-      }
-    }
+    includeTestDependencies := true
   )
 
   override def projectSettings: Seq[Setting[_]] = Seq(
-    crossVersion in update := {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, n)) if n >= 11 => CrossVersion.full
-        case _                       => crossVersion.value
-      }
-    },
+    crossVersion in update := CrossVersion.full,
     resolvers += Resolver.typesafeIvyRepo("releases")
   )
 }
