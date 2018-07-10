@@ -7,9 +7,7 @@ import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
 object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
 
-  object autoImport extends ScriptedKeys {
-    def scriptedPath = file("scripted")
-  }
+  object autoImport extends ScriptedKeys
 
   import autoImport._
 
