@@ -94,6 +94,10 @@ val mimaSettings = Def settings (
   ),
 )
 
+val scriptedSbtReduxMimaSettings = Def settings (
+  mimaPreviousArtifacts := Set()
+)
+
 lazy val sbtRoot: Project = (project in file("."))
   .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
   .configs(Sxr.SxrConf)
@@ -307,33 +311,43 @@ lazy val runProj = (project in file("run"))
 val sbtProjDepsCompileScopeFilter =
   ScopeFilter(inDependencies(LocalProject("sbtProj"), includeRoot = false), inConfigurations(Compile))
 
-lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
+lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
   .dependsOn(commandProj)
   .settings(
     baseSettings,
-    name := "Scripted sbt",
+    name := "Scripted sbt Redux",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     resourceGenerators in Compile += Def task {
       val mainClassDir = (classDirectory in Compile in LocalProject("sbtProj")).value
       val testClassDir = (classDirectory in Test in LocalProject("sbtProj")).value
       val classDirs = (classDirectory all sbtProjDepsCompileScopeFilter).value
       val extDepsCp = (externalDependencyClasspath in Compile in LocalProject("sbtProj")).value
-
       val cpStrings = (mainClassDir +: testClassDir +: classDirs) ++ extDepsCp.files map (_.toString)
-
       val file = (resourceManaged in Compile).value / "RunFromSource.classpath"
       IO.writeLines(file, cpStrings)
       List(file)
     },
     mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // sbt.test package is renamed to sbt.scriptedtest.
-      exclude[MissingClassProblem]("sbt.test.*"),
-    ),
+    scriptedSbtReduxMimaSettings,
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted, addSbtLmCore)
 
-lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
+
+lazy val scriptedSbtOldProj = (project in file("scripted-sbt-old"))
+  .dependsOn(scriptedSbtReduxProj)
+  .settings(
+    baseSettings,
+    name := "Scripted sbt",
+    mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // sbt.test package is renamed to sbt.scriptedtest.
+      exclude[MissingClassProblem]("sbt.test.*"),
+      exclude[DirectMissingMethodProblem]("sbt.test.*"),
+      exclude[IncompatibleMethTypeProblem]("sbt.test.*"),
+    ),
+  )
+
+lazy val scriptedPluginProj = (project in file("scripted-plugin"))
   .dependsOn(mainProj)
   .settings(
     baseSettings,
@@ -524,7 +538,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
-  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj, scriptedSbtProj)
+  .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj, scriptedSbtReduxProj)
   .settings(
     testedBaseSettings,
     name := "Main",
@@ -557,7 +571,7 @@ lazy val mainProj = (project in file("main"))
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt"))
-  .dependsOn(mainProj, scriptedSbtProj % "test->test")
+  .dependsOn(mainProj, scriptedSbtReduxProj % "test->test")
   .settings(
     testedBaseSettings,
     name := "sbt",
@@ -654,8 +668,8 @@ def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   (sbtProj / Test / compile).value // make sure sbt.RunFromSourceMain is compiled
   Scripted.doScripted(
     (sbtLaunchJar in bundledLauncherProj).value,
-    (fullClasspath in scriptedSbtProj in Test).value,
-    (scalaInstance in scriptedSbtProj).value,
+    (fullClasspath in scriptedSbtReduxProj in Test).value,
+    (scalaInstance in scriptedSbtReduxProj).value,
     scriptedSource.value,
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
@@ -667,8 +681,8 @@ def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
 def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   Scripted.doScripted(
     (sbtLaunchJar in bundledLauncherProj).value,
-    (fullClasspath in scriptedSbtProj in Test).value,
-    (scalaInstance in scriptedSbtProj).value,
+    (fullClasspath in scriptedSbtReduxProj in Test).value,
+    (scalaInstance in scriptedSbtReduxProj).value,
     scriptedSource.value,
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
@@ -689,7 +703,8 @@ def allProjects =
     taskProj,
     stdTaskProj,
     runProj,
-    scriptedSbtProj,
+    scriptedSbtReduxProj,
+    scriptedSbtOldProj,
     scriptedPluginProj,
     protocolProj,
     actionsProj,
@@ -727,7 +742,7 @@ def otherRootSettings =
     ))
 
 lazy val docProjects: ScopeFilter = ScopeFilter(
-  inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
+  inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtReduxProj, scriptedSbtOldProj, scriptedPluginProj),
   inConfigurations(Compile)
 )
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
