@@ -602,7 +602,7 @@ object Tasks {
     val cachePolicies = coursierCachePolicies.value
     val ttl = coursierTtl.value
     val cache = coursierCache.value
-    val createLogger = coursierLoggerFactory.value
+    val createLogger = coursierCreateLogger.value
 
     val log = streams.value.log
 
@@ -959,7 +959,7 @@ object Tasks {
     val cachePolicies = coursierCachePolicies.value
     val ttl = coursierTtl.value
     val cache = coursierCache.value
-    val createLogger = coursierLoggerFactory.value
+    val createLogger = coursierCreateLogger.value
 
     val log = streams.value.log
 

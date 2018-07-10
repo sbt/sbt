@@ -53,7 +53,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
     val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
 
-    val coursierLoggerFactory = Keys.coursierLoggerFactory
+    val coursierCreateLogger = Keys.coursierCreateLogger
 
     val coursierVersion = coursier.util.Properties.version
     val addSbtCoursier = {
@@ -310,7 +310,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierCache := Cache.default,
     coursierReorderResolvers := true,
     coursierKeepPreloaded := false,
-    coursierLoggerFactory := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
+    coursierCreateLogger := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++

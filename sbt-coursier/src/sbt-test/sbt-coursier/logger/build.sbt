@@ -6,7 +6,7 @@ libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.25"
 coursierCache := baseDirectory.value / "cache"
 logFile := baseDirectory.value / "log"
 
-coursierLoggerFactory := {
+coursierCreateLogger := {
   val logStream = new java.io.PrintStream(logFile.value)
   def log(msg: String): Unit = {
     println(msg)
