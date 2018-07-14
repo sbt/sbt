@@ -161,7 +161,8 @@ private[sbt] object CrossJava {
           case Some(v) =>
             projectJavaVersions flatMap {
               case (proj, versions) =>
-                if (versions.isEmpty || versions.contains(v)) Vector(proj -> versions)
+                if (versions.isEmpty || versions.contains[String](v.toString))
+                  Vector(proj -> versions)
                 else Vector()
             }
         }
@@ -184,7 +185,7 @@ private[sbt] object CrossJava {
 
       val filterKeys: Set[AttributeKey[_]] = Set(javaHome).map(_.key)
 
-      val projectsContains: Reference => Boolean = projects.map(_._1).toSet.contains
+      val projectsContains: Reference => Boolean = projects.map(_._1).toSet[Reference].contains(_)
 
       // Filter out any old javaHome version settings that were added, this is just for hygiene.
       val filteredRawAppend = session.rawAppend.filter(_.key match {
