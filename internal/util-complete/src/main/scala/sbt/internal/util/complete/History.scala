@@ -48,6 +48,8 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
 }
 
 object History {
+  def apply(lines: Seq[String], path: Option[File], error: String => Unit): History =
+    new History(lines.toIndexedSeq, path)
   def apply(lines: Seq[String], path: Option[File]): History =
     new History(lines.toIndexedSeq, path)
 
