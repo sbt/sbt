@@ -5,7 +5,10 @@ import net.virtualvoid.sbt.graph.DependencyGraphKeys.dependencyDot
 import scala.collection.mutable.ListBuffer
 
 def defaultSettings =
-  Seq(scalaVersion := "2.9.2")
+  Seq(
+    scalaVersion := "2.9.2",
+    version := "0.1-SNAPSHOT"
+  )
 
 lazy val justATransiviteDependencyEndpointProject =
   Project("just-a-transitive-dependency-endpoint", file("a"))

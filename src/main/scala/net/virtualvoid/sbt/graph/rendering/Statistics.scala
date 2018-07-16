@@ -20,12 +20,12 @@ package rendering
 object Statistics {
   def renderModuleStatsList(graph: ModuleGraph): String = {
     case class ModuleStats(
-        id: ModuleId,
-        numDirectDependencies: Int,
-        numTransitiveDependencies: Int,
-        selfSize: Option[Long],
-        transitiveSize: Long,
-        transitiveDependencyStats: Map[ModuleId, ModuleStats]) {
+      id:                        ModuleId,
+      numDirectDependencies:     Int,
+      numTransitiveDependencies: Int,
+      selfSize:                  Option[Long],
+      transitiveSize:            Long,
+      transitiveDependencyStats: Map[ModuleId, ModuleStats]) {
       def transitiveStatsWithSelf: Map[ModuleId, ModuleStats] = transitiveDependencyStats + (id -> this)
     }
 

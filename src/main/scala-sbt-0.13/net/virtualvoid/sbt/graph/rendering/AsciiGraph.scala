@@ -55,6 +55,5 @@ object AsciiGraph {
         log.info("\n")
         log.info("Note: The graph was estimated to be too big to display (> 15 nodes). Use `sbt 'dependency-graph --force'` (with the single quotes) to force graph display.")
       }
-    }
-  )
+    })
 }
