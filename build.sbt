@@ -192,7 +192,9 @@ val completeProj = (project in file("internal") / "util-complete")
     name := "Completion",
     libraryDependencies += jline,
     mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
+    // Parser is used publicly, so we can't break bincompat.
+    mimaBinaryIssueFilters := Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.History.this"),
     ),
   )
   .configure(addSbtIO, addSbtUtilControl)

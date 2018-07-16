@@ -24,10 +24,12 @@ object EditDistance {
       insertCost: Int = 1,
       deleteCost: Int = 1,
       subCost: Int = 1,
+      transposeCost: Int = 1,
       matchCost: Int = 0,
       caseCost: Int = 1,
       transpositions: Boolean = false
   ): Int = {
+    val _ = transposeCost
     val n = s.length
     val m = t.length
     if (n == 0) return m
