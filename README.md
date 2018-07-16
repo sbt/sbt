@@ -40,6 +40,8 @@ All tasks can be scoped to a configuration to get the report for a specific conf
 for example, prints the dependencies in the `test` configuration. If you don't specify any configuration, `compile` is
 assumed as usual.
 
+Note: If you want to run tasks with parameters from outside the sbt shell, make sure to put the whole task invocation in quotes,  e.g. `sbt "whatDependsOn <org> <module> <version>"`.
+
 ## Configuration settings
 
  * `filterScalaLibrary`: Defines if the scala library should be excluded from the output of the dependency-* functions.
