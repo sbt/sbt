@@ -21,7 +21,7 @@ import net.virtualvoid.sbt.graph.ModuleGraph
 import scala.xml.XML
 
 object GraphML {
-  def saveAsGraphML(graph: ModuleGraph, outputFile: String) {
+  def saveAsGraphML(graph: ModuleGraph, outputFile: String): Unit = {
     val nodesXml =
       for (n ← graph.nodes)
         yield <node id={ n.id.idString }><data key="d0">
