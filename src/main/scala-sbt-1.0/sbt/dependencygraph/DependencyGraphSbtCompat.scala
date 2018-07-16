@@ -58,7 +58,6 @@ object DependencyGraphSbtCompat {
       ewo = evictionOptions,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,
-      log = s.log
-    )
+      log = s.log)
   }
 }

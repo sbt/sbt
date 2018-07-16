@@ -160,20 +160,19 @@ object DependencyGraphSettings {
   }
 
   val artifactIdParser: Def.Initialize[State ⇒ Parser[ModuleId]] =
-    resolvedScoped { ctx ⇒
-      (state: State) ⇒
-        val graph = loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
+    resolvedScoped { ctx ⇒ (state: State) ⇒
+      val graph = loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
 
-        import sbt.complete.DefaultParsers._
-        graph.nodes.map(_.id).map {
-          case id @ ModuleId(org, name, version) ⇒
-            (Space ~ token(org) ~ token(Space ~ name) ~ token(Space ~ version)).map(_ ⇒ id)
-        }.reduceOption(_ | _).getOrElse {
-          (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ Space ~ token(StringBasic, "version")).map {
-            case ((((org, _), mod), _), version) ⇒
-              ModuleId(org, mod, version)
-          }
+      import sbt.complete.DefaultParsers._
+      graph.nodes.map(_.id).map {
+        case id @ ModuleId(org, name, version) ⇒
+          (Space ~ token(org) ~ token(Space ~ name) ~ token(Space ~ version)).map(_ ⇒ id)
+      }.reduceOption(_ | _).getOrElse {
+        (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ Space ~ token(StringBasic, "version")).map {
+          case ((((org, _), mod), _), version) ⇒
+            ModuleId(org, mod, version)
         }
+      }
     }
 
   // This is to support 0.13.8's InlineConfigurationWithExcludes while not forcing 0.13.8

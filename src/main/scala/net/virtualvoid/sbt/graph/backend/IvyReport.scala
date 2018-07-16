@@ -36,7 +36,8 @@ object IvyReport {
       revision ← mod \ "revision"
       rev = revision.attribute("name").get.text
       moduleId = moduleIdFromElement(mod, rev)
-      module = Module(moduleId,
+      module = Module(
+        moduleId,
         (revision \ "license").headOption.flatMap(_.attribute("name")).map(_.text),
         evictedByVersion = (revision \ "evicted-by").headOption.flatMap(_.attribute("rev").map(_.text)),
         error = revision.attribute("error").map(_.text))

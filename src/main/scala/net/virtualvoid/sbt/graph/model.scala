@@ -22,17 +22,19 @@ import sbinary.Format
 
 import scala.collection.mutable.{ HashMap, MultiMap, Set }
 
-case class ModuleId(organisation: String,
-                    name: String,
-                    version: String) {
+case class ModuleId(
+  organisation: String,
+  name:         String,
+  version:      String) {
   def idString: String = organisation + ":" + name + ":" + version
 }
-case class Module(id: ModuleId,
-                  license: Option[String] = None,
-                  extraInfo: String = "",
-                  evictedByVersion: Option[String] = None,
-                  jarFile: Option[File] = None,
-                  error: Option[String] = None) {
+case class Module(
+  id:               ModuleId,
+  license:          Option[String] = None,
+  extraInfo:        String         = "",
+  evictedByVersion: Option[String] = None,
+  jarFile:          Option[File]   = None,
+  error:            Option[String] = None) {
   def hadError: Boolean = error.isDefined
   def isUsed: Boolean = !isEvicted
   def isEvicted: Boolean = evictedByVersion.isDefined
