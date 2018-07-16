@@ -310,6 +310,12 @@ object Cross {
           case (_, scalaVersions) =>
             scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion)
         }
+        if (included.isEmpty) {
+          sys.error(
+            s"""Switch failed: no subprojects list "$version" (or compatible version) in crossScalaVersions setting.
+               |If you want to force it regardless, call ++ $version!""".stripMargin
+          )
+        }
         logSwitchInfo(included, excluded)
         included
       }
