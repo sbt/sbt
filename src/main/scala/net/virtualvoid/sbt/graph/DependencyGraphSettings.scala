@@ -99,10 +99,15 @@ object DependencyGraphSettings {
           case Some(version) ⇒ ModuleId(org, name, version) :: Nil
           case None          ⇒ graph.nodes.filter(m ⇒ m.id.organisation == org && m.id.name == name).map(_.id)
         }
-      modules
-        .foreach { module ⇒
-          streams.value.log.info(rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module)))
-        }
+      val output =
+        modules
+          .map { module ⇒
+            rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module))
+          }
+          .mkString("\n")
+
+      streams.value.log.info(output)
+      output
     },
     licenseInfo := showLicenseInfo(moduleGraph.value, streams.value)) ++ AsciiGraph.asciiGraphSetttings)
 
@@ -192,7 +197,6 @@ object DependencyGraphSettings {
               case ((org, name), version) ⇒ ArtifactPattern(org, name, version)
             }
         }
-
         .reduceOption(_ | _).getOrElse(failure("No dependencies found"))
     }
 
