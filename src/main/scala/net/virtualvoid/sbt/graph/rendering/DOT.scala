@@ -20,15 +20,17 @@ package rendering
 object DOT {
   val EvictedStyle = "stroke-dasharray: 5,5"
 
-  def dotGraph(graph: ModuleGraph,
-               dotHead: String,
-               nodeFormation: (String, String, String) ⇒ String,
-               labelRendering: HTMLLabelRendering): String = {
+  def dotGraph(
+    graph:          ModuleGraph,
+    dotHead:        String,
+    nodeFormation:  (String, String, String) ⇒ String,
+    labelRendering: HTMLLabelRendering): String = {
     val nodes = {
       for (n ← graph.nodes) yield {
         val style = if (n.isEvicted) EvictedStyle else ""
         val label = nodeFormation(n.id.organisation, n.id.name, n.id.version)
-        """    "%s"[%s style="%s"]""".format(n.id.idString,
+        """    "%s"[%s style="%s"]""".format(
+          n.id.idString,
           labelRendering.renderLabel(label),
           style)
       }

@@ -5,16 +5,19 @@
  */
 package net.virtualvoid.sbt.graph.util
 
+import sbt.dependencygraph.SbtAccess
+
 object AsciiTreeLayout {
   // [info] foo
   // [info]   +-bar
   // [info]   | +-baz
   // [info]   |
   // [info]   +-quux
-  def toAscii[A](top: A,
-                 children: A ⇒ Seq[A],
-                 display: A ⇒ String,
-                 maxColumn: Int = defaultColumnSize): String = {
+  def toAscii[A](
+    top:       A,
+    children:  A ⇒ Seq[A],
+    display:   A ⇒ String,
+    maxColumn: Int        = defaultColumnSize): String = {
     val twoSpaces = " " + " " // prevent accidentally being converted into a tab
     def limitLine(s: String): String =
       if (s.length > maxColumn) s.slice(0, maxColumn - 2) + ".."
@@ -52,7 +55,7 @@ object AsciiTreeLayout {
   }
 
   def defaultColumnSize: Int = {
-    val termWidth = sbt.SbtAccess.getTerminalWidth
+    val termWidth = SbtAccess.getTerminalWidth
     if (termWidth > 20) termWidth - 8
     else 80 // ignore termWidth
   }

@@ -1,9 +1,0 @@
-This is a maintenance release fixing a regression in 0.8.0 and adding two small features.
-
-All changes:
-
- * [#84](https://github.com/jrudolph/sbt-dependency-graph/issues/84): Fix regression of DOT label rendering introduced in 0.8.0.
- * [#83](https://github.com/jrudolph/sbt-dependency-graph/issues/83): Added new task `dependencyStats` which prints a
-   simple table of jar sizes for all your dependencies. Handy if you want to know why your assembled jar gets so big.
- * [#85](https://github.com/jrudolph/sbt-dependency-graph/issues/85): Added new task `dependencyList` which prints a
-   flat, deduplicated list of all the transitive dependencies.

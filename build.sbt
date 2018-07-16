@@ -1,28 +1,28 @@
-crossBuildingSettings
+scriptedLaunchOpts += s"-Dproject.version=${version.value}"
 
-CrossBuilding.crossSbtVersions := Seq("0.13")
-
-CrossBuilding.scriptedSettings
-
-libraryDependencies += "com.github.mdr" %% "ascii-graphs" % "0.0.3"
-
-libraryDependencies <++= scalaVersion { version =>
-  if (version startsWith "2.1") Seq("org.scala-lang" % "scala-reflect" % version % "provided")
-  else Nil
+libraryDependencies ++= {
+  if ((sbtVersion in pluginCrossBuild).value startsWith "0.13")
+    Seq("com.github.mdr" %% "ascii-graphs" % "0.0.3")
+  else
+    Nil
 }
 
-libraryDependencies <+= scalaVersion { version =>
-  if (version startsWith "2.9") "org.specs2" % "specs2_2.9.3" % "1.12.4.1" % "test"
-  else "org.specs2" %% "specs2" % "2.3.11" % "test"
-}
 
-scalacOptions ++= Seq("-deprecation", "-unchecked")
+libraryDependencies += "org.specs2" %% "specs2-core" % "3.10.0" % Test
 
-sbt.CrossBuilding.latestCompatibleVersionMapper ~= {
-  original => {
-    case "0.13" => "0.13.6"
-    case x => original(x)
-  }
-}
+libraryDependencies += Defaults.sbtPluginExtra(
+  "com.dwijnand" % "sbt-compat" % "1.2.6",
+  (sbtBinaryVersion in pluginCrossBuild).value,
+  (scalaBinaryVersion in update).value
+)
+
+crossSbtVersions := Seq("1.1.6", "0.13.16")
+
+scalacOptions ++= Seq(
+  "-deprecation",
+  "-encoding", "UTF-8",
+  "-feature",
+  "-unchecked"
+)
 
 ScalariformSupport.formatSettings

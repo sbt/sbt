@@ -17,6 +17,9 @@
 package net.virtualvoid.sbt.graph
 package backend
 
+import scala.language.implicitConversions
+import scala.language.reflectiveCalls
+
 import sbt._
 
 object SbtUpdateReport {
@@ -35,7 +38,8 @@ object SbtUpdateReport {
     def moduleEdge(chosenVersion: Option[String])(report: ModuleReport): (Module, Seq[Edge]) = {
       val evictedByVersion = if (report.evicted) chosenVersion else None
       val jarFile = report.artifacts.find(_._1.`type` == "jar").orElse(report.artifacts.find(_._1.extension == "jar")).map(_._2)
-      (Module(
+      (
+        Module(
         id = report.module,
         license = report.licenses.headOption.map(_._1),
         evictedByVersion = evictedByVersion,
