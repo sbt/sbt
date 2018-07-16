@@ -29,7 +29,7 @@ This plugin is an auto-plugin which will be automatically enabled starting from 
  * `dependencyGraph`: Shows an ASCII graph of the project's dependencies on the sbt console
  * `dependencyList`: Shows a flat list of all transitive dependencies on the sbt console (sorted by organization and name)
  * `whatDependsOn <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
-   tree for the selected module. Enclose the command in quotes (i.e. `sbt "whatDependsOn <org> <module> <version>"` when not using within an sbt shell).
+   tree for the selected module.
  * `dependencyLicenseInfo`: show dependencies grouped by declared license
  * `dependencyStats`: Shows a table with each module a row with (transitive) Jar sizes and number of dependencies
  * `dependencyGraphMl`: Generates a `.graphml` file with the project's dependencies to `target/dependencies-<config>.graphml`.
@@ -42,6 +42,8 @@ This plugin is an auto-plugin which will be automatically enabled starting from 
 All tasks can be scoped to a configuration to get the report for a specific configuration. `test:dependencyGraph`,
 for example, prints the dependencies in the `test` configuration. If you don't specify any configuration, `compile` is
 assumed as usual.
+
+Note: If you want to run tasks with parameters from outside the sbt shell, make sure to put the whole task invocation in quotes,  e.g. `sbt "whatDependsOn <org> <module> <version>"`.
 
 ## Configuration settings
 
