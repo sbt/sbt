@@ -40,12 +40,12 @@ object SbtUpdateReport {
       val jarFile = report.artifacts.find(_._1.`type` == "jar").orElse(report.artifacts.find(_._1.extension == "jar")).map(_._2)
       (
         Module(
-        id = report.module,
-        license = report.licenses.headOption.map(_._1),
-        evictedByVersion = evictedByVersion,
-        jarFile = jarFile,
-        error = report.problem),
-        report.callers.map(caller ⇒ Edge(caller.caller, report.module)))
+          id = report.module,
+          license = report.licenses.headOption.map(_._1),
+          evictedByVersion = evictedByVersion,
+          jarFile = jarFile,
+          error = report.problem),
+          report.callers.map(caller ⇒ Edge(caller.caller, report.module)))
     }
 
     val (nodes, edges) = report.details.flatMap(moduleEdges).unzip
