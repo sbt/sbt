@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.9.1 (2018-07-17)
+
+ * [#110](https://github.com/jrudolph/sbt-dependency-graph/issues/110): `whatDependsOn` can now be called without specifying a version. Thanks, @chikei for the initial implementation.
+ * [#150](https://github.com/jrudolph/sbt-dependency-graph/issues/150): `ivyReport` now reports correct path again even for older sbt versions (< 0.13.16)
+
 ## Version 0.9.0 (2017-10-25)
 
 This version (finally!) adds support for sbt 1.0. *sbt-dependency-graph* depends on a lot of internals from sbt to do its
