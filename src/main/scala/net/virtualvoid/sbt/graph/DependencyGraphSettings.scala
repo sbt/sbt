@@ -98,14 +98,14 @@ object DependencyGraphSettings {
     licenseInfo := showLicenseInfo(moduleGraph.value, streams.value)) ++ AsciiGraph.asciiGraphSetttings)
 
   def ivyReportFunctionTask = Def.task {
-    val crossTarget = Keys.crossTarget.value
+    val ivyConfig = Keys.ivyConfiguration.value.asInstanceOf[InlineIvyConfiguration]
     val projectID = Keys.projectID.value
     val ivyModule = Keys.ivyModule.value
 
     (config: String) ⇒ {
       val org = projectID.organization
       val name = crossName(ivyModule)
-      file(s"${crossTarget}/resolution-cache/reports/$org-$name-$config.xml")
+      new File(ivyConfig.resolutionCacheDir.get, s"reports/$org-$name-$config.xml")
     }
   }
 
