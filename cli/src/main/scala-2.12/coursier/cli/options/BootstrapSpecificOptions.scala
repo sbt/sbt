@@ -13,6 +13,9 @@ final case class BootstrapSpecificOptions(
   @Help("Generate a standalone launcher, with all JARs included, instead of one downloading its dependencies on startup.")
   @Short("s")
     standalone: Boolean = false,
+  @Help("Include files in generated launcher even in non-standalone mode.")
+  @Short("s")
+    embedFiles: Boolean = true,
   @Help("Set Java properties in the generated launcher.")
   @Value("key=value")
   @Short("D")

@@ -357,7 +357,7 @@ object Bootstrap extends CaseApp[BootstrapOptions] {
         ).toList.foldLeft((List.empty[String], List.empty[File])){
           case ((urls, files), (url, file)) =>
             if (options.options.assembly || options.options.standalone) (urls, file :: files)
-            else if (url.startsWith("file:/")) (urls, file :: files)
+            else if (options.options.embedFiles && url.startsWith("file:/")) (urls, file :: files)
             else (url :: urls, files)
         }
 
