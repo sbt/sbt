@@ -24,8 +24,8 @@ the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tr
  * `dependencyTree`: Shows an ASCII tree representation of the project's dependencies
  * `dependencyBrowseGraph`: Opens a browser window with a visualization of the dependency graph (courtesy of graphlib-dot + dagre-d3).
  * `dependencyList`: Shows a flat list of all transitive dependencies on the sbt console (sorted by organization and name)
- * `whatDependsOn <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
-   tree for the selected module.
+ * `whatDependsOn <organization> <module> <revision>?`: Find out what depends on an artifact. Shows a reverse dependency
+   tree for the selected module. The `<revision>` argument is optional.
  * `dependencyLicenseInfo`: show dependencies grouped by declared license
  * `dependencyStats`: Shows a table with each module a row with (transitive) Jar sizes and number of dependencies
  * `dependencyGraphMl`: Generates a `.graphml` file with the project's dependencies to `target/dependencies-<config>.graphml`.

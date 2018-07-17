@@ -92,8 +92,22 @@ object DependencyGraphSettings {
       """%s<BR/><B>%s</B><BR/>%s""".format(organisation, name, version)
     },
     whatDependsOn := {
-      val module = artifactIdParser.parsed
-      streams.value.log.info(rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(moduleGraph.value, module)))
+      val ArtifactPattern(org, name, versionFilter) = artifactPatternParser.parsed
+      val graph = moduleGraph.value
+      val modules =
+        versionFilter match {
+          case Some(version) ⇒ ModuleId(org, name, version) :: Nil
+          case None          ⇒ graph.nodes.filter(m ⇒ m.id.organisation == org && m.id.name == name).map(_.id)
+        }
+      val output =
+        modules
+          .map { module ⇒
+            rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module))
+          }
+          .mkString("\n")
+
+      streams.value.log.info(output)
+      output
     },
     licenseInfo := showLicenseInfo(moduleGraph.value, streams.value)) ++ AsciiGraph.asciiGraphSetttings)
 
@@ -159,20 +173,31 @@ object DependencyGraphSettings {
     (Space ~> token("--force")).?.map(_.isDefined)
   }
 
-  val artifactIdParser: Def.Initialize[State ⇒ Parser[ModuleId]] =
+  case class ArtifactPattern(
+    organisation: String,
+    name:         String,
+    version:      Option[String])
+
+  val artifactPatternParser: Def.Initialize[State ⇒ Parser[ArtifactPattern]] =
     resolvedScoped { ctx ⇒ (state: State) ⇒
       val graph = loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
 
       import sbt.complete.DefaultParsers._
-      graph.nodes.map(_.id).map {
-        case id @ ModuleId(org, name, version) ⇒
-          (Space ~ token(org) ~ token(Space ~ name) ~ token(Space ~ version)).map(_ ⇒ id)
-      }.reduceOption(_ | _).getOrElse {
-        (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ Space ~ token(StringBasic, "version")).map {
-          case ((((org, _), mod), _), version) ⇒
-            ModuleId(org, mod, version)
+      graph.nodes
+        .map(_.id)
+        .groupBy(m ⇒ (m.organisation, m.name))
+        .map {
+          case ((org, name), modules) ⇒
+            val versionParsers: Seq[Parser[Option[String]]] =
+              modules.map { id ⇒
+                token(Space ~> id.version).?
+              }
+
+            (Space ~> token(org) ~ token(Space ~> name) ~ oneOf(versionParsers)).map {
+              case ((org, name), version) ⇒ ArtifactPattern(org, name, version)
+            }
         }
-      }
+        .reduceOption(_ | _).getOrElse(failure("No dependencies found"))
     }
 
   // This is to support 0.13.8's InlineConfigurationWithExcludes while not forcing 0.13.8

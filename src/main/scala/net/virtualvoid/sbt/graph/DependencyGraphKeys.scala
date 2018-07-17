@@ -93,7 +93,7 @@ trait DependencyGraphKeys {
 
   // internal
   private[graph] val moduleGraphStore = TaskKey[ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
-  private[graph] val whatDependsOn = InputKey[Unit]("what-depends-on", "Shows information about what depends on the given module")
+  val whatDependsOn = InputKey[String]("what-depends-on", "Shows information about what depends on the given module")
   private[graph] val crossProjectId = SettingKey[ModuleID]("dependency-graph-cross-project-id")
 }
 
