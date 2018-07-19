@@ -95,6 +95,7 @@ object BuiltinCommands {
     projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed,
     Cross.crossBuild, Cross.switchVersion, PluginCross.pluginCross, PluginCross.pluginSwitch,
     setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
+    addPluginSbtFile,
     writeSbtVersion, notifyUsersAboutShell,
     ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
     compatCommands
