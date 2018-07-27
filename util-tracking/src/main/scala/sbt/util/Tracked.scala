@@ -100,7 +100,7 @@ object Tracked {
     val changed = help.changed(store, initial)
     val result = f(changed, initial)
     if (changed) {
-      help.save(store, initial)
+      help.save(store, p())
     }
     result
   }

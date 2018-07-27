@@ -1,12 +1,11 @@
 package sbt.util
 
+import org.scalatest.FlatSpec
 import sbt.io.IO
 import sbt.io.syntax._
+import sbt.util.CacheImplicits._
 
-import CacheImplicits._
-
-import sjsonnew.IsoString
-import org.scalatest.FlatSpec
+import scala.concurrent.Promise
 
 class TrackedSpec extends FlatSpec {
   "lastOutput" should "store the last output" in {
@@ -105,29 +104,41 @@ class TrackedSpec extends FlatSpec {
 
   "outputChanged" should "detect that the output has not changed" in {
     withStore { store =>
-      val input0: String = "foo"
-      val p0: () => String = () => input0
+      val beforeCompletion: String = "before-completion"
+      val afterCompletion: String = "after-completion"
+      val sideEffectCompleted = Promise[Unit]
+      val p0: () => String = () => {
+        if (sideEffectCompleted.isCompleted) {
+          afterCompletion
+        } else {
+          sideEffectCompleted.success(())
+          beforeCompletion
+        }
+      }
+      val firstExpectedResult = "first-result"
+      val secondExpectedResult = "second-result"
 
       val res0 =
         Tracked.outputChanged[String, String](store) {
           case (true, in) =>
-            assert(in === input0)
-            in
-          case (false, in) =>
+            assert(in === beforeCompletion)
+            firstExpectedResult
+          case (false, _) =>
             fail()
         }(implicitly)(p0)
-      assert(res0 === input0)
+      assert(res0 === firstExpectedResult)
 
       val res1 =
         Tracked.outputChanged[String, String](store) {
-          case (true, in) =>
+          case (true, _) =>
             fail()
           case (false, in) =>
-            assert(in === input0)
-            in
+            assert(in === afterCompletion)
+            secondExpectedResult
         }(implicitly)(p0)
-      assert(res1 === input0)
+      assert(res1 === secondExpectedResult)
 
+      ()
     }
   }
 
