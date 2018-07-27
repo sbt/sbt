@@ -100,7 +100,7 @@ object Tracked {
     val changed = help.changed(store, initial)
     val result = f(changed, initial)
     if (changed) {
-      help.save(store, initial)
+      help.save(store, p())
     }
     result
   }
@@ -178,7 +178,7 @@ object Tracked {
     def save(store: CacheStore, value: I): Unit = {
       Hasher.hash(value) match {
         case Success(keyHash) => store.write[Long](keyHash.toLong)
-        case Failure(e)       => ()
+        case Failure(_)       => ()
       }
     }
 
