@@ -362,31 +362,46 @@ private[sbt] object ConvertResolver {
 
     override def put(source: File, destination: String, overwrite: Boolean): Unit = {
       val url = new URL(destination)
-      if (url.getProtocol != IO.FileScheme) super.put(source, destination, overwrite)
-      else {
-        // Here we duplicate the put method for files so we don't just bail on trying ot use Http handler
-        val resource = getResource(destination)
-        if (!overwrite && resource.exists()) {
-          throw new IOException(s"Destination file $destination exists and overwrite == false");
-        }
-        fireTransferInitiated(resource, TransferEvent.REQUEST_PUT);
-        try {
-          val totalLength = source.length
-          if (totalLength > 0) {
-            progress.setTotalLength(totalLength);
+      try {
+        if (url.getProtocol != IO.FileScheme) super.put(source, destination, overwrite)
+        else {
+          // Here we duplicate the put method for files so we don't just bail on trying ot use Http handler
+          val resource = getResource(destination)
+          if (!overwrite && resource.exists()) {
+            throw new IOException(s"destination file exists and overwrite == false");
           }
-          FileUtil.copy(source, new java.io.File(url.toURI), progress, overwrite)
-          ()
-        } catch {
-          case ex: IOException =>
-            fireTransferError(ex)
-            throw ex
-          case ex: RuntimeException =>
-            fireTransferError(ex)
-            throw ex
-        } finally {
-          progress.setTotalLength(null);
+          fireTransferInitiated(resource, TransferEvent.REQUEST_PUT);
+          try {
+            val totalLength = source.length
+            if (totalLength > 0) {
+              progress.setTotalLength(totalLength);
+            }
+            FileUtil.copy(source, new java.io.File(url.toURI), progress, overwrite)
+            ()
+          } catch {
+            case ex: IOException =>
+              fireTransferError(ex)
+              throw ex
+            case ex: RuntimeException =>
+              fireTransferError(ex)
+              throw ex
+          } finally {
+            progress.setTotalLength(null);
+          }
         }
+      } catch {
+        // This error could be thrown either by super.put or the above
+        case ex: IOException if ex.getMessage.contains("destination file exists") =>
+          throw new IOException(
+            s"""PUT operation failed because the desitnation file exists and overwriting is disabled:
+               |    source     : $source
+               |    destination: $destination
+               |If you have a staging repository that has failed, drop it and start over.
+               |Otherwise fix the double publishing, or relax the setting as follows:
+               |    publishConfiguration := publishConfiguration.value.withOverwrite(true)
+               |    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)""".stripMargin,
+            ex
+          )
       }
     }
   }
