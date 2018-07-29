@@ -147,7 +147,19 @@ object Aggregation {
 
   def timing(format: java.text.DateFormat, startTime: Long, endTime: Long): String = {
     val nowString = format.format(new java.util.Date(endTime))
-    "Total time: " + (endTime - startTime + 500) / 1000 + " s, completed " + nowString
+    val total = (endTime - startTime + 500) / 1000
+    val totalString = s"$total s" +
+      (if (total <= 60) ""
+       else {
+         val maybeHours = total / 3600 match {
+           case 0 => ""
+           case h => f"$h%02d:"
+         }
+         val mins = f"${total % 3600 / 60}%02d"
+         val secs = f"${total % 60}%02d"
+         s" ($maybeHours$mins:$secs)"
+       })
+    s"Total time: $totalString, completed $nowString"
   }
 
   def defaultFormat: DateFormat = {
