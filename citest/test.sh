@@ -17,6 +17,10 @@ java -version
 mkdir freshly-baked
 unzip -qo ../target/universal/sbt.zip -d ./freshly-baked
 
-SBT_OPTS=-Dfile.encoding=UTF-8
+export SBT_OPTS=-Dfile.encoding=UTF-8
+
+./freshly-baked/sbt/bin/sbt about run
+
+export SBT_OPTS="-Dfile.encoding=UTF-8 -Xms2048M -Xmx2048M -Xss2M -XX:MaxPermSize=512M"
 
 ./freshly-baked/sbt/bin/sbt about run
