@@ -1,32 +1,26 @@
+package local
+
 import java.lang.reflect.InvocationTargetException
 
 import sbt._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
+import sbt.ScriptedPlugin.autoImport._
 
-object ScriptedPlugin extends AutoPlugin {
+object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
 
   object autoImport extends ScriptedKeys
-
   import autoImport._
-
-  override def globalSettings = super.globalSettings ++ Seq(
-    scriptedBufferLog := true,
-    scriptedPrescripted := { _ => },
-  )
 }
 
 trait ScriptedKeys {
   val publishAll = taskKey[Unit]("")
   val publishLocalBinAll = taskKey[Unit]("")
-  val scripted = inputKey[Unit]("")
   val scriptedUnpublished = inputKey[Unit]("Execute scripted without publishing sbt first. " +
         "Saves you some time when only your test has changed")
   val scriptedSource = settingKey[File]("")
   val scriptedPrescripted = taskKey[File => Unit]("")
-  val scriptedBufferLog = settingKey[Boolean]("")
-  val scriptedLaunchOpts = settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")
 }
 
 object Scripted {

@@ -2,6 +2,7 @@ import Util._
 import Dependencies._
 import Sxr.sxr
 import com.typesafe.tools.mima.core._, ProblemFilters._
+import local.Scripted
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -9,7 +10,7 @@ def buildLevelSettings: Seq[Setting[_]] =
   inThisBuild(
     Seq(
       organization := "org.scala-sbt",
-      version := "1.2.0",
+      version := "1.2.1-SNAPSHOT",
       description := "sbt is an interactive build tool",
       bintrayOrganization := Some("sbt"),
       bintrayRepository := {
@@ -80,7 +81,8 @@ val mimaSettings = Def settings (
   mimaPreviousArtifacts := {
     Seq(
       "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
-      "1.1.0", "1.1.1", "1.1.2",
+      "1.1.0", "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6",
+      "1.2.0"
     ).map { v =>
       organization.value % moduleName.value % v cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
     }.toSet
@@ -718,6 +720,10 @@ def allProjects =
   )
 
 lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
+
+
+ThisBuild / scriptedBufferLog := true
+ThisBuild / scriptedPrescripted := { _ => }
 
 def otherRootSettings =
   Seq(
