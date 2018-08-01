@@ -110,6 +110,9 @@ private[sbt] object ConfigurationMacro {
       c,
       methodName =>
         s"""$methodName must be directly assigned to a val, such as `val Tooling = $methodName("tooling")`.""")
+    if (enclosingValName.head.isLower) {
+      c.error(c.enclosingPosition, "configuration id must be capitalized")
+    }
     val id = c.Expr[String](Literal(Constant(enclosingValName)))
     reify { Configuration.of(id.splice, name.splice) }
   }
