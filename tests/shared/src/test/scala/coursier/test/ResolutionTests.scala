@@ -13,9 +13,10 @@ object ResolutionTests extends TestSuite {
   def resolve0(
     deps: Set[Dependency],
     filter: Option[Dependency => Boolean] = None,
-    forceVersions: Map[Module, String] = Map.empty
+    forceVersions: Map[Module, String] = Map.empty,
+    forceProperties: Map[String, String] = Map.empty
   ) =
-    Resolution(deps, filter = filter, forceVersions = forceVersions)
+    Resolution(deps, filter = filter, forceVersions = forceVersions, forceProperties = forceProperties)
       .process
       .run(Platform.fetch(repositories))
       .future()
@@ -645,6 +646,32 @@ object ResolutionTests extends TestSuite {
             Seq("" -> Dependency(Module("a-company", "a-name"), "${a.property}")),
             Map("a.property" -> "a-version"))
         val expected = Seq("" -> Dependency(Module("a-company", "a-name"), "a-version"))
+
+        assert(res == expected)
+      }
+    }
+
+    'forcedProperties - {
+      async {
+        val deps = Set(
+          Dependency(Module("com.github.dummy", "libb"), "0.5.4")
+        )
+
+        val forceProperties = Map(
+          "special" -> "false"
+        )
+
+        val res = await(
+          resolve0(deps, forceProperties = forceProperties)
+        ).clearCaches
+
+        val expected = Resolution(
+          rootDependencies = deps,
+          dependencies = Set(
+            Dependency(Module("com.github.dummy", "libb"), "0.5.4")
+          ).map(_.withCompileScope),
+          forceProperties = forceProperties
+        )
 
         assert(res == expected)
       }

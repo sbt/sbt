@@ -73,7 +73,12 @@ final case class Missing(
 
     def cont0(res: Resolution): ResolutionProcess = {
 
-      val depMgmtMissing0 = successes.map {
+      val remainingSuccesses = successes.filter {
+        case (modVer, _) =>
+          !res.projectCache.contains(modVer)
+      }
+
+      val depMgmtMissing0 = remainingSuccesses.map {
         case elem @ (_, (_, proj)) =>
           elem -> res.dependencyManagementMissing(proj)
       }
@@ -107,10 +112,8 @@ final case class Missing(
 
         val res0 = orderedSuccesses.foldLeft(res) {
           case (acc, (modVer0, (source, proj))) =>
-            acc.copyWithCache(
-              projectCache = acc.projectCache + (
-                modVer0 -> (source, acc.withDependencyManagement(proj))
-              )
+            acc.addToProjectCache(
+              modVer0 -> (source, proj)
             )
         }
 

@@ -79,7 +79,8 @@ package object coursier {
       osInfo: Activation.Os = Activation.Os.fromProperties(sys.props.toMap),
       jdkVersion: Option[Version] = sys.props.get("java.version").flatMap(Parse.version),
       userActivations: Option[Map[String, Boolean]] = None,
-      mapDependencies: Option[Dependency => Dependency] = None
+      mapDependencies: Option[Dependency => Dependency] = None,
+      forceProperties: Map[String, String] = Map.empty
     ): Resolution =
       core.Resolution(
         rootDependencies,
@@ -93,7 +94,8 @@ package object coursier {
         osInfo,
         jdkVersion,
         userActivations,
-        mapDependencies
+        mapDependencies,
+        forceProperties
       )
   }
 

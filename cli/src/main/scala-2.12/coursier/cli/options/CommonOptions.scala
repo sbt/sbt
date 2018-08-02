@@ -41,6 +41,9 @@ final case class CommonOptions(
   @Value("organization:name:forcedVersion")
   @Short("V")
     forceVersion: List[String] = Nil,
+  @Help("Force property in POM files")
+  @Value("name=value")
+    forceProperty: List[String] = Nil,
   @Help("Exclude module")
   @Value("organization:name")
   @Short("E")

@@ -318,6 +318,16 @@ class Helper(
 
   val userEnabledProfiles = profile.toSet
 
+  val forcedProperties = forceProperty
+    .map { s =>
+      s.split("=", 2) match {
+        case Array(k, v) => k -> v
+        case _ =>
+          sys.error(s"Malformed forced property argument: $s")
+      }
+    }
+    .toMap
+
   val startRes = Resolution(
     allDependencies.toSet,
     forceVersions = forceVersions,
@@ -325,7 +335,8 @@ class Helper(
     userActivations =
       if (userEnabledProfiles.isEmpty) None
       else Some(userEnabledProfiles.iterator.map(p => if (p.startsWith("!")) p.drop(1) -> false else p -> true).toMap),
-    mapDependencies = if (typelevel) Some(Typelevel.swap(_)) else None
+    mapDependencies = if (typelevel) Some(Typelevel.swap(_)) else None,
+    forceProperties = forcedProperties
   )
 
   val logger =

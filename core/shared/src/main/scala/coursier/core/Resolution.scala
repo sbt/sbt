@@ -555,7 +555,8 @@ final case class Resolution(
   osInfo: Activation.Os,
   jdkVersion: Option[Version],
   userActivations: Option[Map[String, Boolean]],
-  mapDependencies: Option[Dependency => Dependency]
+  mapDependencies: Option[Dependency => Dependency],
+  forceProperties: Map[String, String]
 ) {
 
   def copyWithCache(
@@ -563,13 +564,13 @@ final case class Resolution(
     dependencies: Set[Dependency] = dependencies,
     forceVersions: Map[Module, String] = forceVersions,
     conflicts: Set[Dependency] = conflicts,
-    projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)] = projectCache,
     errorCache: Map[Resolution.ModuleVersion, Seq[String]] = errorCache,
     filter: Option[Dependency => Boolean] = filter,
     osInfo: Activation.Os = osInfo,
     jdkVersion: Option[Version] = jdkVersion,
     userActivations: Option[Map[String, Boolean]] = userActivations
     // don't allow changing mapDependencies here - that would invalidate finalDependenciesCache
+    // don't allow changing projectCache here - use addToProjectCache that takes forceProperties into account
   ): Resolution =
     copy(
       rootDependencies,
@@ -584,6 +585,26 @@ final case class Resolution(
       jdkVersion,
       userActivations
     )
+
+  def addToProjectCache(projects: (Resolution.ModuleVersion, (Artifact.Source, Project))*): Resolution = {
+
+    val duplicates = projects
+      .collect {
+        case (modVer, _) if projectCache.contains(modVer) =>
+          modVer
+      }
+
+    assert(duplicates.isEmpty, s"Projects already added in resolution: ${duplicates.mkString(", ")}")
+
+    copy(
+      finalDependenciesCache = finalDependenciesCache ++ finalDependenciesCache0.asScala,
+      projectCache = projectCache ++ projects.map {
+        case (modVer, (s, p)) =>
+          val p0 = withDependencyManagement(p.copy(properties = p.properties.filter(kv => !forceProperties.contains(kv._1)) ++ forceProperties))
+          (modVer, (s, p0))
+      }
+    )
+  }
 
   import Resolution._
 
