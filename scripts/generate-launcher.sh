@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # grepped and updated during releases
-VERSION=1.1.0-M6
+VERSION=1.1.0-M7
 ACTUAL_VERSION="${ACTUAL_VERSION:-"$VERSION"}"
 CACHE_VERSION=v1
 
