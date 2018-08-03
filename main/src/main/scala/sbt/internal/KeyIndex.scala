@@ -20,36 +20,42 @@ object KeyIndex {
   def apply(
       known: Iterable[ScopedKey[_]],
       projects: Map[URI, Set[String]],
-      configurations: Map[String, Seq[Configuration]]
+      configurations: Map[Option[String], Seq[Configuration]]
   ): ExtendableKeyIndex =
     (base(projects, configurations) /: known) { _ add _ }
   def aggregate(
       known: Iterable[ScopedKey[_]],
       extra: BuildUtil[_],
       projects: Map[URI, Set[String]],
-      configurations: Map[String, Seq[Configuration]]
+      configurations: Map[Option[String], Seq[Configuration]]
   ): ExtendableKeyIndex =
     (base(projects, configurations) /: known) { (index, key) =>
       index.addAggregated(key, extra)
     }
   private[this] def base(
       projects: Map[URI, Set[String]],
-      configurations: Map[String, Seq[Configuration]]
+      configurations: Map[Option[String], Seq[Configuration]]
   ): ExtendableKeyIndex = {
     val data = for {
       (uri, ids) <- projects
     } yield {
-      val data = ids map { id =>
-        val configs = configurations.getOrElse(id, Seq())
-        val namedConfigs = configs.map { config =>
-          (config.name, ConfigData(Some(config.id), emptyAKeyIndex))
-        }.toMap
-        val inverse = namedConfigs.map((ConfigIndex.invert _).tupled)
-        Option(id) -> new ConfigIndex(namedConfigs, inverse, emptyAKeyIndex)
-      }
-      Option(uri) -> new ProjectIndex(data.toMap)
+      val data = ids.map(id => projectConfigIndex(Some(id), configurations))
+      val rootProjectData = projectConfigIndex(None, configurations)
+      Option(uri) -> new ProjectIndex(data.toMap + rootProjectData)
     }
     new KeyIndex0(new BuildIndex(data))
+  }
+
+  private def projectConfigIndex(
+      projectId: Option[String],
+      configurations: Map[Option[String], Seq[Configuration]]
+  ) = {
+    val configs = configurations.getOrElse(projectId, Seq())
+    val namedConfigs = configs.map { config =>
+      (config.name, ConfigData(Some(config.id), emptyAKeyIndex))
+    }.toMap
+    val inverse = namedConfigs.map((ConfigIndex.invert _).tupled)
+    projectId -> new ConfigIndex(namedConfigs, inverse, emptyAKeyIndex)
   }
 
   def combine(indices: Seq[KeyIndex]): KeyIndex = new KeyIndex {

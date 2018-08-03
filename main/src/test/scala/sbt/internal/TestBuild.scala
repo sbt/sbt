@@ -233,11 +233,15 @@ abstract class TestBuild {
     val keys = data.allKeys((s, key) => ScopedKey(s, key))
     val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
     val projectsMap = env.builds.map(b => (b.uri, b.projects.map(_.id).toSet)).toMap
-    val confs = for {
+    val projectConfs: Seq[(Option[String], Seq[Configuration])] = for {
       b <- env.builds
       p <- b.projects
-    } yield p.id -> p.configurations
-    val confMap = confs.toMap
+    } yield Some(p.id) -> p.configurations
+    val rootProjectConfs = env.builds
+      .map(_.root.configurations)
+      .foldLeft(Set.empty[Configuration])(_ ++ _)
+      .toSeq
+    val confMap = projectConfs.toMap + (None -> rootProjectConfs)
     Structure(env, current, data, KeyIndex(keys, projectsMap, confMap), keyMap)
   }
 

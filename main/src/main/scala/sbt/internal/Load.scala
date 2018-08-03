@@ -328,8 +328,7 @@ private[sbt] object Load {
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
     val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k)).toVector
     val projectsMap = projects.mapValues(_.defined.keySet)
-    val configsMap: Map[String, Seq[Configuration]] =
-      projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
+    val configsMap = projectConfigurations(projects)
     val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
     checkConfigurations(keyIndex, log)
     val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap, configsMap)
@@ -340,6 +339,27 @@ private[sbt] object Load {
       keyIndex,
       aggIndex
     )
+  }
+
+  private def projectConfigurations(
+      projects: Map[URI, LoadedBuildUnit]
+  ): Map[Option[String], Seq[Configuration]] = {
+    val projectConfigs: Map[Option[String], Seq[Configuration]] = {
+      projects.values.flatMap { bu =>
+        bu.defined.map {
+          case (k, v) => (Some(k), v.configurations)
+        }
+      }.toMap
+    }
+    val rootProjectConfigs = projects.values
+      .flatMap { bu =>
+        bu.rootProjects.flatMap { k =>
+          projectConfigs.getOrElse(Some(k), Seq.empty)
+        }
+      }
+      .toSet
+      .toSeq
+    projectConfigs + (None -> rootProjectConfigs)
   }
 
   private def checkConfigurations(keyIndex: KeyIndex, log: Logger): Unit = {
@@ -355,7 +375,9 @@ private[sbt] object Load {
           log.warn(
             s"""The project $project references an unknown configuration "$config" and was guessed to be "$guess"."""
           )
-          log.warn("This configuration should be explicitly added to the project.")
+          log.warn(
+            "This configuration should be explicitly added to the `projectConfigurations` of a plugin or the `configs` of the project."
+          )
       }
   }
 
