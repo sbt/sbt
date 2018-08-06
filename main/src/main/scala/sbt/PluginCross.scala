@@ -50,7 +50,7 @@ private[sbt] object PluginCross {
             Seq(scalaVersion := scalaVersionSetting.value)
           )
         val cleared = session.mergeSettings.filterNot(crossExclude)
-        val newStructure = Load.reapply(cleared ++ add, structure, state.log)
+        val newStructure = Load.reapply(cleared ++ add, structure)
         Project.setProject(session, newStructure, command :: state)
     }
   }
