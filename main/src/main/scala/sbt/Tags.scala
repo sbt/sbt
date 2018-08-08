@@ -90,7 +90,7 @@ object Tags {
   /** Returns a Rule that limits the maximum number of concurrently executing tasks without a tag to `max`.  */
   def limitUntagged(max: Int): Rule = limit(Untagged, max)
 
-  /** Returns a Rule that limits the maximum number of concurrent executings tasks tagged with `tag` to `max`.*/
+  /** Returns a Rule that limits the maximum number of concurrent executing tasks tagged with `tag` to `max`.*/
   def limit(tag: Tag, max: Int): Rule = new Single(tag, max)
 
   def limitSum(max: Int, tags: Tag*): Rule = new Sum(tags, max)

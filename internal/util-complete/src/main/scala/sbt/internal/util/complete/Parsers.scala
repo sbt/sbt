@@ -194,7 +194,7 @@ trait Parsers {
   private[this] def toInt(neg: Option[Char], digits: Seq[Char]): Int =
     (neg.toSeq ++ digits).mkString.toInt
 
-  /** Parses the lower-case values `true` and `false` into their respesct Boolean values.  */
+  /** Parses the lower-case values `true` and `false` into their corresponding Boolean values.  */
   lazy val Bool = ("true" ^^^ true) | ("false" ^^^ false)
 
   /**

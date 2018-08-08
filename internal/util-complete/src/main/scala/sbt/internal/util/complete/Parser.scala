@@ -920,8 +920,8 @@ private final class Repeat[T](
     max: UpperBound,
     accumulatedReverse: List[T]
 ) extends ValidParser[Seq[T]] {
-  assume(0 <= min, "Minimum occurences must be non-negative")
-  assume(max >= min, "Minimum occurences must be less than the maximum occurences")
+  assume(0 <= min, "Minimum occurrences must be non-negative")
+  assume(max >= min, "Minimum occurrences must be less than the maximum occurrences")
 
   def derive(c: Char) =
     partial match {

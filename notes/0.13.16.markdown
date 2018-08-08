@@ -41,7 +41,7 @@ In sbt 0.13.15, in addition to notifying the user about the existence of sbt's s
 allow the user to switch to sbt's shell - a more pro-active approach to just displaying a message.
 
 Unfortunately sbt is often unintentionally invoked in shell scripts in "interactive mode" when no interaction is
-expected by, for exmaple, invoking `sbt package` instead of `sbt package < /dev/null`. In that case hitting
+expected by, for example, invoking `sbt package` instead of `sbt package < /dev/null`. In that case hitting
 \[ENTER\] would silently trigger sbt to run its shell, easily wrecking the script. In addition to that I was
 unhappy with the implementation as it created a tight coupling between sbt's command processing abstraction to
 sbt's shell command.

@@ -20,7 +20,7 @@ object LogicTest extends Properties("Logic") {
   property("Handles cycles without negation") = secure(expect(cycles, Set(F, A, B)))
   property("Handles basic exclusion.") = secure(expect(excludedPos, Set()))
   property("Handles exclusion of head proved by negation.") = secure(expect(excludedNeg, Set()))
-  // TODO: actually check ordering, probably as part of a check that dependencies are satisifed
+  // TODO: actually check ordering, probably as part of a check that dependencies are satisfied
   property("Properly orders results.") = secure(expect(ordering, Set(B, A, C, E, F)))
   property("Detects cyclic negation") = secure(
     Logic.reduceAll(badClauses, Set()) match {
