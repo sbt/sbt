@@ -35,7 +35,7 @@ public interface ZincBridgeProvider {
      * Returns a global lock that does nothing but calling the callable to synchronize
      * across threads. The lock file is used to resolve and download dependencies via ivy.
      * <p>
-     * This operation is necesary to invoke {@link ZincBridgeProvider#getProvider(File, GlobalLock, ComponentProvider, IvyConfiguration, Logger)}.
+     * This operation is necessary to invoke {@link ZincBridgeProvider#getProvider(File, GlobalLock, ComponentProvider, IvyConfiguration, Logger)}.
      *
      * @return A default global lock.
      */
