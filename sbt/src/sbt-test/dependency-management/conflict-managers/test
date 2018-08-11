@@ -1,0 +1,3 @@
+> update
+> set conflictManagers := Vector(ConflictManager.strict)
+-> update

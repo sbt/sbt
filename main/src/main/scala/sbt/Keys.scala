@@ -451,6 +451,7 @@ object Keys {
   val compatibilityWarningOptions = settingKey[CompatibilityWarningOptions]("Configures warnings around Maven incompatibility.").withRank(CSetting)
   val conflictWarning = settingKey[ConflictWarning]("Configures warnings for conflicts in dependency management.").withRank(CSetting)
   val conflictManager = settingKey[ConflictManager]("Selects the conflict manager to use for dependency management.").withRank(CSetting)
+  val conflictManagers = settingKey[Seq[ConflictManager]]("Selects the conflict managers to use for dependency management.").withRank(CSetting)
   val autoScalaLibrary = settingKey[Boolean]("Adds a dependency on scala-library if true.").withRank(ASetting)
   val managedScalaInstance = settingKey[Boolean]("Automatically obtains Scala tools as managed dependencies if true.").withRank(BSetting)
   val sbtResolver = settingKey[Resolver]("Provides a resolver for obtaining sbt as a dependency.").withRank(BMinusSetting)

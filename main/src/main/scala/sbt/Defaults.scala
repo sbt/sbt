@@ -206,6 +206,7 @@ object Defaults extends BuildCommon {
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
       conflictManager := ConflictManager.default,
+      conflictManagers := Vector(ConflictManager.default),
       pomExtra :== NodeSeq.Empty,
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
@@ -2246,7 +2247,15 @@ object Classpaths {
       .withIvyXML(ivyXML.value)
       .withConfigurations(ivyConfigurations.value.toVector)
       .withDefaultConfiguration(defaultConfiguration.value)
-      .withConflictManager(conflictManager.value)
+      .withConflictManagers {
+        (conflictManager.value, conflictManagers.value) match {
+          case (ConflictManager.default, Seq(ConflictManager.default)) =>
+            conflictManagers.value.toVector
+          case (ConflictManager.default, _)      => conflictManagers.value.toVector
+          case (_, Seq(ConflictManager.default)) => Vector(conflictManager.value)
+          case (_, _)                            => (conflictManager.value +: conflictManagers.value).toVector
+        }
+      }
   }
 
   private[this] def sbtClassifiersGlobalDefaults =
@@ -2586,15 +2595,15 @@ object Classpaths {
     }
 
   /*
-	// can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
-	def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit, module: IvySbt#Module, config: PublishConfiguration) => Unit =
-	{ case module :+: config :+: HNil =>
-	/*	implicit val publishCache = publishIC
-		val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: PublishConfiguration) =>*/
-		    g(module, config)
-		/*}
-		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
-	}*/
+  // can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
+  def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit, module: IvySbt#Module, config: PublishConfiguration) => Unit =
+  { case module :+: config :+: HNil =>
+  /*  implicit val publishCache = publishIC
+    val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: PublishConfiguration) =>*/
+        g(module, config)
+    /*}
+    f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
+  }*/
 
   def defaultRepositoryFilter: MavenRepository => Boolean = repo => !repo.root.startsWith("file:")
 
