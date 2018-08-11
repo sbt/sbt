@@ -1169,7 +1169,7 @@ object Cache {
 
     /***
      *
-     * @param beforeOutput: called before any output is printed, iff something else is outputed.
+     * @param beforeOutput: called before any output is printed, iff something else is outputted.
      *                      (That is, if that `Logger` doesn't print any progress,
      *                      `initialMessage` won't be printed either.)
      */

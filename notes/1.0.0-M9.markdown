@@ -22,4 +22,4 @@
 
 ### Non-backward compatible changes
 
-* Minor binary and source compatiblity breaking on `FileError.NotFound` (addition of an optional parameter)
+* Minor binary and source compatibility breaking on `FileError.NotFound` (addition of an optional parameter)
