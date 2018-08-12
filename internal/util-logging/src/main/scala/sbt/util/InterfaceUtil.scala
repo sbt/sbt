@@ -36,6 +36,7 @@ object InterfaceUtil {
       case None    => Optional.empty[A]()
     }
 
+  // Overload to preserve binary compatibility
   def position(
       line0: Option[Integer],
       content: String,
@@ -45,7 +46,28 @@ object InterfaceUtil {
       sourcePath0: Option[String],
       sourceFile0: Option[File]
   ): Position =
-    new ConcretePosition(line0, content, offset0, pointer0, pointerSpace0, sourcePath0, sourceFile0)
+    position(line0, content, offset0, pointer0, pointerSpace0, sourcePath0, sourceFile0, None, None)
+
+  def position(
+      line0: Option[Integer],
+      content: String,
+      offset0: Option[Integer],
+      pointer0: Option[Integer],
+      pointerSpace0: Option[String],
+      sourcePath0: Option[String],
+      sourceFile0: Option[File],
+      startOffset0: Option[Integer],
+      endOffset0: Option[Integer]
+  ): Position =
+    new ConcretePosition(line0,
+                         content,
+                         offset0,
+                         pointer0,
+                         pointerSpace0,
+                         sourcePath0,
+                         sourceFile0,
+                         startOffset0,
+                         endOffset0)
 
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
     new ConcreteProblem(cat, pos, msg, sev)
@@ -75,7 +97,9 @@ object InterfaceUtil {
       pointer0: Option[Integer],
       pointerSpace0: Option[String],
       sourcePath0: Option[String],
-      sourceFile0: Option[File]
+      sourceFile0: Option[File],
+      startOffset0: Option[Integer],
+      endOffset0: Option[Integer]
   ) extends Position {
     val line = o2jo(line0)
     val lineContent = content
@@ -84,6 +108,8 @@ object InterfaceUtil {
     val pointerSpace = o2jo(pointerSpace0)
     val sourcePath = o2jo(sourcePath0)
     val sourceFile = o2jo(sourceFile0)
+    override val startOffset = o2jo(startOffset0)
+    override val endOffset = o2jo(endOffset0)
   }
 
   private final class ConcreteProblem(

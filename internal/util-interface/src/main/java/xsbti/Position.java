@@ -18,4 +18,8 @@ public interface Position
 
 	Optional<String> sourcePath();
 	Optional<File> sourceFile();
+
+	// Default values to avoid breaking binary compatibility
+	default Optional<Integer> startOffset() { return Optional.empty(); }
+	default Optional<Integer> endOffset() { return Optional.empty(); }
 }
