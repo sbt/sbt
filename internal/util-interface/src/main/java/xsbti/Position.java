@@ -22,4 +22,8 @@ public interface Position
 	// Default values to avoid breaking binary compatibility
 	default Optional<Integer> startOffset() { return Optional.empty(); }
 	default Optional<Integer> endOffset() { return Optional.empty(); }
+	default Optional<Integer> startLine() { return Optional.empty(); }
+	default Optional<Integer> startColumn() { return Optional.empty(); }
+	default Optional<Integer> endLine() { return Optional.empty(); }
+	default Optional<Integer> endColumn() { return Optional.empty(); }
 }
