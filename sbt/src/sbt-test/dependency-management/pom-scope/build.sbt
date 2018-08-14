@@ -4,6 +4,10 @@ lazy val root = (project in file(".")).
   configs(Custom).
   settings(
     TaskKey[Unit]("checkPom") := checkPom.value,
+    makePomConfiguration := {
+      val p = makePomConfiguration.value
+      p.withConfigurations(Configurations.defaultMavenConfigurations :+ Custom)
+    },
     libraryDependencies ++= Seq(
       "a" % "a" % "1.0",
       "b" % "b" % "1.0" % "runtime,optional",
