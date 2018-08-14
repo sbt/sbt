@@ -426,7 +426,7 @@ object Defaults extends BuildCommon {
       .withClassfileManagerType(
         Option(
           TransactionalManagerType
-            .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType
+            .of(crossTarget.value / "classes.bak", streams.value.log): ClassFileManagerType
         ).toOptional
       ),
     scalaInstance := scalaInstanceTask.value,
