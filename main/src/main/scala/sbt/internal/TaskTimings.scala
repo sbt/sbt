@@ -20,7 +20,7 @@ import TaskName._
  * - -Dsbt.task.timings.on.shutdown=true|false
  * - -Dsbt.task.timings.unit=number
  * - -Dsbt.task.timings.threshold=number
- * @param shutdown    Should the report be given when exiting the JVM (true) or immediatelly (false)?
+ * @param shutdown    Should the report be given when exiting the JVM (true) or immediately (false)?
  */
 private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[Task] {
   private[this] val calledBy = new ConcurrentHashMap[Task[_], Task[_]]

@@ -49,7 +49,7 @@ case object Infinite extends UpperBound {
  *  It must positive.
  */
 final case class Finite(value: Int) extends UpperBound {
-  assume(value >= 0, "Maximum occurences must be nonnegative.")
+  assume(value >= 0, "Maximum occurrences must be nonnegative.")
 
   def >=(min: Int) = value >= min
   def isOne = value == 1

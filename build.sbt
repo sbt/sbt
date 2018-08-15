@@ -86,7 +86,7 @@ val mimaSettings = Def settings (
     }.toSet
   },
   mimaBinaryIssueFilters ++= Seq(
-    // Changes in the internal pacakge
+    // Changes in the internal package
     exclude[DirectMissingMethodProblem]("sbt.internal.*"),
     exclude[FinalClassProblem]("sbt.internal.*"),
     exclude[FinalMethodProblem]("sbt.internal.*"),

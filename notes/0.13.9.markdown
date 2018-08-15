@@ -130,7 +130,7 @@ and stale JSON files will be cleaned up after few days.
 
 sbt 0.13.9 also fixes a correctness issue that was found in the earlier releases.
 Under some circumstances, libraries that shouldn't have been evicted was being evicted.
-This occured when library `A1` depended on `B2`, but a newer `A2` dropped the dependency,
+This occurred when library `A1` depended on `B2`, but a newer `A2` dropped the dependency,
 and `A2` and `B1` are also is in the graph. This is fixed by sorting the graph prior to eviction.
 
 [#2030][2030]/[#1721][1721]/[#2014][2014]/[#2046][2046]/[#2097][2097]/[#2129][2129] by [@eed3si9n][@eed3si9n]
