@@ -369,8 +369,7 @@ private[sbt] object CrossJava {
           }
     }
 
-    class WindowsDiscoverConfig extends JavaDiscoverConf {
-      val base: File = file("C://Program Files/Java")
+    class WindowsDiscoverConfig(base: File) extends JavaDiscoverConf {
 
       def candidates() = wrapNull(base.list())
 
@@ -403,7 +402,8 @@ private[sbt] object CrossJava {
       new LinuxDiscoverConfig(file("/usr") / "java"),
       new LinuxDiscoverConfig(file("/usr") / "lib" / "jvm"),
       new MacOsDiscoverConfig,
-      new WindowsDiscoverConfig,
+      new WindowsDiscoverConfig(file("C://Program Files/Java")),
+      new WindowsDiscoverConfig(file("C://Program Files (x86)/Java")),
       new JavaHomeDiscoverConfig,
     )
   }
