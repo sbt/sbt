@@ -52,7 +52,7 @@ class CrossJavaTest extends Specification {
 
   "The Windows Java home selector" should {
     "correctly pick up a JDK" in {
-      val conf = new WindowsDiscoverConfig {
+      val conf = new WindowsDiscoverConfig(sbt.io.syntax.file(".")) {
         override def candidates() = Vector("jdk1.7.0")
       }
       val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
