@@ -780,21 +780,30 @@ object BuiltinCommands {
 
   def checkSBTVersionChanged(state: State): Unit = {
     import sbt.io.syntax._
-    val app = state.configuration.provider
+    val sbtVersionProperty = "sbt.version"
+
+    // Don't warn if current version has been set in system properties
+    val sbtVersionSystemOpt =
+      Option(System.getProperty(sbtVersionProperty))
+
+    // the intention is to warn if build.properties file has changed during current sbt session
+    // a `reload` will not respect this change while `reboot` will.
     val buildProps = state.baseDir / "project" / "build.properties"
-    // First try reading the sbt version from build.properties file.
-    val sbtVersionOpt = if (buildProps.exists) {
+    val sbtVersionBuildOpt = if (buildProps.exists) {
       val buildProperties = new Properties()
       IO.load(buildProperties, buildProps)
-      Option(buildProperties.getProperty("sbt.version"))
+      Option(buildProperties.getProperty(sbtVersionProperty))
     } else None
 
+    val sbtVersionOpt = sbtVersionSystemOpt.orElse(sbtVersionBuildOpt)
+
+    val app = state.configuration.provider
     sbtVersionOpt.foreach(
       version =>
         if (version != app.id.version()) {
           state.log.warn(s"""sbt version mismatch, current: ${app.id
             .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
-      }
+        }
     )
   }
 
