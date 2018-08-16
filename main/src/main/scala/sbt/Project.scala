@@ -32,7 +32,7 @@ import Keys.{
   watch
 }
 import Scope.{ Global, ThisScope }
-import Def.{ Flattened, Initialize, ScopedKey, Setting, SettingsDefinition }
+import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{
   Load,
   BuildStructure,
@@ -892,19 +892,17 @@ trait ProjectExtra {
   implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] =
     new Project.RichTaskSessionVar(init)
 
-  def inThisBuild(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(project = Select(ThisBuild)))(ss flatMap (_.settings))
+  def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)
 
-  def inConfig(conf: Configuration)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(config = Select(conf)))(
-      (configuration :== conf) +: (ss flatMap (_.settings))
-    )
+  def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(config = Select(conf)))((configuration :== conf) +: ss)
 
-  def inTask(t: Scoped)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(task = Select(t.key)))(ss flatMap (_.settings))
+  def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(task = Select(t.key)))(ss)
 
-  def inScope(scope: Scope)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    Project.transform(Scope.replaceThis(scope), ss flatMap (_.settings))
+  def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    Project.transform(Scope.replaceThis(scope), ss)
 
   private[sbt] def inThisBuild[T](i: Initialize[T]): Initialize[T] =
     inScope(ThisScope.copy(project = Select(ThisBuild)), i)

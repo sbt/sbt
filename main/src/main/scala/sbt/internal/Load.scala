@@ -267,7 +267,7 @@ private[sbt] object Load {
     }
     Project.checkTargets(data) foreach sys.error
     val index = timed("Load.apply: structureIndex", log) {
-      structureIndex(data, settings, loaded.extra(data), projects, log)
+      structureIndex(data, settings, loaded.extra(data), projects)
     }
     val streams = timed("Load.apply: mkStreams", log) { mkStreams(projects, loaded.root, data) }
     val bs = new BuildStructure(
@@ -321,8 +321,7 @@ private[sbt] object Load {
       data: Settings[Scope],
       settings: Seq[Setting[_]],
       extra: KeyIndex => BuildUtil[_],
-      projects: Map[URI, LoadedBuildUnit],
-      log: Logger
+      projects: Map[URI, LoadedBuildUnit]
   ): StructureIndex = {
     val keys = Index.allKeys(settings)
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
@@ -331,7 +330,6 @@ private[sbt] object Load {
     val configsMap: Map[String, Seq[Configuration]] =
       projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
     val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
-    checkConfigurations(keyIndex, log)
     val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap, configsMap)
     new StructureIndex(
       Index.stringToKeyMap(attributeKeys),
@@ -342,33 +340,14 @@ private[sbt] object Load {
     )
   }
 
-  private def checkConfigurations(keyIndex: KeyIndex, log: Logger): Unit = {
-    keyIndex.guessedConfigIdents
-      .collect {
-        // Filter out any global configurations since we don't have a way of fixing them.
-        // Chances are this is only going to be the Test configuration which will have guessed correctly.
-        case (Some(projectRef), config, guess) =>
-          (Reference.display(projectRef), config, guess)
-      }
-      .foreach {
-        case (project, config, guess) =>
-          log.warn(
-            s"""The project $project references an unknown configuration "$config" and was guessed to be "$guess"."""
-          )
-          log.warn("This configuration should be explicitly added to the project.")
-      }
-  }
-
   // Reevaluates settings after modifying them.  Does not recompile or reload any build components.
-  def reapply(
-      newSettings: Seq[Setting[_]],
-      structure: BuildStructure,
-      log: Logger
-  )(implicit display: Show[ScopedKey[_]]): BuildStructure = {
+  def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure)(
+      implicit display: Show[ScopedKey[_]]
+  ): BuildStructure = {
     val transformed = finalTransforms(newSettings)
     val newData = Def.make(transformed)(structure.delegates, structure.scopeLocal, display)
     def extra(index: KeyIndex) = BuildUtil(structure.root, structure.units, index, newData)
-    val newIndex = structureIndex(newData, transformed, extra, structure.units, log)
+    val newIndex = structureIndex(newData, transformed, extra, structure.units)
     val newStreams = mkStreams(structure.units, structure.root, newData)
     new BuildStructure(
       units = structure.units,
@@ -380,6 +359,15 @@ private[sbt] object Load {
       delegates = structure.delegates,
       scopeLocal = structure.scopeLocal
     )
+  }
+
+  @deprecated("No longer used. For binary compatibility", "1.2.1")
+  def reapply(
+      newSettings: Seq[Setting[_]],
+      structure: BuildStructure,
+      log: Logger
+  )(implicit display: Show[ScopedKey[_]]): BuildStructure = {
+    reapply(newSettings, structure)
   }
 
   def buildConfigurations(
@@ -1189,20 +1177,22 @@ private[sbt] object Load {
 
   /** These are the settings defined when loading a project "meta" build. */
   val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(
-    sbtPlugin :== true,
-    pluginData := {
-      val prod = (exportedProducts in Configurations.Runtime).value
-      val cp = (fullClasspath in Configurations.Runtime).value
-      val opts = (scalacOptions in Configurations.Compile).value
-      PluginData(
-        removeEntries(cp, prod),
-        prod,
-        Some(fullResolvers.value.toVector),
-        Some(update.value),
-        opts
-      )
-    },
-    onLoadMessage := ("Loading project definition from " + baseDirectory.value)
+    Seq(
+      sbtPlugin :== true,
+      pluginData := {
+        val prod = (exportedProducts in Configurations.Runtime).value
+        val cp = (fullClasspath in Configurations.Runtime).value
+        val opts = (scalacOptions in Configurations.Compile).value
+        PluginData(
+          removeEntries(cp, prod),
+          prod,
+          Some(fullResolvers.value.toVector),
+          Some(update.value),
+          opts
+        )
+      },
+      onLoadMessage := ("Loading project definition from " + baseDirectory.value)
+    )
   )
 
   private[this] def removeEntries(

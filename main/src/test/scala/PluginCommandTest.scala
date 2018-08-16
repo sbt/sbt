@@ -104,7 +104,7 @@ object FakeState {
     val extra: KeyIndex => BuildUtil[_] = (keyIndex) =>
       BuildUtil(base.toURI, Map.empty, keyIndex, data)
     val structureIndex: StructureIndex =
-      Load.structureIndex(data, settings, extra, Map.empty, Logger.Null)
+      Load.structureIndex(data, settings, extra, Map.empty)
     val streams: (State) => BuildStreams.Streams = null
 
     val loadedDefinitions: LoadedDefinitions = new LoadedDefinitions(
