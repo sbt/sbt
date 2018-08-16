@@ -124,6 +124,8 @@ lazy val utilLogging = (project in internalPath / "util-logging")
       exclude[DirectMissingMethodProblem]("sbt.internal.util.SuccessEvent.copy*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.TraceEvent.copy*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.StringEvent.copy*"),
+      // Private final class constructor changed
+      exclude[DirectMissingMethodProblem]("sbt.util.InterfaceUtil#ConcretePosition.this"),
     ),
   )
   .configure(addSbtIO)
