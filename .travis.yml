@@ -1,25 +1,14 @@
 sudo: false
-
-# https://blog.travis-ci.com/2017-07-11-trusty-as-default-linux-is-coming
-# Travis now defaults to Trusty, which is missing openjdk6.
-dist: precise
-
-cache:
-  directories:
-    - $HOME/.ivy2/cache
-    - $HOME/.sbt/boot
+dist: trusty
 
 language: scala
 
-# TODO - we'd like to actually test everything, but the process library has a deadlock right now
 jdk:
-  - openjdk6
-#  - oraclejdk7
+  - oraclejdk8
 
-# WORKAROUND https://github.com/travis-ci/travis-ci/issues/5227
-addons:
-  hosts: workaround-travis-ci-issue-5227
-  hostname: workaround-travis-ci-issue-5227
+env:
+  global:
+    - JABBA_HOME=/home/travis/.jabba
 
 env:
   matrix:
@@ -42,18 +31,34 @@ env:
     - SBT_CMD="scripted source-dependencies/*3of3"
     - SBT_CMD="scripted tests/*"
     - SBT_CMD="scripted project-load/*"
-    - SBT_CMD="checkBuildScala211"
+    - SBT_CMD="checkBuild"
     - SBT_CMD="repoOverrideTest:scripted dependency-management/*"
     - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*2of2"
     - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*1of2 project/transitive-plugins"
 
+script:
+  - sbt -J-XX:ReservedCodeCacheSize=128m -Dsbt.repository.secure=false "$SBT_CMD"
+
+before_install:
+  # https://github.com/travis-ci/travis-ci/issues/8408
+  - unset _JAVA_OPTIONS
+  - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
+
+install:
+  - $JABBA_HOME/bin/jabba install "zulu@1.6.107"
+  - export JAVA_HOME="$JABBA_HOME/jdk/zulu@1.6.107"
+  - export PATH="$JAVA_HOME/bin:$PATH"
+  - java -version
+
+before_cache:
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt  -name "*.lock"               -delete
+
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/boot
+
 notifications:
   email:
     - sbt-dev-bot@googlegroups.com
-
-script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
-
-  # Tricks to avoid unnecessary cache updates
-  - find $HOME/.sbt -name "*.lock" | xargs rm
-  - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
