@@ -535,7 +535,7 @@ def rootSettings = fullDocSettings ++
   Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { addSbtAlternateResolver _ },
-  Scripted.scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
+  Scripted.scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G", "-Dsbt.repository.secure=false"),
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
@@ -544,7 +544,7 @@ def otherRootSettings = Seq(
   },
   aggregate in bintrayRelease := false
 ) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
-  Scripted.scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
+  Scripted.scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G", "-Dsbt.repository.secure=false"),
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedPrescripted := { f =>
@@ -558,7 +558,9 @@ def otherRootSettings = Seq(
 )) ++ inConfig(Scripted.RepoOverrideTest)(Seq(
   Scripted.scriptedPrescripted := { _ => () },
   Scripted.scriptedLaunchOpts := {
-    List("-XX:MaxPermSize=256M", "-Xmx1G", "-Dsbt.override.build.repos=true",
+    List("-XX:MaxPermSize=256M", "-Xmx1G",
+      "-Dsbt.repository.secure=false",
+      "-Dsbt.override.build.repos=true",
       s"""-Dsbt.repository.config=${ Scripted.scriptedSource.value / "repo.config" }""")
   },
   Scripted.scripted <<= scriptedTask,
