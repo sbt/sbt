@@ -87,6 +87,7 @@ object Watched {
 
   private[this] class AWatched extends Watched
 
+  @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
   def multi(base: Watched, paths: Seq[Watched]): Watched =
     new AWatched {
       override def watchSources(s: State): Seq[Watched.WatchSource] =
