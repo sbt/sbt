@@ -241,7 +241,8 @@ object BuiltinCommands {
       export,
       boot,
       initialize,
-      act
+      act,
+      continuous
     ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
@@ -444,6 +445,14 @@ object BuiltinCommands {
     (s, arg) =>
       if (Project.isProjectLoaded(s)) loadedEval(s, arg) else rawEval(s, arg)
       s
+  }
+
+  def continuous: Command = Watched.continuous { (state: State, _: Watched, command: String) =>
+    val extracted = Project.extract(state)
+    val (s, logger) = extracted.runTask(Keys.watchLogger, state)
+    val process: (() => State) => State =
+      (f: () => State) => MainLoop.processCommand(Exec(command, None), s, f)
+    (s, logger, process)
   }
 
   private[this] def loadedEval(s: State, arg: String): Unit = {

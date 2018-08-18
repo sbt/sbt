@@ -265,6 +265,7 @@ object Defaults extends BuildCommon {
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
+      watchLogger := streams.value.log,
       watchService :== { () =>
         Watched.createWatchService()
       },
