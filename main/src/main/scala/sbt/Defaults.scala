@@ -264,7 +264,7 @@ object Defaults extends BuildCommon {
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
-      watchAntiEntropy :== new FiniteDuration(40, TimeUnit.MILLISECONDS),
+      watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchService :== { () =>
         Watched.createWatchService()
       },
