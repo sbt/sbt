@@ -61,7 +61,7 @@ trait Identity {
 }
 
 /** Convenience methods for State transformations and operations. */
-trait StateOps {
+trait StateOps extends Any {
   def process(f: (Exec, State) => State): State
 
   /** Schedules `commands` to be run before any remaining commands.*/
@@ -233,8 +233,11 @@ object State {
     )
   }
 
+  @deprecated("Import State._ or State.StateOpsImpl to access state extension methods", "1.3.0")
+  def stateOps(s: State): StateOps = new StateOpsImpl(s)
+
   /** Provides operations and transformations on State. */
-  implicit def stateOps(s: State): StateOps = new StateOps {
+  implicit class StateOpsImpl(val s: State) extends AnyVal with StateOps {
     def process(f: (Exec, State) => State): State = {
       def runCmd(cmd: Exec, remainingCommands: List[Exec]) = {
         log.debug(s"> $cmd")
