@@ -89,12 +89,13 @@ object Watched {
 
   def multi(base: Watched, paths: Seq[Watched]): Watched =
     new AWatched {
-      override def watchSources(s: State) = (base.watchSources(s) /: paths)(_ ++ _.watchSources(s))
+      override def watchSources(s: State): Seq[Watched.WatchSource] =
+        (base.watchSources(s) /: paths)(_ ++ _.watchSources(s))
       override def terminateWatch(key: Int): Boolean = base.terminateWatch(key)
-      override val pollInterval = (base +: paths).map(_.pollInterval).min
-      override val antiEntropy = (base +: paths).map(_.antiEntropy).min
-      override def watchingMessage(s: WatchState) = base.watchingMessage(s)
-      override def triggeredMessage(s: WatchState) = base.triggeredMessage(s)
+      override val pollInterval: FiniteDuration = (base +: paths).map(_.pollInterval).min
+      override val antiEntropy: FiniteDuration = (base +: paths).map(_.antiEntropy).min
+      override def watchingMessage(s: WatchState): String = base.watchingMessage(s)
+      override def triggeredMessage(s: WatchState): String = base.triggeredMessage(s)
     }
   def empty: Watched = new AWatched
 
