@@ -356,7 +356,7 @@ object Defaults extends BuildCommon {
       includeFilter in unmanagedSources,
       excludeFilter in unmanagedSources
     ).value,
-    watchSources in ConfigGlobal ++= {
+    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
@@ -398,7 +398,7 @@ object Defaults extends BuildCommon {
       includeFilter in unmanagedResources,
       excludeFilter in unmanagedResources
     ).value,
-    watchSources in ConfigGlobal ++= {
+    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val bases = unmanagedResourceDirectories.value
       val include = (includeFilter in unmanagedResources).value
       val exclude = (excludeFilter in unmanagedResources).value
