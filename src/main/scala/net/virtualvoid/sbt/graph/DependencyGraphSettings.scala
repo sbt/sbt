@@ -197,7 +197,13 @@ object DependencyGraphSettings {
               case ((org, name), version) ⇒ ArtifactPattern(org, name, version)
             }
         }
-        .reduceOption(_ | _).getOrElse(failure("No dependencies found"))
+        .reduceOption(_ | _).getOrElse {
+          // If the moduleGraphStore couldn't be loaded because no dependency tree command was run before, we should still provide a parser for the command.
+          ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(StringBasic, "<module>")) ~ (Space ~> token(StringBasic, "<version?>")).?).map {
+            case ((org, mod), version) ⇒
+              ArtifactPattern(org, mod, version)
+          }
+        }
     }
 
   // This is to support 0.13.8's InlineConfigurationWithExcludes while not forcing 0.13.8
