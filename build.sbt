@@ -16,7 +16,7 @@ libraryDependencies += Defaults.sbtPluginExtra(
   (scalaBinaryVersion in update).value
 )
 
-crossSbtVersions := Seq("1.1.6", "0.13.16")
+crossSbtVersions := Seq("1.2.1", "0.13.16")
 
 scalacOptions ++= Seq(
   "-deprecation",
