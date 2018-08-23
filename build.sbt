@@ -1,3 +1,5 @@
+enablePlugins(ScriptedPlugin)
+
 scriptedLaunchOpts += s"-Dproject.version=${version.value}"
 
 libraryDependencies ++= {
