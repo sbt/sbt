@@ -69,7 +69,7 @@ final class Eval(
     backing: Option[File]
 ) {
   def this(mkReporter: Settings => Reporter, backing: Option[File]) =
-    this(Nil, IO.classLocationFile[Product] :: Nil, mkReporter, backing)
+    this(Nil, IO.classLocationPath[Product].toFile :: Nil, mkReporter, backing)
   def this() = this(s => new ConsoleReporter(s), None)
 
   backing.foreach(IO.createDirectory)
