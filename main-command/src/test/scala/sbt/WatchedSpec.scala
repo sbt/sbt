@@ -11,7 +11,7 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 
 import org.scalatest.{ FlatSpec, Matchers }
-import sbt.Watched.{ WatchConfig, NullLogger, WatchSource }
+import sbt.Watched.{ NullLogger, WatchSource }
 import sbt.internal.io.WatchState
 import sbt.io.IO
 
@@ -26,7 +26,8 @@ class WatchedSpec extends FlatSpec with Matchers {
       () => latch.getCount == 0,
       triggeredMessage = _ => { latch.countDown(); None },
       watchingMessage = _ => { new File(dir, "foo").createNewFile(); None },
-      watchState = WatchState.empty(Watched.createWatchService, WatchSource(dir.toRealPath) :: Nil),
+      watchState =
+        WatchState.empty(Watched.createWatchService(), WatchSource(dir.toRealPath) :: Nil),
       pollInterval = 5.millis,
       antiEntropy = 5.millis
     )
