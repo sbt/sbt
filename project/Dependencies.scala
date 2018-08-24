@@ -81,13 +81,13 @@ object Dependencies {
   def addSbtLmIvy(p: Project): Project = addSbtModule(p, sbtLmPath, "lmIvy", libraryManagementIvy)
 
   def addSbtCompilerInterface(p: Project): Project =
-    addSbtModule(p, sbtZincPath, "compilerInterface", compilerInterface)
+    addSbtModule(p, sbtZincPath, "compilerInterface212", compilerInterface)
   def addSbtCompilerClasspath(p: Project): Project =
-    addSbtModule(p, sbtZincPath, "zincClasspath", compilerClasspath)
+    addSbtModule(p, sbtZincPath, "zincClasspath212", compilerClasspath)
   def addSbtCompilerApiInfo(p: Project): Project =
-    addSbtModule(p, sbtZincPath, "zincApiInfo", compilerApiInfo)
+    addSbtModule(p, sbtZincPath, "zincApiInfo212", compilerApiInfo)
   def addSbtCompilerBridge(p: Project): Project =
-    addSbtModule(p, sbtZincPath, "compilerBridge", compilerBridge)
+    addSbtModule(p, sbtZincPath, "compilerBridge212", compilerBridge)
   def addSbtCompilerIvyIntegration(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincIvyIntegration", compilerIvyIntegration)
   def addSbtZinc(p: Project): Project = addSbtModule(p, sbtZincPath, "zinc", zinc)
