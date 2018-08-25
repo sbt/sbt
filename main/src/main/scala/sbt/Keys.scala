@@ -20,6 +20,7 @@ import xsbti.compile.{
   CompileOrder,
   Compilers,
   CompileResult,
+  ExternalHooks,
   GlobalsCache,
   IncOptions,
   Inputs,
@@ -261,6 +262,7 @@ object Keys {
   val copyResources = taskKey[Seq[(File, File)]]("Copies resources to the output directory.").withRank(AMinusTask)
   val aggregate = settingKey[Boolean]("Configures task aggregation.").withRank(BMinusSetting)
   val sourcePositionMappers = taskKey[Seq[xsbti.Position => Option[xsbti.Position]]]("Maps positions in generated source files to the original source it was generated from").withRank(DTask)
+  val externalHooks = taskKey[CompileOptions => Option[ExternalHooks]]("External hooks for modifying the internal behavior of the incremental compiler.").withRank(BMinusSetting)
 
   // package keys
   val packageBin = taskKey[File]("Produces a main artifact, such as a binary jar.").withRank(ATask)

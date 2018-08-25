@@ -276,6 +276,11 @@ object Defaults extends BuildCommon {
       fileTreeView := state.value
         .get(BasicKeys.globalFileTreeView)
         .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
+      externalHooks := {
+        val view = fileTreeView.value
+        compileOptions =>
+          Some(ExternalHooks(compileOptions, view))
+      },
       watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchLogger := streams.value.log,
       watchService :== { () =>
@@ -1646,12 +1651,22 @@ object Defaults extends BuildCommon {
           foldMappers(sourcePositionMappers.value)
         )
       },
-      compileInputs := Inputs.of(
-        compilers.value,
-        compileOptions.value,
-        compileIncSetup.value,
-        previousCompile.value
-      )
+      compileInputs := {
+        val options = compileOptions.value
+        val setup = compileIncSetup.value
+        Inputs.of(
+          compilers.value,
+          options,
+          externalHooks
+            .value(options)
+            .map { hooks =>
+              val newOptions = setup.incrementalCompilerOptions.withExternalHooks(hooks)
+              setup.withIncrementalCompilerOptions(newOptions)
+            }
+            .getOrElse(setup),
+          previousCompile.value
+        )
+      }
     )
   }
 
