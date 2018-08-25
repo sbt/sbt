@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.File
-import java.nio.file.{ Files, Path }
+import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicBoolean
 
 import org.scalatest.{ FlatSpec, Matchers }
@@ -26,11 +26,11 @@ class WatchedSpec extends FlatSpec with Matchers {
     private val fileTreeViewConfig = FileTreeViewConfig.default(50.millis, 50.millis)
     def config(
         sources: Seq[WatchSource],
-        fileEventMonitor: Option[FileEventMonitor[Path]] = None,
+        fileEventMonitor: Option[FileEventMonitor[StampedFile]] = None,
         logger: Logger = NullLogger,
         handleInput: () => Action = () => Ignore,
         preWatch: (Int, Boolean) => Action = (_, _) => CancelWatch,
-        onWatchEvent: Event[Path] => Action = _ => Ignore,
+        onWatchEvent: Event[StampedFile] => Action = _ => Ignore,
         triggeredMessage: (TypedPath, Int) => Option[String] = (_, _) => None,
         watchingMessage: Int => Option[String] = _ => None
     ): WatchConfig = {

@@ -231,4 +231,8 @@ $AliasCommand name=
   val ContinuousExecutePrefix = "~"
   def continuousDetail = "Executes the specified command whenever source files change."
   def continuousBriefHelp = (ContinuousExecutePrefix + " <command>", continuousDetail)
+  def FlushFileTreeRepository = "flushFileTreeRepository"
+  def FlushDetailed: String =
+    "Resets the global file repository in the event that the repository has become inconsistent " +
+      "with the file system."
 }

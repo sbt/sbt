@@ -8,7 +8,6 @@
 package sbt
 
 import java.io.File
-import java.nio.file.{ Path => JPath }
 import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
@@ -41,7 +40,7 @@ import sbt.internal.{
   SessionSettings,
   LogManager
 }
-import sbt.io.{ FileFilter, TypedPath, WatchService }
+import sbt.io.{ FileFilter, FileTreeDataView, TypedPath, WatchService }
 import sbt.io.FileEventMonitor.Event
 import sbt.internal.io.WatchState
 import sbt.internal.server.ServerHandler
@@ -146,12 +145,13 @@ object Keys {
   @deprecated("This is no longer used for continuous execution", "1.3.0")
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
+  val fileTreeView = taskKey[FileTreeDataView[StampedFile]]("A view of the file system")
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val watchAntiEntropy = settingKey[FiniteDuration]("Duration for which the watch EventMonitor will ignore events for a file after that file has triggered a build.").withRank(BMinusSetting)
   val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
   val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
   val watchHandleInput = settingKey[() => Watched.Action]("Function that is periodically invoked to determine if the continous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands.").withRank(BMinusSetting)
-  val watchOnEvent = taskKey[Event[JPath] => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
+  val watchOnEvent = taskKey[Event[StampedFile] => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
   val watchOnTermination = taskKey[(Watched.Action, String, State) => State]("Transforms the input state after the continuous build completes.").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
   val watchProjectSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources for the sbt meta project to watch to trigger a reload.").withRank(CSetting)

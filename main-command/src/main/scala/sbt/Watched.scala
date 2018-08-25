@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.File
-import java.nio.file.{ FileSystems, Path }
+import java.nio.file.FileSystems
 
 import sbt.BasicCommandStrings.{
   ContinuousExecutePrefix,
@@ -18,6 +18,7 @@ import sbt.BasicCommandStrings.{
 }
 import sbt.BasicCommands.otherCommandParser
 import sbt.internal.LegacyWatched
+import sbt.internal.inc.Stamper
 import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.Types.const
@@ -25,6 +26,7 @@ import sbt.internal.util.complete.DefaultParsers
 import sbt.io.FileEventMonitor.Event
 import sbt.io._
 import sbt.util.{ Level, Logger }
+import xsbti.compile.analysis.Stamp
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -99,8 +101,8 @@ object Watched {
 
   /**
    * A user defined Action. It is not sealed so that the user can create custom instances. If any
-   * of the [[Config]] callbacks, e.g. [[Config.onWatchEvent]], return an instance of [[Custom]],
-   * the watch will terminate.
+   * of the [[WatchConfig]] callbacks, e.g. [[WatchConfig.onWatchEvent]], return an instance of
+   * [[Custom]], the watch will terminate.
    */
   trait Custom extends Action
 
@@ -414,7 +416,7 @@ trait WatchConfig {
    *
    * @return an sbt.io.FileEventMonitor instance.
    */
-  def fileEventMonitor: FileEventMonitor[Path]
+  def fileEventMonitor: FileEventMonitor[StampedFile]
 
   /**
    * A function that is periodically invoked to determine whether the watch should stop or
@@ -437,7 +439,7 @@ trait WatchConfig {
    * @param event the detected sbt.io.FileEventMonitor.Event.
    * @return the next [[Watched.Action Action]] to run.
    */
-  def onWatchEvent(event: Event[Path]): Watched.Action
+  def onWatchEvent(event: Event[StampedFile]): Watched.Action
 
   /**
    * Transforms the state after the watch terminates.
@@ -493,10 +495,10 @@ object WatchConfig {
    */
   def default(
       logger: Logger,
-      fileEventMonitor: FileEventMonitor[Path],
+      fileEventMonitor: FileEventMonitor[StampedFile],
       handleInput: () => Watched.Action,
       preWatch: (Int, Boolean) => Watched.Action,
-      onWatchEvent: Event[Path] => Watched.Action,
+      onWatchEvent: Event[StampedFile] => Watched.Action,
       onWatchTerminated: (Watched.Action, String, State) => State,
       triggeredMessage: (TypedPath, Int) => Option[String],
       watchingMessage: Int => Option[String]
@@ -511,16 +513,41 @@ object WatchConfig {
     val wm = watchingMessage
     new WatchConfig {
       override def logger: Logger = l
-      override def fileEventMonitor: FileEventMonitor[Path] = fem
+      override def fileEventMonitor: FileEventMonitor[StampedFile] = fem
       override def handleInput(): Watched.Action = hi()
       override def preWatch(count: Int, lastResult: Boolean): Watched.Action =
         pw(count, lastResult)
-      override def onWatchEvent(event: Event[Path]): Watched.Action = owe(event)
+      override def onWatchEvent(event: Event[StampedFile]): Watched.Action = owe(event)
       override def onWatchTerminated(action: Watched.Action, command: String, state: State): State =
         owt(action, command, state)
       override def triggeredMessage(typedPath: TypedPath, count: Int): Option[String] =
         tm(typedPath, count)
       override def watchingMessage(count: Int): Option[String] = wm(count)
     }
+  }
+}
+
+trait StampedFile extends File {
+  def stamp: Stamp
+}
+object StampedFile {
+  val sourceConverter: TypedPath => StampedFile =
+    new StampedFileImpl(_: TypedPath, forceLastModified = false)
+  val binaryConverter: TypedPath => StampedFile =
+    new StampedFileImpl(_: TypedPath, forceLastModified = true)
+  val converter: TypedPath => StampedFile = (tp: TypedPath) =>
+    tp.getPath.toString match {
+      case s if s.endsWith(".jar")   => binaryConverter(tp)
+      case s if s.endsWith(".class") => binaryConverter(tp)
+      case _                         => sourceConverter(tp)
+  }
+
+  private class StampedFileImpl(typedPath: TypedPath, forceLastModified: Boolean)
+      extends java.io.File(typedPath.getPath.toString)
+      with StampedFile {
+    override val stamp: Stamp =
+      if (forceLastModified || typedPath.isDirectory)
+        Stamper.forLastModified(typedPath.getPath.toFile)
+      else Stamper.forHash(typedPath.getPath.toFile)
   }
 }

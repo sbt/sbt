@@ -42,6 +42,7 @@ import sbt.io.{
   AllPassFilter,
   DirectoryFilter,
   FileFilter,
+  FileTreeView,
   GlobFilter,
   Hash,
   HiddenFileFilter,
@@ -271,6 +272,9 @@ object Defaults extends BuildCommon {
       },
       watchStartMessage := Watched.defaultStartWatch,
       fileTreeViewConfig := FileTreeViewConfig.default(pollInterval.value, watchAntiEntropy.value),
+      fileTreeView := state.value
+        .get(BasicKeys.globalFileTreeView)
+        .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
       watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchLogger := streams.value.log,
       watchService :== { () =>
@@ -642,10 +646,9 @@ object Defaults extends BuildCommon {
         )
         .getOrElse(watchTriggeredMessage.value)
       val logger = watchLogger.value
-      val viewConfig = fileTreeViewConfig.value
       WatchConfig.default(
         logger,
-        viewConfig.newMonitor(viewConfig.newDataView(), sources, logger),
+        fileTreeViewConfig.value.newMonitor(fileTreeView.value, sources, logger),
         watchHandleInput.value,
         watchPreWatch.value,
         watchOnEvent.value,
