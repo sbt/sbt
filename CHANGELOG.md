@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.9.2 (2018-08-26)
+ * [#159](https://github.com/jrudolph/sbt-dependency-graph/pull/159): Fixed regression in `whatDependsOn` where task parser failed when no other sbt-dependency-graph task was called before
+
 ## Version 0.9.1 (2018-07-17)
 
  * [#110](https://github.com/jrudolph/sbt-dependency-graph/issues/110): `whatDependsOn` can now be called without specifying a version. Thanks, @chikei for the initial implementation.

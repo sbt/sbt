@@ -1,17 +1,12 @@
 Before publishing:
 
- * update version in project.sbt
+ * create entry in CHANGELOG
+ * update version in README
 
- * update plugins.sbt in scripted tests
- * run `^ scripted` to run all tests
+ * run `;^ clean; ^ test:compile; ^ test; ^ scripted; ^publishSigned`
 
- * run `^ publish'
+ * test staged version in sonatype
+ * release from sonatype
 
 After publishing:
- * create tag (+ push)
- * update versions in README (2 occurences currently)
- * update example project (+ push)
- * use `ls-write-version`
- * lsync
-
- * update to next snapshot version
+ * push master and tags
