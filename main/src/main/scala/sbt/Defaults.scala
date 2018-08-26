@@ -271,7 +271,7 @@ object Defaults extends BuildCommon {
         None
       },
       watchStartMessage := Watched.defaultStartWatch,
-      fileTreeViewConfig := FileTreeViewConfig.default(pollInterval.value, watchAntiEntropy.value),
+      fileTreeViewConfig := FileTreeViewConfig.default(watchAntiEntropy.value),
       fileTreeView := state.value
         .get(BasicKeys.globalFileTreeView)
         .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
@@ -363,11 +363,13 @@ object Defaults extends BuildCommon {
           crossPaths.value
         )
     },
-    unmanagedSources := collectFiles(
-      unmanagedSourceDirectories,
-      includeFilter in unmanagedSources,
-      excludeFilter in unmanagedSources
-    ).value,
+    unmanagedSources := FileManagement
+      .collectFiles(
+        unmanagedSourceDirectories,
+        includeFilter in unmanagedSources,
+        excludeFilter in unmanagedSources
+      )
+      .value,
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
@@ -412,11 +414,13 @@ object Defaults extends BuildCommon {
     resourceDirectories := Classpaths
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
-    unmanagedResources := collectFiles(
-      unmanagedResourceDirectories,
-      includeFilter in unmanagedResources,
-      excludeFilter in unmanagedResources
-    ).value,
+    unmanagedResources := FileManagement
+      .collectFiles(
+        unmanagedResourceDirectories,
+        includeFilter in unmanagedResources,
+        excludeFilter in unmanagedResources
+      )
+      .value,
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val bases = unmanagedResourceDirectories.value
       val include = (includeFilter in unmanagedResources).value
@@ -430,18 +434,10 @@ object Defaults extends BuildCommon {
     managedResources := generate(resourceGenerators).value,
     resources := Classpaths.concat(managedResources, unmanagedResources).value
   )
+  def addBaseSources = FileManagement.appendBaseSources
   lazy val outputConfigPaths = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
-  )
-  def addBaseSources = Seq(
-    unmanagedSources := {
-      val srcs = unmanagedSources.value
-      val f = (includeFilter in unmanagedSources).value
-      val excl = (excludeFilter in unmanagedSources).value
-      val baseDir = baseDirectory.value
-      if (sourcesInBase.value) (srcs +++ baseDir * (f -- excl)).get else srcs
-    }
   )
 
   // This is included into JvmPlugin.projectSettings
@@ -659,7 +655,7 @@ object Defaults extends BuildCommon {
     },
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
-    fileTreeViewConfig := FileTreeViewConfig.default(pollInterval.value, watchAntiEntropy.value),
+    fileTreeViewConfig := FileTreeViewConfig.default(watchAntiEntropy.value)
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
@@ -1192,10 +1188,7 @@ object Defaults extends BuildCommon {
       dirs: ScopedTaskable[Seq[File]],
       filter: ScopedTaskable[FileFilter],
       excludes: ScopedTaskable[FileFilter]
-  ): Initialize[Task[Seq[File]]] =
-    Def.task {
-      dirs.toTask.value.descendantsExcept(filter.toTask.value, excludes.toTask.value).get
-    }
+  ): Initialize[Task[Seq[File]]] = FileManagement.collectFiles(dirs, filter, excludes)
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
@@ -1767,7 +1760,7 @@ object Defaults extends BuildCommon {
 
   lazy val compileSettings: Seq[Setting[_]] =
     configSettings ++
-      (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++
+      (mainBgRunMainTask +: mainBgRunTask +: FileManagement.appendBaseSources) ++
       Classpaths.addUnmanagedLibrary
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks

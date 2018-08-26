@@ -8,10 +8,11 @@
 package sbt
 import sbt.Watched.WatchSource
 import sbt.internal.io.{ WatchServiceBackedObservable, WatchState }
-import sbt.io.{ FileEventMonitor, FileTreeDataView, FileTreeView }
+import sbt.io._
+import FileTreeDataView.{ Observable, Observer }
 import sbt.util.Logger
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 /**
  * Configuration for viewing and monitoring the file system.
@@ -25,6 +26,11 @@ final class FileTreeViewConfig private (
     ) => FileEventMonitor[StampedFile]
 )
 object FileTreeViewConfig {
+  private implicit class RepositoryOps(val repository: FileTreeRepository[StampedFile]) {
+    def register(sources: Seq[WatchSource]): Unit = sources foreach { s =>
+      repository.register(s.base.toPath, if (s.recursive) Integer.MAX_VALUE else 0)
+    }
+  }
 
   /**
    * Create a new FileTreeViewConfig. This factory takes a generic parameter, T, that is bounded
@@ -50,14 +56,19 @@ object FileTreeViewConfig {
     )
 
   /**
-   * Provides a default [[FileTreeViewConfig]]. This view does not cache entries.
-   * @param pollingInterval the maximum duration that the sbt.internal.io.EventMonitor will poll
-   *                     the underlying sbt.io.WatchService when monitoring for file events
+   * Provides a [[FileTreeViewConfig]] with semantics as close as possible to sbt 1.2.0. This means
+   * that there is no file tree caching and the sbt.io.FileEventMonitor will use an
+   * sbt.io.WatchService for monitoring the file system.
+   * @param delay the maximum delay for which the background thread will poll the
+   *              sbt.io.WatchService for file system events
    * @param antiEntropy the duration of the period after a path triggers a build for which it is
    *                    quarantined from triggering another build
    * @return a [[FileTreeViewConfig]] instance.
    */
-  def default(pollingInterval: FiniteDuration, antiEntropy: FiniteDuration): FileTreeViewConfig =
+  def sbt1_2_compat(
+      delay: FiniteDuration,
+      antiEntropy: FiniteDuration
+  ): FileTreeViewConfig =
     FileTreeViewConfig(
       () => FileTreeView.DEFAULT.asDataView(StampedFile.converter),
       (_: FileTreeDataView[StampedFile], sources, logger) => {
@@ -65,7 +76,7 @@ object FileTreeViewConfig {
         FileEventMonitor.antiEntropy(
           new WatchServiceBackedObservable(
             WatchState.empty(Watched.createWatchService(), sources),
-            pollingInterval,
+            delay,
             StampedFile.converter,
             closeService = true,
             ioLogger
@@ -73,6 +84,29 @@ object FileTreeViewConfig {
           antiEntropy,
           ioLogger
         )
+      }
+    )
+
+  /**
+   * Provides a default [[FileTreeViewConfig]]. This view caches entries and solely relies on
+   * file system events from the operating system to update its internal representation of the
+   * file tree.
+   * @param antiEntropy the duration of the period after a path triggers a build for which it is
+   *                    quarantined from triggering another build
+   * @return a [[FileTreeViewConfig]] instance.
+   */
+  def default(antiEntropy: FiniteDuration): FileTreeViewConfig =
+    FileTreeViewConfig(
+      () => FileTreeRepository.default(StampedFile.converter),
+      (repository: FileTreeRepository[StampedFile], sources: Seq[WatchSource], logger: Logger) => {
+        repository.register(sources)
+        val copied = new Observable[StampedFile] {
+          override def addObserver(observer: Observer[StampedFile]): Int =
+            repository.addObserver(observer)
+          override def removeObserver(handle: Int): Unit = repository.removeObserver(handle)
+          override def close(): Unit = {} // Don't close the underlying observable
+        }
+        FileEventMonitor.antiEntropy(copied, antiEntropy, msg => logger.debug(msg.toString))
       }
     )
 }

@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 
 class WatchedSpec extends FlatSpec with Matchers {
   object Defaults {
-    private val fileTreeViewConfig = FileTreeViewConfig.default(50.millis, 50.millis)
+    private val fileTreeViewConfig = FileTreeViewConfig.default(50.millis)
     def config(
         sources: Seq[WatchSource],
         fileEventMonitor: Option[FileEventMonitor[StampedFile]] = None,
