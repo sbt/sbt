@@ -97,6 +97,7 @@ object Logger {
   def jo2o[A](o: Optional[A]): Option[A] = InterfaceUtil.jo2o(o)
   def o2jo[A](o: Option[A]): Optional[A] = InterfaceUtil.o2jo(o)
 
+  @deprecated("Use InterfaceUtil.position", "1.2.2")
   def position(
       line0: Option[Integer],
       content: String,

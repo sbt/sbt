@@ -36,7 +36,7 @@ object InterfaceUtil {
       case None    => Optional.empty[A]()
     }
 
-  // Overload to preserve binary compatibility
+  @deprecated("Use the overload of this method with more arguments", "1.2.2")
   def position(
       line0: Option[Integer],
       content: String,

@@ -19,6 +19,13 @@ trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
           val pointerSpace0 = unbuilder.readField[Optional[String]]("pointerSpace")
           val sourcePath0 = unbuilder.readField[Optional[String]]("sourcePath")
           val sourceFile0 = unbuilder.readField[Optional[java.io.File]]("sourceFile")
+          val startOffset0 = unbuilder.readField[Optional[java.lang.Integer]]("startOffset")
+          val endOffset0 = unbuilder.readField[Optional[java.lang.Integer]]("endOffset")
+          val startLine0 = unbuilder.readField[Optional[java.lang.Integer]]("startLine")
+          val startColumn0 = unbuilder.readField[Optional[java.lang.Integer]]("startColumn")
+          val endLine0 = unbuilder.readField[Optional[java.lang.Integer]]("endLine")
+          val endColumn0 = unbuilder.readField[Optional[java.lang.Integer]]("endColumn")
+
           unbuilder.endObject()
           new Position() {
             override val line = line0
@@ -28,6 +35,13 @@ trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
             override val pointerSpace = pointerSpace0
             override val sourcePath = sourcePath0
             override val sourceFile = sourceFile0
+            override val startOffset = startOffset0
+            override val endOffset = endOffset0
+            override val startLine = startLine0
+            override val startColumn = startColumn0
+            override val endLine = endLine0
+            override val endColumn = endColumn0
+
           }
         case None =>
           deserializationError("Expected JsObject but found None")
@@ -42,6 +56,13 @@ trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
       builder.addField("pointerSpace", obj.pointerSpace)
       builder.addField("sourcePath", obj.sourcePath)
       builder.addField("sourceFile", obj.sourceFile)
+      builder.addField("startOffset", obj.startOffset)
+      builder.addField("endOffset", obj.endOffset)
+      builder.addField("startLine", obj.startLine)
+      builder.addField("startColumn", obj.startColumn)
+      builder.addField("endLine", obj.endLine)
+      builder.addField("endColumn", obj.endColumn)
+
       builder.endObject()
     }
   }

@@ -16,6 +16,12 @@ type Position {
   pointerSpace: String
   sourcePath: String
   sourceFile: java.io.File
+  startOffset: Int
+  endOffset: Int
+  startLine: Int
+  startColumn: Int
+  endLine: Int
+  endColumn: Int
 }
 
 type Problem {
