@@ -117,6 +117,7 @@ object Logger {
       sourceFile0
     )
 
+  @deprecated("Use InterfaceUtil.problem", "1.2.2")
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
     InterfaceUtil.problem(cat, pos, msg, sev)
 }

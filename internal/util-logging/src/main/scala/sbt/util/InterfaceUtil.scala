@@ -89,8 +89,16 @@ object InterfaceUtil {
                          endLine0,
                          endColumn0)
 
+  @deprecated("Use the overload of this method with more arguments", "1.2.2")
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
-    new ConcreteProblem(cat, pos, msg, sev)
+    problem(cat, pos, msg, sev, None)
+
+  def problem(cat: String,
+              pos: Position,
+              msg: String,
+              sev: Severity,
+              rendered: Option[String]): Problem =
+    new ConcreteProblem(cat, pos, msg, sev, rendered)
 
   private final class ConcreteT2[A1, A2](a1: A1, a2: A2) extends T2[A1, A2] {
     val get1: A1 = a1
@@ -144,12 +152,14 @@ object InterfaceUtil {
       cat: String,
       pos: Position,
       msg: String,
-      sev: Severity
+      sev: Severity,
+      rendered0: Option[String]
   ) extends Problem {
     val category = cat
     val position = pos
     val message = msg
     val severity = sev
+    override val rendered = o2jo(rendered0)
     override def toString = s"[$severity] $pos: $message"
   }
 }

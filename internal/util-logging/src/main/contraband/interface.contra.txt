@@ -29,4 +29,5 @@ type Problem {
   severity: Severity!
   message: String!
   position: Position!
+  rendered: String
 }
