@@ -21,7 +21,10 @@ object ConsoleProject {
     val cpImports = new Imports(extracted, state)
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
-    val (_, dependencyResolution) = extracted.runTask(Keys.dependencyResolution, state)
+    val (state1, dependencyResolution) =
+      extracted.runTask(Keys.dependencyResolution, state)
+    val (_, scalaCompilerBridgeBinaryJar) =
+      extracted.runTask(Keys.scalaCompilerBridgeBinaryJar, state1)
     val scalaInstance = {
       val scalaProvider = state.configuration.provider.scalaProvider
       ScalaInstance(scalaProvider.version, scalaProvider.launcher)
@@ -30,17 +33,26 @@ object ConsoleProject {
     val zincDir = BuildPaths.getZincDirectory(state, g)
     val app = state.configuration
     val launcher = app.provider.scalaProvider.launcher
-    val compiler = ZincUtil.scalaCompiler(
-      scalaInstance = scalaInstance,
-      classpathOptions = ClasspathOptionsUtil.repl,
-      globalLock = launcher.globalLock,
-      componentProvider = app.provider.components,
-      secondaryCacheDir = Option(zincDir),
-      dependencyResolution = dependencyResolution,
-      compilerBridgeSource = extracted.get(Keys.scalaCompilerBridgeSource),
-      scalaJarsTarget = zincDir,
-      log = log
-    )
+    val compiler = scalaCompilerBridgeBinaryJar match {
+      case Some(jar) =>
+        ZincUtil.scalaCompiler(
+          scalaInstance = scalaInstance,
+          classpathOptions = ClasspathOptionsUtil.repl,
+          compilerBridgeJar = jar
+        )
+      case None =>
+        ZincUtil.scalaCompiler(
+          scalaInstance = scalaInstance,
+          classpathOptions = ClasspathOptionsUtil.repl,
+          globalLock = launcher.globalLock,
+          componentProvider = app.provider.components,
+          secondaryCacheDir = Option(zincDir),
+          dependencyResolution = dependencyResolution,
+          compilerBridgeSource = extracted.get(Keys.scalaCompilerBridgeSource),
+          scalaJarsTarget = zincDir,
+          log = log
+        )
+    }
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
