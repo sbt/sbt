@@ -36,6 +36,7 @@ matrix:
 
 before_install:
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.11.0/install.sh | bash && . ~/.jabba/jabba.sh
+  - bash io-build.sh
 
 install:
   - $JABBA_HOME/bin/jabba install $TRAVIS_JDK
