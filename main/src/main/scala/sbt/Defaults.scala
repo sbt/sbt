@@ -250,6 +250,7 @@ object Defaults extends BuildCommon {
       extraLoggers :== { _ =>
         Nil
       },
+      pollingDirectories :== Nil,
       watchSources :== Nil,
       watchProjectSources :== Nil,
       skip :== false,
@@ -271,7 +272,8 @@ object Defaults extends BuildCommon {
         None
       },
       watchStartMessage := Watched.defaultStartWatch,
-      fileTreeViewConfig := FileTreeViewConfig.default(watchAntiEntropy.value),
+      fileTreeViewConfig := FileTreeViewConfig
+        .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value),
       fileTreeView := state.value
         .get(BasicKeys.globalFileTreeView)
         .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
@@ -655,7 +657,8 @@ object Defaults extends BuildCommon {
     },
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
-    fileTreeViewConfig := FileTreeViewConfig.default(watchAntiEntropy.value)
+    fileTreeViewConfig := FileTreeViewConfig
+      .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value)
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
