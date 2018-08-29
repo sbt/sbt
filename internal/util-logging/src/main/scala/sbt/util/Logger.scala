@@ -97,6 +97,7 @@ object Logger {
   def jo2o[A](o: Optional[A]): Option[A] = InterfaceUtil.jo2o(o)
   def o2jo[A](o: Option[A]): Optional[A] = InterfaceUtil.o2jo(o)
 
+  @deprecated("Use InterfaceUtil.position", "1.2.2")
   def position(
       line0: Option[Integer],
       content: String,
@@ -116,6 +117,7 @@ object Logger {
       sourceFile0
     )
 
+  @deprecated("Use InterfaceUtil.problem", "1.2.2")
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
     InterfaceUtil.problem(cat, pos, msg, sev)
 }
