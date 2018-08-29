@@ -4,8 +4,8 @@
 package sbt.internal.util.codec
 
 import xsbti.{ Problem, Severity, Position }
-import sbt.util.InterfaceUtil.problem
 import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
+import java.util.Optional
 
 trait ProblemFormats { self: SeverityFormats with PositionFormats with sjsonnew.BasicJsonProtocol =>
   implicit lazy val ProblemFormat: JsonFormat[Problem] = new JsonFormat[Problem] {
@@ -13,12 +13,20 @@ trait ProblemFormats { self: SeverityFormats with PositionFormats with sjsonnew.
       jsOpt match {
         case Some(js) =>
           unbuilder.beginObject(js)
-          val category = unbuilder.readField[String]("category")
-          val severity = unbuilder.readField[Severity]("severity")
-          val message = unbuilder.readField[String]("message")
-          val position = unbuilder.readField[Position]("position")
+          val category0 = unbuilder.readField[String]("category")
+          val severity0 = unbuilder.readField[Severity]("severity")
+          val message0 = unbuilder.readField[String]("message")
+          val position0 = unbuilder.readField[Position]("position")
+          val rendered0 = unbuilder.readField[Optional[String]]("rendered")
+
           unbuilder.endObject()
-          problem(category, position, message, severity)
+          new Problem {
+            override val category = category0
+            override val position = position0
+            override val message = message0
+            override val severity = severity0
+            override val rendered = rendered0
+          }
         case None =>
           deserializationError("Expected JsObject but found None")
       }
@@ -29,6 +37,7 @@ trait ProblemFormats { self: SeverityFormats with PositionFormats with sjsonnew.
       builder.addField("severity", obj.severity)
       builder.addField("message", obj.message)
       builder.addField("position", obj.position)
+      builder.addField("rendered", obj.rendered)
       builder.endObject()
     }
   }

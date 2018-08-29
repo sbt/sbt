@@ -36,6 +36,7 @@ object InterfaceUtil {
       case None    => Optional.empty[A]()
     }
 
+  @deprecated("Use the overload of this method with more arguments", "1.2.2")
   def position(
       line0: Option[Integer],
       content: String,
@@ -45,10 +46,59 @@ object InterfaceUtil {
       sourcePath0: Option[String],
       sourceFile0: Option[File]
   ): Position =
-    new ConcretePosition(line0, content, offset0, pointer0, pointerSpace0, sourcePath0, sourceFile0)
+    position(line0,
+             content,
+             offset0,
+             pointer0,
+             pointerSpace0,
+             sourcePath0,
+             sourceFile0,
+             None,
+             None,
+             None,
+             None,
+             None,
+             None)
 
+  def position(
+      line0: Option[Integer],
+      content: String,
+      offset0: Option[Integer],
+      pointer0: Option[Integer],
+      pointerSpace0: Option[String],
+      sourcePath0: Option[String],
+      sourceFile0: Option[File],
+      startOffset0: Option[Integer],
+      endOffset0: Option[Integer],
+      startLine0: Option[Integer],
+      startColumn0: Option[Integer],
+      endLine0: Option[Integer],
+      endColumn0: Option[Integer]
+  ): Position =
+    new ConcretePosition(line0,
+                         content,
+                         offset0,
+                         pointer0,
+                         pointerSpace0,
+                         sourcePath0,
+                         sourceFile0,
+                         startOffset0,
+                         endOffset0,
+                         startLine0,
+                         startColumn0,
+                         endLine0,
+                         endColumn0)
+
+  @deprecated("Use the overload of this method with more arguments", "1.2.2")
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
-    new ConcreteProblem(cat, pos, msg, sev)
+    problem(cat, pos, msg, sev, None)
+
+  def problem(cat: String,
+              pos: Position,
+              msg: String,
+              sev: Severity,
+              rendered: Option[String]): Problem =
+    new ConcreteProblem(cat, pos, msg, sev, rendered)
 
   private final class ConcreteT2[A1, A2](a1: A1, a2: A2) extends T2[A1, A2] {
     val get1: A1 = a1
@@ -75,7 +125,13 @@ object InterfaceUtil {
       pointer0: Option[Integer],
       pointerSpace0: Option[String],
       sourcePath0: Option[String],
-      sourceFile0: Option[File]
+      sourceFile0: Option[File],
+      startOffset0: Option[Integer],
+      endOffset0: Option[Integer],
+      startLine0: Option[Integer],
+      startColumn0: Option[Integer],
+      endLine0: Option[Integer],
+      endColumn0: Option[Integer]
   ) extends Position {
     val line = o2jo(line0)
     val lineContent = content
@@ -84,18 +140,26 @@ object InterfaceUtil {
     val pointerSpace = o2jo(pointerSpace0)
     val sourcePath = o2jo(sourcePath0)
     val sourceFile = o2jo(sourceFile0)
+    override val startOffset = o2jo(startOffset0)
+    override val endOffset = o2jo(endOffset0)
+    override val startLine = o2jo(startLine0)
+    override val startColumn = o2jo(startColumn0)
+    override val endLine = o2jo(endLine0)
+    override val endColumn = o2jo(endColumn0)
   }
 
   private final class ConcreteProblem(
       cat: String,
       pos: Position,
       msg: String,
-      sev: Severity
+      sev: Severity,
+      rendered0: Option[String]
   ) extends Problem {
     val category = cat
     val position = pos
     val message = msg
     val severity = sev
+    override val rendered = o2jo(rendered0)
     override def toString = s"[$severity] $pos: $message"
   }
 }
