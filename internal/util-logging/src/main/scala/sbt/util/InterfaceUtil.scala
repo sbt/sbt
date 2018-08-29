@@ -46,7 +46,19 @@ object InterfaceUtil {
       sourcePath0: Option[String],
       sourceFile0: Option[File]
   ): Position =
-    position(line0, content, offset0, pointer0, pointerSpace0, sourcePath0, sourceFile0, None, None, None, None, None, None)
+    position(line0,
+             content,
+             offset0,
+             pointer0,
+             pointerSpace0,
+             sourcePath0,
+             sourceFile0,
+             None,
+             None,
+             None,
+             None,
+             None,
+             None)
 
   def position(
       line0: Option[Integer],
