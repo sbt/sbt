@@ -8,6 +8,10 @@ name := "fork-options-custom-config-test"
 
 libraryDependencies += scalaTest % Test
 
+// fork processes so the forkOptions kick in
+fork := true
+
+// make the test fail in "SlowTests / test"
 SlowTests / javaOptions += "-Dtest.init.fail=true"
 
 // assertions
