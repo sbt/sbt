@@ -1,0 +1,31 @@
+// test setup
+lazy val scalaTest = "org.scalatest" %% "scalatest" % "3.0.5"
+lazy val SlowTests = config("slowtests").extend(Test)
+
+configs(SlowTests)
+inConfig(SlowTests)(Defaults.testSettings)
+name := "fork-options-custom-config-test"
+
+libraryDependencies += scalaTest % Test
+
+SlowTests / javaOptions += "-Dtest.init.fail=true"
+
+// assertions
+lazy val check = taskKey[Unit]("check")
+check := {
+  val slowtestJavaOptions = (SlowTests / javaOptions).value
+  val slowtestJavaOptionsInTest = (SlowTests / test / javaOptions).value
+  val slowtestJavaOptionsInRun = (SlowTests / run / javaOptions).value
+  val slowtestForkOptions = (SlowTests / forkOptions).value
+  val slowtestForkOptionsInTest = (SlowTests / test / forkOptions).value
+  val slowtestForkOptionsInRun = (SlowTests / run / forkOptions).value
+  val testForkOptions = (Test / forkOptions).value
+
+  assert(slowtestJavaOptions.nonEmpty, "Slowtests / javaOptions should not be empty")
+  assert(slowtestJavaOptionsInTest.nonEmpty, "Slowtests / test / javaOptions should not be empty")
+  assert(slowtestJavaOptionsInRun.nonEmpty, "Slowtests / run / javaOptions should not be empty")
+  assert(slowtestForkOptions.runJVMOptions.nonEmpty, "(Slowtests / forkOptions).runJVMOptions should not be empty")
+  assert(slowtestForkOptionsInTest.runJVMOptions.nonEmpty, "Slowtests / test / forkOptions).runJVMOptions should not be empty")
+  assert(slowtestForkOptionsInRun.runJVMOptions.nonEmpty, "Slowtests / run / forkOptions).runJVMOptions should not be empty")
+  assert(testForkOptions.runJVMOptions.isEmpty, "test forkOptions should be empty")
+}
