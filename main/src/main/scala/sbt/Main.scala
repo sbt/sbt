@@ -678,7 +678,10 @@ object BuiltinCommands {
   def act: Command = Command.customHelp(Act.actParser, actHelp)
 
   def actHelp: State => Help =
-    s => CommandStrings.showHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(s)
+    s =>
+      CommandStrings.showHelp ++ CommandStrings.printHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(
+        s
+    )
 
   def keysHelp(s: State): Help =
     if (Project.isProjectLoaded(s))
@@ -824,7 +827,7 @@ object BuiltinCommands {
         if (version != app.id.version()) {
           state.log.warn(s"""sbt version mismatch, current: ${app.id
             .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
-        }
+      }
     )
   }
 

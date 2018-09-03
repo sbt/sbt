@@ -19,6 +19,7 @@ object CommandStrings {
   val ProjectCommand = "project"
   val ProjectsCommand = "projects"
   val ShowCommand = "show"
+  val PrintCommand = "print"
   val MultiTaskCommand = "all"
   val BootCommand = "boot"
 
@@ -50,6 +51,18 @@ object CommandStrings {
 $ShowCommand <task>
 
 	Evaluates the specified task and display the value returned by the task."""
+
+  def printHelp = Help(PrintCommand, (s"$PrintCommand <key>", printBrief), printDetailed)
+  def printBrief =
+    "Prints the result of evaluating the setting or task associated with 'key' to standard output."
+  def printDetailed =
+    s"""$PrintCommand <setting>
+
+	Prints the value of the specified setting.
+
+$PrintCommand <task>
+
+	Evaluates the specified task and print the value returned by the task."""
 
   val PluginsCommand = "plugins"
   val PluginCommand = "plugin"
