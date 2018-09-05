@@ -130,7 +130,7 @@ Build from source
 
 sbt uses two branches for development:
 
-- Development branch: `1.x` (this is also called "master")
+- Development branch: `develop` (this is also called "master")
 - Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
 
 ### Instruction to build all modules from source
@@ -142,7 +142,7 @@ sbt uses two branches for development:
    $ mkdir sbt-modules
    $ cd sbt-modules
    $ for i in sbt io util librarymanagement zinc; do \
-     git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b 1.x origin/1.x)
+     git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b develop origin/develp)
    done
    $ cd sbt
    $ ./sbt-allsources.sh
