@@ -25,6 +25,14 @@ import sbt.util.CacheImplicits._
 import sbt.util.Tracked.{ inputChanged, outputChanged }
 
 sealed trait PackageOption
+
+/**
+  * == Package ==
+  *
+  * This module provides an API to package jar files.
+  *
+  * @see [[https://docs.oracle.com/javase/tutorial/deployment/jar/index.html]]
+  */
 object Package {
   final case class JarManifest(m: Manifest) extends PackageOption {
     assert(m != null)
@@ -49,11 +57,25 @@ object Package {
     }
   }
 
+  /**
+    * The jar package configuration. Contains all relevant information to create a jar file.
+    *
+    * @param sources the jar contents
+    * @param jar the destination jar file
+    * @param options additional package information, e.g. jar manifest, main class or manifest attributes
+    */
   final class Configuration(
       val sources: Seq[(File, String)],
       val jar: File,
       val options: Seq[PackageOption]
   )
+
+  /**
+    *
+    * @param conf the package configuration that should be build
+    * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
+    * @param log feedback for the user
+    */
   def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
@@ -67,24 +89,30 @@ object Package {
     }
     setVersion(main)
 
-    type Inputs = Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
+    type Inputs = Seq[(File, String)] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
     val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") {
       (inChanged, inputs: Inputs) =>
         import exists.format
         val sources :+: _ :+: manifest :+: HNil = inputs
         outputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
           if (inChanged || outChanged) {
-            makeJar(sources.toSeq, jar.file, manifest, log)
+            makeJar(sources, jar.file, manifest, log)
             jar.file
           } else
             log.debug("Jar uptodate: " + jar.file)
         }
     }
 
-    val map = conf.sources.toMap
-    val inputs = map :+: lastModified(map.keySet) :+: manifest :+: HNil
+    val inputFiles = conf.sources.map(_._1).toSet
+    val inputs = conf.sources :+: lastModified(inputFiles) :+: manifest :+: HNil
     cachedMakeJar(inputs)(() => exists(conf.jar))
   }
+
+  /**
+    * updates the manifest version is there is none present.
+    *
+    * @param main the current jar attributes
+    */
   def setVersion(main: Attributes): Unit = {
     val version = Attributes.Name.MANIFEST_VERSION
     if (main.getValue(version) eq null) {
