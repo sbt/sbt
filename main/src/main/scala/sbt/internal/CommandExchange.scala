@@ -195,6 +195,10 @@ private[sbt] final class CommandExchange {
     }
   }
 
+  private def tryTo(x: => Unit, c: CommandChannel, toDel: ListBuffer[CommandChannel]): Unit =
+    try x
+    catch { case _: IOException => toDel += c }
+
   def publishEvent[A: JsonFormat](event: A): Unit = {
     val broadcastStringMessage = true
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
@@ -207,21 +211,31 @@ private[sbt] final class CommandExchange {
             if (broadcastStringMessage || (entry.channelName forall (_ == c.name)))
               c.publishEvent(event)
           case c: NetworkChannel =>
-            try {
-              // Note that language server's LogMessageParams does not hold the execid,
-              // so this is weaker than the StringMessage. We might want to double-send
-              // in case we have a better client that can utilize the knowledge.
-              import sbt.internal.langserver.codec.JsonProtocol._
-              if (broadcastStringMessage || (entry.channelName contains c.name))
-                c.jsonRpcNotify("window/logMessage", params)
-            } catch { case _: IOException => toDel += c }
+            tryTo(
+              {
+                // Note that language server's LogMessageParams does not hold the execid,
+                // so this is weaker than the StringMessage. We might want to double-send
+                // in case we have a better client that can utilize the knowledge.
+                import sbt.internal.langserver.codec.JsonProtocol._
+                if (broadcastStringMessage || (entry.channelName contains c.name))
+                  c.jsonRpcNotify("window/logMessage", params)
+              },
+              c,
+              toDel
+            )
+        }
+      case entry: ExecStatusEvent =>
+        channels collect {
+          case c: ConsoleChannel =>
+            if (entry.channelName forall (_ == c.name)) c.publishEvent(event)
+          case c: NetworkChannel =>
+            if (entry.channelName contains c.name) tryTo(c.publishEvent(event), c, toDel)
         }
       case _ =>
         channels foreach {
           case c: ConsoleChannel => c.publishEvent(event)
           case c: NetworkChannel =>
-            try c.publishEvent(event)
-            catch { case _: IOException => toDel += c }
+            tryTo(c.publishEvent(event), c, toDel)
         }
     }
     toDel.toList match {
@@ -280,10 +294,6 @@ private[sbt] final class CommandExchange {
   def publishEventMessage(event: EventMessage): Unit = {
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
 
-    def tryTo(x: => Unit, c: CommandChannel): Unit =
-      try x
-      catch { case _: IOException => toDel += c }
-
     event match {
       // Special treatment for ConsolePromptEvent since it's hand coded without codec.
       case entry: ConsolePromptEvent =>
@@ -299,12 +309,12 @@ private[sbt] final class CommandExchange {
           case c: ConsoleChannel =>
             if (entry.channelName forall (_ == c.name)) c.publishEventMessage(event)
           case c: NetworkChannel =>
-            if (entry.channelName contains c.name) tryTo(c.publishEventMessage(event), c)
+            if (entry.channelName contains c.name) tryTo(c.publishEventMessage(event), c, toDel)
         }
       case _ =>
         channels collect {
           case c: ConsoleChannel => c.publishEventMessage(event)
-          case c: NetworkChannel => tryTo(c.publishEventMessage(event), c)
+          case c: NetworkChannel => tryTo(c.publishEventMessage(event), c, toDel)
         }
     }
 
