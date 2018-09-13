@@ -32,4 +32,14 @@ check := {
   assert(slowtestForkOptionsInTest.runJVMOptions.nonEmpty, "Slowtests / test / forkOptions).runJVMOptions should not be empty")
   assert(slowtestForkOptionsInRun.runJVMOptions.nonEmpty, "Slowtests / run / forkOptions).runJVMOptions should not be empty")
   assert(testForkOptions.runJVMOptions.isEmpty, "test forkOptions should be empty")
+
+  // check if tests are properly detected
+  val testTestNames = (Test / definedTestNames).value
+  val slowtestTestNames = (SlowTests / definedTestNames).value
+
+  assert(testTestNames.length == 1, "Test / definedTestNames has no entries. Should have one entry 'foo.test.FooTest'")
+  assert(testTestNames.head == "foo.test.FooTest", "Test / definedTestNames one entry 'foo.test.FooTest'")
+  assert(slowtestTestNames.length == 1, "SlowTests / definedTestNames has no entries. Should have one entry 'foo.test.FooTest'")
+  assert(slowtestTestNames.head == "foo.test.FooTest", "SlowTests / definedTestNames one entry 'foo.test.FooTest'")
+
 }
