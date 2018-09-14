@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.10.0 (unreleased)
+ * [#136](https://github.com/jrudolph/sbt-dependency-graph/pull/136): Added `dependencyBrowseTree` to open a searchable dependency tree in the browser.
+   Thanks, [@pcejrowski](https://github.com/pcejrowski) for contributing this feature.
+
 ## Version 0.9.2 (2018-08-26)
  * [#159](https://github.com/jrudolph/sbt-dependency-graph/pull/159): Fixed regression in `whatDependsOn` where task parser failed when no other sbt-dependency-graph task was called before
 
