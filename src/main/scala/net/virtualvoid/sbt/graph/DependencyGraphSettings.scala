@@ -17,7 +17,6 @@
 package net.virtualvoid.sbt.graph
 
 import scala.language.reflectiveCalls
-
 import sbt._
 import Keys._
 import sbt.complete.Parser
@@ -26,7 +25,7 @@ import net.virtualvoid.sbt.graph.rendering.{ AsciiGraph, DagreHTML, TreeView }
 import net.virtualvoid.sbt.graph.util.IOUtil
 import internal.librarymanagement._
 import librarymanagement._
-import sbt.dependencygraph.DependencyGraphSbtCompat
+import sbt.dependencygraph.SbtAccess
 import sbt.dependencygraph.DependencyGraphSbtCompat.Implicits._
 
 object DependencyGraphSettings {
@@ -38,7 +37,11 @@ object DependencyGraphSettings {
   def baseSettings = Seq(
     ivyReportFunction := ivyReportFunctionTask.value,
     updateConfiguration in ignoreMissingUpdate := updateConfiguration.value.withMissingOk(true),
-    ignoreMissingUpdate := DependencyGraphSbtCompat.updateTask(ignoreMissingUpdate).value,
+
+    ignoreMissingUpdate :=
+      // inTask will make sure the new definition will pick up `updateConfiguration in ignoreMissingUpdate`
+      SbtAccess.inTask(ignoreMissingUpdate, Classpaths.updateTask).value,
+
     filterScalaLibrary in Global := true)
 
   def reportSettings =
