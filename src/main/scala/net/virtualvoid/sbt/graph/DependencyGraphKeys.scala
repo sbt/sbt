@@ -19,6 +19,10 @@ package net.virtualvoid.sbt.graph
 import sbt._
 
 trait DependencyGraphKeys {
+  val asString = TaskKey[String]("asString", "Provides the string value for the task it is scoped for")
+  val printToConsole = TaskKey[Unit]("printToConsole", "Prints the tasks value to the console")
+  val toFile = InputKey[File]("toFile", "Writes the task value to the given file")
+
   val dependencyGraphMLFile = SettingKey[File](
     "dependency-graph-ml-file",
     "The location the graphml file should be generated at")

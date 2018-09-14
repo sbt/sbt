@@ -18,7 +18,7 @@ package net.virtualvoid.sbt.graph
 package rendering
 
 object FlatList {
-  def render(graph: ModuleGraph, display: Module ⇒ String): String =
+  def render(display: Module ⇒ String)(graph: ModuleGraph): String =
     graph.modules.values.toSeq
       .distinct
       .filterNot(_.isEvicted)
