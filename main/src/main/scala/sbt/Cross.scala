@@ -22,7 +22,7 @@ import sbt.librarymanagement.CrossVersion
 
 object Cross {
 
-  private[sbt] def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
+  private[sbt] def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.*
 
   private case class Switch(version: ScalaVersion, verbose: Boolean, command: Option[String])
   private trait ScalaVersion {
