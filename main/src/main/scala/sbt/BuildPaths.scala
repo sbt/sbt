@@ -44,17 +44,7 @@ object BuildPaths {
 
   def getGlobalBase(state: State): File = {
     val default = defaultVersionedGlobalBase(binarySbtVersion(state))
-    def getDefault = { checkTransition(state, default); default }
-    getFileSetting(globalBaseDirectory, GlobalBaseProperty, getDefault)(state)
-  }
-  private[this] def checkTransition(state: State, versioned: File): Unit = {
-    val unversioned = defaultGlobalBase
-    def globalDefined(base: File): Boolean =
-      getGlobalPluginsDirectory(state, base).exists ||
-        configurationSources(getGlobalSettingsDirectory(state, base)).exists(_.exists)
-    val warnTransition = !globalDefined(versioned) && globalDefined(unversioned)
-    if (warnTransition)
-      state.log.warn(globalDirTransitionWarning(unversioned, versioned))
+    getFileSetting(globalBaseDirectory, GlobalBaseProperty, default)(state)
   }
 
   def getStagingDirectory(state: State, globalBase: File): File =
@@ -122,10 +112,4 @@ object BuildPaths {
 
   def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File =
     base / ("scala_" + instance.version)
-
-  private[this] def globalDirTransitionWarning(unversioned: File, versioned: File): String =
-    s"""The global sbt directory is now versioned and is located at $versioned.
-  You are seeing this warning because there is global configuration in $unversioned but not in $versioned.
-  The global sbt directory may be changed via the $GlobalBaseProperty system property.
-"""
 }
