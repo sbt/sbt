@@ -69,7 +69,7 @@ object Cross {
     token(CrossCommand <~ OptSpace) flatMap { _ =>
       (token(Parser.opt("-v" <~ Space)) ~ token(matched(state.combinedParser))).map {
         case (verbose, command) => CrossArgs(command, verbose.isDefined)
-      } & spacedFirst(CrossCommand)
+      }
     }
 
   private def crossRestoreSessionParser: Parser[String] = token(CrossRestoreSessionCommand)
