@@ -450,7 +450,8 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := ZincUtil.getDefaultBridgeModule(scalaVersion.value)
+    scalaCompilerBridgeBinaryJar := None,
+    scalaCompilerBridgeSource := ZincUtil.getDefaultBridgeModule(scalaVersion.value),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
@@ -503,17 +504,27 @@ object Defaults extends BuildCommon {
       val zincDir = BuildPaths.getZincDirectory(st, g)
       val app = appConfiguration.value
       val launcher = app.provider.scalaProvider.launcher
-      val scalac = ZincUtil.scalaCompiler(
-        scalaInstance = scalaInstance.value,
-        classpathOptions = classpathOptions.value,
-        globalLock = launcher.globalLock,
-        componentProvider = app.provider.components,
-        secondaryCacheDir = Option(zincDir),
-        dependencyResolution = dependencyResolution.value,
-        compilerBridgeSource = scalaCompilerBridgeSource.value,
-        scalaJarsTarget = zincDir,
-        log = streams.value.log
-      )
+      val scalac =
+        scalaCompilerBridgeBinaryJar.value match {
+          case Some(jar) =>
+            ZincUtil.scalaCompiler(
+              scalaInstance = scalaInstance.value,
+              classpathOptions = classpathOptions.value,
+              compilerBridgeJar = jar
+            )
+          case _ =>
+            ZincUtil.scalaCompiler(
+              scalaInstance = scalaInstance.value,
+              classpathOptions = classpathOptions.value,
+              globalLock = launcher.globalLock,
+              componentProvider = app.provider.components,
+              secondaryCacheDir = Option(zincDir),
+              dependencyResolution = dependencyResolution.value,
+              compilerBridgeSource = scalaCompilerBridgeSource.value,
+              scalaJarsTarget = zincDir,
+              log = streams.value.log
+            )
+        }
       val compilers = ZincUtil.compilers(
         instance = scalaInstance.value,
         classpathOptions = classpathOptions.value,
