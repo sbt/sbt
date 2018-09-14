@@ -824,7 +824,7 @@ object BuiltinCommands {
         if (version != app.id.version()) {
           state.log.warn(s"""sbt version mismatch, current: ${app.id
             .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
-        }
+      }
     )
   }
 
