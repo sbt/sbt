@@ -111,8 +111,19 @@ class LanguageServerReporter(
     } yield {
       val line = line0.toLong - 1L
       val pointer = pointer0.toLong
+      val r = (
+        pos.startLine.toOption,
+        pos.startColumn.toOption,
+        pos.endLine.toOption,
+        pos.endColumn.toOption
+      ) match {
+        case (Some(sl), Some(sc), Some(el), Some(ec)) =>
+          Range(Position(sl.toLong - 1, sc.toLong), Position(el.toLong - 1, ec.toLong))
+        case _ =>
+          Range(Position(line, pointer), Position(line, pointer + 1))
+      }
       Diagnostic(
-        Range(start = Position(line, pointer), end = Position(line, pointer + 1)),
+        r,
         Option(toDiagnosticSeverity(problem.severity)),
         None,
         Option("sbt"),
