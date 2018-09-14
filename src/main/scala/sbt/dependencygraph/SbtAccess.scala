@@ -14,13 +14,16 @@
  *    limitations under the License.
  */
 
-package sbt.dependencygraph
+package sbt
+package dependencygraph
 
-import sbt.Defaults
+import Def._
 
 /** Accessors to private[sbt] symbols. */
 object SbtAccess {
   val unmanagedScalaInstanceOnly = Defaults.unmanagedScalaInstanceOnly
 
   def getTerminalWidth: Int = sbt.internal.util.JLine.usingTerminal(_.getWidth)
+
+  def inTask[T](t: Scoped, i: Initialize[T]): Initialize[T] = _root_.sbt.inTask(t, i)
 }
