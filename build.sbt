@@ -19,7 +19,7 @@ def buildLevelSettings: Seq[Setting[_]] =
       },
       bintrayPackage := "sbt",
       bintrayReleaseOnPublish := false,
-      licenses := List("BSD New" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
+      licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
       developers := List(
         Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
         Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
@@ -44,9 +44,9 @@ def buildLevelSettings: Seq[Setting[_]] =
 def commonSettings: Seq[Setting[_]] = Def.settings(
   headerLicense := Some(HeaderLicense.Custom(
     """|sbt
-       |Copyright 2011 - 2017, Lightbend, Inc.
+       |Copyright 2011 - 2018, Lightbend, Inc.
        |Copyright 2008 - 2010, Mark Harrah
-       |Licensed under BSD-3-Clause license (see LICENSE)
+       |Licensed under Apache License 2.0 (see LICENSE)
        |""".stripMargin
   )),
   scalaVersion := baseScalaVersion,

@@ -1,7 +1,7 @@
 sbt
 Copyright 2011 - 2017, Lightbend, Inc.
 Copyright 2008 - 2010, Mark Harrah
-Licensed under BSD-3-Clause license (see LICENSE)
+Licensed under Apache v2 license (see LICENSE)
 
 Portions based on code from the Scala compiler.  Portions of the Scala
 library are distributed with the launcher.
