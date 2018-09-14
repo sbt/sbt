@@ -27,12 +27,12 @@ import sbt.util.Tracked.{ inputChanged, outputChanged }
 sealed trait PackageOption
 
 /**
-  * == Package ==
-  *
-  * This module provides an API to package jar files.
-  *
-  * @see [[https://docs.oracle.com/javase/tutorial/deployment/jar/index.html]]
-  */
+ * == Package ==
+ *
+ * This module provides an API to package jar files.
+ *
+ * @see [[https://docs.oracle.com/javase/tutorial/deployment/jar/index.html]]
+ */
 object Package {
   final case class JarManifest(m: Manifest) extends PackageOption {
     assert(m != null)
@@ -58,12 +58,12 @@ object Package {
   }
 
   /**
-    * The jar package configuration. Contains all relevant information to create a jar file.
-    *
-    * @param sources the jar contents
-    * @param jar the destination jar file
-    * @param options additional package information, e.g. jar manifest, main class or manifest attributes
-    */
+   * The jar package configuration. Contains all relevant information to create a jar file.
+   *
+   * @param sources the jar contents
+   * @param jar the destination jar file
+   * @param options additional package information, e.g. jar manifest, main class or manifest attributes
+   */
   final class Configuration(
       val sources: Seq[(File, String)],
       val jar: File,
@@ -71,11 +71,11 @@ object Package {
   )
 
   /**
-    *
-    * @param conf the package configuration that should be build
-    * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
-    * @param log feedback for the user
-    */
+   *
+   * @param conf the package configuration that should be build
+   * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
+   * @param log feedback for the user
+   */
   def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
@@ -109,10 +109,10 @@ object Package {
   }
 
   /**
-    * updates the manifest version is there is none present.
-    *
-    * @param main the current jar attributes
-    */
+   * updates the manifest version is there is none present.
+   *
+   * @param main the current jar attributes
+   */
   def setVersion(main: Attributes): Unit = {
     val version = Attributes.Name.MANIFEST_VERSION
     if (main.getValue(version) eq null) {
