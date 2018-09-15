@@ -95,7 +95,6 @@ trait DependencyGraphKeys {
   val ivyReport = TaskKey[File](
     "ivy-report",
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
-  val ignoreMissingUpdate = Keys.update in ivyReport
   val filterScalaLibrary = SettingKey[Boolean](
     "filter-scala-library",
     "Specifies if scala dependency should be filtered in dependency-* output")
@@ -105,6 +104,7 @@ trait DependencyGraphKeys {
     "Aggregates and shows information about the licenses of dependencies")
 
   // internal
+  private[graph] val ignoreMissingUpdate = TaskKey[UpdateReport]("dependencyUpdate", "sbt-dependency-graph version of update")
   private[graph] val moduleGraphStore = TaskKey[ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
   val whatDependsOn = InputKey[String]("what-depends-on", "Shows information about what depends on the given module")
   private[graph] val crossProjectId = SettingKey[ModuleID]("dependency-graph-cross-project-id")
