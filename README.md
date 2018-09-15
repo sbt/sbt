@@ -37,11 +37,30 @@ the notes of version [0.8.2](https://github.com/jrudolph/sbt-dependency-graph/tr
  * `ivyReport`: Lets ivy generate the resolution report for you project. Use
    `show ivyReport` for the filename of the generated report
 
+The following tasks also support the `toFile` subtask to save the contents to a file:
+
+ * `dependencyTree`
+ * `dependencyList`
+ * `dependencyStats`
+ * `dependencyLicenseInfo`
+
+The `toFile` subtask has the following syntax:
+
+```
+<config>:<task>::toFile <filename> [-f|--force]
+```
+
+Use `-f` to force overwriting an existing file.
+
+E.g. `test:dependencyStats::toFile target/depstats.txt` will write the output of the `dependencyStats` in the `test`
+configuration to the file `target/depstats.txt` but would not overwrite an existing file.
+
 All tasks can be scoped to a configuration to get the report for a specific configuration. `test:dependencyGraph`,
 for example, prints the dependencies in the `test` configuration. If you don't specify any configuration, `compile` is
 assumed as usual.
 
-Note: If you want to run tasks with parameters from outside the sbt shell, make sure to put the whole task invocation in quotes,  e.g. `sbt "whatDependsOn <org> <module> <version>"`.
+Note: If you want to run tasks with parameters from outside the sbt shell, make sure to put the whole task invocation in
+quotes,  e.g. `sbt "whatDependsOn <org> <module> <version>"`.
 
 ## Configuration settings
 
