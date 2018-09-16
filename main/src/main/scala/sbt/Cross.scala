@@ -20,6 +20,10 @@ import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
 import sbt.librarymanagement.CrossVersion
 
+/**
+ * Cross implements the Scala cross building commands:
+ * + ("cross") command and ++ ("switch") command.
+ */
 object Cross {
 
   private[sbt] def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
