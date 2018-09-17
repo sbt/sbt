@@ -15,7 +15,7 @@ import Aggregation.{ KeyValue, Values }
 import DefaultParsers._
 import sbt.internal.util.Types.idFun
 import java.net.URI
-import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand }
+import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand, PrintCommand }
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Util }
 import sbt.util.Show
 
@@ -427,7 +427,12 @@ object Act {
       val akp = aggregatedKeyParser(extracted)
       def evaluate(kvs: Seq[ScopedKey[_]]): Parser[() => State] = {
         val preparedPairs = anyKeyValues(structure, kvs)
-        val showConfig = Aggregation.defaultShow(state, showTasks = action == ShowAction)
+        val showConfig = if (action == PrintAction) {
+          Aggregation.ShowConfig(true, true, println, false)
+        } else {
+          Aggregation.defaultShow(state, showTasks = action == ShowAction)
+        }
+
         evaluatingParser(state, showConfig)(preparedPairs) map { evaluate => () =>
           {
             val keyStrings = preparedPairs.map(pp => showKey.show(pp.key)).mkString(", ")
@@ -438,18 +443,19 @@ object Act {
       }
       action match {
         case SingleAction => akp flatMap evaluate
-        case ShowAction | MultiAction =>
+        case ShowAction | PrintAction | MultiAction =>
           rep1sep(akp, token(Space)).flatMap(kvss => evaluate(kvss.flatten))
       }
     }
   }
 
   private[this] final class ActAction
-  private[this] final val ShowAction, MultiAction, SingleAction = new ActAction
+  private[this] final val ShowAction, MultiAction, SingleAction, PrintAction = new ActAction
 
   private[this] def actionParser: Parser[ActAction] =
     token(
       ((ShowCommand ^^^ ShowAction) |
+        (PrintCommand ^^^ PrintAction) |
         (MultiTaskCommand ^^^ MultiAction)) <~ Space
     ) ?? SingleAction
 
