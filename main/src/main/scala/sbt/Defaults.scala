@@ -48,7 +48,6 @@ import sbt.io.{
   NothingFilter,
   Path,
   PathFinder,
-  SimpleFileFilter,
   DirectoryFilter,
   Hash
 }, Path._
@@ -2147,7 +2146,7 @@ object Classpaths {
       val report = (updateTask tag (Tags.Update, Tags.Network)).value
       val log = streams.value.log
       val ew =
-        EvictionWarning(ivyModule.value, (evictionWarningOptions in evicted).value, report, log)
+        EvictionWarning(ivyModule.value, (evictionWarningOptions in evicted).value, report)
       ew.lines foreach { log.warn(_) }
       ew.infoAllTheThings foreach { log.info(_) }
       ew
@@ -2222,7 +2221,6 @@ object Classpaths {
       }
     },
     dependencyOverrides ++= {
-      val old = dependencyOverrides.value
       val isPlugin = sbtPlugin.value
       val app = appConfiguration.value
       val id = app.provider.id
@@ -2341,9 +2339,6 @@ object Classpaths {
             val log = s.log
             val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
             val uwConfig = (unresolvedWarningConfiguration in update).value
-            val depDir = dependencyCacheDirectory.value
-            val ivy = scalaModuleInfo.value
-            val st = state.value
             withExcludes(out, mod.classifiers, lock(app)) {
               excludes =>
                 // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))

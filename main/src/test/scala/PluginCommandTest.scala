@@ -19,7 +19,6 @@ import sbt.internal.util.{
   MainAppender,
   Settings
 }
-import sbt.util.Logger
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
 
