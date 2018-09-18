@@ -53,7 +53,7 @@ private[sbt] object LibraryManagement {
       val finalReport = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val ew = EvictionWarning(module, ewo, finalReport, log)
+      val ew = EvictionWarning(module, ewo, finalReport)
       ew.lines.foreach(log.warn(_))
       ew.infoAllTheThings.foreach(log.info(_))
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)

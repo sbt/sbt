@@ -118,7 +118,7 @@ object RunFromSourceMain {
           def globalLock = noGlobalLock
           def bootDirectory = RunFromSourceMain.bootDirectory
           def ivyHome = file(sys.props("user.home")) / ".ivy2"
-          final case class PredefRepo(id: Predefined) extends PredefinedRepository
+          case class PredefRepo(id: Predefined) extends PredefinedRepository
           import Predefined._
           def ivyRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
           def appRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))

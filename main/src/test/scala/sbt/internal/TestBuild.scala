@@ -43,7 +43,7 @@ abstract class TestBuild {
   implicit val tGen = Arbitrary { genTasks(lowerIDGen, MaxDepsGen, MaxTasksGen) }
   val seed = rng.Seed.random
 
-  final class Keys(val env: Env, val scopes: Seq[Scope]) {
+  class Keys(val env: Env, val scopes: Seq[Scope]) {
     override def toString = env + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
     lazy val delegated = scopes map env.delegates
   }
@@ -119,7 +119,7 @@ abstract class TestBuild {
       (taskAxes, zero.toSet, single.toSet, multi.toSet)
     }
   }
-  final case class Env(builds: Vector[Build], tasks: Vector[Taskk]) {
+  case class Env(builds: Vector[Build], tasks: Vector[Taskk]) {
     override def toString =
       "Env:\n  " + "  Tasks:\n    " + tasks.mkString("\n    ") + "\n" + builds.mkString("\n  ")
     val root = builds.head
@@ -159,7 +159,7 @@ abstract class TestBuild {
   }
   def getKey: Taskk => AttributeKey[_] = _.key
   def toConfigKey: Configuration => ConfigKey = c => ConfigKey(c.name)
-  final case class Build(uri: URI, projects: Seq[Proj]) {
+  case class Build(uri: URI, projects: Seq[Proj]) {
     override def toString = "Build " + uri.toString + " :\n    " + projects.mkString("\n    ")
     val allProjects = projects map { p =>
       (ProjectRef(uri, p.id), p)
@@ -167,7 +167,7 @@ abstract class TestBuild {
     val root = projects.head
     val projectMap = mapBy(projects)(_.id)
   }
-  final case class Proj(
+  case class Proj(
       id: String,
       delegates: Seq[ProjectRef],
       configurations: Seq[Configuration]
@@ -178,7 +178,7 @@ abstract class TestBuild {
     val confMap = mapBy(configurations)(_.name)
   }
 
-  final case class Taskk(key: AttributeKey[String], delegates: Seq[Taskk]) {
+  case class Taskk(key: AttributeKey[String], delegates: Seq[Taskk]) {
     override def toString =
       key.label + " (delegates: " + delegates.map(_.key.label).mkString(", ") + ")"
   }

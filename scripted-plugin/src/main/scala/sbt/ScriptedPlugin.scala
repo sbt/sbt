@@ -8,3 +8,4 @@
 package sbt
 
 // ScriptedPlugin has moved to main.
+private[sbt] object ScriptedPluginNote

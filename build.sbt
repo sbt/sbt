@@ -193,6 +193,7 @@ val completeProj = (project in file("internal") / "util-complete")
     testedBaseSettings,
     name := "Completion",
     libraryDependencies += jline,
+    Compile / scalacOptions += "-Ywarn-unused:-explicits",
     mimaSettings,
     // Parser is used publicly, so we can't break bincompat.
     mimaBinaryIssueFilters := Seq(
@@ -221,6 +222,7 @@ lazy val testingProj = (project in file("testing"))
     baseSettings,
     name := "Testing",
     libraryDependencies ++= Seq(testInterface, launcherInterface, sjsonNewScalaJson.value),
+    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -294,6 +296,7 @@ lazy val runProj = (project in file("run"))
   .settings(
     testedBaseSettings,
     name := "Run",
+    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -398,10 +401,9 @@ lazy val protocolProj = (project in file("protocol"))
   .dependsOn(collectionProj)
   .settings(
     testedBaseSettings,
-    scalacOptions -= "-Ywarn-unused",
-    scalacOptions += "-Xlint:-unused",
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value, ipcSocket),
+    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -443,6 +445,7 @@ lazy val commandProj = (project in file("main-command"))
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
+    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -546,6 +549,7 @@ lazy val mainProj = (project in file("main"))
     testedBaseSettings,
     name := "Main",
     libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies ++ Seq(scalaCacheCaffeine),
+    Compile / scalacOptions -= "-Xfatal-warnings",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
