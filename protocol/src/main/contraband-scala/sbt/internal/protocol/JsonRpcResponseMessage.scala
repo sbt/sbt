@@ -4,16 +4,16 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.protocol
+/**
+ * @param id The request id.
+ * @param result The result of a request. This can be omitted in
+                 the case of an error.
+ * @param error The error object in case a request fails.
+ */
 final class JsonRpcResponseMessage private (
   jsonrpc: String,
-  /** The request id. */
   val id: Option[String],
-  /**
-   * The result of a request. This can be omitted in
-   * the case of an error.
-   */
   val result: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue],
-  /** The error object in case a request fails. */
   val error: Option[sbt.internal.protocol.JsonRpcResponseError]) extends sbt.internal.protocol.JsonRpcMessage(jsonrpc) with Serializable {
   
   

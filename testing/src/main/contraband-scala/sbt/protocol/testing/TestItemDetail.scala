@@ -4,19 +4,17 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.testing
-/** Mini version of sbt.testing.Event */
+/**
+ * Mini version of sbt.testing.Event
+ * @param fullyQualifiedName The fully qualified name of a class that can rerun the suite or test
+                             about which an event was fired.
+ * @param status Indicates whether the event represents a test success, failure, error, skipped, ignored, canceled, pending.
+ * @param duration An amount of time, in milliseconds, that was required to complete the action reported by this event.
+                   None, if no duration was available.
+ */
 final class TestItemDetail private (
-  /**
-   * The fully qualified name of a class that can rerun the suite or test
-   * about which an event was fired.
-   */
   val fullyQualifiedName: String,
-  /** Indicates whether the event represents a test success, failure, error, skipped, ignored, canceled, pending. */
   val status: sbt.testing.Status,
-  /**
-   * An amount of time, in milliseconds, that was required to complete the action reported by this event.
-   * None, if no duration was available.
-   */
   val duration: Option[Long]) extends Serializable {
   
   

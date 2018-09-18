@@ -4,15 +4,15 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.protocol
+/**
+ * @param code A number indicating the error type that occurred.
+ * @param message A string providing a short description of the error.
+ * @param data A Primitive or Structured value that contains additional
+               information about the error. Can be omitted.
+ */
 final class JsonRpcResponseError private (
-  /** A number indicating the error type that occurred. */
   val code: Long,
-  /** A string providing a short description of the error. */
   val message: String,
-  /**
-   * A Primitive or Structured value that contains additional
-   * information about the error. Can be omitted.
-   */
   val data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]) extends Serializable {
   
   

@@ -4,8 +4,8 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
+/** @param includeText The client is supposed to include the content on save. */
 final class SaveOptions private (
-  /** The client is supposed to include the content on save. */
   val includeText: Option[Boolean]) extends Serializable {
   
   

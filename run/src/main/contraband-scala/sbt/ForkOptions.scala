@@ -4,31 +4,27 @@
 
 // DO NOT EDIT MANUALLY
 package sbt
-/** Configures forking. */
+/**
+ * Configures forking.
+ * @param javaHome The Java installation to use.  If not defined, the Java home for the current process is used.
+ * @param outputStrategy Configures the forked standard output and error streams.
+                         If not defined, StdoutOutput is used, which maps the forked output to the output of
+                         this process and the forked error to the error stream of the forking process.
+ * @param bootJars The Vector of jars to put on the forked boot classpath.  By default, this is empty.
+ * @param workingDirectory The directory to use as the working directory for the forked process.
+                           By default, this is the working directory of the forking process.
+ * @param runJVMOptions The options to prepend to all user-specified arguments.  By default, this is empty.
+ * @param connectInput If true, the standard input of the forked process is connected to the standard input of this process.  Otherwise, it is connected to an empty input stream.
+                       Connecting input streams can be problematic, especially on versions before Java 7.
+ * @param envVars The environment variables to provide to the forked process.  By default, none are provided.
+ */
 final class ForkOptions private (
-  /** The Java installation to use.  If not defined, the Java home for the current process is used. */
   val javaHome: Option[java.io.File],
-  /**
-   * Configures the forked standard output and error streams.
-   * If not defined, StdoutOutput is used, which maps the forked output to the output of
-   * this process and the forked error to the error stream of the forking process.
-   */
   val outputStrategy: Option[sbt.OutputStrategy],
-  /** The Vector of jars to put on the forked boot classpath.  By default, this is empty. */
   val bootJars: Vector[java.io.File],
-  /**
-   * The directory to use as the working directory for the forked process.
-   * By default, this is the working directory of the forking process.
-   */
   val workingDirectory: Option[java.io.File],
-  /** The options to prepend to all user-specified arguments.  By default, this is empty. */
   val runJVMOptions: Vector[String],
-  /**
-   * If true, the standard input of the forked process is connected to the standard input of this process.  Otherwise, it is connected to an empty input stream.
-   * Connecting input streams can be problematic, especially on versions before Java 7.
-   */
   val connectInput: Boolean,
-  /** The environment variables to provide to the forked process.  By default, none are provided. */
   val envVars: scala.collection.immutable.Map[String, String]) extends Serializable {
   
   private def this() = this(None, None, Vector(), None, Vector(), false, Map())

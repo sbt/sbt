@@ -7,11 +7,11 @@ package sbt.internal.langserver
 /**
  * A range in a text document expressed as (zero-based) start and end positions. A range is comparable to a selection in an editor.
  * Therefore the end position is exclusive.
+ * @param start The range's start position.
+ * @param end The range's end position.
  */
 final class Range private (
-  /** The range's start position. */
   val start: sbt.internal.langserver.Position,
-  /** The range's end position. */
   val end: sbt.internal.langserver.Position) extends Serializable {
   
   

@@ -4,9 +4,9 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
+/** @param rootPath The rootPath of the workspace. */
 final class InitializeParams private (
   val processId: Option[Long],
-  /** The rootPath of the workspace. */
   val rootPath: Option[String],
   val rootUri: Option[String],
   val initializationOptions: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue],

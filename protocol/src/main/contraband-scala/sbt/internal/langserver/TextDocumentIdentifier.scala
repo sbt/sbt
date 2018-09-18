@@ -4,9 +4,11 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
-/** Text documents are identified using a URI. On the protocol level, URIs are passed as strings. */
+/**
+ * Text documents are identified using a URI. On the protocol level, URIs are passed as strings.
+ * @param uri The text document's URI.
+ */
 final class TextDocumentIdentifier private (
-  /** The text document's URI. */
   val uri: String) extends Serializable {
   
   
