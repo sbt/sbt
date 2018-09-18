@@ -11,7 +11,6 @@ import sbt.internal.{
   Act,
   Aggregation,
   BuildStructure,
-  BuildUnit,
   CommandExchange,
   CommandStrings,
   CrossJava,
@@ -141,6 +140,7 @@ object StandardMain {
           if (hooked) {
             Runtime.getRuntime.removeShutdownHook(shutdownHook)
           }
+          ()
         }
       } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
     } finally TrapExit.uninstallManager(previous)
