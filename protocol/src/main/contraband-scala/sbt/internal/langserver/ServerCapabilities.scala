@@ -4,11 +4,13 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
+/**
+ * @param hoverProvider The server provides hover support.
+ * @param definitionProvider Goto definition
+ */
 final class ServerCapabilities private (
   val textDocumentSync: Option[sbt.internal.langserver.TextDocumentSyncOptions],
-  /** The server provides hover support. */
   val hoverProvider: Option[Boolean],
-  /** Goto definition */
   val definitionProvider: Option[Boolean]) extends Serializable {
   
   

@@ -7,23 +7,19 @@ package sbt.internal.langserver
 /**
  * Represents a diagnostic, such as a compiler error or warning.
  * Diagnostic objects are only valid in the scope of a resource.
+ * @param range The range at which the message applies.
+ * @param severity The diagnostic's severity. Can be omitted. If omitted it is up to the
+                   client to interpret diagnostics as error, warning, info or hint.
+ * @param code The diagnostic's code. Can be omitted.
+ * @param source A human-readable string describing the source of this
+                 diagnostic, e.g. 'typescript' or 'super lint'.
+ * @param message The diagnostic's message.
  */
 final class Diagnostic private (
-  /** The range at which the message applies. */
   val range: sbt.internal.langserver.Range,
-  /**
-   * The diagnostic's severity. Can be omitted. If omitted it is up to the
-   * client to interpret diagnostics as error, warning, info or hint.
-   */
   val severity: Option[Long],
-  /** The diagnostic's code. Can be omitted. */
   val code: Option[String],
-  /**
-   * A human-readable string describing the source of this
-   * diagnostic, e.g. 'typescript' or 'super lint'.
-   */
   val source: Option[String],
-  /** The diagnostic's message. */
   val message: String) extends Serializable {
   
   

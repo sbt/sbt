@@ -4,10 +4,12 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
+/**
+ * @param type The message type.
+ * @param message The actual message
+ */
 final class LogMessageParams private (
-  /** The message type. */
   val `type`: Long,
-  /** The actual message */
   val message: String) extends Serializable {
   
   

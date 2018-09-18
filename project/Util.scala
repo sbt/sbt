@@ -25,25 +25,14 @@ object Util {
   )
 
   lazy val baseScalacOptions = Seq(
-    scalacOptions ++= Seq("-Xelide-below", "0"),
     scalacOptions ++= Seq(
-      "-encoding",
-      "utf8",
-      "-deprecation",
-      "-feature",
-      "-unchecked",
-      "-Xlint",
+      "-Xelide-below",
+      "0",
       "-language:existentials",
-      "-language:higherKinds",
-      "-language:implicitConversions",
       "-language:postfixOps",
-      "-Xfuture",
-      "-Yno-adapted-args",
-      "-Ywarn-dead-code",
-      "-Ywarn-numeric-widen",
-      "-Ywarn-unused:-patvars,-implicits,_",
-      "-Ywarn-unused-import"
-    )
+    ),
+    Compile / doc / scalacOptions -= "-Xlint",
+    Compile / doc / scalacOptions -= "-Xfatal-warnings",
   )
 
   def projectComponent: Setting[_] =

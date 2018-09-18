@@ -4,11 +4,13 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
-/** Diagnostics notification are sent from the server to the client to signal results of validation runs. */
+/**
+ * Diagnostics notification are sent from the server to the client to signal results of validation runs.
+ * @param uri The URI for which diagnostic information is reported.
+ * @param diagnostics An array of diagnostic information items.
+ */
 final class PublishDiagnosticsParams private (
-  /** The URI for which diagnostic information is reported. */
   val uri: String,
-  /** An array of diagnostic information items. */
   val diagnostics: Vector[sbt.internal.langserver.Diagnostic]) extends Serializable {
   
   

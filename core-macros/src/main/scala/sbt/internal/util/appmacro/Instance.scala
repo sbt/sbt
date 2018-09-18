@@ -67,7 +67,7 @@ object Instance {
    *
    * Each `input` in each expression of the form `wrap[T]( input )` is transformed by `convert`.
    * This transformation converts the input Tree to a Tree of type `M[T]`.
-   * The original wrapped expression `wrap(input)` is replaced by a reference to a new local `val $x: T`, where `$x` is a fresh name.
+   * The original wrapped expression `wrap(input)` is replaced by a reference to a new local `val x: T`, where `x` is a fresh name.
    * These converted inputs are passed to `builder` as well as the list of these synthetic `ValDef`s.
    * The `TupleBuilder` instance constructs a tuple (Tree) from the inputs and defines the right hand side of the vals
    * that unpacks the tuple containing the results of the inputs.

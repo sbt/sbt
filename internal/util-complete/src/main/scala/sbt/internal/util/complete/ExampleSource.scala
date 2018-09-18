@@ -13,7 +13,7 @@ import sbt.io.IO
 
 /**
  * These sources of examples are used in parsers for user input completion. An example of such a source is the
- * [[sbt.complete.FileExamples]] class, which provides a list of suggested files to the user as they press the
+ * [[sbt.internal.util.complete.FileExamples]] class, which provides a list of suggested files to the user as they press the
  * TAB key in the console.
  */
 trait ExampleSource {

@@ -7,9 +7,9 @@ package sbt.internal.protocol
 /**
  * This file should exist throughout the lifetime of the server.
  * It can be used to find out the transport protocol (port number etc).
+ * @param uri URI of the sbt server.
  */
 final class PortFile private (
-  /** URI of the sbt server. */
   val uri: String,
   val tokenfilePath: Option[String],
   val tokenfileUri: Option[String]) extends Serializable {

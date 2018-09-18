@@ -4,11 +4,13 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.protocol
+/**
+ * @param method The method to be invoked.
+ * @param params The method's params.
+ */
 final class JsonRpcNotificationMessage private (
   jsonrpc: String,
-  /** The method to be invoked. */
   val method: String,
-  /** The method's params. */
   val params: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]) extends sbt.internal.protocol.JsonRpcMessage(jsonrpc) with Serializable {
   
   

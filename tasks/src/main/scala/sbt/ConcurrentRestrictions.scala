@@ -142,7 +142,7 @@ object ConcurrentRestrictions {
       warn: String => Unit
   ): CompletionService[A, R] = {
 
-    /** Represents submitted work for a task.*/
+    // Represents submitted work for a task.
     final class Enqueue(val node: A, val work: () => R)
 
     new CompletionService[A, R] {

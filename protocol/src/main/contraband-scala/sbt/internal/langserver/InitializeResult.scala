@@ -4,8 +4,8 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
+/** @param capabilities The capabilities the language server provides. */
 final class InitializeResult private (
-  /** The capabilities the language server provides. */
   val capabilities: sbt.internal.langserver.ServerCapabilities) extends Serializable {
   
   
