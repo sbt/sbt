@@ -42,7 +42,7 @@ final case class Clauses(clauses: List[Clause]) {
 /** When the `body` Formula succeeds, atoms in `head` are true. */
 final case class Clause(body: Formula, head: Set[Atom])
 
-/** A literal is an [[Atom]] or its [[negation|Negated]]. */
+/** A literal is an [[Atom]] or its negation ([[Negated]]). */
 sealed abstract class Literal extends Formula {
 
   /** The underlying (positive) atom. */

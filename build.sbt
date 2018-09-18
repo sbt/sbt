@@ -193,7 +193,6 @@ val completeProj = (project in file("internal") / "util-complete")
     testedBaseSettings,
     name := "Completion",
     libraryDependencies += jline,
-    Compile / scalacOptions += "-Ywarn-unused:-explicits",
     mimaSettings,
     // Parser is used publicly, so we can't break bincompat.
     mimaBinaryIssueFilters := Seq(

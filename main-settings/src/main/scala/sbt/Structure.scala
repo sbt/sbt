@@ -280,13 +280,13 @@ object Scoped {
     final def set(app: Initialize[S], source: SourcePosition): Setting[S] =
       setting(scopedKey, app, source)
 
-    /** From the given [[Settings]], extract the value bound to this key. */
+    /** From the given `Settings`, extract the value bound to this key. */
     final def get(settings: Settings[Scope]): Option[S] =
       settings.get(scopedKey.scope, scopedKey.key)
 
     /**
-     * Creates an [[Def.Initialize]] with value [[scala.None]] if there was no previous definition of this key,
-     * and `[[scala.Some]](value)` if a definition exists. Useful for when you want to use the ''existence'' of
+     * Creates an [[Def.Initialize]] with value `scala.None` if there was no previous definition of this key,
+     * and `scala.Some(value)` if a definition exists. Useful for when you want to use the ''existence'' of
      * one setting in order to define another setting.
      * @return currently bound value wrapped in `Initialize[Some[T]]`, or `Initialize[None]` if unbound.
      */
