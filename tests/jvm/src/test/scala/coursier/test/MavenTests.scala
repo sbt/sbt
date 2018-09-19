@@ -26,11 +26,9 @@ object MavenTests extends TestSuite {
       val sourcesJarUrl = repoBase + "com/abc/test-snapshot-special/0.1.0-SNAPSHOT/test-snapshot-special-0.1.0-20170421.034426-82-sources.jar"
 
       * - CentralTests.withArtifacts(
-        dep = dep,
-        artifactType = "jar",
+        dep = dep.copy(attributes = Attributes("jar")),
         extraRepos = Seq(repo),
-        classifierOpt = None,
-        optional = true
+        classifierOpt = None
       ) {
         case Seq(artifact) =>
           assert(artifact.url == mainJarUrl)
@@ -39,11 +37,9 @@ object MavenTests extends TestSuite {
       }
 
       * - CentralTests.withArtifacts(
-        dep = dep,
-        artifactType = "src",
+        dep = dep.copy(attributes = Attributes("src")),
         extraRepos = Seq(repo),
-        classifierOpt = Some("sources"),
-        optional = true
+        classifierOpt = Some("sources")
       ) {
         case Seq(artifact) =>
           assert(artifact.url == sourcesJarUrl)
