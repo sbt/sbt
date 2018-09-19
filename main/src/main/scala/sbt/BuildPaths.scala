@@ -78,7 +78,29 @@ object BuildPaths {
 
   def getFileProperty(name: String): Option[File] = Option(System.getProperty(name)) flatMap {
     path =>
-      if (path.isEmpty) None else Some(new File(path))
+      if (path.isEmpty) None
+      else {
+        if (path.head == '~') {
+          val tildePath = expandTildePrefix(path)
+          Some(new File(tildePath))
+        } else {
+          Some(new File(path))
+        }
+      }
+  }
+
+  def expandTildePrefix(path: String): String = {
+    val tildePath = path.split("\\/").headOption match {
+      case Some("~")  => sys.env.getOrElse("HOME", "")
+      case Some("~+") => sys.env.getOrElse("PWD", "")
+      case Some("~-") => sys.env.getOrElse("OLDPWD", "")
+      case _          => ""
+    }
+
+    path.indexOf("/") match {
+      case -1 => tildePath
+      case _  => tildePath + path.substring(path.indexOf("/"))
+    }
   }
 
   def defaultVersionedGlobalBase(sbtVersion: String): File = defaultGlobalBase / sbtVersion
