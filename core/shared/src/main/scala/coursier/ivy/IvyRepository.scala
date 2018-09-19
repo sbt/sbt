@@ -79,9 +79,12 @@ final case class IvyRepository(
                   }
                 else if (dependency.attributes.`type`.nonEmpty)
                   project.publications.collect {
-                    case (_, p)
-                      if p.classifier.isEmpty && (
-                        p.`type` == dependency.attributes.`type` ||
+                    case (conf, p)
+                      if (conf == "*" ||
+                        conf == dependency.configuration ||
+                        project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf)) &&
+                        (
+                          p.`type` == dependency.attributes.`type` ||
                           (p.ext == dependency.attributes.`type` && project.packagingOpt.toSeq.contains(p.`type`)) // wow
                         ) =>
                       p

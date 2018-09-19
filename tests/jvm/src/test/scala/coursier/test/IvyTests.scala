@@ -81,14 +81,26 @@ object IvyTests extends TestSuite {
           throw new Exception(s"Unexpected number of artifacts\n${other.mkString("\n")}")
       }
 
-      "test conf" - CentralTests.withArtifacts(
-        dep = dep.copy(configuration = "test"),
-        extraRepos = Seq(repo),
-        classifierOpt = None
-      ) { artifacts =>
-        val urls = artifacts.map(_.url).toSet
-        assert(urls(mainJarUrl))
-        assert(urls(testJarUrl))
+      "test conf" - {
+        "no attributes" - CentralTests.withArtifacts(
+          dep = dep.copy(configuration = "test"),
+          extraRepos = Seq(repo),
+          classifierOpt = None
+        ) { artifacts =>
+          val urls = artifacts.map(_.url).toSet
+          assert(urls(mainJarUrl))
+          assert(urls(testJarUrl))
+        }
+
+        "attributes" - CentralTests.withArtifacts(
+          dep = dep.copy(configuration = "test", attributes = Attributes("jar")),
+          extraRepos = Seq(repo),
+          classifierOpt = None
+        ) { artifacts =>
+          val urls = artifacts.map(_.url).toSet
+          assert(urls(mainJarUrl))
+          assert(urls(testJarUrl))
+        }
       }
 
       "tests classifier" - {
