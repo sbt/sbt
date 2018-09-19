@@ -316,110 +316,21 @@ final case class MavenRepository(
         proj <- Pom.project(xml, relocationAsDependency = true).right
       } yield proj
 
-    def isArtifact(fileName: String, prefix: String): Option[(String, String)] =
-      // TODO There should be a regex for that...
-      if (fileName.startsWith(prefix)) {
-        val end = fileName.stripPrefix(prefix)
-        val idx = end.indexOf('.')
-        if (idx >= 0) {
-          val ext = end.drop(idx + 1)
-          val rem = end.take(idx)
-          if (rem.isEmpty)
-            Some(("", ext))
-          else if (rem.startsWith("-"))
-            Some((rem.drop(1), ext))
-          else
-            None
-        } else
-          None
-      } else
-        None
-
 
     val projectArtifact0 = projectArtifact(module, version, versioningValue)
 
-    val listFilesUrl = urlFor(moduleVersionPath(module, version)) + "/"
-
-    val changing0 = changing.getOrElse(isSnapshot(version))
-
-    val listFilesArtifact =
-      Artifact(
-        listFilesUrl,
-        Map.empty,
-        Map(
-          "metadata" -> projectArtifact0
-        ),
-        Attributes("", ""),
-        changing = changing0,
-        authentication
-      )
-
-    val requiringDirListingProjectArtifact = projectArtifact0
-      .copy(
-        extra = projectArtifact0.extra + (
-          // In LocalUpdate and LocalUpdateChanging mode, makes getting the POM fail if the POM
-          // is in cache, but no info about the directory listing is (directory listing not in cache and no kept error
-          // for it).
-          "required" -> listFilesArtifact
-        )
-      )
-
     for {
-      str <- fetch(requiringDirListingProjectArtifact)
-      rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl, changing0)).run) {
-        e => Right(e.right.toOption): Either[String, Option[String]]
-      })
+      str <- fetch(projectArtifact0)
       proj0 <- EitherT(F.point[Either[String, Project]](parseRawPom(str)))
-    } yield {
-
-      val foundPublications =
-        rawListFilesPageOpt match {
-          case Some(rawListFilesPage) =>
-
-            val files = WebPage.listFiles(listFilesUrl, rawListFilesPage)
-
-            val prefix = s"${module.name}-${versioningValue.getOrElse(version)}"
-
-            val packagingTpeMap = proj0.packagingOpt
-              .filter(_ != Pom.relocatedPackaging)
-              .map { packaging =>
-                (MavenSource.typeDefaultClassifier(packaging), MavenSource.typeExtension(packaging)) -> packaging
-              }
-              .toMap
-
-            files
-              .flatMap(isArtifact(_, prefix))
-              .map {
-                case (classifier, ext) =>
-                  val tpe = packagingTpeMap.getOrElse(
-                    (classifier, ext),
-                    MavenSource.classifierExtensionDefaultTypeOpt(classifier, ext).getOrElse(ext)
-                  )
-                  val config = MavenSource.typeDefaultConfig(tpe).getOrElse("compile")
-                  config -> Publication(
-                    module.name,
-                    tpe,
-                    ext,
-                    classifier
-                  )
-              }
-
-          case None =>
-            // Publications can't be listed - MavenSource then handles that
-            Nil
-        }
-
-      val proj = Pom.addOptionalDependenciesInConfig(
-        proj0.copy(configurations = defaultConfigurations),
+    } yield
+      Pom.addOptionalDependenciesInConfig(
+        proj0.copy(
+          actualVersionOpt = Some(version),
+          configurations = defaultConfigurations
+        ),
         Set("", "default"),
         "optional"
       )
-
-      proj.copy(
-        actualVersionOpt = Some(version),
-        publications = foundPublications
-      )
-    }
   }
 
   def find[F[_]](
