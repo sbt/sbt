@@ -47,6 +47,8 @@ install:
   - curl -L --fail https://piccolo.link/sbt-0.13.17.tgz > sbt-0.13.17.tgz
   - tar zxf ./sbt-0.13.17.tgz -C $HOME/
   - export PATH="$HOME/sbt/bin:$PATH"
+  - export SBT_OPTS="-Xms2048M -Xmx2048M -Xss2M -XX:MaxPermSize=512M"
+  - sbt about
   - $JABBA_HOME/bin/jabba install "zulu@1.6.107"
   - export JAVA_HOME="$JABBA_HOME/jdk/zulu@1.6.107"
   - export PATH="$JAVA_HOME/bin:$PATH"
