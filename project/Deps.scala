@@ -45,4 +45,6 @@ object Deps {
   def scalaNativeNir = "org.scala-native" %% "nir" % SharedVersions.scalaNative
   def scalaNativeTools = "org.scala-native" %% "tools" % SharedVersions.scalaNative
   def scalaNativeUtil = "org.scala-native" %% "util" % SharedVersions.scalaNative
+
+  def slf4JNop = "org.slf4j" % "slf4j-nop" % "1.7.25"
 }
