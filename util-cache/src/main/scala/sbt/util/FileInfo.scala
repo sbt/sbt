@@ -4,7 +4,6 @@
 package sbt.util
 
 import java.io.File
-import java.io.FileNotFoundException
 import scala.util.control.NonFatal
 import sbt.io.{ Hash, IO }
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }

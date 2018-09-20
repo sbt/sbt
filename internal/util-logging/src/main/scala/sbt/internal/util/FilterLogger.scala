@@ -4,13 +4,14 @@
 package sbt.internal.util
 
 import sbt.util._
+import com.github.ghik.silencer.silent
 
 /**
  * A filter logger is used to delegate messages but not the logging level to another logger.  This means
  * that messages are logged at the higher of the two levels set by this logger and its delegate.
  */
 class FilterLogger(delegate: AbstractLogger) extends BasicLogger {
-  override lazy val ansiCodesSupported = delegate.ansiCodesSupported
+  @silent override lazy val ansiCodesSupported = delegate.ansiCodesSupported
   def trace(t: => Throwable): Unit = {
     if (traceEnabled)
       delegate.trace(t)
