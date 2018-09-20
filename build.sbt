@@ -104,7 +104,10 @@ lazy val utilLogging = (project in internalPath / "util-logging")
       Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value,
         compilerPlugin(silencerPlugin), silencerLib),
     libraryDependencies ++= Seq(scalaCheck, scalaTest),
-    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
+    Compile / scalacOptions ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
+      case _                          => List()
+    }),
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := { tpe =>
       val old = (contrabandFormatsForType in generateContrabands in Compile).value
