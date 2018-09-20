@@ -9,13 +9,8 @@ object DirectoryListingTests extends TestSuite {
   val user = "user"
   val password = "pass"
 
-  val withListingRepo = MavenRepository(
+  val repo = MavenRepository(
     "http://localhost:8080",
-    authentication = Some(Authentication(user, password))
-  )
-
-  val withoutListingRepo = MavenRepository(
-    "http://localhost:8081",
     authentication = Some(Authentication(user, password))
   )
 
@@ -23,48 +18,26 @@ object DirectoryListingTests extends TestSuite {
   val version = "0.1"
 
   val tests = Tests {
-    'withListing - {
-      'jar - CentralTests.withArtifacts(
-        module,
-        version,
-        "jar",
-        extraRepos = Seq(withListingRepo)
-      ) {
-        artifacts =>
-          assert(artifacts.length == 1)
-      }
-
-      'jarFoo - CentralTests.withArtifacts(
-        module,
-        version,
-        "jar-foo",
-        extraRepos = Seq(withListingRepo)
-      ) {
-        artifacts =>
-          assert(artifacts.length == 1)
-      }
+    'jar - CentralTests.withArtifacts(
+      module,
+      version,
+      attributes = Attributes("jar"),
+      extraRepos = Seq(repo)
+    ) {
+      artifacts =>
+        assert(artifacts.length == 1)
+        assert(artifacts.headOption.exists(_.url.endsWith(".jar")))
     }
 
-    'withoutListing - {
-      'jar - CentralTests.withArtifacts(
-        module,
-        version,
-        "jar",
-        extraRepos = Seq(withoutListingRepo)
-      ) {
-        artifacts =>
-          assert(artifacts.length == 1)
-      }
-
-      'jarFoo - CentralTests.withArtifacts(
-        module,
-        version,
-        "jar-foo",
-        extraRepos = Seq(withoutListingRepo)
-      ) {
-        artifacts =>
-          assert(artifacts.length == 0)
-      }
+    'jarFoo - CentralTests.withArtifacts(
+      module,
+      version,
+      attributes = Attributes("jar-foo"),
+      extraRepos = Seq(repo)
+    ) {
+      artifacts =>
+        assert(artifacts.length == 1)
+        assert(artifacts.headOption.exists(_.url.endsWith(".jar-foo")))
     }
   }
 

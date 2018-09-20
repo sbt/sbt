@@ -16,7 +16,6 @@ check := {
       sys.error("No configuration report found for configuration 'compile'")
     }
   val moduleReports = configReport.modules
-  val artifacts = moduleReports.flatMap(_.artifacts.map(_._1))
   val signatures = moduleReports
     .flatMap(_.artifacts)
     .filter(_._1.extension == "jar.asc")

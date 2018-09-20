@@ -71,7 +71,8 @@ lazy val `proxy-tests` = project
     coursierPrefix,
     libs ++= Seq(
       Deps.dockerClient,
-      Deps.scalaAsync.value
+      Deps.scalaAsync.value,
+      Deps.slf4JNop
     ),
     utest,
     sharedTestResources

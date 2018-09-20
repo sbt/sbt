@@ -73,18 +73,19 @@ final case class Attributes(
   `type`: String,
   classifier: String
 ) {
-  def packaging: String = if (`type`.isEmpty)
+  def packaging: String =
+    if (`type`.isEmpty)
       "jar"
     else
       `type`
 
-  def packagingAndClassifier: String = if (isEmpty) {
+  def packagingAndClassifier: String =
+    if (isEmpty)
       ""
-    } else if (classifier.isEmpty) {
+    else if (classifier.isEmpty)
       packaging
-    } else {
+    else
       s"$packaging:$classifier"
-    }
 
   def publication(name: String, ext: String): Publication =
     Publication(name, `type`, ext, classifier)
