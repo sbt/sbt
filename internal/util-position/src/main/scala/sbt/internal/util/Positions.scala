@@ -1,5 +1,7 @@
 package sbt.internal.util
 
+import scala.language.experimental.macros
+
 sealed trait SourcePosition
 
 sealed trait FilePosition extends SourcePosition {
