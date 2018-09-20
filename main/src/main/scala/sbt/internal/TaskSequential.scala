@@ -775,6 +775,13 @@ trait TaskSequential {
           sequential(xs, last)
         }
     }
+
+  def sequential[B](nonEmptyTasks: NonEmpty[Initialize[Task[B]]]): Initialize[Task[B]] =
+    sequential(
+      nonEmptyTasks.init.toList.map(unitTask(_)),
+      nonEmptyTasks.last
+    )
+
   private def unitTask[A](task: Initialize[Task[A]]): Initialize[Task[Unit]] =
     Def.task {
       task.value
