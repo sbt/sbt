@@ -46,22 +46,17 @@ final case class MavenSource(
       )
 
       val changing0 = changing.getOrElse(isSnapshot(project.actualVersion))
-      var artifact =
-        Artifact(
-          root + path.mkString("/"),
-          Map.empty,
-          Map.empty,
-          publication.attributes,
-          changing = changing0,
-          authentication = authentication
-        )
-          .withDefaultChecksums
-          .withDefaultSignature
 
-      if (publication.ext == "jar")
-        artifact = artifact.withDefaultSignature
-
-      artifact
+      Artifact(
+        root + path.mkString("/"),
+        Map.empty,
+        Map.empty,
+        publication.attributes,
+        changing = changing0,
+        authentication = authentication
+      )
+        .withDefaultChecksums
+        .withDefaultSignature
     }
 
     val metadataArtifact = artifactOf(Publication(dependency.module.name, "pom", "pom", ""))
