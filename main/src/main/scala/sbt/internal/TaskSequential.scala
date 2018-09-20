@@ -757,6 +757,12 @@ trait TaskSequential {
       last
     )
 
+  def sequential[B](tasks: Seq[Initialize[Task[B]]]): Initialize[Task[B]] = {
+    val initTasks: Seq[Initialize[Task[B]]] = tasks.init
+    val lastTask: Initialize[Task[B]] = tasks.last
+    sequential(initTasks.map(unitTask), lastTask)
+  }
+
   def sequential[B](
       tasks: Seq[Initialize[Task[Unit]]],
       last: Initialize[Task[B]]
@@ -775,15 +781,3 @@ trait TaskSequential {
       ()
     }
 }
-
-// for {
-//   i <- 0 to 21
-// } {
-//   val idx = 0 to i
-//   val tparams = (idx map { "A" + _ }).mkString(", ")
-//   val params = (idx map { j => s"task$j: Initialize[Task[A$j]]" }).mkString(", ")
-//   val args = (idx map { j => s"unitTask(task$j)" }).mkString(", ")
-//   println(s"""  def sequential[$tparams, B]($params,
-//              |    last: Initialize[Task[B]]): Initialize[Task[B]] =
-//              |    sequential(List($args), last)""".stripMargin)
-// }
