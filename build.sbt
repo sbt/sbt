@@ -14,15 +14,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
   crossScalaVersions := Seq(scala211, scala212),
-  scalacOptions := {
-    val old = scalacOptions.value
-    scalaVersion.value match {
-      case sv if sv.startsWith("2.10") =>
-        old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
-      case sv if sv.startsWith("2.11") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
-      case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
-    }
-  },
   scalacOptions in console in Compile -= "-Ywarn-unused-import",
   scalacOptions in console in Test -= "-Ywarn-unused-import",
   publishArtifact in Compile := true,
@@ -110,8 +101,13 @@ lazy val utilLogging = (project in internalPath / "util-logging")
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
     libraryDependencies ++=
-      Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value),
+      Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value,
+        compilerPlugin(silencerPlugin), silencerLib),
     libraryDependencies ++= Seq(scalaCheck, scalaTest),
+    Compile / scalacOptions ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
+      case _                          => List()
+    }),
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := { tpe =>
       val old = (contrabandFormatsForType in generateContrabands in Compile).value

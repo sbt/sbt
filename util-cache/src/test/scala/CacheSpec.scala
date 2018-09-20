@@ -46,7 +46,7 @@ class CacheSpec extends FlatSpec {
         }
 
         cache(store)("someKey") match {
-          case Hit(read) => assert(read === value)
+          case Hit(read) => assert(read === value); ()
           case Miss(_)   => fail
         }
     }
@@ -63,7 +63,7 @@ class CacheSpec extends FlatSpec {
         }
 
         cache(store)(key) match {
-          case Hit(read) => assert(read === value)
+          case Hit(read) => assert(read === value); ()
           case Miss(_)   => fail
         }
     }

@@ -1,5 +1,7 @@
 package sbt.internal.util
 
+import scala.language.experimental.macros
+
 sealed trait SourcePosition
 
 sealed trait FilePosition extends SourcePosition {
@@ -22,7 +24,6 @@ final case class RangePosition(path: String, range: LineRange) extends FilePosit
 object SourcePosition {
 
   /** Creates a SourcePosition by using the enclosing position of the invocation of this method.
-   * @see [[scala.reflect.macros.Enclosures#enclosingPosition]]
    * @return SourcePosition
    */
   def fromEnclosing(): SourcePosition = macro SourcePositionMacro.fromEnclosingImpl

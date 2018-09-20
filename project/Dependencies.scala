@@ -7,7 +7,7 @@ object Dependencies {
   val scala211 = "2.11.12"
   val scala212 = "2.12.6"
 
-  private val ioVersion = "1.2.0"
+  private val ioVersion = "1.2.1"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -58,4 +58,6 @@ object Dependencies {
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val disruptor = "com.lmax" % "disruptor" % "3.3.6"
+  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.2"
+  val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.2" % Provided
 }

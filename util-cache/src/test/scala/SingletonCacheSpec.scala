@@ -69,7 +69,7 @@ class SingletonCacheSpec extends FlatSpec {
         cache.write(store, value)
         val read = cache.read(store)
 
-        assert(read === value)
+        assert(read === value); ()
     }
   }
 
@@ -80,7 +80,7 @@ class SingletonCacheSpec extends FlatSpec {
         cache.write(store, value)
         val read = cache.read(store)
 
-        assert(read === value)
+        assert(read === value); ()
     }
   }
 

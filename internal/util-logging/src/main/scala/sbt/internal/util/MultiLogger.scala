@@ -4,13 +4,14 @@
 package sbt.internal.util
 
 import sbt.util._
+import com.github.ghik.silencer.silent
 
 // note that setting the logging level on this logger has no effect on its behavior, only
 //   on the behavior of the delegates.
 class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
   @deprecated("No longer used.", "1.0.0")
   override lazy val ansiCodesSupported = delegates exists supported
-  private[this] def supported = (_: AbstractLogger).ansiCodesSupported
+  @silent private[this] def supported = (_: AbstractLogger).ansiCodesSupported
 
   override def setLevel(newLevel: Level.Value): Unit = {
     super.setLevel(newLevel)
