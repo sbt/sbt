@@ -479,7 +479,7 @@ object Load {
 
       val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
       def loadProjects(ps: Seq[Project], createRoot: Boolean) = {
-        val result = loadTransitive(ps, normBase, plugs, () => eval, config.injectSettings, Nil, memoSettings, config.log, createRoot, uri, config.pluginManagement.context, Nil)
+        val result = loadTransitive(ps, normBase, plugs, () => eval, config.injectSettings, Nil, memoSettings, config.log, createRoot, uri, config.pluginManagement.context, Nil, s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil))
         result
       }
       val loadedProjectsRaw =  timed("Load.loadUnit: loadedProjectsRaw", log) { loadProjects(initialProjects, !hasRootAlreadyDefined) }
@@ -578,7 +578,8 @@ object Load {
     makeOrDiscoverRoot: Boolean,
     buildUri: URI,
     context: PluginManagement.Context,
-    generatedConfigClassFiles: Seq[File]): LoadedProjects =
+    generatedConfigClassFiles: Seq[File],
+    extraSbtFiles: Seq[File]): LoadedProjects =
     /*timed(s"Load.loadTransitive(${ newProjects.map(_.id) })", log)*/ {
       // load all relevant configuration files (.sbt, as .scala already exists at this point)
       def discover(auto: AddSettings, base: File): DiscoveredProjects =
@@ -600,7 +601,11 @@ object Load {
             try plugins.detected.deducePluginsFromProject(p1, log)
             catch { case e: AutoPluginException => throw translateAutoPluginException(e, p) }
           }
-        val p2 = this.resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, log)
+        val extra =
+          if (context.globalPluginProject) extraSbtFiles
+          else Nil
+        val p2 =
+          this.resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, extra, log)
         val projectLevelExtra =
           if (expand) autoPlugins flatMap { _.derivedProjects(p2) map {_.setProjectOrigin(ProjectOrigin.DerivedProject)} }
           else Nil
@@ -627,21 +632,25 @@ object Load {
         case Seq(next, rest @ _*) =>
           log.debug(s"[Loading] Loading project ${next.id} @ ${next.base}")
           val (finished, discovered, generated) = discoverAndLoad(next)
-          loadTransitive(rest ++ discovered, buildBase, plugins, eval, injectSettings, acc :+ finished, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles)
+          loadTransitive(rest ++ discovered, buildBase, plugins, eval, injectSettings, acc :+ finished, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles, Nil)
         case Nil if makeOrDiscoverRoot =>
           log.debug(s"[Loading] Scanning directory ${buildBase}")
-          discover(AddSettings.defaultSbtFiles, buildBase) match {
+          val auto =
+            if (context.globalPluginProject)
+              AddSettings.seq(AddSettings.defaultSbtFiles, AddSettings.sbtFiles(extraSbtFiles: _*))
+            else AddSettings.defaultSbtFiles
+          discover(auto, buildBase) match {
             case DiscoveredProjects(Some(root), discovered, files, generated) =>
               log.debug(s"[Loading] Found root project ${root.id} w/ remaining ${discovered.map(_.id).mkString(",")}")
               val (finalRoot, projectLevelExtra) = timed(s"Load.loadTransitive: finalizeProject($root)", log) {
                 finalizeProject(root, files, true)
               }
-              loadTransitive(discovered ++ projectLevelExtra, buildBase, plugins, eval, injectSettings, finalRoot +: acc, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles)
+              loadTransitive(discovered ++ projectLevelExtra, buildBase, plugins, eval, injectSettings, finalRoot +: acc, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles, Nil)
             // Here we need to create a root project...
             case DiscoveredProjects(None, discovered, files, generated) =>
               log.debug(s"[Loading] Found non-root projects ${discovered.map(_.id).mkString(",")}")
               // Here we do something interesting... We need to create an aggregate root project
-              val otherProjects = loadTransitive(discovered, buildBase, plugins, eval, injectSettings, acc, memoSettings, log, false, buildUri, context, Nil)
+              val otherProjects = loadTransitive(discovered, buildBase, plugins, eval, injectSettings, acc, memoSettings, log, false, buildUri, context, Nil, Nil)
               val otherGenerated = otherProjects.generatedConfigClassFiles
               val existingIds = otherProjects.projects map (_.id)
               val refs = existingIds map (id => ProjectRef(buildUri, id))
@@ -691,6 +700,7 @@ object Load {
    * @param globalUserSettings All the settings contributed from the ~/.sbt/<version> directory
    * @param memoSettings A recording of all loaded files (our files should reside in there).  We should need not load any
    *                     sbt file to resolve a project.
+   * @param extraSbtFiles Extra *.sbt files.
    * @param log  A logger to report auto-plugin issues to.
    */
   private[this] def resolveProject(
@@ -699,6 +709,7 @@ object Load {
     loadedPlugins: sbt.LoadedPlugins,
     globalUserSettings: InjectSettings,
     memoSettings: mutable.Map[File, LoadedSbtFile],
+    extraSbtFiles: Seq[File],
     log: Logger): Project =
     timed(s"Load.resolveProject(${p.id})", log) {
       import AddSettings._
@@ -740,7 +751,10 @@ object Load {
           case q: Sequence         => (Seq.empty[Setting[_]] /: q.sequence) { (b, add) => b ++ expandSettings(add) }
         }
         timed(s"Load.resolveProject(${p.id}): expandSettings(...)", log) {
-          expandSettings(p.auto)
+          val auto = if (extraSbtFiles.nonEmpty) {
+            AddSettings.seq(autoPlugins, buildScalaFiles, userSettings, nonAutoPlugins, AddSettings.defaultSbtFiles, AddSettings.sbtFiles(extraSbtFiles: _*))
+          } else p.auto
+          expandSettings(auto)
         }
       }
       // Finally, a project we can use in buildStructure.
