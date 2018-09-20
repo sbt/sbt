@@ -1,6 +1,4 @@
 
-import Compatibility._
-
 val org = "io.get-coursier.scriptedtest"
 val ver = "0.1.0-SNAPSHOT"
 

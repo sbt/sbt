@@ -10,11 +10,10 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .jvmConfigure(_.enablePlugins(ShadingPlugin))
   .jvmSettings(
     shading,
-    quasiQuotesIfNecessary,
-    scalaXmlIfNecessary,
     libs ++= Seq(
       Deps.fastParse % "shaded",
-      Deps.jsoup % "shaded"
+      Deps.jsoup % "shaded",
+      Deps.scalaXml
     ),
     shadeNamespaces ++= Set(
       "org.jsoup",
@@ -52,7 +51,7 @@ lazy val tests = crossProject(JSPlatform, JVMPlatform)
     dontPublish,
     hasITs,
     coursierPrefix,
-    libs += Deps.scalaAsync.value,
+    libs += Deps.scalaAsync,
     utest,
     sharedTestResources
   )
@@ -71,7 +70,7 @@ lazy val `proxy-tests` = project
     coursierPrefix,
     libs ++= Seq(
       Deps.dockerClient,
-      Deps.scalaAsync.value,
+      Deps.scalaAsync,
       Deps.slf4JNop
     ),
     utest,

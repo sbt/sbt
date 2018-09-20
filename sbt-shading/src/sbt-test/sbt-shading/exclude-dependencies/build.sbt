@@ -1,7 +1,4 @@
 
-// for SbtExclusionRule with sbt 1.0
-import Compatibility._
-
 enablePlugins(coursier.ShadingPlugin)
 shadingNamespace := "test.shaded"
 shadeNamespaces += "argonaut"
@@ -12,7 +9,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value
 )
 
-excludeDependencies += SbtExclusionRule("com.chuusai", "shapeless_2.11")
+excludeDependencies += sbt.ExclusionRule("com.chuusai", "shapeless_2.11")
 
 scalaVersion := "2.11.8"
 organization := "io.get-coursier.test"

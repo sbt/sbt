@@ -1,4 +1,3 @@
-import Compatibility._
 
 scalaVersion := "2.12.2-bin-typelevel-4"
 scalaOrganization := "org.typelevel"

@@ -30,7 +30,7 @@ object Settings {
     organization := "io.get-coursier",
     scalazBintrayRepository,
     sonatypeRepository("releases"),
-    crossScalaVersions := Seq(scala212, scala211, scala210), // defined for all projects to trump sbt-doge
+    crossScalaVersions := Seq(scala212, scala211), // defined for all projects to trump sbt-doge
     scalacOptions ++= Seq(
       "-target:jvm-1.8",
       "-feature",
@@ -68,13 +68,7 @@ object Settings {
   }
 
   lazy val shared = javaScalaPluginShared ++ Seq(
-    scalaVersion := scala212,
-    libs ++= {
-      if (scalaBinaryVersion.value == "2.10")
-        Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
-      else
-        Seq()
-    }
+    scalaVersion := scala212
   )
 
   lazy val pureJava = javaScalaPluginShared ++ Seq(
@@ -110,23 +104,6 @@ object Settings {
     name := "coursier-" + name.value
   }
 
-  lazy val scalaXmlIfNecessary = Seq(
-    libs ++= {
-      if (scalaBinaryVersion.value == "2.10") Seq()
-      else Seq(Deps.scalaXml)
-    }
-  )
-
-  lazy val quasiQuotesIfNecessary = Seq(
-    libs ++= {
-      if (scalaBinaryVersion.value == "2.10")
-        // directly depending on that one so that it doesn't get shaded
-        Seq(Deps.quasiQuotes)
-      else
-        Nil
-    }
-  )
-
   lazy val noTests = Seq(
     test.in(Test) := {},
     testOnly.in(Test) := {}
@@ -159,7 +136,6 @@ object Settings {
     )
 
     val sbtPluginScalaVersions = Map(
-      "0.13" -> "2.10",
       "1.0"  -> "2.12"
     )
 
@@ -200,11 +176,10 @@ object Settings {
     )
   }
 
-  val sbt013Version = "0.13.8"
   val sbt10Version = "1.0.2"
 
   val pluginOverrideCrossScalaVersion = Seq(
-    crossScalaVersions := Seq(scala212, scala210)
+    crossScalaVersions := Seq(scala212)
   )
 
   lazy val plugin =
@@ -220,19 +195,19 @@ object Settings {
       scriptedBufferLog := false,
       sbtPlugin := {
         scalaBinaryVersion.value match {
-          case "2.10" | "2.12" => true
+          case "2.12" => true
           case _ => false
         }
       },
       sbtVersion.in(pluginCrossBuild) := {
         scalaBinaryVersion.value match {
-          case "2.10" => sbt013Version
           case "2.12" => sbt10Version
           case _ => sbtVersion.in(pluginCrossBuild).value
         }
       },
       resolvers ++= Seq(
-        // added so that 2.10 artifacts of the other modules can be found by
+        // Still necessary?
+        // added so that 2.12 artifacts of the other modules can be found by
         // the too-naive-for-now inter-project resolver of the coursier SBT plugin
         Resolver.sonatypeRepo("snapshots"),
         // added for sbt-scripted to be fine even with ++2.11.x
