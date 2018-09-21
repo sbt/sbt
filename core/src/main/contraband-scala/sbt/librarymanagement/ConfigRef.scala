@@ -4,9 +4,11 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
-/** A reference to Configuration. */
+/**
+ * A reference to Configuration.
+ * @param name The name of the configuration that eventually get used by Maven.
+ */
 final class ConfigRef private (
-  /** The name of the configuration that eventually get used by Maven. */
   val name: String) extends Serializable {
   
   

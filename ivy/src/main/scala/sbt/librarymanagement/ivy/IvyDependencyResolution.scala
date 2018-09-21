@@ -21,7 +21,7 @@ class IvyDependencyResolution private[sbt] (val ivySbt: IvySbt)
 
   private[sbt] def toModule(module: ModuleDescriptor): Module =
     module match {
-      case m: Module => m
+      case m: Module @unchecked => m
     }
 }
 

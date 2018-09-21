@@ -8,13 +8,13 @@ package sbt.librarymanagement
  * Provides information about dependency resolution.
  * It does not include information about evicted modules, only about the modules ultimately selected by the conflict manager.
  * This means that for a given configuration, there should only be one revision for a given organization and module name.
+ * @param cachedDescriptor the location of the resolved module descriptor in the cache
+ * @param configurations a sequence containing one report for each configuration resolved.
+ * @param stats stats information about the update that produced this report
  */
 final class UpdateReport private (
-  /** the location of the resolved module descriptor in the cache */
   val cachedDescriptor: java.io.File,
-  /** a sequence containing one report for each configuration resolved. */
   val configurations: Vector[sbt.librarymanagement.ConfigurationReport],
-  /** stats information about the update that produced this report */
   val stats: sbt.librarymanagement.UpdateStats,
   val stamps: Map[java.io.File, Long]) extends sbt.librarymanagement.UpdateReportExtra with Serializable {
   

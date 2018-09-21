@@ -26,8 +26,6 @@ import syntax._
 import InternalDefaults._
 import UpdateClassifiersUtil._
 
-import scala.util.Try
-
 object IvyActions {
 
   /** Installs the dependencies of the given 'module' from the resolver named 'from' to the resolver named 'to'.*/

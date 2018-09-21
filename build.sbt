@@ -99,6 +99,7 @@ lazy val lmCore = (project in file("core"))
         )
       )
       .taskValue,
+    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
