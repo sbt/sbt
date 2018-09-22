@@ -99,7 +99,10 @@ lazy val lmCore = (project in file("core"))
         )
       )
       .taskValue,
-    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
+    Compile / scalacOptions ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
+      case _                          => List()
+    }),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
