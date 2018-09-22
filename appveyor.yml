@@ -15,17 +15,24 @@ install:
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-Xmx4g -Xss2m
   - git submodule update --init --recursive
+environment:
+  TEST_REPOSITORY_HOST: localhost
+  TEST_REPOSITORY_PORT: 8080
+  TEST_REPOSITORY_USER: user
+  TEST_REPOSITORY_PASSWORD: pass
+  TEST_REPOSITORY: http://localhost:8080
 build_script:
+  - ps: Start-Job -filepath .\scripts\start-it-auth-server.ps1 -ArgumentList $pwd, $env:TEST_REPOSITORY_HOST, $env:TEST_REPOSITORY_PORT, $env:TEST_REPOSITORY_USER, $env:TEST_REPOSITORY_PASSWORD
   - sbt scala212 coreJVM/publishLocal cacheJVM/publishLocal extra/publishLocal scalazJVM/publishLocal cli/publishLocal
   - sbt scala211 compile coreJVM/publishLocal
   - sbt scala210 compile
 test_script:
-  - ps: Start-Job -filepath .\scripts\start-it-auth-server.ps1 -ArgumentList $pwd
-  - ps: Start-Sleep -s 15 # wait for the first server to have downloaded its dependencies
-  - ps: Start-Job -filepath .\scripts\start-it-no-listing-server.ps1 -ArgumentList $pwd
-  - sbt scala212 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
-  - sbt scala211 testsJVM/test testsJVM/it:test
-  - sbt scala210 testsJVM/test testsJVM/it:test
+  - sbt scala212 testsJVM/test
+  - sbt scala211 testsJVM/test
+  - sbt scala210 testsJVM/test
+  - sbt scala212 testsJVM/it:test
+  - sbt scala211 testsJVM/it:test
+  - sbt scala210 testsJVM/it:test
   - sbt scala212 "sbt-coursier/scripted sbt-coursier/simple" "sbt-shading/scripted sbt-shading/*" # for sbt 1.0
   - sbt scala210 "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*" "sbt-shading/scripted sbt-shading/*" "sbt-shading/scripted sbt-shading-0.13/*" # for sbt 0.13
 branches:

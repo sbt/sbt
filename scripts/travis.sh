@@ -13,19 +13,9 @@ downloadInstallSbtExtras() {
   chmod +x bin/sbt
 }
 
-launchTestRepo() {
-  ./scripts/launch-test-repo.sh "$@"
-}
-
 integrationTestsRequirements() {
   # Required for ~/.ivy2/local repo tests
   sbt scala211 coreJVM/publishLocal scala212 cli/publishLocal
-
-  # Required for HTTP authentication tests
-  launchTestRepo --port 8080 --list-pages
-
-  # Required for missing directory listing tests (no --list-pages)
-  launchTestRepo --port 8081
 }
 
 isScalaJs() {
@@ -43,10 +33,11 @@ sbtShading() {
 runSbtCoursierTests() {
   addPgpKeys
   if [ "$SCALA_VERSION" = "2.10" ]; then
-    sbt scalaFromEnv "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*"
+    CMDS=("sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*")
   else
-    sbt scalaFromEnv "sbt-coursier/scripted sbt-coursier/simple" # full scripted suite currently taking too long on Travis CI...
+    CMDS=("sbt-coursier/scripted sbt-coursier/simple") # full scripted suite currently taking too long on Travis CI...
   fi
+  ./scripts/with-test-repo.sh sbt scalaFromEnv "${CMD[@]}"
   sbt scalaFromEnv sbt-pgp-coursier/scripted
 }
 
@@ -76,7 +67,7 @@ runJvmTests() {
     IT="jvm/it:test"
   fi
 
-  sbt scalaFromEnv jvm/test $IT
+  ./scripts/with-test-repo.sh sbt scalaFromEnv jvm/test $IT
 }
 
 validateReadme() {
