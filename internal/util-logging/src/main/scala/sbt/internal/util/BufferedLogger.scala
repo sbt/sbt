@@ -43,6 +43,7 @@ class BufferedAppender private[BufferedAppender] (name: String, delegate: Append
     if (recording) {
       buffer += event.toImmutable
     } else delegate.append(event)
+    ()
   }
 
   /** Enables buffering. */
