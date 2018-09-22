@@ -4,15 +4,15 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
-/** Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter) */
+/**
+ * Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter)
+ * @param types Represents the artifact types that we should try to resolve for (as in the allowed values of
+                `artifact[type]` from a dependency `<publications>` section). One can use this to filter
+                source / doc artifacts.
+ * @param inverted Whether to invert the types filter (i.e. allow only types NOT in the set)
+ */
 final class ArtifactTypeFilter private (
-  /**
-   * Represents the artifact types that we should try to resolve for (as in the allowed values of
-   * `artifact[type]` from a dependency `<publications>` section). One can use this to filter
-   * source / doc artifacts.
-   */
   val types: Set[String],
-  /** Whether to invert the types filter (i.e. allow only types NOT in the set) */
   val inverted: Boolean) extends sbt.librarymanagement.ArtifactTypeFilterExtra with Serializable {
   
   

@@ -4,13 +4,15 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
-/** Provides information about resolution of a single configuration. */
+/**
+ * Provides information about resolution of a single configuration.
+ * @param configuration the configuration this report is for.
+ * @param modules a sequence containing one report for each module resolved for this configuration.
+ * @param details a sequence containing one report for each org/name, which may or may not be part of the final resolution.
+ */
 final class ConfigurationReport private (
-  /** the configuration this report is for. */
   val configuration: sbt.librarymanagement.ConfigRef,
-  /** a sequence containing one report for each module resolved for this configuration. */
   val modules: Vector[sbt.librarymanagement.ModuleReport],
-  /** a sequence containing one report for each org/name, which may or may not be part of the final resolution. */
   val details: Vector[sbt.librarymanagement.OrganizationArtifactReport]) extends sbt.librarymanagement.ConfigurationReportExtra with Serializable {
   
   

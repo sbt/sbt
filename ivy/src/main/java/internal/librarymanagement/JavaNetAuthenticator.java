@@ -31,9 +31,9 @@ import okhttp3.Challenge;
 import okhttp3.Credentials;
 
 /**
- * Adapts {@link java.net.Authenticator} to {@link Authenticator}. Configure OkHttp to use {@link
- * java.net.Authenticator} with {@link OkHttpClient.Builder#authenticator} or {@link
- * OkHttpClient.Builder#proxyAuthenticator(Authenticator)}.
+ * Adapts java.net.Authenticator to Authenticator. Configure OkHttp to use 
+ * java.net.Authenticator with OkHttpClient.Builder#authenticator or 
+ * OkHttpClient.Builder#proxyAuthenticator(Authenticator).
  */
 public final class JavaNetAuthenticator implements Authenticator {
   @Override public Request authenticate(Route route, Response response) throws IOException {

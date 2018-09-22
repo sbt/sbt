@@ -25,7 +25,7 @@ class IvyPublisher private[sbt] (val ivySbt: IvySbt) extends PublisherInterface 
 
   private[sbt] def toModule(module: ModuleDescriptor): Module =
     module match {
-      case m: Module => m
+      case m: Module @unchecked => m
     }
 }
 

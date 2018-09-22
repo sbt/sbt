@@ -4,22 +4,20 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
+/**
+ * @param retrieveManaged If set to some RetrieveConfiguration, this enables retrieving dependencies to the specified directory.
+                          Otherwise, dependencies are used directly from the cache.
+ * @param missingOk If set to true, it ignores when artifacts are missing.
+                    This setting could be uses when retrieving source/javadocs jars opportunistically.
+ * @param logging Logging setting used specifially for library management.
+ * @param logicalClock The clock that may be used for caching.
+ * @param metadataDirectory The base directory that may be used to store metadata.
+ */
 final class UpdateConfiguration private (
-  /**
-   * If set to some RetrieveConfiguration, this enables retrieving dependencies to the specified directory.
-   * Otherwise, dependencies are used directly from the cache.
-   */
   val retrieveManaged: Option[sbt.librarymanagement.RetrieveConfiguration],
-  /**
-   * If set to true, it ignores when artifacts are missing.
-   * This setting could be uses when retrieving source/javadocs jars opportunistically.
-   */
   val missingOk: Boolean,
-  /** Logging setting used specifially for library management. */
   val logging: sbt.librarymanagement.UpdateLogging,
-  /** The clock that may be used for caching. */
   val logicalClock: sbt.librarymanagement.LogicalClock,
-  /** The base directory that may be used to store metadata. */
   val metadataDirectory: Option[java.io.File],
   val artifactFilter: Option[sbt.librarymanagement.ArtifactTypeFilter],
   val offline: Boolean,
