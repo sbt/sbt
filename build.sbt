@@ -101,9 +101,12 @@ lazy val utilLogging = (project in internalPath / "util-logging")
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
     libraryDependencies ++=
-      Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value,
-        compilerPlugin(silencerPlugin), silencerLib),
+      Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value),
     libraryDependencies ++= Seq(scalaCheck, scalaTest),
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
     Compile / scalacOptions ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
