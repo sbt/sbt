@@ -95,10 +95,6 @@ checkBinaryCompatibility() {
   sbt scalaFromEnv coreJVM/mimaReportBinaryIssues cacheJVM/mimaReportBinaryIssues
 }
 
-publish() {
-  sbt scalaFromEnv publish
-}
-
 testBootstrap() {
   if [ "$SCALA_VERSION" = 2.12 ]; then
     sbt scalaFromEnv "project cli" pack
@@ -218,20 +214,6 @@ else
 
     validateReadme
     checkBinaryCompatibility
-  fi
-fi
-
-
-PULL_REQUEST="${PULL_REQUEST:-${TRAVIS_PULL_REQUEST:-false}}"
-BRANCH="${BRANCH:-${TRAVIS_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}}"
-PUBLISH="${PUBLISH:-0}"
-
-if [ "$PUBLISH" = 1 -a "$PULL_REQUEST" = false -a "$BRANCH" = master ]; then
-  publish
-
-  if [ "$SCALA_VERSION" = "2.11" ] && isScalaJs; then
-    #"$(dirname "$0")/push-gh-pages.sh" "$SCALA_VERSION"
-    :
   fi
 fi
 
