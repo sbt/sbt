@@ -562,6 +562,15 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
       exclude[DirectMissingMethodProblem]("sbt.Plugins.topologicalSort"),
       exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
+    ),
+    BuildInfoPlugin.buildInfoDefaultSettings,
+    addBuildInfoToConfig(Test),
+    buildInfoObject in Test := "TestBuildInfo",
+    buildInfoKeys in Test := Seq[BuildInfoKey](
+      classDirectory in Compile,
+      classDirectory in Test,
+      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
+      BuildInfoKey.map((dependencyClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
     )
   )
   .configure(
@@ -593,6 +602,8 @@ lazy val sbtProj = (project in file("sbt"))
     buildInfoObject in Test := "TestBuildInfo",
     buildInfoKeys in Test := Seq[BuildInfoKey](
       version,
+      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
+      BuildInfoKey.map((dependencyClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
       // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
       BuildInfoKey.map((fullClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
       classDirectory in Compile,
