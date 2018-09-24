@@ -24,15 +24,8 @@ object Deps {
     sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)
   }
 
-  def scalaAsync = Def.setting {
+  def scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.7"
 
-    val version =
-      if (scalaBinaryVersion.value == "2.10") "0.9.5"
-      else "0.9.7"
-
-    "org.scala-lang.modules" %% "scala-async" % version
-  }
-  
   def jarjar = "io.get-coursier.jarjar" % "jarjar-core" % "1.0.1-coursier-1"
 
   def jarjarTransitiveDeps = Seq(

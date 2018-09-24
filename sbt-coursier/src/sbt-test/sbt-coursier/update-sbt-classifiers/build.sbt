@@ -1,6 +1,4 @@
 
-import Compatibility._
-
 scalaVersion := appConfiguration.value.provider.scalaProvider.version
 
 lazy val updateSbtClassifiersCheck = TaskKey[Unit]("updateSbtClassifiersCheck")

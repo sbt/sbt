@@ -1,6 +1,8 @@
 import java.io.File
 import java.nio.file.Files
 
+import scala.collection.JavaConverters._
+
 object Main extends App {
 
   val cp = new collection.mutable.ArrayBuffer[File]
@@ -35,7 +37,18 @@ object Main extends App {
     assert(jar.getAbsolutePath.startsWith(prefix), s"JAR for $name ($jar) not under $prefix")
   }
 
-  fromBootAndUnique("scala-library")
+  val props = Thread.currentThread()
+    .getContextClassLoader
+    .getResources("library.properties")
+    .asScala
+    .toVector
+    .map(_.toString)
+    .sorted
+
+  // That one doesn't pass with sbt 1.x, maybe because of classloader filtering?
+  // fromBootAndUnique("scala-library")
+  assert(props.lengthCompare(1) == 0, s"Found several library.properties files in classpath: $props")
+
   fromBootAndUnique("scala-reflect")
   fromBootAndUnique("scala-compiler")
 

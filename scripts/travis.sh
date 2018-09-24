@@ -32,20 +32,12 @@ sbtShading() {
 
 runSbtCoursierTests() {
   addPgpKeys
-  if [ "$SCALA_VERSION" = "2.10" ]; then
-    CMDS=("sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*")
-  else
-    CMDS=("sbt-coursier/scripted sbt-coursier/simple") # full scripted suite currently taking too long on Travis CI...
-  fi
-  ./scripts/with-test-repo.sh sbt scalaFromEnv "${CMD[@]}"
+  ./scripts/with-test-repo.sh sbt scalaFromEnv sbt-coursier/scripted
   sbt scalaFromEnv sbt-pgp-coursier/scripted
 }
 
 runSbtShadingTests() {
-  sbt scalaFromEnv "sbt-shading/scripted sbt-shading/*"
-  if [ "$SCALA_VERSION" = "2.10" ]; then
-    sbt scalaFromEnv "sbt-shading/scripted sbt-shading-0.13/*"
-  fi
+  sbt scalaFromEnv sbt-shading/scripted
 }
 
 jsCompile() {
@@ -200,11 +192,11 @@ else
   jvmCompile
 
   if sbtCoursier; then
-    if [ "$SCALA_VERSION" = "2.10" -o "$SCALA_VERSION" = "2.12" ]; then
+    if [ "$SCALA_VERSION" = "2.12" ]; then
       runSbtCoursierTests
     fi
   elif sbtShading; then
-    if [ "$SCALA_VERSION" = "2.10" -o "$SCALA_VERSION" = "2.12" ]; then
+    if [ "$SCALA_VERSION" = "2.12" ]; then
       runSbtShadingTests
     fi
   else

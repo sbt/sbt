@@ -5,8 +5,6 @@ import sbt.librarymanagement._
 import sbt.{ Configuration, Resolver, _ }
 import sbt.Keys._
 
-import SbtCompatibility._
-
 object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
@@ -316,5 +314,20 @@ object CoursierPlugin extends AutoPlugin {
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++
     inConfig(Compile)(treeSettings) ++
     inConfig(Test)(treeSettings)
+
+
+  private lazy val needsIvyXmlLocal = Seq(publishLocalConfiguration) ++ getPubConf("makeIvyXmlLocalConfiguration")
+  private lazy val needsIvyXml = Seq(publishConfiguration) ++ getPubConf("makeIvyXmlConfiguration")
+
+  private[this] def getPubConf(method: String): List[TaskKey[PublishConfiguration]] =
+    try {
+      val cls = Keys.getClass
+      val m = cls.getMethod(method)
+      val task = m.invoke(Keys).asInstanceOf[TaskKey[PublishConfiguration]]
+      List(task)
+    } catch {
+      case _: Throwable => // FIXME Too wide
+        Nil
+    }
 
 }

@@ -1,6 +1,4 @@
 
-import Compatibility._
-
 lazy val noJbossInterceptorCheck = TaskKey[Unit]("noJbossInterceptorCheck")
 
 noJbossInterceptorCheck := {
