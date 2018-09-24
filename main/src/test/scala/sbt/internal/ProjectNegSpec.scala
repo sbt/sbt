@@ -7,10 +7,10 @@
 
 package sbt.internal
 
+import java.lang.reflect.InvocationTargetException
+
 import org.scalatest.FunSuite
 import sbt.internal.TestUtil._
-
-import scala.tools.reflect.ToolBoxError
 
 class ProjectNegSpec extends FunSuite {
   def expectError(
@@ -18,10 +18,10 @@ class ProjectNegSpec extends FunSuite {
       compileOptions: String = "",
       baseCompileOptions: String = s"-cp $toolboxClasspath",
   )(code: String) = {
-    val errorMessage = intercept[ToolBoxError] {
+    val errorMessage = intercept[InvocationTargetException] {
       eval(code, s"$compileOptions $baseCompileOptions")
       println(s"Test failed -- compilation was successful! Expected:\n$errorSnippet")
-    }.getMessage
+    }.getTargetException.getMessage
     val userMessage =
       s"""
          |FOUND: $errorMessage
@@ -34,12 +34,10 @@ class ProjectNegSpec extends FunSuite {
     expectError("Project root cannot depend on itself") {
       """
         |import sbt._
-        |import Process._
-        |import Keys._
         |import Project._
         |
         |val root = project in new java.io.File(".")
-        |dependsOn(root)
+        |root.dependsOn(root)
       """.stripMargin
     }
   }

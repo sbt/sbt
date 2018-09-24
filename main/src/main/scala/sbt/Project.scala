@@ -246,8 +246,12 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
   def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
 
   /** Adds classpath dependencies on internal or external projects. */
-  def dependsOn(deps: ClasspathDep[ProjectReference]*): Project =
+  def dependsOn(deps: ClasspathDep[ProjectReference]*): Project = {
+    if (deps.exists(_.project == Project.projectToRef(this))) {
+      throw new ProjectSelfReferencingException(this.id)
+    }
     copy(dependencies = dependencies ++ deps)
+  }
 
   /**
    * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
@@ -277,6 +281,13 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
 
   /** Definitively set the [[ProjectOrigin]] for this project. */
   private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = copy2(projectOrigin = origin)
+}
+
+private final class ProjectSelfReferencingException(projectId: String)
+    extends Exception(s"Project ${projectId} cannot depend on itself") {
+  setStackTrace(Array.empty)
+
+  override def toString: String = getLocalizedMessage
 }
 
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
