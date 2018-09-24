@@ -6,8 +6,8 @@
          |Specify this property using the scriptedLaunchOpts -D.""".stripMargin
     )
   )
-
-  addSbtPlugin("io.get-coursier" % "sbt-coursier" % pluginVersion)
+  
+  addSbtPlugin("io.get-coursier" % "sbt-shading" % pluginVersion)
 }
 
-addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "0.3")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.25")

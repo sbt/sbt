@@ -9,7 +9,7 @@ lazy val root = crossProject
     libraryDependencies += "io.argonaut" %% "argonaut" % "6.2-RC2" % "shaded"
   )
   .settings(
-    scalaVersion := "2.11.8",
+    scalaVersion := "2.11.12",
     organization := "io.get-coursier.test",
     name := "shading-cross-test",
     version := "0.1.0-SNAPSHOT",

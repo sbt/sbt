@@ -4,3 +4,6 @@ scalaVersion := "2.12.3"
 credentials.in(GlobalScope) := Seq(Credentials("", "pgp", "", "test password"))
 pgpSecretRing := baseDirectory.value / "secring.pgp"
 pgpPublicRing := baseDirectory.value / "pubring.pgp"
+
+// Workaround for https://github.com/sbt/sbt-pgp/issues/148
+publishTo := Some("dummy" at java.nio.file.Paths.get("").toAbsolutePath.toUri.toASCIIString)

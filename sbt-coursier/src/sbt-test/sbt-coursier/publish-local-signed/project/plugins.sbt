@@ -6,8 +6,8 @@
          |Specify this property using the scriptedLaunchOpts -D.""".stripMargin
     )
   )
-  
-  addSbtPlugin("io.get-coursier" % "sbt-shading" % pluginVersion)
+
+  addSbtPlugin("io.get-coursier" % "sbt-coursier" % pluginVersion)
 }
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.13")
+addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.2-1")
