@@ -16,6 +16,8 @@ import java.io.File
 import sbt.io.syntax._
 import sbt.io.IO
 import sbt.RunFromSourceMain
+import scala.concurrent.ExecutionContext
+import java.util.concurrent.ForkJoinPool
 
 class ServerSpec extends AsyncFreeSpec with Matchers {
   "server" - {
@@ -36,10 +38,22 @@ class ServerSpec extends AsyncFreeSpec with Matchers {
         s contains """"id":3"""
       })
     }
+
+    "report task failures in case of exceptions" in withTestServer("events") { p =>
+      p.writeLine(
+        """{ "jsonrpc": "2.0", "id": 11, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
+      )
+      assert(p.waitForString(10) { s =>
+        (s contains """"id":11""") && (s contains """"error":""")
+      })
+    }
   }
 }
 
 object TestServer {
+  // The test server instance will be executed in a Thread pool separated from the tests
+  implicit val ec = ExecutionContext.fromExecutor(new ForkJoinPool())
+
   private val serverTestBase: File = new File(".").getAbsoluteFile / "sbt" / "src" / "server-test"
 
   def withTestServer(testBuild: String)(f: TestServer => Future[Assertion]): Future[Assertion] = {
@@ -54,7 +68,7 @@ object TestServer {
     try {
       f(testServer)
     } finally {
-      testServer.bye()
+      try { testServer.bye() } finally {}
     }
   }
 
@@ -63,7 +77,7 @@ object TestServer {
   }
 }
 
-case class TestServer(baseDirectory: File) {
+case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
   import TestServer.hostLog
 
   val readBuffer = new Array[Byte](4096)
@@ -73,11 +87,11 @@ case class TestServer(baseDirectory: File) {
   private val RetByte = '\r'.toByte
 
   hostLog("fork to a new sbt instance")
-  import scala.concurrent.ExecutionContext.Implicits.global
-  Future {
-    RunFromSourceMain.fork(baseDirectory)
-    ()
-  }
+  val process =
+    Future {
+      RunFromSourceMain.fork(baseDirectory)
+    }
+
   lazy val portfile = baseDirectory / "project" / "target" / "active.json"
 
   hostLog("wait 30s until the server is ready to respond")
@@ -114,6 +128,11 @@ case class TestServer(baseDirectory: File) {
     sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }"""
     )
+    for {
+      p <- process
+    } {
+      p.destroy()
+    }
   }
 
   def sendJsonRpc(message: String): Unit = {

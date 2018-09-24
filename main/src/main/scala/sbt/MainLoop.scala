@@ -148,21 +148,36 @@ object MainLoop {
     val channelName = exec.source map (_.channelName)
     StandardMain.exchange publishEventMessage
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
-    val newState = Command.process(exec.commandLine, state)
-    val doneEvent = ExecStatusEvent(
-      "Done",
-      channelName,
-      exec.execId,
-      newState.remainingCommands.toVector map (_.commandLine),
-      exitCode(newState, state),
-    )
-    if (doneEvent.execId.isDefined) { // send back a response or error
-      import sbt.protocol.codec.JsonProtocol._
-      StandardMain.exchange publishEvent doneEvent
-    } else { // send back a notification
-      StandardMain.exchange publishEventMessage doneEvent
+
+    try {
+      val newState = Command.process(exec.commandLine, state)
+      val doneEvent = ExecStatusEvent(
+        "Done",
+        channelName,
+        exec.execId,
+        newState.remainingCommands.toVector map (_.commandLine),
+        exitCode(newState, state),
+      )
+      if (doneEvent.execId.isDefined) { // send back a response or error
+        import sbt.protocol.codec.JsonProtocol._
+        StandardMain.exchange publishEvent doneEvent
+      } else { // send back a notification
+        StandardMain.exchange publishEventMessage doneEvent
+      }
+      newState
+    } catch {
+      case err: Throwable =>
+        val errorEvent = ExecStatusEvent(
+          "Error",
+          channelName,
+          exec.execId,
+          Vector(),
+          ExitCode(ErrorCodes.UnknownError),
+        )
+        import sbt.protocol.codec.JsonProtocol._
+        StandardMain.exchange publishEvent errorEvent
+        throw err
     }
-    newState
   }
 
   def logFullException(e: Throwable, log: Logger): Unit = State.logFullException(e, log)
