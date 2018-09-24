@@ -228,10 +228,5 @@ PUBLISH="${PUBLISH:-0}"
 
 if [ "$PUBLISH" = 1 -a "$PULL_REQUEST" = false -a "$BRANCH" = master ]; then
   publish
-
-  if [ "$SCALA_VERSION" = "2.11" ] && isScalaJs; then
-    #"$(dirname "$0")/push-gh-pages.sh" "$SCALA_VERSION"
-    :
-  fi
 fi
 
