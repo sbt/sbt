@@ -72,29 +72,16 @@ object BuildUtil {
     BuildDependencies(cp.toMap, agg.toMap)
   }
 
-  private final class ProjectSelfReferencingException(projectId: String)
-      extends Exception(s"Project ${projectId} cannot depend on itself") {
-    setStackTrace(Array.empty)
-
-    override def toString: String = getLocalizedMessage
-  }
-
   def checkCycles(units: Map[URI, LoadedBuildUnit]): Unit = {
     def getRef(pref: ProjectRef) = units(pref.build).defined(pref.project)
     def deps(
         proj: ResolvedProject
     )(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject] =
       Dag.topologicalSort(proj)(p => base(p) map getRef)
-    try {
-      // check for cycles
-      for ((_, lbu) <- units; proj <- lbu.defined.values) {
-        deps(proj)(_.dependencies.map(_.project))
-        deps(proj)(_.aggregate)
-      }
-    } catch {
-      case c: Dag.Cyclic if c.value.isInstanceOf[ProjectDefinition[_]] =>
-        val project = c.value.asInstanceOf[ProjectDefinition[_]]
-        throw new ProjectSelfReferencingException(project.id)
+    // check for cycles
+    for ((_, lbu) <- units; proj <- lbu.defined.values) {
+      deps(proj)(_.dependencies.map(_.project))
+      deps(proj)(_.aggregate)
     }
   }
 
