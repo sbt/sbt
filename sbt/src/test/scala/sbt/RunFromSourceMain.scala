@@ -7,23 +7,23 @@
 
 package sbt
 
-import scala.util.Try
 import sbt.util.LogExchange
 import scala.annotation.tailrec
 import buildinfo.TestBuildInfo
 import xsbti._
+import scala.sys.process.Process
 
 object RunFromSourceMain {
   private val sbtVersion = "1.1.4" // TestBuildInfo.version
   private val scalaVersion = "2.12.6"
 
-  def fork(workingDirectory: File): Try[Unit] = {
+  def fork(workingDirectory: File): Process = {
     val fo = ForkOptions()
       .withOutputStrategy(OutputStrategy.StdoutOutput)
     fork(fo, workingDirectory)
   }
 
-  def fork(fo0: ForkOptions, workingDirectory: File): Try[Unit] = {
+  def fork(fo0: ForkOptions, workingDirectory: File): Process = {
     val fo = fo0
       .withWorkingDirectory(workingDirectory)
     implicit val runner = new ForkRun(fo)
@@ -32,7 +32,7 @@ object RunFromSourceMain {
     }
     val options = Vector(workingDirectory.toString)
     val log = LogExchange.logger("RunFromSourceMain.fork", None, None)
-    Run.run("sbt.RunFromSourceMain", cp, options, log)
+    runner.fork("sbt.RunFromSourceMain", cp, options, log)
   }
 
   def main(args: Array[String]): Unit = args match {
