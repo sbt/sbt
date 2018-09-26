@@ -14,6 +14,7 @@ import sbt.librarymanagement.{ Resolver, UpdateReport }
 
 import scala.concurrent.duration.Duration
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 import Def.{ dummyState, ScopedKey, Setting }
 import Keys.{
   Streams,
@@ -377,6 +378,8 @@ object EvaluateTask {
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
     )
 
+  val currentlyRunningEngine: AtomicReference[(State, RunningTaskEngine)] = new AtomicReference()
+
   def runTask[T](
       root: Task[T],
       state: State,
@@ -432,11 +435,15 @@ object EvaluateTask {
         shutdown()
       }
     }
+    currentlyRunningEngine.set((state, runningEngine))
     // Register with our cancel handler we're about to start.
     val strat = config.cancelStrategy
     val cancelState = strat.onTaskEngineStart(runningEngine)
     try run()
-    finally strat.onTaskEngineFinish(cancelState)
+    finally {
+      strat.onTaskEngineFinish(cancelState)
+      currentlyRunningEngine.set(null)
+    }
   }
 
   private[this] def storeValuesForPrevious(

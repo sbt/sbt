@@ -47,6 +47,51 @@ class ServerSpec extends AsyncFreeSpec with Matchers {
         (s contains """"id":11""") && (s contains """"error":""")
       })
     }
+
+    "return error if cancelling non-matched task id" in withTestServer("events") { p =>
+      p.writeLine(
+        """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
+      )
+      p.writeLine(
+        """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "55" } }"""
+      )
+
+      assert(p.waitForString(20) { s =>
+        (s contains """"error":{"code":-32800""")
+      })
+    }
+
+    "cancel on-going task with numeric id" in withTestServer("events") { p =>
+      p.writeLine(
+        """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
+      )
+
+      Thread.sleep(1000)
+
+      p.writeLine(
+        """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "12" } }"""
+      )
+
+      assert(p.waitForString(30) { s =>
+        s contains """"result":{"status":"Task cancelled""""
+      })
+    }
+
+    "cancel on-going task with string id" in withTestServer("events") { p =>
+      p.writeLine(
+        """{ "jsonrpc": "2.0", "id": "foo", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
+      )
+
+      Thread.sleep(1000)
+
+      p.writeLine(
+        """{ "jsonrpc": "2.0", "id": "bar", "method": "sbt/cancelRequest", "params": { "id": "foo" } }"""
+      )
+
+      assert(p.waitForString(30) { s =>
+        s contains """"result":{"status":"Task cancelled""""
+      })
+    }
   }
 }
 
