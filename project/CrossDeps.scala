@@ -15,6 +15,6 @@ object CrossDeps {
   def scalazCore = setting("org.scalaz" %%% "scalaz-core" % SharedVersions.scalaz)
   def scalaJsDom = setting("org.scala-js" %%% "scalajs-dom" % "0.9.6")
   def utest = setting("com.lihaoyi" %%% "utest" % "0.6.4")
-  def scalaJsJquery = setting("be.doeraene" %%% "scalajs-jquery" % "0.9.3")
-  def scalaJsReact = setting("com.github.japgolly.scalajs-react" %%% "core" % "0.9.0")
+  def scalaJsJquery = setting("be.doeraene" %%% "scalajs-jquery" % "0.9.4")
+  def scalaJsReact = setting("com.github.japgolly.scalajs-react" %%% "core" % "1.3.1")
 }

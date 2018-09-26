@@ -153,6 +153,20 @@ To build a distributable binary
 java -jar dist/coursier-cli.jar fetch --help
 ```
 
+## Build the web demo
+
+coursier is cross-compiled to scala-js, and can run in the browser. It has a [demo web site](https://coursier.github.io/coursier/#demo), that runs resolutions straight from your web browser.
+
+Its sources are in the `web` module.
+
+To build and test this demo site locally, you can do
+```
+$ sbt web/fastOptJS
+$ open web/target/scala-2.12/classes/index.html
+```
+(on Linux, use `xdg-open` instead of `open`)
+
+
 # Merging PRs on GitHub
 
 Use either "Create merge commit" or "Squash and merge".

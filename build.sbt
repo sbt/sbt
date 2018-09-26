@@ -196,7 +196,7 @@ lazy val web = project
     shared,
     dontPublish,
     libs ++= {
-      if (scalaBinaryVersion.value == "2.11")
+      if (scalaBinaryVersion.value == "2.12")
         Seq(
           CrossDeps.scalaJsJquery.value,
           CrossDeps.scalaJsReact.value
@@ -207,7 +207,7 @@ lazy val web = project
     sourceDirectory := {
       val dir = sourceDirectory.value
 
-      if (scalaBinaryVersion.value == "2.11")
+      if (scalaBinaryVersion.value == "2.12")
         dir
       else
         dir / "target" / "dummy"
@@ -222,7 +222,20 @@ lazy val web = project
       WebDeps.react
         .intransitive()
         ./("react-with-addons.js")
+        .minified("react-with-addons.min.js")
         .commonJSName("React"),
+      WebDeps.react
+        .intransitive()
+        ./("react-dom.js")
+        .minified("react-dom.min.js")
+        .dependsOn("react-with-addons.js")
+        .commonJSName("ReactDOM"),
+      WebDeps.react
+        .intransitive()
+        ./("react-dom-server.js")
+        .minified("react-dom-server.min.js")
+        .dependsOn("react-dom.js")
+        .commonJSName("ReactDOMServer"),
       WebDeps.bootstrapTreeView
         .intransitive()
         ./("bootstrap-treeview.min.js")

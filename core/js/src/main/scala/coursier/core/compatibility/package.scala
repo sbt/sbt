@@ -98,18 +98,30 @@ package object compatibility {
   // FIXME Won't work in the browser
   lazy val cheerio = g.require("cheerio")
 
-  def listWebPageRawElements(page: String): Seq[String] = {
+  lazy val jqueryAvailable = !js.isUndefined(g.$)
 
-    val jquery = cheerio.load(page)
+  def listWebPageRawElements(page: String): Seq[String] = {
 
     val links = new ListBuffer[String]
 
-    jquery("a").each({ self: js.Dynamic =>
-      val href = jquery(self).attr("href")
-      if (!js.isUndefined(href))
-        links += href.asInstanceOf[String]
-      ()
-    }: js.ThisFunction0[js.Dynamic, Unit])
+    // getting weird "maybe a wrong Dynamic method signature" errors when trying to factor that more
+
+    if (jqueryAvailable)
+        g.$("<div></div>").html(page).find("a").each({ self: js.Dynamic =>
+        val href = g.$(self).attr("href")
+        if (!js.isUndefined(href))
+          links += href.asInstanceOf[String]
+        ()
+      }: js.ThisFunction0[js.Dynamic, Unit])
+    else {
+      val jquery = cheerio.load(page)
+      jquery("a").each({ self: js.Dynamic =>
+        val href = jquery(self).attr("href")
+        if (!js.isUndefined(href))
+          links += href.asInstanceOf[String]
+        ()
+      }: js.ThisFunction0[js.Dynamic, Unit])
+    }
 
     links.result()
   }
