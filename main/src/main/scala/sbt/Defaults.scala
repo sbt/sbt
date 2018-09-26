@@ -250,6 +250,7 @@ object Defaults extends BuildCommon {
         Nil
       },
       watchSources :== Nil,
+      watchProjectSources :== Nil,
       skip :== false,
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
       onComplete := {
@@ -383,6 +384,13 @@ object Defaults extends BuildCommon {
         if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
         else Nil
       bases.map(b => new Source(b, include, exclude)) ++ baseSources
+    },
+    watchProjectSources in ConfigGlobal := (watchProjectSources in ConfigGlobal).value ++ {
+      val baseDir = baseDirectory.value
+      Seq(
+        new Source(baseDir, "*.sbt", HiddenFileFilter, recursive = false),
+        new Source(baseDir / "project", "*.sbt" || "*.scala", HiddenFileFilter, recursive = true)
+      )
     },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
@@ -606,17 +614,22 @@ object Defaults extends BuildCommon {
     clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
+    watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
     watchOnEvent := {
       val sources = watchTransitiveSources.value
+      val projectSources = watchProjectTransitiveSources.value
       e =>
-        if (sources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Trigger else Watched.Ignore
+        if (sources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Trigger
+        else if (projectSources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Reload
+        else Watched.Ignore
     },
     watchHandleInput := Watched.handleInput,
-    watchShouldTerminate := { _ =>
-      false
+    watchPreWatch := { (_, _) =>
+      Watched.Ignore
     },
+    watchOnTermination := Watched.onTermination,
     watchConfig := {
-      val sources = watchTransitiveSources.value
+      val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
       val extracted = Project.extract(state.value)
       val wm = extracted
         .getOpt(watchingMessage)
@@ -634,8 +647,9 @@ object Defaults extends BuildCommon {
         logger,
         viewConfig.newMonitor(viewConfig.newDataView(), sources, logger),
         watchHandleInput.value,
-        watchShouldTerminate.value,
+        watchPreWatch.value,
         watchOnEvent.value,
+        watchOnTermination.value,
         tm,
         wm
       )
@@ -648,10 +662,15 @@ object Defaults extends BuildCommon {
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
     generators { _.join.map(_.flatten) }
 
-  def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] = {
+  def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] =
+    watchTransitiveSourcesTaskImpl(watchSources)
+
+  private def watchTransitiveSourcesTaskImpl(
+      key: TaskKey[Seq[Source]]
+  ): Initialize[Task[Seq[Source]]] = {
     import ScopeFilter.Make.{ inDependencies => inDeps, _ }
     val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
-    val allWatched = (watchSources ?? Nil).all(selectDeps)
+    val allWatched = (key ?? Nil).all(selectDeps)
     Def.task { allWatched.value.flatten }
   }
 
