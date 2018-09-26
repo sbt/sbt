@@ -40,16 +40,17 @@ import sbt.internal.util.Types._
 import sbt.io.syntax._
 import sbt.io.{
   AllPassFilter,
+  DirectoryFilter,
   FileFilter,
   GlobFilter,
+  Hash,
   HiddenFileFilter,
   IO,
   NameFilter,
   NothingFilter,
   Path,
   PathFinder,
-  DirectoryFilter,
-  Hash
+  TypedPath
 }, Path._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
@@ -264,6 +265,11 @@ object Defaults extends BuildCommon {
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
+      watchTriggeredMessage := { (_, _) =>
+        None
+      },
+      watchStartMessage := Watched.defaultStartWatch,
+      fileTreeViewConfig := FileTreeViewConfig.default(pollInterval.value, watchAntiEntropy.value),
       watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchLogger := streams.value.log,
       watchService :== { () =>
@@ -600,8 +606,43 @@ object Defaults extends BuildCommon {
     clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
-    watchingMessage := Watched.projectWatchingMessage(thisProjectRef.value.project),
-    watch := watchSetting.value
+    watchOnEvent := {
+      val sources = watchTransitiveSources.value
+      e =>
+        if (sources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Trigger else Watched.Ignore
+    },
+    watchHandleInput := Watched.handleInput,
+    watchShouldTerminate := { _ =>
+      false
+    },
+    watchConfig := {
+      val sources = watchTransitiveSources.value
+      val extracted = Project.extract(state.value)
+      val wm = extracted
+        .getOpt(watchingMessage)
+        .map(w => (count: Int) => Some(w(WatchState.empty(sources).withCount(count))))
+        .getOrElse(watchStartMessage.value)
+      val tm = extracted
+        .getOpt(triggeredMessage)
+        .map(
+          tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(sources).withCount(count)))
+        )
+        .getOrElse(watchTriggeredMessage.value)
+      val logger = watchLogger.value
+      val viewConfig = fileTreeViewConfig.value
+      WatchConfig.default(
+        logger,
+        viewConfig.newMonitor(viewConfig.newDataView(), sources, logger),
+        watchHandleInput.value,
+        watchShouldTerminate.value,
+        watchOnEvent.value,
+        tm,
+        wm
+      )
+    },
+    watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
+    watch := watchSetting.value,
+    fileTreeViewConfig := FileTreeViewConfig.default(pollInterval.value, watchAntiEntropy.value),
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
@@ -622,6 +663,7 @@ object Defaults extends BuildCommon {
     Def.task { allUpdates.value.flatten ++ globalPluginUpdate.?.value }
   }
 
+  @deprecated("This is no longer used to implement continuous execution", "1.3.0")
   def watchSetting: Initialize[Watched] =
     Def.setting {
       val getService = watchService.value

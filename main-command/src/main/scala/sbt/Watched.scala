@@ -8,21 +8,16 @@
 package sbt
 
 import java.io.File
-import java.nio.file.FileSystems
+import java.nio.file.{ FileSystems, Path }
 
-import sbt.BasicCommandStrings.{
-  ContinuousExecutePrefix,
-  FailureWall,
-  continuousBriefHelp,
-  continuousDetail
-}
+import sbt.BasicCommandStrings.{ ContinuousExecutePrefix, continuousBriefHelp, continuousDetail }
 import sbt.BasicCommands.otherCommandParser
-import sbt.CommandUtil.withAttribute
 import sbt.internal.LegacyWatched
 import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.DefaultParsers
+import sbt.io.FileEventMonitor.Event
 import sbt.io._
 import sbt.util.{ Level, Logger }
 
@@ -30,6 +25,7 @@ import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.util.Properties
 
+@deprecated("Watched is no longer used to implement continuous execution", "1.3.0")
 trait Watched {
 
   /** The files watched when an action is run with a proceeding ~ */
@@ -59,18 +55,64 @@ trait Watched {
 }
 
 object Watched {
-  val defaultWatchingMessage: WatchState => String = ws =>
-    s"${ws.count}. Waiting for source changes... (press enter to interrupt)"
 
+  /**
+   * This trait is used to communicate what the watch should do next at various points in time. It
+   * is heavily linked to a number of callbacks in [[WatchConfig]]. For example, when the
+   * sbt.io.FileEventMonitor created by [[FileTreeViewConfig.newMonitor]] detects a changed source
+   * file, then we expect [[WatchConfig.onWatchEvent]] to return [[Trigger]].
+   */
+  sealed trait Action
+
+  /**
+   * Action that indicates that the watch should stop.
+   */
+  case object CancelWatch extends Action
+
+  /**
+   * Action that indicates that the watch should continue as though nothing happened. This may be
+   * because, for example, no user input was yet available in [[WatchConfig.handleInput]].
+   */
+  case object Ignore extends Action
+
+  /**
+   * Action that indicates that the watch process should re-run the command.
+   */
+  case object Trigger extends Action
+
+  type WatchSource = Source
+  def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
+  /*
+   * Without jline, checking for enter is nearly pointless because System.in.available will not
+   * return a non-zero value until the user presses enter.
+   */
+  @tailrec
+  final def shouldTerminate: Boolean =
+    (System.in.available > 0) && (terminateWatch(System.in.read()) || shouldTerminate)
+  final val handleInput: () => Action = () => if (shouldTerminate) CancelWatch else Ignore
+  val defaultStartWatch: Int => Option[String] = count =>
+    Some(s"$count. Waiting for source changes... (press enter to interrupt)")
+  @deprecated("Use defaultStartWatch in conjunction with the watchStartMessage key", "1.3.0")
+  val defaultWatchingMessage: WatchState => String = ws => defaultStartWatch(ws.count).get
   def projectWatchingMessage(projectId: String): WatchState => String =
-    ws =>
-      s"${ws.count}. Waiting for source changes in project $projectId... (press enter to interrupt)"
+    ws => projectOnWatchMessage(projectId)(ws.count).get
+  def projectOnWatchMessage(project: String): Int => Option[String] =
+    count =>
+      Some(
+        s"$count. Waiting for source changes in project $project... (press enter to interrupt)"
+    )
 
+  val defaultOnTriggerMessage: Int => Option[String] = _ => None
+  @deprecated(
+    "Use defaultOnTriggerMessage in conjunction with the watchTriggeredMessage key",
+    "1.3.0"
+  )
   val defaultTriggeredMessage: WatchState => String = const("")
+  val clearOnTrigger: Int => Option[String] = _ => Some(clearScreen)
+  @deprecated("Use clearOnTrigger in conjunction with the watchTriggeredMessage key", "1.3.0")
   val clearWhenTriggered: WatchState => String = const(clearScreen)
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
 
-  type WatchSource = Source
   object WatchSource {
 
     /**
@@ -94,6 +136,7 @@ object Watched {
 
   }
 
+  @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
   private[this] class AWatched extends Watched
 
   @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
@@ -107,6 +150,7 @@ object Watched {
       override def watchingMessage(s: WatchState): String = base.watchingMessage(s)
       override def triggeredMessage(s: WatchState): String = base.triggeredMessage(s)
     }
+  @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
   def empty: Watched = new AWatched
 
   val PollDelay: FiniteDuration = 500.milliseconds
@@ -114,24 +158,24 @@ object Watched {
   def isEnter(key: Int): Boolean = key == 10 || key == 13
   def printIfDefined(msg: String): Unit = if (!msg.isEmpty) System.out.println(msg)
 
-  type Task = () => State
-  type Setup = (State, Watched, String) => (State, Logger, Task => State)
+  private type RunCommand = () => State
+  private type WatchSetup = (State, String) => (State, WatchConfig, RunCommand => State)
 
   /**
    * Provides the '~' continuous execution command.
    * @param setup a function that provides a logger and a function from (() => State) => State.
    * @return the '~' command.
    */
-  def continuous(setup: Setup): Command =
+  def continuous(setup: WatchSetup): Command =
     Command(ContinuousExecutePrefix, continuousBriefHelp, continuousDetail)(otherCommandParser) {
       (state, command) =>
-        Watched.command(state, command, setup)
+        Watched.executeContinuously(state, command, setup)
     }
 
   /**
    * Implements continuous execution. It works by first parsing the command and generating a task to
    * run with each build. It can run multiple commands that are separated by ";" in the command
-   * input. If any of these commands are invalid, the watch will immmediately exit.
+   * input. If any of these commands are invalid, the watch will immediately exit.
    * @param state the initial state
    * @param command the command(s) to repeatedly apply
    * @param setup function to generate a logger and a transformation of the resultant state. The
@@ -141,93 +185,111 @@ object Watched {
    * @return the initial state if all of the input commands are valid. Otherwise, returns the
    *         initial state with the failure transformation.
    */
-  private[sbt] def command(
+  private[sbt] def executeContinuously(
       state: State,
       command: String,
-      setup: Setup,
-  ): State =
-    withAttribute(state, Watched.Configuration, "Continuous execution not configured.") { w =>
-      val (s0, logger, process) = setup(state, w, command)
-      val s = FailureWall :: s0
-      val parser = Command.combine(s.definedCommands)(s)
-      val commands = command.split(";") match {
-        case Array("", rest @ _*) => rest
-        case Array(cmd)           => Seq(cmd)
-      }
-      val tasks = commands.foldLeft(Nil: Seq[Either[String, () => Either[Exception, Boolean]]]) {
-        case (t, cmd) =>
-          t :+ (DefaultParsers.parse(cmd, parser) match {
-            case Right(task) =>
-              Right { () =>
-                try {
-                  process(task)
-                  Right(true)
-                } catch { case e: Exception => Left(e) }
-              }
-            case Left(_) => Left(cmd)
-          })
-      }
-      val (valid, invalid) = tasks.partition(_.isRight)
-      if (invalid.isEmpty) {
-        val task = () =>
-          valid.foldLeft(Right(true): Either[Exception, Boolean]) {
-            case (status, Right(t)) => if (status.getOrElse(true)) t() else status
-            case _                  => throw new IllegalStateException("Should be unreachable")
-        }
-        @tailrec def shouldTerminate: Boolean =
-          (System.in.available > 0) && (w.terminateWatch(System.in.read()) || shouldTerminate)
-        val watchState = WatchState.empty(w.watchService(), w.watchSources(s))
-        val config = WatchConfig.default(
-          logger,
-          () => shouldTerminate,
-          count => Some(w.triggeredMessage(watchState.withCount(count))).filter(_.nonEmpty),
-          count => Some(w.watchingMessage(watchState.withCount(count))).filter(_.nonEmpty),
-          watchState,
-          w.pollInterval,
-          w.antiEntropy
-        )
-        watch(task, config)
-        state
-      } else {
-        logger.error(
-          s"Terminating watch due to invalid command(s): ${invalid.mkString("'", "', '", "'")}"
-        )
-        state.fail
-      }
+      setup: WatchSetup,
+  ): State = {
+    val (s, config, newState) = setup(state, command)
+    val commands = command.split(";") match {
+      case Array("", rest @ _*) => rest
+      case Array(cmd)           => Seq(cmd)
     }
+    val parser = Command.combine(s.definedCommands)(s)
+    val tasks = commands.foldLeft(Nil: Seq[Either[String, () => Either[Exception, Boolean]]]) {
+      (t, cmd) =>
+        t :+ (DefaultParsers.parse(cmd, parser) match {
+          case Right(task) =>
+            Right { () =>
+              try {
+                newState(task)
+                Right(true)
+              } catch { case e: Exception => Left(e) }
+            }
+          case Left(_) => Left(cmd)
+        })
+    }
+    val (valid, invalid) = tasks.partition(_.isRight)
+    if (invalid.isEmpty) {
+      val task = () =>
+        valid.foldLeft(Right(true): Either[Exception, Boolean]) {
+          case (status, Right(t)) => if (status.getOrElse(true)) t() else status
+          case _                  => throw new IllegalStateException("Should be unreachable")
+      }
+      watch(task, config)
+      state
+    } else {
+      config.logger.error(
+        s"Terminating watch due to invalid command(s): ${invalid.mkString("'", "', '", "'")}"
+      )
+      state.fail
+    }
+  }
 
   private[sbt] def watch(
       task: () => Either[Exception, _],
       config: WatchConfig,
   ): Unit = {
-    val eventLogger = new EventMonitor.Logger {
-      override def debug(msg: => Any): Unit = config.logger.debug(msg.toString)
-    }
-    def debug(msg: String): Unit = if (msg.nonEmpty) config.logger.debug(msg)
-    val monitor = EventMonitor(
-      config.watchState,
-      config.pollInterval,
-      config.antiEntropy,
-      config.shouldTerminate(),
-      eventLogger
-    )
+    val logger = config.logger
+    def info(msg: String): Unit = if (msg.nonEmpty) logger.info(msg)
 
     @tailrec
     def impl(count: Int): Unit = {
+      @tailrec
+      def nextAction(): Action = {
+        config.handleInput() match {
+          case CancelWatch => CancelWatch
+          case Trigger     => Trigger
+          case _ =>
+            val events = config.fileEventMonitor.poll(10.millis)
+            val next = events match {
+              case Seq()                => (Ignore, None)
+              case Seq(head, tail @ _*) =>
+                /*
+                 * We traverse all of the events and find the one for which we give the highest
+                 * weight.
+                 * CancelWatch > Trigger > Ignore
+                 */
+                tail.foldLeft((config.onWatchEvent(head), Some(head))) {
+                  case (r @ (CancelWatch, _), _) => r
+                  // If we've found a trigger, only change the accumulator if we find a CancelWatch.
+                  case ((action, event), e) =>
+                    config.onWatchEvent(e) match {
+                      case Trigger if action == Ignore => (Trigger, Some(e))
+                      case _                           => (action, event)
+                    }
+                }
+            }
+            next match {
+              case (CancelWatch, Some(event)) =>
+                logger.debug(s"Stopping watch due to event from ${event.entry.typedPath.getPath}.")
+                CancelWatch
+              case (Trigger, Some(event)) =>
+                logger.debug(s"Triggered by ${event.entry.typedPath.getPath}")
+                config.triggeredMessage(event.entry.typedPath, count).foreach(info)
+                Trigger
+              case _ =>
+                nextAction()
+            }
+        }
+      }
       task() match {
-        case _: Right[Exception, _] =>
-          config.watchingMessage(count).foreach(debug)
-          if (monitor.awaitEvent()) {
-            config.triggeredMessage(count).foreach(debug)
-            impl(count + 1)
+        case Right(status) if !config.shouldTerminate(count) =>
+          config.watchingMessage(count).foreach(info)
+          nextAction() match {
+            case CancelWatch => ()
+            case _           => impl(count + 1)
           }
-        case Left(e) => config.logger.error(s"Terminating watch due to Unexpected error: $e")
+        case Left(e) =>
+          logger.error(s"Terminating watch due to Unexpected error: $e")
+        case _ =>
+          logger.debug("Terminating watch due to WatchConfig.shouldTerminate")
       }
     }
     try {
       impl(count = 1)
     } finally {
-      monitor.close()
+      config.fileEventMonitor.close()
       while (System.in.available() > 0) System.in.read()
     }
   }
@@ -288,44 +350,48 @@ trait WatchConfig {
   def logger: Logger
 
   /**
-   * Returns true if the continuous execution should stop.
-   * @return true if the contiuous execution should stop.
+   * The sbt.io.FileEventMonitor that is used to monitor the file system.
+   *
+   * @return an sbt.io.FileEventMonitor instance.
    */
-  def shouldTerminate(): Boolean
+  def fileEventMonitor: FileEventMonitor[Path]
 
   /**
-   * The message to print when a build is triggered.
-   * @param count the current continous iteration count
-   * @return an optional string to log
+   * A function that is periodically invoked to determine whether the watch should stop or
+   * trigger. Usually this will read from System.in to react to user input.
+   * @return an [[Watched.Action Action]] that will determine the next step in the watch.
    */
-  def triggeredMessage(count: Int): Option[String]
+  def handleInput(): Watched.Action
 
   /**
-   * The message to print at the beginning of each watch iteration.
-   * @param count the current watch iteration
-   * @return an optional string to log before each watch iteration.
+   * This is run before each watch iteration and if it returns true, the watch is terminated.
+   * @param count The current number of watch iterstaions.
+   * @return true if the watch should stop.
+   */
+  def shouldTerminate(count: Int): Boolean
+
+  /**
+   * Callback that is invoked whenever a file system vent is detected. The next step of the watch
+   * is determined by the [[Watched.Action Action]] returned by the callback.
+   * @param event the detected sbt.io.FileEventMonitor.Event.
+   * @return the next [[Watched.Action Action]] to run.
+   */
+  def onWatchEvent(event: Event[Path]): Watched.Action
+
+  /**
+   * The optional message to log when a build is triggered.
+   * @param typedPath the path that triggered the build
+   * @param count the current iteration
+   * @return an optional log message.
+   */
+  def triggeredMessage(typedPath: TypedPath, count: Int): Option[String]
+
+  /**
+   * The optional message to log before each watch iteration.
+   * @param count the current iteration
+   * @return an optional log message.
    */
   def watchingMessage(count: Int): Option[String]
-
-  /**
-   * The WatchState that provides the WatchService that will be used to monitor events.
-   * @return the WatchState.
-   */
-  def watchState: WatchState
-
-  /**
-   * The maximum duration that the EventMonitor background thread will poll the underlying
-   * [[sbt.io.WatchService]] for events.
-   * @return
-   */
-  def pollInterval: FiniteDuration
-
-  /**
-   * The period for which files that trigger a build are quarantined from triggering a new build
-   * if they are modified.
-   * @return the anti-entropy period.
-   */
-  def antiEntropy: FiniteDuration
 }
 
 /**
@@ -334,45 +400,46 @@ trait WatchConfig {
 object WatchConfig {
 
   /**
-   * Generate an instance of [[WatchConfig]].
-   *
-   * @param logger an [[sbt.util.Logger]] instance
-   * @param shouldStop returns true if the watch should stop
-   * @param triggeredMessage function to generate an optional message to print when a build is
-
-   * @param watchingMessage function to generate an optional message to print before each watch
-   *                        iteration
-   * @param watchState the [[WatchState]] which provides an [[sbt.io.WatchService]] to monitor
-   *                   file system vents
-   * @param pollInterval the maximum polling time of the [[sbt.io.WatchService]]
-   * @param antiEntropy the period for which a file that triggered a build is quarantined so that
-   *                    any events detected during this period do not trigger a build.
-   * @return an instance of [[WatchConfig]].
+   * Create an instance of [[WatchConfig]].
+   * @param logger logger for watch events
+   * @param fileEventMonitor the monitor for file system events.
+   * @param handleInput callback that is periodically invoked to check whether to continue or
+   *                    terminate the watch based on user input. It is also possible to, for
+   *                    example time out the watch using this callback.
+   * @param onWatchEvent callback that is invoked when
+   * @param triggeredMessage optional message that will be logged when a new build is triggered.
+   *                         The input parameters are the sbt.io.TypedPath that triggered the new
+   *                         build and the current iteration count.
+   * @param watchingMessage optional message that is printed before each watch iteration begins.
+   *                        The input parameter is the current iteration count.
+   * @return a [[WatchConfig]] instance.
    */
   def default(
       logger: Logger,
-      shouldStop: () => Boolean,
-      triggeredMessage: Int => Option[String],
-      watchingMessage: Int => Option[String],
-      watchState: WatchState,
-      pollInterval: FiniteDuration,
-      antiEntropy: FiniteDuration,
+      fileEventMonitor: FileEventMonitor[Path],
+      handleInput: () => Watched.Action,
+      shouldTerminate: Int => Boolean,
+      onWatchEvent: Event[Path] => Watched.Action,
+      triggeredMessage: (TypedPath, Int) => Option[String],
+      watchingMessage: Int => Option[String]
   ): WatchConfig = {
     val l = logger
-    val ss = shouldStop
+    val fem = fileEventMonitor
+    val hi = handleInput
+    val st = shouldTerminate
+    val owe = onWatchEvent
     val tm = triggeredMessage
     val wm = watchingMessage
-    val ws = watchState
-    val pi = pollInterval
-    val ae = antiEntropy
     new WatchConfig {
       override def logger: Logger = l
-      override def shouldTerminate(): Boolean = ss()
-      override def triggeredMessage(count: Int): Option[String] = tm(count)
+      override def fileEventMonitor: FileEventMonitor[Path] = fem
+      override def handleInput(): Watched.Action = hi()
+      override def shouldTerminate(count: Int): Boolean =
+        st(count)
+      override def onWatchEvent(event: Event[Path]): Watched.Action = owe(event)
+      override def triggeredMessage(typedPath: TypedPath, count: Int): Option[String] =
+        tm(typedPath, count)
       override def watchingMessage(count: Int): Option[String] = wm(count)
-      override def watchState: WatchState = ws
-      override def pollInterval: FiniteDuration = pi
-      override def antiEntropy: FiniteDuration = ae
     }
   }
 }

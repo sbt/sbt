@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.File
+import java.nio.file.{ Path => JPath }
 import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
@@ -40,7 +41,8 @@ import sbt.internal.{
   SessionSettings,
   LogManager
 }
-import sbt.io.{ FileFilter, WatchService }
+import sbt.io.{ FileFilter, TypedPath, WatchService }
+import sbt.io.FileEventMonitor.Event
 import sbt.internal.io.WatchState
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, SourcePosition }
@@ -141,16 +143,26 @@ object Keys {
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
 
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
+  @deprecated("This is no longer used for continuous execution", "1.3.0")
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val watchAntiEntropy = settingKey[FiniteDuration]("Duration for which the watch EventMonitor will ignore events for a file after that file has triggered a build.").withRank(BMinusSetting)
+  val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
   val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
+  val watchHandleInput = settingKey[() => Watched.Action]("Function that is periodically invoked to determine if the continous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands.").withRank(BMinusSetting)
+  val watchOnEvent = taskKey[Event[JPath] => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
+  val watchShouldTerminate = settingKey[Int => Boolean]("Function that may terminate a continuous build based on the number of iterations.").withRank(BMinusSetting)
   val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
+  val watchStartMessage = settingKey[Int => Option[String]]("The message to show when triggered execution waits for sources to change. The parameter is the current watch iteration count.").withRank(DSetting)
   val watchTransitiveSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
+  val watchTriggeredMessage = settingKey[(TypedPath, Int) => Option[String]]("The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count.").withRank(DSetting)
+  @deprecated("Use watchStartMessage instead", "1.3.0")
   val watchingMessage = settingKey[WatchState => String]("The message to show when triggered execution waits for sources to change.").withRank(DSetting)
+  @deprecated("Use watchTriggeredMessage instead", "1.3.0")
   val triggeredMessage = settingKey[WatchState => String]("The message to show before triggered execution executes an action after sources change.").withRank(DSetting)
+  val fileTreeViewConfig = taskKey[FileTreeViewConfig]("Configures how sbt will traverse and monitor the file system.").withRank(BMinusSetting)
 
   // Path Keys
   val baseDirectory = settingKey[File]("The base directory.  Depending on the scope, this is the base directory for the build, project, configuration, or task.").withRank(AMinusSetting)

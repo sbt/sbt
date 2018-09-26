@@ -1,0 +1,4 @@
+# verify that the watch terminates when we reach the specified count
+> set watchShouldTerminate := { count => count == 2 }
+> ~compile
+> checkCount 2

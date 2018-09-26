@@ -447,12 +447,12 @@ object BuiltinCommands {
       s
   }
 
-  def continuous: Command = Watched.continuous { (state: State, _: Watched, command: String) =>
+  def continuous: Command = Watched.continuous { (state: State, command: String) =>
     val extracted = Project.extract(state)
-    val (s, logger) = extracted.runTask(Keys.watchLogger, state)
-    val process: (() => State) => State =
-      (f: () => State) => MainLoop.processCommand(Exec(command, None), s, f)
-    (s, logger, process)
+    val (s, watchConfig) = extracted.runTask(Keys.watchConfig, state)
+    val updateState =
+      (runCommand: () => State) => MainLoop.processCommand(Exec(command, None), s, runCommand)
+    (s, watchConfig, updateState)
   }
 
   private[this] def loadedEval(s: State, arg: String): Unit = {
