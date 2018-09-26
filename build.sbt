@@ -190,7 +190,7 @@ lazy val cli = project
   )
 
 lazy val web = project
-  .enablePlugins(ScalaJSPlugin)
+  .enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
   .dependsOn(coreJs, cacheJs)
   .settings(
     shared,
@@ -214,36 +214,16 @@ lazy val web = project
     },
     noTests,
     webjarBintrayRepository,
-    jsDependencies ++= Seq(
-      WebDeps.bootstrap
-        .intransitive()
-        ./("bootstrap.min.js")
-        .commonJSName("Bootstrap"),
-      WebDeps.react
-        .intransitive()
-        ./("react-with-addons.js")
-        .minified("react-with-addons.min.js")
-        .commonJSName("React"),
-      WebDeps.react
-        .intransitive()
-        ./("react-dom.js")
-        .minified("react-dom.min.js")
-        .dependsOn("react-with-addons.js")
-        .commonJSName("ReactDOM"),
-      WebDeps.react
-        .intransitive()
-        ./("react-dom-server.js")
-        .minified("react-dom-server.min.js")
-        .dependsOn("react-dom.js")
-        .commonJSName("ReactDOMServer"),
-      WebDeps.bootstrapTreeView
-        .intransitive()
-        ./("bootstrap-treeview.min.js")
-        .commonJSName("Treeview"),
-      WebDeps.raphael
-        .intransitive()
-        ./("raphael-min.js")
-        .commonJSName("Raphael")
+    scalaJSUseMainModuleInitializer := true,
+    webpackConfigFile := Some(resourceDirectory.in(Compile).value / "webpack.config.js"),
+    npmDependencies.in(Compile) ++= Seq(
+      "bootstrap" -> "3.3.4",
+      "bootstrap-treeview" -> "1.2.0",
+      "graphdracula" -> "1.2.1",
+      "webpack-raphael" -> "2.1.4",
+      "react" -> "15.6.1",
+      "react-dom" -> "15.6.1",
+      "requirejs" -> "2.3.6"
     )
   )
 

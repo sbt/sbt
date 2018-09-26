@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- FIXME Get from WebJars -->
+    <!-- TODO Get from NPM packages -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
   <link rel="stylesheet" href="css/bootstrap-treeview.css">
 
@@ -85,6 +85,7 @@
 </div>
 
 <script>
+
     // From scalajs-react examples
 
     function jsonp(url, callback) {
@@ -103,11 +104,7 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 
 <!-- Paths changed by push-gh-pages.sh before pushing to gh-pages -->
-<script src="../web-jsdeps.js"></script>
-<script src="../web-fastopt.js"></script>
-
-<script src="https://cdn.rawgit.com/strathausen/dracula/26010eb3b0df037cf507886897e20c02c4ec041b/lib/dracula_graph.js"></script>
-<script src="https://cdn.rawgit.com/strathausen/dracula/26010eb3b0df037cf507886897e20c02c4ec041b/lib/dracula_graffle.js"></script>
+<script src="../scalajs-bundler/main/web-fastopt-bundle.js"></script>
 
 <script>
 // From http://www.bootply.com/VQqzOawoYc
@@ -123,10 +120,6 @@ console.log('match');
 $('.nav-tabs a').on('shown.bs.tab', function (e) {
     window.location.hash = e.target.hash;
 });
-</script>
-
-<script>
-  CoursierWeb.main();
 </script>
 
 </body>

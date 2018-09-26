@@ -39,7 +39,7 @@ final class Backend($: BackendScope[_, State]) {
   def updateDepGraph(resolution: Resolution) = {
     println("Rendering canvas")
 
-    val graph = js.Dynamic.newInstance(g.Graph)()
+    val graph = js.Dynamic.newInstance(Dracula.Graph)()
 
     var nodes = Set.empty[String]
     def addNode(name: String) =
@@ -68,7 +68,7 @@ final class Backend($: BackendScope[_, State]) {
       graph.addEdge(from, to)
     }
 
-    val layouter = js.Dynamic.newInstance(g.Graph.Layout.Spring)(graph)
+    val layouter = js.Dynamic.newInstance(Dracula.Layout.Spring)(graph)
     layouter.layout()
 
     val width = jQuery("#dependencies")
@@ -83,8 +83,8 @@ final class Backend($: BackendScope[_, State]) {
     jQuery("#depgraphcanvas")
       .html("") // empty()
 
-    val renderer = js.Dynamic.newInstance(g.Graph.Renderer.Raphael)(
-      "depgraphcanvas", graph, width, height
+    val renderer = js.Dynamic.newInstance(Dracula.Renderer.Raphael)(
+      "#depgraphcanvas", graph, width, height
     )
     renderer.draw()
     println("Rendered canvas")
@@ -134,7 +134,7 @@ final class Backend($: BackendScope[_, State]) {
         .map(tree)
         .map(js.JSON.stringify(_))
     )
-    g.$(target)
+    jQuery(target).asInstanceOf[js.Dynamic]
       .treeview(js.Dictionary("data" -> js.Array(minDependencies.toList.map(tree): _*)))
   }
 

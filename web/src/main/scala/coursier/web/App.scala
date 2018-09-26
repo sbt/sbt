@@ -375,9 +375,9 @@ object App {
 
   val initialState = State(
     List(
-      Dependency(Module("org.apache.spark", "spark-sql_2.11"), "2.2.1") // DEBUG
+      Dependency(Module("io.get-coursier", "coursier-cache_2.12"), "1.1.0-M7") // DEBUG
     ),
-    Seq("central" -> MavenRepository("https://repo1.maven.org/maven2/")),
+    Seq("central" -> MavenRepository("https://repo1.maven.org/maven2")),
     ResolutionOptions(),
     None,
     -1,
