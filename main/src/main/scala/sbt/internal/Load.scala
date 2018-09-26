@@ -930,10 +930,7 @@ private[sbt] object Load {
           )
         case Nil if makeOrDiscoverRoot =>
           log.debug(s"[Loading] Scanning directory ${buildBase}")
-          val auto =
-            if (context.globalPluginProject)
-              AddSettings.seq(AddSettings.defaultSbtFiles, AddSettings.sbtFiles(extraSbtFiles: _*))
-            else AddSettings.defaultSbtFiles
+          val auto = AddSettings.seq(AddSettings.defaultSbtFiles, AddSettings.sbtFiles(extraSbtFiles: _*))
           discover(auto, buildBase) match {
             case DiscoveredProjects(Some(root), discovered, files, generated) =>
               log.debug(
