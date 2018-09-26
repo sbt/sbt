@@ -131,6 +131,11 @@ type SbtExecParams {
   commandLine: String!
 }
 
+## Id for a cancel request
+type CancelRequestParams {
+  id: String!
+}
+
 ## Goto definition params model
 type TextDocumentPositionParams {
 	## The text document.
@@ -144,4 +149,57 @@ type TextDocumentPositionParams {
 type TextDocumentIdentifier {
 	## The text document's URI.
 	uri: String!
+}
+
+## Completion request interfaces
+type CompletionParams {
+  context: sbt.internal.langserver.CompletionContext
+}
+
+type CompletionContext {
+  # CompletionTriggerKind 1 | 2 | 3
+  triggerKind: Int!
+
+  triggerCharacter: String
+}
+
+type TextEdit {
+	range: sbt.internal.langserver.Range!
+
+	newText: String!
+}
+
+interface Command {
+	
+	title: String
+	
+	command: String
+	
+	arguments: [String]
+}
+
+type CompletionItem {
+	label: String!
+
+  # commenting out fields not used at the moment
+	# kind: Int
+	# detail: String
+	# documentation: String
+	# deprecated: Boolean
+	# preselect: Boolean
+	# sortText: String
+	# filterText: String
+	# insertText: String
+	# insertTextFormat: Int
+	# textEdit: sbt.internal.langserver.TextEdit
+	# additionalTextEdits: [sbt.internal.langserver.TextEdit]
+	# commitCharacters: [String]
+	# command: sbt.internal.langserver.Command
+	# data: [Byte]
+}
+
+type CompletionList {
+  isIncomplete: Boolean!
+
+  items: [sbt.internal.langserver.CompletionItem]
 }

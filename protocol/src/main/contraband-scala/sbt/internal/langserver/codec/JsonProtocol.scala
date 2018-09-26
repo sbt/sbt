@@ -19,6 +19,13 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.langserver.codec.LogMessageParamsFormats
   with sbt.internal.langserver.codec.PublishDiagnosticsParamsFormats
   with sbt.internal.langserver.codec.SbtExecParamsFormats
+  with sbt.internal.langserver.codec.CancelRequestParamsFormats
   with sbt.internal.langserver.codec.TextDocumentIdentifierFormats
   with sbt.internal.langserver.codec.TextDocumentPositionParamsFormats
+  with sbt.internal.langserver.codec.CompletionContextFormats
+  with sbt.internal.langserver.codec.CompletionParamsFormats
+  with sbt.internal.langserver.codec.TextEditFormats
+  with sbt.internal.langserver.codec.CommandFormats
+  with sbt.internal.langserver.codec.CompletionItemFormats
+  with sbt.internal.langserver.codec.CompletionListFormats
 object JsonProtocol extends JsonProtocol
