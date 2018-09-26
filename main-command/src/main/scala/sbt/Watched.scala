@@ -97,6 +97,13 @@ object Watched {
    */
   case object Trigger extends Action
 
+  /**
+   * A user defined Action. It is not sealed so that the user can create custom instances. If any
+   * of the [[Config]] callbacks, e.g. [[Config.onWatchEvent]], return an instance of [[Custom]],
+   * the watch will terminate.
+   */
+  trait Custom extends Action
+
   type WatchSource = Source
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
   /*
@@ -276,8 +283,8 @@ object Watched {
       @tailrec
       def nextAction(): Action = {
         config.handleInput() match {
-          case action @ (CancelWatch | HandleError | Reload) => action
-          case Trigger                                       => Trigger
+          case action @ (CancelWatch | HandleError | Reload | _: Custom) => action
+          case Trigger                                                   => Trigger
           case _ =>
             val events = config.fileEventMonitor.poll(10.millis)
             val next = events match {
@@ -286,9 +293,10 @@ object Watched {
                 /*
                  * We traverse all of the events and find the one for which we give the highest
                  * weight.
-                 * HandleError > CancelWatch > Reload > Trigger > Ignore
+                 * Custom > HandleError > CancelWatch > Reload > Trigger > Ignore
                  */
                 tail.foldLeft((config.onWatchEvent(head), Some(head))) {
+                  case (current @ (_: Custom, _), _) => current
                   case (current @ (action, _), event) =>
                     config.onWatchEvent(event) match {
                       case HandleError                          => (HandleError, Some(event))
@@ -302,8 +310,11 @@ object Watched {
             }
             // Note that nextAction should never return Ignore.
             next match {
-              case (action @ (HandleError | CancelWatch), Some(event)) =>
-                val cause = if (action == HandleError) "error" else "cancellation"
+              case (action @ (HandleError | CancelWatch | _: Custom), Some(event)) =>
+                val cause =
+                  if (action == HandleError) "error"
+                  else if (action.isInstanceOf[Custom]) action.toString
+                  else "cancellation"
                 logger.debug(s"Stopping watch due to $cause from ${event.entry.typedPath.getPath}")
                 action
               case (Trigger, Some(event)) =>
@@ -324,11 +335,11 @@ object Watched {
             case Ignore =>
               config.watchingMessage(count).foreach(info)
               nextAction() match {
-                case action @ (CancelWatch | HandleError | Reload) => action
-                case _                                             => impl(count + 1)
+                case action @ (CancelWatch | HandleError | Reload | _: Custom) => action
+                case _                                                         => impl(count + 1)
               }
-            case Trigger                                       => impl(count + 1)
-            case action @ (CancelWatch | HandleError | Reload) => action
+            case Trigger                                                   => impl(count + 1)
+            case action @ (CancelWatch | HandleError | Reload | _: Custom) => action
           }
         case Left(e) =>
           logger.error(s"Terminating watch due to Unexpected error: $e")
