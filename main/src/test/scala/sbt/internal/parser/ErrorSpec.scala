@@ -10,9 +10,7 @@ package internal
 package parser
 
 import java.io.File
-
 import sbt.internal.util.MessageOnlyException
-
 import scala.io.Source
 
 class ErrorSpec extends AbstractSpec {
@@ -26,12 +24,13 @@ class ErrorSpec extends AbstractSpec {
       foreach(new File(rootPath).listFiles) { file =>
         print(s"Processing ${file.getName}: ")
         val buildSbt = Source.fromFile(file).getLines().mkString("\n")
-        SbtParser(file, buildSbt.lines.toSeq) must throwA[MessageOnlyException].like {
-          case exp =>
-            val message = exp.getMessage
-            println(s"${exp.getMessage}")
-            message must contain(file.getName)
-        }
+        SbtParser(file, buildSbt.linesIterator.toSeq) must throwA[MessageOnlyException]
+          .like {
+            case exp =>
+              val message = exp.getMessage
+              println(s"${exp.getMessage}")
+              message must contain(file.getName)
+          }
         containsLineNumber(buildSbt)
       }
     }
@@ -60,7 +59,9 @@ class ErrorSpec extends AbstractSpec {
           |val a = <a/><b/>
           |val s = '
         """.stripMargin
-      SbtParser(SbtParser.FAKE_FILE, buildSbt.lines.toSeq) must throwA[MessageOnlyException].like {
+      SbtParser(SbtParser.FAKE_FILE, buildSbt.linesIterator.toSeq) must throwA[
+        MessageOnlyException
+      ].like {
         case exp =>
           val message = exp.getMessage
           println(s"${exp.getMessage}")

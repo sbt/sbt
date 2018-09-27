@@ -99,7 +99,7 @@ private[sbt] object LibraryManagement {
             val culprit = t.getClass.getSimpleName
             log.warn(s"Update task caching failed due to $culprit.")
             log.warn("Report the following output to sbt:")
-            resolvedAgain.toString.lines.foreach(log.warn(_))
+            resolvedAgain.toString.linesIterator.foreach(log.warn(_))
             log.trace(t)
             resolvedAgain
           }
