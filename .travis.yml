@@ -55,6 +55,4 @@ cache:
   - $HOME/.m2
   - $HOME/.ivy2/cache
   - $HOME/.sbt
-  - $HOME/.coursier
-  # Pants cache
   - $HOME/.cache

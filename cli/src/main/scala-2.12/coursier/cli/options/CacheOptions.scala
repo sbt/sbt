@@ -4,7 +4,7 @@ import caseapp.{ExtraName => Short, HelpMessage => Help, _}
 import coursier.Cache
 
 final case class CacheOptions(
-  @Help("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache/v1)")
+  @Help("Cache directory (defaults to environment variable COURSIER_CACHE, or ~/.cache/coursier/v1 on Linux and ~/Library/Caches/Coursier/v1 on Mac)")
     cache: String = Cache.default.toString
 )
 

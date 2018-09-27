@@ -24,8 +24,18 @@ check := {
     signatures.nonEmpty,
     "No signatures found"
   )
+  def isCoursierCachePath(p: File) = {
+    val abs = p.getAbsolutePath
+    abs.contains("/.coursier/") || // Former cache path
+      abs.contains("/coursier/") || // New cache path, Linux
+      abs.contains("/Coursier/")  // New cache path, OS X
+  }
   assert(
-    signatures.forall(_.getAbsolutePath.contains("/.coursier/cache/")),
-    s"Found signatures not provided by coursier:\n${signatures.map("  " + _).mkString("\n")}"
+    signatures.forall(isCoursierCachePath),
+    s"Found signatures not provided by coursier:\n" +
+      signatures
+        .filter(!isCoursierCachePath(_))
+        .map("  " + _)
+        .mkString("\n")
   )
 }
