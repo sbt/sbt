@@ -17,7 +17,7 @@ import sbt.internal.util.RMap
  *
  * This class is experimental and subject to binary and source incompatible changes at any time.
  */
-private[sbt] trait ExecuteProgress[A[_]] {
+private[sbt] trait ExecuteProgress[F[_]] {
   type S
   def initial: S
 
@@ -26,20 +26,20 @@ private[sbt] trait ExecuteProgress[A[_]] {
    * The dependencies of `task` are `allDeps` and the subset of those dependencies that
    * have not completed are `pendingDeps`.
    */
-  def registered(state: S, task: A[_], allDeps: Iterable[A[_]], pendingDeps: Iterable[A[_]]): S
+  def registered(state: S, task: F[_], allDeps: Iterable[F[_]], pendingDeps: Iterable[F[_]]): S
 
   /**
    * Notifies that all of the dependencies of `task` have completed and `task` is therefore
    * ready to run.  The task has not been scheduled on a thread yet.
    */
-  def ready(state: S, task: A[_]): S
+  def ready(state: S, task: F[_]): S
 
   /**
    * Notifies that the work for `task` is starting after this call returns.
    * This is called from the thread the task executes on, unlike most other methods in this callback.
    * It is called immediately before the task's work starts with minimal intervening executor overhead.
    */
-  def workStarting(task: A[_]): Unit
+  def workStarting(task: F[_]): Unit
 
   /**
    * Notifies that the work for `task` work has finished.  The task may have computed the next task to
@@ -49,30 +49,30 @@ private[sbt] trait ExecuteProgress[A[_]] {
    * This is called from the thread the task executes on, unlike most other methods in this callback.
    * It is immediately called after the task's work is complete with minimal intervening executor overhead.
    */
-  def workFinished[T](task: A[T], result: Either[A[T], Result[T]]): Unit
+  def workFinished[A](task: F[A], result: Either[F[A], Result[A]]): Unit
 
   /**
    * Notifies that `task` has completed.
    * The task's work is done with a final `result`.
    * Any tasks called by `task` have completed.
    */
-  def completed[T](state: S, task: A[T], result: Result[T]): S
+  def completed[A](state: S, task: F[A], result: Result[A]): S
 
   /** All tasks have completed with the final `results` provided. */
-  def allCompleted(state: S, results: RMap[A, Result]): S
+  def allCompleted(state: S, results: RMap[F, Result]): S
 }
 
 /** This module is experimental and subject to binary and source incompatible changes at any time. */
 private[sbt] object ExecuteProgress {
-  def empty[A[_]]: ExecuteProgress[A] = new ExecuteProgress[A] {
+  def empty[F[_]]: ExecuteProgress[F] = new ExecuteProgress[F] {
     type S = Unit
     def initial = ()
-    def registered(state: Unit, task: A[_], allDeps: Iterable[A[_]], pendingDeps: Iterable[A[_]]) =
+    def registered(state: Unit, task: F[_], allDeps: Iterable[F[_]], pendingDeps: Iterable[F[_]]) =
       ()
-    def ready(state: Unit, task: A[_]) = ()
-    def workStarting(task: A[_]) = ()
-    def workFinished[T](task: A[T], result: Either[A[T], Result[T]]) = ()
-    def completed[T](state: Unit, task: A[T], result: Result[T]) = ()
-    def allCompleted(state: Unit, results: RMap[A, Result]) = ()
+    def ready(state: Unit, task: F[_]) = ()
+    def workStarting(task: F[_]) = ()
+    def workFinished[A](task: F[A], result: Either[F[A], Result[A]]) = ()
+    def completed[A](state: Unit, task: F[A], result: Result[A]) = ()
+    def allCompleted(state: Unit, results: RMap[F, Result]) = ()
   }
 }
