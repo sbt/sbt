@@ -66,9 +66,8 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
    4. [Extra protocols](#extra-protocols)
 5. [Limitations](#limitations)
 6. [FAQ](#faq)
-7. [Development tips](#development-tips)
-8. [Contributors](#contributors)
-9. [Projects using coursier](#projects-using-coursier)
+7. [Contributors](#contributors)
+8. [Projects using coursier](#projects-using-coursier)
 
 ## Quick start
 
@@ -758,36 +757,6 @@ $ COURSIER_CACHE=$(pwd)/.coursier-cache coursier
 or
 ```
 $ COURSIER_CACHE=$(pwd)/.coursier-cache sbt
-```
-
-## Development tips
-
-In general, as coursier has a few modules that target either only scala 2.10 or 2.11, it is recommended
-to systematically force the scala version, with the `++2.11.8` or `++2.10.6` commands. The `cli` module
-in particular is only built in 2.11, and the `plugin` one only in 2.10.
-
-#### Working on the plugin module in an IDE
-
-Set `scalaVersion` to `2.10.6` in `build.sbt`. Then re-open / reload the coursier project.
-
-#### Running the Scala JS tests
-
-They require `npm install` to have been run once from the `coursier` directory or a subdirectory of
-it. They can then be run with `sbt testsJS/test`.
-
-#### Quickly running the CLI app from the sources
-
-Run
-```
-$ sbt "~cli/pack"
-```
-
-This generates and updates a runnable distribution of coursier in `target/pack`, via
-the [sbt-pack](https://github.com/xerial/sbt-pack/) plugin.
-
-It can be run from another terminal with
-```
-$ cli/target/pack/bin/coursier
 ```
 
 ## Contributors
