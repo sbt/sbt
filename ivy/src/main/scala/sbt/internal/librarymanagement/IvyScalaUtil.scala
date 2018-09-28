@@ -133,7 +133,7 @@ object IvyScalaUtil {
       log: Logger
   ): Unit = {
     val scalaVersionConfigs: String => Boolean =
-      if (scalaVersionConfigs0.isEmpty) (c: String) => false else scalaVersionConfigs0.toSet
+      if (scalaVersionConfigs0.isEmpty) (_: String) => false else scalaVersionConfigs0.toSet
     def binaryScalaWarning(dep: DependencyDescriptor): Option[String] = {
       val id = dep.getDependencyRevisionId
       val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)

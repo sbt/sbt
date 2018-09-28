@@ -842,7 +842,7 @@ private[sbt] object IvySbt {
     }) foreach {
       case (_, vs) if vs.size > 1 =>
         val v0 = vs.head
-        (vs find { _.revision != v0.revision }) foreach { v =>
+        (vs find { _.revision != v0.revision }) foreach { _ =>
           out += s" * ${v0.organization}:${v0.name}:(" + (vs map { _.revision })
             .mkString(", ") + ")"
         }

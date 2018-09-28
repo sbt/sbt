@@ -30,7 +30,7 @@ object IvyActions {
 
   /** Installs the dependencies of the given 'module' from the resolver named 'from' to the resolver named 'to'.*/
   def install(module: IvySbt#Module, from: String, to: String, log: Logger): Unit = {
-    module.withModule(log) { (ivy, md, default) =>
+    module.withModule(log) { (ivy, md, _) =>
       for (dependency <- md.getDependencies) {
         log.info("Installing " + dependency)
         val options = new InstallOptions
@@ -68,7 +68,7 @@ object IvyActions {
     val file = configuration.file.getOrElse(sys.error("file must be specified."))
     val moduleInfo = configuration.moduleInfo.getOrElse(sys.error("moduleInfo must be specified."))
     val extra = configuration.extra.getOrElse(scala.xml.NodeSeq.Empty)
-    module.withModule(log) { (ivy, md, default) =>
+    module.withModule(log) { (ivy, md, _) =>
       (new MakePom(log)).write(
         ivy,
         md,
