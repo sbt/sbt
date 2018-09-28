@@ -8,6 +8,7 @@ matrix:
   include:
     - env: SBT_COURSIER=1
     - env: SBT_SHADING=1
+    - env: SBT_PGP_COURSIER=1
 branches:
   only:
   - master

@@ -7,18 +7,25 @@ downloadInstallSbtExtras() {
   chmod +x bin/sbt
 }
 
+sbtPgpCoursier() {
+  [ "${SBT_PGP_COURSIER:-""}" = 1 ]
+}
+
 sbtShading() {
   [ "${SBT_SHADING:-""}" = 1 ]
 }
 
 runSbtCoursierTests() {
-  addPgpKeys
-  ./scripts/with-test-repo.sh sbt ++$TRAVIS_SCALA_VERSION sbt-coursier/scripted
-  sbt ++$TRAVIS_SCALA_VERSION sbt-pgp-coursier/scripted
+  ./scripts/with-test-repo.sh sbt ++$TRAVIS_SCALA_VERSION sbt-coursier/test sbt-coursier/scripted
 }
 
 runSbtShadingTests() {
   sbt ++$TRAVIS_SCALA_VERSION sbt-shading/scripted
+}
+
+runSbtPgpCoursierTests() {
+  addPgpKeys
+  sbt ++$TRAVIS_SCALA_VERSION sbt-pgp-coursier/scripted
 }
 
 addPgpKeys() {
@@ -32,6 +39,8 @@ downloadInstallSbtExtras
 
 if sbtShading; then
   runSbtShadingTests
+elif sbtPgpCoursier; then
+  runSbtPgpCoursierTests
 else
   runSbtCoursierTests
 fi
