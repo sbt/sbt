@@ -57,7 +57,7 @@ lazy val lmRoot = (project in file("."))
         },
         bintrayPackage := "librarymanagement",
         scalafmtOnCompile in Sbt := false,
-        git.baseVersion := "1.2.1",
+        git.baseVersion := "1.3.0",
         version := {
           val v = version.value
           if (v contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
