@@ -8,7 +8,6 @@ import org.apache.logging.log4j.{ Level => XLevel }
 import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
-import scala.collection.immutable.StringOps
 
 import ConsoleAppender._
 
@@ -390,7 +389,7 @@ class ConsoleAppender private[ConsoleAppender] (
       message: String
   ): Unit =
     out.lockObject.synchronized {
-      new StringOps(message).lines.foreach { line =>
+      message.linesIterator.foreach { line =>
         val builder = new java.lang.StringBuilder(
           labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3)
         def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
