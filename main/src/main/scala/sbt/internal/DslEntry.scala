@@ -79,7 +79,7 @@ object DslEntry {
     override val toFunction: Project => Project = _.configs(cs: _*)
   }
 
-  /** this represents an `aggregate()` in the sbt DSL */
+  /** this represents an `aggregateProjects()` in the sbt DSL */
   case class DslAggregate(refs: Seq[ProjectReference]) extends ProjectManipulation {
     override val toFunction: Project => Project = _.aggregate(refs: _*)
   }
