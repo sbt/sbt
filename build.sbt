@@ -6,6 +6,7 @@ import Publish._
 val coursierVersion = "1.1.0-M7"
 
 lazy val `sbt-shared` = project
+  .in(file("modules/sbt-shared"))
   .settings(
     plugin,
     libraryDependencies ++= Seq(
@@ -28,6 +29,7 @@ lazy val `sbt-shared` = project
   )
 
 lazy val `sbt-coursier` = project
+  .in(file("modules/sbt-coursier"))
   .dependsOn(`sbt-shared`)
   .settings(
     plugin,
@@ -48,6 +50,7 @@ lazy val `sbt-coursier` = project
   )
 
 lazy val `sbt-pgp-coursier` = project
+  .in(file("modules/sbt-pgp-coursier"))
   .dependsOn(`sbt-coursier`)
   .settings(
     plugin,
@@ -60,6 +63,7 @@ lazy val `sbt-pgp-coursier` = project
   )
 
 lazy val `sbt-shading` = project
+  .in(file("modules/sbt-shading"))
   .enablePlugins(ShadingPlugin)
   .dependsOn(`sbt-coursier`)
   .settings(
@@ -76,7 +80,7 @@ lazy val `sbt-shading` = project
   )
 
 lazy val coursier = project
-  .in(root)
+  .in(file("."))
   .aggregate(
     `sbt-shared`,
     `sbt-coursier`,
