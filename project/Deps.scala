@@ -5,18 +5,6 @@ import sbt.Keys._
 
 object Deps {
 
-  def quasiQuotes = "org.scalamacros" %% "quasiquotes" % "2.1.0"
-  def fastParse = "com.lihaoyi" %% "fastparse" % SharedVersions.fastParse
-  def jsoup = "org.jsoup" % "jsoup" % "1.10.3"
-  def scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.1.0"
-  def scalazConcurrent = "org.scalaz" %% "scalaz-concurrent" % SharedVersions.scalaz
-  def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M3"
-  def okhttpUrlConnection = "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
-  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M8"
-  def scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
-  def junit = "junit" % "junit" % "4.12"
-  def dockerClient = "com.spotify" % "docker-client" % "8.11.6"
-
   def sbtPgp = Def.setting {
     val sbtv = CrossVersion.binarySbtVersion(sbtVersion.in(pluginCrossBuild).value)
     val sv = scalaBinaryVersion.value
@@ -24,20 +12,14 @@ object Deps {
     sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)
   }
 
-  def scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.7"
-
   def jarjar = "io.get-coursier.jarjar" % "jarjar-core" % "1.0.1-coursier-1"
 
   def jarjarTransitiveDeps = Seq(
     "com.google.code.findbugs" % "jsr305" % "2.0.2",
-    "org.ow2.asm" % "asm-commons" % SharedVersions.asm,
-    "org.ow2.asm" % "asm-util" % SharedVersions.asm,
+    "org.ow2.asm" % "asm-commons" % "5.2",
+    "org.ow2.asm" % "asm-util" % "5.2",
     "org.slf4j" % "slf4j-api" % "1.7.25"
   )
 
-  def scalaNativeNir = "org.scala-native" %% "nir" % SharedVersions.scalaNative
-  def scalaNativeTools = "org.scala-native" %% "tools" % SharedVersions.scalaNative
-  def scalaNativeUtil = "org.scala-native" %% "util" % SharedVersions.scalaNative
-
-  def slf4JNop = "org.slf4j" % "slf4j-nop" % "1.7.25"
+  def utest = "com.lihaoyi" %% "utest" % "0.6.4"
 }
