@@ -162,9 +162,9 @@ object TermDisplay {
       info: Info,
       fallbackMessage: => String
     ): Unit = {
-      assert(!infos.containsKey(url))
+      assert(!infos.containsKey(url), s"Attempts to download $url twice in parallel")
       val prev = infos.putIfAbsent(url, info)
-      assert(prev == null)
+      assert(prev == null, s"Attempts to download $url twice in parallel (second check)")
 
       if (fallbackMode) {
         // FIXME What about concurrent accesses to out from the thread above?
@@ -190,7 +190,7 @@ object TermDisplay {
         downloads -= url
 
         val info = infos.remove(url)
-        assert(info != null)
+        assert(info != null, s"$url was not being downloaded")
 
         if (success)
           doneQueue += (url -> update0(info))
@@ -439,7 +439,7 @@ class TermDisplay(
 
   override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit = {
     val info = updateRunnable.infos.get(url)
-    assert(info != null)
+    assert(info != null, s"Incoherent state ($url)")
     val newInfo = info match {
       case info0: DownloadInfo =>
         info0.copy(
@@ -456,7 +456,7 @@ class TermDisplay(
   }
   override def downloadProgress(url: String, downloaded: Long): Unit = {
     val info = updateRunnable.infos.get(url)
-    assert(info != null)
+    assert(info != null, s"Incoherent state ($url)")
     val newInfo = info match {
       case info0: DownloadInfo =>
         info0.copy(downloaded = downloaded)
