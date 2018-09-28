@@ -37,6 +37,7 @@ val mimaSettings = Def settings (
   mimaPreviousArtifacts := Set(
     "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
     "1.1.0", "1.1.1", "1.1.2", "1.1.3", "1.1.4",
+    "1.2.0",
   ) map (version =>
     organization.value %% moduleName.value % version
       cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
@@ -56,7 +57,7 @@ lazy val lmRoot = (project in file("."))
         },
         bintrayPackage := "librarymanagement",
         scalafmtOnCompile in Sbt := false,
-        git.baseVersion := "1.2.0",
+        git.baseVersion := "1.2.1",
         version := {
           val v = version.value
           if (v contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"

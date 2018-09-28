@@ -393,7 +393,7 @@ private[sbt] object ConvertResolver {
         // This error could be thrown either by super.put or the above
         case ex: IOException if ex.getMessage.contains("destination file exists") =>
           throw new IOException(
-            s"""PUT operation failed because the desitnation file exists and overwriting is disabled:
+            s"""PUT operation failed because the destination file exists and overwriting is disabled:
                |    source     : $source
                |    destination: $destination
                |If you have a staging repository that has failed, drop it and start over.
