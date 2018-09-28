@@ -3,12 +3,12 @@ jdk: oraclejdk8
 
 scala:
   - 2.11.12
-  - 2.12.4
+  - 2.12.7
 
 matrix:
   include:
-  - scala: 2.12.4
-    jdk: oraclejdk9
+  - scala: 2.12.7
+    jdk: openjdk11
 
 script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
   ++$TRAVIS_SCALA_VERSION
