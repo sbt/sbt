@@ -1,8 +1,9 @@
-val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
+val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
+
+ThisBuild / scalaVersion := "2.12.7"
 
 lazy val root = (project in file("."))
   .settings(
-    scalaVersion in ThisBuild := "2.11.8",
     libraryDependencies += scalatest % Test,
     // testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-f", "result.txt", "-eNDXEHLO")
     testOptions in Configurations.Test ++= {

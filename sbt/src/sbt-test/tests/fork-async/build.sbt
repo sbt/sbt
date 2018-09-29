@@ -1,8 +1,8 @@
-testFrameworks += new TestFramework("utest.runner.Framework")
+ThisBuild / scalaVersion := "2.12.7"
 
-lazy val root = (project in file(".")).
-  settings(
-    scalaVersion := "2.12.6",
+lazy val root = (project in file("."))
+  .settings(
     libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
-    fork in Test := true
+    testFrameworks += new TestFramework("utest.runner.Framework"),
+    Test / fork := true
   )

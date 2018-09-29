@@ -1,11 +1,11 @@
 import Tests._
 import Defaults._
 
+ThisBuild / scalaVersion := "2.12.7"
 val check = taskKey[Unit]("Check that tests are executed in parallel")
 
-lazy val root = (project in file(".")).
-  settings(
-    scalaVersion := "2.11.8",
+lazy val root = (project in file("."))
+  .settings(
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
     fork in Test := true,
     check := {

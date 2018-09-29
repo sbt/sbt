@@ -1,9 +1,8 @@
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.MustMatchers
 
-class Test extends FlatSpec with MustMatchers {
+class Test extends FlatSpec {
 	val v = Option(System.getenv("tests.max.value")) getOrElse Int.MaxValue
-	"A simple equation" must "hold" in {
-		Int.MaxValue must equal (v)
+	"A simple equation" should "hold" in {
+		assert(Int.MaxValue == v)
 	}
 }

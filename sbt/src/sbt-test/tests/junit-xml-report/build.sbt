@@ -11,11 +11,15 @@ val failingReportFile = "target/test-reports/another.pkg.FailingTest.xml"
 val flatSuiteReportFile = "target/test-reports/my.scalatest.MyFlatSuite.xml"
 val nestedSuitesReportFile = "target/test-reports/my.scalatest.MyNestedSuites.xml"
 
+val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
+val junitinterface = "com.novocode" % "junit-interface" % "0.11"
+
+ThisBuild / scalaVersion := "2.12.7"
+
 lazy val root = (project in file(".")).
   settings(
-    scalaVersion := "2.11.8",
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
-    libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % Test,
+    libraryDependencies += junitinterface % Test,
+    libraryDependencies += scalatest % Test,
     // TODO use matchers instead of sys.error
     checkReport := {
       val oneSecondReport = XML.loadFile(oneSecondReportFile)
