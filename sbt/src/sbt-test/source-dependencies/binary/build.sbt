@@ -1,4 +1,4 @@
-scalaVersion in ThisBuild := "2.11.8"
+ThisBuild / scalaVersion := "2.12.7"
 
 lazy val dep = project
 
