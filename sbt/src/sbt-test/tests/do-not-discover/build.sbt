@@ -1,5 +1,9 @@
-scalaVersion := "2.10.6"
+val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.0.M6-SNAP28"
+ThisBuild / scalaVersion := "2.12.7"
 
-testOptions in Test += Tests.Argument("-r", "custom.CustomReporter")
+lazy val root = (project in file("."))
+  .settings(
+    libraryDependencies += scalatest,
+    Test / testOptions += Tests.Argument("-C", "custom.CustomReporter")
+  )

@@ -1,12 +1,11 @@
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.MustMatchers
 import java.io.File
 
-trait Ensemble extends FlatSpec with MustMatchers {
+trait Ensemble extends FlatSpec {
 	def i: Int
 	def prefix = System.getProperty("group.prefix")
 
-	"an ensemble" must "create all files" in {
+	"an ensemble" should "create all files" in {
 		val f = new File(prefix + i)
 		f.createNewFile
 	}

@@ -1,8 +1,8 @@
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.5" % "test"
+val scalcheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
 
-version := "0.0.1"
+ThisBuild / scalaVersion := "2.12.7"
+ThisBuild / version := "0.0.1" 
+ThisBuild / organization := "org.catastrophe"
+
+libraryDependencies += scalcheck % Test
 name := "broken"
-organization := "org.catastrophe"
-//scalaVersion := "2.10.6"
-scalaVersion := "2.12.3"
-

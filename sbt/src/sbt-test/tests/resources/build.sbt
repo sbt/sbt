@@ -1,2 +1,3 @@
-scalaVersion := "2.10.6"
-libraryDependencies += "org.specs2" % "specs2_2.10" % "1.12.3" % "test"
+val specs = "org.specs2" %% "specs2-core" % "4.3.4"
+ThisBuild / scalaVersion := "2.12.7"
+libraryDependencies += specs % Test

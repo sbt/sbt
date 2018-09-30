@@ -1,5 +1,4 @@
-scalaVersion := "2.10.6"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.0.M6-SNAP28"
-
-testOptions in Test += Tests.Argument("-r", "custom.CustomReporter")
+val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
+ThisBuild / scalaVersion := "2.12.7"
+libraryDependencies += scalatest
+Test / testOptions += Tests.Argument("-C", "custom.CustomReporter")

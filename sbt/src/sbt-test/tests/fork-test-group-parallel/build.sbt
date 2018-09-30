@@ -1,6 +1,8 @@
-scalaVersion in ThisBuild := "2.11.8"
-concurrentRestrictions in Global := Seq(Tags.limitAll(4))
-libraryDependencies += "org.specs2" %% "specs2-core" % "3.8.4" % Test
+val specs = "org.specs2" %% "specs2-core" % "4.3.4"
+ThisBuild / scalaVersion := "2.12.7"
+
+Global / concurrentRestrictions := Seq(Tags.limitAll(4))
+libraryDependencies += specs % Test
 inConfig(Test)(Seq(
   testGrouping := {
     val home = javaHome.value

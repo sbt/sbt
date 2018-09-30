@@ -1,4 +1,6 @@
-scalaVersion := "2.10.6"
-fork := true
+val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "1.9" % "test"
+ThisBuild / scalaVersion := "2.12.7"
+
+fork := true
+libraryDependencies += scalatest % Test

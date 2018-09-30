@@ -1,5 +1,7 @@
 import sbt.internal.server.{ ServerHandler, ServerIntent }
 
+ThisBuild / scalaVersion := "2.12.7"
+
 lazy val root = (project in file("."))
   .settings(
     Global / serverLog / logLevel := Level.Debug,
@@ -20,5 +22,4 @@ lazy val root = (project in file("."))
     }),
 
     name := "handshake",
-    scalaVersion := "2.12.3",
   )
