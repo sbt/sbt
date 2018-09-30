@@ -1,4 +1,4 @@
-package macro
+package macros
 
 object Foo {
   def str: String = "abc"
