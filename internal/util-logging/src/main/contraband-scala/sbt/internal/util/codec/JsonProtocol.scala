@@ -9,4 +9,5 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.util.codec.TraceEventFormats
   with sbt.internal.util.codec.AbstractEntryFormats
   with sbt.internal.util.codec.SuccessEventFormats
+  with sbt.internal.util.codec.LogOptionFormats
 object JsonProtocol extends JsonProtocol
