@@ -104,7 +104,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
       currentTasks foreach {
         case (task, start) =>
           val elapsed = (System.nanoTime - start) / 1000000000L
-          console.println(s"$DeleteLine1  | => ${taskName(task)} ${elapsed}s")
+          console.println(s"$DeleteLine  | => ${taskName(task)} ${elapsed}s")
       }
       console.print(cursorUp(currentTasks.size + 1))
     }
@@ -129,7 +129,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
 }
 
 private[sbt] object TaskProgress {
-  final val DeleteLine1 = "\u001B[2K"
+  final val DeleteLine = "\u001B[2K"
   final val CursorUp5 = cursorUp(5)
   def cursorUp(n: Int): String = s"\u001B[${n}A"
   def cursorDown(n: Int): String = s"\u001B[${n}B"
