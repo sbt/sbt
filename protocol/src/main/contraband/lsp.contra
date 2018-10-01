@@ -131,6 +131,11 @@ type SbtExecParams {
   commandLine: String!
 }
 
+## Id for a cancel request
+type CancelRequestParams {
+  id: String!
+}
+
 ## Goto definition params model
 type TextDocumentPositionParams {
 	## The text document.
