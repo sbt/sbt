@@ -7,7 +7,7 @@
 
 package sbt
 
-import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
+import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil, TaskProgress }
 import sbt.internal.util.{ Attributed, ConsoleAppender, ErrorHandling, HList, RMap, Signals, Types }
 import sbt.util.{ Logger, Show }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
@@ -163,13 +163,18 @@ object EvaluateTask {
 
   lazy private val sharedProgress = new TaskTimings(shutdown = true)
 
-  private[sbt] def defaultProgress: ExecuteProgress[Task] =
+  // sbt-pgp calls this
+  private[sbt] def defaultProgress(): ExecuteProgress[Task] = ExecuteProgress.empty[Task]
+  private[sbt] def defaultProgress(currentRef: ProjectRef): ExecuteProgress[Task] =
     if (java.lang.Boolean.getBoolean("sbt.task.timings")) {
       if (java.lang.Boolean.getBoolean("sbt.task.timings.on.shutdown"))
         sharedProgress
       else
         new TaskTimings(shutdown = false)
-    } else ExecuteProgress.empty[Task]
+    } else {
+      if (ConsoleAppender.showProgress) new TaskProgress(currentRef)
+      else ExecuteProgress.empty[Task]
+    }
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
 
@@ -229,7 +234,7 @@ object EvaluateTask {
     import Types.const
     val maker: State => Keys.TaskProgress = getSetting(
       Keys.executeProgress,
-      const(new Keys.TaskProgress(defaultProgress)),
+      const(new Keys.TaskProgress(defaultProgress(extracted.currentRef))),
       extracted,
       structure
     )
@@ -380,6 +385,10 @@ object EvaluateTask {
 
   val currentlyRunningEngine: AtomicReference[(State, RunningTaskEngine)] = new AtomicReference()
 
+  /**
+   * The main method for the task engine.
+   * See also Aggregation.runTasks.
+   */
   def runTask[T](
       root: Task[T],
       state: State,
