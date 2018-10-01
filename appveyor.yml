@@ -14,6 +14,7 @@ install:
   - cmd: SET JAVA_HOME=C:\Program Files\Java\jdk1.8.0
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-Xmx4g -Xss2m
+  - git submodule update --init --recursive
 environment:
   TEST_REPOSITORY_HOST: localhost
   TEST_REPOSITORY_PORT: 8080
@@ -21,9 +22,9 @@ environment:
   TEST_REPOSITORY_PASSWORD: pass
   TEST_REPOSITORY: http://localhost:8080
 build_script:
-  - ps: Start-Job -filepath .\scripts\start-it-auth-server.ps1 -ArgumentList $pwd, $env:TEST_REPOSITORY_HOST, $env:TEST_REPOSITORY_PORT, $env:TEST_REPOSITORY_USER, $env:TEST_REPOSITORY_PASSWORD
+  - ps: Start-Job -filepath .\metadata\scripts\start-it-auth-server.ps1 -ArgumentList $pwd\metadata, $env:TEST_REPOSITORY_HOST, $env:TEST_REPOSITORY_PORT, $env:TEST_REPOSITORY_USER, $env:TEST_REPOSITORY_PASSWORD
 test_script:
-  - sbt scala212 sbt-coursier/scripted sbt-shading/scripted
+  - sbt ++2.12.7 sbt-coursier/scripted sbt-shading/scripted
 branches:
   only:
     - master
