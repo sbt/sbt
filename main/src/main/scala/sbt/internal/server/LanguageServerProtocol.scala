@@ -13,12 +13,14 @@ import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
-import sbt.protocol.{ SettingQuery => Q }
+import sbt.protocol.{ SettingQuery => Q, ExecStatusEvent }
 import sbt.internal.protocol._
 import sbt.internal.protocol.codec._
 import sbt.internal.langserver._
 import sbt.internal.util.ObjectEvent
+import sbt.internal.util.complete.Parser
 import sbt.util.Logger
+import scala.util.control.NonFatal
 
 private[sbt] final case class LangServerError(code: Long, message: String)
     extends Throwable(message)
@@ -72,6 +74,37 @@ private[sbt] object LanguageServerProtocol {
               import scala.concurrent.ExecutionContext.Implicits.global
               Definition.lspDefinition(json(r), r.id, CommandSource(name), log)
               ()
+            case r: JsonRpcRequestMessage if r.method == "textDocument/completion" =>
+              try {
+                val state = EvaluateTask.lastEvaluatedState.get
+
+                val completionItems =
+                  Parser
+                    .completions(state.combinedParser, "", 9)
+                    .get
+                    .map(c => {
+                      if (!c.isEmpty) Some(c.append.replaceAll("\n", " "))
+                      else None
+                    })
+                    .flatten
+                    .map(c => CompletionItem(label = c.toString))
+
+                import sbt.protocol.codec.JsonProtocol._
+                jsonRpcRespond(
+                  CompletionList(
+                    isIncomplete = false,
+                    items = completionItems.toVector
+                  ),
+                  Option(r.id)
+                )
+              } catch {
+                case NonFatal(e) =>
+                  jsonRpcRespondError(
+                    Some(r.id),
+                    ErrorCodes.UnknownError,
+                    "Completions request failed"
+                  )
+              }
             case r: JsonRpcRequestMessage if r.method == "sbt/exec" =>
               val param = Converter.fromJson[SbtExecParams](json(r)).get
               appendExec(Exec(param.commandLine, Some(r.id), Some(CommandSource(name))))
@@ -80,6 +113,37 @@ private[sbt] object LanguageServerProtocol {
               import sbt.protocol.codec.JsonProtocol._
               val param = Converter.fromJson[Q](json(r)).get
               onSettingQuery(Option(r.id), param)
+            case r: JsonRpcRequestMessage if r.method == "sbt/cancelRequest" =>
+              val param = Converter.fromJson[CancelRequestParams](json(r)).get
+              try {
+                val (state, runningEngine) = EvaluateTask.currentlyRunningEngine.get
+                val execId = state.currentCommand.get.execId.get
+
+                // direct comparison on strings and
+                // remove hotspring unicode added character for numbers
+                if (execId == param.id || execId.substring(1).toLong == param.id.toLong) {
+                  runningEngine.cancelAndShutdown()
+
+                  import sbt.protocol.codec.JsonProtocol._
+                  jsonRpcRespond(
+                    ExecStatusEvent(
+                      "Task cancelled",
+                      Some(name),
+                      Some(execId.toString),
+                      Vector(),
+                      None,
+                    ),
+                    Option(r.id)
+                  )
+                }
+              } catch {
+                case NonFatal(e) =>
+                  jsonRpcRespondError(
+                    Some(r.id),
+                    ErrorCodes.RequestCancelled,
+                    "Cancel request failed"
+                  )
+              }
           }
         }, {
           case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
