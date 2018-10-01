@@ -154,7 +154,7 @@ object Package {
   }
   def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit = {
     val path = jar.getAbsolutePath
-    log.info("Packaging " + path + " ...")
+    log.debug("Packaging " + path + " ...")
     if (jar.exists)
       if (jar.isFile)
         IO.delete(jar)
@@ -162,7 +162,7 @@ object Package {
         sys.error(path + " exists, but is not a regular file")
     log.debug(sourcesDebugString(sources))
     IO.jar(sources, jar, manifest)
-    log.info("Done packaging.")
+    log.debug("Done packaging.")
   }
   def sourcesDebugString(sources: Seq[(File, String)]): String =
     "Input file mappings:\n\t" + (sources map { case (f, s) => s + "\n\t  " + f } mkString ("\n\t"))

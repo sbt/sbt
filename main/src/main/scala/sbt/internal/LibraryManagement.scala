@@ -40,7 +40,7 @@ private[sbt] object LibraryManagement {
     def resolve: UpdateReport = {
       import sbt.util.ShowLines._
 
-      log.info(s"Updating $label...")
+      log.debug(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
         lm.update(module, updateConfig, uwConfig, log)
       val report = reportOrUnresolved match {
@@ -49,7 +49,7 @@ private[sbt] object LibraryManagement {
           unresolvedWarning.lines.foreach(log.warn(_))
           throw unresolvedWarning.resolveException
       }
-      log.info("Done updating.")
+      log.debug(s"Done updating $label")
       val finalReport = transform(report)
 
       // Warn of any eviction and compatibility warnings
