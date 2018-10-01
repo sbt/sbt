@@ -24,7 +24,7 @@ environment:
 build_script:
   - ps: Start-Job -filepath .\metadata\scripts\start-it-auth-server.ps1 -ArgumentList $pwd\metadata, $env:TEST_REPOSITORY_HOST, $env:TEST_REPOSITORY_PORT, $env:TEST_REPOSITORY_USER, $env:TEST_REPOSITORY_PASSWORD
 test_script:
-  - sbt scala212 sbt-coursier/scripted sbt-shading/scripted
+  - sbt ++2.12.7 sbt-coursier/scripted sbt-shading/scripted
 branches:
   only:
     - master
