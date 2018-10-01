@@ -133,6 +133,21 @@ object ConsoleAppender {
     }
   }
 
+  /**
+   * Indicates whether the super shell is enabled.
+   */
+  lazy val showProgress: Boolean =
+    formatEnabledInEnv && sys.props
+      .get("sbt.progress")
+      .flatMap({ s =>
+        parseLogOption(s) match {
+          case LogOption.Always => Some(true)
+          case LogOption.Never  => Some(false)
+          case _                => None
+        }
+      })
+      .getOrElse(true)
+
   private[sbt] def parseLogOption(s: String): LogOption =
     s.toLowerCase match {
       case "always"  => LogOption.Always
@@ -443,11 +458,17 @@ class ConsoleAppender private[ConsoleAppender] (
     appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
   }
 
+  private final val ScrollUp = "\u001B[S"
+  private final val DeleteLine = "\u001B[2K"
+  private final val CursorLeft1000 = "\u001B[1000D"
   private def write(msg: String): Unit = {
-    val cleanedMsg =
-      if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg)
-      else msg
-    out.println(cleanedMsg)
+    if (!useFormat || !ansiCodesSupported) out.println(EscHelpers.removeEscapeSequences(msg))
+    else {
+      if (ConsoleAppender.showProgress) {
+        out.print(s"$ScrollUp$DeleteLine$msg${CursorLeft1000}")
+        out.flush()
+      } else out.println(msg)
+    }
   }
 
   private def appendMessage(level: Level.Value, msg: Message): Unit =

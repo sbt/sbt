@@ -126,6 +126,7 @@ lazy val utilLogging = (project in internalPath / "util-logging")
       // Private final class constructors changed
       exclude[DirectMissingMethodProblem]("sbt.util.InterfaceUtil#ConcretePosition.this"),
       exclude[DirectMissingMethodProblem]("sbt.util.InterfaceUtil#ConcreteProblem.this"),
+      exclude[ReversedMissingMethodProblem]("sbt.internal.util.ConsoleOut.flush"),
     ),
   )
   .configure(addSbtIO)
