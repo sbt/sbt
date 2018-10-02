@@ -150,13 +150,12 @@ object ConsoleAppender {
 
   private[sbt] def parseLogOption(s: String): LogOption =
     s.toLowerCase match {
-      case "always"  => LogOption.Always
-      case "auto"    => LogOption.Auto
-      case "never"   => LogOption.Never
-      case "true"    => LogOption.Always
-      case "false"   => LogOption.Never
-      case "default" => LogOption.Auto
-      case _         => LogOption.Auto
+      case "always" => LogOption.Always
+      case "auto"   => LogOption.Auto
+      case "never"  => LogOption.Never
+      case "true"   => LogOption.Always
+      case "false"  => LogOption.Never
+      case _        => LogOption.Auto
     }
 
   private[this] val generateId: AtomicInteger = new AtomicInteger
@@ -462,12 +461,13 @@ class ConsoleAppender private[ConsoleAppender] (
   private final val DeleteLine = "\u001B[2K"
   private final val CursorLeft1000 = "\u001B[1000D"
   private def write(msg: String): Unit = {
-    if (!useFormat || !ansiCodesSupported) out.println(EscHelpers.removeEscapeSequences(msg))
-    else {
-      if (ConsoleAppender.showProgress) {
-        out.print(s"$ScrollUp$DeleteLine$msg${CursorLeft1000}")
-        out.flush()
-      } else out.println(msg)
+    if (!useFormat || !ansiCodesSupported) {
+      out.println(EscHelpers.removeEscapeSequences(msg))
+    } else if (ConsoleAppender.showProgress) {
+      out.print(s"$ScrollUp$DeleteLine$msg${CursorLeft1000}")
+      out.flush()
+    } else {
+      out.println(msg)
     }
   }
 
