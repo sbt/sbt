@@ -25,3 +25,10 @@ type TraceEvent implements sbt.internal.util.AbstractEntry {
 type SuccessEvent {
   message: String!
 }
+
+## value for logging options like color
+enum LogOption {
+  Always
+  Never
+  Auto
+}

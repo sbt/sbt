@@ -100,12 +100,62 @@ object ConsoleAppender {
   /** Hide stack trace altogether. */
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
 
-  /** Indicates whether formatting has been disabled in environment variables. */
+  /**
+   * Indicates whether formatting has been disabled in environment variables.
+   * 1. -Dsbt.log.noformat=true means no formatting.
+   * 2. -Dsbt.color=always/auto/never/true/false
+   * 3. -Dsbt.colour=always/auto/never/true/false
+   * 4. -Dsbt.log.format=always/auto/never/true/false
+   */
   val formatEnabledInEnv: Boolean = {
-    import java.lang.Boolean.{ getBoolean, parseBoolean }
-    val value = System.getProperty("sbt.log.format")
-    if (value eq null) (ansiSupported && !getBoolean("sbt.log.noformat")) else parseBoolean(value)
+    def useColorDefault: Boolean = {
+      // This approximates that both stdin and stdio are connected,
+      // so by default color will be turned off for pipes and redirects.
+      val hasConsole = Option(java.lang.System.console).isDefined
+      ansiSupported && hasConsole
+    }
+    sys.props.get("sbt.log.noformat") match {
+      case Some(_) => !java.lang.Boolean.getBoolean("sbt.log.noformat")
+      case _ =>
+        sys.props
+          .get("sbt.color")
+          .orElse(sys.props.get("sbt.colour"))
+          .orElse(sys.props.get("sbt.log.format"))
+          .flatMap({ s =>
+            parseLogOption(s) match {
+              case LogOption.Always => Some(true)
+              case LogOption.Never  => Some(false)
+              case _                => None
+            }
+          })
+          .getOrElse(useColorDefault)
+    }
   }
+
+  /**
+   * Indicates whether the super shell is enabled.
+   */
+  lazy val showProgress: Boolean =
+    formatEnabledInEnv && sys.props
+      .get("sbt.progress")
+      .flatMap({ s =>
+        parseLogOption(s) match {
+          case LogOption.Always => Some(true)
+          case LogOption.Never  => Some(false)
+          case _                => None
+        }
+      })
+      .getOrElse(true)
+
+  private[sbt] def parseLogOption(s: String): LogOption =
+    s.toLowerCase match {
+      case "always" => LogOption.Always
+      case "auto"   => LogOption.Auto
+      case "never"  => LogOption.Never
+      case "true"   => LogOption.Always
+      case "false"  => LogOption.Never
+      case _        => LogOption.Auto
+    }
 
   private[this] val generateId: AtomicInteger = new AtomicInteger
 
@@ -406,11 +456,18 @@ class ConsoleAppender private[ConsoleAppender] (
     appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
   }
 
+  private final val ScrollUp = "\u001B[S"
+  private final val DeleteLine = "\u001B[2K"
+  private final val CursorLeft1000 = "\u001B[1000D"
   private def write(msg: String): Unit = {
-    val cleanedMsg =
-      if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg)
-      else msg
-    out.println(cleanedMsg)
+    if (!useFormat || !ansiCodesSupported) {
+      out.println(EscHelpers.removeEscapeSequences(msg))
+    } else if (ConsoleAppender.showProgress) {
+      out.print(s"$ScrollUp$DeleteLine$msg${CursorLeft1000}")
+      out.flush()
+    } else {
+      out.println(msg)
+    }
   }
 
   private def appendMessage(level: Level.Value, msg: Message): Unit =

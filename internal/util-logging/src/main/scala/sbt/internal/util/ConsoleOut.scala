@@ -7,6 +7,7 @@ sealed trait ConsoleOut {
   def print(s: String): Unit
   def println(s: String): Unit
   def println(): Unit
+  def flush(): Unit
 }
 
 object ConsoleOut {
@@ -39,6 +40,14 @@ object ConsoleOut {
       last = Some(s)
       current.setLength(0)
     }
+    def flush(): Unit = synchronized {
+      val s = current.toString
+      if (ConsoleAppender.formatEnabledInEnv && last.exists(lmsg => f(s, lmsg)))
+        lockObject.print(OverwriteLine)
+      lockObject.print(s)
+      last = Some(s)
+      current.setLength(0)
+    }
   }
 
   def printStreamOut(out: PrintStream): ConsoleOut = new ConsoleOut {
@@ -46,17 +55,20 @@ object ConsoleOut {
     def print(s: String) = out.print(s)
     def println(s: String) = out.println(s)
     def println() = out.println()
+    def flush() = out.flush()
   }
   def printWriterOut(out: PrintWriter): ConsoleOut = new ConsoleOut {
     val lockObject = out
     def print(s: String) = out.print(s)
-    def println(s: String) = { out.println(s); out.flush() }
-    def println() = { out.println(); out.flush() }
+    def println(s: String) = { out.println(s); flush() }
+    def println() = { out.println(); flush() }
+    def flush() = { out.flush() }
   }
   def bufferedWriterOut(out: BufferedWriter): ConsoleOut = new ConsoleOut {
     val lockObject = out
     def print(s: String) = out.write(s)
     def println(s: String) = { out.write(s); println() }
-    def println() = { out.newLine(); out.flush() }
+    def println() = { out.newLine(); flush() }
+    def flush() = { out.flush() }
   }
 }
