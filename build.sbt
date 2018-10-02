@@ -259,6 +259,26 @@ lazy val lmIvy = (project in file("ivy"))
     ),
   )
 
+lazy val lmScriptedTest = (project in file("scripted-test"))
+  .enablePlugins(SbtPlugin)
+  .settings(
+    commonSettings,
+    skip in publish := true,
+    name := "scripted-test",
+    scriptedLaunchOpts := { scriptedLaunchOpts.value ++
+      Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+    },
+    scriptedBufferLog := false
+  ).enablePlugins(SbtScriptedIT)
+
+addCommandAlias("scriptedIvy", Seq(
+  "lmCore/publishLocal",
+  "lmIvy/publishLocal",
+  "lmScriptedTest/clean",
+  """set ThisBuild / scriptedTestLMImpl := "ivy"""",
+  """set ThisBuild / scriptedLaunchOpts += "-Ddependency.resolution=set ThisBuild / dependencyResolution := sbt.librarymanagement.ivy.IvyDependencyResolution(ivyConfiguration.value)" """,
+  "lmScriptedTest/scripted").mkString(";",";",""))
+
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
     // "clean" ::
