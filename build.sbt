@@ -107,6 +107,20 @@ lazy val sbtRoot: Project = (project in file("."))
   .settings(
     buildLevelSettings,
     minimalSettings,
+    onLoadMessage := {
+      """           __    __ 
+        |     _____/ /_  / /_
+        |    / ___/ __ \/ __/
+        |   (__  ) /_/ / /_  
+        |  /____/_.___/\__/ 
+        |Welcome to the build for sbt.
+        |""".stripMargin +
+          (if (sys.props("java.specification.version") != "1.8")
+            s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               |  Java versions is ${sys.props("java.specification.version")}. We recommend 1.8.
+               |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
+          else "")
+    },
     Util.baseScalacOptions,
     Docs.settings,
     Sxr.settings,
