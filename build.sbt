@@ -561,6 +561,12 @@ lazy val mainProj = (project in file("main"))
   .settings(
     testedBaseSettings,
     name := "Main",
+    checkPluginCross := {
+      val sv = scalaVersion.value
+      val xs = IO.readLines(baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala")
+      if (xs exists { s => s.contains(s""""$sv"""") }) ()
+      else sys.error("PluginCross.scala does not match up with the scalaVersion " + sv)
+    },
     libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies ++ Seq(scalaCacheCaffeine),
     Compile / scalacOptions -= "-Xfatal-warnings",
     managedSourceDirectories in Compile +=
