@@ -278,7 +278,7 @@ final class ScriptedTests(
       |  def setUpScripted = Command.command("setUpScripted") { (state0: State) =>
       |    val nameScriptedSetting = name.in(LocalRootProject).:=(
       |        if (name.value.startsWith("sbt_")) "$testName" else name.value)
-      |    val state1 = Project.extract(state0).append(nameScriptedSetting, state0)
+      |    val state1 = Project.extract(state0).appendWithoutSession(nameScriptedSetting, state0)
       |    "initialize" :: state1
       |  }
       |}
