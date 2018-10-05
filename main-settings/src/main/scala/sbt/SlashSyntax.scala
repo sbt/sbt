@@ -88,3 +88,5 @@ object SlashSyntax {
   final class RichScope(protected val scope: Scope) extends HasSlashKey
 
 }
+
+private[sbt] object SlashSyntax0 extends SlashSyntax
