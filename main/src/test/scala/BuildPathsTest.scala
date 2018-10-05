@@ -8,7 +8,6 @@
 package sbt
 
 import org.specs2.mutable.Specification
-import sbt.BuildPaths
 
 object BuildPathsTest extends Specification {
 
