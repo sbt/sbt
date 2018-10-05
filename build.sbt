@@ -107,6 +107,20 @@ lazy val sbtRoot: Project = (project in file("."))
   .settings(
     buildLevelSettings,
     minimalSettings,
+    onLoadMessage := {
+      """           __    __ 
+        |     _____/ /_  / /_
+        |    / ___/ __ \/ __/
+        |   (__  ) /_/ / /_  
+        |  /____/_.___/\__/ 
+        |Welcome to the build for sbt.
+        |""".stripMargin +
+          (if (sys.props("java.specification.version") != "1.8")
+            s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               |  Java versions is ${sys.props("java.specification.version")}. We recommend 1.8.
+               |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
+          else "")
+    },
     Util.baseScalacOptions,
     Docs.settings,
     Sxr.settings,
@@ -545,6 +559,12 @@ lazy val mainProj = (project in file("main"))
   .settings(
     testedBaseSettings,
     name := "Main",
+    checkPluginCross := {
+      val sv = scalaVersion.value
+      val xs = IO.readLines(baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala")
+      if (xs exists { s => s.contains(s""""$sv"""") }) ()
+      else sys.error("PluginCross.scala does not match up with the scalaVersion " + sv)
+    },
     libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies ++ Seq(scalaCacheCaffeine),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
