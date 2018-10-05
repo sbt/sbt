@@ -7,7 +7,7 @@
 
 package sbt
 
-import java.io.File
+import java.io.{ File, InputStream }
 import java.nio.file.FileSystems
 
 import sbt.BasicCommandStrings.{
@@ -20,9 +20,9 @@ import sbt.BasicCommands.otherCommandParser
 import sbt.internal.LegacyWatched
 import sbt.internal.inc.Stamper
 import sbt.internal.io.{ EventMonitor, Source, WatchState }
-import sbt.internal.util.AttributeKey
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.DefaultParsers
+import sbt.internal.util.{ AttributeKey, JLine }
 import sbt.io.FileEventMonitor.Event
 import sbt.io._
 import sbt.util.{ Level, Logger }
@@ -108,25 +108,44 @@ object Watched {
 
   type WatchSource = Source
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
-  /*
-   * Without jline, checking for enter is nearly pointless because System.in.available will not
-   * return a non-zero value until the user presses enter.
-   */
-  @tailrec
-  final def shouldTerminate: Boolean =
-    (System.in.available > 0) && (terminateWatch(System.in.read()) || shouldTerminate)
-  final val handleInput: () => Action = () => if (shouldTerminate) CancelWatch else Ignore
-  val defaultStartWatch: Int => Option[String] = count =>
-    Some(s"$count. Waiting for source changes... (press enter to interrupt)")
+
+  private def withCharBufferedStdIn[R](f: InputStream => R): R = JLine.usingTerminal { terminal =>
+    val in = terminal.wrapInIfNeeded(System.in)
+    try {
+      while (in.available > 0) in.read()
+      terminal.init()
+      f(in)
+    } finally {
+      while (in.available > 0) in.read()
+      terminal.reset()
+    }
+  }
+
+  private[sbt] final val handleInput: InputStream => Action = in => {
+    @tailrec
+    def scanInput(): Action = {
+      if (in.available > 0) {
+        in.read() match {
+          case key if isEnter(key) => CancelWatch
+          case key if isR(key)     => Trigger
+          case key if key >= 0     => scanInput()
+          case _                   => Ignore
+        }
+      } else {
+        Ignore
+      }
+    }
+    scanInput()
+  }
+  private def waitMessage(project: String): String =
+    s"Waiting for source changes$project... (press enter to interrupt or 'r' to re-run the command)"
+  val defaultStartWatch: Int => Option[String] = count => Some(s"$count. ${waitMessage("")}")
   @deprecated("Use defaultStartWatch in conjunction with the watchStartMessage key", "1.3.0")
   val defaultWatchingMessage: WatchState => String = ws => defaultStartWatch(ws.count).get
   def projectWatchingMessage(projectId: String): WatchState => String =
     ws => projectOnWatchMessage(projectId)(ws.count).get
   def projectOnWatchMessage(project: String): Int => Option[String] =
-    count =>
-      Some(
-        s"$count. Waiting for source changes in project $project... (press enter to interrupt)"
-    )
+    count => Some(s"$count. ${waitMessage(s" in project $project")}")
 
   val defaultOnTriggerMessage: Int => Option[String] = _ => None
   @deprecated(
@@ -182,6 +201,7 @@ object Watched {
   val PollDelay: FiniteDuration = 500.milliseconds
   val AntiEntropy: FiniteDuration = 40.milliseconds
   def isEnter(key: Int): Boolean = key == 10 || key == 13
+  def isR(key: Int): Boolean = key == 82 || key == 114
   def printIfDefined(msg: String): Unit = if (!msg.isEmpty) System.out.println(msg)
 
   private type RunCommand = () => State
@@ -231,7 +251,7 @@ object Watched {
       state: State,
       command: String,
       setup: WatchSetup,
-  ): State = {
+  ): State = withCharBufferedStdIn { in =>
     val (s0, config, newState) = setup(state, command)
     val failureCommandName = "SbtContinuousWatchOnFail"
     val onFail = Command.command(failureCommandName)(identity)
@@ -263,7 +283,7 @@ object Watched {
           case (status, Right(t)) => if (status.getOrElse(true)) t() else status
           case _                  => throw new IllegalStateException("Should be unreachable")
       }
-      val terminationAction = watch(task, config)
+      val terminationAction = watch(in, task, config)
       config.onWatchTerminated(terminationAction, command, state)
     } else {
       config.logger.error(
@@ -274,6 +294,7 @@ object Watched {
   }
 
   private[sbt] def watch(
+      in: InputStream,
       task: () => Either[Exception, Boolean],
       config: WatchConfig
   ): Action = {
@@ -284,7 +305,7 @@ object Watched {
     def impl(count: Int): Action = {
       @tailrec
       def nextAction(): Action = {
-        config.handleInput() match {
+        config.handleInput(in) match {
           case action @ (CancelWatch | HandleError | Reload | _: Custom) => action
           case Trigger                                                   => Trigger
           case _ =>
@@ -348,12 +369,8 @@ object Watched {
           HandleError
       }
     }
-    try {
-      impl(count = 1)
-    } finally {
-      config.fileEventMonitor.close()
-      while (System.in.available() > 0) System.in.read()
-    }
+    try impl(count = 1)
+    finally config.fileEventMonitor.close()
   }
 
   @deprecated("Replaced by Watched.command", "1.3.0")
@@ -423,7 +440,7 @@ trait WatchConfig {
    * trigger. Usually this will read from System.in to react to user input.
    * @return an [[Watched.Action Action]] that will determine the next step in the watch.
    */
-  def handleInput(): Watched.Action
+  def handleInput(inputStream: InputStream): Watched.Action
 
   /**
    * This is run before each watch iteration and if it returns true, the watch is terminated.
@@ -496,7 +513,7 @@ object WatchConfig {
   def default(
       logger: Logger,
       fileEventMonitor: FileEventMonitor[StampedFile],
-      handleInput: () => Watched.Action,
+      handleInput: InputStream => Watched.Action,
       preWatch: (Int, Boolean) => Watched.Action,
       onWatchEvent: Event[StampedFile] => Watched.Action,
       onWatchTerminated: (Watched.Action, String, State) => State,
@@ -514,7 +531,7 @@ object WatchConfig {
     new WatchConfig {
       override def logger: Logger = l
       override def fileEventMonitor: FileEventMonitor[StampedFile] = fem
-      override def handleInput(): Watched.Action = hi()
+      override def handleInput(inputStream: InputStream): Watched.Action = hi(inputStream)
       override def preWatch(count: Int, lastResult: Boolean): Watched.Action =
         pw(count, lastResult)
       override def onWatchEvent(event: Event[StampedFile]): Watched.Action = owe(event)

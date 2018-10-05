@@ -7,7 +7,7 @@
 
 package sbt
 
-import java.io.File
+import java.io.{ File, InputStream }
 import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -28,7 +28,7 @@ class WatchedSpec extends FlatSpec with Matchers {
         sources: Seq[WatchSource],
         fileEventMonitor: Option[FileEventMonitor[StampedFile]] = None,
         logger: Logger = NullLogger,
-        handleInput: () => Action = () => Ignore,
+        handleInput: InputStream => Action = _ => Ignore,
         preWatch: (Int, Boolean) => Action = (_, _) => CancelWatch,
         onWatchEvent: Event[StampedFile] => Action = _ => Ignore,
         triggeredMessage: (TypedPath, Int) => Option[String] = (_, _) => None,
@@ -49,9 +49,13 @@ class WatchedSpec extends FlatSpec with Matchers {
       )
     }
   }
+  object NullInputStream extends InputStream {
+    override def available(): Int = 0
+    override def read(): Int = -1
+  }
   "Watched.watch" should "stop" in IO.withTemporaryDirectory { dir =>
     val config = Defaults.config(sources = Seq(WatchSource(dir.toRealPath)))
-    Watched.watch(() => Right(true), config) shouldBe CancelWatch
+    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
   }
   it should "trigger" in IO.withTemporaryDirectory { dir =>
     val triggered = new AtomicBoolean(false)
@@ -63,7 +67,7 @@ class WatchedSpec extends FlatSpec with Matchers {
         new File(dir, "file").createNewFile; None
       }
     )
-    Watched.watch(() => Right(true), config) shouldBe CancelWatch
+    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
     assert(triggered.get())
   }
   it should "filter events" in IO.withTemporaryDirectory { dir =>
@@ -78,7 +82,7 @@ class WatchedSpec extends FlatSpec with Matchers {
       triggeredMessage = (tp, _) => { queue += tp; None },
       watchingMessage = _ => { Files.createFile(bar); Thread.sleep(5); Files.createFile(foo); None }
     )
-    Watched.watch(() => Right(true), config) shouldBe CancelWatch
+    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
     queue.toIndexedSeq.map(_.getPath) shouldBe Seq(foo)
   }
   it should "enforce anti-entropy" in IO.withTemporaryDirectory { dir =>
@@ -102,7 +106,7 @@ class WatchedSpec extends FlatSpec with Matchers {
         None
       }
     )
-    Watched.watch(() => Right(true), config) shouldBe CancelWatch
+    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
     queue.toIndexedSeq.map(_.getPath) shouldBe Seq(bar, foo)
   }
   it should "halt on error" in IO.withTemporaryDirectory { dir =>
@@ -111,7 +115,7 @@ class WatchedSpec extends FlatSpec with Matchers {
       sources = Seq(WatchSource(dir.toRealPath)),
       preWatch = (_, lastStatus) => if (lastStatus) Ignore else { halted.set(true); HandleError }
     )
-    Watched.watch(() => Right(false), config) shouldBe HandleError
+    Watched.watch(NullInputStream, () => Right(false), config) shouldBe HandleError
     assert(halted.get())
   }
   it should "reload" in IO.withTemporaryDirectory { dir =>
@@ -121,7 +125,7 @@ class WatchedSpec extends FlatSpec with Matchers {
       onWatchEvent = _ => Reload,
       watchingMessage = _ => { new File(dir, "file").createNewFile(); None }
     )
-    Watched.watch(() => Right(true), config) shouldBe Reload
+    Watched.watch(NullInputStream, () => Right(true), config) shouldBe Reload
   }
 }
 
