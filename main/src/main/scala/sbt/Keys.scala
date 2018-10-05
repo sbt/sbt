@@ -360,6 +360,7 @@ object Keys {
   val ivyConfigurations = settingKey[Seq[Configuration]]("The defined configurations for dependency management.  This may be different from the configurations for Project settings.").withRank(BSetting)
   // This setting was created to work around the limitation of derived tasks not being able to use task-scoped task: ivyConfiguration in updateSbtClassifiers
   val bootIvyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, configured to retrieve sbt's components.").withRank(DTask)
+  val bootDependencyResolution = taskKey[DependencyResolution]("Dependency resolution to retrieve sbt's components.").withRank(CTask)
   val moduleSettings = taskKey[ModuleSettings]("Module settings, which configure dependency management for a specific module, such as a project.").withRank(DTask)
   val unmanagedBase = settingKey[File]("The default directory for manually managed libraries.").withRank(ASetting)
   val updateConfiguration = settingKey[UpdateConfiguration]("Configuration for resolving and retrieving managed dependencies.").withRank(DSetting)

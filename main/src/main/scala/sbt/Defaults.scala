@@ -107,6 +107,7 @@ import sbt.internal.inc.{
   MixedAnalyzingCompiler,
   ScalaInstance
 }
+import sbt.SlashSyntax0._
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -518,7 +519,7 @@ object Defaults extends BuildCommon {
               globalLock = launcher.globalLock,
               componentProvider = app.provider.components,
               secondaryCacheDir = Option(zincDir),
-              dependencyResolution = dependencyResolution.value,
+              dependencyResolution = bootDependencyResolution.value,
               compilerBridgeSource = scalaCompilerBridgeSource.value,
               scalaJarsTarget = zincDir,
               log = streams.value.log
@@ -2361,7 +2362,10 @@ object Classpaths {
             }
           } tag (Tags.Update, Tags.Network)).value
         )
-      ) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
+      ) ++ Seq(
+      bootIvyConfiguration := (updateSbtClassifiers / ivyConfiguration).value,
+      bootDependencyResolution := (updateSbtClassifiers / dependencyResolution).value
+    )
 
   def classifiersModuleTask: Initialize[Task[GetClassifiersModule]] =
     Def.task {
