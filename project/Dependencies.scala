@@ -10,7 +10,7 @@ object Dependencies {
 
   // sbt modules
   private val ioVersion = "1.2.1"
-  private val utilVersion = "1.2.2"
+  private val utilVersion = "1.3.0-M2"
   private val lmVersion = "1.2.1"
   private val zincVersion = "1.2.2"
 
