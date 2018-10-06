@@ -272,8 +272,7 @@ object Defaults extends BuildCommon {
         None
       },
       watchStartMessage := Watched.defaultStartWatch,
-      fileTreeViewConfig := FileTreeViewConfig
-        .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value),
+      fileTreeViewConfig := FileManagement.defaultFileTreeView.value,
       fileTreeView := state.value
         .get(BasicKeys.globalFileTreeView)
         .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
@@ -657,8 +656,7 @@ object Defaults extends BuildCommon {
     },
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
-    fileTreeViewConfig := FileTreeViewConfig
-      .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value)
+    fileTreeViewConfig := FileManagement.defaultFileTreeView.value
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =

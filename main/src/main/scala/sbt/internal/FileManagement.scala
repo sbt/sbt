@@ -13,10 +13,16 @@ import java.nio.file.Path
 import sbt.Keys._
 import sbt.io.FileTreeDataView.Entry
 import sbt.io.syntax.File
-import sbt.io.{ FileFilter, FileTreeRepository, FileTreeDataView }
-import sbt.{ Def, ScopedTaskable, StampedFile, Task }
+import sbt.io.{ FileFilter, FileTreeDataView, FileTreeRepository }
+import sbt._
 
 private[sbt] object FileManagement {
+  private[sbt] def defaultFileTreeView: Def.Initialize[Task[FileTreeViewConfig]] = Def.task {
+    if (state.value.remainingCommands.exists(_.commandLine == "shell")) {
+      FileTreeViewConfig
+        .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value)
+    } else FileTreeViewConfig.sbt1_2_compat(pollInterval.value, watchAntiEntropy.value)
+  }
   private[sbt] implicit class FileTreeDataViewOps[+T](val fileTreeDataView: FileTreeDataView[T]) {
     def register(path: Path, maxDepth: Int): Either[IOException, Boolean] = {
       fileTreeDataView match {
