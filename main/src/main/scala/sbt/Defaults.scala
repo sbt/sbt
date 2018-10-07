@@ -198,8 +198,9 @@ object Defaults extends BuildCommon {
       scalaOrganization :== ScalaArtifacts.Organization,
       scalaArtifacts :== ScalaArtifacts.Artifacts,
       sbtResolver := {
-        if (sbtVersion.value endsWith "-SNAPSHOT") Classpaths.sbtIvySnapshots
-        else Classpaths.typesafeReleases
+        val v = sbtVersion.value
+        if (v.endsWith("-SNAPSHOT") || v.contains("-bin-")) Classpaths.sbtMavenSnapshots
+        else Resolver.DefaultMavenRepository
       },
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
@@ -2289,13 +2290,20 @@ object Classpaths {
       inTask(updateSbtClassifiers)(
         Seq(
           externalResolvers := {
+            val boot = bootResolvers.value
             val explicit = buildStructure.value
               .units(thisProjectRef.value.build)
               .unit
               .plugins
               .pluginData
               .resolvers
-            explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
+            // https://github.com/sbt/sbt/issues/4408
+            (explicit, boot) match {
+              case (Some(ex), Some(b)) => (ex.toVector ++ b.toVector).distinct
+              case (Some(ex), None)    => ex
+              case (None, Some(b))     => b
+              case _                   => externalResolvers.value
+            }
           },
           ivyConfiguration := InlineIvyConfiguration(
             paths = ivyPaths.value,
@@ -3065,6 +3073,8 @@ object Classpaths {
   val sbtIvySnapshots: URLRepository = Resolver.sbtIvyRepo("snapshots")
   val typesafeReleases: URLRepository = Resolver.typesafeIvyRepo("releases")
   val sbtPluginReleases: URLRepository = Resolver.sbtPluginRepo("releases")
+  val sbtMavenSnapshots: MavenRepository =
+    MavenRepository("sbt-maven-snapshot", Resolver.SbtRepositoryRoot + "/" + "maven-snapshots/")
 
   def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
     if (plugin) dep.withConfigurations(Some(Provided.name)) else dep
