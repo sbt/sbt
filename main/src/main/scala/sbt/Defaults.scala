@@ -443,6 +443,7 @@ object Defaults extends BuildCommon {
   def addBaseSources = FileManagement.appendBaseSources
   lazy val outputConfigPaths = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
+    semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
   )
 
@@ -3328,6 +3329,8 @@ object Classpaths {
     }
   }
 }
+
+private[sbt] object Build0 extends BuildExtra
 
 trait BuildExtra extends BuildCommon with DefExtra {
   import Defaults._
