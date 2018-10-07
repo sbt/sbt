@@ -30,6 +30,7 @@ object Util {
       "0",
       "-language:existentials",
       "-language:postfixOps",
+      "-Yrangepos",
     ),
     Compile / doc / scalacOptions -= "-Xlint",
     Compile / doc / scalacOptions -= "-Xfatal-warnings",
