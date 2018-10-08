@@ -7,17 +7,20 @@
 
 package testpkg
 
-import org.scalatest._
-import scala.concurrent._
-import scala.annotation.tailrec
-import sbt.protocol.ClientSocket
-import TestServer.withTestServer
 import java.io.File
-import sbt.io.syntax._
-import sbt.io.IO
-import sbt.RunFromSourceMain
-import scala.concurrent.ExecutionContext
+import java.nio.file.Files
 import java.util.concurrent.ForkJoinPool
+
+import org.scalatest._
+import sbt.RunFromSourceMain
+import sbt.io.IO
+import sbt.io.syntax._
+import sbt.protocol.ClientSocket
+import testpkg.TestServer.withTestServer
+
+import scala.annotation.tailrec
+import scala.concurrent.{ ExecutionContext, _ }
+import scala.concurrent.duration._
 
 class ServerSpec extends AsyncFreeSpec with Matchers {
   "server" - {
@@ -139,20 +142,30 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
 
   lazy val portfile = baseDirectory / "project" / "target" / "active.json"
 
-  hostLog("wait 30s until the server is ready to respond")
-  def waitForPortfile(n: Int): Unit =
+  val timeout = 3.minutes // Long timeout for CI builds
+  hostLog(s"wait up to $timeout until the server is ready to respond")
+  def waitForPortfile(): Unit =
     if (portfile.exists) ()
     else {
-      if (n <= 0) sys.error(s"Timeout. $portfile is not found.")
-      else {
-        Thread.sleep(1000)
-        if ((n - 1) % 10 == 0) {
-          hostLog("waiting for the server...")
-        }
-        waitForPortfile(n - 1)
+      val base = Files.createDirectories(portfile.toPath.getParent).toRealPath()
+      val resolved = base.resolve(portfile.getName) // On mac we need to resolve /var to /private/var
+      val repo = sbt.io.FileTreeRepository.default(_.getPath)
+      repo.register(resolved, -1)
+      val monitor = sbt.io.FileEventMonitor(repo, logger = _ => ())
+      try {
+        if (!portfile.exists &&
+            !monitor
+              .poll(timeout)
+              .map(_.entry.typedPath)
+              .exists(tp => tp.exists && tp.getPath == resolved))
+          sys.error(s"Timeout. $portfile is not found.")
+      } finally {
+        println(s"Finished waiting for $resolved")
+        Thread.sleep(1000) // Add sleep to ensure the server is really ready.
+        monitor.close()
       }
     }
-  waitForPortfile(90)
+  waitForPortfile()
 
   // make connection to the socket described in the portfile
   val (sk, tkn) = ClientSocket.socket(portfile)
