@@ -1,10 +1,12 @@
+sudo: false
 dist: trusty
+group: stable
 
 language: scala
 
 env:
   global:
-  - SBT_VER=1.1.1
+  - SBT_VER=1.2.4
 
 matrix:
   include:
@@ -23,17 +25,16 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    ## build using JDK 8, test using OpenJDK 10
-    - script:
-        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
-        - citest/install-jdk.sh -F 10
-        - cd citest && ./test.sh
-      jdk: oraclejdk8
-
     ## build using JDK 8, test using OpenJDK 11
-    - script:
+    - env:
+        - TRAVIS_JDK=openjdk@1.11.0
+        - JABBA_HOME=/home/travis/.jabba
+      before_install:
+        - unset _JAVA_OPTIONS
+        - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
+      script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
-        - citest/install-jdk.sh -F 11
+        - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
         - cd citest && ./test.sh
       jdk: oraclejdk8
 
@@ -61,6 +62,7 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot
+    - $HOME/.jabba/jdk
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
