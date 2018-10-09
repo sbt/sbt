@@ -22,7 +22,7 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
       val buffer = new Array[Char](bufferSize)
       var read = 0
       while ({ read = reader.read(buffer, 0, bufferSize); read != -1 }) {
-        builder.append(String.valueOf(buffer.take(read)))
+        builder.appendAll(buffer, 0, read)
       }
       builder.toString()
     }
