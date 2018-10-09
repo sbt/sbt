@@ -42,7 +42,7 @@ private[sbt] object SbtParser {
     """.stripMargin
 
   private final val defaultClasspath =
-    sbt.io.Path.makeString(sbt.io.IO.classLocationFile[Product] :: Nil)
+    sbt.io.Path.makeString(sbt.io.IO.classLocationPath[Product].toFile :: Nil)
 
   /**
    * Provides the previous error reporting functionality in

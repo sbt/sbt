@@ -125,8 +125,8 @@ private[sbt] object ForkTests {
         acceptorThread.start()
 
         val fullCp = classpath ++: Seq(
-          IO.classLocationFile[ForkMain],
-          IO.classLocationFile[Framework]
+          IO.classLocationPath[ForkMain].toFile,
+          IO.classLocationPath[Framework].toFile
         )
         val options = Seq(
           "-classpath",

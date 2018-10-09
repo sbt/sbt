@@ -31,8 +31,8 @@ object ForkTest extends Properties("Fork") {
   lazy val genRelClasspath = nonEmptyListOf(path)
 
   lazy val requiredEntries =
-    IO.classLocationFile[scala.Option[_]] ::
-      IO.classLocationFile[sbt.exit.type] ::
+    IO.classLocationPath[scala.Option[_]].toFile ::
+      IO.classLocationPath[sbt.exit.type].toFile ::
       Nil
   lazy val mainAndArgs =
     "sbt.exit" ::

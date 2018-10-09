@@ -250,7 +250,7 @@ object TestFramework {
       scalaInstance: ScalaInstance,
       tempDir: File
   ): ClassLoader = {
-    val interfaceJar = IO.classLocationFile(classOf[testing.Framework])
+    val interfaceJar = IO.classLocationPath(classOf[testing.Framework]).toFile
     val interfaceFilter = (name: String) =>
       name.startsWith("org.scalatools.testing.") || name.startsWith("sbt.testing.")
     val notInterfaceFilter = (name: String) => !interfaceFilter(name)

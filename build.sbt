@@ -459,6 +459,8 @@ lazy val commandProj = (project in file("main-command"))
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
+    // Removing -Xfatal-warnings is necessary because BasicKeys contains a Key for a deprecated class.
+    Compile / scalacOptions -= "-Xfatal-warnings",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
