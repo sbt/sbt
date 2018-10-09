@@ -239,7 +239,7 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
   }
 
   def readLine: Option[String] = {
-    if (buffer.isEmpty) {
+    if (buffer.isEmpty && (in.available > 0)) {
       val bytesRead = in.read(readBuffer)
       if (bytesRead > 0) {
         buffer = buffer ++ readBuffer.toVector.take(bytesRead)
@@ -256,7 +256,7 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
   }
 
   def readContentLength(length: Int): Option[String] = {
-    if (buffer.isEmpty) {
+    if (buffer.isEmpty && (in.available > 0)) {
       val bytesRead = in.read(readBuffer)
       if (bytesRead > 0) {
         buffer = buffer ++ readBuffer.toVector.take(bytesRead)
