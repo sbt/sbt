@@ -507,7 +507,8 @@ lazy val commandProj = (project in file("main-command"))
     addSbtUtilLogging,
     addSbtCompilerInterface,
     addSbtCompilerClasspath,
-    addSbtLmCore
+    addSbtLmCore,
+    addSbtZinc
   )
 
 // The core macro project defines the main logic of the DSL, abstracted
