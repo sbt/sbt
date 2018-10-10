@@ -49,7 +49,7 @@ import Project.LoadAction
 import xsbti.compile.CompilerCache
 
 import scala.annotation.tailrec
-import sbt.io.IO
+import sbt.io.{ FileTreeDataView, IO }
 import sbt.io.syntax._
 import java.io.{ File, IOException }
 import java.net.URI
@@ -241,7 +241,9 @@ object BuiltinCommands {
       export,
       boot,
       initialize,
-      act
+      act,
+      continuous,
+      flushFileTreeRepository
     ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
@@ -444,6 +446,14 @@ object BuiltinCommands {
     (s, arg) =>
       if (Project.isProjectLoaded(s)) loadedEval(s, arg) else rawEval(s, arg)
       s
+  }
+
+  def continuous: Command = Watched.continuous { (state: State, command: String) =>
+    val extracted = Project.extract(state)
+    val (s, watchConfig) = extracted.runTask(Keys.watchConfig, state)
+    val updateState =
+      (runCommand: () => State) => MainLoop.processCommand(Exec(command, None), s, runCommand)
+    (s, watchConfig, updateState)
   }
 
   private[this] def loadedEval(s: State, arg: String): Unit = {
@@ -849,7 +859,7 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
-    Project.setProject(session, structure, s)
+    registerGlobalFileRepository(Project.setProject(session, structure, s))
   }
 
   def registerCompilerCache(s: State): State = {
@@ -866,6 +876,27 @@ object BuiltinCommands {
         if (num <= 0) CompilerCache.fresh else CompilerCache.createCacheFor(num)
       }
     s.put(Keys.stateCompilerCache, cache)
+  }
+  def registerGlobalFileRepository(s: State): State = {
+    val extracted = Project.extract(s)
+    try {
+      val (_, config: FileTreeViewConfig) = extracted.runTask(Keys.fileTreeViewConfig, s)
+      val view: FileTreeDataView[StampedFile] = config.newDataView()
+      val newState = s.addExitHook {
+        view.close()
+        s.attributes.remove(BasicKeys.globalFileTreeView)
+        ()
+      }
+      newState.get(BasicKeys.globalFileTreeView).foreach(_.close())
+      newState.put(BasicKeys.globalFileTreeView, view)
+    } catch {
+      case NonFatal(_) => s
+    }
+  }
+
+  def flushFileTreeRepository: Command = {
+    val help = Help.more(FlushFileTreeRepository, FlushDetailed)
+    Command.command(FlushFileTreeRepository, help)(registerGlobalFileRepository)
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>

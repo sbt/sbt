@@ -50,7 +50,6 @@ object BasicCommands {
     call,
     early,
     exit,
-    continuous,
     history,
     oldshell,
     client,
@@ -254,6 +253,7 @@ object BasicCommands {
 
   def exit: Command = Command.command(TerminateAction, exitBrief, exitBrief)(_ exit true)
 
+  @deprecated("Replaced by BuiltInCommands.continuous", "1.3.0")
   def continuous: Command =
     Command(ContinuousExecutePrefix, continuousBriefHelp, continuousDetail)(otherCommandParser) {
       (s, arg) =>

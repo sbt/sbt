@@ -40,16 +40,18 @@ import sbt.internal.util.Types._
 import sbt.io.syntax._
 import sbt.io.{
   AllPassFilter,
+  DirectoryFilter,
   FileFilter,
+  FileTreeView,
   GlobFilter,
+  Hash,
   HiddenFileFilter,
   IO,
   NameFilter,
   NothingFilter,
   Path,
   PathFinder,
-  DirectoryFilter,
-  Hash
+  TypedPath
 }, Path._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
@@ -248,7 +250,9 @@ object Defaults extends BuildCommon {
       extraLoggers :== { _ =>
         Nil
       },
+      pollingDirectories :== Nil,
       watchSources :== Nil,
+      watchProjectSources :== Nil,
       skip :== false,
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
       onComplete := {
@@ -264,7 +268,21 @@ object Defaults extends BuildCommon {
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
       pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
-      watchAntiEntropy :== new FiniteDuration(40, TimeUnit.MILLISECONDS),
+      watchTriggeredMessage := { (_, _) =>
+        None
+      },
+      watchStartMessage := Watched.defaultStartWatch,
+      fileTreeViewConfig := FileManagement.defaultFileTreeView.value,
+      fileTreeView := state.value
+        .get(BasicKeys.globalFileTreeView)
+        .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
+      externalHooks := {
+        val view = fileTreeView.value
+        compileOptions =>
+          Some(ExternalHooks(compileOptions, view))
+      },
+      watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
+      watchLogger := streams.value.log,
       watchService :== { () =>
         Watched.createWatchService()
       },
@@ -351,12 +369,14 @@ object Defaults extends BuildCommon {
           crossPaths.value
         )
     },
-    unmanagedSources := collectFiles(
-      unmanagedSourceDirectories,
-      includeFilter in unmanagedSources,
-      excludeFilter in unmanagedSources
-    ).value,
-    watchSources in ConfigGlobal ++= {
+    unmanagedSources := FileManagement
+      .collectFiles(
+        unmanagedSourceDirectories,
+        includeFilter in unmanagedSources,
+        excludeFilter in unmanagedSources
+      )
+      .value,
+    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
@@ -377,6 +397,13 @@ object Defaults extends BuildCommon {
         else Nil
       bases.map(b => new Source(b, include, exclude)) ++ baseSources
     },
+    watchProjectSources in ConfigGlobal := (watchProjectSources in ConfigGlobal).value ++ {
+      val baseDir = baseDirectory.value
+      Seq(
+        new Source(baseDir, "*.sbt", HiddenFileFilter, recursive = false),
+        new Source(baseDir / "project", "*.sbt" || "*.scala", HiddenFileFilter, recursive = true)
+      )
+    },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
     sourceGenerators :== Nil,
@@ -393,12 +420,14 @@ object Defaults extends BuildCommon {
     resourceDirectories := Classpaths
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
-    unmanagedResources := collectFiles(
-      unmanagedResourceDirectories,
-      includeFilter in unmanagedResources,
-      excludeFilter in unmanagedResources
-    ).value,
-    watchSources in ConfigGlobal ++= {
+    unmanagedResources := FileManagement
+      .collectFiles(
+        unmanagedResourceDirectories,
+        includeFilter in unmanagedResources,
+        excludeFilter in unmanagedResources
+      )
+      .value,
+    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val bases = unmanagedResourceDirectories.value
       val include = (includeFilter in unmanagedResources).value
       val exclude = (excludeFilter in unmanagedResources).value
@@ -411,18 +440,10 @@ object Defaults extends BuildCommon {
     managedResources := generate(resourceGenerators).value,
     resources := Classpaths.concat(managedResources, unmanagedResources).value
   )
+  def addBaseSources = FileManagement.appendBaseSources
   lazy val outputConfigPaths = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
-  )
-  def addBaseSources = Seq(
-    unmanagedSources := {
-      val srcs = unmanagedSources.value
-      val f = (includeFilter in unmanagedSources).value
-      val excl = (excludeFilter in unmanagedSources).value
-      val baseDir = baseDirectory.value
-      if (sourcesInBase.value) (srcs +++ baseDir * (f -- excl)).get else srcs
-    }
   )
 
   // This is included into JvmPlugin.projectSettings
@@ -599,17 +620,62 @@ object Defaults extends BuildCommon {
     clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
-    watchingMessage := Watched.projectWatchingMessage(thisProjectRef.value.project),
-    watch := watchSetting.value
+    watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
+    watchOnEvent := {
+      val sources = watchTransitiveSources.value
+      val projectSources = watchProjectTransitiveSources.value
+      e =>
+        if (sources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Trigger
+        else if (projectSources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Reload
+        else Watched.Ignore
+    },
+    watchHandleInput := Watched.handleInput,
+    watchPreWatch := { (_, _) =>
+      Watched.Ignore
+    },
+    watchOnTermination := Watched.onTermination,
+    watchConfig := {
+      val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
+      val extracted = Project.extract(state.value)
+      val wm = extracted
+        .getOpt(watchingMessage)
+        .map(w => (count: Int) => Some(w(WatchState.empty(sources).withCount(count))))
+        .getOrElse(watchStartMessage.value)
+      val tm = extracted
+        .getOpt(triggeredMessage)
+        .map(
+          tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(sources).withCount(count)))
+        )
+        .getOrElse(watchTriggeredMessage.value)
+      val logger = watchLogger.value
+      WatchConfig.default(
+        logger,
+        fileTreeViewConfig.value.newMonitor(fileTreeView.value, sources, logger),
+        watchHandleInput.value,
+        watchPreWatch.value,
+        watchOnEvent.value,
+        watchOnTermination.value,
+        tm,
+        wm
+      )
+    },
+    watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
+    watch := watchSetting.value,
+    fileTreeViewConfig := FileManagement.defaultFileTreeView.value
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
     generators { _.join.map(_.flatten) }
 
-  def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] = {
+  def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] =
+    watchTransitiveSourcesTaskImpl(watchSources)
+
+  private def watchTransitiveSourcesTaskImpl(
+      key: TaskKey[Seq[Source]]
+  ): Initialize[Task[Seq[Source]]] = {
     import ScopeFilter.Make.{ inDependencies => inDeps, _ }
     val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
-    val allWatched = (watchSources ?? Nil).all(selectDeps)
+    val allWatched = (key ?? Nil).all(selectDeps)
     Def.task { allWatched.value.flatten }
   }
 
@@ -621,6 +687,7 @@ object Defaults extends BuildCommon {
     Def.task { allUpdates.value.flatten ++ globalPluginUpdate.?.value }
   }
 
+  @deprecated("This is no longer used to implement continuous execution", "1.3.0")
   def watchSetting: Initialize[Watched] =
     Def.setting {
       val getService = watchService.value
@@ -1127,10 +1194,7 @@ object Defaults extends BuildCommon {
       dirs: ScopedTaskable[Seq[File]],
       filter: ScopedTaskable[FileFilter],
       excludes: ScopedTaskable[FileFilter]
-  ): Initialize[Task[Seq[File]]] =
-    Def.task {
-      dirs.toTask.value.descendantsExcept(filter.toTask.value, excludes.toTask.value).get
-    }
+  ): Initialize[Task[Seq[File]]] = FileManagement.collectFiles(dirs, filter, excludes)
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
@@ -1587,12 +1651,22 @@ object Defaults extends BuildCommon {
           foldMappers(sourcePositionMappers.value)
         )
       },
-      compileInputs := Inputs.of(
-        compilers.value,
-        compileOptions.value,
-        compileIncSetup.value,
-        previousCompile.value
-      )
+      compileInputs := {
+        val options = compileOptions.value
+        val setup = compileIncSetup.value
+        Inputs.of(
+          compilers.value,
+          options,
+          externalHooks
+            .value(options)
+            .map { hooks =>
+              val newOptions = setup.incrementalCompilerOptions.withExternalHooks(hooks)
+              setup.withIncrementalCompilerOptions(newOptions)
+            }
+            .getOrElse(setup),
+          previousCompile.value
+        )
+      }
     )
   }
 
@@ -1702,7 +1776,7 @@ object Defaults extends BuildCommon {
 
   lazy val compileSettings: Seq[Setting[_]] =
     configSettings ++
-      (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++
+      (mainBgRunMainTask +: mainBgRunTask +: FileManagement.appendBaseSources) ++
       Classpaths.addUnmanagedLibrary
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks

@@ -113,6 +113,7 @@ private[sbt] object Load {
     val delegates = defaultDelegates
     val pluginMgmt = PluginManagement(loader)
     val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
+    System.setProperty("swoval.tmpdir", System.getProperty("swoval.tmpdir", globalBase.toString))
     LoadBuildConfiguration(
       stagingDirectory,
       classpath,
