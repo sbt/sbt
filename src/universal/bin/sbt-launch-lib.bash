@@ -213,17 +213,54 @@ process_args () {
   vlog "[process_args] java_version = '$java_version'"
 }
 
+# Extracts the preloaded directory from either -Dsbt.preloaded or -Dsbt.global.base
+# properties by looking at:
+#   - _JAVA_OPTIONS environment variable,
+#   - SBT_OPTS environment variable,
+#   - JAVA_OPTS environment variable and
+#   - properties set by command-line options
+# in that order. The last one will be chosen such that `sbt.preloaded` is
+# always preferred over `sbt.global.base`.
+getPreloaded() {
+  local -a _java_options_array
+  local -a sbt_opts_array
+  local -a java_opts_array
+  read -a _java_options_array <<< "$_JAVA_OPTIONS"
+  read -a sbt_opts_array <<< "$SBT_OPTS"
+  read -a java_opts_array <<< "$JAVA_OPTS"
+
+  local args_to_check=(
+    "${_java_options_array[@]}"
+    "${sbt_opts_array[@]}"
+    "${java_opts_array[@]}"
+    "${java_args[@]}")
+  local via_global_base="$HOME/.sbt/preloaded"
+  local via_explicit=""
+
+  for opt in "${args_to_check[@]}"; do
+    if [[ "$opt" == -Dsbt.preloaded=* ]]; then
+      via_explicit="${opt#-Dsbt.preloaded=}"
+    elif [[ "$opt" == -Dsbt.global.base=* ]]; then
+      via_global_base="${opt#-Dsbt.global.base=}/preloaded"
+    fi
+  done
+
+  echo "${via_explicit:-${via_global_base}}"
+}
+
 syncPreloaded() {
+  local source_preloaded="$sbt_home/lib/local-preloaded"
+  local target_preloaded="$(getPreloaded)"
   if [[ "$init_sbt_version" == "" ]]; then
     # FIXME: better $init_sbt_version detection
-    init_sbt_version="$(ls -1 "$sbt_home/lib/local-preloaded/org.scala-sbt/sbt/")"
+    init_sbt_version="$(ls -1 "$source_preloaded/org.scala-sbt/sbt/")"
   fi
-  [[ -f "$HOME/.sbt/preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
+  [[ -f "$target_preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
     # lib/local-preloaded exists (This is optional)
-    [[ -d "$sbt_home/lib/local-preloaded/" ]] && {
+    [[ -d "$source_preloaded" ]] && {
       command -v rsync >/dev/null 2>&1 && {
-        mkdir -p "$HOME/.sbt/preloaded"
-        rsync -a --ignore-existing "$sbt_home/lib/local-preloaded/" "$HOME/.sbt/preloaded"
+        mkdir -p "$target_preloaded"
+        rsync -a --ignore-existing "$source_preloaded" "$preloaded"
       }
     }
   }
@@ -277,6 +314,12 @@ copyRt() {
 }
 
 run() {
+  # process the combined args, then reset "$@" to the residuals
+  process_args "$@"
+  set -- "${residual_args[@]}"
+  argumentCount=$#
+
+  # Copy preloaded repo to user's preloaded directory
   syncPreloaded
 
   # no jar? download it.
@@ -285,11 +328,6 @@ run() {
     echo "Download failed. Obtain the sbt-launch.jar manually and place it at $sbt_jar"
     exit 1
   }
-
-  # process the combined args, then reset "$@" to the residuals
-  process_args "$@"
-  set -- "${residual_args[@]}"
-  argumentCount=$#
 
   # TODO - java check should be configurable...
   checkJava "6"
