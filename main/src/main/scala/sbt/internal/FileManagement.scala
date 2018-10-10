@@ -15,10 +15,17 @@ import sbt.io.FileTreeDataView.Entry
 import sbt.io.syntax.File
 import sbt.io.{ FileFilter, FileTreeDataView, FileTreeRepository }
 import sbt._
+import BasicCommandStrings.ContinuousExecutePrefix
 
 private[sbt] object FileManagement {
   private[sbt] def defaultFileTreeView: Def.Initialize[Task[FileTreeViewConfig]] = Def.task {
-    if (state.value.remainingCommands.exists(_.commandLine == "shell")) {
+    val remaining = state.value.remainingCommands.map(_.commandLine.trim)
+    // If the session is interactive or if the commands include a continuous build, then use
+    // the default configuration. Otherwise, use the sbt1_2_compat config, which does not cache
+    // anything, which makes it less likely to cause issues with CI.
+    val interactive = remaining.contains("shell") && !remaining.contains("setUpScripted")
+    val continuous = remaining.exists(_.startsWith(ContinuousExecutePrefix))
+    if (interactive || continuous) {
       FileTreeViewConfig
         .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value)
     } else FileTreeViewConfig.sbt1_2_compat(pollInterval.value, watchAntiEntropy.value)
