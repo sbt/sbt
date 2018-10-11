@@ -621,14 +621,8 @@ object Defaults extends BuildCommon {
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
-    watchOnEvent := {
-      val sources = watchTransitiveSources.value
-      val projectSources = watchProjectTransitiveSources.value
-      e =>
-        if (sources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Trigger
-        else if (projectSources.exists(_.accept(e.entry.typedPath.getPath))) Watched.Reload
-        else Watched.Ignore
-    },
+    watchOnEvent := Watched
+      .onEvent(watchTransitiveSources.value, watchProjectTransitiveSources.value),
     watchHandleInput := Watched.handleInput,
     watchPreWatch := { (_, _) =>
       Watched.Ignore
