@@ -93,6 +93,7 @@ val mimaSettings = Def settings (
     exclude[FinalClassProblem]("sbt.internal.*"),
     exclude[FinalMethodProblem]("sbt.internal.*"),
     exclude[IncompatibleResultTypeProblem]("sbt.internal.*"),
+    exclude[ReversedMissingMethodProblem]("sbt.internal.*")
   ),
 )
 

@@ -22,4 +22,5 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.langserver.codec.CancelRequestParamsFormats
   with sbt.internal.langserver.codec.TextDocumentIdentifierFormats
   with sbt.internal.langserver.codec.TextDocumentPositionParamsFormats
+  with sbt.internal.langserver.codec.TextDocumentPositionParamsInterfaceFormats
 object JsonProtocol extends JsonProtocol

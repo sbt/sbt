@@ -5,13 +5,12 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver
 /**
- * Goto definition params model
  * @param textDocument The text document.
  * @param position The position inside the text document.
  */
 final class TextDocumentPositionParams private (
-  val textDocument: sbt.internal.langserver.TextDocumentIdentifier,
-  val position: sbt.internal.langserver.Position) extends Serializable {
+  textDocument: sbt.internal.langserver.TextDocumentIdentifier,
+  position: sbt.internal.langserver.Position) extends sbt.internal.langserver.TextDocumentPositionParamsInterface(textDocument, position) with Serializable {
   
   
   

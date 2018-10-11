@@ -22,6 +22,9 @@ type SettingQuery implements CommandMessage {
   setting: String!
 }
 
+type CompletionParams {
+  query: String!
+}
 
 ## Message for events.
 interface EventMessage {
@@ -55,6 +58,10 @@ type SettingQuerySuccess implements SettingQueryResponse {
 
 type SettingQueryFailure implements SettingQueryResponse {
   message: String!
+}
+
+type CompletionResponse {
+  items: [String]
 }
 
 # enum Status {

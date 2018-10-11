@@ -12,7 +12,7 @@ package server
 import sjsonnew.JsonFormat
 import sbt.internal.protocol._
 import sbt.util.Logger
-import sbt.protocol.{ SettingQuery => Q }
+import sbt.protocol.{ SettingQuery => Q, CompletionParams => CP }
 
 /**
  * ServerHandler allows plugins to extend sbt server.
@@ -70,4 +70,5 @@ trait ServerCallback {
   private[sbt] def authenticate(token: String): Boolean
   private[sbt] def setInitialized(value: Boolean): Unit
   private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit
+  private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit
 }

@@ -9,6 +9,7 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.protocol.codec.ExecCommandFormats
   with sbt.protocol.codec.SettingQueryFormats
   with sbt.protocol.codec.CommandMessageFormats
+  with sbt.protocol.codec.CompletionParamsFormats
   with sbt.protocol.codec.ChannelAcceptedEventFormats
   with sbt.protocol.codec.LogEventFormats
   with sbt.protocol.codec.ExecStatusEventFormats
@@ -17,5 +18,6 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.protocol.codec.SettingQueryFailureFormats
   with sbt.protocol.codec.EventMessageFormats
   with sbt.protocol.codec.SettingQueryResponseFormats
+  with sbt.protocol.codec.CompletionResponseFormats
   with sbt.protocol.codec.ExecutionEventFormats
 object JsonProtocol extends JsonProtocol
