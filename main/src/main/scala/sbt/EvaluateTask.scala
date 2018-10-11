@@ -383,6 +383,7 @@ object EvaluateTask {
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
     )
 
+  val lastEvaluatedState: AtomicReference[SafeState] = new AtomicReference()
   val currentlyRunningEngine: AtomicReference[(State, RunningTaskEngine)] = new AtomicReference()
 
   /**
@@ -452,6 +453,7 @@ object EvaluateTask {
     finally {
       strat.onTaskEngineFinish(cancelState)
       currentlyRunningEngine.set(null)
+      lastEvaluatedState.set(SafeState(state))
     }
   }
 

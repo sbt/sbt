@@ -13,7 +13,7 @@ import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
-import sbt.protocol.{ SettingQuery => Q, ExecStatusEvent }
+import sbt.protocol.{ SettingQuery => Q, ExecStatusEvent, CompletionParams => CP }
 import sbt.internal.protocol._
 import sbt.internal.protocol.codec._
 import sbt.internal.langserver._
@@ -135,6 +135,10 @@ private[sbt] object LanguageServerProtocol {
                 case NonFatal(e) =>
                   errorRespond("Cancel request failed")
               }
+            case r: JsonRpcRequestMessage if r.method == "sbt/completion" =>
+              import sbt.protocol.codec.JsonProtocol._
+              val param = Converter.fromJson[CP](json(r)).get
+              onCompletionRequest(Option(r.id), param)
           }
         }, {
           case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
@@ -155,6 +159,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   protected def setInitialized(value: Boolean): Unit
   protected def log: Logger
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
+  protected def onCompletionRequest(execId: Option[String], cp: CP): Unit
 
   protected lazy val callbackImpl: ServerCallback = new ServerCallback {
     def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
@@ -174,6 +179,8 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
     private[sbt] def setInitialized(value: Boolean): Unit = self.setInitialized(value)
     private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit =
       self.onSettingQuery(execId, req)
+    private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit =
+      self.onCompletionRequest(execId, cp)
   }
 
   /**

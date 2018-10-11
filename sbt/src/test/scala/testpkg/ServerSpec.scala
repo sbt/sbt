@@ -9,7 +9,6 @@ package testpkg
 
 import org.scalatest._
 import scala.concurrent._
-import scala.annotation.tailrec
 import sbt.protocol.ClientSocket
 import scala.util.Try
 import TestServer.withTestServer
@@ -17,6 +16,7 @@ import java.io.File
 import sbt.io.syntax._
 import sbt.io.IO
 import sbt.RunFromSourceMain
+import scala.util.Try
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.ForkJoinPool
 
@@ -24,7 +24,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
   "server" - {
     "should start" in { implicit td =>
       withTestServer("handshake") { p =>
-        p.writeLine(
+        p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id": "3", "method": "sbt/setting", "params": { "setting": "root/name" } }"""
         )
         assert(p.waitForString(10) { s =>
@@ -35,7 +35,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
 
     "return number id when number id is sent" in { implicit td =>
       withTestServer("handshake") { p =>
-        p.writeLine(
+        p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "root/name" } }"""
         )
         assert(p.waitForString(10) { s =>
@@ -46,7 +46,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
 
     "report task failures in case of exceptions" in { implicit td =>
       withTestServer("events") { p =>
-        p.writeLine(
+        p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id": 11, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
         )
         assert(p.waitForString(10) { s =>
@@ -57,10 +57,10 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
 
     "return error if cancelling non-matched task id" in { implicit td =>
       withTestServer("events") { p =>
-        p.writeLine(
+        p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
         )
-        p.writeLine(
+        p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "55" } }"""
         )
 
@@ -72,12 +72,12 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
 
     "cancel on-going task with numeric id" in { implicit td =>
       withTestServer("events") { p =>
-        p.writeLine(
+        p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
         )
 
         assert(p.waitForString(60) { s =>
-          p.writeLine(
+          p.sendJsonRpc(
             """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "12" } }"""
           )
           s contains """"result":{"status":"Task cancelled""""
@@ -87,15 +87,62 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
 
     "cancel on-going task with string id" in { implicit td =>
       withTestServer("events") { p =>
-        p.writeLine(
+        p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id": "foo", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
         )
 
         assert(p.waitForString(60) { s =>
-          p.writeLine(
+          p.sendJsonRpc(
             """{ "jsonrpc": "2.0", "id": "bar", "method": "sbt/cancelRequest", "params": { "id": "foo" } }"""
           )
           s contains """"result":{"status":"Task cancelled""""
+        })
+      }
+    }
+
+    "return basic completions on request" in { implicit td =>
+      withTestServer("completions") { p =>
+        val completionStr = """{ "query": "" }"""
+        p.sendJsonRpc(
+          s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
+        )
+
+        assert(p.waitForString(10) { s =>
+          s contains """"result":{"items":["""
+        })
+      }
+    }
+
+    "return completion for custom tasks" in { implicit td =>
+      withTestServer("completions") { p =>
+        val completionStr = """{ "query": "hell" }"""
+        p.sendJsonRpc(
+          s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
+        )
+
+        assert(p.waitForString(10) { s =>
+          s contains """"result":{"items":["hello"]}"""
+        })
+      }
+    }
+
+    "return completions for user classes" in { implicit td =>
+      withTestServer("completions") { p =>
+        p.sendJsonRpc(
+          """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "test" } }"""
+        )
+
+        p.waitForString(30) { s =>
+          (s contains """"id":12,"result":{"status":"Done"""") && (s contains """"exitCode":0""")
+        }
+
+        val completionStr = """{ "query": "testOnly org." }"""
+        p.sendJsonRpc(
+          s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
+        )
+
+        assert(p.waitForString(30) { s =>
+          s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]}"""
         })
       }
     }
@@ -154,7 +201,7 @@ object TestServer {
 case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
   import TestServer.hostLog
 
-  val readBuffer = new Array[Byte](4096)
+  val readBuffer = new Array[Byte](40960)
   var buffer: Vector[Byte] = Vector.empty
   var bytesRead = 0
   private val delimiter: Byte = '\n'.toByte
@@ -215,7 +262,7 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
     writeLine(message)
   }
 
-  def writeLine(s: String): Unit = {
+  private def writeLine(s: String): Unit = {
     def writeEndLine(): Unit = {
       val retByte: Byte = '\r'.toByte
       val delimiter: Byte = '\n'.toByte
@@ -243,21 +290,17 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
     readContentLength(l)
   }
 
-  @tailrec
   final def waitForString(num: Int)(f: String => Boolean): Boolean = {
-    if (num < 0) { throw new Exception("Retries are over.") } else {
-      // readFrame should be called in another Thread in orrder to be able to time limit it's execution
-      val res = Future { readFrame }(ec)
-
-      import scala.concurrent.duration._
-      Try {
-        Await.result(res, 1.second)
-      }.toOption.flatten match {
-        // function f should be called in this Thread in order to be executed exactly once before eventually returning
-        case Some(str) if f(str) => true
-        case _                   => waitForString(num - 1)(f)
+    val res = Future {
+      var done = false
+      while (!done) {
+        done = readFrame.fold(false)(f)
       }
-    }
+      true
+    }(ec)
+
+    import scala.concurrent.duration._
+    Await.result(res, num.seconds)
   }
 
   def readLine: Option[String] = {

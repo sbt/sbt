@@ -18,7 +18,7 @@ import sbt.internal.util.{
   ExitHooks,
   GlobalLogging
 }
-import sbt.internal.util.complete.HistoryCommands
+import sbt.internal.util.complete.{ HistoryCommands, Parser }
 import sbt.internal.inc.classpath.ClassLoaderCache
 
 /**
@@ -52,6 +52,26 @@ final case class State(
       case Some(x) => x.source
       case _       => None
     }
+}
+
+/**
+ * Data structure extracted form the State Machine for safe observability purposes.
+ *
+ * @param currentExecId provide the execId extracted from the original State.
+ * @param combinedParser the parser extracted from the original State.
+ */
+private[sbt] final case class SafeState(
+    currentExecId: Option[String],
+    combinedParser: Parser[() => sbt.State]
+)
+
+private[sbt] object SafeState {
+  def apply(s: State) = {
+    new SafeState(
+      currentExecId = s.currentCommand.map(_.execId).flatten,
+      combinedParser = s.combinedParser
+    )
+  }
 }
 
 trait Identity {

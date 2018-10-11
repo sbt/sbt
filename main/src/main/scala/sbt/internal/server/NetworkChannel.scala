@@ -17,9 +17,11 @@ import scala.annotation.tailrec
 import sbt.protocol._
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.util.{ ObjectEvent, StringEvent }
+import sbt.internal.util.complete.Parser
 import sbt.internal.util.codec.JValueFormats
 import sbt.internal.protocol.{ JsonRpcRequestMessage, JsonRpcNotificationMessage }
 import sbt.util.Logger
+import scala.util.control.NonFatal
 
 final class NetworkChannel(
     val name: String,
@@ -361,6 +363,48 @@ final class NetworkChannel(
       }
     } else {
       log.warn(s"ignoring query $req before initialization")
+    }
+  }
+
+  protected def onCompletionRequest(execId: Option[String], cp: CompletionParams) = {
+    if (initialized) {
+      try {
+        Option(EvaluateTask.lastEvaluatedState.get) match {
+          case Some(sstate) =>
+            val completionItems =
+              Parser
+                .completions(sstate.combinedParser, cp.query, 9)
+                .get
+                .map(c => {
+                  if (!c.isEmpty) Some(c.append.replaceAll("\n", " "))
+                  else None
+                })
+                .flatten
+                .map(c => cp.query + c.toString)
+            import sbt.protocol.codec.JsonProtocol._
+            jsonRpcRespond(
+              CompletionResponse(
+                items = completionItems.toVector
+              ),
+              execId
+            )
+          case _ =>
+            jsonRpcRespondError(
+              execId,
+              ErrorCodes.UnknownError,
+              "No available sbt state"
+            )
+        }
+      } catch {
+        case NonFatal(e) =>
+          jsonRpcRespondError(
+            execId,
+            ErrorCodes.UnknownError,
+            "Completions request failed"
+          )
+      }
+    } else {
+      log.warn(s"ignoring completion request $cp before initialization")
     }
   }
 
