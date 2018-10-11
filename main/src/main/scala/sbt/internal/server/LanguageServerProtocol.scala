@@ -13,14 +13,13 @@ import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
-import sbt.protocol.{ SettingQuery => Q, ExecStatusEvent, CompletionParams => CP }
+import sbt.protocol.{ SettingQuery => Q, CompletionParams => CP }
+import sbt.internal.langserver.{ CancelRequestParams => CRP }
 import sbt.internal.protocol._
 import sbt.internal.protocol.codec._
 import sbt.internal.langserver._
 import sbt.internal.util.ObjectEvent
 import sbt.util.Logger
-import scala.util.Try
-import scala.util.control.NonFatal
 
 private[sbt] final case class LangServerError(code: Long, message: String)
     extends Throwable(message)
@@ -83,58 +82,9 @@ private[sbt] object LanguageServerProtocol {
               val param = Converter.fromJson[Q](json(r)).get
               onSettingQuery(Option(r.id), param)
             case r: JsonRpcRequestMessage if r.method == "sbt/cancelRequest" =>
-              val param = Converter.fromJson[CancelRequestParams](json(r)).get
-
-              def errorRespond(msg: String) = jsonRpcRespondError(
-                Some(r.id),
-                ErrorCodes.RequestCancelled,
-                msg
-              )
-
-              try {
-                Option(EvaluateTask.currentlyRunningEngine.get) match {
-                  case Some((state, runningEngine)) =>
-                    val execId: String = state.currentCommand.map(_.execId).flatten.getOrElse("")
-
-                    def checkId(): Boolean = {
-                      if (execId.startsWith("\u2668")) {
-                        (
-                          Try { param.id.toLong }.toOption,
-                          Try { execId.substring(1).toLong }.toOption
-                        ) match {
-                          case (Some(id), Some(eid)) => id == eid
-                          case _                     => false
-                        }
-                      } else execId == param.id
-                    }
-
-                    // direct comparison on strings and
-                    // remove hotspring unicode added character for numbers
-                    if (checkId) {
-                      runningEngine.cancelAndShutdown()
-
-                      import sbt.protocol.codec.JsonProtocol._
-                      jsonRpcRespond(
-                        ExecStatusEvent(
-                          "Task cancelled",
-                          Some(name),
-                          Some(execId.toString),
-                          Vector(),
-                          None,
-                        ),
-                        Option(r.id)
-                      )
-                    } else {
-                      errorRespond("Task ID not matched")
-                    }
-
-                  case None =>
-                    errorRespond("No tasks under execution")
-                }
-              } catch {
-                case NonFatal(e) =>
-                  errorRespond("Cancel request failed")
-              }
+              import sbt.protocol.codec.JsonProtocol._
+              val param = Converter.fromJson[CRP](json(r)).get
+              onCancellationRequest(Option(r.id), param)
             case r: JsonRpcRequestMessage if r.method == "sbt/completion" =>
               import sbt.protocol.codec.JsonProtocol._
               val param = Converter.fromJson[CP](json(r)).get
@@ -160,6 +110,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   protected def log: Logger
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
   protected def onCompletionRequest(execId: Option[String], cp: CP): Unit
+  protected def onCancellationRequest(execId: Option[String], crp: CRP): Unit
 
   protected lazy val callbackImpl: ServerCallback = new ServerCallback {
     def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
@@ -181,6 +132,8 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
       self.onSettingQuery(execId, req)
     private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit =
       self.onCompletionRequest(execId, cp)
+    private[sbt] def onCancellationRequest(execId: Option[String], crp: CancelRequestParams): Unit =
+      self.onCancellationRequest(execId, crp)
   }
 
   /**

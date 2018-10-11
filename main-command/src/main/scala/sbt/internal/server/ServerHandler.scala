@@ -13,6 +13,7 @@ import sjsonnew.JsonFormat
 import sbt.internal.protocol._
 import sbt.util.Logger
 import sbt.protocol.{ SettingQuery => Q, CompletionParams => CP }
+import sbt.internal.langserver.{ CancelRequestParams => CRP }
 
 /**
  * ServerHandler allows plugins to extend sbt server.
@@ -71,4 +72,5 @@ trait ServerCallback {
   private[sbt] def setInitialized(value: Boolean): Unit
   private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit
   private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit
+  private[sbt] def onCancellationRequest(execId: Option[String], crp: CRP): Unit
 }
