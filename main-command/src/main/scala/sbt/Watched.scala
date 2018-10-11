@@ -23,7 +23,7 @@ import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.DefaultParsers
 import sbt.internal.util.{ AttributeKey, JLine }
-import sbt.io.FileEventMonitor.Event
+import sbt.io.FileEventMonitor.{ Creation, Deletion, Event, Update }
 import sbt.io._
 import sbt.util.{ Level, Logger }
 import xsbti.compile.analysis.Stamp
@@ -144,6 +144,18 @@ object Watched {
     }
     scanInput()
   }
+  private[sbt] def onEvent(
+      sources: Seq[WatchSource],
+      projectSources: Seq[WatchSource]
+  ): Event[StampedFile] => Watched.Action =
+    event =>
+      if (sources.exists(_.accept(event.entry.typedPath.getPath))) Watched.Trigger
+      else if (projectSources.exists(_.accept(event.entry.typedPath.getPath))) event match {
+        case Update(prev, cur, _) if prev.value.map(_.stamp) != cur.value.map(_.stamp) => Reload
+        case _: Creation[_] | _: Deletion[_]                                           => Reload
+        case _                                                                         => Ignore
+      } else Ignore
+
   private[this] val reRun = if (isWin) "" else " or 'r' to re-run the command"
   private def waitMessage(project: String): String =
     s"Waiting for source changes$project... (press enter to interrupt$reRun)"
