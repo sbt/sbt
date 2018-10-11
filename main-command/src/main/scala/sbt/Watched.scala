@@ -109,27 +109,34 @@ object Watched {
   type WatchSource = Source
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
-  private def withCharBufferedStdIn[R](f: InputStream => R): R = JLine.usingTerminal { terminal =>
-    val in = terminal.wrapInIfNeeded(System.in)
-    try {
-      while (in.available > 0) in.read()
+  private[this] val isWin = Properties.isWin
+  private def drain(is: InputStream): Unit = while (is.available > 0) is.read()
+  private def withCharBufferedStdIn[R](f: InputStream => R): R =
+    if (!isWin) JLine.usingTerminal { terminal =>
       terminal.init()
-      f(in)
-    } finally {
-      while (in.available > 0) in.read()
-      terminal.reset()
-    }
-  }
+      val in = terminal.wrapInIfNeeded(System.in)
+      try {
+        drain(in)
+        f(in)
+      } finally {
+        drain(in)
+        terminal.reset()
+      }
+    } else
+      try {
+        drain(System.in)
+        f(System.in)
+      } finally drain(System.in)
 
   private[sbt] final val handleInput: InputStream => Action = in => {
     @tailrec
     def scanInput(): Action = {
       if (in.available > 0) {
         in.read() match {
-          case key if isEnter(key) => CancelWatch
-          case key if isR(key)     => Trigger
-          case key if key >= 0     => scanInput()
-          case _                   => Ignore
+          case key if isEnter(key)       => CancelWatch
+          case key if isR(key) && !isWin => Trigger
+          case key if key >= 0           => scanInput()
+          case _                         => Ignore
         }
       } else {
         Ignore
@@ -137,8 +144,9 @@ object Watched {
     }
     scanInput()
   }
+  private[this] val reRun = if (isWin) "" else " or 'r' to re-run the command"
   private def waitMessage(project: String): String =
-    s"Waiting for source changes$project... (press enter to interrupt or 'r' to re-run the command)"
+    s"Waiting for source changes$project... (press enter to interrupt$reRun)"
   val defaultStartWatch: Int => Option[String] = count => Some(s"$count. ${waitMessage("")}")
   @deprecated("Use defaultStartWatch in conjunction with the watchStartMessage key", "1.3.0")
   val defaultWatchingMessage: WatchState => String = ws => defaultStartWatch(ws.count).get
