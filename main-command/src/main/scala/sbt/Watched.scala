@@ -286,9 +286,8 @@ object Watched {
       val terminationAction = watch(in, task, config)
       config.onWatchTerminated(terminationAction, command, state)
     } else {
-      config.logger.error(
-        s"Terminating watch due to invalid command(s): ${invalid.mkString("'", "', '", "'")}"
-      )
+      val commands = invalid.flatMap(_.left.toOption).mkString("'", "', '", "'")
+      config.logger.error(s"Terminating watch due to invalid command(s): $commands")
       state.fail
     }
   }
