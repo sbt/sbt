@@ -254,7 +254,7 @@ object IvyRetrieve {
         val node = current.findNode(revId)
         if (revId == from) node :: path
         else if (node == node.getRoot) Nil
-        else if (path contains node) path
+        else if (path.contains[IvyNode](node)) path
         else doFindPath(node, node :: path)
       }) sortBy { _.size }).reverse
       paths.headOption getOrElse Nil

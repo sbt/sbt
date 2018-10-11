@@ -593,7 +593,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             c <- mr.callers
           } yield (c.caller.organization, c.caller.name)).distinct
         callers foreach { c =>
-          if (history contains c) {
+          if (history.contains[(String, String)](c)) {
             val loop = (c :: history.takeWhile(_ != c)) ::: List(c)
             if (!loopSets(loop.toSet)) {
               loopSets += loop.toSet
@@ -801,7 +801,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
     val reports: Seq[((String, String), Vector[OrganizationArtifactReport])] =
       reports0.toSeq flatMap {
-        case (k, _) if !(pairs contains k) => Seq()
+        case (k, _) if !(pairs.contains[(String, String)](k)) => Seq()
         case ((organization, name), oars0) =>
           val oars = oars0 map { oar =>
             val (affected, unaffected) = oar.modules partition { mr =>
@@ -967,8 +967,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
     log.debug(s"::: remapped configs $remappedConfigs")
     val configurations = rootModuleConfs map { conf0 =>
-      val remappedCRs = configurations0 filter { cr =>
-        remappedConfigs(conf0.getName) contains cr.configuration
+      val remappedCRs: Vector[ConfigurationReport] = configurations0 filter { cr =>
+        remappedConfigs(conf0.getName).contains[String](cr.configuration.name)
       }
       mergeConfigurationReports(ConfigRef(conf0.getName), remappedCRs, os, log)
     }
