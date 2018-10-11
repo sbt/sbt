@@ -23,9 +23,11 @@ private[sbt] object FileManagement {
     // If the session is interactive or if the commands include a continuous build, then use
     // the default configuration. Otherwise, use the sbt1_2_compat config, which does not cache
     // anything, which makes it less likely to cause issues with CI.
-    val interactive = remaining.contains("shell") && !remaining.contains("setUpScripted")
+    val interactive = remaining.contains("shell") || remaining.lastOption.contains("iflast shell")
+    val scripted = remaining.contains("setUpScripted")
+
     val continuous = remaining.exists(_.startsWith(ContinuousExecutePrefix))
-    if (interactive || continuous) {
+    if (!scripted && (interactive || continuous)) {
       FileTreeViewConfig
         .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value)
     } else FileTreeViewConfig.sbt1_2_compat(pollInterval.value, watchAntiEntropy.value)
