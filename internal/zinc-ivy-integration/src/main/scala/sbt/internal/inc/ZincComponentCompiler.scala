@@ -44,9 +44,9 @@ private[sbt] object ZincComponentCompiler {
         case sc if (sc startsWith "2.11.")       => "compiler-bridge_2.11"
         case sc if (sc startsWith "2.12.")       => "compiler-bridge_2.12"
         case "2.13.0-M1"                         => "compiler-bridge_2.12"
-        case sc if (sc startsWith "2.13.0-pre-") => "compiler-bridge_2.13.0-M2"
-        case sc if (sc startsWith "2.13.0-M")    => "compiler-bridge_2.13.0-M2"
-        case sc if (sc startsWith "2.13.0-RC")   => "compiler-bridge_2.13.0-M2"
+        case sc if (sc startsWith "2.13.0-pre-") => "compiler-bridge_2.13.0-M5"
+        case sc if (sc startsWith "2.13.0-M")    => "compiler-bridge_2.13.0-M5"
+        case sc if (sc startsWith "2.13.0-RC")   => "compiler-bridge_2.13.0-M5"
         case _                                   => "compiler-bridge_2.13"
       }
     }
