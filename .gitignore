@@ -1,3 +1,5 @@
 tmp/
 target/
 __pycache__
+
+scripted-test/src/sbt-test/*/*/project/build.properties

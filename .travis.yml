@@ -2,11 +2,12 @@ language: scala
 jdk: oraclejdk8
 
 scala:
-  - 2.11.12
   - 2.12.7
 
 matrix:
   include:
+  - scala: 2.12.7
+    jdk: oraclejdk8
   - scala: 2.12.7
     jdk: openjdk11
 
@@ -16,6 +17,7 @@ script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
   scalafmt::test test:scalafmt::test sbt:scalafmt::test
   whitesourceCheckPolicies
   test
+  scriptedIvy
   packagedArtifacts # ensure that all artifacts for publish package without failure
 
 env:
@@ -28,5 +30,7 @@ cache:
     - $HOME/.sbt
 
 before_cache:
+  # - find $HOME/.ivy2/local -name "*-LM-SNAPSHOT*" -exec rm -r "{}" \;
+  - find $HOME/.ivy2/cache -name "*-LM-SNAPSHOT*" -delete
   - find $HOME/.ivy2/cache -name "ivydata-*.properties" -delete
   - find $HOME/.sbt        -name "*.lock"               -delete
