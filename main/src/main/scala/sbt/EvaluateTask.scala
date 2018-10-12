@@ -384,7 +384,8 @@ object EvaluateTask {
     )
 
   val lastEvaluatedState: AtomicReference[SafeState] = new AtomicReference()
-  val currentlyRunningEngine: AtomicReference[(State, RunningTaskEngine)] = new AtomicReference()
+  val currentlyRunningEngine: AtomicReference[(SafeState, RunningTaskEngine)] =
+    new AtomicReference()
 
   /**
    * The main method for the task engine.
@@ -445,7 +446,7 @@ object EvaluateTask {
         shutdown()
       }
     }
-    currentlyRunningEngine.set((state, runningEngine))
+    currentlyRunningEngine.set((SafeState(state), runningEngine))
     // Register with our cancel handler we're about to start.
     val strat = config.cancelStrategy
     val cancelState = strat.onTaskEngineStart(runningEngine)

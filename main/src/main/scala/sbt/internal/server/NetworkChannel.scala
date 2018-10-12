@@ -15,12 +15,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 import sjsonnew._
 import scala.annotation.tailrec
 import sbt.protocol._
-import sbt.internal.langserver.ErrorCodes
+import sbt.internal.langserver.{ ErrorCodes, CancelRequestParams }
 import sbt.internal.util.{ ObjectEvent, StringEvent }
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.codec.JValueFormats
 import sbt.internal.protocol.{ JsonRpcRequestMessage, JsonRpcNotificationMessage }
 import sbt.util.Logger
+import scala.util.Try
 import scala.util.control.NonFatal
 
 final class NetworkChannel(
@@ -405,6 +406,64 @@ final class NetworkChannel(
       }
     } else {
       log.warn(s"ignoring completion request $cp before initialization")
+    }
+  }
+
+  protected def onCancellationRequest(execId: Option[String], crp: CancelRequestParams) = {
+    if (initialized) {
+
+      def errorRespond(msg: String) = jsonRpcRespondError(
+        execId,
+        ErrorCodes.RequestCancelled,
+        msg
+      )
+
+      try {
+        Option(EvaluateTask.currentlyRunningEngine.get) match {
+          case Some((state, runningEngine)) =>
+            val runningExecId = state.currentExecId.getOrElse("")
+
+            def checkId(): Boolean = {
+              if (runningExecId.startsWith("\u2668")) {
+                (
+                  Try { crp.id.toLong }.toOption,
+                  Try { runningExecId.substring(1).toLong }.toOption
+                ) match {
+                  case (Some(id), Some(eid)) => id == eid
+                  case _                     => false
+                }
+              } else runningExecId == crp.id
+            }
+
+            // direct comparison on strings and
+            // remove hotspring unicode added character for numbers
+            if (checkId) {
+              runningEngine.cancelAndShutdown()
+
+              import sbt.protocol.codec.JsonProtocol._
+              jsonRpcRespond(
+                ExecStatusEvent(
+                  "Task cancelled",
+                  Some(name),
+                  Some(runningExecId.toString),
+                  Vector(),
+                  None,
+                ),
+                execId
+              )
+            } else {
+              errorRespond("Task ID not matched")
+            }
+
+          case None =>
+            errorRespond("No tasks under execution")
+        }
+      } catch {
+        case NonFatal(e) =>
+          errorRespond("Cancel request failed")
+      }
+    } else {
+      log.warn(s"ignoring cancellation request $crp before initialization")
     }
   }
 
