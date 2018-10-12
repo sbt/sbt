@@ -243,6 +243,12 @@ object Keys {
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
   val enableBinaryCompileAnalysis = settingKey[Boolean]("Writes the analysis file in binary format")
   val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
+  val semanticdbEnabled = settingKey[Boolean]("Enables SemanticDB Scalac plugin").withRank(CSetting)
+  val semanticdbCompilerPlugin = settingKey[ModuleID]("SemanticDB Scalac plugin").withRank(CSetting)
+  val semanticdbVersion = settingKey[String]("SemanticDB version").withRank(CSetting)
+  val semanticdbIncludeInJar = settingKey[Boolean]("Include *.semanticdb files in published artifacts").withRank(CSetting)
+  val semanticdbTargetRoot = settingKey[File]("The output directory to produce META-INF/semanticdb/**/*.semanticdb files").withRank(CSetting)
+  val semanticdbOptions = settingKey[Seq[String]]("The Scalac options introduced for SemanticDB").withRank(CSetting)
 
   val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.").withRank(APlusTask)
   val console = taskKey[Unit]("Starts the Scala interpreter with the project classes on the classpath.").withRank(APlusTask)
