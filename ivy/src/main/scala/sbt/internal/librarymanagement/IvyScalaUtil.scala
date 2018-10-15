@@ -138,7 +138,7 @@ object IvyScalaUtil {
       val id = dep.getDependencyRevisionId
       val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
       def isScalaLangOrg = id.getOrganisation == scalaOrganization
-      def isScalaArtifact = scalaArtifacts.contains(id.getName)
+      def isScalaArtifact = scalaArtifacts.contains[String](id.getName)
       def hasBinVerMismatch = depBinaryVersion != scalaBinaryVersion
       def matchesOneOfTheConfigs = dep.getModuleConfigurations exists { scalaVersionConfigs }
       val mismatched = isScalaLangOrg && isScalaArtifact && hasBinVerMismatch && matchesOneOfTheConfigs

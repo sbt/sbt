@@ -407,7 +407,9 @@ class MakePom(val log: Logger) {
   def getScopeAndOptional(confs: Array[String]): (Option[String], Boolean) = {
     val (opt, notOptional) = confs.partition(_ == Optional.name)
     val defaultNotOptional =
-      Configurations.defaultMavenConfigurations.find(notOptional contains _.name)
+      Configurations.defaultMavenConfigurations.find({ c: Configuration =>
+        notOptional contains c.name
+      })
     val scope = defaultNotOptional.map(_.name)
     (scope, opt.nonEmpty)
   }
@@ -495,9 +497,10 @@ class MakePom(val log: Logger) {
       configurations: Option[Iterable[Configuration]]
   ): Seq[DependencyDescriptor] = {
     val keepConfigurations = IvySbt.getConfigurations(module, configurations)
-    val keepSet = Set(keepConfigurations.toSeq: _*)
+    val keepSet: Set[String] = Set(keepConfigurations.toSeq: _*)
     def translate(dependency: DependencyDescriptor) = {
-      val keep = dependency.getModuleConfigurations.filter(keepSet.contains)
+      val keep = dependency.getModuleConfigurations
+        .filter((conf: String) => keepSet.contains(conf))
       if (keep.isEmpty)
         None
       else // TODO: translate the dependency to contain only configurations to keep

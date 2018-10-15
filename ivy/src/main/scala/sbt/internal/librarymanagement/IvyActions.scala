@@ -394,7 +394,7 @@ object IvyActions {
     val retReport = report retrieve { (conf: ConfigRef, mid, art, cached) =>
       toRetrieve match {
         case None => performRetrieve(conf, mid, art, base, pattern, cached, copyChecksums, toCopy)
-        case Some(refs) if refs contains conf =>
+        case Some(refs) if refs.contains[ConfigRef](conf) =>
           performRetrieve(conf, mid, art, base, pattern, cached, copyChecksums, toCopy)
         case _ => cached
       }

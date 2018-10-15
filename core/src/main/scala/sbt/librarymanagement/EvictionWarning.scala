@@ -226,7 +226,7 @@ object EvictionWarning {
   ): Seq[OrganizationArtifactReport] = {
     val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
     val confs = report.configurations filter { x =>
-      options.configurations contains x.configuration
+      options.configurations.contains[ConfigRef](x.configuration)
     }
     confs flatMap { confReport =>
       confReport.details map { detail =>
@@ -345,9 +345,10 @@ object EvictionWarning {
       val evo = a.options
       val out: mutable.ListBuffer[String] = mutable.ListBuffer()
       a.allEvictions foreach { ev =>
-        if ((a.scalaEvictions contains ev) && evo.warnScalaVersionEviction) ()
-        else if ((a.directEvictions contains ev) && evo.warnDirectEvictions) ()
-        else if ((a.transitiveEvictions contains ev) && evo.warnTransitiveEvictions) ()
+        if ((a.scalaEvictions.contains[EvictionPair](ev)) && evo.warnScalaVersionEviction) ()
+        else if ((a.directEvictions.contains[EvictionPair](ev)) && evo.warnDirectEvictions) ()
+        else if ((a.transitiveEvictions.contains[EvictionPair](ev)) && evo.warnTransitiveEvictions)
+          ()
         else {
           out ++= ev.lines
         }
