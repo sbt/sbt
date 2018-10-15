@@ -183,7 +183,7 @@ object ToSbt {
         case (k, v) =>
           clean(k) -> v.map(clean)
       }
-      .groupBy { case (k, v) => k }
+      .groupBy { case (k, _) => k }
       .mapValues { v =>
         v.flatMap {
           case (_, l) => l
