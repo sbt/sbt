@@ -43,8 +43,8 @@ TaskKey[Unit]("check") := {
   val x1cp = (externalDependencyClasspath in Compile in x1).value.map(_.data.getName).sorted
   def x1cpStr = x1cp.mkString("\n* ", "\n* ", "")
 
-  if (!(x1cp contains "slf4j-api-1.6.6.jar"))
-    sys.error(s"slf4j-api-1.6.6.jar is not found on X1:$x1cpStr")
+  // if (!(x1cp contains "slf4j-api-1.6.6.jar"))
+  //  sys.error(s"slf4j-api-1.6.6.jar is not found on X1:$x1cpStr")
 
   if (x1cp contains "servlet-api-2.3.jar")
     sys.error(s"servlet-api-2.3.jar is found when it should be evicted:$x1cpStr")
