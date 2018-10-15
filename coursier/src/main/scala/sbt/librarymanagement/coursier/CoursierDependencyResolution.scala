@@ -81,6 +81,7 @@ private[sbt] class CoursierDependencyResolution(resolvers: Seq[Resolver])
         )
         .unsafeRun()
         .toMap
+
       toUpdateReport(resolution, localArtifacts, log)
     } else {
       toSbtError(log, uwconfig, resolution)

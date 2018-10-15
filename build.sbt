@@ -262,7 +262,7 @@ lazy val lmIvy = (project in file("ivy"))
 
 lazy val lmCoursier = (project in file("coursier"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(lmCore)
+  .dependsOn(lmIvy)
   .settings(
     commonSettings,
     crossScalaVersions := Seq(scala212, scala211),
@@ -293,7 +293,15 @@ addCommandAlias("scriptedIvy", Seq(
   "lmIvy/publishLocal",
   "lmScriptedTest/clean",
   """set ThisBuild / scriptedTestLMImpl := "ivy"""",
-  """set ThisBuild / scriptedLaunchOpts += "-Ddependency.resolution=set ThisBuild / dependencyResolution := sbt.librarymanagement.ivy.IvyDependencyResolution(ivyConfiguration.value)" """,
+  """set ThisBuild / scriptedLaunchOpts += "-Ddependency.resolution=ivy" """,
+  "lmScriptedTest/scripted").mkString(";",";",""))
+
+addCommandAlias("scriptedCoursier", Seq(
+  "lmCore/publishLocal",
+  "lmCoursier/publishLocal",
+  "lmScriptedTest/clean",
+  """set ThisBuild / scriptedTestLMImpl := "coursier"""",
+  """set ThisBuild / scriptedLaunchOpts += "-Ddependency.resolution=coursier" """,
   "lmScriptedTest/scripted").mkString(";",";",""))
 
 def customCommands: Seq[Setting[_]] = Seq(
