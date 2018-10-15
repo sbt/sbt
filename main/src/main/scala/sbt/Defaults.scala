@@ -2239,7 +2239,10 @@ object Classpaths {
       val is = ivySbt.value
       val lm = new DependencyResolution(new IvyDependencyResolution(is))
       val mod = (classifiersModule in updateClassifiers).value
-      val c = updateConfiguration.value
+      val updateConfig0 = updateConfiguration.value
+      val updateConfig = updateConfig0
+        .withMetadataDirectory(dependencyCacheDirectory.value)
+        .withArtifactFilter(updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted)))
       val app = appConfiguration.value
       val srcTypes = sourceArtifactTypes.value
       val docTypes = docArtifactTypes.value
@@ -2250,7 +2253,7 @@ object Classpaths {
           GetClassifiersConfiguration(
             mod,
             excludes.toVector,
-            c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
+            updateConfig,
             // scalaModule,
             srcTypes.toVector,
             docTypes.toVector
@@ -2410,32 +2413,36 @@ object Classpaths {
             val s = streams.value
             val is = ivySbt.value
             val mod = classifiersModule.value
-            val c = updateConfiguration.value
+            val updateConfig0 = updateConfiguration.value
+            val updateConfig = updateConfig0
+              .withMetadataDirectory(dependencyCacheDirectory.value)
+              .withArtifactFilter(
+                updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted))
+              )
             val app = appConfiguration.value
             val srcTypes = sourceArtifactTypes.value
             val docTypes = docArtifactTypes.value
             val log = s.log
             val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
             val uwConfig = (unresolvedWarningConfiguration in update).value
-            withExcludes(out, mod.classifiers, lock(app)) {
-              excludes =>
-                // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
-                LibraryManagement.transitiveScratch(
-                  lm,
-                  "sbt",
-                  GetClassifiersConfiguration(
-                    mod,
-                    excludes.toVector,
-                    c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
-                    srcTypes.toVector,
-                    docTypes.toVector
-                  ),
-                  uwConfig,
-                  log
-                ) match {
-                  case Left(_)   => ???
-                  case Right(ur) => ur
-                }
+            withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+              // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
+              LibraryManagement.transitiveScratch(
+                lm,
+                "sbt",
+                GetClassifiersConfiguration(
+                  mod,
+                  excludes.toVector,
+                  updateConfig,
+                  srcTypes.toVector,
+                  docTypes.toVector
+                ),
+                uwConfig,
+                log
+              ) match {
+                case Left(_)   => ???
+                case Right(ur) => ur
+              }
             }
           } tag (Tags.Update, Tags.Network)).value
         )
@@ -2592,7 +2599,9 @@ object Classpaths {
       }
 
       // logical clock is folded into UpdateConfiguration
-      conf1.withLogicalClock(LogicalClock(state0.hashCode))
+      conf1
+        .withLogicalClock(LogicalClock(state0.hashCode))
+        .withMetadataDirectory(dependencyCacheDirectory.value)
     }
 
     val evictionOptions = Def.taskDyn {
