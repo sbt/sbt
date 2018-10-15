@@ -38,7 +38,9 @@ lazy val root = (project in file("."))
       val moduleSettings0 = module.moduleSettings
       val inline0 = moduleSettings0 match { case x: InlineConfiguration => x }
       // Remove clock for caching purpose
-      val updateConfig0 = updateConfig.withLogicalClock(LogicalClock.unknown)
+      val updateConfig0 = updateConfig
+        .withLogicalClock(LogicalClock.unknown)
+        .withMetadataDirectory(dependencyCacheDirectory.value)
 
       import sbt.librarymanagement.{ ModuleSettings, UpdateConfiguration, LibraryManagementCodec }
       type In = (Long, ModuleSettings, UpdateConfiguration)

@@ -14,7 +14,7 @@ object Dependencies {
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _ => "1.2.1"
+      case _ => "1.2.2"
     }
   private val zincVersion = "1.2.2"
 
