@@ -85,15 +85,17 @@ object SbtScriptedIT extends AutoPlugin {
     scriptedTests := {
       val targetDir = target.value / "sbt"
 
-      cloneSbt(targetDir, scriptedTestSbtRepo.value, scriptedTestSbtRef.value)
+      if (!targetDir.exists) {
+        cloneSbt(targetDir, scriptedTestSbtRepo.value, scriptedTestSbtRef.value)
 
-      publishLocalSbt(
-        targetDir,
-        version.value,
-        organization.value,
-        s"librarymanagement-${scriptedTestLMImpl.value}",
-        scriptedSbtVersion.value
-      )
+        publishLocalSbt(
+          targetDir,
+          version.value,
+          organization.value,
+          s"librarymanagement-${scriptedTestLMImpl.value}",
+          scriptedSbtVersion.value
+        )
+      }
 
       setScriptedTestsSbtVersion(
         sbtTestDirectory.value / thisProject.value.id,

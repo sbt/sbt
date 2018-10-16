@@ -18,6 +18,7 @@ script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
   whitesourceCheckPolicies
   test
   scriptedIvy
+  scriptedCoursier
   packagedArtifacts # ensure that all artifacts for publish package without failure
 
 env:

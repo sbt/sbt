@@ -17,10 +17,10 @@ case class CoursierModuleDescriptor(
 
 case class CoursierModuleSettings() extends ModuleSettings
 
-private[sbt] class CoursierDependencyResolution(resolvers: Seq[Resolver])
+private[sbt] class CoursierDependencyResolution(resolvers: Vector[Resolver])
     extends DependencyResolutionInterface {
 
-  private[coursier] val reorderedResolvers = Resolvers.reorder(resolvers)
+  private[coursier] val reorderedResolvers = Resolvers.reorder(resolvers.toSeq)
 
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.
@@ -37,6 +37,21 @@ private[sbt] class CoursierDependencyResolution(resolvers: Seq[Resolver])
       1L // FIXME: use correct value
     )
   }
+
+  val ivyHome = sys.props.getOrElse(
+    "ivy.home",
+    new File(sys.props("user.home")).toURI.getPath + ".ivy2"
+  )
+
+  val sbtIvyHome = sys.props.getOrElse(
+    "sbt.ivy.home",
+    ivyHome
+  )
+
+  val ivyProperties = Map(
+    "ivy.home" -> ivyHome,
+    "sbt.ivy.home" -> sbtIvyHome
+  ) ++ sys.props
 
   /**
    * Resolves the given module's dependencies performing a retrieval.
@@ -61,7 +76,7 @@ private[sbt] class CoursierDependencyResolution(resolvers: Seq[Resolver])
     val dependencies = module.directDependencies.map(toCoursierDependency).toSet
     val start = Resolution(dependencies)
     val authentication = None // TODO: get correct value
-    val ivyConfiguration = Map("ivy.home" -> "~/.ivy2/") // TODO: get correct value
+    val ivyConfiguration = ivyProperties // TODO: is it enough?
     val repositories =
       reorderedResolvers.flatMap(r => FromSbt.repository(r, ivyConfiguration, log, authentication)) ++ Seq(
         Cache.ivy2Local,
@@ -239,6 +254,6 @@ private[sbt] class CoursierDependencyResolution(resolvers: Seq[Resolver])
 }
 
 object CoursierDependencyResolution {
-  def apply(resolvers: Seq[Resolver]) =
+  def apply(resolvers: Vector[Resolver]) =
     DependencyResolution(new CoursierDependencyResolution(resolvers))
 }

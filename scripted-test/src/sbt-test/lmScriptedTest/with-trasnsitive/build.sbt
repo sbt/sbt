@@ -15,5 +15,5 @@ sys.props.get("dependency.resolution") match {
 }
 
 libraryDependencies ++= Seq(
-  "com.typesafe" % "config" % "1.3.3"
+  "com.typesafe.akka" %% "akka-actor" % "2.5.17"
 )
