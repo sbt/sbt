@@ -2,13 +2,21 @@ language: scala
 scala: 2.12.7
 os: linux
 jdk: oraclejdk8
+before_install:
+  - git fetch --tags
 script:
   - scripts/travis.sh
-matrix:
+stages:
+  - name: test
+  - name: release
+    if: (branch = master AND type = push) OR (tag IS present)
+jobs:
   include:
     - env: SBT_COURSIER=1
     - env: SBT_SHADING=1
     - env: SBT_PGP_COURSIER=1
+    - stage: release
+      script: sbt ci-release
 branches:
   only:
   - master

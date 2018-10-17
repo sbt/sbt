@@ -18,8 +18,7 @@ object Settings {
     resolvers += Resolver.sonatypeRepo(name)
   }
 
-  lazy val shared = Publish.released ++ Seq(
-    organization := "io.get-coursier",
+  lazy val shared = Seq(
     sonatypeRepository("releases"),
     crossScalaVersions := Seq(scala212),
     scalaVersion := scala212,

@@ -1,7 +1,20 @@
 
 import Aliases._
 import Settings._
-import Publish._
+
+inThisBuild(List(
+  organization := "io.get-coursier",
+  homepage := Some(url("https://github.com/coursier/coursier")),
+  licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
+  developers := List(
+    Developer(
+      "alexarchambault",
+      "Alexandre Archambault",
+      "",
+      url("https://github.com/alexarchambault")
+    )
+  )
+))
 
 val coursierVersion = "1.1.0-M7"
 
@@ -89,8 +102,7 @@ lazy val coursier = project
   )
   .settings(
     shared,
-    dontPublish,
+    skip.in(publish) := true,
     moduleName := "sbt-coursier-root"
   )
-
 
