@@ -12,7 +12,8 @@ stages:
     if: (branch = master AND type = push) OR (tag IS present)
 jobs:
   include:
-    - env: SBT_COURSIER=1
+    - env: SBT_COURSIER=1 SBT_COURSIER_TEST_GROUP=1
+    - env: SBT_COURSIER=1 SBT_COURSIER_TEST_GROUP=2
     - env: SBT_SHADING=1
     - env: SBT_PGP_COURSIER=1
     - stage: release
