@@ -14,7 +14,6 @@ declare java_cmd=java
 declare java_version
 declare init_sbt_version=_to_be_replaced
 declare sbt_default_mem=1024
-declare sbt_dir="$HOME/.sbt"
 
 declare SCRIPT=$0
 while [ -h "$SCRIPT" ] ; do
@@ -219,12 +218,12 @@ syncPreloaded() {
     # FIXME: better $init_sbt_version detection
     init_sbt_version="$(ls -1 "$sbt_home/lib/local-preloaded/org.scala-sbt/sbt/")"
   fi
-  [[ -f "$sbt_dir/preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
+  [[ -f "$HOME/.sbt/preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
     # lib/local-preloaded exists (This is optional)
     [[ -d "$sbt_home/lib/local-preloaded/" ]] && {
       command -v rsync >/dev/null 2>&1 && {
-        mkdir -p "$sbt_dir/preloaded"
-        rsync -a --ignore-existing "$sbt_home/lib/local-preloaded/" "$sbt_dir/preloaded"
+        mkdir -p "$HOME/.sbt/preloaded"
+        rsync -a --ignore-existing "$sbt_home/lib/local-preloaded/" "$HOME/.sbt/preloaded"
       }
     }
   }
@@ -278,12 +277,6 @@ copyRt() {
 }
 
 run() {
-  # process the combined args, then reset "$@" to the residuals
-  process_args "$@"
-  set -- "${residual_args[@]}"
-  argumentCount=$#
-
-  # Copy preloaded repo to sbt_dir (if rsync is available)
   syncPreloaded
 
   # no jar? download it.
@@ -292,6 +285,11 @@ run() {
     echo "Download failed. Obtain the sbt-launch.jar manually and place it at $sbt_jar"
     exit 1
   }
+
+  # process the combined args, then reset "$@" to the residuals
+  process_args "$@"
+  set -- "${residual_args[@]}"
+  argumentCount=$#
 
   # TODO - java check should be configurable...
   checkJava "6"
