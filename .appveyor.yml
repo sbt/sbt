@@ -5,7 +5,7 @@ init:
 
 install:
   - cinst jdk8 -params 'installdir=C:\\jdk8'
-  - cinst jdk10 -params 'installdir=C:\\jdk10'
+  - cinst jdk11 -params 'installdir=C:\\jdk11'
   - SET JAVA_HOME=C:\jdk8
   - SET PATH=C:\jdk8\bin;%PATH%
 
@@ -13,7 +13,7 @@ install:
       Add-Type -AssemblyName System.IO.Compression.FileSystem
       if (!(Test-Path -Path "C:\sbt" )) {
         (new-object System.Net.WebClient).DownloadFile(
-          'https://cocl.us/sbt-0.13.16.zip',
+          'https://piccolo.link/sbt-0.13.17.zip',
           'C:\sbt-bin.zip'
         )
         [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\sbt-bin.zip", "C:\sbt")
