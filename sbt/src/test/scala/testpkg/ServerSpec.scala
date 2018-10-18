@@ -128,20 +128,12 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
 
     "return completions for user classes" in { implicit td =>
       withTestServer("completions") { p =>
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "test" } }"""
-        )
-
-        p.waitForString(30) { s =>
-          (s contains """"id":12,"result":{"status":"Done"""") && (s contains """"exitCode":0""")
-        }
-
         val completionStr = """{ "query": "testOnly org." }"""
         p.sendJsonRpc(
           s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
         )
 
-        assert(p.waitForString(30) { s =>
+        assert(p.waitForString(10) { s =>
           s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]}"""
         })
       }
