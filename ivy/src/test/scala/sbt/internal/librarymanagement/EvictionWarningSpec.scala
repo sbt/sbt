@@ -116,7 +116,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
         "",
         "To force scalaVersion, add the following:",
-        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))",
+        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
       )
   }
 
@@ -132,7 +132,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t    +- com.example:foo:0.1.0                              (depends on 2.10.2)",
         "",
         "To force scalaVersion, add the following:",
-        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))",
+        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
       )
   }
 
@@ -141,7 +141,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.",
+        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
       )
   }
 
@@ -187,7 +187,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "",
         "\t* commons-io:commons-io:2.4 is selected over 1.4",
         "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
-        "",
+        ""
       )
   }
 
@@ -201,7 +201,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "",
         "\t* commons-io:commons-io:2.4 is selected over 1.4",
         "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
-        "",
+        ""
       )
   }
 
@@ -210,7 +210,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.",
+        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
       )
   }
 
@@ -265,7 +265,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "",
         "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 is selected over 2.1.4",
         "\t    +- com.example:foo:0.1.0                              (depends on 2.1.4)",
-        "",
+        ""
       )
   }
 
@@ -275,7 +275,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.",
+        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
       )
   }
 
@@ -313,7 +313,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
         "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
         "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
-        "",
+        ""
       )
   }
 
@@ -322,7 +322,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.",
+        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
       )
   }
 
