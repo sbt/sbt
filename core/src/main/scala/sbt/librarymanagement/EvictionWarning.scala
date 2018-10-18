@@ -314,8 +314,8 @@ object EvictionWarning {
   implicit val evictionWarningLines: ShowLines[EvictionWarning] = ShowLines { a: EvictionWarning =>
     import ShowLines._
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
-    if (a.options.warnEvictionSummary && a.allEvictions.nonEmpty) {
-      out += "There may be incompatibilities among your library dependencies."
+    if ((a.options.warnEvictionSummary || a.reportedEvictions.nonEmpty) && a.allEvictions.nonEmpty) {
+      out += "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
     }
 
     if (a.scalaEvictions.nonEmpty) {
@@ -330,10 +330,6 @@ object EvictionWarning {
       out += ""
       out ++= (a.directEvictions flatMap { _.lines })
       out ++= (a.transitiveEvictions flatMap { _.lines })
-    }
-
-    if (a.allEvictions.nonEmpty && (a.options.warnEvictionSummary || a.reportedEvictions.nonEmpty)) {
-      out += "Run 'evicted' to see detailed eviction warnings"
     }
 
     out.toList
