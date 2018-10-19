@@ -261,7 +261,7 @@ lazy val lmIvy = (project in file("ivy"))
   )
 
 lazy val lmCoursier = (project in file("coursier"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin)
   .dependsOn(lmIvy)
   .settings(
     commonSettings,
