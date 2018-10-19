@@ -3,6 +3,7 @@ package sbt.librarymanagement.coursier
 import java.io.{ File, OutputStreamWriter }
 import java.util.concurrent.Executors
 
+import scala.util.{ Success, Failure }
 import scala.concurrent.ExecutionContext
 
 import coursier.{ Artifact, Resolution, _ }
@@ -10,6 +11,9 @@ import coursier.util.{ Gather, Task }
 import sbt.librarymanagement.Configurations.{ CompilerPlugin, Component, ScalaTool }
 import sbt.librarymanagement._
 import sbt.util.Logger
+
+import sjsonnew.JsonFormat
+import sjsonnew.support.murmurhash.Hasher
 
 case class CoursierModuleDescriptor(
     directDependencies: Vector[ModuleID],
@@ -37,6 +41,52 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
     } else _resolvers
   }
 
+  private[sbt] object AltLibraryManagementCodec extends CoursierLibraryManagementCodec {
+    type CoursierHL = (
+        Vector[Resolver],
+        Vector[Resolver],
+        Boolean,
+        Int,
+        Int
+    )
+
+    def coursierToHL(c: CoursierConfiguration): CoursierHL =
+      (
+        c.resolvers,
+        c.otherResolvers,
+        c.reorderResolvers,
+        c.parallelDownloads,
+        c.maxIterations
+      )
+    // Redefine to use a subset of properties, that are serialisable
+    override implicit lazy val CoursierConfigurationFormat: JsonFormat[CoursierConfiguration] = {
+      def hlToCoursier(c: CoursierHL): CoursierConfiguration = {
+        val (
+          resolvers,
+          otherResolvers,
+          reorderResolvers,
+          parallelDownloads,
+          maxIterations
+        ) = c
+        CoursierConfiguration()
+          .withResolvers(resolvers)
+          .withOtherResolvers(otherResolvers)
+          .withReorderResolvers(reorderResolvers)
+          .withParallelDownloads(parallelDownloads)
+          .withMaxIterations(maxIterations)
+      }
+      projectFormat[CoursierConfiguration, CoursierHL](coursierToHL, hlToCoursier)
+    }
+  }
+
+  def extraInputHash: Long = {
+    import AltLibraryManagementCodec._
+    Hasher.hash(coursierConfiguration) match {
+      case Success(keyHash) => keyHash.toLong
+      case Failure(_)       => 0L
+    }
+  }
+
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.
    *
@@ -49,7 +99,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
       moduleSetting.dependencies,
       moduleSetting.scalaModuleInfo,
       CoursierModuleSettings(),
-      1L // FIXME: use correct value
+      extraInputHash
     )
   }
 
