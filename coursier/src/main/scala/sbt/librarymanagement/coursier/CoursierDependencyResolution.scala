@@ -34,11 +34,12 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
     )
 
   private[coursier] val reorderedResolvers = {
-    val _resolvers =
+    val resolvers0 =
       coursierConfiguration.resolvers ++ coursierConfiguration.otherResolvers
+
     if (coursierConfiguration.reorderResolvers) {
-      Resolvers.reorder(_resolvers)
-    } else _resolvers
+      Resolvers.reorder(resolvers0)
+    } else resolvers0
   }
 
   private[sbt] object AltLibraryManagementCodec extends CoursierLibraryManagementCodec {
@@ -138,7 +139,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
         "Dependency resolution is configured with an empty list of resolvers. This is unlikely to work.")
     }
 
-    val dependencies = module.directDependencies.map(toCoursierDependency).toSet
+    val dependencies = module.directDependencies.map(toCoursierDependency).flatten.toSet
     val start = Resolution(dependencies)
     val authentication = None // TODO: get correct value
     val ivyConfiguration = ivyProperties // TODO: is it enough?
@@ -179,34 +180,41 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
   }
 
   // utilities
-
   private def createLogger() = {
     val t = new TermDisplay(new OutputStreamWriter(System.out))
     t.init()
     t
   }
 
-  private def toCoursierDependency(moduleID: ModuleID): Dependency = {
-    val attrs = moduleID.explicitArtifacts
-      .map(a => Attributes(`type` = a.`type`, classifier = a.classifier.getOrElse("")))
-      .headOption
-      .getOrElse(Attributes())
+  private def toCoursierDependency(moduleID: ModuleID): Seq[Dependency] = {
+    val attributes =
+      if (moduleID.explicitArtifacts.isEmpty)
+        Seq(Attributes("", ""))
+      else
+        moduleID.explicitArtifacts.map { a =>
+          Attributes(`type` = a.`type`, classifier = a.classifier.getOrElse(""))
+        }
 
-    // for some reason, sbt adds the prefix "e:" to extraAttributes
-    val extraAttrs = moduleID.extraAttributes.map {
-      case (key, value) => (key.replaceFirst("^e:", ""), value)
+    val extraAttrs = FromSbt.attributes(moduleID.extraDependencyAttributes)
+
+    val mapping = moduleID.configurations.getOrElse("compile")
+
+    // import _root_.coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
+    // val allMappings = ivyXmlMappings(mapping)
+    for {
+      attr <- attributes
+    } yield {
+      Dependency(
+        Module(moduleID.organization, moduleID.name, extraAttrs),
+        moduleID.revision,
+        configuration = mapping,
+        attributes = attr,
+        exclusions = moduleID.exclusions.map { rule =>
+          (rule.organization, rule.name)
+        }.toSet,
+        transitive = moduleID.isTransitive
+      )
     }
-
-    Dependency(
-      Module(moduleID.organization, moduleID.name, extraAttrs),
-      moduleID.revision,
-      moduleID.configurations.getOrElse(""),
-      attrs,
-      exclusions = moduleID.exclusions.map { rule =>
-        (rule.organization, rule.name)
-      }.toSet,
-      transitive = moduleID.isTransitive
-    )
   }
 
   private def toUpdateReport(resolution: Resolution,
@@ -274,9 +282,9 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
   // Key is the name of the configuration (i.e. `compile`) and the values are the name itself plus the
   // names of the configurations that this one depends on.
   private def extractConfigurationTree: ConfigurationDependencyTree = {
-    (Configurations.default ++ Configurations.defaultInternal ++ Seq(ScalaTool,
-                                                                     CompilerPlugin,
-                                                                     Component))
+    (Configurations.default ++
+      Configurations.defaultInternal ++
+      Seq(ScalaTool, CompilerPlugin, Component))
       .map(c => (c.name, c.extendsConfigs.map(_.name) :+ c.name))
       .toMap
       .mapValues(_.toSet)
@@ -306,7 +314,6 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
         None
 
     val res = fromBootJars.orElse(artifactFiles.get(artifact0))
-
     if (res.isEmpty && !erroredArtifacts(artifact0))
       log.error(s"${artifact.url} not downloaded (should not happen)")
 

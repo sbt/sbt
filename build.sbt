@@ -306,7 +306,8 @@ addCommandAlias("scriptedCoursier", Seq(
   "lmScriptedTest/clean",
   """set ThisBuild / scriptedTestLMImpl := "coursier"""",
   """set ThisBuild / scriptedLaunchOpts += "-Ddependency.resolution=coursier" """,
-  "lmScriptedTest/scripted").mkString(";",";",""))
+  // excluding sbt-plugins test, artifacts are downloaded but sbt do not pick up the plugin
+  "lmScriptedTest/scripted lmScriptedTest/simple lmScriptedTest/with-trasnsitive").mkString(";",";",""))
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
