@@ -8,7 +8,7 @@ sys.props.get("dependency.resolution") match {
   case Some("coursier") =>
     addCommandAlias(
       "setDependencyResolution",
-      """set dependencyResolution := sbt.librarymanagement.coursier.CoursierDependencyResolution(Resolver.combineDefaultResolvers(resolvers.value.toVector))"""
+      """set dependencyResolution := sbt.librarymanagement.coursier.CoursierDependencyResolution(sbt.librarymanagement.coursier.CoursierConfiguration())"""
     )
   case _ => sys.error("""|The system property 'dependency.resolution' is not defined.
                          |Specify this property using the scriptedLaunchOpts -D.""".stripMargin)

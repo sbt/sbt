@@ -1,6 +1,9 @@
 package sbt.librarymanagement.coursier
 
 import java.io.{ File, OutputStreamWriter }
+import java.util.concurrent.Executors
+
+import scala.concurrent.ExecutionContext
 
 import coursier.{ Artifact, Resolution, _ }
 import coursier.util.{ Gather, Task }
@@ -17,10 +20,22 @@ case class CoursierModuleDescriptor(
 
 case class CoursierModuleSettings() extends ModuleSettings
 
-private[sbt] class CoursierDependencyResolution(resolvers: Vector[Resolver])
+private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierConfiguration)
     extends DependencyResolutionInterface {
 
-  private[coursier] val reorderedResolvers = Resolvers.reorder(resolvers.toSeq)
+  // keep the pool alive while the class is loaded
+  private lazy val pool =
+    ExecutionContext.fromExecutor(
+      Executors.newFixedThreadPool(coursierConfiguration.parallelDownloads)
+    )
+
+  private[coursier] val reorderedResolvers = {
+    val _resolvers =
+      coursierConfiguration.resolvers ++ coursierConfiguration.otherResolvers
+    if (coursierConfiguration.reorderResolvers) {
+      Resolvers.reorder(_resolvers)
+    } else _resolvers
+  }
 
   /**
    * Builds a ModuleDescriptor that describes a subproject with dependencies.
@@ -82,24 +97,34 @@ private[sbt] class CoursierDependencyResolution(resolvers: Vector[Resolver])
         Cache.ivy2Local,
         Cache.ivy2Cache)
 
-    import scala.concurrent.ExecutionContext.Implicits.global
+    implicit val ec = pool
 
-    val fetch = Fetch.from(repositories, Cache.fetch[Task](logger = Some(createLogger())))
-    val resolution = start.process.run(fetch).unsafeRun()
-
-    if (resolution.errors.isEmpty) {
-      val localArtifacts: Map[Artifact, Either[FileError, File]] = Gather[Task]
-        .gather(
-          resolution.artifacts.map { a =>
-            Cache.file[Task](a).run.map((a, _))
-          }
-        )
+    val coursierLogger = createLogger()
+    try {
+      val fetch = Fetch.from(
+        repositories,
+        Cache.fetch[Task](logger = Some(coursierLogger))
+      )
+      val resolution = start.process
+        .run(fetch, coursierConfiguration.maxIterations)
         .unsafeRun()
-        .toMap
 
-      toUpdateReport(resolution, localArtifacts, log)
-    } else {
-      toSbtError(log, uwconfig, resolution)
+      if (resolution.isDone && resolution.errors.isEmpty && resolution.conflicts.isEmpty) {
+        val localArtifacts: Map[Artifact, Either[FileError, File]] = Gather[Task]
+          .gather(
+            resolution.artifacts.map { a =>
+              Cache.file[Task](a, logger = Some(coursierLogger)).run.map((a, _))
+            }
+          )
+          .unsafeRun()
+          .toMap
+
+        toUpdateReport(resolution, localArtifacts, log)
+      } else {
+        toSbtError(log, uwconfig, resolution)
+      }
+    } finally {
+      coursierLogger.stop()
     }
   }
 
@@ -254,6 +279,6 @@ private[sbt] class CoursierDependencyResolution(resolvers: Vector[Resolver])
 }
 
 object CoursierDependencyResolution {
-  def apply(resolvers: Vector[Resolver]) =
-    DependencyResolution(new CoursierDependencyResolution(resolvers))
+  def apply(configuration: CoursierConfiguration) =
+    DependencyResolution(new CoursierDependencyResolution(configuration))
 }

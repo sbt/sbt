@@ -10,14 +10,14 @@ import sbt.librarymanagement.syntax._
 import sbt.librarymanagement.{ Resolver, UnresolvedWarningConfiguration, UpdateConfiguration }
 
 class ResolutionSpec extends BaseCoursierSpecification {
-  override val resolvers = Vector(
+  override def resolvers = Vector(
     DefaultMavenRepository,
     JavaNet2Repository,
     JCenterRepository,
     Resolver.sbtPluginRepo("releases")
   )
 
-  val lmEngine = new CoursierDependencyResolution(resolvers)
+  val lmEngine = new CoursierDependencyResolution(configuration())
 
   private final val stubModule = "com.example" % "foo" % "0.1.0" % "compile"
 
@@ -78,7 +78,9 @@ class ResolutionSpec extends BaseCoursierSpecification {
     val dependencies =
       Vector(("org.scala-sbt" % "compiler-interface" % "1.0.4" % "component").sources())
     val lmEngine =
-      CoursierDependencyResolution.apply(Resolver.combineDefaultResolvers(Vector.empty))
+      CoursierDependencyResolution.apply(
+        configuration(Resolver.combineDefaultResolvers(Vector.empty))
+      )
     val coursierModule = module(stubModule, dependencies, Some("2.12.4"))
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
@@ -128,7 +130,7 @@ class ResolutionSpec extends BaseCoursierSpecification {
       Resolver.sbtPluginRepo("releases"),
       DefaultMavenRepository
     )
-    val engine = new CoursierDependencyResolution(resolvers)
+    val engine = new CoursierDependencyResolution(configuration(resolvers))
     engine.reorderedResolvers.head.name should be("public")
     engine.reorderedResolvers.last.name should be("sbt-plugin-releases")
     engine.reorderedResolvers should have size 3
@@ -136,7 +138,7 @@ class ResolutionSpec extends BaseCoursierSpecification {
 
   it should "reorder default resolvers" in {
     val resolvers = Resolver.combineDefaultResolvers(Vector.empty)
-    val engine = new CoursierDependencyResolution(resolvers)
+    val engine = new CoursierDependencyResolution(configuration(resolvers))
     engine.reorderedResolvers should not be 'empty
     engine.reorderedResolvers.head.name should be("public")
   }

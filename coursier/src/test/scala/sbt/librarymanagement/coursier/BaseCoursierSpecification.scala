@@ -34,4 +34,7 @@ trait BaseCoursierSpecification extends UnitSpec {
 
   def resolvers: Vector[Resolver]
 
+  def configuration(res: Vector[Resolver] = resolvers) =
+    CoursierConfiguration().withResolvers(res)
+
 }
