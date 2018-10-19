@@ -66,6 +66,7 @@ import sbt.librarymanagement.Configurations.{
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
+import sbt.librarymanagement.coursier._
 import sbt.librarymanagement.syntax._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
@@ -2109,7 +2110,10 @@ object Classpaths {
         )
       else None
     },
-    dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
+    // TODO: get back to Ivy by default before merging!!!!
+    // useCoursier := false,
+    useCoursier := true,
+    dependencyResolution := mkDependencyResolution.value,
     publisher := IvyPublisher(ivyConfiguration.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
@@ -2123,6 +2127,7 @@ object Classpaths {
       if (managedScalaInstance.value && scalaHome.value.isEmpty) Configurations.ScalaTool :: Nil
       else Nil
     },
+    coursierConfiguration := mkCoursierConfiguration.value,
     moduleSettings := moduleSettings0.value,
     makePomConfiguration := MakePomConfiguration()
       .withFile((artifactPath in makePom).value)
@@ -2407,7 +2412,7 @@ object Classpaths {
               ).withScalaOrganization(scalaOrganization.value)
             )
           },
-          dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
+          dependencyResolution := mkDependencyResolution.value,
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
             val s = streams.value
@@ -2953,6 +2958,22 @@ object Classpaths {
         .withResolutionCacheDir(crossTarget.value / "resolution-cache")
         .withUpdateOptions(updateOptions.value)
         .withLog(s.log)
+    }
+  def mkCoursierConfiguration: Initialize[Task[CoursierConfiguration]] =
+    Def.task {
+      val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
+      val s = streams.value
+      warnResolversConflict(rs ++: other, s.log)
+      CoursierConfiguration()
+        .withResolvers(rs)
+        .withOtherResolvers(other)
+        .withLog(s.log)
+    }
+  def mkDependencyResolution: Initialize[Task[DependencyResolution]] =
+    Def.taskDyn {
+      if (useCoursier.value)
+        Def.task { CoursierDependencyResolution(coursierConfiguration.value) } else
+        Def.task { IvyDependencyResolution(ivyConfiguration.value) }
     }
 
   import java.util.LinkedHashSet

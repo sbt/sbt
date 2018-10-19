@@ -84,6 +84,7 @@ import sbt.librarymanagement.{
 import sbt.librarymanagement.InclExclRule
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.librarymanagement.ivy.{ IvyConfiguration, IvyPaths }
+import sbt.librarymanagement.coursier.CoursierConfiguration
 import sbt.util.{ Level, Logger }
 import org.apache.logging.log4j.core.Appender
 import sbt.BuildSyntax._
@@ -383,6 +384,8 @@ object Keys {
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)
   val ivyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, such as the resolvers and paths to use.").withRank(DTask)
   val ivyConfigurations = settingKey[Seq[Configuration]]("The defined configurations for dependency management.  This may be different from the configurations for Project settings.").withRank(BSetting)
+  val useCoursier = settingKey[Boolean]("Use Coursier instead of Ivy for dependency resolution.").withRank(BSetting)
+  val coursierConfiguration = taskKey[CoursierConfiguration]("General dependency management (Coursier) settings, such as the resolvers and options to use.").withRank(DTask)
   // This setting was created to work around the limitation of derived tasks not being able to use task-scoped task: ivyConfiguration in updateSbtClassifiers
   val bootIvyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, configured to retrieve sbt's components.").withRank(DTask)
   val bootDependencyResolution = taskKey[DependencyResolution]("Dependency resolution to retrieve sbt's components.").withRank(CTask)
