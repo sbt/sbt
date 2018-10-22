@@ -302,6 +302,7 @@ addCommandAlias("scriptedIvy", Seq(
 
 addCommandAlias("scriptedCoursier", Seq(
   "lmCore/publishLocal",
+  "lmIvy/publishLocal",
   "lmCoursier/publishLocal",
   "lmScriptedTest/clean",
   """set ThisBuild / scriptedTestLMImpl := "coursier"""",

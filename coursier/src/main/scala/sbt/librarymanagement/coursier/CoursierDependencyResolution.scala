@@ -143,10 +143,12 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
     val start = Resolution(dependencies)
     val authentication = None // TODO: get correct value
     val ivyConfiguration = ivyProperties // TODO: is it enough?
+
     val repositories =
       reorderedResolvers.flatMap(r => FromSbt.repository(r, ivyConfiguration, log, authentication)) ++ Seq(
         Cache.ivy2Local,
-        Cache.ivy2Cache)
+        Cache.ivy2Cache
+      )
 
     implicit val ec = pool
 
@@ -160,17 +162,34 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
         .run(fetch, coursierConfiguration.maxIterations)
         .unsafeRun()
 
-      if (resolution.isDone && resolution.errors.isEmpty && resolution.conflicts.isEmpty) {
+      def updateReport() = {
         val localArtifacts: Map[Artifact, Either[FileError, File]] = Gather[Task]
           .gather(
             resolution.artifacts.map { a =>
-              Cache.file[Task](a, logger = Some(coursierLogger)).run.map((a, _))
+              Cache
+                .file[Task](a, logger = Some(coursierLogger))
+                .run
+                .map((a, _))
             }
           )
           .unsafeRun()
           .toMap
 
         toUpdateReport(resolution, localArtifacts, log)
+      }
+
+      if (resolution.isDone &&
+          resolution.errors.isEmpty &&
+          resolution.conflicts.isEmpty) {
+        updateReport()
+      } else if (resolution.isDone &&
+                 (!resolution.errors.isEmpty && coursierConfiguration.ignoreArtifactErrors)
+                 && resolution.conflicts.isEmpty) {
+        log.warn(s"""Failed to download artifacts: ${resolution.errors
+          .map(_._2)
+          .flatten
+          .mkString(", ")}""")
+        updateReport()
       } else {
         toSbtError(log, uwconfig, resolution)
       }
@@ -232,17 +251,12 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
           a -> err
       }
 
-    if (artifactErrors.nonEmpty) {
-      // TODO: handle error the correct sbt way
-      throw new RuntimeException(s"Could not download dependencies: $artifactErrors")
-    }
-
-    // can be non empty only if ignoreArtifactErrors is true or some optional artifacts are not found
     val erroredArtifacts = artifactFilesOrErrors0.collect {
       case (a, Left(_)) => a
     }.toSet
 
-    val depsByConfig = resolution.dependencies.groupBy(_.configuration).mapValues(_.toSeq)
+    val depsByConfig =
+      resolution.dependencies.groupBy(_.configuration).mapValues(_.toSeq)
 
     val configurations = extractConfigurationTree
 
