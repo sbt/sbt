@@ -3,15 +3,14 @@ package sbt.librarymanagement.coursier
 import java.io.{ File, OutputStreamWriter }
 import java.util.concurrent.Executors
 
-import scala.util.{ Success, Failure }
+import scala.util.{ Failure, Success }
 import scala.concurrent.ExecutionContext
-
 import coursier.{ Artifact, Resolution, _ }
 import coursier.util.{ Gather, Task }
+import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement.Configurations.{ CompilerPlugin, Component, ScalaTool }
 import sbt.librarymanagement._
 import sbt.util.Logger
-
 import sjsonnew.JsonFormat
 import sjsonnew.support.murmurhash.Hasher
 
@@ -19,7 +18,8 @@ case class CoursierModuleDescriptor(
     directDependencies: Vector[ModuleID],
     scalaModuleInfo: Option[ScalaModuleInfo],
     moduleSettings: ModuleSettings,
-    extraInputHash: Long
+    extraInputHash: Long,
+    configurations: Seq[String]
 ) extends ModuleDescriptor
 
 case class CoursierModuleSettings() extends ModuleSettings
@@ -100,7 +100,8 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
       moduleSetting.dependencies,
       moduleSetting.scalaModuleInfo,
       CoursierModuleSettings(),
-      extraInputHash
+      extraInputHash,
+      moduleSetting.configurations.map(_.name)
     )
   }
 
@@ -133,6 +134,20 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
                       configuration: UpdateConfiguration,
                       uwconfig: UnresolvedWarningConfiguration,
                       log: Logger): Either[UnresolvedWarning, UpdateReport] = {
+
+    // not sure what DependencyResolutionInterface.moduleDescriptor is for, we're handled ivy stuff anyway...
+    val module0 = module match {
+      case c: CoursierModuleDescriptor => c
+      case i: IvySbt#Module =>
+        moduleDescriptor(
+          i.moduleSettings match {
+            case c: ModuleDescriptorConfiguration => c
+            case other                            => sys.error(s"unrecognized module settings: $other")
+          }
+        )
+      case _ =>
+        sys.error(s"unrecognized ModuleDescriptor type: $module")
+    }
 
     if (reorderedResolvers.isEmpty) {
       log.error(
@@ -175,7 +190,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
           .unsafeRun()
           .toMap
 
-        toUpdateReport(resolution, localArtifacts, log)
+        toUpdateReport(resolution, module0.configurations, localArtifacts, log)
       }
 
       if (resolution.isDone &&
@@ -237,6 +252,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
   }
 
   private def toUpdateReport(resolution: Resolution,
+                             configurations: Seq[String],
                              artifactFilesOrErrors0: Map[Artifact, Either[FileError, File]],
                              log: Logger): Either[UnresolvedWarning, UpdateReport] = {
 
@@ -255,13 +271,15 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
       case (a, Left(_)) => a
     }.toSet
 
-    val depsByConfig =
-      resolution.dependencies.groupBy(_.configuration).mapValues(_.toSeq)
+    val depsByConfig = {
+      val deps = resolution.dependencies.toVector
+      configurations.map((_, deps)).toMap
+    }
 
-    val configurations = extractConfigurationTree
+    val configurations0 = extractConfigurationTree
 
     val configResolutions =
-      (depsByConfig.keys ++ configurations.keys).map(k => (k, resolution)).toMap
+      (depsByConfig.keys ++ configurations0.keys).map(k => (k, resolution)).toMap
 
     val sbtBootJarOverrides = Map.empty[(Module, String), File] // TODO: get correct values
     val classifiers = None // TODO: get correct values
@@ -271,7 +289,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
         ToSbt.updateReport(
           depsByConfig,
           configResolutions,
-          configurations,
+          configurations0,
           classifiers,
           artifactFileOpt(
             sbtBootJarOverrides,
