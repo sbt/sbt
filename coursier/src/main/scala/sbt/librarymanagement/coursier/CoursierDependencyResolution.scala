@@ -19,7 +19,7 @@ case class CoursierModuleDescriptor(
     scalaModuleInfo: Option[ScalaModuleInfo],
     moduleSettings: ModuleSettings,
     configurations: Seq[String],
-    extraInputHash: Long,
+    extraInputHash: Long
 ) extends ModuleDescriptor
 
 case class CoursierModuleSettings() extends ModuleSettings
