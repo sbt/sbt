@@ -36,13 +36,13 @@ class ResolutionSpec extends BaseCoursierSpecification {
     r.configurations.map(_.configuration) should have size 11
 
     val compileConfig = r.configurations.find(_.configuration == Compile.toConfigRef).get
-    compileConfig.modules should have size 1
+    compileConfig.modules should have size 2
 
     val runtimeConfig = r.configurations.find(_.configuration == Runtime.toConfigRef).get
-    runtimeConfig.modules should have size 1
+    runtimeConfig.modules should have size 2
 
     val testConfig = r.configurations.find(_.configuration == Test.toConfigRef).get
-    testConfig.modules should have size 1
+    testConfig.modules should have size 2
   }
 
   it should "resolve compiler bridge" in {

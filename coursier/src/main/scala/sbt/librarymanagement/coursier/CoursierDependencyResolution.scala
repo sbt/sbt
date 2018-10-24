@@ -274,7 +274,8 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
 
     val depsByConfig = {
       val deps = resolution.dependencies.toVector
-      configurations.map((_, deps)).toMap
+      (configurations ++
+        Seq(ScalaTool, CompilerPlugin, Component).map(_.name)).map((_, deps)).toMap
     }
 
     val configurations0 = extractConfigurationTree
