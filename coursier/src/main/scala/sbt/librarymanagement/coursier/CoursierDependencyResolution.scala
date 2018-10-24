@@ -18,8 +18,8 @@ case class CoursierModuleDescriptor(
     directDependencies: Vector[ModuleID],
     scalaModuleInfo: Option[ScalaModuleInfo],
     moduleSettings: ModuleSettings,
+    configurations: Seq[String],
     extraInputHash: Long,
-    configurations: Seq[String]
 ) extends ModuleDescriptor
 
 case class CoursierModuleSettings() extends ModuleSettings
@@ -100,8 +100,8 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
       moduleSetting.dependencies,
       moduleSetting.scalaModuleInfo,
       CoursierModuleSettings(),
-      extraInputHash,
-      moduleSetting.configurations.map(_.name)
+      moduleSetting.configurations.map(_.name),
+      extraInputHash
     )
   }
 
@@ -138,6 +138,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
     // not sure what DependencyResolutionInterface.moduleDescriptor is for, we're handled ivy stuff anyway...
     val module0 = module match {
       case c: CoursierModuleDescriptor => c
+      // This shouldn't happen at best of my understanding
       case i: IvySbt#Module =>
         moduleDescriptor(
           i.moduleSettings match {
@@ -198,7 +199,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
           resolution.conflicts.isEmpty) {
         updateReport()
       } else if (resolution.isDone &&
-                 (!resolution.errors.isEmpty && coursierConfiguration.ignoreArtifactErrors)
+                 (!resolution.errors.isEmpty && configuration.missingOk)
                  && resolution.conflicts.isEmpty) {
         log.warn(s"""Failed to download artifacts: ${resolution.errors
           .map(_._2)
@@ -313,7 +314,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
 
   // Key is the name of the configuration (i.e. `compile`) and the values are the name itself plus the
   // names of the configurations that this one depends on.
-  private def extractConfigurationTree: ConfigurationDependencyTree = {
+  private val extractConfigurationTree: ConfigurationDependencyTree = {
     (Configurations.default ++
       Configurations.defaultInternal ++
       Seq(ScalaTool, CompilerPlugin, Component))

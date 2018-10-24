@@ -42,12 +42,6 @@
           "type": "Int",
           "default": "100",
           "since": "0.0.1"
-        },
-        {
-          "name": "ignoreArtifactErrors",
-          "type": "Boolean",
-          "default": "false",
-          "since": "0.0.1"
         }
       ]
     }
