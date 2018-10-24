@@ -1,4 +1,1 @@
-> sbtVersion
-> setDependencyResolution
-> clean
 > compile

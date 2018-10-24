@@ -1,6 +1,2 @@
 > reload
-> sbtVersion
-> setDependencyResolution
-> clean
-> compile
 > assembly
