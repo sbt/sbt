@@ -156,7 +156,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
     }
 
     val dependencies = module.directDependencies.map(toCoursierDependency).flatten.toSet
-    val start = Resolution(dependencies)
+    val start = Resolution(dependencies.map(_._1))
     val authentication = None // TODO: get correct value
     val ivyConfiguration = ivyProperties // TODO: is it enough?
 
@@ -191,7 +191,10 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
           .unsafeRun()
           .toMap
 
-        toUpdateReport(resolution, module0.configurations, localArtifacts, log)
+        toUpdateReport(resolution,
+                       (module0.configurations ++ dependencies.map(_._2)).distinct,
+                       localArtifacts,
+                       log)
       }
 
       if (resolution.isDone &&
@@ -221,7 +224,7 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
     t
   }
 
-  private def toCoursierDependency(moduleID: ModuleID): Seq[Dependency] = {
+  private def toCoursierDependency(moduleID: ModuleID) = {
     val attributes =
       if (moduleID.explicitArtifacts.isEmpty)
         Seq(Attributes("", ""))
@@ -234,21 +237,23 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
 
     val mapping = moduleID.configurations.getOrElse("compile")
 
-    // import _root_.coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
-    // val allMappings = ivyXmlMappings(mapping)
+    import _root_.coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
+    val allMappings = ivyXmlMappings(mapping)
+
     for {
+      (from, to) <- allMappings
       attr <- attributes
     } yield {
       Dependency(
         Module(moduleID.organization, moduleID.name, extraAttrs),
         moduleID.revision,
-        configuration = mapping,
+        configuration = to,
         attributes = attr,
         exclusions = moduleID.exclusions.map { rule =>
           (rule.organization, rule.name)
         }.toSet,
         transitive = moduleID.isTransitive
-      )
+      ) -> from
     }
   }
 
@@ -274,16 +279,17 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
 
     val depsByConfig = {
       val deps = resolution.dependencies.toVector
-      (configurations ++
-        Seq(ScalaTool, CompilerPlugin, Component).map(_.name)).map((_, deps)).toMap
+      configurations
+        .map((_, deps))
+        .toMap
     }
 
-    val configurations0 = extractConfigurationTree
+    val configurations0 = extractConfigurationTree(configurations)
 
     val configResolutions =
       (depsByConfig.keys ++ configurations0.keys).map(k => (k, resolution)).toMap
 
-    val sbtBootJarOverrides = Map.empty[(Module, String), File] // TODO: get correct values
+    val sbtBootJarOverrides = Map.empty[(Module, String), File]
     val classifiers = None // TODO: get correct values
 
     if (artifactErrors.isEmpty) {
@@ -315,10 +321,11 @@ private[sbt] class CoursierDependencyResolution(coursierConfiguration: CoursierC
 
   // Key is the name of the configuration (i.e. `compile`) and the values are the name itself plus the
   // names of the configurations that this one depends on.
-  private val extractConfigurationTree: ConfigurationDependencyTree = {
+  private def extractConfigurationTree(available: Seq[String]): ConfigurationDependencyTree = {
     (Configurations.default ++
       Configurations.defaultInternal ++
       Seq(ScalaTool, CompilerPlugin, Component))
+      .filter(c => available.contains(c.name))
       .map(c => (c.name, c.extendsConfigs.map(_.name) :+ c.name))
       .toMap
       .mapValues(_.toSet)
