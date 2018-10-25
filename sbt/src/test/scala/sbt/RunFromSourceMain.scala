@@ -30,7 +30,16 @@ object RunFromSourceMain {
     val cp = {
       TestBuildInfo.test_classDirectory +: TestBuildInfo.fullClasspath
     }
-    val options = Vector(workingDirectory.toString)
+    // Can be removed once we default back to Ivy
+    Seq(
+      workingDirectory / "project" / "project" / "nocoursier.sbt",
+      workingDirectory / "project" / "nocoursier.sbt",
+      workingDirectory / "nocoursier.sbt"
+    ) foreach { f =>
+      IO.write(f, "useCoursier:=false")
+    }
+    val options =
+      Vector(workingDirectory.toString)
     val log = LogExchange.logger("RunFromSourceMain.fork", None, None)
     runner.fork("sbt.RunFromSourceMain", cp, options, log)
   }
