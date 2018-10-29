@@ -814,6 +814,8 @@ object Tasks {
 
       val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
 
+      val autoScalaLib = autoScalaLibrary.value
+
       val resolvers = resolversTask.value
 
       // TODO Warn about possible duplicated modules from source repositories?
@@ -909,7 +911,7 @@ object Tasks {
         forceVersions =
           // order matters here
           userForceVersions ++
-            (if (configs("compile") || configs("scala-tool")) forcedScalaModules(so, sv) else Map()) ++
+            (if (autoScalaLib && (configs("compile") || configs("scala-tool"))) forcedScalaModules(so, sv) else Map()) ++
             interProjectDependencies.map(_.moduleVersion),
         projectCache = parentProjectCache,
         mapDependencies = if (typelevel && (configs("compile") || configs("scala-tool"))) typelevelOrgSwap else None

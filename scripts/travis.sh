@@ -16,7 +16,7 @@ sbtShading() {
 }
 
 runSbtCoursierTests() {
-  ./metadata/scripts/with-test-repo.sh sbt ++$TRAVIS_SCALA_VERSION sbt-coursier/test sbt-coursier/scripted
+  ./metadata/scripts/with-test-repo.sh sbt ++$TRAVIS_SCALA_VERSION sbt-coursier/test "sbt-coursier/scripted sbt-coursier-group-$SBT_COURSIER_TEST_GROUP/*"
 }
 
 runSbtShadingTests() {
