@@ -2,10 +2,11 @@ package coursier
 
 import java.io.File
 
+import coursier.core.{Configuration, Type}
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import sbt.librarymanagement._
 import sbt.Keys._
-import sbt.{AutoPlugin, Compile, Configuration, SettingKey, TaskKey, inConfig}
+import sbt.{AutoPlugin, Compile, SettingKey, TaskKey, inConfig}
 
 object ShadingPlugin extends AutoPlugin {
 
@@ -14,7 +15,7 @@ object ShadingPlugin extends AutoPlugin {
   override def requires = sbt.plugins.IvyPlugin
 
   private val baseSbtConfiguration = Compile
-  val Shading = Configuration.of(
+  val Shading = sbt.Configuration.of(
     id = "Shading",
     name = "shading",
     description = "",
@@ -23,8 +24,8 @@ object ShadingPlugin extends AutoPlugin {
     transitive = true
   )
 
-  private val baseDependencyConfiguration = "compile"
-  val Shaded = Configuration.of(
+  private val baseDependencyConfiguration = Configuration.compile
+  val Shaded = sbt.Configuration.of(
     id = "Shaded",
     name = "shaded",
     description = "",
@@ -79,7 +80,7 @@ object ShadingPlugin extends AutoPlugin {
   override lazy val projectSettings =
     Seq(
       coursierConfigurations := Tasks.coursierConfigurationsTask(
-        Some(baseDependencyConfiguration -> Shaded.name)
+        Some(baseDependencyConfiguration.value -> Configuration(Shaded.name))
       ).value,
       ivyConfigurations := Shaded +: ivyConfigurations.value.map {
         conf =>
@@ -95,8 +96,8 @@ object ShadingPlugin extends AutoPlugin {
         sbt.Classpaths.ivyPublishSettings ++
         shadingJvmPublishSettings ++
         CoursierPlugin.coursierSettings(
-          Some(baseDependencyConfiguration -> Shaded.name),
-          Seq(Shading -> Compile.name)
+          Some(baseDependencyConfiguration.value -> Configuration(Shaded.name)),
+          Seq(Shading -> Configuration.compile)
         ) ++
         CoursierPlugin.treeSettings ++
         Seq(
@@ -106,7 +107,7 @@ object ShadingPlugin extends AutoPlugin {
             .map(c => c.withExtendsConfigs(c.extendsConfigs.toVector.filter(_.name != Shaded.name))),
           libraryDependencies := libraryDependencies.in(baseSbtConfiguration).value.filter { dep =>
             val isShaded = dep.configurations.exists { mappings =>
-              ivyXmlMappings(mappings).exists(_._1 == Shaded.name)
+              ivyXmlMappings(mappings).exists(_._1 == Configuration(Shaded.name))
             }
 
             !isShaded
@@ -128,9 +129,9 @@ object ShadingPlugin extends AutoPlugin {
                 },
               coursierConfigurations.in(baseSbtConfiguration).value,
               Keys.coursierArtifacts.in(baseSbtConfiguration).value,
-              classpathTypes.value,
+              classpathTypes.value.map(Type(_)),
               baseDependencyConfiguration,
-              Shaded.name,
+              Configuration(Shaded.name),
               streams.value.log
             )
           },

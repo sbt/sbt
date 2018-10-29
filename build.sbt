@@ -16,7 +16,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion = "1.1.0-M7"
+val coursierVersion = "1.1.0-M8"
 
 lazy val `sbt-shared` = project
   .in(file("modules/sbt-shared"))

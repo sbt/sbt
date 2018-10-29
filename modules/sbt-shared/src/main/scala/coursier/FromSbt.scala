@@ -4,10 +4,9 @@ import coursier.ivy.IvyRepository
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import java.net.{MalformedURLException, URL}
 
-import coursier.core.Authentication
+import coursier.core.{Authentication, Classifier, Configuration, Type}
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
-import sbt.librarymanagement._
-import sbt.librarymanagement.Resolver
+import sbt.librarymanagement.{CrossVersion, FileRepository, GetClassifiersModule, ModuleID, Patterns, RawRepository, Resolver, URLRepository}
 import sbt.util.Logger
 
 object FromSbt {
@@ -43,7 +42,7 @@ object FromSbt {
 
     val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion)
 
-    val module0 = Module(module.organization, fullName, FromSbt.attributes(module.extraDependencyAttributes))
+    val module0 = Module(Organization(module.organization), ModuleName(fullName), FromSbt.attributes(module.extraDependencyAttributes))
     val version = module.revision
 
     (module0, version)
@@ -53,7 +52,7 @@ object FromSbt {
     module: ModuleID,
     scalaVersion: String,
     scalaBinaryVersion: String
-  ): Seq[(String, Dependency)] = {
+  ): Seq[(Configuration, Dependency)] = {
 
     // TODO Warn about unsupported properties in `module`
 
@@ -64,7 +63,7 @@ object FromSbt {
       version,
       exclusions = module.exclusions.map { rule =>
         // FIXME Other `rule` fields are ignored here
-        (rule.organization, rule.name)
+        (Organization(rule.organization), ModuleName(rule.name))
       }.toSet,
       transitive = module.isTransitive
     )
@@ -74,10 +73,13 @@ object FromSbt {
 
     val attributes =
       if (module.explicitArtifacts.isEmpty)
-        Seq(Attributes("", ""))
+        Seq(Attributes(Type.empty, Classifier.empty))
       else
         module.explicitArtifacts.map { a =>
-          Attributes(`type` = a.`type`, classifier = a.classifier.getOrElse(""))
+          Attributes(
+            `type` = Type(a.`type`),
+            classifier = a.classifier.fold(Classifier.empty)(Classifier(_))
+          )
         }
 
     for {
@@ -109,7 +111,7 @@ object FromSbt {
     val p = FromSbt.project(
       cm.id,
       cm.dependencies,
-      cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
+      cm.configurations.map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name))).toMap,
       scalaVersion,
       scalaBinaryVersion
     )
@@ -120,7 +122,7 @@ object FromSbt {
       case Seq(cfg) =>
         p.copy(
           dependencies = p.dependencies.map {
-            case (_, d) => (cfg.name, d)
+            case (_, d) => (Configuration(cfg.name), d)
           }
         )
       case _ =>
@@ -131,7 +133,7 @@ object FromSbt {
   def project(
     projectID: ModuleID,
     allDependencies: Seq[ModuleID],
-    ivyConfigurations: Map[String, Seq[String]],
+    ivyConfigurations: Map[Configuration, Seq[Configuration]],
     scalaVersion: String,
     scalaBinaryVersion: String
   ): Project = {
@@ -140,8 +142,8 @@ object FromSbt {
 
     Project(
       Module(
-        projectID.organization,
-        sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion),
+        Organization(projectID.organization),
+        ModuleName(sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion)),
         FromSbt.attributes(projectID.extraDependencyAttributes)
       ),
       projectID.revision,
@@ -154,6 +156,7 @@ object FromSbt {
       None,
       None,
       None,
+      relocated = false,
       None,
       Nil,
       Info.empty

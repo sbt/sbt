@@ -5,9 +5,10 @@ import java.net.URL
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
-import sbt.librarymanagement._
+import coursier.core.{Classifier, Configuration, Type}
+import coursier.maven.MavenAttributes
+import sbt.librarymanagement.{Configuration => _, _}
 import sbt.util.Logger
-import coursier.maven.MavenSource
 
 object ToSbt {
 
@@ -28,11 +29,11 @@ object ToSbt {
   val moduleId = caching[(Dependency, Map[String, String]), ModuleID] {
     case (dependency, extraProperties) =>
       sbt.librarymanagement.ModuleID(
-        dependency.module.organization,
-        dependency.module.name,
+        dependency.module.organization.value,
+        dependency.module.name.value,
         dependency.version
       ).withConfigurations(
-        Some(dependency.configuration)
+        Some(dependency.configuration.value)
       ).withExtraAttributes(
         dependency.module.attributes ++ extraProperties
       ).withExclusions(
@@ -42,40 +43,41 @@ object ToSbt {
           .map {
             case (org, name) =>
               sbt.librarymanagement.InclExclRule()
-                .withOrganization(org)
-                .withName(name)
+                .withOrganization(org.value)
+                .withName(name.value)
           }
       ).withIsTransitive(
         dependency.transitive
       )
   }
 
-  val artifact = caching[(Module, Map[String, String], Artifact), sbt.librarymanagement.Artifact] {
-    case (module, extraProperties, artifact) =>
-      sbt.librarymanagement.Artifact(module.name)
+  val artifact = caching[(Module, Map[String, String], Attributes, Artifact), sbt.librarymanagement.Artifact] {
+    case (module, extraProperties, attr, artifact) =>
+      sbt.librarymanagement.Artifact(module.name.value)
         // FIXME Get these two from publications
-        .withType(artifact.attributes.`type`)
-        .withExtension(MavenSource.typeExtension(artifact.attributes.`type`))
+        .withType(attr.`type`.value)
+        .withExtension(MavenAttributes.typeExtension(attr.`type`).value)
         .withClassifier(
-          Some(artifact.attributes.classifier)
+          Some(attr.classifier)
             .filter(_.nonEmpty)
-            .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`))
+            .orElse(MavenAttributes.typeDefaultClassifierOpt(attr.`type`))
+            .map(_.value)
         )
         // .withConfigurations(Vector())
         .withUrl(Some(new URL(artifact.url)))
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
-  val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Artifact, Option[File])]), ModuleReport] {
+  val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Attributes, Artifact, Option[File])]), ModuleReport] {
     case (dependency, dependees, project, artifacts) =>
 
     val sbtArtifacts = artifacts.collect {
-      case (artifact, Some(file)) =>
-        (ToSbt.artifact(dependency.module, project.properties.toMap, artifact), file)
+      case (attr, artifact, Some(file)) =>
+        (ToSbt.artifact(dependency.module, project.properties.toMap, attr, artifact), file)
     }
     val sbtMissingArtifacts = artifacts.collect {
-      case (artifact, None) =>
-        ToSbt.artifact(dependency.module, project.properties.toMap, artifact)
+      case (attr, artifact, None) =>
+        ToSbt.artifact(dependency.module, project.properties.toMap, attr, artifact)
     }
 
     val publicationDate = project.info.publication.map { dt =>
@@ -86,7 +88,7 @@ object ToSbt {
       case (dependee, dependeeProj) =>
         Caller(
           ToSbt.moduleId(dependee, dependeeProj.properties.toMap),
-          dependeeProj.configurations.keys.toVector.map(ConfigRef(_)),
+          dependeeProj.configurations.keys.toVector.map(c => ConfigRef(c.value)),
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
           isForceDependency = false,
@@ -113,77 +115,69 @@ object ToSbt {
       .withExtraAttributes(dependency.module.attributes ++ project.properties)
       // .withIsDefault(None)
       // .withBranch(None)
-      .withConfigurations(project.configurations.keys.toVector.map(ConfigRef(_)))
+      .withConfigurations(project.configurations.keys.toVector.map(c => ConfigRef(c.value)))
       .withLicenses(project.info.licenses.toVector)
       .withCallers(callers.toVector)
   }
 
-  private def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
-    map.groupBy { case (k, _) => k }.map {
-      case (k, l) =>
-        k -> l.map { case (_, v) => v }
-    }
-
   def moduleReports(
     res: Resolution,
-    classifiersOpt: Option[Seq[String]],
-    artifactFileOpt: (Module, String, Artifact) => Option[File],
+    classifiersOpt: Option[Seq[Classifier]],
+    artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     log: Logger,
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false
   ) = {
-    val depArtifacts1 =
-      classifiersOpt match {
-        case None => res.dependencyArtifacts(withOptional = true)
-        case Some(cl) => res.dependencyClassifiersArtifacts(cl)
-      }
+    val depArtifacts1 = res.dependencyArtifacts(classifiersOpt)
 
     val depArtifacts0 =
       if (keepPomArtifact)
         depArtifacts1
       else
         depArtifacts1.filter {
-          case (_, a) => a.attributes != Attributes("pom", "")
+          case (_, attr, _) => attr != Attributes(Type.pom, Classifier.empty)
         }
 
     val depArtifacts =
       if (includeSignatures) {
 
-        val notFound = depArtifacts0.filter(!_._2.extra.contains("sig"))
+        val notFound = depArtifacts0.filter(!_._3.extra.contains("sig"))
 
         if (notFound.isEmpty)
           depArtifacts0.flatMap {
-            case (dep, a) =>
-              Seq(dep -> a) ++ a.extra.get("sig").toSeq.map(dep -> _)
+            case (dep, attr, a) =>
+              Seq((dep, attr, a)) ++
+                // not too sure about the attributes here
+                a.extra.get("sig").toSeq.map((dep, Attributes(Type(s"${attr.`type`.value}.asc"), attr.classifier), _))
           }
         else {
-          for ((_, a) <- notFound)
+          for ((_, _, a) <- notFound)
             log.error(s"No signature found for ${a.url}")
           sys.error(s"${notFound.length} signature(s) not found")
         }
       } else
         depArtifacts0
 
-    val groupedDepArtifacts = grouped(depArtifacts)
+    val groupedDepArtifacts = depArtifacts
+      .groupBy(_._1)
+      .mapValues(_.map { case (_, attr, a) => (attr, a) })
+      .iterator
+      .toMap
 
     val versions = res.dependencies.toVector.map { dep =>
       dep.module -> dep.version
     }.toMap
 
     def clean(dep: Dependency): Dependency =
-      dep.copy(configuration = "", exclusions = Set.empty, optional = false)
+      dep.copy(configuration = Configuration.empty, exclusions = Set.empty, optional = false)
 
     val reverseDependencies = res.reverseDependencies
       .toVector
       .map { case (k, v) =>
         clean(k) -> v.map(clean)
       }
-      .groupBy { case (k, v) => k }
-      .mapValues { v =>
-        v.flatMap {
-          case (_, l) => l
-        }
-      }
+      .groupBy(_._1)
+      .mapValues(_.flatMap(_._2))
       .toVector
       .toMap
 
@@ -205,17 +199,17 @@ object ToSbt {
           dep,
           dependees,
           proj,
-          artifacts.map(a => a -> artifactFileOpt(proj.module, proj.version, a))
+          artifacts.map { case (attr, a) => (attr, a, artifactFileOpt(proj.module, proj.version, attr, a)) }
         )
     }
   }
 
   def updateReport(
-    configDependencies: Map[String, Seq[Dependency]],
-    resolutions: Map[String, Resolution],
-    configs: Map[String, Set[String]],
-    classifiersOpt: Option[Seq[String]],
-    artifactFileOpt: (Module, String, Artifact) => Option[File],
+    configDependencies: Map[Configuration, Seq[Dependency]],
+    resolutions: Map[Configuration, Resolution],
+    configs: Map[Configuration, Set[Configuration]],
+    classifiersOpt: Option[Seq[Classifier]],
+    artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     log: Logger,
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false
@@ -252,7 +246,7 @@ object ToSbt {
             reports.toVector
 
         ConfigurationReport(
-          ConfigRef(config),
+          ConfigRef(config.value),
           reports0,
           Vector()
         )
