@@ -66,7 +66,7 @@ trait PublisherInterface {
 }
 
 /**
- * Decribes the representation of a module, inclding its dependencies
+ * Decribes the representation of a module, including its dependencies
  * and the version of Scala it uses, if any.
  */
 trait ModuleDescriptor {

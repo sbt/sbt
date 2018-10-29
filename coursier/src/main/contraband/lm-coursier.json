@@ -1,0 +1,49 @@
+{
+  "codecNamespace": "sbt.librarymanagement.coursier",
+  "types": [
+    {
+      "name": "CoursierConfiguration",
+      "namespace": "sbt.librarymanagement.coursier",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { 
+          "name": "log",
+          "type": "xsbti.Logger?",
+          "default": "None",
+          "since": "0.0.1"
+        },
+        { 
+          "name": "resolvers",
+          "type": "sbt.librarymanagement.Resolver*",
+          "default": "sbt.librarymanagement.Resolver.defaults",
+          "since": "0.0.1"
+        },
+        {
+          "name": "otherResolvers",
+          "type": "sbt.librarymanagement.Resolver*",
+          "default": "Vector.empty",
+          "since": "0.0.1"
+        },
+        {
+          "name": "reorderResolvers",
+          "type": "Boolean",
+          "default": "true",
+          "since": "0.0.1"
+        },
+        {
+          "name": "parallelDownloads",
+          "type": "Int",
+          "default": "6",
+          "since": "0.0.1"
+        },
+        {
+          "name": "maxIterations",
+          "type": "Int",
+          "default": "100",
+          "since": "0.0.1"
+        }
+      ]
+    }
+  ]
+}
