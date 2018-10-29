@@ -17,7 +17,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
-  crossScalaVersions := Seq(scala211, scala212),
+  crossScalaVersions := Seq(scala212),
   resolvers += Resolver.sonatypeRepo("public"),
   scalacOptions := {
     val old = scalacOptions.value
@@ -265,7 +265,6 @@ lazy val lmCoursier = (project in file("coursier"))
   .dependsOn(lmIvy)
   .settings(
     commonSettings,
-    crossScalaVersions := Seq(scala212, scala211),
     name := "librarymanagement-coursier",
     libraryDependencies ++= Seq(coursier,
       coursierCache,
