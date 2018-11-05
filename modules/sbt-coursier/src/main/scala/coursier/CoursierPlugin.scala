@@ -1,8 +1,10 @@
 package coursier
 
 import java.io.OutputStreamWriter
-import sbt.librarymanagement._
-import sbt.{ Configuration, Resolver, _ }
+
+import coursier.core.Configuration
+import sbt.librarymanagement.{Configuration => _, Resolver => _, _}
+import sbt.{Configuration => _, _}
 import sbt.Keys._
 
 object CoursierPlugin extends AutoPlugin {
@@ -77,7 +79,7 @@ object CoursierPlugin extends AutoPlugin {
 
   def makeIvyXmlBefore[T](
     task: TaskKey[T],
-    shadedConfigOpt: Option[(String, String)]
+    shadedConfigOpt: Option[(String, Configuration)]
   ): Setting[Task[T]] =
     task := task.dependsOn(Def.task {
       val currentProject = {
@@ -158,8 +160,8 @@ object CoursierPlugin extends AutoPlugin {
   )
 
   def coursierSettings(
-    shadedConfigOpt: Option[(String, String)],
-    packageConfigs: Seq[(Configuration, String)]
+    shadedConfigOpt: Option[(String, Configuration)],
+    packageConfigs: Seq[(sbt.Configuration, Configuration)]
   ) = hackHack ++ Seq(
     clean := {
       val noWarningPlz = clean.value
@@ -234,7 +236,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierResolutions := Tasks.resolutionsTask().value,
     Keys.actualCoursierResolution := {
 
-      val config = Compile.name
+      val config = Configuration(Compile.name)
 
       coursierResolutions
         .value
@@ -261,7 +263,7 @@ object CoursierPlugin extends AutoPlugin {
           None
         else
           Some(
-            Configuration.of(
+            sbt.Configuration.of(
               id = "Sources",
               name = "sources",
               description = "",
@@ -276,7 +278,7 @@ object CoursierPlugin extends AutoPlugin {
           None
         else
           Some(
-            Configuration.of(
+            sbt.Configuration.of(
               id = "Docs",
               name = "docs",
               description = "",
@@ -311,7 +313,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierCreateLogger := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
   )
 
-  override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++
+  override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> Configuration(c.name))) ++
     inConfig(Compile)(treeSettings) ++
     inConfig(Test)(treeSettings)
 

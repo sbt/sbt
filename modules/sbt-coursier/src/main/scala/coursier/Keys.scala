@@ -3,7 +3,7 @@ package coursier
 import java.io.File
 import java.net.URL
 
-import coursier.core.Publication
+import coursier.core.{Configuration, Publication}
 import sbt.librarymanagement.GetClassifiersModule
 import sbt.{InputKey, Resolver, SettingKey, TaskKey}
 
@@ -38,17 +38,17 @@ object Keys {
   val coursierFallbackDependencies = TaskKey[Seq[(Module, String, URL, Boolean)]]("coursier-fallback-dependencies")
 
   val coursierProject = TaskKey[Project]("coursier-project")
-  val coursierConfigGraphs = TaskKey[Seq[Set[String]]]("coursier-config-graphs")
+  val coursierConfigGraphs = TaskKey[Seq[Set[Configuration]]]("coursier-config-graphs")
   val coursierInterProjectDependencies = TaskKey[Seq[Project]]("coursier-inter-project-dependencies", "Projects the current project depends on, possibly transitively")
-  val coursierPublications = TaskKey[Seq[(String, Publication)]]("coursier-publications")
+  val coursierPublications = TaskKey[Seq[(Configuration, Publication)]]("coursier-publications")
 
   val coursierSbtClassifiersModule = TaskKey[GetClassifiersModule]("coursier-sbt-classifiers-module")
 
-  val coursierConfigurations = TaskKey[Map[String, Set[String]]]("coursier-configurations")
+  val coursierConfigurations = TaskKey[Map[Configuration, Set[Configuration]]]("coursier-configurations")
 
 
   val coursierParentProjectCache = TaskKey[Map[Seq[Resolver], Seq[ProjectCache]]]("coursier-parent-project-cache")
-  val coursierResolutions = TaskKey[Map[Set[String], Resolution]]("coursier-resolutions")
+  val coursierResolutions = TaskKey[Map[Set[Configuration], Resolution]]("coursier-resolutions")
 
   private[coursier] val actualCoursierResolution = TaskKey[Resolution]("coursier-resolution")
 

@@ -8,7 +8,7 @@ import com.tonicsystems.jarjar.classpath.ClassPath
 import com.tonicsystems.jarjar.transform.JarTransformer
 import com.tonicsystems.jarjar.transform.config.ClassRename
 import com.tonicsystems.jarjar.transform.jar.DefaultJarProcessor
-import coursier.core.Orders
+import coursier.core.{Configuration, Orders, Type}
 import sbt.file
 
 object Shading {
@@ -55,15 +55,15 @@ object Shading {
   def toShadeJars(
     currentProject: Project,
     res: Resolution,
-    configs: Map[String, Set[String]],
+    configs: Map[Configuration, Set[Configuration]],
     artifactFilesOrErrors: Map[Artifact, Either[FileError, File]],
-    classpathTypes: Set[String],
-    baseConfig: String,
-    shadedConf: String,
+    classpathTypes: Set[Type],
+    baseConfig: Configuration,
+    shadedConf: Configuration,
     log: sbt.Logger
   ): Seq[File] = {
 
-    def configDependencies(config: String) = {
+    def configDependencies(config: Configuration) = {
 
       def minDependencies(dependencies: Set[Dependency]): Set[Dependency] =
         Orders.minDependencies(
@@ -90,10 +90,10 @@ object Shading {
     }
 
     val dependencyArtifacts = res
-      .dependencyArtifacts(withOptional = true)
-      .filter { case (_, a) => classpathTypes(a.`type`) }
+      .dependencyArtifacts()
+      .filter { case (_, attr, _) => classpathTypes(attr.`type`) }
       .groupBy(_._1)
-      .mapValues(_.map(_._2))
+      .mapValues(_.map(t => (t._2, t._3)))
       .iterator
       .toMap
 
@@ -126,7 +126,7 @@ object Shading {
       .toSeq
       .flatMap(dependencyArtifacts.get)
       .flatten
-      .map(_.url)
+      .map(_._2.url)
       .flatMap(artifactFilesOrErrors0.get)
 
     val noShadeJars = files(compileOnlyDeps)

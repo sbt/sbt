@@ -3,6 +3,7 @@ package coursier
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
+import coursier.core.Configuration
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
 import scala.collection.JavaConverters._
@@ -13,7 +14,7 @@ object IvyXml {
 
   def rawContent(
     currentProject: Project,
-    shadedConfigOpt: Option[(String, String)]
+    shadedConfigOpt: Option[(String, Configuration)]
   ): String = {
 
     // Important: width = Int.MaxValue, so that no tag gets truncated.
@@ -31,7 +32,7 @@ object IvyXml {
   // These are required for publish to be fine, later on.
   def writeFiles(
     currentProject: Project,
-    shadedConfigOpt: Option[(String, String)],
+    shadedConfigOpt: Option[(String, Configuration)],
     ivySbt: IvySbt,
     log: sbt.Logger
   ): Unit = {
@@ -41,8 +42,8 @@ object IvyXml {
     )
 
     val ivyModule = ModuleRevisionId.newInstance(
-      currentProject.module.organization,
-      currentProject.module.name,
+      currentProject.module.organization.value,
+      currentProject.module.name.value,
       currentProject.version,
       currentProject.module.attributes.asJava
     )
@@ -60,10 +61,10 @@ object IvyXml {
     Files.write(cacheIvyPropertiesFile.toPath, Array.emptyByteArray)
   }
 
-  def content(project0: Project, shadedConfigOpt: Option[String]): Node = {
+  def content(project0: Project, shadedConfigOpt: Option[Configuration]): Node = {
 
     val filterOutDependencies =
-      shadedConfigOpt.toSet[String].flatMap { shadedConfig =>
+      shadedConfigOpt.toSet[Configuration].flatMap { shadedConfig =>
         project0
           .dependencies
           .collect { case (`shadedConfig`, dep) => dep }
@@ -91,8 +92,8 @@ object IvyXml {
 
     val infoElem = {
       <info
-        organisation={project.module.organization}
-        module={project.module.name}
+        organisation={project.module.organization.value}
+        module={project.module.name.value}
         revision={project.version}
       >
         {licenseElems}
@@ -101,11 +102,11 @@ object IvyXml {
     } % infoAttrs
 
     val confElems = project.configurations.toVector.collect {
-      case (name, extends0) if shadedConfigOpt != Some(name) =>
+      case (name, extends0) if !shadedConfigOpt.contains(name) =>
         val extends1 = shadedConfigOpt.fold(extends0)(c => extends0.filter(_ != c))
-        val n = <conf name={name} visibility="public" description="" />
+        val n = <conf name={name.value} visibility="public" description="" />
         if (extends1.nonEmpty)
-          n % <x extends={extends1.mkString(",")} />.attributes
+          n % <x extends={extends1.map(_.value).mkString(",")} />.attributes
         else
           n
     }
@@ -117,10 +118,10 @@ object IvyXml {
 
     val publicationElems = publications.map {
       case (pub, configs) =>
-        val n = <artifact name={pub.name} type={pub.`type`} ext={pub.ext} conf={configs.mkString(",")} />
+        val n = <artifact name={pub.name} type={pub.`type`.value} ext={pub.ext.value} conf={configs.map(_.value).mkString(",")} />
 
         if (pub.classifier.nonEmpty)
-          n % <x e:classifier={pub.classifier} />.attributes
+          n % <x e:classifier={pub.classifier.value} />.attributes
         else
           n
     }
@@ -129,10 +130,10 @@ object IvyXml {
       case (conf, dep) =>
         val excludes = dep.exclusions.toSeq.map {
           case (org, name) =>
-            <exclude org={org} module={name} name="*" type="*" ext="*" conf="" matcher="exact"/>
+            <exclude org={org.value} module={name.value} name="*" type="*" ext="*" conf="" matcher="exact"/>
         }
 
-        val n = <dependency org={dep.module.organization} name={dep.module.name} rev={dep.version} conf={s"$conf->${dep.configuration}"}>
+        val n = <dependency org={dep.module.organization.value} name={dep.module.name.value} rev={dep.version} conf={s"${conf.value}->${dep.configuration.value}"}>
           {excludes}
         </dependency>
 

@@ -1,10 +1,10 @@
 package coursier
 
-import java.io.{File, OutputStreamWriter}
+import java.io.File
 import java.net.URL
 import java.util.concurrent.{ConcurrentHashMap, ExecutorService, Executors}
 
-import coursier.core.{Authentication, Publication}
+import coursier.core._
 import coursier.extra.Typelevel
 import coursier.interop.scalaz._
 import coursier.ivy.{IvyRepository, PropertiesPattern}
@@ -12,7 +12,7 @@ import coursier.Keys._
 import coursier.Structure._
 import coursier.util.Print.Colors
 import coursier.util.{Parse, Print}
-import sbt.librarymanagement._
+import sbt.librarymanagement.{Configuration => _, _}
 import sbt.{Classpaths, Def, Resolver, UpdateReport}
 import sbt.Keys._
 
@@ -185,7 +185,7 @@ object Tasks {
               Nil
             } else
               Seq(
-                (rule.organization, FromSbt.sbtCrossVersionName(rule.name, rule.crossVersion, sv, sbv))
+                (Organization(rule.organization), ModuleName(FromSbt.sbtCrossVersionName(rule.name, rule.crossVersion, sv, sbv)))
               )
           }
           .toSet
@@ -200,7 +200,9 @@ object Tasks {
 
         val allDependencies = allDependenciesTask.value
 
-        val configMap = configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap
+        val configMap = configurations
+          .map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name)))
+          .toMap
 
         val proj = FromSbt.project(
           projId,
@@ -233,8 +235,8 @@ object Tasks {
     }
 
   def coursierPublicationsTask(
-    configsMap: (sbt.Configuration, String)*
-  ): Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
+    configsMap: (sbt.Configuration, Configuration)*
+  ): Def.Initialize[sbt.Task[Seq[(Configuration, Publication)]]] =
     Def.task {
 
       val state = sbt.Keys.state.value
@@ -246,13 +248,13 @@ object Tasks {
 
       val sourcesConfigOpt =
         if (ivyConfigurations.value.exists(_.name == "sources"))
-          Some("sources")
+          Some(Configuration("sources"))
         else
           None
 
       val docsConfigOpt =
         if (ivyConfigurations.value.exists(_.name == "docs"))
-          Some("docs")
+          Some(Configuration("docs"))
         else
           None
 
@@ -329,9 +331,9 @@ object Tasks {
 
         Publication(
           name,
-          artifact.`type`,
-          artifact.extension,
-          artifact.classifier.getOrElse("")
+          Type(artifact.`type`),
+          Extension(artifact.extension),
+          artifact.classifier.fold(Classifier.empty)(Classifier(_))
         )
       }
 
@@ -358,23 +360,23 @@ object Tasks {
         artifact <- extraSbtArtifacts
         config <- allConfigsIfEmpty(artifact.configurations.map(x => ConfigRef(x.name)))
         // FIXME If some configurations from artifact.configurations are not public, they may leak here :\
-      } yield config.name -> artifactPublication(artifact)
+      } yield Configuration(config.name) -> artifactPublication(artifact)
 
       sbtArtifactsPublication ++ extraSbtArtifactsPublication
     }
 
-  def coursierConfigurationsTask(shadedConfig: Option[(String, String)]) = Def.task {
+  def coursierConfigurationsTask(shadedConfig: Option[(String, Configuration)]) = Def.task {
 
     val configs0 = ivyConfigurations
       .value
       .map { config =>
-        config.name -> config.extendsConfigs.map(_.name)
+        Configuration(config.name) -> config.extendsConfigs.map(c => Configuration(c.name))
       }
       .toMap
 
-    def allExtends(c: String) = {
+    def allExtends(c: Configuration) = {
       // possibly bad complexity
-      def helper(current: Set[String]): Set[String] = {
+      def helper(current: Set[Configuration]): Set[Configuration] = {
         val newSet = current ++ current.flatMap(configs0.getOrElse(_, Nil))
         if ((newSet -- current).nonEmpty)
           helper(newSet)
@@ -392,8 +394,9 @@ object Tasks {
 
     map ++ shadedConfig.toSeq.flatMap {
       case (baseConfig, shadedConfig) =>
+        val baseConfig0 = Configuration(baseConfig)
         Seq(
-          baseConfig -> (map.getOrElse(baseConfig, Set(baseConfig)) + shadedConfig),
+          baseConfig0 -> (map.getOrElse(baseConfig0, Set(baseConfig0)) + shadedConfig),
           shadedConfig -> map.getOrElse(shadedConfig, Set(shadedConfig))
         )
     }
@@ -403,32 +406,32 @@ object Tasks {
     project: Project,
     repositories: Seq[Repository],
     userEnabledProfiles: Set[String],
-    resolution: Map[Set[String], Resolution],
+    resolution: Map[Set[Configuration], Resolution],
     sbtClassifiers: Boolean
   )
 
   private[coursier] final case class ReportCacheKey(
     project: Project,
-    resolution: Map[Set[String], Resolution],
+    resolution: Map[Set[Configuration], Resolution],
     withClassifiers: Boolean,
     sbtClassifiers: Boolean,
     ignoreArtifactErrors: Boolean
   )
 
-  private[coursier] val resolutionsCache = new ConcurrentHashMap[ResolutionCacheKey, Map[Set[String], Resolution]]
+  private[coursier] val resolutionsCache = new ConcurrentHashMap[ResolutionCacheKey, Map[Set[Configuration], Resolution]]
   // these may actually not need to be cached any more, now that the resolutions
   // are cached
   private[coursier] val reportsCache = new ConcurrentHashMap[ReportCacheKey, UpdateReport]
 
   private def forcedScalaModules(
-    scalaOrganization: String,
+    scalaOrganization: Organization,
     scalaVersion: String
   ): Map[Module, String] =
     Map(
-      Module(scalaOrganization, "scala-library") -> scalaVersion,
-      Module(scalaOrganization, "scala-compiler") -> scalaVersion,
-      Module(scalaOrganization, "scala-reflect") -> scalaVersion,
-      Module(scalaOrganization, "scalap") -> scalaVersion
+      Module(scalaOrganization, name"scala-library") -> scalaVersion,
+      Module(scalaOrganization, name"scala-compiler") -> scalaVersion,
+      Module(scalaOrganization, name"scala-reflect") -> scalaVersion,
+      Module(scalaOrganization, name"scalap") -> scalaVersion
     )
 
   private[coursier] def exceptionPatternParser(): String => coursier.ivy.Pattern = {
@@ -504,7 +507,7 @@ object Tasks {
           n.foldLeft(Map.empty[Seq[Resolver], Seq[ProjectCache]]) {
             case (caches, (ref, resolutions)) =>
               val mainResOpt = resolutions.collectFirst {
-                case (k, v) if k("compile") => v
+                case (k, v) if k(Configuration.compile) => v
               }
 
               val r = for {
@@ -526,7 +529,7 @@ object Tasks {
 
     val p = coursierProject.value
 
-    final class Wrapper(val set: mutable.HashSet[String]) {
+    final class Wrapper(val set: mutable.HashSet[Configuration]) {
       def ++=(other: Wrapper): this.type = {
         set ++= other.set
         this
@@ -534,9 +537,9 @@ object Tasks {
     }
 
     val sets =
-      new mutable.HashMap[String, Wrapper] ++= p.configurations.map {
+      new mutable.HashMap[Configuration, Wrapper] ++= p.configurations.map {
         case (k, l) =>
-          val s = new mutable.HashSet[String]()
+          val s = new mutable.HashSet[Configuration]
           s ++= l
           s += k
           k -> new Wrapper(s)
@@ -568,13 +571,13 @@ object Tasks {
 
   def resolutionsTask(
     sbtClassifiers: Boolean = false
-  ): Def.Initialize[sbt.Task[Map[Set[String], coursier.Resolution]]] = Def.taskDyn {
+  ): Def.Initialize[sbt.Task[Map[Set[Configuration], coursier.Resolution]]] = Def.taskDyn {
     val projectName = thisProjectRef.value.project
 
     val sv = scalaVersion.value
     val sbv = scalaBinaryVersion.value
 
-    val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[(Module, String, URL, Boolean)], Seq[Set[String]])]] =
+    val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[(Module, String, URL, Boolean)], Seq[Set[Configuration]])]] =
       if (sbtClassifiers)
         Def.task {
           val cm = coursierSbtClassifiersModule.value
@@ -586,7 +589,7 @@ object Tasks {
             sbv
           )
 
-          (proj, fallbackDeps, Vector(cm.configurations.map(_.name).toSet))
+          (proj, fallbackDeps, Vector(cm.configurations.map(c => Configuration(c.name)).toSet))
         }
       else
         Def.task {
@@ -607,7 +610,7 @@ object Tasks {
     val log = streams.value.log
 
     // are these always defined? (e.g. for Java only projects?)
-    val so = scalaOrganization.value
+    val so = Organization(scalaOrganization.value)
 
     val userForceVersions = dependencyOverrides
       .value
@@ -624,7 +627,7 @@ object Tasks {
 
     val userEnabledProfiles = mavenProfiles.value
 
-    val typelevel = scalaOrganization.value == Typelevel.typelevelOrg
+    val typelevel = Organization(scalaOrganization.value) == Typelevel.typelevelOrg
 
     val globalPluginsRepos =
       for (p <- globalPluginPatterns(sbtBinaryVersion.value))
@@ -681,10 +684,10 @@ object Tasks {
     def resTask(
       currentProject: Project,
       fallbackDependencies: Seq[(Module, String, URL, Boolean)],
-      configGraphs: Seq[Set[String]],
+      configGraphs: Seq[Set[Configuration]],
       repositories: Seq[Repository],
       internalRepositories: Seq[Repository],
-      allStartRes: Map[Set[String], coursier.Resolution]
+      allStartRes: Map[Set[Configuration], coursier.Resolution]
     ) = Def.task {
 
       def resolution(startRes: Resolution) = {
@@ -706,9 +709,9 @@ object Tasks {
             ): _*
           )
 
-          def depsRepr(deps: Seq[(String, Dependency)]) =
+          def depsRepr(deps: Seq[(Configuration, Dependency)]) =
             deps.map { case (config, dep) =>
-              s"${dep.module}:${dep.version}:$config->${dep.configuration}"
+              s"${dep.module}:${dep.version}:${config.value}->${dep.configuration.value}"
             }.sorted.distinct
 
           if (verbosityLevel >= 2) {
@@ -894,7 +897,7 @@ object Tasks {
         .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
         .getOrElse(Map.empty)
 
-      def startRes(configs: Set[String]) = Resolution(
+      def startRes(configs: Set[Configuration]) = Resolution(
         currentProject
           .dependencies
           .collect {
@@ -911,10 +914,10 @@ object Tasks {
         forceVersions =
           // order matters here
           userForceVersions ++
-            (if (autoScalaLib && (configs("compile") || configs("scala-tool"))) forcedScalaModules(so, sv) else Map()) ++
+            (if (autoScalaLib && (configs(Configuration.compile) || configs(Configuration("scala-tool")))) forcedScalaModules(so, sv) else Map()) ++
             interProjectDependencies.map(_.moduleVersion),
         projectCache = parentProjectCache,
-        mapDependencies = if (typelevel && (configs("compile") || configs("scala-tool"))) typelevelOrgSwap else None
+        mapDependencies = if (typelevel && (configs(Configuration.compile) || configs(Configuration("scala-tool")))) typelevelOrgSwap else None
       )
 
       val allStartRes = configGraphs.map(configs => configs -> startRes(configs)).toMap
@@ -973,12 +976,12 @@ object Tasks {
       else
         Def.task(coursierResolutions.value.values.toVector)
 
-    val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[String]]]] =
+    val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[Classifier]]]] =
       if (withClassifiers) {
         if (sbtClassifiers)
-          Def.task(Some(coursierSbtClassifiersModule.value.classifiers))
+          Def.task(Some(coursierSbtClassifiersModule.value.classifiers.map(Classifier(_))))
         else
-          Def.task(Some(transitiveClassifiers.value))
+          Def.task(Some(transitiveClassifiers.value.map(Classifier(_))))
       } else
         Def.task(None)
 
@@ -987,16 +990,12 @@ object Tasks {
       val classifiers = classifiersTask.value
       val res = resTask.value
 
-      val allArtifacts0 =
-        classifiers match {
-          case None => res.flatMap(_.artifacts(withOptional = true))
-          case Some(cl) => res.flatMap(_.classifiersArtifacts(cl))
-        }
+      val allArtifacts0 = res.flatMap(_.dependencyArtifacts(classifiers)).map(_._3)
 
       val allArtifacts =
         if (includeSignatures)
           allArtifacts0.flatMap { a =>
-            val sigOpt = a.extra.get("sig").map(_.copy(attributes = Attributes()))
+            val sigOpt = a.extra.get("sig")
             Seq(a) ++ sigOpt.toSeq
           }
         else
@@ -1075,36 +1074,34 @@ object Tasks {
     log: sbt.Logger,
     module: Module,
     version: String,
+    attributes: Attributes,
     artifact: Artifact
   ) = {
-
-    val artifact0 = artifact
-      .copy(attributes = Attributes()) // temporary hack :-(
 
     // Under some conditions, SBT puts the scala JARs of its own classpath
     // in the application classpath. Ensuring we return SBT's jars rather than
     // JARs from the coursier cache, so that a same JAR doesn't land twice in the
     // application classpath (once via SBT jars, once via coursier cache).
     val fromBootJars =
-      if (artifact.classifier.isEmpty && artifact.`type` == "jar")
+      if (attributes.classifier.isEmpty && attributes.`type` == Type.jar)
         sbtBootJarOverrides.get((module, version))
       else
         None
 
-    val res = fromBootJars.orElse(artifactFiles.get(artifact0))
+    val res = fromBootJars.orElse(artifactFiles.get(artifact))
 
-    if (res.isEmpty && !erroredArtifacts(artifact0))
-      log.error(s"${artifact.url} not downloaded (should not happen)")
+    if (res.isEmpty && !erroredArtifacts(artifact))
+      sys.error(s"${artifact.url} not downloaded (should not happen)")
 
     res
   }
 
   // Move back to coursier.util (in core module) after 1.0?
   private def allDependenciesByConfig(
-    res: Map[String, Resolution],
-    depsByConfig: Map[String, Set[Dependency]],
-    configs: Map[String, Set[String]]
-  ): Map[String, Set[Dependency]] = {
+    res: Map[Configuration, Resolution],
+    depsByConfig: Map[Configuration, Set[Dependency]],
+    configs: Map[Configuration, Set[Configuration]]
+  ): Map[Configuration, Set[Dependency]] = {
 
     val allDepsByConfig = depsByConfig.map {
       case (config, deps) =>
@@ -1125,24 +1122,24 @@ object Tasks {
 
   // Move back to coursier.util (in core module) after 1.0?
   private def dependenciesWithConfig(
-    res: Map[String, Resolution],
-    depsByConfig: Map[String, Set[Dependency]],
-    configs: Map[String, Set[String]]
+    res: Map[Configuration, Resolution],
+    depsByConfig: Map[Configuration, Set[Dependency]],
+    configs: Map[Configuration, Set[Configuration]]
   ): Set[Dependency] =
     allDependenciesByConfig(res, depsByConfig, configs)
       .flatMap {
         case (config, deps) =>
-          deps.map(dep => dep.copy(configuration = s"$config->${dep.configuration}"))
+          deps.map(dep => dep.copy(configuration = config --> dep.configuration))
       }
-      .groupBy(_.copy(configuration = ""))
+      .groupBy(_.copy(configuration = Configuration.empty))
       .map {
         case (dep, l) =>
-          dep.copy(configuration = l.map(_.configuration).mkString(";"))
+          dep.copy(configuration = Configuration.join(l.map(_.configuration).toSeq: _*))
       }
       .toSet
 
   def updateTask(
-    shadedConfigOpt: Option[(String, String)],
+    shadedConfigOpt: Option[(String, Configuration)],
     withClassifiers: Boolean,
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false,
@@ -1155,7 +1152,7 @@ object Tasks {
           k -> l.map { case (_, v) => v }
       }
 
-    val so = scalaOrganization.value
+    val so = Organization(scalaOrganization.value)
     val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
     val sbtBootJarOverrides = SbtBootJars(
       so, // this seems plain wrong - this assumes that the scala org of the project is the same
@@ -1190,7 +1187,7 @@ object Tasks {
         Def.task {
           val cm = coursierSbtClassifiersModule.value
           val classifiersRes = coursierSbtClassifiersResolution.value
-          Map(cm.configurations.map(c => c.name).toSet -> classifiersRes)
+          Map(cm.configurations.map(c => Configuration(c.name)).toSet -> classifiersRes)
         }
       else
         Def.task(coursierResolutions.value)
@@ -1207,11 +1204,11 @@ object Tasks {
       else
         Keys.coursierArtifacts
 
-    val configsTask: sbt.Def.Initialize[sbt.Task[Map[String, Set[String]]]] =
+    val configsTask: sbt.Def.Initialize[sbt.Task[Map[Configuration, Set[Configuration]]]] =
       if (withClassifiers && sbtClassifiers)
         Def.task {
           val cm = coursierSbtClassifiersModule.value
-          cm.configurations.map(c => c.name -> Set(c.name)).toMap
+          cm.configurations.map(c => Configuration(c.name) -> Set(Configuration(c.name))).toMap
         }
       else
         Def.task {
@@ -1219,25 +1216,26 @@ object Tasks {
 
           shadedConfigOpt.fold(configs0) {
             case (baseConfig, shadedConfig) =>
+              val baseConfig0 = Configuration(baseConfig)
               (configs0 - shadedConfig) + (
-                baseConfig -> (configs0.getOrElse(baseConfig, Set()) - shadedConfig)
+                baseConfig0 -> (configs0.getOrElse(baseConfig0, Set()) - shadedConfig)
               )
           }
         }
 
-    val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[String]]]] =
+    val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[Classifier]]]] =
       if (withClassifiers) {
         if (sbtClassifiers)
           Def.task {
             val cm = coursierSbtClassifiersModule.value
-            Some(cm.classifiers)
+            Some(cm.classifiers.map(Classifier(_)))
           }
         else
-          Def.task(Some(transitiveClassifiers.value))
+          Def.task(Some(transitiveClassifiers.value.map(Classifier(_))))
       } else
         Def.task(None)
 
-    def reportTask(currentProject: Project, res: Map[Set[String], Resolution]) = Def.task {
+    def reportTask(currentProject: Project, res: Map[Set[Configuration], Resolution]) = Def.task {
 
       val artifactFilesOrErrors0 = artifactFilesOrErrors0Task.value
       val classifiers = classifiersTask.value
@@ -1254,7 +1252,7 @@ object Tasks {
           config =>
             shadedConfigOpt match {
               case Some((baseConfig, `config`)) =>
-                baseConfig
+                Configuration(baseConfig)
               case _ =>
                 config
             }
@@ -1280,7 +1278,7 @@ object Tasks {
         val artifactErrors = artifactFilesOrErrors0
           .toVector
           .collect {
-            case (a, Left(err)) if !a.isOptional || !err.notFound =>
+            case (a, Left(err)) if !a.optional || !err.notFound =>
               a -> err
           }
 
@@ -1309,6 +1307,7 @@ object Tasks {
             artifactFiles,
             erroredArtifacts,
             log,
+            _,
             _,
             _,
             _
@@ -1350,7 +1349,7 @@ object Tasks {
     }
   }
 
-  case class ResolutionResult(configs: Set[String], resolution: Resolution, dependencies: Seq[Dependency])
+  case class ResolutionResult(configs: Set[Configuration], resolution: Resolution, dependencies: Seq[Dependency])
 
   private def coursierResolutionTask(
     sbtClassifiers: Boolean = false,
@@ -1372,7 +1371,7 @@ object Tasks {
           proj.copy(publications = publications)
         }
 
-    val config = configuration.value.name
+    val config = Configuration(configuration.value.name)
     val configs = coursierConfigurations.value
 
     val includedConfigs = configs.getOrElse(config, Set.empty) + config
@@ -1450,7 +1449,7 @@ object Tasks {
     val result = new mutable.StringBuilder()
     for (ResolutionResult(subGraphConfigs, resolution, _) <- resolutions) {
       val roots: Seq[Dependency] = resolution.transitiveDependencies.filter(f => f.module == module)
-      val strToPrint = s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
+      val strToPrint = s"$projectName (configurations ${subGraphConfigs.toVector.sorted.map(_.value).mkString(", ")})" + "\n" +
         Print.reverseTree(roots, resolution, withExclusions = true)
           .render(_.repr(Colors.get(!sys.props.get("sbt.log.noformat").toSeq.contains("true"))));
       println(strToPrint)

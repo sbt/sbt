@@ -1,5 +1,6 @@
 package coursier
 
+import coursier.core.Classifier
 import coursier.util.{EitherT, Monad}
 
 final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
@@ -18,9 +19,16 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
 
     val res = map
       .get((module, version))
-      .map((Artifact.Source.empty, _))
+      .map((this, _))
       .toRight("Not found")
 
     EitherT(F.point(res))
   }
+
+  override def artifacts(
+    dependency: Dependency,
+    project: Project,
+    overrideClassifiers: Option[Seq[Classifier]]
+  ) =
+    Nil
 }

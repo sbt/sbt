@@ -4,7 +4,7 @@ import Settings._
 
 inThisBuild(List(
   organization := "io.get-coursier",
-  homepage := Some(url("https://github.com/coursier/coursier")),
+  homepage := Some(url("https://github.com/coursier/sbt-coursier")),
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
   developers := List(
     Developer(
@@ -16,7 +16,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion = "1.1.0-M7"
+val coursierVersion = "1.1.0-M8"
 
 lazy val `sbt-shared` = project
   .in(file("modules/sbt-shared"))
@@ -105,7 +105,7 @@ lazy val `sbt-shading` = project
     }
   )
 
-lazy val coursier = project
+lazy val `sbt-coursier-root` = project
   .in(file("."))
   .aggregate(
     `sbt-shared`,
@@ -115,7 +115,6 @@ lazy val coursier = project
   )
   .settings(
     shared,
-    skip.in(publish) := true,
-    moduleName := "sbt-coursier-root"
+    skip.in(publish) := true
   )
 

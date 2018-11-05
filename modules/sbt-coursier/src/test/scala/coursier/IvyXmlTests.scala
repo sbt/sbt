@@ -1,5 +1,6 @@
 package coursier
 
+import coursier.core.Configuration
 import utest._
 
 object IvyXmlTests extends TestSuite {
@@ -8,11 +9,11 @@ object IvyXmlTests extends TestSuite {
     "no truncation" - {
 
       val project = Project(
-        Module("org", "name"),
+        Module(org"org", name"name"),
         "ver",
         Nil,
         Map(
-          "foo" -> (1 to 80).map("bar" + _) // long list of configurations -> no truncation any way
+          Configuration("foo") -> (1 to 80).map(n => Configuration("bar" + n)) // long list of configurations -> no truncation any way
         ),
         None,
         Nil,
@@ -21,6 +22,7 @@ object IvyXmlTests extends TestSuite {
         None,
         None,
         None,
+        relocated = false,
         None,
         Nil,
         Info.empty
