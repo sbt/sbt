@@ -19,8 +19,12 @@ private[ivyint] case class DownloadResult(dep: IvyNode,
                                           totalSizeDownloaded: Long)
 
 object ParallelResolveEngine {
-  private val resolveExecutionContext =
-    ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+  private lazy val resolveExecutionContext: ExecutionContext = {
+    // This throttles the connection number, especially when Gigahorse is not used.
+    val maxConnectionCount = 6
+    val executor = Executors.newFixedThreadPool(maxConnectionCount)
+    ExecutionContext.fromExecutor(executor)
+  }
 }
 
 /** Define an ivy [[ResolveEngine]] that resolves dependencies in parallel. */
