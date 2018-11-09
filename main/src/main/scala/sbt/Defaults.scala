@@ -172,6 +172,7 @@ object Defaults extends BuildCommon {
       testForkedParallel :== false,
       javaOptions :== Nil,
       sbtPlugin :== false,
+      isMetaBuild :== false,
       crossPaths :== true,
       sourcePositionMappers :== Nil,
       artifactClassifier in packageSrc :== Some(SourceClassifier),
