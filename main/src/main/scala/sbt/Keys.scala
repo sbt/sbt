@@ -455,6 +455,7 @@ object Keys {
   val libraryDependencies = settingKey[Seq[ModuleID]]("Declares managed dependencies.").withRank(APlusSetting)
   val dependencyOverrides = settingKey[Seq[ModuleID]]("Declares managed dependency overrides.").withRank(BSetting)
   val excludeDependencies = settingKey[Seq[InclExclRule]]("Declares managed dependency exclusions.").withRank(BSetting)
+  val allExcludeDependencies = settingKey[Seq[InclExclRule]]("User-defined dependency exclusions and sbt itself in the case of metabuild.").withRank(CTask)
   val allDependencies = taskKey[Seq[ModuleID]]("Inter-project and library dependencies.").withRank(CTask)
   val projectDependencies = taskKey[Seq[ModuleID]]("Inter-project dependencies.").withRank(DTask)
   val ivyXML = settingKey[NodeSeq]("Defines inline Ivy XML for configuring dependency management.").withRank(BSetting)

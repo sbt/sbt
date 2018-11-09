@@ -1851,11 +1851,19 @@ object Classpaths {
       fullClasspath := concatDistinct(exportedProducts, dependencyClasspath).value,
       internalDependencyClasspath := internalDependencies.value,
       unmanagedClasspath := unmanagedDependencies.value,
-      managedClasspath := managedJars(
-        classpathConfiguration.value,
-        classpathTypes.value,
-        update.value
-      ),
+      managedClasspath := {
+        val isMeta = isMetaBuild.value
+        val app = appConfiguration.value
+        val sbtCp0 = app.provider.mainClasspath.toList
+        val sbtCp = sbtCp0 map { Attributed.blank(_) }
+        val mjars = managedJars(
+          classpathConfiguration.value,
+          classpathTypes.value,
+          update.value
+        )
+        if (isMeta) mjars ++ sbtCp
+        else mjars
+      },
       exportedProducts := trackedExportedProducts(TrackLevel.TrackAlways).value,
       exportedProductsIfMissing := trackedExportedProducts(TrackLevel.TrackIfMissing).value,
       exportedProductsNoTracking := trackedExportedProducts(TrackLevel.NoTracking).value,
@@ -2068,6 +2076,7 @@ object Classpaths {
     allDependencies := {
       projectDependencies.value ++ libraryDependencies.value
     },
+    allExcludeDependencies := excludeDependencies.value,
     scalaModuleInfo := (scalaModuleInfo or (
       Def.setting {
         Option(
@@ -2295,6 +2304,14 @@ object Classpaths {
         ScalaArtifacts.toolDependencies(sbtOrg, version, isDotty) ++ pluginAdjust
       }
     },
+    // in case of meta build, exclude sbt from the dependency graph, so we can use the sbt resolved by the launcher
+    allExcludeDependencies := {
+      val sbtdeps = sbtDependency.value
+      val isMeta = isMetaBuild.value
+      val excludes = excludeDependencies.value
+      if (isMeta) excludes.toVector :+ ExclusionRule(sbtdeps.organization, sbtdeps.name)
+      else excludes
+    },
     dependencyOverrides ++= {
       val isPlugin = sbtPlugin.value
       val app = appConfiguration.value
@@ -2345,7 +2362,7 @@ object Classpaths {
       .withScalaModuleInfo(scalaModuleInfo.value)
       .withDependencies(allDependencies.value.toVector)
       .withOverrides(dependencyOverrides.value.toVector)
-      .withExcludes(excludeDependencies.value.toVector)
+      .withExcludes(allExcludeDependencies.value.toVector)
       .withIvyXML(ivyXML.value)
       .withConfigurations(ivyConfigurations.value.toVector)
       .withDefaultConfiguration(defaultConfiguration.value)
