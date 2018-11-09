@@ -22,6 +22,7 @@ import Keys.{
   exportedProducts,
   fullClasspath,
   fullResolvers,
+  isMetaBuild,
   loadedBuild,
   onLoadMessage,
   pluginData,
@@ -1180,6 +1181,7 @@ private[sbt] object Load {
   val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(
     Seq(
       sbtPlugin :== true,
+      isMetaBuild :== true,
       pluginData := {
         val prod = (exportedProducts in Configurations.Runtime).value
         val cp = (fullClasspath in Configurations.Runtime).value
