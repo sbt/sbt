@@ -3,6 +3,8 @@ import Dependencies._
 import Sxr.sxr
 import com.typesafe.tools.mima.core._, ProblemFilters._
 import local.Scripted
+import scala.xml.{Node => XmlNode, NodeSeq => XmlNodeSeq, _}
+import scala.xml.transform.{RewriteRule, RuleTransformer}
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -627,6 +629,42 @@ lazy val sbtProj = (project in file("sbt"))
     Test / run / fork := true,
   )
   .configure(addSbtCompilerBridge)
+
+lazy val sbtBig = (project in file(".big"))
+  .dependsOn(sbtProj)
+  .settings(
+    name := "sbt-big",
+    normalizedName := "sbt-big",
+    crossPaths := false,
+    assemblyShadeRules.in(assembly) := {
+      val packagesToBeShaded = Seq(
+        "fastparse",
+        "jawn",
+        "scalapb",
+      )
+      packagesToBeShaded.map( prefix => {
+        ShadeRule.rename(s"$prefix.**" -> s"sbt.internal.$prefix.@1").inAll
+      })
+    },
+    assemblyMergeStrategy in assembly := {
+      case "LICENSE" | "NOTICE" => MergeStrategy.first
+      case x => (assemblyMergeStrategy in assembly).value(x)
+    },
+    artifact.in(Compile, packageBin) := artifact.in(Compile, assembly).value,
+    assemblyOption.in(assembly) ~= { _.copy(includeScala = false) },
+    addArtifact(artifact.in(Compile, packageBin), assembly),
+    pomPostProcess := { node =>
+      new RuleTransformer(new RewriteRule {
+        override def transform(node: XmlNode): XmlNodeSeq = node match {
+          case e: Elem if node.label == "dependency" =>
+            Comment(
+              "the dependency that was here has been absorbed via sbt-assembly"
+            )
+          case _ => node
+        }
+      }).transform(node).head
+    },
+  )
 
 lazy val sbtIgnoredProblems = {
   Vector(
