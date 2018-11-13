@@ -1,0 +1,9 @@
+> watchTransitiveSources
+
+-> compile
+
+$ copy-file changes/Foo.scala parent/src/main/scala/Foo.scala
+
+> watchTransitiveSources
+
+> compile
