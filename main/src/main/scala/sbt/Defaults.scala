@@ -383,14 +383,19 @@ object Defaults extends BuildCommon {
       val include = (includeFilter in unmanagedSources).value
       val exclude = (excludeFilter in unmanagedSources).value match {
         case e =>
-          (managedSources in ThisScope).value match {
-            case l if l.nonEmpty =>
-              e || new FileFilter {
-                private val files = l.toSet
-                override def accept(pathname: File): Boolean = files.contains(pathname)
-                override def toString = s"ManagedSourcesFilter($files)"
-              }
-            case _ => e
+          val s = state.value
+          try {
+            Project.extract(s).runTask(managedSources in Compile in ThisScope, s) match {
+              case (_, l) if l.nonEmpty =>
+                e || new FileFilter {
+                  private val files = l.toSet
+                  override def accept(pathname: File): Boolean = files.contains(pathname)
+                  override def toString = s"ManagedSourcesFilter($files)"
+                }
+              case _ => e
+            }
+          } catch {
+            case NonFatal(_) => e
           }
       }
       val baseSources =
