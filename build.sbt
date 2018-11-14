@@ -20,10 +20,11 @@ val coursierVersion = "1.1.0-M8"
 lazy val `sbt-shared` = project
   .in(file("modules/sbt-shared"))
   .settings(
-    plugin,
+    shared,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion,
-      "io.get-coursier" %% "coursier-cache" % coursierVersion
+      "io.get-coursier" %% "coursier-cache" % coursierVersion,
+      "org.scala-sbt" %% "librarymanagement-ivy" % "1.0.2"
     )
   )
 
