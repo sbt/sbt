@@ -6,8 +6,6 @@ import sbt.ScriptedPlugin.autoImport.{scriptedBufferLog, scriptedLaunchOpts}
 import com.typesafe.sbt.pgp._
 import coursier.ShadingPlugin.autoImport.{Shading, shadingNamespace}
 
-import Aliases._
-
 object Settings {
 
   def scala212 = "2.12.7"
