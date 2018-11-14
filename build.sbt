@@ -24,20 +24,7 @@ lazy val `sbt-shared` = project
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion,
       "io.get-coursier" %% "coursier-cache" % coursierVersion
-    ),
-    // because we don't publish for 2.11 the following declaration
-    // is more wordy than usual
-    // once support for sbt 0.13 is removed, this dependency can go away
-    libraryDependencies ++= {
-      val dependency = "com.dwijnand" % "sbt-compat" % "1.2.6"
-      val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
-      val scalaV = (scalaBinaryVersion in update).value
-      val m = Defaults.sbtPluginExtra(dependency, sbtV, scalaV)
-      CrossVersion.partialVersion(scalaVersion.value).collect {
-        case (2, 10) => m
-        case (2, 12) => m
-      }.toList
-    }
+    )
   )
 
 lazy val `sbt-coursier` = project
