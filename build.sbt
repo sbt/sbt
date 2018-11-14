@@ -1,5 +1,4 @@
 
-import Aliases._
 import Settings._
 
 inThisBuild(List(
