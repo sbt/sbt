@@ -29,6 +29,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   private[this] val calledBy = new ConcurrentHashMap[Task[_], Task[_]]
   private[this] val anonOwners = new ConcurrentHashMap[Task[_], Task[_]]
   private[this] val isReady = new AtomicBoolean(false)
+  private[this] val isLogReady = new AtomicBoolean(false)
   private[this] val isAllCompleted = new AtomicBoolean(false)
 
   override def initial: Unit = ()
@@ -75,7 +76,6 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
         Thread.sleep(500)
       }
     }
-    readyLog()
     while (!isAllCompleted.get) {
       blocking {
         report()
@@ -86,13 +86,16 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
 
   private[this] val console = ConsoleOut.systemOut
   private[this] def readyLog(): Unit = {
-    console.println("")
-    console.println("")
-    console.println("")
-    console.println("")
-    console.println("")
-    console.println("")
-    console.print(CursorUp5)
+    if (isLogReady.get) ()
+    else {
+      console.println("")
+      console.println("")
+      console.println("")
+      console.println("")
+      console.println("")
+      console.print(CursorUp5)
+      isLogReady.set(true)
+    }
   }
 
   private[this] val stopReportTask =
@@ -100,6 +103,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   private[this] def report(): Unit = console.lockObject.synchronized {
     val currentTasks = activeTasks.asScala.toList
     def report0: Unit = {
+      readyLog()
       console.print(s"$CursorDown1")
       currentTasks foreach {
         case (task, start) =>
