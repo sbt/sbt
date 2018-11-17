@@ -216,7 +216,7 @@ val completeProj = (project in file("internal") / "util-complete")
       exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.History.this"),
     ),
   )
-  .configure(addSbtIO, addSbtUtilControl)
+  .configure(addSbtIO, addSbtUtilControl, addSbtUtilLogging)
 
 // A logic with restricted negation as failure for a unique, stable model
 val logicProj = (project in file("internal") / "util-logic")

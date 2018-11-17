@@ -64,14 +64,21 @@ abstract class JLine extends LineReader {
   }
 
   private[this] def handleMultilinePrompt(prompt: String): String = {
-    val lines = """\r?\n""".r.split(prompt)
-    lines.length match {
-      case 0 | 1 => prompt
-      case _     =>
+    val lines0 = """\r?\n""".r.split(prompt)
+    lines0.length match {
+      case 0 | 1 => handleProgress(prompt)
+      case _ =>
+        val lines = lines0.toList map handleProgress
         // Workaround for regression jline/jline2#205
         reader.getOutput.write(lines.init.mkString("\n") + "\n")
         lines.last
     }
+  }
+
+  private[this] def handleProgress(prompt: String): String = {
+    import ConsoleAppender._
+    if (showProgress) s"$ScrollUp$DeleteLine" + prompt
+    else prompt
   }
 
   private[this] def resume(): Unit = {

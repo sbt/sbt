@@ -77,8 +77,6 @@ object Aggregation {
       if (show.taskValues) printSettings(r, show.print)
     }
     if (show.success) printSuccess(start, stop, extracted, success, log)
-    // wait for async logger to catch up
-    Thread.sleep(100)
   }
 
   def timedRun[T](
@@ -131,9 +129,9 @@ object Aggregation {
     if (get(showSuccess)) {
       if (get(showTiming)) {
         val msg = timingString(start, stop, structure.data, currentRef)
-        if (success) log.success(msg + "\n") else log.error(msg + "\n")
+        if (success) log.success(msg) else log.error(msg)
       } else if (success)
-        log.success("" + "\n")
+        log.success("")
     }
   }
 
