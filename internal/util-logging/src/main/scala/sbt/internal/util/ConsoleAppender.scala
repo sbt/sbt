@@ -96,6 +96,9 @@ class ConsoleLogger private[ConsoleLogger] (
 }
 
 object ConsoleAppender {
+  private[sbt] final val ScrollUp = "\u001B[S"
+  private[sbt] final val DeleteLine = "\u001B[2K"
+  private[sbt] final val CursorLeft1000 = "\u001B[1000D"
 
   /** Hide stack trace altogether. */
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
@@ -456,9 +459,6 @@ class ConsoleAppender private[ConsoleAppender] (
     appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
   }
 
-  private final val ScrollUp = "\u001B[S"
-  private final val DeleteLine = "\u001B[2K"
-  private final val CursorLeft1000 = "\u001B[1000D"
   private def write(msg: String): Unit = {
     if (!useFormat || !ansiCodesSupported) {
       out.println(EscHelpers.removeEscapeSequences(msg))
