@@ -21,7 +21,7 @@ import sbt.internal.LegacyWatched
 import sbt.internal.inc.Stamper
 import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.Types.const
-import sbt.internal.util.complete.DefaultParsers
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.{ AttributeKey, JLine }
 import sbt.io.FileEventMonitor.{ Creation, Deletion, Event, Update }
 import sbt.io._
@@ -279,9 +279,9 @@ object Watched {
       onFailure = Some(Exec(failureCommandName, None)),
       definedCommands = s0.definedCommands :+ onFail
     )
-    val commands = command.split(";") match {
-      case Array("", rest @ _*) => rest
-      case Array(cmd)           => Seq(cmd)
+    val commands = Parser.parse(command, BasicCommands.multiParserImpl(Some(s))) match {
+      case Left(_)  => command :: Nil
+      case Right(c) => c
     }
     val parser = Command.combine(s.definedCommands)(s)
     val tasks = commands.foldLeft(Nil: Seq[Either[String, () => Either[Exception, Boolean]]]) {
