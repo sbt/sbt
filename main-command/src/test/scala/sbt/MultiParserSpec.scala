@@ -33,4 +33,16 @@ class MultiParserSpec extends FlatSpec with Matchers {
     ";     foo;    bar".parse shouldBe Seq("foo", "bar")
     ";foo; bar".parse shouldBe Seq("foo", "bar")
   }
+  it should "parse command with string literal" in {
+    "; foo \"barbaz\"".parse shouldBe Seq("foo \"barbaz\"")
+    "; foo \"bar;baz\"".parse shouldBe Seq("foo \"bar;baz\"")
+    "; foo \"barbaz\"; bar".parse shouldBe Seq("foo \"barbaz\"", "bar")
+    "; foo \"barbaz\"; bar \"blah\"".parse shouldBe Seq("foo \"barbaz\"", "bar \"blah\"")
+    "; foo \"bar;baz\"; bar".parse shouldBe Seq("foo \"bar;baz\"", "bar")
+    "; foo \"bar;baz\"; bar \"buzz\"".parse shouldBe Seq("foo \"bar;baz\"", "bar \"buzz\"")
+    "; foo \"bar;baz\"; bar \"buzz;two\"".parse shouldBe Seq("foo \"bar;baz\"", "bar \"buzz;two\"")
+    """; foo "bar;\"baz\""; bar""".parse shouldBe Seq("""foo "bar;\"baz\""""", "bar")
+    """; setStringValue "foo;bar"; checkStringValue "foo;bar"""".parse shouldBe
+      Seq("""setStringValue "foo;bar"""", """checkStringValue "foo;bar"""")
+  }
 }

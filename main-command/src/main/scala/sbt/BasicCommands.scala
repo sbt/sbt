@@ -155,13 +155,16 @@ object BasicCommands {
   }
 
   private[sbt] def multiParserImpl(state: Option[State]): Parser[List[String]] = {
-    val nonSemi = token(charClass(_ != ';', "not ';'").+, hide = const(true))
+    val nonSemi = charClass(_ != ';', "not ';'")
     val semi = token(';' ~> OptSpace)
-    def commandParser = state.map(s => (s.combinedParser & nonSemi) | nonSemi).getOrElse(nonSemi)
-    val part = semi flatMap (
-        _ => matched(commandParser) <~ token(OptSpace)
+    val nonQuote = charClass(_ != '"', label = "not '\"'")
+    val cmdPart = token(
+      ((nonSemi & nonQuote).map(_.toString) | StringEscapable.map(c => s""""$c"""")).+,
+      hide = const(true)
     )
-    (part map (_.trim)).+ map (_.toList)
+    def commandParser = state.map(s => (s.combinedParser & cmdPart) | cmdPart).getOrElse(cmdPart)
+    val part = semi.flatMap(_ => matched(commandParser) <~ token(OptSpace)).map(_.trim)
+    part.+ map (_.toList)
   }
 
   def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
