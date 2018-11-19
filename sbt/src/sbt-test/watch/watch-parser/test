@@ -8,6 +8,9 @@
 
 > ~; setStringValue foo; setStringValue bar; checkStringValue bar
 
+# no leading semicolon
+> ~ setStringValue foo; setStringValue bar; checkStringValue bar
+
 > ~ setStringValue foo
 
 > checkStringValue foo

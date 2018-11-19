@@ -241,6 +241,7 @@ object BuiltinCommands {
       export,
       boot,
       initialize,
+      BasicCommands.multi,
       act,
       continuous,
       flushFileTreeRepository
