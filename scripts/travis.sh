@@ -7,6 +7,10 @@ downloadInstallSbtExtras() {
   chmod +x bin/sbt
 }
 
+lmCoursier() {
+  [ "${LM_COURSIER:-""}" = 1 ]
+}
+
 sbtPgpCoursier() {
   [ "${SBT_PGP_COURSIER:-""}" = 1 ]
 }
@@ -15,8 +19,15 @@ sbtShading() {
   [ "${SBT_SHADING:-""}" = 1 ]
 }
 
+runLmCoursierTests() {
+  sbt ++$TRAVIS_SCALA_VERSION lm-coursier/test
+}
+
 runSbtCoursierTests() {
-  ./metadata/scripts/with-test-repo.sh sbt ++$TRAVIS_SCALA_VERSION sbt-coursier/test "sbt-coursier/scripted sbt-coursier-group-$SBT_COURSIER_TEST_GROUP/*"
+  ./metadata/scripts/with-test-repo.sh sbt \
+    ++$TRAVIS_SCALA_VERSION \
+    sbt-coursier/test \
+    "sbt-coursier/scripted shared-$SBT_COURSIER_TEST_GROUP/* sbt-coursier-group-$SBT_COURSIER_TEST_GROUP/*"
 }
 
 runSbtShadingTests() {
@@ -41,6 +52,8 @@ if sbtShading; then
   runSbtShadingTests
 elif sbtPgpCoursier; then
   runSbtPgpCoursierTests
+elif lmCoursier; then
+  runLmCoursierTests
 else
   runSbtCoursierTests
 fi
