@@ -60,6 +60,12 @@
           "type": "java.io.File*",
           "default": "Vector.empty",
           "since": "0.0.1"
+        },
+        {
+          "name": "interProjectDependencies",
+          "type": "coursier.core.Project*",
+          "default": "Vector.empty",
+          "since": "0.0.1"
         }
       ]
     }

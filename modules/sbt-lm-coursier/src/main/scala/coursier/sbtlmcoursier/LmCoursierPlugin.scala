@@ -1,6 +1,7 @@
 package coursier.sbtlmcoursier
 
 import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution}
+import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Task, taskKey}
 import sbt.KeyRanks.DTask
 import sbt.Keys.{dependencyResolution, fullResolvers, otherResolvers, streams}
@@ -13,12 +14,14 @@ object LmCoursierPlugin extends AutoPlugin {
   }
 
   import autoImport._
+  import SbtCoursierShared.autoImport._
 
 
   override def trigger = allRequirements
 
-  // requiring IvyPlugin… to override it, and so that it doesn't override us :|
-  override def requires = sbt.plugins.IvyPlugin
+  // this transitively requires IvyPlugin… which is needed to override it,
+  // so that it doesn't override us :|
+  override def requires = SbtCoursierShared
 
   // putting this in projectSettings like sbt.plugins.IvyPlugin does :|
   override def projectSettings = Seq(
@@ -30,11 +33,13 @@ object LmCoursierPlugin extends AutoPlugin {
   private def mkCoursierConfiguration: Def.Initialize[Task[CoursierConfiguration]] =
     Def.task {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
+      val interProjectDependencies = coursierInterProjectDependencies.value
       val s = streams.value
       Classpaths.warnResolversConflict(rs ++: other, s.log)
       CoursierConfiguration()
         .withResolvers(rs)
         .withOtherResolvers(other)
+        .withInterProjectDependencies(interProjectDependencies.toVector)
         .withLog(s.log)
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =

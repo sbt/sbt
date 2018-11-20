@@ -51,7 +51,7 @@ lazy val `sbt-coursier-shared` = project
 lazy val `sbt-lm-coursier` = project
   .in(file("modules/sbt-lm-coursier"))
   .enablePlugins(ScriptedPlugin)
-  .dependsOn(`lm-coursier`)
+  .dependsOn(`sbt-coursier-shared`)
   .settings(
     plugin,
     sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
@@ -61,6 +61,7 @@ lazy val `sbt-lm-coursier` = project
       // TODO Get those automatically
       // (but shouldn't scripted itself handle that…?)
        publishLocal.in(`lm-coursier`).value
+       publishLocal.in(`sbt-coursier-shared`).value
      }
    )
 

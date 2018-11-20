@@ -85,8 +85,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
           withArtifacts = false
         )
 
-    val interProjectDependencies: Seq[Project] = Nil // TODO Don't use Nil here
-    val interProjectRepo = InterProjectRepository(interProjectDependencies)
+    val interProjectRepo = InterProjectRepository(conf.interProjectDependencies)
 
     val internalRepositories = globalPluginsRepos :+ interProjectRepo
 
@@ -107,7 +106,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       autoScalaLib = true,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
-      interProjectDependencies = interProjectDependencies,
+      interProjectDependencies = conf.interProjectDependencies,
       internalRepositories = internalRepositories,
       userEnabledProfiles = Set.empty,
       userForceVersions = Map.empty,
