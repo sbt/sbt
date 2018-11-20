@@ -32,7 +32,7 @@ object LmCoursierPlugin extends AutoPlugin {
 
   private def mkCoursierConfiguration: Def.Initialize[Task[CoursierConfiguration]] =
     Def.task {
-      val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
+      val rs = fullResolvers.value.toVector
       val interProjectDependencies = coursierInterProjectDependencies.value
       val excludeDeps = Inputs.exclusions(
         excludeDependencies.value,
@@ -41,10 +41,9 @@ object LmCoursierPlugin extends AutoPlugin {
         streams.value.log
       )
       val s = streams.value
-      Classpaths.warnResolversConflict(rs ++: other, s.log)
+      Classpaths.warnResolversConflict(rs, s.log)
       CoursierConfiguration()
         .withResolvers(rs)
-        .withOtherResolvers(other)
         .withInterProjectDependencies(interProjectDependencies.toVector)
         .withExcludeDependencies(
           excludeDeps

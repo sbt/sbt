@@ -20,12 +20,6 @@
           "since": "0.0.1"
         },
         {
-          "name": "otherResolvers",
-          "type": "sbt.librarymanagement.Resolver*",
-          "default": "Vector.empty",
-          "since": "0.0.1"
-        },
-        {
           "name": "reorderResolvers",
           "type": "Boolean",
           "default": "true",
