@@ -9,5 +9,3 @@
 
   addSbtPlugin("io.get-coursier" % "sbt-coursier" % pluginVersion)
 }
-
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.19")

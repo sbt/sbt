@@ -9,5 +9,3 @@
 
   addSbtPlugin("io.get-coursier" % "sbt-coursier" % pluginVersion)
 }
-
-addSbtPlugin("com.eed3si9n" % "sbt-unidoc" % "0.4.2")
