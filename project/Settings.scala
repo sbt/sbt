@@ -29,6 +29,7 @@ object Settings {
     Seq(
       scriptedLaunchOpts ++= Seq(
         "-Xmx1024M",
+        "-Dplugin.name=" + name.value,
         "-Dplugin.version=" + version.value,
         "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
       ),

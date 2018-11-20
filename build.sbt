@@ -19,15 +19,42 @@ val coursierVersion = "1.1.0-M8"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion,
       "io.get-coursier" %% "coursier-cache" % coursierVersion,
       "io.get-coursier" %% "coursier-extra" % coursierVersion,
-      "org.scala-sbt" %% "librarymanagement-core" % "1.0.2"
-    )
+      // We depend on librarymanagement-ivy rather than just
+      // librarymanagement-core to handle the ModuleDescriptor passed
+      // to DependencyResolutionInterface.update, which is an
+      // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
+      // is ignored).
+      "org.scala-sbt" %% "librarymanagement-ivy" % "1.0.2",
+      "org.scalatest" %% "scalatest" % "3.0.5" % Test
+    ),
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats
   )
+
+lazy val `sbt-lm-coursier` = project
+  .in(file("modules/sbt-lm-coursier"))
+  .enablePlugins(ScriptedPlugin)
+  .dependsOn(`lm-coursier`)
+  .settings(
+    plugin,
+    sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
+    scriptedDependencies := {
+      scriptedDependencies.value
+
+      // TODO Get those automatically
+      // (but shouldn't scripted itself handle that…?)
+       publishLocal.in(`lm-coursier`).value
+     }
+   )
 
 lazy val `sbt-coursier` = project
   .in(file("modules/sbt-coursier"))
@@ -93,6 +120,7 @@ lazy val `sbt-coursier-root` = project
   .aggregate(
     `lm-coursier`,
     `sbt-coursier`,
+    `sbt-lm-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`
   )

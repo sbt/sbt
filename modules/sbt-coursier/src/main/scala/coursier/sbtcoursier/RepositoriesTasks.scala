@@ -1,5 +1,6 @@
 package coursier.sbtcoursier
 
+import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursier.Structure._
 import sbt.{Classpaths, Def}

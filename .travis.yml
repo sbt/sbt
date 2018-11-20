@@ -16,6 +16,7 @@ jobs:
     - env: SBT_COURSIER=1 SBT_COURSIER_TEST_GROUP=2
     - env: SBT_SHADING=1
     - env: SBT_PGP_COURSIER=1
+    - env: LM_COURSIER=1
     - stage: release
       script: sbt ci-release
 branches:

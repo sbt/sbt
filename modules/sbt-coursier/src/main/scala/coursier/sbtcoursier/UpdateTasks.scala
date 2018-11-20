@@ -1,6 +1,7 @@
 package coursier.sbtcoursier
 
 import coursier.core._
+import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
 import sbt.Def
 import sbt.Keys._

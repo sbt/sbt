@@ -1,13 +1,13 @@
-{
-  val pluginVersion = sys.props.getOrElse(
+addSbtPlugin {
+
+  val name = sys.props.getOrElse(
+    "plugin.name",
+    sys.error("plugin.name Java property not set")
+  )
+  val version = sys.props.getOrElse(
     "plugin.version",
-    throw new RuntimeException(
-      """|The system property 'plugin.version' is not defined.
-         |Specify this property using the scriptedLaunchOpts -D.""".stripMargin
-    )
+    sys.error("plugin.version Java property not set")
   )
 
-  addSbtPlugin("io.get-coursier" % "sbt-coursier" % pluginVersion)
+  "io.get-coursier" % name % version
 }
-
-addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.2-1")

@@ -4,6 +4,7 @@ import java.io.File
 
 import coursier.{Artifact, FileError}
 import coursier.core._
+import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursier.Structure._
 import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
