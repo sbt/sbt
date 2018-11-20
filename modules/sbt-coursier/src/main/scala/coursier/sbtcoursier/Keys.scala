@@ -17,19 +17,12 @@ object Keys {
   val coursierArtifactsChecksums = SettingKey[Seq[Option[String]]]("coursier-artifacts-checksums")
   val coursierCachePolicies = SettingKey[Seq[CachePolicy]]("coursier-cache-policies")
   val coursierTtl = SettingKey[Option[Duration]]("coursier-ttl")
-  val coursierKeepPreloaded = SettingKey[Boolean]("coursier-keep-preloaded", "Whether to take into account sbt preloaded repositories or not")
   val coursierCreateLogger = TaskKey[() => Cache.Logger]("coursier-create-logger")
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
 
   val mavenProfiles = SettingKey[Set[String]]("maven-profiles")
 
-  val coursierReorderResolvers = SettingKey[Boolean](
-    "coursier-reorder-resolvers",
-    "Whether resolvers should be re-ordered so that typically slow ones are given a lower priority"
-  )
-  val coursierResolvers = TaskKey[Seq[Resolver]]("coursier-resolvers")
-  val coursierRecursiveResolvers = TaskKey[Seq[Resolver]]("coursier-recursive-resolvers", "Resolvers of the current project, plus those of all from its inter-dependency projects")
   val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers")
   val coursierUseSbtCredentials = SettingKey[Boolean]("coursier-use-sbt-credentials")
   val coursierCredentials = TaskKey[Map[String, Credentials]]("coursier-credentials")

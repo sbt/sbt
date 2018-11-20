@@ -1,7 +1,7 @@
-package coursier.sbtcoursier
+package coursier.sbtcoursiershared
 
 import coursier.lmcoursier._
-import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
 import sbt.{Classpaths, Def}
 import sbt.Keys._

@@ -21,12 +21,8 @@ object CoursierPlugin extends AutoPlugin {
     val coursierArtifactsChecksums = Keys.coursierArtifactsChecksums
     val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierTtl = Keys.coursierTtl
-    val coursierKeepPreloaded = Keys.coursierKeepPreloaded
     val coursierVerbosity = Keys.coursierVerbosity
     val mavenProfiles = Keys.mavenProfiles
-    val coursierResolvers = Keys.coursierResolvers
-    val coursierReorderResolvers = Keys.coursierReorderResolvers
-    val coursierRecursiveResolvers = Keys.coursierRecursiveResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
     val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
     val coursierCredentials = Keys.coursierCredentials
@@ -147,8 +143,6 @@ object CoursierPlugin extends AutoPlugin {
   def coursierSettings(
     shadedConfigOpt: Option[(String, Configuration)] = None
   ): Seq[Setting[_]] = hackHack ++ Seq(
-    coursierResolvers := RepositoriesTasks.coursierResolversTask.value,
-    coursierRecursiveResolvers := RepositoriesTasks.coursierRecursiveResolversTask.value,
     coursierSbtResolvers := {
 
       // TODO Add docker-based integration test for that, see https://github.com/coursier/coursier/issues/632
@@ -173,7 +167,7 @@ object CoursierPlugin extends AutoPlugin {
         else
           resolvers
 
-      if (coursierKeepPreloaded.value)
+      if (SbtCoursierShared.autoImport.coursierKeepPreloaded.value)
         resolvers0
       else
         resolvers0.filter { r =>
@@ -280,8 +274,6 @@ object CoursierPlugin extends AutoPlugin {
     coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
     coursierCache := Cache.default,
-    coursierReorderResolvers := true,
-    coursierKeepPreloaded := false,
     coursierCreateLogger := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
   )
 
