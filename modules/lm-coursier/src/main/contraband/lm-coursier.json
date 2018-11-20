@@ -1,9 +1,9 @@
 {
-  "codecNamespace": "sbt.librarymanagement.coursier",
+  "codecNamespace": "coursier.lmcoursier",
   "types": [
     {
       "name": "CoursierConfiguration",
-      "namespace": "sbt.librarymanagement.coursier",
+      "namespace": "coursier.lmcoursier",
       "target": "Scala",
       "type": "record",
       "fields": [

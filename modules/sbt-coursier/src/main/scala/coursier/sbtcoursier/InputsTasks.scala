@@ -4,6 +4,7 @@ import java.net.URL
 
 import coursier.ProjectCache
 import coursier.core._
+import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursier.Structure._
 import sbt.librarymanagement.{Configuration => _, _}

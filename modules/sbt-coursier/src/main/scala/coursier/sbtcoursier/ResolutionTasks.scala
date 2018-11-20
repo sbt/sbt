@@ -6,6 +6,7 @@ import coursier.{Cache, ProjectCache}
 import coursier.core._
 import coursier.extra.Typelevel
 import coursier.ivy.IvyRepository
+import coursier.lmcoursier._
 import coursier.maven.MavenRepository
 import coursier.sbtcoursier.Keys._
 import sbt.Def

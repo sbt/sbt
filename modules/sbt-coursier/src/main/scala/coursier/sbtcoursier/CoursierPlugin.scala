@@ -4,6 +4,7 @@ import java.io.OutputStreamWriter
 
 import coursier.{Cache, CachePolicy, TermDisplay}
 import coursier.core.{Configuration, ResolutionProcess}
+import coursier.lmcoursier.SbtCoursierCache
 import sbt.librarymanagement.{Configuration => _, Resolver => _, _}
 import sbt.{Cache => _, Configuration => _, _}
 import sbt.Keys._
