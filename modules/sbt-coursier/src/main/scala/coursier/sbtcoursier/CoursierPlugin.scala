@@ -4,7 +4,6 @@ import java.io.OutputStreamWriter
 
 import coursier.{Cache, CachePolicy, TermDisplay}
 import coursier.core.{Configuration, ResolutionProcess}
-import coursier.lmcoursier.SbtCoursierCache
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{Cache => _, Configuration => _, _}
 import sbt.Keys._
@@ -148,10 +147,6 @@ object CoursierPlugin extends AutoPlugin {
   def coursierSettings(
     shadedConfigOpt: Option[(String, Configuration)] = None
   ): Seq[Setting[_]] = hackHack ++ Seq(
-    clean := {
-      val noWarningPlz = clean.value
-      SbtCoursierCache.default.clear()
-    },
     coursierResolvers := RepositoriesTasks.coursierResolversTask.value,
     coursierRecursiveResolvers := RepositoriesTasks.coursierRecursiveResolversTask.value,
     coursierSbtResolvers := {

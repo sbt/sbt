@@ -1,7 +1,9 @@
 package coursier.sbtcoursiershared
 
 import coursier.core.{Configuration, Project, Publication}
+import coursier.lmcoursier.SbtCoursierCache
 import sbt.{AutoPlugin, Compile, Setting, TaskKey, Test, settingKey}
+import sbt.Keys.clean
 
 object SbtCoursierShared extends AutoPlugin {
 
@@ -23,6 +25,10 @@ object SbtCoursierShared extends AutoPlugin {
 
   override def projectSettings =
     Seq[Setting[_]](
+      clean := {
+        val noWarningPlz = clean.value
+        SbtCoursierCache.default.clear()
+      },
       coursierGenerateIvyXml := true,
       coursierProject := InputsTasks.coursierProjectTask.value,
       coursierInterProjectDependencies := InputsTasks.coursierInterProjectDependenciesTask.value,
