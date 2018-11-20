@@ -1,10 +1,10 @@
 package coursier.sbtlmcoursier
 
-import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution}
+import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.KeyRanks.DTask
-import sbt.Keys.{dependencyResolution, fullResolvers, otherResolvers, streams}
+import sbt.Keys.{dependencyResolution, excludeDependencies, fullResolvers, otherResolvers, scalaBinaryVersion, scalaVersion, streams}
 import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
@@ -34,12 +34,27 @@ object LmCoursierPlugin extends AutoPlugin {
     Def.task {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
       val interProjectDependencies = coursierInterProjectDependencies.value
+      val excludeDeps = Inputs.exclusions(
+        excludeDependencies.value,
+        scalaVersion.value,
+        scalaBinaryVersion.value,
+        streams.value.log
+      )
       val s = streams.value
       Classpaths.warnResolversConflict(rs ++: other, s.log)
       CoursierConfiguration()
         .withResolvers(rs)
         .withOtherResolvers(other)
         .withInterProjectDependencies(interProjectDependencies.toVector)
+        .withExcludeDependencies(
+          excludeDeps
+            .toVector
+            .sorted
+            .map {
+              case (o, n) =>
+                (o.value, n.value)
+            }
+        )
         .withLog(s.log)
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =

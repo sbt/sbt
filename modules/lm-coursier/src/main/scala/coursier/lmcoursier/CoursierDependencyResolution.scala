@@ -2,8 +2,8 @@ package coursier.lmcoursier
 
 import java.io.{File, OutputStreamWriter}
 
-import _root_.coursier.{Artifact, Cache, CachePolicy, FileError, Organization, Project, Resolution, TermDisplay, organizationString}
-import _root_.coursier.core.Configuration
+import _root_.coursier.{Artifact, Cache, CachePolicy, FileError, Organization, Resolution, TermDisplay, organizationString}
+import _root_.coursier.core.{Configuration, ModuleName}
 import _root_.coursier.ivy.IvyRepository
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
@@ -18,6 +18,14 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       ResolutionParams.reorderResolvers(conf.resolvers)
     else
       conf.resolvers
+
+  private lazy val excludeDependencies = conf
+    .excludeDependencies
+    .map {
+      case (strOrg, strName) =>
+        (Organization(strOrg), ModuleName(strName))
+    }
+    .toSet
 
   def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): CoursierModuleDescriptor =
     CoursierModuleDescriptor(moduleSetting, conf)
@@ -89,11 +97,20 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     val internalRepositories = globalPluginsRepos :+ interProjectRepo
 
-    val dependencies = module0.dependencies.flatMap { d =>
-      // crossVersion already taken into account, wiping it here
-      val d0 = d.withCrossVersion(CrossVersion.Disabled())
-      FromSbt.dependencies(d0, sv, sbv)
-    }
+    val dependencies = module0
+      .dependencies
+      .flatMap { d =>
+        // crossVersion already taken into account, wiping it here
+        val d0 = d.withCrossVersion(CrossVersion.Disabled())
+        FromSbt.dependencies(d0, sv, sbv)
+      }
+      .map {
+        case (config, dep) =>
+          val dep0 = dep.copy(
+            exclusions = dep.exclusions ++ excludeDependencies
+          )
+          (config, dep0)
+      }
 
     val configGraphs = Inputs.ivyGraphs(
       Inputs.configExtends(module0.configurations)
