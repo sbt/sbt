@@ -23,14 +23,14 @@ runLmCoursierTests() {
   ./metadata/scripts/with-test-repo.sh sbt \
     ++$TRAVIS_SCALA_VERSION \
     lm-coursier/test \
-    "sbt-lm-coursier/scripted shared-1/* shared-2/*"
+    "sbt-lm-coursier/scripted shared-$TEST_GROUP/*"
 }
 
 runSbtCoursierTests() {
   ./metadata/scripts/with-test-repo.sh sbt \
     ++$TRAVIS_SCALA_VERSION \
     sbt-coursier/test \
-    "sbt-coursier/scripted shared-$SBT_COURSIER_TEST_GROUP/* sbt-coursier-group-$SBT_COURSIER_TEST_GROUP/*"
+    "sbt-coursier/scripted shared-$TEST_GROUP/* sbt-coursier-group-$TEST_GROUP/*"
 }
 
 runSbtShadingTests() {
