@@ -45,7 +45,9 @@ lazy val `sbt-coursier-shared` = project
   .enablePlugins(ScriptedPlugin)
   .dependsOn(`lm-coursier`)
   .settings(
-    plugin
+    plugin,
+    libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
+    testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
 lazy val `sbt-lm-coursier` = project
@@ -71,8 +73,6 @@ lazy val `sbt-coursier` = project
   .dependsOn(`sbt-coursier-shared`)
   .settings(
     plugin,
-    libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
-    testFrameworks += new TestFramework("utest.runner.Framework"),
     libraryDependencies +="io.get-coursier" %% "coursier-scalaz-interop" % coursierVersion,
     scriptedDependencies := {
       scriptedDependencies.value

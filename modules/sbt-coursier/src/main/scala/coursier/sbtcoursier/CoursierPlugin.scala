@@ -6,7 +6,6 @@ import coursier.{Cache, CachePolicy, TermDisplay}
 import coursier.core.{Configuration, ResolutionProcess}
 import coursier.lmcoursier.SbtCoursierCache
 import coursier.sbtcoursiershared.SbtCoursierShared
-import sbt.librarymanagement.{Configuration => _, Resolver => _, _}
 import sbt.{Cache => _, Configuration => _, _}
 import sbt.Keys._
 
@@ -35,7 +34,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierFallbackDependencies = Keys.coursierFallbackDependencies
     val coursierCache = Keys.coursierCache
     val coursierConfigGraphs = Keys.coursierConfigGraphs
-    val coursierPublications = Keys.coursierPublications
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
 
     val coursierConfigurations = Keys.coursierConfigurations
@@ -63,7 +61,6 @@ object CoursierPlugin extends AutoPlugin {
   }
 
   import autoImport._
-  import SbtCoursierShared.autoImport._
 
   lazy val treeSettings = Seq(
     coursierDependencyTree := DisplayTasks.coursierDependencyTreeTask(
@@ -78,19 +75,6 @@ object CoursierPlugin extends AutoPlugin {
       DisplayTasks.coursierWhatDependsOnTask(input)
     }.evaluated
   )
-
-  def makeIvyXmlBefore[T](
-    task: TaskKey[T],
-    shadedConfigOpt: Option[(String, Configuration)]
-  ): Setting[Task[T]] =
-    task := task.dependsOn(Def.task {
-      val currentProject = {
-        val proj = coursierProject.value
-        val publications = coursierPublications.value
-        proj.copy(publications = publications)
-      }
-      IvyXml.writeFiles(currentProject, shadedConfigOpt, ivySbt.value, streams.value.log)
-    }).value
 
   private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
@@ -162,9 +146,8 @@ object CoursierPlugin extends AutoPlugin {
   )
 
   def coursierSettings(
-    shadedConfigOpt: Option[(String, Configuration)],
-    packageConfigs: Seq[(sbt.Configuration, Configuration)]
-  ) = hackHack ++ Seq(
+    shadedConfigOpt: Option[(String, Configuration)] = None
+  ): Seq[Setting[_]] = hackHack ++ Seq(
     clean := {
       val noWarningPlz = clean.value
       SbtCoursierCache.default.clear()
@@ -228,7 +211,6 @@ object CoursierPlugin extends AutoPlugin {
       ignoreArtifactErrors = true
     ).value,
     coursierConfigGraphs := InputsTasks.ivyGraphsTask.value,
-    coursierPublications := ArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value,
     coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
     coursierConfigurations := InputsTasks.coursierConfigurationsTask(None).value,
     coursierParentProjectCache := InputsTasks.parentProjectCacheTask.value,
@@ -292,8 +274,7 @@ object CoursierPlugin extends AutoPlugin {
     // Tests artifacts from Maven repositories are given this type.
     // Adding it here so that these work straightaway.
     classpathTypes += "test-jar"
-  ) ++
-    (needsIvyXml ++ needsIvyXmlLocal).map(makeIvyXmlBefore(_, shadedConfigOpt))
+  )
 
   override lazy val buildSettings = super.buildSettings ++ Seq(
     coursierParallelDownloads := 6,
@@ -312,23 +293,8 @@ object CoursierPlugin extends AutoPlugin {
     coursierCreateLogger := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
   )
 
-  override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> Configuration(c.name))) ++
+  override lazy val projectSettings = coursierSettings() ++
     inConfig(Compile)(treeSettings) ++
     inConfig(Test)(treeSettings)
-
-
-  private lazy val needsIvyXmlLocal = Seq(publishLocalConfiguration) ++ getPubConf("makeIvyXmlLocalConfiguration")
-  private lazy val needsIvyXml = Seq(publishConfiguration) ++ getPubConf("makeIvyXmlConfiguration")
-
-  private[this] def getPubConf(method: String): List[TaskKey[PublishConfiguration]] =
-    try {
-      val cls = Keys.getClass
-      val m = cls.getMethod(method)
-      val task = m.invoke(Keys).asInstanceOf[TaskKey[PublishConfiguration]]
-      List(task)
-    } catch {
-      case _: Throwable => // FIXME Too wide
-        Nil
-    }
 
 }

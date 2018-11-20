@@ -39,7 +39,6 @@ object Keys {
   val coursierFallbackDependencies = TaskKey[Seq[(Module, String, URL, Boolean)]]("coursier-fallback-dependencies")
 
   val coursierConfigGraphs = TaskKey[Seq[Set[Configuration]]]("coursier-config-graphs")
-  val coursierPublications = TaskKey[Seq[(Configuration, Publication)]]("coursier-publications")
 
   val coursierSbtClassifiersModule = TaskKey[GetClassifiersModule]("coursier-sbt-classifiers-module")
 

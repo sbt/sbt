@@ -5,6 +5,7 @@ import java.io.File
 import coursier.core.{Configuration, Type}
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import coursier.sbtcoursier.{CoursierPlugin, InputsTasks, Keys}
+import coursier.sbtcoursiershared.{IvyXml, SbtCoursierShared}
 import sbt.Keys._
 import sbt.{AutoPlugin, Compile, SettingKey, TaskKey, inConfig}
 
@@ -97,9 +98,10 @@ object ShadingPlugin extends AutoPlugin {
         sbt.Classpaths.ivyPublishSettings ++
         shadingJvmPublishSettings ++
         CoursierPlugin.coursierSettings(
-          Some(baseDependencyConfiguration.value -> Configuration(Shaded.name)),
-          Seq(Shading -> Configuration.compile)
+          Some(baseDependencyConfiguration.value -> Configuration(Shaded.name))
         ) ++
+        IvyXml.generateIvyXmlSettings(Some(Configuration(Shaded.name))) ++
+        Seq(SbtCoursierShared.publicationsSetting(Seq(Shading -> Configuration.compile))) ++
         CoursierPlugin.treeSettings ++
         Seq(
           configuration := baseSbtConfiguration, // wuw

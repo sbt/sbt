@@ -29,7 +29,7 @@ runLmCoursierTests() {
 runSbtCoursierTests() {
   ./metadata/scripts/with-test-repo.sh sbt \
     ++$TRAVIS_SCALA_VERSION \
-    sbt-coursier/test \
+    sbt-coursier-shared/test \
     "sbt-coursier/scripted shared-$TEST_GROUP/* sbt-coursier-group-$TEST_GROUP/*"
 }
 

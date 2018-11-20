@@ -2,7 +2,7 @@ package coursier.sbtlmcoursier
 
 import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution}
 import coursier.sbtcoursiershared.SbtCoursierShared
-import sbt.{AutoPlugin, Classpaths, Def, Task, taskKey}
+import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.KeyRanks.DTask
 import sbt.Keys.{dependencyResolution, fullResolvers, otherResolvers, streams}
 import sbt.librarymanagement.DependencyResolution
@@ -24,7 +24,7 @@ object LmCoursierPlugin extends AutoPlugin {
   override def requires = SbtCoursierShared
 
   // putting this in projectSettings like sbt.plugins.IvyPlugin does :|
-  override def projectSettings = Seq(
+  override def projectSettings = Seq[Setting[_]](
     dependencyResolution := mkDependencyResolution.value,
     coursierConfiguration := mkCoursierConfiguration.value
   )
