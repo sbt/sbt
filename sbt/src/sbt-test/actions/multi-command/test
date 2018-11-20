@@ -1,0 +1,21 @@
+> ; setStringValue baz
+
+> ; checkStringValue baz
+
+> ; setStringValue foo; setStringValue bar
+
+> checkStringValue bar
+
+> ; setStringValue foo; setStringValue bar; setStringValue baz; checkStringValue baz
+
+> setStringValue foo; setStringValue bar
+
+> checkStringValue bar
+
+> setStringValue foo; setStringValue bar; setStringValue baz
+
+> checkStringValue baz
+
+-> setStringValue foo; taskThatFails; setStringValue bar
+
+> checkStringValue foo

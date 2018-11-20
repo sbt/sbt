@@ -39,7 +39,6 @@ object BasicCommands {
     ignore,
     help,
     completionsCommand,
-    multi,
     ifLast,
     append,
     setOnFailure,
@@ -154,14 +153,23 @@ object BasicCommands {
     state
   }
 
-  def multiParser(s: State): Parser[List[String]] = {
-    val nonSemi = token(charClass(_ != ';', "not ';'").+, hide = const(true))
+  private[sbt] def multiParserImpl(state: Option[State]): Parser[List[String]] = {
+    val nonSemi = charClass(_ != ';', "not ';'")
     val semi = token(';' ~> OptSpace)
-    val part = semi flatMap (
-        _ => matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace)
+    val nonQuote = charClass(_ != '"', label = "not '\"'")
+    val cmdPart = token(
+      ((nonSemi & nonQuote).map(_.toString) | StringEscapable.map(c => s""""$c"""")).+,
+      hide = const(true)
     )
-    (part map (_.trim)).+ map (_.toList)
+    def commandParser = state.map(s => (s.combinedParser & cmdPart) | cmdPart).getOrElse(cmdPart)
+    val part = semi.flatMap(_ => matched(commandParser) <~ token(OptSpace)).map(_.trim)
+    (cmdPart.? ~ part.+).map {
+      case (Some(h), t) => h.mkString.trim +: t.toList
+      case (_, t)       => t.toList
+    }
   }
+
+  def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
 
   def multiApplied(s: State): Parser[() => State] =
     Command.applyEffect(multiParser(s))(_ ::: s)
