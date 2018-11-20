@@ -1,7 +1,6 @@
 package coursier.lmcoursier
 
 import sbt.librarymanagement._
-import sjsonnew.support.murmurhash.Hasher
 
 final case class CoursierModuleDescriptor(
   descriptor: ModuleDescriptorConfiguration,
@@ -17,8 +16,6 @@ final case class CoursierModuleDescriptor(
   def moduleSettings: CoursierModuleSettings =
     CoursierModuleSettings()
 
-  lazy val extraInputHash: Long = {
-    import CustomLibraryManagementCodec._
-    Hasher.hash(conf).toOption.fold(0L)(_.toLong)
-  }
+  lazy val extraInputHash: Long =
+    conf.##
 }

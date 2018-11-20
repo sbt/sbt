@@ -19,7 +19,7 @@ val coursierVersion = "1.1.0-M8"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
