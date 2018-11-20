@@ -40,6 +40,22 @@ lazy val `lm-coursier` = project
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats
   )
 
+lazy val `sbt-lm-coursier` = project
+  .in(file("modules/sbt-lm-coursier"))
+  .enablePlugins(ScriptedPlugin)
+  .dependsOn(`lm-coursier`)
+  .settings(
+    plugin,
+    sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
+    scriptedDependencies := {
+      scriptedDependencies.value
+
+      // TODO Get those automatically
+      // (but shouldn't scripted itself handle that…?)
+       publishLocal.in(`lm-coursier`).value
+     }
+   )
+
 lazy val `sbt-coursier` = project
   .in(file("modules/sbt-coursier"))
   .enablePlugins(ScriptedPlugin)
@@ -104,6 +120,7 @@ lazy val `sbt-coursier-root` = project
   .aggregate(
     `lm-coursier`,
     `sbt-coursier`,
+    `sbt-lm-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`
   )
