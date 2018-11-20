@@ -1,12 +1,14 @@
-package coursier
+package coursier.sbtcoursier
 
 import coursier.ivy.IvyRepository
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import java.net.{MalformedURLException, URL}
 
-import coursier.core.{Authentication, Classifier, Configuration, Type}
+import coursier.{Attributes, Cache, Dependency, Module}
+import coursier.core._
+import coursier.maven.MavenRepository
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
-import sbt.librarymanagement.{CrossVersion, FileRepository, GetClassifiersModule, ModuleID, Patterns, RawRepository, Resolver, URLRepository}
+import sbt.librarymanagement.{Configuration => _, MavenRepository => _, _}
 import sbt.util.Logger
 
 object FromSbt {

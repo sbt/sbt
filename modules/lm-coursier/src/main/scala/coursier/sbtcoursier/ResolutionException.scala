@@ -1,4 +1,4 @@
-package coursier
+package coursier.sbtcoursier
 
 final class ResolutionException(
   val error: ResolutionError

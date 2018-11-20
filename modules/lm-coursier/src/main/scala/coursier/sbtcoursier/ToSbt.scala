@@ -1,13 +1,14 @@
-package coursier
+package coursier.sbtcoursier
 
 import java.io.File
 import java.net.URL
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
+import coursier.{Artifact, Attributes, Dependency, Module, Project, Resolution}
 import coursier.core.{Classifier, Configuration, Type}
 import coursier.maven.MavenAttributes
-import sbt.librarymanagement.{Configuration => _, _}
+import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
 import sbt.util.Logger
 
 object ToSbt {
@@ -253,7 +254,7 @@ object ToSbt {
     }
 
     UpdateReport(
-      null,
+      new File("."),
       configReports.toVector,
       UpdateStats(-1L, -1L, -1L, cached = false),
       Map.empty

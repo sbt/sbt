@@ -1,4 +1,4 @@
-package coursier
+package coursier.sbtcoursier
 
 import sbt.Logger
 

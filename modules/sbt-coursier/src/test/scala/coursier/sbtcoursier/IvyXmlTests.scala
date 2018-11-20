@@ -1,6 +1,7 @@
-package coursier
+package coursier.sbtcoursier
 
 import coursier.core.Configuration
+import coursier.{Info, Module, Project, moduleNameString, organizationString}
 import utest._
 
 object IvyXmlTests extends TestSuite {

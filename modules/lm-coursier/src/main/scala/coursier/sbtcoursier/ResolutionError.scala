@@ -1,4 +1,7 @@
-package coursier
+package coursier.sbtcoursier
+
+import coursier.FileError
+import coursier.core.Module
 
 import scala.collection.mutable.ArrayBuffer
 

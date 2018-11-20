@@ -2,8 +2,7 @@ package coursier
 
 object Helper {
 
-  def checkEmpty(): Boolean = {
-    Tasks.resolutionsCache.isEmpty && Tasks.reportsCache.isEmpty
-  }
+  def checkEmpty(): Boolean =
+    coursier.sbtcoursier.SbtCoursierCache.default.isEmpty
 
 }

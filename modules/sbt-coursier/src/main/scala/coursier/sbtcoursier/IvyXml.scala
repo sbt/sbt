@@ -1,9 +1,9 @@
-package coursier
+package coursier.sbtcoursier
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
-import coursier.core.Configuration
+import coursier.core.{Configuration, Project}
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
 import scala.collection.JavaConverters._

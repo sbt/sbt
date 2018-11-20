@@ -1,9 +1,33 @@
-package coursier
+package coursier.sbtcoursier
 
 import sbt._
 
-// things from sbt-structure
 object Structure {
+
+  def allRecursiveInterDependencies(state: sbt.State, projectRef: sbt.ProjectRef) = {
+
+    def dependencies(map: Map[String, Seq[String]], id: String): Set[String] = {
+
+      def helper(map: Map[String, Seq[String]], acc: Set[String]): Set[String] =
+        if (acc.exists(map.contains)) {
+          val (kept, rem) = map.partition { case (k, _) => acc(k) }
+          helper(rem, acc ++ kept.valuesIterator.flatten)
+        } else
+          acc
+
+      helper(map - id, map.getOrElse(id, Nil).toSet)
+    }
+
+    val allProjectsDeps =
+      for (p <- structure(state).allProjects)
+        yield p.id -> p.dependencies.map(_.project.project)
+
+    val deps = dependencies(allProjectsDeps.toMap, projectRef.project)
+
+    structure(state).allProjectRefs.filter(p => deps(p.project))
+  }
+
+  // vv things from sbt-structure vv
 
   def structure(state: State) =
     sbt.Project.structure(state)

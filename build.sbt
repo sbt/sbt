@@ -17,37 +17,33 @@ inThisBuild(List(
 
 val coursierVersion = "1.1.0-M8"
 
-lazy val `sbt-shared` = project
-  .in(file("modules/sbt-shared"))
+lazy val `lm-coursier` = project
+  .in(file("modules/lm-coursier"))
   .settings(
     shared,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion,
       "io.get-coursier" %% "coursier-cache" % coursierVersion,
-      "org.scala-sbt" %% "librarymanagement-ivy" % "1.0.2"
+      "io.get-coursier" %% "coursier-extra" % coursierVersion,
+      "org.scala-sbt" %% "librarymanagement-core" % "1.0.2"
     )
   )
 
 lazy val `sbt-coursier` = project
   .in(file("modules/sbt-coursier"))
   .enablePlugins(ScriptedPlugin)
-  .dependsOn(`sbt-shared`)
+  .dependsOn(`lm-coursier`)
   .settings(
     plugin,
     libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
     testFrameworks += new TestFramework("utest.runner.Framework"),
-    libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion,
-      "io.get-coursier" %% "coursier-cache" % coursierVersion,
-      "io.get-coursier" %% "coursier-extra" % coursierVersion,
-      "io.get-coursier" %% "coursier-scalaz-interop" % coursierVersion
-    ),
+    libraryDependencies +="io.get-coursier" %% "coursier-scalaz-interop" % coursierVersion,
     scriptedDependencies := {
       scriptedDependencies.value
 
       // TODO Get dependency projects automatically
       // (but shouldn't scripted itself handle that…?)
-      publishLocal.in(`sbt-shared`).value
+      publishLocal.in(`lm-coursier`).value
     }
   )
 
@@ -95,7 +91,7 @@ lazy val `sbt-shading` = project
 lazy val `sbt-coursier-root` = project
   .in(file("."))
   .aggregate(
-    `sbt-shared`,
+    `lm-coursier`,
     `sbt-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`

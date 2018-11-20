@@ -1,6 +1,7 @@
-package coursier
+package coursier.sbtcoursier
 
-import coursier.core.Classifier
+import coursier.Fetch
+import coursier.core._
 import coursier.util.{EitherT, Monad}
 
 final case class InterProjectRepository(projects: Seq[Project]) extends Repository {

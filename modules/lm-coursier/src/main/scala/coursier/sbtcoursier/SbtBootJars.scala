@@ -1,6 +1,8 @@
-package coursier
+package coursier.sbtcoursier
 
 import java.io.File
+
+import coursier.core.{Module, ModuleName, Organization}
 
 object SbtBootJars {
   def apply(
@@ -12,7 +14,7 @@ object SbtBootJars {
       .collect {
         case jar if jar.getName.endsWith(".jar") =>
           val name = ModuleName(jar.getName.stripSuffix(".jar"))
-          val mod = Module(scalaOrg, name)
+          val mod = Module(scalaOrg, name, Map.empty)
 
           (mod, scalaVersion) -> jar
       }
