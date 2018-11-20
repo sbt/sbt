@@ -9,6 +9,7 @@ import coursier.ivy.IvyRepository
 import coursier.lmcoursier._
 import coursier.maven.MavenRepository
 import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
 import sbt.Keys._
 

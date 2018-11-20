@@ -40,6 +40,14 @@ lazy val `lm-coursier` = project
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats
   )
 
+lazy val `sbt-coursier-shared` = project
+  .in(file("modules/sbt-coursier-shared"))
+  .enablePlugins(ScriptedPlugin)
+  .dependsOn(`lm-coursier`)
+  .settings(
+    plugin
+  )
+
 lazy val `sbt-lm-coursier` = project
   .in(file("modules/sbt-lm-coursier"))
   .enablePlugins(ScriptedPlugin)
@@ -59,7 +67,7 @@ lazy val `sbt-lm-coursier` = project
 lazy val `sbt-coursier` = project
   .in(file("modules/sbt-coursier"))
   .enablePlugins(ScriptedPlugin)
-  .dependsOn(`lm-coursier`)
+  .dependsOn(`sbt-coursier-shared`)
   .settings(
     plugin,
     libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
@@ -71,6 +79,7 @@ lazy val `sbt-coursier` = project
       // TODO Get dependency projects automatically
       // (but shouldn't scripted itself handle that…?)
       publishLocal.in(`lm-coursier`).value
+      publishLocal.in(`sbt-coursier-shared`).value
     }
   )
 
@@ -120,6 +129,7 @@ lazy val `sbt-coursier-root` = project
   .aggregate(
     `lm-coursier`,
     `sbt-coursier`,
+    `sbt-coursier-shared`,
     `sbt-lm-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`

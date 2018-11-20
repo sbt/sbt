@@ -5,7 +5,6 @@ import java.io.File
 import coursier.core.{Configuration, Type}
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import coursier.sbtcoursier.{CoursierPlugin, InputsTasks, Keys}
-import sbt.librarymanagement._
 import sbt.Keys._
 import sbt.{AutoPlugin, Compile, SettingKey, TaskKey, inConfig}
 
@@ -13,7 +12,7 @@ object ShadingPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
 
-  override def requires = sbt.plugins.IvyPlugin
+  override def requires = CoursierPlugin
 
   private val baseSbtConfiguration = Compile
   val Shading = sbt.Configuration.of(
@@ -73,6 +72,7 @@ object ShadingPlugin extends AutoPlugin {
   )
 
   import coursier.sbtcoursier.CoursierPlugin.autoImport._
+  import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 
   override lazy val buildSettings = super.buildSettings ++ Seq(
     shadeNamespaces := Set()

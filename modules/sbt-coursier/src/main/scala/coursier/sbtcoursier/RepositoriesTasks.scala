@@ -2,7 +2,7 @@ package coursier.sbtcoursier
 
 import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
-import coursier.sbtcoursier.Structure._
+import coursier.sbtcoursiershared.Structure._
 import sbt.{Classpaths, Def}
 import sbt.Keys._
 import sbt.librarymanagement.Resolver
@@ -60,7 +60,7 @@ object RepositoriesTasks {
       val state = sbt.Keys.state.value
       val projectRef = sbt.Keys.thisProjectRef.value
 
-      val projects = Structure.allRecursiveInterDependencies(state, projectRef)
+      val projects = allRecursiveInterDependencies(state, projectRef)
 
       val t = coursierResolvers
         .forAllProjects(state, projectRef +: projects)

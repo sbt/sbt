@@ -5,6 +5,7 @@ import java.io.OutputStreamWriter
 import coursier.{Cache, CachePolicy, TermDisplay}
 import coursier.core.{Configuration, ResolutionProcess}
 import coursier.lmcoursier.SbtCoursierCache
+import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.librarymanagement.{Configuration => _, Resolver => _, _}
 import sbt.{Cache => _, Configuration => _, _}
 import sbt.Keys._
@@ -13,7 +14,7 @@ object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 
-  override def requires = sbt.plugins.JvmPlugin
+  override def requires = SbtCoursierShared
 
   object autoImport {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
@@ -33,9 +34,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCredentials = Keys.coursierCredentials
     val coursierFallbackDependencies = Keys.coursierFallbackDependencies
     val coursierCache = Keys.coursierCache
-    val coursierProject = Keys.coursierProject
     val coursierConfigGraphs = Keys.coursierConfigGraphs
-    val coursierInterProjectDependencies = Keys.coursierInterProjectDependencies
     val coursierPublications = Keys.coursierPublications
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
 
@@ -64,6 +63,7 @@ object CoursierPlugin extends AutoPlugin {
   }
 
   import autoImport._
+  import SbtCoursierShared.autoImport._
 
   lazy val treeSettings = Seq(
     coursierDependencyTree := DisplayTasks.coursierDependencyTreeTask(
@@ -227,9 +227,7 @@ object CoursierPlugin extends AutoPlugin {
       sbtClassifiers = true,
       ignoreArtifactErrors = true
     ).value,
-    coursierProject := InputsTasks.coursierProjectTask.value,
     coursierConfigGraphs := InputsTasks.ivyGraphsTask.value,
-    coursierInterProjectDependencies := InputsTasks.coursierInterProjectDependenciesTask.value,
     coursierPublications := ArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value,
     coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
     coursierConfigurations := InputsTasks.coursierConfigurationsTask(None).value,

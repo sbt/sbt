@@ -6,7 +6,7 @@ import coursier.{Artifact, FileError}
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
-import coursier.sbtcoursier.Structure._
+import coursier.sbtcoursiershared.Structure._
 import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
 import sbt.Def
 import sbt.Keys._
