@@ -3,7 +3,7 @@ package coursier.sbtcoursiershared
 import coursier.core.{Configuration, Project, Publication}
 import coursier.lmcoursier.SbtCoursierCache
 import sbt.{AutoPlugin, Compile, Setting, TaskKey, Test, settingKey}
-import sbt.Keys.clean
+import sbt.Keys.{classpathTypes, clean}
 
 object SbtCoursierShared extends AutoPlugin {
 
@@ -32,7 +32,10 @@ object SbtCoursierShared extends AutoPlugin {
       coursierGenerateIvyXml := true,
       coursierProject := InputsTasks.coursierProjectTask.value,
       coursierInterProjectDependencies := InputsTasks.coursierInterProjectDependenciesTask.value,
-      publicationsSetting(Seq(Compile, Test).map(c => c -> Configuration(c.name)))
+      publicationsSetting(Seq(Compile, Test).map(c => c -> Configuration(c.name))),
+      // Tests artifacts from Maven repositories are given this type.
+      // Adding it here so that these work straightaway.
+      classpathTypes += "test-jar"
     ) ++
     IvyXml.generateIvyXmlSettings()
 
