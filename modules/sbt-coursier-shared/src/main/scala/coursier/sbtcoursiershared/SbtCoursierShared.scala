@@ -2,9 +2,9 @@ package coursier.sbtcoursiershared
 
 import coursier.core.{Configuration, Project, Publication}
 import coursier.lmcoursier.SbtCoursierCache
-import sbt.{AutoPlugin, Compile, Setting, TaskKey, Test, settingKey, taskKey}
-import sbt.Keys.{classpathTypes, clean}
-import sbt.librarymanagement.Resolver
+import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
+import sbt.Keys._
+import sbt.librarymanagement.{Resolver, URLRepository}
 
 object SbtCoursierShared extends AutoPlugin {
 
@@ -24,6 +24,7 @@ object SbtCoursierShared extends AutoPlugin {
     )
     val coursierResolvers = taskKey[Seq[Resolver]]("")
     val coursierRecursiveResolvers = taskKey[Seq[Resolver]]("Resolvers of the current project, plus those of all from its inter-dependency projects")
+    val coursierSbtResolvers = taskKey[Seq[Resolver]]("")
   }
 
   import autoImport._
@@ -36,6 +37,8 @@ object SbtCoursierShared extends AutoPlugin {
       coursierReorderResolvers := true,
       coursierKeepPreloaded := false
     )
+
+  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
   override def projectSettings = settings(pubSettings = true)
 
@@ -61,6 +64,37 @@ object SbtCoursierShared extends AutoPlugin {
       classpathTypes += "test-jar", // FIXME Should this go in buildSettings?
       coursierResolvers := RepositoriesTasks.coursierResolversTask.value,
       coursierRecursiveResolvers := RepositoriesTasks.coursierRecursiveResolversTask.value,
+      coursierSbtResolvers := {
+
+        // TODO Add docker-based integration test for that, see https://github.com/coursier/coursier/issues/632
+
+        val resolvers =
+          sbt.Classpaths.bootRepositories(appConfiguration.value).toSeq.flatten ++ // required because of the hack above it seems
+            externalResolvers.in(updateSbtClassifiers).value
+
+        val pluginIvySnapshotsFound = resolvers.exists {
+          case repo: URLRepository =>
+            repo
+              .patterns
+              .artifactPatterns
+              .headOption
+              .exists(_.startsWith(pluginIvySnapshotsBase))
+          case _ => false
+        }
+
+        val resolvers0 =
+          if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
+            resolvers :+ Classpaths.sbtPluginReleases
+          else
+            resolvers
+
+        if (SbtCoursierShared.autoImport.coursierKeepPreloaded.value)
+          resolvers0
+        else
+          resolvers0.filter { r =>
+            !r.name.startsWith("local-preloaded")
+          }
+      }
     ) ++ {
       if (pubSettings)
         IvyXml.generateIvyXmlSettings()

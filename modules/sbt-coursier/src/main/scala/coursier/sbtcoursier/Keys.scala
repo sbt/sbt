@@ -23,7 +23,6 @@ object Keys {
 
   val mavenProfiles = SettingKey[Set[String]]("maven-profiles")
 
-  val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers")
   val coursierUseSbtCredentials = SettingKey[Boolean]("coursier-use-sbt-credentials")
   val coursierCredentials = TaskKey[Map[String, Credentials]]("coursier-credentials")
 

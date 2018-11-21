@@ -23,7 +23,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierTtl = Keys.coursierTtl
     val coursierVerbosity = Keys.coursierVerbosity
     val mavenProfiles = Keys.mavenProfiles
-    val coursierSbtResolvers = Keys.coursierSbtResolvers
     val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
     val coursierCredentials = Keys.coursierCredentials
     val coursierFallbackDependencies = Keys.coursierFallbackDependencies
@@ -70,8 +69,6 @@ object CoursierPlugin extends AutoPlugin {
       DisplayTasks.coursierWhatDependsOnTask(input)
     }.evaluated
   )
-
-  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
   // allows to get the actual repo list when sbt starts up
   private val hackHack = Seq(
@@ -143,37 +140,6 @@ object CoursierPlugin extends AutoPlugin {
   def coursierSettings(
     shadedConfigOpt: Option[(String, Configuration)] = None
   ): Seq[Setting[_]] = hackHack ++ Seq(
-    coursierSbtResolvers := {
-
-      // TODO Add docker-based integration test for that, see https://github.com/coursier/coursier/issues/632
-
-      val resolvers =
-        sbt.Classpaths.bootRepositories(appConfiguration.value).toSeq.flatten ++ // required because of the hack above it seems
-          externalResolvers.in(updateSbtClassifiers).value
-
-      val pluginIvySnapshotsFound = resolvers.exists {
-        case repo: URLRepository =>
-          repo
-            .patterns
-            .artifactPatterns
-            .headOption
-            .exists(_.startsWith(pluginIvySnapshotsBase))
-        case _ => false
-      }
-
-      val resolvers0 =
-        if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
-          resolvers :+ Classpaths.sbtPluginReleases
-        else
-          resolvers
-
-      if (SbtCoursierShared.autoImport.coursierKeepPreloaded.value)
-        resolvers0
-      else
-        resolvers0.filter { r =>
-          !r.name.startsWith("local-preloaded")
-        }
-    },
     coursierFallbackDependencies := InputsTasks.coursierFallbackDependenciesTask.value,
     coursierArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false).value,
     coursierSignedArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false, includeSignatures = true).value,
