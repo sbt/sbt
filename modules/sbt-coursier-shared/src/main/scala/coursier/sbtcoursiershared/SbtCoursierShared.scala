@@ -1,7 +1,9 @@
 package coursier.sbtcoursiershared
 
-import coursier.core.{Configuration, Project, Publication}
-import coursier.lmcoursier.SbtCoursierCache
+import java.net.URL
+
+import coursier.core.{Configuration, Module, Project, Publication}
+import coursier.lmcoursier.{FallbackDependency, SbtCoursierCache}
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
 import sbt.librarymanagement.{Resolver, URLRepository}
@@ -25,6 +27,8 @@ object SbtCoursierShared extends AutoPlugin {
     val coursierResolvers = taskKey[Seq[Resolver]]("")
     val coursierRecursiveResolvers = taskKey[Seq[Resolver]]("Resolvers of the current project, plus those of all from its inter-dependency projects")
     val coursierSbtResolvers = taskKey[Seq[Resolver]]("")
+
+    val coursierFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
   }
 
   import autoImport._
@@ -94,7 +98,8 @@ object SbtCoursierShared extends AutoPlugin {
           resolvers0.filter { r =>
             !r.name.startsWith("local-preloaded")
           }
-      }
+      },
+      coursierFallbackDependencies := InputsTasks.coursierFallbackDependenciesTask.value,
     ) ++ {
       if (pubSettings)
         IvyXml.generateIvyXmlSettings()

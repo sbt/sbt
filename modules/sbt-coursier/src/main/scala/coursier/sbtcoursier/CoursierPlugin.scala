@@ -25,7 +25,6 @@ object CoursierPlugin extends AutoPlugin {
     val mavenProfiles = Keys.mavenProfiles
     val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
     val coursierCredentials = Keys.coursierCredentials
-    val coursierFallbackDependencies = Keys.coursierFallbackDependencies
     val coursierCache = Keys.coursierCache
     val coursierConfigGraphs = Keys.coursierConfigGraphs
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
@@ -140,7 +139,6 @@ object CoursierPlugin extends AutoPlugin {
   def coursierSettings(
     shadedConfigOpt: Option[(String, Configuration)] = None
   ): Seq[Setting[_]] = hackHack ++ Seq(
-    coursierFallbackDependencies := InputsTasks.coursierFallbackDependenciesTask.value,
     coursierArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false).value,
     coursierSignedArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false, includeSignatures = true).value,
     coursierClassifiersArtifacts := ArtifactsTasks.artifactsTask(

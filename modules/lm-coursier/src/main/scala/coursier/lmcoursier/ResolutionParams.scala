@@ -14,7 +14,7 @@ import scala.concurrent.duration.Duration
 
 final case class ResolutionParams(
   dependencies: Seq[(Configuration, Dependency)],
-  fallbackDependencies: Seq[(Module, String, URL, Boolean)],
+  fallbackDependencies: Seq[FallbackDependency],
   configGraphs: Seq[Set[Configuration]],
   autoScalaLib: Boolean,
   mainRepositories: Seq[Repository],
@@ -42,7 +42,7 @@ final case class ResolutionParams(
       Nil
     else {
       val map = fallbackDependencies.map {
-        case (mod, ver, url, changing) =>
+        case FallbackDependency(mod, ver, url, changing) =>
           (mod, ver) -> ((url, changing))
       }.toMap
 

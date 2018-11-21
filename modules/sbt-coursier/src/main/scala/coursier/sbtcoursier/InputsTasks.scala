@@ -14,29 +14,6 @@ import sbt.Keys._
 
 object InputsTasks {
 
-  def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[(Module, String, URL, Boolean)]]] =
-    Def.taskDyn {
-
-      val state = sbt.Keys.state.value
-      val projectRef = sbt.Keys.thisProjectRef.value
-
-      val projects = allRecursiveInterDependencies(state, projectRef)
-
-      val allDependenciesTask = allDependencies
-        .forAllProjects(state, projectRef +: projects)
-        .map(_.values.toVector.flatten)
-
-      Def.task {
-        val allDependencies = allDependenciesTask.value
-
-        FromSbt.fallbackDependencies(
-          allDependencies,
-          scalaVersion.in(projectRef).get(state),
-          scalaBinaryVersion.in(projectRef).get(state)
-        )
-      }
-    }
-
   def coursierConfigurationsTask(
     shadedConfig: Option[(String, Configuration)]
   ): Def.Initialize[sbt.Task[Map[Configuration, Set[Configuration]]]] =

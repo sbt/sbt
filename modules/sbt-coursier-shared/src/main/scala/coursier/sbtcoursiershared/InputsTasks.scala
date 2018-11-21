@@ -1,5 +1,7 @@
 package coursier.sbtcoursiershared
 
+import java.net.URL
+
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
@@ -42,6 +44,29 @@ object InputsTasks {
       val t = coursierProject.forAllProjects(state, projects).map(_.values.toVector)
 
       Def.task(t.value)
+    }
+
+  def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
+    Def.taskDyn {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
+
+      val projects = allRecursiveInterDependencies(state, projectRef)
+
+      val allDependenciesTask = allDependencies
+        .forAllProjects(state, projectRef +: projects)
+        .map(_.values.toVector.flatten)
+
+      Def.task {
+        val allDependencies = allDependenciesTask.value
+
+        FromSbt.fallbackDependencies(
+          allDependencies,
+          scalaVersion.in(projectRef).get(state),
+          scalaBinaryVersion.in(projectRef).get(state)
+        )
+      }
     }
 
 }

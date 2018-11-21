@@ -118,7 +118,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,
-      fallbackDependencies = Nil,
+      fallbackDependencies = conf.fallbackDependencies,
       configGraphs = configGraphs,
       autoScalaLib = true,
       mainRepositories = mainRepositories,

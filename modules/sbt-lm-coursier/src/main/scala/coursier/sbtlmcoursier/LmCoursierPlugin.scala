@@ -54,11 +54,13 @@ object LmCoursierPlugin extends AutoPlugin {
           scalaBinaryVersion.value,
           streams.value.log
         )
+        val fallbackDeps = coursierFallbackDependencies.value
         val s = streams.value
         Classpaths.warnResolversConflict(rs, s.log)
         CoursierConfiguration()
           .withResolvers(rs.toVector)
           .withInterProjectDependencies(interProjectDependencies.toVector)
+          .withFallbackDependencies(fallbackDeps.toVector)
           .withExcludeDependencies(
             excludeDeps
               .toVector
