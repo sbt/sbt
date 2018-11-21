@@ -5,7 +5,7 @@ import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaVersion, streams, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaVersion, streams, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
@@ -55,6 +55,12 @@ object LmCoursierPlugin extends AutoPlugin {
           streams.value.log
         )
         val fallbackDeps = coursierFallbackDependencies.value
+        val autoScalaLib = autoScalaLibrary.value
+
+        val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
+        val sbtBootJars = internalSbtScalaProvider.jars()
+        val sbtScalaVersion = internalSbtScalaProvider.version()
+        val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
         val s = streams.value
         Classpaths.warnResolversConflict(rs, s.log)
         CoursierConfiguration()
@@ -70,6 +76,10 @@ object LmCoursierPlugin extends AutoPlugin {
                   (o.value, n.value)
               }
           )
+          .withAutoScalaLibrary(autoScalaLib)
+          .withSbtScalaJars(sbtBootJars.toVector)
+          .withSbtScalaVersion(sbtScalaVersion)
+          .withSbtScalaOrganization(sbtScalaOrganization)
           .withLog(s.log)
       }
     }

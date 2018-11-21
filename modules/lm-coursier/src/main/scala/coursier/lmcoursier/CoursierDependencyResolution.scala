@@ -120,7 +120,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
       configGraphs = configGraphs,
-      autoScalaLib = true,
+      autoScalaLib = conf.autoScalaLibrary,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
       interProjectDependencies = conf.interProjectDependencies,

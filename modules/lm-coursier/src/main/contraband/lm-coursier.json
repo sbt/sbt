@@ -72,6 +72,12 @@
           "type": "coursier.lmcoursier.FallbackDependency*",
           "default": "Vector.empty",
           "since": "0.0.1"
+        },
+        {
+          "name": "autoScalaLibrary",
+          "type": "Boolean",
+          "default": "true",
+          "since": "0.0.1"
         }
       ]
     }
