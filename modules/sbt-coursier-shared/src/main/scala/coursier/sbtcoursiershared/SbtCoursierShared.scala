@@ -1,8 +1,6 @@
 package coursier.sbtcoursiershared
 
-import java.net.URL
-
-import coursier.core.{Configuration, Module, Project, Publication}
+import coursier.core.{Configuration, Project, Publication}
 import coursier.lmcoursier.{FallbackDependency, SbtCoursierCache}
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
@@ -100,6 +98,45 @@ object SbtCoursierShared extends AutoPlugin {
           }
       },
       coursierFallbackDependencies := InputsTasks.coursierFallbackDependenciesTask.value,
+      ivyConfigurations := {
+        val confs = ivyConfigurations.value
+        val names = confs.map(_.name).toSet
+
+        // Yes, adding those back in sbt 1.0. Can't distinguish between config test (whose jars with classifier tests ought to
+        // be added), and sources / docs else (if their JARs are in compile, they would get added too then).
+
+        val extraSources =
+          if (names("sources"))
+            None
+          else
+            Some(
+              sbt.Configuration.of(
+                id = "Sources",
+                name = "sources",
+                description = "",
+                isPublic = true,
+                extendsConfigs = Vector.empty,
+                transitive = false
+              )
+            )
+
+        val extraDocs =
+          if (names("docs"))
+            None
+          else
+            Some(
+              sbt.Configuration.of(
+                id = "Docs",
+                name = "docs",
+                description = "",
+                isPublic = true,
+                extendsConfigs = Vector.empty,
+                transitive = false
+              )
+            )
+
+        confs ++ extraSources.toSeq ++ extraDocs.toSeq
+      }
     ) ++ {
       if (pubSettings)
         IvyXml.generateIvyXmlSettings()

@@ -24,8 +24,53 @@ object LmCoursierPlugin extends AutoPlugin {
   // so that it doesn't override us :|
   override def requires = SbtCoursierShared
 
+  private val temporarySettings = {
+
+    import sbt._
+    import sbt.Classpaths.withExcludes
+    import sbt.Defaults.lock
+    import sbt.Keys._
+    import sbt.librarymanagement.GetClassifiersConfiguration
+
+    Seq(
+      // cut-n-pasted from sbt 1.0.2
+      // only the "val lm = …" line was changed
+      updateClassifiers := (Def.task {
+        val s = streams.value
+        val is = ivySbt.value
+        val lm = dependencyResolution.value
+        val mod = (classifiersModule in updateClassifiers).value
+        val c = updateConfiguration.value
+        val app = appConfiguration.value
+        val srcTypes = sourceArtifactTypes.value
+        val docTypes = docArtifactTypes.value
+        val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+        val uwConfig = (unresolvedWarningConfiguration in update).value
+        withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+          lm.updateClassifiers(
+            GetClassifiersConfiguration(
+              mod,
+              excludes.toVector,
+              c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
+              // scalaModule,
+              srcTypes.toVector,
+              docTypes.toVector
+            ),
+            uwConfig,
+            Vector.empty,
+            s.log
+          ) match {
+            case Left(_)   => ???
+            case Right(ur) => ur
+          }
+        }
+      } tag (Tags.Update, Tags.Network)).value
+    )
+  }
+
   // putting this in projectSettings like sbt.plugins.IvyPlugin does :|
   override def projectSettings: Seq[Setting[_]] =
+    temporarySettings ++
     Seq(
       dependencyResolution := mkDependencyResolution.value,
       coursierConfiguration := mkCoursierConfiguration().value
