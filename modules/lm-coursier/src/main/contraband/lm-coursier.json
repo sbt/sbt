@@ -78,6 +78,18 @@
           "type": "Boolean",
           "default": "true",
           "since": "0.0.1"
+        },
+        {
+          "name": "hasClassifiers",
+          "type": "Boolean",
+          "default": "false",
+          "since": "0.0.1"
+        },
+        {
+          "name": "classifiers",
+          "type": "String*",
+          "default": "Vector.empty",
+          "since": "0.0.1"
         }
       ]
     }

@@ -1,11 +1,12 @@
 package coursier.sbtlmcoursier
 
+import coursier.core.Classifier
 import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaVersion, streams, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
@@ -24,56 +25,21 @@ object LmCoursierPlugin extends AutoPlugin {
   // so that it doesn't override us :|
   override def requires = SbtCoursierShared
 
-  private val temporarySettings = {
-
-    import sbt._
-    import sbt.Classpaths.withExcludes
-    import sbt.Defaults.lock
-    import sbt.Keys._
-    import sbt.librarymanagement.GetClassifiersConfiguration
-
-    Seq(
-      // cut-n-pasted from sbt 1.0.2
-      // only the "val lm = …" line was changed
-      updateClassifiers := (Def.task {
-        val s = streams.value
-        val is = ivySbt.value
-        val lm = dependencyResolution.value
-        val mod = (classifiersModule in updateClassifiers).value
-        val c = updateConfiguration.value
-        val app = appConfiguration.value
-        val srcTypes = sourceArtifactTypes.value
-        val docTypes = docArtifactTypes.value
-        val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-        val uwConfig = (unresolvedWarningConfiguration in update).value
-        withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-          lm.updateClassifiers(
-            GetClassifiersConfiguration(
-              mod,
-              excludes.toVector,
-              c.withArtifactFilter(c.artifactFilter.map(af => af.withInverted(!af.inverted))),
-              // scalaModule,
-              srcTypes.toVector,
-              docTypes.toVector
-            ),
-            uwConfig,
-            Vector.empty,
-            s.log
-          ) match {
-            case Left(_)   => ???
-            case Right(ur) => ur
-          }
-        }
-      } tag (Tags.Update, Tags.Network)).value
-    )
-  }
-
   // putting this in projectSettings like sbt.plugins.IvyPlugin does :|
   override def projectSettings: Seq[Setting[_]] =
-    temporarySettings ++
     Seq(
       dependencyResolution := mkDependencyResolution.value,
-      coursierConfiguration := mkCoursierConfiguration().value
+      coursierConfiguration := mkCoursierConfiguration().value,
+      updateClassifiers := Def.taskDyn {
+        val lm = dependencyResolution.in(updateClassifiers).value
+        Def.task(sbt.hack.Foo.updateTask(lm).value)
+      }.value
+    ) ++
+    inTask(updateClassifiers)(
+      Seq(
+        dependencyResolution := mkDependencyResolution.value,
+        coursierConfiguration := mkCoursierConfiguration(withClassifiers = true).value
+      )
     ) ++
     inTask(updateSbtClassifiers)(
       Seq(
@@ -83,13 +49,18 @@ object LmCoursierPlugin extends AutoPlugin {
     )
 
 
-  private def mkCoursierConfiguration(sbtClassifiers: Boolean = false): Def.Initialize[Task[CoursierConfiguration]] =
+  private def mkCoursierConfiguration(withClassifiers: Boolean = false, sbtClassifiers: Boolean = false): Def.Initialize[Task[CoursierConfiguration]] =
     Def.taskDyn {
       val resolversTask =
         if (sbtClassifiers)
           coursierSbtResolvers
         else
           coursierRecursiveResolvers
+      val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[Classifier]]]] =
+        if (withClassifiers && !sbtClassifiers)
+          Def.task(Some(sbt.Keys.transitiveClassifiers.value.map(Classifier(_))))
+        else
+          Def.task(None)
       Def.task {
         val rs = resolversTask.value
         val interProjectDependencies = coursierInterProjectDependencies.value
@@ -106,6 +77,7 @@ object LmCoursierPlugin extends AutoPlugin {
         val sbtBootJars = internalSbtScalaProvider.jars()
         val sbtScalaVersion = internalSbtScalaProvider.version()
         val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
+        val classifiers = classifiersTask.value
         val s = streams.value
         Classpaths.warnResolversConflict(rs, s.log)
         CoursierConfiguration()
@@ -125,6 +97,8 @@ object LmCoursierPlugin extends AutoPlugin {
           .withSbtScalaJars(sbtBootJars.toVector)
           .withSbtScalaVersion(sbtScalaVersion)
           .withSbtScalaOrganization(sbtScalaOrganization)
+          .withClassifiers(classifiers.toVector.flatten.map(_.value))
+          .withHasClassifiers(classifiers.nonEmpty)
           .withLog(s.log)
       }
     }

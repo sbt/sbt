@@ -3,7 +3,7 @@ package coursier.lmcoursier
 import java.io.{File, OutputStreamWriter}
 
 import _root_.coursier.{Artifact, Cache, CachePolicy, FileError, Organization, Resolution, TermDisplay, organizationString}
-import _root_.coursier.core.{Configuration, ModuleName}
+import _root_.coursier.core.{Classifier, Configuration, ModuleName}
 import _root_.coursier.ivy.IvyRepository
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
@@ -74,6 +74,12 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     val ivyProperties = ResolutionParams.defaultIvyProperties()
 
+    val classifiers =
+      if (conf.hasClassifiers)
+        Some(conf.classifiers.map(Classifier(_)))
+      else
+        None
+
     val mainRepositories = resolvers
       .flatMap { resolver =>
         FromSbt.repository(
@@ -143,7 +149,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     def artifactsParams(resolutions: Map[Set[Configuration], Resolution]) =
       ArtifactsParams(
-        classifiers = None,
+        classifiers = classifiers,
         res = resolutions.values.toSeq,
         includeSignatures = false,
         parallelDownloads = conf.parallelDownloads,
@@ -171,7 +177,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       UpdateParams(
         shadedConfigOpt = None,
         artifacts = artifacts,
-        classifiers = None,
+        classifiers = classifiers,
         configs = configs,
         dependencies = dependencies,
         res = resolutions,
