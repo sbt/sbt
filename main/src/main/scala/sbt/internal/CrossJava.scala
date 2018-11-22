@@ -331,7 +331,15 @@ private[sbt] object CrossJava {
   }
 
   object JavaDiscoverConfig {
-    private val JavaHomeDir = """(java-|jdk-?)(1\.)?([0-9]+).*""".r
+    object JavaHomeDir {
+      private val regex = """(\w+-)?(java-|jdk-?)(bin-)?(1\.)?([0-9]+).*""".r
+      def unapply(s: CharSequence): Option[String] = {
+        s match {
+          case regex(vendor, _, _, m, n) => Some(JavaVersion(nullBlank(m) + n).toString)
+          case _                         => None
+        }
+      }
+    }
 
     class LinuxDiscoverConfig(base: File) extends JavaDiscoverConf {
       def candidates() = wrapNull(base.list())
@@ -339,8 +347,8 @@ private[sbt] object CrossJava {
       def javaHomes: Vector[(String, File)] =
         candidates()
           .collect {
-            case dir @ JavaHomeDir(_, m, n) =>
-              JavaVersion(nullBlank(m) + n).toString -> (base / dir)
+            case dir @ JavaHomeDir(version) =>
+              version -> (base / dir)
           }
     }
 
@@ -350,19 +358,19 @@ private[sbt] object CrossJava {
       def javaHomes: Vector[(String, File)] =
         wrapNull(base.list())
           .collect {
-            case dir @ JavaHomeDir(_, m, n) =>
-              JavaVersion(nullBlank(m) + n).toString -> (base / dir / "Contents" / "Home")
+            case dir @ JavaHomeDir(version) =>
+              version -> (base / dir / "Contents" / "Home")
           }
     }
 
     class JabbaDiscoverConfig extends JavaDiscoverConf {
       val base: File = Path.userHome / ".jabba" / "jdk"
-      val JavaHomeDir = """([\w\-]+)\@(1\.)?([0-9]+).*""".r
+      val JabbaJavaHomeDir = """([\w\-]+)\@(1\.)?([0-9]+).*""".r
 
       def javaHomes: Vector[(String, File)] =
         wrapNull(base.list())
           .collect {
-            case dir @ JavaHomeDir(vendor, m, n) =>
+            case dir @ JabbaJavaHomeDir(vendor, m, n) =>
               val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
               if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
               else v -> (base / dir)
@@ -376,21 +384,22 @@ private[sbt] object CrossJava {
       def javaHomes: Vector[(String, File)] =
         candidates()
           .collect {
-            case dir @ JavaHomeDir(_, m, n) =>
-              JavaVersion(nullBlank(m) + n).toString -> (base / dir)
+            case dir @ JavaHomeDir(version) =>
+              version -> (base / dir)
           }
     }
 
     class JavaHomeDiscoverConfig extends JavaDiscoverConf {
       def home() = sys.env.get("JAVA_HOME")
+
       def javaHomes: Vector[(String, File)] =
         home()
           .map(new java.io.File(_))
           .flatMap { javaHome =>
             val base = javaHome.getParentFile
             javaHome.getName match {
-              case dir @ JavaHomeDir(_, m, n) =>
-                Some(JavaVersion(nullBlank(m) + n).toString -> (base / dir))
+              case dir @ JavaHomeDir(version) =>
+                Some(version -> (base / dir))
               case _ => None
             }
           }
