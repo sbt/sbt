@@ -69,10 +69,10 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val verbosityLevel = 0
 
     val ttl = Cache.defaultTtl
-    val createLogger = { () =>
+    val createLogger = conf.createLogger.map(_.create).getOrElse { () =>
       new TermDisplay(new OutputStreamWriter(System.err), fallbackMode = true)
     }
-    val cache = Cache.default
+    val cache = conf.cache.getOrElse(Cache.default)
     val cachePolicies = CachePolicy.default
     val checksums = Cache.defaultChecksums
     val projectName = "" // used for logging only…

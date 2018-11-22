@@ -1,8 +1,6 @@
 package coursier.sbtcoursier
 
-import java.io.OutputStreamWriter
-
-import coursier.{Cache, CachePolicy, TermDisplay}
+import coursier.{Cache, CachePolicy}
 import coursier.core.{Configuration, ResolutionProcess}
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{Cache => _, Configuration => _, _}
@@ -22,7 +20,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierTtl = Keys.coursierTtl
     val coursierVerbosity = Keys.coursierVerbosity
-    val coursierCache = Keys.coursierCache
     val coursierConfigGraphs = Keys.coursierConfigGraphs
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
 
@@ -41,8 +38,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierSignedArtifacts = Keys.coursierSignedArtifacts
     val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
     val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
-
-    val coursierCreateLogger = Keys.coursierCreateLogger
 
     val coursierVersion = coursier.util.Properties.version
     val addSbtCoursier = {
@@ -191,9 +186,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierArtifactsChecksums := Seq(None),
     coursierCachePolicies := CachePolicy.default,
     coursierTtl := Cache.defaultTtl,
-    coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
-    coursierCache := Cache.default,
-    coursierCreateLogger := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
+    coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value)
   )
 
   override lazy val projectSettings = coursierSettings() ++

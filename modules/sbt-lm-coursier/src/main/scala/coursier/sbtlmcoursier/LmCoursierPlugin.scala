@@ -80,6 +80,10 @@ object LmCoursierPlugin extends AutoPlugin {
         val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
         val authenticationByHost = authenticationByHostTask.value
 
+        val createLogger = coursierCreateLogger.value
+
+        val cache = coursierCache.value
+
         val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
         val sbtBootJars = internalSbtScalaProvider.jars()
         val sbtScalaVersion = internalSbtScalaProvider.version()
@@ -111,6 +115,8 @@ object LmCoursierPlugin extends AutoPlugin {
           .withScalaVersion(scalaVer)
           .withAuthenticationByRepositoryId(authenticationByRepositoryId.toVector.sortBy(_._1))
           .withAuthenticationByHost(authenticationByHost.toVector.sortBy(_._1))
+          .withCreateLogger(createLogger)
+          .withCache(cache)
           .withLog(s.log)
       }
     }

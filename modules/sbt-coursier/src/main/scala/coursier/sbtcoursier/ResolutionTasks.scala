@@ -140,7 +140,7 @@ object ResolutionTasks {
           parallelDownloads,
           projectName,
           maxIterations,
-          createLogger,
+          createLogger.create,
           cache,
           cachePolicies,
           ttl,

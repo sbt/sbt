@@ -17,11 +17,8 @@ object Keys {
   val coursierArtifactsChecksums = SettingKey[Seq[Option[String]]]("coursier-artifacts-checksums")
   val coursierCachePolicies = SettingKey[Seq[CachePolicy]]("coursier-cache-policies")
   val coursierTtl = SettingKey[Option[Duration]]("coursier-ttl")
-  val coursierCreateLogger = TaskKey[() => Cache.Logger]("coursier-create-logger")
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
-
-  val coursierCache = SettingKey[File]("coursier-cache")
 
   val coursierConfigGraphs = TaskKey[Seq[Set[Configuration]]]("coursier-config-graphs")
 

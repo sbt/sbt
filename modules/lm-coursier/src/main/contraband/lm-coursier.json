@@ -120,6 +120,18 @@
           "type": "(String, coursier.core.Authentication)*",
           "default": "Vector.empty",
           "since": "0.0.1"
+        },
+        {
+          "name": "createLogger",
+          "type": "coursier.lmcoursier.CreateLogger?",
+          "default": "None",
+          "since": "0.0.1"
+        },
+        {
+          "name": "cache",
+          "type": "java.io.File?",
+          "default": "None",
+          "since": "0.0.1"
         }
       ]
     }
