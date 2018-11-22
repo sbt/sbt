@@ -13,7 +13,7 @@ coursierCreateLogger := {
     logStream.println(msg)
   }
   val cacheFile = coursierCache.value
-  ;{ () =>
+  ;CoursierCreateLogger { () =>
     new coursier.Cache.Logger {
       override def init(beforeOutput: => Unit): Unit = {
         beforeOutput

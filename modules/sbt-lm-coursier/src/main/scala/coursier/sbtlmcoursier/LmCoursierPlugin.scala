@@ -2,11 +2,12 @@ package coursier.sbtlmcoursier
 
 import coursier.core.Classifier
 import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
+import coursier.sbtcoursiershared.InputsTasks.authenticationByHostTask
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
@@ -63,15 +64,25 @@ object LmCoursierPlugin extends AutoPlugin {
           Def.task(None)
       Def.task {
         val rs = resolversTask.value
+        val scalaOrg = scalaOrganization.value
+        val scalaVer = scalaVersion.value
         val interProjectDependencies = coursierInterProjectDependencies.value
         val excludeDeps = Inputs.exclusions(
           excludeDependencies.value,
-          scalaVersion.value,
+          scalaVer,
           scalaBinaryVersion.value,
           streams.value.log
         )
         val fallbackDeps = coursierFallbackDependencies.value
         val autoScalaLib = autoScalaLibrary.value
+        val profiles = mavenProfiles.value
+
+        val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
+        val authenticationByHost = authenticationByHostTask.value
+
+        val createLogger = coursierCreateLogger.value
+
+        val cache = coursierCache.value
 
         val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
         val sbtBootJars = internalSbtScalaProvider.jars()
@@ -99,6 +110,13 @@ object LmCoursierPlugin extends AutoPlugin {
           .withSbtScalaOrganization(sbtScalaOrganization)
           .withClassifiers(classifiers.toVector.flatten.map(_.value))
           .withHasClassifiers(classifiers.nonEmpty)
+          .withMavenProfiles(profiles.toVector.sorted)
+          .withScalaOrganization(scalaOrg)
+          .withScalaVersion(scalaVer)
+          .withAuthenticationByRepositoryId(authenticationByRepositoryId.toVector.sortBy(_._1))
+          .withAuthenticationByHost(authenticationByHost.toVector.sortBy(_._1))
+          .withCreateLogger(createLogger)
+          .withCache(cache)
           .withLog(s.log)
       }
     }

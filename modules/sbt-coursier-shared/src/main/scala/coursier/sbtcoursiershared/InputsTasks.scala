@@ -67,4 +67,32 @@ object InputsTasks {
       }
     }
 
+  val authenticationByHostTask = Def.taskDyn {
+
+    val useSbtCredentials = coursierUseSbtCredentials.value
+
+    if (useSbtCredentials)
+      Def.task {
+        val log = streams.value.log
+
+        sbt.Keys.credentials.value
+          .flatMap {
+            case dc: sbt.DirectCredentials => List(dc)
+            case fc: sbt.FileCredentials =>
+              sbt.Credentials.loadCredentials(fc.path) match {
+                case Left(err) =>
+                  log.warn(s"$err, ignoring it")
+                  Nil
+                case Right(dc) => List(dc)
+              }
+          }
+          .map { c =>
+            c.host -> Authentication(c.userName, c.passwd)
+          }
+          .toMap
+      }
+    else
+      Def.task(Map.empty[String, Authentication])
+  }
+
 }

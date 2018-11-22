@@ -27,10 +27,16 @@ runLmCoursierTests() {
 }
 
 runSbtCoursierTests() {
+  if [ "$TEST_GROUP" = 1 ]; then
+    SCRIPTED_EXTRA="sbt-coursier/*"
+  else
+    SCRIPTED_EXTRA=""
+  fi
+
   ./metadata/scripts/with-test-repo.sh sbt \
     ++$TRAVIS_SCALA_VERSION \
     sbt-coursier-shared/test \
-    "sbt-coursier/scripted shared-$TEST_GROUP/* sbt-coursier-group-$TEST_GROUP/*"
+    "sbt-coursier/scripted shared-$TEST_GROUP/* $SCRIPTED_EXTRA"
 }
 
 runSbtShadingTests() {

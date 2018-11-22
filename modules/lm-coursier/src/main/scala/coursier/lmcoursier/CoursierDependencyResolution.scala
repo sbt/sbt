@@ -4,7 +4,9 @@ import java.io.{File, OutputStreamWriter}
 
 import _root_.coursier.{Artifact, Cache, CachePolicy, FileError, Organization, Resolution, TermDisplay, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
+import _root_.coursier.extra.Typelevel
 import _root_.coursier.ivy.IvyRepository
+import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
 import sbt.util.Logger
@@ -52,8 +54,11 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         sys.error(s"unrecognized ModuleDescriptor type: $module")
     }
 
-    val so = module0.scalaModuleInfo.fold(org"org.scala-lang")(m => Organization(m.scalaOrganization))
-    val sv = module0.scalaModuleInfo.map(_.scalaFullVersion)
+    val so = conf.scalaOrganization.map(Organization(_))
+      .orElse(module0.scalaModuleInfo.map(m => Organization(m.scalaOrganization)))
+      .getOrElse(org"org.scala-lang")
+    val sv = conf.scalaVersion
+      .orElse(module0.scalaModuleInfo.map(_.scalaFullVersion))
       // FIXME Manage to do stuff below without a scala version?
       .getOrElse(scala.util.Properties.versionNumberString)
 
@@ -64,10 +69,10 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val verbosityLevel = 0
 
     val ttl = Cache.defaultTtl
-    val createLogger = { () =>
+    val createLogger = conf.createLogger.map(_.create).getOrElse { () =>
       new TermDisplay(new OutputStreamWriter(System.err), fallbackMode = true)
     }
-    val cache = Cache.default
+    val cache = conf.cache.getOrElse(Cache.default)
     val cachePolicies = CachePolicy.default
     val checksums = Cache.defaultChecksums
     val projectName = "" // used for logging only…
@@ -80,15 +85,18 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       else
         None
 
+    val authenticationByRepositoryId = conf.authenticationByRepositoryId.toMap
+
     val mainRepositories = resolvers
       .flatMap { resolver =>
         FromSbt.repository(
           resolver,
           ivyProperties,
           log,
-          None // FIXME What about authentication?
+          authenticationByRepositoryId.get(resolver.name)
         )
       }
+      .map(withAuthenticationByHost(_, conf.authenticationByHost.toMap))
 
     val globalPluginsRepos =
       for (p <- ResolutionParams.globalPluginPatterns(sbtBinaryVersion))
@@ -122,6 +130,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       Inputs.configExtends(module0.configurations)
     )
 
+    val typelevel = so == Typelevel.typelevelOrg
+
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
@@ -131,9 +141,9 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       parentProjectCache = Map.empty,
       interProjectDependencies = conf.interProjectDependencies,
       internalRepositories = internalRepositories,
-      userEnabledProfiles = Set.empty,
+      userEnabledProfiles = conf.mavenProfiles.toSet,
       userForceVersions = Map.empty,
-      typelevel = false,
+      typelevel = typelevel,
       so = so,
       sv = sv,
       sbtClassifiers = false,

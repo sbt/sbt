@@ -6,6 +6,7 @@ import coursier.{Artifact, FileError}
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierCreateLogger}
 import sbt.Def
 import sbt.Keys._
 
@@ -56,7 +57,7 @@ object ArtifactsTasks {
         res,
         includeSignatures,
         parallelDownloads,
-        createLogger,
+        createLogger.create,
         cache,
         artifactsChecksums,
         ttl,

@@ -1,7 +1,10 @@
 package coursier.sbtcoursiershared
 
+import java.io.{File, OutputStreamWriter}
+
+import coursier.{Cache, Credentials, TermDisplay}
 import coursier.core.{Configuration, Project, Publication}
-import coursier.lmcoursier.{FallbackDependency, SbtCoursierCache}
+import coursier.lmcoursier.{CreateLogger, FallbackDependency, SbtCoursierCache}
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
 import sbt.librarymanagement.{Resolver, URLRepository}
@@ -27,6 +30,18 @@ object SbtCoursierShared extends AutoPlugin {
     val coursierSbtResolvers = taskKey[Seq[Resolver]]("")
 
     val coursierFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
+
+    val mavenProfiles = settingKey[Set[String]]("")
+
+    val coursierUseSbtCredentials = settingKey[Boolean]("")
+    val coursierCredentials = taskKey[Map[String, Credentials]]("")
+
+    val coursierCreateLogger = taskKey[CreateLogger]("")
+
+    val coursierCache = settingKey[File]("")
+
+    type CoursierCreateLogger = coursier.lmcoursier.CreateLogger
+    val CoursierCreateLogger = coursier.lmcoursier.CreateLogger
   }
 
   import autoImport._
@@ -37,7 +52,11 @@ object SbtCoursierShared extends AutoPlugin {
   override def buildSettings: Seq[Setting[_]] =
     Seq(
       coursierReorderResolvers := true,
-      coursierKeepPreloaded := false
+      coursierKeepPreloaded := false,
+      coursierUseSbtCredentials := true,
+      coursierCredentials := Map.empty,
+      coursierCreateLogger := CreateLogger { () => new TermDisplay(new OutputStreamWriter(System.err)) },
+      coursierCache := Cache.default
     )
 
   private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
@@ -136,7 +155,8 @@ object SbtCoursierShared extends AutoPlugin {
             )
 
         confs ++ extraSources.toSeq ++ extraDocs.toSeq
-      }
+      },
+      mavenProfiles := Set.empty
     ) ++ {
       if (pubSettings)
         IvyXml.generateIvyXmlSettings()

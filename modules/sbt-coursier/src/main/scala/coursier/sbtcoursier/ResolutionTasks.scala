@@ -1,19 +1,16 @@
 package coursier.sbtcoursier
 
-import java.net.URL
-
-import coursier.{Cache, ProjectCache}
+import coursier.ProjectCache
 import coursier.core._
 import coursier.extra.Typelevel
 import coursier.ivy.IvyRepository
 import coursier.lmcoursier._
-import coursier.maven.MavenRepository
+import coursier.lmcoursier.Inputs.withAuthenticationByHost
 import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.InputsTasks.authenticationByHostTask
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
 import sbt.Keys._
-
-import scala.util.Try
 
 object ResolutionTasks {
 
@@ -48,34 +45,6 @@ object ResolutionTasks {
         Def.task(coursierSbtResolvers.value)
       else
         Def.task(coursierRecursiveResolvers.value.distinct)
-
-    val authenticationByHostTask = Def.taskDyn {
-
-      val useSbtCredentials = coursierUseSbtCredentials.value
-
-      if (useSbtCredentials)
-        Def.task {
-          val log = streams.value.log
-
-          sbt.Keys.credentials.value
-            .flatMap {
-              case dc: sbt.DirectCredentials => List(dc)
-              case fc: sbt.FileCredentials =>
-                sbt.Credentials.loadCredentials(fc.path) match {
-                  case Left(err) =>
-                    log.warn(s"$err, ignoring it")
-                    Nil
-                  case Right(dc) => List(dc)
-                }
-            }
-            .map { c =>
-              c.host -> Authentication(c.userName, c.passwd)
-            }
-            .toMap
-        }
-      else
-        Def.task(Map.empty[String, Authentication])
-    }
 
     Def.task {
       val projectName = thisProjectRef.value.project
@@ -141,39 +110,6 @@ object ResolutionTasks {
         .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
         .getOrElse(Map.empty)
 
-      def withAuthenticationByHost(repo: Repository, credentials: Map[String, Authentication]): Repository = {
-
-        def httpHost(s: String) =
-          if (s.startsWith("http://") || s.startsWith("https://"))
-            Try(Cache.url(s).getHost).toOption
-          else
-            None
-
-        repo match {
-          case m: MavenRepository =>
-            if (m.authentication.isEmpty)
-              httpHost(m.root).flatMap(credentials.get).fold(m) { auth =>
-                m.copy(authentication = Some(auth))
-              }
-            else
-              m
-          case i: IvyRepository =>
-            if (i.authentication.isEmpty) {
-              val base = i.pattern.chunks.takeWhile {
-                case _: coursier.ivy.Pattern.Chunk.Const => true
-                case _ => false
-              }.map(_.string).mkString
-
-              httpHost(base).flatMap(credentials.get).fold(i) { auth =>
-                i.copy(authentication = Some(auth))
-              }
-            } else
-              i
-          case _ =>
-            repo
-        }
-      }
-
       val mainRepositories = resolvers
         .flatMap { resolver =>
           FromSbt.repository(
@@ -204,7 +140,7 @@ object ResolutionTasks {
           parallelDownloads,
           projectName,
           maxIterations,
-          createLogger,
+          createLogger.create,
           cache,
           cachePolicies,
           ttl,
