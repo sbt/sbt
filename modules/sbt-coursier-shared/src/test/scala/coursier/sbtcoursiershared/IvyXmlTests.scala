@@ -1,4 +1,4 @@
-package coursier.sbtcoursier
+package coursier.sbtcoursiershared
 
 import coursier.core.Configuration
 import coursier.{Info, Module, Project, moduleNameString, organizationString}

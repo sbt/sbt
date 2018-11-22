@@ -40,5 +40,5 @@ updateSbtClassifiersCheck := {
 
   ensureHasArtifact("org.scala-lang", "scala-library")
   ensureHasArtifact("io.get-coursier", "coursier-core_" + scalaBinaryVersion.value)
-  ensureHasArtifact("io.get-coursier", "sbt-coursier")
+  ensureHasArtifact("io.get-coursier", "lm-coursier_" + scalaBinaryVersion.value)
 }

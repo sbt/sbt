@@ -1,20 +1,22 @@
-package coursier.sbtcoursier
+package coursier.sbtcoursiershared
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
 import coursier.core.{Configuration, Project}
 import org.apache.ivy.core.module.id.ModuleRevisionId
+import sbt.{Def, Setting, Task, TaskKey}
+import sbt.internal.librarymanagement.IvySbt
+import sbt.librarymanagement.PublishConfiguration
 
 import scala.collection.JavaConverters._
 import scala.xml.{Node, PrefixedAttribute}
-import sbt.internal.librarymanagement.IvySbt
 
 object IvyXml {
 
   def rawContent(
     currentProject: Project,
-    shadedConfigOpt: Option[(String, Configuration)]
+    shadedConfigOpt: Option[Configuration]
   ): String = {
 
     // Important: width = Int.MaxValue, so that no tag gets truncated.
@@ -26,15 +28,15 @@ object IvyXml {
     val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
 
     """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
-      printer.format(content(currentProject, shadedConfigOpt.map(_._2)))
+      printer.format(content(currentProject, shadedConfigOpt))
   }
 
   // These are required for publish to be fine, later on.
   def writeFiles(
     currentProject: Project,
-    shadedConfigOpt: Option[(String, Configuration)],
+    shadedConfigOpt: Option[Configuration],
     ivySbt: IvySbt,
-    log: sbt.Logger
+    log: sbt.util.Logger
   ): Unit = {
 
     val ivyCacheManager = ivySbt.withIvy(log)(ivy =>
@@ -152,5 +154,46 @@ object IvyXml {
       <dependencies>{dependencyElems}</dependencies>
     </ivy-module>
   }
+
+  def makeIvyXmlBefore[T](
+    task: TaskKey[T],
+    shadedConfigOpt: Option[Configuration]
+  ): Setting[Task[T]] =
+    task := task.dependsOn {
+      Def.taskDyn {
+        import SbtCoursierShared.autoImport._
+        val doGen = coursierGenerateIvyXml.value
+        if (doGen)
+          Def.task {
+            val currentProject = {
+              val proj = coursierProject.value
+              val publications = coursierPublications.value
+              proj.copy(publications = publications)
+            }
+            IvyXml.writeFiles(currentProject, shadedConfigOpt, sbt.Keys.ivySbt.value, sbt.Keys.streams.value.log)
+          }
+        else
+          Def.task(())
+      }
+    }.value
+
+  private lazy val needsIvyXmlLocal = Seq(sbt.Keys.publishLocalConfiguration) ++ getPubConf("makeIvyXmlLocalConfiguration")
+  private lazy val needsIvyXml = Seq(sbt.Keys.publishConfiguration) ++ getPubConf("makeIvyXmlConfiguration")
+
+  private[this] def getPubConf(method: String): List[TaskKey[PublishConfiguration]] =
+    try {
+      val cls = sbt.Keys.getClass
+      val m = cls.getMethod(method)
+      val task = m.invoke(sbt.Keys).asInstanceOf[TaskKey[PublishConfiguration]]
+      List(task)
+    } catch {
+      case _: Throwable => // FIXME Too wide
+        Nil
+    }
+
+  def generateIvyXmlSettings(
+    shadedConfigOpt: Option[Configuration] = None
+  ): Seq[Setting[_]] =
+    (needsIvyXml ++ needsIvyXmlLocal).map(IvyXml.makeIvyXmlBefore(_, shadedConfigOpt))
 
 }

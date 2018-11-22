@@ -94,14 +94,14 @@ object FromSbt {
     allDependencies: Seq[ModuleID],
     scalaVersion: String,
     scalaBinaryVersion: String
-  ): Seq[(Module, String, URL, Boolean)] =
+  ): Seq[FallbackDependency] =
     for {
       module <- allDependencies
       artifact <- module.explicitArtifacts
       url <- artifact.url.toSeq
     } yield {
       val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion)
-      (module0, version, url, module.isChanging)
+      FallbackDependency(module0, version, url, module.isChanging)
     }
 
   def sbtClassifiersProject(

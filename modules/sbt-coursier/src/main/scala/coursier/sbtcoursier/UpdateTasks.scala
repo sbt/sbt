@@ -3,6 +3,7 @@ package coursier.sbtcoursier
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
 import sbt.Keys._
 import sbt.librarymanagement.UpdateReport

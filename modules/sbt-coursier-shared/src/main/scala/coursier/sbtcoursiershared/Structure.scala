@@ -1,4 +1,4 @@
-package coursier.sbtcoursier
+package coursier.sbtcoursiershared
 
 import sbt._
 

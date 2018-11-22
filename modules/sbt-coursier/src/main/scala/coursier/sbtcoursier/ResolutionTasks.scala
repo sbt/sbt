@@ -9,6 +9,7 @@ import coursier.ivy.IvyRepository
 import coursier.lmcoursier._
 import coursier.maven.MavenRepository
 import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
 import sbt.Keys._
 
@@ -20,7 +21,7 @@ object ResolutionTasks {
     sbtClassifiers: Boolean = false
   ): Def.Initialize[sbt.Task[Map[Set[Configuration], coursier.Resolution]]] = {
 
-    val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[(Module, String, URL, Boolean)], Seq[Set[Configuration]])]] =
+    val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[FallbackDependency], Seq[Set[Configuration]])]] =
       if (sbtClassifiers)
         Def.task {
           val sv = scalaVersion.value

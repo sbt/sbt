@@ -1,7 +1,5 @@
 package coursier.lmcoursier
 
-import java.io.File
-
 import coursier.core.Resolution.ModuleVersion
 import coursier.core._
 import coursier.util.Print
@@ -9,35 +7,6 @@ import sbt.librarymanagement.UpdateReport
 import sbt.util.Logger
 
 object UpdateRun {
-
-  private def artifactFileOpt(
-    sbtBootJarOverrides: Map[(Module, String), File],
-    artifactFiles: Map[Artifact, File],
-    erroredArtifacts: Set[Artifact]
-  )(
-    module: Module,
-    version: String,
-    attributes: Attributes,
-    artifact: Artifact
-  ): Option[File] = {
-
-    // Under some conditions, SBT puts the scala JARs of its own classpath
-    // in the application classpath. Ensuring we return SBT's jars rather than
-    // JARs from the coursier cache, so that a same JAR doesn't land twice in the
-    // application classpath (once via SBT jars, once via coursier cache).
-    val fromBootJars =
-      if (attributes.classifier.isEmpty && attributes.`type` == Type.jar)
-        sbtBootJarOverrides.get((module, version))
-      else
-        None
-
-    val res = fromBootJars.orElse(artifactFiles.get(artifact))
-
-    if (res.isEmpty && !erroredArtifacts(artifact))
-      sys.error(s"${artifact.url} not downloaded (should not happen)")
-
-    res
-  }
 
   // Move back to coursier.util (in core module) after 1.0?
   private def allDependenciesByConfig(
@@ -114,11 +83,6 @@ object UpdateRun {
       log.info(repr.split('\n').map("  " + _).mkString("\n"))
     }
 
-    val artifactFiles = params.artifacts.collect {
-      case (artifact, Right(file)) =>
-        artifact -> file
-    }
-
     val artifactErrors = params
       .artifacts
       .toVector
@@ -127,26 +91,13 @@ object UpdateRun {
           a -> err
       }
 
-    // can be non empty only if ignoreArtifactErrors is true or some optional artifacts are not found
-    val erroredArtifacts = params
-      .artifacts
-      .collect {
-        case (artifact, Left(_)) =>
-          artifact
-      }
-      .toSet
-
     def report =
       ToSbt.updateReport(
         depsByConfig,
         configResolutions,
         params.configs,
         params.classifiers,
-        artifactFileOpt(
-          params.sbtBootJarOverrides,
-          artifactFiles,
-          erroredArtifacts
-        ),
+        params.artifactFileOpt,
         log,
         includeSignatures = params.includeSignatures
       )

@@ -4,8 +4,7 @@ import java.io.OutputStreamWriter
 
 import coursier.{Cache, CachePolicy, TermDisplay}
 import coursier.core.{Configuration, ResolutionProcess}
-import coursier.lmcoursier.SbtCoursierCache
-import sbt.librarymanagement.{Configuration => _, Resolver => _, _}
+import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{Cache => _, Configuration => _, _}
 import sbt.Keys._
 
@@ -13,7 +12,7 @@ object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 
-  override def requires = sbt.plugins.JvmPlugin
+  override def requires = SbtCoursierShared
 
   object autoImport {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
@@ -22,21 +21,12 @@ object CoursierPlugin extends AutoPlugin {
     val coursierArtifactsChecksums = Keys.coursierArtifactsChecksums
     val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierTtl = Keys.coursierTtl
-    val coursierKeepPreloaded = Keys.coursierKeepPreloaded
     val coursierVerbosity = Keys.coursierVerbosity
     val mavenProfiles = Keys.mavenProfiles
-    val coursierResolvers = Keys.coursierResolvers
-    val coursierReorderResolvers = Keys.coursierReorderResolvers
-    val coursierRecursiveResolvers = Keys.coursierRecursiveResolvers
-    val coursierSbtResolvers = Keys.coursierSbtResolvers
     val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
     val coursierCredentials = Keys.coursierCredentials
-    val coursierFallbackDependencies = Keys.coursierFallbackDependencies
     val coursierCache = Keys.coursierCache
-    val coursierProject = Keys.coursierProject
     val coursierConfigGraphs = Keys.coursierConfigGraphs
-    val coursierInterProjectDependencies = Keys.coursierInterProjectDependencies
-    val coursierPublications = Keys.coursierPublications
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
 
     val coursierConfigurations = Keys.coursierConfigurations
@@ -78,21 +68,6 @@ object CoursierPlugin extends AutoPlugin {
       DisplayTasks.coursierWhatDependsOnTask(input)
     }.evaluated
   )
-
-  def makeIvyXmlBefore[T](
-    task: TaskKey[T],
-    shadedConfigOpt: Option[(String, Configuration)]
-  ): Setting[Task[T]] =
-    task := task.dependsOn(Def.task {
-      val currentProject = {
-        val proj = coursierProject.value
-        val publications = coursierPublications.value
-        proj.copy(publications = publications)
-      }
-      IvyXml.writeFiles(currentProject, shadedConfigOpt, ivySbt.value, streams.value.log)
-    }).value
-
-  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
   // allows to get the actual repo list when sbt starts up
   private val hackHack = Seq(
@@ -162,47 +137,8 @@ object CoursierPlugin extends AutoPlugin {
   )
 
   def coursierSettings(
-    shadedConfigOpt: Option[(String, Configuration)],
-    packageConfigs: Seq[(sbt.Configuration, Configuration)]
-  ) = hackHack ++ Seq(
-    clean := {
-      val noWarningPlz = clean.value
-      SbtCoursierCache.default.clear()
-    },
-    coursierResolvers := RepositoriesTasks.coursierResolversTask.value,
-    coursierRecursiveResolvers := RepositoriesTasks.coursierRecursiveResolversTask.value,
-    coursierSbtResolvers := {
-
-      // TODO Add docker-based integration test for that, see https://github.com/coursier/coursier/issues/632
-
-      val resolvers =
-        sbt.Classpaths.bootRepositories(appConfiguration.value).toSeq.flatten ++ // required because of the hack above it seems
-          externalResolvers.in(updateSbtClassifiers).value
-
-      val pluginIvySnapshotsFound = resolvers.exists {
-        case repo: URLRepository =>
-          repo
-            .patterns
-            .artifactPatterns
-            .headOption
-            .exists(_.startsWith(pluginIvySnapshotsBase))
-        case _ => false
-      }
-
-      val resolvers0 =
-        if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
-          resolvers :+ Classpaths.sbtPluginReleases
-        else
-          resolvers
-
-      if (coursierKeepPreloaded.value)
-        resolvers0
-      else
-        resolvers0.filter { r =>
-          !r.name.startsWith("local-preloaded")
-        }
-    },
-    coursierFallbackDependencies := InputsTasks.coursierFallbackDependenciesTask.value,
+    shadedConfigOpt: Option[(String, Configuration)] = None
+  ): Seq[Setting[_]] = hackHack ++ Seq(
     coursierArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false).value,
     coursierSignedArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false, includeSignatures = true).value,
     coursierClassifiersArtifacts := ArtifactsTasks.artifactsTask(
@@ -227,10 +163,7 @@ object CoursierPlugin extends AutoPlugin {
       sbtClassifiers = true,
       ignoreArtifactErrors = true
     ).value,
-    coursierProject := InputsTasks.coursierProjectTask.value,
     coursierConfigGraphs := InputsTasks.ivyGraphsTask.value,
-    coursierInterProjectDependencies := InputsTasks.coursierInterProjectDependenciesTask.value,
-    coursierPublications := ArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value,
     coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
     coursierConfigurations := InputsTasks.coursierConfigurationsTask(None).value,
     coursierParentProjectCache := InputsTasks.parentProjectCacheTask.value,
@@ -251,51 +184,8 @@ object CoursierPlugin extends AutoPlugin {
     },
     coursierSbtClassifiersResolution := ResolutionTasks.resolutionsTask(
       sbtClassifiers = true
-    ).value.head._2,
-    ivyConfigurations := {
-      val confs = ivyConfigurations.value
-      val names = confs.map(_.name).toSet
-
-      // Yes, adding those back in sbt 1.0. Can't distinguish between config test (whose jars with classifier tests ought to
-      // be added), and sources / docs else (if their JARs are in compile, they would get added too then).
-
-      val extraSources =
-        if (names("sources"))
-          None
-        else
-          Some(
-            sbt.Configuration.of(
-              id = "Sources",
-              name = "sources",
-              description = "",
-              isPublic = true,
-              extendsConfigs = Vector.empty,
-              transitive = false
-            )
-          )
-
-      val extraDocs =
-        if (names("docs"))
-          None
-        else
-          Some(
-            sbt.Configuration.of(
-              id = "Docs",
-              name = "docs",
-              description = "",
-              isPublic = true,
-              extendsConfigs = Vector.empty,
-              transitive = false
-            )
-          )
-
-      confs ++ extraSources.toSeq ++ extraDocs.toSeq
-    },
-    // Tests artifacts from Maven repositories are given this type.
-    // Adding it here so that these work straightaway.
-    classpathTypes += "test-jar"
-  ) ++
-    (needsIvyXml ++ needsIvyXmlLocal).map(makeIvyXmlBefore(_, shadedConfigOpt))
+    ).value.head._2
+  )
 
   override lazy val buildSettings = super.buildSettings ++ Seq(
     coursierParallelDownloads := 6,
@@ -309,28 +199,11 @@ object CoursierPlugin extends AutoPlugin {
     coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
     coursierCache := Cache.default,
-    coursierReorderResolvers := true,
-    coursierKeepPreloaded := false,
     coursierCreateLogger := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
   )
 
-  override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> Configuration(c.name))) ++
+  override lazy val projectSettings = coursierSettings() ++
     inConfig(Compile)(treeSettings) ++
     inConfig(Test)(treeSettings)
-
-
-  private lazy val needsIvyXmlLocal = Seq(publishLocalConfiguration) ++ getPubConf("makeIvyXmlLocalConfiguration")
-  private lazy val needsIvyXml = Seq(publishConfiguration) ++ getPubConf("makeIvyXmlConfiguration")
-
-  private[this] def getPubConf(method: String): List[TaskKey[PublishConfiguration]] =
-    try {
-      val cls = Keys.getClass
-      val m = cls.getMethod(method)
-      val task = m.invoke(Keys).asInstanceOf[TaskKey[PublishConfiguration]]
-      List(task)
-    } catch {
-      case _: Throwable => // FIXME Too wide
-        Nil
-    }
 
 }

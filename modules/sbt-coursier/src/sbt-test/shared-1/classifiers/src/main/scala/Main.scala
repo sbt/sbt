@@ -11,7 +11,8 @@ object Main extends App {
       .loadClass(clsName)
   ).toOption.nonEmpty
 
-  val classifierTest = classFound("org.jclouds.openstack.nova.functions.ParseServerFromJsonResponseTest")
+  val name = "org.jclouds.openstack.nova.functions.ParseServerFromJsonResponseTest"
+  val classifierTest = classFound(name)
 
-  assert(classifierTest, s"Couldn't find classifierTest")
+  assert(classifierTest, s"Couldn't find $name")
 }

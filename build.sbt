@@ -19,7 +19,7 @@ val coursierVersion = "1.1.0-M8"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -40,10 +40,20 @@ lazy val `lm-coursier` = project
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats
   )
 
+lazy val `sbt-coursier-shared` = project
+  .in(file("modules/sbt-coursier-shared"))
+  .enablePlugins(ScriptedPlugin)
+  .dependsOn(`lm-coursier`)
+  .settings(
+    plugin,
+    libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
+    testFrameworks += new TestFramework("utest.runner.Framework")
+  )
+
 lazy val `sbt-lm-coursier` = project
   .in(file("modules/sbt-lm-coursier"))
   .enablePlugins(ScriptedPlugin)
-  .dependsOn(`lm-coursier`)
+  .dependsOn(`sbt-coursier-shared`)
   .settings(
     plugin,
     sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
@@ -53,17 +63,16 @@ lazy val `sbt-lm-coursier` = project
       // TODO Get those automatically
       // (but shouldn't scripted itself handle that…?)
        publishLocal.in(`lm-coursier`).value
+       publishLocal.in(`sbt-coursier-shared`).value
      }
    )
 
 lazy val `sbt-coursier` = project
   .in(file("modules/sbt-coursier"))
   .enablePlugins(ScriptedPlugin)
-  .dependsOn(`lm-coursier`)
+  .dependsOn(`sbt-coursier-shared`)
   .settings(
     plugin,
-    libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
-    testFrameworks += new TestFramework("utest.runner.Framework"),
     libraryDependencies +="io.get-coursier" %% "coursier-scalaz-interop" % coursierVersion,
     scriptedDependencies := {
       scriptedDependencies.value
@@ -71,6 +80,7 @@ lazy val `sbt-coursier` = project
       // TODO Get dependency projects automatically
       // (but shouldn't scripted itself handle that…?)
       publishLocal.in(`lm-coursier`).value
+      publishLocal.in(`sbt-coursier-shared`).value
     }
   )
 
@@ -120,6 +130,7 @@ lazy val `sbt-coursier-root` = project
   .aggregate(
     `lm-coursier`,
     `sbt-coursier`,
+    `sbt-coursier-shared`,
     `sbt-lm-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`

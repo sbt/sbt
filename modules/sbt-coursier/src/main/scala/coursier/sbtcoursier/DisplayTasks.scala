@@ -3,6 +3,7 @@ package coursier.sbtcoursier
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.util.Print.Colors
 import coursier.util.{Parse, Print}
 import sbt.Def

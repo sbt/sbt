@@ -2,11 +2,9 @@ scalaVersion := "2.11.8"
 
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.41" from {
   
-  val f = file(sys.props("sbttest.base")) / "sbt-coursier-group-1" / "from" / "shapeless_2.11-2.3.0.jar"
+  val f = file("shapeless_2.11-2.3.0.jar")
 
   if (!f.exists()) {
-    f.getParentFile.mkdirs()
-
     val url0 = "https://repo1.maven.org/maven2/com/chuusai/shapeless_2.11/2.3.0/shapeless_2.11-2.3.0.jar"
 
     sLog.value.warn(s"Fetching $url0")

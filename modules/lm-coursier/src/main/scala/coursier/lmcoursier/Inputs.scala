@@ -88,6 +88,34 @@ object Inputs {
     sets.values.toVector.distinct.map(_.set.toSet)
   }
 
+  def exclusions(
+    excludeDeps: Seq[InclExclRule],
+    sv: String,
+    sbv: String,
+    log: Logger
+  ): Set[(Organization, ModuleName)] = {
+
+    var anyNonSupportedExclusionRule = false
+
+    val res = excludeDeps
+      .flatMap { rule =>
+        if (rule.artifact != "*" || rule.configurations.nonEmpty) {
+          log.warn(s"Unsupported exclusion rule $rule")
+          anyNonSupportedExclusionRule = true
+          Nil
+        } else
+          Seq(
+            (Organization(rule.organization), ModuleName(FromSbt.sbtCrossVersionName(rule.name, rule.crossVersion, sv, sbv)))
+          )
+      }
+      .toSet
+
+    if (anyNonSupportedExclusionRule)
+      log.warn("Only supported exclusion rule fields: organization, name")
+
+    res
+  }
+
   def coursierProject(
     projId: ModuleID,
     dependencies: Seq[ModuleID],
@@ -98,28 +126,7 @@ object Inputs {
     log: Logger
   ): Project = {
 
-    val exclusions = {
-
-      var anyNonSupportedExclusionRule = false
-
-      val res = excludeDeps
-        .flatMap { rule =>
-          if (rule.artifact != "*" || rule.configurations.nonEmpty) {
-            log.warn(s"Unsupported exclusion rule $rule")
-            anyNonSupportedExclusionRule = true
-            Nil
-          } else
-            Seq(
-              (Organization(rule.organization), ModuleName(FromSbt.sbtCrossVersionName(rule.name, rule.crossVersion, sv, sbv)))
-            )
-        }
-        .toSet
-
-      if (anyNonSupportedExclusionRule)
-        log.warn("Only supported exclusion rule fields: organization, name")
-
-      res
-    }
+    val exclusions0 = exclusions(excludeDeps, sv, sbv, log)
 
     val configMap = configExtends(configurations)
 
@@ -134,7 +141,7 @@ object Inputs {
     proj.copy(
       dependencies = proj.dependencies.map {
         case (config, dep) =>
-          (config, dep.copy(exclusions = dep.exclusions ++ exclusions))
+          (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
       }
     )
   }
