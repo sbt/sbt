@@ -6,7 +6,7 @@ import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
@@ -63,10 +63,12 @@ object LmCoursierPlugin extends AutoPlugin {
           Def.task(None)
       Def.task {
         val rs = resolversTask.value
+        val scalaOrg = scalaOrganization.value
+        val scalaVer = scalaVersion.value
         val interProjectDependencies = coursierInterProjectDependencies.value
         val excludeDeps = Inputs.exclusions(
           excludeDependencies.value,
-          scalaVersion.value,
+          scalaVer,
           scalaBinaryVersion.value,
           streams.value.log
         )
@@ -101,6 +103,8 @@ object LmCoursierPlugin extends AutoPlugin {
           .withClassifiers(classifiers.toVector.flatten.map(_.value))
           .withHasClassifiers(classifiers.nonEmpty)
           .withMavenProfiles(profiles.toVector.sorted)
+          .withScalaOrganization(scalaOrg)
+          .withScalaVersion(scalaVer)
           .withLog(s.log)
       }
     }

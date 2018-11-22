@@ -96,6 +96,18 @@
           "type": "String*",
           "default": "Vector.empty",
           "since": "0.0.1"
+        },
+        {
+          "name": "scalaOrganization",
+          "type": "String?",
+          "default": "None",
+          "since": "0.0.1"
+        },
+        {
+          "name": "scalaVersion",
+          "type": "String?",
+          "default": "None",
+          "since": "0.0.1"
         }
       ]
     }
