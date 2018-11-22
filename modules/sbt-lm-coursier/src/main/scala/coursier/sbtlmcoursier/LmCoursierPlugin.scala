@@ -72,6 +72,7 @@ object LmCoursierPlugin extends AutoPlugin {
         )
         val fallbackDeps = coursierFallbackDependencies.value
         val autoScalaLib = autoScalaLibrary.value
+        val profiles = mavenProfiles.value
 
         val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
         val sbtBootJars = internalSbtScalaProvider.jars()
@@ -99,6 +100,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withSbtScalaOrganization(sbtScalaOrganization)
           .withClassifiers(classifiers.toVector.flatten.map(_.value))
           .withHasClassifiers(classifiers.nonEmpty)
+          .withMavenProfiles(profiles.toVector.sorted)
           .withLog(s.log)
       }
     }

@@ -90,6 +90,12 @@
           "type": "String*",
           "default": "Vector.empty",
           "since": "0.0.1"
+        },
+        {
+          "name": "mavenProfiles",
+          "type": "String*",
+          "default": "Vector.empty",
+          "since": "0.0.1"
         }
       ]
     }

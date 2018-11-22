@@ -27,6 +27,8 @@ object SbtCoursierShared extends AutoPlugin {
     val coursierSbtResolvers = taskKey[Seq[Resolver]]("")
 
     val coursierFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
+
+    val mavenProfiles = settingKey[Set[String]]("")
   }
 
   import autoImport._
@@ -136,7 +138,8 @@ object SbtCoursierShared extends AutoPlugin {
             )
 
         confs ++ extraSources.toSeq ++ extraDocs.toSeq
-      }
+      },
+      mavenProfiles := Set.empty
     ) ++ {
       if (pubSettings)
         IvyXml.generateIvyXmlSettings()

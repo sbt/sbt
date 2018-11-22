@@ -131,7 +131,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       parentProjectCache = Map.empty,
       interProjectDependencies = conf.interProjectDependencies,
       internalRepositories = internalRepositories,
-      userEnabledProfiles = Set.empty,
+      userEnabledProfiles = conf.mavenProfiles.toSet,
       userForceVersions = Map.empty,
       typelevel = false,
       so = so,

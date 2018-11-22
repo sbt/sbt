@@ -22,7 +22,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierTtl = Keys.coursierTtl
     val coursierVerbosity = Keys.coursierVerbosity
-    val mavenProfiles = Keys.mavenProfiles
     val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
     val coursierCredentials = Keys.coursierCredentials
     val coursierCache = Keys.coursierCache
@@ -195,7 +194,6 @@ object CoursierPlugin extends AutoPlugin {
     coursierCachePolicies := CachePolicy.default,
     coursierTtl := Cache.defaultTtl,
     coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
-    mavenProfiles := Set.empty,
     coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
     coursierCache := Cache.default,
