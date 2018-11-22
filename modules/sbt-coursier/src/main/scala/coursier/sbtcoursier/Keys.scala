@@ -21,9 +21,6 @@ object Keys {
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
 
-  val coursierUseSbtCredentials = SettingKey[Boolean]("coursier-use-sbt-credentials")
-  val coursierCredentials = TaskKey[Map[String, Credentials]]("coursier-credentials")
-
   val coursierCache = SettingKey[File]("coursier-cache")
 
   val coursierConfigGraphs = TaskKey[Seq[Set[Configuration]]]("coursier-config-graphs")

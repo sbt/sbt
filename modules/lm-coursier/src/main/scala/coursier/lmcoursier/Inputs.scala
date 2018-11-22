@@ -1,10 +1,14 @@
 package coursier.lmcoursier
 
-import coursier.core.{Configuration, ModuleName, Organization, Project}
+import coursier.Cache
+import coursier.core._
+import coursier.ivy.IvyRepository
+import coursier.maven.MavenRepository
 import sbt.librarymanagement.{InclExclRule, ModuleID}
 import sbt.util.Logger
 
 import scala.collection.mutable
+import scala.util.Try
 
 object Inputs {
 
@@ -144,6 +148,39 @@ object Inputs {
           (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
       }
     )
+  }
+
+  def withAuthenticationByHost(repo: Repository, credentials: Map[String, Authentication]): Repository = {
+
+    def httpHost(s: String) =
+      if (s.startsWith("http://") || s.startsWith("https://"))
+        Try(Cache.url(s).getHost).toOption
+      else
+        None
+
+    repo match {
+      case m: MavenRepository =>
+        if (m.authentication.isEmpty)
+          httpHost(m.root).flatMap(credentials.get).fold(m) { auth =>
+            m.copy(authentication = Some(auth))
+          }
+        else
+          m
+      case i: IvyRepository =>
+        if (i.authentication.isEmpty) {
+          val base = i.pattern.chunks.takeWhile {
+            case _: coursier.ivy.Pattern.Chunk.Const => true
+            case _ => false
+          }.map(_.string).mkString
+
+          httpHost(base).flatMap(credentials.get).fold(i) { auth =>
+            i.copy(authentication = Some(auth))
+          }
+        } else
+          i
+      case _ =>
+        repo
+    }
   }
 
 }

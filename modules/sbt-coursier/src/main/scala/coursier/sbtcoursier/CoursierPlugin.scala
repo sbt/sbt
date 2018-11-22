@@ -22,8 +22,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierTtl = Keys.coursierTtl
     val coursierVerbosity = Keys.coursierVerbosity
-    val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
-    val coursierCredentials = Keys.coursierCredentials
     val coursierCache = Keys.coursierCache
     val coursierConfigGraphs = Keys.coursierConfigGraphs
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
@@ -194,8 +192,6 @@ object CoursierPlugin extends AutoPlugin {
     coursierCachePolicies := CachePolicy.default,
     coursierTtl := Cache.defaultTtl,
     coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
-    coursierUseSbtCredentials := true,
-    coursierCredentials := Map.empty,
     coursierCache := Cache.default,
     coursierCreateLogger := { () => new TermDisplay(new OutputStreamWriter(System.err)) }
   )

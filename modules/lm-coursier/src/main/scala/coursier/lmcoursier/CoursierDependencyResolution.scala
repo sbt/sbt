@@ -4,8 +4,9 @@ import java.io.{File, OutputStreamWriter}
 
 import _root_.coursier.{Artifact, Cache, CachePolicy, FileError, Organization, Resolution, TermDisplay, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
+import _root_.coursier.extra.Typelevel
 import _root_.coursier.ivy.IvyRepository
-import coursier.extra.Typelevel
+import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
 import sbt.util.Logger
@@ -84,15 +85,18 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       else
         None
 
+    val authenticationByRepositoryId = conf.authenticationByRepositoryId.toMap
+
     val mainRepositories = resolvers
       .flatMap { resolver =>
         FromSbt.repository(
           resolver,
           ivyProperties,
           log,
-          None // FIXME What about authentication?
+          authenticationByRepositoryId.get(resolver.name)
         )
       }
+      .map(withAuthenticationByHost(_, conf.authenticationByHost.toMap))
 
     val globalPluginsRepos =
       for (p <- ResolutionParams.globalPluginPatterns(sbtBinaryVersion))

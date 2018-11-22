@@ -1,5 +1,6 @@
 package coursier.sbtcoursiershared
 
+import coursier.Credentials
 import coursier.core.{Configuration, Project, Publication}
 import coursier.lmcoursier.{FallbackDependency, SbtCoursierCache}
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
@@ -29,6 +30,9 @@ object SbtCoursierShared extends AutoPlugin {
     val coursierFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
 
     val mavenProfiles = settingKey[Set[String]]("")
+
+    val coursierUseSbtCredentials = settingKey[Boolean]("")
+    val coursierCredentials = taskKey[Map[String, Credentials]]("")
   }
 
   import autoImport._
@@ -39,7 +43,9 @@ object SbtCoursierShared extends AutoPlugin {
   override def buildSettings: Seq[Setting[_]] =
     Seq(
       coursierReorderResolvers := true,
-      coursierKeepPreloaded := false
+      coursierKeepPreloaded := false,
+      coursierUseSbtCredentials := true,
+      coursierCredentials := Map.empty
     )
 
   private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"

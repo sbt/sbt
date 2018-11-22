@@ -108,6 +108,18 @@
           "type": "String?",
           "default": "None",
           "since": "0.0.1"
+        },
+        {
+          "name": "authenticationByRepositoryId",
+          "type": "(String, coursier.core.Authentication)*",
+          "default": "Vector.empty",
+          "since": "0.0.1"
+        },
+        {
+          "name": "authenticationByHost",
+          "type": "(String, coursier.core.Authentication)*",
+          "default": "Vector.empty",
+          "since": "0.0.1"
         }
       ]
     }
