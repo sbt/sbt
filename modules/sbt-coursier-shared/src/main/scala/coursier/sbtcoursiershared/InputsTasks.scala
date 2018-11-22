@@ -1,7 +1,5 @@
 package coursier.sbtcoursiershared
 
-import java.net.URL
-
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
