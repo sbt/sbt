@@ -53,7 +53,11 @@ final class ScriptedTests(
   ): Seq[TestRunner] = {
 
     // Test group and names may be file filters (like '*')
-    for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
+    for {
+      groupDir <- (resourceBaseDirectory * group).get
+      nme <- (groupDir * name).get
+      if !(nme.isFile)
+    } yield {
       val g = groupDir.getName
       val n = nme.getName
       val label = s"$g / $n"
@@ -110,7 +114,7 @@ final class ScriptedTests(
 
     type TestInfo = ((String, String), File)
 
-    val labelsAndDirs = groupAndNameDirs.map {
+    val labelsAndDirs = groupAndNameDirs.filterNot(_._2.isFile).map {
       case (groupDir, nameDir) =>
         val groupName = groupDir.getName
         val testName = nameDir.getName
