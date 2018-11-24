@@ -62,13 +62,21 @@ class CrossJavaTest extends Specification {
   }
 
   "The JAVA_HOME selector" should {
-    "correctly pick up a JDK " in {
+    "correctly pick up a JDK" in {
       val conf = new JavaHomeDiscoverConfig {
         override def home() = Some("/opt/jdk8")
       }
       val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
       version must equalTo("8")
       file.getName must be equalTo ("jdk8")
+    }
+    "correctly pick up an Oracle JDK" in {
+      val conf = new JavaHomeDiscoverConfig {
+        override def home() = Some("/opt/oracle-jdk-bin-1.8.0.181")
+      }
+      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+      version must equalTo("1.8")
+      file.getName must be equalTo ("oracle-jdk-bin-1.8.0.181")
     }
   }
 }
