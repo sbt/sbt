@@ -1,0 +1,7 @@
+> set Test / layeringStrategy := LayeringStrategy.Full
+
+> run
+
+> test
+
+> test

@@ -1,0 +1,6 @@
+> copyTestResources 1
+> wrappedRun
+> wrappedTest
+> copyTestResources 2
+$ copy-file changes/JniLibraryTest.scala src/test/scala/sbt/JniLibraryTest.scala
+> wrappedTest
