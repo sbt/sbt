@@ -7,6 +7,10 @@
 
 package sbt.internal
 
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.collection.JavaConverters._
+
 /**
  * Represents an abstract cache of values, accessible by a key. The interface is deliberately
  * minimal to give maximum flexibility to the implementation classes. For example, one can construct
@@ -31,4 +35,24 @@ package sbt.internal
  */
 trait Repository[M[_], K, V] extends AutoCloseable {
   def get(key: K): M[V]
+}
+
+private[sbt] final class MutableRepository[K, V] extends Repository[Option, K, V] {
+  private[this] val map = new ConcurrentHashMap[K, V].asScala
+  override def get(key: K): Option[V] = map.get(key)
+  def put(key: K, value: V): Unit = this.synchronized {
+    map.put(key, value)
+    ()
+  }
+  def remove(key: K): Unit = this.synchronized {
+    map.remove(key)
+    ()
+  }
+  override def close(): Unit = this.synchronized {
+    map.foreach {
+      case (_, v: AutoCloseable) => v.close()
+      case _                     =>
+    }
+    map.clear()
+  }
 }

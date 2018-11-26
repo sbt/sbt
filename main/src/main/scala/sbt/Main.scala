@@ -214,7 +214,7 @@ object BuiltinCommands {
       BasicCommands.multi,
       act,
       continuous,
-      flushFileTreeRepository
+      clearCaches
     ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
@@ -830,7 +830,7 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
-    registerGlobalFileRepository(Project.setProject(session, structure, s))
+    registerGlobalCaches(Project.setProject(session, structure, s))
   }
 
   def registerCompilerCache(s: State): State = {
@@ -848,26 +848,31 @@ object BuiltinCommands {
       }
     s.put(Keys.stateCompilerCache, cache)
   }
-  def registerGlobalFileRepository(s: State): State = {
+  private[sbt] def registerGlobalCaches(s: State): State = {
     val extracted = Project.extract(s)
     try {
-      val (_, config: FileTreeViewConfig) = extracted.runTask(Keys.fileTreeViewConfig, s)
-      val view: FileTreeDataView[StampedFile] = config.newDataView()
-      val newState = s.addExitHook {
+      def cleanup(): Unit = {
         s.get(BasicKeys.globalFileTreeView).foreach(_.close())
         s.attributes.remove(BasicKeys.globalFileTreeView)
+        s.get(Keys.taskRepository).foreach(_.close())
+        s.attributes.remove(Keys.taskRepository)
         ()
       }
-      newState.get(BasicKeys.globalFileTreeView).foreach(_.close())
-      newState.put(BasicKeys.globalFileTreeView, view)
+      val (_, config: FileTreeViewConfig) = extracted.runTask(Keys.fileTreeViewConfig, s)
+      val view: FileTreeDataView[StampedFile] = config.newDataView()
+      val newState = s.addExitHook(cleanup())
+      cleanup()
+      newState
+        .put(BasicKeys.globalFileTreeView, view)
+        .put(Keys.taskRepository, new TaskRepository.Repr)
     } catch {
       case NonFatal(_) => s
     }
   }
 
-  def flushFileTreeRepository: Command = {
-    val help = Help.more(FlushFileTreeRepository, FlushDetailed)
-    Command.command(FlushFileTreeRepository, help)(registerGlobalFileRepository)
+  def clearCaches: Command = {
+    val help = Help.more(ClearCaches, ClearCachesDetailed)
+    Command.command(ClearCaches, help)(registerGlobalCaches)
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>

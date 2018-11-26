@@ -142,7 +142,8 @@ object Defaults extends BuildCommon {
       excludeFilter :== HiddenFileFilter,
       classLoaderCache := ClassLoaderCache(4),
       layeringStrategy := LayeringStrategy.Default
-    ) ++ globalIvyCore ++ globalJvmCore
+    ) ++ TaskRepository
+      .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
 
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
@@ -1770,16 +1771,18 @@ object Defaults extends BuildCommon {
       Classpaths.addUnmanagedLibrary
 
   // We need a cache of size two for the test dependency layers (regular and snapshot).
-  lazy val testSettings
-    : Seq[Setting[_]] = configSettings ++ testTasks :+ (classLoaderCache := ClassLoaderCache(2))
+  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++ TaskRepository.proxy(
+    classLoaderCache,
+    ClassLoaderCache(2)
+  )
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
   lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++
     inConfig(Test)(testSettings) ++ inConfig(Runtime)(
     // We need a cache of size four so that the subset of the runtime dependencies that are used
-    // by the test task layers may be cached without evicting the runtime classloader layres. The
+    // by the test task layers may be cached without evicting the runtime classloader layers. The
     // cache size should be a multiple of two to support snapshot layers.
-    Classpaths.configSettings :+ (classLoaderCache := ClassLoaderCache(4))
+    Classpaths.configSettings ++ TaskRepository.proxy(classLoaderCache, ClassLoaderCache(4)),
   )
 
   // These are project level settings that MUST be on every project.
