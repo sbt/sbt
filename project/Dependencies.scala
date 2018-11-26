@@ -35,7 +35,7 @@ object Dependencies {
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
-  val jline = "jline" % "jline" % "2.14.4"
+  val jline = "jline" % "jline" % "2.14.6"
 
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
@@ -54,10 +54,10 @@ object Dependencies {
     "com.eed3si9n" %% "sjson-new-murmurhash" % contrabandSjsonNewVersion.value
   }
 
-  def log4jVersion = "2.8.1"
+  def log4jVersion = "2.11.1"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
-  val disruptor = "com.lmax" % "disruptor" % "3.3.6"
+  val disruptor = "com.lmax" % "disruptor" % "3.4.2"
   val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.2"
   val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.2" % Provided
 }
