@@ -44,10 +44,6 @@ env:
     - SBT_CMD="scripted tests/* watch/*"
     - SBT_CMD="repoOverrideTest:scripted dependency-management/*"
 
-notifications:
-  email:
-    - sbt-dev-bot@googlegroups.com
-
 # Undo _JAVA_OPTIONS environment variable
 before_script:
   - unset _JAVA_OPTIONS
