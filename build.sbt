@@ -162,6 +162,7 @@ lazy val lmCore = (project in file("core"))
       // there are no call sites in bytecode because the value got inlined
       // also it's wouldn't work so I doubt anyone has made use of it
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.CrossVersionFunctions.Disabled"),
+      exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.CrossVersionFunctions.Disabled"),
 
       // contraband issue
       exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ConfigurationReportLite.copy*"),
