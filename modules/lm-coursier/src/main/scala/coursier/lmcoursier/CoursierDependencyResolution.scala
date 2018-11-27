@@ -13,6 +13,12 @@ import sbt.util.Logger
 
 class CoursierDependencyResolution(conf: CoursierConfiguration) extends DependencyResolutionInterface {
 
+  /*
+   * Based on earlier implementations by @leonardehrenfried (https://github.com/sbt/librarymanagement/pull/190)
+   * and @andreaTP (https://github.com/sbt/librarymanagement/pull/270), then adapted to the code from the former
+   * sbt-coursier, that was moved to this module.
+   */
+
   private def sbtBinaryVersion = "1.0"
 
   lazy val resolvers =
