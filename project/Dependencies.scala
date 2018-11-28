@@ -119,7 +119,7 @@ object Dependencies {
   }
 
   val jline = "jline" % "jline" % "2.14.6"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.6-SNAP5"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"
