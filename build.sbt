@@ -50,7 +50,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
-  publishPomSettings ++ Release.javaVersionCheckSettings
+  publishPomSettings
 
 def baseSettings: Seq[Setting[_]] =
   minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
