@@ -21,7 +21,7 @@ object SemanticdbPlugin extends AutoPlugin {
     semanticdbEnabled := false,
     semanticdbIncludeInJar := false,
     semanticdbOptions := List("-Yrangepos"),
-    semanticdbVersion := "4.0.0",
+    semanticdbVersion := "4.1.0",
     semanticdbCompilerPlugin := {
       val v = semanticdbVersion.value
       ("org.scalameta" % "semanticdb-scalac" % v).cross(CrossVersion.full)
