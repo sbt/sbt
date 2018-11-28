@@ -2,30 +2,11 @@ sudo: false
 dist: trusty
 group: stable
 
-cache:
-  directories:
-    - $HOME/.ivy2/cache
-    - $HOME/.sbt/boot
-    - $HOME/.jabba
-
 language: scala
-
-jdk:
-  - oraclejdk8
-
-matrix:
-  fast_finish: true
-
-matrix:
-  include:
-  - env: SBT_CMD="scripted java/*"
-    before_install:
-      - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
-    install:
-      - /home/travis/.jabba/bin/jabba install openjdk@1.10
 
 env:
   global:
+    - TRAVIS_JDK=adopt@1.8.192-12
     - secure: d3bu2KNwsVHwfhbGgO+gmRfDKBJhfICdCJFGWKf2w3Gv86AJZX9nuTYRxz0KtdvEHO5Xw8WTBZLPb2thSJqhw9OCm4J8TBAVqCP0ruUj4+aqBUFy4bVexQ6WKE6nWHs4JPzPk8c6uC1LG3hMuzlC8RGETXtL/n81Ef1u7NjyXjs=
   matrix:
     - SBT_CMD=";mimaReportBinaryIssues ;scalafmt::test ;test:scalafmt::test ;sbt:scalafmt::test ;headerCheck ;test:headerCheck ;whitesourceCheckPolicies ;test:compile ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests; doc"
@@ -44,13 +25,21 @@ env:
     - SBT_CMD="scripted tests/* watch/*"
     - SBT_CMD="repoOverrideTest:scripted dependency-management/*"
 
-notifications:
-  email:
-    - sbt-dev-bot@googlegroups.com
+matrix:
+  fast_finish: true
+  include:
+    - env:
+        - SBT_CMD="scripted java/*"
+      install:
+        - /home/travis/.jabba/bin/jabba install openjdk@1.10
 
-# Undo _JAVA_OPTIONS environment variable
-before_script:
+before_install:
+  - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.11.0/install.sh | bash && . ~/.jabba/jabba.sh
+
+install:
+  - $JABBA_HOME/bin/jabba install $TRAVIS_JDK
   - unset _JAVA_OPTIONS
+  - export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
 
 script:
   # It doesn't need that much memory because compile and run are forked
@@ -59,3 +48,9 @@ script:
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
   - find $HOME/.sbt  -name "*.lock"               -delete
+
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/boot
+    - $HOME/.jabba
