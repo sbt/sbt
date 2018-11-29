@@ -100,7 +100,7 @@ object Dependencies {
   }
 
   val jline = "jline" % "jline" % "2.14.6"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.4"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.6-SNAP5"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"
@@ -113,7 +113,7 @@ object Dependencies {
   val scalaXml = scala211Module("scala-xml", "1.0.6")
   val scalaParsers = scala211Module("scala-parser-combinators", "1.0.5")
 
-  def log4jVersion = "2.8.1"
+  def log4jVersion = "2.11.1"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val log4jSlf4jImpl = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
