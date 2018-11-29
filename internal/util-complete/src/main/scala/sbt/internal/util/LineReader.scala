@@ -55,12 +55,20 @@ abstract class JLine extends LineReader {
     else
       readLineDirectRaw(prompt, mask)
 
+  private[this] val console = ConsoleOut.systemOut
   private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): Option[String] = {
     val newprompt = handleMultilinePrompt(prompt)
-    mask match {
+    val result = mask match {
       case Some(m) => Option(reader.readLine(newprompt, m))
       case None    => Option(reader.readLine(newprompt))
     }
+
+    // since the task progress scrolls the logs upward, and expects the cursors to be on
+    // the last text line, this moves the cursor up to complensate for user hitting return.
+    val CursorUp1 = s"\u001B[A"
+    if (ConsoleAppender.showProgress) console.print(CursorUp1)
+    else ()
+    result
   }
 
   private[this] def handleMultilinePrompt(prompt: String): String = {

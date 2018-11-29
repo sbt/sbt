@@ -11,7 +11,7 @@ package internal
 import sbt.internal.util.{ RMap, ConsoleOut }
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{ blocking, Future, ExecutionContext }
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import TaskProgress._
@@ -29,7 +29,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   private[this] val calledBy = new ConcurrentHashMap[Task[_], Task[_]]
   private[this] val anonOwners = new ConcurrentHashMap[Task[_], Task[_]]
   private[this] val isReady = new AtomicBoolean(false)
-  private[this] val isLogReady = new AtomicBoolean(false)
+  private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val isAllCompleted = new AtomicBoolean(false)
 
   override def initial: Unit = ()
@@ -56,8 +56,9 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   }
 
   override def workFinished[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = {
+    val start = activeTasks.get(task)
+    timings.put(task, System.nanoTime - start)
     activeTasks.remove(task)
-    timings.put(task, System.nanoTime - activeTasks.get(task))
     // we need this to infer anonymous task names
     result.left.foreach { t =>
       calledBy.put(t, task)
@@ -65,9 +66,6 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   }
 
   override def completed[A](state: Unit, task: Task[A], result: Result[A]): Unit = ()
-  override def allCompleted(state: Unit, results: RMap[Task, Result]): Unit = {
-    isAllCompleted.set(true)
-  }
 
   import ExecutionContext.Implicits._
   Future {
@@ -85,38 +83,65 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   }
 
   private[this] val console = ConsoleOut.systemOut
-  private[this] def readyLog(): Unit = {
-    if (isLogReady.get) ()
-    else {
-      console.println("")
-      console.println("")
-      console.println("")
-      console.println("")
-      console.println("")
-      console.print(CursorUp5)
-      isLogReady.set(true)
-    }
+  override def allCompleted(state: Unit, results: RMap[Task, Result]): Unit = {
+    isAllCompleted.set(true)
+    // completionReport()
   }
-
-  private[this] val stopReportTask =
+  private[this] val skipReportTasks =
     Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject")
   private[this] def report(): Unit = console.lockObject.synchronized {
     val currentTasks = activeTasks.asScala.toList
-    def report0: Unit = {
-      readyLog()
+    val ltc = lastTaskCount.get
+    val currentTasksCount = currentTasks.size
+    def report0(): Unit = {
       console.print(s"$CursorDown1")
       currentTasks foreach {
         case (task, start) =>
           val elapsed = (System.nanoTime - start) / 1000000000L
           console.println(s"$DeleteLine  | => ${taskName(task)} ${elapsed}s")
       }
-      console.print(cursorUp(currentTasks.size + 1))
+      if (ltc > currentTasksCount) deleteConsoleLines(ltc - currentTasksCount)
+      else ()
+      console.print(cursorUp(math.max(currentTasksCount, ltc) + 1))
     }
-    val isStop = currentTasks
+    if (containsSkipTasks(currentTasks)) ()
+    else report0()
+    lastTaskCount.set(currentTasksCount)
+  }
+
+  // todo: use logger instead of console
+  // private[this] def completionReport(): Unit = console.lockObject.synchronized {
+  //   val completedTasks = timings.asScala.toList
+  //   val notableTasks = completedTasks
+  //     .filter({
+  //       case (_, time: Long) => time >= 1000000000L * 10L
+  //     })
+  //     .sortBy({
+  //       case (_, time: Long) => -time
+  //     })
+  //     .take(5)
+  //   def report0(): Unit = {
+  //     console.print(s"$CursorDown1")
+  //     console.println(s"$DeleteLine  notable completed tasks:")
+  //     notableTasks foreach {
+  //       case (task, time) =>
+  //         val elapsed = time / 1000000000L
+  //         console.println(s"$DeleteLine  | => ${taskName(task)} ${elapsed}s")
+  //     }
+  //   }
+  //   if (containsSkipTasks(notableTasks) || notableTasks.isEmpty) ()
+  //   else report0()
+  // }
+
+  private[this] def containsSkipTasks(tasks: List[(Task[_], Long)]): Boolean =
+    tasks
       .map({ case (t, _) => taskName(t) })
-      .exists(n => stopReportTask.exists(m => n.endsWith("/ " + m)))
-    if (isStop) ()
-    else report0
+      .exists(n => skipReportTasks.exists(m => n.endsWith("/ " + m)))
+
+  private[this] def deleteConsoleLines(n: Int): Unit = {
+    (1 to n) foreach { _ =>
+      console.println(s"$DeleteLine")
+    }
   }
 
   private[this] val taskNameCache = TrieMap.empty[Task[_], String]
@@ -134,7 +159,6 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
 
 private[sbt] object TaskProgress {
   final val DeleteLine = "\u001B[2K"
-  final val CursorUp5 = cursorUp(5)
   def cursorUp(n: Int): String = s"\u001B[${n}A"
   def cursorDown(n: Int): String = s"\u001B[${n}B"
   final val CursorDown1 = cursorDown(1)
