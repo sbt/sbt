@@ -27,12 +27,12 @@ object ToSbt {
       }
   }
 
-  val moduleId = caching[(Dependency, Map[String, String]), ModuleID] {
-    case (dependency, extraProperties) =>
+  val moduleId = caching[(Dependency, String, Map[String, String]), ModuleID] {
+    case (dependency, version, extraProperties) =>
       sbt.librarymanagement.ModuleID(
         dependency.module.organization.value,
         dependency.module.name.value,
-        dependency.version
+        version
       ).withConfigurations(
         Some(dependency.configuration.value)
       ).withExtraAttributes(
@@ -88,7 +88,7 @@ object ToSbt {
     val callers = dependees.map {
       case (dependee, dependeeProj) =>
         Caller(
-          ToSbt.moduleId(dependee, dependeeProj.properties.toMap),
+          ToSbt.moduleId(dependee, dependeeProj.version, dependeeProj.properties.toMap),
           dependeeProj.configurations.keys.toVector.map(c => ConfigRef(c.value)),
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
@@ -100,7 +100,7 @@ object ToSbt {
     }
 
     ModuleReport(
-      ToSbt.moduleId(dependency, project.properties.toMap),
+      ToSbt.moduleId(dependency, project.version, project.properties.toMap),
       sbtArtifacts.toVector,
       sbtMissingArtifacts.toVector
     )
@@ -236,7 +236,7 @@ object ToSbt {
             // appears first in the update report, see https://github.com/coursier/coursier/issues/650
             val dep = subRes.rootDependencies.head
             val (_, proj) = subRes.projectCache(dep.moduleVersion)
-            val mod = ToSbt.moduleId(dep, proj.properties.toMap)
+            val mod = ToSbt.moduleId(dep, proj.version, proj.properties.toMap)
             val (main, other) = reports.partition { r =>
               r.module.organization == mod.organization &&
                 r.module.name == mod.name &&
