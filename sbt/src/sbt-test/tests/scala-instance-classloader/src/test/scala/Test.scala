@@ -10,11 +10,10 @@ class BadTest {
     // * Load something from our own classloader that's INSIDE the scala library
     // * Try to load that same something from the THREAD CONTEXT classloader.
     // * Ensure we can do both, i.e. the second used to be filtered and broken.
-    val current = Thread.currentThread.getContextClassLoader
-    val mine = this.getClass.getClassLoader
     val system = ActorSystem()
     def evilGetThreadExectionContextName =
       system.asInstanceOf[ActorSystemImpl].internalCallingThreadExecutionContext.getClass.getName
+    system.terminate()
     val expected = "scala.concurrent.Future$InternalCallbackExecutor$"
     Assert.assertEquals("Failed to grab appropriate Akka name", expected, evilGetThreadExectionContextName)
   }
