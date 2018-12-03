@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion = "1.1.0-M8"
+val coursierVersion = "1.1.0-M9"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
@@ -24,7 +24,6 @@ lazy val `lm-coursier` = project
     shared,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion,
-      "io.get-coursier" %% "coursier-cache" % coursierVersion,
       "io.get-coursier" %% "coursier-extra" % coursierVersion,
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
