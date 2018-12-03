@@ -7,63 +7,33 @@
 
 package sbt
 
-import sbt.internal.{
-  Act,
-  Aggregation,
-  BuildStructure,
-  CommandExchange,
-  CommandStrings,
-  CrossJava,
-  DefaultBackgroundJobService,
-  EvaluateConfigurations,
-  Inspect,
-  IvyConsole,
-  Load,
-  LoadedBuildUnit,
-  LogManager,
-  Output,
-  PluginsDebug,
-  ProjectNavigation,
-  Script,
-  SessionSettings,
-  SetResult,
-  SettingCompletions
-}
-import sbt.internal.util.{
-  AttributeKey,
-  AttributeMap,
-  ConsoleOut,
-  GlobalLogging,
-  LineRange,
-  MainAppender,
-  SimpleReader,
-  Types
-}
-import sbt.util.{ Level, Logger, Show }
-import sbt.internal.util.complete.{ DefaultParsers, Parser }
-import sbt.internal.inc.ScalaInstance
-import sbt.compiler.EvalImports
-import Types.{ const, idFun }
-import Aggregation.AnyKeys
-import Project.LoadAction
-import xsbti.compile.CompilerCache
-
-import scala.annotation.tailrec
-import sbt.io.{ FileTreeDataView, IO }
-import sbt.io.syntax._
 import java.io.{ File, IOException }
 import java.net.URI
 import java.util.{ Locale, Properties }
 
+import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
+import sbt.Project.LoadAction
+import sbt.compiler.EvalImports
+import sbt.internal.Aggregation.AnyKeys
+import sbt.internal.CommandStrings.BootCommand
+import sbt.internal.inc.ScalaInstance
+import sbt.internal.util.Types.{ const, idFun }
+import sbt.internal.util.complete.Parser
+import sbt.internal.util._
+import sbt.internal._
+import sbt.io.syntax._
+import sbt.io.{ FileTreeDataView, IO }
+import sbt.util.{ Level, Logger, Show }
+import xsbti.compile.CompilerCache
+
+import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import BasicCommandStrings.{ Shell, TemplateCommand }
-import CommandStrings.BootCommand
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
     import BasicCommands.early
-    import BasicCommandStrings.{ runEarly, DashClient, DashDashClient }
     import BuiltinCommands.defaults
     import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
     import sbt.internal.client.NetworkClient
@@ -188,12 +158,12 @@ object StandardMain {
   }
 }
 
-import DefaultParsers._
+import sbt.BasicCommandStrings._
+import sbt.BasicCommands._
+import sbt.CommandUtil._
+import sbt.TemplateCommandUtil.templateCommand
 import sbt.internal.CommandStrings._
-import BasicCommandStrings._
-import BasicCommands._
-import CommandUtil._
-import TemplateCommandUtil.templateCommand
+import sbt.internal.util.complete.DefaultParsers._
 
 object BuiltinCommands {
   def initialAttributes = AttributeMap.empty
