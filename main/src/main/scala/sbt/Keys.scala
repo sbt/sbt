@@ -9,84 +9,31 @@ package sbt
 
 import java.io.{ File, InputStream }
 import java.net.URL
-import scala.concurrent.duration.{ FiniteDuration, Duration }
-import Def.ScopedKey
-import sbt.internal.inc.ScalaInstance
-import xsbti.compile.{
-  DefinesClass,
-  ClasspathOptions,
-  CompileAnalysis,
-  CompileOptions,
-  CompileOrder,
-  Compilers,
-  CompileResult,
-  ExternalHooks,
-  GlobalsCache,
-  IncOptions,
-  Inputs,
-  PreviousResult,
-  Setup
-}
-import scala.xml.{ Node => XNode, NodeSeq }
-import org.apache.ivy.core.module.{ descriptor, id }
-import descriptor.ModuleDescriptor, id.ModuleRevisionId
-import testing.Framework
-import KeyRanks._
 
-import sbt.internal.{
-  BuildStructure,
-  LoadedBuild,
-  PluginDiscovery,
-  BuildDependencies,
-  SessionSettings,
-  LogManager
-}
-import sbt.io.{ FileFilter, FileTreeDataView, TypedPath, WatchService }
-import sbt.io.FileEventMonitor.Event
-import sbt.internal.io.WatchState
-import sbt.internal.server.ServerHandler
-import sbt.internal.util.{ AttributeKey, SourcePosition }
-
-import sbt.librarymanagement.Configurations.CompilerPlugin
-import sbt.librarymanagement.LibraryManagementCodec._
-import sbt.librarymanagement.ivy.{ Credentials, UpdateOptions }
-import sbt.librarymanagement.{
-  Artifact,
-  ConfigRef,
-  Configuration,
-  ConflictManager,
-  ConflictWarning,
-  CrossVersion,
-  Developer,
-  DependencyResolution,
-  EvictionWarning,
-  EvictionWarningOptions,
-  GetClassifiersModule,
-  MakePomConfiguration,
-  MavenRepository,
-  ModuleConfiguration,
-  ModuleID,
-  ModuleInfo,
-  ModuleSettings,
-  PublishConfiguration,
-  Publisher,
-  Resolver,
-  RetrieveConfiguration,
-  ScalaModuleInfo,
-  ScalaVersion,
-  ScmInfo,
-  TrackLevel,
-  UnresolvedWarningConfiguration,
-  UpdateConfiguration,
-  UpdateLogging,
-  UpdateReport
-}
-import sbt.librarymanagement.InclExclRule
-import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
-import sbt.librarymanagement.ivy.{ IvyConfiguration, IvyPaths }
-import sbt.util.{ Level, Logger }
+import org.apache.ivy.core.module.descriptor.ModuleDescriptor
+import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.logging.log4j.core.Appender
 import sbt.BuildSyntax._
+import sbt.Def.ScopedKey
+import sbt.KeyRanks._
+import sbt.internal._
+import sbt.internal.inc.ScalaInstance
+import sbt.internal.io.WatchState
+import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
+import sbt.internal.server.ServerHandler
+import sbt.internal.util.{ AttributeKey, SourcePosition }
+import sbt.io.FileEventMonitor.Event
+import sbt.io.{ FileFilter, FileTreeDataView, TypedPath, WatchService }
+import sbt.librarymanagement.Configurations.CompilerPlugin
+import sbt.librarymanagement.LibraryManagementCodec._
+import sbt.librarymanagement._
+import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, UpdateOptions }
+import sbt.testing.Framework
+import sbt.util.{ Level, Logger }
+import xsbti.compile._
+
+import scala.concurrent.duration.{ Duration, FiniteDuration }
+import scala.xml.{ NodeSeq, Node => XNode }
 
 // format: off
 

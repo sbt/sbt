@@ -7,19 +7,28 @@
 
 package sbt
 
-import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
 import java.util.Optional
-import java.util.concurrent.{ TimeUnit, Callable }
-import Keys._
-import org.apache.ivy.core.module.{ descriptor, id }, descriptor.ModuleDescriptor,
-id.ModuleRevisionId
-import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
-import sbt.internal._
+import java.util.concurrent.{ Callable, TimeUnit }
+
+import org.apache.ivy.core.module.descriptor.ModuleDescriptor
+import org.apache.ivy.core.module.id.ModuleRevisionId
+import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
+import sbt.Keys._
+import sbt.Project.{
+  inConfig,
+  inScope,
+  inTask,
+  richInitialize,
+  richInitializeTask,
+  richTaskSessionVar
+}
+import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.internal.CommandStrings.ExportStream
-import sbt.internal.inc.ZincUtil
+import sbt.internal._
 import sbt.internal.inc.JavaInterfaceUtil._
+import sbt.internal.inc.ZincUtil
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.mavenint.{
@@ -27,71 +36,68 @@ import sbt.internal.librarymanagement.mavenint.{
   SbtPomExtraProperties
 }
 import sbt.internal.server.{
-  LanguageServerReporter,
   Definition,
   LanguageServerProtocol,
+  LanguageServerReporter,
   ServerHandler
 }
 import sbt.internal.testing.TestLogger
-import sbt.internal.util._
 import sbt.internal.util.Attributed.data
-import sbt.internal.util.complete._
 import sbt.internal.util.Types._
+import sbt.internal.util._
+import sbt.internal.util.complete._
+import sbt.io.Path._
 import sbt.io.syntax._
-import sbt.io.{
-  AllPassFilter,
-  DirectoryFilter,
-  FileFilter,
-  FileTreeView,
-  GlobFilter,
-  Hash,
-  HiddenFileFilter,
-  IO,
-  NameFilter,
-  NothingFilter,
-  Path,
-  PathFinder,
-  TypedPath
-}, Path._
+import sbt.io._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
   Compile,
   CompilerPlugin,
   IntegrationTest,
-  names,
   Provided,
   Runtime,
-  Test
+  Test,
+  names
 }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+import sbt.std.TaskExtra._
+import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
+import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
-import sbt.util.CacheImplicits._
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
+import sjsonnew._
+import xsbti.CrossValue
+import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
+
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
-import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
-import sjsonnew.{ IsoLList, JsonFormat, LList, LNil, :*: }
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
-import std.TaskExtra._
-import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
-import xsbti.compile.{ IncToolOptionsUtil, AnalysisContents, IncOptions }
-import xsbti.CrossValue
 
 // incremental compiler
+import sbt.SlashSyntax0._
+import sbt.internal.inc.{
+  Analysis,
+  AnalyzingCompiler,
+  FileValueCache,
+  Locate,
+  ManagedLoggedReporter,
+  MixedAnalyzingCompiler,
+  ScalaInstance
+}
 import xsbti.compile.{
   ClassFileManagerType,
   ClasspathOptionsUtil,
-  CompilerCache,
-  Compilers,
   CompileAnalysis,
   CompileOptions,
   CompileOrder,
   CompileResult,
+  CompilerCache,
+  Compilers,
   DefinesClass,
   Inputs,
   MiniSetup,
@@ -100,16 +106,6 @@ import xsbti.compile.{
   Setup,
   TransactionalManagerType
 }
-import sbt.internal.inc.{
-  AnalyzingCompiler,
-  Analysis,
-  FileValueCache,
-  Locate,
-  ManagedLoggedReporter,
-  MixedAnalyzingCompiler,
-  ScalaInstance
-}
-import sbt.SlashSyntax0._
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -937,7 +933,7 @@ object Defaults extends BuildCommon {
           stamps.getOrElse(
             c, {
               val x = {
-                import analysis.{ relations => rel, apis }
+                import analysis.{ apis, relations => rel }
                 rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
                   rel.externalDeps(c).map(stamp) +
                   (apis.internal.get(c) match {
@@ -1163,7 +1159,7 @@ object Defaults extends BuildCommon {
       packageTaskSettings(packageBin, packageBinMappings) ++
       packageTaskSettings(packageSrc, packageSrcMappings) ++
       packageTaskSettings(packageDoc, packageDocMappings) ++
-      Seq(`package` := packageBin.value)
+      Seq(Keys.`package` := packageBin.value)
 
   def packageBinMappings = products map { _ flatMap Path.allSubpaths }
   def packageDocMappings = doc map { Path.allSubpaths(_).toSeq }
@@ -1747,7 +1743,8 @@ object Defaults extends BuildCommon {
   }
 
   private def distinctParser(exs: Set[String], raw: Boolean): Parser[Seq[String]] = {
-    import DefaultParsers._, Parser.and
+    import DefaultParsers._
+    import Parser.and
     val base = token(Space) ~> token(and(NotSpace, not("--", "Unexpected: ---")) examples exs)
     val recurse = base flatMap { ex =>
       val (matching, notMatching) = exs.partition(GlobFilter(ex).accept _)
@@ -1825,8 +1822,8 @@ object Defaults extends BuildCommon {
     )
 }
 object Classpaths {
-  import Keys._
   import Defaults._
+  import Keys._
 
   def concatDistinct[T](
       a: ScopedTaskable[Seq[T]],
@@ -2516,8 +2513,8 @@ object Classpaths {
 
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
     new sjsonnew.JsonKeyFormat[ModuleID] {
-      import sjsonnew.support.scalajson.unsafe._
       import LibraryManagementCodec._
+      import sjsonnew.support.scalajson.unsafe._
       val moduleIdFormat: JsonFormat[ModuleID] = implicitly[JsonFormat[ModuleID]]
       def write(key: ModuleID): String =
         CompactPrinter(Converter.toJsonUnsafe(key)(moduleIdFormat))
@@ -2612,7 +2609,7 @@ object Classpaths {
     val updateConf = {
       // Log captures log messages at all levels, except ivy logs.
       // Use full level when debug is enabled so that ivy logs are shown.
-      import UpdateLogging.{ Full, DownloadOnly, Default }
+      import UpdateLogging.{ Default, DownloadOnly, Full }
       val conf = updateConfiguration.value
       val maybeUpdateLevel = (logLevel in update).?.value
       val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
@@ -2979,6 +2976,7 @@ object Classpaths {
     }
 
   import java.util.LinkedHashSet
+
   import collection.JavaConverters._
   def interSort(
       projectRef: ProjectRef,
