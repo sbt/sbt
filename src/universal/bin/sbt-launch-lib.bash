@@ -249,7 +249,7 @@ getPreloaded() {
 }
 
 syncPreloaded() {
-  local source_preloaded="$sbt_home/lib/local-preloaded"
+  local source_preloaded="$sbt_home/lib/local-preloaded/"
   local target_preloaded="$(getPreloaded)"
   if [[ "$init_sbt_version" == "" ]]; then
     # FIXME: better $init_sbt_version detection
