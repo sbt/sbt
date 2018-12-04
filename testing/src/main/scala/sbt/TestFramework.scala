@@ -258,6 +258,7 @@ object TestFramework {
     Thread.currentThread.setContextClassLoader(loader)
     try { eval } finally { Thread.currentThread.setContextClassLoader(oldLoader) }
   }
+  @deprecated("1.3.0", "This has been replaced by the ClassLoaders.test task.")
   def createTestLoader(
       classpath: Seq[File],
       scalaInstance: ScalaInstance,

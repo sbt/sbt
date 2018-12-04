@@ -139,7 +139,9 @@ object Defaults extends BuildCommon {
     )
   private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
-      excludeFilter :== HiddenFileFilter
+      excludeFilter :== HiddenFileFilter,
+      classLoaderCache := ClassLoaderCache(4),
+      layeringStrategy := LayeringStrategy.Default
     ) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
 
@@ -790,11 +792,7 @@ object Defaults extends BuildCommon {
     : Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(
     testQuick
   ) ++ testDefaults ++ Seq(
-    testLoader := TestFramework.createTestLoader(
-      data(fullClasspath.value),
-      scalaInstance.value,
-      IO.createUniqueDirectory(taskTemporaryDirectory.value)
-    ),
+    testLoader := ClassLoaders.testTask.value,
     loadedTestFrameworks := {
       val loader = testLoader.value
       val log = streams.value.log
@@ -813,7 +811,8 @@ object Defaults extends BuildCommon {
           (testExecution in test).value,
           (fullClasspath in test).value,
           testForkedParallel.value,
-          (javaOptions in test).value
+          (javaOptions in test).value,
+          (layeringStrategy).value
         )
       }
     ).value,
@@ -979,7 +978,8 @@ object Defaults extends BuildCommon {
         newConfig,
         fullClasspath.value,
         testForkedParallel.value,
-        javaOptions.value
+        javaOptions.value,
+        layeringStrategy.value
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
@@ -1022,7 +1022,8 @@ object Defaults extends BuildCommon {
       config,
       cp,
       forkedParallelExecution = false,
-      javaOptions = Nil
+      javaOptions = Nil,
+      strategy = LayeringStrategy.Default
     )
   }
 
@@ -1043,7 +1044,8 @@ object Defaults extends BuildCommon {
       config,
       cp,
       forkedParallelExecution,
-      javaOptions = Nil
+      javaOptions = Nil,
+      strategy = LayeringStrategy.Default
     )
   }
 
@@ -1055,7 +1057,8 @@ object Defaults extends BuildCommon {
       config: Tests.Execution,
       cp: Classpath,
       forkedParallelExecution: Boolean,
-      javaOptions: Seq[String]
+      javaOptions: Seq[String],
+      strategy: LayeringStrategy,
   ): Initialize[Task[Tests.Output]] = {
     val runners = createTestRunners(frameworks, loader, config)
     val groupTasks = groups map {
@@ -1083,6 +1086,23 @@ object Defaults extends BuildCommon {
     }
     val output = Tests.foldTasks(groupTasks, config.parallel)
     val result = output map { out =>
+      out.events.foreach {
+        case (suite, e) =>
+          e.throwables
+            .collectFirst {
+              case t if t.isInstanceOf[NoClassDefFoundError] && strategy != LayeringStrategy.Flat =>
+                t
+            }
+            .foreach { t =>
+              s.log.error(
+                s"Test suite $suite failed with $t. This may be due to the LayeringStrategy"
+                  + s" ($strategy) used by your task. This issue may be resolved by changing the"
+                  + " LayeringStrategy in your configuration (generally Test or IntegrationTest),"
+                  + "e.g.:\nTest / layeringStrategy := LayeringStrategy.Flat\n"
+                  + "See LayeringStrategy.scala for the full list of options."
+              )
+            }
+      }
       val summaries =
         runners map {
           case (tf, r) =>
@@ -1386,35 +1406,7 @@ object Defaults extends BuildCommon {
 
   def runnerTask: Setting[Task[ScalaRun]] = runner := runnerInit.value
 
-  def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
-    val tmp = taskTemporaryDirectory.value
-    val resolvedScope = resolvedScoped.value.scope
-    val si = scalaInstance.value
-    val s = streams.value
-    val opts = forkOptions.value
-    val options = javaOptions.value
-    val trap = trapExit.value
-    if (fork.value) {
-      s.log.debug(s"javaOptions: $options")
-      new ForkRun(opts)
-    } else {
-      if (options.nonEmpty) {
-        val mask = ScopeMask(project = false)
-        val showJavaOptions = Scope.displayMasked(
-          (javaOptions in resolvedScope).scopedKey.scope,
-          (javaOptions in resolvedScope).key.label,
-          mask
-        )
-        val showFork = Scope.displayMasked(
-          (fork in resolvedScope).scopedKey.scope,
-          (fork in resolvedScope).key.label,
-          mask
-        )
-        s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
-      }
-      new Run(si, trap, tmp)
-    }
-  }
+  def runnerInit: Initialize[Task[ScalaRun]] = ClassLoaders.runner
 
   private def foreachJobTask(
       f: (BackgroundJobService, JobHandle) => Unit
@@ -1777,11 +1769,18 @@ object Defaults extends BuildCommon {
       (mainBgRunMainTask +: mainBgRunTask +: FileManagement.appendBaseSources) ++
       Classpaths.addUnmanagedLibrary
 
-  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
+  // We need a cache of size two for the test dependency layers (regular and snapshot).
+  lazy val testSettings
+    : Seq[Setting[_]] = configSettings ++ testTasks :+ (classLoaderCache := ClassLoaderCache(2))
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
   lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++
-    inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
+    inConfig(Test)(testSettings) ++ inConfig(Runtime)(
+    // We need a cache of size four so that the subset of the runtime dependencies that are used
+    // by the test task layers may be cached without evicting the runtime classloader layres. The
+    // cache size should be a multiple of two to support snapshot layers.
+    Classpaths.configSettings :+ (classLoaderCache := ClassLoaderCache(4))
+  )
 
   // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[_]] =

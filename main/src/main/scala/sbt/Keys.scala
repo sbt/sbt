@@ -264,6 +264,7 @@ object Keys {
   val bgRunMain = inputKey[JobHandle]("Start a provided main class as a background job")
   val fgRunMain = inputKey[Unit]("Start a provided main class as a foreground job")
   val bgCopyClasspath = settingKey[Boolean]("Copies classpath on bgRun to prevent conflict.")
+  val layeringStrategy = settingKey[LayeringStrategy]("Creates the classloader layering strategy for the particular configuration.")
 
   // Test Keys
   val testLoader = taskKey[ClassLoader]("Provides the class loader used for testing.").withRank(DTask)
@@ -460,6 +461,7 @@ object Keys {
   val resolvedScoped = Def.resolvedScoped
   val pluginData = taskKey[PluginData]("Information from the plugin build needed in the main build definition.").withRank(DTask)
   val globalPluginUpdate = taskKey[UpdateReport]("A hook to get the UpdateReport of the global plugin.").withRank(DTask)
+  val classLoaderCache = settingKey[internal.ClassLoaderCache]("The cache of ClassLoaders to be used for layering in tasks that invoke other java code").withRank(DTask)
 
   // wrapper to work around SI-2915
   private[sbt] final class TaskProgress(val progress: ExecuteProgress[Task])
