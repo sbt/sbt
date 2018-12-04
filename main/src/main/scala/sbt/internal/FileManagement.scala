@@ -11,9 +11,8 @@ package internal
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt.Keys._
 import sbt.internal.io.HybridPollingFileTreeRepository
-import sbt.io.FileTreeDataView.{ Entry, Observable, Observer, Observers }
-import sbt.io._
-import sbt.io.syntax._
+import sbt.io.FileTreeDataView.{ Observable, Observer, Observers }
+import sbt.io.{ FileTreeRepository, _ }
 import sbt.util.Logger
 
 import scala.concurrent.duration._
@@ -85,76 +84,8 @@ private[sbt] object FileManagement {
     }
   }
 
-  private def entryFilter(
-      include: FileFilter,
-      exclude: FileFilter
-  ): Entry[FileCacheEntry] => Boolean = { e =>
-    val tp = e.typedPath
-    /*
-     * The TypedPath has the isDirectory and isFile properties embedded. By overriding
-     * these methods in java.io.File, FileFilters may be applied without needing to
-     * stat the file (which is expensive) for isDirectory and isFile checks.
-     */
-    val file = new java.io.File(tp.toPath.toString) {
-      override def isDirectory: Boolean = tp.isDirectory
-      override def isFile: Boolean = tp.isFile
-    }
-    include.accept(file) && !exclude.accept(file)
-  }
   private[sbt] def repo: Def.Initialize[Task[FileTreeRepository[FileCacheEntry]]] = Def.task {
     lazy val msg = s"Tried to get FileTreeRepository for uninitialized state."
     state.value.get(Keys.globalFileTreeRepository).getOrElse(throw new IllegalStateException(msg))
   }
-  private[sbt] def dataView: Def.Initialize[Task[FileTreeDataView[FileCacheEntry]]] = Def.task {
-    state.value
-      .get(Keys.globalFileTreeRepository)
-      .map(toDataView)
-      .getOrElse(FileTreeView.DEFAULT.asDataView(FileCacheEntry.default))
-  }
-  private def toDataView(r: FileTreeRepository[FileCacheEntry]): FileTreeDataView[FileCacheEntry] =
-    new FileTreeDataView[FileCacheEntry] {
-      private def reg(glob: Glob): FileTreeDataView[FileCacheEntry] = { r.register(glob); r }
-      override def listEntries(glob: Glob): Seq[Entry[FileCacheEntry]] = reg(glob).listEntries(glob)
-      override def list(glob: Glob): Seq[TypedPath] = reg(glob).list(glob)
-      override def close(): Unit = {}
-    }
-  private[sbt] def collectFiles(
-      dirs: ScopedTaskable[Seq[File]],
-      filter: ScopedTaskable[FileFilter],
-      excludes: ScopedTaskable[FileFilter]
-  ): Def.Initialize[Task[Seq[File]]] =
-    Def.task {
-      val sourceDirs = dirs.toTask.value
-      val view: FileTreeDataView[FileCacheEntry] = dataView.value
-      val include = filter.toTask.value
-      val ex = excludes.toTask.value
-      val sourceFilter: Entry[FileCacheEntry] => Boolean = entryFilter(include, ex)
-      sourceDirs.flatMap { dir =>
-        view
-          .listEntries(dir.toPath ** AllPassFilter)
-          .flatMap {
-            case e if sourceFilter(e) => e.value.toOption.map(Stamped.file(e.typedPath, _))
-            case _                    => None
-          }
-      }
-    }
-
-  private[sbt] def appendBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Seq(
-    unmanagedSources := {
-      val sources = unmanagedSources.value
-      val include = (includeFilter in unmanagedSources).value
-      val excl = (excludeFilter in unmanagedSources).value
-      val baseDir = baseDirectory.value
-      val r: FileTreeDataView[FileCacheEntry] = dataView.value
-      if (sourcesInBase.value) {
-        val filter: Entry[FileCacheEntry] => Boolean = entryFilter(include, excl)
-        sources ++
-          r.listEntries(baseDir * AllPassFilter)
-            .flatMap {
-              case e if filter(e) => e.value.toOption.map(Stamped.file(e.typedPath, _))
-              case _              => None
-            }
-      } else sources
-    }
-  )
 }

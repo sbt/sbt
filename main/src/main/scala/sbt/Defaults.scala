@@ -47,8 +47,8 @@ import sbt.internal.util.Types._
 import sbt.internal.util._
 import sbt.internal.util.complete._
 import sbt.io.Path._
-import sbt.io.syntax._
 import sbt.io._
+import sbt.io.syntax._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
   Compile,
@@ -68,8 +68,8 @@ import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprin
 import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew._
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import xsbti.CrossValue
 import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
 
@@ -80,6 +80,7 @@ import scala.xml.NodeSeq
 
 // incremental compiler
 import sbt.SlashSyntax0._
+import sbt.internal.GlobLister._
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
@@ -280,10 +281,14 @@ object Defaults extends BuildCommon {
         None
       },
       watchStartMessage := Watched.defaultStartWatch,
+      fileTreeRepository := state.value
+        .get(Keys.globalFileTreeRepository)
+        .map(FileTree.repository)
+        .getOrElse(FileTree.Repository.polling),
       externalHooks := {
-        val view = FileManagement.dataView.value
+        val repository = fileTreeRepository.value
         compileOptions =>
-          Some(ExternalHooks(compileOptions, view))
+          Some(ExternalHooks(compileOptions, repository))
       },
       watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchLogger := streams.value.log,
@@ -373,13 +378,12 @@ object Defaults extends BuildCommon {
           crossPaths.value
         )
     },
-    unmanagedSources := FileManagement
-      .collectFiles(
-        unmanagedSourceDirectories,
-        includeFilter in unmanagedSources,
-        excludeFilter in unmanagedSources
-      )
-      .value,
+    unmanagedSources := {
+      val filter =
+        (includeFilter in unmanagedSources).value -- (excludeFilter in unmanagedSources).value
+      val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
+      (unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources).all
+    },
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
@@ -413,13 +417,11 @@ object Defaults extends BuildCommon {
     resourceDirectories := Classpaths
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
-    unmanagedResources := FileManagement
-      .collectFiles(
-        unmanagedResourceDirectories,
-        includeFilter in unmanagedResources,
-        excludeFilter in unmanagedResources
-      )
-      .value,
+    unmanagedResources := {
+      val filter =
+        (includeFilter in unmanagedResources).value -- (excludeFilter in unmanagedResources).value
+      unmanagedResourceDirectories.value.map(_ ** filter).all
+    },
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val bases = unmanagedResourceDirectories.value
       val include = (includeFilter in unmanagedResources).value
@@ -433,7 +435,8 @@ object Defaults extends BuildCommon {
     managedResources := generate(resourceGenerators).value,
     resources := Classpaths.concat(managedResources, unmanagedResources).value
   )
-  def addBaseSources = FileManagement.appendBaseSources
+  // This exists for binary compatibility and probably never should have been public.
+  def addBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Nil
   lazy val outputConfigPaths = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
@@ -1205,9 +1208,12 @@ object Defaults extends BuildCommon {
     }
   def collectFiles(
       dirs: ScopedTaskable[Seq[File]],
-      filter: ScopedTaskable[FileFilter],
-      excludes: ScopedTaskable[FileFilter]
-  ): Initialize[Task[Seq[File]]] = FileManagement.collectFiles(dirs, filter, excludes)
+      include: ScopedTaskable[FileFilter],
+      exclude: ScopedTaskable[FileFilter]
+  ): Initialize[Task[Seq[File]]] = Def.task {
+    val filter = include.toTask.value -- exclude.toTask.value
+    dirs.toTask.value.map(_ ** filter).all
+  }
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
@@ -1807,8 +1813,7 @@ object Defaults extends BuildCommon {
   ) :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies)
 
   lazy val compileSettings: Seq[Setting[_]] =
-    configSettings ++
-      (mainBgRunMainTask +: mainBgRunTask +: FileManagement.appendBaseSources) ++
+    configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++
       Classpaths.addUnmanagedLibrary ++ runtimeLayeringSettings
 
   private val testLayeringSettings: Seq[Setting[_]] = TaskRepository.proxy(

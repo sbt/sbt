@@ -8,12 +8,13 @@
 package sbt
 
 import sbt.internal.util.Types.const
-import sbt.internal.util.{ Attributed, AttributeKey, Init, ConsoleAppender }
+import sbt.internal.util.{ AttributeKey, Attributed, ConsoleAppender, Init }
 import sbt.util.Show
 import sbt.internal.util.complete.Parser
 import java.io.File
 import java.net.URI
-import Scope.{ ThisScope, GlobalScope }
+
+import Scope.{ GlobalScope, ThisScope }
 import KeyRanks.{ DTask, Invisible }
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
