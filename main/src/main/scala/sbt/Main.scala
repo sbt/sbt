@@ -25,7 +25,6 @@ import sbt.io.syntax._
 import sbt.io.{ FileTreeDataView, IO }
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
-import xsbti.compile.analysis.Stamp
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
@@ -863,7 +862,7 @@ object BuiltinCommands {
         ()
       }
       val (_, config: FileTreeViewConfig) = extracted.runTask(Keys.fileTreeViewConfig, s)
-      val view: FileTreeDataView[Stamp] = config.newDataView()
+      val view: FileTreeDataView[FileCacheEntry] = config.newDataView()
       val newState = s.addExitHook(cleanup())
       cleanup()
       newState

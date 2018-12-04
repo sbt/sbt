@@ -10,6 +10,7 @@ package sbt
 import java.io.{ File => JFile }
 import java.nio.file.Path
 
+import sbt.internal.FileCacheEntry
 import sbt.internal.inc.Stamper
 import sbt.io.TypedPath
 import xsbti.compile.analysis.Stamp
@@ -20,17 +21,17 @@ import xsbti.compile.analysis.Stamp
  * performance anywhere where we need to check if files have changed before doing potentially
  * expensive work.
  */
-trait Stamped {
-  def stamp: Stamp
+private[sbt] trait Stamped {
+  private[sbt] def stamp: Stamp
 }
 
 /**
  * Provides converter functions from TypedPath to [[Stamped]].
  */
-object Stamped {
+private[sbt] object Stamped {
   type File = JFile with Stamped with TypedPath
-  def file(typedPath: TypedPath, stamp: Stamp): JFile with Stamped with TypedPath =
-    new StampedFileImpl(typedPath, stamp)
+  def file(typedPath: TypedPath, entry: FileCacheEntry): JFile with Stamped with TypedPath =
+    new StampedFileImpl(typedPath, entry.stamp)
 
   /**
    * Converts a TypedPath instance to a [[Stamped]] by calculating the file hash.
@@ -47,10 +48,13 @@ object Stamped {
    * using the last modified time and all other files using the file hash.
    */
   val converter: TypedPath => Stamp = (tp: TypedPath) =>
-    tp.toPath.toString match {
-      case s if s.endsWith(".jar")   => binaryConverter(tp)
-      case s if s.endsWith(".class") => binaryConverter(tp)
-      case _                         => sourceConverter(tp)
+    if (tp.isDirectory) binaryConverter(tp)
+    else {
+      tp.toPath.toString match {
+        case s if s.endsWith(".jar")   => binaryConverter(tp)
+        case s if s.endsWith(".class") => binaryConverter(tp)
+        case _                         => sourceConverter(tp)
+      }
   }
 
   /**

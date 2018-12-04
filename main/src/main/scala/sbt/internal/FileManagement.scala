@@ -10,13 +10,12 @@ package sbt.internal
 import java.io.IOException
 import java.nio.file.Path
 
+import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt.Keys._
+import sbt._
 import sbt.io.FileTreeDataView.Entry
 import sbt.io.syntax.File
 import sbt.io.{ FileFilter, FileTreeDataView, FileTreeRepository }
-import sbt._
-import BasicCommandStrings.ContinuousExecutePrefix
-import xsbti.compile.analysis.Stamp
 
 private[sbt] object FileManagement {
   private[sbt] def defaultFileTreeView: Def.Initialize[Task[FileTreeViewConfig]] = Def.task {
@@ -52,7 +51,7 @@ private[sbt] object FileManagement {
       val view = fileTreeView.value
       val include = filter.toTask.value
       val ex = excludes.toTask.value
-      val sourceFilter: Entry[Stamp] => Boolean = (entry: Entry[Stamp]) => {
+      val sourceFilter: Entry[FileCacheEntry] => Boolean = (entry: Entry[FileCacheEntry]) => {
         val typedPath = entry.typedPath
         val file = new java.io.File(typedPath.toPath.toString) {
           override def isDirectory: Boolean = typedPath.isDirectory

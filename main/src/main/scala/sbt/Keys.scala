@@ -31,7 +31,6 @@ import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, Upda
 import sbt.testing.Framework
 import sbt.util.{ Level, Logger }
 import xsbti.compile._
-import xsbti.compile.analysis.Stamp
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 import scala.xml.{ NodeSeq, Node => XNode }
@@ -94,14 +93,14 @@ object Keys {
   @deprecated("This is no longer used for continuous execution", "1.3.0")
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
-  val fileTreeView = taskKey[FileTreeDataView[Stamp]]("A view of the file system")
+  val fileTreeView = taskKey[FileTreeDataView[FileCacheEntry]]("A view of the file system")
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val pollingDirectories = settingKey[Seq[Watched.WatchSource]]("Directories that cannot be cached and must always be rescanned. Typically these will be NFS mounted or something similar.").withRank(DSetting)
   val watchAntiEntropy = settingKey[FiniteDuration]("Duration for which the watch EventMonitor will ignore events for a file after that file has triggered a build.").withRank(BMinusSetting)
   val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
   val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
   val watchHandleInput = settingKey[InputStream => Watched.Action]("Function that is periodically invoked to determine if the continous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands.").withRank(BMinusSetting)
-  val watchOnEvent = taskKey[Event[Stamp] => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
+  val watchOnEvent = taskKey[Event[FileCacheEntry] => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
   val watchOnTermination = taskKey[(Watched.Action, String, State) => State]("Transforms the input state after the continuous build completes.").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
   val watchProjectSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources for the sbt meta project to watch to trigger a reload.").withRank(CSetting)
@@ -457,7 +456,7 @@ object Keys {
   val (executionRoots, dummyRoots) = Def.dummy[Seq[ScopedKey[_]]]("executionRoots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
   val state = Def.stateKey
   val streamsManager = Def.streamsManagerKey
-  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[Stamp]](
+  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[FileCacheEntry]](
     "globalFileTreeView",
     "Provides a view into the file system that may or may not cache the tree in memory",
     1000

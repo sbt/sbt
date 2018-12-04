@@ -20,7 +20,10 @@ import scala.collection.mutable
 
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
-  def apply(options: CompileOptions, view: FileTreeDataView[Stamp]): DefaultExternalHooks = {
+  def apply(
+      options: CompileOptions,
+      view: FileTreeDataView[FileCacheEntry]
+  ): DefaultExternalHooks = {
     import scala.collection.JavaConverters._
     val sources = options.sources()
     val cachedSources = new java.util.HashMap[File, Stamp]
@@ -30,7 +33,7 @@ private[sbt] object ExternalHooks {
       case f: File     => cachedSources.put(f, converter(f))
     }
     view match {
-      case r: FileTreeRepository[Stamp] =>
+      case r: FileTreeRepository[FileCacheEntry] =>
         r.register(options.classesDirectory.toPath, Integer.MAX_VALUE)
         options.classpath.foreach { f =>
           r.register(f.toPath, Integer.MAX_VALUE)
@@ -41,7 +44,7 @@ private[sbt] object ExternalHooks {
     options.classpath.foreach { f =>
       view.listEntries(f.toPath, Integer.MAX_VALUE, _ => true) foreach { e =>
         e.value match {
-          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value)
+          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
           case _            =>
         }
       }
@@ -49,7 +52,7 @@ private[sbt] object ExternalHooks {
       // rather than a directory.
       view.listEntries(f.toPath, -1, _ => true) foreach { e =>
         e.value match {
-          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value)
+          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
           case _            =>
         }
       }

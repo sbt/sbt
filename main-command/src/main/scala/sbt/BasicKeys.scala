@@ -9,13 +9,11 @@ package sbt
 
 import java.io.File
 
-import sbt.internal.util.AttributeKey
 import sbt.internal.inc.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
-import sbt.io.FileTreeDataView
+import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
-import xsbti.compile.analysis.Stamp
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
