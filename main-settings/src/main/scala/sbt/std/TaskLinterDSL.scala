@@ -11,7 +11,6 @@ import sbt.SettingKey
 import sbt.internal.util.ConsoleAppender
 import sbt.internal.util.appmacro.{ Convert, LinterDSL }
 
-import scala.collection.mutable.{ HashSet => MutableSet }
 import scala.io.AnsiColor
 import scala.reflect.macros.blackbox
 
@@ -22,15 +21,26 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
   override def runLinter(ctx: blackbox.Context)(tree: ctx.Tree): Unit = {
     import ctx.universe._
     val isTask = convert.asPredicate(ctx)
-    class traverser extends Traverser {
-      private val unchecked = symbolOf[sbt.sbtUnchecked].asClass
-      private val initializeType = typeOf[sbt.Def.Initialize[_]]
-      private val uncheckedWrappers = MutableSet.empty[Tree]
-      var insideIf: Boolean = false
-      var insideAnon: Boolean = false
-      var disableNoValueReport: Boolean = false
+    val unchecked = symbolOf[sbt.sbtUnchecked].asClass
+    val initializeType = typeOf[sbt.Def.Initialize[_]]
 
-      def handleUncheckedAnnotation(exprAtUseSite: Tree, tt: TypeTree): Unit = {
+    /**
+     * Lints a task tree.
+     * @param insideIf indicates whether or not the current tree is enclosed in an if statement.
+     *                It is generally illegal to call `.value` on a task within such a tree unless
+     *                the tree has been annotated with `@sbtUnchecked`.
+     * @param insideAnon indicates whether or not the current tree is enclosed in an anonymous
+     *                   function. It is generally illegal to call `.value` on a task within such
+     *                   a tree unless the tree has been annotated with `@sbtUnchecked`.
+     * @param uncheckedWrapper an optional tree that is provided to lint a tree in the form:
+     *                         `tree.value: @sbtUnchecked` for some tree. This can be used to
+     *                         prevent the linter from rejecting task evaluation within a
+     *                         conditional or an anonymous function.
+     */
+    class traverser(insideIf: Boolean, insideAnon: Boolean, uncheckedWrapper: Option[Tree])
+        extends Traverser {
+
+      def extractUncheckedWrapper(exprAtUseSite: Tree, tt: TypeTree): Option[Tree] = {
         tt.original match {
           case Annotated(annot, _) =>
             Option(annot.tpe) match {
@@ -41,16 +51,14 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
                 if (isUnchecked) {
                   // Use expression at use site, arg contains the old expr
                   // Referential equality between the two doesn't hold
-                  val removedSbtWrapper = exprAtUseSite match {
+                  Some(exprAtUseSite match {
                     case Typed(t, _) => t
                     case _           => exprAtUseSite
-                  }
-                  uncheckedWrappers.add(removedSbtWrapper)
-                  ()
-                }
-              case _ =>
+                  })
+                } else None
+              case _ => None
             }
-          case _ =>
+          case _ => None
         }
       }
 
@@ -81,7 +89,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
       override def traverse(tree: ctx.universe.Tree): Unit = {
         tree match {
           case ap @ Apply(TypeApply(Select(_, name), tpe :: Nil), qual :: Nil) =>
-            val shouldIgnore = uncheckedWrappers.contains(ap)
+            val shouldIgnore = uncheckedWrapper.contains(ap)
             val wrapperName = name.decodedName.toString
             val (qualName, isSettingKey) =
               Option(qual.symbol)
@@ -101,22 +109,16 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
             traverse(qual)
           case If(condition, thenp, elsep) =>
             traverse(condition)
-            val previousInsideIf = insideIf
-            insideIf = true
-            traverse(thenp)
-            traverse(elsep)
-            insideIf = previousInsideIf
+            val newTraverser = new traverser(insideIf = true, insideAnon, uncheckedWrapper)
+            newTraverser.traverse(thenp)
+            newTraverser.traverse(elsep)
           case Typed(expr, tpt: TypeTree) if tpt.original != null =>
-            handleUncheckedAnnotation(expr, tpt)
-            traverse(expr)
+            new traverser(insideIf, insideAnon, extractUncheckedWrapper(expr, tpt)).traverse(expr)
             traverse(tpt)
           case Function(vparams, body) =>
             traverseTrees(vparams)
             if (!vparams.exists(_.mods.hasFlag(Flag.SYNTHETIC))) {
-              val previousInsideAnon = insideAnon
-              insideAnon = true
-              traverse(body)
-              insideAnon = previousInsideAnon
+              new traverser(insideIf, insideAnon = true, uncheckedWrapper).traverse(body)
             } else traverse(body)
           case Block(stmts, expr) =>
             if (!isDynamicTask) {
@@ -147,7 +149,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
         }
       }
     }
-    (new traverser).traverse(tree)
+    new traverser(insideIf = false, insideAnon = false, uncheckedWrapper = None).traverse(tree)
   }
 }
 
