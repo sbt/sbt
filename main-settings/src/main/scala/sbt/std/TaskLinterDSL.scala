@@ -80,9 +80,9 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
 
       override def traverse(tree: ctx.universe.Tree): Unit = {
         tree match {
-          case ap @ Apply(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
+          case ap @ Apply(TypeApply(Select(_, name), tpe :: Nil), qual :: Nil) =>
             val shouldIgnore = uncheckedWrappers.contains(ap)
-            val wrapperName = nme.decodedName.toString
+            val wrapperName = name.decodedName.toString
             val (qualName, isSettingKey) =
               Option(qual.symbol)
                 .map(sym => (sym.name.decodedName.toString, qual.tpe <:< typeOf[SettingKey[_]]))
@@ -177,39 +177,39 @@ object TaskLinterDSLFeedback {
   private final val startGreen = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.GREEN else ""
   private final val reset = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.RESET else ""
 
-  private final val ProblemHeader = s"${startRed}problem${reset}"
-  private final val SolutionHeader = s"${startGreen}solution${reset}"
+  private final val ProblemHeader = s"${startRed}problem$reset"
+  private final val SolutionHeader = s"${startGreen}solution$reset"
 
-  def useOfValueInsideAnon(task: String) =
+  def useOfValueInsideAnon(task: String): String =
     s"""${startBold}The evaluation of `$task` inside an anonymous function is prohibited.$reset
        |
-       |${ProblemHeader}: Task invocations inside anonymous functions are evaluated independently of whether the anonymous function is invoked or not.
-       |${SolutionHeader}:
+       |$ProblemHeader: Task invocations inside anonymous functions are evaluated independently of whether the anonymous function is invoked or not.
+       |$SolutionHeader:
        |  1. Make `$task` evaluation explicit outside of the function body if you don't care about its evaluation.
        |  2. Use a dynamic task to evaluate `$task` and pass that value as a parameter to an anonymous function.
     """.stripMargin
 
-  def useOfValueInsideIfExpression(task: String) =
+  def useOfValueInsideIfExpression(task: String): String =
     s"""${startBold}The evaluation of `$task` happens always inside a regular task.$reset
        |
-       |${ProblemHeader}: `$task` is inside the if expression of a regular task.
+       |$ProblemHeader: `$task` is inside the if expression of a regular task.
        |  Regular tasks always evaluate task inside the bodies of if expressions.
-       |${SolutionHeader}:
+       |$SolutionHeader:
        |  1. If you only want to evaluate it when the if predicate is true or false, use a dynamic task.
        |  2. Otherwise, make the static evaluation explicit by evaluating `$task` outside the if expression.
     """.stripMargin
 
-  def missingValueForKey(key: String) =
+  def missingValueForKey(key: String): String =
     s"""${startBold}The key `$key` is not being invoked inside the task definition.$reset
        |
-       |${ProblemHeader}:  Keys missing `.value` are not initialized and their dependency is not registered.
-       |${SolutionHeader}: Replace `$key` by `$key.value` or remove it if unused.
+       |$ProblemHeader:  Keys missing `.value` are not initialized and their dependency is not registered.
+       |$SolutionHeader: Replace `$key` by `$key.value` or remove it if unused.
     """.stripMargin
 
-  def missingValueForInitialize(expr: String) =
+  def missingValueForInitialize(expr: String): String =
     s"""${startBold}The setting/task `$expr` is not being invoked inside the task definition.$reset
        |
-       |${ProblemHeader}:  Settings/tasks missing `.value` are not initialized and their dependency is not registered.
-       |${SolutionHeader}: Replace `$expr` by `($expr).value` or remove it if unused.
+       |$ProblemHeader:  Settings/tasks missing `.value` are not initialized and their dependency is not registered.
+       |$SolutionHeader: Replace `$expr` by `($expr).value` or remove it if unused.
     """.stripMargin
 }
