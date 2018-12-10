@@ -189,6 +189,7 @@ object TaskLinterDSLFeedback {
        |$SolutionHeader:
        |  1. Make `$task` evaluation explicit outside of the function body if you don't care about its evaluation.
        |  2. Use a dynamic task to evaluate `$task` and pass that value as a parameter to an anonymous function.
+       |  3. Annotate the `$task` evaluation with `@sbtUnchecked`, e.g. `($task.value: @sbtUnchecked)`.
     """.stripMargin
 
   def useOfValueInsideIfExpression(task: String): String =
@@ -198,7 +199,8 @@ object TaskLinterDSLFeedback {
        |  Regular tasks always evaluate task inside the bodies of if expressions.
        |$SolutionHeader:
        |  1. If you only want to evaluate it when the if predicate is true or false, use a dynamic task.
-       |  2. Otherwise, make the static evaluation explicit by evaluating `$task` outside the if expression.
+       |  2. Make the static evaluation explicit by evaluating `$task` outside the if expression.
+       |  3. If you still want to force the static evaluation, you may annotate the task evaluation with `@sbtUnchecked`, e.g. `($task.value: @sbtUnchecked)`.
     """.stripMargin
 
   def missingValueForKey(key: String): String =
