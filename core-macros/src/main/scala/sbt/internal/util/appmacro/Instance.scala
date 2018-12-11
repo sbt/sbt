@@ -8,8 +8,8 @@
 package sbt.internal.util
 package appmacro
 
-import Classes.Applicative
-import Types.Id
+import sbt.internal.util.Classes.Applicative
+import sbt.internal.util.Types.Id
 
 /**
  * The separate hierarchy from Applicative/Monad is for two reasons.
@@ -28,8 +28,7 @@ trait MonadInstance extends Instance {
   def flatten[T](in: M[M[T]]): M[T]
 }
 
-import scala.reflect._
-import macros._
+import scala.reflect.macros._
 
 object Instance {
   type Aux[M0[_]] = Instance { type M[x] = M0[x] }
