@@ -621,6 +621,7 @@ lazy val sbtProj = (project in file("sbt"))
       version,
       // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
       BuildInfoKey.map((fullClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
+      BuildInfoKey.map((dependencyClasspath in Compile).taskValue) { case (ident, cp) => ident -> cp.files },
       classDirectory in Compile,
       classDirectory in Test,
     ),

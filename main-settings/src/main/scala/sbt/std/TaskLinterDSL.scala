@@ -8,10 +8,11 @@
 package sbt.std
 
 import sbt.SettingKey
+import sbt.dsl.LinterLevel
+import sbt.dsl.LinterLevel.{ Abort, Warn }
 import sbt.internal.util.ConsoleAppender
 import sbt.internal.util.appmacro.{ Convert, LinterDSL }
 
-import scala.collection.mutable.{ HashSet => MutableSet }
 import scala.io.AnsiColor
 import scala.reflect.macros.blackbox
 
@@ -19,18 +20,32 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
   def isDynamicTask: Boolean
   def convert: Convert
 
-  override def runLinter(ctx: blackbox.Context)(tree: ctx.Tree): Unit = {
+  private def impl(
+      ctx: blackbox.Context
+  )(tree: ctx.Tree, lint: (ctx.Position, String) => Unit): Unit = {
     import ctx.universe._
     val isTask = convert.asPredicate(ctx)
-    class traverser extends Traverser {
-      private val unchecked = symbolOf[sbt.sbtUnchecked].asClass
-      private val initializeType = typeOf[sbt.Def.Initialize[_]]
-      private val uncheckedWrappers = MutableSet.empty[Tree]
-      var insideIf: Boolean = false
-      var insideAnon: Boolean = false
-      var disableNoValueReport: Boolean = false
+    val unchecked = symbolOf[sbt.sbtUnchecked].asClass
+    val initializeType = typeOf[sbt.Def.Initialize[_]]
 
-      def handleUncheckedAnnotation(exprAtUseSite: Tree, tt: TypeTree): Unit = {
+    /**
+     * Lints a task tree.
+     *
+     * @param insideIf indicates whether or not the current tree is enclosed in an if statement.
+     *                It is generally illegal to call `.value` on a task within such a tree unless
+     *                the tree has been annotated with `@sbtUnchecked`.
+     * @param insideAnon indicates whether or not the current tree is enclosed in an anonymous
+     *                   function. It is generally illegal to call `.value` on a task within such
+     *                   a tree unless the tree has been annotated with `@sbtUnchecked`.
+     * @param uncheckedWrapper an optional tree that is provided to lint a tree in the form:
+     *                         `tree.value: @sbtUnchecked` for some tree. This can be used to
+     *                         prevent the linter from rejecting task evaluation within a
+     *                         conditional or an anonymous function.
+     */
+    class traverser(insideIf: Boolean, insideAnon: Boolean, uncheckedWrapper: Option[Tree])
+        extends Traverser {
+
+      def extractUncheckedWrapper(exprAtUseSite: Tree, tt: TypeTree): Option[Tree] = {
         tt.original match {
           case Annotated(annot, _) =>
             Option(annot.tpe) match {
@@ -41,16 +56,14 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
                 if (isUnchecked) {
                   // Use expression at use site, arg contains the old expr
                   // Referential equality between the two doesn't hold
-                  val removedSbtWrapper = exprAtUseSite match {
+                  Some(exprAtUseSite match {
                     case Typed(t, _) => t
                     case _           => exprAtUseSite
-                  }
-                  uncheckedWrappers.add(removedSbtWrapper)
-                  ()
-                }
-              case _ =>
+                  })
+                } else None
+              case _ => None
             }
-          case _ =>
+          case _ => None
         }
       }
 
@@ -60,29 +73,29 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
       def detectAndErrorOnKeyMissingValue(i: Ident): Unit = {
         if (isKey(i.tpe)) {
           val keyName = i.name.decodedName.toString
-          ctx.error(i.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
+          lint(i.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
         } else ()
       }
 
       def detectAndErrorOnKeyMissingValue(s: Select): Unit = {
         if (isKey(s.tpe)) {
           val keyName = s.name.decodedName.toString
-          ctx.error(s.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
+          lint(s.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
         } else ()
       }
 
       def detectAndErrorOnKeyMissingValue(a: Apply): Unit = {
         if (isInitialize(a.tpe)) {
           val expr = "X / y"
-          ctx.error(a.pos, TaskLinterDSLFeedback.missingValueForInitialize(expr))
+          lint(a.pos, TaskLinterDSLFeedback.missingValueForInitialize(expr))
         } else ()
       }
 
       override def traverse(tree: ctx.universe.Tree): Unit = {
         tree match {
-          case ap @ Apply(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
-            val shouldIgnore = uncheckedWrappers.contains(ap)
-            val wrapperName = nme.decodedName.toString
+          case ap @ Apply(TypeApply(Select(_, name), tpe :: Nil), qual :: Nil) =>
+            val shouldIgnore = uncheckedWrapper.contains(ap)
+            val wrapperName = name.decodedName.toString
             val (qualName, isSettingKey) =
               Option(qual.symbol)
                 .map(sym => (sym.name.decodedName.toString, qual.tpe <:< typeOf[SettingKey[_]]))
@@ -91,32 +104,26 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
             if (!isSettingKey && !shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
               if (insideIf && !isDynamicTask) {
                 // Error on the use of value inside the if of a regular task (dyn task is ok)
-                ctx.error(ap.pos, TaskLinterDSLFeedback.useOfValueInsideIfExpression(qualName))
+                lint(ap.pos, TaskLinterDSLFeedback.useOfValueInsideIfExpression(qualName))
               }
               if (insideAnon) {
                 // Error on the use of anonymous functions in any task or dynamic task
-                ctx.error(ap.pos, TaskLinterDSLFeedback.useOfValueInsideAnon(qualName))
+                lint(ap.pos, TaskLinterDSLFeedback.useOfValueInsideAnon(qualName))
               }
             }
             traverse(qual)
           case If(condition, thenp, elsep) =>
             traverse(condition)
-            val previousInsideIf = insideIf
-            insideIf = true
-            traverse(thenp)
-            traverse(elsep)
-            insideIf = previousInsideIf
+            val newTraverser = new traverser(insideIf = true, insideAnon, uncheckedWrapper)
+            newTraverser.traverse(thenp)
+            newTraverser.traverse(elsep)
           case Typed(expr, tpt: TypeTree) if tpt.original != null =>
-            handleUncheckedAnnotation(expr, tpt)
-            traverse(expr)
+            new traverser(insideIf, insideAnon, extractUncheckedWrapper(expr, tpt)).traverse(expr)
             traverse(tpt)
           case Function(vparams, body) =>
             traverseTrees(vparams)
             if (!vparams.exists(_.mods.hasFlag(Flag.SYNTHETIC))) {
-              val previousInsideAnon = insideAnon
-              insideAnon = true
-              traverse(body)
-              insideAnon = previousInsideAnon
+              new traverser(insideIf, insideAnon = true, uncheckedWrapper).traverse(body)
             } else traverse(body)
           case Block(stmts, expr) =>
             if (!isDynamicTask) {
@@ -125,7 +132,8 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
                * and dangerous because we may miss some corner cases. Instead, we report
                * on the easiest cases in which we are certain that the user does not want
                * to have a stale key reference. Those are idents in the rhs of a val definition
-               * whose name is `_` and those idents that are in statement position inside blocks. */
+               * whose name is `_` and those idents that are in statement position inside blocks.
+               */
               stmts.foreach {
                 // TODO: Consider using unused names analysis to be able to report on more cases
                 case ValDef(_, valName, _, rhs) if valName == termNames.WILDCARD =>
@@ -147,7 +155,18 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
         }
       }
     }
-    (new traverser).traverse(tree)
+    new traverser(insideIf = false, insideAnon = false, uncheckedWrapper = None).traverse(tree)
+  }
+
+  override def runLinter(ctx: blackbox.Context)(tree: ctx.Tree): Unit = {
+    import ctx.universe._
+    ctx.inferImplicitValue(weakTypeOf[LinterLevel]) match {
+      case t if t.tpe =:= weakTypeOf[Abort.type] =>
+        impl(ctx)(tree, (pos, msg) => ctx.error(pos, msg))
+      case t if t.tpe =:= weakTypeOf[Warn.type] =>
+        impl(ctx)(tree, (pos, msg) => ctx.warning(pos, msg))
+      case _ => ()
+    }
   }
 }
 
@@ -177,39 +196,47 @@ object TaskLinterDSLFeedback {
   private final val startGreen = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.GREEN else ""
   private final val reset = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.RESET else ""
 
-  private final val ProblemHeader = s"${startRed}problem${reset}"
-  private final val SolutionHeader = s"${startGreen}solution${reset}"
+  private final val ProblemHeader = s"${startRed}problem$reset"
+  private final val SolutionHeader = s"${startGreen}solution$reset"
 
-  def useOfValueInsideAnon(task: String) =
+  def useOfValueInsideAnon(task: String): String =
     s"""${startBold}The evaluation of `$task` inside an anonymous function is prohibited.$reset
        |
-       |${ProblemHeader}: Task invocations inside anonymous functions are evaluated independently of whether the anonymous function is invoked or not.
-       |${SolutionHeader}:
+       |$ProblemHeader: Task invocations inside anonymous functions are evaluated independently of whether the anonymous function is invoked or not.
+       |$SolutionHeader:
        |  1. Make `$task` evaluation explicit outside of the function body if you don't care about its evaluation.
        |  2. Use a dynamic task to evaluate `$task` and pass that value as a parameter to an anonymous function.
+       |  3. Annotate the `$task` evaluation with `@sbtUnchecked`, e.g. `($task.value: @sbtUnchecked)`.
+       |  4. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
     """.stripMargin
 
-  def useOfValueInsideIfExpression(task: String) =
+  def useOfValueInsideIfExpression(task: String): String =
     s"""${startBold}The evaluation of `$task` happens always inside a regular task.$reset
        |
-       |${ProblemHeader}: `$task` is inside the if expression of a regular task.
+       |$ProblemHeader: `$task` is inside the if expression of a regular task.
        |  Regular tasks always evaluate task inside the bodies of if expressions.
-       |${SolutionHeader}:
+       |$SolutionHeader:
        |  1. If you only want to evaluate it when the if predicate is true or false, use a dynamic task.
-       |  2. Otherwise, make the static evaluation explicit by evaluating `$task` outside the if expression.
+       |  2. Make the static evaluation explicit by evaluating `$task` outside the if expression.
+       |  3. If you still want to force the static evaluation, you may annotate the task evaluation with `@sbtUnchecked`, e.g. `($task.value: @sbtUnchecked)`.
+       |  4. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
     """.stripMargin
 
-  def missingValueForKey(key: String) =
+  def missingValueForKey(key: String): String =
     s"""${startBold}The key `$key` is not being invoked inside the task definition.$reset
        |
-       |${ProblemHeader}:  Keys missing `.value` are not initialized and their dependency is not registered.
-       |${SolutionHeader}: Replace `$key` by `$key.value` or remove it if unused.
+       |$ProblemHeader:  Keys missing `.value` are not initialized and their dependency is not registered.
+       |$SolutionHeader:
+       |  1. Replace `$key` by `$key.value` or remove it if unused
+       |  2. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
     """.stripMargin
 
-  def missingValueForInitialize(expr: String) =
+  def missingValueForInitialize(expr: String): String =
     s"""${startBold}The setting/task `$expr` is not being invoked inside the task definition.$reset
        |
-       |${ProblemHeader}:  Settings/tasks missing `.value` are not initialized and their dependency is not registered.
-       |${SolutionHeader}: Replace `$expr` by `($expr).value` or remove it if unused.
+       |$ProblemHeader:  Settings/tasks missing `.value` are not initialized and their dependency is not registered.
+       |$SolutionHeader:
+       |  1. Replace `$expr` by `($expr).value` or remove it if unused.
+       |  2. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
     """.stripMargin
 }

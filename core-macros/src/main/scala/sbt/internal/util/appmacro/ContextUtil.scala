@@ -118,8 +118,20 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
    * A reference is illegal if it is to an M instance defined within the scope of the macro call.
    * As an approximation, disallow referenced to any local definitions `defs`.
    */
+  def illegalReference(defs: collection.Set[Symbol], sym: Symbol, mType: Type): Boolean =
+    sym != null && sym != NoSymbol && defs.contains(sym) && {
+      sym match {
+        case m: MethodSymbol => m.returnType.erasure <:< mType
+        case _               => sym.typeSignature <:< mType
+      }
+    }
+
+  /**
+   * A reference is illegal if it is to an M instance defined within the scope of the macro call.
+   * As an approximation, disallow referenced to any local definitions `defs`.
+   */
   def illegalReference(defs: collection.Set[Symbol], sym: Symbol): Boolean =
-    sym != null && sym != NoSymbol && defs.contains(sym)
+    illegalReference(defs, sym, weakTypeOf[Any])
 
   type PropertyChecker = (String, Type, Tree) => Boolean
 
@@ -127,14 +139,27 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
    * A function that checks the provided tree for illegal references to M instances defined in the
    *  expression passed to the macro and for illegal dereferencing of M instances.
    */
-  def checkReferences(defs: collection.Set[Symbol], isWrapper: PropertyChecker): Tree => Unit = {
+  def checkReferences(
+      defs: collection.Set[Symbol],
+      isWrapper: PropertyChecker,
+      mType: Type
+  ): Tree => Unit = {
     case s @ ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
-      if (isWrapper(nme.decodedName.toString, tpe.tpe, qual))
+      if (isWrapper(nme.decodedName.toString, tpe.tpe, qual)) {
         ctx.error(s.pos, DynamicDependencyError)
-    case id @ Ident(name) if illegalReference(defs, id.symbol) =>
+      }
+    case id @ Ident(name) if illegalReference(defs, id.symbol, mType) =>
       ctx.error(id.pos, DynamicReferenceError + ": " + name)
     case _ => ()
   }
+
+  @deprecated("1.3.0", "Use that variant that specifies the M instance types to exclude")
+  /**
+   * A function that checks the provided tree for illegal references to M instances defined in the
+   *  expression passed to the macro and for illegal dereferencing of M instances.
+   */
+  def checkReferences(defs: collection.Set[Symbol], isWrapper: PropertyChecker): Tree => Unit =
+    checkReferences(defs, isWrapper, weakTypeOf[Any])
 
   /** Constructs a ValDef with a parameter modifier, a unique name, with the provided Type and with an empty rhs. */
   def freshMethodParameter(tpe: Type): ValDef =
