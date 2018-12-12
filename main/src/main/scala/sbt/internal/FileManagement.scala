@@ -26,7 +26,7 @@ private[sbt] object FileManagement {
     val interactive = remaining.contains("shell") || remaining.lastOption.contains("iflast shell")
     val scripted = remaining.contains("setUpScripted")
 
-    val continuous = remaining.exists(_.startsWith(ContinuousExecutePrefix))
+    val continuous = remaining.lastOption.exists(_.startsWith(ContinuousExecutePrefix))
     if (!scripted && (interactive || continuous)) {
       FileTreeViewConfig
         .default(watchAntiEntropy.value, pollInterval.value, pollingDirectories.value)
