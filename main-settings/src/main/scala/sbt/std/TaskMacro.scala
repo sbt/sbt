@@ -493,7 +493,7 @@ object TaskMacro {
       isParserWrapper(n, tpe, tr) || isTaskWrapper(n, tpe, tr)
     val ttree = t.tree
     val defs = util.collectDefs(ttree, isAnyWrapper)
-    val checkQual = util.checkReferences(defs, isAnyWrapper)
+    val checkQual = util.checkReferences(defs, isAnyWrapper, weakTypeOf[Initialize[InputTask[Any]]])
 
     // the Symbol for the anonymous function passed to the appropriate Instance.map/flatMap/pure method
     // this Symbol needs to be known up front so that it can be used as the owner of synthetic vals

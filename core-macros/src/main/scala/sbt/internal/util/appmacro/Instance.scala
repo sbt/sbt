@@ -124,7 +124,7 @@ object Instance {
     // Local definitions `defs` in the macro.  This is used to ensure references are to M instances defined outside of the macro call.
     // Also `refCount` is the number of references, which is used to create the private, synthetic method containing the body
     val defs = util.collectDefs(tree, isWrapper)
-    val checkQual: Tree => Unit = util.checkReferences(defs, isWrapper)
+    val checkQual: Tree => Unit = util.checkReferences(defs, isWrapper, mttpe.erasure)
 
     type In = Input[c.universe.type]
     var inputs = List[In]()
