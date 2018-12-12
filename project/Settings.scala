@@ -50,5 +50,29 @@ object Settings {
         PgpKeys.publishSigned := PgpKeys.publishSigned.in(Shading).value,
         PgpKeys.publishLocalSigned := PgpKeys.publishLocalSigned.in(Shading).value
       )
-  
+
+  lazy val generatePropertyFile =
+    resourceGenerators.in(Compile) += Def.task {
+      import sys.process._
+
+      val dir = classDirectory.in(Compile).value / "coursier"
+      val ver = version.value
+
+      val f = dir / "sbtcoursier.properties"
+      dir.mkdirs()
+
+      val p = new java.util.Properties
+
+      p.setProperty("version", ver)
+      p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
+
+      val w = new java.io.FileOutputStream(f)
+      p.store(w, "sbt-coursier properties")
+      w.close()
+
+      state.value.log.info(s"Wrote $f")
+
+      Seq(f)
+    }
+
 }

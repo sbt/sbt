@@ -45,6 +45,7 @@ lazy val `sbt-coursier-shared` = project
   .dependsOn(`lm-coursier`)
   .settings(
     plugin,
+    generatePropertyFile,
     libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.4" % Test,
     testFrameworks += new TestFramework("utest.runner.Framework")
   )

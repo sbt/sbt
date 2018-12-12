@@ -42,6 +42,8 @@ object SbtCoursierShared extends AutoPlugin {
 
     type CoursierCreateLogger = coursier.lmcoursier.CreateLogger
     val CoursierCreateLogger = coursier.lmcoursier.CreateLogger
+
+    val sbtCoursierVersion = Properties.version
   }
 
   import autoImport._

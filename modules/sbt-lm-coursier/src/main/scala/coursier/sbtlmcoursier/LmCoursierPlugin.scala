@@ -12,12 +12,18 @@ import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
 
+  import SbtCoursierShared.autoImport._
+
   object autoImport {
     val coursierConfiguration = taskKey[CoursierConfiguration]("General dependency management (Coursier) settings, such as the resolvers and options to use.").withRank(DTask)
+
+    val addSbtCoursier = {
+      import sbt._
+      addSbtPlugin("io.get-coursier" % "sbt-lm-coursier" % sbtCoursierVersion)
+    }
   }
 
   import autoImport._
-  import SbtCoursierShared.autoImport._
 
 
   override def trigger = allRequirements

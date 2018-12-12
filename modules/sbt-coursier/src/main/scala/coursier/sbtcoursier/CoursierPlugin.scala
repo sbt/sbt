@@ -12,6 +12,8 @@ object CoursierPlugin extends AutoPlugin {
 
   override def requires = SbtCoursierShared
 
+  import SbtCoursierShared.autoImport._
+
   object autoImport {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
     val coursierMaxIterations = Keys.coursierMaxIterations
@@ -39,9 +41,12 @@ object CoursierPlugin extends AutoPlugin {
     val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
     val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
 
-    val coursierVersion = coursier.util.Properties.version
+    @deprecated("Use sbtCoursierVersion instead", "1.1.0-M9")
+    val coursierVersion = sbtCoursierVersion
+
     val addSbtCoursier = {
-      addSbtPlugin("io.get-coursier" % "sbt-coursier" % coursierVersion)
+      import sbt._
+      addSbtPlugin("io.get-coursier" % "sbt-coursier" % sbtCoursierVersion)
     }
   }
 
