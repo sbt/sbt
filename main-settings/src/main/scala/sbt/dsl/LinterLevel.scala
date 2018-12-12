@@ -40,7 +40,7 @@ package sbt.dsl
  *   }
  * }}}
  * To make this work, the instances are all defined as implicit case objects. Moreover, the
- * the [[LinterLevel.Abort]] setting is made default by placing [[LinterLevel.Warn]] and
+ * the [[LinterLevel.Warn]] setting is made default by placing [[LinterLevel.Abort]] and
  * [[LinterLevel.Ignore]] in the [[LinterLevelLowPriority]] trait that the [[LinterLevel]]
  * companion object extends.
  */
@@ -48,21 +48,21 @@ sealed trait LinterLevel
 object LinterLevel extends LinterLevelLowPriority {
 
   /**
-   * Abort the macro expansion if any linter check fails.
+   * Apply the linter but print warnings instead of aborting macro expansion when linter violations
+   * are found.
    */
-  implicit case object Abort extends LinterLevel
+  implicit case object Warn extends LinterLevel
 }
 
 private[dsl] trait LinterLevelLowPriority {
 
   /**
+   * Abort the macro expansion if any linter check fails.
+   */
+  implicit case object Abort extends LinterLevel
+
+  /**
    * Do not perform any linting.
    */
   implicit case object Ignore extends LinterLevel
-
-  /**
-   * Apply the linter but print warnings instead of aborting macro expansion when linter violations
-   * are found.
-   */
-  implicit case object Warn extends LinterLevel
 }

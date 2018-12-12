@@ -39,6 +39,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -59,6 +60,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -78,6 +80,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -103,6 +106,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -132,6 +136,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -155,6 +160,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -176,6 +182,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -196,6 +203,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |var condition = true
@@ -215,6 +223,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |val barNeg = taskKey[String]("")
@@ -235,6 +244,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg = taskKey[String]("")
         |
@@ -252,6 +262,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg2 = taskKey[String]("")
         |
@@ -269,6 +280,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg2 = taskKey[String]("")
         |
@@ -289,6 +301,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg3 = taskKey[String]("")
         |def avoidDCE = {println(""); ""}
@@ -308,6 +321,7 @@ class TaskNegSpec extends FunSuite {
       """
         |import sbt._
         |import sbt.Def._
+        |import sbt.dsl.LinterLevel.Abort
         |
         |val fooNeg4 = taskKey[String]("")
         |
