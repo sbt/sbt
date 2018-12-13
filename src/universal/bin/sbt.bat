@@ -104,15 +104,15 @@ if not exist build.sbt (
   )
 )
 
-if defined JVM_DEBUG_PORT (
-  set _JAVA_OPTS=!_JAVA_OPTS! -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=!JVM_DEBUG_PORT!
-)
-
 call :process
 
 call :checkjava
 
 call :copyrt
+
+if defined JVM_DEBUG_PORT (
+  set _JAVA_OPTS=!_JAVA_OPTS! -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=!JVM_DEBUG_PORT!
+)
 
 call :sync_preloaded
 
