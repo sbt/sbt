@@ -9,14 +9,14 @@ object Dependencies {
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.3.0-M3"
+  private val ioVersion = "1.3.0-M4"
   private val utilVersion = "1.3.0-M3"
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _ => "1.2.2"
+      case _ => "1.3.0-M1"
     }
-  private val zincVersion = "1.2.2"
+  private val zincVersion = "1.2.5"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
