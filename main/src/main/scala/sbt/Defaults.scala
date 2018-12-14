@@ -143,6 +143,7 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       classLoaderCache := ClassLoaderCache(4),
+      fileInputs :== Nil,
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
@@ -381,12 +382,14 @@ object Defaults extends BuildCommon {
           crossPaths.value
         )
     },
-    unmanagedSources := {
+    unmanagedSources / fileInputs := {
       val filter =
         (includeFilter in unmanagedSources).value -- (excludeFilter in unmanagedSources).value
       val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
-      (unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources).all.map(Stamped.file)
+      unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources
     },
+    unmanagedSources / fileInputs += baseDirectory.value * "foo.txt",
+    unmanagedSources := (unmanagedSources / fileInputs).value.all.map(Stamped.file),
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
@@ -407,7 +410,7 @@ object Defaults extends BuildCommon {
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
     sourceGenerators :== Nil,
-    sourceGenerators / outputs := Seq(managedDirectory.value ** AllPassFilter),
+    sourceGenerators / fileOutputs := Seq(managedDirectory.value ** AllPassFilter),
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
@@ -421,11 +424,12 @@ object Defaults extends BuildCommon {
     resourceDirectories := Classpaths
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
-    unmanagedResources := {
+    unmanagedResources / fileInputs := {
       val filter =
         (includeFilter in unmanagedResources).value -- (excludeFilter in unmanagedResources).value
-      unmanagedResourceDirectories.value.map(_ ** filter).all.map(Stamped.file)
+      unmanagedResourceDirectories.value.map(_ ** filter)
     },
+    unmanagedResources := (unmanagedResources / fileInputs).value.all.map(Stamped.file),
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val bases = unmanagedResourceDirectories.value
       val include = (includeFilter in unmanagedResources).value
@@ -573,10 +577,10 @@ object Defaults extends BuildCommon {
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
     compileInputsSettings :+ (clean := Clean.taskIn(ThisScope).value)
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
-    outputs := Seq(
+    fileOutputs := Seq(
       compileAnalysisFileTask.value.toGlob,
       classDirectory.value ** "*.class"
-    ) ++ (sourceGenerators / outputs).value,
+    ) ++ (sourceGenerators / fileOutputs).value,
     compile := compileTask.value,
     clean := Clean.taskIn(ThisScope).value,
     manipulateBytecode := compileIncremental.value,
@@ -663,7 +667,7 @@ object Defaults extends BuildCommon {
     },
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
-    outputs += target.value ** AllPassFilter,
+    fileOutputs += target.value ** AllPassFilter,
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
@@ -2039,7 +2043,7 @@ object Classpaths {
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
         docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
-        outputs :== Nil,
+        fileOutputs :== Nil,
         sbtDependency := {
           val app = appConfiguration.value
           val id = app.provider.id
