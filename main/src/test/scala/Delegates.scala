@@ -23,12 +23,12 @@ object Delegates extends Properties("delegates") {
     t.nonEmpty
   }
 
-  property("no duplicate scopes") = forAll { (keys: Keys) =>
+  property("no duplicate scopes") = forAll { (keys: TestKeys) =>
     allDelegates(keys) { (_, ds) =>
       ds.distinct.size == ds.size
     }
   }
-  property("delegates non-empty") = forAll { (keys: Keys) =>
+  property("delegates non-empty") = forAll { (keys: TestKeys) =>
     allDelegates(keys) { (_, ds) =>
       ds.nonEmpty
     }
@@ -36,7 +36,7 @@ object Delegates extends Properties("delegates") {
 
   property("An initially Zero axis is Zero in all delegates") = allAxes(alwaysZero)
 
-  property("Projects precede builds precede Zero") = forAll { (keys: Keys) =>
+  property("Projects precede builds precede Zero") = forAll { (keys: TestKeys) =>
     allDelegates(keys) { (scope, ds) =>
       val projectAxes = ds.map(_.project)
       val nonProject = projectAxes.dropWhile {
@@ -51,19 +51,19 @@ object Delegates extends Properties("delegates") {
     (s, ds, _) => globalCombinations(s, ds)
   )
 
-  property("initial scope first") = forAll { (keys: Keys) =>
+  property("initial scope first") = forAll { (keys: TestKeys) =>
     allDelegates(keys) { (scope, ds) =>
       ds.head == scope
     }
   }
 
-  property("global scope last") = forAll { (keys: Keys) =>
+  property("global scope last") = forAll { (keys: TestKeys) =>
     allDelegates(keys) { (_, ds) =>
       ds.last == Scope.GlobalScope
     }
   }
 
-  property("Project axis delegates to BuildRef then Zero") = forAll { (keys: Keys) =>
+  property("Project axis delegates to BuildRef then Zero") = forAll { (keys: TestKeys) =>
     allDelegates(keys) { (key, ds) =>
       key.project match {
         case Zero => true // filtering out of testing
@@ -84,7 +84,7 @@ object Delegates extends Properties("delegates") {
     }
   }
 
-  property("Config axis delegates to parent configuration") = forAll { (keys: Keys) =>
+  property("Config axis delegates to parent configuration") = forAll { (keys: TestKeys) =>
     allDelegates(keys) { (key, ds) =>
       key.config match {
         case Zero => true
@@ -109,13 +109,13 @@ object Delegates extends Properties("delegates") {
   }
 
   def allAxes(f: (Scope, Seq[Scope], Scope => ScopeAxis[_]) => Prop): Prop = forAll {
-    (keys: Keys) =>
+    (keys: TestKeys) =>
       allDelegates(keys) { (s, ds) =>
         all(f(s, ds, _.project), f(s, ds, _.config), f(s, ds, _.task), f(s, ds, _.extra))
       }
   }
 
-  def allDelegates(keys: Keys)(f: (Scope, Seq[Scope]) => Prop): Prop =
+  def allDelegates(keys: TestKeys)(f: (Scope, Seq[Scope]) => Prop): Prop =
     all(keys.scopes map { scope =>
       val delegates = keys.env.delegates(scope)
       ("Scope: " + Scope.display(scope, "_")) |:
