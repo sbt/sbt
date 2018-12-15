@@ -43,7 +43,7 @@ abstract class TestBuild {
   implicit val tGen = Arbitrary { genTasks(lowerIDGen, MaxDepsGen, MaxTasksGen) }
   val seed = rng.Seed.random
 
-  class Keys(val env: Env, val scopes: Seq[Scope]) {
+  class TestKeys(val env: Env, val scopes: Seq[Scope]) {
     override def toString = env + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
     lazy val delegated = scopes map env.delegates
   }
@@ -188,10 +188,10 @@ abstract class TestBuild {
       (f(t), t)
     } toMap;
 
-  implicit lazy val arbKeys: Arbitrary[Keys] = Arbitrary(keysGen)
-  lazy val keysGen: Gen[Keys] = for (env <- mkEnv; keyCount <- chooseShrinkable(1, KeysPerEnv);
-                                     keys <- listOfN(keyCount, scope(env)))
-    yield new Keys(env, keys)
+  implicit lazy val arbKeys: Arbitrary[TestKeys] = Arbitrary(keysGen)
+  lazy val keysGen: Gen[TestKeys] = for (env <- mkEnv; keyCount <- chooseShrinkable(1, KeysPerEnv);
+                                         keys <- listOfN(keyCount, scope(env)))
+    yield new TestKeys(env, keys)
 
   def scope(env: Env): Gen[Scope] =
     for {
