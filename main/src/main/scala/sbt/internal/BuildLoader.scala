@@ -11,11 +11,16 @@ package internal
 import java.io.File
 import java.net.URI
 import BuildLoader._
-import sbt.internal.io.Alternatives._
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.util.Logger
 import sbt.librarymanagement.ModuleID
 
+private[internal] object Alternatives {
+  private[internal] implicit class Alternative[A, B](val f: A => Option[B]) {
+    def |(g: A => Option[B]): A => Option[B] = (a: A) => f(a) orElse g(a)
+  }
+}
+import Alternatives.Alternative
 final class MultiHandler[S, T](
     builtIn: S => Option[T],
     root: Option[S => Option[T]],

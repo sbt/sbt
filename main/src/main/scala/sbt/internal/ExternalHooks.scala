@@ -11,8 +11,8 @@ import java.util.Optional
 
 import sbt.Stamped
 import sbt.internal.inc.ExternalLookup
-import sbt.io.syntax.File
-import sbt.io.{ FileTreeRepository, FileTreeDataView, TypedPath }
+import sbt.io.syntax._
+import sbt.io.{ AllPassFilter, FileTreeDataView, FileTreeRepository, TypedPath }
 import xsbti.compile._
 import xsbti.compile.analysis.Stamp
 
@@ -34,28 +34,31 @@ private[sbt] object ExternalHooks {
     }
     view match {
       case r: FileTreeRepository[FileCacheEntry] =>
-        r.register(options.classesDirectory.toPath, Integer.MAX_VALUE)
-        options.classpath.foreach { f =>
-          r.register(f.toPath, Integer.MAX_VALUE)
+        r.register(options.classesDirectory ** AllPassFilter)
+        options.classpath.foreach {
+          case f if f.getName.endsWith(".jar") => r.register(f.toGlob)
+          case f                               => r.register(f ** AllPassFilter)
         }
       case _ =>
     }
     val allBinaries = new java.util.HashMap[File, Stamp]
-    options.classpath.foreach { f =>
-      view.listEntries(f.toPath, Integer.MAX_VALUE, _ => true) foreach { e =>
-        e.value match {
-          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
-          case _            =>
+    options.classpath.foreach {
+      case f if f.getName.endsWith(".jar") =>
+        // This gives us the entry for the path itself, which is necessary if the path is a jar file
+        // rather than a directory.
+        view.listEntries(f.toGlob) foreach { e =>
+          e.value match {
+            case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
+            case _            =>
+          }
         }
-      }
-      // This gives us the entry for the path itself, which is necessary if the path is a jar file
-      // rather than a directory.
-      view.listEntries(f.toPath, -1, _ => true) foreach { e =>
-        e.value match {
-          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
-          case _            =>
+      case f =>
+        view.listEntries(f ** "*.jar") foreach { e =>
+          e.value match {
+            case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
+            case _            =>
+          }
         }
-      }
     }
 
     val lookup = new ExternalLookup {

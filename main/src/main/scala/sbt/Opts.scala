@@ -47,7 +47,7 @@ object Opts {
       "sonatype-staging",
       "https://oss.sonatype.org/service/local/staging/deploy/maven2"
     )
-    val mavenLocalFile = Resolver.file("Local Repository", userHome / ".m2" / "repository" asFile)(
+    val mavenLocalFile = Resolver.file("Local Repository", userHome / ".m2" / "repository")(
       Resolver.defaultPatterns
     )
     val sbtSnapshots = Resolver.bintrayRepo("sbt", "maven-snapshots")

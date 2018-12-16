@@ -628,12 +628,15 @@ object Defaults extends BuildCommon {
     watchOnTermination := Watched.onTermination,
     watchConfig := {
       val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
+      val globs = sources.map(
+        s => Glob(s.base, s.includeFilter -- s.excludeFilter, if (s.recursive) Int.MaxValue else 0)
+      )
       val wm = watchingMessage.?.value
-        .map(w => (count: Int) => Some(w(WatchState.empty(sources).withCount(count))))
+        .map(w => (count: Int) => Some(w(WatchState.empty(globs).withCount(count))))
         .getOrElse(watchStartMessage.value)
       val tm = triggeredMessage.?.value
         .map(
-          tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(sources).withCount(count)))
+          tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(globs).withCount(count)))
         )
         .getOrElse(watchTriggeredMessage.value)
       val logger = watchLogger.value
@@ -1203,14 +1206,14 @@ object Defaults extends BuildCommon {
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
-      (crossTarget.value / f(
+      crossTarget.value / f(
         ScalaVersion(
           (scalaVersion in artifactName).value,
           (scalaBinaryVersion in artifactName).value
         ),
         projectID.value,
         art.value
-      )).asFile
+      )
     }
 
   def artifactSetting: Initialize[Artifact] =

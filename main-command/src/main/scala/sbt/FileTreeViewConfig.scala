@@ -27,10 +27,8 @@ final class FileTreeViewConfig private (
     ) => FileEventMonitor[FileCacheEntry]
 )
 object FileTreeViewConfig {
-  private implicit class RepositoryOps(val repository: FileTreeRepository[FileCacheEntry]) {
-    def register(sources: Seq[WatchSource]): Unit = sources foreach { s =>
-      repository.register(s.base.toPath, if (s.recursive) Integer.MAX_VALUE else 0)
-    }
+  private implicit class SourceOps(val s: WatchSource) extends AnyVal {
+    def toGlob: Glob = Glob(s.base, AllPassFilter, if (s.recursive) Integer.MAX_VALUE else 0)
   }
 
   /**
@@ -76,14 +74,16 @@ object FileTreeViewConfig {
         val ioLogger: sbt.io.WatchLogger = msg => logger.debug(msg.toString)
         FileEventMonitor.antiEntropy(
           new WatchServiceBackedObservable(
-            WatchState.empty(Watched.createWatchService(), sources),
+            WatchState.empty(sources.map(_.toGlob), Watched.createWatchService()),
             delay,
             FileCacheEntry.default,
             closeService = true,
             ioLogger
           ),
           antiEntropy,
-          ioLogger
+          ioLogger,
+          50.milliseconds,
+          10.seconds
         )
       }
     )
@@ -104,14 +104,20 @@ object FileTreeViewConfig {
           sources: Seq[WatchSource],
           logger: Logger
       ) => {
-        repository.register(sources)
+        sources.view.map(_.toGlob).foreach(repository.register)
         val copied = new Observable[FileCacheEntry] {
           override def addObserver(observer: Observer[FileCacheEntry]): Int =
             repository.addObserver(observer)
           override def removeObserver(handle: Int): Unit = repository.removeObserver(handle)
           override def close(): Unit = {} // Don't close the underlying observable
         }
-        FileEventMonitor.antiEntropy(copied, antiEntropy, msg => logger.debug(msg.toString))
+        FileEventMonitor.antiEntropy(
+          copied,
+          antiEntropy,
+          msg => logger.debug(msg.toString),
+          50.milliseconds,
+          10.seconds
+        )
       }
     )
 
@@ -159,18 +165,20 @@ object FileTreeViewConfig {
       pollingInterval: FiniteDuration,
       pollingSources: Seq[WatchSource],
   ): FileTreeViewConfig = FileTreeViewConfig(
-    () => FileTreeRepository.hybrid(FileCacheEntry.default, pollingSources: _*),
+    () => FileTreeRepository.hybrid(FileCacheEntry.default, pollingSources.map(_.toGlob): _*),
     (
         repository: HybridPollingFileTreeRepository[FileCacheEntry],
         sources: Seq[WatchSource],
         logger: Logger
     ) => {
-      repository.register(sources)
+      sources.view.map(_.toGlob).foreach(repository.register)
       FileEventMonitor
         .antiEntropy(
-          repository.toPollingObservable(pollingInterval, sources, NullWatchLogger),
+          repository.toPollingRepository(pollingInterval, NullWatchLogger),
           antiEntropy,
-          msg => logger.debug(msg.toString)
+          msg => logger.debug(msg.toString),
+          50.milliseconds,
+          10.seconds
         )
     }
   )
