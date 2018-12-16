@@ -1195,14 +1195,14 @@ object Defaults extends BuildCommon {
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
-      (crossTarget.value / f(
+      crossTarget.value / f(
         ScalaVersion(
           (scalaVersion in artifactName).value,
           (scalaBinaryVersion in artifactName).value
         ),
         projectID.value,
         art.value
-      )).asFile
+      )
     }
 
   def artifactSetting: Initialize[Artifact] =

@@ -149,8 +149,8 @@ object Watched {
       projectSources: Seq[WatchSource]
   ): Event[StampedFile] => Watched.Action =
     event =>
-      if (sources.exists(_.accept(event.entry.typedPath.getPath))) Watched.Trigger
-      else if (projectSources.exists(_.accept(event.entry.typedPath.getPath))) event match {
+      if (sources.exists(_.accept(event.entry.typedPath.toPath))) Watched.Trigger
+      else if (projectSources.exists(_.accept(event.entry.typedPath.toPath))) event match {
         case Update(prev, cur, _) if prev.value.map(_.stamp) != cur.value.map(_.stamp) => Reload
         case _: Creation[_] | _: Deletion[_]                                           => Reload
         case _                                                                         => Ignore
@@ -357,14 +357,14 @@ object Watched {
                   if (action == HandleError) "error"
                   else if (action.isInstanceOf[Custom]) action.toString
                   else "cancellation"
-                logger.debug(s"Stopping watch due to $cause from ${event.entry.typedPath.getPath}")
+                logger.debug(s"Stopping watch due to $cause from ${event.entry.typedPath.toPath}")
                 action
               case (Trigger, Some(event)) =>
-                logger.debug(s"Triggered by ${event.entry.typedPath.getPath}")
+                logger.debug(s"Triggered by ${event.entry.typedPath.toPath}")
                 config.triggeredMessage(event.entry.typedPath, count).foreach(info)
                 Trigger
               case (Reload, Some(event)) =>
-                logger.info(s"Reload triggered by ${event.entry.typedPath.getPath}")
+                logger.info(s"Reload triggered by ${event.entry.typedPath.toPath}")
                 Reload
               case _ =>
                 nextAction()
@@ -572,18 +572,18 @@ object StampedFile {
   val binaryConverter: TypedPath => StampedFile =
     new StampedFileImpl(_: TypedPath, forceLastModified = true)
   val converter: TypedPath => StampedFile = (tp: TypedPath) =>
-    tp.getPath.toString match {
+    tp.toPath.toString match {
       case s if s.endsWith(".jar")   => binaryConverter(tp)
       case s if s.endsWith(".class") => binaryConverter(tp)
       case _                         => sourceConverter(tp)
   }
 
   private class StampedFileImpl(typedPath: TypedPath, forceLastModified: Boolean)
-      extends java.io.File(typedPath.getPath.toString)
+      extends java.io.File(typedPath.toPath.toString)
       with StampedFile {
     override val stamp: Stamp =
       if (forceLastModified || typedPath.isDirectory)
-        Stamper.forLastModified(typedPath.getPath.toFile)
-      else Stamper.forHash(typedPath.getPath.toFile)
+        Stamper.forLastModified(typedPath.toPath.toFile)
+      else Stamper.forHash(typedPath.toPath.toFile)
   }
 }

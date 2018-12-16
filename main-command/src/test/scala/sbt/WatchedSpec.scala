@@ -78,12 +78,12 @@ class WatchedSpec extends FlatSpec with Matchers {
     val config = Defaults.config(
       sources = Seq(WatchSource(realDir)),
       preWatch = (count, _) => if (count == 2) CancelWatch else Ignore,
-      onWatchEvent = e => if (e.entry.typedPath.getPath == foo) Trigger else Ignore,
+      onWatchEvent = e => if (e.entry.typedPath.toPath == foo) Trigger else Ignore,
       triggeredMessage = (tp, _) => { queue += tp; None },
       watchingMessage = _ => { Files.createFile(bar); Thread.sleep(5); Files.createFile(foo); None }
     )
     Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
-    queue.toIndexedSeq.map(_.getPath) shouldBe Seq(foo)
+    queue.toIndexedSeq.map(_.toPath) shouldBe Seq(foo)
   }
   it should "enforce anti-entropy" in IO.withTemporaryDirectory { dir =>
     val realDir = dir.toRealPath
@@ -107,7 +107,7 @@ class WatchedSpec extends FlatSpec with Matchers {
       }
     )
     Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
-    queue.toIndexedSeq.map(_.getPath) shouldBe Seq(bar, foo)
+    queue.toIndexedSeq.map(_.toPath) shouldBe Seq(bar, foo)
   }
   it should "halt on error" in IO.withTemporaryDirectory { dir =>
     val halted = new AtomicBoolean(false)
