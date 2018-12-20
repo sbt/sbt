@@ -43,6 +43,7 @@ import sbt.internal.server.{
   ServerHandler
 }
 import sbt.internal.testing.TestLogger
+import sbt.internal.TransitiveGlobs._
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types._
 import sbt.internal.util._
@@ -144,6 +145,7 @@ object Defaults extends BuildCommon {
       excludeFilter :== HiddenFileFilter,
       classLoaderCache := ClassLoaderCache(4),
       fileInputs :== Nil,
+      watchTriggers :== Nil,
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
@@ -669,6 +671,9 @@ object Defaults extends BuildCommon {
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
     fileOutputs += target.value ** AllPassFilter,
+    transitiveGlobs := InputGraph.task.value,
+    transitiveInputs := InputGraph.inputsTask.value,
+    transitiveTriggers := InputGraph.triggersTask.value,
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
@@ -2058,7 +2063,12 @@ object Classpaths {
           val base = ModuleID(id.groupID, id.name, sbtVersion.value).withCrossVersion(cross)
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
         },
-        shellPrompt := shellPromptFromState
+        shellPrompt := shellPromptFromState,
+        dynamicDependency := { (): Unit },
+        transitiveClasspathDependency := { (): Unit },
+        transitiveGlobs := { (Nil: Seq[Glob], Nil: Seq[Glob]) },
+        transitiveInputs := Nil,
+        transitiveTriggers := Nil,
       )
     )
 
@@ -2897,6 +2907,7 @@ object Classpaths {
   }
   private[sbt] def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =
     Def.task {
+      val _ = (packageBin / dynamicDependency).value
       val art = (artifact in packageBin).value
       val module = projectID.value
       val config = configuration.value
@@ -2909,6 +2920,7 @@ object Classpaths {
     }
   private[sbt] def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
     Def.task {
+      val _ = (packageBin / dynamicDependency).value
       val art = (artifact in packageBin).value
       val module = projectID.value
       val config = configuration.value
@@ -2923,6 +2935,7 @@ object Classpaths {
       track: TrackLevel
   ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
     Def.taskDyn {
+      val _ = (packageBin / dynamicDependency).value
       val useJars = exportJars.value
       if (useJars) trackedJarProductsImplTask(track)
       else trackedNonJarProductsImplTask(track)
@@ -2993,6 +3006,14 @@ object Classpaths {
 
   def internalDependencies: Initialize[Task[Classpath]] =
     Def.taskDyn {
+      val _ = (
+        (exportedProductsNoTracking / transitiveClasspathDependency).value,
+        (exportedProductsIfMissing / transitiveClasspathDependency).value,
+        (exportedProducts / transitiveClasspathDependency).value,
+        (exportedProductJarsNoTracking / transitiveClasspathDependency).value,
+        (exportedProductJarsIfMissing / transitiveClasspathDependency).value,
+        (exportedProductJars / transitiveClasspathDependency).value
+      )
       internalDependenciesImplTask(
         thisProjectRef.value,
         classpathConfiguration.value,

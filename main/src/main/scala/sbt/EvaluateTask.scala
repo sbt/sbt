@@ -7,38 +7,23 @@
 
 package sbt
 
-import sbt.internal.{
-  Load,
-  BuildStructure,
-  TaskTimings,
-  TaskName,
-  GCUtil,
-  TaskProgress,
-  TaskTraceEvent
-}
-import sbt.internal.util.{ Attributed, ConsoleAppender, ErrorHandling, HList, RMap, Signals, Types }
-import sbt.util.{ Logger, Show }
-import sbt.librarymanagement.{ Resolver, UpdateReport }
-
-import scala.concurrent.duration.Duration
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
-import Def.{ dummyState, ScopedKey, Setting }
-import Keys.{
-  Streams,
-  TaskStreams,
-  dummyRoots,
-  executionRoots,
-  pluginData,
-  streams,
-  streamsManager,
-  transformState
-}
-import Project.richInitializeTask
-import Scope.Global
+
+import sbt.Def.{ ScopedKey, Setting, dummyState }
+import sbt.Keys.{ TaskProgress => _, name => _, _ }
+import sbt.Project.richInitializeTask
+import sbt.Scope.Global
+import sbt.internal.TaskName._
+import sbt.internal.TransitiveGlobs._
+import sbt.internal.util._
+import sbt.internal.{ BuildStructure, GCUtil, Load, TaskProgress, TaskTimings, TaskTraceEvent, _ }
+import sbt.librarymanagement.{ Resolver, UpdateReport }
+import sbt.std.Transform.DummyTaskMap
+import sbt.util.{ Logger, Show }
+
 import scala.Console.RED
-import std.Transform.DummyTaskMap
-import TaskName._
+import scala.concurrent.duration.Duration
 
 /**
  * An API that allows you to cancel executing tasks upon some signal.
@@ -166,8 +151,8 @@ object PluginData {
 }
 
 object EvaluateTask {
-  import std.Transform
   import Keys.state
+  import std.Transform
 
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
@@ -565,7 +550,7 @@ object EvaluateTask {
 
   // if the return type Seq[Setting[_]] is not explicitly given, scalac hangs
   val injectStreams: ScopedKey[_] => Seq[Setting[_]] = scoped =>
-    if (scoped.key == streams.key)
+    if (scoped.key == streams.key) {
       Seq(streams in scoped.scope := {
         (streamsManager map { mgr =>
           val stream = mgr(scoped)
@@ -573,6 +558,26 @@ object EvaluateTask {
           stream
         }).value
       })
-    else
-    Nil
+    } else if (scoped.key == transitiveInputs.key) {
+      scoped.scope.task.toOption.toSeq.map { key =>
+        val updatedKey = ScopedKey(scoped.scope.copy(task = Zero), key)
+        transitiveInputs in scoped.scope := InputGraph.inputsTask(updatedKey).value
+      }
+    } else if (scoped.key == transitiveTriggers.key) {
+      scoped.scope.task.toOption.toSeq.map { key =>
+        val updatedKey = ScopedKey(scoped.scope.copy(task = Zero), key)
+        transitiveTriggers in scoped.scope := InputGraph.triggersTask(updatedKey).value
+      }
+    } else if (scoped.key == transitiveGlobs.key) {
+      scoped.scope.task.toOption.toSeq.map { key =>
+        val updatedKey = ScopedKey(scoped.scope.copy(task = Zero), key)
+        transitiveGlobs in scoped.scope := InputGraph.task(updatedKey).value
+      }
+    } else if (scoped.key == dynamicDependency.key) {
+      (dynamicDependency in scoped.scope := { () }) :: Nil
+    } else if (scoped.key == transitiveClasspathDependency.key) {
+      (transitiveClasspathDependency in scoped.scope := { () }) :: Nil
+    } else {
+      Nil
+  }
 }

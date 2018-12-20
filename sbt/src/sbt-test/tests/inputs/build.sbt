@@ -1,4 +1,6 @@
-import sbt.internal.FileTree
+import java.nio.file.Path
+
+import sbt.internal.{FileAttributes, FileTree}
 import sbt.io.FileTreeDataView
 import xsbti.compile.analysis.Stamp
 
@@ -8,7 +10,7 @@ val allInputsExplicit = taskKey[Seq[File]]("")
 val checkInputs = inputKey[Unit]("")
 val checkInputsExplicit = inputKey[Unit]("")
 
-allInputs := (Compile / unmanagedSources / inputs).value.all
+allInputs := (Compile / unmanagedSources / fileInputs).value.all.map(_._1.toFile)
 
 checkInputs := {
   val res = allInputs.value
@@ -22,15 +24,15 @@ allInputsExplicit := {
   val files = scala.collection.mutable.Set.empty[File]
   val underlying = implicitly[FileTree.Repository]
   val repo = new FileTree.Repository {
-    override def get(glob: Glob): Seq[FileTreeDataView.Entry[Stamp]] = {
+    override def get(glob: Glob): Seq[(Path, FileAttributes)] = {
       val res = underlying.get(glob)
-      files ++= res.map(_.typedPath.toPath.toFile)
+      files ++= res.map(_._1.toFile)
       res
     }
     override def close(): Unit = {}
   }
   val include = (Compile / unmanagedSources / includeFilter).value
-  val _ = (Compile / unmanagedSources / inputs).value.all(repo).toSet
+  val _ = (Compile / unmanagedSources / fileInputs).value.all(repo).map(_._1.toFile).toSet
   files.filter(include.accept).toSeq
 }
 

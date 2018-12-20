@@ -481,6 +481,8 @@ object Keys {
     "Provides a view into the file system that may or may not cache the tree in memory",
     1000
   )
+  private[sbt] val dynamicDependency = settingKey[Unit]("Leaves a breadcrumb that the scoped task is evaluated inside of a dynamic task")
+  private[sbt] val transitiveClasspathDependency = settingKey[Unit]("Leaves a breadcrumb that the scoped task has transitive classpath dependencies")
 
   val stateStreams = AttributeKey[Streams]("stateStreams", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped

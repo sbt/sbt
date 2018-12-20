@@ -16,7 +16,7 @@ import sbt.io._
 
 import scala.language.experimental.macros
 
-private[sbt] object FileTree {
+object FileTree {
   private def toPair(e: Entry[FileAttributes]): Option[(Path, FileAttributes)] =
     e.value.toOption.map(a => e.typedPath.toPath -> a)
   trait Repository extends sbt.internal.Repository[Seq, Glob, (Path, FileAttributes)]
