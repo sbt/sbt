@@ -51,7 +51,7 @@ class LanguageServerReporter(
     val pos = problem.position
     pos.sourceFile.toOption foreach { sourceFile: File =>
       problemsByFile.get(sourceFile) match {
-        case Some(xs: List[Problem]) => problemsByFile(sourceFile) = problem :: xs
+        case Some(xs: List[Problem]) => problemsByFile(sourceFile) = xs :+ problem
         case _                       => problemsByFile(sourceFile) = List(problem)
       }
     }
