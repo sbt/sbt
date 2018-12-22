@@ -41,11 +41,8 @@ object KeyIndex {
     } yield {
       val data = ids map { id =>
         val configs = configurations.getOrElse(id, Seq())
-        val namedConfigs = configs.map { config =>
-          (config.name, ConfigData(Some(config.id), emptyAKeyIndex))
-        }.toMap
-        val inverse = namedConfigs.map((ConfigIndex.invert _).tupled)
-        Option(id) -> new ConfigIndex(namedConfigs, inverse, emptyAKeyIndex)
+        val configIdentToName = configs.map(config => config.id -> config.name).toMap
+        Option(id) -> new ConfigIndex(Map.empty, configIdentToName, emptyAKeyIndex)
       }
       Option(uri) -> new ProjectIndex(data.toMap)
     }
@@ -131,12 +128,13 @@ private[sbt] case class IdentifiableConfig(name: String, ident: Option[String])
 private[sbt] case class ConfigData(ident: Option[String], keys: AKeyIndex)
 
 /*
- * data contains the mapping between a configuration name and its ident and keys.
+ * data contains the mapping between a configuration name and its keys.
+ * configIdentToName contains the mapping between a configuration ident and its name
  * noConfigKeys contains the keys without a configuration.
  */
 private[sbt] final class ConfigIndex(
-    val data: Map[String, ConfigData],
-    val inverse: Map[String, String],
+    val data: Map[String, AKeyIndex],
+    val configIdentToName: Map[String, String],
     val noConfigKeys: AKeyIndex
 ) {
   def add(
@@ -155,22 +153,21 @@ private[sbt] final class ConfigIndex(
       task: Option[AttributeKey[_]],
       key: AttributeKey[_]
   ): ConfigIndex = {
-    val oldConfigData = data.getOrElse(config.name, ConfigData(None, emptyAKeyIndex))
-    val newConfigData = ConfigData(
-      ident = oldConfigData.ident.orElse(config.ident),
-      keys = oldConfigData.keys.add(task, key)
+    val keyIndex = data.getOrElse(config.name, emptyAKeyIndex)
+    val configIdent = config.ident.getOrElse(Scope.guessConfigIdent(config.name))
+    new ConfigIndex(
+      data.updated(config.name, keyIndex.add(task, key)),
+      configIdentToName.updated(configIdent, config.name),
+      noConfigKeys
     )
-    val newData = data.updated(config.name, newConfigData)
-    val newInverse = (inverse.updated _).tupled(ConfigIndex.invert(config.name, newConfigData))
-    new ConfigIndex(newData, newInverse, noConfigKeys)
   }
 
   def addKeyWithoutConfig(task: Option[AttributeKey[_]], key: AttributeKey[_]): ConfigIndex = {
-    new ConfigIndex(data, inverse, noConfigKeys.add(task, key))
+    new ConfigIndex(data, configIdentToName, noConfigKeys.add(task, key))
   }
 
   def keyIndex(conf: Option[String]): AKeyIndex = conf match {
-    case Some(c) => data.get(c).map(_.keys).getOrElse(emptyAKeyIndex)
+    case Some(c) => data.get(c).getOrElse(emptyAKeyIndex)
     case None    => noConfigKeys
   }
 
@@ -179,14 +176,9 @@ private[sbt] final class ConfigIndex(
   // guess Configuration name from an identifier.
   // There's a guessing involved because we could have scoped key that Project is not aware of.
   private[sbt] def fromConfigIdent(ident: String): String =
-    inverse.getOrElse(ident, Scope.unguessConfigIdent(ident))
+    configIdentToName.getOrElse(ident, Scope.unguessConfigIdent(ident))
 }
-private[sbt] object ConfigIndex {
-  def invert(name: String, data: ConfigData): (String, String) = data match {
-    case ConfigData(Some(ident), _) => ident -> name
-    case ConfigData(None, _)        => Scope.guessConfigIdent(name) -> name
-  }
-}
+private[sbt] object ConfigIndex
 private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
   def add(
       id: Option[String],
