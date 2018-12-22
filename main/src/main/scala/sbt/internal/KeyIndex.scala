@@ -65,7 +65,6 @@ object KeyIndex {
         case Some(idx) => idx.fromConfigIdent(proj)(configIdent)
         case _         => Scope.unguessConfigIdent(configIdent)
       }
-    private[sbt] def guessedConfigIdents = concat(_.guessedConfigIdents)
     def tasks(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.tasks(proj, conf))
     def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String) =
       concat(_.tasks(proj, conf, key))
@@ -114,7 +113,6 @@ trait KeyIndex {
   ): Set[String]
   private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String]
   private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String
-  private[sbt] def guessedConfigIdents: Set[(Option[ProjectReference], String, String)]
 }
 trait ExtendableKeyIndex extends KeyIndex {
   def add(scoped: ScopedKey[_]): ExtendableKeyIndex
@@ -228,25 +226,6 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
 
   private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String =
     confIndex(proj).fromConfigIdent(configIdent)
-
-  private[sbt] def guessedConfigIdents: Set[(Option[ProjectReference], String, String)] = {
-    val guesses = for {
-      (build, projIndex) <- data.data
-      (project, confIndex) <- projIndex.data
-      (config, data) <- confIndex.data
-      if data.ident.isEmpty && !Scope.configIdents.contains(config)
-    } yield (projRef(build, project), config, Scope.guessConfigIdent(config))
-    guesses.toSet
-  }
-
-  private def projRef(build: Option[URI], project: Option[String]): Option[ProjectReference] = {
-    (build, project) match {
-      case (Some(uri), Some(proj)) => Some(ProjectRef(uri, proj))
-      case (Some(uri), None)       => Some(RootProject(uri))
-      case (None, Some(proj))      => Some(LocalProject(proj))
-      case (None, None)            => None
-    }
-  }
 
   def tasks(proj: Option[ResolvedReference], conf: Option[String]): Set[AttributeKey[_]] =
     keyIndex(proj, conf).tasks
