@@ -25,37 +25,43 @@ import sbt.librarymanagement.Configuration
  * This includes properly resolving omitted components.
  */
 object ParseKey extends Properties("Key parser test") {
-  property("An explicitly specified axis is always parsed to that explicit value") = forAll {
-    (skm: StructureKeyMask) =>
-      import skm.{ structure, key }
-      val hasZeroConfig = key.scope.config == Zero
-      val mask = if (hasZeroConfig) skm.mask.copy(project = true) else skm.mask
-      // Note that this explicitly displays the configuration axis set to Zero.
-      // This is to disambiguate `proj/Zero/name`, which could render potentially
-      // as `Zero/name`, but could be interpreted as `Zero/Zero/name`.
-      val expected = resolve(structure, key, mask)
-      parseCheck(structure, key, mask, hasZeroConfig)(
-        sk =>
-          Project.equal(sk, expected, mask)
-            :| s"$sk.key == $expected.key: ${sk.key == expected.key}"
-            :| s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}"
-      ) :| s"Expected: ${displayFull(expected)}"
+  property("An explicitly specified axis is always parsed to that explicit value") = forAll(
+    roundtrip(_)
+  )
+
+  def roundtrip(skm: StructureKeyMask) = {
+    import skm.{ structure, key }
+    val hasZeroConfig = key.scope.config == Zero
+    val mask = if (hasZeroConfig) skm.mask.copy(project = true) else skm.mask
+    // Note that this explicitly displays the configuration axis set to Zero.
+    // This is to disambiguate `proj/Zero/name`, which could render potentially
+    // as `Zero/name`, but could be interpreted as `Zero/Zero/name`.
+    val expected = resolve(structure, key, mask)
+    parseCheck(structure, key, mask, hasZeroConfig)(
+      sk =>
+        Project.equal(sk, expected, mask)
+          :| s"$sk.key == $expected.key: ${sk.key == expected.key}"
+          :| s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}"
+    ) :| s"Expected: ${displayFull(expected)}"
   }
 
-  property("An unspecified project axis resolves to the current project") = forAll {
-    (skm: StructureKeyMask) =>
-      import skm.{ structure, key }
-      val mask = skm.mask.copy(project = false)
-      // skip when config axis is set to Zero
-      val hasZeroConfig = key.scope.config == Zero
-      parseCheck(structure, key, mask)(
-        sk =>
-          (hasZeroConfig || sk.scope.project == Select(structure.current))
-            :| s"Current: ${structure.current}"
-      )
+  property("An unspecified project axis resolves to the current project") = forAll(noProject(_))
+
+  def noProject(skm: StructureKeyMask) = {
+    import skm.{ structure, key }
+    val mask = skm.mask.copy(project = false)
+    // skip when config axis is set to Zero
+    val hasZeroConfig = key.scope.config == Zero
+    parseCheck(structure, key, mask)(
+      sk =>
+        (hasZeroConfig || sk.scope.project == Select(structure.current))
+          :| s"Current: ${structure.current}"
+    )
   }
 
-  property("An unspecified task axis resolves to Zero") = forAll { (skm: StructureKeyMask) =>
+  property("An unspecified task axis resolves to Zero") = forAll(noTask(_))
+
+  def noTask(skm: StructureKeyMask) = {
     import skm.{ structure, key }
     val mask = skm.mask.copy(task = false)
     parseCheck(structure, key, mask)(_.scope.task == Zero)
@@ -63,7 +69,9 @@ object ParseKey extends Properties("Key parser test") {
 
   property(
     "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero"
-  ) = forAll { (skm: StructureKeyMask) =>
+  ) = forAll(noConfig(_))
+
+  def noConfig(skm: StructureKeyMask) = {
     import skm.{ structure, key }
     val mask = ScopeMask(config = false)
     val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
