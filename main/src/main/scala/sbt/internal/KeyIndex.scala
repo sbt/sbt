@@ -134,6 +134,7 @@ private[sbt] case class ConfigData(ident: Option[String], keys: AKeyIndex)
 
 /*
  * data contains the mapping between a configuration name and its ident and keys.
+ * inverse contains the mapping between a configuration ident and its name
  * noConfigKeys contains the keys without a configuration.
  */
 private[sbt] final class ConfigIndex(
