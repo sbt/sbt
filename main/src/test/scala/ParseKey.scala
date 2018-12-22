@@ -30,13 +30,18 @@ object ParseKey extends Properties("Key parser test") {
 
   def roundtrip(skm: StructureKeyMask) = {
     import skm.{ structure, key }
+
+    // if the configuration axis == Zero
+    // then a scoped key like `proj/Zero/Zero/name` could render potentially as `Zero/name`
+    // which would be interpreted as `Zero/Zero/Zero/name` (Global/name)
+    // so we mitigate this by explicitly displaying the configuration axis set to Zero
     val hasZeroConfig = key.scope.config == Zero
-    val mask = if (hasZeroConfig) skm.mask.copy(project = true) else skm.mask
-    // Note that this explicitly displays the configuration axis set to Zero.
-    // This is to disambiguate `proj/Zero/name`, which could render potentially
-    // as `Zero/name`, but could be interpreted as `Zero/Zero/name`.
+
+    val showZeroConfig = hasZeroConfig || hasAmbiguousLowercaseAxes(key)
+    val mask = if (showZeroConfig) skm.mask.copy(project = true) else skm.mask
+
     val expected = resolve(structure, key, mask)
-    parseCheck(structure, key, mask, hasZeroConfig)(
+    parseCheck(structure, key, mask, showZeroConfig)(
       sk =>
         Project.equal(sk, expected, mask)
           :| s"$sk.key == $expected.key: ${sk.key == expected.key}"
@@ -53,7 +58,8 @@ object ParseKey extends Properties("Key parser test") {
     val mask = skm.mask.copy(project = false)
     // skip when config axis is set to Zero
     val hasZeroConfig = key.scope.config == Zero
-    parseCheck(structure, key, mask)(
+    val showZeroConfig = hasAmbiguousLowercaseAxes(key)
+    parseCheck(structure, key, mask, showZeroConfig)(
       sk =>
         (hasZeroConfig || sk.scope.project == Select(structure.current))
           :| s"Current: ${structure.current}"
@@ -77,7 +83,8 @@ object ParseKey extends Properties("Key parser test") {
     import skm.{ structure, key }
     val mask = ScopeMask(config = false)
     val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
-    parseCheck(structure, key, mask)(
+    val showZeroConfig = hasAmbiguousLowercaseAxes(key)
+    parseCheck(structure, key, mask, showZeroConfig)(
       sk => (sk.scope.config == resolvedConfig) || (sk.scope == Scope.GlobalScope)
     ) :| s"Expected configuration: ${resolvedConfig map (_.name)}"
   }
@@ -359,5 +366,13 @@ object ParseKey extends Properties("Key parser test") {
     Shrink.shrink((task.delegates, task.key)).map {
       case (delegates, key) => Taskk(key, delegates)
     }
+  }
+
+  // if both a project and a key share the same name (e.g. "foo")
+  // then a scoped key like `foo/<conf>/foo/name` would render as `foo/name`
+  // which would be interpreted as `foo/Zero/Zero/name`
+  // so we mitigate this by explicitly displaying the configuration axis set to Zero
+  def hasAmbiguousLowercaseAxes(key: ScopedKey[_]) = PartialFunction.cond(key.scope) {
+    case Scope(Select(ProjectRef(_, proj)), _, Select(key), _) => proj == key.label
   }
 }
