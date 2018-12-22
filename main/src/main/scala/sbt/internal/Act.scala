@@ -210,9 +210,7 @@ object Act {
         | ((ZeroString ^^^ ParsedZero) <~ sep)
         | ((ZeroIdent ^^^ ParsedZero) <~ sep)
         | (value(examples(ID, confs, "configuration")) <~ oldSep)
-        | (value(examples(CapitalizedID, idents, "configuration ident") map {
-          fromIdent(_)
-        }) <~ sep)
+        | (value(examples(CapitalizedID, idents, "configuration ident") map fromIdent) <~ sep)
     ) ?? Omitted
   }
 

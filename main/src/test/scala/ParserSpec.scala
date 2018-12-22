@@ -7,6 +7,7 @@
 
 import java.net.URI
 
+import org.scalatest.matchers.MatchResult
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{ Matchers, PropSpec }
 import sbt.Def._
@@ -71,7 +72,14 @@ class ParserSpec extends PropSpec with PropertyChecks with Matchers {
     val structure = TestBuild.structure(env, settings, build.allProjects.head._1)
     val string = displayMasked(scopedKey, ScopeMask())
     val parser = makeParser(structure)
-    val result = DefaultParsers.result(parser, string).left.map(_().toString)
-    result shouldBe Right(scopedKey)
+    string should { left =>
+      val result = DefaultParsers.result(parser, left)
+      val resultStr = result.fold(_ => "<parse error>", _.toString)
+      MatchResult(
+        result == Right(scopedKey),
+        s"$left parsed back to $resultStr rather than $scopedKey",
+        s"$left parsed back to $scopedKey",
+      )
+    }
   }
 }
