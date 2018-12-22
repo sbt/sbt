@@ -162,7 +162,10 @@ private[sbt] final class ConfigIndex(
       keys = oldConfigData.keys.add(task, key)
     )
     val newData = data.updated(config.name, newConfigData)
-    val newInverse = (inverse.updated _).tupled(ConfigIndex.invert(config.name, newConfigData))
+    val newInverse = newConfigData.ident match {
+      case Some(configIdent) => inverse.updated(configIdent, config.name)
+      case None              => inverse
+    }
     new ConfigIndex(newData, newInverse, noConfigKeys)
   }
 
@@ -182,12 +185,7 @@ private[sbt] final class ConfigIndex(
   private[sbt] def fromConfigIdent(ident: String): String =
     inverse.getOrElse(ident, Scope.unguessConfigIdent(ident))
 }
-private[sbt] object ConfigIndex {
-  def invert(name: String, data: ConfigData): (String, String) = data match {
-    case ConfigData(Some(ident), _) => ident -> name
-    case ConfigData(None, _)        => Scope.guessConfigIdent(name) -> name
-  }
-}
+private[sbt] object ConfigIndex
 private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
   def add(
       id: Option[String],
