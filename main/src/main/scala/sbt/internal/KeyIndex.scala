@@ -59,9 +59,7 @@ object KeyIndex {
     def configs(proj: Option[ResolvedReference]) = concat(_.configs(proj))
     private[sbt] def configIdents(proj: Option[ResolvedReference]) = concat(_.configIdents(proj))
     private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String =
-      (indices find { idx =>
-        idx.exists(proj)
-      }) match {
+      indices.find(idx => idx.exists(proj)) match {
         case Some(idx) => idx.fromConfigIdent(proj)(configIdent)
         case _         => Scope.unguessConfigIdent(configIdent)
       }
