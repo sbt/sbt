@@ -44,7 +44,7 @@ object KeyIndex {
         val namedConfigs = configs.map { config =>
           (config.name, ConfigData(Some(config.id), emptyAKeyIndex))
         }.toMap
-        val inverse = namedConfigs.map((ConfigIndex.invert _).tupled)
+        val inverse = configs.map(config => config.id -> config.name).toMap
         Option(id) -> new ConfigIndex(namedConfigs, inverse, emptyAKeyIndex)
       }
       Option(uri) -> new ProjectIndex(data.toMap)
