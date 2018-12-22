@@ -25,9 +25,8 @@ import sbt.librarymanagement.Configuration
  * This includes properly resolving omitted components.
  */
 object ParseKey extends Properties("Key parser test") {
-  property("An explicitly specified axis is always parsed to that explicit value") = forAll(
-    roundtrip(_)
-  )
+  propertyWithSeed("An explicitly specified axis is always parsed to that explicit value", None) =
+    forAll(roundtrip(_))
 
   def roundtrip(skm: StructureKeyMask) = {
     import skm.{ structure, key }
@@ -45,7 +44,9 @@ object ParseKey extends Properties("Key parser test") {
     ) :| s"Expected: ${displayFull(expected)}"
   }
 
-  property("An unspecified project axis resolves to the current project") = forAll(noProject(_))
+  propertyWithSeed("An unspecified project axis resolves to the current project", None) = forAll(
+    noProject(_)
+  )
 
   def noProject(skm: StructureKeyMask) = {
     import skm.{ structure, key }
@@ -59,7 +60,7 @@ object ParseKey extends Properties("Key parser test") {
     )
   }
 
-  property("An unspecified task axis resolves to Zero") = forAll(noTask(_))
+  propertyWithSeed("An unspecified task axis resolves to Zero", None) = forAll(noTask(_))
 
   def noTask(skm: StructureKeyMask) = {
     import skm.{ structure, key }
@@ -67,8 +68,9 @@ object ParseKey extends Properties("Key parser test") {
     parseCheck(structure, key, mask)(_.scope.task == Zero)
   }
 
-  property(
-    "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero"
+  propertyWithSeed(
+    "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero",
+    None
   ) = forAll(noConfig(_))
 
   def noConfig(skm: StructureKeyMask) = {
