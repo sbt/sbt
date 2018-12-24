@@ -49,7 +49,7 @@ object Transform {
       case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) compose all)
       case Join(in, f)         => uniform(in)(f)
     }
-    def inline[T](t: Task[T]) = t.work match {
+    def inline[T](t: Task[T]): Option[() => T] = t.work match {
       case Pure(eval, true) => Some(eval)
       case _                => None
     }
