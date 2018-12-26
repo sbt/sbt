@@ -619,13 +619,10 @@ object Defaults extends BuildCommon {
     watchOnTermination := Watched.onTermination,
     watchConfig := {
       val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
-      val extracted = Project.extract(state.value)
-      val wm = extracted
-        .getOpt(watchingMessage)
+      val wm = watchingMessage.?.value
         .map(w => (count: Int) => Some(w(WatchState.empty(sources).withCount(count))))
         .getOrElse(watchStartMessage.value)
-      val tm = extracted
-        .getOpt(triggeredMessage)
+      val tm = triggeredMessage.?.value
         .map(
           tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(sources).withCount(count)))
         )
