@@ -61,5 +61,10 @@ class MultiParserSpec extends FlatSpec with Matchers {
     "foo bar baz".parseEither shouldBe Left("Expected ';'\nfoo bar baz\n           ^")
     "foo bar baz;".parseEither shouldBe
       Left("Expected not ';'\nExpected '\"'\nfoo bar baz;\n            ^")
+    "foo;".parseEither shouldBe Left("Expected not ';'\nExpected '\"'\nfoo;\n    ^")
+  }
+  it should "parse commands with trailing semi-colon" in {
+    "foo;bar;".parse shouldBe Seq("foo", "bar")
+    "foo;   bar    ;".parse shouldBe Seq("foo", "bar")
   }
 }

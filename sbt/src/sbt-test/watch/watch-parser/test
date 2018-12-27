@@ -17,5 +17,5 @@
 
 # All of the other tests have involved input tasks, so include commands with regular tasks as well.
 > ~; compile; setStringValue baz; checkStringValue baz
-# No trailing semicolons are allowed
--> ~; compile; setStringValue baz; checkStringValue baz;
+# Ensure that trailing semi colons work
+> ~ compile; setStringValue baz; checkStringValue baz;

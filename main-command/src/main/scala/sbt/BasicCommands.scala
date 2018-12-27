@@ -163,7 +163,7 @@ object BasicCommands {
     )
     def commandParser = state.map(s => (s.combinedParser & cmdPart) | cmdPart).getOrElse(cmdPart)
     val part = semi.flatMap(_ => matched(commandParser) <~ token(OptSpace)).map(_.trim)
-    (cmdPart.? ~ part.+).map {
+    (cmdPart.? ~ part.+ <~ semi.?).map {
       case (Some(h), t) => h.mkString.trim +: t.toList
       case (_, t)       => t.toList
     }
