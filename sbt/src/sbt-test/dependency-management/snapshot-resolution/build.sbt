@@ -1,3 +1,6 @@
+ThisBuild / organization := "com.example"
+ThisBuild / scalaVersion := "2.12.8"
+
 def customIvyPaths: Seq[Def.Setting[_]] = Seq(
   ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
 )
@@ -9,10 +12,9 @@ lazy val sharedResolver: Resolver = {
   //Resolver.file("example-shared-repo", repoDir)(Resolver.defaultPatterns)
 }
 
-lazy val common = project.
-  settings(customIvyPaths: _*).
-  settings(
-    scalaVersion := "2.11.8",
+lazy val common = project
+  .settings(customIvyPaths)
+  .settings(
     organization := "com.badexample",
     name := "badexample",
     version := "1.0-SNAPSHOT",
@@ -27,10 +29,9 @@ lazy val common = project.
     // updateOptions := updateOptions.value.withLatestSnapshots(true)
   )
 
-lazy val dependent = project.
-  settings(customIvyPaths: _*).
-  settings(
-    scalaVersion := "2.11.8",
+lazy val dependent = project
+  .settings(customIvyPaths)
+  .settings(
     // Uncomment the following to test the before/after
     // updateOptions := updateOptions.value.withLatestSnapshots(false),
     // Ignore the inter-project resolver, so we force to look remotely.
