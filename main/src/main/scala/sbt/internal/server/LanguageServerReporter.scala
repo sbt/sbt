@@ -40,7 +40,7 @@ class LanguageServerReporter(
 ) extends ManagedLoggedReporter(maximumErrors, logger, sourcePositionMapper) {
   lazy val exchange = StandardMain.exchange
 
-  private[sbt] lazy val problemsByFile = new mutable.HashMap[File, List[Problem]]
+  private[sbt] lazy val problemsByFile = new mutable.HashMap[File, mutable.ListBuffer[Problem]]
 
   override def reset(): Unit = {
     super.reset()
@@ -51,8 +51,8 @@ class LanguageServerReporter(
     val pos = problem.position
     pos.sourceFile.toOption foreach { sourceFile: File =>
       problemsByFile.get(sourceFile) match {
-        case Some(xs: List[Problem]) => problemsByFile(sourceFile) = xs :+ problem
-        case _                       => problemsByFile(sourceFile) = List(problem)
+        case Some(xs: mutable.ListBuffer[Problem]) => problemsByFile(sourceFile) = xs :+ problem
+        case _                                     => problemsByFile(sourceFile) = mutable.ListBuffer(problem)
       }
     }
     super.log(problem)
@@ -93,7 +93,7 @@ class LanguageServerReporter(
     val pos = problem.position
     pos.sourceFile.toOption foreach { sourceFile: File =>
       problemsByFile.get(sourceFile) match {
-        case Some(xs: List[Problem]) =>
+        case Some(xs: mutable.ListBuffer[Problem]) =>
           val ds = toDiagnostics(xs)
           val params = PublishDiagnosticsParams(IO.toURI(sourceFile).toString, ds)
           exchange.notifyEvent("textDocument/publishDiagnostics", params)
@@ -102,7 +102,7 @@ class LanguageServerReporter(
     }
   }
 
-  private[sbt] def toDiagnostics(ps: List[Problem]): Vector[Diagnostic] = {
+  private[sbt] def toDiagnostics(ps: Seq[Problem]): Vector[Diagnostic] = {
     for {
       problem <- ps.toVector
       pos = problem.position
