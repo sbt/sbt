@@ -582,6 +582,8 @@ lazy val mainProj = (project in file("main"))
     mimaBinaryIssueFilters ++= Vector(
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      // internal
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.server.LanguageServerReporter.*"),
 
       // Changed signature or removed private[sbt] methods
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
