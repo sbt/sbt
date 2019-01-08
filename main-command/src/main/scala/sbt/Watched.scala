@@ -17,6 +17,7 @@ import sbt.BasicCommandStrings.{
   continuousDetail
 }
 import sbt.BasicCommands.otherCommandParser
+import sbt.internal.LabeledFunctions._
 import sbt.internal.LegacyWatched
 import sbt.internal.inc.Stamper
 import sbt.internal.io.{ EventMonitor, Source, WatchState }
@@ -159,23 +160,30 @@ object Watched {
   private[this] val reRun = if (isWin) "" else " or 'r' to re-run the command"
   private def waitMessage(project: String): String =
     s"Waiting for source changes$project... (press enter to interrupt$reRun)"
-  val defaultStartWatch: Int => Option[String] = count => Some(s"$count. ${waitMessage("")}")
+  val defaultStartWatch: Int => Option[String] =
+    ((count: Int) => Some(s"$count. ${waitMessage("")}")).label("Watched.defaultStartWatch")
   @deprecated("Use defaultStartWatch in conjunction with the watchStartMessage key", "1.3.0")
-  val defaultWatchingMessage: WatchState => String = ws => defaultStartWatch(ws.count).get
+  val defaultWatchingMessage: WatchState => String =
+    ((ws: WatchState) => defaultStartWatch(ws.count).get).label("Watched.defaultWatchingMessage")
   def projectWatchingMessage(projectId: String): WatchState => String =
-    ws => projectOnWatchMessage(projectId)(ws.count).get
+    ((ws: WatchState) => projectOnWatchMessage(projectId)(ws.count).get)
+      .label("Watched.projectWatchingMessage")
   def projectOnWatchMessage(project: String): Int => Option[String] =
-    count => Some(s"$count. ${waitMessage(s" in project $project")}")
+    ((count: Int) => Some(s"$count. ${waitMessage(s" in project $project")}"))
+      .label("Watched.projectOnWatchMessage")
 
-  val defaultOnTriggerMessage: Int => Option[String] = _ => None
+  val defaultOnTriggerMessage: Int => Option[String] =
+    ((_: Int) => None).label("Watched.defaultOnTriggerMessage")
   @deprecated(
     "Use defaultOnTriggerMessage in conjunction with the watchTriggeredMessage key",
     "1.3.0"
   )
-  val defaultTriggeredMessage: WatchState => String = const("")
+  val defaultTriggeredMessage: WatchState => String =
+    const("").label("Watched.defaultTriggeredMessage")
   val clearOnTrigger: Int => Option[String] = _ => Some(clearScreen)
   @deprecated("Use clearOnTrigger in conjunction with the watchTriggeredMessage key", "1.3.0")
-  val clearWhenTriggered: WatchState => String = const(clearScreen)
+  val clearWhenTriggered: WatchState => String =
+    const(clearScreen).label("Watched.clearWhenTriggered")
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
 
   object WatchSource {
