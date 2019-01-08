@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.7"
+ThisBuild / scalaVersion := "2.12.8"
 
 val paradiseVersion = "2.1.1"
 val commonSettings = Seq(

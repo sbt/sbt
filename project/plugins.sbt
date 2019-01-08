@@ -1,4 +1,4 @@
-scalaVersion := "2.12.7"
+scalaVersion := "2.12.8"
 scalacOptions ++= Seq("-feature", "-language:postfixOps")
 
 addSbtPlugin("org.scala-sbt"     % "sbt-houserules"  % "0.3.9")
