@@ -101,7 +101,8 @@ val root = (project in file(".")).
     },
     debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
     addPackage(Debian, packageBin in Debian, "deb"),
-    
+    debianNativeBuildOptions in Debian := Seq("-Zgzip", "-z3"),
+
     // RPM SPECIFIC
     rpmRelease := "0",
     version in Rpm := {
