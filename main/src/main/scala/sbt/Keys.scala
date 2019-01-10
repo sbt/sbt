@@ -334,6 +334,7 @@ object Keys {
   val internalDependencyAsJars = taskKey[Classpath]("The internal (inter-project) classpath as JARs.")
   val dependencyClasspathAsJars = taskKey[Classpath]("The classpath consisting of internal and external, managed and unmanaged dependencies, all as JARs.")
   val fullClasspathAsJars = taskKey[Classpath]("The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies, all as JARs.")
+  val internalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on")
 
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)

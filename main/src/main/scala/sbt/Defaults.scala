@@ -583,6 +583,7 @@ object Defaults extends BuildCommon {
     ) ++ (sourceGenerators / fileOutputs).value,
     compile := compileTask.value,
     clean := Clean.taskIn(ThisScope).value,
+    internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
     printWarnings := printWarningsTask.value,
