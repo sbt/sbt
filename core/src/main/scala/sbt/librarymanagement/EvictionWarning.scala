@@ -195,7 +195,8 @@ final class EvictionWarning private[sbt] (
     val scalaEvictions: Seq[EvictionPair],
     val directEvictions: Seq[EvictionPair],
     val transitiveEvictions: Seq[EvictionPair],
-    val allEvictions: Seq[EvictionPair]
+    val allEvictions: Seq[EvictionPair],
+    val binaryIncompatibleEvictionExists: Boolean
 ) {
   def reportedEvictions: Seq[EvictionPair] =
     scalaEvictions ++ directEvictions ++ transitiveEvictions
@@ -279,6 +280,7 @@ object EvictionWarning {
     val scalaEvictions: mutable.ListBuffer[EvictionPair] = mutable.ListBuffer()
     val directEvictions: mutable.ListBuffer[EvictionPair] = mutable.ListBuffer()
     val transitiveEvictions: mutable.ListBuffer[EvictionPair] = mutable.ListBuffer()
+    var binaryIncompatibleEvictionExists = false
     def guessCompatible(p: EvictionPair): Boolean =
       p.evicteds forall { r =>
         options.guessCompatible(
@@ -288,18 +290,23 @@ object EvictionWarning {
     pairs foreach {
       case p if isScalaArtifact(module, p.organization, p.name) =>
         (module.scalaModuleInfo, p.winner) match {
-          case (Some(s), Some(winner))
-              if (s.scalaFullVersion != winner.module.revision) && options.warnScalaVersionEviction =>
-            scalaEvictions += p
+          case (Some(s), Some(winner)) if (s.scalaFullVersion != winner.module.revision) =>
+            binaryIncompatibleEvictionExists = true
+            if (options.warnScalaVersionEviction)
+              scalaEvictions += p
           case _ =>
         }
       case p if p.includesDirect =>
-        if (!guessCompatible(p) && options.warnDirectEvictions) {
-          directEvictions += p
+        if (!guessCompatible(p)) {
+          binaryIncompatibleEvictionExists = true
+          if (options.warnDirectEvictions)
+            directEvictions += p
         }
       case p =>
-        if (!guessCompatible(p) && options.warnTransitiveEvictions) {
-          transitiveEvictions += p
+        if (!guessCompatible(p)) {
+          binaryIncompatibleEvictionExists = true
+          if (options.warnTransitiveEvictions)
+            transitiveEvictions += p
         }
     }
     new EvictionWarning(
@@ -307,14 +314,15 @@ object EvictionWarning {
       scalaEvictions.toList,
       directEvictions.toList,
       transitiveEvictions.toList,
-      pairs
+      pairs,
+      binaryIncompatibleEvictionExists
     )
   }
 
   implicit val evictionWarningLines: ShowLines[EvictionWarning] = ShowLines { a: EvictionWarning =>
     import ShowLines._
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
-    if ((a.options.warnEvictionSummary || a.reportedEvictions.nonEmpty) && a.allEvictions.nonEmpty) {
+    if (a.options.warnEvictionSummary && a.binaryIncompatibleEvictionExists) {
       out += "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
     }
 
