@@ -14,7 +14,7 @@ import sbt.KeyRanks.{ DTask, Invisible }
 import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ AttributeKey, Attributed, ConsoleAppender, Init }
+import sbt.internal.util._
 import sbt.util.Show
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */

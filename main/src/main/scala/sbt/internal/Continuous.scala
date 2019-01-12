@@ -23,10 +23,9 @@ import sbt.Scope.Global
 import sbt.internal.FileManagement.FileTreeRepositoryOps
 import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
-import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
-import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
+import sbt.internal.util.{ AttributeKey, Util }
 import sbt.io._
 import sbt.util.{ Level, _ }
 
@@ -122,16 +121,13 @@ object Continuous extends DeprecatedContinuous {
    * we have to modify the Task.info to apply the state transformation after the task completes.
    * @return the [[InputTask]]
    */
-  private[sbt] def continuousTask: Def.Initialize[InputTask[State]] =
+  private[sbt] def continuousTask: Def.Initialize[InputTask[StateTransform]] =
     Def.inputTask {
       val (initialCount, command) = continuousParser.parsed
-      runToTermination(Keys.state.value, command, initialCount, isCommand = false)
-    }(_.mapTask { t =>
-      val postTransform = t.info.postTransform {
-        case (state: State, am: AttributeMap) => am.put(Keys.transformState, const(state))
-      }
-      Task(postTransform, t.work)
-    })
+      new StateTransform(
+        runToTermination(Keys.state.value, command, initialCount, isCommand = false)
+      )
+    }
 
   private[this] val DupedSystemIn =
     AttributeKey[DupedInputStream](

@@ -14,6 +14,7 @@ import sbt.Def.{ ScopedKey, Setting, dummyState }
 import sbt.Keys.{ TaskProgress => _, name => _, _ }
 import sbt.Project.richInitializeTask
 import sbt.Scope.Global
+import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
 import sbt.internal.TransitiveGlobs._
 import sbt.internal.util._
@@ -479,8 +480,13 @@ object EvaluateTask {
       results: RMap[Task, Result],
       state: State,
       root: Task[T]
-  ): (State, Result[T]) =
-    (stateTransform(results)(state), results(root))
+  ): (State, Result[T]) = {
+    val newState = results(root) match {
+      case Value(KeyValue(_, st: StateTransform) :: Nil) => st.state
+      case _                                             => stateTransform(results)(state)
+    }
+    (newState, results(root))
+  }
   def stateTransform(results: RMap[Task, Result]): State => State =
     Function.chain(
       results.toTypedSeq flatMap {
