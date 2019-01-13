@@ -150,8 +150,11 @@ object Keys {
 
   // Output paths
   val classDirectory = settingKey[File]("Directory for compiled classes and copied resources.").withRank(AMinusSetting)
+  @deprecated("Clean is now implemented using globs.", "1.3.0")
   val cleanFiles = taskKey[Seq[File]]("The files to recursively delete during a clean.").withRank(BSetting)
+  @deprecated("Clean is now implemented using globs. Prefer the cleanKeepGlobs task", "1.3.0")
   val cleanKeepFiles = settingKey[Seq[File]]("Files or directories to keep during a clean. Must be direct children of target.").withRank(CSetting)
+  val cleanKeepGlobs = settingKey[Seq[Glob]]("Globs to keep during a clean. Must be direct children of target.").withRank(CSetting)
   val crossPaths = settingKey[Boolean]("If true, enables cross paths, which distinguish input and output directories for cross-building.").withRank(ASetting)
   val taskTemporaryDirectory = settingKey[File]("Directory used for temporary files for tasks that is deleted after each task execution.").withRank(DSetting)
 

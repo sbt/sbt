@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
+import java.nio.file.{ DirectoryNotEmptyException, Files }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -613,8 +614,9 @@ object Defaults extends BuildCommon {
 
   lazy val projectTasks: Seq[Setting[_]] = Seq(
     cleanFiles := cleanFilesTask.value,
-    cleanKeepFiles := historyPath.value.toVector,
-    clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
+    cleanKeepFiles := Vector.empty,
+    cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
+    clean := (cleanTask tag Tags.Clean).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
@@ -1302,24 +1304,30 @@ object Defaults extends BuildCommon {
   }
 
   /** Implements `cleanFiles` task. */
-  def cleanFilesTask: Initialize[Task[Vector[File]]] =
-    Def.task {
-      val filesAndDirs = Vector(managedDirectory.value, target.value)
-      val preserve = cleanKeepFiles.value
-      val (dirs, fs) = filesAndDirs.filter(_.exists).partition(_.isDirectory)
-      val preserveSet = preserve.filter(_.exists).toSet
-      // performance reasons, only the direct items under `filesAndDirs` are allowed to be preserved.
-      val dirItems = dirs flatMap { _.glob("*").get }
-      (preserveSet diff dirItems.toSet) match {
-        case xs if xs.isEmpty => ()
-        case xs =>
-          sys.error(
-            s"cleanKeepFiles contains directory/file that are not directly under cleanFiles: $xs"
-          )
-      }
-      val toClean = (dirItems filterNot { preserveSet(_) }) ++ fs
-      toClean
+  def cleanFilesTask: Initialize[Task[Vector[File]]] = Def.task { Vector.empty[File] }
+  private[this] def cleanTask: Initialize[Task[Unit]] = Def.task {
+    val defaults = Seq(managedDirectory.value ** AllPassFilter, target.value ** AllPassFilter)
+    val excludes = cleanKeepFiles.value.map {
+      // This mimics the legacy behavior of cleanFilesTask
+      case f if f.isDirectory => f * AllPassFilter
+      case f                  => f.toGlob
+    } ++ cleanKeepGlobs.value
+    val excludeFilter: File => Boolean = excludes.toFileFilter.accept
+    val globDeletions = defaults.unique.filterNot(excludeFilter)
+    val toDelete = cleanFiles.value.filterNot(excludeFilter) match {
+      case f @ Seq(_, _*) => (globDeletions ++ f).distinct
+      case _              => globDeletions
     }
+    val logger = streams.value.log
+    toDelete.sorted.reverseIterator.foreach { f =>
+      logger.debug(s"clean -- deleting file $f")
+      try Files.deleteIfExists(f.toPath)
+      catch {
+        case _: DirectoryNotEmptyException =>
+          logger.debug(s"clean -- unable to delete non-empty directory $f")
+      }
+    }
+  }
 
   def bgRunMainTask(
       products: Initialize[Task[Classpath]],
