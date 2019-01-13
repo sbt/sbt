@@ -10,7 +10,7 @@ plugins_(
 
 libs ++= Seq(
   "org.scala-sbt" %% "scripted-plugin" % sbtVersion.value,
-  compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full), // for shapeless / auto type class derivations
+  compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full), // for shapeless / auto type class derivations
   "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M9"
 )
 
