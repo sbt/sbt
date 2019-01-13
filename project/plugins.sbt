@@ -4,7 +4,7 @@ plugins_(
   "org.scala-sbt"      % "sbt-contraband"           % "0.4.1",
   "io.get-coursier"    % "sbt-coursier"             % coursierVersion,
   "com.typesafe"       % "sbt-mima-plugin"          % "0.3.0",
-  "com.jsuereth"       % "sbt-pgp"                  % "1.1.1",
+  "com.jsuereth"       % "sbt-pgp"                  % "1.1.2",
   "io.get-coursier"    % "sbt-shading"              % coursierVersion
 )
 
