@@ -198,6 +198,13 @@ final class EvictionWarning private[sbt] (
     val allEvictions: Seq[EvictionPair],
     val binaryIncompatibleEvictionExists: Boolean
 ) {
+  private[sbt] def this(
+      options: EvictionWarningOptions,
+      scalaEvictions: Seq[EvictionPair],
+      directEvictions: Seq[EvictionPair],
+      transitiveEvictions: Seq[EvictionPair],
+      allEvictions: Seq[EvictionPair]
+  ) = this(options, scalaEvictions, directEvictions, transitiveEvictions, allEvictions, false)
   def reportedEvictions: Seq[EvictionPair] =
     scalaEvictions ++ directEvictions ++ transitiveEvictions
   private[sbt] def infoAllTheThings: List[String] = EvictionWarning.infoAllTheThings(this)
@@ -291,22 +298,25 @@ object EvictionWarning {
       case p if isScalaArtifact(module, p.organization, p.name) =>
         (module.scalaModuleInfo, p.winner) match {
           case (Some(s), Some(winner)) if (s.scalaFullVersion != winner.module.revision) =>
-            binaryIncompatibleEvictionExists = true
             if (options.warnScalaVersionEviction)
               scalaEvictions += p
+            if (options.warnEvictionSummary)
+              binaryIncompatibleEvictionExists = true
           case _ =>
         }
       case p if p.includesDirect =>
         if (!guessCompatible(p)) {
-          binaryIncompatibleEvictionExists = true
           if (options.warnDirectEvictions)
             directEvictions += p
+          if (options.warnEvictionSummary)
+            binaryIncompatibleEvictionExists = true
         }
       case p =>
         if (!guessCompatible(p)) {
-          binaryIncompatibleEvictionExists = true
           if (options.warnTransitiveEvictions)
             transitiveEvictions += p
+          if (options.warnEvictionSummary)
+            binaryIncompatibleEvictionExists = true
         }
     }
     new EvictionWarning(
