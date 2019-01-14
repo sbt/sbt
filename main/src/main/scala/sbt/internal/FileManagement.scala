@@ -95,6 +95,7 @@ private[sbt] object FileManagement {
       override def close(): Unit = monitor.close()
     }
   }
+
   private[sbt] class HybridMonitoringRepository[T](
       underlying: HybridPollingFileTreeRepository[T],
       delay: FiniteDuration,

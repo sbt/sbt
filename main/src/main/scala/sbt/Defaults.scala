@@ -293,6 +293,7 @@ object Defaults extends BuildCommon {
           case Some(r) => r
           case None    => FileTreeView.DEFAULT.asDataView(FileAttributes.default)
         }),
+      Continuous.dynamicInputs := Continuous.dynamicInputsImpl.value,
       externalHooks := {
         val repository = fileTreeRepository.value
         compileOptions =>

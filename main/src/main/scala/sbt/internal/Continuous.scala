@@ -134,6 +134,18 @@ object Continuous extends DeprecatedContinuous {
       "Receives a copy of all of the bytes from System.in.",
       10000
     )
+  val dynamicInputs = taskKey[FileTree.DynamicInputs](
+    "The input globs found during task evaluation that are used in watch."
+  )
+  def dynamicInputsImpl: Def.Initialize[Task[FileTree.DynamicInputs]] = Def.task {
+    Keys.state.value.get(DynamicInputs).getOrElse(FileTree.DynamicInputs.none)
+  }
+  private[sbt] val DynamicInputs =
+    AttributeKey[FileTree.DynamicInputs](
+      "dynamic-inputs",
+      "Stores the inputs (dynamic and regular) for a task",
+      10000
+    )
 
   private[this] val continuousParser: State => Parser[(Int, String)] = {
     def toInt(s: String): Int = Try(s.toInt).getOrElse(0)
@@ -175,12 +187,14 @@ object Continuous extends DeprecatedContinuous {
     }
 
     val repository = getRepository(state)
-    (inputs ++ triggers).foreach(repository.register)
+    val registeringSet = state.get(DynamicInputs).get
+    registeringSet.value.foreach(_ ++= inputs)
+    (inputs ++ triggers).foreach(repository.register(_: Glob))
     val watchSettings = new WatchSettings(scopedKey)
     new Config(
       scopedKey,
       repository,
-      inputs,
+      () => registeringSet.value.fold(Nil: Seq[Glob])(_.toSeq).sorted,
       triggers,
       watchSettings
     )
@@ -195,31 +209,48 @@ object Continuous extends DeprecatedContinuous {
   }
 
   private[sbt] def setup[R](state: State, command: String)(
-      f: (State, Seq[String], Seq[() => Boolean], Seq[String]) => R
+      f: (State, Seq[(String, State, () => Boolean)], Seq[String]) => R
   ): R = {
     // First set up the state so that we can capture whether or not a task completed successfully
     // or if it threw an Exception (we lose the actual exception, but that should still be printed
     // to the console anyway).
     val failureCommandName = "SbtContinuousWatchOnFail"
     val onFail = Command.command(failureCommandName)(identity)
-    /*
-     * Takes a task string and converts it to an EitherTask. We cannot preserve either
-     * the value returned by the task or any exception thrown by the task, but we can determine
-     * whether or not the task ran successfully using the onFail command defined above.
-     */
-    def makeTask(cmd: String)(task: () => State): () => Boolean = { () =>
-      MainLoop
-        .processCommand(Exec(cmd, None), state, task)
-        .remainingCommands
-        .forall(_.commandLine != failureCommandName)
-    }
-
     // This adds the "SbtContinuousWatchOnFail" onFailure handler which allows us to determine
     // whether or not the last task successfully ran. It is used in the makeTask method below.
     val s = (FailureWall :: state).copy(
       onFailure = Some(Exec(failureCommandName, None)),
       definedCommands = state.definedCommands :+ onFail
     )
+
+    /*
+     * Takes a task string and converts it to an EitherTask. We cannot preserve either
+     * the value returned by the task or any exception thrown by the task, but we can determine
+     * whether or not the task ran successfully using the onFail command defined above. Each
+     * task gets its own state with its own file tree repository. This is so that we can keep
+     * track of what globs are actually used by the task to ensure that we monitor them, even
+     * if they are not visible in the input graph due to the use of Def.taskDyn.
+     */
+    def makeTask(cmd: String): (String, State, () => Boolean) = {
+      val newState = s.put(DynamicInputs, FileTree.DynamicInputs.empty)
+      val task = Parser
+        .parse(cmd, Command.combine(newState.definedCommands)(newState))
+        .getOrElse(
+          throw new IllegalStateException(
+            "No longer able to parse command after transforming state"
+          )
+        )
+      (
+        cmd,
+        newState,
+        () => {
+          MainLoop
+            .processCommand(Exec(cmd, None), newState, task)
+            .remainingCommands
+            .forall(_.commandLine != failureCommandName)
+        }
+      )
+    }
 
     // We support multiple commands in watch, so it's necessary to run the command string through
     // the multi parser.
@@ -234,14 +265,15 @@ object Continuous extends DeprecatedContinuous {
     val taskParser = Command.combine(s.definedCommands)(s)
     // This specified either the task corresponding to a command or the command itself if the
     // the command cannot be converted to a task.
-    val (invalid, valid) = commands.foldLeft((Nil: Seq[String], Nil: Seq[() => Boolean])) {
-      case ((i, v), cmd) =>
-        Parser.parse(cmd, taskParser) match {
-          case Right(task) => (i, v :+ makeTask(cmd)(task))
-          case Left(c)     => (i :+ c, v)
-        }
-    }
-    f(s, commands, valid, invalid)
+    val (invalid, valid) =
+      commands.foldLeft((Nil: Seq[String], Nil: Seq[(String, State, () => Boolean)])) {
+        case ((i, v), cmd) =>
+          Parser.parse(cmd, taskParser) match {
+            case Right(_) => (i, v :+ makeTask(cmd))
+            case Left(c)  => (i :+ c, v)
+          }
+      }
+    f(s, valid, invalid)
   }
 
   private[sbt] def runToTermination(
@@ -251,18 +283,18 @@ object Continuous extends DeprecatedContinuous {
       isCommand: Boolean
   ): State = Watch.withCharBufferedStdIn { in =>
     val duped = new DupedInputStream(in)
-    setup(state.put(DupedSystemIn, duped), command) { (s, commands, valid, invalid) =>
+    setup(state.put(DupedSystemIn, duped), command) { (s, valid, invalid) =>
       implicit val extracted: Extracted = Project.extract(s)
       EvaluateTask.withStreams(extracted.structure, s)(_.use(Keys.streams in Global) { streams =>
         implicit val logger: Logger = streams.log
         if (invalid.isEmpty) {
           val currentCount = new AtomicInteger(count)
-          val callbacks =
-            aggregate(getAllConfigs(s, commands), logger, in, state, currentCount, isCommand)
+          val configs = getAllConfigs(valid.map(v => v._1 -> v._2))
+          val callbacks = aggregate(configs, logger, in, s, currentCount, isCommand)
           val task = () => {
             currentCount.getAndIncrement()
             // abort as soon as one of the tasks fails
-            valid.takeWhile(_.apply())
+            valid.takeWhile(_._3.apply())
             ()
           }
           callbacks.onEnter()
@@ -273,7 +305,10 @@ object Continuous extends DeprecatedContinuous {
           try {
             val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
             callbacks.onTermination(terminationAction, command, currentCount.get(), state)
-          } finally callbacks.onExit()
+          } finally {
+            configs.foreach(_.repository.close())
+            callbacks.onExit()
+          }
         } else {
           // At least one of the commands in the multi command string could not be parsed, so we
           // log an error and exit.
@@ -285,28 +320,27 @@ object Continuous extends DeprecatedContinuous {
     }
   }
 
-  private def parseCommands(state: State, commands: Seq[String]): Seq[ScopedKey[_]] = {
+  private def parseCommand(command: String, state: State): Seq[ScopedKey[_]] = {
     // Collect all of the scoped keys that are used to delegate the multi commands. These are
     // necessary to extract all of the transitive globs that we need to monitor during watch.
     // We have to add the <~ Parsers.any.* to ensure that we're able to extract the input key
     // from input tasks.
     val scopedKeyParser: Parser[Seq[ScopedKey[_]]] = Act.aggregatedKeyParser(state) <~ Parsers.any.*
-    commands.flatMap { cmd: String =>
-      Parser.parse(cmd, scopedKeyParser) match {
-        case Right(scopedKeys: Seq[ScopedKey[_]]) => scopedKeys
-        case Left(e) =>
-          throw new IllegalStateException(s"Error attempting to extract scope from $cmd: $e.")
-        case _ => Nil: Seq[ScopedKey[_]]
-      }
+    Parser.parse(command, scopedKeyParser) match {
+      case Right(scopedKeys: Seq[ScopedKey[_]]) => scopedKeys
+      case Left(e) =>
+        throw new IllegalStateException(s"Error attempting to extract scope from $command: $e.")
+      case _ => Nil: Seq[ScopedKey[_]]
     }
   }
   private def getAllConfigs(
-      state: State,
-      commands: Seq[String]
+      inputs: Seq[(String, State)]
   )(implicit extracted: Extracted, logger: Logger): Seq[Config] = {
-    val commandKeys = parseCommands(state, commands)
+    val commandKeys = inputs.map { case (c, s) => s -> parseCommand(c, s) }
     val compiledMap = InputGraph.compile(extracted.structure)
-    commandKeys.map((scopedKey: ScopedKey[_]) => getConfig(state, scopedKey, compiledMap))
+    commandKeys.flatMap {
+      case (s, scopedKeys) => scopedKeys.map(getConfig(s, _, compiledMap))
+    }
   }
 
   private class Callbacks(
@@ -430,16 +464,16 @@ object Continuous extends DeprecatedContinuous {
         val ws = params.watchSettings
         ws.onTrigger
           .map(_.apply(params.arguments(logger)))
-          .getOrElse {
-            val globFilter = (params.inputs ++ params.triggers).toEntryFilter
-            event: Event =>
-              if (globFilter(event.entry)) {
-                ws.triggerMessage match {
-                  case Some(Left(tm))  => logger.info(tm(params.watchState(count.get())))
-                  case Some(Right(tm)) => tm(count.get(), event).foreach(logger.info(_))
-                  case None            => // By default don't print anything
-                }
+          .getOrElse { event: Event =>
+            val globFilter =
+              (params.inputs() ++ params.triggers).toEntryFilter
+            if (globFilter(event.entry)) {
+              ws.triggerMessage match {
+                case Some(Left(tm))  => logger.info(tm(params.watchState(count.get())))
+                case Some(Right(tm)) => tm(count.get(), event).foreach(logger.info(_))
+                case None            => // By default don't print anything
               }
+            }
           }
       }
       event: Event =>
@@ -457,14 +491,16 @@ object Continuous extends DeprecatedContinuous {
             val onInputEvent = ws.onInputEvent.getOrElse(defaultTrigger)
             val onTriggerEvent = ws.onTriggerEvent.getOrElse(defaultTrigger)
             val onMetaBuildEvent = ws.onMetaBuildEvent.getOrElse(Watch.ifChanged(Watch.Reload))
-            val inputFilter = params.inputs.toEntryFilter
             val triggerFilter = params.triggers.toEntryFilter
+            val excludedBuildFilter = buildFilter
             event: Event =>
+              val inputFilter = params.inputs().toEntryFilter
               val c = count.get()
+              val entry = event.entry
               Seq[Watch.Action](
-                if (inputFilter(event.entry)) onInputEvent(c, event) else Watch.Ignore,
-                if (triggerFilter(event.entry)) onTriggerEvent(c, event) else Watch.Ignore,
-                if (buildFilter(event.entry)) onMetaBuildEvent(c, event) else Watch.Ignore
+                if (inputFilter(entry)) onInputEvent(c, event) else Watch.Ignore,
+                if (triggerFilter(entry)) onTriggerEvent(c, event) else Watch.Ignore,
+                if (excludedBuildFilter(entry)) onMetaBuildEvent(c, event) else Watch.Ignore
               ).min
           }
         event: Event =>
@@ -477,18 +513,26 @@ object Continuous extends DeprecatedContinuous {
         f.view.map(_.apply(event)).minBy(_._2)
     }
     val monitor: FileEventMonitor[FileAttributes] = new FileEventMonitor[FileAttributes] {
-      private def setup(
+
+      /**
+       * Create a filtered monitor that only accepts globs that have been registered for the
+       * task at hand.
+       * @param monitor the file event monitor to filter
+       * @param globs the globs to accept. This must be a function because we want to be able
+       *              to accept globs that are added dynamically as part of task evaluation.
+       * @return the filtered FileEventMonitor.
+       */
+      private def filter(
           monitor: FileEventMonitor[FileAttributes],
-          globs: Seq[Glob]
+          globs: () => Seq[Glob]
       ): FileEventMonitor[FileAttributes] = {
-        val globFilters = globs.toEntryFilter
-        val filter: Event => Boolean = (event: Event) => globFilters(event.entry)
         new FileEventMonitor[FileAttributes] {
           override def poll(duration: Duration): Seq[FileEventMonitor.Event[FileAttributes]] =
-            monitor.poll(duration).filter(filter)
+            monitor.poll(duration).filter(e => globs().toEntryFilter(e.entry))
           override def close(): Unit = monitor.close()
         }
       }
+      // TODO make this a normal monitor
       private[this] val monitors: Seq[FileEventMonitor[FileAttributes]] =
         configs.map { config =>
           // Create a logger with a scoped key prefix so that we can tell from which
@@ -496,17 +540,20 @@ object Continuous extends DeprecatedContinuous {
           val l = logger.withPrefix(config.key.show)
           val monitor: FileEventMonitor[FileAttributes] =
             FileManagement.monitor(config.repository, config.watchSettings.antiEntropy, l)
-          val allGlobs = (config.inputs ++ config.triggers).distinct.sorted
-          setup(monitor, allGlobs)
+          val allGlobs: () => Seq[Glob] = () => (config.inputs() ++ config.triggers).distinct.sorted
+          filter(monitor, allGlobs)
         } ++ (if (trackMetaBuild) {
                 val l = logger.withPrefix("meta-build")
-                val antiEntropy = configs.map(_.watchSettings.antiEntropy).min
-                setup(FileManagement.monitor(getRepository(state), antiEntropy, l), buildGlobs) :: Nil
+                val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
+                val repo = getRepository(state)
+                buildGlobs.foreach(repo.register)
+                val monitor = FileManagement.monitor(repo, antiEntropy, l)
+                filter(monitor, () => buildGlobs) :: Nil
               } else Nil)
       override def poll(duration: Duration): Seq[FileEventMonitor.Event[FileAttributes]] = {
-        // The call to .par allows us to poll all of the monitors in parallel.
-        // This should be cheap because poll just blocks on a queue until an event is added.
-        monitors.par.flatMap(_.poll(duration)).toSet.toVector
+        val res = monitors.flatMap(_.poll(0.millis)).toSet.toVector
+        if (res.isEmpty) Thread.sleep(duration.toMillis)
+        res
       }
       override def close(): Unit = monitors.foreach(_.close())
     }
@@ -745,13 +792,13 @@ object Continuous extends DeprecatedContinuous {
   private final class Config private[internal] (
       val key: ScopedKey[_],
       val repository: FileTreeRepository[FileAttributes],
-      val inputs: Seq[Glob],
+      val inputs: () => Seq[Glob],
       val triggers: Seq[Glob],
       val watchSettings: WatchSettings
   ) {
     private[sbt] def watchState(count: Int): DeprecatedWatchState =
-      WatchState.empty(inputs ++ triggers).withCount(count)
-    def arguments(logger: Logger): Arguments = new Arguments(logger, inputs, triggers)
+      WatchState.empty(inputs() ++ triggers).withCount(count)
+    def arguments(logger: Logger): Arguments = new Arguments(logger, inputs(), triggers)
   }
   private def getStartMessage(key: ScopedKey[_])(implicit e: Extracted): StartMessage = Some {
     lazy val default = key.get(Keys.watchStartMessage).getOrElse(Watch.defaultStartWatch)
@@ -865,5 +912,4 @@ object Continuous extends DeprecatedContinuous {
         logger.log(level, s"$prefix - $message")
     }
   }
-
 }

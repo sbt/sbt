@@ -7,13 +7,13 @@
 
 package sbt.internal
 
-import java.nio.file.{ Path, Paths }
+import java.nio.file.Paths
 import java.util.Optional
 
+import sbt.Stamped
 import sbt.internal.inc.ExternalLookup
 import sbt.io.syntax._
-import sbt.io.{ AllPassFilter, Glob, TypedPath }
-import sbt.Stamped
+import sbt.io.{ AllPassFilter, TypedPath }
 import xsbti.compile._
 import xsbti.compile.analysis.Stamp
 
@@ -22,7 +22,6 @@ import scala.collection.mutable
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
   def apply(options: CompileOptions, repo: FileTree.Repository): DefaultExternalHooks = {
-    def listEntries(glob: Glob): Seq[(Path, FileAttributes)] = repo.get(glob)
     import scala.collection.JavaConverters._
     val sources = options.sources()
     val cachedSources = new java.util.HashMap[File, Stamp]
@@ -34,13 +33,9 @@ private[sbt] object ExternalHooks {
     val allBinaries = new java.util.HashMap[File, Stamp]
     options.classpath.foreach {
       case f if f.getName.endsWith(".jar") =>
-        // This gives us the entry for the path itself, which is necessary if the path is a jar file
-        // rather than a directory.
-        listEntries(f.toGlob) foreach { case (p, a) => allBinaries.put(p.toFile, a.stamp) }
+        repo.get(f.toGlob) foreach { case (p, a) => allBinaries.put(p.toFile, a.stamp) }
       case f =>
-        listEntries(f ** AllPassFilter) foreach {
-          case (p, a) => allBinaries.put(p.toFile, a.stamp)
-        }
+        repo.get(f ** AllPassFilter) foreach { case (p, a) => allBinaries.put(p.toFile, a.stamp) }
     }
 
     val lookup = new ExternalLookup {

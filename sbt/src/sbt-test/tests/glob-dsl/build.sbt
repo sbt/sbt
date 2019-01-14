@@ -46,12 +46,9 @@ val checkSet = taskKey[Unit]("Verify that redundant sources are handled")
 
 checkSet := {
   val redundant = (set / fileInputs).value.all.map(_._1.toFile)
-  assert(redundant.size == 4) // It should get Foo.txt and Bar.md twice
+  assert(redundant.size == 2)
 
   val deduped = (set / fileInputs).value.toSet[Glob].all.map(_._1.toFile)
   val expected = Seq("Bar.md", "Foo.txt").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
   assert(deduped.sorted == expected)
-
-  val altDeduped = (set / fileInputs).value.unique.map(_._1.toFile)
-  assert(altDeduped.sorted == expected)
 }

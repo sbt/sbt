@@ -1,8 +1,6 @@
 import java.nio.file.Path
 
 import sbt.internal.{FileAttributes, FileTree}
-import sbt.io.FileTreeDataView
-import xsbti.compile.analysis.Stamp
 
 val allInputs = taskKey[Seq[File]]("")
 val allInputsExplicit = taskKey[Seq[File]]("")

@@ -14,12 +14,22 @@ import sbt.internal.util.appmacro.MacroDefaults
 import sbt.io.FileTreeDataView.Entry
 import sbt.io._
 
+import scala.collection.mutable
 import scala.language.experimental.macros
 
 object FileTree {
   private def toPair(e: Entry[FileAttributes]): Option[(Path, FileAttributes)] =
     e.value.toOption.map(a => e.typedPath.toPath -> a)
   trait Repository extends sbt.internal.Repository[Seq, Glob, (Path, FileAttributes)]
+  private[sbt] trait DynamicInputs {
+    def value: Option[mutable.Set[Glob]]
+  }
+  private[sbt] object DynamicInputs {
+    def empty: DynamicInputs = new impl(Some(mutable.Set.empty[Glob]))
+    final val none: DynamicInputs = new impl(None)
+    private final class impl(override val value: Option[mutable.Set[Glob]]) extends DynamicInputs
+    implicit def default: DynamicInputs = macro MacroDefaults.dynamicInputs
+  }
   private[sbt] object Repository {
 
     /**
@@ -45,7 +55,8 @@ object FileTree {
       extends Repository {
     override def get(key: Glob): Seq[(Path, FileAttributes)] = {
       underlying.register(key)
-      underlying.listEntries(key).flatMap(toPair)
+      //underlying.listEntries(key).flatMap(toPair).distinct
+      Repository.polling.get(key)
     }
     override def close(): Unit = underlying.close()
   }

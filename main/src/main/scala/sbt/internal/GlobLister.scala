@@ -8,9 +8,14 @@
 package sbt
 package internal
 
+import java.io.File
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentSkipListMap
 
-import sbt.io.Glob
+import sbt.io.{ FileFilter, Glob, SimpleFileFilter }
+
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 /**
  * Retrieve files from a repository. This should usually be an extension class for
@@ -19,21 +24,21 @@ import sbt.io.Glob
  */
 private[sbt] sealed trait GlobLister extends Any {
 
-  /**
-   * Get the sources described this `GlobLister`.
-   *
-   * @param repository the [[FileTree.Repository]] to delegate file i/o.
-   * @return the files described by this `GlobLister`.
-   */
-  def all(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)]
+  final def all(repository: FileTree.Repository): Seq[(Path, FileAttributes)] =
+    all(repository, FileTree.DynamicInputs.empty)
 
   /**
-   * Get the unique sources described this `GlobLister`.
+   * Get the sources described this `GlobLister`. The results should not return any duplicate
+   * entries for each path in the result set.
    *
-   * @param repository the [[FileTree.Repository]] to delegate file i/o.
-   * @return the files described by this `GlobLister` with any duplicates removed.
+   * @param repository the file tree repository for retrieving the files for a given glob.
+   * @param dynamicInputs the task dynamic inputs to track for watch.
+   * @return the files described by this `GlobLister`.
    */
-  def unique(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)]
+  def all(
+      implicit repository: FileTree.Repository,
+      dynamicInputs: FileTree.DynamicInputs
+  ): Seq[(Path, FileAttributes)]
 }
 
 /**
@@ -57,10 +62,7 @@ private[sbt] trait GlobListers {
   implicit def fromGlob(source: Glob): GlobLister = new impl(source :: Nil)
 
   /**
-   * Generate a GlobLister given a collection of Globs. If the input collection type
-   * preserves uniqueness, e.g. `Set[Glob]`, then the output of `GlobLister.all` will be
-   * the unique source list. Otherwise duplicates are possible in all and it is necessary to call
-   * `GlobLister.unique` to de-duplicate the files.
+   * Generate a GlobLister given a collection of Globs.
    *
    * @param sources the collection of sources
    * @tparam T the source collection type
@@ -69,6 +71,34 @@ private[sbt] trait GlobListers {
     new impl(sources)
 }
 private[internal] object GlobListers {
+  private def covers(left: Glob, right: Glob): Boolean = {
+    right.base.startsWith(left.base) && {
+      left.depth == Int.MaxValue || {
+        val depth = left.base.relativize(right.base).getNameCount
+        depth < left.depth - right.depth
+      }
+    }
+  }
+  private def aggregate(globs: Traversable[Glob]): Seq[(Glob, Traversable[Glob])] = {
+    val sorted = globs.toSeq.sorted
+    val map = new ConcurrentSkipListMap[Path, (Glob, mutable.Set[Glob])]
+    if (sorted.size > 1) {
+      sorted.foreach { glob =>
+        map.subMap(glob.base.getRoot, glob.base.resolve(Char.MaxValue.toString)).asScala.find {
+          case (_, (g, _)) => covers(g, glob)
+        } match {
+          case Some((_, (_, globs))) => globs += glob
+          case None =>
+            val globs = mutable.Set(glob)
+            val filter: FileFilter = new SimpleFileFilter((file: File) => {
+              globs.exists(_.toFileFilter.accept(file))
+            })
+            map.put(glob.base, (Glob(glob.base, filter, glob.depth), globs))
+        }
+      }
+      map.asScala.values.toIndexedSeq
+    } else sorted.map(g => g -> (g :: Nil))
+  }
 
   /**
    * Implements `GlobLister` given a collection of Globs. If the input collection type
@@ -79,18 +109,15 @@ private[internal] object GlobListers {
    * @tparam T the collection type
    */
   private class impl[T <: Traversable[Glob]](val globs: T) extends AnyVal with GlobLister {
-    private def get[T0 <: Traversable[Glob]](
-        traversable: T0,
-        repository: FileTree.Repository
-    ): Seq[(Path, FileAttributes)] =
-      traversable.flatMap { glob =>
-        val sourceFilter = glob.toFileFilter
-        repository.get(glob).filter { case (p, _) => sourceFilter.accept(p.toFile) }
+    override def all(
+        implicit repository: FileTree.Repository,
+        dynamicInputs: FileTree.DynamicInputs
+    ): Seq[(Path, FileAttributes)] = {
+      aggregate(globs).flatMap {
+        case (glob, allGlobs) =>
+          dynamicInputs.value.foreach(_ ++= allGlobs)
+          repository.get(glob)
       }.toIndexedSeq
-
-    override def all(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)] =
-      get(globs, repository)
-    override def unique(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)] =
-      get(globs.toSet[Glob], repository)
+    }
   }
 }
