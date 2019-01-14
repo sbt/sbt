@@ -30,7 +30,7 @@ lazy val `lm-coursier` = project
       // to DependencyResolutionInterface.update, which is an
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
-      "org.scala-sbt" %% "librarymanagement-ivy" % "1.0.4",
+      "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.5" % Test
     ),
     managedSourceDirectories in Compile +=
