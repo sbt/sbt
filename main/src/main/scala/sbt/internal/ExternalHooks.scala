@@ -41,7 +41,7 @@ private[sbt] object ExternalHooks {
     options.classpath.foreach { f =>
       view.listEntries(f.toPath, Integer.MAX_VALUE, _ => true) foreach { e =>
         e.value match {
-          case Right(value) => allBinaries.put(e.typedPath.getPath.toFile, value.stamp)
+          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
           case _            =>
         }
       }
@@ -49,7 +49,7 @@ private[sbt] object ExternalHooks {
       // rather than a directory.
       view.listEntries(f.toPath, -1, _ => true) foreach { e =>
         e.value match {
-          case Right(value) => allBinaries.put(e.typedPath.getPath.toFile, value.stamp)
+          case Right(value) => allBinaries.put(e.typedPath.toPath.toFile, value.stamp)
           case _            =>
         }
       }
