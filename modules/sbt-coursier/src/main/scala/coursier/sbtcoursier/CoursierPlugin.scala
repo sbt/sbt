@@ -44,9 +44,13 @@ object CoursierPlugin extends AutoPlugin {
     @deprecated("Use sbtCoursierVersion instead", "1.1.0-M9")
     val coursierVersion = sbtCoursierVersion
 
-    val addSbtCoursier = {
+    val addSbtCoursier: Seq[Def.Setting[_]] = {
       import sbt._
-      addSbtPlugin("io.get-coursier" % "sbt-coursier" % sbtCoursierVersion)
+      Seq(
+        addSbtPlugin("io.get-coursier" % "sbt-coursier" % sbtCoursierVersion),
+        // seems needed for some sbt plugins (https://github.com/coursier/coursier/issues/450)
+        classpathTypes += "maven-plugin"
+      )
     }
   }
 

@@ -7,7 +7,7 @@ import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
@@ -17,9 +17,13 @@ object LmCoursierPlugin extends AutoPlugin {
   object autoImport {
     val coursierConfiguration = taskKey[CoursierConfiguration]("General dependency management (Coursier) settings, such as the resolvers and options to use.").withRank(DTask)
 
-    val addSbtCoursier = {
+    val addSbtCoursier: Seq[Def.Setting[_]] = {
       import sbt._
-      addSbtPlugin("io.get-coursier" % "sbt-lm-coursier" % sbtCoursierVersion)
+      Seq(
+        addSbtPlugin("io.get-coursier" % "sbt-lm-coursier" % sbtCoursierVersion),
+        // seems needed for some sbt plugins (https://github.com/coursier/coursier/issues/450)
+        classpathTypes += "maven-plugin"
+      )
     }
   }
 
