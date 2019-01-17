@@ -61,7 +61,7 @@ private[sbt] object FileManagement {
         view.register(dir.toPath, maxDepth = Integer.MAX_VALUE)
         view
           .listEntries(dir.toPath, maxDepth = Integer.MAX_VALUE, sourceFilter)
-          .map(e => e.value.getOrElse(e.typedPath.getPath.toFile))
+          .map(e => e.value.getOrElse(e.typedPath.toPath.toFile))
       }
     }
 
@@ -86,7 +86,7 @@ private[sbt] object FileManagement {
                  * these methods in java.io.File, FileFilters may be applied without needing to
                  * stat the file (which is expensive) for isDirectory and isFile checks.
                  */
-                val file = new java.io.File(tp.getPath.toString) {
+                val file = new java.io.File(tp.toPath.toString) {
                   override def isDirectory: Boolean = tp.isDirectory
                   override def isFile: Boolean = tp.isFile
                 }
