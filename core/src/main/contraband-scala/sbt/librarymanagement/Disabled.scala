@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 /** Disables cross versioning for a module. */
-final class Disabled private () extends sbt.librarymanagement.CrossVersion() with Serializable {
+sealed class Disabled private () extends sbt.librarymanagement.CrossVersion() with Serializable {
 
 
 
@@ -24,7 +24,7 @@ private[this] def copy(): Disabled = {
 }
 
 }
-object Disabled {
+object Disabled extends sbt.librarymanagement.Disabled {
   
   def apply(): Disabled = new Disabled()
 }

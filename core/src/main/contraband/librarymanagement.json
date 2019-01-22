@@ -261,7 +261,9 @@
           "namespace": "sbt.librarymanagement",
           "target": "Scala",
           "doc": "Disables cross versioning for a module.",
-          "type": "record"
+          "type": "record",
+          "modifier": "sealed",
+          "parentsCompanion": "sbt.librarymanagement.Disabled"
         },
         {
           "name": "Binary",
