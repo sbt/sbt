@@ -1,7 +1,7 @@
 
 plugins_(
   "com.geirsson"       % "sbt-ci-release"           % "1.2.1",
-  "org.scala-sbt"      % "sbt-contraband"           % "0.4.1",
+  "org.scala-sbt"      % "sbt-contraband"           % "0.4.2",
   "io.get-coursier"    % "sbt-coursier"             % coursierVersion,
   "com.typesafe"       % "sbt-mima-plugin"          % "0.3.0",
   "com.jsuereth"       % "sbt-pgp"                  % "1.1.2",
