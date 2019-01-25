@@ -1,4 +1,4 @@
-scalaVersion := "2.10.6"
+scalaVersion := "2.10.7"
 
 addSbtPlugin("com.eed3si9n" % "sbt-doge" % "0.1.5")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.5.4")
