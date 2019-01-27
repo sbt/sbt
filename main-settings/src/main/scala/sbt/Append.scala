@@ -78,6 +78,15 @@ object Append {
   implicit def appendSourceN: Values[Seq[Source], Seq[File]] =
     _ ++ _.map(new Source(_, AllPassFilter, NothingFilter))
 
+  implicit def appendFunction[A, B]: Value[A => A, A => A] = _.andThen(_)
+
+  implicit def appendSideEffectToFunc[A, B]: Value[A => B, () => Unit] = (f, sideEffect) => {
+    f.andThen { b =>
+      sideEffect()
+      b
+    }
+  }
+
   // un-implicit, package-private (and JVM public) the old way of defining these
   @deprecated("No longer required with SAM conversions. Scheduled for removal in 2.0.", "1.3.0")
   private[sbt] trait Sequence[A, -B, T] extends Value[A, T] with Values[A, B]
@@ -105,5 +114,4 @@ object Append {
     seq[Seq[T], Option[T], Option[T]]
   private[sbt] def appendSource: Sequence[Seq[Source], Seq[File], File] =
     seq[Seq[Source], Seq[File], File]
-}
 }
