@@ -101,4 +101,13 @@ object Append {
       def appendValues(a: Seq[Source], b: Seq[File]): Seq[Source] =
         a ++ b.map(new Source(_, AllPassFilter, NothingFilter))
     }
+
+  implicit def appendFunction[A, B]: Value[A => A, A => A] = _.andThen(_)
+
+  implicit def appendSideEffectToFunc[A, B]: Value[A => B, () => Unit] = (f, sideEffect) => {
+    f.andThen { b =>
+      sideEffect()
+      b
+    }
+  }
 }
