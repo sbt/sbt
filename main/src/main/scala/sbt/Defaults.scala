@@ -141,7 +141,7 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       classLoaderCache := ClassLoaderCache(4),
-      layeringStrategy := LayeringStrategy.Default
+      classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Default
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
@@ -813,7 +813,7 @@ object Defaults extends BuildCommon {
           (fullClasspath in test).value,
           testForkedParallel.value,
           (javaOptions in test).value,
-          (layeringStrategy).value
+          (classLoaderLayeringStrategy).value
         )
       }
     ).value,
@@ -980,7 +980,7 @@ object Defaults extends BuildCommon {
         fullClasspath.value,
         testForkedParallel.value,
         javaOptions.value,
-        layeringStrategy.value
+        classLoaderLayeringStrategy.value
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
@@ -1024,7 +1024,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution = false,
       javaOptions = Nil,
-      strategy = LayeringStrategy.Default
+      strategy = ClassLoaderLayeringStrategy.Default
     )
   }
 
@@ -1046,7 +1046,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution,
       javaOptions = Nil,
-      strategy = LayeringStrategy.Default
+      strategy = ClassLoaderLayeringStrategy.Default
     )
   }
 
@@ -1059,7 +1059,7 @@ object Defaults extends BuildCommon {
       cp: Classpath,
       forkedParallelExecution: Boolean,
       javaOptions: Seq[String],
-      strategy: LayeringStrategy,
+      strategy: ClassLoaderLayeringStrategy,
   ): Initialize[Task[Tests.Output]] = {
     val runners = createTestRunners(frameworks, loader, config)
     val groupTasks = groups map {
@@ -1091,16 +1091,18 @@ object Defaults extends BuildCommon {
         case (suite, e) =>
           e.throwables
             .collectFirst {
-              case t if t.isInstanceOf[NoClassDefFoundError] && strategy != LayeringStrategy.Flat =>
+              case t
+                  if t
+                    .isInstanceOf[NoClassDefFoundError] && strategy != ClassLoaderLayeringStrategy.Flat =>
                 t
             }
             .foreach { t =>
               s.log.error(
-                s"Test suite $suite failed with $t. This may be due to the LayeringStrategy"
+                s"Test suite $suite failed with $t. This may be due to the ClassLoaderLayeringStrategy"
                   + s" ($strategy) used by your task. This issue may be resolved by changing the"
-                  + " LayeringStrategy in your configuration (generally Test or IntegrationTest),"
-                  + "e.g.:\nTest / layeringStrategy := LayeringStrategy.Flat\n"
-                  + "See LayeringStrategy.scala for the full list of options."
+                  + " ClassLoaderLayeringStrategy in your configuration (generally Test or IntegrationTest),"
+                  + "e.g.:\nTest / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat\n"
+                  + "See ClassLoaderLayeringStrategy.scala for the full list of options."
               )
             }
       }

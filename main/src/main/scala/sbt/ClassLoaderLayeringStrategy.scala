@@ -8,10 +8,10 @@
 package sbt
 
 /**
- * Represents a ClassLoader layering strategy. By providing an instance of [[LayeringStrategy]],
+ * Represents a ClassLoader layering strategy. By providing an instance of [[ClassLoaderLayeringStrategy]],
  * users can configure the strategy that they want to use in various sbt tasks, most importantly
  * [[Keys.run]] and [[Keys.test]]. This setting is only relevant if fork := false in the task for
- * which we obtain a LayeringStrategy.
+ * which we obtain a ClassLoaderLayeringStrategy.
  *
  * ClassLoaders can be composed of multiple ClassLoaders
  * to form a graph for loading a class. The different portions of the graph may be cached and
@@ -62,54 +62,66 @@ package sbt
  * In general, this should only happen if the user explicitly overrides the thread context
  * ClassLoader or uses reflection to manipulate classes loaded by different loaders.
  */
-sealed trait LayeringStrategy
+sealed trait ClassLoaderLayeringStrategy
 
 /**
- * Provides instances of [[LayeringStrategy]] that can be used to define the ClassLoader used by
+ * Provides instances of [[ClassLoaderLayeringStrategy]] that can be used to define the ClassLoader used by
  * [[Keys.run]], [[Keys.test]] or any other task that runs java code inside of the sbt jvm.
  */
-object LayeringStrategy {
+object ClassLoaderLayeringStrategy {
 
   /**
-   * Use the default LayeringStrategy for this task.
+   * Use the default ClassLoaderLayeringStrategy for this task.
    */
-  case object Default extends LayeringStrategy
+  case object Default extends ClassLoaderLayeringStrategy
 
   /**
    * Include all of the dependencies in the loader. The base loader will be the Application
    * ClassLoader. All classes apart from system classes will be reloaded with each run.
    */
-  case object Flat extends LayeringStrategy
+  case object Flat extends ClassLoaderLayeringStrategy
 
   /**
-   * Add a layer for the runtime jar dependencies.
+   * Add a layer for the scala instance class loader.
    */
-  sealed trait RuntimeLayer extends LayeringStrategy
-
-  /**
-   * Add a layer for the runtime jar dependencies.
-   */
-  case object RuntimeDependencies extends RuntimeLayer
-
-  /**
-   * Add a layer for the test jar dependencies.
-   */
-  sealed trait TestLayer extends LayeringStrategy
-
-  /**
-   * Add a layer for the test jar dependencies.
-   */
-  case object TestDependencies extends TestLayer
-
-  /**
-   * Add a layer for the test jar dependencies as well as a layer for the runtime jar dependencies.
-   */
-  case object Full extends RuntimeLayer with TestLayer
+  sealed trait ScalaInstance extends ClassLoaderLayeringStrategy
 
   /**
    * This should indicate that we use a two layer ClassLoader where the top layer is the scala
    * instance and all of the dependencies and project class paths are included in the search path
    * of the second layer.
    */
-  case object ScalaInstance extends LayeringStrategy
+  case object ScalaInstance extends ScalaInstance
+
+  /**
+   * Add a layer on top of the ScalaInstance layer for the runtime jar dependencies.
+   */
+  sealed trait RuntimeDependencies extends ScalaInstance
+
+  /**
+   * Add a layer on top of the ScalaInstance layer for the runtime jar dependencies.
+   */
+  case object RuntimeDependencies extends ScalaInstance with RuntimeDependencies
+
+  /**
+   * Add a layer on top of the ScalaInstance layer for the test jar dependencies.
+   */
+  sealed trait TestDependencies extends ScalaInstance
+
+  /**
+   * Add a layer on top of the ScalaInstance layer for the test jar dependencies.
+   */
+  case object TestDependencies extends ScalaInstance with TestDependencies
+
+  /**
+   * Add the TestDependencies layer on top of the RuntimeDependencies layer on top of the
+   * ScalaInstance layer. This differs from TestDependencies in that it will not reload the
+   * runtime classpath. The drawback to using this is that if the test dependencies evict
+   * classes provided in the runtime layer, then tests can fail.
+   */
+  case object ShareRuntimeDependenciesLayerWithTestDependencies
+      extends ScalaInstance
+      with RuntimeDependencies
+      with TestDependencies
+
 }

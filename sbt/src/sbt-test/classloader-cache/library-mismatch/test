@@ -1,4 +1,4 @@
-> set Test / layeringStrategy := LayeringStrategy.Full
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
 
 > run
 
@@ -6,7 +6,7 @@
 # have the sbt.foo.Foo.y method defined.
 > test
 
-> set Test / layeringStrategy := LayeringStrategy.TestDependencies
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies
 
 > run
 

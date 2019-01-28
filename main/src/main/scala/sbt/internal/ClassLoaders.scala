@@ -35,15 +35,15 @@ private[sbt] object ClassLoaders {
     val si = scalaInstance.value
     val rawCP = data(fullClasspath.value)
     val fullCP = if (si.isManagedVersion) rawCP else si.allJars.toSeq ++ rawCP
-    val strategy = layeringStrategy.value
+    val strategy = classLoaderLayeringStrategy.value
     val runtimeCache = (Runtime / classLoaderCache).value
     val testCache = classLoaderCache.value
     val tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value)
     val resources = ClasspathUtilities.createClasspathResources(fullCP, si)
 
     val raw = strategy match {
-      case LayeringStrategy.Flat => flatLoader(rawCP, interfaceLoader)
-      case s                     =>
+      case ClassLoaderLayeringStrategy.Flat => flatLoader(rawCP, interfaceLoader)
+      case s                                =>
         /*
          * Create a layered classloader. There are up to four layers:
          * 1) the scala instance class loader
@@ -55,10 +55,11 @@ private[sbt] object ClassLoaders {
          * and test dependencies, it's important to be able to configure which layers are used.
          */
         val (layerDependencies, layerTestDependencies) = s match {
-          case LayeringStrategy.Full                => (true, true)
-          case LayeringStrategy.ScalaInstance       => (false, false)
-          case LayeringStrategy.RuntimeDependencies => (true, false)
-          case _                                    => (false, true)
+          case ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies =>
+            (true, true)
+          case ClassLoaderLayeringStrategy.ScalaInstance       => (false, false)
+          case ClassLoaderLayeringStrategy.RuntimeDependencies => (true, false)
+          case _                                               => (false, true)
         }
         // Do not include exportedProducts in any cached layers because they may change between runs.
         val exclude = dependencyJars(exportedProducts).value.toSet ++ si.allJars.toSeq
@@ -127,8 +128,8 @@ private[sbt] object ClassLoaders {
         val newLoader =
           (classpath: Seq[File]) => {
             val resources = ClasspathUtilities.createClasspathResources(classpath, instance)
-            val classLoader = layeringStrategy.value match {
-              case LayeringStrategy.Flat =>
+            val classLoader = classLoaderLayeringStrategy.value match {
+              case ClassLoaderLayeringStrategy.Flat =>
                 ClasspathUtilities
                   .toLoader(Nil, flatLoader(classpath, new NullLoader), resources, tmp)
               case _ =>

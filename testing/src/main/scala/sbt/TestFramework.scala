@@ -52,8 +52,8 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
           + " using a layered class loader that cannot reach the sbt.testing.Framework class."
           + " The most likely cause is that your project has a runtime dependency on your"
           + " test framework, e.g. scalatest. To fix this, you can try to set\n"
-          + "Test / layeringStrategy := new LayeringStrategy.Test(false, true)\nor\n"
-          + "Test / layeringStrategy := LayeringStrategy.Flat"
+          + "Test / classLoaderLayeringStrategy := new ClassLoaderLayeringStrategy.Test(false, true)\nor\n"
+          + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat"
       )
       None
     }
