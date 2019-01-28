@@ -10,6 +10,6 @@ package sbt.internal
 private[sbt] object PrettyPrint {
   private[sbt] def indent(any: Any, level: Int): String = {
     val i = " " * level
-    any.toString.lines.mkString(i, "\n" + i, "")
+    any.toString.linesIterator.mkString(i, "\n" + i, "")
   }
 }

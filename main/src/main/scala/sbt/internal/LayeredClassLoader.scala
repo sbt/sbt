@@ -43,7 +43,7 @@ private[sbt] class LayeredClassLoader(
   |  classpath =
   |    ${classpath mkString "\n    "}
   |  parent =
-  |    ${parent.toString.lines.mkString("\n    ")}
+  |    ${parent.toString.linesIterator.mkString("\n    ")}
   |)""".stripMargin
 }
 
