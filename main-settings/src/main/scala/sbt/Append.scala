@@ -43,10 +43,10 @@ object Append {
 
   @compileTimeOnly("This can be used in += only.")
   implicit def appendTaskValueSeq[T, V <: T]: Value[Seq[Task[T]], Initialize[Task[V]]] =
-    (_, _) => ???
+    (_, _) => ??? // SAM conversion.  This implementation is rewritten by sbt's macros too.
 
   @compileTimeOnly("This can be used in += only.")
-  implicit def appendTaskKeySeq[T, V <: T]: Value[Seq[Task[T]], TaskKey[V]] = (_, _) => ???
+  implicit def appendTaskKeySeq[T, V <: T]: Value[Seq[Task[T]], TaskKey[V]] = (_, _) => ??? // SAM
 
   implicit def appendList[T, V <: T]: Sequence[List[T], List[V], V] =
     new Sequence[List[T], List[V], V] {
@@ -66,6 +66,7 @@ object Append {
       def appendValue(a: Vector[T], b: V): Vector[T] = a :+ (b: T)
     }
 
+  // psst... these are implemented with SAM conversions
   implicit def appendString: Value[String, String] = _ + _
   implicit def appendInt: Value[Int, Int] = _ + _
   implicit def appendLong: Value[Long, Long] = _ + _
@@ -102,6 +103,7 @@ object Append {
         a ++ b.map(new Source(_, AllPassFilter, NothingFilter))
     }
 
+  // Implemented with SAM conversion short-hand
   implicit def appendFunction[A, B]: Value[A => A, A => A] = _.andThen(_)
 
   implicit def appendSideEffectToFunc[A, B]: Value[A => B, () => Unit] = (f, sideEffect) => {
