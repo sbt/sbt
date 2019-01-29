@@ -71,11 +71,6 @@ sealed trait ClassLoaderLayeringStrategy
 object ClassLoaderLayeringStrategy {
 
   /**
-   * Use the default ClassLoaderLayeringStrategy for this task.
-   */
-  case object Default extends ClassLoaderLayeringStrategy
-
-  /**
    * Include all of the dependencies in the loader. The base loader will be the Application
    * ClassLoader. All classes apart from system classes will be reloaded with each run.
    */

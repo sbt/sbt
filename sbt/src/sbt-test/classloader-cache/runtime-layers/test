@@ -1,0 +1,37 @@
+> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaInstance
+
+> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies
+
+> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies
+
+-> run
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> Test / runMain sbt.scripted.TestAkkaTest
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaInstance
+
+> Test / runMain sbt.scripted.TestAkkaTest
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies
+
+> Test / runMain sbt.scripted.TestAkkaTest
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+
+> Test / runMain sbt.scripted.TestAkkaTest
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies
+
+> Test / runMain sbt.scripted.TestAkkaTest

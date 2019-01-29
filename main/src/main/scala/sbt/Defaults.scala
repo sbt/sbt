@@ -141,7 +141,6 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       classLoaderCache := ClassLoaderCache(4),
-      classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Default
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
@@ -1024,7 +1023,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution = false,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.Default
+      strategy = ClassLoaderLayeringStrategy.TestDependencies,
     )
   }
 
@@ -1046,7 +1045,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.Default
+      strategy = ClassLoaderLayeringStrategy.TestDependencies,
     )
   }
 
@@ -1407,8 +1406,10 @@ object Defaults extends BuildCommon {
     }
   }
 
+  @deprecated("This is no longer used internally by sbt.", "1.3.0")
   def runnerTask: Setting[Task[ScalaRun]] = runner := runnerInit.value
 
+  @deprecated("This is no longer used internally by sbt.", "1.3.0")
   def runnerInit: Initialize[Task[ScalaRun]] = ClassLoaders.runner
 
   private def foreachJobTask(
@@ -1759,7 +1760,11 @@ object Defaults extends BuildCommon {
 
   // 1. runnerSettings is added unscoped via JvmPlugin.
   // 2. In addition it's added scoped to run task.
-  lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
+  lazy val runnerSettings: Seq[Setting[_]] = {
+    val unscoped: Seq[Def.Setting[_]] =
+      Seq(runner := ClassLoaders.runner.value, forkOptions := forkOptionsTask.value)
+    inConfig(Compile)(unscoped) ++ inConfig(Test)(unscoped)
+  }
 
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
@@ -1767,25 +1772,32 @@ object Defaults extends BuildCommon {
     Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++
       Classpaths.compilerPluginConfig ++ deprecationSettings
 
-  lazy val compileSettings: Seq[Setting[_]] =
-    configSettings ++
-      (mainBgRunMainTask +: mainBgRunTask +: FileManagement.appendBaseSources) ++
-      Classpaths.addUnmanagedLibrary
-
-  // We need a cache of size two for the test dependency layers (regular and snapshot).
-  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++ TaskRepository.proxy(
+  private val runtimeLayeringSettings: Seq[Setting[_]] = TaskRepository.proxy(
     classLoaderCache,
-    ClassLoaderCache(2)
-  )
-
-  lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
-  lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++
-    inConfig(Test)(testSettings) ++ inConfig(Runtime)(
     // We need a cache of size four so that the subset of the runtime dependencies that are used
     // by the test task layers may be cached without evicting the runtime classloader layers. The
     // cache size should be a multiple of two to support snapshot layers.
-    Classpaths.configSettings ++ TaskRepository.proxy(classLoaderCache, ClassLoaderCache(4)),
-  )
+    ClassLoaderCache(4)
+  ) :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies)
+
+  lazy val compileSettings: Seq[Setting[_]] =
+    configSettings ++
+      (mainBgRunMainTask +: mainBgRunTask +: FileManagement.appendBaseSources) ++
+      Classpaths.addUnmanagedLibrary ++ runtimeLayeringSettings
+
+  private val testLayeringSettings: Seq[Setting[_]] = TaskRepository.proxy(
+    classLoaderCache,
+    // We need a cache of size two for the test dependency layers (regular and snapshot).
+    ClassLoaderCache(2)
+  ) :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies)
+  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
+
+  lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
+    testSettings :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies)
+  }
+  lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++
+    inConfig(Test)(testSettings ++ testLayeringSettings) ++
+    inConfig(Runtime)(Classpaths.configSettings)
 
   // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[_]] =
@@ -3560,17 +3572,19 @@ trait BuildExtra extends BuildCommon with DefExtra {
       InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 
     Vector(
-      scoped := (inputTask { result =>
-        (initScoped(scoped.scopedKey, runnerInit)
-          .zipWith(Def.task { ((fullClasspath in config).value, streams.value, result.value) })) {
+      scoped := inputTask { result =>
+        initScoped(
+          scoped.scopedKey,
+          ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
+        ).zipWith(Def.task { ((fullClasspath in config).value, streams.value, result.value) }) {
           (rTask, t) =>
             (t, rTask) map {
               case ((cp, s, args), r) =>
                 r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
             }
         }
-      }).evaluated
-    ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
+      }.evaluated
+    ) ++ inTask(scoped)(forkOptions in config := forkOptionsTask.value)
   }
 
   // public API
@@ -3582,16 +3596,18 @@ trait BuildExtra extends BuildCommon with DefExtra {
       arguments: String*
   ): Vector[Setting[_]] =
     Vector(
-      scoped := ((initScoped(scoped.scopedKey, runnerInit)
-        .zipWith(Def.task { ((fullClasspath in config).value, streams.value) })) {
+      scoped := initScoped(
+        scoped.scopedKey,
+        ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
+      ).zipWith(Def.task { ((fullClasspath in config).value, streams.value) }) {
           case (rTask, t) =>
             (t, rTask) map {
               case ((cp, s), r) =>
                 r.run(mainClass, data(cp), arguments, s.log).get
             }
-        })
+        }
         .value
-    ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
+    ) ++ inTask(scoped)(forkOptions in config := forkOptionsTask.value)
 
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] =
     initScope(fillTaskAxis(sk.scope, sk.key), i)
