@@ -44,8 +44,8 @@ before_install:
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
 
 install:
-  - curl -L --fail https://piccolo.link/sbt-0.13.17.tgz > sbt-0.13.17.tgz
-  - tar zxf ./sbt-0.13.17.tgz -C $HOME/
+  - curl -L --fail https://piccolo.link/sbt-0.13.18.tgz > sbt-0.13.18.tgz
+  - tar zxf ./sbt-0.13.18.tgz -C $HOME/
   - export PATH="$HOME/sbt/bin:$PATH"
   - export SBT_OPTS="-Xms2048M -Xmx2048M -Xss2M -XX:MaxPermSize=512M"
   - sbt about

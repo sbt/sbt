@@ -2,7 +2,7 @@ lazy val checkPom = taskKey[Unit]("check pom to ensure no <type> sections are ge
 
 lazy val root = (project in file(".")).
   settings(
-    scalaVersion := "2.10.6",
+    scalaVersion := "2.10.7",
     libraryDependencies += "org.scala-tools.sbinary" %% "sbinary" % "0.4.1" withSources() withJavadoc(),
     libraryDependencies += "org.scala-sbt" % "io" % "0.13.8" intransitive(),
     checkPom := {
