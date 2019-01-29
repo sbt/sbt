@@ -88,7 +88,6 @@ object Append {
   }
 
   // un-implicit, package-private (and JVM public) the old way of defining these
-  @deprecated("No longer required with SAM conversions. Scheduled for removal in 2.0.", "1.3.0")
   private[sbt] trait Sequence[A, -B, T] extends Value[A, T] with Values[A, B]
 
   private[sbt] def seq[A, B, T](implicit a1: Value[A, T], aN: Values[A, B]): Sequence[A, B, T] =
