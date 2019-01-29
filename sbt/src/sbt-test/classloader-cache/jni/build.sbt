@@ -11,7 +11,7 @@ def wrap(task: InputKey[Unit]): Def.Initialize[Task[Unit]] =
   Def.sequential(appendToLibraryPath, task.toTask(""), dropLibraryPath)
 
 val root = (project in file(".")).settings(
-  scalaVersion := "2.12.7",
+  scalaVersion := "2.12.8",
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-h",
   sourceDirectory.value.toPath.resolve("main/native/include").toString),
   libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.6" % "test",
