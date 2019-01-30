@@ -46,6 +46,17 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
       log: ManagedLogger,
       frameworkClassNames: List[String]
   ): Option[Framework] = {
+    def logError(e: Throwable): Option[Framework] = {
+      log.error(
+        s"Error loading test framework ($e). This usually means that you are"
+          + " using a layered class loader that cannot reach the sbt.testing.Framework class."
+          + " The most likely cause is that your project has a runtime dependency on your"
+          + " test framework, e.g. scalatest. To fix this, you can try to set\n"
+          + "Test / classLoaderLayeringStrategy := new ClassLoaderLayeringStrategy.Test(false, true)\nor\n"
+          + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat"
+      )
+      None
+    }
     frameworkClassNames match {
       case head :: tail =>
         try {
@@ -54,6 +65,8 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
             case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
           })
         } catch {
+          case e: NoClassDefFoundError => logError(e)
+          case e: MatchError           => logError(e)
           case _: ClassNotFoundException =>
             log.debug("Framework implementation '" + head + "' not present.")
             createFramework(loader, log, tail)
@@ -245,6 +258,7 @@ object TestFramework {
     Thread.currentThread.setContextClassLoader(loader)
     try { eval } finally { Thread.currentThread.setContextClassLoader(oldLoader) }
   }
+  @deprecated("1.3.0", "This has been replaced by the ClassLoaders.test task.")
   def createTestLoader(
       classpath: Seq[File],
       scalaInstance: ScalaInstance,

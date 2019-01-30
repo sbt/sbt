@@ -1,0 +1,5 @@
+> test
+
+$ copy-file changes/ScalatestTest.scala src/test/scala/sbt/ScalatestTest.scala
+
+-> test

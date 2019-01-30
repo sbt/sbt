@@ -233,8 +233,6 @@ $AliasCommand name=
   def continuousDetail: String = "Executes the specified command whenever source files change."
   def continuousBriefHelp: (String, String) =
     (ContinuousExecutePrefix + " <command>", continuousDetail)
-  def FlushFileTreeRepository: String = "flushFileTreeRepository"
-  def FlushDetailed: String =
-    "Resets the global file repository in the event that the repository has become inconsistent " +
-      "with the file system."
+  def ClearCaches: String = "clearCaches"
+  def ClearCachesDetailed: String = "Clears all of sbt's internal caches."
 }

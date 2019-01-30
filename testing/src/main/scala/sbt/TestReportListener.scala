@@ -50,8 +50,30 @@ final class SuiteResult(
     val skippedCount: Int,
     val ignoredCount: Int,
     val canceledCount: Int,
-    val pendingCount: Int
+    val pendingCount: Int,
+    val throwables: Seq[Throwable]
 ) {
+  def this(
+      result: TestResult,
+      passedCount: Int,
+      failureCount: Int,
+      errorCount: Int,
+      skippedCount: Int,
+      ignoredCount: Int,
+      canceledCount: Int,
+      pendingCount: Int,
+  ) =
+    this(
+      result,
+      passedCount,
+      failureCount,
+      errorCount,
+      skippedCount,
+      ignoredCount,
+      canceledCount,
+      pendingCount,
+      Nil
+    )
   def +(other: SuiteResult): SuiteResult = {
     val combinedTestResult =
       (result, other.result) match {
@@ -68,7 +90,8 @@ final class SuiteResult(
       skippedCount + other.skippedCount,
       ignoredCount + other.ignoredCount,
       canceledCount + other.canceledCount,
-      pendingCount + other.pendingCount
+      pendingCount + other.pendingCount,
+      throwables ++ other.throwables
     )
   }
 }
@@ -86,7 +109,8 @@ object SuiteResult {
       count(TStatus.Skipped),
       count(TStatus.Ignored),
       count(TStatus.Canceled),
-      count(TStatus.Pending)
+      count(TStatus.Pending),
+      events.collect { case e if e.throwable.isDefined => e.throwable.get }
     )
   }
 

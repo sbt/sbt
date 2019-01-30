@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>sbt</groupId>
+    <artifactId>transitive-lib</artifactId>
+    <packaging>jar</packaging>
+    <description>transitive-lib</description>
+    <version>0.1.0</version>
+    <name>transitive-lib</name>
+    <organization>
+        <name>sbt</name>
+    </organization>
+    <dependencies>
+        <dependency>
+            <groupId>sbt</groupId>
+            <artifactId>foo-lib</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+    </dependencies>
+</project>

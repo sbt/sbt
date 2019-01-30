@@ -1,0 +1,5 @@
+> rewriteIvy 1
+# If the ClassLoaderCache is not correctly set up, then the sbt testing framework fails to work correctly
+> test
+> rewriteIvy 2
+-> test

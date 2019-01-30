@@ -1,0 +1,15 @@
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+
+> run
+
+# This fails because the runtime layer includes an old version of the foo-lib library that doesn't
+# have the sbt.foo.Foo.y method defined.
+> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies
+
+> run
+
+> test
+
+> test

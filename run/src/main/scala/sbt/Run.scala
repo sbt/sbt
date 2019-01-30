@@ -58,7 +58,9 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
   private def classpathOption(classpath: Seq[File]) =
     "-classpath" :: Path.makeString(classpath) :: Nil
 }
-class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends ScalaRun {
+class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaRun {
+  def this(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) =
+    this((cp: Seq[File]) => ClasspathUtilities.makeLoader(cp, instance, nativeTmp), trapExit)
 
   /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
@@ -87,7 +89,7 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
       log: Logger
   ): Unit = {
     log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-    val loader = ClasspathUtilities.makeLoader(classpath, instance, nativeTmp)
+    val loader = newLoader(classpath)
     val main = getMainMethod(mainClassName, loader)
     invokeMain(loader, main, options)
   }
