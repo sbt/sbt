@@ -16,17 +16,18 @@ import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
 import sbt.internal.CommandStrings.BootCommand
+import sbt.internal._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
-import sbt.internal.util.complete.Parser
 import sbt.internal.util._
-import sbt.internal._
+import sbt.internal.util.complete.Parser
 import sbt.io.syntax._
 import sbt.io.{ FileTreeDataView, IO }
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
 
 import scala.annotation.tailrec
+import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
 /** This class is the entry point for sbt. */
@@ -85,13 +86,15 @@ final class ConsoleMain extends xsbti.AppMain {
 
 object StandardMain {
   private[sbt] lazy val exchange = new CommandExchange()
-  import scalacache._
   import scalacache.caffeine._
-  private[sbt] lazy val cache: Cache[Any] = CaffeineCache[Any]
+  private[sbt] lazy val cache: scalacache.Cache[Any] = CaffeineCache[Any]
 
-  private[sbt] val shutdownHook = new Thread(() => {
-    exchange.shutdown
-  })
+  private[this] val closeRunnable: Runnable = () => {
+    cache.close()(scalacache.modes.sync.mode)
+    cache.close()(scalacache.modes.scalaFuture.mode(ExecutionContext.global))
+    exchange.shutdown()
+  }
+  private[sbt] val shutdownHook = new Thread(closeRunnable)
 
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
@@ -106,7 +109,7 @@ object StandardMain {
         try {
           MainLoop.runLogged(s)
         } finally {
-          exchange.shutdown
+          closeRunnable.run()
           if (hooked) {
             Runtime.getRuntime.removeShutdownHook(shutdownHook)
           }
