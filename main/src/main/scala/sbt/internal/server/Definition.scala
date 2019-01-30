@@ -227,7 +227,7 @@ private[sbt] object Definition {
     val cacheFile = compileIncSetup.value.cacheFile.getAbsolutePath
     val useBinary = enableBinaryCompileAnalysis.value
     val s = state.value
-    s.log.debug(s"analysis location ${(cacheFile -> useBinary)}")
+    s.log.debug(s"analysis location ${cacheFile -> useBinary}")
     import scalacache.modes.sync._
     updateCache(StandardMain.cache)(cacheFile, useBinary)
   }
