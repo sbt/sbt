@@ -125,7 +125,10 @@ final class ScriptedTests(
     if (labelsAndDirs.isEmpty) List()
     else {
       val totalSize = labelsAndDirs.size
-      val batchSize = totalSize / sbtInstances
+      val batchSize = totalSize / sbtInstances match {
+        case 0 => 1
+        case s => s
+      }
 
       val (launcherBasedTests, runFromSourceBasedTests) = labelsAndDirs.partition {
         case (testName, _) =>

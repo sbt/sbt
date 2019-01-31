@@ -115,6 +115,7 @@ object Scripted {
           bootProperties: File,
           launchOpts: Array[String],
           prescripted: java.util.List[File],
+          instances: Int
       ): Unit
     }
 
@@ -123,13 +124,19 @@ object Scripted {
       Thread.currentThread.setContextClassLoader(loader)
       val bridge =
         bridgeClass.getDeclaredConstructor().newInstance().asInstanceOf[SbtScriptedRunner]
-
       try {
         // Using java.util.List to encode File => Unit.
         val callback = new java.util.AbstractList[File] {
           override def add(x: File): Boolean = { prescripted(x); false }
           def get(x: Int): sbt.File = ???
           def size(): Int = 0
+        }
+        val instances: Int = (System.getProperty("sbt.scripted.parallel.instances") match {
+          case null => 1
+          case i    => scala.util.Try(i.toInt).getOrElse(1)
+        }) match {
+          case i if i > 0 => i
+          case _          => 1
         }
         import scala.language.reflectiveCalls
         bridge.runInParallel(
@@ -139,6 +146,7 @@ object Scripted {
           launcher,
           launchOpts.toArray,
           callback,
+          instances
         )
       } catch { case ite: InvocationTargetException => throw ite.getCause }
     } finally {
