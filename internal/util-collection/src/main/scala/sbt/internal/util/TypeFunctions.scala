@@ -18,7 +18,7 @@ trait TypeFunctions {
   final val left = λ[Id ~> Left[?, Nothing]](Left(_))
   final val right = λ[Id ~> Right[Nothing, ?]](Right(_))
   final val some = λ[Id ~> Some](Some(_))
-  final def idFun[T] = (t: T) => t
+  final def idFun[T]: T => T = (t: T) => t
   final def const[A, B](b: B): A => B = _ => b
   final def idK[M[_]]: M ~> M = λ[M ~> M](m => m)
 
@@ -38,11 +38,11 @@ trait ~>[-A[_], +B[_]] { outer =>
   // directly on ~> because of type inference limitations
   final def ∙[C[_]](g: C ~> A): C ~> B = λ[C ~> B](c => outer.apply(g(c)))
   final def ∙[C, D](g: C => D)(implicit ev: D <:< A[D]): C => B[D] = i => apply(ev(g(i)))
-  final def fn[T] = (t: A[T]) => apply[T](t)
+  final def fn[T]: A[T] => B[T] = (t: A[T]) => apply[T](t)
 }
 
 object ~> {
   import TypeFunctions._
   val Id: Id ~> Id = idK[Id]
-  implicit def tcIdEquals: (Id ~> Id) = Id
+  implicit def tcIdEquals: Id ~> Id = Id
 }
