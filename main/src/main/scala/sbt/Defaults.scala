@@ -609,7 +609,7 @@ object Defaults extends BuildCommon {
     // note that we use the same runner and mainClass as plain run
     mainBgRunMainTaskForConfig(This),
     mainBgRunTaskForConfig(This)
-  ) ++ inTask(run)(runnerSettings)
+  ) ++ inTask(run)(runnerSettings ++ newRunnerSettings)
 
   private[this] lazy val configGlobal = globalDefaults(
     Seq(
@@ -1406,11 +1406,37 @@ object Defaults extends BuildCommon {
     }
   }
 
-  @deprecated("This is no longer used internally by sbt.", "1.3.0")
   def runnerTask: Setting[Task[ScalaRun]] = runner := runnerInit.value
 
-  @deprecated("This is no longer used internally by sbt.", "1.3.0")
-  def runnerInit: Initialize[Task[ScalaRun]] = ClassLoaders.runner
+  def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
+    val tmp = taskTemporaryDirectory.value
+    val resolvedScope = resolvedScoped.value.scope
+    val si = scalaInstance.value
+    val s = streams.value
+    val opts = forkOptions.value
+    val options = javaOptions.value
+    val trap = trapExit.value
+    if (fork.value) {
+      s.log.debug(s"javaOptions: $options")
+      new ForkRun(opts)
+    } else {
+      if (options.nonEmpty) {
+        val mask = ScopeMask(project = false)
+        val showJavaOptions = Scope.displayMasked(
+          (javaOptions in resolvedScope).scopedKey.scope,
+          (javaOptions in resolvedScope).key.label,
+          mask
+        )
+        val showFork = Scope.displayMasked(
+          (fork in resolvedScope).scopedKey.scope,
+          (fork in resolvedScope).key.label,
+          mask
+        )
+        s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
+      }
+      new Run(si, trap, tmp)
+    }
+  }
 
   private def foreachJobTask(
       f: (BackgroundJobService, JobHandle) => Unit
@@ -1760,7 +1786,8 @@ object Defaults extends BuildCommon {
 
   // 1. runnerSettings is added unscoped via JvmPlugin.
   // 2. In addition it's added scoped to run task.
-  lazy val runnerSettings: Seq[Setting[_]] = {
+  lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
+  private[this] lazy val newRunnerSettings: Seq[Setting[_]] = {
     val unscoped: Seq[Def.Setting[_]] =
       Seq(runner := ClassLoaders.runner.value, forkOptions := forkOptionsTask.value)
     inConfig(Compile)(unscoped) ++ inConfig(Test)(unscoped)
