@@ -9,7 +9,6 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
-import java.nio.file.{ Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -232,6 +231,14 @@ object Defaults extends BuildCommon {
       outputStrategy :== None, // TODO - This might belong elsewhere.
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
+      settingsData / fileInputs := {
+        val baseDir = file(".").getCanonicalFile
+        val sourceFilter = ("*.sbt" || "*.scala" || "*.java") -- HiddenFileFilter
+        Seq(
+          Glob(baseDir, "*.sbt" -- HiddenFileFilter, 0),
+          Glob(baseDir / "project", sourceFilter, Int.MaxValue)
+        )
+      },
       trapExit :== true,
       connectInput :== false,
       cancelable :== false,
@@ -246,8 +253,6 @@ object Defaults extends BuildCommon {
       // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
       // directs the dependencies of the plugin to build to the specified sbt plugin version.
       sbtVersion in pluginCrossBuild := sbtVersion.value,
-      watchingMessage := Watched.defaultWatchingMessage,
-      triggeredMessage := Watched.defaultTriggeredMessage,
       onLoad := idFun[State],
       onUnload := idFun[State],
       onUnload := { s =>
@@ -258,8 +263,7 @@ object Defaults extends BuildCommon {
         Nil
       },
       pollingGlobs :== Nil,
-      watchSources :== Nil,
-      watchProjectSources :== Nil,
+      watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
       onComplete := {
@@ -284,21 +288,15 @@ object Defaults extends BuildCommon {
       Previous.references :== new Previous.References,
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
-      pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
-      watchTriggeredMessage := { (_, _) =>
-        None
-      },
-      watchStartMessage := Watched.defaultStartWatch,
-      fileTreeRepository := FileTree.Repository.polling,
+      fileTreeRepository :=
+        FileTree.repository(state.value.get(Keys.globalFileTreeRepository) match {
+          case Some(r) => r
+          case None    => FileTreeView.DEFAULT.asDataView(FileAttributes.default)
+        }),
       externalHooks := {
         val repository = fileTreeRepository.value
         compileOptions =>
           Some(ExternalHooks(compileOptions, repository))
-      },
-      watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
-      watchLogger := streams.value.log,
-      watchService :== { () =>
-        Watched.createWatchService()
       },
       logBuffered :== false,
       commands :== Nil,
@@ -334,6 +332,22 @@ object Defaults extends BuildCommon {
       },
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
+      // watch related settings
+      pollInterval :== Watched.defaultPollInterval,
+      watchAntiEntropy :== Watched.defaultAntiEntropy,
+      watchAntiEntropyRetentionPeriod :== Watched.defaultAntiEntropyRetentionPeriod,
+      watchLogLevel :== Level.Info,
+      watchOnEnter :== Watched.defaultOnEnter,
+      watchOnMetaBuildEvent :== Watched.ifChanged(Watched.Reload),
+      watchOnInputEvent :== Watched.trigger,
+      watchOnTriggerEvent :== Watched.trigger,
+      watchDeletionQuarantinePeriod :== Watched.defaultDeletionQuarantinePeriod,
+      watchService :== Watched.newWatchService,
+      watchStartMessage :== Watched.defaultStartWatch,
+      watchTasks := Continuous.continuousTask.evaluated,
+      aggregate in watchTasks :== false,
+      watchTrackMetaBuild :== true,
+      watchTriggeredMessage :== Watched.defaultOnTriggerMessage,
     )
   )
 
@@ -390,25 +404,7 @@ object Defaults extends BuildCommon {
       val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
       unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources
     },
-    unmanagedSources / fileInputs += baseDirectory.value * "foo.txt",
     unmanagedSources := (unmanagedSources / fileInputs).value.all.map(Stamped.file),
-    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
-      val baseDir = baseDirectory.value
-      val bases = unmanagedSourceDirectories.value
-      val include = (includeFilter in unmanagedSources).value
-      val exclude = (excludeFilter in unmanagedSources).value
-      val baseSources =
-        if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
-        else Nil
-      bases.map(b => new Source(b, include, exclude)) ++ baseSources
-    },
-    watchProjectSources in ConfigGlobal := (watchProjectSources in ConfigGlobal).value ++ {
-      val baseDir = baseDirectory.value
-      Seq(
-        new Source(baseDir, "*.sbt", HiddenFileFilter, recursive = false),
-        new Source(baseDir / "project", "*.sbt" || "*.scala", HiddenFileFilter, recursive = true)
-      )
-    },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
     sourceGenerators :== Nil,
@@ -432,12 +428,6 @@ object Defaults extends BuildCommon {
       unmanagedResourceDirectories.value.map(_ ** filter)
     },
     unmanagedResources := (unmanagedResources / fileInputs).value.all.map(Stamped.file),
-    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
-      val bases = unmanagedResourceDirectories.value
-      val include = (includeFilter in unmanagedResources).value
-      val exclude = (excludeFilter in unmanagedResources).value
-      bases.map(b => new Source(b, include, exclude))
-    },
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
@@ -634,40 +624,6 @@ object Defaults extends BuildCommon {
     clean := Clean.taskIn(ThisScope).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
-    watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
-    watchOnEvent := Watched
-      .onEvent(watchTransitiveSources.value, watchProjectTransitiveSources.value),
-    watchHandleInput := Watched.handleInput,
-    watchPreWatch := { (_, _) =>
-      Watched.Ignore
-    },
-    watchOnTermination := Watched.onTermination,
-    watchConfig := {
-      val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
-      val globs = sources.map(
-        s => Glob(s.base, s.includeFilter -- s.excludeFilter, if (s.recursive) Int.MaxValue else 0)
-      )
-      val wm = watchingMessage.?.value
-        .map(w => (count: Int) => Some(w(WatchState.empty(globs).withCount(count))))
-        .getOrElse(watchStartMessage.value)
-      val tm = triggeredMessage.?.value
-        .map(tm => (_: NioPath, count: Int) => Some(tm(WatchState.empty(globs).withCount(count))))
-        .getOrElse(watchTriggeredMessage.value)
-      val logger = watchLogger.value
-      val repo = FileManagement.toMonitoringRepository(FileManagement.repo.value)
-      globs.foreach(repo.register)
-      val monitor = FileManagement.monitor(repo, watchAntiEntropy.value, logger)
-      WatchConfig.default(
-        logger,
-        monitor,
-        watchHandleInput.value,
-        watchPreWatch.value,
-        watchOnEvent.value,
-        watchOnTermination.value,
-        tm,
-        wm
-      )
-    },
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
     fileOutputs += target.value ** AllPassFilter,
@@ -679,6 +635,10 @@ object Defaults extends BuildCommon {
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
     generators { _.join.map(_.flatten) }
 
+  @deprecated(
+    "The watchTransitiveSourcesTask is used only for legacy builds and will be removed in a future version of sbt.",
+    "1.3.0"
+  )
   def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] =
     watchTransitiveSourcesTaskImpl(watchSources)
 
@@ -706,8 +666,8 @@ object Defaults extends BuildCommon {
       val interval = pollInterval.value
       val _antiEntropy = watchAntiEntropy.value
       val base = thisProjectRef.value
-      val msg = watchingMessage.value
-      val trigMsg = triggeredMessage.value
+      val msg = watchingMessage.?.value.getOrElse(Watched.defaultWatchingMessage)
+      val trigMsg = triggeredMessage.?.value.getOrElse(Watched.defaultTriggeredMessage)
       new Watched {
         val scoped = watchTransitiveSources in base
         val key = scoped.scopedKey

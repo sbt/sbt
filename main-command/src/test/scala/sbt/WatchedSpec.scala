@@ -9,12 +9,13 @@ package sbt
 
 import java.io.{ File, InputStream }
 import java.nio.file.{ Files, Path }
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import org.scalatest.{ FlatSpec, Matchers }
 import sbt.Watched._
 import sbt.WatchedSpec._
 import sbt.internal.FileAttributes
+import sbt.io.FileEventMonitor.Event
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.Logger
@@ -23,59 +24,84 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 
 class WatchedSpec extends FlatSpec with Matchers {
-  object Defaults {
-    def config(
-        globs: Seq[Glob],
+  private type NextAction = () => Watched.Action
+  private def watch(task: Task, callbacks: (NextAction, NextAction)): Watched.Action =
+    Watched.watch(task, callbacks._1, callbacks._2)
+  object TestDefaults {
+    def callbacks(
+        inputs: Seq[Glob],
         fileEventMonitor: Option[FileEventMonitor[FileAttributes]] = None,
         logger: Logger = NullLogger,
-        handleInput: InputStream => Action = _ => Ignore,
-        preWatch: (Int, Boolean) => Action = (_, _) => CancelWatch,
-        onWatchEvent: FileAttributes.Event => Action = _ => Ignore,
-        triggeredMessage: (Path, Int) => Option[String] = (_, _) => None,
-        watchingMessage: Int => Option[String] = _ => None
-    ): WatchConfig = {
+        parseEvent: () => Action = () => Ignore,
+        onStartWatch: () => Action = () => CancelWatch: Action,
+        onWatchEvent: Event[FileAttributes] => Action = _ => Ignore,
+        triggeredMessage: Event[FileAttributes] => Option[String] = _ => None,
+        watchingMessage: () => Option[String] = () => None
+    ): (NextAction, NextAction) = {
       val monitor = fileEventMonitor.getOrElse {
         val fileTreeRepository = FileTreeRepository.default(FileAttributes.default)
-        globs.foreach(fileTreeRepository.register)
-        FileEventMonitor.antiEntropy(
-          fileTreeRepository,
-          50.millis,
-          m => logger.debug(m.toString),
-          50.milliseconds,
-          100.milliseconds
-        )
+        inputs.foreach(fileTreeRepository.register)
+        val m =
+          FileEventMonitor.antiEntropy(
+            fileTreeRepository,
+            50.millis,
+            m => logger.debug(m.toString),
+            50.millis,
+            10.minutes
+          )
+        new FileEventMonitor[FileAttributes] {
+          override def poll(duration: Duration): Seq[Event[FileAttributes]] = m.poll(duration)
+          override def close(): Unit = m.close()
+        }
       }
-      WatchConfig.default(
-        logger = logger,
-        monitor,
-        handleInput,
-        preWatch,
-        onWatchEvent,
-        (_, _, state) => state,
-        triggeredMessage,
-        watchingMessage
-      )
+      val onTrigger: Event[FileAttributes] => Unit = event => {
+        triggeredMessage(event).foreach(logger.info(_))
+      }
+      val onStart: () => Watched.Action = () => {
+        watchingMessage().foreach(logger.info(_))
+        onStartWatch()
+      }
+      val nextAction: NextAction = () => {
+        val inputAction = parseEvent()
+        val fileActions = monitor.poll(10.millis).map { e: Event[FileAttributes] =>
+          onWatchEvent(e) match {
+            case Trigger => onTrigger(e); Trigger
+            case act     => act
+          }
+        }
+        (inputAction +: fileActions).min
+      }
+      (onStart, nextAction)
     }
   }
   object NullInputStream extends InputStream {
     override def available(): Int = 0
     override def read(): Int = -1
   }
+  private class Task extends (() => Unit) {
+    private val count = new AtomicInteger(0)
+    override def apply(): Unit = {
+      count.incrementAndGet()
+      ()
+    }
+    def getCount: Int = count.get()
+  }
   "Watched.watch" should "stop" in IO.withTemporaryDirectory { dir =>
-    val config = Defaults.config(globs = Seq(dir.toRealPath.toGlob))
-    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
+    val task = new Task
+    watch(task, TestDefaults.callbacks(inputs = Seq(dir.toRealPath ** AllPassFilter))) shouldBe CancelWatch
   }
   it should "trigger" in IO.withTemporaryDirectory { dir =>
     val triggered = new AtomicBoolean(false)
-    val config = Defaults.config(
-      globs = Seq(dir.toRealPath ** AllPassFilter),
-      preWatch = (count, _) => if (count == 2) CancelWatch else Ignore,
+    val task = new Task
+    val callbacks = TestDefaults.callbacks(
+      inputs = Seq(dir.toRealPath ** AllPassFilter),
+      onStartWatch = () => if (task.getCount == 2) CancelWatch else Ignore,
       onWatchEvent = _ => { triggered.set(true); Trigger },
-      watchingMessage = _ => {
+      watchingMessage = () => {
         new File(dir, "file").createNewFile; None
       }
     )
-    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
+    watch(task, callbacks) shouldBe CancelWatch
     assert(triggered.get())
   }
   it should "filter events" in IO.withTemporaryDirectory { dir =>
@@ -83,28 +109,33 @@ class WatchedSpec extends FlatSpec with Matchers {
     val queue = new mutable.Queue[Path]
     val foo = realDir.toPath.resolve("foo")
     val bar = realDir.toPath.resolve("bar")
-    val config = Defaults.config(
-      globs = Seq(realDir ** AllPassFilter),
-      preWatch = (count, _) => if (count == 2) CancelWatch else Ignore,
-      onWatchEvent = e => if (e.path == foo) Trigger else Ignore,
-      triggeredMessage = (tp, _) => { queue += tp; None },
-      watchingMessage = _ => { Files.createFile(bar); Thread.sleep(5); Files.createFile(foo); None }
+    val task = new Task
+    val callbacks = TestDefaults.callbacks(
+      inputs = Seq(realDir ** AllPassFilter),
+      onStartWatch = () => if (task.getCount == 2) CancelWatch else Ignore,
+      onWatchEvent = e => if (e.entry.typedPath.toPath == foo) Trigger else Ignore,
+      triggeredMessage = e => { queue += e.entry.typedPath.toPath; None },
+      watchingMessage = () => {
+        IO.touch(bar.toFile); Thread.sleep(5); IO.touch(foo.toFile)
+        None
+      }
     )
-    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
+    watch(task, callbacks) shouldBe CancelWatch
     queue.toIndexedSeq shouldBe Seq(foo)
   }
   it should "enforce anti-entropy" in IO.withTemporaryDirectory { dir =>
-    val realDir = dir.toRealPath.toPath
+    val realDir = dir.toRealPath
     val queue = new mutable.Queue[Path]
-    val foo = realDir.resolve("foo")
-    val bar = realDir.resolve("bar")
-    val config = Defaults.config(
-      globs = Seq(realDir ** AllPassFilter),
-      preWatch = (count, _) => if (count == 3) CancelWatch else Ignore,
-      onWatchEvent = e => if (e.path != realDir) Trigger else Ignore,
-      triggeredMessage = (tp, _) => { queue += tp; None },
-      watchingMessage = count => {
-        count match {
+    val foo = realDir.toPath.resolve("foo")
+    val bar = realDir.toPath.resolve("bar")
+    val task = new Task
+    val callbacks = TestDefaults.callbacks(
+      inputs = Seq(realDir ** AllPassFilter),
+      onStartWatch = () => if (task.getCount == 3) CancelWatch else Ignore,
+      onWatchEvent = _ => Trigger,
+      triggeredMessage = e => { queue += e.entry.typedPath.toPath; None },
+      watchingMessage = () => {
+        task.getCount match {
           case 1 => Files.createFile(bar)
           case 2 =>
             bar.toFile.setLastModified(5000)
@@ -114,26 +145,26 @@ class WatchedSpec extends FlatSpec with Matchers {
         None
       }
     )
-    Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
+    watch(task, callbacks) shouldBe CancelWatch
     queue.toIndexedSeq shouldBe Seq(bar, foo)
   }
   it should "halt on error" in IO.withTemporaryDirectory { dir =>
-    val halted = new AtomicBoolean(false)
-    val config = Defaults.config(
-      globs = Seq(dir.toRealPath ** AllPassFilter),
-      preWatch = (_, lastStatus) => if (lastStatus) Ignore else { halted.set(true); HandleError }
+    val exception = new IllegalStateException("halt")
+    val task = new Task { override def apply(): Unit = throw exception }
+    val callbacks = TestDefaults.callbacks(
+      Seq(dir.toRealPath ** AllPassFilter),
     )
-    Watched.watch(NullInputStream, () => Right(false), config) shouldBe HandleError
-    assert(halted.get())
+    watch(task, callbacks) shouldBe new HandleError(exception)
   }
   it should "reload" in IO.withTemporaryDirectory { dir =>
-    val config = Defaults.config(
-      globs = Seq(dir.toRealPath ** AllPassFilter),
-      preWatch = (_, _) => Ignore,
+    val task = new Task
+    val callbacks = TestDefaults.callbacks(
+      inputs = Seq(dir.toRealPath ** AllPassFilter),
+      onStartWatch = () => Ignore,
       onWatchEvent = _ => Reload,
-      watchingMessage = _ => { new File(dir, "file").createNewFile(); None }
+      watchingMessage = () => { new File(dir, "file").createNewFile(); None }
     )
-    Watched.watch(NullInputStream, () => Right(true), config) shouldBe Reload
+    watch(task, callbacks) shouldBe Reload
   }
 }
 

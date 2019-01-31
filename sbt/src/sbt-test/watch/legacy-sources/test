@@ -1,0 +1,3 @@
+> ~ setStringValue foo.txt foo
+
+> checkStringValue foo.txt foo

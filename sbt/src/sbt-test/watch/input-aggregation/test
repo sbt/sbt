@@ -1,0 +1,11 @@
+> checkTriggers
+
+> Test / checkTriggers
+
+> checkGlobs
+
+# do not set the project here to ensure the bar/bar.txt trigger is captured by aggregation
+# also add random spaces and multiple commands to ensure the parser is sane.
+> ~ setStringValue bar/bar.txt bar; root /   setStringValue bar/bar.txt baz
+
+> checkStringValue bar/bar.txt baz

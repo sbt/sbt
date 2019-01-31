@@ -1,0 +1,1 @@
+watchOnStart := { _ => () => Watched.Reload }

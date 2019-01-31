@@ -22,7 +22,7 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
 import sbt.internal.util.complete.Parser
-import sbt.io.IO
+import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
@@ -423,13 +423,7 @@ object BuiltinCommands {
       s
   }
 
-  def continuous: Command = Watched.continuous { (state: State, command: String) =>
-    val extracted = Project.extract(state)
-    val (s, watchConfig) = extracted.runTask(Keys.watchConfig, state)
-    val updateState =
-      (runCommand: () => State) => MainLoop.processCommand(Exec(command, None), s, runCommand)
-    (s, watchConfig, updateState)
-  }
+  def continuous: Command = Continuous.continuous
 
   private[this] def loadedEval(s: State, arg: String): Unit = {
     val extracted = Project extract s

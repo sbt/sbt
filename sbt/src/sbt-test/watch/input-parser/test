@@ -1,0 +1,17 @@
+# this should exit because watchStartMessage writes "\n" to Build.outputStream, which in turn
+# triggers a CancelWatch
+> ~ compile
+
+> set watchStartMessage := sbt.input.parser.Build.alternativeStartMessage
+
+> set watchInputParser := sbt.input.parser.Build.helloOrByeParser
+
+# this should exit because we write "xybyexyblahxyhelloxy" to Build.outputStream. The
+# helloOrByeParser will produce Watched.Ignore and Watched.CancelWatch but the
+# Watched.CancelWatch event should win.
+> ~ compile
+
+> set watchStartMessage := sbt.input.parser.Build.otherAlternativeStartMessage
+
+# this is the same as above except that hello appears before bye in the string
+> ~ compile

@@ -9,7 +9,6 @@ package sbt
 
 import java.io.{ File, InputStream }
 import java.net.URL
-import java.nio.file.Path
 
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
@@ -22,7 +21,9 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.server.ServerHandler
+import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ AttributeKey, SourcePosition }
+import sbt.io.FileEventMonitor.Event
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
@@ -90,27 +91,42 @@ object Keys {
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
 
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
-  @deprecated("This is no longer used for continuous execution", "1.3.0")
-  val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
   val enableGlobalCachingFileTreeRepository = settingKey[Boolean]("Toggles whether or not to create a global cache of the file system that can be used by tasks to quickly list a path").withRank(DSetting)
-  val fileTreeRepository = taskKey[FileTree.Repository]("A repository of the file system.")
+  val fileTreeRepository = taskKey[FileTree.Repository]("A repository of the file system.").withRank(DSetting)
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val pollingGlobs = settingKey[Seq[Glob]]("Directories that cannot be cached and must always be rescanned. Typically these will be NFS mounted or something similar.").withRank(DSetting)
   val watchAntiEntropy = settingKey[FiniteDuration]("Duration for which the watch EventMonitor will ignore events for a file after that file has triggered a build.").withRank(BMinusSetting)
-  val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
-  val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
-  val watchHandleInput = settingKey[InputStream => Watched.Action]("Function that is periodically invoked to determine if the continous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands.").withRank(BMinusSetting)
-  val watchOnEvent = taskKey[FileAttributes.Event => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
-  val watchOnTermination = taskKey[(Watched.Action, String, State) => State]("Transforms the input state after the continuous build completes.").withRank(BMinusSetting)
-  val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
-  val watchProjectSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources for the sbt meta project to watch to trigger a reload.").withRank(CSetting)
-  val watchProjectTransitiveSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in all projects for the sbt meta project to watch to trigger a reload.").withRank(CSetting)
-  val watchPreWatch = settingKey[(Int, Boolean) => Watched.Action]("Function that may terminate a continuous build based on the number of iterations and the last result").withRank(BMinusSetting)
-  val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
+  val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration]("Wall clock Duration for which a FileEventMonitor will store anti-entropy events. This prevents spurious triggers when a task takes a long time to run. Higher values will consume more memory but make spurious triggers less likely.").withRank(BMinusSetting)
+  val watchDeletionQuarantinePeriod = settingKey[FiniteDuration]("Period for which deletion events will be quarantined. This is to prevent spurious builds when a file is updated with a rename which manifests as a file deletion followed by a file creation. The higher this value is set, the longer the delay will be between a file deletion and a build trigger but the less likely it is for a spurious trigger.").withRank(DSetting)
+  val watchLogLevel = settingKey[sbt.util.Level.Value]("Transform the default logger in continuous builds.").withRank(DSetting)
+  val watchInputHandler = settingKey[InputStream => Watched.Action]("Function that is periodically invoked to determine if the continuous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands. This is only invoked if watchInputStream is set.").withRank(DSetting)
+  val watchInputStream = taskKey[InputStream]("The input stream to read for user input events. This will usually be System.in").withRank(DSetting)
+  val watchInputParser = settingKey[Parser[Watched.Action]]("A parser of user input that can be used to trigger or exit a continuous build").withRank(DSetting)
+  val watchOnEnter = settingKey[() => Unit]("Function to run prior to beginning a continuous build. This will run before the continuous task(s) is(are) first evaluated.").withRank(DSetting)
+  val watchOnExit = settingKey[() => Unit]("Function to run upon exit of a continuous build. It can be used to cleanup resources used during the watch.").withRank(DSetting)
+  val watchOnInputEvent = settingKey[(Int, Event[FileAttributes]) => Watched.Action]("Callback to invoke if an event is triggered in a continuous build by one of the transitive inputs. This is only invoked if watchOnEvent is not explicitly set.").withRank(DSetting)
+  val watchOnEvent = settingKey[Continuous.Arguments => Event[FileAttributes] => Watched.Action]("Determines how to handle a file event. The Seq[Glob] contains all of the transitive inputs for the task(s) being run by the continuous build.").withRank(DSetting)
+  val watchOnMetaBuildEvent = settingKey[(Int, Event[FileAttributes]) => Watched.Action]("Callback to invoke if an event is triggered in a continuous build by one of the meta build triggers.").withRank(DSetting)
+  val watchOnTermination = settingKey[(Watched.Action, String, Int, State) => State]("Transforms the state upon completion of a watch. The String argument is the command that was run during the watch. The Int parameter specifies how many times the command was run during the watch.").withRank(DSetting)
+  val watchOnTrigger = settingKey[Continuous.Arguments => Event[FileAttributes] => Unit]("Callback to invoke when a continuous build triggers. The first parameter is the number of previous watch task invocations. The second parameter is the Event that triggered this build").withRank(DSetting)
+  val watchOnTriggerEvent = settingKey[(Int, Event[FileAttributes]) => Watched.Action]("Callback to invoke if an event is triggered in a continuous build by one of the transitive triggers. This is only invoked if watchOnEvent is not explicitly set.").withRank(DSetting)
+  val watchOnIteration = settingKey[Int => Watched.Action]("Function that is invoked before waiting for file system events or user input events. This is only invoked if watchOnStart is not explicitly set.").withRank(DSetting)
+  val watchOnStart = settingKey[Continuous.Arguments => () => Watched.Action]("Function is invoked before waiting for file system or input events. The returned Action is used to either trigger the build, terminate the watch or wait for events.").withRank(DSetting)
+  val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting).withRank(DSetting)
   val watchStartMessage = settingKey[Int => Option[String]]("The message to show when triggered execution waits for sources to change. The parameter is the current watch iteration count.").withRank(DSetting)
+  // The watchTasks key should really be named watch, but that is already taken by the deprecated watch key. I'd be surprised if there are any plugins that use it so I think we should consider breaking binary compatibility to rename this task.
+  val watchTasks = InputKey[State]("watch", "Watch a task (or multiple tasks) and rebuild when its file inputs change or user input is received. The semantics are more or less the same as the `~` command except that it cannot transform the state on exit. This means that it cannot be used to reload the build.").withRank(DSetting)
+  val watchTrackMetaBuild = settingKey[Boolean]("Toggles whether or not changing the build files (e.g. **/*.sbt, project/**/(*.scala | *.java)) should automatically trigger a project reload").withRank(DSetting)
+  val watchTriggeredMessage = settingKey[(Int, Event[FileAttributes]) => Option[String]]("The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count.").withRank(DSetting)
+
+  // Deprecated watch apis
+  @deprecated("This is no longer used for continuous execution", "1.3.0")
+  val watch = SettingKey(BasicKeys.watch)
+  @deprecated("WatchSource has been replaced by Glob. To add file triggers to a task with key: Key, set `Key / watchTriggers := Seq[Glob](...)`.", "1.3.0")
+  val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
+  @deprecated("This is for legacy builds only and will be removed in a future version of sbt", "1.3.0")
   val watchTransitiveSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
-  val watchTriggeredMessage = settingKey[(Path, Int) => Option[String]]("The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count.").withRank(DSetting)
   @deprecated("Use watchStartMessage instead", "1.3.0")
   val watchingMessage = settingKey[WatchState => String]("The message to show when triggered execution waits for sources to change.").withRank(DSetting)
   @deprecated("Use watchTriggeredMessage instead", "1.3.0")

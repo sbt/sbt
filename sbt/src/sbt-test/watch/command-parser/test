@@ -1,0 +1,21 @@
+> ~; setStringValue string.txt foo; setStringValue string.txt bar
+
+> checkStringValue string.txt bar
+
+> ~;setStringValue string.txt foo;setStringValue string.txt bar; checkStringValue string.txt bar
+
+> ~;   setStringValue string.txt foo;setStringValue string.txt bar; checkStringValue string.txt bar
+
+> ~; setStringValue string.txt foo; setStringValue string.txt bar; checkStringValue string.txt bar
+
+# no leading semicolon
+> ~ setStringValue string.txt foo; setStringValue string.txt bar; checkStringValue string.txt bar
+
+> ~ setStringValue string.txt foo
+
+> checkStringValue string.txt foo
+
+# All of the other tests have involved input tasks, so include commands with regular tasks as well.
+> ~; compile; setStringValue string.txt baz; checkStringValue string.txt baz
+# Ensure that trailing semi colons work
+> ~ compile; setStringValue string.txt baz; checkStringValue string.txt baz;

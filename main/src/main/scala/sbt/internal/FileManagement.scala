@@ -12,10 +12,10 @@ import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
-import sbt.Keys._
 import sbt.internal.io.HybridPollingFileTreeRepository
 import sbt.internal.util.Util
 import sbt.io.FileTreeDataView.{ Entry, Observable, Observer, Observers }
+import sbt.io.Glob.TraversableGlobOps
 import sbt.io.{ FileTreeRepository, _ }
 import sbt.util.{ Level, Logger }
 
@@ -100,10 +100,53 @@ private[sbt] object FileManagement {
       override def close(): Unit = monitor.close()
     }
   }
+  private[sbt] implicit class FileTreeRepositoryOps[T](val repo: FileTreeRepository[T])
+      extends AnyVal {
+    def copy(): FileTreeRepository[T] =
+      copy(ConcurrentHashMap.newKeySet[Glob].asScala, closeUnderlying = false)
 
-  private[sbt] def repo: Def.Initialize[Task[FileTreeRepository[FileAttributes]]] = Def.task {
-    lazy val msg = s"Tried to get FileTreeRepository for uninitialized state."
-    state.value.get(Keys.globalFileTreeRepository).getOrElse(throw new IllegalStateException(msg))
+    /**
+     * Creates a copied FileTreeRepository that keeps track of all of the globs that are explicitly
+     * registered with it.
+     *
+     * @param registered the registered globs
+     * @param closeUnderlying toggles whether or not close should actually close the delegate
+     *                        repository
+     *
+     * @return the copied FileTreeRepository
+     */
+    def copy(registered: mutable.Set[Glob], closeUnderlying: Boolean): FileTreeRepository[T] =
+      new FileTreeRepository[T] {
+        private val entryFilter: FileTreeDataView.Entry[T] => Boolean =
+          (entry: FileTreeDataView.Entry[T]) => registered.toEntryFilter(entry)
+        private[this] val observers = new Observers[T] {
+          override def onCreate(newEntry: FileTreeDataView.Entry[T]): Unit =
+            if (entryFilter(newEntry)) super.onCreate(newEntry)
+          override def onDelete(oldEntry: FileTreeDataView.Entry[T]): Unit =
+            if (entryFilter(oldEntry)) super.onDelete(oldEntry)
+          override def onUpdate(
+              oldEntry: FileTreeDataView.Entry[T],
+              newEntry: FileTreeDataView.Entry[T]
+          ): Unit = if (entryFilter(newEntry)) super.onUpdate(oldEntry, newEntry)
+        }
+        private[this] val handle = repo.addObserver(observers)
+        override def register(glob: Glob): Either[IOException, Boolean] = {
+          registered.add(glob)
+          repo.register(glob)
+        }
+        override def unregister(glob: Glob): Unit = repo.unregister(glob)
+        override def addObserver(observer: FileTreeDataView.Observer[T]): Int =
+          observers.addObserver(observer)
+        override def removeObserver(handle: Int): Unit = observers.removeObserver(handle)
+        override def close(): Unit = {
+          repo.removeObserver(handle)
+          if (closeUnderlying) repo.close()
+        }
+        override def toString: String = s"CopiedFileTreeRepository(base = $repo)"
+        override def list(glob: Glob): Seq[TypedPath] = repo.list(glob)
+        override def listEntries(glob: Glob): Seq[FileTreeDataView.Entry[T]] =
+          repo.listEntries(glob)
+      }
   }
 
   private[sbt] class HybridMonitoringRepository[T](

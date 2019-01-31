@@ -100,7 +100,16 @@ object Append {
     new Sequence[Seq[Source], Seq[File], File] {
       def appendValue(a: Seq[Source], b: File): Seq[Source] = appendValues(a, Seq(b))
       def appendValues(a: Seq[Source], b: Seq[File]): Seq[Source] =
-        a ++ b.map(new Source(_, AllPassFilter, NothingFilter))
+        a ++ b.map { f =>
+          // Globs only accept their own base if the depth parameter is set to -1. The conversion
+          // from Source to Glob never sets the depth to -1, which causes individual files
+          // added via `watchSource += ...` to not trigger a build when they are modified. Since
+          // watchSources will be deprecated in 1.3.0, I'm hoping that most people will migrate
+          // their builds to the new system, but this will work for most builds in the interim.
+          if (f.isFile && f.getParentFile != null)
+            new Source(f.getParentFile, f.getName, NothingFilter, recursive = false)
+          else new Source(f, AllPassFilter, NothingFilter)
+        }
     }
 
   // Implemented with SAM conversion short-hand
