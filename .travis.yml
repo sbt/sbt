@@ -20,6 +20,10 @@ jobs:
     - env: LM_COURSIER=1 TEST_GROUP=2
     - stage: release
       script: sbt ci-release
+branches:
+  only:
+  - master
+  - /^v\d+\.\d+.*$/ # tagged versions
 cache:
   directories:
   - $HOME/.ivy2/cache
