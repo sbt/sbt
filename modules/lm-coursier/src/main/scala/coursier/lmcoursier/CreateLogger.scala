@@ -1,3 +1,5 @@
 package coursier.lmcoursier
 
-final case class CreateLogger(create: () => coursier.Cache.Logger)
+import coursier.cache.CacheLogger
+
+final case class CreateLogger(create: () => CacheLogger)

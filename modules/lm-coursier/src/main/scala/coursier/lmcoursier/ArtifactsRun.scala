@@ -3,6 +3,7 @@ package coursier.lmcoursier
 import java.io.File
 import java.util.concurrent.ExecutorService
 
+import coursier.cache.CacheLogger
 import coursier.{Artifact, Cache, CachePolicy, FileError}
 import coursier.util.{Schedulable, Task}
 import sbt.util.Logger
@@ -33,7 +34,7 @@ object ArtifactsRun {
     Lock.lock.synchronized {
 
       var pool: ExecutorService = null
-      var artifactsLogger: Cache.Logger = null
+      var artifactsLogger: CacheLogger = null
 
       val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 

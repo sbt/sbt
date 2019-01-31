@@ -3,6 +3,7 @@ package coursier.lmcoursier
 import java.io.File
 import java.net.URL
 
+import coursier.cache.CacheLogger
 import coursier.{Cache, CachePolicy, FallbackDependenciesRepository, ProjectCache, Resolution, moduleNameString}
 import coursier.core._
 import coursier.extra.Typelevel
@@ -30,7 +31,7 @@ final case class ResolutionParams(
   parallelDownloads: Int,
   projectName: String,
   maxIterations: Int,
-  createLogger: () => Cache.Logger,
+  createLogger: () => CacheLogger,
   cache: File,
   cachePolicies: Seq[CachePolicy],
   ttl: Option[Duration],

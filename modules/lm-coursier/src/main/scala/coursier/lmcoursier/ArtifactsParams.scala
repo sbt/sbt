@@ -2,6 +2,7 @@ package coursier.lmcoursier
 
 import java.io.File
 
+import coursier.cache.CacheLogger
 import coursier.{Cache, CachePolicy}
 import coursier.core.{Classifier, Resolution}
 
@@ -12,7 +13,7 @@ final case class ArtifactsParams(
   res: Seq[Resolution],
   includeSignatures: Boolean,
   parallelDownloads: Int,
-  createLogger: () => Cache.Logger,
+  createLogger: () => CacheLogger,
   cache: File,
   artifactsChecksums: Seq[Option[String]],
   ttl: Option[Duration],

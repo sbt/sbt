@@ -1,6 +1,6 @@
 package coursier.lmcoursier
 
-import coursier.Cache
+import coursier.cache.CacheUrl
 import coursier.core._
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
@@ -154,7 +154,7 @@ object Inputs {
 
     def httpHost(s: String) =
       if (s.startsWith("http://") || s.startsWith("https://"))
-        Try(Cache.url(s).getHost).toOption
+        Try(CacheUrl.url(s).getHost).toOption
       else
         None
 

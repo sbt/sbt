@@ -14,7 +14,7 @@ coursierCreateLogger := {
   }
   val cacheFile = coursierCache.value
   ;CoursierCreateLogger { () =>
-    new coursier.Cache.Logger {
+    new coursier.cache.CacheLogger {
       override def init(beforeOutput: => Unit): Unit = {
         beforeOutput
         log("init")
