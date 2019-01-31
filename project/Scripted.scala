@@ -17,8 +17,10 @@ object LocalScriptedPlugin extends AutoPlugin {
 trait ScriptedKeys {
   val publishAll = taskKey[Unit]("")
   val publishLocalBinAll = taskKey[Unit]("")
-  val scriptedUnpublished = inputKey[Unit]("Execute scripted without publishing sbt first. " +
-        "Saves you some time when only your test has changed")
+  val scriptedUnpublished = inputKey[Unit](
+    "Execute scripted without publishing sbt first. " +
+      "Saves you some time when only your test has changed"
+  )
   val scriptedSource = settingKey[File]("")
   val scriptedPrescripted = taskKey[File => Unit]("")
 }
@@ -107,33 +109,40 @@ object Scripted {
     // Interface to cross class loader
     type SbtScriptedRunner = {
       def runInParallel(
-        resourceBaseDirectory: File,
-        bufferLog: Boolean,
-        tests: Array[String],
-        bootProperties: File,
-        launchOpts: Array[String],
-        prescripted: java.util.List[File],
+          resourceBaseDirectory: File,
+          bufferLog: Boolean,
+          tests: Array[String],
+          bootProperties: File,
+          launchOpts: Array[String],
+          prescripted: java.util.List[File],
       ): Unit
     }
 
-    val bridge = bridgeClass.getDeclaredConstructor().newInstance().asInstanceOf[SbtScriptedRunner]
-
+    val initLoader = Thread.currentThread.getContextClassLoader
     try {
-      // Using java.util.List to encode File => Unit.
-      val callback = new java.util.AbstractList[File] {
-        override def add(x: File): Boolean = { prescripted(x); false }
-        def get(x: Int): sbt.File = ???
-        def size(): Int = 0
-      }
-      import scala.language.reflectiveCalls
-      bridge.runInParallel(
-        sourcePath,
-        bufferLog,
-        args.toArray,
-        launcher,
-        launchOpts.toArray,
-        callback,
-      )
-    } catch { case ite: InvocationTargetException => throw ite.getCause }
+      Thread.currentThread.setContextClassLoader(loader)
+      val bridge =
+        bridgeClass.getDeclaredConstructor().newInstance().asInstanceOf[SbtScriptedRunner]
+
+      try {
+        // Using java.util.List to encode File => Unit.
+        val callback = new java.util.AbstractList[File] {
+          override def add(x: File): Boolean = { prescripted(x); false }
+          def get(x: Int): sbt.File = ???
+          def size(): Int = 0
+        }
+        import scala.language.reflectiveCalls
+        bridge.runInParallel(
+          sourcePath,
+          bufferLog,
+          args.toArray,
+          launcher,
+          launchOpts.toArray,
+          callback,
+        )
+      } catch { case ite: InvocationTargetException => throw ite.getCause }
+    } finally {
+      Thread.currentThread.setContextClassLoader(initLoader)
+    }
   }
 }
