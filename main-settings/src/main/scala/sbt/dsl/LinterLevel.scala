@@ -41,8 +41,7 @@ package sbt.dsl
  * }}}
  * To make this work, the instances are all defined as implicit case objects. Moreover, the
  * the [[LinterLevel.Warn]] setting is made default by placing [[LinterLevel.Abort]] and
- * [[LinterLevel.Ignore]] in the [[LinterLevelLowPriority]] trait that the [[LinterLevel]]
- * companion object extends.
+ * [[LinterLevel.Ignore]] using the low priority trait pattern.
  */
 sealed trait LinterLevel
 object LinterLevel extends LinterLevelLowPriority {
