@@ -17,6 +17,7 @@ import sbt.WatchedSpec._
 import sbt.io.FileEventMonitor.Event
 import sbt.io.{ FileEventMonitor, IO, TypedPath }
 import sbt.util.Logger
+import xsbti.compile.analysis.Stamp
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -26,11 +27,11 @@ class WatchedSpec extends FlatSpec with Matchers {
     private val fileTreeViewConfig = FileTreeViewConfig.default(50.millis)
     def config(
         sources: Seq[WatchSource],
-        fileEventMonitor: Option[FileEventMonitor[Stamped]] = None,
+        fileEventMonitor: Option[FileEventMonitor[Stamp]] = None,
         logger: Logger = NullLogger,
         handleInput: InputStream => Action = _ => Ignore,
         preWatch: (Int, Boolean) => Action = (_, _) => CancelWatch,
-        onWatchEvent: Event[Stamped] => Action = _ => Ignore,
+        onWatchEvent: Event[Stamp] => Action = _ => Ignore,
         triggeredMessage: (TypedPath, Int) => Option[String] = (_, _) => None,
         watchingMessage: Int => Option[String] = _ => None
     ): WatchConfig = {

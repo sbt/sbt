@@ -15,6 +15,7 @@ import sbt.internal.server.ServerHandler
 import sbt.io.FileTreeDataView
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
+import xsbti.compile.analysis.Stamp
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -100,11 +101,6 @@ object BasicKeys {
   private[sbt] val templateResolverInfos = AttributeKey[Seq[TemplateResolverInfo]](
     "templateResolverInfos",
     "List of template resolver infos.",
-    1000
-  )
-  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[Stamped]](
-    "globalFileTreeView",
-    "provides a view into the file system that may or may not cache the tree in memory",
     1000
   )
 }

@@ -11,6 +11,7 @@ import sbt.internal.io.{ HybridPollingFileTreeRepository, WatchServiceBackedObse
 import sbt.io._
 import FileTreeDataView.{ Observable, Observer }
 import sbt.util.Logger
+import xsbti.compile.analysis.Stamp
 
 import scala.concurrent.duration._
 
@@ -18,15 +19,15 @@ import scala.concurrent.duration._
  * Configuration for viewing and monitoring the file system.
  */
 final class FileTreeViewConfig private (
-    val newDataView: () => FileTreeDataView[Stamped],
+    val newDataView: () => FileTreeDataView[Stamp],
     val newMonitor: (
-        FileTreeDataView[Stamped],
+        FileTreeDataView[Stamp],
         Seq[WatchSource],
         Logger
-    ) => FileEventMonitor[Stamped]
+    ) => FileEventMonitor[Stamp]
 )
 object FileTreeViewConfig {
-  private implicit class RepositoryOps(val repository: FileTreeRepository[Stamped]) {
+  private implicit class RepositoryOps(val repository: FileTreeRepository[Stamp]) {
     def register(sources: Seq[WatchSource]): Unit = sources foreach { s =>
       repository.register(s.base.toPath, if (s.recursive) Integer.MAX_VALUE else 0)
     }
@@ -34,10 +35,10 @@ object FileTreeViewConfig {
 
   /**
    * Create a new FileTreeViewConfig. This factory takes a generic parameter, T, that is bounded
-   * by {{{sbt.io.FileTreeDataView[Stamped]}}}. The reason for this is to ensure that a
+   * by {{{sbt.io.FileTreeDataView[Stamp]}}}. The reason for this is to ensure that a
    * sbt.io.FileTreeDataView that is instantiated by [[FileTreeViewConfig.newDataView]] can be
    * passed into [[FileTreeViewConfig.newMonitor]] without constraining the type of view to be
-   * {{{sbt.io.FileTreeDataView[Stamped]}}}.
+   * {{{sbt.io.FileTreeDataView[Stamp]}}}.
    * @param newDataView create a new sbt.io.FileTreeDataView. This value may be cached in a global
    *                    attribute
    * @param newMonitor create a new sbt.io.FileEventMonitor using the sbt.io.FileTreeDataView
@@ -45,13 +46,13 @@ object FileTreeViewConfig {
    * @tparam T the subtype of sbt.io.FileTreeDataView that is returned by [[FileTreeViewConfig.newDataView]]
    * @return a [[FileTreeViewConfig]] instance.
    */
-  def apply[T <: FileTreeDataView[Stamped]](
+  def apply[T <: FileTreeDataView[Stamp]](
       newDataView: () => T,
-      newMonitor: (T, Seq[WatchSource], Logger) => FileEventMonitor[Stamped]
+      newMonitor: (T, Seq[WatchSource], Logger) => FileEventMonitor[Stamp]
   ): FileTreeViewConfig =
     new FileTreeViewConfig(
       newDataView,
-      (view: FileTreeDataView[Stamped], sources: Seq[WatchSource], logger: Logger) =>
+      (view: FileTreeDataView[Stamp], sources: Seq[WatchSource], logger: Logger) =>
         newMonitor(view.asInstanceOf[T], sources, logger)
     )
 
@@ -71,7 +72,7 @@ object FileTreeViewConfig {
   ): FileTreeViewConfig =
     FileTreeViewConfig(
       () => FileTreeView.DEFAULT.asDataView(Stamped.converter),
-      (_: FileTreeDataView[Stamped], sources, logger) => {
+      (_: FileTreeDataView[Stamp], sources, logger) => {
         val ioLogger: sbt.io.WatchLogger = msg => logger.debug(msg.toString)
         FileEventMonitor.antiEntropy(
           new WatchServiceBackedObservable(
@@ -98,10 +99,10 @@ object FileTreeViewConfig {
   def default(antiEntropy: FiniteDuration): FileTreeViewConfig =
     FileTreeViewConfig(
       () => FileTreeRepository.default(Stamped.converter),
-      (repository: FileTreeRepository[Stamped], sources: Seq[WatchSource], logger: Logger) => {
+      (repository: FileTreeRepository[Stamp], sources: Seq[WatchSource], logger: Logger) => {
         repository.register(sources)
-        val copied = new Observable[Stamped] {
-          override def addObserver(observer: Observer[Stamped]): Int =
+        val copied = new Observable[Stamp] {
+          override def addObserver(observer: Observer[Stamp]): Int =
             repository.addObserver(observer)
           override def removeObserver(handle: Int): Unit = repository.removeObserver(handle)
           override def close(): Unit = {} // Don't close the underlying observable
@@ -156,7 +157,7 @@ object FileTreeViewConfig {
   ): FileTreeViewConfig = FileTreeViewConfig(
     () => FileTreeRepository.hybrid(Stamped.converter, pollingSources: _*),
     (
-        repository: HybridPollingFileTreeRepository[Stamped],
+        repository: HybridPollingFileTreeRepository[Stamp],
         sources: Seq[WatchSource],
         logger: Logger
     ) => {
