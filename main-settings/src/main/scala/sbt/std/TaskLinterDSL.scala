@@ -28,7 +28,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
     val unchecked = symbolOf[sbt.sbtUnchecked].asClass
     val initializeType = typeOf[sbt.Def.Initialize[_]]
 
-    /**
+    /*
      * Lints a task tree.
      *
      * @param insideIf indicates whether or not the current tree is enclosed in an if statement.
