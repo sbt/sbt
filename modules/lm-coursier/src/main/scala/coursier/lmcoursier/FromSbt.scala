@@ -4,6 +4,7 @@ import coursier.ivy.IvyRepository
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import java.net.{MalformedURLException, URL}
 
+import coursier.cache.CacheUrl
 import coursier.{Attributes, Cache, Dependency, Module}
 import coursier.core._
 import coursier.maven.MavenRepository
@@ -183,7 +184,7 @@ object FromSbt {
     authentication: Option[Authentication]
   ): Option[MavenRepository] =
     try {
-      Cache.url(root) // ensure root is a URL whose protocol can be handled here
+      CacheUrl.url(root) // ensure root is a URL whose protocol can be handled here
       val root0 = if (root.endsWith("/")) root else root + "/"
       Some(
         MavenRepository(

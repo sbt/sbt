@@ -1,5 +1,6 @@
 package coursier.sbtcoursier
 
+import coursier.cache.CacheDefaults
 import coursier.{Cache, CachePolicy}
 import coursier.core.{Configuration, ResolutionProcess}
 import coursier.sbtcoursiershared.SbtCoursierShared
@@ -194,7 +195,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierChecksums := Seq(Some("SHA-1"), None),
     coursierArtifactsChecksums := Seq(None),
     coursierCachePolicies := CachePolicy.default,
-    coursierTtl := Cache.defaultTtl,
+    coursierTtl := CacheDefaults.ttl,
     coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value)
   )
 

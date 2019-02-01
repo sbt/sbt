@@ -7,6 +7,7 @@ import _root_.coursier.core.{Classifier, Configuration, ModuleName}
 import _root_.coursier.extra.Typelevel
 import _root_.coursier.ivy.IvyRepository
 import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
+import coursier.cache.CacheDefaults
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
 import sbt.util.Logger
@@ -74,13 +75,13 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     val verbosityLevel = 0
 
-    val ttl = Cache.defaultTtl
+    val ttl = CacheDefaults.ttl
     val createLogger = conf.createLogger.map(_.create).getOrElse { () =>
       new TermDisplay(new OutputStreamWriter(System.err), fallbackMode = true)
     }
-    val cache = conf.cache.getOrElse(Cache.default)
+    val cache = conf.cache.getOrElse(CacheDefaults.location)
     val cachePolicies = CachePolicy.default
-    val checksums = Cache.defaultChecksums
+    val checksums = CacheDefaults.checksums
     val projectName = "" // used for logging only…
 
     val ivyProperties = ResolutionParams.defaultIvyProperties()

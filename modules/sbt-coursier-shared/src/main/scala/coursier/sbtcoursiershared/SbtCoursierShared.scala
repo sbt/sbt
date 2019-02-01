@@ -2,6 +2,7 @@ package coursier.sbtcoursiershared
 
 import java.io.{File, OutputStreamWriter}
 
+import coursier.cache.CacheDefaults
 import coursier.{Cache, Credentials, TermDisplay}
 import coursier.core.{Configuration, Project, Publication}
 import coursier.lmcoursier.{CreateLogger, FallbackDependency, SbtCoursierCache}
@@ -58,7 +59,7 @@ object SbtCoursierShared extends AutoPlugin {
       coursierUseSbtCredentials := true,
       coursierCredentials := Map.empty,
       coursierCreateLogger := CreateLogger { () => new TermDisplay(new OutputStreamWriter(System.err)) },
-      coursierCache := Cache.default
+      coursierCache := CacheDefaults.location
     )
 
   private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"

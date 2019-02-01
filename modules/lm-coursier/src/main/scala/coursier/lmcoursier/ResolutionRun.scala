@@ -2,6 +2,7 @@ package coursier.lmcoursier
 
 import java.util.concurrent.ExecutorService
 
+import coursier.cache.CacheLogger
 import coursier.{Cache, Fetch, Resolution}
 import coursier.core._
 import coursier.ivy.IvyRepository
@@ -23,7 +24,7 @@ object ResolutionRun {
     // TODO Re-use the thread pool across resolutions / downloads?
     var pool: ExecutorService = null
 
-    var resLogger: Cache.Logger = null
+    var resLogger: CacheLogger = null
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
