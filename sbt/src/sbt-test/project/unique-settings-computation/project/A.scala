@@ -18,7 +18,7 @@ object A extends AutoPlugin {
     Nil
 
   def setUpScripted = Command.command("setUpScripted") { (state0: State) =>
-    Project.extract(state0).append(name := "foo", state0)
+    Project.extract(state0).appendWithoutSession(name := "foo", state0)
   }
 
   // used to ensure the build-level and global settings are only added once
