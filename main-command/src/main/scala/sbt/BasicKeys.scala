@@ -102,7 +102,7 @@ object BasicKeys {
     "List of template resolver infos.",
     1000
   )
-  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[StampedFile]](
+  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[Stamped]](
     "globalFileTreeView",
     "provides a view into the file system that may or may not cache the tree in memory",
     1000

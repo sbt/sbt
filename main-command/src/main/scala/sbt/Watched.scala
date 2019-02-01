@@ -146,7 +146,7 @@ object Watched {
   private[sbt] def onEvent(
       sources: Seq[WatchSource],
       projectSources: Seq[WatchSource]
-  ): Event[StampedFile] => Watched.Action =
+  ): Event[Stamped] => Watched.Action =
     event =>
       if (sources.exists(_.accept(event.entry.typedPath.toPath))) Watched.Trigger
       else if (projectSources.exists(_.accept(event.entry.typedPath.toPath))) event match {
@@ -458,7 +458,7 @@ trait WatchConfig {
    *
    * @return an sbt.io.FileEventMonitor instance.
    */
-  def fileEventMonitor: FileEventMonitor[StampedFile]
+  def fileEventMonitor: FileEventMonitor[Stamped]
 
   /**
    * A function that is periodically invoked to determine whether the watch should stop or
@@ -481,7 +481,7 @@ trait WatchConfig {
    * @param event the detected sbt.io.FileEventMonitor.Event.
    * @return the next [[Watched.Action Action]] to run.
    */
-  def onWatchEvent(event: Event[StampedFile]): Watched.Action
+  def onWatchEvent(event: Event[Stamped]): Watched.Action
 
   /**
    * Transforms the state after the watch terminates.
@@ -537,10 +537,10 @@ object WatchConfig {
    */
   def default(
       logger: Logger,
-      fileEventMonitor: FileEventMonitor[StampedFile],
+      fileEventMonitor: FileEventMonitor[Stamped],
       handleInput: InputStream => Watched.Action,
       preWatch: (Int, Boolean) => Watched.Action,
-      onWatchEvent: Event[StampedFile] => Watched.Action,
+      onWatchEvent: Event[Stamped] => Watched.Action,
       onWatchTerminated: (Watched.Action, String, State) => State,
       triggeredMessage: (TypedPath, Int) => Option[String],
       watchingMessage: Int => Option[String]
@@ -555,11 +555,11 @@ object WatchConfig {
     val wm = watchingMessage
     new WatchConfig {
       override def logger: Logger = l
-      override def fileEventMonitor: FileEventMonitor[StampedFile] = fem
+      override def fileEventMonitor: FileEventMonitor[Stamped] = fem
       override def handleInput(inputStream: InputStream): Watched.Action = hi(inputStream)
       override def preWatch(count: Int, lastResult: Boolean): Watched.Action =
         pw(count, lastResult)
-      override def onWatchEvent(event: Event[StampedFile]): Watched.Action = owe(event)
+      override def onWatchEvent(event: Event[Stamped]): Watched.Action = owe(event)
       override def onWatchTerminated(action: Watched.Action, command: String, state: State): State =
         owt(action, command, state)
       override def triggeredMessage(typedPath: TypedPath, count: Int): Option[String] =

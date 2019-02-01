@@ -51,7 +51,7 @@ private[sbt] object FileManagement {
       val view = fileTreeView.value
       val include = filter.toTask.value
       val ex = excludes.toTask.value
-      val sourceFilter: Entry[StampedFile] => Boolean = (entry: Entry[StampedFile]) => {
+      val sourceFilter: Entry[Stamped] => Boolean = (entry: Entry[Stamped]) => {
         entry.value match {
           case Right(sf) => include.accept(sf) && !ex.accept(sf)
           case _         => false

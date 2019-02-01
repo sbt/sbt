@@ -274,7 +274,7 @@ object Defaults extends BuildCommon {
       fileTreeViewConfig := FileManagement.defaultFileTreeView.value,
       fileTreeView := state.value
         .get(BasicKeys.globalFileTreeView)
-        .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
+        .getOrElse(FileTreeView.DEFAULT.asDataView(Stamped.converter)),
       externalHooks := {
         val view = fileTreeView.value
         compileOptions =>

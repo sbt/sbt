@@ -862,7 +862,7 @@ object BuiltinCommands {
         ()
       }
       val (_, config: FileTreeViewConfig) = extracted.runTask(Keys.fileTreeViewConfig, s)
-      val view: FileTreeDataView[StampedFile] = config.newDataView()
+      val view: FileTreeDataView[Stamped] = config.newDataView()
       val newState = s.addExitHook(cleanup())
       cleanup()
       newState
