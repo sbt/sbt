@@ -249,7 +249,7 @@ object Defaults extends BuildCommon {
       extraLoggers :== { _ =>
         Nil
       },
-      pollingDirectories :== Nil,
+      pollingGlobs :== Nil,
       watchSources :== Nil,
       watchProjectSources :== Nil,
       skip :== false,
@@ -280,12 +280,8 @@ object Defaults extends BuildCommon {
         None
       },
       watchStartMessage := Watched.defaultStartWatch,
-      fileTreeViewConfig := FileManagement.defaultFileTreeView.value,
-      fileTreeView := state.value
-        .get(Keys.globalFileTreeView)
-        .getOrElse(FileTreeView.DEFAULT.asDataView(FileCacheEntry.default)),
       externalHooks := {
-        val view = fileTreeView.value
+        val view = FileManagement.dataView.value
         compileOptions =>
           Some(ExternalHooks(compileOptions, view))
       },
@@ -640,9 +636,12 @@ object Defaults extends BuildCommon {
         )
         .getOrElse(watchTriggeredMessage.value)
       val logger = watchLogger.value
+      val repo = FileManagement.repo.value
+      globs.foreach(repo.register)
+      val monitor = FileManagement.monitor(repo, watchAntiEntropy.value, logger)
       WatchConfig.default(
         logger,
-        fileTreeViewConfig.value.newMonitor(fileTreeView.value, sources, logger),
+        monitor,
         watchHandleInput.value,
         watchPreWatch.value,
         watchOnEvent.value,
@@ -653,7 +652,6 @@ object Defaults extends BuildCommon {
     },
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
-    fileTreeViewConfig := FileManagement.defaultFileTreeView.value
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =

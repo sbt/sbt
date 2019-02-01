@@ -23,7 +23,7 @@ import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 import sbt.io.FileEventMonitor.Event
-import sbt.io.{ FileFilter, FileTreeDataView, TypedPath, WatchService }
+import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
 import sbt.librarymanagement._
@@ -93,9 +93,9 @@ object Keys {
   @deprecated("This is no longer used for continuous execution", "1.3.0")
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
-  val fileTreeView = taskKey[FileTreeDataView[FileCacheEntry]]("A view of the file system")
+  val enableGlobalCachingFileTreeRepository = settingKey[Boolean]("Toggles whether or not to create a global cache of the file system that can be used by tasks to quickly list a path").withRank(DSetting)
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
-  val pollingDirectories = settingKey[Seq[Watched.WatchSource]]("Directories that cannot be cached and must always be rescanned. Typically these will be NFS mounted or something similar.").withRank(DSetting)
+  val pollingGlobs = settingKey[Seq[Glob]]("Directories that cannot be cached and must always be rescanned. Typically these will be NFS mounted or something similar.").withRank(DSetting)
   val watchAntiEntropy = settingKey[FiniteDuration]("Duration for which the watch EventMonitor will ignore events for a file after that file has triggered a build.").withRank(BMinusSetting)
   val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
   val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
@@ -114,7 +114,6 @@ object Keys {
   val watchingMessage = settingKey[WatchState => String]("The message to show when triggered execution waits for sources to change.").withRank(DSetting)
   @deprecated("Use watchTriggeredMessage instead", "1.3.0")
   val triggeredMessage = settingKey[WatchState => String]("The message to show before triggered execution executes an action after sources change.").withRank(DSetting)
-  val fileTreeViewConfig = taskKey[FileTreeViewConfig]("Configures how sbt will traverse and monitor the file system.").withRank(BMinusSetting)
 
   // Path Keys
   val baseDirectory = settingKey[File]("The base directory.  Depending on the scope, this is the base directory for the build, project, configuration, or task.").withRank(AMinusSetting)
@@ -468,8 +467,8 @@ object Keys {
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
 
-  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[FileCacheEntry]](
-    "globalFileTreeView",
+  private[sbt] val globalFileTreeRepository = AttributeKey[FileTreeRepository[FileCacheEntry]](
+    "global-file-tree-repository",
     "Provides a view into the file system that may or may not cache the tree in memory",
     1000
   )

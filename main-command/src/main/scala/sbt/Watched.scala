@@ -64,9 +64,8 @@ object Watched {
 
   /**
    * This trait is used to communicate what the watch should do next at various points in time. It
-   * is heavily linked to a number of callbacks in [[WatchConfig]]. For example, when the
-   * sbt.io.FileEventMonitor created by [[FileTreeViewConfig.newMonitor]] detects a changed source
-   * file, then we expect [[WatchConfig.onWatchEvent]] to return [[Trigger]].
+   * is heavily linked to a number of callbacks in [[WatchConfig]]. For example, when the event
+   * monitor detects a changed source we expect [[WatchConfig.onWatchEvent]] to return [[Trigger]].
    */
   sealed trait Action
 
@@ -427,11 +426,11 @@ object Watched {
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 
-  def createWatchService(): WatchService = {
+  def createWatchService(pollDelay: FiniteDuration): WatchService = {
     def closeWatch = new MacOSXWatchService()
     sys.props.get("sbt.watch.mode") match {
       case Some("polling") =>
-        new PollingWatchService(PollDelay)
+        new PollingWatchService(pollDelay)
       case Some("nio") =>
         FileSystems.getDefault.newWatchService()
       case Some("closewatch")    => closeWatch
@@ -440,6 +439,7 @@ object Watched {
         FileSystems.getDefault.newWatchService()
     }
   }
+  def createWatchService(): WatchService = createWatchService(PollDelay)
 }
 
 /**
