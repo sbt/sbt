@@ -15,12 +15,14 @@ trait TypeFunctions {
   sealed trait ConstK[A] { type l[L[x]] = A }
   sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
   sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
-  type AnyLeft[T] = Left[T, Nothing]
-  type AnyRight[T] = Right[Nothing, T]
+  private type AnyLeft[T] = Left[T, Nothing]
+  private type AnyRight[T] = Right[Nothing, T]
 
-  final val left = λ[Id ~> AnyLeft](Left(_)).setToString("TypeFunctions.left")
-  final val right = λ[Id ~> AnyRight](Right(_)).setToString("TypeFunctions.right")
-  final val some = λ[Id ~> Some](Some(_)).setToString("TypeFunctions.some")
+  final val left: Id ~> Left[?, Nothing] =
+    λ[Id ~> AnyLeft](Left(_)).setToString("TypeFunctions.left")
+  final val right: Id ~> Right[Nothing, ?] =
+    λ[Id ~> AnyRight](Right(_)).setToString("TypeFunctions.right")
+  final val some: Id ~> Some[?] = λ[Id ~> Some](Some(_)).setToString("TypeFunctions.some")
   final def idFun[T]: T => T = ((t: T) => t).setToString("TypeFunctions.id")
   final def const[A, B](b: B): A => B = ((_: A) => b).setToString(s"TypeFunctions.const($b)")
   final def idK[M[_]]: M ~> M = λ[M ~> M](m => m).setToString("TypeFunctions.idK")
