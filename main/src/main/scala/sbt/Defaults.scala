@@ -9,7 +9,6 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
-import java.nio.file.{ DirectoryNotEmptyException, Files }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -569,14 +568,14 @@ object Defaults extends BuildCommon {
     globalDefaults(enableBinaryCompileAnalysis := true)
 
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings :+ (clean := cleanTaskIn(ThisScope).value)
+    compileInputsSettings :+ (clean := Clean.taskIn(ThisScope).value)
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     outputs := Seq(
       compileAnalysisFileTask.value.toGlob,
       classDirectory.value ** "*.class"
     ) ++ (sourceGenerators / outputs).value,
     compile := compileTask.value,
-    clean := cleanTaskIn(ThisScope).value,
+    clean := Clean.taskIn(ThisScope).value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
     printWarnings := printWarningsTask.value,
@@ -622,7 +621,7 @@ object Defaults extends BuildCommon {
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := Vector.empty,
     cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
-    clean := cleanTaskIn(ThisScope).value,
+    clean := Clean.taskIn(ThisScope).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
@@ -1312,44 +1311,6 @@ object Defaults extends BuildCommon {
 
   /** Implements `cleanFiles` task. */
   private[sbt] def cleanFilesTask: Initialize[Task[Vector[File]]] = Def.task { Vector.empty[File] }
-
-  /**
-   * Provides an implementation for the clean task. It delegates to [[cleanTaskIn]] using the
-   * resolvedScoped key to set the scope.
-   * @return the clean task definition.
-   */
-  def cleanTask: Initialize[Task[Unit]] =
-    Def.taskDyn(cleanTaskIn(resolvedScoped.value.scope)) tag Tags.Clean
-
-  /**
-   * Implements the clean task in a given scope. It uses the outputs task value in the provided
-   * scope to determine which files to delete.
-   * @param scope the scope in which the clean task is implemented
-   * @return the clean task definition.
-   */
-  def cleanTaskIn(scope: Scope): Initialize[Task[Unit]] =
-    Def.task {
-      val excludes = cleanKeepFiles.value.map {
-        // This mimics the legacy behavior of cleanFilesTask
-        case f if f.isDirectory => f * AllPassFilter
-        case f                  => f.toGlob
-      } ++ cleanKeepGlobs.value
-      val excludeFilter: File => Boolean = excludes.toFileFilter.accept
-      val globDeletions = (outputs in scope).value.unique.filterNot(excludeFilter)
-      val toDelete = cleanFiles.value.filterNot(excludeFilter) match {
-        case f @ Seq(_, _*) => (globDeletions ++ f).distinct
-        case _              => globDeletions
-      }
-      val logger = streams.value.log
-      toDelete.sorted.reverseIterator.foreach { f =>
-        logger.debug(s"clean -- deleting file $f")
-        try Files.deleteIfExists(f.toPath)
-        catch {
-          case _: DirectoryNotEmptyException =>
-            logger.debug(s"clean -- unable to delete non-empty directory $f")
-        }
-      }
-    } tag Tags.Clean
 
   def bgRunMainTask(
       products: Initialize[Task[Classpath]],
