@@ -157,6 +157,7 @@ object Keys {
   val cleanKeepGlobs = settingKey[Seq[Glob]]("Globs to keep during a clean. Must be direct children of target.").withRank(CSetting)
   val crossPaths = settingKey[Boolean]("If true, enables cross paths, which distinguish input and output directories for cross-building.").withRank(ASetting)
   val taskTemporaryDirectory = settingKey[File]("Directory used for temporary files for tasks that is deleted after each task execution.").withRank(DSetting)
+  val outputs = taskKey[Seq[Glob]]("Describes the output files of a task")
 
   // Generators
   val sourceGenerators = settingKey[Seq[Task[Seq[File]]]]("List of tasks that generate sources.").withRank(CSetting)
