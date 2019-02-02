@@ -1183,10 +1183,14 @@ object Defaults extends BuildCommon {
   // drop base directories, since there are no valid mappings for these
   def sourceMappings: Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val srcs = unmanagedSources.value
       val sdirs = unmanagedSourceDirectories.value
       val base = baseDirectory.value
-      (srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)
+      val relative = (f: File) => relativeTo(sdirs)(f).orElse(relativeTo(base)(f)).orElse(flat(f))
+      val exclude = Set(sdirs, base)
+      unmanagedSources.value.flatMap {
+        case s if !exclude(s) => relative(s).map(s -> _)
+        case _                => None
+      }
     }
   def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
   def relativeMappings(
@@ -1194,9 +1198,12 @@ object Defaults extends BuildCommon {
       dirs: ScopedTaskable[Seq[File]]
   ): Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val rs = files.toTask.value
-      val rdirs = dirs.toTask.value
-      (rs --- rdirs) pair (relativeTo(rdirs) | flat)
+      val rdirs = dirs.toTask.value.toSet
+      val relative = (f: File) => relativeTo(rdirs)(f).orElse(flat(f))
+      files.toTask.value.flatMap {
+        case r if !rdirs(r) => relative(r).map(r -> _)
+        case _              => None
+      }
     }
   def collectFiles(
       dirs: ScopedTaskable[Seq[File]],
@@ -1730,10 +1737,15 @@ object Defaults extends BuildCommon {
   def copyResourcesTask =
     Def.task {
       val t = classDirectory.value
-      val dirs = resourceDirectories.value
+      val dirs = resourceDirectories.value.toSet
       val s = streams.value
       val cacheStore = s.cacheStoreFactory make "copy-resources"
-      val mappings = (resources.value --- dirs) pair (rebase(dirs, t) | flat(t))
+      val flt: File => Option[File] = flat(t)
+      val transform: File => Option[File] = (f: File) => rebase(dirs, t)(f).orElse(flt(f))
+      val mappings: Seq[(File, File)] = resources.value.flatMap {
+        case r if !dirs(r) => transform(r).map(r -> _)
+        case _             => None
+      }
       s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t", "\n\t", ""))
       Sync.sync(cacheStore)(mappings)
       mappings
