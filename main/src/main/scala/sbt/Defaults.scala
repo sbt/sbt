@@ -273,8 +273,8 @@ object Defaults extends BuildCommon {
       watchStartMessage := Watched.defaultStartWatch,
       fileTreeViewConfig := FileManagement.defaultFileTreeView.value,
       fileTreeView := state.value
-        .get(BasicKeys.globalFileTreeView)
-        .getOrElse(FileTreeView.DEFAULT.asDataView(StampedFile.converter)),
+        .get(Keys.globalFileTreeView)
+        .getOrElse(FileTreeView.DEFAULT.asDataView(FileCacheEntry.default)),
       externalHooks := {
         val view = fileTreeView.value
         compileOptions =>

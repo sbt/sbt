@@ -9,10 +9,9 @@ package sbt
 
 import java.io.File
 
-import sbt.internal.util.AttributeKey
 import sbt.internal.inc.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
-import sbt.io.FileTreeDataView
+import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
 
@@ -100,11 +99,6 @@ object BasicKeys {
   private[sbt] val templateResolverInfos = AttributeKey[Seq[TemplateResolverInfo]](
     "templateResolverInfos",
     "List of template resolver infos.",
-    1000
-  )
-  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[StampedFile]](
-    "globalFileTreeView",
-    "provides a view into the file system that may or may not cache the tree in memory",
     1000
   )
 }

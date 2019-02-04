@@ -855,18 +855,18 @@ object BuiltinCommands {
     val extracted = Project.extract(s)
     try {
       def cleanup(): Unit = {
-        s.get(BasicKeys.globalFileTreeView).foreach(_.close())
-        s.attributes.remove(BasicKeys.globalFileTreeView)
+        s.get(Keys.globalFileTreeView).foreach(_.close())
+        s.attributes.remove(Keys.globalFileTreeView)
         s.get(Keys.taskRepository).foreach(_.close())
         s.attributes.remove(Keys.taskRepository)
         ()
       }
       val (_, config: FileTreeViewConfig) = extracted.runTask(Keys.fileTreeViewConfig, s)
-      val view: FileTreeDataView[StampedFile] = config.newDataView()
+      val view: FileTreeDataView[FileCacheEntry] = config.newDataView()
       val newState = s.addExitHook(cleanup())
       cleanup()
       newState
-        .put(BasicKeys.globalFileTreeView, view)
+        .put(Keys.globalFileTreeView, view)
         .put(Keys.taskRepository, new TaskRepository.Repr)
     } catch {
       case NonFatal(_) => s

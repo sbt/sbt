@@ -9,7 +9,7 @@ package sbt.internal
 import java.nio.file.Paths
 import java.util.Optional
 
-import sbt.StampedFile
+import sbt.Stamped
 import sbt.internal.inc.ExternalLookup
 import sbt.io.syntax.File
 import sbt.io.{ FileTreeRepository, FileTreeDataView, TypedPath }
@@ -20,17 +20,20 @@ import scala.collection.mutable
 
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
-  def apply(options: CompileOptions, view: FileTreeDataView[StampedFile]): DefaultExternalHooks = {
+  def apply(
+      options: CompileOptions,
+      view: FileTreeDataView[FileCacheEntry]
+  ): DefaultExternalHooks = {
     import scala.collection.JavaConverters._
     val sources = options.sources()
     val cachedSources = new java.util.HashMap[File, Stamp]
-    val converter: File => Stamp = f => StampedFile.sourceConverter(TypedPath(f.toPath)).stamp
+    val converter: File => Stamp = f => Stamped.sourceConverter(TypedPath(f.toPath))
     sources.foreach {
-      case sf: StampedFile => cachedSources.put(sf, sf.stamp)
-      case f: File         => cachedSources.put(f, converter(f))
+      case sf: Stamped => cachedSources.put(sf, sf.stamp)
+      case f: File     => cachedSources.put(f, converter(f))
     }
     view match {
-      case r: FileTreeRepository[StampedFile] =>
+      case r: FileTreeRepository[FileCacheEntry] =>
         r.register(options.classesDirectory.toPath, Integer.MAX_VALUE)
         options.classpath.foreach { f =>
           r.register(f.toPath, Integer.MAX_VALUE)

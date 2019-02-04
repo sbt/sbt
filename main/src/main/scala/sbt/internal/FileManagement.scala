@@ -10,12 +10,12 @@ package sbt.internal
 import java.io.IOException
 import java.nio.file.Path
 
+import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt.Keys._
+import sbt._
 import sbt.io.FileTreeDataView.Entry
 import sbt.io.syntax.File
 import sbt.io.{ FileFilter, FileTreeDataView, FileTreeRepository }
-import sbt._
-import BasicCommandStrings.ContinuousExecutePrefix
 
 private[sbt] object FileManagement {
   private[sbt] def defaultFileTreeView: Def.Initialize[Task[FileTreeViewConfig]] = Def.task {
@@ -51,17 +51,19 @@ private[sbt] object FileManagement {
       val view = fileTreeView.value
       val include = filter.toTask.value
       val ex = excludes.toTask.value
-      val sourceFilter: Entry[StampedFile] => Boolean = (entry: Entry[StampedFile]) => {
-        entry.value match {
-          case Right(sf) => include.accept(sf) && !ex.accept(sf)
-          case _         => false
+      val sourceFilter: Entry[FileCacheEntry] => Boolean = (entry: Entry[FileCacheEntry]) => {
+        val typedPath = entry.typedPath
+        val file = new java.io.File(typedPath.toPath.toString) {
+          override def isDirectory: Boolean = typedPath.isDirectory
+          override def isFile: Boolean = typedPath.isFile
         }
+        include.accept(file) && !ex.accept(file)
       }
       sourceDirs.flatMap { dir =>
         view.register(dir.toPath, maxDepth = Integer.MAX_VALUE)
         view
           .listEntries(dir.toPath, maxDepth = Integer.MAX_VALUE, sourceFilter)
-          .map(e => e.value.getOrElse(e.typedPath.toPath.toFile))
+          .flatMap(e => e.value.toOption.map(Stamped.file(e.typedPath, _)))
       }
     }
 
@@ -93,7 +95,7 @@ private[sbt] object FileManagement {
                 f.accept(file) && !excl.accept(file)
               }
             )
-            .flatMap(_.value.toOption)
+            .flatMap(e => e.value.toOption.map(Stamped.file(e.typedPath, _)))
       } else sources
     }
   )
