@@ -379,23 +379,7 @@ object Defaults extends BuildCommon {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
       val include = (includeFilter in unmanagedSources).value
-      val exclude = (excludeFilter in unmanagedSources).value match {
-        case e =>
-          val s = state.value
-          try {
-            Project.extract(s).runTask(managedSources in Compile in ThisScope, s) match {
-              case (_, l) if l.nonEmpty =>
-                e || new FileFilter {
-                  private val files = l.toSet
-                  override def accept(pathname: File): Boolean = files.contains(pathname)
-                  override def toString = s"ManagedSourcesFilter($files)"
-                }
-              case _ => e
-            }
-          } catch {
-            case NonFatal(_) => e
-          }
-      }
+      val exclude = (excludeFilter in unmanagedSources).value
       val baseSources =
         if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
         else Nil
@@ -635,13 +619,10 @@ object Defaults extends BuildCommon {
     watchOnTermination := Watched.onTermination,
     watchConfig := {
       val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
-      val extracted = Project.extract(state.value)
-      val wm = extracted
-        .getOpt(watchingMessage)
+      val wm = watchingMessage.?.value
         .map(w => (count: Int) => Some(w(WatchState.empty(sources).withCount(count))))
         .getOrElse(watchStartMessage.value)
-      val tm = extracted
-        .getOpt(triggeredMessage)
+      val tm = triggeredMessage.?.value
         .map(
           tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(sources).withCount(count)))
         )
