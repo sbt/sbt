@@ -837,6 +837,7 @@ object BuiltinCommands {
   }
 
   def registerCompilerCache(s: State): State = {
+    s.get(Keys.stateCompilerCache).foreach(_.clear())
     val maxCompilers = System.getProperty("sbt.resident.limit")
     val cache =
       if (maxCompilers == null)
@@ -875,7 +876,7 @@ object BuiltinCommands {
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    Command.command(ClearCaches, help)(registerGlobalCaches)
+    Command.command(ClearCaches, help)(registerGlobalCaches _ andThen registerCompilerCache)
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
