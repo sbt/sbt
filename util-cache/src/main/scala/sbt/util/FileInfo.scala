@@ -90,6 +90,8 @@ object FileInfo {
 
     implicit def apply(file: File): HashModifiedFileInfo =
       FileHashModified(file.getAbsoluteFile, Hash(file).toList, IO.getModifiedTimeOrZero(file))
+    def apply(file: File, hash: List[Byte], lastModified: Long): HashModifiedFileInfo =
+      FileHashModified(file.getAbsoluteFile, hash, lastModified)
   }
 
   object hash extends Style {
@@ -115,6 +117,8 @@ object FileInfo {
     }
 
     implicit def apply(file: File): HashFileInfo = FileHash(file.getAbsoluteFile, computeHash(file))
+    def apply(file: File, bytes: List[Byte]): HashFileInfo =
+      FileHash(file.getAbsoluteFile, bytes)
 
     private def computeHash(file: File): List[Byte] =
       try Hash(file).toList
@@ -147,6 +151,8 @@ object FileInfo {
 
     implicit def apply(file: File): ModifiedFileInfo =
       FileModified(file.getAbsoluteFile, IO.getModifiedTimeOrZero(file))
+    def apply(file: File, lastModified: Long): ModifiedFileInfo =
+      FileModified(file.getAbsoluteFile, lastModified)
   }
 
   object exists extends Style {
@@ -174,6 +180,10 @@ object FileInfo {
     implicit def apply(file: File): PlainFileInfo = {
       val abs = file.getAbsoluteFile
       PlainFile(abs, abs.exists)
+    }
+    def apply(file: File, exists: Boolean): PlainFileInfo = {
+      val abs = file.getAbsoluteFile
+      PlainFile(abs, exists)
     }
   }
 }
