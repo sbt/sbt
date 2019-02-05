@@ -11,7 +11,7 @@ import java.io.{ File => JFile }
 import java.nio.file.Path
 
 import sbt.internal.FileCacheEntry
-import sbt.internal.inc.Stamper
+import sbt.internal.inc.{ EmptyStamp, Stamper }
 import sbt.io.TypedPath
 import xsbti.compile.analysis.Stamp
 
@@ -47,13 +47,14 @@ private[sbt] object Stamped {
    * A combined convert that converts TypedPath instances representing *.jar and *.class files
    * using the last modified time and all other files using the file hash.
    */
-  val converter: TypedPath => Stamp = (tp: TypedPath) =>
-    if (tp.isDirectory) binaryConverter(tp)
-    else {
-      tp.toPath.toString match {
-        case s if s.endsWith(".jar")   => binaryConverter(tp)
-        case s if s.endsWith(".class") => binaryConverter(tp)
-        case _                         => sourceConverter(tp)
+  val converter: TypedPath => Stamp = (_: TypedPath) match {
+    case typedPath if !typedPath.exists     => EmptyStamp
+    case typedPath if typedPath.isDirectory => binaryConverter(typedPath)
+    case typedPath =>
+      typedPath.toPath.toString match {
+        case s if s.endsWith(".jar")   => binaryConverter(typedPath)
+        case s if s.endsWith(".class") => binaryConverter(typedPath)
+        case _                         => sourceConverter(typedPath)
       }
   }
 
