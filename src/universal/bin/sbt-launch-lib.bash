@@ -57,14 +57,10 @@ rt_export_file () {
 }
 
 execRunner () {
-  # print the arguments one to a line, quoting any containing spaces
+  # print the arguments one to a line, shell-quoted
   [[ $verbose || $debug ]] && echo "# Executing command line:" && {
-    for arg; do
-      if printf "%s\n" "$arg" | grep -q ' '; then
-        printf "\"%s\"\n" "$arg"
-      else
-        printf "%s\n" "$arg"
-      fi
+    for arg in "$@"; do
+       printf "%q\n" "$arg"
     done
     echo ""
   }
@@ -348,7 +344,7 @@ run() {
     $(get_gc_opts) \
     ${JAVA_OPTS} \
     ${SBT_OPTS:-$default_sbt_opts} \
-    ${java_args[@]} \
+    "${java_args[@]}" \
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
     "${residual_args[@]}"
