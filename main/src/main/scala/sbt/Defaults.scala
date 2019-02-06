@@ -256,9 +256,9 @@ object Defaults extends BuildCommon {
       skip :== false,
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
       onComplete := {
-        val dir = taskTemporaryDirectory.value;
+        val tempDirectory = taskTemporaryDirectory.value
         () =>
-          { IO.delete(dir); IO.createDirectory(dir) }
+          Clean.deleteContents(tempDirectory, _ => false)
       },
       useSuperShell :== sbt.internal.TaskProgress.isEnabled,
       progressReports := { (s: State) =>
