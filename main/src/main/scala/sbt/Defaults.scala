@@ -646,7 +646,7 @@ object Defaults extends BuildCommon {
         )
         .getOrElse(watchTriggeredMessage.value)
       val logger = watchLogger.value
-      val repo = FileManagement.repo.value
+      val repo = FileManagement.toMonitoringRepository(FileManagement.repo.value)
       globs.foreach(repo.register)
       val monitor = FileManagement.monitor(repo, watchAntiEntropy.value, logger)
       WatchConfig.default(
