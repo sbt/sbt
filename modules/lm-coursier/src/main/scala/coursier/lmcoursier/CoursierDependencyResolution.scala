@@ -170,7 +170,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     def artifactsParams(resolutions: Map[Set[Configuration], Resolution]) =
       ArtifactsParams(
         classifiers = classifiers,
-        res = resolutions.values.toSeq,
+        resolutions = resolutions.values.toSeq,
         includeSignatures = false,
         logger = logger,
         projectName = projectName,

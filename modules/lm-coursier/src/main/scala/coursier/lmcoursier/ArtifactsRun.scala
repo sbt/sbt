@@ -18,7 +18,7 @@ object ArtifactsRun {
     log: Logger
   ): Either[ResolutionError.UnknownDownloadException, Map[Artifact, Either[FileError, File]]] = {
 
-    val allArtifacts0 = params.res.flatMap(_.dependencyArtifacts(params.classifiers)).map(_._3)
+    val allArtifacts0 = params.resolutions.flatMap(_.dependencyArtifacts(params.classifiers)).map(_._3)
 
     val allArtifacts =
       if (params.includeSignatures)

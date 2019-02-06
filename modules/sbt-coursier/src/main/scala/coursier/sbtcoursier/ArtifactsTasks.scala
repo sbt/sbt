@@ -55,7 +55,7 @@ object ArtifactsTasks {
 
       val params = ArtifactsParams(
         classifiers = classifiers,
-        res = res,
+        resolutions = res,
         includeSignatures = includeSignatures,
         logger = createLogger.create(),
         projectName = projectName,

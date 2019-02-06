@@ -6,7 +6,7 @@ import coursier.params.CacheParams
 
 final case class ArtifactsParams(
   classifiers: Option[Seq[Classifier]],
-  res: Seq[Resolution],
+  resolutions: Seq[Resolution],
   includeSignatures: Boolean,
   logger: CacheLogger,
   projectName: String,
