@@ -11,7 +11,7 @@ object UpdateRun {
   // Move back to coursier.util (in core module) after 1.0?
   private def allDependenciesByConfig(
     res: Map[Configuration, Resolution],
-    depsByConfig: Map[Configuration, Set[Dependency]],
+    depsByConfig: Map[Configuration, Seq[Dependency]],
     configs: Map[Configuration, Set[Configuration]]
   ): Map[Configuration, Set[Dependency]] = {
 
@@ -35,7 +35,7 @@ object UpdateRun {
   // Move back to coursier.util (in core module) after 1.0?
   private def dependenciesWithConfig(
     res: Map[Configuration, Resolution],
-    depsByConfig: Map[Configuration, Set[Dependency]],
+    depsByConfig: Map[Configuration, Seq[Dependency]],
     configs: Map[Configuration, Set[Configuration]]
   ): Set[Dependency] =
     allDependenciesByConfig(res, depsByConfig, configs)
@@ -74,7 +74,7 @@ object UpdateRun {
     if (verbosityLevel >= 2) {
       val finalDeps = dependenciesWithConfig(
         configResolutions,
-        depsByConfig.map { case (k, l) => k -> l.toSet },
+        depsByConfig,
         params.configs
       )
 

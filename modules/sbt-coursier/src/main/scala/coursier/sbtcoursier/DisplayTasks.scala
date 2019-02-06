@@ -67,7 +67,7 @@ object DisplayTasks {
           (dep.module.organization, dep.module.name, dep.version)
         }
 
-        val subRes = res.subset(dependencies0.toSet)
+        val subRes = res.subset(dependencies0)
 
         ResolutionResult(subGraphConfigs, subRes, dependencies0)
       }
@@ -87,8 +87,8 @@ object DisplayTasks {
       println(
         s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
           Print.dependencyTree(
-            dependencies,
             resolution,
+            dependencies,
             printExclusions = true,
             inverse,
             colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
@@ -114,8 +114,13 @@ object DisplayTasks {
     for (ResolutionResult(subGraphConfigs, resolution, _) <- resolutions) {
       val roots: Seq[Dependency] = resolution.transitiveDependencies.filter(f => f.module == module)
       val strToPrint = s"$projectName (configurations ${subGraphConfigs.toVector.sorted.map(_.value).mkString(", ")})" + "\n" +
-        Print.reverseTree(roots, resolution, withExclusions = true)
-          .render(_.repr(Colors.get(!sys.props.get("sbt.log.noformat").toSeq.contains("true"))))
+        Print.dependencyTree(
+          resolution,
+          roots,
+          printExclusions = true,
+          reverse = true,
+          colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
+        )
       println(strToPrint)
       result.append(strToPrint)
       result.append("\n")

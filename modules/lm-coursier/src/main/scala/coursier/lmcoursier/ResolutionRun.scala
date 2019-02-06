@@ -3,7 +3,7 @@ package coursier.lmcoursier
 import java.util.concurrent.ExecutorService
 
 import coursier.cache.CacheLogger
-import coursier.{Cache, Fetch, Resolution}
+import coursier.{Cache, Resolution}
 import coursier.core._
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
@@ -32,12 +32,11 @@ object ResolutionRun {
       pool = Schedulable.fixedThreadPool(params.parallelDownloads)
       resLogger = params.createLogger()
 
-      val fetch = Fetch.from(
+      val fetchs = Cache.fetchs[Task](params.cache, params.cachePolicies, checksums = params.checksums, logger = Some(resLogger), pool = pool, ttl = params.ttl)
+
+      val fetch = ResolutionProcess.fetch(
         params.repositories,
-        Cache.fetch[Task](params.cache, params.cachePolicies.head, checksums = params.checksums, logger = Some(resLogger), pool = pool, ttl = params.ttl),
-        params.cachePolicies.tail.map(p =>
-          Cache.fetch[Task](params.cache, p, checksums = params.checksums, logger = Some(resLogger), pool = pool, ttl = params.ttl)
-        ): _*
+        fetchs.head, fetchs.tail: _*
       )
 
       def depsRepr(deps: Seq[(Configuration, Dependency)]) =

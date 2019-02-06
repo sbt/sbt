@@ -43,19 +43,15 @@ object ArtifactsRun {
         artifactsLogger = params.createLogger()
 
         val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
-          def f(p: CachePolicy) =
-            Cache.file[Task](
-              a,
-              params.cache,
-              p,
-              checksums = params.artifactsChecksums,
-              logger = Some(artifactsLogger),
-              pool = pool,
-              ttl = params.ttl
-            )
-
-          params.cachePolicies.tail
-            .foldLeft(f(params.cachePolicies.head))(_ orElse f(_))
+          Cache.file[Task](
+            a,
+            params.cache,
+            params.cachePolicies,
+            checksums = params.artifactsChecksums,
+            logger = Some(artifactsLogger),
+            pool = pool,
+            ttl = params.ttl
+          )
             .run
             .map((a, _))
         }

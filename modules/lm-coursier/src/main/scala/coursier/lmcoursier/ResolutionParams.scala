@@ -76,8 +76,7 @@ final case class ResolutionParams(
       .collect {
         case (config, dep) if configs(config) =>
           dep
-      }
-      .toSet,
+      },
     filter = noOptionalFilter,
     userActivations =
       if (userEnabledProfiles.isEmpty)

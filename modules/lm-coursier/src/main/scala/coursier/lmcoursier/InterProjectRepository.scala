@@ -1,6 +1,5 @@
 package coursier.lmcoursier
 
-import coursier.Fetch
 import coursier.core._
 import coursier.util.{EitherT, Monad}
 
@@ -13,7 +12,7 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
   def find[F[_]](
     module: Module,
     version: String,
-    fetch: Fetch.Content[F]
+    fetch: Repository.Fetch[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, (Artifact.Source, Project)] = {
