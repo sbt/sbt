@@ -77,7 +77,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val verbosityLevel = 0
 
     val ttl = CacheDefaults.ttl
-    val createLogger = conf.createLogger.map(_.create).getOrElse { () =>
+    val logger = conf.createLogger.map(_.create()).getOrElse {
       new TermDisplay(new OutputStreamWriter(System.err), fallbackMode = true)
     }
     val cache = conf.cache.getOrElse(CacheDefaults.location)
@@ -152,7 +152,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       typelevel = typelevel,
       sbtClassifiers = false,
       projectName = projectName,
-      createLogger = createLogger,
+      logger = logger,
       cacheParams = coursier.params.CacheParams(
         cacheLocation = cache,
         cachePolicies = cachePolicies,
@@ -172,7 +172,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         classifiers = classifiers,
         res = resolutions.values.toSeq,
         includeSignatures = false,
-        createLogger = createLogger,
+        logger = logger,
         projectName = projectName,
         sbtClassifiers = false,
         cacheParams = CacheParams(

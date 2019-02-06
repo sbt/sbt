@@ -8,7 +8,7 @@ final case class ArtifactsParams(
   classifiers: Option[Seq[Classifier]],
   res: Seq[Resolution],
   includeSignatures: Boolean,
-  createLogger: () => CacheLogger,
+  logger: CacheLogger,
   projectName: String,
   sbtClassifiers: Boolean,
   cacheParams: CacheParams

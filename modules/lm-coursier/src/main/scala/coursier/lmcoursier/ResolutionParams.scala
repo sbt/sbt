@@ -23,7 +23,7 @@ final case class ResolutionParams(
   typelevel: Boolean,
   sbtClassifiers: Boolean,
   projectName: String,
-  createLogger: () => CacheLogger,
+  logger: CacheLogger,
   cacheParams: coursier.params.CacheParams,
   params: coursier.params.ResolutionParams
 ) {

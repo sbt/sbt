@@ -40,7 +40,6 @@ object ArtifactsRun {
 
       val artifactFilesOrErrors = try {
         pool = Schedulable.fixedThreadPool(params.cacheParams.parallel)
-        artifactsLogger = params.createLogger()
 
         val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
           Cache.file[Task](
@@ -48,7 +47,7 @@ object ArtifactsRun {
             params.cacheParams.cacheLocation,
             params.cacheParams.cachePolicies,
             checksums = params.cacheParams.checksum,
-            logger = Some(artifactsLogger),
+            logger = Some(params.logger),
             pool = pool,
             ttl = params.cacheParams.ttl
           )
@@ -66,6 +65,7 @@ object ArtifactsRun {
         if (verbosityLevel >= 2)
           log.info(artifactInitialMessage)
 
+        artifactsLogger = params.logger
         artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
 
         Task.gather.gather(artifactFileOrErrorTasks).attempt.unsafeRun()(ExecutionContext.fromExecutorService(pool)) match {

@@ -134,7 +134,7 @@ object ResolutionTasks {
           typelevel = typelevel,
           sbtClassifiers = sbtClassifiers,
           projectName = projectName,
-          createLogger = createLogger.create,
+          logger = createLogger.create(),
           cacheParams = coursier.params.CacheParams(
             cacheLocation = cache,
             cachePolicies = cachePolicies,

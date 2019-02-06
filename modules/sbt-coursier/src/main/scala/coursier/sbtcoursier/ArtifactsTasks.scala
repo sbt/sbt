@@ -57,7 +57,7 @@ object ArtifactsTasks {
         classifiers = classifiers,
         res = res,
         includeSignatures = includeSignatures,
-        createLogger = createLogger.create,
+        logger = createLogger.create(),
         projectName = projectName,
         sbtClassifiers = sbtClassifiers,
         cacheParams = CacheParams(
