@@ -5,6 +5,7 @@ import java.io.File
 import coursier.{Artifact, FileError}
 import coursier.core._
 import coursier.lmcoursier._
+import coursier.params.CacheParams
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierCreateLogger}
 import sbt.Def
@@ -53,17 +54,19 @@ object ArtifactsTasks {
       val res = resTask.value
 
       val params = ArtifactsParams(
-        classifiers,
-        res,
-        includeSignatures,
-        parallelDownloads,
-        createLogger.create,
-        cache,
-        artifactsChecksums,
-        ttl,
-        cachePolicies,
-        projectName,
-        sbtClassifiers
+        classifiers = classifiers,
+        res = res,
+        includeSignatures = includeSignatures,
+        createLogger = createLogger.create,
+        projectName = projectName,
+        sbtClassifiers = sbtClassifiers,
+        cacheParams = CacheParams(
+          parallel = parallelDownloads,
+          cacheLocation = cache,
+          checksum = artifactsChecksums,
+          ttl = ttl,
+          cachePolicies = cachePolicies
+        )
       )
 
       val resOrError = ArtifactsRun.artifacts(

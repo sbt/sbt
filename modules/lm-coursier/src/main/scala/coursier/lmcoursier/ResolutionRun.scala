@@ -29,10 +29,10 @@ object ResolutionRun {
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
     val resOrError: Either[ResolutionError, Resolution] = try {
-      pool = Schedulable.fixedThreadPool(params.parallelDownloads)
+      pool = Schedulable.fixedThreadPool(params.cacheParams.parallel)
       resLogger = params.createLogger()
 
-      val fetchs = Cache.fetchs[Task](params.cache, params.cachePolicies, checksums = params.checksums, logger = Some(resLogger), pool = pool, ttl = params.ttl)
+      val fetchs = Cache.fetchs[Task](params.cacheParams.cacheLocation, params.cacheParams.cachePolicies, checksums = params.cacheParams.checksum, logger = Some(resLogger), pool = pool, ttl = params.cacheParams.ttl)
 
       val fetch = ResolutionProcess.fetch(
         params.repositories,
@@ -84,7 +84,7 @@ object ResolutionRun {
 
       startRes
         .process
-        .run(fetch, params.maxIterations)
+        .run(fetch, params.params.maxIterations)
         .attempt
         .unsafeRun()(ExecutionContext.fromExecutorService(pool))
         .left

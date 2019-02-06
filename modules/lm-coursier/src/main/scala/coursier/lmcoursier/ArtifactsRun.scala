@@ -39,18 +39,18 @@ object ArtifactsRun {
       val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
       val artifactFilesOrErrors = try {
-        pool = Schedulable.fixedThreadPool(params.parallelDownloads)
+        pool = Schedulable.fixedThreadPool(params.cacheParams.parallel)
         artifactsLogger = params.createLogger()
 
         val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
           Cache.file[Task](
             a,
-            params.cache,
-            params.cachePolicies,
-            checksums = params.artifactsChecksums,
+            params.cacheParams.cacheLocation,
+            params.cacheParams.cachePolicies,
+            checksums = params.cacheParams.checksum,
             logger = Some(artifactsLogger),
             pool = pool,
-            ttl = params.ttl
+            ttl = params.cacheParams.ttl
           )
             .run
             .map((a, _))

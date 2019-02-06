@@ -123,28 +123,30 @@ object ResolutionTasks {
 
       val resOrError = ResolutionRun.resolutions(
         ResolutionParams(
-          currentProject.dependencies,
-          fallbackDependencies,
-          configGraphs,
-          autoScalaLib,
-          mainRepositories,
-          parentProjectCache,
-          interProjectDependencies,
-          internalRepositories,
-          userEnabledProfiles,
-          userForceVersions,
-          typelevel,
-          so,
-          sv,
-          sbtClassifiers,
-          parallelDownloads,
-          projectName,
-          maxIterations,
-          createLogger.create,
-          cache,
-          cachePolicies,
-          ttl,
-          checksums
+          dependencies = currentProject.dependencies,
+          fallbackDependencies = fallbackDependencies,
+          configGraphs = configGraphs,
+          autoScalaLibOpt = if (autoScalaLib) Some((so, sv)) else None,
+          mainRepositories = mainRepositories,
+          parentProjectCache = parentProjectCache,
+          interProjectDependencies = interProjectDependencies,
+          internalRepositories = internalRepositories,
+          typelevel = typelevel,
+          sbtClassifiers = sbtClassifiers,
+          projectName = projectName,
+          createLogger = createLogger.create,
+          cacheParams = coursier.params.CacheParams(
+            cacheLocation = cache,
+            cachePolicies = cachePolicies,
+            ttl = ttl,
+            checksum = checksums,
+            parallel = parallelDownloads
+          ),
+          params = coursier.params.ResolutionParams(
+            maxIterations = maxIterations,
+            profiles = userEnabledProfiles,
+            forceVersion = userForceVersions
+          )
         ),
         verbosityLevel,
         log
