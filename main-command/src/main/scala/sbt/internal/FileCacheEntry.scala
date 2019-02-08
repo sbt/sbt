@@ -36,6 +36,9 @@ object FileCacheEntry {
     }
   }
 
+  private implicit class Equiv(val xstamp: XStamp) extends AnyVal {
+    def equiv(that: XStamp): Boolean = Stamp.equivStamp.equiv(xstamp, that)
+  }
   private case class DelegateFileCacheEntry(private val stamp: XStamp)
       extends FileCacheEntry
       with XStamp {
@@ -52,9 +55,9 @@ object FileCacheEntry {
       case _                => None
     }
     override def equals(o: Any): Boolean = o match {
-      case that: DelegateFileCacheEntry => this.stamp == that.stamp
-      case that: XStamp                 => this.stamp == that
-      case _                            => false
+      case DelegateFileCacheEntry(thatStamp) => this.stamp equiv thatStamp
+      case xStamp: XStamp                    => this.stamp equiv xStamp
+      case _                                 => false
     }
     override def hashCode: Int = stamp.hashCode
     override def toString: String = s"FileCacheEntry(hash = $hash, lastModified = $lastModified)"
