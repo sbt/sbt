@@ -737,10 +737,7 @@ object Defaults extends BuildCommon {
     val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val binVersion = scalaBinaryVersion.value
-    val compilerJar =
-      if (ScalaInstance.isDotty(scalaVersion.value))
-        file(ScalaArtifacts.dottyID(binVersion))
-      else file(ScalaArtifacts.CompilerID)
+    val compilerJar = file(ScalaArtifacts.CompilerID)
     new ScalaInstance(
       scalaVersion.value,
       makeClassLoader(state.value)(allJars.toList),
