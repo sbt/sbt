@@ -1,41 +1,31 @@
 package coursier.lmcoursier
 
 import java.io.File
-import java.net.URL
 
 import coursier.cache.CacheLogger
-import coursier.{Cache, CachePolicy, FallbackDependenciesRepository, ProjectCache, Resolution, moduleNameString}
+import coursier.{FallbackDependenciesRepository, ProjectCache, Resolution, moduleNameString}
 import coursier.core._
 import coursier.extra.Typelevel
 import coursier.ivy.PropertiesPattern
 import sbt.librarymanagement.{Resolver, URLRepository}
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.duration.Duration
 
 final case class ResolutionParams(
   dependencies: Seq[(Configuration, Dependency)],
   fallbackDependencies: Seq[FallbackDependency],
   configGraphs: Seq[Set[Configuration]],
-  autoScalaLib: Boolean,
+  autoScalaLibOpt: Option[(Organization, String)],
   mainRepositories: Seq[Repository],
   parentProjectCache: ProjectCache,
   interProjectDependencies: Seq[Project],
   internalRepositories: Seq[Repository],
-  userEnabledProfiles: Set[String],
-  userForceVersions: Map[Module, String],
   typelevel: Boolean,
-  so: Organization,
-  sv: String,
   sbtClassifiers: Boolean,
-  parallelDownloads: Int,
   projectName: String,
-  maxIterations: Int,
-  createLogger: () => CacheLogger,
-  cache: File,
-  cachePolicies: Seq[CachePolicy],
-  ttl: Option[Duration],
-  checksums: Seq[Option[String]]
+  logger: CacheLogger,
+  cacheParams: coursier.params.CacheParams,
+  params: coursier.params.ResolutionParams
 ) {
 
   val fallbackDependenciesRepositories =
@@ -76,18 +66,20 @@ final case class ResolutionParams(
       .collect {
         case (config, dep) if configs(config) =>
           dep
-      }
-      .toSet,
+      },
     filter = noOptionalFilter,
     userActivations =
-      if (userEnabledProfiles.isEmpty)
+      if (params.profiles.isEmpty)
         None
       else
-        Some(userEnabledProfiles.iterator.map(_ -> true).toMap),
+        Some(params.profiles.iterator.map(_ -> true).toMap),
     forceVersions =
       // order matters here
-      userForceVersions ++
-        (if (autoScalaLib && (configs(Configuration.compile) || configs(Configuration("scala-tool")))) forcedScalaModules(so, sv) else Map()) ++
+      params.forceVersion ++
+        autoScalaLibOpt
+          .filter(_ => configs(Configuration.compile) || configs(Configuration("scala-tool")))
+          .map { case (so, sv) => forcedScalaModules(so, sv) }
+          .getOrElse(Map.empty) ++
         interProjectDependencies.map(_.moduleVersion),
     projectCache = parentProjectCache,
     mapDependencies = if (typelevel && (configs(Configuration.compile) || configs(Configuration("scala-tool")))) typelevelOrgSwap else None
@@ -98,7 +90,7 @@ final case class ResolutionParams(
   lazy val resolutionKey = SbtCoursierCache.ResolutionKey(
     dependencies,
     repositories,
-    userEnabledProfiles,
+    params.profiles,
     allStartRes,
     sbtClassifiers
   )

@@ -218,7 +218,7 @@ object ToSbt {
 
     val configReports = configs.map {
       case (config, extends0) =>
-        val configDeps = extends0.flatMap(configDependencies.getOrElse(_, Nil))
+        val configDeps = extends0.toSeq.sortBy(_.value).flatMap(configDependencies.getOrElse(_, Nil))
         val subRes = resolutions(config).subset(configDeps)
 
         val reports = ToSbt.moduleReports(

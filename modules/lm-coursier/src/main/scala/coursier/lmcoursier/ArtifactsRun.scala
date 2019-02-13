@@ -18,7 +18,7 @@ object ArtifactsRun {
     log: Logger
   ): Either[ResolutionError.UnknownDownloadException, Map[Artifact, Either[FileError, File]]] = {
 
-    val allArtifacts0 = params.res.flatMap(_.dependencyArtifacts(params.classifiers)).map(_._3)
+    val allArtifacts0 = params.resolutions.flatMap(_.dependencyArtifacts(params.classifiers)).map(_._3)
 
     val allArtifacts =
       if (params.includeSignatures)
@@ -39,23 +39,18 @@ object ArtifactsRun {
       val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
       val artifactFilesOrErrors = try {
-        pool = Schedulable.fixedThreadPool(params.parallelDownloads)
-        artifactsLogger = params.createLogger()
+        pool = Schedulable.fixedThreadPool(params.cacheParams.parallel)
 
         val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
-          def f(p: CachePolicy) =
-            Cache.file[Task](
-              a,
-              params.cache,
-              p,
-              checksums = params.artifactsChecksums,
-              logger = Some(artifactsLogger),
-              pool = pool,
-              ttl = params.ttl
-            )
-
-          params.cachePolicies.tail
-            .foldLeft(f(params.cachePolicies.head))(_ orElse f(_))
+          Cache.file[Task](
+            a,
+            params.cacheParams.cacheLocation,
+            params.cacheParams.cachePolicies,
+            checksums = params.cacheParams.checksum,
+            logger = Some(params.logger),
+            pool = pool,
+            ttl = params.cacheParams.ttl
+          )
             .run
             .map((a, _))
         }
@@ -70,6 +65,7 @@ object ArtifactsRun {
         if (verbosityLevel >= 2)
           log.info(artifactInitialMessage)
 
+        artifactsLogger = params.logger
         artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
 
         Task.gather.gather(artifactFileOrErrorTasks).attempt.unsafeRun()(ExecutionContext.fromExecutorService(pool)) match {

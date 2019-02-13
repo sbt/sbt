@@ -2,12 +2,13 @@ package coursier.lmcoursier
 
 import java.io.{File, OutputStreamWriter}
 
-import _root_.coursier.{Artifact, Cache, CachePolicy, FileError, Organization, Resolution, TermDisplay, organizationString}
+import _root_.coursier.{Artifact, CachePolicy, FileError, Organization, Resolution, TermDisplay, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
 import _root_.coursier.extra.Typelevel
 import _root_.coursier.ivy.IvyRepository
 import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
 import coursier.cache.CacheDefaults
+import coursier.params.CacheParams
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
 import sbt.util.Logger
@@ -76,7 +77,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val verbosityLevel = 0
 
     val ttl = CacheDefaults.ttl
-    val createLogger = conf.createLogger.map(_.create).getOrElse { () =>
+    val logger = conf.createLogger.map(_.create()).getOrElse {
       new TermDisplay(new OutputStreamWriter(System.err), fallbackMode = true)
     }
     val cache = conf.cache.getOrElse(CacheDefaults.location)
@@ -143,40 +144,44 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
       configGraphs = configGraphs,
-      autoScalaLib = conf.autoScalaLibrary,
+      autoScalaLibOpt = if (conf.autoScalaLibrary) Some((so, sv)) else None,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
       interProjectDependencies = conf.interProjectDependencies,
       internalRepositories = internalRepositories,
-      userEnabledProfiles = conf.mavenProfiles.toSet,
-      userForceVersions = Map.empty,
       typelevel = typelevel,
-      so = so,
-      sv = sv,
       sbtClassifiers = false,
-      parallelDownloads = conf.parallelDownloads,
       projectName = projectName,
-      maxIterations = conf.maxIterations,
-      createLogger = createLogger,
-      cache = cache,
-      cachePolicies = cachePolicies,
-      ttl = ttl,
-      checksums = checksums
+      logger = logger,
+      cacheParams = coursier.params.CacheParams(
+        cacheLocation = cache,
+        cachePolicies = cachePolicies,
+        ttl = ttl,
+        checksum = checksums,
+        parallel = conf.parallelDownloads
+      ),
+      params = coursier.params.ResolutionParams(
+        maxIterations = conf.maxIterations,
+        profiles = conf.mavenProfiles.toSet,
+        forceVersion = Map.empty
+      )
     )
 
     def artifactsParams(resolutions: Map[Set[Configuration], Resolution]) =
       ArtifactsParams(
         classifiers = classifiers,
-        res = resolutions.values.toSeq,
+        resolutions = resolutions.values.toSeq,
         includeSignatures = false,
-        parallelDownloads = conf.parallelDownloads,
-        createLogger = createLogger,
-        cache = cache,
-        artifactsChecksums = checksums,
-        ttl = ttl,
-        cachePolicies = cachePolicies,
+        logger = logger,
         projectName = projectName,
-        sbtClassifiers = false
+        sbtClassifiers = false,
+        cacheParams = CacheParams(
+          parallel = conf.parallelDownloads,
+          cacheLocation = cache,
+          checksum = checksums,
+          ttl = ttl,
+          cachePolicies = cachePolicies
+        )
       )
 
     val sbtBootJarOverrides = SbtBootJars(

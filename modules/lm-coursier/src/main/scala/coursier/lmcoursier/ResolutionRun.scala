@@ -3,7 +3,7 @@ package coursier.lmcoursier
 import java.util.concurrent.ExecutorService
 
 import coursier.cache.CacheLogger
-import coursier.{Cache, Fetch, Resolution}
+import coursier.{Cache, Resolution}
 import coursier.core._
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
@@ -29,15 +29,14 @@ object ResolutionRun {
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
     val resOrError: Either[ResolutionError, Resolution] = try {
-      pool = Schedulable.fixedThreadPool(params.parallelDownloads)
-      resLogger = params.createLogger()
+      pool = Schedulable.fixedThreadPool(params.cacheParams.parallel)
+      resLogger = params.logger
 
-      val fetch = Fetch.from(
+      val fetchs = Cache.fetchs[Task](params.cacheParams.cacheLocation, params.cacheParams.cachePolicies, checksums = params.cacheParams.checksum, logger = Some(params.logger), pool = pool, ttl = params.cacheParams.ttl)
+
+      val fetch = ResolutionProcess.fetch(
         params.repositories,
-        Cache.fetch[Task](params.cache, params.cachePolicies.head, checksums = params.checksums, logger = Some(resLogger), pool = pool, ttl = params.ttl),
-        params.cachePolicies.tail.map(p =>
-          Cache.fetch[Task](params.cache, p, checksums = params.checksums, logger = Some(resLogger), pool = pool, ttl = params.ttl)
-        ): _*
+        fetchs.head, fetchs.tail: _*
       )
 
       def depsRepr(deps: Seq[(Configuration, Dependency)]) =
@@ -81,11 +80,12 @@ object ResolutionRun {
       if (verbosityLevel >= 2)
         log.info(initialMessage)
 
+      resLogger = params.logger
       resLogger.init(if (printOptionalMessage) log.info(initialMessage))
 
       startRes
         .process
-        .run(fetch, params.maxIterations)
+        .run(fetch, params.params.maxIterations)
         .attempt
         .unsafeRun()(ExecutionContext.fromExecutorService(pool))
         .left

@@ -65,16 +65,16 @@ object Shading {
 
     def configDependencies(config: Configuration) = {
 
-      def minDependencies(dependencies: Set[Dependency]): Set[Dependency] =
+      def minDependencies(dependencies: Seq[Dependency]): Seq[Dependency] =
         Orders.minDependencies(
-          dependencies,
+          dependencies.toSet,
           dep =>
             res
               .projectCache
               .get(dep)
               .map(_._2.configurations)
               .getOrElse(Map.empty)
-        )
+        ).toSeq // sort so that this is deterministic?
 
       val includedConfigs = configs.getOrElse(config, Set.empty) + config
 
@@ -85,7 +85,6 @@ object Shading {
             case (cfg, dep) if includedConfigs(cfg) =>
               dep
           }
-          .toSet
       )
     }
 
@@ -105,7 +104,7 @@ object Shading {
     val compileDeps = configDependencies(baseConfig)
     val shadedDeps = configDependencies(shadedConf)
 
-    val compileOnlyDeps = compileDeps.filterNot(shadedDeps)
+    val compileOnlyDeps = compileDeps.filterNot(shadedDeps.toSet)
 
     log.debug(
       s"Found ${compileDeps.size} dependencies in $baseConfig\n" +
@@ -120,7 +119,7 @@ object Shading {
         shadedDeps.toVector.map("  " + _).sorted.mkString("\n")
     )
 
-    def files(deps: Set[Dependency]) = res
+    def files(deps: Seq[Dependency]) = res
       .subset(deps)
       .dependencies
       .toSeq
