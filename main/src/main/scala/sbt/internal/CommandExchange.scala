@@ -11,32 +11,36 @@ package internal
 import java.io.IOException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic._
+
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.{
   autoStartServer,
-  serverHost,
-  serverPort,
+  fullServerHandlers,
+  logLevel,
   serverAuthentication,
   serverConnectionType,
+  serverHost,
   serverLogLevel,
-  fullServerHandlers,
-  logLevel
+  serverPort
 }
 import java.net.Socket
+
+import sbt.Watched.NullLogger
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
+
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.util.{ Success, Failure, Try }
+import scala.concurrent.duration._
+import scala.util.{ Failure, Success, Try }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.internal.server._
 import sbt.internal.langserver.{ LogMessageParams, MessageType }
-import sbt.internal.util.{ StringEvent, ObjectEvent, MainAppender }
+import sbt.internal.util.{ MainAppender, ObjectEvent, StringEvent }
 import sbt.internal.util.codec.JValueFormats
 import sbt.protocol.{ EventMessage, ExecStatusEvent }
-import sbt.util.{ Level, Logger, LogExchange }
+import sbt.util.{ Level, LogExchange, Logger }
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -59,22 +63,34 @@ private[sbt] final class CommandExchange {
   def channels: List[CommandChannel] = channelBuffer.toList
   def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized(channelBuffer.append(c))
 
+  def blockUntilNextExec: Exec = blockUntilNextExec(Duration.Inf, NullLogger)
   // periodically move all messages from all the channels
-  @tailrec def blockUntilNextExec: Exec = {
-    @tailrec def slurpMessages(): Unit =
-      channels.foldLeft(Option.empty[Exec]) { _ orElse _.poll } match {
-        case None => ()
-        case Some(x) =>
-          commandQueue.add(x)
-          slurpMessages
+  private[sbt] def blockUntilNextExec(interval: Duration, logger: Logger): Exec = {
+    @tailrec def impl(deadline: Option[Deadline]): Exec = {
+      @tailrec def slurpMessages(): Unit =
+        channels.foldLeft(Option.empty[Exec]) { _ orElse _.poll } match {
+          case None => ()
+          case Some(x) =>
+            commandQueue.add(x)
+            slurpMessages
+        }
+      slurpMessages()
+      Option(commandQueue.poll) match {
+        case Some(x) => x
+        case None =>
+          Thread.sleep(50)
+          val newDeadline = if (deadline.fold(false)(_.isOverdue())) {
+            GCUtil.forceGcWithInterval(interval, logger)
+            None
+          } else deadline
+          impl(newDeadline)
       }
-    slurpMessages()
-    Option(commandQueue.poll) match {
-      case Some(x) => x
-      case None =>
-        Thread.sleep(50)
-        blockUntilNextExec
     }
+    // Do not manually run GC until the user has been idling for at least the min gc interval.
+    impl(interval match {
+      case d: FiniteDuration => Some(d.fromNow)
+      case _                 => None
+    })
   }
 
   def run(s: State): State = {
