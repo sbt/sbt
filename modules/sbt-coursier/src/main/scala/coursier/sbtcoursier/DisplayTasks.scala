@@ -4,7 +4,6 @@ import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
-import coursier.util.Print.Colors
 import coursier.util.{Parse, Print}
 import sbt.Def
 import sbt.Keys._
@@ -112,7 +111,11 @@ object DisplayTasks {
     val resolutions = coursierResolutionTask(sbtClassifiers, ignoreArtifactErrors).value
     val result = new mutable.StringBuilder
     for (ResolutionResult(subGraphConfigs, resolution, _) <- resolutions) {
-      val roots: Seq[Dependency] = resolution.transitiveDependencies.filter(f => f.module == module)
+      val roots = resolution
+        .minDependencies
+        .filter(f => f.module == module)
+        .toVector
+        .sortBy(_.toString) // elements already have the same module, there's not much left for sorting…
       val strToPrint = s"$projectName (configurations ${subGraphConfigs.toVector.sorted.map(_.value).mkString(", ")})" + "\n" +
         Print.dependencyTree(
           resolution,

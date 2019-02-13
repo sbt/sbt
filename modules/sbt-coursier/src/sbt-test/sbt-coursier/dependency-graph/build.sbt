@@ -1,6 +1,9 @@
 scalaVersion := "2.11.8"
 
-libraryDependencies += "org.apache.zookeeper" % "zookeeper" % "3.5.0-alpha"
+libraryDependencies += {
+  sys.props("sbt.log.noformat") = "true" // disables colors in coursierWhatDependsOn output
+  "org.apache.zookeeper" % "zookeeper" % "3.5.0-alpha"
+}
 
 lazy val whatDependsOnCheck = TaskKey[Unit]("whatDependsOnCheck")
 
