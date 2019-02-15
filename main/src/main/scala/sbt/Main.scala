@@ -884,7 +884,11 @@ object BuiltinCommands {
     val exchange = StandardMain.exchange
     val s1 = exchange run s0
     exchange publishEventMessage ConsolePromptEvent(s0)
-    val exec: Exec = exchange.blockUntilNextExec
+    val minGCInterval = Project
+      .extract(s1)
+      .getOpt(Keys.minForcegcInterval)
+      .getOrElse(GCUtil.defaultMinForcegcInterval)
+    val exec: Exec = exchange.blockUntilNextExec(minGCInterval, s1.globalLogging.full)
     val newState = s1
       .copy(
         onFailure = Some(Exec(Shell, None)),
