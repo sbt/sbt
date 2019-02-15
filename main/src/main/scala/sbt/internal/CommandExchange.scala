@@ -72,7 +72,7 @@ private[sbt] final class CommandExchange {
           case None => ()
           case Some(x) =>
             commandQueue.add(x)
-            slurpMessages
+            slurpMessages()
         }
       slurpMessages()
       Option(commandQueue.poll) match {
@@ -99,7 +99,7 @@ private[sbt] final class CommandExchange {
       consoleChannel = Some(console0)
       subscribe(console0)
     }
-    val autoStartServerAttr = (s get autoStartServer) match {
+    val autoStartServerAttr = s get autoStartServer match {
       case Some(bool) => bool
       case None       => true
     }
@@ -277,13 +277,13 @@ private[sbt] final class CommandExchange {
     val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
     def json: JValue = JObject(
       JField("type", JString(event.contentType)),
-      (Vector(JField("message", event.json), JField("level", JString(event.level.toString))) ++
+      Vector(JField("message", event.json), JField("level", JString(event.level.toString))) ++
         (event.channelName.toVector map { channelName =>
           JField("channelName", JString(channelName))
         }) ++
         (event.execId.toVector map { execId =>
           JField("execId", JString(execId))
-        })): _*
+        }): _*
     )
     channels collect {
       case c: ConsoleChannel =>
