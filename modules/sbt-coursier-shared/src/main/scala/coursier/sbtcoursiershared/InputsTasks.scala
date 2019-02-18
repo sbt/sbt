@@ -102,10 +102,17 @@ object InputsTasks {
 
       val projectRefs = Structure.allRecursiveInterDependencies(state, projectRef)
 
-      val t = coursierProject.forAllProjects(state, projectRefs).map(_.values.toVector)
+      val t = coursierProject.forAllProjectsOpt(state, projectRefs)
 
       Def.task {
-        val projects = t.value
+        val projects = t.value.toVector.flatMap {
+          case (ref, None) =>
+            if (ref.build != projectRef.build)
+              state.log.warn(s"Cannot get coursier info for project under ${ref.build}, is sbt-coursier also added to it?")
+            Nil
+          case (_, Some(p)) =>
+            Seq(p)
+        }
         val projectModules = projects.map(_.module).toSet
 
         // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular

@@ -54,5 +54,21 @@ object Structure {
       val tasks = projects.flatMap(p => key.in(p).get(structure(state).data).map(_.map(it => (p, it))))
       std.TaskExtra.joinTasks(tasks).join.map(_.toMap)
     }
+
+    // ^^ things from sbt-structure ^^
+
+    def forAllProjectsOpt(state: State, projects: Seq[ProjectRef]): sbt.Task[Map[ProjectRef, Option[T]]] = {
+      val settings = structure(state).data
+      val tasks = projects.map { p =>
+        val taskOpt = key.in(p).get(settings)
+        taskOpt match {
+          case None =>
+            Def.task(p -> Option.empty[T]).evaluate(settings)
+          case Some(t) =>
+            t.map(p -> Option(_))
+        }
+      }
+      std.TaskExtra.joinTasks(tasks).join.map(_.toMap)
+    }
   }
 }
