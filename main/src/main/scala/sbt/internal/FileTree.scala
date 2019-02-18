@@ -16,9 +16,9 @@ import sbt.io._
 
 import scala.language.experimental.macros
 
-object FileTree {
-  trait Repository extends sbt.internal.Repository[Seq, Glob, Entry[FileCacheEntry]]
-  object Repository {
+private[sbt] object FileTree {
+  private[sbt] trait Repository extends sbt.internal.Repository[Seq, Glob, Entry[FileCacheEntry]]
+  private[sbt] object Repository {
 
     /**
      * Provide a default [[Repository]] that works within a task definition, e.g. Def.task. It's

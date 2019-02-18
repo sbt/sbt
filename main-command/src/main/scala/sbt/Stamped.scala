@@ -29,25 +29,26 @@ private[sbt] trait Stamped {
  * Provides converter functions from TypedPath to [[Stamped]].
  */
 private[sbt] object Stamped {
-  type File = JFile with Stamped with TypedPath
-  def file(typedPath: TypedPath, entry: FileCacheEntry): JFile with Stamped with TypedPath =
+  type File = JFile with Stamped
+  def file(typedPath: TypedPath, entry: FileCacheEntry): JFile with Stamped =
     new StampedFileImpl(typedPath, entry.stamp)
 
   /**
    * Converts a TypedPath instance to a [[Stamped]] by calculating the file hash.
    */
-  val sourceConverter: TypedPath => Stamp = tp => Stamper.forHash(tp.toPath.toFile)
+  private[sbt] val sourceConverter: TypedPath => Stamp = tp => Stamper.forHash(tp.toPath.toFile)
 
   /**
    * Converts a TypedPath instance to a [[Stamped]] using the last modified time.
    */
-  val binaryConverter: TypedPath => Stamp = tp => Stamper.forLastModified(tp.toPath.toFile)
+  private[sbt] val binaryConverter: TypedPath => Stamp = tp =>
+    Stamper.forLastModified(tp.toPath.toFile)
 
   /**
    * A combined convert that converts TypedPath instances representing *.jar and *.class files
    * using the last modified time and all other files using the file hash.
    */
-  val converter: TypedPath => Stamp = (_: TypedPath) match {
+  private[sbt] val converter: TypedPath => Stamp = (_: TypedPath) match {
     case typedPath if !typedPath.exists     => EmptyStamp
     case typedPath if typedPath.isDirectory => binaryConverter(typedPath)
     case typedPath =>
@@ -61,7 +62,7 @@ private[sbt] object Stamped {
   /**
    * Adds a default ordering that just delegates to the java.io.File.compareTo method.
    */
-  implicit case object ordering extends Ordering[Stamped.File] {
+  private[sbt] implicit case object ordering extends Ordering[Stamped.File] {
     override def compare(left: Stamped.File, right: Stamped.File): Int = left.compareTo(right)
   }
 
