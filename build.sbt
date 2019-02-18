@@ -648,7 +648,7 @@ lazy val sbtProj = (project in file("sbt"))
     Test / run / outputStrategy := Some(StdoutOutput),
     Test / run / fork := true,
   )
-  .configure(addSbtCompilerBridge)
+  .configure(addSbtIO, addSbtCompilerBridge)
 
 lazy val sbtBig = (project in file(".big"))
   .dependsOn(sbtProj)
