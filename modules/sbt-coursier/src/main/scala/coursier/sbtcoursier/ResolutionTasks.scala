@@ -78,15 +78,6 @@ object ResolutionTasks {
 
       val typelevel = Organization(scalaOrganization.value) == Typelevel.typelevelOrg
 
-      val globalPluginsRepos =
-        for (p <- ResolutionParams.globalPluginPatterns(sbtBinaryVersion.value))
-          yield IvyRepository.fromPattern(
-            p,
-            withChecksums = false,
-            withSignatures = false,
-            withArtifacts = false
-          )
-
       val interProjectRepo = InterProjectRepository(interProjectDependencies)
 
       val ivyProperties = ResolutionParams.defaultIvyProperties()
@@ -102,8 +93,6 @@ object ResolutionTasks {
       // TODO Warn about possible duplicated modules from source repositories?
 
       val authenticationByHost = authenticationByHostTask.value
-
-      val internalRepositories = globalPluginsRepos :+ interProjectRepo
 
       val parentProjectCache: ProjectCache = coursierParentProjectCache.value
         .get(resolvers)
@@ -130,7 +119,7 @@ object ResolutionTasks {
           mainRepositories = mainRepositories,
           parentProjectCache = parentProjectCache,
           interProjectDependencies = interProjectDependencies,
-          internalRepositories = internalRepositories,
+          internalRepositories = Seq(interProjectRepo),
           typelevel = typelevel,
           sbtClassifiers = sbtClassifiers,
           projectName = projectName,
