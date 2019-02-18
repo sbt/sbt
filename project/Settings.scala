@@ -1,4 +1,6 @@
 
+import java.util.Locale
+
 import sbt._
 import sbt.Keys._
 import sbt.ScriptedPlugin.autoImport.{scriptedBufferLog, scriptedLaunchOpts}
@@ -22,7 +24,16 @@ object Settings {
       "-language:higherKinds",
       "-language:implicitConversions"
     )
-  )
+  ) ++ {
+    val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(Locale.ROOT)
+    if (prop == "0" || prop == "false")
+      Seq(
+        sources in (Compile, doc) := Seq.empty,
+        publishArtifact in (Compile, packageDoc) := false
+      )
+    else
+      Nil
+  }
 
   lazy val plugin =
     shared ++
