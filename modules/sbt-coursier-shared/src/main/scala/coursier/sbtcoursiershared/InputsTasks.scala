@@ -7,6 +7,8 @@ import coursier.sbtcoursiershared.Structure._
 import sbt.Def
 import sbt.Keys._
 
+import scala.collection.JavaConverters._
+
 object InputsTasks {
 
   def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
@@ -31,17 +33,123 @@ object InputsTasks {
       }
     }
 
+  private def moduleFromIvy(id: org.apache.ivy.core.module.id.ModuleRevisionId): Module =
+    Module(
+      Organization(id.getOrganisation),
+      ModuleName(id.getName),
+      id.getExtraAttributes
+        .asScala
+        .map {
+          case (k0, v0) => k0.asInstanceOf[String] -> v0.asInstanceOf[String]
+        }
+        .toMap
+    )
+
+  private def dependencyFromIvy(desc: org.apache.ivy.core.module.descriptor.DependencyDescriptor): Seq[(Configuration, Dependency)] = {
+
+    val id = desc.getDependencyRevisionId
+    val module = moduleFromIvy(id)
+    val exclusions = desc
+      .getAllExcludeRules
+      .map { rule =>
+        // we're ignoring rule.getConfigurations and rule.getMatcher here
+        val modId = rule.getId.getModuleId
+        // we're ignoring modId.getAttributes here
+        (Organization(modId.getOrganisation), ModuleName(modId.getName))
+      }
+      .toSet
+
+    val configurations = desc
+      .getModuleConfigurations
+      .toVector
+      .flatMap(s => coursier.ivy.IvyXml.mappings(s))
+
+    def dependency(conf: Configuration, attr: Attributes) = Dependency(
+      module,
+      id.getRevision,
+      conf,
+      exclusions,
+      attr,
+      optional = false,
+      desc.isTransitive
+    )
+
+    val attributes: Configuration => Attributes = {
+
+      val artifacts = desc.getAllDependencyArtifacts
+
+      val m = artifacts.toVector.flatMap { art =>
+        val attr = Attributes(Type(art.getType), Classifier.empty)
+        art.getConfigurations.map(Configuration(_)).toVector.map { conf =>
+          conf -> attr
+        }
+      }.toMap
+
+      c => m.getOrElse(c, Attributes.empty)
+    }
+
+    configurations.map {
+      case (from, to) =>
+        from -> dependency(to, attributes(to))
+    }
+  }
+
   def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[Project]]] =
     Def.taskDyn {
 
       val state = sbt.Keys.state.value
       val projectRef = sbt.Keys.thisProjectRef.value
 
-      val projects = Structure.allRecursiveInterDependencies(state, projectRef)
+      val projectRefs = Structure.allRecursiveInterDependencies(state, projectRef)
 
-      val t = coursierProject.forAllProjects(state, projects).map(_.values.toVector)
+      val t = coursierProject.forAllProjectsOpt(state, projectRefs)
 
-      Def.task(t.value)
+      Def.task {
+        val projects = t.value.toVector.flatMap {
+          case (ref, None) =>
+            if (ref.build != projectRef.build)
+              state.log.warn(s"Cannot get coursier info for project under ${ref.build}, is sbt-coursier also added to it?")
+            Nil
+          case (_, Some(p)) =>
+            Seq(p)
+        }
+        val projectModules = projects.map(_.module).toSet
+
+        // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
+        val extraProjects = sbt.Keys.projectDescriptors.value
+          .map {
+            case (k, v) =>
+              moduleFromIvy(k) -> v
+          }
+          .filter {
+            case (module, _) =>
+              !projectModules(module)
+          }
+          .toVector
+          .map {
+            case (module, v) =>
+              val deps = v.getDependencies.flatMap(dependencyFromIvy)
+              Project(
+                module,
+                v.getModuleRevisionId.getRevision,
+                deps,
+                Map(),
+                None,
+                Nil,
+                Nil,
+                Nil,
+                None,
+                None,
+                None,
+                relocated = false,
+                None,
+                Nil,
+                Info.empty
+              )
+          }
+
+        projects ++ extraProjects
+      }
     }
 
   def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =

@@ -106,18 +106,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       }
       .map(withAuthenticationByHost(_, conf.authenticationByHost.toMap))
 
-    val globalPluginsRepos =
-      for (p <- ResolutionParams.globalPluginPatterns(sbtBinaryVersion))
-        yield IvyRepository.fromPattern(
-          p,
-          withChecksums = false,
-          withSignatures = false,
-          withArtifacts = false
-        )
-
     val interProjectRepo = InterProjectRepository(conf.interProjectDependencies)
-
-    val internalRepositories = globalPluginsRepos :+ interProjectRepo
 
     val dependencies = module0
       .dependencies
@@ -148,7 +137,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
       interProjectDependencies = conf.interProjectDependencies,
-      internalRepositories = internalRepositories,
+      internalRepositories = Seq(interProjectRepo),
       typelevel = typelevel,
       sbtClassifiers = false,
       projectName = projectName,

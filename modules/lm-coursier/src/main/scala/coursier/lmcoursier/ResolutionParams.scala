@@ -150,26 +150,6 @@ object ResolutionParams {
     }
   }
 
-  def globalPluginPatterns(sbtVersion: String): Seq[coursier.ivy.Pattern] = {
-
-    val defaultRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/$sbtVersion}/plugins/target" +
-      "/resolution-cache/" +
-      "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
-
-    // seems to be required in more recent versions of sbt (since 0.13.16?)
-    val extraRawPattern = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/$sbtVersion}/plugins/target" +
-      "(/scala-[scalaVersion])(/sbt-[sbtVersion])" +
-      "/resolution-cache/" +
-      "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
-
-    val p = exceptionPatternParser()
-
-    Seq(
-      defaultRawPattern,
-      extraRawPattern
-    ).map(p)
-  }
-
   private val slowReposBase = Seq(
     "https://repo.typesafe.com/",
     "https://repo.scala-sbt.org/",

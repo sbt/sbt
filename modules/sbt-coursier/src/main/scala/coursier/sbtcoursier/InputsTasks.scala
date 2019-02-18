@@ -1,7 +1,5 @@
 package coursier.sbtcoursier
 
-import java.net.URL
-
 import coursier.ProjectCache
 import coursier.core._
 import coursier.lmcoursier._
