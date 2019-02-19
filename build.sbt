@@ -116,7 +116,7 @@ lazy val `sbt-shading` = project
       "com.google.code.findbugs" % "jsr305" % "3.0.2",
       "org.ow2.asm" % "asm-commons" % "7.0",
       "org.ow2.asm" % "asm-util" % "7.0",
-      "org.slf4j" % "slf4j-api" % "1.7.25"
+      "org.slf4j" % "slf4j-api" % "1.7.26"
     ),
     scriptedDependencies := {
       scriptedDependencies.value
