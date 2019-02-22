@@ -9,7 +9,8 @@ declare java_cmd=java
 declare java_version
 declare init_sbt_version=_to_be_replaced
 declare sbt_default_mem=1024
-declare default_sbt_opts=""
+declare -r default_sbt_opts=""
+declare -r default_java_opts="-Dfile.encoding=UTF-8"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -422,7 +423,7 @@ Usage: `basename "$0"` [options]
   -java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
-  JAVA_OPTS          environment variable, if unset uses "$java_opts"
+  JAVA_OPTS          environment variable, if unset uses "$default_java_opts"
   .jvmopts           if this file exists in the current directory, its contents
                      are appended to JAVA_OPTS
   SBT_OPTS           environment variable, if unset uses "$default_sbt_opts"
@@ -459,7 +460,7 @@ process_my_args () {
               *) addResidual "$1" && shift ;;
     esac
   done
-  
+
   # Now, ensure sbt version is used.
   [[ "${sbt_version}XXX" != "XXX" ]] && addJava "-Dsbt.version=$sbt_version" 
 
@@ -494,11 +495,13 @@ loadConfigFile() {
 # Here we pull in the global settings configuration.
 [[ -f "$etc_sbt_opts_file" ]] && set -- $(loadConfigFile "$etc_sbt_opts_file") "$@"
 
-#  Pull in the project-level config file, if it exists.
+# Pull in the project-level config file, if it exists.
 [[ -f "$sbt_opts_file" ]] && set -- $(loadConfigFile "$sbt_opts_file") "$@"
 
-#  Pull in the project-level java config, if it exists.
+# Pull in the project-level java config, if it exists.
 [[ -f ".jvmopts" ]] && export JAVA_OPTS="$JAVA_OPTS $(loadConfigFile .jvmopts)"
 
-run "$@"
+# Pull in default JAVA_OPTS
+[[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
 
+run "$@"
