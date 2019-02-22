@@ -78,11 +78,10 @@ val root = (project in file(".")).
       val links = linuxPackageSymlinks.value
       for {
         link <- links
-        if !(link.destination endsWith "sbt-launch-lib.bash")
         if !(link.destination endsWith "sbt-launch.jar")
       } yield link
     },
-    
+
     // DEBIAN SPECIFIC
     debianBuildId := 0,
     version in Debian := {
@@ -150,15 +149,8 @@ val root = (project in file(".")).
     mappings in Universal := {
       val t = (target in Universal).value
       val prev = (mappings in Universal).value
-      val BinBash = "bin" + java.io.File.separator + "sbt-launch-lib.bash"
       val BinBat = "bin" + java.io.File.separator + "sbt.bat"
       prev.toList map {
-        case (k, BinBash) =>
-          val x = IO.read(k)
-          IO.write(t / "sbt-launch-lib.bash", x.replaceAllLiterally(
-            "declare init_sbt_version=_to_be_replaced",
-            s"""declare init_sbt_version="$sbtVersionToRelease""""))
-          (t / "sbt-launch-lib.bash", BinBash)
         case (k, BinBat) =>
           val x = IO.read(k)
           IO.write(t / "sbt.bat", x.replaceAllLiterally(
