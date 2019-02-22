@@ -68,6 +68,7 @@ val root = (project in file(".")).
       // TODO - GPG Trust validation.
       file
     },
+
     // GENERAL LINUX PACKAGING STUFFS
     maintainer := "Eugene Yokota <eugene.yokota@lightbend.com>",
     packageSummary := "sbt, the interactive build tool",
@@ -192,6 +193,18 @@ val root = (project in file(".")).
       val m = moduleID.value
       m.copy(revision = (version in Universal).value)
     }
+  )
+
+lazy val integrationTest = (project in file("integration-test"))
+  .settings(
+    name := "integration-test",
+    scalaVersion := "2.12.8",
+    libraryDependencies ++= Seq(
+      "io.monix" %% "minitest" % "2.3.2" % Test,
+      "com.eed3si9n.expecty" %% "expecty" % "0.11.0" % Test,
+      "org.scala-sbt" %% "io" % "1.2.2" % Test
+    ),
+    testFrameworks += new TestFramework("minitest.runner.Framework")
   )
 
 lazy val java9rtexport = (project in file("java9-rt-export"))
