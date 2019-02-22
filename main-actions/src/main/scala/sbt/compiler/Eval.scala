@@ -89,7 +89,10 @@ final class Eval(
    */
   final class EvalGlobal(settings: Settings, reporter: Reporter)
       extends Global(settings, reporter) {
-    override def currentRun: Run = curRun
+    override def currentRun: Run = curRun match {
+      case null => super.currentRun // https://github.com/scala/bug/issues/11381
+      case r    => r
+    }
     var curRun: Run = null
   }
   lazy val global: EvalGlobal = new EvalGlobal(settings, reporter)
