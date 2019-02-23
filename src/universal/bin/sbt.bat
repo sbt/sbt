@@ -13,6 +13,8 @@
 set SBT_HOME=%~dp0
 set SBT_ARGS=
 
+set DEFAULT_JAVA_OPTS=-Dfile.encoding=UTF-8
+
 rem FIRST we load the config file of extra options.
 set FN=%SBT_HOME%\..\conf\sbtconfig.txt
 set CFG_OPTS=
@@ -54,6 +56,8 @@ if "%_JAVACMD%"=="" set _JAVACMD=java
 rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config.
 set _JAVA_OPTS=%JAVA_OPTS%
 if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=%CFG_OPTS%
+
+if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=%DEFAULT_JAVA_OPTS%
 
 set INIT_SBT_VERSION=_TO_BE_REPLACED
 
