@@ -34,7 +34,7 @@ object BufferedAppender {
  * the level at the time 'play' is called.
  */
 class BufferedAppender private[BufferedAppender] (name: String, delegate: Appender)
-    extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {
+    extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true, Array.empty) {
 
   private[this] val buffer = new ListBuffer[XLogEvent]
   private[this] var recording = false

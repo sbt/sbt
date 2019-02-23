@@ -124,7 +124,8 @@ sealed abstract class LogExchange {
     // CustomConsoleAppenderImpl.createAppender("Stdout", layout, null, null)
     appender.start
     config.addAppender(appender)
-    val asyncAppender: AsyncAppender = (AsyncAppender.newBuilder(): AsyncAppender.Builder)
+    val asyncAppender: AsyncAppender = AsyncAppender
+      .newBuilder()
       .setName("AsyncStdout")
       .setAppenderRefs(Array(AppenderRef.createAppenderRef("Stdout", XLevel.DEBUG, null)))
       .setBlocking(false)
