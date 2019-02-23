@@ -33,7 +33,7 @@ matrix:
         - unset _JAVA_OPTIONS
         - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.10.1/install.sh | bash && . ~/.jabba/jabba.sh
       script:
-        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin integrationTest/test
+        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
         - cd citest && ./test.sh
       jdk: oraclejdk8
