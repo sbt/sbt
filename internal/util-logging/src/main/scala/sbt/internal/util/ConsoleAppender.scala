@@ -333,7 +333,7 @@ class ConsoleAppender private[ConsoleAppender] (
     ansiCodesSupported: Boolean,
     useFormat: Boolean,
     suppressedMessage: SuppressedTraceContext => Option[String]
-) extends AbstractAppender(name, null, LogExchange.dummyLayout, true) {
+) extends AbstractAppender(name, null, LogExchange.dummyLayout, true, Array.empty) {
   import scala.Console.{ BLUE, GREEN, RED, YELLOW }
 
   private val reset: String = {

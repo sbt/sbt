@@ -5,7 +5,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 object Dependencies {
   val scala210 = "2.10.7"
   val scala211 = "2.11.12"
-  val scala212 = "2.12.7"
+  val scala212 = "2.12.8"
 
   private val ioVersion = "1.2.1"
 
@@ -54,7 +54,7 @@ object Dependencies {
     "com.eed3si9n" %% "sjson-new-murmurhash" % contrabandSjsonNewVersion.value
   }
 
-  def log4jVersion = "2.11.1"
+  def log4jVersion = "2.11.2"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
