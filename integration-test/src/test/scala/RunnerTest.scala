@@ -7,7 +7,13 @@ import java.io.File
 object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   lazy val sbtScript = new File("target/universal/stage/bin/sbt")
   def sbtProcess(arg: String) =
-    sbt.internal.Process(sbtScript.getAbsolutePath + " " + arg, new File("citest"))
+    sbt.internal.Process(sbtScript.getAbsolutePath + " " + arg, new File("citest"),
+      "JAVA_OPTS" -> "",
+      "SBT_OPTS" -> "")
+  def sbtProcessWithOpts(arg: String) =
+    sbt.internal.Process(sbtScript.getAbsolutePath + " " + arg, new File("citest"),
+      "JAVA_OPTS" -> "-Xmx1024m",
+      "SBT_OPTS" -> "")
 
   test("sbt runs") {
     assert(sbtScript.exists)
@@ -19,6 +25,18 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   test("sbt -no-colors") {
     val out = sbtProcess("compile -no-colors -v").!!.linesIterator.toList
     assert(out.contains[String]("-Dsbt.log.noformat=true"))
+    ()
+  }
+
+  test("sbt -mem 503") {
+    val out = sbtProcess("compile -mem 503 -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Xmx503m"))
+    ()
+  }
+
+  test("sbt -mem 503 with JAVA_OPTS") {
+    val out = sbtProcessWithOpts("compile -mem 503 -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Xmx503m"))
     ()
   }
 }

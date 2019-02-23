@@ -12,7 +12,7 @@ matrix:
   include:
     ## build using JDK 8, test using JDK 8
     - script:
-        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin integrationTest/test
+        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - cd citest && ./test.sh
       jdk: oraclejdk8
 

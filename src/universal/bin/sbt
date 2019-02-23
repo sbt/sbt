@@ -5,6 +5,7 @@ declare -a residual_args
 declare -a java_args
 declare -a scalac_args
 declare -a sbt_commands
+declare -a sbt_options
 declare java_cmd=java
 declare java_version
 declare init_sbt_version=_to_be_replaced
@@ -117,34 +118,54 @@ addDebugger () {
   addJava "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$1"
 }
 
-get_mem_opts () {
+addMemory () {
+  dlog "[addMemory] arg = '$1'"
+  # evict memory related options
+  local xs=("${java_args[@]}")
+  java_args=()
+  for i in "${xs[@]}"; do
+    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
+      java_args+=("${i}")
+    fi
+  done
+  local ys=("${sbt_options[@]}")
+  sbt_options=()
+  for i in "${ys[@]}"; do
+    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
+      sbt_options+=("${i}")
+    fi
+  done
+  # a ham-fisted attempt to move some memory settings in concert
+  local mem=$1
+  local codecache=$(( $mem / 8 ))
+  (( $codecache > 128 )) || codecache=128
+  (( $codecache < 512 )) || codecache=512
+  local class_metadata_size=$(( $codecache * 2 ))
+  if [[ -z $java_version ]]; then
+      java_version=$(jdk_version)
+  fi
+  local class_metadata_opt=$((( $java_version < 8 )) && echo "MaxPermSize" || echo "MaxMetaspaceSize")
+
+  addJava "-Xms${mem}m"
+  addJava "-Xmx${mem}m"
+  addJava "-Xss2M"
+  addJava "-XX:ReservedCodeCacheSize=${codecache}m"
+  if [[ (( $java_version > 7 )) ]]; then
+    addJava "-XX:${class_metadata_opt}=${class_metadata_size}m"
+  fi
+}
+
+addDefaultMemory() {
   # if we detect any of these settings in ${JAVA_OPTS} or ${JAVA_TOOL_OPTIONS} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
-  if [[ "${JAVA_OPTS}" == *-Xmx* ]] || [[ "${JAVA_OPTS}" == *-Xms* ]] || [[ "${JAVA_OPTS}" == *-XX:MaxPermSize* ]] || [[ "${JAVA_OPTS}" == *-XX:MaxMetaspaceSize* ]] || [[ "${JAVA_OPTS}" == *-XX:ReservedCodeCacheSize* ]]; then
-    echo ""
-  elif [[ "${JAVA_TOOL_OPTIONS}" == *-Xmx* ]] || [[ "${JAVA_TOOL_OPTIONS}" == *-Xms* ]] || [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxPermSize* ]] || [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxMetaspaceSize* ]] || [[ "${JAVA_TOOL_OPTIONS}" == *-XX:ReservedCodeCacheSize* ]]; then
-    echo ""
-  elif [[ "${SBT_OPTS}" == *-Xmx* ]] || [[ "${SBT_OPTS}" == *-Xms* ]] || [[ "${SBT_OPTS}" == *-XX:MaxPermSize* ]] || [[ "${SBT_OPTS}" == *-XX:MaxMetaspaceSize* ]] || [[ "${SBT_OPTS}" == *-XX:ReservedCodeCacheSize* ]]; then
-    echo ""
+  if [[ "${java_args[@]}" == *-Xmx* ]] || [[ "${java_args[@]}" == *-Xms* ]]; then
+    :
+  elif [[ "${JAVA_TOOL_OPTIONS}" == *-Xmx* ]] || [[ "${JAVA_TOOL_OPTIONS}" == *-Xms* ]]; then
+    :
+  elif [[ "${sbt_options[@]}" == *-Xmx* ]] || [[ "${sbt_options[@]}" == *-Xms* ]]; then
+    :
   else
-    # a ham-fisted attempt to move some memory settings in concert
-    # so they need not be messed around with individually.
-    local mem=${1:-$sbt_default_mem}
-    local codecache=$(( $mem / 8 ))
-    (( $codecache > 128 )) || codecache=128
-    (( $codecache < 512 )) || codecache=512
-    local class_metadata_size=$(( $codecache * 2 ))
-    if [[ -z $java_version ]]; then
-        java_version=$(jdk_version)
-    fi
-    local class_metadata_opt=$((( $java_version < 8 )) && echo "MaxPermSize" || echo "MaxMetaspaceSize")
-
-    local arg_xms=$([[ "${java_args[@]}" == *-Xms* ]] && echo "" || echo "-Xms${mem}m")
-    local arg_xmx=$([[ "${java_args[@]}" == *-Xmx* ]] && echo "" || echo "-Xmx${mem}m")
-    local arg_rccs=$([[ "${java_args[@]}" == *-XX:ReservedCodeCacheSize* ]] && echo "" || echo "-XX:ReservedCodeCacheSize=${codecache}m")
-    local arg_meta=$([[ "${java_args[@]}" == *-XX:${class_metadata_opt}* && ! (( $java_version < 8 )) ]] && echo "" || echo "-XX:${class_metadata_opt}=${class_metadata_size}m")
-
-    echo "${arg_xms} ${arg_xmx} ${arg_rccs} ${arg_meta}"
+    addMemory $sbt_default_mem
   fi
 }
 
@@ -211,7 +232,7 @@ process_args () {
       -d|-debug) debug=1 && addSbt "-debug" && shift ;;
 
            -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
-           -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
+           -mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
      -jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
          -batch) exec </dev/null && shift ;;
 
@@ -322,7 +343,7 @@ copyRt() {
   if [[ "$at_least_9" == "1" ]]; then
     rtexport=$(rt_export_file)
     # The grep for java9-rt-ext- matches the filename prefix printed in Export.java
-    java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
+    java9_ext=$("$java_cmd" ${sbt_options[@]} ${java_args[@]} \
       -jar "$rtexport" --rt-ext-dir | grep java9-rt-ext-)
     java9_rt=$(echo "$java9_ext/rt.jar")
     vlog "[copyRt] java9_rt = '$java9_rt'"
@@ -330,8 +351,7 @@ copyRt() {
       echo Copying runtime jar.
       mkdir -p "$java9_ext"
       execRunner "$java_cmd" \
-        ${JAVA_OPTS} \
-        ${SBT_OPTS:-$default_sbt_opts} \
+        ${sbt_options[@]} \
         ${java_args[@]} \
         -jar "$rtexport" \
         "${java9_rt}"
@@ -341,8 +361,12 @@ copyRt() {
 }
 
 run() {
+  java_args=($JAVA_OPTS)
+  sbt_options=(${SBT_OPTS:-$default_sbt_opts})
+
   # process the combined args, then reset "$@" to the residuals
   process_args "$@"
+  addDefaultMemory
   set -- "${residual_args[@]}"
   argumentCount=$#
 
@@ -371,11 +395,9 @@ run() {
 
   # run sbt
   execRunner "$java_cmd" \
-    $(get_mem_opts $sbt_mem) \
     $(get_gc_opts) \
-    ${JAVA_OPTS} \
-    ${SBT_OPTS:-$default_sbt_opts} \
     ${java_args[@]} \
+    ${sbt_options[@]} \
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
     "${residual_args[@]}"
