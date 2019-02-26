@@ -36,13 +36,15 @@ object ArtifactsRun {
           .withArtifactTypes(Set(Type.all))
           .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
           .withTransformArtifacts { l =>
-            if (params.includeSignatures)
-              l.flatMap { a =>
-                val sigOpt = a.extra.get("sig")
-                Seq(a) ++ sigOpt.toSeq
-              }
-            else
-              l
+            val l0 =
+              if (params.includeSignatures)
+                l.flatMap { a =>
+                  val sigOpt = a.extra.get("sig")
+                  Seq(a) ++ sigOpt.toSeq
+                }
+              else
+                l
+            l0.distinct // temporary, until we can use https://github.com/coursier/coursier/pull/1077 from here
           }
           .withCache(
             FileCache()
