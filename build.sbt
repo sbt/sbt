@@ -73,7 +73,6 @@ lazy val `sbt-coursier` = project
   .dependsOn(`sbt-coursier-shared`)
   .settings(
     plugin,
-    libraryDependencies +="io.get-coursier" %% "coursier-scalaz-interop" % coursierVersion,
     scriptedDependencies := {
       scriptedDependencies.value
 
