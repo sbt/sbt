@@ -161,7 +161,7 @@ object EvaluateTask {
   import std.Transform
   import Keys.state
 
-  lazy private val sharedProgress = new TaskTimings(shutdown = true)
+  lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
 
   // sbt-pgp calls this
   private[sbt] def defaultProgress(): ExecuteProgress[Task] = ExecuteProgress.empty[Task]
@@ -170,7 +170,7 @@ object EvaluateTask {
       if (java.lang.Boolean.getBoolean("sbt.task.timings.on.shutdown"))
         sharedProgress
       else
-        new TaskTimings(shutdown = false)
+        new TaskTimings(reportOnShutdown = false)
     } else {
       if (ConsoleAppender.showProgress) new TaskProgress(currentRef)
       else ExecuteProgress.empty[Task]
@@ -412,6 +412,7 @@ object EvaluateTask {
     def shutdown(): Unit = {
       // First ensure that all threads are stopped for task execution.
       shutdownThreads()
+      config.progressReporter.stop()
 
       // Now we run the gc cleanup to force finalizers to clear out file handles (yay GC!)
       if (config.forceGarbageCollection) {
