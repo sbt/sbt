@@ -56,7 +56,7 @@ object Shading {
     currentProject: Project,
     res: Resolution,
     configs: Map[Configuration, Set[Configuration]],
-    artifactFilesOrErrors: Map[Artifact, Either[FileError, File]],
+    artifactFilesOrErrors: Map[Artifact, File],
     classpathTypes: Set[Type],
     baseConfig: Configuration,
     shadedConf: Configuration,
@@ -98,7 +98,7 @@ object Shading {
 
     val artifactFilesOrErrors0 = artifactFilesOrErrors
       .collect {
-        case (a, Right(f)) => a.url -> f
+        case (a, f) => a.url -> f
       }
 
     val compileDeps = configDependencies(baseConfig)

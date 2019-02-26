@@ -1,14 +1,13 @@
 package coursier.lmcoursier
 
 import java.io.File
-import java.util.concurrent.ExecutorService
 
-import coursier.cache.CacheLogger
-import coursier.{Artifact, Cache, CachePolicy, FileError}
-import coursier.util.{Schedulable, Task}
+import coursier.cache.FileCache
+import coursier.Artifact
+import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
+import coursier.core.Type
+import coursier.util.Schedulable
 import sbt.util.Logger
-
-import scala.concurrent.ExecutionContext
 
 object ArtifactsRun {
 
@@ -16,77 +15,62 @@ object ArtifactsRun {
     params: ArtifactsParams,
     verbosityLevel: Int,
     log: Logger
-  ): Either[ResolutionError.UnknownDownloadException, Map[Artifact, Either[FileError, File]]] = {
-
-    val allArtifacts0 = params.resolutions.flatMap(_.dependencyArtifacts(params.classifiers)).map(_._3)
-
-    val allArtifacts =
-      if (params.includeSignatures)
-        allArtifacts0.flatMap { a =>
-          val sigOpt = a.extra.get("sig")
-          Seq(a) ++ sigOpt.toSeq
-        }
-      else
-        allArtifacts0
-
+  ): Either[coursier.error.FetchError, Map[Artifact, File]] =
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
     Lock.lock.synchronized {
 
-      var pool: ExecutorService = null
-      var artifactsLogger: CacheLogger = null
-
       val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
-      val artifactFilesOrErrors = try {
-        pool = Schedulable.fixedThreadPool(params.cacheParams.parallel)
+      val artifactInitialMessage =
+        if (verbosityLevel >= 0)
+          s"Fetching artifacts of ${params.projectName}" +
+            (if (params.sbtClassifiers) " (sbt classifiers)" else "")
+        else
+          ""
 
-        val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
-          Cache.file[Task](
-            a,
-            params.cacheParams.cacheLocation,
-            params.cacheParams.cachePolicies,
-            checksums = params.cacheParams.checksum,
-            logger = Some(params.logger),
-            pool = pool,
-            ttl = params.cacheParams.ttl
+      Schedulable.withFixedThreadPool(params.cacheParams.parallel) { pool =>
+
+        coursier.Artifacts()
+          .withResolutions(params.resolutions)
+          .withArtifactTypes(Set(Type.all))
+          .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
+          .withTransformArtifacts { l =>
+            val l0 =
+              if (params.includeSignatures)
+                l.flatMap { a =>
+                  val sigOpt = a.extra.get("sig")
+                  Seq(a) ++ sigOpt.toSeq
+                }
+              else
+                l
+            l0.distinct // temporary, until we can use https://github.com/coursier/coursier/pull/1077 from here
+          }
+          .withCache(
+            FileCache()
+              .withLocation(params.cacheParams.cacheLocation)
+              .withCachePolicies(params.cacheParams.cachePolicies)
+              .withChecksums(params.cacheParams.checksum)
+              .withLogger(
+                params.loggerOpt.getOrElse {
+                  RefreshLogger.create(
+                    ProgressBarRefreshDisplay.create(
+                      if (printOptionalMessage) log.info(artifactInitialMessage),
+                      if (printOptionalMessage || verbosityLevel >= 2)
+                        log.info(
+                          s"Fetched artifacts of ${params.projectName}" +
+                            (if (params.sbtClassifiers) " (sbt classifiers)" else "")
+                        )
+                    )
+                  )
+                }
+              )
+              .withTtl(params.cacheParams.ttl)
+              .withPool(pool)
           )
-            .run
-            .map((a, _))
-        }
-
-        val artifactInitialMessage =
-          if (verbosityLevel >= 0)
-            s"Fetching artifacts of ${params.projectName}" +
-              (if (params.sbtClassifiers) " (sbt classifiers)" else "")
-          else
-            ""
-
-        if (verbosityLevel >= 2)
-          log.info(artifactInitialMessage)
-
-        artifactsLogger = params.logger
-        artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
-
-        Task.gather.gather(artifactFileOrErrorTasks).attempt.unsafeRun()(ExecutionContext.fromExecutorService(pool)) match {
-          case Left(ex) =>
-            Left(ResolutionError.UnknownDownloadException(ex))
-          case Right(l) =>
-            Right(l.toMap)
-        }
-      } finally {
-        if (pool != null)
-          pool.shutdown()
-        if (artifactsLogger != null)
-          if ((artifactsLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
-            log.info(
-              s"Fetched artifacts of ${params.projectName}" +
-                (if (params.sbtClassifiers) " (sbt classifiers)" else "")
-            )
+          .either()
+          .map(_.toMap)
       }
-
-      artifactFilesOrErrors
     }
-  }
 
 }

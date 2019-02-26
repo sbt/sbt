@@ -1,13 +1,12 @@
 package coursier.lmcoursier
 
-import java.io.{File, OutputStreamWriter}
+import java.io.File
 
-import _root_.coursier.{Artifact, CachePolicy, FileError, Organization, Resolution, TermDisplay, organizationString}
+import _root_.coursier.{Artifact, Organization, Resolution, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
 import _root_.coursier.extra.Typelevel
-import _root_.coursier.ivy.IvyRepository
 import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
-import coursier.cache.CacheDefaults
+import coursier.cache.{CacheDefaults, CachePolicy}
 import coursier.params.CacheParams
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
@@ -77,9 +76,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val verbosityLevel = 0
 
     val ttl = CacheDefaults.ttl
-    val logger = conf.createLogger.map(_.create()).getOrElse {
-      new TermDisplay(new OutputStreamWriter(System.err), fallbackMode = true)
-    }
+    val loggerOpt = conf.logger
     val cache = conf.cache.getOrElse(CacheDefaults.location)
     val cachePolicies = CachePolicy.default
     val checksums = CacheDefaults.checksums
@@ -138,22 +135,20 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       parentProjectCache = Map.empty,
       interProjectDependencies = conf.interProjectDependencies,
       internalRepositories = Seq(interProjectRepo),
-      typelevel = typelevel,
       sbtClassifiers = false,
       projectName = projectName,
-      logger = logger,
-      cacheParams = coursier.params.CacheParams(
-        cacheLocation = cache,
-        cachePolicies = cachePolicies,
-        ttl = ttl,
-        checksum = checksums,
-        parallel = conf.parallelDownloads
-      ),
-      params = coursier.params.ResolutionParams(
-        maxIterations = conf.maxIterations,
-        profiles = conf.mavenProfiles.toSet,
-        forceVersion = Map.empty
-      )
+      loggerOpt = loggerOpt,
+      cacheParams = coursier.params.CacheParams()
+        .withCacheLocation(cache)
+        .withCachePolicies(cachePolicies)
+        .withTtl(ttl)
+        .withChecksum(checksums)
+        .withParallel(conf.parallelDownloads),
+      params = coursier.params.ResolutionParams()
+        .withMaxIterations(conf.maxIterations)
+        .withProfiles(conf.mavenProfiles.toSet)
+        .withForceVersion(Map.empty)
+        .withTypelevel(typelevel)
     )
 
     def artifactsParams(resolutions: Map[Set[Configuration], Resolution]) =
@@ -161,16 +156,15 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         classifiers = classifiers,
         resolutions = resolutions.values.toSeq,
         includeSignatures = false,
-        logger = logger,
+        loggerOpt = loggerOpt,
         projectName = projectName,
         sbtClassifiers = false,
-        cacheParams = CacheParams(
-          parallel = conf.parallelDownloads,
-          cacheLocation = cache,
-          checksum = checksums,
-          ttl = ttl,
-          cachePolicies = cachePolicies
-        )
+        cacheParams = CacheParams()
+          .withParallel(conf.parallelDownloads)
+          .withCacheLocation(cache)
+          .withChecksum(checksums)
+          .withTtl(ttl)
+          .withCachePolicies(cachePolicies)
       )
 
     val sbtBootJarOverrides = SbtBootJars(
@@ -183,7 +177,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     def updateParams(
       resolutions: Map[Set[Configuration], Resolution],
-      artifacts: Map[Artifact, Either[FileError, File]]
+      artifacts: Map[Artifact, File]
     ) =
       UpdateParams(
         shadedConfigOpt = None,
@@ -192,7 +186,6 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         configs = configs,
         dependencies = dependencies,
         res = resolutions,
-        ignoreArtifactErrors = false,
         includeSignatures = false,
         sbtBootJarOverrides = sbtBootJarOverrides
       )
@@ -201,37 +194,51 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       resolutions <- ResolutionRun.resolutions(resolutionParams, verbosityLevel, log)
       artifactsParams0 = artifactsParams(resolutions)
       artifacts <- ArtifactsRun.artifacts(artifactsParams0, verbosityLevel, log)
-      updateParams0 = updateParams(resolutions, artifacts)
-      updateReport <- UpdateRun.update(updateParams0, verbosityLevel, log)
-    } yield updateReport
+    } yield {
+      val updateParams0 = updateParams(resolutions, artifacts)
+      UpdateRun.update(updateParams0, verbosityLevel, log)
+    }
 
     e.left.map(unresolvedWarningOrThrow(uwconfig, _))
   }
 
-  private def resolutionException(ex: ResolutionError): Either[Throwable, ResolveException] =
-    ex match {
-      case e: ResolutionError.MetadataDownloadErrors =>
-        val r = new ResolveException(
-          e.errors.flatMap(_._2),
-          e.errors.map {
-            case ((mod, ver), _) =>
-              ModuleID(mod.organization.value, mod.name.value, ver)
-                .withExtraAttributes(mod.attributes)
-          }
-        )
-        Right(r)
-      case _ => Left(ex.exception())
-    }
-
   private def unresolvedWarningOrThrow(
     uwconfig: UnresolvedWarningConfiguration,
-    ex: ResolutionError
-  ): UnresolvedWarning =
-    resolutionException(ex) match {
-      case Left(t) => throw t
-      case Right(e) =>
-        UnresolvedWarning(e, uwconfig)
+    ex: coursier.error.CoursierError
+  ): UnresolvedWarning = {
+
+    // TODO Take coursier.error.FetchError.DownloadingArtifacts into account
+
+    val downloadErrors = ex match {
+      case ex0: coursier.error.ResolutionError =>
+        ex0.errors.collect {
+          case err: coursier.error.ResolutionError.CantDownloadModule => err
+        }
+      case _ =>
+        Nil
     }
+    val otherErrors = ex match {
+      case ex0: coursier.error.ResolutionError =>
+        ex0.errors.flatMap {
+          case _: coursier.error.ResolutionError.CantDownloadModule => None
+          case err => Some(err)
+        }
+      case _ =>
+        Seq(ex)
+    }
+
+    if (otherErrors.isEmpty) {
+        val r = new ResolveException(
+          downloadErrors.map(_.getMessage),
+          downloadErrors.map { err =>
+            ModuleID(err.module.organization.value, err.module.name.value, err.version)
+              .withExtraAttributes(err.module.attributes)
+          }
+        )
+        UnresolvedWarning(r, uwconfig)
+    } else
+      throw ex
+  }
 
 }
 

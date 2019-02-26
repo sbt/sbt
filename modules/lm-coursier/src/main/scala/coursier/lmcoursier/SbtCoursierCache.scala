@@ -40,8 +40,7 @@ object SbtCoursierCache {
   final case class ResolutionKey(
     dependencies: Seq[(Configuration, Dependency)],
     repositories: Seq[Repository],
-    userEnabledProfiles: Set[String],
-    resolution: Map[Set[Configuration], Resolution],
+    params: ResolutionParams,
     sbtClassifiers: Boolean
   )
 
@@ -49,8 +48,7 @@ object SbtCoursierCache {
     dependencies: Seq[(Configuration, Dependency)],
     resolution: Map[Set[Configuration], Resolution],
     withClassifiers: Boolean,
-    sbtClassifiers: Boolean,
-    ignoreArtifactErrors: Boolean
+    sbtClassifiers: Boolean
   )
 
 

@@ -90,7 +90,7 @@ object LmCoursierPlugin extends AutoPlugin {
         val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
         val authenticationByHost = authenticationByHostTask.value
 
-        val createLogger = coursierCreateLogger.value
+        val createLogger = coursierLogger.value
 
         val cache = coursierCache.value
 
@@ -125,7 +125,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withScalaVersion(scalaVer)
           .withAuthenticationByRepositoryId(authenticationByRepositoryId.toVector.sortBy(_._1))
           .withAuthenticationByHost(authenticationByHost.toVector.sortBy(_._1))
-          .withCreateLogger(createLogger)
+          .withLogger(createLogger)
           .withCache(cache)
           .withLog(s.log)
       }

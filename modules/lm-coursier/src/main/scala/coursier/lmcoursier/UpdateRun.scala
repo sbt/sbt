@@ -54,7 +54,7 @@ object UpdateRun {
     params: UpdateParams,
     verbosityLevel: Int,
     log: Logger
-  ): Either[ResolutionError.DownloadErrors, UpdateReport] = {
+  ): UpdateReport = {
 
     val configResolutions = params.res.flatMap {
       case (configs, r) =>
@@ -83,36 +83,15 @@ object UpdateRun {
       log.info(repr.split('\n').map("  " + _).mkString("\n"))
     }
 
-    val artifactErrors = params
-      .artifacts
-      .toVector
-      .collect {
-        case (a, Left(err)) if !a.optional || !err.notFound =>
-          a -> err
-      }
-
-    def report =
-      ToSbt.updateReport(
-        depsByConfig,
-        configResolutions,
-        params.configs,
-        params.classifiers,
-        params.artifactFileOpt,
-        log,
-        includeSignatures = params.includeSignatures
-      )
-
-    if (artifactErrors.isEmpty)
-      Right(report)
-    else {
-      val error = ResolutionError.DownloadErrors(artifactErrors.map(_._2))
-
-      if (params.ignoreArtifactErrors) {
-        log.warn(error.description(verbosityLevel >= 1))
-        Right(report)
-      } else
-        Left(error)
-    }
+    ToSbt.updateReport(
+      depsByConfig,
+      configResolutions,
+      params.configs,
+      params.classifiers,
+      params.artifactFileOpt,
+      log,
+      includeSignatures = params.includeSignatures
+    )
   }
 
   private def grouped[K, V](map: Seq[(K, V)])(mapKey: K => K): Map[K, Seq[V]] =

@@ -1,9 +1,9 @@
 package coursier.sbtcoursier
 
 import java.io.File
-import java.net.URL
 
-import coursier.{Cache, CachePolicy, Credentials, FileError, ProjectCache}
+import coursier.cache.CachePolicy
+import coursier.ProjectCache
 import coursier.core._
 import sbt.librarymanagement.{GetClassifiersModule, Resolver}
 import sbt.{InputKey, SettingKey, TaskKey}
@@ -47,8 +47,8 @@ object Keys {
     "coursier-what-depends-on",
     "Prints dependencies and transitive dependencies as an inverted tree for a specific module (dependees as children)"
   )
-  val coursierArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-artifacts")
-  val coursierSignedArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-signed-artifacts")
-  val coursierClassifiersArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-classifiers-artifacts")
-  val coursierSbtClassifiersArtifacts = TaskKey[Map[Artifact, Either[FileError, File]]]("coursier-sbt-classifiers-artifacts")
+  val coursierArtifacts = TaskKey[Map[Artifact, File]]("coursier-artifacts")
+  val coursierSignedArtifacts = TaskKey[Map[Artifact, File]]("coursier-signed-artifacts")
+  val coursierClassifiersArtifacts = TaskKey[Map[Artifact, File]]("coursier-classifiers-artifacts")
+  val coursierSbtClassifiersArtifacts = TaskKey[Map[Artifact, File]]("coursier-sbt-classifiers-artifacts")
 }

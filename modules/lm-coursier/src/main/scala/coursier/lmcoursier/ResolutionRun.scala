@@ -1,16 +1,13 @@
 package coursier.lmcoursier
 
-import java.util.concurrent.ExecutorService
-
-import coursier.cache.CacheLogger
-import coursier.{Cache, Resolution}
+import coursier.cache.FileCache
+import coursier.{Resolution, Resolve}
+import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core._
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
-import coursier.util.{Print, Schedulable, Task}
+import coursier.util.Schedulable
 import sbt.util.Logger
-
-import scala.concurrent.ExecutionContext
 
 object ResolutionRun {
 
@@ -18,119 +15,93 @@ object ResolutionRun {
     params: ResolutionParams,
     verbosityLevel: Int,
     log: Logger,
-    startRes: Resolution
-  ): Either[ResolutionError, Resolution] = {
+    configs: Set[Configuration]
+  ): Either[coursier.error.ResolutionError, Resolution] = {
 
-    // TODO Re-use the thread pool across resolutions / downloads?
-    var pool: ExecutorService = null
-
-    var resLogger: CacheLogger = null
+    val isCompileConfig =
+      configs(Configuration.compile) || configs(Configuration("scala-tool"))
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
-    val resOrError: Either[ResolutionError, Resolution] = try {
-      pool = Schedulable.fixedThreadPool(params.cacheParams.parallel)
-      resLogger = params.logger
+    def depsRepr(deps: Seq[(Configuration, Dependency)]) =
+      deps.map { case (config, dep) =>
+        s"${dep.module}:${dep.version}:${config.value}->${dep.configuration.value}"
+      }.sorted.distinct
 
-      val fetchs = Cache.fetchs[Task](params.cacheParams.cacheLocation, params.cacheParams.cachePolicies, checksums = params.cacheParams.checksum, logger = Some(params.logger), pool = pool, ttl = params.cacheParams.ttl)
+    val initialMessage =
+      Seq(
+        if (verbosityLevel >= 0)
+          Seq(s"Updating ${params.projectName}" + (if (params.sbtClassifiers) " (sbt classifiers)" else ""))
+        else
+          Nil,
+        if (verbosityLevel >= 2)
+          depsRepr(params.dependencies).map(depRepr =>
+            s"  $depRepr"
+          )
+        else
+          Nil
+      ).flatten.mkString("\n")
 
-      val fetch = ResolutionProcess.fetch(
-        params.repositories,
-        fetchs.head, fetchs.tail: _*
-      )
-
-      def depsRepr(deps: Seq[(Configuration, Dependency)]) =
-        deps.map { case (config, dep) =>
-          s"${dep.module}:${dep.version}:${config.value}->${dep.configuration.value}"
-        }.sorted.distinct
-
-      if (verbosityLevel >= 2) {
-        val repoReprs = params.repositories.map {
-          case r: IvyRepository =>
-            s"ivy:${r.pattern}"
-          case _: InterProjectRepository =>
-            "inter-project"
-          case r: MavenRepository =>
-            r.root
-          case r =>
-            // should not happen
-            r.toString
-        }
-
-        log.info(
-          "Repositories:\n" +
-            repoReprs.map("  " + _).mkString("\n")
-        )
+    if (verbosityLevel >= 2) {
+      val repoReprs = params.repositories.map {
+        case r: IvyRepository =>
+          s"ivy:${r.pattern}"
+        case _: InterProjectRepository =>
+          "inter-project"
+        case r: MavenRepository =>
+          r.root
+        case r =>
+          // should not happen
+          r.toString
       }
 
-      val initialMessage =
-        Seq(
-          if (verbosityLevel >= 0)
-            Seq(s"Updating ${params.projectName}" + (if (params.sbtClassifiers) " (sbt classifiers)" else ""))
-          else
-            Nil,
-          if (verbosityLevel >= 2)
-            depsRepr(params.dependencies).map(depRepr =>
-              s"  $depRepr"
-            )
-          else
-            Nil
-        ).flatten.mkString("\n")
-
-      if (verbosityLevel >= 2)
-        log.info(initialMessage)
-
-      resLogger = params.logger
-      resLogger.init(if (printOptionalMessage) log.info(initialMessage))
-
-      startRes
-        .process
-        .run(fetch, params.params.maxIterations)
-        .attempt
-        .unsafeRun()(ExecutionContext.fromExecutorService(pool))
-        .left
-        .map(ex =>
-          ResolutionError.UnknownException(ex)
-        )
-    } finally {
-      if (pool != null)
-        pool.shutdown()
-      if (resLogger != null)
-        if ((resLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
-          log.info(s"Resolved ${params.projectName} dependencies")
+      log.info(
+        "Repositories:\n" +
+          repoReprs.map("  " + _).mkString("\n")
+      )
     }
 
-    resOrError.flatMap { res =>
-      if (!res.isDone)
-        Left(
-          ResolutionError.MaximumIterationsReached
-        )
-      else if (res.conflicts.nonEmpty) {
-        val projCache = res.projectCache.mapValues { case (_, p) => p }
+    if (verbosityLevel >= 2)
+      log.info(initialMessage)
 
-        Left(
-          ResolutionError.Conflicts(
-            "Conflict(s) in dependency resolution:\n  " +
-              Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
-          )
-        )
-      } else if (res.errors.nonEmpty) {
-        val internalRepositoriesLen = params.internalRepositories.length
-        val errors =
-          if (params.repositories.length > internalRepositoriesLen)
-          // drop internal repository errors
-            res.errors.map {
-              case (dep, errs) =>
-                dep -> errs.drop(internalRepositoriesLen)
-            }
-          else
-            res.errors
+    Schedulable.withFixedThreadPool(params.cacheParams.parallel) { pool =>
 
-        Left(
-          ResolutionError.MetadataDownloadErrors(errors)
+      Resolve()
+        .withDependencies(
+          params.dependencies.collect {
+            case (config, dep) if configs(config) =>
+              dep
+          }
         )
-      } else
-        Right(res)
+        .withRepositories(params.repositories)
+        .withResolutionParams(
+          params
+            .params
+            .addForceVersion(params.interProjectDependencies.map(_.moduleVersion): _*)
+            .withForceScalaVersion(isCompileConfig && params.autoScalaLibOpt.nonEmpty)
+            .withScalaVersion(params.autoScalaLibOpt.map(_._2))
+            .withTypelevel(params.params.typelevel && isCompileConfig)
+        )
+        .withCache(
+          FileCache()
+            .withLocation(params.cacheParams.cacheLocation)
+            .withCachePolicies(params.cacheParams.cachePolicies)
+            .withChecksums(params.cacheParams.checksum)
+            .withPool(pool)
+            .withTtl(params.cacheParams.ttl)
+            .withLogger(
+              params.loggerOpt.getOrElse {
+                RefreshLogger.create(
+                  ProgressBarRefreshDisplay.create(
+                    if (printOptionalMessage) log.info(initialMessage),
+                    if (printOptionalMessage || verbosityLevel >= 2)
+                      log.info(s"Resolved ${params.projectName} dependencies")
+                  )
+                )
+              }
+            )
+        )
+        .either()
     }
   }
 
@@ -138,7 +109,7 @@ object ResolutionRun {
     params: ResolutionParams,
     verbosityLevel: Int,
     log: Logger
-  ): Either[ResolutionError, Map[Set[Configuration], Resolution]] = {
+  ): Either[coursier.error.ResolutionError, Map[Set[Configuration], Resolution]] = {
 
     // TODO Warn about possible duplicated modules from source repositories?
 
@@ -153,11 +124,11 @@ object ResolutionRun {
       // Downloads are already parallel, no need to parallelize further, anyway.
       val resOrError =
         Lock.lock.synchronized {
-          params.allStartRes.foldLeft[Either[ResolutionError, Map[Set[Configuration], Resolution]]](Right(Map())) {
-            case (acc, (config, startRes)) =>
+          params.configGraphs.foldLeft[Either[coursier.error.ResolutionError, Map[Set[Configuration], Resolution]]](Right(Map())) {
+            case (acc, config) =>
               for {
                 m <- acc
-                res <- resolution(params, verbosityLevel, log, startRes)
+                res <- resolution(params, verbosityLevel, log, config)
               } yield m + (config -> res)
           }
         }

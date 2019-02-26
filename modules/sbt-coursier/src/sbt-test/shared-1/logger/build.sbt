@@ -6,34 +6,33 @@ libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.25"
 coursierCache := baseDirectory.value / "cache"
 logFile := baseDirectory.value / "log"
 
-coursierCreateLogger := {
+coursierLogger := {
   val logStream = new java.io.PrintStream(logFile.value)
   def log(msg: String): Unit = {
     println(msg)
     logStream.println(msg)
   }
   val cacheFile = coursierCache.value
-  ;CoursierCreateLogger { () =>
-    new coursier.cache.CacheLogger {
-      override def init(beforeOutput: => Unit): Unit = {
-        beforeOutput
-        log("init")
-      }
-      override def foundLocally(url: String, file: File): Unit = {
-        log(s"found $url at ${IO.relativize(cacheFile, file).getOrElse(file)}")
-      }
-      override def downloadingArtifact(url: String, file: File): Unit = {
-        log(s"downloading $url to ${IO.relativize(cacheFile, file).getOrElse(file)}")
-      }
-      override def downloadedArtifact(url: String, success: Boolean): Unit = {
-        log(s"downloaded $url: $success")
-      }
-      override def stopDidPrintSomething(): Boolean = {
-        log("stop")
-        true
-      }
+
+  val logger = new coursier.cache.CacheLogger {
+    override def init(sizeHint: Option[Int]): Unit = {
+      log("init")
+    }
+    override def foundLocally(url: String): Unit = {
+      log(s"found $url")
+    }
+    override def downloadingArtifact(url: String): Unit = {
+      log(s"downloading $url")
+    }
+    override def downloadedArtifact(url: String, success: Boolean): Unit = {
+      log(s"downloaded $url: $success")
+    }
+    override def stop(): Unit = {
+      log("stop")
     }
   }
+
+  Some(logger)
 }
 
 TaskKey[Unit]("checkDownloaded") := {
@@ -46,7 +45,7 @@ TaskKey[Unit]("checkDownloaded") := {
   }
   val url = "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar"
   val downloadedMsg = s"downloaded $url: true"
-  val downloadingMsgStart = s"downloading $url to "
+  val downloadingMsgStart = s"downloading $url"
   if (!log.contains(downloadedMsg))
     sys.error(s"log doesn't contain '$downloadedMsg'")
   if (!log.exists(_.startsWith(downloadingMsgStart)))
@@ -62,7 +61,7 @@ TaskKey[Unit]("checkFound") := {
     sys.error(s"log ended with '${log.last}', not stop")
   }
   val url = "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar"
-  val msg = s"found $url at "
+  val msg = s"found $url"
   if (!log.exists(_.startsWith(msg)))
     sys.error(s"log doesn't contain line starting with '$msg'")
 }

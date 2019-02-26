@@ -122,8 +122,8 @@
           "since": "0.0.1"
         },
         {
-          "name": "createLogger",
-          "type": "coursier.lmcoursier.CreateLogger?",
+          "name": "logger",
+          "type": "coursier.cache.CacheLogger?",
           "default": "None",
           "since": "0.0.1"
         },

@@ -3,7 +3,6 @@ package coursier.sbtcoursier
 import coursier.ProjectCache
 import coursier.core._
 import coursier.extra.Typelevel
-import coursier.ivy.IvyRepository
 import coursier.lmcoursier._
 import coursier.lmcoursier.Inputs.withAuthenticationByHost
 import coursier.sbtcoursier.Keys._
@@ -60,7 +59,7 @@ object ResolutionTasks {
       val cachePolicies = coursierCachePolicies.value
       val ttl = coursierTtl.value
       val cache = coursierCache.value
-      val createLogger = coursierCreateLogger.value
+      val createLogger = coursierLogger.value
 
       val log = streams.value.log
 
@@ -120,22 +119,21 @@ object ResolutionTasks {
           parentProjectCache = parentProjectCache,
           interProjectDependencies = interProjectDependencies,
           internalRepositories = Seq(interProjectRepo),
-          typelevel = typelevel,
           sbtClassifiers = sbtClassifiers,
           projectName = projectName,
-          logger = createLogger.create(),
-          cacheParams = coursier.params.CacheParams(
-            cacheLocation = cache,
-            cachePolicies = cachePolicies,
-            ttl = ttl,
-            checksum = checksums,
-            parallel = parallelDownloads
-          ),
-          params = coursier.params.ResolutionParams(
-            maxIterations = maxIterations,
-            profiles = userEnabledProfiles,
-            forceVersion = userForceVersions
-          )
+          loggerOpt = createLogger,
+          cacheParams = coursier.params.CacheParams()
+            .withCacheLocation(cache)
+            .withCachePolicies(cachePolicies)
+            .withTtl(ttl)
+            .withChecksum(checksums)
+            .withParallel(parallelDownloads)
+          ,
+          params = coursier.params.ResolutionParams()
+            .withMaxIterations(maxIterations)
+            .withProfiles(userEnabledProfiles)
+            .withForceVersion(userForceVersions)
+            .withTypelevel(typelevel)
         ),
         verbosityLevel,
         log
@@ -143,7 +141,7 @@ object ResolutionTasks {
 
       resOrError match {
         case Left(err) =>
-          err.throwException()
+          throw err
         case Right(res) =>
           res
       }
