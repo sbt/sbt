@@ -1,7 +1,6 @@
 package coursier.sbtcoursier
 
-import coursier.cache.CacheDefaults
-import coursier.{Cache, CachePolicy}
+import coursier.cache.{CacheDefaults, CachePolicy}
 import coursier.core.{Configuration, ResolutionProcess}
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{Cache => _, Configuration => _, _}
@@ -156,14 +155,12 @@ object CoursierPlugin extends AutoPlugin {
     ).value,
     updateClassifiers := UpdateTasks.updateTask(
       shadedConfigOpt,
-      withClassifiers = true,
-      ignoreArtifactErrors = true
+      withClassifiers = true
     ).value,
     updateSbtClassifiers.in(Defaults.TaskGlobal) := UpdateTasks.updateTask(
       shadedConfigOpt,
       withClassifiers = true,
-      sbtClassifiers = true,
-      ignoreArtifactErrors = true
+      sbtClassifiers = true
     ).value,
     coursierConfigGraphs := InputsTasks.ivyGraphsTask.value,
     coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,

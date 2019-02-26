@@ -2,12 +2,12 @@ package coursier.sbtcoursier
 
 import java.io.File
 
-import coursier.{Artifact, FileError}
+import coursier.Artifact
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.params.CacheParams
 import coursier.sbtcoursier.Keys._
-import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierCreateLogger}
+import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierLogger}
 import sbt.Def
 import sbt.Keys._
 
@@ -18,7 +18,7 @@ object ArtifactsTasks {
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false,
     includeSignatures: Boolean = false
-  ): Def.Initialize[sbt.Task[Map[Artifact, Either[FileError, File]]]] = {
+  ): Def.Initialize[sbt.Task[Map[Artifact, File]]] = {
 
     val resTask: sbt.Def.Initialize[sbt.Task[Seq[Resolution]]] =
       if (withClassifiers && sbtClassifiers)
@@ -44,7 +44,7 @@ object ArtifactsTasks {
       val cachePolicies = coursierCachePolicies.value
       val ttl = coursierTtl.value
       val cache = coursierCache.value
-      val createLogger = coursierCreateLogger.value
+      val createLogger = coursierLogger.value
 
       val log = streams.value.log
 
@@ -57,16 +57,15 @@ object ArtifactsTasks {
         classifiers = classifiers,
         resolutions = res,
         includeSignatures = includeSignatures,
-        logger = createLogger.create(),
+        loggerOpt = createLogger,
         projectName = projectName,
         sbtClassifiers = sbtClassifiers,
-        cacheParams = CacheParams(
-          parallel = parallelDownloads,
-          cacheLocation = cache,
-          checksum = artifactsChecksums,
-          ttl = ttl,
-          cachePolicies = cachePolicies
-        )
+        cacheParams = CacheParams()
+          .withParallel(parallelDownloads)
+          .withCacheLocation(cache)
+          .withChecksum(artifactsChecksums)
+          .withTtl(ttl)
+          .withCachePolicies(cachePolicies)
       )
 
       val resOrError = ArtifactsRun.artifacts(
@@ -77,7 +76,7 @@ object ArtifactsTasks {
 
       resOrError match {
         case Left(err) =>
-          err.throwException()
+          throw err
         case Right(res) =>
           res
       }

@@ -1,11 +1,11 @@
 package coursier.sbtcoursiershared
 
-import java.io.{File, OutputStreamWriter}
+import java.io.File
 
-import coursier.cache.CacheDefaults
-import coursier.{Cache, Credentials, TermDisplay}
+import coursier.cache.{CacheDefaults, CacheLogger}
+import coursier.Credentials
 import coursier.core.{Configuration, Project, Publication}
-import coursier.lmcoursier.{CreateLogger, FallbackDependency, SbtCoursierCache}
+import coursier.lmcoursier.{FallbackDependency, SbtCoursierCache}
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
 import sbt.librarymanagement.{Resolver, URLRepository}
@@ -37,12 +37,9 @@ object SbtCoursierShared extends AutoPlugin {
     val coursierUseSbtCredentials = settingKey[Boolean]("")
     val coursierCredentials = taskKey[Map[String, Credentials]]("")
 
-    val coursierCreateLogger = taskKey[CreateLogger]("")
+    val coursierLogger = taskKey[Option[CacheLogger]]("")
 
     val coursierCache = settingKey[File]("")
-
-    type CoursierCreateLogger = coursier.lmcoursier.CreateLogger
-    val CoursierCreateLogger = coursier.lmcoursier.CreateLogger
 
     val sbtCoursierVersion = Properties.version
   }
@@ -58,7 +55,7 @@ object SbtCoursierShared extends AutoPlugin {
       coursierKeepPreloaded := false,
       coursierUseSbtCredentials := true,
       coursierCredentials := Map.empty,
-      coursierCreateLogger := CreateLogger { () => new TermDisplay(new OutputStreamWriter(System.err)) },
+      coursierLogger := None,
       coursierCache := CacheDefaults.location
     )
 

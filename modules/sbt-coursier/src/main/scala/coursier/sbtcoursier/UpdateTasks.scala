@@ -14,7 +14,6 @@ object UpdateTasks {
     shadedConfigOpt: Option[(String, Configuration)],
     withClassifiers: Boolean,
     sbtClassifiers: Boolean = false,
-    ignoreArtifactErrors: Boolean = false,
     includeSignatures: Boolean = false
   ): Def.Initialize[sbt.Task[UpdateReport]] = {
 
@@ -111,8 +110,7 @@ object UpdateTasks {
         dependencies,
         res,
         withClassifiers,
-        sbtClassifiers,
-        ignoreArtifactErrors
+        sbtClassifiers
       )
 
       SbtCoursierCache.default.reportOpt(key) match {
@@ -132,21 +130,16 @@ object UpdateTasks {
               configs,
               dependencies,
               res,
-              ignoreArtifactErrors,
               includeSignatures,
               sbtBootJarOverrides
             )
 
-            val repOrError =
+            val rep =
               Lock.lock.synchronized {
                 UpdateRun.update(params, verbosityLevel, log)
               }
-            for (rep <- repOrError)
-              SbtCoursierCache.default.putReport(key, rep)
-            repOrError match {
-              case Left(err) => err.throwException()
-              case Right(rep) => rep
-            }
+            SbtCoursierCache.default.putReport(key, rep)
+            rep
           }
       }
     }

@@ -5,7 +5,7 @@ import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import java.net.{MalformedURLException, URL}
 
 import coursier.cache.CacheUrl
-import coursier.{Attributes, Cache, Dependency, Module}
+import coursier.{Attributes, Dependency, Module}
 import coursier.core._
 import coursier.maven.MavenRepository
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
