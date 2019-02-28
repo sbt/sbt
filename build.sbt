@@ -31,7 +31,7 @@ lazy val `lm-coursier` = project
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
-      "org.scalatest" %% "scalatest" % "3.0.5" % Test
+      "org.scalatest" %% "scalatest" % "3.0.6" % Test
     ),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
