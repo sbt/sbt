@@ -1,11 +1,13 @@
-language: scala
-scala: 2.12.7
+language: java
 os: linux
-jdk: oraclejdk8
+jdk: openjdk8
+git:
+  depth: false # https://stackoverflow.com/a/51727114/3714539
 before_install:
-  - git fetch --tags
-script:
-  - scripts/travis.sh
+  - mkdir .bin && curl -Lo .bin/sbt https://raw.githubusercontent.com/paulp/sbt-extras/a56bf05b1113e251aeaf7542f48c45c6c2691d4d/sbt
+  - export PATH="$(pwd)/.bin:$PATH"
+  - export TRAVIS_SCALA_VERSION=2.12.8
+script: scripts/travis.sh
 stages:
   - name: test
   - name: release
