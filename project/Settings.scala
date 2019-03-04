@@ -42,7 +42,8 @@ object Settings {
         "-Xmx1024M",
         "-Dplugin.name=" + name.value,
         "-Dplugin.version=" + version.value,
-        "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
+        "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath,
+        "-Dcoursier.sbt-launcher.add-plugin=false"
       ),
       scriptedBufferLog := false,
       sbtPlugin := true,

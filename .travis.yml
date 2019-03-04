@@ -4,7 +4,9 @@ jdk: openjdk8
 git:
   depth: false # https://stackoverflow.com/a/51727114/3714539
 before_install:
-  - mkdir .bin && curl -Lo .bin/sbt https://raw.githubusercontent.com/paulp/sbt-extras/a56bf05b1113e251aeaf7542f48c45c6c2691d4d/sbt
+  - mkdir .bin
+  - curl -Lo .bin/sbt https://raw.githubusercontent.com/coursier/sbt-extras/77c93346a2b52cf35cc72382125cfdbb25a00197/sbt
+  - chmod +x .bin/sbt
   - export PATH="$(pwd)/.bin:$PATH"
   - export TRAVIS_SCALA_VERSION=2.12.8
 script: scripts/travis.sh
