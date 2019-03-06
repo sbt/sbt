@@ -16,6 +16,7 @@ environment:
   TEST_REPOSITORY_PASSWORD: pass
   TEST_REPOSITORY: http://localhost:8080
 build_script:
+  - cmd: .\metadata\coursier fetch io.get-coursier:http-server_2.12:1.0.0
   - ps: Start-Job -filepath .\metadata\scripts\start-it-auth-server.ps1 -ArgumentList $pwd\metadata, $env:TEST_REPOSITORY_HOST, $env:TEST_REPOSITORY_PORT, $env:TEST_REPOSITORY_USER, $env:TEST_REPOSITORY_PASSWORD
 test_script:
   - sbt ++2.12.7 "sbt-lm-coursier/scripted shared-2/simple" sbt-coursier/scripted sbt-shading/scripted
