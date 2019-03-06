@@ -85,7 +85,7 @@ object ResolutionTasks {
 
       val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
 
-      val autoScalaLib = autoScalaLibrary.value
+      val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
 
       val resolvers = resolversTask.value
 

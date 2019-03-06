@@ -7,7 +7,7 @@ import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 object LmCoursierPlugin extends AutoPlugin {
@@ -84,7 +84,7 @@ object LmCoursierPlugin extends AutoPlugin {
           streams.value.log
         )
         val fallbackDeps = coursierFallbackDependencies.value
-        val autoScalaLib = autoScalaLibrary.value
+        val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
         val profiles = mavenProfiles.value
 
         val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
