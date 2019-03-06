@@ -108,9 +108,9 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val dependencies = module0
       .dependencies
       .flatMap { d =>
-        // crossVersion already taken into account, wiping it here
-        val d0 = d.withCrossVersion(CrossVersion.Disabled())
-        FromSbt.dependencies(d0, sv, sbv)
+        // crossVersion sometimes already taken into account (when called via the update task), sometimes not
+        // (e.g. sbt-dotty 0.13.0-RC1)
+        FromSbt.dependencies(d, sv, sbv, optionalCrossVer = true)
       }
       .map {
         case (config, dep) =>
