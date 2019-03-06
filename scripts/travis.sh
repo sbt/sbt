@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euvx
 
-downloadInstallSbtExtras() {
-  mkdir -p bin
-  curl -L -o bin/sbt https://github.com/paulp/sbt-extras/raw/9ade5fa54914ca8aded44105bf4b9a60966f3ccd/sbt
-  chmod +x bin/sbt
-}
-
 lmCoursier() {
   [ "${LM_COURSIER:-""}" = 1 ]
 }
@@ -54,8 +48,6 @@ addPgpKeys() {
   done
 }
 
-
-downloadInstallSbtExtras
 
 if sbtShading; then
   runSbtShadingTests

@@ -8,7 +8,7 @@ import com.tonicsystems.jarjar.classpath.ClassPath
 import com.tonicsystems.jarjar.transform.JarTransformer
 import com.tonicsystems.jarjar.transform.config.ClassRename
 import com.tonicsystems.jarjar.transform.jar.DefaultJarProcessor
-import coursier.core.{Configuration, Orders, Type}
+import coursier.core.{Configuration, Orders}
 import sbt.file
 
 object Shading {

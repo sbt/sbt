@@ -6,7 +6,7 @@ import coursier.cache.FileCache
 import coursier.Artifact
 import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core.Type
-import coursier.util.Schedulable
+import coursier.util.Sync
 import sbt.util.Logger
 
 object ArtifactsRun {
@@ -29,7 +29,7 @@ object ArtifactsRun {
         else
           ""
 
-      Schedulable.withFixedThreadPool(params.cacheParams.parallel) { pool =>
+      Sync.withFixedThreadPool(params.cacheParams.parallel) { pool =>
 
         coursier.Artifacts()
           .withResolutions(params.resolutions)

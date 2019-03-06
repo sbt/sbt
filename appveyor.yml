@@ -2,18 +2,12 @@
 version: '{build}'
 os: Windows Server 2012
 install:
-  - ps: |
-      Add-Type -AssemblyName System.IO.Compression.FileSystem
-      if (!(Test-Path -Path "C:\sbt" )) {
-        (new-object System.Net.WebClient).DownloadFile(
-          'https://dl.bintray.com/sbt/native-packages/sbt/0.13.8/sbt-0.13.8.zip',
-          'C:\sbt-bin.zip'
-        )
-        [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\sbt-bin.zip", "C:\sbt")
-      }
+  - cmd: mkdir C:\sbt
+  - cmd: curl -Lo C:\sbt\sbt https://github.com/coursier/sbt-launcher/releases/download/v1.2.5/csbt
+  - cmd: curl -Lo C:\sbt\sbt.bat https://github.com/coursier/sbt-launcher/releases/download/v1.2.5/csbt.bat
   - cmd: SET JAVA_HOME=C:\Program Files\Java\jdk1.8.0
-  - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
-  - cmd: SET SBT_OPTS=-Xmx4g -Xss2m
+  - cmd: SET PATH=C:\sbt;%JAVA_HOME%\bin;%PATH%
+  - cmd: SET JAVA_OPTS=-Xmx4g -Xss2m
   - git submodule update --init --recursive
 environment:
   TEST_REPOSITORY_HOST: localhost
@@ -22,6 +16,7 @@ environment:
   TEST_REPOSITORY_PASSWORD: pass
   TEST_REPOSITORY: http://localhost:8080
 build_script:
+  - cmd: .\metadata\coursier fetch io.get-coursier:http-server_2.12:1.0.0
   - ps: Start-Job -filepath .\metadata\scripts\start-it-auth-server.ps1 -ArgumentList $pwd\metadata, $env:TEST_REPOSITORY_HOST, $env:TEST_REPOSITORY_PORT, $env:TEST_REPOSITORY_USER, $env:TEST_REPOSITORY_PASSWORD
 test_script:
   - sbt ++2.12.7 "sbt-lm-coursier/scripted shared-2/simple" sbt-coursier/scripted sbt-shading/scripted

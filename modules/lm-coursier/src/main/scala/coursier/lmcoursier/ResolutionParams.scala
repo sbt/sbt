@@ -3,8 +3,9 @@ package coursier.lmcoursier
 import java.io.File
 
 import coursier.cache.CacheLogger
-import coursier.{FallbackDependenciesRepository, ProjectCache}
+import coursier.ProjectCache
 import coursier.core._
+import coursier.util.InMemoryRepository
 import sbt.librarymanagement.{Resolver, URLRepository}
 
 final case class ResolutionParams(
@@ -33,7 +34,7 @@ final case class ResolutionParams(
       }.toMap
 
       Seq(
-        FallbackDependenciesRepository(map)
+        InMemoryRepository(map)
       )
     }
 

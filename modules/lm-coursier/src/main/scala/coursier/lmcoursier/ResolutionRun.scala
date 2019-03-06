@@ -6,7 +6,7 @@ import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core._
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
-import coursier.util.Schedulable
+import coursier.util.Sync
 import sbt.util.Logger
 
 object ResolutionRun {
@@ -64,7 +64,7 @@ object ResolutionRun {
     if (verbosityLevel >= 2)
       log.info(initialMessage)
 
-    Schedulable.withFixedThreadPool(params.cacheParams.parallel) { pool =>
+    Sync.withFixedThreadPool(params.cacheParams.parallel) { pool =>
 
       Resolve()
         .withDependencies(

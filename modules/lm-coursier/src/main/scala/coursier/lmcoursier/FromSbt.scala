@@ -2,7 +2,7 @@ package coursier.lmcoursier
 
 import coursier.ivy.IvyRepository
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
-import java.net.{MalformedURLException, URL}
+import java.net.MalformedURLException
 
 import coursier.cache.CacheUrl
 import coursier.{Attributes, Dependency, Module}
@@ -17,9 +17,21 @@ object FromSbt {
   def sbtModuleIdName(
     moduleId: ModuleID,
     scalaVersion: => String,
-    scalaBinaryVersion: => String
-  ): String =
-    sbtCrossVersionName(moduleId.name, moduleId.crossVersion, scalaVersion, scalaBinaryVersion)
+    scalaBinaryVersion: => String,
+    optionalCrossVer: Boolean = false
+  ): String = {
+    val name0 = moduleId.name
+    val updatedName = sbtCrossVersionName(name0, moduleId.crossVersion, scalaVersion, scalaBinaryVersion)
+    if (!optionalCrossVer || updatedName.length <= name0.length)
+      updatedName
+    else {
+      val suffix = updatedName.substring(name0.length)
+      if (name0.endsWith(suffix))
+        name0
+      else
+        updatedName
+    }
+  }
 
   def sbtCrossVersionName(
     name: String,
@@ -40,10 +52,11 @@ object FromSbt {
   def moduleVersion(
     module: ModuleID,
     scalaVersion: String,
-    scalaBinaryVersion: String
+    scalaBinaryVersion: String,
+    optionalCrossVer: Boolean = false
   ): (Module, String) = {
 
-    val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion)
+    val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion, optionalCrossVer)
 
     val module0 = Module(Organization(module.organization), ModuleName(fullName), FromSbt.attributes(module.extraDependencyAttributes))
     val version = module.revision
@@ -54,12 +67,13 @@ object FromSbt {
   def dependencies(
     module: ModuleID,
     scalaVersion: String,
-    scalaBinaryVersion: String
+    scalaBinaryVersion: String,
+    optionalCrossVer: Boolean = false
   ): Seq[(Configuration, Dependency)] = {
 
     // TODO Warn about unsupported properties in `module`
 
-    val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion)
+    val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer)
 
     val dep = Dependency(
       module0,

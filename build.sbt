@@ -15,16 +15,13 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion = "1.1.0-M12"
-
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
   .enablePlugins(ContrabandPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion,
-      "io.get-coursier" %% "coursier-extra" % coursierVersion,
+      "io.get-coursier" %% "coursier" % "1.1.0-M13",
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an

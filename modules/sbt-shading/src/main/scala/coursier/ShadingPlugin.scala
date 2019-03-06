@@ -2,7 +2,7 @@ package coursier
 
 import java.io.File
 
-import coursier.core.{Configuration, Type}
+import coursier.core.Configuration
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import coursier.sbtcoursier.{CoursierPlugin, InputsTasks, Keys}
 import coursier.sbtcoursiershared.{IvyXml, SbtCoursierShared}

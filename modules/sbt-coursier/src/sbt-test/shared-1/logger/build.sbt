@@ -7,7 +7,7 @@ coursierCache := baseDirectory.value / "cache"
 logFile := baseDirectory.value / "log"
 
 coursierLogger := {
-  val logStream = new java.io.PrintStream(logFile.value)
+  var logStream: java.io.PrintStream = null
   def log(msg: String): Unit = {
     println(msg)
     logStream.println(msg)
@@ -16,6 +16,9 @@ coursierLogger := {
 
   val logger = new coursier.cache.CacheLogger {
     override def init(sizeHint: Option[Int]): Unit = {
+      logStream = new java.io.PrintStream(
+        new java.io.FileOutputStream(logFile.value, true)
+      )
       log("init")
     }
     override def foundLocally(url: String): Unit = {
@@ -29,6 +32,9 @@ coursierLogger := {
     }
     override def stop(): Unit = {
       log("stop")
+      logStream.flush()
+      logStream.close()
+      logStream = null
     }
   }
 

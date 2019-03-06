@@ -2,7 +2,7 @@ package coursier.sbtcoursier
 
 import coursier.ProjectCache
 import coursier.core._
-import coursier.extra.Typelevel
+import coursier.internal.Typelevel
 import coursier.lmcoursier._
 import coursier.lmcoursier.Inputs.withAuthenticationByHost
 import coursier.sbtcoursier.Keys._
@@ -85,7 +85,7 @@ object ResolutionTasks {
 
       val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
 
-      val autoScalaLib = autoScalaLibrary.value
+      val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
 
       val resolvers = resolversTask.value
 

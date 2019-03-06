@@ -26,7 +26,10 @@ object Main extends App {
     "sbt.global.base",
     sys.props("user.home") + "/.sbt"
   ))
-  val prefix = new File(sbtBase, "boot").getAbsolutePath
+  val prefixes = Seq(new File(sbtBase, "boot").getAbsolutePath) ++
+    Seq("coursier.sbt-launcher.dirs.scala-jars", "coursier.sbt-launcher.dirs.base")
+      .flatMap(sys.props.get(_))
+      .map(new File(_).getAbsolutePath)
 
   def fromBootAndUnique(name: String): Unit = {
     val jars = cp.filter(_.getName.startsWith(name)).distinct
@@ -34,7 +37,7 @@ object Main extends App {
 
     val Seq(jar) = jars
 
-    assert(jar.getAbsolutePath.startsWith(prefix), s"JAR for $name ($jar) not under $prefix")
+    assert(prefixes.exists(jar.getAbsolutePath.startsWith), s"JAR for $name ($jar) not under any of ${prefixes.mkString(", ")}")
   }
 
   val props = Thread.currentThread()
