@@ -4,9 +4,9 @@ import java.io.File
 
 import _root_.coursier.{Artifact, Organization, Resolution, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
-import _root_.coursier.extra.Typelevel
 import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
 import coursier.cache.{CacheDefaults, CachePolicy}
+import coursier.internal.Typelevel
 import coursier.params.CacheParams
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._

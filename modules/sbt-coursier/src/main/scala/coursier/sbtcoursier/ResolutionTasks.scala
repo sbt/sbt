@@ -2,7 +2,7 @@ package coursier.sbtcoursier
 
 import coursier.ProjectCache
 import coursier.core._
-import coursier.extra.Typelevel
+import coursier.internal.Typelevel
 import coursier.lmcoursier._
 import coursier.lmcoursier.Inputs.withAuthenticationByHost
 import coursier.sbtcoursier.Keys._
