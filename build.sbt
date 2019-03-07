@@ -55,15 +55,10 @@ lazy val utilRoot: Project = (project in file("."))
         homepage := Some(url("https://github.com/sbt/util")),
         description := "Util module for sbt",
         scmInfo := Some(ScmInfo(url("https://github.com/sbt/util"), "git@github.com:sbt/util.git")),
-        scalafmtOnCompile in Sbt := false,
       )),
     commonSettings,
     name := "Util Root",
-    publish := {},
-    publishLocal := {},
-    publishArtifact in Compile := false,
-    publishArtifact in Test := false,
-    publishArtifact := false,
+    publish / skip := true,
     customCommands
   )
 
