@@ -21,7 +21,7 @@ lazy val `lm-coursier` = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % "1.1.0-M13",
+      "io.get-coursier" %% "coursier" % "1.1.0-M13-1",
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an

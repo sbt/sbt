@@ -1,6 +1,5 @@
 package coursier.lmcoursier
 
-import coursier.cache.FileCache
 import coursier.{Resolution, Resolve}
 import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core._
@@ -64,7 +63,7 @@ object ResolutionRun {
     if (verbosityLevel >= 2)
       log.info(initialMessage)
 
-    Sync.withFixedThreadPool(params.cacheParams.parallel) { pool =>
+    Sync.withFixedThreadPool(params.parallel) { pool =>
 
       Resolve()
         .withDependencies(
@@ -83,12 +82,9 @@ object ResolutionRun {
             .withTypelevel(params.params.typelevel && isCompileConfig)
         )
         .withCache(
-          FileCache()
-            .withLocation(params.cacheParams.cacheLocation)
-            .withCachePolicies(params.cacheParams.cachePolicies)
-            .withChecksums(params.cacheParams.checksum)
+          params
+            .cache
             .withPool(pool)
-            .withTtl(params.cacheParams.ttl)
             .withLogger(
               params.loggerOpt.getOrElse {
                 RefreshLogger.create(

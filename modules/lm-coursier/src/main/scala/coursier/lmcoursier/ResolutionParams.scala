@@ -2,10 +2,10 @@ package coursier.lmcoursier
 
 import java.io.File
 
-import coursier.cache.CacheLogger
+import coursier.cache.{CacheLogger, FileCache}
 import coursier.ProjectCache
 import coursier.core._
-import coursier.util.InMemoryRepository
+import coursier.util.{InMemoryRepository, Task}
 import sbt.librarymanagement.{Resolver, URLRepository}
 
 final case class ResolutionParams(
@@ -20,7 +20,8 @@ final case class ResolutionParams(
   sbtClassifiers: Boolean,
   projectName: String,
   loggerOpt: Option[CacheLogger],
-  cacheParams: coursier.params.CacheParams,
+  cache: coursier.cache.FileCache[Task],
+  parallel: Int,
   params: coursier.params.ResolutionParams
 ) {
 
@@ -48,8 +49,16 @@ final case class ResolutionParams(
     repositories,
     copy(
       parentProjectCache = Map.empty,
-      loggerOpt = None
+      loggerOpt = None,
+      cache = null, // temporary, until we can use https://github.com/coursier/coursier/pull/1090
+      parallel = 0
     ),
+    ResolutionParams.cacheKey {
+      cache
+        .withPool(null)
+        .withLogger(null)
+        .withSync[Task](null)
+    },
     sbtClassifiers
   )
 
@@ -59,6 +68,18 @@ final case class ResolutionParams(
 }
 
 object ResolutionParams {
+
+  private lazy val m = {
+    val cls = classOf[FileCache[Task]]
+    //cls.getDeclaredMethods.foreach(println)
+    val m = cls.getDeclaredMethod("params")
+    m.setAccessible(true)
+    m
+  }
+
+  // temporary, until we can use https://github.com/coursier/coursier/pull/1090
+  private def cacheKey(cache: FileCache[Task]): Object =
+    m.invoke(cache)
 
   def defaultIvyProperties(): Map[String, String] = {
 

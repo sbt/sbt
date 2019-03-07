@@ -41,6 +41,7 @@ object SbtCoursierCache {
     dependencies: Seq[(Configuration, Dependency)],
     repositories: Seq[Repository],
     params: ResolutionParams,
+    tmpCacheKey: Object, // temporary, until we can use https://github.com/coursier/coursier/pull/1090
     sbtClassifiers: Boolean
   )
 

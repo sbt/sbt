@@ -3,9 +3,9 @@ package coursier.sbtcoursier
 import java.io.File
 
 import coursier.Artifact
+import coursier.cache.FileCache
 import coursier.core._
 import coursier.lmcoursier._
-import coursier.params.CacheParams
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierLogger}
 import sbt.Def
@@ -60,12 +60,12 @@ object ArtifactsTasks {
         loggerOpt = createLogger,
         projectName = projectName,
         sbtClassifiers = sbtClassifiers,
-        cacheParams = CacheParams()
-          .withParallel(parallelDownloads)
-          .withCacheLocation(cache)
-          .withChecksum(artifactsChecksums)
+        cache = FileCache()
+          .withLocation(cache)
+          .withChecksums(artifactsChecksums)
           .withTtl(ttl)
-          .withCachePolicies(cachePolicies)
+          .withCachePolicies(cachePolicies),
+        parallel = parallelDownloads
       )
 
       val resOrError = ArtifactsRun.artifacts(
@@ -77,8 +77,8 @@ object ArtifactsTasks {
       resOrError match {
         case Left(err) =>
           throw err
-        case Right(res) =>
-          res
+        case Right(res0) =>
+          res0
       }
     }
   }

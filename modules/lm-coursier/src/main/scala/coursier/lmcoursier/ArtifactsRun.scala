@@ -2,7 +2,6 @@ package coursier.lmcoursier
 
 import java.io.File
 
-import coursier.cache.FileCache
 import coursier.Artifact
 import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core.Type
@@ -29,13 +28,13 @@ object ArtifactsRun {
         else
           ""
 
-      Sync.withFixedThreadPool(params.cacheParams.parallel) { pool =>
+      Sync.withFixedThreadPool(params.parallel) { pool =>
 
         coursier.Artifacts()
           .withResolutions(params.resolutions)
           .withArtifactTypes(Set(Type.all))
           .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
-          .withTransformArtifacts { l =>
+          .transformArtifacts { l =>
             val l0 =
               if (params.includeSignatures)
                 l.flatMap { a =>
@@ -47,10 +46,9 @@ object ArtifactsRun {
             l0.distinct // temporary, until we can use https://github.com/coursier/coursier/pull/1077 from here
           }
           .withCache(
-            FileCache()
-              .withLocation(params.cacheParams.cacheLocation)
-              .withCachePolicies(params.cacheParams.cachePolicies)
-              .withChecksums(params.cacheParams.checksum)
+            params
+              .cache
+              .withPool(pool)
               .withLogger(
                 params.loggerOpt.getOrElse {
                   RefreshLogger.create(
@@ -65,8 +63,6 @@ object ArtifactsRun {
                   )
                 }
               )
-              .withTtl(params.cacheParams.ttl)
-              .withPool(pool)
           )
           .either()
           .map(_.toMap)

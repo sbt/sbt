@@ -1,6 +1,7 @@
 package coursier.sbtcoursier
 
 import coursier.ProjectCache
+import coursier.cache.FileCache
 import coursier.core._
 import coursier.internal.Typelevel
 import coursier.lmcoursier._
@@ -122,13 +123,13 @@ object ResolutionTasks {
           sbtClassifiers = sbtClassifiers,
           projectName = projectName,
           loggerOpt = createLogger,
-          cacheParams = coursier.params.CacheParams()
-            .withCacheLocation(cache)
+          cache = FileCache()
+            .withLocation(cache)
             .withCachePolicies(cachePolicies)
             .withTtl(ttl)
-            .withChecksum(checksums)
-            .withParallel(parallelDownloads)
+            .withChecksums(checksums)
           ,
+          parallel = parallelDownloads,
           params = coursier.params.ResolutionParams()
             .withMaxIterations(maxIterations)
             .withProfiles(userEnabledProfiles)

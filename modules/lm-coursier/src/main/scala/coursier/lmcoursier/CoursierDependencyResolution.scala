@@ -5,9 +5,8 @@ import java.io.File
 import _root_.coursier.{Artifact, Organization, Resolution, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
 import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
-import coursier.cache.{CacheDefaults, CachePolicy}
+import coursier.cache.{CacheDefaults, CachePolicy, FileCache}
 import coursier.internal.Typelevel
-import coursier.params.CacheParams
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
 import sbt.util.Logger
@@ -19,8 +18,6 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
    * and @andreaTP (https://github.com/sbt/librarymanagement/pull/270), then adapted to the code from the former
    * sbt-coursier, that was moved to this module.
    */
-
-  private def sbtBinaryVersion = "1.0"
 
   lazy val resolvers =
     if (conf.reorderResolvers)
@@ -138,12 +135,12 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       sbtClassifiers = false,
       projectName = projectName,
       loggerOpt = loggerOpt,
-      cacheParams = coursier.params.CacheParams()
-        .withCacheLocation(cache)
+      cache = coursier.cache.FileCache()
+        .withLocation(cache)
         .withCachePolicies(cachePolicies)
         .withTtl(ttl)
-        .withChecksum(checksums)
-        .withParallel(conf.parallelDownloads),
+        .withChecksums(checksums),
+      parallel = conf.parallelDownloads,
       params = coursier.params.ResolutionParams()
         .withMaxIterations(conf.maxIterations)
         .withProfiles(conf.mavenProfiles.toSet)
@@ -159,12 +156,12 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         loggerOpt = loggerOpt,
         projectName = projectName,
         sbtClassifiers = false,
-        cacheParams = CacheParams()
-          .withParallel(conf.parallelDownloads)
-          .withCacheLocation(cache)
-          .withChecksum(checksums)
+        cache = FileCache()
+          .withLocation(cache)
+          .withChecksums(checksums)
           .withTtl(ttl)
-          .withCachePolicies(cachePolicies)
+          .withCachePolicies(cachePolicies),
+        parallel = conf.parallelDownloads
       )
 
     val sbtBootJarOverrides = SbtBootJars(
