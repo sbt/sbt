@@ -3,7 +3,7 @@ package sbt.internal.util
 import sbt.util._
 import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import org.apache.logging.log4j.{ Level => XLevel }
 import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
@@ -105,6 +105,9 @@ object ConsoleAppender {
   private[this] val widthHolder: AtomicInteger = new AtomicInteger
   private[sbt] def terminalWidth = widthHolder.get
   private[sbt] def setTerminalWidth(n: Int): Unit = widthHolder.set(n)
+  private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
+  def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
+  def showProgress: Boolean = showProgressHolder.get
 
   /** Hide stack trace altogether. */
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
@@ -140,21 +143,6 @@ object ConsoleAppender {
           .getOrElse(useColorDefault)
     }
   }
-
-  /**
-   * Indicates whether the super shell is enabled.
-   */
-  lazy val showProgress: Boolean =
-    formatEnabledInEnv && sys.props
-      .get("sbt.progress")
-      .flatMap({ s =>
-        parseLogOption(s) match {
-          case LogOption.Always => Some(true)
-          case LogOption.Never  => Some(false)
-          case _                => None
-        }
-      })
-      .getOrElse(true)
 
   private[sbt] def parseLogOption(s: String): LogOption =
     s.toLowerCase match {
