@@ -97,8 +97,14 @@ class ConsoleLogger private[ConsoleLogger] (
 
 object ConsoleAppender {
   private[sbt] final val ScrollUp = "\u001B[S"
+  private[sbt] def cursorUp(n: Int): String = s"\u001B[${n}A"
+  private[sbt] def cursorDown(n: Int): String = s"\u001B[${n}B"
+  private[sbt] def scrollUp(n: Int): String = s"\u001B[${n}S"
   private[sbt] final val DeleteLine = "\u001B[2K"
   private[sbt] final val CursorLeft1000 = "\u001B[1000D"
+  private[this] val widthHolder: AtomicInteger = new AtomicInteger
+  private[sbt] def terminalWidth = widthHolder.get
+  private[sbt] def setTerminalWidth(n: Int): Unit = widthHolder.set(n)
 
   /** Hide stack trace altogether. */
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
@@ -463,7 +469,18 @@ class ConsoleAppender private[ConsoleAppender] (
     if (!useFormat || !ansiCodesSupported) {
       out.println(EscHelpers.removeEscapeSequences(msg))
     } else if (ConsoleAppender.showProgress) {
-      out.print(s"$ScrollUp$DeleteLine$msg${CursorLeft1000}")
+      val textLength = msg.length - 5
+      val scrollNum =
+        if (ConsoleAppender.terminalWidth == 0) 1
+        else (textLength / ConsoleAppender.terminalWidth) + 1
+      if (scrollNum > 1) {
+        out.print(s"${cursorDown(1)}$DeleteLine" * (scrollNum - 1) + s"${cursorUp(scrollNum - 1)}")
+      }
+      out.print(
+        s"$ScrollUp$DeleteLine$msg${CursorLeft1000}" + (
+          if (scrollNum <= 1) ""
+          else scrollUp(scrollNum - 1)
+        ))
       out.flush()
     } else {
       out.println(msg)
