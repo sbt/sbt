@@ -290,6 +290,9 @@ lazy val taskProj = (project in file("tasks"))
     testedBaseSettings,
     name := "Tasks",
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      exclude[ReversedMissingMethodProblem]("sbt.ExecuteProgress.stop")
+    )
   )
   .configure(addSbtUtilControl)
 

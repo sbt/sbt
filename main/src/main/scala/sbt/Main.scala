@@ -138,6 +138,20 @@ object StandardMain {
     // This is to workaround https://github.com/sbt/io/issues/110
     sys.props.put("jna.nosys", "true")
 
+    ConsoleAppender.setTerminalWidth(JLine.usingTerminal(_.getWidth))
+    ConsoleAppender.setShowProgress(
+      ConsoleAppender.formatEnabledInEnv && sys.props
+        .get("sbt.progress")
+        .flatMap({ s =>
+          ConsoleAppender.parseLogOption(s) match {
+            case LogOption.Always => Some(true)
+            case LogOption.Never  => Some(false)
+            case _                => None
+          }
+        })
+        .getOrElse(true)
+    )
+
     import BasicCommandStrings.isEarlyCommand
     val userCommands = configuration.arguments.map(_.trim)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)

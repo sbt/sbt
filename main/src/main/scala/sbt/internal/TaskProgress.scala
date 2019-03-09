@@ -31,6 +31,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   private[this] val isReady = new AtomicBoolean(false)
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val isAllCompleted = new AtomicBoolean(false)
+  private[this] val isStopped = new AtomicBoolean(false)
 
   override def initial: Unit = ()
   override def registered(
@@ -67,14 +68,18 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
 
   override def completed[A](state: Unit, task: Task[A], result: Result[A]): Unit = ()
 
+  override def stop(): Unit = {
+    isStopped.set(true)
+  }
+
   import ExecutionContext.Implicits._
   Future {
-    while (!isReady.get) {
+    while (!isReady.get && !isStopped.get) {
       blocking {
         Thread.sleep(500)
       }
     }
-    while (!isAllCompleted.get) {
+    while (!isAllCompleted.get && !isStopped.get) {
       blocking {
         report()
         Thread.sleep(500)

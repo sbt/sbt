@@ -20,9 +20,9 @@ import TaskName._
  * - -Dsbt.task.timings.on.shutdown=true|false
  * - -Dsbt.task.timings.unit=number
  * - -Dsbt.task.timings.threshold=number
- * @param shutdown    Should the report be given when exiting the JVM (true) or immediately (false)?
+ * @param reportOnShutdown    Should the report be given when exiting the JVM (true) or immediately (false)?
  */
-private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[Task] {
+private[sbt] final class TaskTimings(reportOnShutdown: Boolean) extends ExecuteProgress[Task] {
   private[this] val calledBy = new ConcurrentHashMap[Task[_], Task[_]]
   private[this] val anonOwners = new ConcurrentHashMap[Task[_], Task[_]]
   private[this] val timings = new ConcurrentHashMap[Task[_], Long]
@@ -41,7 +41,7 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
 
   type S = Unit
 
-  if (shutdown) {
+  if (reportOnShutdown) {
     start = System.nanoTime
     Runtime.getRuntime.addShutdownHook(new Thread {
       override def run() = report()
@@ -49,7 +49,7 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
   }
 
   def initial = {
-    if (!shutdown)
+    if (!reportOnShutdown)
       start = System.nanoTime
   }
   def registered(
@@ -72,9 +72,11 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
   }
   def completed[T](state: Unit, task: Task[T], result: Result[T]) = ()
   def allCompleted(state: Unit, results: RMap[Task, Result]) =
-    if (!shutdown) {
+    if (!reportOnShutdown) {
       report()
     }
+
+  def stop(): Unit = ()
 
   private val reFilePath = raw"\{[^}]+\}".r
 

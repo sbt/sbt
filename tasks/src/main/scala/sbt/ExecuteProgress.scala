@@ -60,6 +60,9 @@ private[sbt] trait ExecuteProgress[F[_]] {
 
   /** All tasks have completed with the final `results` provided. */
   def allCompleted(state: S, results: RMap[F, Result]): S
+
+  /** Notifies that either all tasks have finished or cancelled. */
+  def stop(): Unit
 }
 
 /** This module is experimental and subject to binary and source incompatible changes at any time. */
@@ -74,5 +77,6 @@ private[sbt] object ExecuteProgress {
     def workFinished[A](task: F[A], result: Either[F[A], Result[A]]) = ()
     def completed[A](state: Unit, task: F[A], result: Result[A]) = ()
     def allCompleted(state: Unit, results: RMap[F, Result]) = ()
+    def stop(): Unit = ()
   }
 }
