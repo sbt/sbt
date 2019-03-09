@@ -12,6 +12,7 @@ import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
+import coursier.core.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
@@ -200,6 +201,7 @@ object Defaults extends BuildCommon {
       exportJars :== false,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
+      useCoursier :== LibraryManagement.defaultUseCoursier,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
@@ -224,7 +226,12 @@ object Defaults extends BuildCommon {
       pomAllRepositories :== false,
       pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
       updateOptions := UpdateOptions(),
-      forceUpdatePeriod :== None
+      forceUpdatePeriod :== None,
+      // coursier settings
+      csrExtraCredentials :== Nil,
+      csrLogger :== None,
+      csrCachePath :== coursier.cache.CacheDefaults.location,
+      csrMavenProfiles :== Set.empty,
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -2125,6 +2132,14 @@ object Classpaths {
       }).value,
     moduleName := normalizedName.value,
     ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
+    csrCachePath := {
+      val old = csrCachePath.value
+      val ip = ivyPaths.value
+      val defaultIvyCache = bootIvyHome(appConfiguration.value)
+      if (old != coursier.cache.CacheDefaults.location) old
+      else if (ip.ivyHome == defaultIvyCache) old
+      else ip.ivyHome.getOrElse(old)
+    },
     dependencyCacheDirectory := {
       val st = state.value
       BuildPaths.getDependencyDirectory(st, BuildPaths.getGlobalBase(st))
@@ -2181,10 +2196,7 @@ object Classpaths {
         )
       else None
     },
-    dependencyResolution := IvyDependencyResolution(
-      ivyConfiguration.value,
-      CustomHttp.okhttpClient.value
-    ),
+    dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
     publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
@@ -2197,6 +2209,44 @@ object Classpaths {
     ivyConfigurations ++= {
       if (managedScalaInstance.value && scalaHome.value.isEmpty) Configurations.ScalaTool :: Nil
       else Nil
+    },
+    // Coursier needs these
+    ivyConfigurations := {
+      val confs = ivyConfigurations.value
+      val names = confs.map(_.name).toSet
+      val extraSources =
+        if (names("sources"))
+          None
+        else
+          Some(
+            Configuration.of(
+              id = "Sources",
+              name = "sources",
+              description = "",
+              isPublic = true,
+              extendsConfigs = Vector.empty,
+              transitive = false
+            )
+          )
+
+      val extraDocs =
+        if (names("docs"))
+          None
+        else
+          Some(
+            Configuration.of(
+              id = "Docs",
+              name = "docs",
+              description = "",
+              isPublic = true,
+              extendsConfigs = Vector.empty,
+              transitive = false
+            )
+          )
+
+      val use = useCoursier.value
+      if (use) confs ++ extraSources.toSeq ++ extraDocs.toSeq
+      else confs
     },
     moduleSettings := moduleSettings0.value,
     makePomConfiguration := MakePomConfiguration()
@@ -2342,8 +2392,17 @@ object Classpaths {
           case Right(ur) => ur
         }
       }
-    } tag (Tags.Update, Tags.Network)).value
-  )
+    } tag (Tags.Update, Tags.Network)).value,
+    csrProject := LMCoursier.coursierProjectTask.value,
+    csrConfiguration := LMCoursier.coursierConfigurationTask(false, false).value,
+    csrResolvers := LMCoursier.coursierResolversTask.value,
+    csrRecursiveResolvers := LMCoursier.coursierRecursiveResolversTask.value,
+    csrSbtResolvers := LMCoursier.coursierSbtResolversTask.value,
+    csrInterProjectDependencies := LMCoursier.coursierInterProjectDependenciesTask.value,
+    csrFallbackDependencies := LMCoursier.coursierFallbackDependenciesTask.value,
+  ) ++
+    IvyXml.generateIvyXmlSettings() ++
+    LMCoursier.publicationsSetting(Seq(Compile, Test).map(c => c -> CConfiguration(c.name)))
 
   val jvmBaseSettings: Seq[Setting[_]] = Seq(
     libraryDependencies ++= autoLibraryDependency(

@@ -5,12 +5,15 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
+package sbt
+package internal
 
+import coursier.lmcoursier.CoursierDependencyResolution
 import java.io.File
-
 import sbt.internal.librarymanagement._
+import sbt.internal.util.{ ConsoleAppender, LogOption }
 import sbt.librarymanagement._
+import sbt.librarymanagement.ivy.IvyDependencyResolution
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 import sbt.io.IO
@@ -18,6 +21,43 @@ import sbt.io.IO
 private[sbt] object LibraryManagement {
 
   private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
+
+  def defaultUseCoursier: Boolean = {
+    val coursierOpt = sys.props
+      .get("sbt.coursier")
+      .flatMap(
+        str =>
+          ConsoleAppender.parseLogOption(str) match {
+            case LogOption.Always => Some(true)
+            case LogOption.Never  => Some(false)
+            case _                => None
+          }
+      )
+    val ivyOpt = sys.props
+      .get("sbt.ivy")
+      .flatMap(
+        str =>
+          ConsoleAppender.parseLogOption(str) match {
+            case LogOption.Always => Some(true)
+            case LogOption.Never  => Some(false)
+            case _                => None
+          }
+      )
+    val notIvyOpt = ivyOpt map { !_ }
+    coursierOpt.orElse(notIvyOpt).getOrElse(true)
+  }
+
+  def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] = Def.taskDyn {
+    if (Keys.useCoursier.value) {
+      Def.task { CoursierDependencyResolution(Keys.csrConfiguration.value) }
+    } else
+      Def.task {
+        IvyDependencyResolution(
+          Keys.ivyConfiguration.value,
+          CustomHttp.okhttpClient.value
+        )
+      }
+  }
 
   def cachedUpdate(
       lm: DependencyResolution,

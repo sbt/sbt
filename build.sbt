@@ -590,7 +590,12 @@ lazy val mainProj = (project in file("main"))
       if (xs exists { s => s.contains(s""""$sv"""") }) ()
       else sys.error("PluginCross.scala does not match up with the scalaVersion " + sv)
     },
-    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface) ++ log4jDependencies ++ Seq(scalaCacheCaffeine),
+    libraryDependencies ++= {
+      scalaXml.value ++
+      Seq(launcherInterface) ++
+      log4jDependencies ++
+      Seq(scalaCacheCaffeine, lmCousier)
+    },
     Compile / scalacOptions -= "-Xfatal-warnings",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -650,6 +655,7 @@ lazy val sbtProj = (project in file("sbt"))
   )
   .configure(addSbtIO, addSbtCompilerBridge)
 
+/*
 lazy val sbtBig = (project in file(".big"))
   .dependsOn(sbtProj)
   .settings(
@@ -685,6 +691,7 @@ lazy val sbtBig = (project in file(".big"))
       }).transform(node).head
     },
   )
+*/
 
 lazy val sbtIgnoredProblems = {
   Vector(

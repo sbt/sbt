@@ -35,7 +35,9 @@ def retrieveID = org % "test-retrieve" % "2.0"
 
 // check that the test class is on the compile classpath, either because it was compiled or because it was properly retrieved
 def checkTask(classpath: TaskKey[Classpath]) = Def task {
-  val loader = ClasspathUtilities.toLoader((classpath in Compile).value.files, scalaInstance.value.loader)
+  val deps = libraryDependencies.value
+  val cp = (classpath in Compile).value.files
+  val loader = ClasspathUtilities.toLoader(cp, scalaInstance.value.loader)
   try { Class.forName("test.Test", false, loader); () }
-  catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error("Dependency not retrieved properly") }
+  catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error(s"Dependency not retrieved properly: $deps, $cp") }
 }
