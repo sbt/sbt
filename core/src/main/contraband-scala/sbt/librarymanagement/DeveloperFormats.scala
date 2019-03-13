@@ -13,7 +13,7 @@ implicit lazy val DeveloperFormat: JsonFormat[sbt.librarymanagement.Developer] =
       unbuilder.beginObject(js)
       val id = unbuilder.readField[String]("id")
       val name = unbuilder.readField[String]("name")
-      val email = unbuilder.readField[String]("email")
+      val email = unbuilder.readField[Option[String]]("email")
       val url = unbuilder.readField[java.net.URL]("url")
       unbuilder.endObject()
       sbt.librarymanagement.Developer(id, name, email, url)

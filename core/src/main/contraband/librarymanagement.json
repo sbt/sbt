@@ -328,10 +328,10 @@
       "target": "Scala",
       "type": "record",
       "fields": [
-        { "name": "id",    "type": "String"       },
-        { "name": "name",  "type": "String"       },
-        { "name": "email", "type": "String"       },
-        { "name": "url",   "type": "java.net.URL" }
+        { "name": "id",    "type": "String"         },
+        { "name": "name",  "type": "String"         },
+        { "name": "email", "type": "Option[String]" },
+        { "name": "url",   "type": "java.net.URL"   }
       ]
     },
     {
