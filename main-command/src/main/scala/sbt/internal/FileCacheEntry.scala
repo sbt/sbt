@@ -8,10 +8,12 @@
 package sbt
 package internal
 import java.lang
+import java.nio.file.Path
 import java.util.Optional
 
 import sbt.internal.inc.{ EmptyStamp, LastModified, Stamp }
-import sbt.io.TypedPath
+import sbt.io.FileEventMonitor.{ Creation, Deletion, Update }
+import sbt.io.{ FileEventMonitor, TypedPath }
 import xsbti.compile.analysis.{ Stamp => XStamp }
 
 /**
@@ -23,7 +25,33 @@ trait FileCacheEntry {
   def lastModified: Option[Long]
 }
 object FileCacheEntry {
-  def default(typedPath: TypedPath): FileCacheEntry =
+  trait Event {
+    def path: Path
+    def previous: Option[FileCacheEntry]
+    def current: Option[FileCacheEntry]
+  }
+  private[sbt] class EventImpl(event: FileEventMonitor.Event[FileCacheEntry]) extends Event {
+    override def path: Path = event.entry.typedPath.toPath
+    override def previous: Option[FileCacheEntry] = event match {
+      case Deletion(entry, _)     => entry.value.toOption
+      case Update(previous, _, _) => previous.value.toOption
+      case _                      => None
+    }
+    override def current: Option[FileCacheEntry] = event match {
+      case Creation(entry, _)    => entry.value.toOption
+      case Update(_, current, _) => current.value.toOption
+      case _                     => None
+    }
+    override def equals(o: Any): Boolean = o match {
+      case that: Event =>
+        this.path == that.path && this.previous == that.previous && this.current == that.current
+      case _ => false
+    }
+    override def hashCode(): Int =
+      ((path.hashCode * 31) ^ previous.hashCode() * 31) ^ current.hashCode()
+    override def toString: String = s"Event($path, $previous, $current)"
+  }
+  private[sbt] def default(typedPath: TypedPath): FileCacheEntry =
     DelegateFileCacheEntry(Stamped.converter(typedPath))
   private[sbt] implicit class FileCacheEntryOps(val e: FileCacheEntry) extends AnyVal {
     private[sbt] def stamp: XStamp = e match {

@@ -23,7 +23,6 @@ import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, SourcePosition }
-import sbt.io.FileEventMonitor.Event
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
@@ -102,7 +101,7 @@ object Keys {
   val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
   val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
   val watchHandleInput = settingKey[InputStream => Watched.Action]("Function that is periodically invoked to determine if the continous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands.").withRank(BMinusSetting)
-  val watchOnEvent = taskKey[Event[FileCacheEntry] => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
+  val watchOnEvent = taskKey[FileCacheEntry.Event => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
   val watchOnTermination = taskKey[(Watched.Action, String, State) => State]("Transforms the input state after the continuous build completes.").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
   val watchProjectSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources for the sbt meta project to watch to trigger a reload.").withRank(CSetting)

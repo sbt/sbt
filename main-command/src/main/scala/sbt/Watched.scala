@@ -23,7 +23,6 @@ import sbt.internal.util.Types.const
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.{ AttributeKey, JLine }
 import sbt.internal.{ FileCacheEntry, LegacyWatched }
-import sbt.io.FileEventMonitor.{ Creation, Deletion, Event, Update }
 import sbt.io._
 import sbt.util.{ Level, Logger }
 
@@ -145,13 +144,14 @@ object Watched {
   private[sbt] def onEvent(
       sources: Seq[WatchSource],
       projectSources: Seq[WatchSource]
-  ): Event[FileCacheEntry] => Watched.Action =
+  ): FileCacheEntry.Event => Watched.Action =
     event =>
-      if (sources.exists(_.accept(event.entry.typedPath.toPath))) Watched.Trigger
-      else if (projectSources.exists(_.accept(event.entry.typedPath.toPath))) event match {
-        case Update(prev, cur, _) if prev.value != cur.value => Reload
-        case _: Creation[_] | _: Deletion[_]                 => Reload
-        case _                                               => Ignore
+      if (sources.exists(_.accept(event.path))) Watched.Trigger
+      else if (projectSources.exists(_.accept(event.path))) {
+        (event.previous, event.current) match {
+          case (Some(p), Some(c)) => if (c == p) Watched.Ignore else Watched.Reload
+          case _                  => Watched.Trigger
+        }
       } else Ignore
 
   private[this] val reRun = if (isWin) "" else " or 'r' to re-run the command"
@@ -333,7 +333,9 @@ object Watched {
           case action @ (CancelWatch | HandleError | Reload | _: Custom) => action
           case Trigger                                                   => Trigger
           case _ =>
-            val events = config.fileEventMonitor.poll(10.millis)
+            val events = config.fileEventMonitor
+              .poll(10.millis)
+              .map(new FileCacheEntry.EventImpl(_))
             val next = events match {
               case Seq()                => (Ignore, None)
               case Seq(head, tail @ _*) =>
@@ -362,14 +364,14 @@ object Watched {
                   if (action == HandleError) "error"
                   else if (action.isInstanceOf[Custom]) action.toString
                   else "cancellation"
-                logger.debug(s"Stopping watch due to $cause from ${event.entry.typedPath.toPath}")
+                logger.debug(s"Stopping watch due to $cause from ${event.path}")
                 action
               case (Trigger, Some(event)) =>
-                logger.debug(s"Triggered by ${event.entry.typedPath.toPath}")
-                config.triggeredMessage(event.entry.typedPath.toPath, count).foreach(info)
+                logger.debug(s"Triggered by ${event.path}")
+                config.triggeredMessage(event.path, count).foreach(info)
                 Trigger
               case (Reload, Some(event)) =>
-                logger.info(s"Reload triggered by ${event.entry.typedPath.toPath}")
+                logger.info(s"Reload triggered by ${event.path}")
                 Reload
               case _ =>
                 nextAction()
@@ -481,7 +483,7 @@ trait WatchConfig {
    * @param event the detected sbt.io.FileEventMonitor.Event.
    * @return the next [[Watched.Action Action]] to run.
    */
-  def onWatchEvent(event: Event[FileCacheEntry]): Watched.Action
+  def onWatchEvent(event: FileCacheEntry.Event): Watched.Action
 
   /**
    * Transforms the state after the watch terminates.
@@ -540,7 +542,7 @@ object WatchConfig {
       fileEventMonitor: FileEventMonitor[FileCacheEntry],
       handleInput: InputStream => Watched.Action,
       preWatch: (Int, Boolean) => Watched.Action,
-      onWatchEvent: Event[FileCacheEntry] => Watched.Action,
+      onWatchEvent: FileCacheEntry.Event => Watched.Action,
       onWatchTerminated: (Watched.Action, String, State) => State,
       triggeredMessage: (Path, Int) => Option[String],
       watchingMessage: Int => Option[String]
@@ -559,7 +561,7 @@ object WatchConfig {
       override def handleInput(inputStream: InputStream): Watched.Action = hi(inputStream)
       override def preWatch(count: Int, lastResult: Boolean): Watched.Action =
         pw(count, lastResult)
-      override def onWatchEvent(event: Event[FileCacheEntry]): Watched.Action = owe(event)
+      override def onWatchEvent(event: FileCacheEntry.Event): Watched.Action = owe(event)
       override def onWatchTerminated(action: Watched.Action, command: String, state: State): State =
         owt(action, command, state)
       override def triggeredMessage(path: Path, count: Int): Option[String] =
