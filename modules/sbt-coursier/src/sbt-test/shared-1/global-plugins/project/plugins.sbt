@@ -1,0 +1,1 @@
+addSbtCoursier

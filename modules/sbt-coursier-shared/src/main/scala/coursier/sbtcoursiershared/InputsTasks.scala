@@ -128,12 +128,18 @@ object InputsTasks {
           .toVector
           .map {
             case (module, v) =>
+              val configurations = v
+                .getConfigurations
+                .map { c =>
+                  Configuration(c.getName) -> c.getExtends.map(Configuration(_)).toSeq
+                }
+                .toMap
               val deps = v.getDependencies.flatMap(dependencyFromIvy)
               Project(
                 module,
                 v.getModuleRevisionId.getRevision,
                 deps,
-                Map(),
+                configurations,
                 None,
                 Nil,
                 Nil,
