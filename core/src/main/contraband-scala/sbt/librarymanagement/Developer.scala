@@ -7,7 +7,7 @@ package sbt.librarymanagement
 final class Developer private (
   val id: String,
   val name: String,
-  val email: Option[String],
+  val email: String,
   val url: java.net.URL) extends Serializable {
   
   
@@ -22,7 +22,7 @@ final class Developer private (
   override def toString: String = {
     "Developer(" + id + ", " + name + ", " + email + ", " + url + ")"
   }
-  private[this] def copy(id: String = id, name: String = name, email: Option[String] = email, url: java.net.URL = url): Developer = {
+  private[this] def copy(id: String = id, name: String = name, email: String = email, url: java.net.URL = url): Developer = {
     new Developer(id, name, email, url)
   }
   def withId(id: String): Developer = {
@@ -31,7 +31,7 @@ final class Developer private (
   def withName(name: String): Developer = {
     copy(name = name)
   }
-  def withEmail(email: Option[String]): Developer = {
+  def withEmail(email: String): Developer = {
     copy(email = email)
   }
   def withUrl(url: java.net.URL): Developer = {
@@ -40,5 +40,5 @@ final class Developer private (
 }
 object Developer {
   
-  def apply(id: String, name: String, email: Option[String], url: java.net.URL): Developer = new Developer(id, name, email, url)
+  def apply(id: String, name: String, email: String, url: java.net.URL): Developer = new Developer(id, name, email, url)
 }

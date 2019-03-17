@@ -209,8 +209,8 @@ class MakePom(val log: Logger) {
               <url>{ developer.url }</url>
               {
                 developer.email match {
-                  case Some(e)=> <email>{ e }</email>
-                  case _   => NodeSeq.Empty
+                    case "" | null => NodeSeq.Empty
+                    case e         => <email>{ e }</email>
                 }
               }
             </developer>
