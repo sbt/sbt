@@ -18,7 +18,7 @@ import sbt.internal.util.Util.{ makeList, separate }
  * The methods in this trait are what must be implemented to define a new Parser implementation, but are not typically useful for common usage.
  * Instead, most useful methods for combining smaller parsers into larger parsers are implicitly added by the [[RichParser]] type.
  */
-sealed trait Parser[+T] {
+trait Parser[+T] {
   def derive(i: Char): Parser[T]
   def resultEmpty: Result[T]
   def result: Option[T]
