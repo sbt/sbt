@@ -8,7 +8,7 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ RMap, ConsoleOut }
+import sbt.internal.util.{ RMap, ConsoleOut, ConsoleAppender, LogOption, JLine }
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{ blocking, Future, ExecutionContext }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
@@ -20,8 +20,6 @@ import TaskProgress._
  * implements task progress display on the shell.
  */
 private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecuteProgress[Task] {
-  type S = Unit
-
   private[this] val showScopedKey = Def.showRelativeKey2(currentRef)
   // private[this] var start = 0L
   private[this] val activeTasks = new ConcurrentHashMap[Task[_], Long]
@@ -33,9 +31,11 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   private[this] val isAllCompleted = new AtomicBoolean(false)
   private[this] val isStopped = new AtomicBoolean(false)
 
-  override def initial: Unit = ()
-  override def registered(
-      state: Unit,
+  override def initial(): Unit = {
+    ConsoleAppender.setTerminalWidth(JLine.usingTerminal(_.getWidth))
+  }
+
+  override def afterRegistered(
       task: Task[_],
       allDeps: Iterable[Task[_]],
       pendingDeps: Iterable[Task[_]]
@@ -47,16 +47,16 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
       }
     }
   }
-  override def ready(state: Unit, task: Task[_]): Unit = {
+  override def afterReady(task: Task[_]): Unit = {
     isReady.set(true)
   }
 
-  override def workStarting(task: Task[_]): Unit = {
+  override def beforeWork(task: Task[_]): Unit = {
     activeTasks.put(task, System.nanoTime)
     ()
   }
 
-  override def workFinished[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = {
+  override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = {
     val start = activeTasks.get(task)
     timings.put(task, System.nanoTime - start)
     activeTasks.remove(task)
@@ -66,7 +66,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
     }
   }
 
-  override def completed[A](state: Unit, task: Task[A], result: Result[A]): Unit = ()
+  override def afterCompleted[A](task: Task[A], result: Result[A]): Unit = ()
 
   override def stop(): Unit = {
     isStopped.set(true)
@@ -88,7 +88,7 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   }
 
   private[this] val console = ConsoleOut.systemOut
-  override def allCompleted(state: Unit, results: RMap[Task, Result]): Unit = {
+  override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
     isAllCompleted.set(true)
     // completionReport()
   }
@@ -167,4 +167,17 @@ private[sbt] object TaskProgress {
   def cursorUp(n: Int): String = s"\u001B[${n}A"
   def cursorDown(n: Int): String = s"\u001B[${n}B"
   final val CursorDown1 = cursorDown(1)
+
+  def isEnabled: Boolean =
+    ConsoleAppender.formatEnabledInEnv && sys.props
+      .get("sbt.supershell")
+      .flatMap(
+        str =>
+          ConsoleAppender.parseLogOption(str) match {
+            case LogOption.Always => Some(true)
+            case LogOption.Never  => Some(false)
+            case _                => None
+        }
+      )
+      .getOrElse(true)
 }

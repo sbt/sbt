@@ -39,8 +39,6 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean) extends ExecuteP
       ("ms", 6)
   }
 
-  type S = Unit
-
   if (reportOnShutdown) {
     start = System.nanoTime
     Runtime.getRuntime.addShutdownHook(new Thread {
@@ -48,35 +46,34 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean) extends ExecuteP
     })
   }
 
-  def initial = {
+  override def initial(): Unit = {
     if (!reportOnShutdown)
       start = System.nanoTime
   }
-  def registered(
-      state: Unit,
+  override def afterRegistered(
       task: Task[_],
       allDeps: Iterable[Task[_]],
       pendingDeps: Iterable[Task[_]]
-  ) = {
+  ): Unit = {
     pendingDeps foreach { t =>
       if (transformNode(t).isEmpty) anonOwners.put(t, task)
     }
   }
-  def ready(state: Unit, task: Task[_]) = ()
-  def workStarting(task: Task[_]) = { timings.put(task, System.nanoTime); () }
-  def workFinished[T](task: Task[T], result: Either[Task[T], Result[T]]) = {
+  override def afterReady(task: Task[_]): Unit = ()
+  override def beforeWork(task: Task[_]): Unit = { timings.put(task, System.nanoTime); () }
+  override def afterWork[T](task: Task[T], result: Either[Task[T], Result[T]]) = {
     timings.put(task, System.nanoTime - timings.get(task))
     result.left.foreach { t =>
       calledBy.put(t, task)
     }
   }
-  def completed[T](state: Unit, task: Task[T], result: Result[T]) = ()
-  def allCompleted(state: Unit, results: RMap[Task, Result]) =
+  override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
+  override def afterAllCompleted(results: RMap[Task, Result]): Unit =
     if (!reportOnShutdown) {
       report()
     }
 
-  def stop(): Unit = ()
+  override def stop(): Unit = ()
 
   private val reFilePath = raw"\{[^}]+\}".r
 

@@ -259,6 +259,15 @@ object Defaults extends BuildCommon {
         () =>
           { IO.delete(dir); IO.createDirectory(dir) }
       },
+      useSuperShell :== sbt.internal.TaskProgress.isEnabled,
+      progressReports := { (s: State) =>
+        val progress = useSuperShell.value
+        val rs = EvaluateTask.taskTimingProgress.toVector ++ {
+          if (progress) Vector(EvaluateTask.taskProgress(s))
+          else Vector()
+        }
+        rs map { Keys.TaskProgress(_) }
+      },
       Previous.cache := new Previous(
         Def.streamsManagerKey.value,
         Previous.references.value.getReferences

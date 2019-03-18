@@ -69,13 +69,13 @@ private[sbt] final class Execute[F[_] <: AnyRef](
         case None    => results(a)
     }
   )
-  private[this] var progressState: progress.S = progress.initial
-
   private[this] type State = State.Value
   private[this] object State extends Enumeration {
     val Pending, Running, Calling, Done = Value
   }
   import State.{ Pending, Running, Calling, Done }
+
+  val init = progress.initial()
 
   def dump: String =
     "State: " + state.toString + "\n\nResults: " + results + "\n\nCalls: " + callers + "\n\n"
@@ -90,7 +90,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     processAll()
     assert(results contains root, "No result for root node.")
     val finalResults = triggers.onComplete(results)
-    progressState = progress.allCompleted(progressState, finalResults)
+    progress.afterAllCompleted(finalResults)
     finalResults
   }
 
@@ -153,7 +153,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
 
     results(node) = result
     state(node) = Done
-    progressState = progress.completed(progressState, node, result)
+    progress.afterCompleted(node, result)
     remove(reverse, node) foreach { dep =>
       notifyDone(node, dep)
     }
@@ -210,8 +210,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     val v = register(node)
     val deps = dependencies(v) ++ runBefore(node)
     val active = IDSet[F[_]](deps filter notDone)
-    progressState = progress.registered(
-      progressState,
+    progress.afterRegistered(
       node,
       deps,
       active.toList
@@ -245,7 +244,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     }
 
     state(node) = Running
-    progressState = progress.ready(progressState, node)
+    progress.afterReady(node)
     submit(node)
 
     post {
@@ -274,13 +273,13 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.
    */
   def work[A](node: F[A], f: => Either[F[A], A])(implicit strategy: Strategy): Completed = {
-    progress.workStarting(node)
+    progress.beforeWork(node)
     val rawResult = wideConvert(f).left.map {
       case i: Incomplete => if (config.overwriteNode(i)) i.copy(node = Some(node)) else i
       case e             => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
     }
     val result = rewrap(rawResult)
-    progress.workFinished(node, result)
+    progress.afterWork(node, result)
     completed {
       result match {
         case Right(v)     => retire(node, v)
