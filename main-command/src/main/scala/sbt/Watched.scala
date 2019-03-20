@@ -22,7 +22,7 @@ import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.{ AttributeKey, JLine }
-import sbt.internal.{ FileCacheEntry, LegacyWatched }
+import sbt.internal.{ FileAttributes, LegacyWatched }
 import sbt.io._
 import sbt.util.{ Level, Logger }
 
@@ -144,7 +144,7 @@ object Watched {
   private[sbt] def onEvent(
       sources: Seq[WatchSource],
       projectSources: Seq[WatchSource]
-  ): FileCacheEntry.Event => Watched.Action =
+  ): FileAttributes.Event => Watched.Action =
     event =>
       if (sources.exists(_.accept(event.path))) Watched.Trigger
       else if (projectSources.exists(_.accept(event.path))) {
@@ -335,7 +335,7 @@ object Watched {
           case _ =>
             val events = config.fileEventMonitor
               .poll(10.millis)
-              .map(new FileCacheEntry.EventImpl(_))
+              .map(new FileAttributes.EventImpl(_))
             val next = events match {
               case Seq()                => (Ignore, None)
               case Seq(head, tail @ _*) =>
@@ -460,7 +460,7 @@ trait WatchConfig {
    *
    * @return an sbt.io.FileEventMonitor instance.
    */
-  def fileEventMonitor: FileEventMonitor[FileCacheEntry]
+  def fileEventMonitor: FileEventMonitor[FileAttributes]
 
   /**
    * A function that is periodically invoked to determine whether the watch should stop or
@@ -483,7 +483,7 @@ trait WatchConfig {
    * @param event the detected sbt.io.FileEventMonitor.Event.
    * @return the next [[Watched.Action Action]] to run.
    */
-  def onWatchEvent(event: FileCacheEntry.Event): Watched.Action
+  def onWatchEvent(event: FileAttributes.Event): Watched.Action
 
   /**
    * Transforms the state after the watch terminates.
@@ -539,10 +539,10 @@ object WatchConfig {
    */
   def default(
       logger: Logger,
-      fileEventMonitor: FileEventMonitor[FileCacheEntry],
+      fileEventMonitor: FileEventMonitor[FileAttributes],
       handleInput: InputStream => Watched.Action,
       preWatch: (Int, Boolean) => Watched.Action,
-      onWatchEvent: FileCacheEntry.Event => Watched.Action,
+      onWatchEvent: FileAttributes.Event => Watched.Action,
       onWatchTerminated: (Watched.Action, String, State) => State,
       triggeredMessage: (Path, Int) => Option[String],
       watchingMessage: Int => Option[String]
@@ -557,11 +557,11 @@ object WatchConfig {
     val wm = watchingMessage
     new WatchConfig {
       override def logger: Logger = l
-      override def fileEventMonitor: FileEventMonitor[FileCacheEntry] = fem
+      override def fileEventMonitor: FileEventMonitor[FileAttributes] = fem
       override def handleInput(inputStream: InputStream): Watched.Action = hi(inputStream)
       override def preWatch(count: Int, lastResult: Boolean): Watched.Action =
         pw(count, lastResult)
-      override def onWatchEvent(event: FileCacheEntry.Event): Watched.Action = owe(event)
+      override def onWatchEvent(event: FileAttributes.Event): Watched.Action = owe(event)
       override def onWatchTerminated(action: Watched.Action, command: String, state: State): State =
         owt(action, command, state)
       override def triggeredMessage(path: Path, count: Int): Option[String] =

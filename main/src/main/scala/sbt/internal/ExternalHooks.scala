@@ -22,7 +22,7 @@ import scala.collection.mutable
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
   def apply(options: CompileOptions, repo: FileTree.Repository): DefaultExternalHooks = {
-    def listEntries(glob: Glob): Seq[Entry[FileCacheEntry]] = repo.get(glob)
+    def listEntries(glob: Glob): Seq[Entry[FileAttributes]] = repo.get(glob)
     import scala.collection.JavaConverters._
     val sources = options.sources()
     val cachedSources = new java.util.HashMap[File, Stamp]

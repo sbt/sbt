@@ -17,7 +17,7 @@ import sbt.io._
 import scala.language.experimental.macros
 
 private[sbt] object FileTree {
-  private[sbt] trait Repository extends sbt.internal.Repository[Seq, Glob, Entry[FileCacheEntry]]
+  private[sbt] trait Repository extends sbt.internal.Repository[Seq, Glob, Entry[FileAttributes]]
   private[sbt] object Repository {
 
     /**
@@ -28,26 +28,26 @@ private[sbt] object FileTree {
      */
     implicit def default: FileTree.Repository = macro MacroDefaults.fileTreeRepository
     private[sbt] object polling extends Repository {
-      val view = FileTreeView.DEFAULT.asDataView(FileCacheEntry.default)
-      override def get(key: Glob): Seq[Entry[FileCacheEntry]] = view.listEntries(key)
+      val view = FileTreeView.DEFAULT.asDataView(FileAttributes.default)
+      override def get(key: Glob): Seq[Entry[FileAttributes]] = view.listEntries(key)
       override def close(): Unit = {}
     }
   }
-  private class ViewRepository(underlying: FileTreeDataView[FileCacheEntry]) extends Repository {
-    override def get(key: Glob): Seq[Entry[FileCacheEntry]] = underlying.listEntries(key)
+  private class ViewRepository(underlying: FileTreeDataView[FileAttributes]) extends Repository {
+    override def get(key: Glob): Seq[Entry[FileAttributes]] = underlying.listEntries(key)
     override def close(): Unit = {}
   }
-  private class CachingRepository(underlying: FileTreeRepository[FileCacheEntry])
+  private class CachingRepository(underlying: FileTreeRepository[FileAttributes])
       extends Repository {
-    override def get(key: Glob): Seq[Entry[FileCacheEntry]] = {
+    override def get(key: Glob): Seq[Entry[FileAttributes]] = {
       underlying.register(key)
       underlying.listEntries(key)
     }
     override def close(): Unit = underlying.close()
   }
-  private[sbt] def repository(underlying: FileTreeDataView[FileCacheEntry]): Repository =
+  private[sbt] def repository(underlying: FileTreeDataView[FileAttributes]): Repository =
     underlying match {
-      case r: FileTreeRepository[FileCacheEntry] => new CachingRepository(r)
+      case r: FileTreeRepository[FileAttributes] => new CachingRepository(r)
       case v                                     => new ViewRepository(v)
     }
 }

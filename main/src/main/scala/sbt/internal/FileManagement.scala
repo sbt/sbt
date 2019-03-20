@@ -27,7 +27,7 @@ private[sbt] object FileManagement {
   private[sbt] def defaultFileTreeRepository(
       state: State,
       extracted: Extracted
-  ): FileTreeRepository[FileCacheEntry] = {
+  ): FileTreeRepository[FileAttributes] = {
     val pollingGlobs = extracted.getOpt(Keys.pollingGlobs).getOrElse(Nil)
     val remaining = state.remainingCommands.map(_.commandLine)
     // If the session is interactive or if the commands include a continuous build, then use
@@ -47,38 +47,38 @@ private[sbt] object FileManagement {
       case _ => new WatchLogger { override def debug(msg: => Any): Unit = {} }
     }
     if (enableCache) {
-      if (pollingGlobs.isEmpty) FileTreeRepository.default(FileCacheEntry.default)
+      if (pollingGlobs.isEmpty) FileTreeRepository.default(FileAttributes.default)
       else
-        new HybridMonitoringRepository[FileCacheEntry](
-          FileTreeRepository.hybrid(FileCacheEntry.default, pollingGlobs: _*),
+        new HybridMonitoringRepository[FileAttributes](
+          FileTreeRepository.hybrid(FileAttributes.default, pollingGlobs: _*),
           pollInterval,
           watchLogger
         )
     } else {
-      if (Util.isWindows) new PollingFileRepository(FileCacheEntry.default)
+      if (Util.isWindows) new PollingFileRepository(FileAttributes.default)
       else {
         val service = Watched.createWatchService(pollInterval)
-        FileTreeRepository.legacy(FileCacheEntry.default _, (_: Any) => {}, service)
+        FileTreeRepository.legacy(FileAttributes.default _, (_: Any) => {}, service)
       }
     }
   }
 
   private[sbt] def monitor(
-      repository: FileTreeRepository[FileCacheEntry],
+      repository: FileTreeRepository[FileAttributes],
       antiEntropy: FiniteDuration,
       logger: Logger
-  ): FileEventMonitor[FileCacheEntry] = {
+  ): FileEventMonitor[FileAttributes] = {
     // Forwards callbacks to the repository. The close method removes all of these
     // callbacks.
-    val copied: Observable[FileCacheEntry] = new Observable[FileCacheEntry] {
-      private[this] val observers = new Observers[FileCacheEntry]
+    val copied: Observable[FileAttributes] = new Observable[FileAttributes] {
+      private[this] val observers = new Observers[FileAttributes]
       val underlying = repository match {
-        case h: HybridPollingFileTreeRepository[FileCacheEntry] =>
+        case h: HybridPollingFileTreeRepository[FileAttributes] =>
           h.toPollingRepository(antiEntropy, (msg: Any) => logger.debug(msg.toString))
         case r => r
       }
       private[this] val handle = underlying.addObserver(observers)
-      override def addObserver(observer: Observer[FileCacheEntry]): Int =
+      override def addObserver(observer: Observer[FileAttributes]): Int =
         observers.addObserver(observer)
       override def removeObserver(handle: Int): Unit = observers.removeObserver(handle)
       override def close(): Unit = {
@@ -86,7 +86,7 @@ private[sbt] object FileManagement {
         underlying.close()
       }
     }
-    new FileEventMonitor[FileCacheEntry] {
+    new FileEventMonitor[FileAttributes] {
       val monitor =
         FileEventMonitor.antiEntropy(
           copied,
@@ -95,13 +95,13 @@ private[sbt] object FileManagement {
           50.millis,
           10.minutes
         )
-      override def poll(duration: Duration): Seq[FileEventMonitor.Event[FileCacheEntry]] =
+      override def poll(duration: Duration): Seq[FileEventMonitor.Event[FileAttributes]] =
         monitor.poll(duration)
       override def close(): Unit = monitor.close()
     }
   }
 
-  private[sbt] def repo: Def.Initialize[Task[FileTreeRepository[FileCacheEntry]]] = Def.task {
+  private[sbt] def repo: Def.Initialize[Task[FileTreeRepository[FileAttributes]]] = Def.task {
     lazy val msg = s"Tried to get FileTreeRepository for uninitialized state."
     state.value.get(Keys.globalFileTreeRepository).getOrElse(throw new IllegalStateException(msg))
   }

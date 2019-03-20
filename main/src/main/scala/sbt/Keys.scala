@@ -101,7 +101,7 @@ object Keys {
   val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
   val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
   val watchHandleInput = settingKey[InputStream => Watched.Action]("Function that is periodically invoked to determine if the continous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands.").withRank(BMinusSetting)
-  val watchOnEvent = taskKey[FileCacheEntry.Event => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
+  val watchOnEvent = taskKey[FileAttributes.Event => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
   val watchOnTermination = taskKey[(Watched.Action, String, State) => State]("Transforms the input state after the continuous build completes.").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
   val watchProjectSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources for the sbt meta project to watch to trigger a reload.").withRank(CSetting)
@@ -472,7 +472,7 @@ object Keys {
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
 
-  private[sbt] val globalFileTreeRepository = AttributeKey[FileTreeRepository[FileCacheEntry]](
+  private[sbt] val globalFileTreeRepository = AttributeKey[FileTreeRepository[FileAttributes]](
     "global-file-tree-repository",
     "Provides a view into the file system that may or may not cache the tree in memory",
     1000

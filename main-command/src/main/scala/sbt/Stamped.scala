@@ -10,7 +10,7 @@ package sbt
 import java.io.{ File => JFile }
 import java.nio.file.Path
 
-import sbt.internal.FileCacheEntry
+import sbt.internal.FileAttributes
 import sbt.internal.inc.{ EmptyStamp, Stamper }
 import sbt.io.TypedPath
 import xsbti.compile.analysis.Stamp
@@ -30,7 +30,7 @@ private[sbt] trait Stamped {
  */
 private[sbt] object Stamped {
   type File = JFile with Stamped
-  private[sbt] def file(typedPath: TypedPath, entry: FileCacheEntry): JFile with Stamped =
+  private[sbt] def file(typedPath: TypedPath, entry: FileAttributes): JFile with Stamped =
     new StampedFileImpl(typedPath, entry.stamp)
 
   /**

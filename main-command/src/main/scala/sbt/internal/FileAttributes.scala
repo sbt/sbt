@@ -5,39 +5,39 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
-package internal
+package sbt.internal
+
 import java.lang
 import java.nio.file.Path
 import java.util.Optional
 
+import sbt.Stamped
 import sbt.internal.inc.{ EmptyStamp, LastModified, Stamp }
 import sbt.io.FileEventMonitor.{ Creation, Deletion, Update }
 import sbt.io.{ FileEventMonitor, TypedPath }
 import xsbti.compile.analysis.{ Stamp => XStamp }
 
 /**
- * Represents a cache entry for a FileTreeRepository. It can be extended to add user defined
- * data to the FileTreeRepository cache.
+ * Represents the FileAttributes of a file. This will be moved to io before 1.3.0 is released.
  */
-trait FileCacheEntry {
+trait FileAttributes {
   def hash: Option[String]
   def lastModified: Option[Long]
 }
-object FileCacheEntry {
+object FileAttributes {
   trait Event {
     def path: Path
-    def previous: Option[FileCacheEntry]
-    def current: Option[FileCacheEntry]
+    def previous: Option[FileAttributes]
+    def current: Option[FileAttributes]
   }
-  private[sbt] class EventImpl(event: FileEventMonitor.Event[FileCacheEntry]) extends Event {
+  private[sbt] class EventImpl(event: FileEventMonitor.Event[FileAttributes]) extends Event {
     override def path: Path = event.entry.typedPath.toPath
-    override def previous: Option[FileCacheEntry] = event match {
+    override def previous: Option[FileAttributes] = event match {
       case Deletion(entry, _)     => entry.value.toOption
       case Update(previous, _, _) => previous.value.toOption
       case _                      => None
     }
-    override def current: Option[FileCacheEntry] = event match {
+    override def current: Option[FileAttributes] = event match {
       case Creation(entry, _)    => entry.value.toOption
       case Update(_, current, _) => current.value.toOption
       case _                     => None
@@ -51,11 +51,11 @@ object FileCacheEntry {
       ((path.hashCode * 31) ^ previous.hashCode() * 31) ^ current.hashCode()
     override def toString: String = s"Event($path, $previous, $current)"
   }
-  private[sbt] def default(typedPath: TypedPath): FileCacheEntry =
-    DelegateFileCacheEntry(Stamped.converter(typedPath))
-  private[sbt] implicit class FileCacheEntryOps(val e: FileCacheEntry) extends AnyVal {
+  private[sbt] def default(typedPath: TypedPath): FileAttributes =
+    DelegateFileAttributes(Stamped.converter(typedPath))
+  private[sbt] implicit class FileAttributesOps(val e: FileAttributes) extends AnyVal {
     private[sbt] def stamp: XStamp = e match {
-      case DelegateFileCacheEntry(s) => s
+      case DelegateFileAttributes(s) => s
       case _ =>
         e.hash
           .map(Stamp.fromString)
@@ -67,8 +67,8 @@ object FileCacheEntry {
   private implicit class Equiv(val xstamp: XStamp) extends AnyVal {
     def equiv(that: XStamp): Boolean = Stamp.equivStamp.equiv(xstamp, that)
   }
-  private case class DelegateFileCacheEntry(private val stamp: XStamp)
-      extends FileCacheEntry
+  private case class DelegateFileAttributes(private val stamp: XStamp)
+      extends FileAttributes
       with XStamp {
     override def getValueId: Int = stamp.getValueId
     override def writeStamp(): String = stamp.writeStamp()
@@ -83,11 +83,11 @@ object FileCacheEntry {
       case _                => None
     }
     override def equals(o: Any): Boolean = o match {
-      case DelegateFileCacheEntry(thatStamp) => this.stamp equiv thatStamp
+      case DelegateFileAttributes(thatStamp) => this.stamp equiv thatStamp
       case xStamp: XStamp                    => this.stamp equiv xStamp
       case _                                 => false
     }
     override def hashCode: Int = stamp.hashCode
-    override def toString: String = s"FileCacheEntry(hash = $hash, lastModified = $lastModified)"
+    override def toString: String = s"FileAttributes(hash = $hash, lastModified = $lastModified)"
   }
 }

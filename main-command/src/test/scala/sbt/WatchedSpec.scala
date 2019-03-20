@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import org.scalatest.{ FlatSpec, Matchers }
 import sbt.Watched._
 import sbt.WatchedSpec._
-import sbt.internal.FileCacheEntry
+import sbt.internal.FileAttributes
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.Logger
@@ -26,16 +26,16 @@ class WatchedSpec extends FlatSpec with Matchers {
   object Defaults {
     def config(
         globs: Seq[Glob],
-        fileEventMonitor: Option[FileEventMonitor[FileCacheEntry]] = None,
+        fileEventMonitor: Option[FileEventMonitor[FileAttributes]] = None,
         logger: Logger = NullLogger,
         handleInput: InputStream => Action = _ => Ignore,
         preWatch: (Int, Boolean) => Action = (_, _) => CancelWatch,
-        onWatchEvent: FileCacheEntry.Event => Action = _ => Ignore,
+        onWatchEvent: FileAttributes.Event => Action = _ => Ignore,
         triggeredMessage: (Path, Int) => Option[String] = (_, _) => None,
         watchingMessage: Int => Option[String] = _ => None
     ): WatchConfig = {
       val monitor = fileEventMonitor.getOrElse {
-        val fileTreeRepository = FileTreeRepository.default(FileCacheEntry.default)
+        val fileTreeRepository = FileTreeRepository.default(FileAttributes.default)
         globs.foreach(fileTreeRepository.register)
         FileEventMonitor.antiEntropy(
           fileTreeRepository,
