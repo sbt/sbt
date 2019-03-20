@@ -162,19 +162,21 @@ object EvaluateTask {
   import Keys.state
 
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
-
-  // sbt-pgp calls this
-  private[sbt] def defaultProgress(): ExecuteProgress[Task] = ExecuteProgress.empty[Task]
-  private[sbt] def defaultProgress(currentRef: ProjectRef): ExecuteProgress[Task] =
+  def taskTimingProgress: Option[ExecuteProgress[Task]] =
     if (java.lang.Boolean.getBoolean("sbt.task.timings")) {
       if (java.lang.Boolean.getBoolean("sbt.task.timings.on.shutdown"))
-        sharedProgress
+        Some(sharedProgress)
       else
-        new TaskTimings(reportOnShutdown = false)
-    } else {
-      if (ConsoleAppender.showProgress) new TaskProgress(currentRef)
-      else ExecuteProgress.empty[Task]
-    }
+        Some(new TaskTimings(reportOnShutdown = false))
+    } else None
+
+  def taskProgress(state: State): ExecuteProgress[Task] = {
+    new TaskProgress(Project.extract(state).currentRef)
+  }
+
+  // sbt-pgp calls this
+  @deprecated("No longer used", "1.3.0")
+  private[sbt] def defaultProgress(): ExecuteProgress[Task] = ExecuteProgress.empty[Task]
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
 
@@ -232,13 +234,22 @@ object EvaluateTask {
       state: State
   ): ExecuteProgress[Task] = {
     import Types.const
-    val maker: State => Keys.TaskProgress = getSetting(
-      Keys.executeProgress,
-      const(new Keys.TaskProgress(defaultProgress(extracted.currentRef))),
+    val maker: State => Seq[Keys.TaskProgress] = getSetting(
+      Keys.progressReports,
+      const(Seq()),
       extracted,
       structure
     )
-    maker(state).progress
+    val reporters = maker(state) map { _.progress }
+    // configure the logger for super shell
+    ConsoleAppender.setShowProgress((reporters collect {
+      case p: TaskProgress => ()
+    }).nonEmpty)
+    reporters match {
+      case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
+      case xs if xs.size == 1 => xs.head
+      case xs                 => ExecuteProgress.aggregate[Task](xs)
+    }
   }
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def forcegc(extracted: Extracted, structure: BuildStructure): Boolean =
@@ -258,7 +269,7 @@ object EvaluateTask {
       extracted: Extracted,
       structure: BuildStructure
   ): T =
-    key in extracted.currentRef get structure.data getOrElse default
+    (key in extracted.currentRef).get(structure.data).getOrElse(default)
 
   def injectSettings: Seq[Setting[_]] = Seq(
     (state in Global) ::= dummyState,

@@ -291,7 +291,10 @@ lazy val taskProj = (project in file("tasks"))
     name := "Tasks",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[ReversedMissingMethodProblem]("sbt.ExecuteProgress.stop")
+      // ok because sbt.ExecuteProgress has been under private[sbt]
+      exclude[IncompatibleResultTypeProblem]("sbt.ExecuteProgress.initial"),
+      exclude[DirectMissingMethodProblem]("sbt.ExecuteProgress.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.ExecuteProgress.*"),
     )
   )
   .configure(addSbtUtilControl)

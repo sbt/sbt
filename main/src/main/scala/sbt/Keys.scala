@@ -456,6 +456,18 @@ object Keys {
   val (executionRoots, dummyRoots) = Def.dummy[Seq[ScopedKey[_]]]("executionRoots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
   val state = Def.stateKey
   val streamsManager = Def.streamsManagerKey
+  // wrapper to work around SI-2915
+  final class TaskProgress(val progress: ExecuteProgress[Task])
+  object TaskProgress {
+    def apply(progress: ExecuteProgress[Task]): TaskProgress = new TaskProgress(progress)
+  }
+  val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
+  // This key can be used to add custom ExecuteProgress instances
+  val progressReports = settingKey[State => Seq[TaskProgress]]("A function that returns a list of progress reporters.").withRank(DTask)
+  private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)
+  @deprecated("No longer used", "1.3.0")
+  private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
+
   private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[FileCacheEntry]](
     "globalFileTreeView",
     "Provides a view into the file system that may or may not cache the tree in memory",
@@ -468,10 +480,6 @@ object Keys {
   val globalPluginUpdate = taskKey[UpdateReport]("A hook to get the UpdateReport of the global plugin.").withRank(DTask)
   val classLoaderCache = taskKey[internal.ClassLoaderCache]("The cache of ClassLoaders to be used for layering in tasks that invoke other java code").withRank(DTask)
   private[sbt] val taskRepository = AttributeKey[TaskRepository.Repr]("task-repository", "A repository that can be used to cache arbitrary values for a given task key that can be read or filled during task evaluation.", 10000)
-
-  // wrapper to work around SI-2915
-  private[sbt] final class TaskProgress(val progress: ExecuteProgress[Task])
-  private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
   private[sbt] val taskCancelStrategy = settingKey[State => TaskCancellationStrategy]("Experimental task cancellation handler.").withRank(DTask)
 
   // Experimental in sbt 0.13.2 to enable grabbing semantic compile failures.
