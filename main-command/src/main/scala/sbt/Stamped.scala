@@ -30,7 +30,7 @@ private[sbt] trait Stamped {
  */
 private[sbt] object Stamped {
   type File = JFile with Stamped
-  def file(typedPath: TypedPath, entry: FileCacheEntry): JFile with Stamped =
+  private[sbt] def file(typedPath: TypedPath, entry: FileCacheEntry): JFile with Stamped =
     new StampedFileImpl(typedPath, entry.stamp)
 
   /**
