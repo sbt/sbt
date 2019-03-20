@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.{ File, InputStream }
-import java.nio.file.FileSystems
+import java.nio.file.{ FileSystems, Path }
 
 import sbt.BasicCommandStrings.{
   ContinuousExecutePrefix,
@@ -366,7 +366,7 @@ object Watched {
                 action
               case (Trigger, Some(event)) =>
                 logger.debug(s"Triggered by ${event.entry.typedPath.toPath}")
-                config.triggeredMessage(event.entry.typedPath, count).foreach(info)
+                config.triggeredMessage(event.entry.typedPath.toPath, count).foreach(info)
                 Trigger
               case (Reload, Some(event)) =>
                 logger.info(s"Reload triggered by ${event.entry.typedPath.toPath}")
@@ -494,11 +494,11 @@ trait WatchConfig {
 
   /**
    * The optional message to log when a build is triggered.
-   * @param typedPath the path that triggered the build
+   * @param path the path that triggered the vuild
    * @param count the current iteration
    * @return an optional log message.
    */
-  def triggeredMessage(typedPath: TypedPath, count: Int): Option[String]
+  def triggeredMessage(path: Path, count: Int): Option[String]
 
   /**
    * The optional message to log before each watch iteration.
@@ -542,7 +542,7 @@ object WatchConfig {
       preWatch: (Int, Boolean) => Watched.Action,
       onWatchEvent: Event[FileCacheEntry] => Watched.Action,
       onWatchTerminated: (Watched.Action, String, State) => State,
-      triggeredMessage: (TypedPath, Int) => Option[String],
+      triggeredMessage: (Path, Int) => Option[String],
       watchingMessage: Int => Option[String]
   ): WatchConfig = {
     val l = logger
@@ -562,8 +562,8 @@ object WatchConfig {
       override def onWatchEvent(event: Event[FileCacheEntry]): Watched.Action = owe(event)
       override def onWatchTerminated(action: Watched.Action, command: String, state: State): State =
         owt(action, command, state)
-      override def triggeredMessage(typedPath: TypedPath, count: Int): Option[String] =
-        tm(typedPath, count)
+      override def triggeredMessage(path: Path, count: Int): Option[String] =
+        tm(path, count)
       override def watchingMessage(count: Int): Option[String] = wm(count)
     }
   }

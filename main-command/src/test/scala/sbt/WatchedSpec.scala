@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.{ File, InputStream }
-import java.nio.file.Files
+import java.nio.file.{ Files, Path }
 import java.util.concurrent.atomic.AtomicBoolean
 
 import org.scalatest.{ FlatSpec, Matchers }
@@ -32,7 +32,7 @@ class WatchedSpec extends FlatSpec with Matchers {
         handleInput: InputStream => Action = _ => Ignore,
         preWatch: (Int, Boolean) => Action = (_, _) => CancelWatch,
         onWatchEvent: Event[FileCacheEntry] => Action = _ => Ignore,
-        triggeredMessage: (TypedPath, Int) => Option[String] = (_, _) => None,
+        triggeredMessage: (Path, Int) => Option[String] = (_, _) => None,
         watchingMessage: Int => Option[String] = _ => None
     ): WatchConfig = {
       val monitor = fileEventMonitor.getOrElse {
@@ -81,7 +81,7 @@ class WatchedSpec extends FlatSpec with Matchers {
   }
   it should "filter events" in IO.withTemporaryDirectory { dir =>
     val realDir = dir.toRealPath
-    val queue = new mutable.Queue[TypedPath]
+    val queue = new mutable.Queue[Path]
     val foo = realDir.toPath.resolve("foo")
     val bar = realDir.toPath.resolve("bar")
     val config = Defaults.config(
@@ -92,11 +92,11 @@ class WatchedSpec extends FlatSpec with Matchers {
       watchingMessage = _ => { Files.createFile(bar); Thread.sleep(5); Files.createFile(foo); None }
     )
     Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
-    queue.toIndexedSeq.map(_.toPath) shouldBe Seq(foo)
+    queue.toIndexedSeq shouldBe Seq(foo)
   }
   it should "enforce anti-entropy" in IO.withTemporaryDirectory { dir =>
     val realDir = dir.toRealPath
-    val queue = new mutable.Queue[TypedPath]
+    val queue = new mutable.Queue[Path]
     val foo = realDir.toPath.resolve("foo")
     val bar = realDir.toPath.resolve("bar")
     val config = Defaults.config(
@@ -116,7 +116,7 @@ class WatchedSpec extends FlatSpec with Matchers {
       }
     )
     Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
-    queue.toIndexedSeq.map(_.toPath) shouldBe Seq(bar, foo)
+    queue.toIndexedSeq shouldBe Seq(bar, foo)
   }
   it should "halt on error" in IO.withTemporaryDirectory { dir =>
     val halted = new AtomicBoolean(false)

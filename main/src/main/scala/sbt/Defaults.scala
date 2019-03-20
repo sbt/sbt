@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
+import java.nio.file.{ Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -641,9 +642,7 @@ object Defaults extends BuildCommon {
         .map(w => (count: Int) => Some(w(WatchState.empty(globs).withCount(count))))
         .getOrElse(watchStartMessage.value)
       val tm = triggeredMessage.?.value
-        .map(
-          tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(globs).withCount(count)))
-        )
+        .map(tm => (_: NioPath, count: Int) => Some(tm(WatchState.empty(globs).withCount(count))))
         .getOrElse(watchTriggeredMessage.value)
       val logger = watchLogger.value
       val repo = FileManagement.toMonitoringRepository(FileManagement.repo.value)
