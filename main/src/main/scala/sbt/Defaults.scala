@@ -380,7 +380,7 @@ object Defaults extends BuildCommon {
       val filter =
         (includeFilter in unmanagedSources).value -- (excludeFilter in unmanagedSources).value
       val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
-      (unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources).all
+      (unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources).all.map(Stamped.file)
     },
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val baseDir = baseDirectory.value
@@ -419,7 +419,7 @@ object Defaults extends BuildCommon {
     unmanagedResources := {
       val filter =
         (includeFilter in unmanagedResources).value -- (excludeFilter in unmanagedResources).value
-      unmanagedResourceDirectories.value.map(_ ** filter).all
+      unmanagedResourceDirectories.value.map(_ ** filter).all.map(Stamped.file)
     },
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val bases = unmanagedResourceDirectories.value
@@ -1216,7 +1216,7 @@ object Defaults extends BuildCommon {
       exclude: ScopedTaskable[FileFilter]
   ): Initialize[Task[Seq[File]]] = Def.task {
     val filter = include.toTask.value -- exclude.toTask.value
-    dirs.toTask.value.map(_ ** filter).all
+    dirs.toTask.value.map(_ ** filter).all.map(Stamped.file)
   }
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {

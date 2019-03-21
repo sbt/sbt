@@ -8,14 +8,16 @@
 package sbt
 package internal
 
-import sbt.io.{ Glob, TypedPath }
+import java.nio.file.Path
+
+import sbt.io.Glob
 
 /**
  * Retrieve files from a repository. This should usually be an extension class for
  * sbt.io.internal.Glob (or a Traversable collection of source instances) that allows us to
  * actually retrieve the files corresponding to those sources.
  */
-sealed trait GlobLister extends Any {
+private[sbt] sealed trait GlobLister extends Any {
 
   /**
    * Get the sources described this [[GlobLister]].
@@ -23,7 +25,7 @@ sealed trait GlobLister extends Any {
    * @param repository the [[FileTree.Repository]] to delegate file i/o.
    * @return the files described by this [[GlobLister]].
    */
-  def all(implicit repository: FileTree.Repository): Seq[Stamped.File]
+  def all(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)]
 
   /**
    * Get the unique sources described this [[GlobLister]].
@@ -31,7 +33,7 @@ sealed trait GlobLister extends Any {
    * @param repository the [[FileTree.Repository]] to delegate file i/o.
    * @return the files described by this [[GlobLister]] with any duplicates removed.
    */
-  def unique(implicit repository: FileTree.Repository): Seq[Stamped.File]
+  def unique(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)]
 }
 
 /**
@@ -80,18 +82,15 @@ private[internal] object GlobListers {
     private def get[T0 <: Traversable[Glob]](
         traversable: T0,
         repository: FileTree.Repository
-    ): Seq[Stamped.File] =
+    ): Seq[(Path, FileAttributes)] =
       traversable.flatMap { glob =>
-        val sourceFilter: TypedPath => Boolean = glob.toTypedPathFilter
-        repository.get(glob).flatMap {
-          case e if sourceFilter(e.typedPath) => e.value.toOption.map(Stamped.file(e.typedPath, _))
-          case _                              => None
-        }
-      }.toIndexedSeq: Seq[Stamped.File]
+        val sourceFilter = glob.toFileFilter
+        repository.get(glob).filter { case (p, _) => sourceFilter.accept(p.toFile) }
+      }.toIndexedSeq
 
-    override def all(implicit repository: FileTree.Repository): Seq[Stamped.File] =
+    override def all(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)] =
       get(globs, repository)
-    override def unique(implicit repository: FileTree.Repository): Seq[Stamped.File] =
+    override def unique(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)] =
       get(globs.toSet[Glob], repository)
   }
 }

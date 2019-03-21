@@ -94,14 +94,14 @@ class WatchedSpec extends FlatSpec with Matchers {
     queue.toIndexedSeq shouldBe Seq(foo)
   }
   it should "enforce anti-entropy" in IO.withTemporaryDirectory { dir =>
-    val realDir = dir.toRealPath
+    val realDir = dir.toRealPath.toPath
     val queue = new mutable.Queue[Path]
-    val foo = realDir.toPath.resolve("foo")
-    val bar = realDir.toPath.resolve("bar")
+    val foo = realDir.resolve("foo")
+    val bar = realDir.resolve("bar")
     val config = Defaults.config(
       globs = Seq(realDir ** AllPassFilter),
       preWatch = (count, _) => if (count == 3) CancelWatch else Ignore,
-      onWatchEvent = _ => Trigger,
+      onWatchEvent = e => if (e.path != realDir) Trigger else Ignore,
       triggeredMessage = (tp, _) => { queue += tp; None },
       watchingMessage = count => {
         count match {

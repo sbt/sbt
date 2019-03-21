@@ -30,8 +30,10 @@ private[sbt] trait Stamped {
  */
 private[sbt] object Stamped {
   type File = JFile with Stamped
-  private[sbt] def file(typedPath: TypedPath, entry: FileAttributes): JFile with Stamped =
-    new StampedFileImpl(typedPath, entry.stamp)
+  private[sbt] val file: ((Path, FileAttributes)) => JFile with Stamped = {
+    case (path: Path, attributes: FileAttributes) =>
+      new StampedFileImpl(path, attributes.stamp)
+  }
 
   /**
    * Converts a TypedPath instance to a [[Stamped]] by calculating the file hash.
@@ -67,14 +69,7 @@ private[sbt] object Stamped {
   }
 
   private final class StampedImpl(override val stamp: Stamp) extends Stamped
-  private final class StampedFileImpl(typedPath: TypedPath, override val stamp: Stamp)
-      extends java.io.File(typedPath.toPath.toString)
+  private final class StampedFileImpl(path: Path, override val stamp: Stamp)
+      extends java.io.File(path.toString)
       with Stamped
-      with TypedPath {
-    override def exists: Boolean = typedPath.exists
-    override def isDirectory: Boolean = typedPath.isDirectory
-    override def isFile: Boolean = typedPath.isFile
-    override def isSymbolicLink: Boolean = typedPath.isSymbolicLink
-    override def toPath: Path = typedPath.toPath
-  }
 }

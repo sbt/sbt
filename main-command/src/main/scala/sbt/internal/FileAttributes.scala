@@ -23,6 +23,9 @@ import xsbti.compile.analysis.{ Stamp => XStamp }
 trait FileAttributes {
   def hash: Option[String]
   def lastModified: Option[Long]
+  def isRegularFile: Boolean
+  def isDirectory: Boolean
+  def isSymbolicLink: Boolean
 }
 object FileAttributes {
   trait Event {
@@ -52,10 +55,10 @@ object FileAttributes {
     override def toString: String = s"Event($path, $previous, $current)"
   }
   private[sbt] def default(typedPath: TypedPath): FileAttributes =
-    DelegateFileAttributes(Stamped.converter(typedPath))
+    DelegateFileAttributes(Stamped.converter(typedPath), typedPath)
   private[sbt] implicit class FileAttributesOps(val e: FileAttributes) extends AnyVal {
     private[sbt] def stamp: XStamp = e match {
-      case DelegateFileAttributes(s) => s
+      case DelegateFileAttributes(s, _) => s
       case _ =>
         e.hash
           .map(Stamp.fromString)
@@ -67,8 +70,10 @@ object FileAttributes {
   private implicit class Equiv(val xstamp: XStamp) extends AnyVal {
     def equiv(that: XStamp): Boolean = Stamp.equivStamp.equiv(xstamp, that)
   }
-  private case class DelegateFileAttributes(private val stamp: XStamp)
-      extends FileAttributes
+  private case class DelegateFileAttributes(
+      private val stamp: XStamp,
+      private val typedPath: TypedPath
+  ) extends FileAttributes
       with XStamp {
     override def getValueId: Int = stamp.getValueId
     override def writeStamp(): String = stamp.writeStamp()
@@ -83,11 +88,14 @@ object FileAttributes {
       case _                => None
     }
     override def equals(o: Any): Boolean = o match {
-      case DelegateFileAttributes(thatStamp) => this.stamp equiv thatStamp
-      case xStamp: XStamp                    => this.stamp equiv xStamp
-      case _                                 => false
+      case DelegateFileAttributes(thatStamp, thatTypedPath) =>
+        (this.stamp equiv thatStamp) && (this.typedPath == thatTypedPath)
+      case _ => false
     }
     override def hashCode: Int = stamp.hashCode
     override def toString: String = s"FileAttributes(hash = $hash, lastModified = $lastModified)"
+    override def isRegularFile: Boolean = typedPath.isFile
+    override def isDirectory: Boolean = typedPath.isDirectory
+    override def isSymbolicLink: Boolean = typedPath.isSymbolicLink
   }
 }
