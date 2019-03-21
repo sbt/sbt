@@ -17,7 +17,7 @@ import sbt.io._
 import scala.language.experimental.macros
 
 private[sbt] object FileTree {
-  private[sbt] trait Repository extends sbt.internal.Repository[Seq, Glob, Entry[FileAttributes]]
+  trait Repository extends sbt.internal.Repository[Seq, Glob, Entry[FileAttributes]]
   private[sbt] object Repository {
 
     /**
