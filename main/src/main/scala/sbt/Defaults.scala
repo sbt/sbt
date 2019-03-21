@@ -282,10 +282,7 @@ object Defaults extends BuildCommon {
         None
       },
       watchStartMessage := Watched.defaultStartWatch,
-      fileTreeRepository := state.value
-        .get(Keys.globalFileTreeRepository)
-        .map(FileTree.repository)
-        .getOrElse(FileTree.Repository.polling),
+      fileTreeRepository := FileTree.Repository.polling,
       externalHooks := {
         val repository = fileTreeRepository.value
         compileOptions =>
