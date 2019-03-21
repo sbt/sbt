@@ -745,7 +745,6 @@ object Defaults extends BuildCommon {
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
     val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
-    val binVersion = scalaBinaryVersion.value
     val compilerJar = file(ScalaArtifacts.CompilerID)
     new ScalaInstance(
       scalaVersion.value,
