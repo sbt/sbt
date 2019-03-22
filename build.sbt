@@ -27,6 +27,7 @@ def buildLevelSettings: Seq[Setting[_]] =
         Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
         Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
         Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
+        Developer("eatkins", "Ethan Atkins", "@eatkins", url("https://github.com/eatkins")),
         Developer(
           "gkossakowski",
           "Grzegorz Kossakowski",
