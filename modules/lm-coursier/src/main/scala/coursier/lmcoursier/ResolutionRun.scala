@@ -1,7 +1,7 @@
 package coursier.lmcoursier
 
 import coursier.{Resolution, Resolve}
-import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
+import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core._
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
@@ -88,11 +88,14 @@ object ResolutionRun {
             .withLogger(
               params.loggerOpt.getOrElse {
                 RefreshLogger.create(
-                  ProgressBarRefreshDisplay.create(
-                    if (printOptionalMessage) log.info(initialMessage),
-                    if (printOptionalMessage || verbosityLevel >= 2)
-                      log.info(s"Resolved ${params.projectName} dependencies")
-                  )
+                  if (RefreshLogger.defaultFallbackMode)
+                    new FallbackRefreshDisplay()
+                  else
+                    ProgressBarRefreshDisplay.create(
+                      if (printOptionalMessage) log.info(initialMessage),
+                      if (printOptionalMessage || verbosityLevel >= 2)
+                        log.info(s"Resolved ${params.projectName} dependencies")
+                    )
                 )
               }
             )

@@ -3,7 +3,7 @@ package coursier.lmcoursier
 import java.io.File
 
 import coursier.Artifact
-import coursier.cache.loggers.{ProgressBarRefreshDisplay, RefreshLogger}
+import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core.Type
 import coursier.util.Sync
 import sbt.util.Logger
@@ -52,14 +52,17 @@ object ArtifactsRun {
               .withLogger(
                 params.loggerOpt.getOrElse {
                   RefreshLogger.create(
-                    ProgressBarRefreshDisplay.create(
-                      if (printOptionalMessage) log.info(artifactInitialMessage),
-                      if (printOptionalMessage || verbosityLevel >= 2)
-                        log.info(
-                          s"Fetched artifacts of ${params.projectName}" +
-                            (if (params.sbtClassifiers) " (sbt classifiers)" else "")
-                        )
-                    )
+                    if (RefreshLogger.defaultFallbackMode)
+                      new FallbackRefreshDisplay()
+                    else
+                      ProgressBarRefreshDisplay.create(
+                        if (printOptionalMessage) log.info(artifactInitialMessage),
+                        if (printOptionalMessage || verbosityLevel >= 2)
+                          log.info(
+                            s"Fetched artifacts of ${params.projectName}" +
+                              (if (params.sbtClassifiers) " (sbt classifiers)" else "")
+                          )
+                      )
                   )
                 }
               )
