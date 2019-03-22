@@ -3,14 +3,15 @@ package coursier.lmcoursier
 import coursier.ivy.IvyRepository
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import java.net.MalformedURLException
-
 import coursier.cache.CacheUrl
 import coursier.{Attributes, Dependency, Module}
 import coursier.core._
 import coursier.maven.MavenRepository
+import org.apache.ivy.plugins.resolver.IBiblioResolver
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.{Configuration => _, MavenRepository => _, _}
 import sbt.util.Logger
+import scala.collection.JavaConverters._
 
 object FromSbt {
 
@@ -259,43 +260,86 @@ object FromSbt {
             mavenRepositoryOpt("file://" + mavenCompatibleBase, log, authentication)
         }
 
-      case r: URLRepository
-        if r.patterns.ivyPatterns.lengthCompare(1) == 0 &&
-          r.patterns.artifactPatterns.lengthCompare(1) == 0 =>
-
-        val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(r.patterns)
-
-        mavenCompatibleBaseOpt0 match {
-          case None =>
-
-            val repo = IvyRepository.parse(
-              r.patterns.artifactPatterns.head,
-              metadataPatternOpt = Some(r.patterns.ivyPatterns.head),
-              changing = None,
-              properties = ivyProperties,
-              dropInfoAttributes = true,
-              authentication = authentication
-            ) match {
-              case Left(err) =>
-                sys.error(
-                  s"Cannot parse Ivy patterns ${r.patterns.artifactPatterns.head} and ${r.patterns.ivyPatterns.head}: $err"
-                )
-              case Right(repo) =>
-                repo
-            }
-
-            Some(repo)
-
-          case Some(mavenCompatibleBase) =>
-            mavenRepositoryOpt(mavenCompatibleBase, log, authentication)
-        }
+      case r: URLRepository if patternMatchGuard(r.patterns) =>
+        parseMavenCompatResolver(log, ivyProperties, authentication, r.patterns)
 
       case raw: RawRepository if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
         None
+
+      // Pattern Match resolver-type-specific RawRepositories
+      case IBiblioRepository(p) =>
+        parseMavenCompatResolver(log, ivyProperties, authentication, p)
 
       case other =>
         log.warn(s"Unrecognized repository ${other.name}, ignoring it")
         None
     }
 
+  private object IBiblioRepository {
+
+    private def stringVector(v: java.util.List[_]): Vector[String] =
+      Option(v).map(_.asScala.toVector).getOrElse(Vector.empty).collect {
+        case s: String => s
+      }
+
+    private def patterns(resolver: IBiblioResolver): Patterns = Patterns(
+      ivyPatterns = stringVector(resolver.getIvyPatterns),
+      artifactPatterns = stringVector(resolver.getArtifactPatterns),
+      isMavenCompatible = resolver.isM2compatible,
+      descriptorOptional = !resolver.isUseMavenMetadata,
+      skipConsistencyCheck = !resolver.isCheckconsistency
+    )
+
+    def unapply(r: Resolver): Option[Patterns] =
+      r match {
+        case raw: RawRepository =>
+          raw.resolver match {
+            case b: IBiblioResolver =>
+              Some(patterns(b))
+                .filter(patternMatchGuard)
+            case _ =>
+              None
+          }
+        case _ =>
+          None
+      }
+  }
+
+  private def patternMatchGuard(patterns: Patterns): Boolean =
+    patterns.ivyPatterns.lengthCompare(1) == 0 &&
+      patterns.artifactPatterns.lengthCompare(1) == 0
+
+  private def parseMavenCompatResolver(
+    log: Logger,
+    ivyProperties: Map[String, String],
+    authentication: Option[Authentication],
+    patterns: Patterns
+  ): Option[Repository] = {
+    val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(patterns)
+
+    mavenCompatibleBaseOpt0 match {
+      case None =>
+
+        val repo = IvyRepository.parse(
+          patterns.artifactPatterns.head,
+          metadataPatternOpt = Some(patterns.ivyPatterns.head),
+          changing = None,
+          properties = ivyProperties,
+          dropInfoAttributes = true,
+          authentication = authentication
+        ) match {
+          case Left(err) =>
+            sys.error(
+              s"Cannot parse Ivy patterns ${patterns.artifactPatterns.head} and ${patterns.ivyPatterns.head}: $err"
+            )
+          case Right(repo) =>
+            repo
+        }
+
+        Some(repo)
+
+      case Some(mavenCompatibleBase) =>
+        mavenRepositoryOpt(mavenCompatibleBase, log, authentication)
+    }
+  }
 }
