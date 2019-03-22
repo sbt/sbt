@@ -339,7 +339,7 @@ defaults
 
   def sbtRCs(s: State): Seq[File] =
     (Path.userHome / sbtrc) ::
-      (s.baseDir / sbtrc asFile) ::
+      (s.baseDir / sbtrc) ::
       Nil
 
   val CrossCommand = "+"

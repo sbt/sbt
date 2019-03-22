@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, InputStream }
 import java.net.URL
+import java.nio.file.Path
 
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
@@ -22,8 +23,7 @@ import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, SourcePosition }
-import sbt.io.FileEventMonitor.Event
-import sbt.io.{ FileFilter, FileTreeDataView, TypedPath, WatchService }
+import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
 import sbt.librarymanagement._
@@ -93,14 +93,15 @@ object Keys {
   @deprecated("This is no longer used for continuous execution", "1.3.0")
   val watch = SettingKey(BasicKeys.watch)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
-  val fileTreeView = taskKey[FileTreeDataView[FileCacheEntry]]("A view of the file system")
+  val enableGlobalCachingFileTreeRepository = settingKey[Boolean]("Toggles whether or not to create a global cache of the file system that can be used by tasks to quickly list a path").withRank(DSetting)
+  val fileTreeRepository = taskKey[FileTree.Repository]("A repository of the file system.")
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
-  val pollingDirectories = settingKey[Seq[Watched.WatchSource]]("Directories that cannot be cached and must always be rescanned. Typically these will be NFS mounted or something similar.").withRank(DSetting)
+  val pollingGlobs = settingKey[Seq[Glob]]("Directories that cannot be cached and must always be rescanned. Typically these will be NFS mounted or something similar.").withRank(DSetting)
   val watchAntiEntropy = settingKey[FiniteDuration]("Duration for which the watch EventMonitor will ignore events for a file after that file has triggered a build.").withRank(BMinusSetting)
   val watchConfig = taskKey[WatchConfig]("The configuration for continuous execution.").withRank(BMinusSetting)
   val watchLogger = taskKey[Logger]("A logger that reports watch events.").withRank(DSetting)
   val watchHandleInput = settingKey[InputStream => Watched.Action]("Function that is periodically invoked to determine if the continous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands.").withRank(BMinusSetting)
-  val watchOnEvent = taskKey[Event[FileCacheEntry] => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
+  val watchOnEvent = taskKey[FileAttributes.Event => Watched.Action]("Determines how to handle a file event").withRank(BMinusSetting)
   val watchOnTermination = taskKey[(Watched.Action, String, State) => State]("Transforms the input state after the continuous build completes.").withRank(BMinusSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting)
   val watchProjectSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources for the sbt meta project to watch to trigger a reload.").withRank(CSetting)
@@ -109,12 +110,11 @@ object Keys {
   val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
   val watchStartMessage = settingKey[Int => Option[String]]("The message to show when triggered execution waits for sources to change. The parameter is the current watch iteration count.").withRank(DSetting)
   val watchTransitiveSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
-  val watchTriggeredMessage = settingKey[(TypedPath, Int) => Option[String]]("The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count.").withRank(DSetting)
+  val watchTriggeredMessage = settingKey[(Path, Int) => Option[String]]("The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count.").withRank(DSetting)
   @deprecated("Use watchStartMessage instead", "1.3.0")
   val watchingMessage = settingKey[WatchState => String]("The message to show when triggered execution waits for sources to change.").withRank(DSetting)
   @deprecated("Use watchTriggeredMessage instead", "1.3.0")
   val triggeredMessage = settingKey[WatchState => String]("The message to show before triggered execution executes an action after sources change.").withRank(DSetting)
-  val fileTreeViewConfig = taskKey[FileTreeViewConfig]("Configures how sbt will traverse and monitor the file system.").withRank(BMinusSetting)
 
   // Path Keys
   val baseDirectory = settingKey[File]("The base directory.  Depending on the scope, this is the base directory for the build, project, configuration, or task.").withRank(AMinusSetting)
@@ -150,10 +150,14 @@ object Keys {
 
   // Output paths
   val classDirectory = settingKey[File]("Directory for compiled classes and copied resources.").withRank(AMinusSetting)
+  @deprecated("Clean is now implemented using globs.", "1.3.0")
   val cleanFiles = taskKey[Seq[File]]("The files to recursively delete during a clean.").withRank(BSetting)
+  @deprecated("Clean is now implemented using globs. Prefer the cleanKeepGlobs task", "1.3.0")
   val cleanKeepFiles = settingKey[Seq[File]]("Files or directories to keep during a clean. Must be direct children of target.").withRank(CSetting)
+  val cleanKeepGlobs = settingKey[Seq[Glob]]("Globs to keep during a clean. Must be direct children of target.").withRank(CSetting)
   val crossPaths = settingKey[Boolean]("If true, enables cross paths, which distinguish input and output directories for cross-building.").withRank(ASetting)
   val taskTemporaryDirectory = settingKey[File]("Directory used for temporary files for tasks that is deleted after each task execution.").withRank(DSetting)
+  val outputs = taskKey[Seq[Glob]]("Describes the output files of a task")
 
   // Generators
   val sourceGenerators = settingKey[Seq[Task[Seq[File]]]]("List of tasks that generate sources.").withRank(CSetting)
@@ -468,8 +472,8 @@ object Keys {
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
 
-  private[sbt] val globalFileTreeView = AttributeKey[FileTreeDataView[FileCacheEntry]](
-    "globalFileTreeView",
+  private[sbt] val globalFileTreeRepository = AttributeKey[FileTreeRepository[FileAttributes]](
+    "global-file-tree-repository",
     "Provides a view into the file system that may or may not cache the tree in memory",
     1000
   )

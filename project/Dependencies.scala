@@ -9,12 +9,12 @@ object Dependencies {
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.3.0-M5"
+  private val ioVersion = "1.3.0-M7"
   private val utilVersion = "1.3.0-M5"
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _ => "1.3.0-M1"
+      case _             => "1.3.0-M1"
     }
   private val zincVersion = "1.3.0-M2"
 
@@ -34,13 +34,13 @@ object Dependencies {
     val lmOrganization =
       sys.props.get("sbt.build.lm.organization") match {
         case Some(impl) => impl
-        case _ => "org.scala-sbt"
+        case _          => "org.scala-sbt"
       }
 
     val lmModuleName =
       sys.props.get("sbt.build.lm.moduleName") match {
         case Some(impl) => impl
-        case _ => "librarymanagement-ivy"
+        case _          => "librarymanagement-ivy"
       }
 
     lmOrganization %% lmModuleName % lmVersion
@@ -98,7 +98,8 @@ object Dependencies {
 
   def addSbtLmCore(p: Project): Project =
     addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
-  def addSbtLmImpl(p: Project): Project = addSbtModule(p, sbtLmPath, "lmImpl", libraryManagementImpl)
+  def addSbtLmImpl(p: Project): Project =
+    addSbtModule(p, sbtLmPath, "lmImpl", libraryManagementImpl)
 
   def addSbtCompilerInterface(p: Project): Project =
     addSbtModule(p, sbtZincPath, "compilerInterface212", compilerInterface)

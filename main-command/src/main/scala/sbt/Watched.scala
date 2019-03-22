@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.{ File, InputStream }
-import java.nio.file.FileSystems
+import java.nio.file.{ FileSystems, Path }
 
 import sbt.BasicCommandStrings.{
   ContinuousExecutePrefix,
@@ -22,8 +22,7 @@ import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.{ AttributeKey, JLine }
-import sbt.internal.{ FileCacheEntry, LegacyWatched }
-import sbt.io.FileEventMonitor.{ Creation, Deletion, Event, Update }
+import sbt.internal.{ FileAttributes, LegacyWatched }
 import sbt.io._
 import sbt.util.{ Level, Logger }
 
@@ -64,9 +63,8 @@ object Watched {
 
   /**
    * This trait is used to communicate what the watch should do next at various points in time. It
-   * is heavily linked to a number of callbacks in [[WatchConfig]]. For example, when the
-   * sbt.io.FileEventMonitor created by [[FileTreeViewConfig.newMonitor]] detects a changed source
-   * file, then we expect [[WatchConfig.onWatchEvent]] to return [[Trigger]].
+   * is heavily linked to a number of callbacks in [[WatchConfig]]. For example, when the event
+   * monitor detects a changed source we expect [[WatchConfig.onWatchEvent]] to return [[Trigger]].
    */
   sealed trait Action
 
@@ -146,13 +144,14 @@ object Watched {
   private[sbt] def onEvent(
       sources: Seq[WatchSource],
       projectSources: Seq[WatchSource]
-  ): Event[FileCacheEntry] => Watched.Action =
+  ): FileAttributes.Event => Watched.Action =
     event =>
-      if (sources.exists(_.accept(event.entry.typedPath.toPath))) Watched.Trigger
-      else if (projectSources.exists(_.accept(event.entry.typedPath.toPath))) event match {
-        case Update(prev, cur, _) if prev.value != cur.value => Reload
-        case _: Creation[_] | _: Deletion[_]                 => Reload
-        case _                                               => Ignore
+      if (sources.exists(_.accept(event.path))) Watched.Trigger
+      else if (projectSources.exists(_.accept(event.path))) {
+        (event.previous, event.current) match {
+          case (Some(p), Some(c)) => if (c == p) Watched.Ignore else Watched.Reload
+          case _                  => Watched.Trigger
+        }
       } else Ignore
 
   private[this] val reRun = if (isWin) "" else " or 'r' to re-run the command"
@@ -334,7 +333,9 @@ object Watched {
           case action @ (CancelWatch | HandleError | Reload | _: Custom) => action
           case Trigger                                                   => Trigger
           case _ =>
-            val events = config.fileEventMonitor.poll(10.millis)
+            val events = config.fileEventMonitor
+              .poll(10.millis)
+              .map(new FileAttributes.EventImpl(_))
             val next = events match {
               case Seq()                => (Ignore, None)
               case Seq(head, tail @ _*) =>
@@ -363,14 +364,14 @@ object Watched {
                   if (action == HandleError) "error"
                   else if (action.isInstanceOf[Custom]) action.toString
                   else "cancellation"
-                logger.debug(s"Stopping watch due to $cause from ${event.entry.typedPath.toPath}")
+                logger.debug(s"Stopping watch due to $cause from ${event.path}")
                 action
               case (Trigger, Some(event)) =>
-                logger.debug(s"Triggered by ${event.entry.typedPath.toPath}")
-                config.triggeredMessage(event.entry.typedPath, count).foreach(info)
+                logger.debug(s"Triggered by ${event.path}")
+                config.triggeredMessage(event.path, count).foreach(info)
                 Trigger
               case (Reload, Some(event)) =>
-                logger.info(s"Reload triggered by ${event.entry.typedPath.toPath}")
+                logger.info(s"Reload triggered by ${event.path}")
                 Reload
               case _ =>
                 nextAction()
@@ -427,11 +428,11 @@ object Watched {
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 
-  def createWatchService(): WatchService = {
+  def createWatchService(pollDelay: FiniteDuration): WatchService = {
     def closeWatch = new MacOSXWatchService()
     sys.props.get("sbt.watch.mode") match {
       case Some("polling") =>
-        new PollingWatchService(PollDelay)
+        new PollingWatchService(pollDelay)
       case Some("nio") =>
         FileSystems.getDefault.newWatchService()
       case Some("closewatch")    => closeWatch
@@ -440,6 +441,7 @@ object Watched {
         FileSystems.getDefault.newWatchService()
     }
   }
+  def createWatchService(): WatchService = createWatchService(PollDelay)
 }
 
 /**
@@ -458,7 +460,7 @@ trait WatchConfig {
    *
    * @return an sbt.io.FileEventMonitor instance.
    */
-  def fileEventMonitor: FileEventMonitor[FileCacheEntry]
+  def fileEventMonitor: FileEventMonitor[FileAttributes]
 
   /**
    * A function that is periodically invoked to determine whether the watch should stop or
@@ -481,7 +483,7 @@ trait WatchConfig {
    * @param event the detected sbt.io.FileEventMonitor.Event.
    * @return the next [[Watched.Action Action]] to run.
    */
-  def onWatchEvent(event: Event[FileCacheEntry]): Watched.Action
+  def onWatchEvent(event: FileAttributes.Event): Watched.Action
 
   /**
    * Transforms the state after the watch terminates.
@@ -494,11 +496,11 @@ trait WatchConfig {
 
   /**
    * The optional message to log when a build is triggered.
-   * @param typedPath the path that triggered the build
+   * @param path the path that triggered the vuild
    * @param count the current iteration
    * @return an optional log message.
    */
-  def triggeredMessage(typedPath: TypedPath, count: Int): Option[String]
+  def triggeredMessage(path: Path, count: Int): Option[String]
 
   /**
    * The optional message to log before each watch iteration.
@@ -537,12 +539,12 @@ object WatchConfig {
    */
   def default(
       logger: Logger,
-      fileEventMonitor: FileEventMonitor[FileCacheEntry],
+      fileEventMonitor: FileEventMonitor[FileAttributes],
       handleInput: InputStream => Watched.Action,
       preWatch: (Int, Boolean) => Watched.Action,
-      onWatchEvent: Event[FileCacheEntry] => Watched.Action,
+      onWatchEvent: FileAttributes.Event => Watched.Action,
       onWatchTerminated: (Watched.Action, String, State) => State,
-      triggeredMessage: (TypedPath, Int) => Option[String],
+      triggeredMessage: (Path, Int) => Option[String],
       watchingMessage: Int => Option[String]
   ): WatchConfig = {
     val l = logger
@@ -555,15 +557,15 @@ object WatchConfig {
     val wm = watchingMessage
     new WatchConfig {
       override def logger: Logger = l
-      override def fileEventMonitor: FileEventMonitor[FileCacheEntry] = fem
+      override def fileEventMonitor: FileEventMonitor[FileAttributes] = fem
       override def handleInput(inputStream: InputStream): Watched.Action = hi(inputStream)
       override def preWatch(count: Int, lastResult: Boolean): Watched.Action =
         pw(count, lastResult)
-      override def onWatchEvent(event: Event[FileCacheEntry]): Watched.Action = owe(event)
+      override def onWatchEvent(event: FileAttributes.Event): Watched.Action = owe(event)
       override def onWatchTerminated(action: Watched.Action, command: String, state: State): State =
         owt(action, command, state)
-      override def triggeredMessage(typedPath: TypedPath, count: Int): Option[String] =
-        tm(typedPath, count)
+      override def triggeredMessage(path: Path, count: Int): Option[String] =
+        tm(path, count)
       override def watchingMessage(count: Int): Option[String] = wm(count)
     }
   }

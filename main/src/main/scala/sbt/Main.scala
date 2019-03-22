@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
 
 import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
@@ -21,8 +22,8 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
 import sbt.internal.util.complete.Parser
+import sbt.io.IO
 import sbt.io.syntax._
-import sbt.io.{ FileTreeDataView, IO }
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
 
@@ -852,27 +853,26 @@ object BuiltinCommands {
       }
     s.put(Keys.stateCompilerCache, cache)
   }
-  private[sbt] def registerGlobalCaches(s: State): State = {
-    val extracted = Project.extract(s)
+  private[sbt] def registerGlobalCaches(s: State): State =
     try {
+      val extracted = Project.extract(s)
+      val cleanedUp = new AtomicBoolean(false)
       def cleanup(): Unit = {
-        s.get(Keys.globalFileTreeView).foreach(_.close())
-        s.attributes.remove(Keys.globalFileTreeView)
+        s.get(Keys.globalFileTreeRepository).foreach(_.close())
+        s.attributes.remove(Keys.globalFileTreeRepository)
         s.get(Keys.taskRepository).foreach(_.close())
         s.attributes.remove(Keys.taskRepository)
         ()
       }
-      val (_, config: FileTreeViewConfig) = extracted.runTask(Keys.fileTreeViewConfig, s)
-      val view: FileTreeDataView[FileCacheEntry] = config.newDataView()
-      val newState = s.addExitHook(cleanup())
       cleanup()
+      val fileTreeRepository = FileManagement.defaultFileTreeRepository(s, extracted)
+      val newState = s.addExitHook(if (cleanedUp.compareAndSet(false, true)) cleanup())
       newState
-        .put(Keys.globalFileTreeView, view)
         .put(Keys.taskRepository, new TaskRepository.Repr)
+        .put(Keys.globalFileTreeRepository, fileTreeRepository)
     } catch {
       case NonFatal(_) => s
     }
-  }
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)

@@ -1,6 +1,6 @@
 cleanKeepFiles ++= Seq(
 	target.value / "keep",
-	target.value / "keepfile",
-	target.value / "keepdir"
+	target.value / "keepfile"
 )
 
+cleanKeepGlobs += target.value / "keepdir" ** AllPassFilter

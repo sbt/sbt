@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
+import java.nio.file.{ Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -47,8 +48,8 @@ import sbt.internal.util.Types._
 import sbt.internal.util._
 import sbt.internal.util.complete._
 import sbt.io.Path._
-import sbt.io.syntax._
 import sbt.io._
+import sbt.io.syntax._
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{
   Compile,
@@ -68,8 +69,8 @@ import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprin
 import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew._
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import xsbti.CrossValue
 import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
 
@@ -80,6 +81,7 @@ import scala.xml.NodeSeq
 
 // incremental compiler
 import sbt.SlashSyntax0._
+import sbt.internal.GlobLister._
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
@@ -249,15 +251,15 @@ object Defaults extends BuildCommon {
       extraLoggers :== { _ =>
         Nil
       },
-      pollingDirectories :== Nil,
+      pollingGlobs :== Nil,
       watchSources :== Nil,
       watchProjectSources :== Nil,
       skip :== false,
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
       onComplete := {
-        val dir = taskTemporaryDirectory.value;
+        val tempDirectory = taskTemporaryDirectory.value
         () =>
-          { IO.delete(dir); IO.createDirectory(dir) }
+          Clean.deleteContents(tempDirectory, _ => false)
       },
       useSuperShell :== sbt.internal.TaskProgress.isEnabled,
       progressReports := { (s: State) =>
@@ -280,14 +282,11 @@ object Defaults extends BuildCommon {
         None
       },
       watchStartMessage := Watched.defaultStartWatch,
-      fileTreeViewConfig := FileManagement.defaultFileTreeView.value,
-      fileTreeView := state.value
-        .get(Keys.globalFileTreeView)
-        .getOrElse(FileTreeView.DEFAULT.asDataView(FileCacheEntry.default)),
+      fileTreeRepository := FileTree.Repository.polling,
       externalHooks := {
-        val view = fileTreeView.value
+        val repository = fileTreeRepository.value
         compileOptions =>
-          Some(ExternalHooks(compileOptions, view))
+          Some(ExternalHooks(compileOptions, repository))
       },
       watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
       watchLogger := streams.value.log,
@@ -377,13 +376,12 @@ object Defaults extends BuildCommon {
           crossPaths.value
         )
     },
-    unmanagedSources := FileManagement
-      .collectFiles(
-        unmanagedSourceDirectories,
-        includeFilter in unmanagedSources,
-        excludeFilter in unmanagedSources
-      )
-      .value,
+    unmanagedSources := {
+      val filter =
+        (includeFilter in unmanagedSources).value -- (excludeFilter in unmanagedSources).value
+      val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
+      (unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources).all.map(Stamped.file)
+    },
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val baseDir = baseDirectory.value
       val bases = unmanagedSourceDirectories.value
@@ -404,6 +402,7 @@ object Defaults extends BuildCommon {
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
     sourceGenerators :== Nil,
+    sourceGenerators / outputs := Seq(managedDirectory.value ** AllPassFilter),
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
@@ -417,13 +416,11 @@ object Defaults extends BuildCommon {
     resourceDirectories := Classpaths
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
-    unmanagedResources := FileManagement
-      .collectFiles(
-        unmanagedResourceDirectories,
-        includeFilter in unmanagedResources,
-        excludeFilter in unmanagedResources
-      )
-      .value,
+    unmanagedResources := {
+      val filter =
+        (includeFilter in unmanagedResources).value -- (excludeFilter in unmanagedResources).value
+      unmanagedResourceDirectories.value.map(_ ** filter).all.map(Stamped.file)
+    },
     watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
       val bases = unmanagedResourceDirectories.value
       val include = (includeFilter in unmanagedResources).value
@@ -437,7 +434,8 @@ object Defaults extends BuildCommon {
     managedResources := generate(resourceGenerators).value,
     resources := Classpaths.concat(managedResources, unmanagedResources).value
   )
-  def addBaseSources = FileManagement.appendBaseSources
+  // This exists for binary compatibility and probably never should have been public.
+  def addBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Nil
   lazy val outputConfigPaths = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
@@ -568,9 +566,14 @@ object Defaults extends BuildCommon {
     globalDefaults(enableBinaryCompileAnalysis := true)
 
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings
+    compileInputsSettings :+ (clean := Clean.taskIn(ThisScope).value)
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
+    outputs := Seq(
+      compileAnalysisFileTask.value.toGlob,
+      classDirectory.value ** "*.class"
+    ) ++ (sourceGenerators / outputs).value,
     compile := compileTask.value,
+    clean := Clean.taskIn(ThisScope).value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
     printWarnings := printWarningsTask.value,
@@ -581,7 +584,7 @@ object Defaults extends BuildCommon {
       val extra =
         if (crossPaths.value) s"_$binVersion"
         else ""
-      s"inc_compile${extra}.zip"
+      s"inc_compile$extra.zip"
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
@@ -614,8 +617,9 @@ object Defaults extends BuildCommon {
 
   lazy val projectTasks: Seq[Setting[_]] = Seq(
     cleanFiles := cleanFilesTask.value,
-    cleanKeepFiles := historyPath.value.toVector,
-    clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
+    cleanKeepFiles := Vector.empty,
+    cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
+    clean := Clean.taskIn(ThisScope).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
@@ -628,18 +632,22 @@ object Defaults extends BuildCommon {
     watchOnTermination := Watched.onTermination,
     watchConfig := {
       val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
+      val globs = sources.map(
+        s => Glob(s.base, s.includeFilter -- s.excludeFilter, if (s.recursive) Int.MaxValue else 0)
+      )
       val wm = watchingMessage.?.value
-        .map(w => (count: Int) => Some(w(WatchState.empty(sources).withCount(count))))
+        .map(w => (count: Int) => Some(w(WatchState.empty(globs).withCount(count))))
         .getOrElse(watchStartMessage.value)
       val tm = triggeredMessage.?.value
-        .map(
-          tm => (_: TypedPath, count: Int) => Some(tm(WatchState.empty(sources).withCount(count)))
-        )
+        .map(tm => (_: NioPath, count: Int) => Some(tm(WatchState.empty(globs).withCount(count))))
         .getOrElse(watchTriggeredMessage.value)
       val logger = watchLogger.value
+      val repo = FileManagement.toMonitoringRepository(FileManagement.repo.value)
+      globs.foreach(repo.register)
+      val monitor = FileManagement.monitor(repo, watchAntiEntropy.value, logger)
       WatchConfig.default(
         logger,
-        fileTreeViewConfig.value.newMonitor(fileTreeView.value, sources, logger),
+        monitor,
         watchHandleInput.value,
         watchPreWatch.value,
         watchOnEvent.value,
@@ -650,7 +658,7 @@ object Defaults extends BuildCommon {
     },
     watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
-    fileTreeViewConfig := FileManagement.defaultFileTreeView.value
+    outputs += target.value ** AllPassFilter,
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
@@ -1180,10 +1188,14 @@ object Defaults extends BuildCommon {
   // drop base directories, since there are no valid mappings for these
   def sourceMappings: Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val srcs = unmanagedSources.value
       val sdirs = unmanagedSourceDirectories.value
       val base = baseDirectory.value
-      (srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)
+      val relative = (f: File) => relativeTo(sdirs)(f).orElse(relativeTo(base)(f)).orElse(flat(f))
+      val exclude = Set(sdirs, base)
+      unmanagedSources.value.flatMap {
+        case s if !exclude(s) => relative(s).map(s -> _)
+        case _                => None
+      }
     }
   def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
   def relativeMappings(
@@ -1191,26 +1203,32 @@ object Defaults extends BuildCommon {
       dirs: ScopedTaskable[Seq[File]]
   ): Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val rs = files.toTask.value
-      val rdirs = dirs.toTask.value
-      (rs --- rdirs) pair (relativeTo(rdirs) | flat)
+      val rdirs = dirs.toTask.value.toSet
+      val relative = (f: File) => relativeTo(rdirs)(f).orElse(flat(f))
+      files.toTask.value.flatMap {
+        case r if !rdirs(r) => relative(r).map(r -> _)
+        case _              => None
+      }
     }
   def collectFiles(
       dirs: ScopedTaskable[Seq[File]],
-      filter: ScopedTaskable[FileFilter],
-      excludes: ScopedTaskable[FileFilter]
-  ): Initialize[Task[Seq[File]]] = FileManagement.collectFiles(dirs, filter, excludes)
+      include: ScopedTaskable[FileFilter],
+      exclude: ScopedTaskable[FileFilter]
+  ): Initialize[Task[Seq[File]]] = Def.task {
+    val filter = include.toTask.value -- exclude.toTask.value
+    dirs.toTask.value.map(_ ** filter).all.map(Stamped.file)
+  }
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
-      (crossTarget.value / f(
+      crossTarget.value / f(
         ScalaVersion(
           (scalaVersion in artifactName).value,
           (scalaBinaryVersion in artifactName).value
         ),
         projectID.value,
         art.value
-      )).asFile
+      )
     }
 
   def artifactSetting: Initialize[Artifact] =
@@ -1288,24 +1306,7 @@ object Defaults extends BuildCommon {
   }
 
   /** Implements `cleanFiles` task. */
-  def cleanFilesTask: Initialize[Task[Vector[File]]] =
-    Def.task {
-      val filesAndDirs = Vector(managedDirectory.value, target.value)
-      val preserve = cleanKeepFiles.value
-      val (dirs, fs) = filesAndDirs.filter(_.exists).partition(_.isDirectory)
-      val preserveSet = preserve.filter(_.exists).toSet
-      // performance reasons, only the direct items under `filesAndDirs` are allowed to be preserved.
-      val dirItems = dirs flatMap { _.glob("*").get }
-      (preserveSet diff dirItems.toSet) match {
-        case xs if xs.isEmpty => ()
-        case xs =>
-          sys.error(
-            s"cleanKeepFiles contains directory/file that are not directly under cleanFiles: $xs"
-          )
-      }
-      val toClean = (dirItems filterNot { preserveSet(_) }) ++ fs
-      toClean
-    }
+  private[sbt] def cleanFilesTask: Initialize[Task[Vector[File]]] = Def.task { Vector.empty[File] }
 
   def bgRunMainTask(
       products: Initialize[Task[Classpath]],
@@ -1614,6 +1615,8 @@ object Defaults extends BuildCommon {
       incCompiler.compile(i, s.log)
     } finally x.close() // workaround for #937
   }
+  private def compileAnalysisFileTask: Def.Initialize[Task[File]] =
+    Def.task(streams.value.cacheDirectory / compileAnalysisFilename.value)
   def compileIncSetupTask = Def.task {
     val lookup = new PerClasspathEntryLookup {
       private val cachedAnalysisMap = analysisMap(dependencyClasspath.value)
@@ -1628,7 +1631,7 @@ object Defaults extends BuildCommon {
       lookup,
       (skip in compile).value,
       // TODO - this is kind of a bad way to grab the cache directory for streams...
-      streams.value.cacheDirectory / compileAnalysisFilename.value,
+      compileAnalysisFileTask.value,
       compilerCache.value,
       incOptions.value,
       (compilerReporter in compile).value,
@@ -1727,10 +1730,15 @@ object Defaults extends BuildCommon {
   def copyResourcesTask =
     Def.task {
       val t = classDirectory.value
-      val dirs = resourceDirectories.value
+      val dirs = resourceDirectories.value.toSet
       val s = streams.value
       val cacheStore = s.cacheStoreFactory make "copy-resources"
-      val mappings = (resources.value --- dirs) pair (rebase(dirs, t) | flat(t))
+      val flt: File => Option[File] = flat(t)
+      val transform: File => Option[File] = (f: File) => rebase(dirs, t)(f).orElse(flt(f))
+      val mappings: Seq[(File, File)] = resources.value.flatMap {
+        case r if !dirs(r) => transform(r).map(r -> _)
+        case _             => None
+      }
       s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t", "\n\t", ""))
       Sync.sync(cacheStore)(mappings)
       mappings
@@ -1794,8 +1802,7 @@ object Defaults extends BuildCommon {
   ) :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies)
 
   lazy val compileSettings: Seq[Setting[_]] =
-    configSettings ++
-      (mainBgRunMainTask +: mainBgRunTask +: FileManagement.appendBaseSources) ++
+    configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++
       Classpaths.addUnmanagedLibrary ++ runtimeLayeringSettings
 
   private val testLayeringSettings: Seq[Setting[_]] = TaskRepository.proxy(
@@ -2023,6 +2030,7 @@ object Classpaths {
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
         docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
+        outputs :== Nil,
         sbtDependency := {
           val app = appConfiguration.value
           val id = app.provider.id

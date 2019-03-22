@@ -10,8 +10,8 @@ package sbt
 import java.io.{ File => JFile }
 import java.nio.file.Path
 
-import sbt.internal.FileCacheEntry
-import sbt.internal.inc.Stamper
+import sbt.internal.FileAttributes
+import sbt.internal.inc.{ EmptyStamp, Stamper }
 import sbt.io.TypedPath
 import xsbti.compile.analysis.Stamp
 
@@ -29,50 +29,47 @@ private[sbt] trait Stamped {
  * Provides converter functions from TypedPath to [[Stamped]].
  */
 private[sbt] object Stamped {
-  type File = JFile with Stamped with TypedPath
-  def file(typedPath: TypedPath, entry: FileCacheEntry): JFile with Stamped with TypedPath =
-    new StampedFileImpl(typedPath, entry.stamp)
+  type File = JFile with Stamped
+  private[sbt] val file: ((Path, FileAttributes)) => JFile with Stamped = {
+    case (path: Path, attributes: FileAttributes) =>
+      new StampedFileImpl(path, attributes.stamp)
+  }
 
   /**
    * Converts a TypedPath instance to a [[Stamped]] by calculating the file hash.
    */
-  val sourceConverter: TypedPath => Stamp = tp => Stamper.forHash(tp.toPath.toFile)
+  private[sbt] val sourceConverter: TypedPath => Stamp = tp => Stamper.forHash(tp.toPath.toFile)
 
   /**
    * Converts a TypedPath instance to a [[Stamped]] using the last modified time.
    */
-  val binaryConverter: TypedPath => Stamp = tp => Stamper.forLastModified(tp.toPath.toFile)
+  private[sbt] val binaryConverter: TypedPath => Stamp = tp =>
+    Stamper.forLastModified(tp.toPath.toFile)
 
   /**
    * A combined convert that converts TypedPath instances representing *.jar and *.class files
    * using the last modified time and all other files using the file hash.
    */
-  val converter: TypedPath => Stamp = (tp: TypedPath) =>
-    if (tp.isDirectory) binaryConverter(tp)
-    else {
-      tp.toPath.toString match {
-        case s if s.endsWith(".jar")   => binaryConverter(tp)
-        case s if s.endsWith(".class") => binaryConverter(tp)
-        case _                         => sourceConverter(tp)
+  private[sbt] val converter: TypedPath => Stamp = (_: TypedPath) match {
+    case typedPath if !typedPath.exists     => EmptyStamp
+    case typedPath if typedPath.isDirectory => binaryConverter(typedPath)
+    case typedPath =>
+      typedPath.toPath.toString match {
+        case s if s.endsWith(".jar")   => binaryConverter(typedPath)
+        case s if s.endsWith(".class") => binaryConverter(typedPath)
+        case _                         => sourceConverter(typedPath)
       }
   }
 
   /**
    * Adds a default ordering that just delegates to the java.io.File.compareTo method.
    */
-  implicit case object ordering extends Ordering[Stamped.File] {
+  private[sbt] implicit case object ordering extends Ordering[Stamped.File] {
     override def compare(left: Stamped.File, right: Stamped.File): Int = left.compareTo(right)
   }
 
   private final class StampedImpl(override val stamp: Stamp) extends Stamped
-  private final class StampedFileImpl(typedPath: TypedPath, override val stamp: Stamp)
-      extends java.io.File(typedPath.toPath.toString)
+  private final class StampedFileImpl(path: Path, override val stamp: Stamp)
+      extends java.io.File(path.toString)
       with Stamped
-      with TypedPath {
-    override def exists: Boolean = typedPath.exists
-    override def isDirectory: Boolean = typedPath.isDirectory
-    override def isFile: Boolean = typedPath.isFile
-    override def isSymbolicLink: Boolean = typedPath.isSymbolicLink
-    override def toPath: Path = typedPath.toPath
-  }
 }

@@ -8,15 +8,15 @@
 package sbt
 
 import java.io.{ File, InputStream }
-import java.nio.file.Files
+import java.nio.file.{ Files, Path }
 import java.util.concurrent.atomic.AtomicBoolean
 
 import org.scalatest.{ FlatSpec, Matchers }
 import sbt.Watched._
 import sbt.WatchedSpec._
-import sbt.internal.FileCacheEntry
-import sbt.io.FileEventMonitor.Event
-import sbt.io.{ FileEventMonitor, IO, TypedPath }
+import sbt.internal.FileAttributes
+import sbt.io._
+import sbt.io.syntax._
 import sbt.util.Logger
 
 import scala.collection.mutable
@@ -24,20 +24,27 @@ import scala.concurrent.duration._
 
 class WatchedSpec extends FlatSpec with Matchers {
   object Defaults {
-    private val fileTreeViewConfig = FileTreeViewConfig.default(50.millis)
     def config(
-        sources: Seq[WatchSource],
-        fileEventMonitor: Option[FileEventMonitor[FileCacheEntry]] = None,
+        globs: Seq[Glob],
+        fileEventMonitor: Option[FileEventMonitor[FileAttributes]] = None,
         logger: Logger = NullLogger,
         handleInput: InputStream => Action = _ => Ignore,
         preWatch: (Int, Boolean) => Action = (_, _) => CancelWatch,
-        onWatchEvent: Event[FileCacheEntry] => Action = _ => Ignore,
-        triggeredMessage: (TypedPath, Int) => Option[String] = (_, _) => None,
+        onWatchEvent: FileAttributes.Event => Action = _ => Ignore,
+        triggeredMessage: (Path, Int) => Option[String] = (_, _) => None,
         watchingMessage: Int => Option[String] = _ => None
     ): WatchConfig = {
-      val monitor = fileEventMonitor.getOrElse(
-        fileTreeViewConfig.newMonitor(fileTreeViewConfig.newDataView(), sources, logger)
-      )
+      val monitor = fileEventMonitor.getOrElse {
+        val fileTreeRepository = FileTreeRepository.default(FileAttributes.default)
+        globs.foreach(fileTreeRepository.register)
+        FileEventMonitor.antiEntropy(
+          fileTreeRepository,
+          50.millis,
+          m => logger.debug(m.toString),
+          50.milliseconds,
+          100.milliseconds
+        )
+      }
       WatchConfig.default(
         logger = logger,
         monitor,
@@ -55,13 +62,13 @@ class WatchedSpec extends FlatSpec with Matchers {
     override def read(): Int = -1
   }
   "Watched.watch" should "stop" in IO.withTemporaryDirectory { dir =>
-    val config = Defaults.config(sources = Seq(WatchSource(dir.toRealPath)))
+    val config = Defaults.config(globs = Seq(dir.toRealPath.toGlob))
     Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
   }
   it should "trigger" in IO.withTemporaryDirectory { dir =>
     val triggered = new AtomicBoolean(false)
     val config = Defaults.config(
-      sources = Seq(WatchSource(dir.toRealPath)),
+      globs = Seq(dir.toRealPath ** AllPassFilter),
       preWatch = (count, _) => if (count == 2) CancelWatch else Ignore,
       onWatchEvent = _ => { triggered.set(true); Trigger },
       watchingMessage = _ => {
@@ -73,28 +80,28 @@ class WatchedSpec extends FlatSpec with Matchers {
   }
   it should "filter events" in IO.withTemporaryDirectory { dir =>
     val realDir = dir.toRealPath
-    val queue = new mutable.Queue[TypedPath]
+    val queue = new mutable.Queue[Path]
     val foo = realDir.toPath.resolve("foo")
     val bar = realDir.toPath.resolve("bar")
     val config = Defaults.config(
-      sources = Seq(WatchSource(realDir)),
+      globs = Seq(realDir ** AllPassFilter),
       preWatch = (count, _) => if (count == 2) CancelWatch else Ignore,
-      onWatchEvent = e => if (e.entry.typedPath.toPath == foo) Trigger else Ignore,
+      onWatchEvent = e => if (e.path == foo) Trigger else Ignore,
       triggeredMessage = (tp, _) => { queue += tp; None },
       watchingMessage = _ => { Files.createFile(bar); Thread.sleep(5); Files.createFile(foo); None }
     )
     Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
-    queue.toIndexedSeq.map(_.toPath) shouldBe Seq(foo)
+    queue.toIndexedSeq shouldBe Seq(foo)
   }
   it should "enforce anti-entropy" in IO.withTemporaryDirectory { dir =>
-    val realDir = dir.toRealPath
-    val queue = new mutable.Queue[TypedPath]
-    val foo = realDir.toPath.resolve("foo")
-    val bar = realDir.toPath.resolve("bar")
+    val realDir = dir.toRealPath.toPath
+    val queue = new mutable.Queue[Path]
+    val foo = realDir.resolve("foo")
+    val bar = realDir.resolve("bar")
     val config = Defaults.config(
-      sources = Seq(WatchSource(realDir)),
+      globs = Seq(realDir ** AllPassFilter),
       preWatch = (count, _) => if (count == 3) CancelWatch else Ignore,
-      onWatchEvent = _ => Trigger,
+      onWatchEvent = e => if (e.path != realDir) Trigger else Ignore,
       triggeredMessage = (tp, _) => { queue += tp; None },
       watchingMessage = count => {
         count match {
@@ -108,12 +115,12 @@ class WatchedSpec extends FlatSpec with Matchers {
       }
     )
     Watched.watch(NullInputStream, () => Right(true), config) shouldBe CancelWatch
-    queue.toIndexedSeq.map(_.toPath) shouldBe Seq(bar, foo)
+    queue.toIndexedSeq shouldBe Seq(bar, foo)
   }
   it should "halt on error" in IO.withTemporaryDirectory { dir =>
     val halted = new AtomicBoolean(false)
     val config = Defaults.config(
-      sources = Seq(WatchSource(dir.toRealPath)),
+      globs = Seq(dir.toRealPath ** AllPassFilter),
       preWatch = (_, lastStatus) => if (lastStatus) Ignore else { halted.set(true); HandleError }
     )
     Watched.watch(NullInputStream, () => Right(false), config) shouldBe HandleError
@@ -121,7 +128,7 @@ class WatchedSpec extends FlatSpec with Matchers {
   }
   it should "reload" in IO.withTemporaryDirectory { dir =>
     val config = Defaults.config(
-      sources = Seq(WatchSource(dir.toRealPath)),
+      globs = Seq(dir.toRealPath ** AllPassFilter),
       preWatch = (_, _) => Ignore,
       onWatchEvent = _ => Reload,
       watchingMessage = _ => { new File(dir, "file").createNewFile(); None }

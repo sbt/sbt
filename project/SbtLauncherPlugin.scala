@@ -1,6 +1,5 @@
-import sbt.io.Path._
+import sbt.Keys._
 import sbt._
-import Keys._
 import sbt.io.CopyOptions
 
 object SbtLauncherPlugin extends AutoPlugin {
@@ -43,7 +42,12 @@ object SbtLauncherPlugin extends AutoPlugin {
       IO.unzip(jar, dir)
       IO.copy(overrides.map({ case (n, f) => (f, dir / n) }), CopyOptions().withOverwrite(true))
       // TODO - is the ok for creating a jar?
-      IO.zip((dir.allPaths --- dir) pair relativeTo(dir), target)
+      val rebase: File => Seq[(File, String)] = {
+        val path = dir.toPath
+        f =>
+          if (f != dir) f -> path.relativize(f.toPath).toString :: Nil else Nil
+      }
+      IO.zip(dir.allPaths.get().flatMap(rebase), target)
     }
     target
   }
