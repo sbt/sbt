@@ -14,9 +14,9 @@ object Dependencies {
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _             => "1.3.0-M1"
+      case _             => "1.3.0-M2"
     }
-  private val zincVersion = "1.3.0-M2"
+  private val zincVersion = "1.3.0-M3"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -130,8 +130,8 @@ object Dependencies {
     ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
   )
 
-  val scalaXml = scala211Module("scala-xml", "1.0.6")
-  val scalaParsers = scala211Module("scala-parser-combinators", "1.0.5")
+  val scalaXml = scala211Module("scala-xml", "1.1.1")
+  val scalaParsers = scala211Module("scala-parser-combinators", "1.1.1")
 
   def log4jVersion = "2.11.1"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
