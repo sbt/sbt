@@ -61,6 +61,17 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
+  Compile / doc / scalacOptions ++= {
+    import scala.sys.process._
+    val devnull = ProcessLogger(_ => ())
+    val tagOrSha = ("git describe --exact-match" #|| "git rev-parse HEAD").lineStream(devnull).head
+    Seq(
+      "-sourcepath",
+      (baseDirectory in LocalRootProject).value.getAbsolutePath,
+      "-doc-source-url",
+      s"https://github.com/sbt/sbt/tree/$tagOrSha€{FILE_PATH}.scala"
+    )
+  },
   crossScalaVersions := Seq(baseScalaVersion),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
