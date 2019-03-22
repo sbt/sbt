@@ -439,6 +439,8 @@ object Defaults extends BuildCommon {
   )
   def addBaseSources = FileManagement.appendBaseSources
   lazy val outputConfigPaths = Seq(
+    cleanFiles := Vector(classDirectory.value),
+    clean := cleanTask.value,
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
@@ -615,7 +617,7 @@ object Defaults extends BuildCommon {
   lazy val projectTasks: Seq[Setting[_]] = Seq(
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := historyPath.value.toVector,
-    clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
+    clean := cleanTask.value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
@@ -1286,6 +1288,13 @@ object Defaults extends BuildCommon {
     }
     pickMainClass(classes)
   }
+
+  def cleanTask: Initialize[Task[Unit]] =
+    (Def
+      .task {
+        IO.delete(cleanFiles.value)
+      })
+      .tag(Tags.Clean)
 
   /** Implements `cleanFiles` task. */
   def cleanFilesTask: Initialize[Task[Vector[File]]] =

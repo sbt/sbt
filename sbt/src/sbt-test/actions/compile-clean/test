@@ -1,0 +1,11 @@
+$ touch target/cant-touch-this
+
+> compile
+$ exists target/scala-2.12/classes/A.class
+
+> Compile/clean
+$ exists target/cant-touch-this
+$ absent target/scala-2.12/classes/A.class
+
+> clean
+$ absent target/cant-touch-this
