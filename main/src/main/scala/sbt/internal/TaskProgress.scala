@@ -25,7 +25,7 @@ private[sbt] final class TaskProgress
   private[this] val isStopped = new AtomicBoolean(false)
 
   override def initial(): Unit = {
-    ConsoleAppender.setTerminalWidth(JLine.usingTerminal(_.getWidth))
+    ConsoleAppender.setTerminalWidth(JLine.terminal.getWidth)
   }
 
   override def afterReady(task: Task[_]): Unit = {

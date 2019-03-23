@@ -127,7 +127,7 @@ private[sbt] object JLine {
 
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
-  private def terminal = jline.TerminalFactory.get
+  private[sbt] def terminal = jline.TerminalFactory.get
 
   private def withTerminal[T](f: jline.Terminal => T): T =
     synchronized {
