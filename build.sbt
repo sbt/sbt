@@ -121,6 +121,7 @@ lazy val sbtRoot: Project = (project in file("."))
     buildLevelSettings,
     minimalSettings,
     onLoadMessage := {
+      val version = sys.props("java.specification.version")
       """           __    __ 
         |     _____/ /_  / /_
         |    / ___/ __ \/ __/
@@ -128,9 +129,9 @@ lazy val sbtRoot: Project = (project in file("."))
         |  /____/_.___/\__/ 
         |Welcome to the build for sbt.
         |""".stripMargin +
-          (if (sys.props("java.specification.version") != "1.8")
+          (if (version != "1.8")
             s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               |  Java version is ${sys.props("java.specification.version")}. We recommend 1.8.
+               |  Java version is $version. We recommend java 8.
                |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
           else "")
     },
