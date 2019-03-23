@@ -58,6 +58,8 @@ private[sbt] final class ArbitraryCommand(
     new ArbitraryCommand(parser, help, tags.put(key, value))
 }
 
+// format: off
+
 object Command {
   import DefaultParsers._
 
@@ -218,6 +220,8 @@ object Command {
   def spacedC(name: String, c: Parser[Char]): Parser[String] =
     ((c & opOrIDSpaced(name)) ~ c.+) map { case (f, rem) => (f +: rem).mkString }
 }
+
+// format: on
 
 trait Help {
   def detail: Map[String, String]
