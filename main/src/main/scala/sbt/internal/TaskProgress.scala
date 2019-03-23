@@ -110,7 +110,7 @@ private[sbt] final class TaskProgress
 
   private[this] def deleteConsoleLines(n: Int): Unit = {
     (1 to n) foreach { _ =>
-      console.println(s"$DeleteLine")
+      console.println(DeleteLine)
     }
   }
 }
