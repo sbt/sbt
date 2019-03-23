@@ -133,7 +133,7 @@ object Dependencies {
   val scalaXml = scala211Module("scala-xml", "1.1.1")
   val scalaParsers = scala211Module("scala-parser-combinators", "1.1.1")
 
-  def log4jVersion = "2.11.1"
+  def log4jVersion = "2.11.2"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val log4jSlf4jImpl = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
