@@ -130,7 +130,7 @@ lazy val sbtRoot: Project = (project in file("."))
         |""".stripMargin +
           (if (sys.props("java.specification.version") != "1.8")
             s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               |  Java versions is ${sys.props("java.specification.version")}. We recommend 1.8.
+               |  Java version is ${sys.props("java.specification.version")}. We recommend 1.8.
                |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
           else "")
     },
