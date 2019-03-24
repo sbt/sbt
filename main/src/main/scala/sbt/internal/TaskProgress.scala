@@ -9,23 +9,16 @@ package sbt
 package internal
 
 import sbt.internal.util.{ RMap, ConsoleOut, ConsoleAppender, LogOption, JLine }
-import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{ blocking, Future, ExecutionContext }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
-import scala.collection.JavaConverters._
-import scala.collection.concurrent.TrieMap
 import TaskProgress._
 
 /**
  * implements task progress display on the shell.
  */
-private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecuteProgress[Task] {
-  private[this] val showScopedKey = Def.showRelativeKey2(currentRef)
-  // private[this] var start = 0L
-  private[this] val activeTasks = new ConcurrentHashMap[Task[_], Long]
-  private[this] val timings = new ConcurrentHashMap[Task[_], Long]
-  private[this] val calledBy = new ConcurrentHashMap[Task[_], Task[_]]
-  private[this] val anonOwners = new ConcurrentHashMap[Task[_], Task[_]]
+private[sbt] final class TaskProgress
+    extends AbstractTaskExecuteProgress
+    with ExecuteProgress[Task] {
   private[this] val isReady = new AtomicBoolean(false)
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val isAllCompleted = new AtomicBoolean(false)
@@ -35,35 +28,8 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
     ConsoleAppender.setTerminalWidth(JLine.usingTerminal(_.getWidth))
   }
 
-  override def afterRegistered(
-      task: Task[_],
-      allDeps: Iterable[Task[_]],
-      pendingDeps: Iterable[Task[_]]
-  ): Unit = {
-    // we need this to infer anonymous task names
-    pendingDeps foreach { t =>
-      if (TaskName.transformNode(t).isEmpty) {
-        anonOwners.put(t, task)
-      }
-    }
-  }
   override def afterReady(task: Task[_]): Unit = {
     isReady.set(true)
-  }
-
-  override def beforeWork(task: Task[_]): Unit = {
-    activeTasks.put(task, System.nanoTime)
-    ()
-  }
-
-  override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = {
-    val start = activeTasks.get(task)
-    timings.put(task, System.nanoTime - start)
-    activeTasks.remove(task)
-    // we need this to infer anonymous task names
-    result.left.foreach { t =>
-      calledBy.put(t, task)
-    }
   }
 
   override def afterCompleted[A](task: Task[A], result: Result[A]): Unit = ()
@@ -95,15 +61,14 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   private[this] val skipReportTasks =
     Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject")
   private[this] def report(): Unit = console.lockObject.synchronized {
-    val currentTasks = activeTasks.asScala.toList
+    val currentTasks = activeTasks.toList
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
     def report0(): Unit = {
       console.print(s"$CursorDown1")
-      currentTasks foreach {
-        case (task, start) =>
-          val elapsed = (System.nanoTime - start) / 1000000000L
-          console.println(s"$DeleteLine  | => ${taskName(task)} ${elapsed}s")
+      currentTasks foreach { task =>
+        val elapsed = timings.get(task).currentElapsedSeconds
+        console.println(s"$DeleteLine  | => ${taskName(task)} ${elapsed}s")
       }
       if (ltc > currentTasksCount) deleteConsoleLines(ltc - currentTasksCount)
       else ()
@@ -138,27 +103,15 @@ private[sbt] final class TaskProgress(currentRef: ProjectRef) extends ExecutePro
   //   else report0()
   // }
 
-  private[this] def containsSkipTasks(tasks: List[(Task[_], Long)]): Boolean =
+  private[this] def containsSkipTasks(tasks: List[Task[_]]): Boolean =
     tasks
-      .map({ case (t, _) => taskName(t) })
+      .map(t => taskName(t))
       .exists(n => skipReportTasks.exists(m => n.endsWith("/ " + m)))
 
   private[this] def deleteConsoleLines(n: Int): Unit = {
     (1 to n) foreach { _ =>
       console.println(s"$DeleteLine")
     }
-  }
-
-  private[this] val taskNameCache = TrieMap.empty[Task[_], String]
-  private[this] def taskName(t: Task[_]): String =
-    taskNameCache.getOrElseUpdate(t, taskName0(t))
-  private[this] def taskName0(t: Task[_]): String = {
-    def definedName(node: Task[_]): Option[String] =
-      node.info.name orElse TaskName.transformNode(node).map(showScopedKey.show)
-    def inferredName(t: Task[_]): Option[String] = nameDelegate(t) map taskName
-    def nameDelegate(t: Task[_]): Option[Task[_]] =
-      Option(anonOwners.get(t)) orElse Option(calledBy.get(t))
-    definedName(t) orElse inferredName(t) getOrElse TaskName.anonymousName(t)
   }
 }
 
