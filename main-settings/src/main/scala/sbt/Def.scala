@@ -62,6 +62,29 @@ object Def extends Init[Scope] with TaskMacroExtra {
       )
     )
 
+  private[sbt] def showShortKey(
+      keyNameColor: Option[String],
+  ): Show[ScopedKey[_]] = {
+    def displayShort(
+        project: Reference
+    ): String = {
+      val trailing = " /"
+      project match {
+        case BuildRef(_)      => "ThisBuild" + trailing
+        case ProjectRef(_, x) => x + trailing
+        case _                => Reference.display(project) + trailing
+      }
+    }
+    Show[ScopedKey[_]](
+      key =>
+        Scope.display(
+          key.scope,
+          withColor(key.key.label, keyNameColor),
+          ref => displayShort(ref)
+      )
+    )
+  }
+
   @deprecated("Use showBuildRelativeKey2 which doesn't take the unused multi param", "1.1.1")
   def showBuildRelativeKey(
       currentBuild: URI,

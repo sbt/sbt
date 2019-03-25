@@ -266,8 +266,9 @@ object Defaults extends BuildCommon {
       useSuperShell :== sbt.internal.TaskProgress.isEnabled,
       progressReports := { (s: State) =>
         val progress = useSuperShell.value
-        val rs = EvaluateTask.taskTimingProgress.toVector ++ {
-          if (progress) Vector(EvaluateTask.taskProgress(s))
+        val rs = EvaluateTask.taskTimingProgress.toVector ++
+          EvaluateTask.taskTraceEvent.toVector ++ {
+          if (progress) Vector(EvaluateTask.taskProgress)
           else Vector()
         }
         rs map { Keys.TaskProgress(_) }

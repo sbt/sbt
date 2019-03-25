@@ -7,7 +7,15 @@
 
 package sbt
 
-import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil, TaskProgress }
+import sbt.internal.{
+  Load,
+  BuildStructure,
+  TaskTimings,
+  TaskName,
+  GCUtil,
+  TaskProgress,
+  TaskTraceEvent
+}
 import sbt.internal.util.{ Attributed, ConsoleAppender, ErrorHandling, HList, RMap, Signals, Types }
 import sbt.util.{ Logger, Show }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
@@ -170,9 +178,13 @@ object EvaluateTask {
         Some(new TaskTimings(reportOnShutdown = false))
     } else None
 
-  def taskProgress(state: State): ExecuteProgress[Task] = {
-    new TaskProgress(Project.extract(state).currentRef)
-  }
+  lazy private val sharedTraceEvent = new TaskTraceEvent()
+  def taskTraceEvent: Option[ExecuteProgress[Task]] =
+    if (java.lang.Boolean.getBoolean("sbt.traces")) {
+      Some(sharedTraceEvent)
+    } else None
+
+  def taskProgress: ExecuteProgress[Task] = new TaskProgress()
 
   // sbt-pgp calls this
   @deprecated("No longer used", "1.3.0")
