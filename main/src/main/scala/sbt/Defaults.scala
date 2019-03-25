@@ -150,6 +150,8 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
     Seq(
       compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
+      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.RuntimeDependencies,
+      classLoaderLayeringStrategy in Test :== ClassLoaderLayeringStrategy.TestDependencies,
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
@@ -1793,30 +1795,33 @@ object Defaults extends BuildCommon {
     Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++
       Classpaths.compilerPluginConfig ++ deprecationSettings
 
-  private val runtimeLayeringSettings: Seq[Setting[_]] = TaskRepository.proxy(
-    classLoaderCache,
-    // We need a cache of size four so that the subset of the runtime dependencies that are used
-    // by the test task layers may be cached without evicting the runtime classloader layers. The
-    // cache size should be a multiple of two to support snapshot layers.
-    ClassLoaderCache(4)
-  ) :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies)
-
   lazy val compileSettings: Seq[Setting[_]] =
     configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++
-      Classpaths.addUnmanagedLibrary ++ runtimeLayeringSettings
+      Classpaths.addUnmanagedLibrary ++
+      Vector(
+        TaskRepository.proxy(
+          classLoaderCache,
+          // We need a cache of size four so that the subset of the runtime dependencies that are used
+          // by the test task layers may be cached without evicting the runtime classloader layers. The
+          // cache size should be a multiple of two to support snapshot layers.
+          ClassLoaderCache(4)
+        )
+      )
 
-  private val testLayeringSettings: Seq[Setting[_]] = TaskRepository.proxy(
-    classLoaderCache,
-    // We need a cache of size two for the test dependency layers (regular and snapshot).
-    ClassLoaderCache(2)
-  ) :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies)
-  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
+  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++
+    Vector(
+      TaskRepository.proxy(
+        classLoaderCache,
+        // We need a cache of size two for the test dependency layers (regular and snapshot).
+        ClassLoaderCache(2)
+      )
+    )
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
-    testSettings :+ (classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies)
+    testSettings
   }
   lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++
-    inConfig(Test)(testSettings ++ testLayeringSettings) ++
+    inConfig(Test)(testSettings) ++
     inConfig(Runtime)(Classpaths.configSettings)
 
   // These are project level settings that MUST be on every project.
