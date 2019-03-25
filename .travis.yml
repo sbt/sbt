@@ -32,9 +32,15 @@ install:
   - sdk install java $TRAVIS_JDK
   - unset _JAVA_OPTIONS
   - java -Xmx32m -version
+  # detect sbt version from project/build.properties
+  - export TRAVIS_SBT=$(grep sbt.version= project/build.properties | sed -e 's/sbt.version=//g' ) && echo "sbt $TRAVIS_SBT"
+  - sdk install sbt $TRAVIS_SBT
+  # override Travis CI's SBT_OPTS
+  - unset SBT_OPTS
+  - export JAVA_OPTS="-Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M"
 
-script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
-  ++$TRAVIS_SCALA_VERSION
+script: sbt -Dfile.encoding=UTF8
+  ++$TRAVIS_SCALA_VERSION!
   mimaReportBinaryIssues
   scalafmt::test test:scalafmt::test sbt:scalafmt::test
   whitesourceCheckPolicies
