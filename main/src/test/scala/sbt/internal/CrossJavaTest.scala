@@ -7,23 +7,22 @@
 
 package sbt.internal
 
-import org.specs2.mutable.Specification
+import org.scalatest._
 import sbt.internal.CrossJava.JavaDiscoverConfig._
 
-class CrossJavaTest extends Specification {
-  "The Java home selector" should {
-    "select the most recent" in {
+class CrossJavaTest extends FunSuite with DiagrammedAssertions {
+  test("The Java home selector should select the most recent") {
+    assert(
       List("jdk1.8.0.jdk", "jdk1.8.0_121.jdk", "jdk1.8.0_45.jdk")
         .sortWith(CrossJava.versionOrder)
-        .last must be equalTo ("jdk1.8.0_121.jdk")
-    }
+        .last == "jdk1.8.0_121.jdk"
+    )
   }
 
-  "The Linux Java home selector" should {
-    "correctly pick up fedora java installations" in {
-      val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
-        override def candidates(): Vector[String] =
-          """
+  test("The Linux Java home selector should correctly pick up Fedora Java installations") {
+    val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
+      override def candidates(): Vector[String] =
+        """
             |java-1.8.0-openjdk-1.8.0.162-3.b12.fc28.x86_64
             |java-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64
             |java-1.8.0
@@ -34,49 +33,45 @@ class CrossJavaTest extends Specification {
             |jre-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64
             |jre-openjdk
           """.stripMargin.split("\n").filter(_.nonEmpty).toVector
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must be equalTo ("1.8")
-      file.getName must be equalTo ("java-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64")
     }
-
-    "correctly pick up Oracle RPM installations" in {
-      val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
-        override def candidates(): Vector[String] = Vector("jdk1.8.0_172-amd64")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must be equalTo ("1.8")
-      file.getName must be equalTo ("jdk1.8.0_172-amd64")
-    }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.8")
+    assert(file.getName == "java-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64")
   }
 
-  "The Windows Java home selector" should {
-    "correctly pick up a JDK" in {
-      val conf = new WindowsDiscoverConfig(sbt.io.syntax.file(".")) {
-        override def candidates() = Vector("jdk1.7.0")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must equalTo("1.7")
-      file.getName must be equalTo ("jdk1.7.0")
+  test("The Linux Java home selector should correctly pick up Oracle RPM installations") {
+    val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
+      override def candidates(): Vector[String] = Vector("jdk1.8.0_172-amd64")
     }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.8")
+    assert(file.getName == "jdk1.8.0_172-amd64")
   }
 
-  "The JAVA_HOME selector" should {
-    "correctly pick up a JDK" in {
-      val conf = new JavaHomeDiscoverConfig {
-        override def home() = Some("/opt/jdk8")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must equalTo("8")
-      file.getName must be equalTo ("jdk8")
+  test("The Windows Java home selector should correctly pick up a JDK") {
+    val conf = new WindowsDiscoverConfig(sbt.io.syntax.file(".")) {
+      override def candidates() = Vector("jdk1.7.0")
     }
-    "correctly pick up an Oracle JDK" in {
-      val conf = new JavaHomeDiscoverConfig {
-        override def home() = Some("/opt/oracle-jdk-bin-1.8.0.181")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must equalTo("1.8")
-      file.getName must be equalTo ("oracle-jdk-bin-1.8.0.181")
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.7")
+    assert(file.getName == "jdk1.7.0")
+  }
+
+  test("The JAVA_HOME selector should correctly pick up a JDK") {
+    val conf = new JavaHomeDiscoverConfig {
+      override def home() = Some("/opt/jdk8")
     }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "8")
+    assert(file.getName == "jdk8")
+  }
+
+  test("The JAVA_HOME selector correctly pick up an Oracle JDK") {
+    val conf = new JavaHomeDiscoverConfig {
+      override def home() = Some("/opt/oracle-jdk-bin-1.8.0.181")
+    }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.8")
+    assert(file.getName == "oracle-jdk-bin-1.8.0.181")
   }
 }
