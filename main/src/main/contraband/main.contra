@@ -19,11 +19,13 @@ enum PluginTrigger {
 }
 
 type JavaVersion {
-  numbers: [Long]
-  vendor: String
+  numbers: [Long] @since("1.2.0")
+  tags: [String] @since("1.3.0")
+  vendor: String @since("1.2.0")
 
   #x def numberStr: String = numbers.mkString(".")
-  #xtostring vendor.map(_ + "@").getOrElse("") + numberStr
+  #x private def tagStr: String = if (tags.isEmpty) "" else tags.mkString("-", "-", "")
+  #xtostring vendor.map(_ + "@").getOrElse("") + numberStr + tagStr
 
   #xcompanion def apply(version: String): JavaVersion = sbt.internal.CrossJava.parseJavaVersion(version)
 }

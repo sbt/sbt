@@ -5,7 +5,8 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
+package sbt
+package internal
 
 import org.scalatest._
 import sbt.internal.CrossJava.JavaDiscoverConfig._
@@ -66,12 +67,65 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
     assert(file.getName == "jdk8")
   }
 
-  test("The JAVA_HOME selector correctly pick up an Oracle JDK") {
+  test("The JAVA_HOME selector should correctly pick up an Oracle JDK") {
     val conf = new JavaHomeDiscoverConfig {
       override def home() = Some("/opt/oracle-jdk-bin-1.8.0.181")
     }
     val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
     assert(version == "1.8")
     assert(file.getName == "oracle-jdk-bin-1.8.0.181")
+  }
+
+  test("The SDKMAN selector should correctly pick up an AdoptOpenJDK") {
+    val conf = new SdkmanDiscoverConfig {
+      override def candidates() = Vector("11.0.2.hs-adpt")
+    }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "adopt@11.0.2")
+    assert(file.getName == "11.0.2.hs-adpt")
+  }
+
+  test("SDKMAN candidate parsing") {
+    assert(
+      CrossJava
+        .parseSdkmanString("11.0.2.hs-adpt") == JavaVersion(Vector(11L, 0L, 2L), Some("adopt"))
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("11.0.2.j9-adpt") == JavaVersion(
+        Vector(11L, 0L, 2L),
+        Some("adopt-openj9")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("13.ea.13-open") == JavaVersion(
+        Vector(13L),
+        Vector("ea13"),
+        Some("openjdk")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("12.0.0-zulu") == JavaVersion(
+        Vector(12L, 0L, 0L),
+        Some("zulu")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("8.0.201-oracle") == JavaVersion(
+        Vector(8L, 0L, 201L),
+        Some("oracle")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("1.0.0-rc-14-grl") == JavaVersion(
+        Vector(1L, 0L, 0L),
+        Vector("rc14"),
+        Some("graalvm")
+      )
+    )
   }
 }
