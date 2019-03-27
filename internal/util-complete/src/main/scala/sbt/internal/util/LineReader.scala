@@ -9,9 +9,11 @@ package sbt.internal.util
 
 import jline.console.ConsoleReader
 import jline.console.history.{ FileHistory, MemoryHistory }
-import java.io.{ File, InputStream, FileInputStream, FileDescriptor, FilterInputStream }
+import java.io.{ File, FileDescriptor, FileInputStream, FilterInputStream, InputStream }
+
 import complete.Parser
-import scala.concurrent.duration.Duration
+
+import scala.concurrent.duration._
 import scala.annotation.tailrec
 
 abstract class JLine extends LineReader {
@@ -120,7 +122,7 @@ private[sbt] object JLine {
   protected[this] val originalIn = new FileInputStream(FileDescriptor.in)
 
   private[sbt] def makeInputStream(injectThreadSleep: Boolean): InputStream =
-    if (injectThreadSleep) new InputStreamWrapper(originalIn, Duration("50 ms"))
+    if (injectThreadSleep) new InputStreamWrapper(originalIn, 2.milliseconds)
     else originalIn
 
   // When calling this, ensure that enableEcho has been or will be called.
