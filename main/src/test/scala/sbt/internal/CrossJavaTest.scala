@@ -10,6 +10,7 @@ package internal
 
 import org.scalatest._
 import sbt.internal.CrossJava.JavaDiscoverConfig._
+import scala.collection.immutable.ListMap
 
 class CrossJavaTest extends FunSuite with DiagrammedAssertions {
   test("The Java home selector should select the most recent") {
@@ -83,6 +84,14 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
     val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
     assert(version == "adopt@11.0.2")
     assert(file.getName == "11.0.2.hs-adpt")
+  }
+
+  test("expandJavaHomes") {
+    val conf = new SdkmanDiscoverConfig {
+      override def candidates() = Vector("11.0.2.hs-adpt")
+    }
+    val hs = CrossJava.expandJavaHomes(ListMap(conf.javaHomes: _*))
+    assert(hs.contains("11"))
   }
 
   test("SDKMAN candidate parsing") {

@@ -477,18 +477,34 @@ private[sbt] object CrossJava {
     if (s eq null) ""
     else s
 
-  // expand Java versions to 1-20 to 1.x, and vice versa to accept both "1.8" and "8"
-  private val oneDot = Map((1L to 20L).toVector flatMap { i =>
-    Vector(Vector(i) -> Vector(1L, i), Vector(1L, i) -> Vector(i))
-  }: _*)
-  def expandJavaHomes(hs: Map[String, File]): Map[String, File] =
-    hs flatMap {
+  def expandJavaHomes(hs: Map[String, File]): Map[String, File] = {
+    val parsed = hs map {
+      case (k, v) => JavaVersion(k) -> v
+    }
+    // first ignore vnd
+    val withAndWithoutVnd = parsed flatMap {
       case (k, v) =>
-        val jv = JavaVersion(k)
-        if (oneDot.contains(jv.numbers))
-          Vector(k -> v, jv.withNumbers(oneDot(jv.numbers)).toString -> v)
+        if (k.vendor.isDefined) Vector(k -> v, k.withVendor(None) -> v)
         else Vector(k -> v)
     }
+    val normalizeNumbers = withAndWithoutVnd flatMap {
+      case (k, v) =>
+        k.numbers match {
+          case Vector(1L, minor, _*) =>
+            Vector(k -> v, k.withNumbers(Vector(minor)) -> v)
+          case Vector(major) if major > 1 =>
+            Vector(k -> v, k.withNumbers(Vector(1L, major)) -> v)
+          case Vector(major, minor, _*) if major > 1 =>
+            Vector(k -> v, k.withNumbers(Vector(major)) -> v, k.withNumbers(Vector(1L, major)) -> v)
+          case _ =>
+            Vector(k -> v)
+        }
+    }
+    val result: Map[String, File] = normalizeNumbers map {
+      case (k, v) => (k.toString -> v)
+    }
+    result
+  }
 
   def wrapNull(a: Array[String]): Vector[String] =
     if (a eq null) Vector()
