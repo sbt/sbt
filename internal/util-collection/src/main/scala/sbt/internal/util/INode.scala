@@ -16,8 +16,8 @@ object EvaluationState extends Enumeration {
   val New, Blocked, Ready, Calling, Evaluated = Value
 }
 
-abstract class EvaluateSettings[Scope] {
-  protected val init: Init[Scope]
+abstract class EvaluateSettings[ScopeType] {
+  protected val init: Init[ScopeType]
   import init._
 
   protected def executor: Executor
@@ -27,7 +27,7 @@ abstract class EvaluateSettings[Scope] {
 
   private[this] val complete = new LinkedBlockingQueue[Option[Throwable]]
   private[this] val static = PMap.empty[ScopedKey, INode]
-  private[this] val allScopes: Set[Scope] = compiledSettings.map(_.key.scope).toSet
+  private[this] val allScopes: Set[ScopeType] = compiledSettings.map(_.key.scope).toSet
 
   private[this] def getStatic[T](key: ScopedKey[T]): INode[T] =
     static get key getOrElse sys.error("Illegal reference to key " + key)
@@ -64,7 +64,7 @@ abstract class EvaluateSettings[Scope] {
   private[this] val running = new AtomicInteger
   private[this] val cancel = new AtomicBoolean(false)
 
-  def run(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = {
+  def run(implicit delegates: ScopeType => Seq[ScopeType]): Settings[ScopeType] = {
     assert(running.get() == 0, "Already running")
     startWork()
     roots.foreach(_.registerIfNew())
@@ -76,7 +76,7 @@ abstract class EvaluateSettings[Scope] {
     getResults(delegates)
   }
 
-  private[this] def getResults(implicit delegates: Scope => Seq[Scope]) =
+  private[this] def getResults(implicit delegates: ScopeType => Seq[ScopeType]) =
     (empty /: static.toTypedSeq) {
       case (ss, static.TPair(key, node)) =>
         if (key.key.isLocal) ss else ss.set(key.scope, key.key, node.get)
