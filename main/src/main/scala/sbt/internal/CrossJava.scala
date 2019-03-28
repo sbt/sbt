@@ -45,6 +45,49 @@ private[sbt] object CrossJava {
     }
   }
 
+  def parseSdkmanString(version: String): JavaVersion = {
+    val Num = """([0-9]+)""".r
+    def splitDash(str: String): Vector[String] =
+      Option(str) match {
+        case Some(x) => x.split('-').toVector
+        case _       => Vector()
+      }
+    def splitDot(str: String): Vector[String] =
+      Option(str) match {
+        case Some(x) => x.split('.').toVector.filterNot(_ == "")
+        case _       => Vector()
+      }
+    splitDash(version) match {
+      case xs if xs.size < 2 => sys.error(s"Invalid SDKMAN Java version: $version")
+      case xs =>
+        val ds = splitDot(xs.init.head)
+        val nums = ds.takeWhile(
+          _ match {
+            case Num(_) => true
+            case _      => false
+          }
+        ) map { _.toLong }
+        val nonNum = ds.drop(nums.size).mkString("")
+        // last dash indicates vendor code
+        val (vnd0, tag0) = (xs.last, nonNum) match {
+          case ("adpt", "hs") => ("adpt", "")
+          case ("adpt", "j9") => ("adopt-openj9", "")
+          case (v, t)         => (v, t)
+        }
+        val vnd = vnd0 match {
+          case "adpt" => "adopt"
+          case "open" => "openjdk"
+          case "grl"  => "graalvm"
+          case "amzn" => "corretto"
+          case _      => vnd0
+        }
+        val tag1: String = xs.init.tail.mkString("")
+        val tags = (if (tag0 == "") Vector.empty[String] else Vector(tag0)) ++
+          (if (tag1 == "") Vector.empty[String] else Vector(tag1))
+        JavaVersion().withNumbers(nums).withVendor(vnd).withTags(tags)
+    }
+  }
+
   def lookupJavaHome(jv: String, mappings: Map[String, File]): File = {
     val ms = mappings map { case (k, v) => (JavaVersion(k), v) }
     lookupJavaHome(JavaVersion(jv), ms)
@@ -377,6 +420,18 @@ private[sbt] object CrossJava {
           }
     }
 
+    class SdkmanDiscoverConfig extends JavaDiscoverConf {
+      val base: File = Path.userHome / ".sdkman" / "candidates" / "java"
+      def candidates(): Vector[String] = wrapNull(base.list())
+      def javaHomes: Vector[(String, File)] =
+        candidates
+          .collect {
+            case dir if dir.contains("-") =>
+              val v = CrossJava.parseSdkmanString(dir).toString
+              v -> (base / dir)
+          }
+    }
+
     class WindowsDiscoverConfig(base: File) extends JavaDiscoverConf {
 
       def candidates() = wrapNull(base.list())
@@ -408,6 +463,7 @@ private[sbt] object CrossJava {
 
     val configs = Vector(
       new JabbaDiscoverConfig,
+      new SdkmanDiscoverConfig,
       new LinuxDiscoverConfig(file("/usr") / "java"),
       new LinuxDiscoverConfig(file("/usr") / "lib" / "jvm"),
       new MacOsDiscoverConfig,
@@ -421,18 +477,34 @@ private[sbt] object CrossJava {
     if (s eq null) ""
     else s
 
-  // expand Java versions to 1-20 to 1.x, and vice versa to accept both "1.8" and "8"
-  private val oneDot = Map((1L to 20L).toVector flatMap { i =>
-    Vector(Vector(i) -> Vector(1L, i), Vector(1L, i) -> Vector(i))
-  }: _*)
-  def expandJavaHomes(hs: Map[String, File]): Map[String, File] =
-    hs flatMap {
+  def expandJavaHomes(hs: Map[String, File]): Map[String, File] = {
+    val parsed = hs map {
+      case (k, v) => JavaVersion(k) -> v
+    }
+    // first ignore vnd
+    val withAndWithoutVnd = parsed flatMap {
       case (k, v) =>
-        val jv = JavaVersion(k)
-        if (oneDot.contains(jv.numbers))
-          Vector(k -> v, jv.withNumbers(oneDot(jv.numbers)).toString -> v)
+        if (k.vendor.isDefined) Vector(k -> v, k.withVendor(None) -> v)
         else Vector(k -> v)
     }
+    val normalizeNumbers = withAndWithoutVnd flatMap {
+      case (k, v) =>
+        k.numbers match {
+          case Vector(1L, minor, _*) =>
+            Vector(k -> v, k.withNumbers(Vector(minor)) -> v)
+          case Vector(major) if major > 1 =>
+            Vector(k -> v, k.withNumbers(Vector(1L, major)) -> v)
+          case Vector(major, minor, _*) if major > 1 =>
+            Vector(k -> v, k.withNumbers(Vector(major)) -> v, k.withNumbers(Vector(1L, major)) -> v)
+          case _ =>
+            Vector(k -> v)
+        }
+    }
+    val result: Map[String, File] = normalizeNumbers map {
+      case (k, v) => (k.toString -> v)
+    }
+    result
+  }
 
   def wrapNull(a: Array[String]): Vector[String] =
     if (a eq null) Vector()

@@ -5,25 +5,26 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
+package sbt
+package internal
 
-import org.specs2.mutable.Specification
+import org.scalatest._
 import sbt.internal.CrossJava.JavaDiscoverConfig._
+import scala.collection.immutable.ListMap
 
-class CrossJavaTest extends Specification {
-  "The Java home selector" should {
-    "select the most recent" in {
+class CrossJavaTest extends FunSuite with DiagrammedAssertions {
+  test("The Java home selector should select the most recent") {
+    assert(
       List("jdk1.8.0.jdk", "jdk1.8.0_121.jdk", "jdk1.8.0_45.jdk")
         .sortWith(CrossJava.versionOrder)
-        .last must be equalTo ("jdk1.8.0_121.jdk")
-    }
+        .last == "jdk1.8.0_121.jdk"
+    )
   }
 
-  "The Linux Java home selector" should {
-    "correctly pick up fedora java installations" in {
-      val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
-        override def candidates(): Vector[String] =
-          """
+  test("The Linux Java home selector should correctly pick up Fedora Java installations") {
+    val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
+      override def candidates(): Vector[String] =
+        """
             |java-1.8.0-openjdk-1.8.0.162-3.b12.fc28.x86_64
             |java-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64
             |java-1.8.0
@@ -34,49 +35,106 @@ class CrossJavaTest extends Specification {
             |jre-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64
             |jre-openjdk
           """.stripMargin.split("\n").filter(_.nonEmpty).toVector
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must be equalTo ("1.8")
-      file.getName must be equalTo ("java-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64")
     }
-
-    "correctly pick up Oracle RPM installations" in {
-      val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
-        override def candidates(): Vector[String] = Vector("jdk1.8.0_172-amd64")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must be equalTo ("1.8")
-      file.getName must be equalTo ("jdk1.8.0_172-amd64")
-    }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.8")
+    assert(file.getName == "java-1.8.0-openjdk-1.8.0.172-9.b11.fc28.x86_64")
   }
 
-  "The Windows Java home selector" should {
-    "correctly pick up a JDK" in {
-      val conf = new WindowsDiscoverConfig(sbt.io.syntax.file(".")) {
-        override def candidates() = Vector("jdk1.7.0")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must equalTo("1.7")
-      file.getName must be equalTo ("jdk1.7.0")
+  test("The Linux Java home selector should correctly pick up Oracle RPM installations") {
+    val conf = new LinuxDiscoverConfig(sbt.io.syntax.file(".")) {
+      override def candidates(): Vector[String] = Vector("jdk1.8.0_172-amd64")
     }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.8")
+    assert(file.getName == "jdk1.8.0_172-amd64")
   }
 
-  "The JAVA_HOME selector" should {
-    "correctly pick up a JDK" in {
-      val conf = new JavaHomeDiscoverConfig {
-        override def home() = Some("/opt/jdk8")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must equalTo("8")
-      file.getName must be equalTo ("jdk8")
+  test("The Windows Java home selector should correctly pick up a JDK") {
+    val conf = new WindowsDiscoverConfig(sbt.io.syntax.file(".")) {
+      override def candidates() = Vector("jdk1.7.0")
     }
-    "correctly pick up an Oracle JDK" in {
-      val conf = new JavaHomeDiscoverConfig {
-        override def home() = Some("/opt/oracle-jdk-bin-1.8.0.181")
-      }
-      val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
-      version must equalTo("1.8")
-      file.getName must be equalTo ("oracle-jdk-bin-1.8.0.181")
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.7")
+    assert(file.getName == "jdk1.7.0")
+  }
+
+  test("The JAVA_HOME selector should correctly pick up a JDK") {
+    val conf = new JavaHomeDiscoverConfig {
+      override def home() = Some("/opt/jdk8")
     }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "8")
+    assert(file.getName == "jdk8")
+  }
+
+  test("The JAVA_HOME selector should correctly pick up an Oracle JDK") {
+    val conf = new JavaHomeDiscoverConfig {
+      override def home() = Some("/opt/oracle-jdk-bin-1.8.0.181")
+    }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "1.8")
+    assert(file.getName == "oracle-jdk-bin-1.8.0.181")
+  }
+
+  test("The SDKMAN selector should correctly pick up an AdoptOpenJDK") {
+    val conf = new SdkmanDiscoverConfig {
+      override def candidates() = Vector("11.0.2.hs-adpt")
+    }
+    val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
+    assert(version == "adopt@11.0.2")
+    assert(file.getName == "11.0.2.hs-adpt")
+  }
+
+  test("expandJavaHomes") {
+    val conf = new SdkmanDiscoverConfig {
+      override def candidates() = Vector("11.0.2.hs-adpt")
+    }
+    val hs = CrossJava.expandJavaHomes(ListMap(conf.javaHomes: _*))
+    assert(hs.contains("11"))
+  }
+
+  test("SDKMAN candidate parsing") {
+    assert(
+      CrossJava
+        .parseSdkmanString("11.0.2.hs-adpt") == JavaVersion(Vector(11L, 0L, 2L), Some("adopt"))
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("11.0.2.j9-adpt") == JavaVersion(
+        Vector(11L, 0L, 2L),
+        Some("adopt-openj9")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("13.ea.13-open") == JavaVersion(
+        Vector(13L),
+        Vector("ea13"),
+        Some("openjdk")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("12.0.0-zulu") == JavaVersion(
+        Vector(12L, 0L, 0L),
+        Some("zulu")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("8.0.201-oracle") == JavaVersion(
+        Vector(8L, 0L, 201L),
+        Some("oracle")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("1.0.0-rc-14-grl") == JavaVersion(
+        Vector(1L, 0L, 0L),
+        Vector("rc14"),
+        Some("graalvm")
+      )
+    )
   }
 }
