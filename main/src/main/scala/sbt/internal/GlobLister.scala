@@ -20,47 +20,47 @@ import sbt.io.Glob
 private[sbt] sealed trait GlobLister extends Any {
 
   /**
-   * Get the sources described this [[GlobLister]].
+   * Get the sources described this `GlobLister`.
    *
    * @param repository the [[FileTree.Repository]] to delegate file i/o.
-   * @return the files described by this [[GlobLister]].
+   * @return the files described by this `GlobLister`.
    */
   def all(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)]
 
   /**
-   * Get the unique sources described this [[GlobLister]].
+   * Get the unique sources described this `GlobLister`.
    *
    * @param repository the [[FileTree.Repository]] to delegate file i/o.
-   * @return the files described by this [[GlobLister]] with any duplicates removed.
+   * @return the files described by this `GlobLister` with any duplicates removed.
    */
   def unique(implicit repository: FileTree.Repository): Seq[(Path, FileAttributes)]
 }
 
 /**
- * Provides implicit definitions to provide a [[GlobLister]] given a Glob or
+ * Provides implicit definitions to provide a `GlobLister` given a Glob or
  * Traversable[Glob].
  */
-object GlobLister extends GlobListers
+private[sbt] object GlobLister extends GlobListers
 
 /**
- * Provides implicit definitions to provide a [[GlobLister]] given a Glob or
+ * Provides implicit definitions to provide a `GlobLister` given a Glob or
  * Traversable[Glob].
  */
 private[sbt] trait GlobListers {
   import GlobListers._
 
   /**
-   * Generate a [[GlobLister]] given a particular [[Glob]]s.
+   * Generate a GlobLister given a particular [[Glob]]s.
    *
    * @param source the input Glob
    */
   implicit def fromGlob(source: Glob): GlobLister = new impl(source :: Nil)
 
   /**
-   * Generate a [[GlobLister]] given a collection of Globs. If the input collection type
-   * preserves uniqueness, e.g. `Set[Glob]`, then the output of [[GlobLister.all]] will be
+   * Generate a GlobLister given a collection of Globs. If the input collection type
+   * preserves uniqueness, e.g. `Set[Glob]`, then the output of `GlobLister.all` will be
    * the unique source list. Otherwise duplicates are possible in all and it is necessary to call
-   * [[GlobLister.unique]] to de-duplicate the files.
+   * `GlobLister.unique` to de-duplicate the files.
    *
    * @param sources the collection of sources
    * @tparam T the source collection type
@@ -71,7 +71,7 @@ private[sbt] trait GlobListers {
 private[internal] object GlobListers {
 
   /**
-   * Implements [[GlobLister]] given a collection of Globs. If the input collection type
+   * Implements `GlobLister` given a collection of Globs. If the input collection type
    * preserves uniqueness, e.g. `Set[Glob]`, then the output will be the unique source list.
    * Otherwise duplicates are possible.
    *

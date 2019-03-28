@@ -7,8 +7,8 @@
 > set watchInputParser := sbt.input.parser.Build.helloOrByeParser
 
 # this should exit because we write "xybyexyblahxyhelloxy" to Build.outputStream. The
-# helloOrByeParser will produce Watched.Ignore and Watched.CancelWatch but the
-# Watched.CancelWatch event should win.
+# helloOrByeParser will produce Watch.Ignore and Watch.CancelWatch but the
+# Watch.CancelWatch event should win.
 > ~ compile
 
 > set watchStartMessage := sbt.input.parser.Build.otherAlternativeStartMessage

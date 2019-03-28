@@ -30,9 +30,9 @@ object Build {
       setStringValueImpl.evaluated
     },
     checkStringValue := checkStringValueImpl.evaluated,
-    watchOnTriggerEvent := { (_, _) => Watched.CancelWatch },
-    watchOnInputEvent := { (_, _) => Watched.CancelWatch },
-    Compile / compile / watchOnStart := { _ => () => Watched.CancelWatch },
+    watchOnTriggerEvent := { (_, _) => Watch.CancelWatch },
+    watchOnInputEvent := { (_, _) => Watch.CancelWatch },
+    Compile / compile / watchOnStart := { _ => () => Watch.CancelWatch },
     checkTriggers := {
       val actual = (Compile / compile / transitiveTriggers).value.toSet
       val base = baseDirectory.value.getParentFile
@@ -83,7 +83,7 @@ object Build {
     checkGlobs := checkGlobsImpl.value
   )
   lazy val root = (project in file(".")).aggregate(foo, bar).settings(
-    watchOnEvent := { _ => _ => Watched.CancelWatch },
+    watchOnEvent := { _ => _ => Watch.CancelWatch },
     checkTriggers := {
       val actual = (Compile / compile / transitiveTriggers).value
       val expected: Seq[Glob] = baseDirectory.value * "baz.txt" :: Nil

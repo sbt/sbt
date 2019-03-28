@@ -12,8 +12,8 @@ import java.nio.file.{ Files, Path }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import org.scalatest.{ FlatSpec, Matchers }
-import sbt.Watched._
-import sbt.WatchedSpec._
+import sbt.Watch.{ NullLogger, _ }
+import sbt.WatchSpec._
 import sbt.internal.FileAttributes
 import sbt.io.FileEventMonitor.Event
 import sbt.io._
@@ -23,18 +23,18 @@ import sbt.util.Logger
 import scala.collection.mutable
 import scala.concurrent.duration._
 
-class WatchedSpec extends FlatSpec with Matchers {
-  private type NextAction = () => Watched.Action
-  private def watch(task: Task, callbacks: (NextAction, NextAction)): Watched.Action =
-    Watched.watch(task, callbacks._1, callbacks._2)
+class WatchSpec extends FlatSpec with Matchers {
+  private type NextAction = () => Watch.Action
+  private def watch(task: Task, callbacks: (NextAction, NextAction)): Watch.Action =
+    Watch(task, callbacks._1, callbacks._2)
   object TestDefaults {
     def callbacks(
         inputs: Seq[Glob],
         fileEventMonitor: Option[FileEventMonitor[FileAttributes]] = None,
         logger: Logger = NullLogger,
-        parseEvent: () => Action = () => Ignore,
-        onStartWatch: () => Action = () => CancelWatch: Action,
-        onWatchEvent: Event[FileAttributes] => Action = _ => Ignore,
+        parseEvent: () => Watch.Action = () => Ignore,
+        onStartWatch: () => Watch.Action = () => CancelWatch: Watch.Action,
+        onWatchEvent: Event[FileAttributes] => Watch.Action = _ => Ignore,
         triggeredMessage: Event[FileAttributes] => Option[String] = _ => None,
         watchingMessage: () => Option[String] = () => None
     ): (NextAction, NextAction) = {
@@ -57,7 +57,7 @@ class WatchedSpec extends FlatSpec with Matchers {
       val onTrigger: Event[FileAttributes] => Unit = event => {
         triggeredMessage(event).foreach(logger.info(_))
       }
-      val onStart: () => Watched.Action = () => {
+      val onStart: () => Watch.Action = () => {
         watchingMessage().foreach(logger.info(_))
         onStartWatch()
       }
@@ -66,7 +66,7 @@ class WatchedSpec extends FlatSpec with Matchers {
         val fileActions = monitor.poll(10.millis).map { e: Event[FileAttributes] =>
           onWatchEvent(e) match {
             case Trigger => onTrigger(e); Trigger
-            case act     => act
+            case action  => action
           }
         }
         (inputAction +: fileActions).min
@@ -86,7 +86,7 @@ class WatchedSpec extends FlatSpec with Matchers {
     }
     def getCount: Int = count.get()
   }
-  "Watched.watch" should "stop" in IO.withTemporaryDirectory { dir =>
+  "Watch" should "stop" in IO.withTemporaryDirectory { dir =>
     val task = new Task
     watch(task, TestDefaults.callbacks(inputs = Seq(dir.toRealPath ** AllPassFilter))) shouldBe CancelWatch
   }
@@ -168,7 +168,7 @@ class WatchedSpec extends FlatSpec with Matchers {
   }
 }
 
-object WatchedSpec {
+object WatchSpec {
   implicit class FileOps(val f: File) {
     def toRealPath: File = f.toPath.toRealPath().toFile
   }

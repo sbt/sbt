@@ -10,4 +10,4 @@ checkStringValue := checkStringValueImpl.evaluated
 
 setStringValue / watchTriggers := baseDirectory.value * "string.txt" :: Nil
 
-watchOnEvent := { _ => _ => Watched.CancelWatch }
+watchOnEvent := { _ => _ => Watch.CancelWatch }

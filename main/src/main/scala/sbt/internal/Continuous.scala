@@ -20,13 +20,13 @@ import sbt.BasicCommandStrings.{
 import sbt.BasicCommands.otherCommandParser
 import sbt.Def._
 import sbt.Scope.Global
-import sbt.Watched.Monitor
 import sbt.internal.FileManagement.FileTreeRepositoryOps
+import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
-import sbt.internal.util.{ AttributeKey, AttributeMap }
+import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
 import sbt.io._
 import sbt.util.{ Level, _ }
 
@@ -92,17 +92,17 @@ object Continuous extends DeprecatedContinuous {
   }
 
   /**
-   * Create a function from InputStream => [[Watched.Action]] from a [[Parser]]. This is intended
+   * Create a function from InputStream => [[Watch.Action]] from a [[Parser]]. This is intended
    * to be used to set the watchInputHandler setting for a task.
    * @param parser the parser
    * @return the function
    */
-  def defaultInputHandler(parser: Parser[Watched.Action]): InputStream => Watched.Action = {
+  def defaultInputHandler(parser: Parser[Watch.Action]): InputStream => Watch.Action = {
     val builder = new StringBuilder
     val any = matched(Parsers.any.*)
     val fullParser = any ~> parser ~ any
-    inputStream =>
-      parse(inputStream, builder, fullParser)
+    ((inputStream: InputStream) => parse(inputStream, builder, fullParser))
+      .label("Continuous.defaultInputHandler")
   }
 
   /**
@@ -254,7 +254,7 @@ object Continuous extends DeprecatedContinuous {
       command: String,
       count: Int,
       isCommand: Boolean
-  ): State = Watched.withCharBufferedStdIn { in =>
+  ): State = Watch.withCharBufferedStdIn { in =>
     val duped = new DupedInputStream(in)
     setup(state.put(DupedSystemIn, duped), command) { (s, commands, valid, invalid) =>
       implicit val extracted: Extracted = Project.extract(s)
@@ -276,7 +276,7 @@ object Continuous extends DeprecatedContinuous {
           // or Watched.Reload. The task defined above will be run at least once. It will be run
           // additional times whenever the state transition callbacks return Watched.Trigger.
           try {
-            val terminationAction = Watched.watch(task, callbacks.onStart, callbacks.nextEvent)
+            val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
             callbacks.onTermination(terminationAction, command, currentCount.get(), state)
           } finally callbacks.onExit()
         } else {
@@ -315,11 +315,11 @@ object Continuous extends DeprecatedContinuous {
   }
 
   private class Callbacks(
-      val nextEvent: () => Watched.Action,
+      val nextEvent: () => Watch.Action,
       val onEnter: () => Unit,
       val onExit: () => Unit,
-      val onStart: () => Watched.Action,
-      val onTermination: (Watched.Action, String, Int, State) => State
+      val onStart: () => Watch.Action,
+      val onTermination: (Watch.Action, String, Int, State) => State
   )
 
   /**
@@ -329,19 +329,19 @@ object Continuous extends DeprecatedContinuous {
    * To monitor all of the inputs and triggers, it creates a [[FileEventMonitor]] for each task
    * and then aggregates each of the individual [[FileEventMonitor]] instances into an aggregated
    * instance. It aggregates all of the event callbacks into a single callback that delegates
-   * to each of the individual callbacks. For the callbacks that return a [[Watched.Action]],
-   * the aggregated callback will select the minimum [[Watched.Action]] returned where the ordering
-   * is such that the highest priority [[Watched.Action]] have the lowest values. Finally, to
+   * to each of the individual callbacks. For the callbacks that return a [[Watch.Action]],
+   * the aggregated callback will select the minimum [[Watch.Action]] returned where the ordering
+   * is such that the highest priority [[Watch.Action]] have the lowest values. Finally, to
    * handle user input, we read from the provided input stream and buffer the result. Each
    * task's input parser is then applied to the buffered result and, again, we return the mimimum
-   * [[Watched.Action]] returned by the parsers (when the parsers fail, they just return
-   * [[Watched.Ignore]], which is the lowest priority [[Watched.Action]].
+   * [[Watch.Action]] returned by the parsers (when the parsers fail, they just return
+   * [[Watch.Ignore]], which is the lowest priority [[Watch.Action]].
    *
    * @param configs the [[Config]] instances
    * @param rawLogger the default sbt logger instance
    * @param state the current state
    * @param extracted the [[Extracted]] instance for the current build
-   * @return the [[Callbacks]] to pass into [[Watched.watch]]
+   * @return the [[Callbacks]] to pass into [[Watch.apply]]
    */
   private def aggregate(
       configs: Seq[Config],
@@ -355,11 +355,11 @@ object Continuous extends DeprecatedContinuous {
   ): Callbacks = {
     val logger = setLevel(rawLogger, configs.map(_.watchSettings.logLevel).min, state)
     val onEnter = () => configs.foreach(_.watchSettings.onEnter())
-    val onStart: () => Watched.Action = getOnStart(configs, logger, count)
-    val nextInputEvent: () => Watched.Action = parseInputEvents(configs, state, inputStream, logger)
-    val (nextFileEvent, cleanupFileMonitor): (() => Watched.Action, () => Unit) =
+    val onStart: () => Watch.Action = getOnStart(configs, logger, count)
+    val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
+    val (nextFileEvent, cleanupFileMonitor): (() => Watch.Action, () => Unit) =
       getFileEvents(configs, logger, state, count)
-    val nextEvent: () => Watched.Action =
+    val nextEvent: () => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, logger)
     val onExit = () => {
       cleanupFileMonitor()
@@ -372,7 +372,7 @@ object Continuous extends DeprecatedContinuous {
   private def getOnTermination(
       configs: Seq[Config],
       isCommand: Boolean
-  ): (Watched.Action, String, Int, State) => State = {
+  ): (Watch.Action, String, Int, State) => State = {
     configs.flatMap(_.watchSettings.onTermination).distinct match {
       case Seq(head, tail @ _*) =>
         tail.foldLeft(head) {
@@ -381,7 +381,7 @@ object Continuous extends DeprecatedContinuous {
               configOnTermination(action, cmd, count, onTermination(action, cmd, count, state))
         }
       case _ =>
-        if (isCommand) Watched.defaultCommandOnTermination else Watched.defaultTaskOnTermination
+        if (isCommand) Watch.defaultCommandOnTermination else Watch.defaultTaskOnTermination
     }
   }
 
@@ -389,7 +389,7 @@ object Continuous extends DeprecatedContinuous {
       configs: Seq[Config],
       logger: Logger,
       count: AtomicInteger
-  ): () => Watched.Action = {
+  ): () => Watch.Action = {
     val f = configs.map { params =>
       val ws = params.watchSettings
       ws.onStart.map(_.apply(params.arguments(logger))).getOrElse { () =>
@@ -398,10 +398,10 @@ object Continuous extends DeprecatedContinuous {
             ws.startMessage match {
               case Some(Left(sm))  => logger.info(sm(params.watchState(count.get())))
               case Some(Right(sm)) => sm(count.get()).foreach(logger.info(_))
-              case None            => Watched.defaultStartWatch(count.get()).foreach(logger.info(_))
+              case None            => Watch.defaultStartWatch(count.get()).foreach(logger.info(_))
             }
           }
-          Watched.Ignore
+          Watch.Ignore
         }
       }
     }
@@ -409,7 +409,7 @@ object Continuous extends DeprecatedContinuous {
       {
         val res = f.view.map(_()).min
         // Print the default watch message if there are multiple tasks
-        if (configs.size > 1) Watched.defaultStartWatch(count.get()).foreach(logger.info(_))
+        if (configs.size > 1) Watch.defaultStartWatch(count.get()).foreach(logger.info(_))
         res
       }
   }
@@ -418,7 +418,7 @@ object Continuous extends DeprecatedContinuous {
       logger: Logger,
       state: State,
       count: AtomicInteger,
-  )(implicit extracted: Extracted): (() => Watched.Action, () => Unit) = {
+  )(implicit extracted: Extracted): (() => Watch.Action, () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
       if (trackMetaBuild) extracted.getOpt(Keys.fileInputs in Keys.settingsData).getOrElse(Nil)
@@ -430,7 +430,7 @@ object Continuous extends DeprecatedContinuous {
      * motivation is to allow the user to specify this callback via setting so that, for example,
      * they can clear the screen when the build triggers.
      */
-    val onTrigger: Event => Watched.Action = {
+    val onTrigger: Event => Watch.Action = {
       val f: Seq[Event => Unit] = configs.map { params =>
         val ws = params.watchSettings
         ws.onTrigger
@@ -449,38 +449,39 @@ object Continuous extends DeprecatedContinuous {
       }
       event: Event =>
         f.view.foreach(_.apply(event))
-        Watched.Trigger
+        Watch.Trigger
     }
 
-    val onEvent: Event => (Event, Watched.Action) = {
+    val defaultTrigger = if (Util.isWindows) Watch.ifChanged(Watch.Trigger) else Watch.trigger
+    val onEvent: Event => (Event, Watch.Action) = {
       val f = configs.map { params =>
         val ws = params.watchSettings
         val oe = ws.onEvent
           .map(_.apply(params.arguments(logger)))
           .getOrElse {
-            val onInputEvent = ws.onInputEvent.getOrElse(Watched.trigger)
-            val onTriggerEvent = ws.onTriggerEvent.getOrElse(Watched.trigger)
-            val onMetaBuildEvent = ws.onMetaBuildEvent.getOrElse(Watched.ifChanged(Watched.Reload))
+            val onInputEvent = ws.onInputEvent.getOrElse(defaultTrigger)
+            val onTriggerEvent = ws.onTriggerEvent.getOrElse(defaultTrigger)
+            val onMetaBuildEvent = ws.onMetaBuildEvent.getOrElse(Watch.ifChanged(Watch.Reload))
             val inputFilter = params.inputs.toEntryFilter
             val triggerFilter = params.triggers.toEntryFilter
             event: Event =>
               val c = count.get()
-              Seq[Watched.Action](
-                if (inputFilter(event.entry)) onInputEvent(c, event) else Watched.Ignore,
-                if (triggerFilter(event.entry)) onTriggerEvent(c, event) else Watched.Ignore,
-                if (buildFilter(event.entry)) onMetaBuildEvent(c, event) else Watched.Ignore
+              Seq[Watch.Action](
+                if (inputFilter(event.entry)) onInputEvent(c, event) else Watch.Ignore,
+                if (triggerFilter(event.entry)) onTriggerEvent(c, event) else Watch.Ignore,
+                if (buildFilter(event.entry)) onMetaBuildEvent(c, event) else Watch.Ignore
               ).min
           }
         event: Event =>
           event -> (oe(event) match {
-            case Watched.Trigger => onTrigger(event)
-            case a               => a
+            case Watch.Trigger => onTrigger(event)
+            case a             => a
           })
       }
       event: Event =>
         f.view.map(_.apply(event)).minBy(_._2)
     }
-    val monitor: Monitor = new FileEventMonitor[FileAttributes] {
+    val monitor: FileEventMonitor[FileAttributes] = new FileEventMonitor[FileAttributes] {
       private def setup(
           monitor: FileEventMonitor[FileAttributes],
           globs: Seq[Glob]
@@ -527,11 +528,11 @@ object Continuous extends DeprecatedContinuous {
     )
     (() => {
       val actions = antiEntropyMonitor.poll(2.milliseconds).map(onEvent)
-      if (actions.exists(_._2 != Watched.Ignore)) {
+      if (actions.exists(_._2 != Watch.Ignore)) {
         val min = actions.minBy(_._2)
         logger.debug(s"Received file event actions: ${actions.mkString(", ")}. Returning: $min")
         min._2
-      } else Watched.Ignore
+      } else Watch.Ignore
     }, () => monitor.close())
   }
 
@@ -539,16 +540,16 @@ object Continuous extends DeprecatedContinuous {
    * Each task has its own input parser that can be used to modify the watch based on the input
    * read from System.in as well as a custom task-specific input stream that can be used as
    * an alternative source of control. In this method, we create two functions for each task,
-   * one from `String => Seq[Watched.Action]` and another from `() => Seq[Watched.Action]`.
+   * one from `String => Seq[Watch.Action]` and another from `() => Seq[Watch.Action]`.
    * Each of these functions is invoked to determine the next state transformation for the watch.
    * The first function is a task specific copy of System.in. For each task we keep a mutable
    * buffer of the characters previously seen from System.in. Every time we receive new characters
-   * we update the buffer and then try to parse a Watched.Action for each task. Any trailing
+   * we update the buffer and then try to parse a Watch.Action for each task. Any trailing
    * characters are captured and can be used for the next trigger. Because each task has a local
    * copy of the buffer, we do not have to worry about one task breaking parsing of another. We
    * also provide an alternative per task InputStream that is read in a similar way except that
    * we don't need to copy the custom InputStream which allows the function to be
-   * `() => Seq[Watched.Action]` which avoids actually exposing the InputStream anywhere.
+   * `() => Seq[Watch.Action]` which avoids actually exposing the InputStream anywhere.
    */
   private def parseInputEvents(
       configs: Seq[Config],
@@ -557,15 +558,15 @@ object Continuous extends DeprecatedContinuous {
       logger: Logger
   )(
       implicit extracted: Extracted
-  ): () => Watched.Action = {
+  ): () => Watch.Action = {
     /*
      * This parses the buffer until all possible actions are extracted. By draining the input
      * to a state where it does not parse an action, we can wait until we receive new input
      * to attempt to parse again.
      */
-    type ActionParser = String => Watched.Action
+    type ActionParser = String => Watch.Action
     // Transform the Config.watchSettings.inputParser instances to functions of type
-    // String => Watched.Action. The String that is provided will contain any characters that
+    // String => Watch.Action. The String that is provided will contain any characters that
     // have been read from stdin. If there are any characters available, then it calls the
     // parse method with the InputStream set to a ByteArrayInputStream that wraps the input
     // string. The parse method then appends those bytes to a mutable buffer and attempts to
@@ -581,7 +582,7 @@ object Continuous extends DeprecatedContinuous {
       val systemInBuilder = new StringBuilder
       def inputStream(string: String): InputStream = new ByteArrayInputStream(string.getBytes)
       // This string is provided in the closure below by reading from System.in
-      val default: String => Watched.Action =
+      val default: String => Watch.Action =
         string => parse(inputStream(string), systemInBuilder, parser)
       val alternative = c.watchSettings.inputStream
         .map { inputStreamKey =>
@@ -590,7 +591,7 @@ object Continuous extends DeprecatedContinuous {
           () =>
             handler(is)
         }
-        .getOrElse(() => Watched.Ignore)
+        .getOrElse(() => Watch.Ignore)
       (string: String) =>
         (default(string) :: alternative() :: Nil).min
     }
@@ -599,32 +600,32 @@ object Continuous extends DeprecatedContinuous {
         val stringBuilder = new StringBuilder
         while (inputStream.available > 0) stringBuilder += inputStream.read().toChar
         val newBytes = stringBuilder.toString
-        val parse: ActionParser => Watched.Action = parser => parser(newBytes)
-        val allEvents = inputHandlers.map(parse).filterNot(_ == Watched.Ignore)
-        if (allEvents.exists(_ != Watched.Ignore)) {
+        val parse: ActionParser => Watch.Action = parser => parser(newBytes)
+        val allEvents = inputHandlers.map(parse).filterNot(_ == Watch.Ignore)
+        if (allEvents.exists(_ != Watch.Ignore)) {
           val res = allEvents.min
           logger.debug(s"Received input events: ${allEvents mkString ","}. Taking $res")
           res
-        } else Watched.Ignore
+        } else Watch.Ignore
       }
   }
 
   private def combineInputAndFileEvents(
-      nextInputEvent: () => Watched.Action,
-      nextFileEvent: () => Watched.Action,
+      nextInputEvent: () => Watch.Action,
+      nextFileEvent: () => Watch.Action,
       logger: Logger
-  ): () => Watched.Action = () => {
-    val Seq(inputEvent: Watched.Action, fileEvent: Watched.Action) =
+  ): () => Watch.Action = () => {
+    val Seq(inputEvent: Watch.Action, fileEvent: Watch.Action) =
       Seq(nextInputEvent, nextFileEvent).par.map(_.apply()).toIndexedSeq
-    val min: Watched.Action = Seq[Watched.Action](inputEvent, fileEvent).min
+    val min: Watch.Action = Seq[Watch.Action](inputEvent, fileEvent).min
     lazy val inputMessage =
       s"Received input event: $inputEvent." +
         (if (inputEvent != min) s" Dropping in favor of file event: $min" else "")
     lazy val fileMessage =
       s"Received file event: $fileEvent." +
         (if (fileEvent != min) s" Dropping in favor of input event: $min" else "")
-    if (inputEvent != Watched.Ignore) logger.debug(inputMessage)
-    if (fileEvent != Watched.Ignore) logger.debug(fileMessage)
+    if (inputEvent != Watch.Ignore) logger.debug(inputMessage)
+    if (fileEvent != Watch.Ignore) logger.debug(fileMessage)
     min
   }
 
@@ -632,8 +633,8 @@ object Continuous extends DeprecatedContinuous {
   private final def parse(
       is: InputStream,
       builder: StringBuilder,
-      parser: Parser[(Watched.Action, String)]
-  ): Watched.Action = {
+      parser: Parser[(Watch.Action, String)]
+  ): Watch.Action = {
     if (is.available > 0) builder += is.read().toChar
     Parser.parse(builder.toString, parser) match {
       case Right((action, rest)) =>
@@ -641,7 +642,7 @@ object Continuous extends DeprecatedContinuous {
         builder ++= rest
         action
       case _ if is.available > 0 => parse(is, builder, parser)
-      case _                     => Watched.Ignore
+      case _                     => Watch.Ignore
     }
   }
 
@@ -672,14 +673,14 @@ object Continuous extends DeprecatedContinuous {
     }
   }
 
-  private type WatchOnEvent = (Int, Event) => Watched.Action
+  private type WatchOnEvent = (Int, Event) => Watch.Action
 
   /**
    * Contains all of the user defined settings that will be used to build a [[Callbacks]]
-   * instance that is used to produce the arguments to [[Watched.watch]]. The
+   * instance that is used to produce the arguments to [[Watch.apply]]. The
    * callback settings (e.g. onEvent or onInputEvent) come in two forms: those that return a
    * function from [[Arguments]] => F for some function type `F` and those that directly return a function, e.g.
-   * `(Int, Boolean) => Watched.Action`. The former are a low level interface that will usually
+   * `(Int, Boolean) => Watch.Action`. The former are a low level interface that will usually
    * be unspecified and automatically filled in by [[Continuous.aggregate]]. The latter are
    * intended to be user configurable and will be scoped to the input [[ScopedKey]]. To ensure
    * that the scoping makes sense, we first try and extract the setting from the [[ScopedKey]]
@@ -703,25 +704,25 @@ object Continuous extends DeprecatedContinuous {
       implicit extracted: Extracted
   ) {
     val antiEntropy: FiniteDuration =
-      key.get(Keys.watchAntiEntropy).getOrElse(Watched.defaultAntiEntropy)
+      key.get(Keys.watchAntiEntropy).getOrElse(Watch.defaultAntiEntropy)
     val antiEntropyRetentionPeriod: FiniteDuration =
       key
         .get(Keys.watchAntiEntropyRetentionPeriod)
-        .getOrElse(Watched.defaultAntiEntropyRetentionPeriod)
+        .getOrElse(Watch.defaultAntiEntropyRetentionPeriod)
     val deletionQuarantinePeriod: FiniteDuration =
-      key.get(Keys.watchDeletionQuarantinePeriod).getOrElse(Watched.defaultDeletionQuarantinePeriod)
-    val inputHandler: Option[InputStream => Watched.Action] = key.get(Keys.watchInputHandler)
-    val inputParser: Parser[Watched.Action] =
-      key.get(Keys.watchInputParser).getOrElse(Watched.defaultInputParser)
+      key.get(Keys.watchDeletionQuarantinePeriod).getOrElse(Watch.defaultDeletionQuarantinePeriod)
+    val inputHandler: Option[InputStream => Watch.Action] = key.get(Keys.watchInputHandler)
+    val inputParser: Parser[Watch.Action] =
+      key.get(Keys.watchInputParser).getOrElse(Watch.defaultInputParser)
     val logLevel: Level.Value = key.get(Keys.watchLogLevel).getOrElse(Level.Info)
     val onEnter: () => Unit = key.get(Keys.watchOnEnter).getOrElse(() => {})
-    val onEvent: Option[Arguments => Event => Watched.Action] = key.get(Keys.watchOnEvent)
+    val onEvent: Option[Arguments => Event => Watch.Action] = key.get(Keys.watchOnEvent)
     val onExit: () => Unit = key.get(Keys.watchOnExit).getOrElse(() => {})
     val onInputEvent: Option[WatchOnEvent] = key.get(Keys.watchOnInputEvent)
-    val onIteration: Option[Int => Watched.Action] = key.get(Keys.watchOnIteration)
+    val onIteration: Option[Int => Watch.Action] = key.get(Keys.watchOnIteration)
     val onMetaBuildEvent: Option[WatchOnEvent] = key.get(Keys.watchOnMetaBuildEvent)
-    val onStart: Option[Arguments => () => Watched.Action] = key.get(Keys.watchOnStart)
-    val onTermination: Option[(Watched.Action, String, Int, State) => State] =
+    val onStart: Option[Arguments => () => Watch.Action] = key.get(Keys.watchOnStart)
+    val onTermination: Option[(Watch.Action, String, Int, State) => State] =
       key.get(Keys.watchOnTermination)
     val onTrigger: Option[Arguments => Event => Unit] = key.get(Keys.watchOnTrigger)
     val onTriggerEvent: Option[WatchOnEvent] = key.get(Keys.watchOnTriggerEvent)
@@ -758,12 +759,12 @@ object Continuous extends DeprecatedContinuous {
     def arguments(logger: Logger): Arguments = new Arguments(logger, inputs, triggers)
   }
   private def getStartMessage(key: ScopedKey[_])(implicit e: Extracted): StartMessage = Some {
-    lazy val default = key.get(Keys.watchStartMessage).getOrElse(Watched.defaultStartWatch)
+    lazy val default = key.get(Keys.watchStartMessage).getOrElse(Watch.defaultStartWatch)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
   private def getTriggerMessage(key: ScopedKey[_])(implicit e: Extracted): TriggerMessage = Some {
     lazy val default =
-      key.get(Keys.watchTriggeredMessage).getOrElse(Watched.defaultOnTriggerMessage)
+      key.get(Keys.watchTriggeredMessage).getOrElse(Watch.defaultOnTriggerMessage)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
 

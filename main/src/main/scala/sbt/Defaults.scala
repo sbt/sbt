@@ -333,21 +333,21 @@ object Defaults extends BuildCommon {
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
       // watch related settings
-      pollInterval :== Watched.defaultPollInterval,
-      watchAntiEntropy :== Watched.defaultAntiEntropy,
-      watchAntiEntropyRetentionPeriod :== Watched.defaultAntiEntropyRetentionPeriod,
+      pollInterval :== Watch.defaultPollInterval,
+      watchAntiEntropy :== Watch.defaultAntiEntropy,
+      watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
       watchLogLevel :== Level.Info,
-      watchOnEnter :== Watched.defaultOnEnter,
-      watchOnMetaBuildEvent :== Watched.ifChanged(Watched.Reload),
-      watchOnInputEvent :== Watched.trigger,
-      watchOnTriggerEvent :== Watched.trigger,
-      watchDeletionQuarantinePeriod :== Watched.defaultDeletionQuarantinePeriod,
+      watchOnEnter :== Watch.defaultOnEnter,
+      watchOnMetaBuildEvent :== Watch.ifChanged(Watch.Reload),
+      watchOnInputEvent :== Watch.trigger,
+      watchOnTriggerEvent :== Watch.trigger,
+      watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
       watchService :== Watched.newWatchService,
-      watchStartMessage :== Watched.defaultStartWatch,
+      watchStartMessage :== Watch.defaultStartWatch,
       watchTasks := Continuous.continuousTask.evaluated,
       aggregate in watchTasks :== false,
       watchTrackMetaBuild :== true,
-      watchTriggeredMessage :== Watched.defaultOnTriggerMessage,
+      watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     )
   )
 

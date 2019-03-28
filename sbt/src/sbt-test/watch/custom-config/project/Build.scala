@@ -31,10 +31,10 @@ object Build {
       setStringValueImpl.evaluated
     },
     checkStringValue := checkStringValueImpl.evaluated,
-    watchOnEvent := { _ => _ => Watched.CancelWatch }
+    watchOnEvent := { _ => _ => Watch.CancelWatch }
   )
   lazy val bar = project.settings(fileInputs in setStringValue += baseDirectory.value * "foo.txt")
   lazy val root = (project in file(".")).aggregate(foo, bar).settings(
-    watchOnEvent := { _ => _ => Watched.CancelWatch }
+    watchOnEvent := { _ => _ => Watch.CancelWatch }
   )
 }

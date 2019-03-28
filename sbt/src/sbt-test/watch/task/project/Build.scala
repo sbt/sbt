@@ -25,9 +25,9 @@ object Build {
       Some("watching")
     },
     watchOnTriggerEvent := { (f, e) =>
-      if (reloadFile.value.exists) Watched.CancelWatch else {
+      if (reloadFile.value.exists) Watch.CancelWatch else {
         IO.touch(reloadFile.value, true)
-        Watched.Reload
+        Watch.Reload
       }
     }
   )

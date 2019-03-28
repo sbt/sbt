@@ -5,15 +5,25 @@ import complete.Parser
 import complete.Parser._
 
 import java.io.{ PipedInputStream, PipedOutputStream }
+import Keys._
 
 object Build {
+  val root = (project in file(".")).settings(
+    useSuperShell := false,
+    watchInputStream := inputStream,
+    watchStartMessage := { count =>
+      Build.outputStream.write('\n'.toByte)
+      Build.outputStream.flush()
+      Some("default start message")
+    }
+  )
   val outputStream = new PipedOutputStream()
   val inputStream = new PipedInputStream(outputStream)
-  val byeParser: Parser[Watched.Action] = "bye" ^^^ Watched.CancelWatch
-  val helloParser: Parser[Watched.Action] = "hello" ^^^ Watched.Ignore
+  val byeParser: Parser[Watch.Action] = "bye" ^^^ Watch.CancelWatch
+  val helloParser: Parser[Watch.Action] = "hello" ^^^ Watch.Ignore
   // Note that the order is byeParser | helloParser. In general, we want the higher priority
   // action to come first because otherwise we would potentially scan past it.
-  val helloOrByeParser: Parser[Watched.Action] = byeParser | helloParser
+  val helloOrByeParser: Parser[Watch.Action] = byeParser | helloParser
   val alternativeStartMessage: Int => Option[String] = { _ =>
     outputStream.write("xybyexyblahxyhelloxy".getBytes)
     outputStream.flush()
