@@ -114,11 +114,11 @@ object Keys {
   val watchOnIteration = settingKey[Int => Watch.Action]("Function that is invoked before waiting for file system events or user input events. This is only invoked if watchOnStart is not explicitly set.").withRank(DSetting)
   val watchOnStart = settingKey[Continuous.Arguments => () => Watch.Action]("Function is invoked before waiting for file system or input events. The returned Action is used to either trigger the build, terminate the watch or wait for events.").withRank(DSetting)
   val watchService = settingKey[() => WatchService]("Service to use to monitor file system changes.").withRank(BMinusSetting).withRank(DSetting)
-  val watchStartMessage = settingKey[Int => Option[String]]("The message to show when triggered execution waits for sources to change. The parameter is the current watch iteration count.").withRank(DSetting)
+  val watchStartMessage = settingKey[(Int, String, Seq[String]) => Option[String]]("The message to show when triggered execution waits for sources to change. The parameters are the current watch iteration count, the current project name and the tasks that are being run with each build.").withRank(DSetting)
   // The watchTasks key should really be named watch, but that is already taken by the deprecated watch key. I'd be surprised if there are any plugins that use it so I think we should consider breaking binary compatibility to rename this task.
   val watchTasks = InputKey[StateTransform]("watch", "Watch a task (or multiple tasks) and rebuild when its file inputs change or user input is received. The semantics are more or less the same as the `~` command except that it cannot transform the state on exit. This means that it cannot be used to reload the build.").withRank(DSetting)
   val watchTrackMetaBuild = settingKey[Boolean]("Toggles whether or not changing the build files (e.g. **/*.sbt, project/**/(*.scala | *.java)) should automatically trigger a project reload").withRank(DSetting)
-  val watchTriggeredMessage = settingKey[(Int, Event[FileAttributes]) => Option[String]]("The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count.").withRank(DSetting)
+  val watchTriggeredMessage = settingKey[(Int, Event[FileAttributes], Seq[String]) => Option[String]]("The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count.").withRank(DSetting)
 
   // Deprecated watch apis
   @deprecated("This is no longer used for continuous execution", "1.3.0")

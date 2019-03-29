@@ -12,7 +12,8 @@ object Build {
   def setStringValueImpl: Def.Initialize[Task[Unit]] = Def.task {
     val i = (setStringValue / fileInputs).value
     val (stringFile, string) = ("foo.txt", "bar")
-    IO.write(file(stringFile), string)
+    val absoluteFile = baseDirectory.value.toPath.resolve(stringFile).toFile
+    IO.write(absoluteFile, string)
   }
   def checkStringValueImpl: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     val Seq(stringFile, string) = Def.spaceDelimited().parsed

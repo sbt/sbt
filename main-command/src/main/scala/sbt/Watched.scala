@@ -118,11 +118,12 @@ object Watched {
   // Deprecated apis below
   @deprecated("unused", "1.3.0")
   def projectWatchingMessage(projectId: String): WatchState => String =
-    ((ws: WatchState) => projectOnWatchMessage(projectId)(ws.count).get)
+    ((ws: WatchState) => projectOnWatchMessage(projectId)(ws.count, projectId, Nil).get)
       .label("Watched.projectWatchingMessage")
   @deprecated("unused", "1.3.0")
-  def projectOnWatchMessage(project: String): Int => Option[String] = { (count: Int) =>
-    Some(s"$count. ${waitMessage(s" in project $project")}")
+  def projectOnWatchMessage(project: String): (Int, String, Seq[String]) => Option[String] = {
+    (count: Int, _: String, _: Seq[String]) =>
+      Some(s"$count. ${waitMessage(s" in project $project")}")
   }.label("Watched.projectOnWatchMessage")
 
   @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")

@@ -625,7 +625,6 @@ object Defaults extends BuildCommon {
     clean := Clean.taskIn(ThisScope).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
-    watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
     fileOutputs += target.value ** AllPassFilter,
     transitiveGlobs := InputGraph.task.value,

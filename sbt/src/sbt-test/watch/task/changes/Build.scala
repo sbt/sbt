@@ -18,7 +18,7 @@ object Build {
     setStringValue / watchTriggers += baseDirectory.value * "foo.txt",
     setStringValue := setStringValueImpl.evaluated,
     checkStringValue := checkStringValueImpl.evaluated,
-    watchStartMessage := { _ =>
+    watchStartMessage := { (_, _, _) =>
       IO.touch(baseDirectory.value / "foo.txt", true)
       Some("watching")
     },

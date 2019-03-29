@@ -11,7 +11,7 @@ object Build {
   val root = (project in file(".")).settings(
     useSuperShell := false,
     watchInputStream := inputStream,
-    watchStartMessage := { count =>
+    watchStartMessage := { (_, _, _) =>
       Build.outputStream.write('\n'.toByte)
       Build.outputStream.flush()
       Some("default start message")
@@ -24,12 +24,12 @@ object Build {
   // Note that the order is byeParser | helloParser. In general, we want the higher priority
   // action to come first because otherwise we would potentially scan past it.
   val helloOrByeParser: Parser[Watch.Action] = byeParser | helloParser
-  val alternativeStartMessage: Int => Option[String] = { _ =>
+  val alternativeStartMessage: (Int, String, Seq[String]) => Option[String] = { (_, _, _) =>
     outputStream.write("xybyexyblahxyhelloxy".getBytes)
     outputStream.flush()
     Some("alternative start message")
   }
-  val otherAlternativeStartMessage: Int => Option[String] = { _ =>
+  val otherAlternativeStartMessage: (Int, String, Seq[String]) => Option[String] = { (_, _, _) =>
     outputStream.write("xyhellobyexyblahx".getBytes)
     outputStream.flush()
     Some("other alternative start message")

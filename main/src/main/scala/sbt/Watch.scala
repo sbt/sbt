@@ -145,9 +145,12 @@ object Watch {
 
   /**
    * Action that indicates that we should exit and run the provided command.
+   *
    * @param commands the commands to run after we exit the watch
    */
-  final class Run(val commands: String*) extends CancelWatch
+  final class Run(val commands: String*) extends CancelWatch {
+    override def toString: String = s"Run(${commands.mkString(", ")})"
+  }
   // For now leave this private in case this isn't the best unapply type signature since it can't
   // be evolved in a binary compatible way.
   private object Run {
@@ -289,33 +292,42 @@ object Watch {
 
   /**
    * Converts user input to an Action with the following rules:
-   * 1) on all platforms, new lines exit the watch
-   * 2) on posix platforms, 'r' or 'R' will trigger a build
-   * 3) on posix platforms, 's' or 'S' will exit the watch and run the shell command. This is to
-   *    support the case where the user starts sbt in a continuous mode but wants to return to
-   *    the shell without having to restart sbt.
+   * 1) 'x' or 'X' will exit sbt
+   * 2) 'r' or 'R' will trigger a build
+   * 3) new line characters cancel the watch and return to the shell
    */
   final val defaultInputParser: Parser[Action] = {
-    def posixOnly(legal: String, action: Action): Parser[Action] =
-      if (!Util.isWindows) chars(legal) ^^^ action
-      else Parser.invalid(Seq("Can't use jline for individual character entry on windows."))
-    val rebuildParser: Parser[Action] = posixOnly(legal = "rR", Trigger)
-    val shellParser: Parser[Action] = posixOnly(legal = "sS", new Run("shell"))
-    val cancelParser: Parser[Action] = chars(legal = "\n\r") ^^^ CancelWatch
-    shellParser | rebuildParser | cancelParser
+    val exitParser: Parser[Action] = chars("xX") ^^^ new Run("exit")
+    val rebuildParser: Parser[Action] = chars("rR") ^^^ Trigger
+    val cancelParser: Parser[Action] = chars(legal = "\n\r") ^^^ new Run("iflast shell")
+    exitParser | rebuildParser | cancelParser
   }
 
-  private[this] val reRun =
-    if (Util.isWindows) "" else ", 'r' to re-run the command or 's' to return to the shell"
-  private[sbt] def waitMessage(project: String): String =
-    s"Waiting for source changes$project... (press enter to interrupt$reRun)"
+  private[this] val options = {
+    val enter = "<enter>"
+    val newLine = if (Util.isWindows) enter else ""
+    val opts = Seq(
+      s"$enter: return to the shell",
+      s"'r$newLine': repeat the current command",
+      s"'x$newLine': exit sbt"
+    )
+    s"Options:\n${opts.mkString("  ", "\n  ", "")}"
+  }
+  private def waitMessage(project: String, commands: Seq[String]): String = {
+    val plural = if (commands.size > 1) "s" else ""
+    val cmds = commands.mkString("; ")
+    s"Monitoring source files for updates...\n" +
+      s"Project: $project\nCommand$plural: $cmds\n$options"
+  }
 
   /**
    * A function that prints out the current iteration count and gives instructions for exiting
    * or triggering the build.
    */
-  val defaultStartWatch: Int => Option[String] =
-    ((count: Int) => Some(s"$count. ${waitMessage("")}")).label("Watched.defaultStartWatch")
+  val defaultStartWatch: (Int, String, Seq[String]) => Option[String] = {
+    (count: Int, project: String, commands: Seq[String]) =>
+      Some(s"$count. ${waitMessage(project, commands)}")
+  }.label("Watched.defaultStartWatch")
 
   /**
    * Default no-op callback.
@@ -325,7 +337,8 @@ object Watch {
   private[sbt] val defaultCommandOnTermination: (Action, String, Int, State) => State =
     onTerminationImpl(ContinuousExecutePrefix).label("Watched.defaultCommandOnTermination")
   private[sbt] val defaultTaskOnTermination: (Action, String, Int, State) => State =
-    onTerminationImpl("watch", ContinuousExecutePrefix).label("Watched.defaultTaskOnTermination")
+    onTerminationImpl("watch", ContinuousExecutePrefix)
+      .label("Watched.defaultTaskOnTermination")
 
   /**
    * Default handler to transform the state when the watch terminates. When the [[Watch.Action]]
@@ -356,8 +369,15 @@ object Watch {
    * `Keys.watchTriggeredMessage := Watched.defaultOnTriggerMessage`, then nothing is logged when
    * a build is triggered.
    */
-  final val defaultOnTriggerMessage: (Int, Event[FileAttributes]) => Option[String] =
-    ((_: Int, _: Event[FileAttributes]) => None).label("Watched.defaultOnTriggerMessage")
+  final val defaultOnTriggerMessage: (Int, Event[FileAttributes], Seq[String]) => Option[String] =
+    ((_: Int, e: Event[FileAttributes], commands: Seq[String]) => {
+      val msg = s"Build triggered by ${e.entry.typedPath.toPath}. " +
+        s"Running ${commands.mkString("'", "; ", "'")}."
+      Some(msg)
+    }).label("Watched.defaultOnTriggerMessage")
+
+  final val noTriggerMessage: (Int, Event[FileAttributes], Seq[String]) => Option[String] =
+    (_, _, _) => None
 
   /**
    * The minimum delay between file system polling when a `PollingWatchService` is used.

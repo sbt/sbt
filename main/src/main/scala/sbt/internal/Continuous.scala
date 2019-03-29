@@ -209,7 +209,7 @@ object Continuous extends DeprecatedContinuous {
   }
 
   private[sbt] def setup[R](state: State, command: String)(
-      f: (State, Seq[(String, State, () => Boolean)], Seq[String]) => R
+      f: (Seq[String], State, Seq[(String, State, () => Boolean)], Seq[String]) => R
   ): R = {
     // First set up the state so that we can capture whether or not a task completed successfully
     // or if it threw an Exception (we lose the actual exception, but that should still be printed
@@ -273,7 +273,7 @@ object Continuous extends DeprecatedContinuous {
             case Left(c)  => (i :+ c, v)
           }
       }
-    f(s, valid, invalid)
+    f(commands, s, valid, invalid)
   }
 
   private[sbt] def runToTermination(
@@ -283,14 +283,14 @@ object Continuous extends DeprecatedContinuous {
       isCommand: Boolean
   ): State = Watch.withCharBufferedStdIn { in =>
     val duped = new DupedInputStream(in)
-    setup(state.put(DupedSystemIn, duped), command) { (s, valid, invalid) =>
+    setup(state.put(DupedSystemIn, duped), command) { (commands, s, valid, invalid) =>
       implicit val extracted: Extracted = Project.extract(s)
       EvaluateTask.withStreams(extracted.structure, s)(_.use(Keys.streams in Global) { streams =>
         implicit val logger: Logger = streams.log
         if (invalid.isEmpty) {
           val currentCount = new AtomicInteger(count)
           val configs = getAllConfigs(valid.map(v => v._1 -> v._2))
-          val callbacks = aggregate(configs, logger, in, s, currentCount, isCommand)
+          val callbacks = aggregate(configs, logger, in, s, currentCount, isCommand, commands)
           val task = () => {
             currentCount.getAndIncrement()
             // abort as soon as one of the tasks fails
@@ -312,8 +312,8 @@ object Continuous extends DeprecatedContinuous {
         } else {
           // At least one of the commands in the multi command string could not be parsed, so we
           // log an error and exit.
-          val commands = invalid.mkString("'", "', '", "'")
-          logger.error(s"Terminating watch due to invalid command(s): $commands")
+          val invalidCommands = invalid.mkString("'", "', '", "'")
+          logger.error(s"Terminating watch due to invalid command(s): $invalidCommands")
           state.fail
         }
       })
@@ -378,16 +378,18 @@ object Continuous extends DeprecatedContinuous {
       inputStream: InputStream,
       state: State,
       count: AtomicInteger,
-      isCommand: Boolean
+      isCommand: Boolean,
+      commands: Seq[String]
   )(
       implicit extracted: Extracted
   ): Callbacks = {
+    val project = extracted.currentRef.project
     val logger = setLevel(rawLogger, configs.map(_.watchSettings.logLevel).min, state)
     val onEnter = () => configs.foreach(_.watchSettings.onEnter())
-    val onStart: () => Watch.Action = getOnStart(configs, logger, count)
+    val onStart: () => Watch.Action = getOnStart(project, commands, configs, rawLogger, count)
     val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
-    val (nextFileEvent, cleanupFileMonitor): (() => Watch.Action, () => Unit) =
-      getFileEvents(configs, logger, state, count)
+    val (nextFileEvent, cleanupFileMonitor): (() => Option[(Event, Watch.Action)], () => Unit) =
+      getFileEvents(configs, rawLogger, state, count, commands)
     val nextEvent: () => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, logger)
     val onExit = () => {
@@ -415,6 +417,8 @@ object Continuous extends DeprecatedContinuous {
   }
 
   private def getOnStart(
+      project: String,
+      commands: Seq[String],
       configs: Seq[Config],
       logger: Logger,
       count: AtomicInteger
@@ -426,8 +430,9 @@ object Continuous extends DeprecatedContinuous {
           if (configs.size == 1) { // Only allow custom start messages for single tasks
             ws.startMessage match {
               case Some(Left(sm))  => logger.info(sm(params.watchState(count.get())))
-              case Some(Right(sm)) => sm(count.get()).foreach(logger.info(_))
-              case None            => Watch.defaultStartWatch(count.get()).foreach(logger.info(_))
+              case Some(Right(sm)) => sm(count.get(), project, commands).foreach(logger.info(_))
+              case None =>
+                Watch.defaultStartWatch(count.get(), project, commands).foreach(logger.info(_))
             }
           }
           Watch.Ignore
@@ -438,7 +443,8 @@ object Continuous extends DeprecatedContinuous {
       {
         val res = f.view.map(_()).min
         // Print the default watch message if there are multiple tasks
-        if (configs.size > 1) Watch.defaultStartWatch(count.get()).foreach(logger.info(_))
+        if (configs.size > 1)
+          Watch.defaultStartWatch(count.get(), project, commands).foreach(logger.info(_))
         res
       }
   }
@@ -447,39 +453,13 @@ object Continuous extends DeprecatedContinuous {
       logger: Logger,
       state: State,
       count: AtomicInteger,
-  )(implicit extracted: Extracted): (() => Watch.Action, () => Unit) = {
+      commands: Seq[String]
+  )(implicit extracted: Extracted): (() => Option[(Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
       if (trackMetaBuild) extracted.getOpt(Keys.fileInputs in Keys.settingsData).getOrElse(Nil)
       else Nil
     val buildFilter = buildGlobs.toEntryFilter
-
-    /*
-     * This is a callback that will be invoked whenever onEvent returns a Trigger action. The
-     * motivation is to allow the user to specify this callback via setting so that, for example,
-     * they can clear the screen when the build triggers.
-     */
-    val onTrigger: Event => Watch.Action = {
-      val f: Seq[Event => Unit] = configs.map { params =>
-        val ws = params.watchSettings
-        ws.onTrigger
-          .map(_.apply(params.arguments(logger)))
-          .getOrElse { event: Event =>
-            val globFilter =
-              (params.inputs() ++ params.triggers).toEntryFilter
-            if (globFilter(event.entry)) {
-              ws.triggerMessage match {
-                case Some(Left(tm))  => logger.info(tm(params.watchState(count.get())))
-                case Some(Right(tm)) => tm(count.get(), event).foreach(logger.info(_))
-                case None            => // By default don't print anything
-              }
-            }
-          }
-      }
-      event: Event =>
-        f.view.foreach(_.apply(event))
-        Watch.Trigger
-    }
 
     val defaultTrigger = if (Util.isWindows) Watch.ifChanged(Watch.Trigger) else Watch.trigger
     val onEvent: Event => (Event, Watch.Action) = {
@@ -504,10 +484,7 @@ object Continuous extends DeprecatedContinuous {
               ).min
           }
         event: Event =>
-          event -> (oe(event) match {
-            case Watch.Trigger => onTrigger(event)
-            case a             => a
-          })
+          event -> oe(event)
       }
       event: Event =>
         f.view.map(_.apply(event)).minBy(_._2)
@@ -568,13 +545,43 @@ object Continuous extends DeprecatedContinuous {
       quarantinePeriod,
       retentionPeriod
     )
+    /*
+     * This is a callback that will be invoked whenever onEvent returns a Trigger action. The
+     * motivation is to allow the user to specify this callback via setting so that, for example,
+     * they can clear the screen when the build triggers.
+     */
+    val onTrigger: Event => Unit = { event: Event =>
+      configs.foreach { params =>
+        params.watchSettings.onTrigger.foreach(ot => ot(params.arguments(logger))(event))
+      }
+      if (configs.size == 1) {
+        val config = configs.head
+        config.watchSettings.triggerMessage match {
+          case Left(tm)  => logger.info(tm(config.watchState(count.get())))
+          case Right(tm) => tm(count.get(), event, commands).foreach(logger.info(_))
+        }
+      } else {
+        Watch.defaultOnTriggerMessage(count.get(), event, commands).foreach(logger.info(_))
+      }
+    }
+
     (() => {
       val actions = antiEntropyMonitor.poll(2.milliseconds).map(onEvent)
       if (actions.exists(_._2 != Watch.Ignore)) {
-        val min = actions.minBy(_._2)
-        logger.debug(s"Received file event actions: ${actions.mkString(", ")}. Returning: $min")
-        min._2
-      } else Watch.Ignore
+        val builder = new StringBuilder
+        val min = actions.minBy {
+          case (e, a) =>
+            if (builder.nonEmpty) builder.append(", ")
+            val path = e.entry.typedPath.toPath.toString
+            builder.append(path)
+            builder.append(" -> ")
+            builder.append(a.toString)
+            a
+        }
+        logger.debug(s"Received file event actions: $builder. Returning: $min")
+        if (min._2 == Watch.Trigger) onTrigger(min._1)
+        Some(min)
+      } else None
     }, () => monitor.close())
   }
 
@@ -653,21 +660,27 @@ object Continuous extends DeprecatedContinuous {
   }
 
   private def combineInputAndFileEvents(
-      nextInputEvent: () => Watch.Action,
-      nextFileEvent: () => Watch.Action,
+      nextInputAction: () => Watch.Action,
+      nextFileEvent: () => Option[(Event, Watch.Action)],
       logger: Logger
   ): () => Watch.Action = () => {
-    val Seq(inputEvent: Watch.Action, fileEvent: Watch.Action) =
-      Seq(nextInputEvent, nextFileEvent).par.map(_.apply()).toIndexedSeq
-    val min: Watch.Action = Seq[Watch.Action](inputEvent, fileEvent).min
+    val (inputAction: Watch.Action, fileEvent: Option[(Event, Watch.Action)] @unchecked) =
+      Seq(nextInputAction, nextFileEvent).map(_.apply()).toIndexedSeq match {
+        case Seq(ia: Watch.Action, fe @ Some(_)) => (ia, fe)
+        case Seq(ia: Watch.Action, None)         => (ia, None)
+      }
+    val min: Watch.Action = (fileEvent.map(_._2).toSeq :+ inputAction).min
     lazy val inputMessage =
-      s"Received input event: $inputEvent." +
-        (if (inputEvent != min) s" Dropping in favor of file event: $min" else "")
-    lazy val fileMessage =
-      s"Received file event: $fileEvent." +
-        (if (fileEvent != min) s" Dropping in favor of input event: $min" else "")
-    if (inputEvent != Watch.Ignore) logger.debug(inputMessage)
-    if (fileEvent != Watch.Ignore) logger.debug(fileMessage)
+      s"Received input event: $inputAction." +
+        (if (inputAction != min) s" Dropping in favor of file event: $min" else "")
+    if (inputAction != Watch.Ignore) logger.debug(inputMessage)
+    fileEvent
+      .collect {
+        case (event, action) if action != Watch.Ignore =>
+          s"Received file event $action for ${event.entry.typedPath.toPath}." +
+            (if (action != min) s" Dropping in favor of input event: $min" else "")
+      }
+      .foreach(logger.debug(_))
     min
   }
 
@@ -696,8 +709,7 @@ object Continuous extends DeprecatedContinuous {
    * @return the wrapped logger.
    */
   private def setLevel(logger: Logger, logLevel: Level.Value, state: State): Logger = {
-    import Level._
-    val delegateLevel = state.get(Keys.logLevel.key).getOrElse(Info)
+    val delegateLevel: Level.Value = state.get(Keys.logLevel.key).getOrElse(Level.Info)
     /*
      * The delegate logger may be set to, say, info level, but we want it to print out debug
      * messages if the logLevel variable above is Debug. To do this, we promote Debug messages
@@ -804,7 +816,7 @@ object Continuous extends DeprecatedContinuous {
     lazy val default = key.get(Keys.watchStartMessage).getOrElse(Watch.defaultStartWatch)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
-  private def getTriggerMessage(key: ScopedKey[_])(implicit e: Extracted): TriggerMessage = Some {
+  private def getTriggerMessage(key: ScopedKey[_])(implicit e: Extracted): TriggerMessage = {
     lazy val default =
       key.get(Keys.watchTriggeredMessage).getOrElse(Watch.defaultOnTriggerMessage)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))

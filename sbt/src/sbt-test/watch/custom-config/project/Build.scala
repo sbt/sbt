@@ -15,17 +15,17 @@ object Build {
     assert(IO.read(file(stringFile)) == string)
   }
   lazy val foo = project.settings(
-    watchStartMessage := { (count: Int) => Some(s"FOO $count") },
+    watchStartMessage := { (count: Int, _, _) => Some(s"FOO $count") },
     Compile / compile / watchTriggers += baseDirectory.value * "foo.txt",
-    Compile / compile / watchStartMessage := { (count: Int) =>
+    Compile / compile / watchStartMessage := { (count: Int, _, _) =>
       // this checks that Compile / compile / watchStartMessage
       // is preferred to Compile / watchStartMessage
       val outputFile = baseDirectory.value / "foo.txt"
       IO.write(outputFile, "compile")
       Some(s"compile $count")
     },
-    Compile / watchStartMessage := { (count: Int) => Some(s"Compile $count") },
-    Runtime / watchStartMessage := { (count: Int) => Some(s"Runtime $count") },
+    Compile / watchStartMessage := { (count: Int, _, _) => Some(s"Compile $count") },
+    Runtime / watchStartMessage := { (count: Int, _, _) => Some(s"Runtime $count") },
     setStringValue := {
       val _ = (fileInputs in (bar, setStringValue)).value
       setStringValueImpl.evaluated
