@@ -17,6 +17,7 @@ import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
 import sbt.internal.CommandStrings.BootCommand
+import sbt.internal.FileManagement.CopiedFileTreeRepository
 import sbt.internal._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
@@ -847,15 +848,18 @@ object BuiltinCommands {
       }
     s.put(Keys.stateCompilerCache, cache)
   }
+  private[this] val rawGlobalFileTreeRepository = AttributeKey[FileTreeRepository[FileAttributes]](
+    "raw-global-file-tree-repository",
+    "Provides a view into the file system that may or may not cache the tree in memory",
+    1000
+  )
   private[sbt] def registerGlobalCaches(s: State): State =
     try {
       val extracted = Project.extract(s)
       val cleanedUp = new AtomicBoolean(false)
       def cleanup(): Unit = {
-        s.get(Keys.globalFileTreeRepository).foreach(_.close())
-        s.attributes.remove(Keys.globalFileTreeRepository)
+        s.get(rawGlobalFileTreeRepository).foreach(_.close())
         s.get(Keys.taskRepository).foreach(_.close())
-        s.attributes.remove(Keys.taskRepository)
         ()
       }
       cleanup()
@@ -863,7 +867,8 @@ object BuiltinCommands {
       val newState = s.addExitHook(if (cleanedUp.compareAndSet(false, true)) cleanup())
       newState
         .put(Keys.taskRepository, new TaskRepository.Repr)
-        .put(Keys.globalFileTreeRepository, fileTreeRepository)
+        .put(rawGlobalFileTreeRepository, fileTreeRepository)
+        .put(Keys.globalFileTreeRepository, new CopiedFileTreeRepository(fileTreeRepository))
     } catch {
       case NonFatal(_) => s
     }

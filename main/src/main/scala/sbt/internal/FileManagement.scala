@@ -13,9 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt.internal.io.HybridPollingFileTreeRepository
-import sbt.internal.util.Util
 import sbt.io.FileTreeDataView.{ Entry, Observable, Observer, Observers }
-import sbt.io.Glob.TraversableGlobOps
 import sbt.io.{ FileTreeRepository, _ }
 import sbt.util.{ Level, Logger }
 
@@ -55,11 +53,8 @@ private[sbt] object FileManagement {
           watchLogger
         )
     } else {
-      if (Util.isWindows) new PollingFileRepository(FileAttributes.default)
-      else {
-        val service = Watched.createWatchService(pollInterval)
-        FileTreeRepository.legacy(FileAttributes.default _, (_: Any) => {}, service)
-      }
+      val service = Watched.createWatchService(pollInterval)
+      FileTreeRepository.legacy(FileAttributes.default _, (_: Any) => {}, service)
     }
   }
 
@@ -100,55 +95,6 @@ private[sbt] object FileManagement {
       override def close(): Unit = monitor.close()
     }
   }
-  private[sbt] implicit class FileTreeRepositoryOps[T](val repo: FileTreeRepository[T])
-      extends AnyVal {
-    def copy(): FileTreeRepository[T] =
-      copy(ConcurrentHashMap.newKeySet[Glob].asScala, closeUnderlying = false)
-
-    /**
-     * Creates a copied FileTreeRepository that keeps track of all of the globs that are explicitly
-     * registered with it.
-     *
-     * @param registered the registered globs
-     * @param closeUnderlying toggles whether or not close should actually close the delegate
-     *                        repository
-     *
-     * @return the copied FileTreeRepository
-     */
-    def copy(registered: mutable.Set[Glob], closeUnderlying: Boolean): FileTreeRepository[T] =
-      new FileTreeRepository[T] {
-        private val entryFilter: FileTreeDataView.Entry[T] => Boolean =
-          (entry: FileTreeDataView.Entry[T]) => registered.toEntryFilter(entry)
-        private[this] val observers = new Observers[T] {
-          override def onCreate(newEntry: FileTreeDataView.Entry[T]): Unit =
-            if (entryFilter(newEntry)) super.onCreate(newEntry)
-          override def onDelete(oldEntry: FileTreeDataView.Entry[T]): Unit =
-            if (entryFilter(oldEntry)) super.onDelete(oldEntry)
-          override def onUpdate(
-              oldEntry: FileTreeDataView.Entry[T],
-              newEntry: FileTreeDataView.Entry[T]
-          ): Unit = if (entryFilter(newEntry)) super.onUpdate(oldEntry, newEntry)
-        }
-        private[this] val handle = repo.addObserver(observers)
-        override def register(glob: Glob): Either[IOException, Boolean] = {
-          registered.add(glob)
-          repo.register(glob)
-        }
-        override def unregister(glob: Glob): Unit = repo.unregister(glob)
-        override def addObserver(observer: FileTreeDataView.Observer[T]): Int =
-          observers.addObserver(observer)
-        override def removeObserver(handle: Int): Unit = observers.removeObserver(handle)
-        override def close(): Unit = {
-          repo.removeObserver(handle)
-          if (closeUnderlying) repo.close()
-        }
-        override def toString: String = s"CopiedFileTreeRepository(base = $repo)"
-        override def list(glob: Glob): Seq[TypedPath] = repo.list(glob)
-        override def listEntries(glob: Glob): Seq[FileTreeDataView.Entry[T]] =
-          repo.listEntries(glob)
-      }
-  }
-
   private[sbt] class HybridMonitoringRepository[T](
       underlying: HybridPollingFileTreeRepository[T],
       delay: FiniteDuration,
@@ -174,11 +120,10 @@ private[sbt] object FileManagement {
   private[sbt] def toMonitoringRepository[T](
       repository: FileTreeRepository[T]
   ): FileTreeRepository[T] = repository match {
-    case p: PollingFileRepository[T]      => p.toMonitoringRepository
     case h: HybridMonitoringRepository[T] => h.toMonitoringRepository
-    case r: FileTreeRepository[T]         => new CopiedFileRepository(r)
+    case r: FileTreeRepository[T]         => r
   }
-  private class CopiedFileRepository[T](underlying: FileTreeRepository[T])
+  private[sbt] class CopiedFileTreeRepository[T](underlying: FileTreeRepository[T])
       extends FileTreeRepository[T] {
     def addObserver(observer: Observer[T]) = underlying.addObserver(observer)
     def close(): Unit = {} // Don't close the underlying observable
@@ -187,42 +132,5 @@ private[sbt] object FileManagement {
     def removeObserver(handle: Int): Unit = underlying.removeObserver(handle)
     def register(glob: Glob): Either[IOException, Boolean] = underlying.register(glob)
     def unregister(glob: Glob): Unit = underlying.unregister(glob)
-  }
-  private[sbt] class PollingFileRepository[T](converter: TypedPath => T)
-      extends FileTreeRepository[T] { self =>
-    private val registered: mutable.Set[Glob] = ConcurrentHashMap.newKeySet[Glob].asScala
-    private[this] val view = FileTreeView.DEFAULT
-    private[this] val dataView = view.asDataView(converter)
-    private[this] val handles: mutable.Map[FileTreeRepository[T], Int] =
-      new ConcurrentHashMap[FileTreeRepository[T], Int].asScala
-    private val observers: Observers[T] = new Observers
-    override def addObserver(observer: Observer[T]): Int = observers.addObserver(observer)
-    override def close(): Unit = {
-      handles.foreach { case (repo, handle) => repo.removeObserver(handle) }
-      observers.close()
-    }
-    override def list(glob: Glob): Seq[TypedPath] = view.list(glob)
-    override def listEntries(glob: Glob): Seq[Entry[T]] = dataView.listEntries(glob)
-    override def removeObserver(handle: Int): Unit = observers.removeObserver(handle)
-    override def register(glob: Glob): Either[IOException, Boolean] = Right(registered.add(glob))
-    override def unregister(glob: Glob): Unit = registered -= glob
-
-    private[sbt] def toMonitoringRepository: FileTreeRepository[T] = {
-      val legacy = FileTreeRepository.legacy(converter)
-      registered.foreach(legacy.register)
-      handles += legacy -> legacy.addObserver(observers)
-      new FileTreeRepository[T] {
-        override def listEntries(glob: Glob): Seq[Entry[T]] = legacy.listEntries(glob)
-        override def list(glob: Glob): Seq[TypedPath] = legacy.list(glob)
-        def addObserver(observer: Observer[T]): Int = legacy.addObserver(observer)
-        override def removeObserver(handle: Int): Unit = legacy.removeObserver(handle)
-        override def close(): Unit = legacy.close()
-        override def register(glob: Glob): Either[IOException, Boolean] = {
-          self.register(glob)
-          legacy.register(glob)
-        }
-        override def unregister(glob: Glob): Unit = legacy.unregister(glob)
-      }
-    }
   }
 }

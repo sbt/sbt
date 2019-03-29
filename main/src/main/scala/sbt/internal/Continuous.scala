@@ -20,7 +20,6 @@ import sbt.BasicCommandStrings.{
 import sbt.BasicCommands.otherCommandParser
 import sbt.Def._
 import sbt.Scope.Global
-import sbt.internal.FileManagement.FileTreeRepositoryOps
 import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
 import sbt.internal.util.complete.Parser._
@@ -191,7 +190,7 @@ object Continuous extends DeprecatedContinuous {
       new IllegalStateException("Tried to access FileTreeRepository for uninitialized state")
     state
       .get(Keys.globalFileTreeRepository)
-      .map(FileManagement.toMonitoringRepository(_).copy())
+      .map(FileManagement.toMonitoringRepository)
       .getOrElse(throw exception)
   }
 
