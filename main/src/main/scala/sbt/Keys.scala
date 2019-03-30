@@ -186,6 +186,7 @@ object Keys {
   val discoveredSbtPlugins = taskKey[PluginDiscovery.DiscoveredNames]("The names of sbt plugin-related modules (modules that extend Build, Plugin, AutoPlugin) defined by this project.").withRank(CTask)
   val sbtPlugin = settingKey[Boolean]("If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.").withRank(BMinusSetting)
   val isMetaBuild = settingKey[Boolean]("If true, this is a metabuild, a project inside project/ directory, and sbt is added to the classpath.").withRank(DSetting)
+  val reresolveSbtArtifacts = settingKey[Boolean]("If true, include sbt into the metabuild dependency graph. Otherwise reuse the artifacts resolved by the launcher on startup.").withRank(DSetting)
   val pluginCrossBuild = taskKey[Unit]("Dummy task to scope `sbtVersion in pluginCrossBuild`, which gets used for plugin compilation.")
   val crossSbtVersions = settingKey[Seq[String]]("The versions of Sbt used when cross-building an sbt plugin.")
   val printWarnings = taskKey[Unit]("Shows warnings from compilation, including ones that weren't printed initially.").withRank(BPlusTask)

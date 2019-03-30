@@ -175,6 +175,7 @@ object Defaults extends BuildCommon {
       javaOptions :== Nil,
       sbtPlugin :== false,
       isMetaBuild :== false,
+      reresolveSbtArtifacts :== false,
       crossPaths :== true,
       sourcePositionMappers :== Nil,
       artifactClassifier in packageSrc :== Some(SourceClassifier),
@@ -1897,6 +1898,7 @@ object Classpaths {
       unmanagedClasspath := unmanagedDependencies.value,
       managedClasspath := {
         val isMeta = isMetaBuild.value
+        val force = reresolveSbtArtifacts.value
         val app = appConfiguration.value
         val sbtCp0 = app.provider.mainClasspath.toList
         val sbtCp = sbtCp0 map { Attributed.blank(_) }
@@ -1905,7 +1907,7 @@ object Classpaths {
           classpathTypes.value,
           update.value
         )
-        if (isMeta) mjars ++ sbtCp
+        if (isMeta && !force) mjars ++ sbtCp
         else mjars
       },
       exportedProducts := trackedExportedProducts(TrackLevel.TrackAlways).value,
@@ -2349,12 +2351,25 @@ object Classpaths {
         ScalaArtifacts.toolDependencies(sbtOrg, version, isDotty) ++ pluginAdjust
       }
     },
-    // in case of meta build, exclude sbt from the dependency graph, so we can use the sbt resolved by the launcher
+    // in case of meta build, exclude all sbt modules from the dependency graph, so we can use the sbt resolved by the launcher
     allExcludeDependencies := {
       val sbtdeps = sbtDependency.value
       val isMeta = isMetaBuild.value
+      val force = reresolveSbtArtifacts.value
       val excludes = excludeDependencies.value
-      if (isMeta) excludes.toVector :+ ExclusionRule(sbtdeps.organization, sbtdeps.name)
+      val sbtModules = Vector(
+        "sbt",
+        "zinc_2.12",
+        "librarymanagement-core_2.12",
+        "librarymanagement-ivy_2.12",
+        "util-logging_2.12",
+        "util-position_2.12",
+        "io_2.12"
+      )
+      val sbtModulesExcludes = sbtModules map { nm: String =>
+        ExclusionRule(organization = sbtdeps.organization, name = nm)
+      }
+      if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
       else excludes
     },
     dependencyOverrides ++= {
