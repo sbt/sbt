@@ -9,55 +9,15 @@ package sbt
 package internal
 
 import java.io.IOException
-import java.util.concurrent.ConcurrentHashMap
 
-import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt.internal.io.HybridPollingFileTreeRepository
 import sbt.io.FileTreeDataView.{ Entry, Observable, Observer, Observers }
 import sbt.io.{ FileTreeRepository, _ }
-import sbt.util.{ Level, Logger }
+import sbt.util.Logger
 
-import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.concurrent.duration._
 
 private[sbt] object FileManagement {
-  private[sbt] def defaultFileTreeRepository(
-      state: State,
-      extracted: Extracted
-  ): FileTreeRepository[FileAttributes] = {
-    val pollingGlobs = extracted.getOpt(Keys.pollingGlobs).getOrElse(Nil)
-    val remaining = state.remainingCommands.map(_.commandLine)
-    // If the session is interactive or if the commands include a continuous build, then use
-    // the default configuration. Otherwise, use the sbt1_2_compat config, which does not cache
-    // anything, which makes it less likely to cause issues with CI.
-    val interactive =
-      remaining.contains("shell") || remaining.lastOption.contains("iflast shell")
-    val scripted = remaining.contains("setUpScripted")
-    val continuous = remaining.lastOption.exists(_.startsWith(ContinuousExecutePrefix))
-    val enableCache = extracted
-      .getOpt(Keys.enableGlobalCachingFileTreeRepository)
-      .getOrElse(!scripted && (interactive || continuous))
-    val pollInterval = extracted.getOpt(Keys.pollInterval).getOrElse(500.milliseconds)
-    val watchLogger: WatchLogger = extracted.getOpt(Keys.logLevel) match {
-      case Level.Debug =>
-        new WatchLogger { override def debug(msg: => Any): Unit = println(s"[watch-debug] $msg") }
-      case _ => new WatchLogger { override def debug(msg: => Any): Unit = {} }
-    }
-    if (enableCache) {
-      if (pollingGlobs.isEmpty) FileTreeRepository.default(FileAttributes.default)
-      else
-        new HybridMonitoringRepository[FileAttributes](
-          FileTreeRepository.hybrid(FileAttributes.default, pollingGlobs: _*),
-          pollInterval,
-          watchLogger
-        )
-    } else {
-      val service = Watched.createWatchService(pollInterval)
-      FileTreeRepository.legacy(FileAttributes.default _, (_: Any) => {}, service)
-    }
-  }
-
   private[sbt] def monitor(
       repository: FileTreeRepository[FileAttributes],
       antiEntropy: FiniteDuration,
@@ -96,34 +56,6 @@ private[sbt] object FileManagement {
     }
   }
 
-  private[sbt] class HybridMonitoringRepository[T](
-      underlying: HybridPollingFileTreeRepository[T],
-      delay: FiniteDuration,
-      logger: WatchLogger
-  ) extends FileTreeRepository[T] {
-    private val registered: mutable.Set[Glob] = ConcurrentHashMap.newKeySet[Glob].asScala
-    override def listEntries(glob: Glob): Seq[Entry[T]] = underlying.listEntries(glob)
-    override def list(glob: Glob): Seq[TypedPath] = underlying.list(glob)
-    override def addObserver(observer: Observer[T]): Int = underlying.addObserver(observer)
-    override def removeObserver(handle: Int): Unit = underlying.removeObserver(handle)
-    override def close(): Unit = underlying.close()
-    override def register(glob: Glob): Either[IOException, Boolean] = {
-      registered.add(glob)
-      underlying.register(glob)
-    }
-    override def unregister(glob: Glob): Unit = underlying.unregister(glob)
-    private[sbt] def toMonitoringRepository: FileTreeRepository[T] = {
-      val polling = underlying.toPollingRepository(delay, logger)
-      registered.foreach(polling.register)
-      polling
-    }
-  }
-  private[sbt] def toMonitoringRepository[T](
-      repository: FileTreeRepository[T]
-  ): FileTreeRepository[T] = repository match {
-    case h: HybridMonitoringRepository[T] => h.toMonitoringRepository
-    case r: FileTreeRepository[T]         => r
-  }
   private[sbt] class CopiedFileTreeRepository[T](underlying: FileTreeRepository[T])
       extends FileTreeRepository[T] {
     def addObserver(observer: Observer[T]) = underlying.addObserver(observer)

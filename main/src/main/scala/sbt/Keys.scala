@@ -92,7 +92,6 @@ object Keys {
 
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
-  val enableGlobalCachingFileTreeRepository = settingKey[Boolean]("Toggles whether or not to create a global cache of the file system that can be used by tasks to quickly list a path").withRank(DSetting)
   val fileTreeRepository = taskKey[FileTree.Repository]("A repository of the file system.").withRank(DSetting)
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val pollingGlobs = settingKey[Seq[Glob]]("Directories that cannot be cached and must always be rescanned. Typically these will be NFS mounted or something similar.").withRank(DSetting)

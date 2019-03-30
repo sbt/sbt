@@ -288,11 +288,10 @@ object Defaults extends BuildCommon {
       Previous.references :== new Previous.References,
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
-      fileTreeRepository :=
-        FileTree.repository(state.value.get(Keys.globalFileTreeRepository) match {
-          case Some(r) => r
-          case None    => FileTreeView.DEFAULT.asDataView(FileAttributes.default)
-        }),
+      fileTreeRepository := state.value
+        .get(globalFileTreeRepository)
+        .map(FileTree.repository)
+        .getOrElse(FileTree.Repository.polling),
       Continuous.dynamicInputs := Continuous.dynamicInputsImpl.value,
       externalHooks := {
         val repository = fileTreeRepository.value

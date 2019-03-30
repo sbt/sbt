@@ -20,6 +20,7 @@ import sbt.BasicCommandStrings.{
 import sbt.BasicCommands.otherCommandParser
 import sbt.Def._
 import sbt.Scope.Global
+import sbt.internal.FileManagement.CopiedFileTreeRepository
 import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
 import sbt.internal.util.complete.Parser._
@@ -204,7 +205,6 @@ object Continuous extends DeprecatedContinuous {
       new IllegalStateException("Tried to access FileTreeRepository for uninitialized state")
     state
       .get(Keys.globalFileTreeRepository)
-      .map(FileManagement.toMonitoringRepository)
       .getOrElse(throw exception)
   }
 
@@ -283,41 +283,58 @@ object Continuous extends DeprecatedContinuous {
       isCommand: Boolean
   ): State = Watch.withCharBufferedStdIn { in =>
     val duped = new DupedInputStream(in)
-    setup(state.put(DupedSystemIn, duped), command) { (commands, s, valid, invalid) =>
-      implicit val extracted: Extracted = Project.extract(s)
-      EvaluateTask.withStreams(extracted.structure, s)(_.use(Keys.streams in Global) { streams =>
-        implicit val logger: Logger = streams.log
-        if (invalid.isEmpty) {
-          val currentCount = new AtomicInteger(count)
-          val configs = getAllConfigs(valid.map(v => v._1 -> v._2))
-          val callbacks = aggregate(configs, logger, in, s, currentCount, isCommand, commands)
-          val task = () => {
-            currentCount.getAndIncrement()
-            // abort as soon as one of the tasks fails
-            valid.takeWhile(_._3.apply())
-            ()
-          }
-          callbacks.onEnter()
-          // Here we enter the Watched.watch state machine. We will not return until one of the
-          // state machine callbacks returns Watched.CancelWatch, Watched.Custom, Watched.HandleError
-          // or Watched.Reload. The task defined above will be run at least once. It will be run
-          // additional times whenever the state transition callbacks return Watched.Trigger.
-          try {
-            val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
-            callbacks.onTermination(terminationAction, command, currentCount.get(), state)
-          } finally {
-            configs.foreach(_.repository.close())
-            callbacks.onExit()
-          }
+    implicit val extracted: Extracted = Project.extract(state)
+    val (stateWithRepo, repo) = state.get(Keys.globalFileTreeRepository) match {
+      case Some(r) => (state, r)
+      case _ =>
+        val repo = if ("polling" == System.getProperty("sbt.watch.mode")) {
+          val service =
+            new PollingWatchService(extracted.getOpt(Keys.pollInterval).getOrElse(500.millis))
+          FileTreeRepository.legacy(FileAttributes.default _, (_: Any) => {}, service)
         } else {
-          // At least one of the commands in the multi command string could not be parsed, so we
-          // log an error and exit.
-          val invalidCommands = invalid.mkString("'", "', '", "'")
-          logger.error(s"Terminating watch due to invalid command(s): $invalidCommands")
-          state.fail
+          state
+            .get(BuiltinCommands.rawGlobalFileTreeRepository)
+            .map(new CopiedFileTreeRepository(_))
+            .getOrElse(FileTreeRepository.default(FileAttributes.default))
         }
-      })
+        (state.put(Keys.globalFileTreeRepository, repo), repo)
     }
+    try {
+      setup(stateWithRepo.put(DupedSystemIn, duped), command) { (commands, s, valid, invalid) =>
+        EvaluateTask.withStreams(extracted.structure, s)(_.use(Keys.streams in Global) { streams =>
+          implicit val logger: Logger = streams.log
+          if (invalid.isEmpty) {
+            val currentCount = new AtomicInteger(count)
+            val configs = getAllConfigs(valid.map(v => v._1 -> v._2))
+            val callbacks = aggregate(configs, logger, in, s, currentCount, isCommand, commands)
+            val task = () => {
+              currentCount.getAndIncrement()
+              // abort as soon as one of the tasks fails
+              valid.takeWhile(_._3.apply())
+              ()
+            }
+            callbacks.onEnter()
+            // Here we enter the Watched.watch state machine. We will not return until one of the
+            // state machine callbacks returns Watched.CancelWatch, Watched.Custom, Watched.HandleError
+            // or Watched.Reload. The task defined above will be run at least once. It will be run
+            // additional times whenever the state transition callbacks return Watched.Trigger.
+            try {
+              val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
+              callbacks.onTermination(terminationAction, command, currentCount.get(), state)
+            } finally {
+              configs.foreach(_.repository.close())
+              callbacks.onExit()
+            }
+          } else {
+            // At least one of the commands in the multi command string could not be parsed, so we
+            // log an error and exit.
+            val invalidCommands = invalid.mkString("'", "', '", "'")
+            logger.error(s"Terminating watch due to invalid command(s): $invalidCommands")
+            state.fail
+          }
+        })
+      }
+    } finally repo.close()
   }
 
   private def parseCommand(command: String, state: State): Seq[ScopedKey[_]] = {
