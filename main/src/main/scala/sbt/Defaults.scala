@@ -264,7 +264,7 @@ object Defaults extends BuildCommon {
         () =>
           Clean.deleteContents(tempDirectory, _ => false)
       },
-      useSuperShell :== sbt.internal.TaskProgress.isEnabled,
+      useSuperShell := { if (insideCI.value) false else sbt.internal.TaskProgress.isEnabled },
       progressReports := { (s: State) =>
         val progress = useSuperShell.value
         val rs = EvaluateTask.taskTimingProgress.toVector ++
@@ -329,7 +329,8 @@ object Defaults extends BuildCommon {
           ++ serverHandlers.value
           ++ Vector(ServerHandler.fallback))
       },
-      insideCI :== sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI"),
+      insideCI :== sys.env.contains("BUILD_NUMBER") ||
+        sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
     )
   )
 
