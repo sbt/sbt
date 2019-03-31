@@ -74,8 +74,8 @@ private[internal] object GlobListers {
   private def covers(left: Glob, right: Glob): Boolean = {
     right.base.startsWith(left.base) && {
       left.depth == Int.MaxValue || {
-        val depth = left.base.relativize(right.base).getNameCount
-        depth < left.depth - right.depth
+        val depth = left.base.relativize(right.base).getNameCount - 1
+        depth <= left.depth - right.depth
       }
     }
   }

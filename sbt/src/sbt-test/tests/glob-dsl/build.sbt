@@ -52,3 +52,20 @@ checkSet := {
   val expected = Seq("Bar.md", "Foo.txt").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
   assert(deduped.sorted == expected)
 }
+
+val depth = taskKey[Seq[File]]("Specify redundant sources with limited depth")
+val checkDepth = taskKey[Unit]("Check that the Bar.md file is retrieved")
+
+depth / fileInputs ++= Seq(
+  sbt.io.Glob(baseDirectory.value / "base", -DirectoryFilter, 2),
+  sbt.io.Glob(baseDirectory.value / "base" / "subdir", -DirectoryFilter, 1)
+)
+
+checkDepth := {
+  val redundant = (depth / fileInputs).value.all.map(_._1.toFile)
+  assert(redundant.size == 2)
+
+  val deduped = (depth / fileInputs).value.toSet[Glob].all.map(_._1.toFile)
+  val expected = Seq("Bar.md", "Foo.txt").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
+  assert(deduped.sorted == expected)
+}
