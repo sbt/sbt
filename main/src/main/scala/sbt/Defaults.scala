@@ -9,7 +9,6 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
-import java.nio.file.{ Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -43,6 +42,7 @@ import sbt.internal.server.{
   ServerHandler
 }
 import sbt.internal.testing.TestLogger
+import sbt.internal.TransitiveGlobs._
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types._
 import sbt.internal.util._
@@ -143,6 +143,8 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       classLoaderCache := ClassLoaderCache(4),
+      fileInputs :== Nil,
+      watchTriggers :== Nil,
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
@@ -229,6 +231,14 @@ object Defaults extends BuildCommon {
       outputStrategy :== None, // TODO - This might belong elsewhere.
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
+      settingsData / fileInputs := {
+        val baseDir = file(".").getCanonicalFile
+        val sourceFilter = ("*.sbt" || "*.scala" || "*.java") -- HiddenFileFilter
+        Seq(
+          Glob(baseDir, "*.sbt" -- HiddenFileFilter, 0),
+          Glob(baseDir / "project", sourceFilter, Int.MaxValue)
+        )
+      },
       trapExit :== true,
       connectInput :== false,
       cancelable :== false,
@@ -243,8 +253,6 @@ object Defaults extends BuildCommon {
       // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
       // directs the dependencies of the plugin to build to the specified sbt plugin version.
       sbtVersion in pluginCrossBuild := sbtVersion.value,
-      watchingMessage := Watched.defaultWatchingMessage,
-      triggeredMessage := Watched.defaultTriggeredMessage,
       onLoad := idFun[State],
       onUnload := idFun[State],
       onUnload := { s =>
@@ -255,8 +263,7 @@ object Defaults extends BuildCommon {
         Nil
       },
       pollingGlobs :== Nil,
-      watchSources :== Nil,
-      watchProjectSources :== Nil,
+      watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
       onComplete := {
@@ -281,21 +288,15 @@ object Defaults extends BuildCommon {
       Previous.references :== new Previous.References,
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
-      pollInterval :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
-      watchTriggeredMessage := { (_, _) =>
-        None
-      },
-      watchStartMessage := Watched.defaultStartWatch,
-      fileTreeRepository := FileTree.Repository.polling,
+      fileTreeRepository := state.value
+        .get(globalFileTreeRepository)
+        .map(FileTree.repository)
+        .getOrElse(FileTree.Repository.polling),
+      Continuous.dynamicInputs := Continuous.dynamicInputsImpl.value,
       externalHooks := {
         val repository = fileTreeRepository.value
         compileOptions =>
           Some(ExternalHooks(compileOptions, repository))
-      },
-      watchAntiEntropy :== new FiniteDuration(500, TimeUnit.MILLISECONDS),
-      watchLogger := streams.value.log,
-      watchService :== { () =>
-        Watched.createWatchService()
       },
       logBuffered :== false,
       commands :== Nil,
@@ -331,6 +332,22 @@ object Defaults extends BuildCommon {
       },
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
+      // watch related settings
+      pollInterval :== Watch.defaultPollInterval,
+      watchAntiEntropy :== Watch.defaultAntiEntropy,
+      watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
+      watchLogLevel :== Level.Info,
+      watchOnEnter :== Watch.defaultOnEnter,
+      watchOnMetaBuildEvent :== Watch.ifChanged(Watch.Reload),
+      watchOnInputEvent :== Watch.trigger,
+      watchOnTriggerEvent :== Watch.trigger,
+      watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
+      watchService :== Watched.newWatchService,
+      watchStartMessage :== Watch.defaultStartWatch,
+      watchTasks := Continuous.continuousTask.evaluated,
+      aggregate in watchTasks :== false,
+      watchTrackMetaBuild :== true,
+      watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     )
   )
 
@@ -381,33 +398,17 @@ object Defaults extends BuildCommon {
           crossPaths.value
         )
     },
-    unmanagedSources := {
+    unmanagedSources / fileInputs := {
       val filter =
         (includeFilter in unmanagedSources).value -- (excludeFilter in unmanagedSources).value
       val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
-      (unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources).all.map(Stamped.file)
+      unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources
     },
-    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
-      val baseDir = baseDirectory.value
-      val bases = unmanagedSourceDirectories.value
-      val include = (includeFilter in unmanagedSources).value
-      val exclude = (excludeFilter in unmanagedSources).value
-      val baseSources =
-        if (sourcesInBase.value) Seq(new Source(baseDir, include, exclude, recursive = false))
-        else Nil
-      bases.map(b => new Source(b, include, exclude)) ++ baseSources
-    },
-    watchProjectSources in ConfigGlobal := (watchProjectSources in ConfigGlobal).value ++ {
-      val baseDir = baseDirectory.value
-      Seq(
-        new Source(baseDir, "*.sbt", HiddenFileFilter, recursive = false),
-        new Source(baseDir / "project", "*.sbt" || "*.scala", HiddenFileFilter, recursive = true)
-      )
-    },
+    unmanagedSources := (unmanagedSources / fileInputs).value.all.map(Stamped.file),
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
     sourceGenerators :== Nil,
-    sourceGenerators / outputs := Seq(managedDirectory.value ** AllPassFilter),
+    sourceGenerators / fileOutputs := Seq(managedDirectory.value ** AllPassFilter),
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
@@ -421,17 +422,12 @@ object Defaults extends BuildCommon {
     resourceDirectories := Classpaths
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
-    unmanagedResources := {
+    unmanagedResources / fileInputs := {
       val filter =
         (includeFilter in unmanagedResources).value -- (excludeFilter in unmanagedResources).value
-      unmanagedResourceDirectories.value.map(_ ** filter).all.map(Stamped.file)
+      unmanagedResourceDirectories.value.map(_ ** filter)
     },
-    watchSources in ConfigGlobal := (watchSources in ConfigGlobal).value ++ {
-      val bases = unmanagedResourceDirectories.value
-      val include = (includeFilter in unmanagedResources).value
-      val exclude = (excludeFilter in unmanagedResources).value
-      bases.map(b => new Source(b, include, exclude))
-    },
+    unmanagedResources := (unmanagedResources / fileInputs).value.all.map(Stamped.file),
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
@@ -573,12 +569,13 @@ object Defaults extends BuildCommon {
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
     compileInputsSettings :+ (clean := Clean.taskIn(ThisScope).value)
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
-    outputs := Seq(
+    fileOutputs := Seq(
       compileAnalysisFileTask.value.toGlob,
       classDirectory.value ** "*.class"
-    ) ++ (sourceGenerators / outputs).value,
+    ) ++ (sourceGenerators / fileOutputs).value,
     compile := compileTask.value,
     clean := Clean.taskIn(ThisScope).value,
+    internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
     printWarnings := printWarningsTask.value,
@@ -627,48 +624,20 @@ object Defaults extends BuildCommon {
     clean := Clean.taskIn(ThisScope).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
-    watchProjectTransitiveSources := watchTransitiveSourcesTaskImpl(watchProjectSources).value,
-    watchOnEvent := Watched
-      .onEvent(watchTransitiveSources.value, watchProjectTransitiveSources.value),
-    watchHandleInput := Watched.handleInput,
-    watchPreWatch := { (_, _) =>
-      Watched.Ignore
-    },
-    watchOnTermination := Watched.onTermination,
-    watchConfig := {
-      val sources = watchTransitiveSources.value ++ watchProjectTransitiveSources.value
-      val globs = sources.map(
-        s => Glob(s.base, s.includeFilter -- s.excludeFilter, if (s.recursive) Int.MaxValue else 0)
-      )
-      val wm = watchingMessage.?.value
-        .map(w => (count: Int) => Some(w(WatchState.empty(globs).withCount(count))))
-        .getOrElse(watchStartMessage.value)
-      val tm = triggeredMessage.?.value
-        .map(tm => (_: NioPath, count: Int) => Some(tm(WatchState.empty(globs).withCount(count))))
-        .getOrElse(watchTriggeredMessage.value)
-      val logger = watchLogger.value
-      val repo = FileManagement.toMonitoringRepository(FileManagement.repo.value)
-      globs.foreach(repo.register)
-      val monitor = FileManagement.monitor(repo, watchAntiEntropy.value, logger)
-      WatchConfig.default(
-        logger,
-        monitor,
-        watchHandleInput.value,
-        watchPreWatch.value,
-        watchOnEvent.value,
-        watchOnTermination.value,
-        tm,
-        wm
-      )
-    },
-    watchStartMessage := Watched.projectOnWatchMessage(thisProjectRef.value.project),
     watch := watchSetting.value,
-    outputs += target.value ** AllPassFilter,
+    fileOutputs += target.value ** AllPassFilter,
+    transitiveGlobs := InputGraph.task.value,
+    transitiveInputs := InputGraph.inputsTask.value,
+    transitiveTriggers := InputGraph.triggersTask.value,
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
     generators { _.join.map(_.flatten) }
 
+  @deprecated(
+    "The watchTransitiveSourcesTask is used only for legacy builds and will be removed in a future version of sbt.",
+    "1.3.0"
+  )
   def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] =
     watchTransitiveSourcesTaskImpl(watchSources)
 
@@ -696,8 +665,8 @@ object Defaults extends BuildCommon {
       val interval = pollInterval.value
       val _antiEntropy = watchAntiEntropy.value
       val base = thisProjectRef.value
-      val msg = watchingMessage.value
-      val trigMsg = triggeredMessage.value
+      val msg = watchingMessage.?.value.getOrElse(Watched.defaultWatchingMessage)
+      val trigMsg = triggeredMessage.?.value.getOrElse(Watched.defaultTriggeredMessage)
       new Watched {
         val scoped = watchTransitiveSources in base
         val key = scoped.scopedKey
@@ -2039,7 +2008,7 @@ object Classpaths {
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
         docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
-        outputs :== Nil,
+        fileOutputs :== Nil,
         sbtDependency := {
           val app = appConfiguration.value
           val id = app.provider.id
@@ -2053,7 +2022,12 @@ object Classpaths {
           val base = ModuleID(id.groupID, id.name, sbtVersion.value).withCrossVersion(cross)
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
         },
-        shellPrompt := shellPromptFromState
+        shellPrompt := shellPromptFromState,
+        dynamicDependency := { (): Unit },
+        transitiveClasspathDependency := { (): Unit },
+        transitiveGlobs := { (Nil: Seq[Glob], Nil: Seq[Glob]) },
+        transitiveInputs := Nil,
+        transitiveTriggers := Nil,
       )
     )
 
@@ -2892,6 +2866,7 @@ object Classpaths {
   }
   private[sbt] def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =
     Def.task {
+      val _ = (packageBin / dynamicDependency).value
       val art = (artifact in packageBin).value
       val module = projectID.value
       val config = configuration.value
@@ -2904,6 +2879,7 @@ object Classpaths {
     }
   private[sbt] def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
     Def.task {
+      val _ = (packageBin / dynamicDependency).value
       val art = (artifact in packageBin).value
       val module = projectID.value
       val config = configuration.value
@@ -2918,6 +2894,7 @@ object Classpaths {
       track: TrackLevel
   ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
     Def.taskDyn {
+      val _ = (packageBin / dynamicDependency).value
       val useJars = exportJars.value
       if (useJars) trackedJarProductsImplTask(track)
       else trackedNonJarProductsImplTask(track)
@@ -2988,6 +2965,14 @@ object Classpaths {
 
   def internalDependencies: Initialize[Task[Classpath]] =
     Def.taskDyn {
+      val _ = (
+        (exportedProductsNoTracking / transitiveClasspathDependency).value,
+        (exportedProductsIfMissing / transitiveClasspathDependency).value,
+        (exportedProducts / transitiveClasspathDependency).value,
+        (exportedProductJarsNoTracking / transitiveClasspathDependency).value,
+        (exportedProductJarsIfMissing / transitiveClasspathDependency).value,
+        (exportedProductJars / transitiveClasspathDependency).value
+      )
       internalDependenciesImplTask(
         thisProjectRef.value,
         classpathConfiguration.value,

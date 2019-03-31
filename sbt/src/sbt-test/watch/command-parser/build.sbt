@@ -8,6 +8,6 @@ setStringValue := setStringValueImpl.evaluated
 
 checkStringValue := checkStringValueImpl.evaluated
 
-watchSources += file("string.txt")
+setStringValue / watchTriggers := baseDirectory.value * "string.txt" :: Nil
 
-watchOnEvent := { _ => Watched.CancelWatch }
+watchOnEvent := { _ => _ => Watch.CancelWatch }

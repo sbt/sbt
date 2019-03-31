@@ -1,0 +1,7 @@
+> ~ foo/Runtime/setStringValue bar/foo.txt foo
+
+> checkStringValue bar/foo.txt foo
+
+> ~ foo/compile
+
+> checkStringValue foo/foo.txt compile

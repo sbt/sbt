@@ -17,7 +17,7 @@ object MultiParserSpec {
     def parseEither: Either[String, Seq[String]] = Parser.parse(s, parser)
   }
 }
-import MultiParserSpec._
+import sbt.MultiParserSpec._
 class MultiParserSpec extends FlatSpec with Matchers {
   "parsing" should "parse single commands" in {
     ";foo".parse shouldBe Seq("foo")

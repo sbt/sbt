@@ -21,7 +21,8 @@ object SbtLauncherPlugin extends AutoPlugin {
         case Some(jar) => jar.data
         case None =>
           sys.error(
-            s"Could not resolve sbt launcher!, dependencies := ${libraryDependencies.value}")
+            s"Could not resolve sbt launcher!, dependencies := ${libraryDependencies.value}"
+          )
       }
     },
     sbtLaunchJar := {

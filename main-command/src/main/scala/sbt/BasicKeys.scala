@@ -33,7 +33,8 @@ object BasicKeys {
     "The function that constructs the command prompt from the current build state.",
     10000
   )
-  val watch = AttributeKey[Watched]("watch", "Continuous execution configuration.", 1000)
+  val watch =
+    AttributeKey[Watched]("watched", "Continuous execution configuration.", 1000)
   val serverPort =
     AttributeKey[Int]("server-port", "The port number used by server command.", 10000)
 

@@ -293,9 +293,9 @@ private[sbt] object Load {
   def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
     def mapSpecial(to: ScopedKey[_]) = λ[ScopedKey ~> ScopedKey](
       (key: ScopedKey[_]) =>
-        if (key.key == streams.key)
+        if (key.key == streams.key) {
           ScopedKey(Scope.fillTaskAxis(Scope.replaceThis(to.scope)(key.scope), to.key), key.key)
-        else key
+        } else key
     )
     def setDefining[T] =
       (key: ScopedKey[T], value: T) =>

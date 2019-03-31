@@ -1,0 +1,3 @@
+> checkInputs foo/Foo.scala bar/Bar.scala
+
+> checkInputsExplicit foo/Foo.scala bar/Bar.scala

@@ -61,6 +61,7 @@ object Clean {
         case f                  => f.toGlob
       } ++ cleanKeepGlobs.value
       val excludeFilter: TypedPath => Boolean = excludes.toTypedPathFilter
+      // Don't use a regular logger because the logger actually writes to the target directory.
       val debug = (logLevel in scope).?.value.orElse(state.value.get(logLevel.key)) match {
         case Some(Level.Debug) =>
           (string: String) =>
@@ -71,7 +72,7 @@ object Clean {
       }
       val delete = tryDelete(debug)
       cleanFiles.value.sorted.reverseIterator.foreach(delete)
-      (outputs in scope).value.foreach { g =>
+      (fileOutputs in scope).value.foreach { g =>
         val filter: TypedPath => Boolean = {
           val globFilter = g.toTypedPathFilter
           tp =>

@@ -7,15 +7,15 @@
 
 package sbt
 
-import sbt.internal.util.Types.const
-import sbt.internal.util.{ AttributeKey, Attributed, ConsoleAppender, Init }
-import sbt.util.Show
-import sbt.internal.util.complete.Parser
 import java.io.File
 import java.net.URI
 
-import Scope.{ GlobalScope, ThisScope }
-import KeyRanks.{ DTask, Invisible }
+import sbt.KeyRanks.{ DTask, Invisible }
+import sbt.Scope.{ GlobalScope, ThisScope }
+import sbt.internal.util.Types.const
+import sbt.internal.util.complete.Parser
+import sbt.internal.util._
+import sbt.util.Show
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra {
@@ -206,15 +206,16 @@ object Def extends Init[Scope] with TaskMacroExtra {
   def toISParser[T](p: Initialize[Parser[T]]): Initialize[State => Parser[T]] = p(toSParser)
   def toIParser[T](p: Initialize[InputTask[T]]): Initialize[State => Parser[Task[T]]] = p(_.parser)
 
-  import language.experimental.macros
+  import std.SettingMacro.{ settingDynMacroImpl, settingMacroImpl }
   import std.TaskMacro.{
-    inputTaskMacroImpl,
     inputTaskDynMacroImpl,
+    inputTaskMacroImpl,
     taskDynMacroImpl,
     taskMacroImpl
   }
-  import std.SettingMacro.{ settingDynMacroImpl, settingMacroImpl }
-  import std.{ InputEvaluated, MacroPrevious, MacroValue, MacroTaskValue, ParserInput }
+  import std._
+
+  import language.experimental.macros
 
   def task[T](t: T): Def.Initialize[Task[T]] = macro taskMacroImpl[T]
   def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]

@@ -42,6 +42,7 @@ trait Import {
   val ExistsFileFilter = sbt.io.ExistsFileFilter
   val FileFilter = sbt.io.FileFilter
   type FileFilter = sbt.io.FileFilter
+  type Glob = sbt.io.Glob
   val GlobFilter = sbt.io.GlobFilter
   val Hash = sbt.io.Hash
   val HiddenFileFilter = sbt.io.HiddenFileFilter

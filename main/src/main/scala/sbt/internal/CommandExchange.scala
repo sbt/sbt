@@ -9,38 +9,28 @@ package sbt
 package internal
 
 import java.io.IOException
+import java.net.Socket
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic._
 
-import scala.collection.mutable.ListBuffer
-import scala.annotation.tailrec
-import BasicKeys.{
-  autoStartServer,
-  fullServerHandlers,
-  logLevel,
-  serverAuthentication,
-  serverConnectionType,
-  serverHost,
-  serverLogLevel,
-  serverPort
-}
-import java.net.Socket
-
-import sbt.Watched.NullLogger
+import sbt.BasicKeys._
+import sbt.Watch.NullLogger
+import sbt.internal.langserver.{ LogMessageParams, MessageType }
+import sbt.internal.server._
+import sbt.internal.util.codec.JValueFormats
+import sbt.internal.util.{ MainAppender, ObjectEvent, StringEvent }
+import sbt.io.syntax._
+import sbt.io.{ Hash, IO }
+import sbt.protocol.{ EventMessage, ExecStatusEvent }
+import sbt.util.{ Level, LogExchange, Logger }
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe._
 
+import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success, Try }
-import sbt.io.syntax._
-import sbt.io.{ Hash, IO }
-import sbt.internal.server._
-import sbt.internal.langserver.{ LogMessageParams, MessageType }
-import sbt.internal.util.{ MainAppender, ObjectEvent, StringEvent }
-import sbt.internal.util.codec.JValueFormats
-import sbt.protocol.{ EventMessage, ExecStatusEvent }
-import sbt.util.{ Level, LogExchange, Logger }
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),

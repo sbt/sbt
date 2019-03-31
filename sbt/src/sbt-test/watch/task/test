@@ -1,0 +1,12 @@
+# this tests that if the watch _task_ is able to reload the project
+
+# the original version of the build will only return Watch.Reload for trigger events  while the
+# updated version will return Watch.CancelWatch. If this test exits, it more or less works.
+$ copy-file changes/Build.scala project/Build.scala
+
+# setStringValue has foo.txt as a watch source so running that command should first trigger a
+# reload. After the project has been reloaded, the next write to setStringValue will also
+# trigger a CancelWatch event, hence we exit.
+> watch root / setStringValue foo.txt bar
+
+> checkStringValue foo.txt bar

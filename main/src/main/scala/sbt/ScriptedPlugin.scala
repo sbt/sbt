@@ -88,7 +88,8 @@ object ScriptedPlugin extends AutoPlugin {
       val pub = (publishLocal).value
       use(analysis, pub)
     },
-    scripted := scriptedTask.evaluated
+    scripted := scriptedTask.evaluated,
+    watchTriggers in scripted += sbtTestDirectory.value ** AllPassFilter
   )
 
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =

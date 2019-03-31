@@ -1,28 +1,24 @@
-# verify that reloading occurs if watchPreWatch returns Watched.Reload
-> addReloadShutdownHook
-> checkReloadCount 0
+# verify that reloading occurs if watchOnStart returns Watch.Reload
+$ copy-file changes/extra.sbt extra.sbt
+
 > ~compile
-> checkReloadCount 1
+> checkReloaded
 
 # verify that the watch terminates when we reach the specified count
 > resetCount
-> set watchPreWatch := { (count: Int, _) => if (count == 2) Watched.CancelWatch else Watched.Ignore }
+> set watchOnIteration := { (count: Int) => if (count == 2) Watch.CancelWatch else Watch.Ignore }
 > ~compile
 > checkCount 2
 
 # verify that the watch terminates and returns an error when we reach the specified count
 > resetCount
-> set watchPreWatch := { (count: Int, _) => if (count == 2) Watched.HandleError else Watched.Ignore }
-# Returning Watched.HandleError causes the '~' command to fail
+> set watchOnIteration := { (count: Int) => if (count == 2) new Watch.HandleError(new Exception("")) else Watch.Ignore }
+# Returning Watch.HandleError causes the '~' command to fail
 -> ~compile
 > checkCount 2
 
 # verify that a re-build is triggered when we reach the specified count
 > resetCount
-> set watchPreWatch := { (count: Int, _) => if (count == 2) Watched.Trigger else if (count == 3) Watched.CancelWatch else Watched.Ignore }
+> set watchOnIteration := { (count: Int) => if (count == 2) Watch.Trigger else if (count == 3) Watch.CancelWatch else Watch.Ignore }
 > ~compile
 > checkCount 3
-
-# verify that the watch exits and returns an error if the task fails
-> set watchPreWatch := { (_, lastStatus: Boolean) => if (lastStatus) Watched.Ignore else Watched.HandleError }
--> ~failingTask
