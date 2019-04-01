@@ -503,7 +503,7 @@ object Keys {
   val resolvedScoped = Def.resolvedScoped
   val pluginData = taskKey[PluginData]("Information from the plugin build needed in the main build definition.").withRank(DTask)
   val globalPluginUpdate = taskKey[UpdateReport]("A hook to get the UpdateReport of the global plugin.").withRank(DTask)
-  val classLoaderCache = taskKey[internal.ClassLoaderCache]("The cache of ClassLoaders to be used for layering in tasks that invoke other java code").withRank(DTask)
+  private[sbt] val classLoaderCache = taskKey[internal.ClassLoaderCache]("The cache of ClassLoaders to be used for layering in tasks that invoke other java code").withRank(DTask)
   private[sbt] val taskRepository = AttributeKey[TaskRepository.Repr]("task-repository", "A repository that can be used to cache arbitrary values for a given task key that can be read or filled during task evaluation.", 10000)
   private[sbt] val taskCancelStrategy = settingKey[State => TaskCancellationStrategy]("Experimental task cancellation handler.").withRank(DTask)
 

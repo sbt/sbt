@@ -1772,7 +1772,7 @@ object Defaults extends BuildCommon {
       Classpaths.addUnmanagedLibrary ++
       Vector(
         TaskRepository.proxy(
-          classLoaderCache,
+          Compile / classLoaderCache,
           // We need a cache of size four so that the subset of the runtime dependencies that are used
           // by the test task layers may be cached without evicting the runtime classloader layers. The
           // cache size should be a multiple of two to support snapshot layers.
@@ -1783,7 +1783,7 @@ object Defaults extends BuildCommon {
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++
     Vector(
       TaskRepository.proxy(
-        classLoaderCache,
+        Test / classLoaderCache,
         // We need a cache of size two for the test dependency layers (regular and snapshot).
         ClassLoaderCache(2)
       )

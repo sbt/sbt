@@ -18,7 +18,7 @@ import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader, NullLoader }
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
-import sbt.librarymanagement.Configurations.Runtime
+import sbt.librarymanagement.Configurations.{ Runtime, Test }
 import PrettyPrint.indent
 
 import scala.annotation.tailrec
@@ -55,7 +55,7 @@ private[sbt] object ClassLoaders {
       dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
       interfaceLoader,
       (Runtime / classLoaderCache).value,
-      classLoaderCache.value,
+      (Test / classLoaderCache).value,
       ClasspathUtilities.createClasspathResources(fullCP, si),
       IO.createUniqueDirectory(taskTemporaryDirectory.value),
       resolvedScoped.value.scope
@@ -88,7 +88,7 @@ private[sbt] object ClassLoaders {
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
         }
         val runtimeCache = (Runtime / classLoaderCache).value
-        val testCache = classLoaderCache.value
+        val testCache = (Test / classLoaderCache).value
         val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.allJars
         val newLoader =
           (classpath: Seq[File]) => {
