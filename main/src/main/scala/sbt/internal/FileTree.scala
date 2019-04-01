@@ -21,7 +21,7 @@ object FileTree {
   private sealed trait CacheOptions
   private case object NoCache extends CacheOptions
   private case object UseCache extends CacheOptions
-  private case object LogDifferences extends CacheOptions
+  private case object Validate extends CacheOptions
   private def toPair(
       filter: Entry[FileAttributes] => Boolean
   )(e: Entry[FileAttributes]): Option[(Path, FileAttributes)] =
@@ -55,14 +55,14 @@ object FileTree {
   private class CachingRepository(underlying: FileTreeRepository[FileAttributes])
       extends Repository {
     lazy val cacheOptions = System.getProperty("sbt.io.filecache") match {
-      case "false" => NoCache
-      case "true"  => UseCache
-      case _       => LogDifferences
+      case "true"     => UseCache
+      case "validate" => Validate
+      case _          => NoCache
     }
     override def get(key: Glob): Seq[(Path, FileAttributes)] = {
       underlying.register(key)
       cacheOptions match {
-        case LogDifferences =>
+        case Validate =>
           val res = Repository.polling.get(key)
           val filter = key.toEntryFilter
           val cacheRes = underlying
