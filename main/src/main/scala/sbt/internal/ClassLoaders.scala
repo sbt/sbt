@@ -48,17 +48,18 @@ private[sbt] object ClassLoaders {
     val fullCP = if (si.isManagedVersion) rawCP else si.allJars.toSeq ++ rawCP
     val exclude = dependencyJars(exportedProducts).value.toSet ++ si.allJars.toSeq
     buildLayers(
-      classLoaderLayeringStrategy.value,
-      si,
-      fullCP,
-      dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude),
-      dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
-      interfaceLoader,
-      (Runtime / classLoaderCache).value,
-      (Test / classLoaderCache).value,
-      ClasspathUtilities.createClasspathResources(fullCP, si),
-      IO.createUniqueDirectory(taskTemporaryDirectory.value),
-      resolvedScoped.value.scope
+      strategy = classLoaderLayeringStrategy.value,
+      si = si,
+      fullCP = fullCP,
+      rawRuntimeDependencies =
+        dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude),
+      allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
+      base = interfaceLoader,
+      runtimeCache = (Runtime / classLoaderCache).value,
+      testCache = (Test / classLoaderCache).value,
+      resources = ClasspathUtilities.createClasspathResources(fullCP, si),
+      tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
+      scope = resolvedScoped.value.scope
     )
   }
 
@@ -93,18 +94,20 @@ private[sbt] object ClassLoaders {
         val newLoader =
           (classpath: Seq[File]) => {
             buildLayers(
-              classLoaderLayeringStrategy.value: @sbtUnchecked,
-              instance,
-              classpath,
-              (dependencyJars(Runtime / dependencyClasspath).value: @sbtUnchecked)
-                .filterNot(exclude),
-              (dependencyJars(dependencyClasspath).value: @sbtUnchecked).filterNot(exclude).toSet,
-              baseLoader,
-              runtimeCache,
-              testCache,
-              ClasspathUtilities.createClasspathResources(classpath, instance),
-              taskTemporaryDirectory.value: @sbtUnchecked,
-              resolvedScope
+              strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
+              si = instance,
+              fullCP = classpath,
+              rawRuntimeDependencies =
+                (dependencyJars(Runtime / dependencyClasspath).value: @sbtUnchecked)
+                  .filterNot(exclude),
+              allDependencies =
+                (dependencyJars(dependencyClasspath).value: @sbtUnchecked).filterNot(exclude).toSet,
+              base = baseLoader,
+              runtimeCache = runtimeCache,
+              testCache = testCache,
+              resources = ClasspathUtilities.createClasspathResources(classpath, instance),
+              tmp = taskTemporaryDirectory.value: @sbtUnchecked,
+              scope = resolvedScope
             )
           }
         new Run(newLoader, trapExit.value)
