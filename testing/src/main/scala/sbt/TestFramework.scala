@@ -122,9 +122,25 @@ final class TestRunner(
       val results = new scala.collection.mutable.ListBuffer[Event]
       val handler = new EventHandler { def handle(e: Event): Unit = { results += e } }
       val loggers: Vector[ContentLogger] = listeners.flatMap(_.contentLogger(testDefinition))
+      def errorEvents(e: Throwable): Array[sbt.testing.Task] = {
+        val taskDef = testTask.taskDef
+        val event = new Event {
+          val status = Status.Error
+          val throwable = new OptionalThrowable(e)
+          val fullyQualifiedName = taskDef.fullyQualifiedName
+          val selector = new TestSelector(name)
+          val fingerprint = taskDef.fingerprint
+          val duration = -1L
+        }
+        results += event
+        Array.empty
+      }
       val nestedTasks =
         try testTask.execute(handler, loggers.map(_.log).toArray)
-        finally {
+        catch {
+          case NonFatal(e)           => errorEvents(e)
+          case e: IllegalAccessError => errorEvents(e)
+        } finally {
           loggers.foreach(_.flush())
         }
       val event = TestEvent(results)

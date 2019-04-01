@@ -1,0 +1,9 @@
+-> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> run
+
+> set Runtime / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaInstance
+
+> run

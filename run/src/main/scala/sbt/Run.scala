@@ -93,11 +93,26 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
     val main = getMainMethod(mainClassName, loader)
     invokeMain(loader, main, options)
   }
-  private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]): Unit = {
+  private def invokeMain(
+      loader: ClassLoader,
+      main: Method,
+      options: Seq[String]
+  ): Unit = {
     val currentThread = Thread.currentThread
     val oldLoader = Thread.currentThread.getContextClassLoader
     currentThread.setContextClassLoader(loader)
-    try { main.invoke(null, options.toArray[String]); () } finally {
+    try { main.invoke(null, options.toArray[String]); () } catch {
+      case t: Throwable =>
+        t.getCause match {
+          case e: java.lang.IllegalAccessError =>
+            val msg = s"Error running $main.\n$e\n" +
+              "If using a layered classloader, this can occur if jvm package private classes are " +
+              "accessed across layers. This can be fixed by changing to the Flat or " +
+              "ScalaInstance class loader layering strategies."
+            throw new IllegalAccessError(msg)
+          case _ => throw t
+        }
+    } finally {
       currentThread.setContextClassLoader(oldLoader)
     }
   }

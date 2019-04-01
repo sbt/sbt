@@ -1056,22 +1056,21 @@ object Defaults extends BuildCommon {
     val result = output map { out =>
       out.events.foreach {
         case (suite, e) =>
-          e.throwables
-            .collectFirst {
-              case t
-                  if t
-                    .isInstanceOf[NoClassDefFoundError] && strategy != ClassLoaderLayeringStrategy.Flat =>
-                t
-            }
-            .foreach { t =>
-              s.log.error(
-                s"Test suite $suite failed with $t. This may be due to the ClassLoaderLayeringStrategy"
-                  + s" ($strategy) used by your task. This issue may be resolved by changing the"
-                  + " ClassLoaderLayeringStrategy in your configuration (generally Test or IntegrationTest),"
-                  + "e.g.:\nTest / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat\n"
-                  + "See ClassLoaderLayeringStrategy.scala for the full list of options."
-              )
-            }
+          if (strategy != ClassLoaderLayeringStrategy.Flat) {
+            e.throwables
+              .find { t =>
+                t.isInstanceOf[NoClassDefFoundError] || t.isInstanceOf[IllegalAccessError]
+              }
+              .foreach { t =>
+                s.log.error(
+                  s"Test suite $suite failed with $t. This may be due to the ClassLoaderLayeringStrategy"
+                    + s" ($strategy) used by your task. This issue may be resolved by changing the"
+                    + " ClassLoaderLayeringStrategy in your configuration (generally Test or IntegrationTest),"
+                    + " e.g.:\nTest / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat\n"
+                    + "See ClassLoaderLayeringStrategy.scala for the full list of options."
+                )
+              }
+          }
       }
       val summaries =
         runners map {
