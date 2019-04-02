@@ -42,6 +42,16 @@ object DatatypeConfig {
       "sbt.internal.librarymanagement.formats.LogicalClockFormats" :: Nil
     }
 
+    case "sbt.librarymanagement.CrossVersion" => { _ =>
+      "sbt.librarymanagement.CrossVersionFormats" ::
+      "sbt.librarymanagement.DisabledFormats" ::
+      "sbt.librarymanagement.BinaryFormats" ::
+      "sbt.librarymanagement.ConstantFormats" ::
+      "sbt.librarymanagement.PatchFormats" ::
+      "sbt.librarymanagement.FullFormats" ::
+      Nil
+    }
+
     // TODO: These are handled by BasicJsonProtocol, and sbt-datatype should handle them by default, imo
     case "Option" | "Set" | "scala.Vector" => { tpe =>
       getFormats(oneArg(tpe))
