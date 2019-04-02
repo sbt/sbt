@@ -5,30 +5,42 @@ group: stable
 language: scala
 
 scala:
-  - 2.12.7
+  - 2.12.8
 
 env:
   global:
-    - JABBA_HOME=/home/travis/.jabba
     - secure: D9Ckfxq/5n+41REwuPBwb0CHRVSPtCJRN+N1FWNFjUnfCHZQCeclP8Ydp9ql/fZxICG8rnCOI5XW0j2YeAiR+abpQNmQ42pKMEjNT0VQDZ0I1lQfiDL071Kj+ui9AH+TqAvBT011u72ML52iDfV0WaL/Skf1Noh0lXc+IscRI56OLRv+YU5n5aNZhXon6AZHU11rRCg4aMwaHr+U9ISSUXc6OtJeFC/SAYNUNYEOZwTOJ4Y2+VrKAmKuIZ2jjkMF13eKMzXw5g+u8V3AmOpIm1RiyS2dAgAoc+r2ucF9RUMsfiZIF0XBu65iv9hZP5m0q11n6IFEKC9bpLsTYCAwX2MgVayoHvDQv1gkL/cA1gkqmf0Kkx3oc33aYLgsCydj2Lbg/myKD+GeHxr5WhyeSEee3Bwj+KGNwvjfcaPEECCor6yilKGdIsuYbfHzu8B8moNjwH7ui5f5w/1xuWrdaSA23LOIYbhP+2rM894JIYNNt5vlMLoYMzmC9N1E/qyBRYSdfMr+Uh8qI+j85hkKKgEffSu9f55IH6bk6Lq08Nc4d64KXUISDNJj59MrJcadatsS2vp+u39zR/iIewW4a017bAFfv57AJb6SwLdvASG+psFH8MRPD6xYPZKNw4Al/4YMc+oXONplSXyOu/jQYjSfK9tyvJwpoY7tLh6vEBc=
 
 matrix:
   include:
   - env:
-      - TRAVIS_JDK=adopt@1.8.192-12
+      - TRAVIS_JDK=11.0.2.hs-adpt
   - env:
-      - TRAVIS_JDK=adopt@1.11.0-1
+      - TRAVIS_JDK=8.0.202.hs-adpt
 
 before_install:
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.11.0/install.sh | bash && . ~/.jabba/jabba.sh
 
-install:
-  - $JABBA_HOME/bin/jabba install $TRAVIS_JDK
-  - unset _JAVA_OPTIONS
-  - export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
+before_install:
+  # adding $HOME/.sdkman to cache would create an empty directory, which interferes with the initial installation
+  - "[[ -d /home/travis/.sdkman/ ]] && [[ -d /home/travis/.sdkman/bin/ ]] || rm -rf /home/travis/.sdkman/"
+  - curl -sL https://get.sdkman.io | bash
+  - echo sdkman_auto_answer=true > /home/travis/.sdkman/etc/config
+  - source "/home/travis/.sdkman/bin/sdkman-init.sh"
 
-script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
-  ++$TRAVIS_SCALA_VERSION
+install:
+  - sdk install java $TRAVIS_JDK
+  - unset _JAVA_OPTIONS
+  - java -Xmx32m -version
+  # detect sbt version from project/build.properties
+  - export TRAVIS_SBT=$(grep sbt.version= project/build.properties | sed -e 's/sbt.version=//g' ) && echo "sbt $TRAVIS_SBT"
+  - sdk install sbt $TRAVIS_SBT
+  # override Travis CI's SBT_OPTS
+  - unset SBT_OPTS
+  - export JAVA_OPTS="-Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M"
+
+script: sbt -Dfile.encoding=UTF8
+  ++$TRAVIS_SCALA_VERSION!
   mimaReportBinaryIssues
   scalafmt::test test:scalafmt::test sbt:scalafmt::test
   whitesourceCheckPolicies
@@ -46,4 +58,4 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot
-    - $HOME/.jabba/jdk
+    - $HOME/.sdkman
