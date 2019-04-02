@@ -112,7 +112,9 @@ object ClassLoaderLayeringStrategy {
    * Add the TestDependencies layer on top of the RuntimeDependencies layer on top of the
    * ScalaInstance layer. This differs from TestDependencies in that it will not reload the
    * runtime classpath. The drawback to using this is that if the test dependencies evict
-   * classes provided in the runtime layer, then tests can fail.
+   * classes provided in the runtime layer, then tests can fail. In order for sharing the runtime
+   * layer to work, it is necessary to set [[Keys.bgCopyClasspath]] to false. Otherwise the
+   * runtime and test classpaths are completely different.
    */
   case object ShareRuntimeDependenciesLayerWithTestDependencies
       extends ScalaInstance

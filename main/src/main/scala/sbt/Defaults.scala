@@ -1781,7 +1781,15 @@ object Defaults extends BuildCommon {
           // by the test task layers may be cached without evicting the runtime classloader layers. The
           // cache size should be a multiple of two to support snapshot layers.
           ClassLoaderCache(4)
-        )
+        ),
+        bgCopyClasspath in bgRun := {
+          val old = (bgCopyClasspath in bgRun).value
+          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+        },
+        bgCopyClasspath in bgRunMain := {
+          val old = (bgCopyClasspath in bgRunMain).value
+          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+        },
       )
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++
