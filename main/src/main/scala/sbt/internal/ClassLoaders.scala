@@ -9,36 +9,20 @@ package sbt
 package internal
 
 import java.io.File
-import java.net.URLClassLoader
+import java.net.{ URL, URLClassLoader }
 
+import sbt.ClassLoaderLayeringStrategy.{ ScalaInstance => ScalaInstanceLayer, _ }
 import sbt.Keys._
 import sbt.SlashSyntax0._
 import sbt.internal.inc.ScalaInstance
-import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader, NullLoader }
+import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
 import sbt.librarymanagement.Configurations.{ Runtime, Test }
-import PrettyPrint.indent
-
-import scala.annotation.tailrec
-import ClassLoaderLayeringStrategy.{ ScalaInstance => ScalaInstanceLayer, _ }
 
 private[sbt] object ClassLoaders {
-  private[this] lazy val interfaceLoader =
-    combine(
-      classOf[sbt.testing.Framework].getClassLoader,
-      new NullLoader,
-      toString = "sbt.testing.Framework interface ClassLoader"
-    )
-  private[this] lazy val baseLoader = {
-    @tailrec
-    def getBase(classLoader: ClassLoader): ClassLoader = classLoader.getParent match {
-      case null   => classLoader
-      case loader => getBase(loader)
-    }
-    getBase(ClassLoaders.getClass.getClassLoader)
-  }
+  private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
   /*
    * Get the class loader for a test task. The configuration could be IntegrationTest or Test.
    */
@@ -54,7 +38,6 @@ private[sbt] object ClassLoaders {
       rawRuntimeDependencies =
         dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude),
       allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
-      base = interfaceLoader,
       runtimeCache = (Runtime / classLoaderCache).value,
       testCache = (Test / classLoaderCache).value,
       resources = ClasspathUtilities.createClasspathResources(fullCP, si),
@@ -101,7 +84,6 @@ private[sbt] object ClassLoaders {
               fullCP = classpath,
               rawRuntimeDependencies = runtimeDeps,
               allDependencies = allDeps,
-              base = baseLoader,
               runtimeCache = runtimeCache,
               testCache = testCache,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
@@ -130,7 +112,6 @@ private[sbt] object ClassLoaders {
       fullCP: Seq[File],
       rawRuntimeDependencies: Seq[File],
       allDependencies: Seq[File],
-      base: ClassLoader,
       runtimeCache: ClassLoaderCache,
       testCache: ClassLoaderCache,
       resources: Map[String, String],
@@ -139,7 +120,7 @@ private[sbt] object ClassLoaders {
   ): ClassLoader = {
     val isTest = scope.config.toOption.map(_.name) == Option("test")
     val raw = strategy match {
-      case Flat => flatLoader(fullCP, base)
+      case Flat => flatLoader(fullCP, interfaceLoader)
       case _ =>
         val (layerDependencies, layerTestDependencies) = strategy match {
           case ShareRuntimeDependenciesLayerWithTestDependencies if isTest => (true, true)
@@ -160,7 +141,7 @@ private[sbt] object ClassLoaders {
         val allTestDependencies = if (layerTestDependencies) allDependenciesSet else Set.empty[File]
         val allRuntimeDependencies = (if (layerDependencies) rawRuntimeDependencies else Nil).toSet
 
-        val scalaInstanceLayer = combine(base, loader(si))
+        val scalaInstanceLayer = new ScalaInstanceLoader(si)
         // layer 2
         val runtimeDependencySet = allDependenciesSet intersect allRuntimeDependencies
         val runtimeDependencies = rawRuntimeDependencies.filter(runtimeDependencySet)
@@ -204,49 +185,42 @@ private[sbt] object ClassLoaders {
     if (snapshots.isEmpty) jarLoader else cache.get((snapshots, jarLoader, resources, tmp))
   }
 
-  // Code related to combining two classloaders that primarily exists so the test loader correctly
-  // loads the testing framework using the same classloader as sbt itself.
-  private val interfaceFilter = (name: String) =>
-    name.startsWith("org.scalatools.testing.") || name.startsWith("sbt.testing.") || name
-      .startsWith("java.") || name.startsWith("sun.")
-  private val notInterfaceFilter = (name: String) => !interfaceFilter(name)
-  private class WrappedDualLoader(
-      val parent: ClassLoader,
-      val child: ClassLoader,
-      string: => String
-  ) extends ClassLoader(
-        new DualLoader(parent, interfaceFilter, _ => false, child, notInterfaceFilter, _ => true)
-      ) {
+  private class ScalaInstanceLoader(val instance: ScalaInstance)
+      extends URLClassLoader(instance.allJars.map(_.toURI.toURL), interfaceLoader) {
     override def equals(o: Any): Boolean = o match {
-      case that: WrappedDualLoader => this.parent == that.parent && this.child == that.child
-      case _                       => false
+      case that: ScalaInstanceLoader => this.instance.allJars.sameElements(that.instance.allJars)
+      case _                         => false
     }
-    override def hashCode: Int = (parent.hashCode * 31) ^ child.hashCode
-    override lazy val toString: String = string
+    override def hashCode: Int = instance.hashCode
+    override lazy val toString: String =
+      s"ScalaInstanceLoader($interfaceLoader, jars = {${instance.allJars.mkString(", ")}})"
   }
-  private def combine(parent: ClassLoader, child: ClassLoader, toString: String): ClassLoader =
-    new WrappedDualLoader(parent, child, toString)
-  private def combine(parent: ClassLoader, child: ClassLoader): ClassLoader =
-    new WrappedDualLoader(
-      parent,
-      child,
-      s"WrappedDualLoader(\n  parent =\n${indent(parent, 4)}"
-        + s"\n  child =\n${indent(child, 4)}\n)"
-    )
 
   // helper methods
   private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
     new URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent)
 
-  // This makes the toString method of the ScalaInstance classloader much more readable, but
-  // it is not strictly necessary.
-  private def loader(si: ScalaInstance): ClassLoader = new ClassLoader(si.loader) {
-    override lazy val toString: String =
-      "ScalaInstanceClassLoader(\n  instance = " +
-        s"${indent(si.toString.split(",").mkString("\n  ", ",\n  ", "\n"), 4)}\n)"
-    // Delegate equals to that.equals in case that is itself some kind of wrapped classloader that
-    // needs to delegate its equals method to the delegated ClassLoader.
-    override def equals(that: Any): Boolean = if (that != null) that.equals(si.loader) else false
-    override def hashCode: Int = si.loader.hashCode
+}
+
+private[sbt] object SbtMetaBuildClassLoader {
+  private[this] implicit class Ops(val c: ClassLoader) {
+    def urls: Array[URL] = c match {
+      case u: URLClassLoader => u.getURLs
+      case cl =>
+        throw new IllegalStateException(s"sbt was launched with a non URLClassLoader: $cl")
+    }
+  }
+  def apply(libraryLoader: ClassLoader, fullLoader: ClassLoader): ClassLoader = {
+    val interfaceFilter: URL => Boolean = _.getFile.endsWith("test-interface-1.0.jar")
+    val (interfaceURL, rest) = fullLoader.urls.partition(interfaceFilter)
+    val interfaceLoader = new URLClassLoader(interfaceURL, libraryLoader.getParent) {
+      override def toString: String = s"SbtTestInterfaceClassLoader(${getURLs.head})"
+    }
+    val updatedLibraryLoader = new URLClassLoader(libraryLoader.urls, interfaceLoader) {
+      override def toString: String = s"ScalaClassLoader(jars = {${getURLs.mkString(", ")}}"
+    }
+    new URLClassLoader(rest, updatedLibraryLoader) {
+      override def toString: String = s"SbtMetaBuildClassLoader"
+    }
   }
 }
