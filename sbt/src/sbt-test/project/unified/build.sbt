@@ -48,9 +48,10 @@ Provided by:
 Defined at:
 \t(sbt.Defaults.testTasks) Defaults.scala:670
 Dependencies:
-\tTest / executeTests
-\tTest / test / streams
 \tTest / state
+\tTest / testLoader
+\tTest / test / streams
+\tTest / executeTests
 \tTest / test / testResultLogger
 Delegates:
 \tTest / test

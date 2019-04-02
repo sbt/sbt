@@ -10,14 +10,15 @@ package sbt
 import java.io.File
 import java.lang.reflect.{ Method, Modifier }
 import Modifier.{ isPublic, isStatic }
+
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.MessageOnlyException
-
 import sbt.io.Path
-
 import sbt.util.Logger
-import scala.util.{ Try, Success, Failure }
+
+import scala.reflect.internal.util.ScalaClassLoader.URLClassLoader
+import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 import scala.sys.process.Process
 
@@ -90,8 +91,15 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
   ): Unit = {
     log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
     val loader = newLoader(classpath)
-    val main = getMainMethod(mainClassName, loader)
-    invokeMain(loader, main, options)
+    try {
+      val main = getMainMethod(mainClassName, loader)
+      invokeMain(loader, main, options)
+    } finally {
+      loader match {
+        case u: URLClassLoader => u.close()
+        case _                 =>
+      }
+    }
   }
   private def invokeMain(
       loader: ClassLoader,

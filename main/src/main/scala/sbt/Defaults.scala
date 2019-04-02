@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.{ File, PrintWriter }
-import java.net.{ URI, URL }
+import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -787,9 +787,14 @@ object Defaults extends BuildCommon {
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
+      val loader = testLoader.value match { case u: URLClassLoader => Some(u); case _ => None }
       val trl = (testResultLogger in (Test, test)).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
-      trl.run(streams.value.log, executeTests.value, taskName)
+      try {
+        trl.run(streams.value.log, executeTests.value, taskName)
+      } finally {
+        loader.foreach(_.close())
+      }
     },
     testOnly := inputTests(testOnly).evaluated,
     testQuick := inputTests(testQuick).evaluated
