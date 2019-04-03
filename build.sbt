@@ -257,6 +257,11 @@ lazy val lmIvy = (project in file("ivy"))
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.ExternalIvyConfiguration.copy*"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.InlineIvyConfiguration.copy*"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.IvyPaths.copy*"),
+
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler.urlFactory"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler.http"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler.open"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler.this"),
     ),
   )
 
