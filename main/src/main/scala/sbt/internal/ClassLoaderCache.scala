@@ -14,17 +14,17 @@ import sbt.internal.util.TypeFunctions.Id
 
 import scala.annotation.tailrec
 
-sealed trait ClassLoaderCache
+private[sbt] sealed trait ClassLoaderCache
     extends Repository[Id, (Seq[File], ClassLoader, Map[String, String], File), ClassLoader]
 
-object ClassLoaderCache {
+private[sbt] object ClassLoaderCache {
   private type Resources = Map[String, String]
   private sealed trait CachedClassLoader extends ClassLoader {
     def close(): Unit
   }
   private sealed trait StableClassLoader extends CachedClassLoader
   private sealed trait SnapshotClassLoader extends CachedClassLoader
-  def apply(maxSize: Int): ClassLoaderCache =
+  def apply(maxSize: Int): ClassLoaderCache = {
     new ClassLoaderCache {
       private final def mktmp(tmp: File): File =
         if (maxSize > 0) Files.createTempDirectory("sbt-jni").toFile else tmp
@@ -89,10 +89,5 @@ object ClassLoaderCache {
         }
       }
     }
-  def empty(newLoader: (Seq[File], ClassLoader, Resources, File) => ClassLoader): ClassLoaderCache =
-    new ClassLoaderCache {
-      override def get(key: (Seq[File], ClassLoader, Resources, File)): ClassLoader =
-        newLoader.tupled(key)
-      override def close(): Unit = {}
-    }
+  }
 }

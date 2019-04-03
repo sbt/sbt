@@ -177,6 +177,7 @@ final class ScriptedTests(
       case "classloader-cache/jni"                                  => LauncherBased // sbt/Package$
       case "classloader-cache/library-mismatch"                     => LauncherBased // sbt/Package$
       case "classloader-cache/runtime-layers"                       => LauncherBased // sbt/Package$
+      case "classloader-cache/package-private"                      => LauncherBased // sbt/Package$
       case "compiler-project/dotty-compiler-plugin"                 => LauncherBased // sbt/Package$
       case "compiler-project/run-test"                              => LauncherBased // sbt/Package$
       case "compiler-project/src-dep-plugin"                        => LauncherBased // sbt/Package$

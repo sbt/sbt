@@ -10,14 +10,15 @@ package sbt
 import java.io.File
 import java.lang.reflect.{ Method, Modifier }
 import Modifier.{ isPublic, isStatic }
+
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.MessageOnlyException
-
 import sbt.io.Path
-
 import sbt.util.Logger
-import scala.util.{ Try, Success, Failure }
+
+import scala.reflect.internal.util.ScalaClassLoader.URLClassLoader
+import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 import scala.sys.process.Process
 
@@ -90,14 +91,36 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
   ): Unit = {
     log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
     val loader = newLoader(classpath)
-    val main = getMainMethod(mainClassName, loader)
-    invokeMain(loader, main, options)
+    try {
+      val main = getMainMethod(mainClassName, loader)
+      invokeMain(loader, main, options)
+    } finally {
+      loader match {
+        case u: URLClassLoader => u.close()
+        case _                 =>
+      }
+    }
   }
-  private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]): Unit = {
+  private def invokeMain(
+      loader: ClassLoader,
+      main: Method,
+      options: Seq[String]
+  ): Unit = {
     val currentThread = Thread.currentThread
     val oldLoader = Thread.currentThread.getContextClassLoader
     currentThread.setContextClassLoader(loader)
-    try { main.invoke(null, options.toArray[String]); () } finally {
+    try { main.invoke(null, options.toArray[String]); () } catch {
+      case t: Throwable =>
+        t.getCause match {
+          case e: java.lang.IllegalAccessError =>
+            val msg = s"Error running $main.\n$e\n" +
+              "If using a layered classloader, this can occur if jvm package private classes are " +
+              "accessed across layers. This can be fixed by changing to the Flat or " +
+              "ScalaInstance class loader layering strategies."
+            throw new IllegalAccessError(msg)
+          case _ => throw t
+        }
+    } finally {
       currentThread.setContextClassLoader(oldLoader)
     }
   }

@@ -56,7 +56,7 @@ object RunFromSourceMain {
     }
 
   @tailrec private def launch(conf: AppConfiguration): Option[Int] =
-    new xMain().run(conf) match {
+    xMainImpl.run(conf) match {
       case e: xsbti.Exit     => Some(e.code)
       case _: xsbti.Continue => None
       case r: xsbti.Reboot   => launch(getConf(conf.baseDirectory(), r.arguments()))

@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.{ File, IOException }
+import java.lang.reflect.InvocationTargetException
 import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
@@ -27,6 +28,7 @@ import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
+import xsbti.{ AppMain, AppProvider, ComponentProvider, ScalaProvider }
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
@@ -35,6 +37,47 @@ import scala.util.control.NonFatal
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    val modifiedConfiguration = new ModifiedConfiguration(configuration)
+    val loader = modifiedConfiguration.provider.loader
+    // No need to memoize the old class loader. It is reset by the launcher anyway.
+    Thread.currentThread.setContextClassLoader(loader)
+    val clazz = loader.loadClass("sbt.xMainImpl$")
+    val instance = clazz.getField("MODULE$").get(null)
+    val runMethod = clazz.getMethod("run", classOf[xsbti.AppConfiguration])
+    try {
+      runMethod.invoke(instance, modifiedConfiguration).asInstanceOf[xsbti.MainResult]
+    } catch {
+      case e: InvocationTargetException =>
+        // This propogates xsbti.FullReload to the launcher
+        throw e.getCause
+    }
+  }
+  /*
+   * Replaces the AppProvider.loader method with a new loader that puts the sbt test interface
+   * jar ahead of the rest of the sbt classpath in the classloading hierarchy.
+   */
+  private class ModifiedConfiguration(val configuration: xsbti.AppConfiguration)
+      extends xsbti.AppConfiguration {
+    private[this] val initLoader = configuration.provider.loader
+    private[this] val scalaLoader = configuration.provider.scalaProvider.loader
+    private[this] val metaLoader: ClassLoader = SbtMetaBuildClassLoader(scalaLoader, initLoader)
+    private class ModifiedAppProvider(val appProvider: AppProvider) extends AppProvider {
+      override def scalaProvider(): ScalaProvider = appProvider.scalaProvider
+      override def id(): xsbti.ApplicationID = appProvider.id()
+      override def loader(): ClassLoader = metaLoader
+      override def mainClass(): Class[_ <: AppMain] = appProvider.mainClass()
+      override def entryPoint(): Class[_] = appProvider.entryPoint()
+      override def newMain(): AppMain = appProvider.newMain()
+      override def mainClasspath(): Array[File] = appProvider.mainClasspath()
+      override def components(): ComponentProvider = appProvider.components()
+    }
+    override def arguments(): Array[String] = configuration.arguments
+    override def baseDirectory(): File = configuration.baseDirectory
+    override def provider(): AppProvider = new ModifiedAppProvider(configuration.provider)
+  }
+}
+private[sbt] object xMainImpl {
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
     import BasicCommands.early
     import BuiltinCommands.defaults

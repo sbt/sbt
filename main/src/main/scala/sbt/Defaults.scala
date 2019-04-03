@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.{ File, PrintWriter }
-import java.net.{ URI, URL }
+import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -787,9 +787,14 @@ object Defaults extends BuildCommon {
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
+      val loader = testLoader.value match { case u: URLClassLoader => Some(u); case _ => None }
       val trl = (testResultLogger in (Test, test)).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
-      trl.run(streams.value.log, executeTests.value, taskName)
+      try {
+        trl.run(streams.value.log, executeTests.value, taskName)
+      } finally {
+        loader.foreach(_.close())
+      }
     },
     testOnly := inputTests(testOnly).evaluated,
     testQuick := inputTests(testQuick).evaluated
@@ -1056,22 +1061,21 @@ object Defaults extends BuildCommon {
     val result = output map { out =>
       out.events.foreach {
         case (suite, e) =>
-          e.throwables
-            .collectFirst {
-              case t
-                  if t
-                    .isInstanceOf[NoClassDefFoundError] && strategy != ClassLoaderLayeringStrategy.Flat =>
-                t
-            }
-            .foreach { t =>
-              s.log.error(
-                s"Test suite $suite failed with $t. This may be due to the ClassLoaderLayeringStrategy"
-                  + s" ($strategy) used by your task. This issue may be resolved by changing the"
-                  + " ClassLoaderLayeringStrategy in your configuration (generally Test or IntegrationTest),"
-                  + "e.g.:\nTest / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat\n"
-                  + "See ClassLoaderLayeringStrategy.scala for the full list of options."
-              )
-            }
+          if (strategy != ClassLoaderLayeringStrategy.Flat) {
+            e.throwables
+              .find { t =>
+                t.isInstanceOf[NoClassDefFoundError] || t.isInstanceOf[IllegalAccessError]
+              }
+              .foreach { t =>
+                s.log.error(
+                  s"Test suite $suite failed with $t. This may be due to the ClassLoaderLayeringStrategy"
+                    + s" ($strategy) used by your task. This issue may be resolved by changing the"
+                    + " ClassLoaderLayeringStrategy in your configuration (generally Test or IntegrationTest),"
+                    + " e.g.:\nTest / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat\n"
+                    + "See ClassLoaderLayeringStrategy.scala for the full list of options."
+                )
+              }
+          }
       }
       val summaries =
         runners map {
@@ -1772,18 +1776,26 @@ object Defaults extends BuildCommon {
       Classpaths.addUnmanagedLibrary ++
       Vector(
         TaskRepository.proxy(
-          classLoaderCache,
+          Compile / classLoaderCache,
           // We need a cache of size four so that the subset of the runtime dependencies that are used
           // by the test task layers may be cached without evicting the runtime classloader layers. The
           // cache size should be a multiple of two to support snapshot layers.
           ClassLoaderCache(4)
-        )
+        ),
+        bgCopyClasspath in bgRun := {
+          val old = (bgCopyClasspath in bgRun).value
+          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+        },
+        bgCopyClasspath in bgRunMain := {
+          val old = (bgCopyClasspath in bgRunMain).value
+          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+        },
       )
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++
     Vector(
       TaskRepository.proxy(
-        classLoaderCache,
+        Test / classLoaderCache,
         // We need a cache of size two for the test dependency layers (regular and snapshot).
         ClassLoaderCache(2)
       )
