@@ -5,9 +5,8 @@ import coursier.cache.FileCache
 import coursier.core._
 import coursier.internal.Typelevel
 import coursier.lmcoursier._
-import coursier.lmcoursier.Inputs.withAuthenticationByHost
 import coursier.sbtcoursier.Keys._
-import coursier.sbtcoursiershared.InputsTasks.authenticationByHostTask
+import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
 import sbt.Keys._
@@ -82,8 +81,6 @@ object ResolutionTasks {
 
       val ivyProperties = ResolutionParams.defaultIvyProperties()
 
-      val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
-
       val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
 
       val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
@@ -92,7 +89,7 @@ object ResolutionTasks {
 
       // TODO Warn about possible duplicated modules from source repositories?
 
-      val authenticationByHost = authenticationByHostTask.value
+      val credentials = credentialsTask.value
 
       val parentProjectCache: ProjectCache = coursierParentProjectCache.value
         .get(resolvers)
@@ -104,11 +101,9 @@ object ResolutionTasks {
           FromSbt.repository(
             resolver,
             ivyProperties,
-            log,
-            authenticationByRepositoryId.get(resolver.name)
+            log
           )
         }
-        .map(withAuthenticationByHost(_, authenticationByHost))
 
       val resOrError = ResolutionRun.resolutions(
         ResolutionParams(
@@ -128,7 +123,7 @@ object ResolutionTasks {
             .withCachePolicies(cachePolicies)
             .withTtl(ttl)
             .withChecksums(checksums)
-          ,
+            .withCredentials(credentials),
           parallel = parallelDownloads,
           params = coursier.params.ResolutionParams()
             .withMaxIterations(maxIterations)
