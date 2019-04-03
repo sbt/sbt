@@ -5,7 +5,7 @@ import java.io.File
 import _root_.coursier.{Artifact, Organization, Resolution, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
 import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
-import coursier.cache.{CacheDefaults, CachePolicy, FileCache}
+import coursier.cache.{CacheDefaults, FileCache}
 import coursier.internal.Typelevel
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
@@ -75,7 +75,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val ttl = CacheDefaults.ttl
     val loggerOpt = conf.logger
     val cache = conf.cache.getOrElse(CacheDefaults.location)
-    val cachePolicies = CachePolicy.default
+    val cachePolicies = CacheDefaults.cachePolicies
     val checksums = CacheDefaults.checksums
     val projectName = "" // used for logging only…
 

@@ -2,9 +2,10 @@ package coursier.sbtcoursier
 
 import coursier.core._
 import coursier.lmcoursier._
+import coursier.parse.ModuleParser
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
-import coursier.util.{Parse, Print}
+import coursier.util.Print
 import sbt.Def
 import sbt.Keys._
 
@@ -102,7 +103,7 @@ object DisplayTasks {
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false
   ) = Def.task {
-    val module = Parse.module(moduleName, scalaVersion.value)
+    val module = ModuleParser.module(moduleName, scalaVersion.value)
       .right
       .getOrElse(throw new RuntimeException(s"Could not parse module `$moduleName`"))
 
