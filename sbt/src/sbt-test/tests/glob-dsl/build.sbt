@@ -1,3 +1,8 @@
+import java.nio.file._
+
+import sbt.nio.Keys._
+import sbt.nio.file._
+
 // The project contains two files: { Foo.txt, Bar.md } in the subdirector base/subdir/nested-subdir
 
 // Check that we can correctly extract Foo.txt with a recursive source
@@ -5,7 +10,7 @@ val foo = taskKey[Seq[File]]("Retrieve Foo.txt")
 
 foo / fileInputs += baseDirectory.value ** "*.txt"
 
-foo := (foo / fileInputs).value.all.map(_._1.toFile)
+foo := (foo / fileInputs).value.all(fileTreeView.value).map(_._1.toFile)
 
 val checkFoo = taskKey[Unit]("Check that the Foo.txt file is retrieved")
 
@@ -16,7 +21,7 @@ val bar = taskKey[Seq[File]]("Retrieve Bar.md")
 
 bar / fileInputs += baseDirectory.value / "base/subdir/nested-subdir" * "*.md"
 
-bar := (bar / fileInputs).value.all.map(_._1.toFile)
+bar := (bar / fileInputs).value.all(fileTreeView.value).map(_._1.toFile)
 
 val checkBar = taskKey[Unit]("Check that the Bar.md file is retrieved")
 
@@ -32,7 +37,8 @@ val checkAll = taskKey[Unit]("Check that the Bar.md file is retrieved")
 checkAll := {
   import sbt.dsl.LinterLevel.Ignore
   val expected = Set("Foo.txt", "Bar.md").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
-  assert((all / fileInputs).value.all.map(_._1.toFile).toSet == expected)
+  val actual = (all / fileInputs).value.all(fileTreeView.value).filter(_._2.isRegularFile).map(_._1.toFile).toSet
+  assert(actual == expected)
 }
 
 val set = taskKey[Seq[File]]("Specify redundant sources in a set")
@@ -45,10 +51,10 @@ set / fileInputs ++= Seq(
 val checkSet = taskKey[Unit]("Verify that redundant sources are handled")
 
 checkSet := {
-  val redundant = (set / fileInputs).value.all.map(_._1.toFile)
+  val redundant = (set / fileInputs).value.all(fileTreeView.value).map(_._1.toFile)
   assert(redundant.size == 2)
 
-  val deduped = (set / fileInputs).value.toSet[Glob].all.map(_._1.toFile)
+  val deduped = (set / fileInputs).value.toSet[Glob].all(fileTreeView.value).map(_._1.toFile)
   val expected = Seq("Bar.md", "Foo.txt").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
   assert(deduped.sorted == expected)
 }
@@ -56,16 +62,15 @@ checkSet := {
 val depth = taskKey[Seq[File]]("Specify redundant sources with limited depth")
 val checkDepth = taskKey[Unit]("Check that the Bar.md file is retrieved")
 
-depth / fileInputs ++= Seq(
-  sbt.io.Glob(baseDirectory.value / "base", -DirectoryFilter, 2),
-  sbt.io.Glob(baseDirectory.value / "base" / "subdir", -DirectoryFilter, 1)
-)
+depth / fileInputs ++= {
+  Seq(
+    Glob(baseDirectory.value / "base", AnyPath / AnyPath / "*.md"),
+    Glob(baseDirectory.value / "base" / "subdir", AnyPath / "*.md"),
+  )
+}
 
 checkDepth := {
-  val redundant = (depth / fileInputs).value.all.map(_._1.toFile)
-  assert(redundant.size == 2)
-
-  val deduped = (depth / fileInputs).value.toSet[Glob].all.map(_._1.toFile)
-  val expected = Seq("Bar.md", "Foo.txt").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
-  assert(deduped.sorted == expected)
+  val expected = Seq("Bar.md").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
+  val actual = (depth / fileInputs).value.all(fileTreeView.value).map(_._1.toFile)
+  assert(actual == expected)
 }

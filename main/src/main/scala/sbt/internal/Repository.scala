@@ -35,6 +35,7 @@ import scala.collection.JavaConverters._
  */
 trait Repository[M[_], K, V] extends AutoCloseable {
   def get(key: K): M[V]
+  override def close(): Unit = {}
 }
 
 private[sbt] final class MutableRepository[K, V] extends Repository[Option, K, V] {

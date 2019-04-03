@@ -18,14 +18,15 @@ import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
 import sbt.internal.CommandStrings.BootCommand
-import sbt.internal.FileManagement.CopiedFileTreeRepository
 import sbt.internal._
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
 import sbt.internal.util.complete.Parser
 import sbt.io._
 import sbt.io.syntax._
+import sbt.nio.file.FileAttributes
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
 import xsbti.{ AppMain, AppProvider, ComponentProvider, ScalaProvider }
@@ -907,17 +908,14 @@ object BuiltinCommands {
         ()
       }
       cleanup()
-      val fileTreeRepository = FileTreeRepository.default(FileAttributes.default)
+      val fileTreeRepository = FileTreeRepository.default
       val fileCache = System.getProperty("sbt.io.filecache", "validate")
       val newState = s
         .addExitHook(if (cleanedUp.compareAndSet(false, true)) cleanup())
         .put(Keys.taskRepository, new TaskRepository.Repr)
         .put(rawGlobalFileTreeRepository, fileTreeRepository)
       if (fileCache == "false" || (fileCache != "true" && Util.isWindows)) newState
-      else {
-        val copied = new CopiedFileTreeRepository(fileTreeRepository)
-        newState.put(Keys.globalFileTreeRepository, copied)
-      }
+      else newState.put(Keys.globalFileTreeRepository, FileManagement.copy(fileTreeRepository))
     } catch {
       case NonFatal(_) => s
     }

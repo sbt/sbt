@@ -1,4 +1,7 @@
 import sbt.internal.TransitiveGlobs._
+
+import sbt.nio.Keys._
+
 val cached = settingKey[Unit]("")
 val newInputs = settingKey[Unit]("")
 Compile / cached / fileInputs := (Compile / unmanagedSources / fileInputs).value ++

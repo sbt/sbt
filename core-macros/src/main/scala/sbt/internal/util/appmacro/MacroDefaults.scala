@@ -18,18 +18,6 @@ object MacroDefaults {
    * @param c the macro context
    * @return the tree expressing the default file tree repository.
    */
-  def fileTreeRepository(c: blackbox.Context): c.Tree = {
-    import c.universe._
-    q"sbt.Keys.fileTreeRepository.value: @sbtUnchecked"
-  }
-
-  /**
-   * Macro to generated default file tree repository. It must be defined as an untyped tree because
-   * sbt.Keys is not available in this project. This is meant for internal use only, but must be
-   * public because its a macro.
-   * @param c the macro context
-   * @return the tree expressing the default file tree repository.
-   */
   def dynamicInputs(c: blackbox.Context): c.Tree = {
     import c.universe._
     q"sbt.internal.Continuous.dynamicInputs.value: @sbtUnchecked"

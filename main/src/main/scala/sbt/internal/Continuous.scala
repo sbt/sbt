@@ -8,7 +8,8 @@
 package sbt
 package internal
 
-import java.io.{ ByteArrayInputStream, InputStream }
+import java.io.{ ByteArrayInputStream, InputStream, File => _, _ }
+import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 import sbt.BasicCommandStrings.{
@@ -20,13 +21,14 @@ import sbt.BasicCommandStrings.{
 import sbt.BasicCommands.otherCommandParser
 import sbt.Def._
 import sbt.Scope.Global
-import sbt.internal.FileManagement.CopiedFileTreeRepository
 import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
+import sbt.internal.nio._
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
-import sbt.internal.util.{ AttributeKey, Util }
-import sbt.io._
+import sbt.internal.util.{ AttributeKey, JLine, Util }
+import sbt.nio.Keys.fileInputs
+import sbt.nio.file.{ FileAttributes, Glob }
 import sbt.util.{ Level, _ }
 
 import scala.annotation.tailrec
@@ -61,6 +63,7 @@ import scala.util.Try
  *
  */
 object Continuous extends DeprecatedContinuous {
+  private type Event = FileEvent[FileAttributes]
 
   /**
    * Provides the dynamic inputs to the continuous build callbacks that cannot be stored as
@@ -276,12 +279,23 @@ object Continuous extends DeprecatedContinuous {
     f(commands, s, valid, invalid)
   }
 
+  private[this] def withCharBufferedStdIn[R](f: InputStream => R): R = {
+    val unwrapped = new FileInputStream(FileDescriptor.in) {
+      override def close(): Unit = {
+        getChannel.close() // We don't want to close the System.in file descriptor
+      }
+    }
+    val in = if (Util.isWindows) unwrapped else JLine.terminal.wrapInIfNeeded(unwrapped)
+    try f(in)
+    finally in.close()
+  }
+
   private[sbt] def runToTermination(
       state: State,
       command: String,
       count: Int,
       isCommand: Boolean
-  ): State = Watch.withCharBufferedStdIn { in =>
+  ): State = withCharBufferedStdIn { in =>
     val duped = new DupedInputStream(in)
     implicit val extracted: Extracted = Project.extract(state)
     val (stateWithRepo, repo) = state.get(Keys.globalFileTreeRepository) match {
@@ -290,12 +304,13 @@ object Continuous extends DeprecatedContinuous {
         val repo = if ("polling" == System.getProperty("sbt.watch.mode")) {
           val service =
             new PollingWatchService(extracted.getOpt(Keys.pollInterval).getOrElse(500.millis))
-          FileTreeRepository.legacy(FileAttributes.default _, (_: Any) => {}, service)
+          FileTreeRepository
+            .legacy((_: Any) => {}, service)
         } else {
           state
             .get(BuiltinCommands.rawGlobalFileTreeRepository)
-            .map(new CopiedFileTreeRepository(_))
-            .getOrElse(FileTreeRepository.default(FileAttributes.default))
+            .map(FileManagement.copy)
+            .getOrElse(FileTreeRepository.default)
         }
         (state.put(Keys.globalFileTreeRepository, repo), repo)
     }
@@ -372,8 +387,8 @@ object Continuous extends DeprecatedContinuous {
    * Aggregates a collection of [[Config]] instances into a single instance of [[Callbacks]].
    * This allows us to monitor and respond to changes for all of
    * the inputs and triggers for each of the tasks that we are monitoring in the continuous build.
-   * To monitor all of the inputs and triggers, it creates a [[FileEventMonitor]] for each task
-   * and then aggregates each of the individual [[FileEventMonitor]] instances into an aggregated
+   * To monitor all of the inputs and triggers, it creates a monitor for each task
+   * and then aggregates each of the individual monitor instances into an aggregated
    * instance. It aggregates all of the event callbacks into a single callback that delegates
    * to each of the individual callbacks. For the callbacks that return a [[Watch.Action]],
    * the aggregated callback will select the minimum [[Watch.Action]] returned where the ordering
@@ -405,7 +420,7 @@ object Continuous extends DeprecatedContinuous {
     val onEnter = () => configs.foreach(_.watchSettings.onEnter())
     val onStart: () => Watch.Action = getOnStart(project, commands, configs, rawLogger, count)
     val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
-    val (nextFileEvent, cleanupFileMonitor): (() => Option[(Event, Watch.Action)], () => Unit) =
+    val (nextFileEvent, cleanupFileMonitor): (() => Option[(Watch.Event, Watch.Action)], () => Unit) =
       getFileEvents(configs, rawLogger, state, count, commands)
     val nextEvent: () => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, logger)
@@ -460,9 +475,14 @@ object Continuous extends DeprecatedContinuous {
       val res = f.view.map(_()).min
       // Print the default watch message if there are multiple tasks
       if (configs.size > 1)
-        Watch.defaultStartWatch(count.get(), project, commands).foreach(logger.info(_))
+        Watch
+          .defaultStartWatch(count.get(), project, commands)
+          .foreach(logger.info(_))
       res
     }
+  }
+  private implicit class TraversableGlobOps(val t: Traversable[Glob]) extends AnyVal {
+    def toFilter: Path => Boolean = p => t.exists(_.matches(p))
   }
   private def getFileEvents(
       configs: Seq[Config],
@@ -470,15 +490,17 @@ object Continuous extends DeprecatedContinuous {
       state: State,
       count: AtomicInteger,
       commands: Seq[String]
-  )(implicit extracted: Extracted): (() => Option[(Event, Watch.Action)], () => Unit) = {
+  )(implicit extracted: Extracted): (() => Option[(Watch.Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
-      if (trackMetaBuild) extracted.getOpt(Keys.fileInputs in Keys.settingsData).getOrElse(Nil)
+      if (trackMetaBuild) extracted.getOpt(fileInputs in Keys.settingsData).getOrElse(Nil)
       else Nil
-    val buildFilter = buildGlobs.toEntryFilter
+    val buildFilter: Path => Boolean = buildGlobs.toFilter
 
     val defaultTrigger = if (Util.isWindows) Watch.ifChanged(Watch.Trigger) else Watch.trigger
-    val onEvent: Event => (Event, Watch.Action) = {
+    val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
+    val quarantinePeriod = configs.map(_.watchSettings.deletionQuarantinePeriod).max
+    val onEvent: Event => (Watch.Event, Watch.Action) = {
       val f = configs.map { params =>
         val ws = params.watchSettings
         val oe = ws.onEvent
@@ -487,23 +509,25 @@ object Continuous extends DeprecatedContinuous {
             val onInputEvent = ws.onInputEvent.getOrElse(defaultTrigger)
             val onTriggerEvent = ws.onTriggerEvent.getOrElse(defaultTrigger)
             val onMetaBuildEvent = ws.onMetaBuildEvent.getOrElse(Watch.ifChanged(Watch.Reload))
-            val triggerFilter = params.triggers.toEntryFilter
+            val triggerFilter = params.triggers.toFilter
             val excludedBuildFilter = buildFilter
-            event: Event =>
-              val inputFilter = params.inputs().toEntryFilter
+            event: Watch.Event =>
+              val inputFilter = params.inputs().toFilter
               val c = count.get()
-              val entry = event.entry
               Seq[Watch.Action](
-                if (inputFilter(entry)) onInputEvent(c, event) else Watch.Ignore,
-                if (triggerFilter(entry)) onTriggerEvent(c, event) else Watch.Ignore,
-                if (excludedBuildFilter(entry)) onMetaBuildEvent(c, event) else Watch.Ignore
+                if (inputFilter(event.path)) onInputEvent(c, event) else Watch.Ignore,
+                if (triggerFilter(event.path)) onTriggerEvent(c, event) else Watch.Ignore,
+                if (excludedBuildFilter(event.path)) onMetaBuildEvent(c, event)
+                else Watch.Ignore
               ).min
           }
-        event: Event => event -> oe(event)
+        event: Event =>
+          val watchEvent = Watch.Event.fromIO(event)
+          watchEvent -> oe(watchEvent)
       }
       event: Event => f.view.map(_.apply(event)).minBy(_._2)
     }
-    val monitor: FileEventMonitor[FileAttributes] = new FileEventMonitor[FileAttributes] {
+    val monitor: FileEventMonitor[Event] = new FileEventMonitor[Event] {
 
       /**
        * Create a filtered monitor that only accepts globs that have been registered for the
@@ -514,44 +538,60 @@ object Continuous extends DeprecatedContinuous {
        * @return the filtered FileEventMonitor.
        */
       private def filter(
-          monitor: FileEventMonitor[FileAttributes],
+          monitor: FileEventMonitor[Event],
           globs: () => Seq[Glob]
-      ): FileEventMonitor[FileAttributes] = {
-        new FileEventMonitor[FileAttributes] {
-          override def poll(duration: Duration): Seq[FileEventMonitor.Event[FileAttributes]] =
-            monitor.poll(duration).filter(e => globs().toEntryFilter(e.entry))
+      ): FileEventMonitor[Event] = {
+        new FileEventMonitor[Event] {
+          override def poll(
+              duration: Duration,
+              filter: Event => Boolean
+          ): Seq[Event] = monitor.poll(duration, filter).filter(e => globs().toFilter(e.path))
           override def close(): Unit = monitor.close()
         }
       }
+      private implicit class WatchLogger(val l: Logger) extends sbt.internal.nio.WatchLogger {
+        override def debug(msg: Any): Unit = l.debug(msg.toString)
+      }
       // TODO make this a normal monitor
-      private[this] val monitors: Seq[FileEventMonitor[FileAttributes]] =
+      private[this] val monitors: Seq[FileEventMonitor[Event]] =
         configs.map { config =>
           // Create a logger with a scoped key prefix so that we can tell from which
           // monitor events occurred.
           val l = logger.withPrefix(config.key.show)
-          val monitor: FileEventMonitor[FileAttributes] =
-            FileManagement.monitor(config.repository, config.watchSettings.antiEntropy, l)
-          val allGlobs: () => Seq[Glob] = () => (config.inputs() ++ config.triggers).distinct.sorted
+          val monitor: FileEventMonitor[Event] =
+            FileEventMonitor.antiEntropy(
+              config.repository,
+              config.watchSettings.antiEntropy,
+              l,
+              config.watchSettings.deletionQuarantinePeriod,
+              config.watchSettings.antiEntropyRetentionPeriod
+            )
+          val allGlobs: () => Seq[Glob] =
+            () => (config.inputs() ++ config.triggers).distinct.sorted
           filter(monitor, allGlobs)
         } ++ (if (trackMetaBuild) {
                 val l = logger.withPrefix("meta-build")
                 val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
                 val repo = getRepository(state)
                 buildGlobs.foreach(repo.register)
-                val monitor = FileManagement.monitor(repo, antiEntropy, l)
+                val monitor = FileEventMonitor.antiEntropy(
+                  repo,
+                  antiEntropy,
+                  l,
+                  quarantinePeriod,
+                  retentionPeriod
+                )
                 filter(monitor, () => buildGlobs) :: Nil
               } else Nil)
-      override def poll(duration: Duration): Seq[FileEventMonitor.Event[FileAttributes]] = {
-        val res = monitors.flatMap(_.poll(0.millis)).toSet.toVector
+      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
+        val res = monitors.flatMap(_.poll(0.millis, filter)).toSet.toVector
         if (res.isEmpty) Thread.sleep(duration.toMillis)
         res
       }
       override def close(): Unit = monitors.foreach(_.close())
     }
     val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
-    val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
     val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
-    val quarantinePeriod = configs.map(_.watchSettings.deletionQuarantinePeriod).max
     val antiEntropyMonitor = FileEventMonitor.antiEntropy(
       monitor,
       antiEntropy,
@@ -564,7 +604,7 @@ object Continuous extends DeprecatedContinuous {
      * motivation is to allow the user to specify this callback via setting so that, for example,
      * they can clear the screen when the build triggers.
      */
-    val onTrigger: Event => Unit = { event: Event =>
+    val onTrigger: Watch.Event => Unit = { event: Watch.Event =>
       configs.foreach { params =>
         params.watchSettings.onTrigger.foreach(ot => ot(params.arguments(logger))(event))
       }
@@ -586,7 +626,7 @@ object Continuous extends DeprecatedContinuous {
         val min = actions.minBy {
           case (e, a) =>
             if (builder.nonEmpty) builder.append(", ")
-            val path = e.entry.typedPath.toPath.toString
+            val path = e.path
             builder.append(path)
             builder.append(" -> ")
             builder.append(a.toString)
@@ -672,10 +712,10 @@ object Continuous extends DeprecatedContinuous {
 
   private def combineInputAndFileEvents(
       nextInputAction: () => Watch.Action,
-      nextFileEvent: () => Option[(Event, Watch.Action)],
+      nextFileEvent: () => Option[(Watch.Event, Watch.Action)],
       logger: Logger
   ): () => Watch.Action = () => {
-    val (inputAction: Watch.Action, fileEvent: Option[(Event, Watch.Action)] @unchecked) =
+    val (inputAction: Watch.Action, fileEvent: Option[(Watch.Event, Watch.Action)] @unchecked) =
       Seq(nextInputAction, nextFileEvent).map(_.apply()).toIndexedSeq match {
         case Seq(ia: Watch.Action, fe @ Some(_)) => (ia, fe)
         case Seq(ia: Watch.Action, None)         => (ia, None)
@@ -688,7 +728,7 @@ object Continuous extends DeprecatedContinuous {
     fileEvent
       .collect {
         case (event, action) if action != Watch.Ignore =>
-          s"Received file event $action for ${event.entry.typedPath.toPath}." +
+          s"Received file event $action for ${event.path}." +
             (if (action != min) s" Dropping in favor of input event: $min" else "")
       }
       .foreach(logger.debug(_))
@@ -738,7 +778,7 @@ object Continuous extends DeprecatedContinuous {
     }
   }
 
-  private type WatchOnEvent = (Int, Event) => Watch.Action
+  private type WatchOnEvent = (Int, Watch.Event) => Watch.Action
 
   /**
    * Contains all of the user defined settings that will be used to build a [[Callbacks]]
@@ -781,7 +821,7 @@ object Continuous extends DeprecatedContinuous {
       key.get(Keys.watchInputParser).getOrElse(Watch.defaultInputParser)
     val logLevel: Level.Value = key.get(Keys.watchLogLevel).getOrElse(Level.Info)
     val onEnter: () => Unit = key.get(Keys.watchOnEnter).getOrElse(() => {})
-    val onEvent: Option[Arguments => Event => Watch.Action] = key.get(Keys.watchOnEvent)
+    val onEvent: Option[Arguments => Watch.Event => Watch.Action] = key.get(Keys.watchOnEvent)
     val onExit: () => Unit = key.get(Keys.watchOnExit).getOrElse(() => {})
     val onInputEvent: Option[WatchOnEvent] = key.get(Keys.watchOnInputEvent)
     val onIteration: Option[Int => Watch.Action] = key.get(Keys.watchOnIteration)
@@ -789,11 +829,11 @@ object Continuous extends DeprecatedContinuous {
     val onStart: Option[Arguments => () => Watch.Action] = key.get(Keys.watchOnStart)
     val onTermination: Option[(Watch.Action, String, Int, State) => State] =
       key.get(Keys.watchOnTermination)
-    val onTrigger: Option[Arguments => Event => Unit] = key.get(Keys.watchOnTrigger)
+    val onTrigger: Option[Arguments => Watch.Event => Unit] = key.get(Keys.watchOnTrigger)
     val onTriggerEvent: Option[WatchOnEvent] = key.get(Keys.watchOnTriggerEvent)
     val startMessage: StartMessage = getStartMessage(key)
     val trackMetaBuild: Boolean = key.get(Keys.watchTrackMetaBuild).getOrElse(true)
-    val triggerMessage: TriggerMessage = getTriggerMessage(key)
+    val triggerMessage: TriggerMessage[Watch.Event] = getTriggerMessage(key)
 
     // Unlike the rest of the settings, InputStream is a TaskKey which means that if it is set,
     // we have to use Extracted.runTask to get the value. The reason for this is because it is
@@ -827,7 +867,9 @@ object Continuous extends DeprecatedContinuous {
     lazy val default = key.get(Keys.watchStartMessage).getOrElse(Watch.defaultStartWatch)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
-  private def getTriggerMessage(key: ScopedKey[_])(implicit e: Extracted): TriggerMessage = {
+  private def getTriggerMessage(
+      key: ScopedKey[_]
+  )(implicit e: Extracted): TriggerMessage[Watch.Event] = {
     lazy val default =
       key.get(Keys.watchTriggeredMessage).getOrElse(Watch.defaultOnTriggerMessage)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))

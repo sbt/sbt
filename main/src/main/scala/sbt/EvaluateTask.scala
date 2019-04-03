@@ -591,6 +591,14 @@ object EvaluateTask {
       (dynamicDependency in scoped.scope := { () }) :: Nil
     } else if (scoped.key == transitiveClasspathDependency.key) {
       (transitiveClasspathDependency in scoped.scope := { () }) :: Nil
+    } else if (scoped.key == sbt.nio.Keys.fileInputs.key) {
+      (sbt.nio.Keys.fileHashes in scoped.scope) := {
+        import GlobLister._
+        val map = sbt.nio.FileStamp.fileHashMap.value
+        (sbt.nio.Keys.fileInputs in scoped.scope).value.all(fileTreeView.value).collect {
+          case (p, a) if a.isRegularFile => p -> map.get(p)
+        }
+      }
     } else {
       Nil
     }

@@ -1,8 +1,10 @@
 package sbt.input.aggregation
 
+import sbt.Keys._
 import sbt._
-import Keys._
 import sbt.internal.TransitiveGlobs._
+import sbt.nio.Keys._
+import sbt.nio.file._
 
 object Build {
   val setStringValue = inputKey[Unit]("set a global string to a value")

@@ -2,7 +2,7 @@ package sbt.watch.task
 
 import sbt._
 import Keys._
-import sbt.internal.FileTree
+import sbt.nio.Keys._
 
 object Build {
   val reloadFile = settingKey[File]("file to toggle whether or not to reload")
@@ -25,15 +25,20 @@ object Build {
     setStringValue := Def.taskDyn {
       // This hides foo / fileInputs from the input graph
       Def.taskDyn {
-        val _ = (foo / fileInputs).value.all
+        val _ = (foo / fileInputs).value
+          .all(fileTreeView.value, sbt.internal.Continuous.dynamicInputs.value)
         // By putting setStringValueImpl.value inside a Def.task, we ensure that
         // (foo / fileInputs).value is registered with the file repository before modifying the file.
         Def.task(setStringValueImpl.value)
       }
     }.value,
     checkStringValue := checkStringValueImpl.evaluated,
-    watchOnInputEvent := { (_, _) => Watch.CancelWatch },
-    watchOnTriggerEvent := { (_, _) => Watch.CancelWatch },
+    watchOnInputEvent := { (_, _) =>
+      Watch.CancelWatch
+    },
+    watchOnTriggerEvent := { (_, _) =>
+      Watch.CancelWatch
+    },
     watchTasks := Def.inputTask {
       val prev = watchTasks.evaluated
       new StateTransform(prev.state.fail)

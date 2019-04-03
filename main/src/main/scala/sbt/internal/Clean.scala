@@ -9,43 +9,64 @@ package sbt
 package internal
 
 import java.io.IOException
-import java.nio.file.{ DirectoryNotEmptyException, Files }
+import java.nio.file.{ DirectoryNotEmptyException, Files, Path }
 
 import sbt.Def._
 import sbt.Keys._
 import sbt.Project.richInitializeTask
+import sbt.io.AllPassFilter
 import sbt.io.syntax._
-import sbt.io.{ AllPassFilter, FileTreeView, TypedPath }
+import sbt.nio.Keys._
+import sbt.nio.file.{ AnyPath, FileAttributes, FileTreeView, Glob }
 import sbt.util.Level
 
 object Clean {
 
-  def deleteContents(file: File, exclude: TypedPath => Boolean): Unit =
-    deleteContents(file, exclude, FileTreeView.DEFAULT, tryDelete((_: String) => {}))
-  def deleteContents(
-      file: File,
-      exclude: TypedPath => Boolean,
-      view: FileTreeView,
-      delete: File => Unit
+  def deleteContents(file: File, exclude: File => Boolean): Unit =
+    deleteContents(
+      file.toPath,
+      path => exclude(path.toFile),
+      FileTreeView.default,
+      tryDelete((_: String) => {})
+    )
+  private[sbt] def deleteContents(
+      path: Path,
+      exclude: Path => Boolean,
+      view: FileTreeView.Nio[FileAttributes],
+      delete: Path => Unit
   ): Unit = {
-    def deleteRecursive(file: File): Unit = {
-      view.list(file * AllPassFilter).filterNot(exclude).foreach {
-        case dir if dir.isDirectory =>
-          deleteRecursive(dir.toPath.toFile)
-          delete(dir.toPath.toFile)
-        case f => delete(f.toPath.toFile)
-      }
+    def deleteRecursive(path: Path): Unit = {
+      view
+        .list(Glob(path, AnyPath))
+        .filterNot { case (p, _) => exclude(p) }
+        .foreach {
+          case (dir, attrs) if attrs.isDirectory =>
+            deleteRecursive(dir)
+            delete(dir)
+          case (file, _) => delete(file)
+        }
     }
-    deleteRecursive(file)
+    deleteRecursive(path)
   }
 
-  /**
-   * Provides an implementation for the clean task. It delegates to [[taskIn]] using the
-   * resolvedScoped key to set the scope.
-   * @return the clean task definition.
-   */
-  def task: Def.Initialize[Task[Unit]] =
-    Def.taskDyn(taskIn(Keys.resolvedScoped.value.scope)) tag Tags.Clean
+  private[this] def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
+    val excludes = (cleanKeepFiles in scope).value.map {
+      // This mimics the legacy behavior of cleanFilesTask
+      case f if f.isDirectory => f * AllPassFilter
+      case f                  => f.toGlob
+    } ++ (cleanKeepGlobs in scope).value
+    p: Path => excludes.exists(_.matches(p))
+  }
+  private[this] def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
+    // Don't use a regular logger because the logger actually writes to the target directory.
+    val debug = (logLevel in scope).?.value.orElse(state.value.get(logLevel.key)) match {
+      case Some(Level.Debug) =>
+        (string: String) => println(s"[debug] $string")
+      case _ =>
+        (_: String) => {}
+    }
+    tryDelete(debug)
+  }
 
   /**
    * Implements the clean task in a given scope. It uses the outputs task value in the provided
@@ -58,9 +79,9 @@ object Clean {
       val excludes = cleanKeepFiles.value.map {
         // This mimics the legacy behavior of cleanFilesTask
         case f if f.isDirectory => f * AllPassFilter
-        case f                  => f.toGlob
+        case f                  => f.glob
       } ++ cleanKeepGlobs.value
-      val excludeFilter: TypedPath => Boolean = excludes.toTypedPathFilter
+      val excludeFilter: Path => Boolean = p => excludes.exists(_.matches(p))
       // Don't use a regular logger because the logger actually writes to the target directory.
       val debug = (logLevel in scope).?.value.orElse(state.value.get(logLevel.key)) match {
         case Some(Level.Debug) =>
@@ -69,26 +90,25 @@ object Clean {
           (_: String) => {}
       }
       val delete = tryDelete(debug)
-      cleanFiles.value.sorted.reverseIterator.foreach(delete)
+      cleanFiles.value.sorted.reverseIterator.foreach(f => delete(f.toPath))
       (fileOutputs in scope).value.foreach { g =>
-        val filter: TypedPath => Boolean = {
-          val globFilter = g.toTypedPathFilter
-          tp => !globFilter(tp) || excludeFilter(tp)
+        val filter: Path => Boolean = { path =>
+          !g.matches(path) || excludeFilter(path)
         }
-        deleteContents(g.base.toFile, filter, FileTreeView.DEFAULT, delete)
-        delete(g.base.toFile)
+        deleteContents(g.base, filter, FileTreeView.default, delete)
+        delete(g.base)
       }
     } tag Tags.Clean
-  private def tryDelete(debug: String => Unit): File => Unit = file => {
+  private def tryDelete(debug: String => Unit): Path => Unit = path => {
     try {
-      debug(s"clean -- deleting file $file")
-      Files.deleteIfExists(file.toPath)
+      debug(s"clean -- deleting file $path")
+      Files.deleteIfExists(path)
       ()
     } catch {
       case _: DirectoryNotEmptyException =>
-        debug(s"clean -- unable to delete non-empty directory $file")
+        debug(s"clean -- unable to delete non-empty directory $path")
       case e: IOException =>
-        debug(s"Caught unexpected exception $e deleting $file")
+        debug(s"Caught unexpected exception $e deleting $path")
     }
   }
 }

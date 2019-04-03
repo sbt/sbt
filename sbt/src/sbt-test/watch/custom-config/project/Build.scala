@@ -2,6 +2,7 @@ package sbt.input.aggregation
 
 import sbt._
 import Keys._
+import sbt.nio.Keys._
 
 object Build {
   val setStringValue = inputKey[Unit]("set a global string to a value")

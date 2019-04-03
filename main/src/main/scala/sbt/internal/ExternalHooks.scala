@@ -10,10 +10,13 @@ package sbt.internal
 import java.nio.file.Paths
 import java.util.Optional
 
-import sbt.Stamped
 import sbt.internal.inc.ExternalLookup
+import sbt.io.AllPassFilter
 import sbt.io.syntax._
-import sbt.io.{ AllPassFilter, TypedPath }
+import sbt.nio.FileStamp
+import sbt.nio.FileStamp.StampedFile
+import sbt.nio.file.syntax._
+import sbt.nio.file.{ FileAttributes, FileTreeView }
 import xsbti.compile._
 import xsbti.compile.analysis.Stamp
 
@@ -21,21 +24,27 @@ import scala.collection.mutable
 
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
-  def apply(options: CompileOptions, repo: FileTree.Repository): DefaultExternalHooks = {
+  def apply(
+      options: CompileOptions,
+      view: FileTreeView.Nio[FileAttributes]
+  ): DefaultExternalHooks = {
     import scala.collection.JavaConverters._
     val sources = options.sources()
     val cachedSources = new java.util.HashMap[File, Stamp]
-    val converter: File => Stamp = f => Stamped.sourceConverter(TypedPath(f.toPath))
     sources.foreach {
-      case sf: Stamped => cachedSources.put(sf, sf.stamp)
-      case f: File     => cachedSources.put(f, converter(f))
+      case sf: StampedFile => cachedSources.put(sf, sf.stamp)
+      case f: File         => cachedSources.put(f, FileStamp.stamped(f))
     }
     val allBinaries = new java.util.HashMap[File, Stamp]
     options.classpath.foreach {
       case f if f.getName.endsWith(".jar") =>
-        repo.get(f.toGlob) foreach { case (p, a) => allBinaries.put(p.toFile, a.stamp) }
+        view.list(f.toGlob) foreach {
+          case (p, a) => allBinaries.put(p.toFile, FileStamp(p, a).stamp)
+        }
       case f =>
-        repo.get(f ** AllPassFilter) foreach { case (p, a) => allBinaries.put(p.toFile, a.stamp) }
+        view.list(f ** AllPassFilter) foreach {
+          case (p, a) => allBinaries.put(p.toFile, FileStamp(p, a).stamp)
+        }
     }
 
     val lookup = new ExternalLookup {

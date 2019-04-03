@@ -14,7 +14,9 @@ import sbt._
 import sbt.internal.io.Source
 import sbt.internal.util.AttributeMap
 import sbt.internal.util.complete.Parser
-import sbt.io.Glob
+import sbt.io.syntax._
+import sbt.nio.Keys._
+import sbt.nio.file.Glob
 
 import scala.annotation.tailrec
 
@@ -25,14 +27,11 @@ object TransitiveGlobs {
     Def.taskKey[(Seq[Glob], Seq[Glob])]("The transitive inputs and triggers for a key")
 }
 private[sbt] object InputGraph {
-  @deprecated("Source is also deprecated.", "1.3.0")
   private implicit class SourceOps(val source: Source) {
-    def toGlob: Glob =
-      Glob(
-        source.base,
-        source.includeFilter -- source.excludeFilter,
-        if (source.recursive) Int.MaxValue else 0
-      )
+    def toGlob: Glob = {
+      val filter = source.includeFilter -- source.excludeFilter
+      if (source.recursive) source.base ** filter else source.base * filter
+    }
   }
   private[sbt] def inputsTask: Def.Initialize[Task[Seq[Glob]]] =
     Def.task(transitiveGlobs(arguments.value)._1.sorted)

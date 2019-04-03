@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, URLClassLoader }
+import java.nio.file.{ Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
@@ -27,6 +28,7 @@ import sbt.Project.{
 }
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.internal.CommandStrings.ExportStream
+import sbt.internal.TransitiveGlobs._
 import sbt.internal._
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
@@ -43,7 +45,6 @@ import sbt.internal.server.{
   ServerHandler
 }
 import sbt.internal.testing.TestLogger
-import sbt.internal.TransitiveGlobs._
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types._
 import sbt.internal.util._
@@ -65,6 +66,10 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+import sbt.nio.FileStamp
+import sbt.nio.Keys._
+import sbt.nio.file.{ FileTreeView, Glob }
+import sbt.nio.file.syntax._
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
@@ -146,6 +151,9 @@ object Defaults extends BuildCommon {
       classLoaderCache := ClassLoaderCache(4),
       fileInputs :== Nil,
       watchTriggers :== Nil,
+      sbt.nio.Keys.fileAttributeMap := {
+        new java.util.HashMap[NioPath, (Option[FileStamp.Hash], Option[FileStamp.LastModified])]()
+      },
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
@@ -191,7 +199,7 @@ object Defaults extends BuildCommon {
       ps := psTask.value,
       bgStop := bgStopTask.evaluated,
       bgWaitFor := bgWaitForTask.evaluated,
-      bgCopyClasspath :== true
+      bgCopyClasspath :== true,
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -243,9 +251,13 @@ object Defaults extends BuildCommon {
       settingsData / fileInputs := {
         val baseDir = file(".").getCanonicalFile
         val sourceFilter = ("*.sbt" || "*.scala" || "*.java") -- HiddenFileFilter
+        val projectDir = baseDir / "project"
         Seq(
-          Glob(baseDir, "*.sbt" -- HiddenFileFilter, 0),
-          Glob(baseDir / "project", sourceFilter, Int.MaxValue)
+          baseDir * ("*.sbt" -- HiddenFileFilter),
+          projectDir * sourceFilter,
+          // We only want to recursively look in source because otherwise we have to search
+          // the project target directories which is expensive.
+          projectDir / "src" ** sourceFilter,
         )
       },
       trapExit :== true,
@@ -296,13 +308,10 @@ object Defaults extends BuildCommon {
       Previous.references :== new Previous.References,
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
-      fileTreeRepository := state.value
-        .get(globalFileTreeRepository)
-        .map(FileTree.repository)
-        .getOrElse(FileTree.Repository.polling),
+      fileTreeView :== FileTreeView.default,
       Continuous.dynamicInputs := Continuous.dynamicInputsImpl.value,
       externalHooks := {
-        val repository = fileTreeRepository.value
+        val repository = fileTreeView.value
         compileOptions => Some(ExternalHooks(compileOptions, repository))
       },
       logBuffered :== false,
@@ -411,7 +420,9 @@ object Defaults extends BuildCommon {
       val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
       unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources
     },
-    unmanagedSources := (unmanagedSources / fileInputs).value.all.map(Stamped.file),
+    unmanagedSources := (unmanagedSources / fileInputs).value
+      .all(fileTreeView.value)
+      .map(FileStamp.stampedFile),
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := generate(sourceGenerators).value,
     sourceGenerators :== Nil,
@@ -434,7 +445,8 @@ object Defaults extends BuildCommon {
         (includeFilter in unmanagedResources).value -- (excludeFilter in unmanagedResources).value
       unmanagedResourceDirectories.value.map(_ ** filter)
     },
-    unmanagedResources := (unmanagedResources / fileInputs).value.all.map(Stamped.file),
+    unmanagedResources :=
+      (unmanagedResources / fileInputs).value.all(fileTreeView.value).map(FileStamp.stampedFile),
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
@@ -1228,7 +1240,7 @@ object Defaults extends BuildCommon {
       exclude: ScopedTaskable[FileFilter]
   ): Initialize[Task[Seq[File]]] = Def.task {
     val filter = include.toTask.value -- exclude.toTask.value
-    dirs.toTask.value.map(_ ** filter).all.map(Stamped.file)
+    dirs.toTask.value.map(_ ** filter).all(fileTreeView.value).map(FileStamp.stampedFile)
   }
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {

@@ -7,14 +7,16 @@
 
 package sbt
 import java.io.InputStream
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
-import sbt.internal.FileAttributes
 import sbt.internal.LabeledFunctions._
-import sbt.internal.util.{ JLine, Util }
+import sbt.internal.nio.FileEvent
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser._
-import sbt.io.FileEventMonitor.{ Creation, Deletion, Event, Update }
+import sbt.internal.util.{ JLine, Util }
+import sbt.nio.file.FileAttributes
 import sbt.util.{ Level, Logger }
 
 import scala.annotation.tailrec
@@ -22,6 +24,68 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 object Watch {
+  sealed trait Event {
+    def path: Path
+    def previousAttributes: Option[FileAttributes]
+    def attributes: Option[FileAttributes]
+    def occurredAt: FiniteDuration
+  }
+  private[sbt] object Event {
+    private implicit class DurationOps(val d: Duration) extends AnyVal {
+      def finite: FiniteDuration = d match {
+        case f: FiniteDuration => f
+        case _                 => new FiniteDuration(Long.MaxValue, TimeUnit.MILLISECONDS)
+      }
+    }
+    def fromIO(fileEvent: FileEvent[FileAttributes]): Watch.Event = fileEvent match {
+      case c @ FileEvent.Creation(p, a) => new Watch.Creation(p, a, c.occurredAt.value.finite)
+      case d @ FileEvent.Deletion(p, a) => new Watch.Deletion(p, a, d.occurredAt.value.finite)
+      case u @ FileEvent.Update(p, prev, attrs) =>
+        new Watch.Update(p, prev, attrs, u.occurredAt.value.finite)
+    }
+  }
+  final class Deletion private[sbt] (
+      override val path: Path,
+      private[this] val attrs: FileAttributes,
+      override val occurredAt: FiniteDuration
+  ) extends Event {
+    override def previousAttributes: Option[FileAttributes] = Some(attrs)
+    override def attributes: Option[FileAttributes] = None
+  }
+  object Deletion {
+    def unapply(deletion: Deletion): Option[(Path, FileAttributes)] =
+      deletion.previousAttributes.map(a => deletion.path -> a)
+  }
+  final class Creation private[sbt] (
+      override val path: Path,
+      private[this] val attrs: FileAttributes,
+      override val occurredAt: FiniteDuration
+  ) extends Event {
+    override def attributes: Option[FileAttributes] = Some(attrs)
+    override def previousAttributes: Option[FileAttributes] = None
+  }
+  object Creation {
+    def unapply(creation: Creation): Option[(Path, FileAttributes)] =
+      creation.attributes.map(a => creation.path -> a)
+  }
+  final class Update private[sbt] (
+      override val path: Path,
+      private[this] val prevAttrs: FileAttributes,
+      private[this] val attrs: FileAttributes,
+      override val occurredAt: FiniteDuration
+  ) extends Event {
+    override def previousAttributes: Option[FileAttributes] = Some(prevAttrs)
+    override def attributes: Option[FileAttributes] = Some(attrs)
+  }
+  object Update {
+    def unapply(update: Update): Option[(Path, FileAttributes, FileAttributes)] =
+      update.previousAttributes
+        .zip(update.attributes)
+        .map {
+          case (previous, current) => (update.path, previous, current)
+        }
+        .headOption
+  }
 
   /**
    * This trait is used to control the state of [[Watch.apply]]. The [[Watch.Trigger]] action
@@ -227,8 +291,8 @@ object Watch {
    */
   @inline
   private[sbt] def aggregate(
-      events: Seq[(Action, Event[FileAttributes])]
-  ): Option[(Action, Event[FileAttributes])] =
+      events: Seq[(Action, Event)]
+  ): Option[(Action, Event)] =
     if (events.isEmpty) None else Some(events.minBy(_._1))
 
   private implicit class StringToExec(val s: String) extends AnyVal {
@@ -250,17 +314,16 @@ object Watch {
   /**
    * A constant function that returns [[Trigger]].
    */
-  final val trigger: (Int, Event[FileAttributes]) => Watch.Action = {
-    (_: Int, _: Event[FileAttributes]) =>
-      Trigger
+  final val trigger: (Int, Event) => Watch.Action = { (_: Int, _: Event) =>
+    Trigger
   }.label("Watched.trigger")
 
-  def ifChanged(action: Action): (Int, Event[FileAttributes]) => Watch.Action =
-    (_: Int, event: Event[FileAttributes]) =>
+  def ifChanged(action: Action): (Int, Event) => Watch.Action =
+    (_: Int, event: Event) =>
       event match {
-        case Update(prev, cur, _) if prev.value != cur.value => action
-        case _: Creation[_] | _: Deletion[_]                 => action
-        case _                                               => Ignore
+        case Update(_, previousAttributes, attributes) if previousAttributes != attributes => action
+        case _: Creation | _: Deletion                                                     => action
+        case _                                                                             => Ignore
       }
 
   /**
@@ -369,14 +432,14 @@ object Watch {
    * `Keys.watchTriggeredMessage := Watched.defaultOnTriggerMessage`, then nothing is logged when
    * a build is triggered.
    */
-  final val defaultOnTriggerMessage: (Int, Event[FileAttributes], Seq[String]) => Option[String] =
-    ((_: Int, e: Event[FileAttributes], commands: Seq[String]) => {
-      val msg = s"Build triggered by ${e.entry.typedPath.toPath}. " +
+  final val defaultOnTriggerMessage: (Int, Event, Seq[String]) => Option[String] =
+    ((_: Int, e: Event, commands: Seq[String]) => {
+      val msg = s"Build triggered by ${e.path}. " +
         s"Running ${commands.mkString("'", "; ", "'")}."
       Some(msg)
     }).label("Watched.defaultOnTriggerMessage")
 
-  final val noTriggerMessage: (Int, Event[FileAttributes], Seq[String]) => Option[String] =
+  final val noTriggerMessage: (Int, Event, Seq[String]) => Option[String] =
     (_, _, _) => None
 
   /**

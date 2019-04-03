@@ -8,14 +8,9 @@
 package sbt
 package internal
 
-import java.io.File
 import java.nio.file.Path
-import java.util.concurrent.ConcurrentSkipListMap
 
-import sbt.io.{ FileFilter, Glob, SimpleFileFilter }
-
-import scala.collection.JavaConverters._
-import scala.collection.mutable
+import sbt.nio.file.{ FileAttributes, FileTreeView, Glob }
 
 /**
  * Retrieve files from a repository. This should usually be an extension class for
@@ -24,19 +19,20 @@ import scala.collection.mutable
  */
 private[sbt] sealed trait GlobLister extends Any {
 
-  final def all(repository: FileTree.Repository): Seq[(Path, FileAttributes)] =
-    all(repository, FileTree.DynamicInputs.empty)
+  final def all(view: FileTreeView.Nio[FileAttributes]): Seq[(Path, FileAttributes)] = {
+    all(view, FileTree.DynamicInputs.empty)
+  }
 
   /**
    * Get the sources described this `GlobLister`. The results should not return any duplicate
    * entries for each path in the result set.
    *
-   * @param repository the file tree repository for retrieving the files for a given glob.
+   * @param view the file tree view
    * @param dynamicInputs the task dynamic inputs to track for watch.
    * @return the files described by this `GlobLister`.
    */
   def all(
-      implicit repository: FileTree.Repository,
+      implicit view: FileTreeView.Nio[FileAttributes],
       dynamicInputs: FileTree.DynamicInputs
   ): Seq[(Path, FileAttributes)]
 }
@@ -55,7 +51,7 @@ private[sbt] trait GlobListers {
   import GlobListers._
 
   /**
-   * Generate a GlobLister given a particular [[Glob]]s.
+   * Generate a GlobLister given a particular `Glob`s.
    *
    * @param source the input Glob
    */
@@ -71,34 +67,6 @@ private[sbt] trait GlobListers {
     new impl(sources)
 }
 private[internal] object GlobListers {
-  private def covers(left: Glob, right: Glob): Boolean = {
-    right.base.startsWith(left.base) && {
-      left.depth == Int.MaxValue || {
-        val depth = left.base.relativize(right.base).getNameCount - 1
-        depth <= left.depth - right.depth
-      }
-    }
-  }
-  private def aggregate(globs: Traversable[Glob]): Seq[(Glob, Traversable[Glob])] = {
-    val sorted = globs.toSeq.sorted
-    val map = new ConcurrentSkipListMap[Path, (Glob, mutable.Set[Glob])]
-    if (sorted.size > 1) {
-      sorted.foreach { glob =>
-        map.subMap(glob.base.getRoot, glob.base.resolve(Char.MaxValue.toString)).asScala.find {
-          case (_, (g, _)) => covers(g, glob)
-        } match {
-          case Some((_, (_, globs))) => globs += glob
-          case None =>
-            val globs = mutable.Set(glob)
-            val filter: FileFilter = new SimpleFileFilter((file: File) => {
-              globs.exists(_.toFileFilter.accept(file))
-            })
-            map.put(glob.base, (Glob(glob.base, filter, glob.depth), globs))
-        }
-      }
-      map.asScala.values.toIndexedSeq
-    } else sorted.map(g => g -> (g :: Nil))
-  }
 
   /**
    * Implements `GlobLister` given a collection of Globs. If the input collection type
@@ -110,14 +78,11 @@ private[internal] object GlobListers {
    */
   private class impl[T <: Traversable[Glob]](val globs: T) extends AnyVal with GlobLister {
     override def all(
-        implicit repository: FileTree.Repository,
+        implicit view: FileTreeView.Nio[FileAttributes],
         dynamicInputs: FileTree.DynamicInputs
     ): Seq[(Path, FileAttributes)] = {
-      aggregate(globs).flatMap {
-        case (glob, allGlobs) =>
-          dynamicInputs.value.foreach(_ ++= allGlobs)
-          repository.get(glob)
-      }.toIndexedSeq
+      dynamicInputs.value.foreach(_ ++= globs)
+      view.list(globs)
     }
   }
 }
