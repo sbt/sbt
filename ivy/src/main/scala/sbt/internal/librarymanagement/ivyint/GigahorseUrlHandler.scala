@@ -1,12 +1,12 @@
 package sbt.internal.librarymanagement
 package ivyint
 
-import java.net.{ HttpURLConnection, URL, UnknownHostException }
+import java.net.{ URL, UnknownHostException }
 import java.io._
 
 import scala.util.control.NonFatal
 
-import okhttp3.{ MediaType, OkUrlFactory, Request, RequestBody }
+import okhttp3.{ MediaType, Request, RequestBody }
 import okhttp3.internal.http.HttpDate
 
 import okhttp3.{ JavaNetAuthenticator => _, _ }
@@ -18,7 +18,7 @@ import org.apache.ivy.util.url.URLHandler._
 import sbt.io.IO
 
 // Copied from Ivy's BasicURLHandler.
-class GigahorseUrlHandler extends AbstractURLHandler {
+class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
 
   import GigahorseUrlHandler._
 
@@ -45,7 +45,7 @@ class GigahorseUrlHandler extends AbstractURLHandler {
 
     if (getRequestMethod == URLHandler.REQUEST_METHOD_HEAD) request.head() else request.get()
 
-    val response = okHttpClient.newCall(request.build()).execute()
+    val response = http.newCall(request.build()).execute()
     try {
       val infoOption = try {
 
@@ -101,7 +101,7 @@ class GigahorseUrlHandler extends AbstractURLHandler {
       .get()
       .build()
 
-    val response = okHttpClient.newCall(request).execute()
+    val response = http.newCall(request).execute()
     try {
       if (!checkStatusCode(url, response)) {
         throw new IOException(
@@ -183,7 +183,7 @@ class GigahorseUrlHandler extends AbstractURLHandler {
     if (l != null) {
       l.start(new CopyProgressEvent())
     }
-    val response = okHttpClient.newCall(request).execute()
+    val response = http.newCall(request).execute()
     try {
       if (l != null) {
         l.end(new CopyProgressEvent(EmptyBuffer, source.length()))
@@ -197,10 +197,6 @@ class GigahorseUrlHandler extends AbstractURLHandler {
 }
 
 object GigahorseUrlHandler {
-  import gigahorse.HttpClient
-  import okhttp3.OkHttpClient
-  import sbt.librarymanagement.Http
-
   // This is requires to access the constructor of URLInfo.
   private[sbt] class SbtUrlInfo(available: Boolean,
                                 contentLength: Long,
@@ -213,27 +209,6 @@ object GigahorseUrlHandler {
   }
 
   private val EmptyBuffer: Array[Byte] = new Array[Byte](0)
-
-  lazy val http: HttpClient = Http.http
-
-  private lazy val okHttpClient: OkHttpClient = {
-    http
-      .underlying[OkHttpClient]
-      .newBuilder()
-      .authenticator(new sbt.internal.librarymanagement.JavaNetAuthenticator)
-      .followRedirects(true)
-      .followSslRedirects(true)
-      .build
-  }
-
-  @deprecated("Use the Gigahorse HttpClient directly instead.", "librarymanagement-ivy 1.0.1")
-  private[sbt] def urlFactory = {
-    new OkUrlFactory(okHttpClient)
-  }
-
-  @deprecated("Use the Gigahorse HttpClient directly instead.", "librarymanagement-ivy 1.0.1")
-  private[sbt] def open(url: URL): HttpURLConnection =
-    urlFactory.open(url)
 
   private def checkStatusCode(url: URL, response: Response): Boolean =
     response.code() match {
