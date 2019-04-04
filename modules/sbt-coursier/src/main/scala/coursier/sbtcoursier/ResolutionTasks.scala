@@ -81,6 +81,8 @@ object ResolutionTasks {
 
       val ivyProperties = ResolutionParams.defaultIvyProperties()
 
+      val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
+
       val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
 
       val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
@@ -101,7 +103,8 @@ object ResolutionTasks {
           FromSbt.repository(
             resolver,
             ivyProperties,
-            log
+            log,
+            authenticationByRepositoryId.get(resolver.name)
           )
         }
 

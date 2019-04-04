@@ -3,6 +3,7 @@ package coursier.sbtcoursiershared
 import java.io.File
 
 import coursier.cache.{CacheDefaults, CacheLogger}
+import coursier.{Credentials => LegacyCredentials}
 import coursier.core.{Configuration, Project, Publication}
 import coursier.credentials.Credentials
 import coursier.lmcoursier.{FallbackDependency, SbtCoursierCache}
@@ -35,6 +36,8 @@ object SbtCoursierShared extends AutoPlugin {
     val mavenProfiles = settingKey[Set[String]]("")
 
     val coursierUseSbtCredentials = settingKey[Boolean]("")
+    @deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
+    val coursierCredentials = taskKey[Map[String, LegacyCredentials]]("")
     val coursierExtraCredentials = taskKey[Seq[Credentials]]("")
 
     val coursierLogger = taskKey[Option[CacheLogger]]("")
@@ -54,6 +57,7 @@ object SbtCoursierShared extends AutoPlugin {
       coursierReorderResolvers := true,
       coursierKeepPreloaded := false,
       coursierUseSbtCredentials := true,
+      coursierCredentials := Map.empty,
       coursierExtraCredentials := Nil,
       coursierLogger := None,
       coursierCache := CacheDefaults.location

@@ -86,12 +86,15 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       else
         None
 
+    val authenticationByRepositoryId = conf.authenticationByRepositoryId.toMap
+
     val mainRepositories = resolvers
       .flatMap { resolver =>
         FromSbt.repository(
           resolver,
           ivyProperties,
-          log
+          log,
+          authenticationByRepositoryId.get(resolver.name)
         )
       }
 

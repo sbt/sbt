@@ -87,6 +87,7 @@ object LmCoursierPlugin extends AutoPlugin {
         val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
         val profiles = mavenProfiles.value
 
+        val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
         val credentials = credentialsTask.value
 
         val createLogger = coursierLogger.value
@@ -122,6 +123,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withMavenProfiles(profiles.toVector.sorted)
           .withScalaOrganization(scalaOrg)
           .withScalaVersion(scalaVer)
+          .withAuthenticationByRepositoryId(authenticationByRepositoryId.toVector.sortBy(_._1))
           .withCredentials(credentials)
           .withLogger(createLogger)
           .withCache(cache)
