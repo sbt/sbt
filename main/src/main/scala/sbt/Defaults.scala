@@ -2278,7 +2278,8 @@ object Classpaths {
     unresolvedWarningConfiguration in update := UnresolvedWarningConfiguration(
       dependencyPositions.value
     ),
-    update := (updateTask tag (Tags.Update, Tags.Network)).value,
+    updateFull := (updateTask tag (Tags.Update, Tags.Network)).value,
+    update := (updateWithoutDetails("update") tag (Tags.Update, Tags.Network)).value,
     update := {
       val report = update.value
       val log = streams.value.log
@@ -2656,9 +2657,23 @@ object Classpaths {
       }
   }
 
-  def updateTask: Initialize[Task[UpdateReport]] = Def.task {
+  def updateTask: Initialize[Task[UpdateReport]] = updateTask0("updateFull", true, true)
+  def updateWithoutDetails(label: String): Initialize[Task[UpdateReport]] =
+    updateTask0(label, false, false)
+
+  /**
+   * cacheLabel - label to identify an update cache
+   * includeCallers - include the caller information
+   * includeDetails - include module reports for the evicted modules
+   */
+  private def updateTask0(
+      cacheLabel: String,
+      includeCallers: Boolean,
+      includeDetails: Boolean
+  ): Initialize[Task[UpdateReport]] = Def.task {
     val s = streams.value
-    val cacheDirectory = streams.value.cacheDirectory
+    val cacheDirectory = crossTarget.value / cacheLabel / updateCacheName.value
+    val cacheStoreFactory: CacheStoreFactory = CacheStoreFactory.directory(cacheDirectory)
 
     val isRoot = executionRoots.value contains resolvedScoped.value
     val shouldForce = isRoot || {
@@ -2721,7 +2736,7 @@ object Classpaths {
       lm = dependencyResolution.value,
       // Ivy-free ModuleDescriptor
       module = ivyModule.value,
-      s.cacheStoreFactory.sub(updateCacheName.value),
+      cacheStoreFactory = cacheStoreFactory,
       label = label,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
@@ -2732,6 +2747,8 @@ object Classpaths {
       ewo = evictionOptions,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,
+      includeCallers = includeCallers,
+      includeDetails = includeDetails,
       log = s.log
     )
   }
