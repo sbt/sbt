@@ -59,7 +59,7 @@ object Dependencies {
   val sjsonnewScalaJson = Def.setting {
     "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value
   }
-  val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.3.0"
+  val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.4.0"
   val okhttpUrlconnection = "com.squareup.okhttp3" % "okhttp-urlconnection" % "3.7.0"
 
   private def scala211Module(name: String, moduleVersion: String) =
