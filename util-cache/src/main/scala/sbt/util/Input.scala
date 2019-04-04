@@ -4,6 +4,7 @@ import java.io.{ Closeable, InputStream }
 import scala.util.control.NonFatal
 import sjsonnew.{ IsoString, JsonReader, SupportConverter }
 import sbt.io.{ IO, Using }
+import sbt.internal.util.EmptyCacheError
 
 trait Input extends Closeable {
   def read[T: JsonReader](): T
@@ -28,7 +29,11 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
     }
   }
 
-  def read[T: JsonReader]() = converter.fromJson(isoFormat.from(readFully())).get
+  def read[T: JsonReader](): T = {
+    val str = readFully()
+    if (str == "") throw new EmptyCacheError()
+    else converter.fromJson(isoFormat.from(str)).get
+  }
 
   def close() = input.close()
 }
