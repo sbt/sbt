@@ -1,4 +1,3 @@
-coursierUseSbtCredentials := true
 credentials += Credentials(
   "",
   sys.env("TEST_REPOSITORY_HOST"),
