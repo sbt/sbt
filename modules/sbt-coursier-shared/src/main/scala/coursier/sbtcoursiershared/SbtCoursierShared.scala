@@ -52,13 +52,17 @@ object SbtCoursierShared extends AutoPlugin {
   def publicationsSetting(packageConfigs: Seq[(sbt.Configuration, Configuration)]): Setting[_] =
     coursierPublications := ArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value
 
+  override def globalSettings: Seq[Setting[_]] =
+    Seq(
+      coursierUseSbtCredentials := true,
+      coursierCredentials := Map.empty,
+      coursierExtraCredentials := Nil
+    )
+
   override def buildSettings: Seq[Setting[_]] =
     Seq(
       coursierReorderResolvers := true,
       coursierKeepPreloaded := false,
-      coursierUseSbtCredentials := true,
-      coursierCredentials := Map.empty,
-      coursierExtraCredentials := Nil,
       coursierLogger := None,
       coursierCache := CacheDefaults.location
     )
