@@ -175,6 +175,11 @@ val root = (project in file(".")).
         }
       else Def.task { Seq[(File, String)]() }
     }).value,
+    mappings in Universal ++= {
+      val base = baseDirectory.value
+      if (sbtVersionToRelease startsWith "0.13.") Nil
+      else Seq[(File, String)](base / "LICENSE" -> "LICENSE", base / "NOTICE" -> "NOTICE")
+    },
 
     // Misccelaneous publishing stuff...
     projectID in Debian := {
