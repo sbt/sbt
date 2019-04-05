@@ -175,27 +175,27 @@ jdk_version() {
 process_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-       -h|-help) usage; exit 1 ;;
-    -v|-verbose) verbose=1 && shift ;;
-      -d|-debug) debug=1 && addSbt "-debug" && shift ;;
+            -h|-help|--help) usage; exit 1 ;;
+      -v|-verbose|--verbose) verbose=1 && shift ;;
+          -d|-debug|--debug) debug=1 && addSbt "-debug" && shift ;;
 
-           -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
-           -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
-     -jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
-         -batch) exec </dev/null && shift ;;
+                 -ivy|--ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
+                 -mem|--mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
+     -jvm-debug|--jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
+             -batch|--batch) exec </dev/null && shift ;;
 
-       -sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
-   -sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
-     -java-home) require_arg path "$1" "$2" &&
-                 java_cmd="$2/bin/java" &&
-                 export JAVA_HOME="$2" &&
-                 export JDK_HOME="$2" &&
-                 export PATH="$2/bin:$PATH" &&
-                 shift 2 ;;
+         -sbt-jar|--sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
+ -sbt-version|--sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
+     -java-home|--java-home) require_arg path "$1" "$2" &&
+                             java_cmd="$2/bin/java" &&
+                             export JAVA_HOME="$2" &&
+                             export JDK_HOME="$2" &&
+                             export PATH="$2/bin:$PATH" &&
+                             shift 2 ;;
 
-          "-D*") addJava "$1" && shift ;;
-            -J*) addJava "${1:2}" && shift ;;
-              *) addResidual "$1" && shift ;;
+                      "-D*") addJava "$1" && shift ;;
+                        -J*) addJava "${1:2}" && shift ;;
+                          *) addResidual "$1" && shift ;;
     esac
   done
 

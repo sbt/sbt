@@ -64,8 +64,10 @@ set INIT_SBT_VERSION=_TO_BE_REPLACED
 :args_loop
 if "%~1" == "" goto args_end
 
-if "%~1" == "-jvm-debug" (
-  set JVM_DEBUG=true
+if "%~1" == "-jvm-debug" set set JVM_DEBUG=true
+if "%~1" == "--jvm-debug" set set JVM_DEBUG=true
+
+if "%JVM_DEBUG%" == "true" (
   set /a JVM_DEBUG_PORT=5005 2>nul >nul
 ) else if "!JVM_DEBUG!" == "true" (
   set /a JVM_DEBUG_PORT=%1 2>nul >nul
