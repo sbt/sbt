@@ -28,6 +28,12 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
+  test("sbt --no-colors") {
+    val out = sbtProcess("compile --no-colors -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.log.noformat=true"))
+    ()
+  }
+
   test("sbt -mem 503") {
     val out = sbtProcess("compile -mem 503 -v").!!.linesIterator.toList
     assert(out.contains[String]("-Xmx503m"))
