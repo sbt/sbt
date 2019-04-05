@@ -425,6 +425,12 @@ Usage: `basename "$0"` [options]
   -v | --verbose      this runner is chattier
   -d | --debug        set sbt log level to debug
   --no-colors         disable ANSI color codes
+  --color=auto|always|true|false|never
+                      enable or disable ANSI color codes      (sbt 1.3 and above)
+  --supershell=auto|always|true|false|never
+                      enable or disable supershell            (sbt 1.3 and above)
+  --traces            generate Trace Event report on shutdown (sbt 1.3 and above)
+  --timings           display task timings report on shutdown
   --sbt-create        start sbt even if current directory contains no sbt project
   --sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
   --sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
@@ -433,7 +439,7 @@ Usage: `basename "$0"` [options]
   --no-share          use all local caches; no sharing
   --no-global         uses global caches, but does not use global ~/.sbt directory.
   --jvm-debug <port>  Turn on JVM debugging, open at the given port.
-  --batch             Disable interactive mode
+  --batch             disable interactive mode
 
   # sbt version (default: from project/build.properties if present, else latest release)
   --sbt-version  <version>   use the specified version of sbt
@@ -468,6 +474,12 @@ process_my_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
      -no-colors|--no-colors) addJava "-Dsbt.log.noformat=true" && shift ;;
+         -timings|--timings) addJava "-Dsbt.task.timings=true" && addJava "-Dsbt.task.timings.on.shutdown=true" && shift ;;
+           -traces|--traces) addJava "-Dsbt.traces=true" && shift ;;
+             --supershell=*) addJava "-Dsbt.supershell=${1:13}" && shift ;;
+              -supershell=*) addJava "-Dsbt.supershell=${1:12}" && shift ;;
+                  --color=*) addJava "-Dsbt.color=${1:8}" && shift ;;
+                   -color=*) addJava "-Dsbt.color=${1:7}" && shift ;;
        -no-share|--no-share) addJava "$noshare_opts" && shift ;;
      -no-global|--no-global) addJava "-Dsbt.global.base=$(pwd)/project/.sbtboot" && shift ;;
        -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;

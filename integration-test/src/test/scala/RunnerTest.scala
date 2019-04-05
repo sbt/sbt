@@ -34,6 +34,24 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
+  test("sbt --color=false") {
+    val out = sbtProcess("compile --color=false -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.color=false"))
+    ()
+  }
+
+  test("sbt --supershell=never") {
+    val out = sbtProcess("compile --supershell=never -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.supershell=never"))
+    ()
+  }
+
+  test("sbt --timings") {
+    val out = sbtProcess("compile --timings -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.task.timings=true"))
+    ()
+  }
+
   test("sbt -mem 503") {
     val out = sbtProcess("compile -mem 503 -v").!!.linesIterator.toList
     assert(out.contains[String]("-Xmx503m"))
