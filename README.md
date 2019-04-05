@@ -1,48 +1,10 @@
-# Build Status
+sbt: the launcher script
+========================
 
-[![Build Status](https://travis-ci.org/sbt/sbt-launcher-package.svg?branch=master)](https://travis-ci.org/sbt/sbt-launcher-package)
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/sbt/sbt-launcher-package?branch=master&svg=true&retina=true)](https://ci.appveyor.com/project/sbt/sbt-launcher-package)
-
-sbt: the launcher
-==================
-
-An alternative script for running [sbt](https://github.com/sbt/sbt).
-It works with sbt 0.7.x projects as well as 0.10+. If you're in an sbt
-project directory, the runner will figure out the versions of sbt and
-scala required by the project and download them if necessary.
-
-Sample usage: create a new project using a snapshot version of sbt as
-well as a snapshot version of scala, then run the sbt "about" command.
-
-    % sbt -v -sbt-snapshot -210 -sbt-create about
-    Detected sbt version 0.11.3-SNAPSHOT
-    sbt snapshot is 0.11.3-20111207-052114
-    # Executing command line:
-    java
-    -XX:+CMSClassUnloadingEnabled
-    -Xms1536m
-    -Xmx1536m
-    -XX:MaxPermSize=384m
-    -XX:ReservedCodeCacheSize=192m
-    -Dfile.encoding=UTF8
-    -jar
-    /r/sbt-extras/.lib/0.11.3-SNAPSHOT/sbt-launch.jar
-    "set resolvers in ThisBuild += ScalaToolsSnapshots"
-    "++ 2.10.0-SNAPSHOT"
-    about
-
-    [info] Loading global plugins from /Users/paulp/.sbt/plugins
-    [info] Set current project to default-71999b (in build file:/Users/paulp/Desktop/new/)
-    [info] Reapplying settings...
-    [info] Set current project to default-71999b (in build file:/Users/paulp/Desktop/new/)
-    Setting version to 2.10.0-SNAPSHOT
-    [info] Set current project to default-71999b (in build file:/Users/paulp/Desktop/new/)
-    [info] This is sbt 0.11.3-20111207-052114
-    [info] The current project is {file:/Users/paulp/Desktop/new/}default-71999b
-    [info] The current project is built against Scala 2.10.0-SNAPSHOT
-    [info] sbt, sbt plugins, and build definitions are using Scala 2.9.1
+This is a launcher script for running [sbt](https://github.com/sbt/sbt).
 
 Current -help output:
+
 ```bash
 Usage: sbt [options]
 
@@ -83,14 +45,17 @@ Usage: sbt [options]
   -S-X               add -X to sbt's scalacOptions (-S is stripped)
 ```
 
-## Native Packages ##
+### Native packages
 
-This project also includes native packages to run SBT for 
+This project also includes native packages to run sbt for
 
 * Windows
 * RedHat (rpm)
 * Debian (deb)
-* Homebrew (coming soon!)
 
 Locations for download to be available soon.
 
+### Build status
+
+[![Build Status](https://travis-ci.org/sbt/sbt-launcher-package.svg?branch=master)](https://travis-ci.org/sbt/sbt-launcher-package)
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/sbt/sbt-launcher-package?branch=master&svg=true&retina=true)](https://ci.appveyor.com/project/sbt/sbt-launcher-package)
