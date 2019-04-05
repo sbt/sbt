@@ -8,15 +8,24 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ RMap, ConsoleOut, ConsoleAppender, LogOption, JLine }
+import sbt.internal.util.{
+  RMap,
+  ConsoleOut,
+  ConsoleAppender,
+  LogOption,
+  JLine,
+  ManagedLogger,
+  ProgressEvent,
+  ProgressItem
+}
+import sbt.util.Level
 import scala.concurrent.{ blocking, Future, ExecutionContext }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
-import TaskProgress._
 
 /**
  * implements task progress display on the shell.
  */
-private[sbt] final class TaskProgress
+private[sbt] final class TaskProgress(log: ManagedLogger)
     extends AbstractTaskExecuteProgress
     with ExecuteProgress[Task] {
   private[this] val isReady = new AtomicBoolean(false)
@@ -55,72 +64,38 @@ private[sbt] final class TaskProgress
 
   private[this] val console = ConsoleOut.systemOut
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
+    // send an empty progress report to clear out the previous report
+    val event = ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None)
+    import sbt.internal.util.codec.JsonProtocol._
+    log.logEvent(Level.Info, event)
     isAllCompleted.set(true)
-    // completionReport()
   }
   private[this] val skipReportTasks =
     Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject")
   private[this] def report(): Unit = console.lockObject.synchronized {
-    val currentTasks = activeTasks.toList
+    val currentTasks = activeTasks.toVector
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
     def report0(): Unit = {
-      console.print(s"$CursorDown1")
-      currentTasks foreach { task =>
-        val elapsed = timings.get(task).currentElapsedSeconds
-        console.println(s"$DeleteLine  | => ${taskName(task)} ${elapsed}s")
-      }
-      if (ltc > currentTasksCount) deleteConsoleLines(ltc - currentTasksCount)
-      else ()
-      console.print(cursorUp(math.max(currentTasksCount, ltc) + 1))
+      val event = ProgressEvent("Info", currentTasks map { task =>
+        val elapsed = timings.get(task).currentElapsedMicros
+        ProgressItem(taskName(task), elapsed)
+      }, Some(ltc), None, None)
+      import sbt.internal.util.codec.JsonProtocol._
+      log.logEvent(Level.Info, event)
     }
     if (containsSkipTasks(currentTasks)) ()
     else report0()
     lastTaskCount.set(currentTasksCount)
   }
 
-  // todo: use logger instead of console
-  // private[this] def completionReport(): Unit = console.lockObject.synchronized {
-  //   val completedTasks = timings.asScala.toList
-  //   val notableTasks = completedTasks
-  //     .filter({
-  //       case (_, time: Long) => time >= 1000000000L * 10L
-  //     })
-  //     .sortBy({
-  //       case (_, time: Long) => -time
-  //     })
-  //     .take(5)
-  //   def report0(): Unit = {
-  //     console.print(s"$CursorDown1")
-  //     console.println(s"$DeleteLine  notable completed tasks:")
-  //     notableTasks foreach {
-  //       case (task, time) =>
-  //         val elapsed = time / 1000000000L
-  //         console.println(s"$DeleteLine  | => ${taskName(task)} ${elapsed}s")
-  //     }
-  //   }
-  //   if (containsSkipTasks(notableTasks) || notableTasks.isEmpty) ()
-  //   else report0()
-  // }
-
-  private[this] def containsSkipTasks(tasks: List[Task[_]]): Boolean =
+  private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean =
     tasks
       .map(t => taskName(t))
       .exists(n => skipReportTasks.exists(m => n.endsWith("/ " + m)))
-
-  private[this] def deleteConsoleLines(n: Int): Unit = {
-    (1 to n) foreach { _ =>
-      console.println(DeleteLine)
-    }
-  }
 }
 
 private[sbt] object TaskProgress {
-  final val DeleteLine = "\u001B[2K"
-  def cursorUp(n: Int): String = s"\u001B[${n}A"
-  def cursorDown(n: Int): String = s"\u001B[${n}B"
-  final val CursorDown1 = cursorDown(1)
-
   def isEnabled: Boolean =
     ConsoleAppender.formatEnabledInEnv && sys.props
       .get("sbt.supershell")

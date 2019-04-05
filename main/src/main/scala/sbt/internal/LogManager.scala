@@ -246,6 +246,16 @@ object LogManager {
     s1
   }
 
+  def progressLogger(appender: Appender): ManagedLogger = {
+    val log = LogExchange.logger("progress", None, None)
+    LogExchange.unbindLoggerAppenders("progress")
+    LogExchange.bindLoggerAppenders(
+      "progress",
+      List(appender -> Level.Info)
+    )
+    log
+  }
+
   // This is the default implementation for the relay appender
   val defaultRelay: Unit => Appender = _ => defaultRelayImpl
 

@@ -170,7 +170,11 @@ object EvaluateTask {
       Some(sharedTraceEvent)
     } else None
 
-  def taskProgress: ExecuteProgress[Task] = new TaskProgress()
+  def taskProgress: ExecuteProgress[Task] = {
+    val appender = MainAppender.defaultScreen(StandardMain.console)
+    val log = LogManager.progressLogger(appender)
+    new TaskProgress(log)
+  }
 
   // sbt-pgp calls this
   @deprecated("No longer used", "1.3.0")
