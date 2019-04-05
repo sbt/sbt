@@ -2,7 +2,7 @@ package coursier.sbtlmcoursier
 
 import coursier.core.Classifier
 import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
-import coursier.sbtcoursiershared.InputsTasks.authenticationByHostTask
+import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
@@ -88,7 +88,7 @@ object LmCoursierPlugin extends AutoPlugin {
         val profiles = mavenProfiles.value
 
         val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
-        val authenticationByHost = authenticationByHostTask.value
+        val credentials = credentialsTask.value
 
         val createLogger = coursierLogger.value
 
@@ -124,7 +124,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withScalaOrganization(scalaOrg)
           .withScalaVersion(scalaVer)
           .withAuthenticationByRepositoryId(authenticationByRepositoryId.toVector.sortBy(_._1))
-          .withAuthenticationByHost(authenticationByHost.toVector.sortBy(_._1))
+          .withCredentials(credentials)
           .withLogger(createLogger)
           .withCache(cache)
           .withLog(s.log)

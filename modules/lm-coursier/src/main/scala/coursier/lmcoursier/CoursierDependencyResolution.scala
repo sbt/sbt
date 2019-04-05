@@ -4,8 +4,7 @@ import java.io.File
 
 import _root_.coursier.{Artifact, Organization, Resolution, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
-import _root_.coursier.lmcoursier.Inputs.withAuthenticationByHost
-import coursier.cache.{CacheDefaults, CachePolicy, FileCache}
+import coursier.cache.{CacheDefaults, FileCache}
 import coursier.internal.Typelevel
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
@@ -75,7 +74,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val ttl = CacheDefaults.ttl
     val loggerOpt = conf.logger
     val cache = conf.cache.getOrElse(CacheDefaults.location)
-    val cachePolicies = CachePolicy.default
+    val cachePolicies = CacheDefaults.cachePolicies
     val checksums = CacheDefaults.checksums
     val projectName = "" // used for logging only…
 
@@ -98,7 +97,6 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
           authenticationByRepositoryId.get(resolver.name)
         )
       }
-      .map(withAuthenticationByHost(_, conf.authenticationByHost.toMap))
 
     val interProjectRepo = InterProjectRepository(conf.interProjectDependencies)
 
@@ -123,6 +121,13 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     val typelevel = so == Typelevel.typelevelOrg
 
+    val cache0 = coursier.cache.FileCache()
+      .withLocation(cache)
+      .withCachePolicies(cachePolicies)
+      .withTtl(ttl)
+      .withChecksums(checksums)
+      .withCredentials(conf.credentials)
+
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
@@ -135,11 +140,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       sbtClassifiers = false,
       projectName = projectName,
       loggerOpt = loggerOpt,
-      cache = coursier.cache.FileCache()
-        .withLocation(cache)
-        .withCachePolicies(cachePolicies)
-        .withTtl(ttl)
-        .withChecksums(checksums),
+      cache = cache0,
       parallel = conf.parallelDownloads,
       params = coursier.params.ResolutionParams()
         .withMaxIterations(conf.maxIterations)
@@ -156,11 +157,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         loggerOpt = loggerOpt,
         projectName = projectName,
         sbtClassifiers = false,
-        cache = FileCache()
-          .withLocation(cache)
-          .withChecksums(checksums)
-          .withTtl(ttl)
-          .withCachePolicies(cachePolicies),
+        cache = cache0,
         parallel = conf.parallelDownloads
       )
 

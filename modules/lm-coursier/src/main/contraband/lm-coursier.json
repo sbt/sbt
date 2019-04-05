@@ -116,8 +116,8 @@
           "since": "0.0.1"
         },
         {
-          "name": "authenticationByHost",
-          "type": "(String, coursier.core.Authentication)*",
+          "name": "credentials",
+          "type": "Seq[coursier.credentials.Credentials]",
           "default": "Vector.empty",
           "since": "0.0.1"
         },

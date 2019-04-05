@@ -191,7 +191,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierMaxIterations := ResolutionProcess.defaultMaxIterations,
     coursierChecksums := Seq(Some("SHA-1"), None),
     coursierArtifactsChecksums := Seq(None),
-    coursierCachePolicies := CachePolicy.default,
+    coursierCachePolicies := CacheDefaults.cachePolicies,
     coursierTtl := CacheDefaults.ttl,
     coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value)
   )

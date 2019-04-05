@@ -1,6 +1,7 @@
 package coursier.sbtcoursiershared
 
 import coursier.core._
+import coursier.credentials.DirectCredentials
 import coursier.lmcoursier._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
@@ -181,32 +182,40 @@ object InputsTasks {
       }
     }
 
-  val authenticationByHostTask = Def.taskDyn {
+  val credentialsTask = Def.taskDyn {
 
     val useSbtCredentials = coursierUseSbtCredentials.value
 
-    if (useSbtCredentials)
-      Def.task {
-        val log = streams.value.log
+    val fromSbt =
+      if (useSbtCredentials)
+        Def.task {
+          val log = streams.value.log
 
-        sbt.Keys.credentials.value
-          .flatMap {
-            case dc: sbt.DirectCredentials => List(dc)
-            case fc: sbt.FileCredentials =>
-              sbt.Credentials.loadCredentials(fc.path) match {
-                case Left(err) =>
-                  log.warn(s"$err, ignoring it")
-                  Nil
-                case Right(dc) => List(dc)
-              }
-          }
-          .map { c =>
-            c.host -> Authentication(c.userName, c.passwd)
-          }
-          .toMap
-      }
-    else
-      Def.task(Map.empty[String, Authentication])
+          sbt.Keys.credentials.value
+            .flatMap {
+              case dc: sbt.DirectCredentials => List(dc)
+              case fc: sbt.FileCredentials =>
+                sbt.Credentials.loadCredentials(fc.path) match {
+                  case Left(err) =>
+                    log.warn(s"$err, ignoring it")
+                    Nil
+                  case Right(dc) => List(dc)
+                }
+            }
+            .map { c =>
+              DirectCredentials()
+                .withHost(c.host)
+                .withUsername(c.userName)
+                .withPassword(c.passwd)
+                .withRealm(Some(c.realm).filter(_.nonEmpty))
+            }
+        }
+      else
+        Def.task(Seq.empty[DirectCredentials])
+
+    Def.task {
+      fromSbt.value ++ coursierExtraCredentials.value
+    }
   }
 
 }

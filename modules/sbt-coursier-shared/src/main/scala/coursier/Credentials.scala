@@ -5,6 +5,7 @@ import java.util.Properties
 
 import coursier.core.Authentication
 
+@deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
 sealed abstract class Credentials extends Product with Serializable {
   def user: String
   def password: String
@@ -15,11 +16,11 @@ sealed abstract class Credentials extends Product with Serializable {
 
 object Credentials {
 
-  final case class Direct(user: String, password: String) extends Credentials {
+  private final case class Direct(user: String, password: String) extends Credentials {
     override def toString = s"Direct($user, ******)"
   }
 
-  final case class FromFile(file: File) extends Credentials {
+  private final case class FromFile(file: File) extends Credentials {
 
     private lazy val props = {
       val p = new Properties()
@@ -41,16 +42,18 @@ object Credentials {
     lazy val password: String = findKey(FromFile.filePasswordKeys)
   }
 
-  object FromFile {
+  private object FromFile {
     // from sbt.Credentials
     private val fileUserKeys = Seq("user", "user.name", "username")
     private val filePasswordKeys = Seq("password", "pwd", "pass", "passwd")
   }
 
 
+  @deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
   def apply(user: String, password: String): Credentials =
     Direct(user, password)
 
+  @deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
   def apply(file: File): Credentials =
     FromFile(file)
 

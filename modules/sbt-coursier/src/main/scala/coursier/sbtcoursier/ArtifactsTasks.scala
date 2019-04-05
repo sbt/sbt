@@ -7,6 +7,7 @@ import coursier.cache.FileCache
 import coursier.core._
 import coursier.lmcoursier._
 import coursier.sbtcoursier.Keys._
+import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierLogger}
 import sbt.Def
 import sbt.Keys._
@@ -45,6 +46,7 @@ object ArtifactsTasks {
       val ttl = coursierTtl.value
       val cache = coursierCache.value
       val createLogger = coursierLogger.value
+      val credentials = credentialsTask.value
 
       val log = streams.value.log
 
@@ -64,7 +66,8 @@ object ArtifactsTasks {
           .withLocation(cache)
           .withChecksums(artifactsChecksums)
           .withTtl(ttl)
-          .withCachePolicies(cachePolicies),
+          .withCachePolicies(cachePolicies)
+          .withCredentials(credentials),
         parallel = parallelDownloads
       )
 
