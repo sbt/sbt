@@ -780,7 +780,8 @@ object Defaults extends BuildCommon {
           (fullClasspath in test).value,
           testForkedParallel.value,
           (javaOptions in test).value,
-          (classLoaderLayeringStrategy).value
+          (classLoaderLayeringStrategy).value,
+          projectId = s"${thisProject.value.id} / ",
         )
       }
     ).value,
@@ -952,7 +953,8 @@ object Defaults extends BuildCommon {
         fullClasspath.value,
         testForkedParallel.value,
         javaOptions.value,
-        classLoaderLayeringStrategy.value
+        classLoaderLayeringStrategy.value,
+        projectId = s"${thisProject.value.id} / ",
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
@@ -997,6 +999,7 @@ object Defaults extends BuildCommon {
       forkedParallelExecution = false,
       javaOptions = Nil,
       strategy = ClassLoaderLayeringStrategy.TestDependencies,
+      projectId = "",
     )
   }
 
@@ -1019,6 +1022,7 @@ object Defaults extends BuildCommon {
       forkedParallelExecution,
       javaOptions = Nil,
       strategy = ClassLoaderLayeringStrategy.TestDependencies,
+      projectId = "",
     )
   }
 
@@ -1032,6 +1036,7 @@ object Defaults extends BuildCommon {
       forkedParallelExecution: Boolean,
       javaOptions: Seq[String],
       strategy: ClassLoaderLayeringStrategy,
+      projectId: String
   ): Initialize[Task[Tests.Output]] = {
     val runners = createTestRunners(frameworks, loader, config)
     val groupTasks = groups map {
@@ -1061,17 +1066,39 @@ object Defaults extends BuildCommon {
     val result = output map { out =>
       out.events.foreach {
         case (suite, e) =>
-          if (strategy != ClassLoaderLayeringStrategy.Flat) {
-            e.throwables
+          if (strategy != ClassLoaderLayeringStrategy.Flat ||
+              strategy != ClassLoaderLayeringStrategy.ScalaInstance) {
+            (e.throwables ++ e.throwables.flatMap(t => Option(t.getCause)))
               .find { t =>
-                t.isInstanceOf[NoClassDefFoundError] || t.isInstanceOf[IllegalAccessError]
+                t.isInstanceOf[NoClassDefFoundError] ||
+                t.isInstanceOf[IllegalAccessError] ||
+                t.isInstanceOf[ClassNotFoundException]
               }
               .foreach { t =>
                 s.log.error(
-                  s"Test suite $suite failed with $t. This may be due to the ClassLoaderLayeringStrategy"
-                    + s" ($strategy) used by your task. This issue may be resolved by changing the"
-                    + " ClassLoaderLayeringStrategy in your configuration (generally Test or IntegrationTest),"
-                    + " e.g.:\nTest / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat\n"
+                  s"Test suite $suite failed with $t.\nThis may be due to the "
+                    + s"ClassLoaderLayeringStrategy ($strategy) used by your task.\n"
+                    + "To improve performance and reduce memory, sbt attempts to cache the"
+                    + " class loaders used to load the project dependencies.\n"
+                    + "The project class files are loaded in a separate class loader that is"
+                    + " created for each test run.\nThe test class loader accesses the project"
+                    + " dependency classes using the cached project dependency classloader.\nWith"
+                    + " this approach, class loading may fail under the following conditions:\n\n"
+                    + " * Dependencies use reflection to access classes in your project's"
+                    + " classpath.\n   Java serialization/deserialization may cause this.\n"
+                    + " * An open package is accessed across layers. If the project's classes"
+                    + " access or extend\n   jvm package private classes defined in a"
+                    + " project dependency, it may cause an IllegalAccessError\n   because the"
+                    + " jvm enforces package private at the classloader level.\n\n"
+                    + "These issues, along with others that were not enumerated above, may be"
+                    + " resolved by changing the class loader layering strategy.\n"
+                    + "The Flat and ScalaInstance strategies bundle the full project classpath in"
+                    + " the same class loader.\nTo use one of these strategies, set the "
+                    + " ClassLoaderLayeringStrategy key\nin your configuration, for example:\n\n"
+                    + s"set ${projectId}Test / classLoaderLayeringStrategy :="
+                    + " ClassLoaderLayeringStrategy.ScalaInstance\n"
+                    + s"set ${projectId}Test / classLoaderLayeringStrategy :="
+                    + " ClassLoaderLayeringStrategy.Flat\n\n"
                     + "See ClassLoaderLayeringStrategy.scala for the full list of options."
                 )
               }
