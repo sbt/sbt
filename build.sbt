@@ -124,6 +124,8 @@ lazy val utilLogging = (project in internalPath / "util-logging")
       exclude[ReversedMissingMethodProblem]("sbt.internal.util.ConsoleOut.flush"),
       // This affects Scala 2.11 only it seems, so it's ok?
       exclude[InheritedNewAbstractMethodProblem]("sbt.internal.util.codec.JsonProtocol.LogOptionFormat"),
+      exclude[InheritedNewAbstractMethodProblem]("sbt.internal.util.codec.JsonProtocol.ProgressItemFormat"),
+      exclude[InheritedNewAbstractMethodProblem]("sbt.internal.util.codec.JsonProtocol.ProgressEventFormat"),
     ),
   )
   .configure(addSbtIO)
