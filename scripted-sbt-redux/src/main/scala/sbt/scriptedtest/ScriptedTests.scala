@@ -255,7 +255,9 @@ final class ScriptedTests(
       case "source-dependencies/linearization"                      => LauncherBased // sbt/Package$
       case "source-dependencies/named"                              => LauncherBased // sbt/Package$
       case "source-dependencies/specialized"                        => LauncherBased // sbt/Package$
-      case _                                                        => RunFromSourceBased
+      case "tests/test-cross" =>
+        LauncherBased // the sbt metabuild classpath leaks into the test interface classloader in older versions of sbt
+      case _ => RunFromSourceBased
     }
     // sbt/Package$ means:
     //   java.lang.NoClassDefFoundError: sbt/Package$ (wrong name: sbt/package$)

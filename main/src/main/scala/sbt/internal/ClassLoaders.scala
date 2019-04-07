@@ -21,6 +21,8 @@ import sbt.internal.util.Attributed.data
 import sbt.io.IO
 import sbt.librarymanagement.Configurations.{ Runtime, Test }
 
+import scala.annotation.tailrec
+
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
   /*
@@ -214,9 +216,15 @@ private[sbt] object SbtMetaBuildClassLoader {
     }
   }
   def apply(libraryLoader: ClassLoader, fullLoader: ClassLoader): ClassLoader = {
+    @tailrec
+    def bootLoader(classLoader: ClassLoader): ClassLoader = classLoader.getParent match {
+      case null                                                               => classLoader
+      case c if c.getClass.getCanonicalName == "xsbt.boot.BootFilteredLoader" => c
+      case c                                                                  => bootLoader(c)
+    }
     val interfaceFilter: URL => Boolean = _.getFile.endsWith("test-interface-1.0.jar")
     val (interfaceURL, rest) = fullLoader.urls.partition(interfaceFilter)
-    val interfaceLoader = new URLClassLoader(interfaceURL, libraryLoader.getParent) {
+    val interfaceLoader = new URLClassLoader(interfaceURL, bootLoader(libraryLoader)) {
       override def toString: String = s"SbtTestInterfaceClassLoader(${getURLs.head})"
     }
     val updatedLibraryLoader = new URLClassLoader(libraryLoader.urls, interfaceLoader) {
