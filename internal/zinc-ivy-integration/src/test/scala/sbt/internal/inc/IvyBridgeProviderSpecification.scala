@@ -18,7 +18,12 @@ abstract class IvyBridgeProviderSpecification extends UnitSpec with AbstractBrid
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
 
-  val resolvers = Array(ZincComponentCompiler.LocalResolver, Resolver.mavenCentral)
+  val resolvers = Array(
+    ZincComponentCompiler.LocalResolver,
+    Resolver.mavenCentral,
+    MavenRepository("scala-integration",
+                    "https://scala-ci.typesafe.com/artifactory/scala-integration/")
+  )
   private val ivyConfiguration =
     getDefaultConfiguration(currentBase, currentTarget, resolvers, log)
 
