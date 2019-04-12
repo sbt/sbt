@@ -2,7 +2,6 @@ package sbt.internal.inc
 
 import java.io.File
 
-import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
@@ -14,7 +13,7 @@ import xsbti.compile.CompilerBridgeProvider
  *
  * This is a very good example on how to instantiate the compiler bridge provider.
  */
-abstract class BridgeProviderSpecification extends UnitSpec {
+abstract class IvyBridgeProviderSpecification extends UnitSpec with AbstractBridgeProviderTestkit {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
@@ -35,22 +34,6 @@ abstract class BridgeProviderSpecification extends UnitSpec {
     val manager = new ZincComponentManager(lock, componentProvider, secondaryCache, log)
     val dependencyResolution = IvyDependencyResolution(ivyConfiguration)
     ZincComponentCompiler.interfaceProvider(manager, dependencyResolution, currentManaged)
-  }
-
-  def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
-    val provider = getZincProvider(targetDir, log)
-    val scalaInstance = provider.fetchScalaInstance(scalaVersion, log)
-    val bridge = provider.fetchCompiledBridge(scalaInstance, log)
-    val target = targetDir / s"target-bridge-$scalaVersion.jar"
-    IO.copyFile(bridge, target)
-    target
-  }
-
-  def scalaInstance(scalaVersion: String,
-                    targetDir: File,
-                    logger: Logger): xsbti.compile.ScalaInstance = {
-    val provider = getZincProvider(targetDir, logger)
-    provider.fetchScalaInstance(scalaVersion, logger)
   }
 
   private def getDefaultConfiguration(baseDirectory: File,

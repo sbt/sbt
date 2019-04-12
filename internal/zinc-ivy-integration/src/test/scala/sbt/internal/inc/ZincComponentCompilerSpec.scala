@@ -3,7 +3,7 @@ package sbt.internal.inc
 import sbt.internal.util.ConsoleLogger
 import sbt.io.IO
 
-class ZincComponentCompilerSpec extends BridgeProviderSpecification {
+class ZincComponentCompilerSpec extends IvyBridgeProviderSpecification {
   val scala2105 = "2.10.5"
   val scala2106 = "2.10.6"
   val scala2118 = "2.11.8"
