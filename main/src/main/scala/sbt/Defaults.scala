@@ -28,7 +28,7 @@ import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
 import sbt.internal.inc.JavaInterfaceUtil._
-import sbt.internal.inc.ZincUtil
+import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.mavenint.{
@@ -470,7 +470,7 @@ object Defaults extends BuildCommon {
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
     scalaCompilerBridgeBinaryJar := None,
-    scalaCompilerBridgeSource := ZincUtil.getDefaultBridgeModule(scalaVersion.value),
+    scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(scalaVersion.value),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
@@ -532,7 +532,7 @@ object Defaults extends BuildCommon {
               compilerBridgeJar = jar
             )
           case _ =>
-            ZincUtil.scalaCompiler(
+            ZincLmUtil.scalaCompiler(
               scalaInstance = scalaInstance.value,
               classpathOptions = classpathOptions.value,
               globalLock = launcher.globalLock,

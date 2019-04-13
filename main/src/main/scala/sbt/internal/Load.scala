@@ -37,7 +37,7 @@ import Keys.{
 import Project.inScope
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResolution, IvyPaths }
-import sbt.internal.inc.{ ZincUtil, ScalaInstance }
+import sbt.internal.inc.{ ZincLmUtil, ZincUtil, ScalaInstance }
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings, ~> }
@@ -93,14 +93,14 @@ private[sbt] object Load {
     val si = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     val zincDir = BuildPaths.getZincDirectory(state, globalBase)
     val classpathOptions = ClasspathOptionsUtil.boot
-    val scalac = ZincUtil.scalaCompiler(
+    val scalac = ZincLmUtil.scalaCompiler(
       scalaInstance = si,
       classpathOptions = classpathOptions,
       globalLock = launcher.globalLock,
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
       dependencyResolution = dependencyResolution,
-      compilerBridgeSource = ZincUtil.getDefaultBridgeModule(scalaProvider.version),
+      compilerBridgeSource = ZincLmUtil.getDefaultBridgeModule(scalaProvider.version),
       scalaJarsTarget = zincDir,
       log = log
     )
