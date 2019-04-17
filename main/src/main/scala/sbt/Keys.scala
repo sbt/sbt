@@ -124,7 +124,6 @@ object Keys {
   // Deprecated watch apis
   @deprecated("This is no longer used for continuous execution", "1.3.0")
   val watch = SettingKey(BasicKeys.watch)
-  @deprecated("WatchSource has been replaced by Glob. To add file triggers to a task with key: Key, set `Key / watchTriggers := Seq[Glob](...)`.", "1.3.0")
   val watchSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in this project for continuous execution to watch for changes.").withRank(BMinusSetting)
   @deprecated("This is for legacy builds only and will be removed in a future version of sbt", "1.3.0")
   val watchTransitiveSources = taskKey[Seq[Watched.WatchSource]]("Defines the sources in all projects for continuous execution to watch.").withRank(CSetting)
