@@ -38,16 +38,22 @@ private[sbt] object LMCoursier {
 
   def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
     Def.task {
-      Inputs.coursierProject(
+      val auOpt = apiURL.value
+      val proj = Inputs.coursierProject(
         projectID.value,
         allDependencies.value,
         excludeDependencies.value,
-        // should projectID.configurations be used instead?
         ivyConfigurations.value,
         scalaVersion.value,
         scalaBinaryVersion.value,
         streams.value.log
       )
+      auOpt match {
+        case Some(au) =>
+          val props = proj.properties :+ ("info.apiURL" -> au.toString)
+          proj.copy(properties = props)
+        case _ => proj
+      }
     }
 
   def coursierConfigurationTask(

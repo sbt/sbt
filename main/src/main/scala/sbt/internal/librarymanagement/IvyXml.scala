@@ -91,10 +91,11 @@ object IvyXml {
       }
     )
 
-    val infoAttrs = project.module.attributes.foldLeft[xml.MetaData](xml.Null) {
-      case (acc, (k, v)) =>
-        new PrefixedAttribute("e", k, v, acc)
-    }
+    val infoAttrs =
+      (project.module.attributes.toSeq ++ project.properties).foldLeft[xml.MetaData](xml.Null) {
+        case (acc, (k, v)) =>
+          new PrefixedAttribute("e", k, v, acc)
+      }
 
     val licenseElems = project.info.licenses.map {
       case (name, urlOpt) =>
