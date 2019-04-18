@@ -67,19 +67,21 @@ object Delegates extends Properties("delegates") {
     allDelegates(keys) { (key, ds) =>
       key.project match {
         case Zero => true // filtering out of testing
-        case Select(ProjectRef(uri, _)) =>
-          val buildScoped = key.copy(project = Select(BuildRef(uri)))
-          val idxKey = ds.indexOf(key)
-          val idxB = ds.indexOf(buildScoped)
-          val z = key.copy(project = Zero)
-          val idxZ = ds.indexOf(z)
-          if (z == Scope.GlobalScope) true
-          else {
-            (s"idxKey = $idxKey; idxB = $idxB; idxZ = $idxZ") |:
-              (idxKey < idxB) && (idxB < idxZ)
+        case Select(rr: ResolvedReference) =>
+          rr match {
+            case BuildRef(_) => ds.indexOf(key) < ds.indexOf(key.copy(project = Zero))
+            case ProjectRef(uri, _) =>
+              val buildScoped = key.copy(project = Select(BuildRef(uri)))
+              val idxKey = ds.indexOf(key)
+              val idxB = ds.indexOf(buildScoped)
+              val z = key.copy(project = Zero)
+              val idxZ = ds.indexOf(z)
+              if (z == Scope.GlobalScope) true
+              else
+                (s"idxKey = $idxKey; idxB = $idxB; idxZ = $idxZ") |: (idxKey < idxB) && (idxB < idxZ)
           }
-        case Select(BuildRef(_)) =>
-          ds.indexOf(key) < ds.indexOf(key.copy(project = Zero))
+        case Select(_) | This =>
+          throw new AssertionError(s"Scope's reference should be resolved, but was ${key.project}")
       }
     }
   }
@@ -91,17 +93,11 @@ object Delegates extends Properties("delegates") {
         case Select(config) if key.project.isSelect =>
           val p = key.project.toOption.get
           val r = keys.env.resolve(p)
-          val proj = keys.env.projectFor(r)
-          val inh: Vector[ConfigKey] = keys.env.inheritConfig(r, config)
-          val conf = proj.confMap(config.name)
-          if (inh.isEmpty) true
-          else {
+          keys.env.inheritConfig(r, config).headOption.fold(Prop(true)) { parent =>
             val idxKey = ds.indexOf(key)
-            val parent = inh.head
             val a = key.copy(config = Select(parent))
             val idxA = ds.indexOf(a)
-            (s"idxKey = $idxKey; a = $a; idxA = $idxA") |:
-              idxKey < idxA
+            (s"idxKey = $idxKey; a = $a; idxA = $idxA") |: idxKey < idxA
           }
         case _ => true
       }
