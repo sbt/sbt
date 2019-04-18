@@ -24,6 +24,7 @@ import coursier.core.{
 }
 import coursier.credentials.DirectCredentials
 import coursier.lmcoursier._
+import sbt.io.IO
 import sbt.librarymanagement._
 import Keys._
 import sbt.librarymanagement.ivy.{
@@ -167,20 +168,35 @@ private[sbt] object LMCoursier {
       val bootResOpt = bootResolvers.value
       val overrideFlag = overrideBuildResolvers.value
       Def.task {
-        val result = resultTask(bootResOpt, overrideFlag).value
+        val result0 = resultTask(bootResOpt, overrideFlag).value
         val reorderResolvers = true // coursierReorderResolvers.value
         val keepPreloaded = false // coursierKeepPreloaded.value
-
-        val result0 =
-          if (reorderResolvers)
-            ResolutionParams.reorderResolvers(result)
-          else
-            result
-
-        if (keepPreloaded)
-          result0
+        val paths = ivyPaths.value
+        val result1 =
+          if (reorderResolvers) ResolutionParams.reorderResolvers(result0)
+          else result0
+        val result2 =
+          paths.ivyHome match {
+            case Some(ivyHome) =>
+              val ivyHomeUri = IO.toURI(ivyHome).getSchemeSpecificPart
+              result1 map {
+                case r: FileRepository =>
+                  val ivyPatterns = r.patterns.ivyPatterns map {
+                    _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                  }
+                  val artifactPatterns = r.patterns.artifactPatterns map {
+                    _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                  }
+                  val p =
+                    r.patterns.withIvyPatterns(ivyPatterns).withArtifactPatterns(artifactPatterns)
+                  r.withPatterns(p)
+                case r => r
+              }
+            case _ => result1
+          }
+        if (keepPreloaded) result2
         else
-          result0.filter { r =>
+          result2.filter { r =>
             !r.name.startsWith("local-preloaded")
           }
       }
