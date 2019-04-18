@@ -19,11 +19,11 @@ import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.control.NonFatal
 import sbt.internal.scripted._
 import sbt.internal.io.Resources
-import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
+import sbt.internal.util.{ BufferedLogger, FullLogger, ConsoleOut }
 import sbt.io.syntax._
 import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
 import sbt.io.FileFilter._
-import sbt.util.{ AbstractLogger, Logger }
+import sbt.util.{ AbstractLogger, Level, Logger }
 
 final class ScriptedTests(
     resourceBaseDirectory: File,
@@ -459,7 +459,7 @@ object ScriptedTests extends ScriptedRunner {
     //  val buildScalaVersions = args(4)
     val bootProperties = new File(args(5))
     val tests = args.drop(6)
-    val logger = ConsoleLogger()
+    val logger = TestConsoleLogger()
     run(directory, buffer, tests, logger, bootProperties, Array(), emptyCallback)
   }
 
@@ -477,7 +477,7 @@ class ScriptedRunner {
       launchOpts: Array[String],
       prescripted: java.util.List[File],
   ): Unit = {
-    val logger = ConsoleLogger()
+    val logger = new TestConsoleLogger()
     val addTestFile = (f: File) => { prescripted.add(f); () }
     run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, addTestFile)
     //new FullLogger(Logger.xlog2Log(log)))
@@ -491,7 +491,7 @@ class ScriptedRunner {
       bootProperties: File,
       launchOpts: Array[String],
   ): Unit = {
-    val logger = ConsoleLogger()
+    val logger = TestConsoleLogger()
     val prescripted = ScriptedTests.emptyCallback
     run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, prescripted)
   }
@@ -539,7 +539,7 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
       instances: Int
   ): Unit = {
-    val logger = ConsoleLogger()
+    val logger = TestConsoleLogger()
     val addTestFile = (f: File) => { prescripted.add(f); () }
     runInParallel(baseDir, bufferLog, tests, logger, bootProps, launchOpts, addTestFile, instances)
   }
@@ -661,4 +661,33 @@ private[sbt] final class ListTests(
 class PendingTestSuccessException(label: String) extends Exception {
   override def getMessage: String =
     s"The pending test $label succeeded. Mark this test as passing to remove this failure."
+}
+
+private[sbt] object TestConsoleLogger {
+  def apply() = new TestConsoleLogger()
+}
+
+// Remove dependencies to log4j to avoid mixup.
+private[sbt] class TestConsoleLogger extends AbstractLogger {
+  val out = ConsoleOut.systemOut
+  def trace(t: => Throwable): Unit = {
+    out.println(t.toString)
+    // out.flush()
+  }
+  def success(message: => String): Unit = {
+    out.println(message)
+    // out.flush()
+  }
+  def log(level: Level.Value, message: => String): Unit = {
+    out.println(s"[$level] $message")
+    // out.flush()
+  }
+  def control(event: sbt.util.ControlEvent.Value, message: => String): Unit = ()
+  def getLevel: sbt.util.Level.Value = Level.Info
+  def getTrace: Int = Int.MaxValue
+  def logAll(events: Seq[sbt.util.LogEvent]): Unit = ()
+  def setLevel(newLevel: sbt.util.Level.Value): Unit = ()
+  def setSuccessEnabled(flag: Boolean): Unit = ()
+  def setTrace(flag: Int): Unit = ()
+  def successEnabled: Boolean = true
 }
