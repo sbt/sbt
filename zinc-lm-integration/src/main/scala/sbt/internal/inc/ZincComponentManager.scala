@@ -24,10 +24,12 @@ import sbt.io.IO
  * This is used for compiled source jars so that the compilation need not be repeated for other projects on the same
  * machine.
  */
-class ZincComponentManager(globalLock: xsbti.GlobalLock,
-                           provider: xsbti.ComponentProvider,
-                           secondaryCacheDir: Option[File],
-                           log0: xsbti.Logger) {
+class ZincComponentManager(
+    globalLock: xsbti.GlobalLock,
+    provider: xsbti.ComponentProvider,
+    secondaryCacheDir: Option[File],
+    log0: xsbti.Logger
+) {
   val log = new FullLogger(log0)
 
   /** Get all of the files for component 'id', throwing an exception if no files exist for the component. */

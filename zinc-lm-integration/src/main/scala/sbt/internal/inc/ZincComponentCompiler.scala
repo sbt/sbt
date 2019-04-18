@@ -71,9 +71,11 @@ private[sbt] object ZincComponentCompiler {
      * Note that this method cannot be defined in [[CompilerBridgeProvider]] because [[ModuleID]]
      * is a Scala-defined class to which the compiler bridge cannot depend on.
      */
-    def compiledBridge(bridgeSources: ModuleID,
-                       scalaInstance: xsbti.compile.ScalaInstance,
-                       logger: xsbti.Logger): File = {
+    def compiledBridge(
+        bridgeSources: ModuleID,
+        scalaInstance: xsbti.compile.ScalaInstance,
+        logger: xsbti.Logger
+    ): File = {
       import InterfaceUtil.{ toSupplier => f0 }
       val autoClasspath = ClasspathOptionsUtil.auto
       val raw = new RawCompiler(scalaInstance, autoClasspath, logger)
@@ -83,8 +85,10 @@ private[sbt] object ZincComponentCompiler {
       zinc.compiledBridgeJar
     }
 
-    override def fetchCompiledBridge(scalaInstance: xsbti.compile.ScalaInstance,
-                                     logger: xsbti.Logger): File = {
+    override def fetchCompiledBridge(
+        scalaInstance: xsbti.compile.ScalaInstance,
+        logger: xsbti.Logger
+    ): File = {
       val scalaVersion = scalaInstance.actualVersion()
       val bridgeSources = userProvidedBridgeSources getOrElse getDefaultBridgeModule(scalaVersion)
       compiledBridge(bridgeSources, scalaInstance, logger)
@@ -110,11 +114,13 @@ private[sbt] object ZincComponentCompiler {
           .withConfigurations(ZincLMHelper.DefaultConfigurations)
 
       val moduleDescriptor = dependencyResolution.moduleDescriptor(moduleDescriptorConfiguration)
-      ZincLMHelper.update(dependencyResolution,
-                          moduleDescriptor,
-                          scalaJarsTarget,
-                          noSource = true,
-                          fullLogger) match {
+      ZincLMHelper.update(
+        dependencyResolution,
+        moduleDescriptor,
+        scalaJarsTarget,
+        noSource = true,
+        fullLogger
+      ) match {
         case Left(uw) =>
           val unresolvedLines = unresolvedWarningLines.showLines(uw).mkString("\n")
           val unretrievedMessage = s"The Scala compiler and library could not be retrieved."
@@ -131,42 +137,54 @@ private[sbt] object ZincComponentCompiler {
       }
     }
 
-    override def fetchScalaInstance(scalaVersion: String,
-                                    logger: xsbti.Logger): xsbti.compile.ScalaInstance = {
+    override def fetchScalaInstance(
+        scalaVersion: String,
+        logger: xsbti.Logger
+    ): xsbti.compile.ScalaInstance = {
       val scalaArtifacts = getScalaArtifacts(scalaVersion, logger)
       val scalaCompiler = scalaArtifacts.compiler
       val scalaLibrary = scalaArtifacts.library
       val jarsToLoad = (scalaCompiler +: scalaLibrary +: scalaArtifacts.others).toArray
       assert(jarsToLoad.forall(_.exists), "One or more jar(s) in the Scala instance do not exist.")
       val loaderLibraryOnly = ClasspathUtilities.toLoader(Vector(scalaLibrary))
-      val loader = ClasspathUtilities.toLoader(jarsToLoad.toVector filterNot { _ == scalaLibrary },
-                                               loaderLibraryOnly)
+      val loader = ClasspathUtilities.toLoader(
+        jarsToLoad.toVector filterNot { _ == scalaLibrary },
+        loaderLibraryOnly
+      )
       val properties = ResourceLoader.getSafePropertiesFor("compiler.properties", loader)
       val loaderVersion = Option(properties.getProperty("version.number"))
       val scalaV = loaderVersion.getOrElse("unknown")
-      new ScalaInstance(scalaV,
-                        loader,
-                        loaderLibraryOnly,
-                        scalaLibrary,
-                        scalaCompiler,
-                        jarsToLoad,
-                        loaderVersion)
+      new ScalaInstance(
+        scalaV,
+        loader,
+        loaderLibraryOnly,
+        scalaLibrary,
+        scalaCompiler,
+        jarsToLoad,
+        loaderVersion
+      )
     }
   }
 
   // Used by ZincUtil.
-  def interfaceProvider(compilerBridgeSource: ModuleID,
-                        manager: ZincComponentManager,
-                        dependencyResolution: DependencyResolution,
-                        scalaJarsTarget: File): CompilerBridgeProvider =
-    new ZincCompilerBridgeProvider(Some(compilerBridgeSource),
-                                   manager,
-                                   dependencyResolution,
-                                   scalaJarsTarget)
+  def interfaceProvider(
+      compilerBridgeSource: ModuleID,
+      manager: ZincComponentManager,
+      dependencyResolution: DependencyResolution,
+      scalaJarsTarget: File
+  ): CompilerBridgeProvider =
+    new ZincCompilerBridgeProvider(
+      Some(compilerBridgeSource),
+      manager,
+      dependencyResolution,
+      scalaJarsTarget
+    )
 
-  def interfaceProvider(manager: ZincComponentManager,
-                        dependencyResolution: DependencyResolution,
-                        scalaJarsTarget: File): CompilerBridgeProvider =
+  def interfaceProvider(
+      manager: ZincComponentManager,
+      dependencyResolution: DependencyResolution,
+      scalaJarsTarget: File
+  ): CompilerBridgeProvider =
     new ZincCompilerBridgeProvider(None, manager, dependencyResolution, scalaJarsTarget)
 
   private final val LocalIvy = s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}"
@@ -260,11 +278,13 @@ private[inc] class ZincComponentCompiler(
       val target = new File(binaryDirectory, s"$compilerBridgeId.jar")
       buffered bufferQuietly {
         IO.withTemporaryDirectory { retrieveDirectory =>
-          ZincLMHelper.update(dependencyResolution,
-                              moduleForBridge,
-                              retrieveDirectory,
-                              false,
-                              buffered) match {
+          ZincLMHelper.update(
+            dependencyResolution,
+            moduleForBridge,
+            retrieveDirectory,
+            false,
+            buffered
+          ) match {
             case Left(uw) =>
               val mod = bridgeSources.toString
               val unresolvedLines = unresolvedWarningLines.showLines(uw).mkString("\n")
@@ -292,11 +312,13 @@ private object ZincLMHelper {
   private[inc] final val DefaultConfigurations: Vector[Configuration] =
     Vector(Configurations.Component, Configurations.Compile)
 
-  private[inc] def update(dependencyResolution: DependencyResolution,
-                          module: ModuleDescriptor,
-                          retrieveDirectory: File,
-                          noSource: Boolean = false,
-                          logger: Logger): Either[UnresolvedWarning, Vector[File]] = {
+  private[inc] def update(
+      dependencyResolution: DependencyResolution,
+      module: ModuleDescriptor,
+      retrieveDirectory: File,
+      noSource: Boolean = false,
+      logger: Logger
+  ): Either[UnresolvedWarning, Vector[File]] = {
     val updateConfiguration = defaultUpdateConfiguration(retrieveDirectory, noSource)
     val dependencies = prettyPrintDependency(module)
     logger.info(s"Attempting to fetch $dependencies.")

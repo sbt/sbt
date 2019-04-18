@@ -26,21 +26,19 @@ abstract class IvyBridgeProviderSpecification extends FlatSpec with Matchers {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
+  def secondaryCacheDirectory: File = file("target").getAbsoluteFile / "zinc-components"
 
   val resolvers = Array(
     ZincComponentCompiler.LocalResolver,
     Resolver.mavenCentral,
-    MavenRepository("scala-integration",
-                    "https://scala-ci.typesafe.com/artifactory/scala-integration/")
+    MavenRepository(
+      "scala-integration",
+      "https://scala-ci.typesafe.com/artifactory/scala-integration/"
+    ),
   )
 
   private def ivyConfiguration(log: Logger) =
     getDefaultConfiguration(currentBase, currentTarget, resolvers, log)
-
-  def secondaryCacheDirectory: File = {
-    val target = file("target").getAbsoluteFile
-    target / "zinc-components"
-  }
 
   def getZincProvider(bridge: ModuleID, targetDir: File, log: Logger): CompilerBridgeProvider = {
     val lock = ZincComponentCompiler.getDefaultLock
@@ -66,10 +64,12 @@ abstract class IvyBridgeProviderSpecification extends FlatSpec with Matchers {
     target
   }
 
-  private def getDefaultConfiguration(baseDirectory: File,
-                                      ivyHome: File,
-                                      resolvers0: Array[Resolver],
-                                      log: xsbti.Logger): InlineIvyConfiguration = {
+  private def getDefaultConfiguration(
+      baseDirectory: File,
+      ivyHome: File,
+      resolvers0: Array[Resolver],
+      log: xsbti.Logger
+  ): InlineIvyConfiguration = {
     import sbt.io.syntax._
     val resolvers = resolvers0.toVector
     val chainResolver = ChainedResolver("zinc-chain", resolvers)
