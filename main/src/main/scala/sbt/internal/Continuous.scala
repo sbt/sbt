@@ -80,21 +80,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   )
 
   /**
-   * Provides a copy of System.in that can be scanned independently from System.in itself. This task
-   * will only be valid during a continuous build started via `~` or the `watch` task. The
-   * motivation is that a plugin may want to completely override the parsing of System.in which
-   * is not straightforward since the default implementation is hard-wired to read from and
-   * parse System.in. If an invalid parser is provided by [[Keys.watchInputParser]] and
-   * [[Keys.watchInputStream]] is set to this task, then a custom parser can be provided via
-   * [[Keys.watchInputHandler]] and the default System.in processing will not occur.
-   *
-   * @return the duplicated System.in
-   */
-  def dupedSystemIn: Def.Initialize[Task[InputStream]] = Def.task {
-    Keys.state.value.get(DupedSystemIn).map(_.duped).getOrElse(System.in)
-  }
-
-  /**
    * Create a function from InputStream => [[Watch.Action]] from a [[Parser]]. This is intended
    * to be used to set the watchInputHandler setting for a task.
    *
@@ -136,12 +121,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       )
     }
 
-  private[this] val DupedSystemIn =
-    AttributeKey[DupedInputStream](
-      "duped-system-in",
-      "Receives a copy of all of the bytes from System.in.",
-      10000
-    )
   private[sbt] val dynamicInputs = taskKey[Option[mutable.Set[DynamicInput]]](
     "The input globs found during task evaluation that are used in watch."
   )
@@ -298,7 +277,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       count: Int,
       isCommand: Boolean
   ): State = withCharBufferedStdIn { in =>
-    val duped = new DupedInputStream(in)
     implicit val extracted: Extracted = Project.extract(state)
     val repo = if ("polling" == System.getProperty("sbt.watch.mode")) {
       val service =
@@ -311,7 +289,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       val stateWithRepo = state
         .put(Keys.globalFileTreeRepository, repo)
         .put(sbt.nio.Keys.persistentFileAttributeMap, new sbt.nio.Keys.FileAttributeMap)
-        .put(DupedSystemIn, duped)
       setup(stateWithRepo, command) { (commands, s, valid, invalid) =>
         EvaluateTask.withStreams(extracted.structure, s)(_.use(Keys.streams in Global) { streams =>
           implicit val logger: Logger = streams.log
