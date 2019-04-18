@@ -12,11 +12,12 @@ import java.nio.file.{ Files, Path }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import org.scalatest.{ FlatSpec, Matchers }
-import sbt.Watch.{ NullLogger, _ }
 import sbt.WatchSpec._
 import sbt.internal.nio.{ FileEvent, FileEventMonitor, FileTreeRepository }
 import sbt.io._
 import sbt.io.syntax._
+import sbt.nio.Watch
+import sbt.nio.Watch.{ NullLogger, _ }
 import sbt.nio.file.{ FileAttributes, Glob }
 import sbt.util.Logger
 

@@ -4,6 +4,7 @@ import java.nio.file.Path
 import sbt._
 import Keys._
 import sbt.nio.Keys._
+import sbt.nio.Watch
 
 object Build {
   val reloadFile = settingKey[File]("file to toggle whether or not to reload")

@@ -9,7 +9,6 @@ import sbt.nio.Keys._
 * private apis.
 */
 object Build {
-  import sbt.internal.TransitiveDynamicInputs._
   val cached = settingKey[Unit]("")
   val newInputs = settingKey[Unit]("")
 

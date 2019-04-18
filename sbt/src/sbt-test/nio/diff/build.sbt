@@ -1,5 +1,4 @@
 import sbt.nio.Keys._
-import sbt.nio.file._
 
 val fileInputTask = taskKey[Unit]("task with file inputs")
 

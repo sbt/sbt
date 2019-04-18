@@ -16,9 +16,8 @@ import sbt.Project.richInitializeTask
 import sbt.Scope.Global
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
-import sbt.internal.TransitiveDynamicInputs._
 import sbt.internal.util._
-import sbt.internal.{ BuildStructure, GCUtil, Load, TaskProgress, TaskTimings, TaskTraceEvent, _ }
+import sbt.internal._
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
@@ -572,31 +571,6 @@ object EvaluateTask {
           stream
         }).value
       })
-    } else if (scoped.key == transitiveDynamicInputs.key) {
-      scoped.scope.task.toOption.toSeq.map { key =>
-        val updatedKey = ScopedKey(scoped.scope.copy(task = Zero), key)
-        transitiveDynamicInputs in scoped.scope := InputGraph.task(updatedKey).value
-      }
-    } else if (scoped.key == dynamicDependency.key) {
-      (dynamicDependency in scoped.scope := {
-        ()
-      }) :: Nil
-    } else if (scoped.key == transitiveClasspathDependency.key) {
-      (transitiveClasspathDependency in scoped.scope := {
-        ()
-      }) :: Nil
-    } else if (scoped.key == sbt.nio.Keys.allFiles.key) {
-      sbt.nio.Settings.allFiles(scoped) :: Nil
-    } else if (scoped.key == sbt.nio.Keys.allPaths.key) {
-      sbt.nio.Settings.allPaths(scoped) :: Nil
-    } else if (scoped.key == sbt.nio.Keys.changedFiles.key) {
-      sbt.nio.Settings.changedFiles(scoped)
-    } else if (scoped.key == sbt.nio.Keys.modifiedFiles.key) {
-      sbt.nio.Settings.modifiedFiles(scoped)
-    } else if (scoped.key == sbt.nio.Keys.removedFiles.key) {
-      sbt.nio.Settings.removedFiles(scoped) :: Nil
-    } else if (scoped.key == sbt.nio.Keys.stamper.key) {
-      sbt.nio.Settings.stamper(scoped) :: Nil
     } else {
       Nil
     }

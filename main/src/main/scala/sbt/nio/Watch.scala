@@ -5,7 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package sbt.nio
 
 import java.nio.file.Path
 import java.time.format.{ DateTimeFormatter, TextStyle }
@@ -14,6 +14,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
+import sbt._
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
 import sbt.internal.util.Util

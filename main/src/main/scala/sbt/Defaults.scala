@@ -64,6 +64,7 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+import sbt.nio.Watch
 import sbt.nio.Keys._
 import sbt.nio.file.FileTreeView
 import sbt.nio.file.syntax._
@@ -421,7 +422,7 @@ object Defaults extends BuildCommon {
     unmanagedSources := (unmanagedSources / fileStamps).value.map(_._1.toFile),
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := {
-      val stamper = sbt.nio.Keys.stamper.value
+      val stamper = sbt.nio.Keys.pathToFileStamp.value
       val res = generate(sourceGenerators).value
       res.foreach(f => stamper(f.toPath))
       res
@@ -654,7 +655,7 @@ object Defaults extends BuildCommon {
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value,
     fileOutputs += target.value ** AllPassFilter,
-    TransitiveDynamicInputs.transitiveDynamicInputs := InputGraph.task.value,
+    transitiveDynamicInputs := InputGraph.task.value,
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
@@ -2097,7 +2098,7 @@ object Classpaths {
         shellPrompt := shellPromptFromState,
         dynamicDependency := { (): Unit },
         transitiveClasspathDependency := { (): Unit },
-        TransitiveDynamicInputs.transitiveDynamicInputs :== Nil,
+        transitiveDynamicInputs :== Nil,
       )
     )
 

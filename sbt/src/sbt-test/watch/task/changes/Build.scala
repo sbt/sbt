@@ -2,6 +2,8 @@ package sbt.watch.task
 
 import sbt._
 import Keys._
+import sbt.nio.Keys._
+import sbt.nio.Watch
 
 object Build {
   val setStringValue = inputKey[Unit]("set a global string to a value")

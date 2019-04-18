@@ -21,10 +21,6 @@ import sbt.nio.Keys._
 
 import scala.annotation.tailrec
 
-private[sbt] object TransitiveDynamicInputs {
-  val transitiveDynamicInputs =
-    Def.taskKey[Seq[DynamicInput]]("The transitive inputs and triggers for a key")
-}
 private[sbt] object InputGraph {
   private implicit class SourceOps(val source: Source) {
     def toGlob: Glob = {

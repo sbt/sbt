@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic._
 
 import sbt.BasicKeys._
-import sbt.Watch.NullLogger
+import sbt.nio.Watch.NullLogger
 import sbt.internal.langserver.{ LogMessageParams, MessageType }
 import sbt.internal.server._
 import sbt.internal.util.codec.JValueFormats

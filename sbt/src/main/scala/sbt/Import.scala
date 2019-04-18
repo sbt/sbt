@@ -60,6 +60,16 @@ trait Import {
   type WatchSource = sbt.internal.io.Source
   val WatchSource = sbt.internal.io.Source
 
+  // sbt.nio
+  val ** = sbt.nio.file.**
+  val * = sbt.nio.file.*
+  val AnyPath = sbt.nio.file.AnyPath
+  type Glob = sbt.nio.file.Glob
+  val Glob = sbt.nio.file.Glob
+  type RelativeGlob = sbt.nio.file.RelativeGlob
+  val RelativeGlob = sbt.nio.file.RelativeGlob
+  val RecursiveGlob = sbt.nio.file.RecursiveGlob
+
   // sbt.util
   type AbstractLogger = sbt.util.AbstractLogger
   type BasicCache[I, O] = sbt.util.BasicCache[I, O]

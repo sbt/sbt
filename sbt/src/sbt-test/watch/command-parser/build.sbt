@@ -10,4 +10,4 @@ checkStringValue := checkStringValueImpl.evaluated
 
 setStringValue / watchTriggers := baseDirectory.value * "string.txt" :: Nil
 
-watchOnFileInputEvent := { (_, _) => Watch.CancelWatch }
+watchOnFileInputEvent := { (_, _) => sbt.nio.Watch.CancelWatch }

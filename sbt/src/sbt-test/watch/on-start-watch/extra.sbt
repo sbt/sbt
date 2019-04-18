@@ -1,1 +1,1 @@
-watchOnIteration := { _ => Watch.Reload }
+watchOnIteration := { _ => sbt.nio.Watch.Reload }

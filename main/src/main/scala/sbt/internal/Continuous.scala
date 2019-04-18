@@ -19,17 +19,18 @@ import sbt.BasicCommandStrings.{
 }
 import sbt.BasicCommands.otherCommandParser
 import sbt.Def._
+import sbt.Keys._
 import sbt.Scope.Global
-import sbt.Watch.{ Creation, Deletion, Update }
 import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
 import sbt.internal.nio._
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.internal.util.{ AttributeKey, JLine, Util }
-import sbt.nio.Keys.fileInputs
+import sbt.nio.Keys.{ fileInputs, _ }
+import sbt.nio.Watch.{ Creation, Deletion, Update }
 import sbt.nio.file.FileAttributes
-import sbt.nio.{ FileStamp, FileStamper }
+import sbt.nio.{ FileStamp, FileStamper, Watch }
 import sbt.util.{ Level, _ }
 
 import scala.annotation.tailrec
@@ -103,8 +104,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    */
   private[sbt] def continuous: Command =
     Command(ContinuousExecutePrefix, continuousBriefHelp, continuousDetail)(continuousParser) {
-      case (state, (initialCount, command)) =>
-        runToTermination(state, command, initialCount, isCommand = true)
+      case (s, (initialCount, command)) =>
+        runToTermination(s, command, initialCount, isCommand = true)
     }
 
   /**
@@ -117,7 +118,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     Def.inputTask {
       val (initialCount, command) = continuousParser.parsed
       new StateTransform(
-        runToTermination(Keys.state.value, command, initialCount, isCommand = false)
+        runToTermination(state.value, command, initialCount, isCommand = false)
       )
     }
 
@@ -165,7 +166,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
     // Extract all of the globs that we will monitor during the continuous build.
     val inputs = {
-      val configs = scopedKey.get(Keys.internalDependencyConfigurations).getOrElse(Nil)
+      val configs = scopedKey.get(internalDependencyConfigurations).getOrElse(Nil)
       val args = new InputGraph.Arguments(scopedKey, extracted, compiledMap, logger, configs, state)
       InputGraph.transitiveDynamicInputs(args)
     }
@@ -191,7 +192,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     lazy val exception =
       new IllegalStateException("Tried to access FileTreeRepository for uninitialized state")
     state
-      .get(Keys.globalFileTreeRepository)
+      .get(globalFileTreeRepository)
       .getOrElse(throw exception)
   }
 
@@ -279,18 +280,18 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   ): State = withCharBufferedStdIn { in =>
     implicit val extracted: Extracted = Project.extract(state)
     val repo = if ("polling" == System.getProperty("sbt.watch.mode")) {
-      val service =
-        new PollingWatchService(extracted.getOpt(Keys.pollInterval).getOrElse(500.millis))
-      FileTreeRepository.legacy((_: Any) => {}, service)
+      val service = new PollingWatchService(extracted.getOpt(pollInterval).getOrElse(500.millis))
+      FileTreeRepository
+        .legacy((_: Any) => {}, service)
     } else {
       FileTreeRepository.default
     }
     try {
       val stateWithRepo = state
-        .put(Keys.globalFileTreeRepository, repo)
-        .put(sbt.nio.Keys.persistentFileAttributeMap, new sbt.nio.Keys.FileAttributeMap)
+        .put(globalFileTreeRepository, repo)
+        .put(persistentFileAttributeMap, new sbt.nio.Keys.FileAttributeMap)
       setup(stateWithRepo, command) { (commands, s, valid, invalid) =>
-        EvaluateTask.withStreams(extracted.structure, s)(_.use(Keys.streams in Global) { streams =>
+        EvaluateTask.withStreams(extracted.structure, s)(_.use(streams in Global) { streams =>
           implicit val logger: Logger = streams.log
           if (invalid.isEmpty) {
             val currentCount = new AtomicInteger(count)
@@ -459,10 +460,10 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       count: AtomicInteger,
       commands: Seq[String]
   )(implicit extracted: Extracted): (() => Option[(Watch.Event, Watch.Action)], () => Unit) = {
-    val attributeMap = state.get(sbt.nio.Keys.persistentFileAttributeMap).get
+    val attributeMap = state.get(persistentFileAttributeMap).get
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
-      if (trackMetaBuild) extracted.getOpt(fileInputs in Keys.settingsData).getOrElse(Nil)
+      if (trackMetaBuild) extracted.getOpt(fileInputs in settingsData).getOrElse(Nil)
       else Nil
 
     val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
@@ -765,26 +766,26 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       implicit extracted: Extracted
   ) {
     val antiEntropy: FiniteDuration =
-      key.get(Keys.watchAntiEntropy).getOrElse(Watch.defaultAntiEntropy)
+      key.get(watchAntiEntropy).getOrElse(Watch.defaultAntiEntropy)
     val antiEntropyRetentionPeriod: FiniteDuration =
       key
-        .get(Keys.watchAntiEntropyRetentionPeriod)
+        .get(watchAntiEntropyRetentionPeriod)
         .getOrElse(Watch.defaultAntiEntropyRetentionPeriod)
     val deletionQuarantinePeriod: FiniteDuration =
-      key.get(Keys.watchDeletionQuarantinePeriod).getOrElse(Watch.defaultDeletionQuarantinePeriod)
-    val inputHandler: Option[InputStream => Watch.Action] = key.get(Keys.watchInputHandler)
+      key.get(watchDeletionQuarantinePeriod).getOrElse(Watch.defaultDeletionQuarantinePeriod)
+    val inputHandler: Option[InputStream => Watch.Action] = key.get(watchInputHandler)
     val inputParser: Parser[Watch.Action] =
-      key.get(Keys.watchInputParser).getOrElse(Watch.defaultInputParser)
-    val logLevel: Level.Value = key.get(Keys.watchLogLevel).getOrElse(Level.Info)
-    val onEnter: () => Unit = key.get(Keys.watchOnEnter).getOrElse(() => {})
-    val onExit: () => Unit = key.get(Keys.watchOnExit).getOrElse(() => {})
+      key.get(watchInputParser).getOrElse(Watch.defaultInputParser)
+    val logLevel: Level.Value = key.get(watchLogLevel).getOrElse(Level.Info)
+    val onEnter: () => Unit = key.get(watchOnEnter).getOrElse(() => {})
+    val onExit: () => Unit = key.get(watchOnExit).getOrElse(() => {})
     val onFileInputEvent: WatchOnEvent =
-      key.get(Keys.watchOnFileInputEvent).getOrElse(Watch.trigger)
-    val onIteration: Option[Int => Watch.Action] = key.get(Keys.watchOnIteration)
+      key.get(watchOnFileInputEvent).getOrElse(Watch.trigger)
+    val onIteration: Option[Int => Watch.Action] = key.get(watchOnIteration)
     val onTermination: Option[(Watch.Action, String, Int, State) => State] =
-      key.get(Keys.watchOnTermination)
+      key.get(watchOnTermination)
     val startMessage: StartMessage = getStartMessage(key)
-    val trackMetaBuild: Boolean = key.get(Keys.watchTrackMetaBuild).getOrElse(true)
+    val trackMetaBuild: Boolean = key.get(watchTrackMetaBuild).getOrElse(true)
     val triggerMessage: TriggerMessage = getTriggerMessage(key)
 
     // Unlike the rest of the settings, InputStream is a TaskKey which means that if it is set,
@@ -792,7 +793,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     // logical that users may want to use a different InputStream on each task invocation. The
     // alternative would be SettingKey[() => InputStream], but that doesn't feel right because
     // one might want the InputStream to depend on other tasks.
-    val inputStream: Option[TaskKey[InputStream]] = key.get(Keys.watchInputStream)
+    val inputStream: Option[TaskKey[InputStream]] = key.get(watchInputStream)
   }
 
   /**
@@ -813,14 +814,14 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     def arguments(logger: Logger): Arguments = new Arguments(logger, inputs())
   }
   private def getStartMessage(key: ScopedKey[_])(implicit e: Extracted): StartMessage = Some {
-    lazy val default = key.get(Keys.watchStartMessage).getOrElse(Watch.defaultStartWatch)
+    lazy val default = key.get(watchStartMessage).getOrElse(Watch.defaultStartWatch)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
   private def getTriggerMessage(
       key: ScopedKey[_]
   )(implicit e: Extracted): TriggerMessage = {
     lazy val default =
-      key.get(Keys.watchTriggeredMessage).getOrElse(Watch.defaultOnTriggerMessage)
+      key.get(watchTriggeredMessage).getOrElse(Watch.defaultOnTriggerMessage)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
 

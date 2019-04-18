@@ -1,9 +1,3 @@
-import java.nio.file._
-
-import sbt.nio.Keys._
-import sbt.nio.file._
-import sbt.Keys._
-
 // The project contains two files: { Foo.txt, Bar.md } in the subdirector base/subdir/nested-subdir
 
 // Check that we can correctly extract Foo.txt with a recursive source

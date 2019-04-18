@@ -107,7 +107,7 @@ private[sbt] object Load {
       compilers,
       evalPluginDef,
       delegates,
-      EvaluateTask.injectStreams,
+      s => EvaluateTask.injectStreams(s) ++ Settings.inject(s),
       pluginMgmt,
       inject,
       None,

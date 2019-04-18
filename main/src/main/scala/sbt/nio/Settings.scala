@@ -10,13 +10,38 @@ package nio
 
 import java.nio.file.{ Files, Path }
 
-import sbt.Keys._
-import sbt.internal.{ Continuous, DynamicInput }
+import sbt.internal.{ Continuous, DynamicInput, InputGraph }
 import sbt.nio.FileStamp.{ fileStampJsonFormatter, pathJsonFormatter }
 import sbt.nio.FileStamper.{ Hash, LastModified }
 import sbt.nio.Keys._
 
 private[sbt] object Settings {
+  private[sbt] val inject: Def.ScopedKey[_] => Seq[Def.Setting[_]] = scopedKey => {
+    if (scopedKey.key == transitiveDynamicInputs.key) {
+      scopedKey.scope.task.toOption.toSeq.map { key =>
+        val updatedKey = Def.ScopedKey(scopedKey.scope.copy(task = Zero), key)
+        transitiveDynamicInputs in scopedKey.scope := InputGraph.task(updatedKey).value
+      }
+    } else if (scopedKey.key == dynamicDependency.key) {
+      (dynamicDependency in scopedKey.scope := { () }) :: Nil
+    } else if (scopedKey.key == transitiveClasspathDependency.key) {
+      (transitiveClasspathDependency in scopedKey.scope := { () }) :: Nil
+    } else if (scopedKey.key == allFiles.key) {
+      allFilesImpl(scopedKey) :: Nil
+    } else if (scopedKey.key == allPaths.key) {
+      allPathsImpl(scopedKey) :: Nil
+    } else if (scopedKey.key == changedFiles.key) {
+      changedFilesImpl(scopedKey)
+    } else if (scopedKey.key == modifiedFiles.key) {
+      modifiedFilesImpl(scopedKey)
+    } else if (scopedKey.key == removedFiles.key) {
+      removedFilesImpl(scopedKey) :: Nil
+    } else if (scopedKey.key == pathToFileStamp.key) {
+      stamper(scopedKey) :: Nil
+    } else {
+      Nil
+    }
+  }
 
   /**
    * This adds the [[sbt.Keys.taskDefinitionKey]] to the work for each [[Task]]. Without
@@ -58,7 +83,7 @@ private[sbt] object Settings {
    * @param scopedKey the key whose file inputs we are seeking
    * @return a task definition that retrieves the input files and their attributes scoped to a particular task.
    */
-  private[sbt] def allPaths(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
+  private[this] def allPathsImpl(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
     addTaskDefinition(Keys.allPaths in scopedKey.scope := {
       (Keys.allPathsAndAttributes in scopedKey.scope).value.map(_._1)
     })
@@ -70,7 +95,7 @@ private[sbt] object Settings {
    * @param scopedKey the key whose file inputs we are seeking
    * @return a task definition that retrieves all of the input paths scoped to the input key.
    */
-  private[sbt] def allFiles(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
+  private[this] def allFilesImpl(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
     addTaskDefinition(Keys.allFiles in scopedKey.scope := {
       (Keys.allPathsAndAttributes in scopedKey.scope).value.collect {
         case (p, a) if a.isRegularFile && !Files.isHidden(p) => p
@@ -86,7 +111,7 @@ private[sbt] object Settings {
    * @param scopedKey the key whose fileInputs we are seeking
    * @return a task definition that retrieves the changed input files scoped to the key.
    */
-  private[sbt] def changedFiles(scopedKey: Def.ScopedKey[_]): Seq[Def.Setting[_]] =
+  private[this] def changedFilesImpl(scopedKey: Def.ScopedKey[_]): Seq[Def.Setting[_]] =
     addTaskDefinition(Keys.changedFiles in scopedKey.scope := {
       val current = (Keys.fileStamps in scopedKey.scope).value
       (Keys.fileStamps in scopedKey.scope).previous match {
@@ -110,7 +135,7 @@ private[sbt] object Settings {
    */
   private[sbt] def fileStamps(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
     addTaskDefinition(Keys.fileStamps in scopedKey.scope := {
-      val stamper = (Keys.stamper in scopedKey.scope).value
+      val stamper = (Keys.pathToFileStamp in scopedKey.scope).value
       (Keys.allPathsAndAttributes in scopedKey.scope).value.collect {
         case (p, a) if a.isRegularFile && !Files.isHidden(p) => p -> stamper(p)
       }
@@ -125,7 +150,7 @@ private[sbt] object Settings {
    * @param scopedKey the key whose modified files we are seeking
    * @return a task definition that retrieves the changed input files scoped to the key.
    */
-  private[sbt] def modifiedFiles(scopedKey: Def.ScopedKey[_]): Seq[Def.Setting[_]] =
+  private[this] def modifiedFilesImpl(scopedKey: Def.ScopedKey[_]): Seq[Def.Setting[_]] =
     (Keys.modifiedFiles in scopedKey.scope := {
       val current = (Keys.fileStamps in scopedKey.scope).value
       (Keys.fileStamps in scopedKey.scope).previous match {
@@ -151,7 +176,7 @@ private[sbt] object Settings {
    * @param scopedKey the key whose removed files we are seeking
    * @return a task definition that retrieves the changed input files scoped to the key.
    */
-  private[sbt] def removedFiles(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
+  private[this] def removedFilesImpl(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
     addTaskDefinition(Keys.removedFiles in scopedKey.scope := {
       val current = (Keys.allFiles in scopedKey.scope).value
       (Keys.allFiles in scopedKey.scope).previous match {
@@ -167,8 +192,8 @@ private[sbt] object Settings {
    *
    * @return a task definition for a function from `Path` to [[FileStamp]].
    */
-  private[sbt] def stamper(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
-    addTaskDefinition((Keys.stamper in scopedKey.scope) := {
+  private[this] def stamper(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
+    addTaskDefinition((Keys.pathToFileStamp in scopedKey.scope) := {
       val attributeMap = Keys.fileAttributeMap.value
       val stamper = (Keys.fileStamper in scopedKey.scope).value
       path: Path =>
