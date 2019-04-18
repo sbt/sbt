@@ -192,7 +192,7 @@ object Defaults extends BuildCommon {
       artifactClassifier in packageSrc :== Some(SourceClassifier),
       artifactClassifier in packageDoc :== Some(DocClassifier),
       includeFilter :== NothingFilter,
-      includeFilter in unmanagedSources :== ("*.java" | "*.scala") -- DirectoryFilter,
+      includeFilter in unmanagedSources :== ("*.java" | "*.scala"),
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
       bgList := { bgJobService.value.jobs },
@@ -250,10 +250,10 @@ object Defaults extends BuildCommon {
       settingsData := buildStructure.value.data,
       settingsData / fileInputs := {
         val baseDir = file(".").getCanonicalFile
-        val sourceFilter = ("*.sbt" || "*.scala" || "*.java") -- HiddenFileFilter
+        val sourceFilter = ("*.sbt" || "*.scala" || "*.java")
         val projectDir = baseDir / "project"
         Seq(
-          baseDir * ("*.sbt" -- HiddenFileFilter),
+          baseDir * "*.sbt",
           projectDir * sourceFilter,
           // We only want to recursively look in source because otherwise we have to search
           // the project target directories which is expensive.
