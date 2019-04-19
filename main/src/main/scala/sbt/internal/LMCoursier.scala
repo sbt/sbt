@@ -62,6 +62,8 @@ private[sbt] object LMCoursier {
       sbtClassifiers: Boolean
   ): Def.Initialize[Task[CoursierConfiguration]] =
     Def.taskDyn {
+      val s = streams.value
+      val log = s.log
       val resolversTask =
         if (sbtClassifiers)
           csrSbtResolvers
@@ -99,8 +101,7 @@ private[sbt] object LMCoursier {
         val sbtScalaVersion = internalSbtScalaProvider.version()
         val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
         val classifiers = classifiersTask.value
-        val s = streams.value
-        Classpaths.warnResolversConflict(rs, s.log)
+        Classpaths.warnResolversConflict(rs, log)
         CoursierConfiguration()
           .withResolvers(rs.toVector)
           .withInterProjectDependencies(interProjectDependencies.toVector)
@@ -124,7 +125,7 @@ private[sbt] object LMCoursier {
           .withCredentials(credentials)
           .withLogger(createLogger)
           .withCache(cache)
-          .withLog(s.log)
+          .withLog(log)
       }
     }
 
