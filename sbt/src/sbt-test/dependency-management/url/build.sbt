@@ -11,14 +11,12 @@ lazy val root = (project in file(".")).
 
 def checkClasspath(conf: Configuration) =
   fullClasspath in conf map { cp =>
-    try
-    {
+    try {
       val loader = ClasspathUtilities.toLoader(cp.files)
       Class.forName("org.jsoup.Jsoup", false, loader)
       ()
     }
-    catch
-    {
-      case _: ClassNotFoundException => sys.error("Dependency not downloaded.")
+    catch {
+      case _: ClassNotFoundException => sys.error(s"could not instantiate org.jsoup.Jsoup: ${cp.files}")
     }
   }

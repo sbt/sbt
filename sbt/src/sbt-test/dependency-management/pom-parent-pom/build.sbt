@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 val checkIvyXml = taskKey[Unit]("Checks the ivy.xml transform was correct")
 
 lazy val root = (project in file(".")).

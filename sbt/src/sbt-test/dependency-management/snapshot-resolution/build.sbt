@@ -1,6 +1,9 @@
 ThisBuild / organization := "com.example"
 ThisBuild / scalaVersion := "2.12.8"
 
+// TTL is 24h so we can't detect the change
+ThisBuild / useCoursier := false
+
 def customIvyPaths: Seq[Def.Setting[_]] = Seq(
   ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
 )

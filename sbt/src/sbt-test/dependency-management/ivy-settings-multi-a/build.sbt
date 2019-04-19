@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 lazy val commonSettings = Seq(
   autoScalaLibrary := false,
   unmanagedJars in Compile ++= (scalaInstance map (_.allJars.toSeq)).value

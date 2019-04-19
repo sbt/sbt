@@ -1,6 +1,8 @@
 // https://github.com/sbt/sbt/issues/1649
 lazy val check = taskKey[Unit]("Runs the check")
 
+ThisBuild / useCoursier := false
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),

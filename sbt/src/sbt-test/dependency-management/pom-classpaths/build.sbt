@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 import complete._
 import complete.DefaultParsers._
 

@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 lazy val a = (project in file(".")).
   settings(externalIvySettings()) dependsOn(b)
 
