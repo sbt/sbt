@@ -2348,51 +2348,60 @@ object Classpaths {
       ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
-    classifiersModule in updateClassifiers := {
-      implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
-      val projectDeps = projectDependencies.value.iterator.map(key).toSet
-      val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
-      GetClassifiersModule(
-        projectID.value,
-        None,
-        externalModules,
-        ivyConfigurations.in(updateClassifiers).value.toVector,
-        transitiveClassifiers.in(updateClassifiers).value.toVector
+  ) ++
+    inTask(updateClassifiers)(
+      Seq(
+        classifiersModule := {
+          implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+          val projectDeps = projectDependencies.value.iterator.map(key).toSet
+          val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
+          GetClassifiersModule(
+            projectID.value,
+            None,
+            externalModules,
+            ivyConfigurations.value.toVector,
+            transitiveClassifiers.value.toVector
+          )
+        },
+        dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+        csrConfiguration := LMCoursier.coursierConfigurationTask(true, false).value,
+        updateClassifiers in TaskGlobal := (Def.task {
+          val s = streams.value
+          val is = ivySbt.value
+          val lm = dependencyResolution.value
+          val mod = classifiersModule.value
+          val updateConfig0 = updateConfiguration.value
+          val updateConfig = updateConfig0
+            .withMetadataDirectory(dependencyCacheDirectory.value)
+            .withArtifactFilter(
+              updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted))
+            )
+          val app = appConfiguration.value
+          val srcTypes = sourceArtifactTypes.value
+          val docTypes = docArtifactTypes.value
+          val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+          val uwConfig = (unresolvedWarningConfiguration in update).value
+          withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+            lm.updateClassifiers(
+              GetClassifiersConfiguration(
+                mod,
+                excludes.toVector,
+                updateConfig,
+                // scalaModule,
+                srcTypes.toVector,
+                docTypes.toVector
+              ),
+              uwConfig,
+              Vector.empty,
+              s.log
+            ) match {
+              case Left(_)   => ???
+              case Right(ur) => ur
+            }
+          }
+        } tag (Tags.Update, Tags.Network)).value,
       )
-    },
-    updateClassifiers := (Def.task {
-      val s = streams.value
-      val is = ivySbt.value
-      val lm = dependencyResolution.value
-      val mod = (classifiersModule in updateClassifiers).value
-      val updateConfig0 = updateConfiguration.value
-      val updateConfig = updateConfig0
-        .withMetadataDirectory(dependencyCacheDirectory.value)
-        .withArtifactFilter(updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted)))
-      val app = appConfiguration.value
-      val srcTypes = sourceArtifactTypes.value
-      val docTypes = docArtifactTypes.value
-      val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-      val uwConfig = (unresolvedWarningConfiguration in update).value
-      withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-        lm.updateClassifiers(
-          GetClassifiersConfiguration(
-            mod,
-            excludes.toVector,
-            updateConfig,
-            // scalaModule,
-            srcTypes.toVector,
-            docTypes.toVector
-          ),
-          uwConfig,
-          Vector.empty,
-          s.log
-        ) match {
-          case Left(_)   => ???
-          case Right(ur) => ur
-        }
-      }
-    } tag (Tags.Update, Tags.Network)).value,
+    ) ++ Seq(
     csrProject := LMCoursier.coursierProjectTask.value,
     csrConfiguration := LMCoursier.coursierConfigurationTask(false, false).value,
     csrResolvers := LMCoursier.coursierResolversTask.value,
@@ -2563,10 +2572,8 @@ object Classpaths {
               ).withScalaOrganization(scalaOrganization.value)
             )
           },
-          dependencyResolution := IvyDependencyResolution(
-            ivyConfiguration.value,
-            CustomHttp.okhttpClient.value
-          ),
+          dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+          csrConfiguration := LMCoursier.coursierConfigurationTask(false, true).value,
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
             val s = streams.value
