@@ -1924,7 +1924,7 @@ object Classpaths {
           classpathTypes.value,
           update.value
         )
-        if (isMeta && !force) mjars ++ sbtCp
+        if (isMeta && !force) sbtCp ++ mjars
         else mjars
       },
       exportedProducts := trackedExportedProducts(TrackLevel.TrackAlways).value,
