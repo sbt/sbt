@@ -11,12 +11,15 @@ lazy val root = (project in file("."))
     sbtPlugin := true,
 
     TaskKey[Unit]("check") := mkCheck("2.12", "1.0", "1.").value,
-    TaskKey[Unit]("check2") := mkCheck("2.10", "0.13", "0.13").value
+    TaskKey[Unit]("check2") := mkCheck("2.10", "0.13", "0.13").value,
+
+    // Coursier requires extra resolver for sbt 0.13
+    resolvers += Resolver.typesafeIvyRepo("releases"),
   )
 
 lazy val app = (project in file("app"))
 
-def mkCheck(scalaBinV: String, sbtBinVer: String, sbtVerPrefix: String) = Def task {
+def mkCheck(scalaBinV: String, sbtBinVer: String, sbtVerPrefix: String) = Def.task {
   val crossV = (sbtVersion in pluginCrossBuild).value
   val crossBinV = (sbtBinaryVersion in pluginCrossBuild).value
   val sv = projectID.value.extraAttributes("e:scalaVersion")
