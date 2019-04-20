@@ -1,0 +1,21 @@
+# Ivy is able to check for SNAPSHOT across different resolvers
+# Coursier seems to be sticky about the resolver within the TTL
+
+> show dependent/fullResolvers
+
+# Validate that a bad dependency fails the compile
+$ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
+> common/publishLocal
+
+# Force dep resolution to be successful, then compilation to fail
+> dependent/update
+-> dependent/compile
+
+# Push new good change to the same repository.
+$ copy-file changes/GoodCommon.scala common/src/main/scala/Common.scala
+$ sleep 1000
+> common/publishLocal
+
+# This should compile now because Coursier checks for local update
+> show dependent/update
+> dependent/compile

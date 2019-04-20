@@ -212,6 +212,7 @@ final class ScriptedTests(
       case "dependency-management/pom-parent-pom"                   => LauncherBased // tbd
       case "dependency-management/publish-to-maven-local-file"      => LauncherBased // sbt/Package$
       case "dependency-management/snapshot-resolution"              => LauncherBased // tbd
+      case "dependency-management/snapshot-local"                   => LauncherBased // tbd
       case "dependency-management/test-artifact"                    => LauncherBased // sbt/Package$
       case "dependency-management/transitive-version-range"         => LauncherBased // tbd
       case "dependency-management/update-sbt-classifiers"           => LauncherBased // tbd
