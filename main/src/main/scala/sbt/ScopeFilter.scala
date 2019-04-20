@@ -40,8 +40,7 @@ object ScopeFilter {
         val pf = projects(data)
         val cf = configurations(data)
         val tf = tasks(data)
-        s =>
-          pf(s.project) && cf(s.config) && tf(s.task)
+        s => pf(s.project) && cf(s.config) && tf(s.task)
       }
     }
 
@@ -49,12 +48,11 @@ object ScopeFilter {
     new ScopeFilter {
       private[sbt] def apply(data: Data): Scope => Boolean = {
         val d = delegate(data)
-        scope =>
-          {
-            val accept = d(scope)
-            println((if (accept) "ACCEPT " else "reject ") + scope)
-            accept
-          }
+        scope => {
+          val accept = d(scope)
+          println((if (accept) "ACCEPT " else "reject ") + scope)
+          accept
+        }
       }
     }
 
@@ -203,7 +201,7 @@ object ScopeFilter {
         (p, thisRef) match {
           case (ThisProject, Some(pref)) => pref
           case _                         => Scope.resolveProjectRef(current, rootProject, p)
-      }
+        }
       new Data(build.units, resolve, scopes)
     }
 
@@ -216,7 +214,7 @@ object ScopeFilter {
       Project.getProject(ref, structure).toList flatMap { p =>
         (if (classpath) p.dependencies.map(_.project) else Nil) ++
           (if (aggregate) p.aggregate else Nil)
-    }
+      }
 
   private[this] def byDeps(
       ref: ProjectReference,
@@ -273,8 +271,7 @@ object ScopeFilter {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
         val b = other(data)
-        s =>
-          a(s) && b(s)
+        s => a(s) && b(s)
       }
     }
 
@@ -283,8 +280,7 @@ object ScopeFilter {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
         val b = other(data)
-        s =>
-          a(s) || b(s)
+        s => a(s) || b(s)
       }
     }
 
@@ -292,8 +288,7 @@ object ScopeFilter {
     def unary_- : Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
-        s =>
-          !a(s)
+        s => !a(s)
       }
     }
   }

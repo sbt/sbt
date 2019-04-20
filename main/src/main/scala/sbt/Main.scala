@@ -624,7 +624,9 @@ object BuiltinCommands {
         catch {
           case NonFatal(e) =>
             try export0(s)
-            finally { throw e }
+            finally {
+              throw e
+            }
         }
         export0(newS)
       }
@@ -704,7 +706,7 @@ object BuiltinCommands {
     s =>
       CommandStrings.showHelp ++ CommandStrings.printHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(
         s
-    )
+      )
 
   def keysHelp(s: State): Help =
     if (Project.isProjectLoaded(s))
@@ -850,7 +852,7 @@ object BuiltinCommands {
         if (version != app.id.version()) {
           state.log.warn(s"""sbt version mismatch, current: ${app.id
             .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
-      }
+        }
     )
   }
 

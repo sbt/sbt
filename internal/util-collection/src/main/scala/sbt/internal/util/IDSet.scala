@@ -48,7 +48,10 @@ object IDSet {
     def isEmpty = backing.isEmpty
 
     def process[S](t: T)(ifSeen: S)(ifNew: => S) =
-      if (contains(t)) ifSeen else { this += t; ifNew }
+      if (contains(t)) ifSeen
+      else {
+        this += t; ifNew
+      }
 
     override def toString = backing.toString
   }

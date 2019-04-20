@@ -117,7 +117,9 @@ private[sbt] object TemplateCommandUtil {
     val interfaceClass = getInterfaceClass(interfaceClassName, loader)
     val interface = interfaceClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
     val method = interfaceClass.getMethod(methodName, argTypes: _*)
-    try { method.invoke(interface, args: _*) } catch {
+    try {
+      method.invoke(interface, args: _*)
+    } catch {
       case e: InvocationTargetException => throw e.getCause
     }
   }

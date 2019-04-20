@@ -48,16 +48,15 @@ abstract class BackgroundJobService extends Closeable {
 object BackgroundJobService {
   private[sbt] def jobIdParser: (State, Seq[JobHandle]) => Parser[Seq[JobHandle]] = {
     import DefaultParsers._
-    (state, handles) =>
-      {
-        val stringIdParser: Parser[Seq[String]] = Space ~> token(
-          NotSpace examples handles.map(_.id.toString).toSet,
-          description = "<job id>"
-        ).+
-        stringIdParser.map { strings =>
-          strings.map(Integer.parseInt(_)).flatMap(id => handles.find(_.id == id))
-        }
+    (state, handles) => {
+      val stringIdParser: Parser[Seq[String]] = Space ~> token(
+        NotSpace examples handles.map(_.id.toString).toSet,
+        description = "<job id>"
+      ).+
+      stringIdParser.map { strings =>
+        strings.map(Integer.parseInt(_)).flatMap(id => handles.find(_.id == id))
       }
+    }
   }
 }
 

@@ -118,7 +118,7 @@ object SettingQuery {
           getJsonWriter(key.key) map { implicit jw: JsonWriter[A] =>
             toJson(value)
           }
-    )
+      )
 
   def handleSettingQueryEither(
       req: SettingQuery,

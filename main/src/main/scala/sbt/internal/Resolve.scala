@@ -24,8 +24,7 @@ object Resolve {
         :: resolveConfig(index, key, mask) _
         :: Nil
     )
-    scope =>
-      rs.foldLeft(scope)((s, f) => f(s))
+    scope => rs.foldLeft(scope)((s, f) => f(s))
   }
 
   def resolveTask(mask: ScopeMask)(scope: Scope): Scope =

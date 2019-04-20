@@ -89,7 +89,7 @@ val p = {
     i =>
       value(eval.eval("abs(" + i + ")", new EvalImports(imports.zipWithIndex, "imp"))) == math.abs(
         i
-    )
+      )
 
   private[this] def local(i: Int) = "{ class ETest(val i: Int); new ETest(" + i + ") }"
   val LocalType = "AnyRef{val i: Int}"

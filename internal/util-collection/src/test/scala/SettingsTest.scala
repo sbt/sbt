@@ -158,7 +158,9 @@ object SettingsTest extends Properties("settings") {
   //  property("Catches circular references") = forAll(chainLengthGen) { checkCircularReferences _ }
   final def checkCircularReferences(intermediate: Int): Prop = {
     val ccr = new CCR(intermediate)
-    try { evaluate(setting(chk, ccr.top) :: Nil); false } catch {
+    try {
+      evaluate(setting(chk, ccr.top) :: Nil); false
+    } catch {
       case _: java.lang.Exception => true
     }
   }
@@ -195,7 +197,9 @@ object SettingsTest extends Properties("settings") {
   }
 
   def evaluate(settings: Seq[Setting[_]]): Settings[Scope] =
-    try { make(settings)(delegates, scopeLocal, showFullKey) } catch {
+    try {
+      make(settings)(delegates, scopeLocal, showFullKey)
+    } catch {
       case e: Throwable => e.printStackTrace(); throw e
     }
 }

@@ -37,15 +37,18 @@ object CompletionService {
     val future = try completion.submit { new Callable[T] { def call = work() } } catch {
       case _: RejectedExecutionException => throw Incomplete(None, message = Some("cancelled"))
     }
-    () =>
-      future.get()
+    () => future.get()
   }
   def manage[A, T](
       service: CompletionService[A, T]
   )(setup: A => Unit, cleanup: A => Unit): CompletionService[A, T] =
     wrap(service) { (node, work) => () =>
       setup(node)
-      try { work() } finally { cleanup(node) }
+      try {
+        work()
+      } finally {
+        cleanup(node)
+      }
     }
   def wrap[A, T](
       service: CompletionService[A, T]

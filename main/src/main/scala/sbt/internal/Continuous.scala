@@ -456,14 +456,13 @@ object Continuous extends DeprecatedContinuous {
         }
       }
     }
-    () =>
-      {
-        val res = f.view.map(_()).min
-        // Print the default watch message if there are multiple tasks
-        if (configs.size > 1)
-          Watch.defaultStartWatch(count.get(), project, commands).foreach(logger.info(_))
-        res
-      }
+    () => {
+      val res = f.view.map(_()).min
+      // Print the default watch message if there are multiple tasks
+      if (configs.size > 1)
+        Watch.defaultStartWatch(count.get(), project, commands).foreach(logger.info(_))
+      res
+    }
   }
   private def getFileEvents(
       configs: Seq[Config],
@@ -500,11 +499,9 @@ object Continuous extends DeprecatedContinuous {
                 if (excludedBuildFilter(entry)) onMetaBuildEvent(c, event) else Watch.Ignore
               ).min
           }
-        event: Event =>
-          event -> oe(event)
+        event: Event => event -> oe(event)
       }
-      event: Event =>
-        f.view.map(_.apply(event)).minBy(_._2)
+      event: Event => f.view.map(_.apply(event)).minBy(_._2)
     }
     val monitor: FileEventMonitor[FileAttributes] = new FileEventMonitor[FileAttributes] {
 
@@ -654,26 +651,23 @@ object Continuous extends DeprecatedContinuous {
         .map { inputStreamKey =>
           val is = extracted.runTask(inputStreamKey, state)._2
           val handler = c.watchSettings.inputHandler.getOrElse(defaultInputHandler(inputParser))
-          () =>
-            handler(is)
+          () => handler(is)
         }
         .getOrElse(() => Watch.Ignore)
-      (string: String) =>
-        (default(string) :: alternative() :: Nil).min
+      (string: String) => (default(string) :: alternative() :: Nil).min
     }
-    () =>
-      {
-        val stringBuilder = new StringBuilder
-        while (inputStream.available > 0) stringBuilder += inputStream.read().toChar
-        val newBytes = stringBuilder.toString
-        val parse: ActionParser => Watch.Action = parser => parser(newBytes)
-        val allEvents = inputHandlers.map(parse).filterNot(_ == Watch.Ignore)
-        if (allEvents.exists(_ != Watch.Ignore)) {
-          val res = allEvents.min
-          logger.debug(s"Received input events: ${allEvents mkString ","}. Taking $res")
-          res
-        } else Watch.Ignore
-      }
+    () => {
+      val stringBuilder = new StringBuilder
+      while (inputStream.available > 0) stringBuilder += inputStream.read().toChar
+      val newBytes = stringBuilder.toString
+      val parse: ActionParser => Watch.Action = parser => parser(newBytes)
+      val allEvents = inputHandlers.map(parse).filterNot(_ == Watch.Ignore)
+      if (allEvents.exists(_ != Watch.Ignore)) {
+        val res = allEvents.min
+        logger.debug(s"Received input events: ${allEvents mkString ","}. Taking $res")
+        res
+      } else Watch.Ignore
+    }
   }
 
   private def combineInputAndFileEvents(

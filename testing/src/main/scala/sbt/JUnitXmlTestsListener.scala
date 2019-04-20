@@ -62,16 +62,16 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
   val properties =
     <properties>
       {
-        // create a clone, defending against [[ConcurrentModificationException]]
-        val clonedProperties = System.getProperties.clone.asInstanceOf[Hashtable[AnyRef, AnyRef]]
-        val iter = clonedProperties.entrySet.iterator
-        val props: ListBuffer[XNode] = new ListBuffer()
-        while (iter.hasNext) {
-          val next = iter.next
-          props += <property name={ next.getKey.toString } value={ next.getValue.toString }/>
-        }
-        props
+      // create a clone, defending against [[ConcurrentModificationException]]
+      val clonedProperties = System.getProperties.clone.asInstanceOf[Hashtable[AnyRef, AnyRef]]
+      val iter = clonedProperties.entrySet.iterator
+      val props: ListBuffer[XNode] = new ListBuffer()
+      while (iter.hasNext) {
+        val next = iter.next
+        props += <property name={next.getKey.toString} value={next.getValue.toString}/>
       }
+      props
+    }
     </properties>
 
   /**
@@ -104,38 +104,51 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
       )
 
       val result =
-        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString } timestamp={formatISO8601DateTime(timestamp)}>
-                     { properties }
+        <testsuite hostname={hostname} name={name} tests={tests + ""} errors={errors + ""} failures={
+          failures + ""
+        } skipped={ignoredSkippedPending + ""} time={(duration / 1000.0).toString} timestamp={
+          formatISO8601DateTime(timestamp)
+        }>
+                     {properties}
                      {
-                       for (e <- events) yield <testcase classname={ name } name={
-                         e.selector match {
-                           case selector: TestSelector => selector.testName.split('.').last
-                           case nested: NestedTestSelector => nested.suiteId().split('.').last + "." + nested.testName()
-                           case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
-                         }
-                       } time={ (e.duration() / 1000.0).toString }>
+          for (e <- events)
+            yield
+              <testcase classname={name} name={
+                e.selector match {
+                  case selector: TestSelector => selector.testName.split('.').last
+                  case nested: NestedTestSelector =>
+                    nested.suiteId().split('.').last + "." + nested.testName()
+                  case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
+                }
+              } time={(e.duration() / 1000.0).toString}>
                                                  {
-                                                   val trace: String = if (e.throwable.isDefined) {
-                                                     val stringWriter = new StringWriter()
-                                                     val writer = new PrintWriter(stringWriter)
-                                                     e.throwable.get.printStackTrace(writer)
-                                                     writer.flush()
-                                                     stringWriter.toString
-                                                   } else {
-                                                     ""
-                                                   }
-                                                   e.status match {
-                                                     case TStatus.Error if (e.throwable.isDefined)=> <error message={ e.throwable.get.getMessage } type={ e.throwable.get.getClass.getName }>{ trace }</error>
-                                                     case TStatus.Error=> <error message={ "No Exception or message provided" }/>
-                                                     case TStatus.Failure if (e.throwable.isDefined)=> <failure message={ e.throwable.get.getMessage } type={ e.throwable.get.getClass.getName }>{ trace }</failure>
-                                                     case TStatus.Failure=> <failure message={ "No Exception or message provided" }/>
-                                                     case TStatus.Ignored | TStatus.Skipped | TStatus.Pending=> <skipped/>
-                                                     case _    => {}
-                                                   }
-                                                 }
+                val trace: String = if (e.throwable.isDefined) {
+                  val stringWriter = new StringWriter()
+                  val writer = new PrintWriter(stringWriter)
+                  e.throwable.get.printStackTrace(writer)
+                  writer.flush()
+                  stringWriter.toString
+                } else {
+                  ""
+                }
+                e.status match {
+                  case TStatus.Error if (e.throwable.isDefined) =>
+                    <error message={e.throwable.get.getMessage} type={
+                      e.throwable.get.getClass.getName
+                    }>{trace}</error>
+                  case TStatus.Error => <error message={"No Exception or message provided"}/>
+                  case TStatus.Failure if (e.throwable.isDefined) =>
+                    <failure message={e.throwable.get.getMessage} type={
+                      e.throwable.get.getClass.getName
+                    }>{trace}</failure>
+                  case TStatus.Failure                                     => <failure message={"No Exception or message provided"}/>
+                  case TStatus.Ignored | TStatus.Skipped | TStatus.Pending => <skipped/>
+                  case _                                                   => {}
+                }
+              }
                                                </testcase>
 
-                     }
+        }
                      <system-out><![CDATA[]]></system-out>
                      <system-err><![CDATA[]]></system-err>
                    </testsuite>

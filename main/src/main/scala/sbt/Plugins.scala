@@ -189,49 +189,48 @@ object Plugins extends PluginsFunctions {
       val allEnabledByClause = defined.filterNot(_.isRoot).flatMap(d => asEnabledByClauses(d))
 
       // Note: Here is where the function begins.  We're given a list of plugins now.
-      (requestedPlugins, log) =>
-        {
-          timed("Plugins.deducer#function", log) {
-            def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
-            val alwaysEnabled: List[AutoPlugin] =
-              defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
-            val knowledge0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
-              case x: AutoPlugin => Atom(x.label)
-            }).toSet
-            val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot {
-              _.head subsetOf knowledge0
-            })
-            log.debug(
-              s"deducing auto plugins based on known facts ${knowledge0.toString} and clauses ${clauses.toString}"
-            )
-            Logic.reduce(
-              clauses,
-              (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet
-            ) match {
-              case Left(problem) => throw AutoPluginException(problem)
-              case Right(results) =>
-                log.debug(s"  :: deduced result: ${results}")
-                val selectedAtoms: List[Atom] = results.ordered
-                val selectedPlugins = selectedAtoms map { a =>
-                  byAtomMap.getOrElse(
-                    a,
-                    throw AutoPluginException(s"${a} was not found in atom map.")
-                  )
-                }
-                val forbidden: Set[AutoPlugin] =
-                  (selectedPlugins flatMap { Plugins.asExclusions }).toSet
-                val c = selectedPlugins.toSet & forbidden
-                if (c.nonEmpty) {
-                  exclusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy {
-                    _.label
-                  })
-                }
-                val retval = topologicalSort(selectedPlugins)
-                // log.debug(s"  :: sorted deduced result: ${retval.toString}")
-                retval
-            }
+      (requestedPlugins, log) => {
+        timed("Plugins.deducer#function", log) {
+          def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
+          val alwaysEnabled: List[AutoPlugin] =
+            defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
+          val knowledge0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
+            case x: AutoPlugin => Atom(x.label)
+          }).toSet
+          val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot {
+            _.head subsetOf knowledge0
+          })
+          log.debug(
+            s"deducing auto plugins based on known facts ${knowledge0.toString} and clauses ${clauses.toString}"
+          )
+          Logic.reduce(
+            clauses,
+            (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet
+          ) match {
+            case Left(problem) => throw AutoPluginException(problem)
+            case Right(results) =>
+              log.debug(s"  :: deduced result: ${results}")
+              val selectedAtoms: List[Atom] = results.ordered
+              val selectedPlugins = selectedAtoms map { a =>
+                byAtomMap.getOrElse(
+                  a,
+                  throw AutoPluginException(s"${a} was not found in atom map.")
+                )
+              }
+              val forbidden: Set[AutoPlugin] =
+                (selectedPlugins flatMap { Plugins.asExclusions }).toSet
+              val c = selectedPlugins.toSet & forbidden
+              if (c.nonEmpty) {
+                exclusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy {
+                  _.label
+                })
+              }
+              val retval = topologicalSort(selectedPlugins)
+              // log.debug(s"  :: sorted deduced result: ${retval.toString}")
+              retval
           }
         }
+      }
     }
 
   private[sbt] def topologicalSort(ns: List[AutoPlugin]): List[AutoPlugin] = {

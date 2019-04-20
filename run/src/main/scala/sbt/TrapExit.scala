@@ -59,7 +59,9 @@ object TrapExit {
 
   private[this] def runUnmanaged(execute: => Unit, log: Logger): Int = {
     log.warn("Managed execution not possible: security manager not installed.")
-    try { execute; 0 } catch {
+    try {
+      execute; 0
+    } catch {
       case e: Exception =>
         log.error("Error during execution: " + e.toString)
         log.trace(e)
@@ -153,7 +155,9 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
   def runManaged(f: Supplier[Unit], xlog: xsbti.Logger): Int = {
     val _ = running.incrementAndGet()
     try runManaged0(f, xlog)
-    finally { running.decrementAndGet(); () }
+    finally {
+      running.decrementAndGet(); ()
+    }
   }
   private[this] def runManaged0(f: Supplier[Unit], xlog: xsbti.Logger): Int = {
     val log: Logger = xlog

@@ -70,7 +70,9 @@ object Signals {
 private final class Signals0 {
   def supported(signal: String): Boolean = {
     import sun.misc.Signal
-    try { new Signal(signal); true } catch { case _: IllegalArgumentException => false }
+    try {
+      new Signal(signal); true
+    } catch { case _: IllegalArgumentException => false }
   }
 
   // returns a LinkageError in `action` as Left(t) in order to avoid it being
@@ -85,6 +87,8 @@ private final class Signals0 {
     val oldHandler = Signal.handle(intSignal, newHandler)
 
     try Right(action())
-    catch { case e: LinkageError => Left(e) } finally { Signal.handle(intSignal, oldHandler); () }
+    catch { case e: LinkageError => Left(e) } finally {
+      Signal.handle(intSignal, oldHandler); ()
+    }
   }
 }

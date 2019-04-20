@@ -261,7 +261,7 @@ object Watch {
         case Update(prev, cur, _) if prev.value != cur.value => action
         case _: Creation[_] | _: Deletion[_]                 => action
         case _                                               => Ignore
-    }
+      }
 
   /**
    * The minimum delay between build triggers for the same file. If the file is detected

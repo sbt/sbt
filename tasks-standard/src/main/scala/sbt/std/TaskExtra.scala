@@ -168,7 +168,7 @@ trait TaskExtra {
         x =>
           t.result.map { tx =>
             Result.tryValues[S](tx :: Nil, x)
-        }
+          }
       )
     def ||[T >: S](alt: Task[T]): Task[T] = flatMapR {
       case Value(v) => task(v); case Inc(_) => alt

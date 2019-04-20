@@ -64,19 +64,16 @@ object Clean {
       // Don't use a regular logger because the logger actually writes to the target directory.
       val debug = (logLevel in scope).?.value.orElse(state.value.get(logLevel.key)) match {
         case Some(Level.Debug) =>
-          (string: String) =>
-            println(s"[debug] $string")
+          (string: String) => println(s"[debug] $string")
         case _ =>
-          (_: String) =>
-            {}
+          (_: String) => {}
       }
       val delete = tryDelete(debug)
       cleanFiles.value.sorted.reverseIterator.foreach(delete)
       (fileOutputs in scope).value.foreach { g =>
         val filter: TypedPath => Boolean = {
           val globFilter = g.toTypedPathFilter
-          tp =>
-            !globFilter(tp) || excludeFilter(tp)
+          tp => !globFilter(tp) || excludeFilter(tp)
         }
         deleteContents(g.base.toFile, filter, FileTreeView.DEFAULT, delete)
         delete(g.base.toFile)

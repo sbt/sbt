@@ -176,10 +176,14 @@ object TestServer {
         try {
           f(testServer)
         } finally {
-          try { testServer.bye() } finally {}
+          try {
+            testServer.bye()
+          } finally {}
         }
       case _ =>
-        try { testServer.bye() } finally {}
+        try {
+          testServer.bye()
+        } finally {}
         hostLog("Server started but not connected properly... restarting...")
         withTestServer(testBuild)(f)
     }

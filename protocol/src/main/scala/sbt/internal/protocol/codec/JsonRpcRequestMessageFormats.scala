@@ -13,7 +13,7 @@ import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, dese
 trait JsonRpcRequestMessageFormats {
   self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
   implicit lazy val JsonRpcRequestMessageFormat
-    : JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] =
+      : JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] {
       override def read[J](
           jsOpt: Option[J],

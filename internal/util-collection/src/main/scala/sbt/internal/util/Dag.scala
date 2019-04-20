@@ -27,7 +27,9 @@ object Dag {
     def visit(node: T): Unit = {
       if (!discovered(node)) {
         discovered(node) = true;
-        try { visitAll(dependencies(node)); } catch { case c: Cyclic => throw node :: c }
+        try {
+          visitAll(dependencies(node));
+        } catch { case c: Cyclic => throw node :: c }
         finished += node
         ()
       } else if (!finished(node))

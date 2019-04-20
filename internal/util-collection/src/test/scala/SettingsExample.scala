@@ -28,7 +28,9 @@ case class SettingsExample() extends Init[Scope] {
   val delegates: Scope => Seq[Scope] = {
     case s @ Scope(index, proj) =>
       s +: (if (index <= 0) Nil
-            else { (if (proj > 0) List(Scope(index)) else Nil) ++: delegates(Scope(index - 1)) })
+            else {
+              (if (proj > 0) List(Scope(index)) else Nil) ++: delegates(Scope(index - 1))
+            })
   }
 
   // Not using this feature in this example.

@@ -272,7 +272,11 @@ object TestFramework {
   private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T = {
     val oldLoader = Thread.currentThread.getContextClassLoader
     Thread.currentThread.setContextClassLoader(loader)
-    try { eval } finally { Thread.currentThread.setContextClassLoader(oldLoader) }
+    try {
+      eval
+    } finally {
+      Thread.currentThread.setContextClassLoader(oldLoader)
+    }
   }
   @deprecated("1.3.0", "This has been replaced by the ClassLoaders.test task.")
   def createTestLoader(

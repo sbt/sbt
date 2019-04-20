@@ -100,13 +100,19 @@ trait Streams[Key] {
   def use[T](key: Key)(f: TaskStreams[Key] => T): T = {
     val s = apply(key)
     s.open()
-    try { f(s) } finally { s.close() }
+    try {
+      f(s)
+    } finally {
+      s.close()
+    }
   }
 }
 trait CloseableStreams[Key] extends Streams[Key] with java.io.Closeable
 object Streams {
   private[this] val closeQuietly = (c: Closeable) =>
-    try { c.close() } catch { case _: IOException => () }
+    try {
+      c.close()
+    } catch { case _: IOException => () }
 
   def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key] {
     private[this] val streams = new collection.mutable.HashMap[Key, ManagedStreams[Key]]
@@ -160,7 +166,7 @@ object Streams {
                   new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)
                 )
               )
-          )
+            )
         )
 
       def binary(sid: String = default): BufferedOutputStream =

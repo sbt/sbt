@@ -68,7 +68,9 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
     log.info("Running " + mainClass + " " + options.mkString(" "))
 
     def execute() =
-      try { run0(mainClass, classpath, options, log) } catch {
+      try {
+        run0(mainClass, classpath, options, log)
+      } catch {
         case e: java.lang.reflect.InvocationTargetException => throw e.getCause
       }
     def directExecute(): Try[Unit] =
@@ -109,7 +111,9 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
     val currentThread = Thread.currentThread
     val oldLoader = Thread.currentThread.getContextClassLoader
     currentThread.setContextClassLoader(loader)
-    try { main.invoke(null, options.toArray[String]); () } catch {
+    try {
+      main.invoke(null, options.toArray[String]); ()
+    } catch {
       case t: Throwable =>
         t.getCause match {
           case e: java.lang.IllegalAccessError =>

@@ -59,7 +59,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
           key.scope,
           withColor(key.key.label, keyNameColor),
           ref => displayRelative2(current, ref)
-      )
+        )
     )
 
   private[sbt] def showShortKey(
@@ -81,7 +81,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
           key.scope,
           withColor(key.key.label, keyNameColor),
           ref => displayShort(ref)
-      )
+        )
     )
   }
 
@@ -103,7 +103,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
           key.scope,
           withColor(key.key.label, keyNameColor),
           ref => displayBuildRelative(currentBuild, ref)
-      )
+        )
     )
 
   /**

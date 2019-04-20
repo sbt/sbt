@@ -123,7 +123,9 @@ object Sync {
   def readInfo[F <: FileInfo](
       store: CacheStore
   )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
-    try { readUncaught[F](store)(infoFormat) } catch {
+    try {
+      readUncaught[F](store)(infoFormat)
+    } catch {
       case _: IOException  => (Relation.empty[File, File], Map.empty[File, F])
       case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])
       case e: TranslatedException =>

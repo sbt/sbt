@@ -268,8 +268,7 @@ object Defaults extends BuildCommon {
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
       onComplete := {
         val tempDirectory = taskTemporaryDirectory.value
-        () =>
-          Clean.deleteContents(tempDirectory, _ => false)
+        () => Clean.deleteContents(tempDirectory, _ => false)
       },
       useSuperShell := { if (insideCI.value) false else sbt.internal.TaskProgress.isEnabled },
       progressReports := { (s: State) =>
@@ -295,8 +294,7 @@ object Defaults extends BuildCommon {
       Continuous.dynamicInputs := Continuous.dynamicInputsImpl.value,
       externalHooks := {
         val repository = fileTreeRepository.value
-        compileOptions =>
-          Some(ExternalHooks(compileOptions, repository))
+        compileOptions => Some(ExternalHooks(compileOptions, repository))
       },
       logBuffered :== false,
       commands :== Nil,
@@ -757,7 +755,7 @@ object Defaults extends BuildCommon {
       )
     )
   lazy val testTasks
-    : Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(
+      : Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(
     testQuick
   ) ++ testDefaults ++ Seq(
     testLoader := ClassLoaders.testTask.value,
@@ -1686,10 +1684,11 @@ object Defaults extends BuildCommon {
   private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =
     mappers.foldRight({ p: A =>
       p
-    }) { (mapper, mappers) =>
-      { p: A =>
-        mapper(p).getOrElse(mappers(p))
-      }
+    }) {
+      (mapper, mappers) =>
+        { p: A =>
+          mapper(p).getOrElse(mappers(p))
+        }
     }
   private[sbt] def none[A]: Option[A] = (None: Option[A])
   private[sbt] def jnone[A]: Optional[A] = none[A].toOptional
@@ -2773,7 +2772,7 @@ object Classpaths {
             }
           )
           implicit val RangePositionFormat
-            : IsoLList.Aux[RangePosition, String :*: LineRange :*: LNil] = LList.iso(
+              : IsoLList.Aux[RangePosition, String :*: LineRange :*: LNil] = LList.iso(
             { r: RangePosition =>
               ("path", r.path) :*: ("range", r.range) :*: LNil
             }, { in: String :*: LineRange :*: LNil =>
@@ -3188,8 +3187,7 @@ object Classpaths {
         case _ => sys.error("Invalid configuration '" + confString + "'") // shouldn't get here
       }
     val m = ms.toMap
-    s =>
-      m.getOrElse(s, Nil)
+    s => m.getOrElse(s, Nil)
   }
 
   def union[A, B](maps: Seq[A => Seq[B]]): A => Seq[B] =
@@ -3365,12 +3363,16 @@ object Classpaths {
 
   // try/catch for supporting earlier launchers
   def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
-    try { Option(app.provider.scalaProvider.launcher.ivyHome) } catch {
+    try {
+      Option(app.provider.scalaProvider.launcher.ivyHome)
+    } catch {
       case _: NoSuchMethodError => None
     }
 
   def bootChecksums(app: xsbti.AppConfiguration): Vector[String] =
-    try { app.provider.scalaProvider.launcher.checksums.toVector } catch {
+    try {
+      app.provider.scalaProvider.launcher.checksums.toVector
+    } catch {
       case _: NoSuchMethodError => IvySbt.DefaultChecksums
     }
 
@@ -3380,23 +3382,33 @@ object Classpaths {
 
   /** Loads the `appRepositories` configured for this launcher, if supported. */
   def appRepositories(app: xsbti.AppConfiguration): Option[Vector[Resolver]] =
-    try { Some(app.provider.scalaProvider.launcher.appRepositories.toVector map bootRepository) } catch {
+    try {
+      Some(app.provider.scalaProvider.launcher.appRepositories.toVector map bootRepository)
+    } catch {
       case _: NoSuchMethodError => None
     }
 
   def bootRepositories(app: xsbti.AppConfiguration): Option[Vector[Resolver]] =
-    try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toVector map bootRepository) } catch {
+    try {
+      Some(app.provider.scalaProvider.launcher.ivyRepositories.toVector map bootRepository)
+    } catch {
       case _: NoSuchMethodError => None
     }
 
   private[this] def mavenCompatible(ivyRepo: xsbti.IvyRepository): Boolean =
-    try { ivyRepo.mavenCompatible } catch { case _: NoSuchMethodError => false }
+    try {
+      ivyRepo.mavenCompatible
+    } catch { case _: NoSuchMethodError => false }
 
   private[this] def skipConsistencyCheck(ivyRepo: xsbti.IvyRepository): Boolean =
-    try { ivyRepo.skipConsistencyCheck } catch { case _: NoSuchMethodError => false }
+    try {
+      ivyRepo.skipConsistencyCheck
+    } catch { case _: NoSuchMethodError => false }
 
   private[this] def descriptorOptional(ivyRepo: xsbti.IvyRepository): Boolean =
-    try { ivyRepo.descriptorOptional } catch { case _: NoSuchMethodError => false }
+    try {
+      ivyRepo.descriptorOptional
+    } catch { case _: NoSuchMethodError => false }
 
   private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
