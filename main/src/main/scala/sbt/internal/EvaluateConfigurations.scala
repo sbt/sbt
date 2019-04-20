@@ -119,8 +119,7 @@ private[sbt] object EvaluateConfigurations {
       offset: Int
   ): LazyClassLoaded[Seq[Setting[_]]] = {
     val l = evaluateSbtFile(eval, file, lines, imports, offset)
-    loader =>
-      l(loader).settings
+    loader => l(loader).settings
   }
 
   /**
@@ -160,36 +159,35 @@ private[sbt] object EvaluateConfigurations {
     eval.unlinkDeferred()
     // Tracks all the files we generated from evaluating the sbt file.
     val allGeneratedFiles = (definitions.generated ++ dslEntries.flatMap(_.generated))
-    loader =>
-      {
-        val projects = {
-          val compositeProjects = definitions.values(loader).collect {
-            case p: CompositeProject => p
-          }
-          CompositeProject.expand(compositeProjects).map(resolveBase(file.getParentFile, _))
+    loader => {
+      val projects = {
+        val compositeProjects = definitions.values(loader).collect {
+          case p: CompositeProject => p
         }
-        val (settingsRaw, manipulationsRaw) =
-          dslEntries map (_.result apply loader) partition {
-            case DslEntry.ProjectSettings(_) => true
-            case _                           => false
-          }
-        val settings = settingsRaw flatMap {
-          case DslEntry.ProjectSettings(settings) => settings
-          case _                                  => Nil
-        }
-        val manipulations = manipulationsRaw map {
-          case DslEntry.ProjectManipulation(f) => f
-        }
-        // TODO -get project manipulations.
-        new LoadedSbtFile(
-          settings,
-          projects,
-          importDefs,
-          manipulations,
-          definitions,
-          allGeneratedFiles
-        )
+        CompositeProject.expand(compositeProjects).map(resolveBase(file.getParentFile, _))
       }
+      val (settingsRaw, manipulationsRaw) =
+        dslEntries map (_.result apply loader) partition {
+          case DslEntry.ProjectSettings(_) => true
+          case _                           => false
+        }
+      val settings = settingsRaw flatMap {
+        case DslEntry.ProjectSettings(settings) => settings
+        case _                                  => Nil
+      }
+      val manipulations = manipulationsRaw map {
+        case DslEntry.ProjectManipulation(f) => f
+      }
+      // TODO -get project manipulations.
+      new LoadedSbtFile(
+        settings,
+        projects,
+        importDefs,
+        manipulations,
+        definitions,
+        allGeneratedFiles
+      )
+    }
   }
 
   /** move a project to be relative to this file after we've evaluated it. */
@@ -337,7 +335,7 @@ object Index {
             case AttributeEntry(key, value: Task[_]) =>
               (value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]]))
           }
-    )
+      )
 
     pairs.toMap[Task[_], ScopedKey[Task[_]]]
   }

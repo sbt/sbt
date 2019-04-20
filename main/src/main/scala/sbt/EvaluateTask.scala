@@ -367,7 +367,11 @@ object EvaluateTask {
 
   def withStreams[T](structure: BuildStructure, state: State)(f: Streams => T): T = {
     val str = std.Streams.closeable(structure.streams(state))
-    try { f(str) } finally { str.close() }
+    try {
+      f(str)
+    } finally {
+      str.close()
+    }
   }
 
   def getTask[T](
@@ -585,5 +589,5 @@ object EvaluateTask {
       (transitiveClasspathDependency in scoped.scope := { () }) :: Nil
     } else {
       Nil
-  }
+    }
 }

@@ -61,22 +61,21 @@ final class ScriptedTests(
       val g = groupDir.getName
       val n = nme.getName
       val label = s"$g / $n"
-      () =>
-        {
-          println(s"Running $label")
-          val result = testResources.readWriteResourceDirectory(g, n) { testDirectory =>
-            val buffer = new BufferedLogger(new FullLogger(log))
-            val singleTestRunner = () => {
-              val handlers =
-                createScriptedHandlers(testDirectory, buffer, RemoteSbtCreatorKind.LauncherBased)
-              val runner = new BatchScriptRunner
-              val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
-              commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
-            }
-            runOrHandleDisabled(label, testDirectory, singleTestRunner, buffer)
+      () => {
+        println(s"Running $label")
+        val result = testResources.readWriteResourceDirectory(g, n) { testDirectory =>
+          val buffer = new BufferedLogger(new FullLogger(log))
+          val singleTestRunner = () => {
+            val handlers =
+              createScriptedHandlers(testDirectory, buffer, RemoteSbtCreatorKind.LauncherBased)
+            val runner = new BatchScriptRunner
+            val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
+            commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
           }
-          Seq(result)
+          runOrHandleDisabled(label, testDirectory, singleTestRunner, buffer)
         }
+        Seq(result)
+      }
     }
   }
 
@@ -140,7 +139,7 @@ final class ScriptedTests(
 
       def logTests(size: Int, how: String) =
         log.info(
-          f"Running $size / $totalSize (${size * 100D / totalSize}%3.2f%%) scripted tests with $how"
+          f"Running $size / $totalSize (${size * 100d / totalSize}%3.2f%%) scripted tests with $how"
         )
       logTests(runFromSourceBasedTests.size, "RunFromSourceMain")
       logTests(launcherBasedTests.size, "sbt/launcher")

@@ -206,7 +206,9 @@ trait Init[ScopeType] {
     // order the initializations.  cyclic references are detected here.
     val ordered: Seq[Compiled[_]] = sort(cMap)
     // evaluation: apply the initializations.
-    try { applyInits(ordered) } catch {
+    try {
+      applyInits(ordered)
+    } catch {
       case rru: RuntimeUndefined =>
         throw Uninitialized(cMap.keys.toSeq, delegates, rru.undefined, true)
     }
@@ -285,7 +287,9 @@ trait Init[ScopeType] {
         def executor = x
       }
       eval.run
-    } finally { x.shutdown() }
+    } finally {
+      x.shutdown()
+    }
   }
 
   def showUndefined(

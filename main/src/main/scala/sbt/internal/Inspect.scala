@@ -31,7 +31,7 @@ object Inspect {
     (s: State) =>
       spacedModeParser(s) flatMap { mode =>
         commandHandler(s, mode) | keyHandler(s)(mode)
-    }
+      }
   val spacedModeParser: State => Parser[Mode] = (_: State) => {
     val default = "-" ^^^ Details(false)
     val actual = "actual" ^^^ Details(true)

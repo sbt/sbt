@@ -67,7 +67,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
       view.inline(a) match {
         case Some(v) => Value(v())
         case None    => results(a)
-    }
+      }
   )
   private[this] type State = State.Value
   private[this] object State extends Enumeration {
@@ -81,7 +81,9 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     "State: " + state.toString + "\n\nResults: " + results + "\n\nCalls: " + callers + "\n\n"
 
   def run[A](root: F[A])(implicit strategy: Strategy): Result[A] =
-    try { runKeep(root)(strategy)(root) } catch { case i: Incomplete => Inc(i) }
+    try {
+      runKeep(root)(strategy)(root)
+    } catch { case i: Incomplete => Inc(i) }
 
   def runKeep[A](root: F[A])(implicit strategy: Strategy): RMap[F, Result] = {
     assert(state.isEmpty, "Execute already running/ran.")

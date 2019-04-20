@@ -211,7 +211,7 @@ final class NetworkChannel(
                 errorDesc =>
                   log.error(
                     s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
-                ),
+                  ),
                 onCommand
               )
           case _ =>

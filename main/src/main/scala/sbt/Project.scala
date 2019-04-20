@@ -837,7 +837,7 @@ object Project extends ProjectExtra {
             task,
             (state, value) =>
               persistAndSet(resolveContext(key, scoped.scope, state), state, value)(f)
-        )
+          )
       )
     }
 

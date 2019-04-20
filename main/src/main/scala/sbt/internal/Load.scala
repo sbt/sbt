@@ -132,7 +132,9 @@ private[sbt] object Load {
   }
 
   private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
-    try { Option(app.provider.scalaProvider.launcher.ivyHome) } catch {
+    try {
+      Option(app.provider.scalaProvider.launcher.ivyHome)
+    } catch {
       case _: NoSuchMethodError => None
     }
 
@@ -176,14 +178,13 @@ private[sbt] object Load {
     val imports =
       BuildUtil.baseImports ++ config.detectedGlobalPlugins.imports
 
-    loader =>
-      {
-        val loaded = EvaluateConfigurations(eval, files, imports)(loader)
-        // TODO - We have a potential leak of config-classes in the global directory right now.
-        // We need to find a way to clean these safely, or at least warn users about
-        // unused class files that could be cleaned when multiple sbt instances are not running.
-        loaded.settings
-      }
+    loader => {
+      val loaded = EvaluateConfigurations(eval, files, imports)(loader)
+      // TODO - We have a potential leak of config-classes in the global directory right now.
+      // We need to find a way to clean these safely, or at least warn users about
+      // unused class files that could be cleaned when multiple sbt instances are not running.
+      loaded.settings
+    }
   }
   def loadGlobal(
       state: State,
@@ -303,13 +304,13 @@ private[sbt] object Load {
           case tk: Task[t]      => setDefinitionKey(tk, key).asInstanceOf[T]
           case ik: InputTask[t] => ik.mapTask(tk => setDefinitionKey(tk, key)).asInstanceOf[T]
           case _                => value
-      }
+        }
     def setResolved(defining: ScopedKey[_]) = λ[ScopedKey ~> Option](
       (key: ScopedKey[_]) =>
         key.key match {
           case resolvedScoped.key => Some(defining.asInstanceOf[A1$])
           case _                  => None
-      }
+        }
     )
     ss.map(
       s => s mapConstant setResolved(s.key) mapReferenced mapSpecial(s.key) mapInit setDefining
@@ -421,8 +422,7 @@ private[sbt] object Load {
 
   def lazyEval(unit: BuildUnit): () => Eval = {
     lazy val eval = mkEval(unit)
-    () =>
-      eval
+    () => eval
   }
 
   def mkEval(unit: BuildUnit): Eval =
@@ -616,8 +616,7 @@ private[sbt] object Load {
       checkProjectBase(against, fResolved)
       fResolved
     }
-    p =>
-      p.copy(base = resolve(p.base))
+    p => p.copy(base = resolve(p.base))
   }
 
   def resolveProjects(loaded: PartBuild): LoadedBuild = {

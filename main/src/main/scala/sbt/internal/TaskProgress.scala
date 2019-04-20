@@ -130,7 +130,7 @@ private[sbt] object TaskProgress {
             case LogOption.Always => Some(true)
             case LogOption.Never  => Some(false)
             case _                => None
-        }
+          }
       )
       .getOrElse(true)
 }

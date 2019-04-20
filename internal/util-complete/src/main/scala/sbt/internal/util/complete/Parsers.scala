@@ -264,7 +264,9 @@ trait Parsers {
    */
   def mapOrFail[S, T](p: Parser[S])(f: S => T): Parser[T] =
     p flatMap { s =>
-      try { success(f(s)) } catch { case e: Exception => failure(e.toString) }
+      try {
+        success(f(s))
+      } catch { case e: Exception => failure(e.toString) }
     }
 
   /**

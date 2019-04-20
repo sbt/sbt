@@ -641,16 +641,28 @@ private final case class SoftInvalid(fail: Failure) extends ValidParser[Nothing]
 }
 
 private final class TrapAndFail[A](a: Parser[A]) extends ValidParser[A] {
-  def result = try { a.result } catch { case _: Exception           => None }
-  def resultEmpty = try { a.resultEmpty } catch { case e: Exception => fail(e) }
+  def result =
+    try {
+      a.result
+    } catch { case _: Exception => None }
+  def resultEmpty =
+    try {
+      a.resultEmpty
+    } catch { case e: Exception => fail(e) }
 
-  def derive(c: Char) = try { trapAndFail(a derive c) } catch {
-    case e: Exception => Invalid(fail(e))
-  }
+  def derive(c: Char) =
+    try {
+      trapAndFail(a derive c)
+    } catch {
+      case e: Exception => Invalid(fail(e))
+    }
 
-  def completions(level: Int) = try { a.completions(level) } catch {
-    case _: Exception => Completions.nil
-  }
+  def completions(level: Int) =
+    try {
+      a.completions(level)
+    } catch {
+      case _: Exception => Completions.nil
+    }
 
   override def toString = "trap(" + a + ")"
   override def isTokenStart = a.isTokenStart

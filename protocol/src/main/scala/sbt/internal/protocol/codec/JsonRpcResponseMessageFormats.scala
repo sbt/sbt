@@ -21,7 +21,7 @@ trait JsonRpcResponseMessageFormats {
     with sbt.internal.protocol.codec.JsonRpcResponseErrorFormats
     with sjsonnew.BasicJsonProtocol =>
   implicit lazy val JsonRpcResponseMessageFormat
-    : JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] =
+      : JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] {
       override def read[J](
           jsOpt: Option[J],

@@ -166,7 +166,11 @@ private[sbt] object JLine {
   def withJLine[T](action: => T): T =
     withTerminal { t =>
       t.init
-      try { action } finally { t.restore }
+      try {
+        action
+      } finally {
+        t.restore
+      }
     }
 
   def simple(
