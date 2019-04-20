@@ -2138,7 +2138,11 @@ object Classpaths {
       val defaultIvyCache = bootIvyHome(appConfiguration.value)
       if (old != coursier.cache.CacheDefaults.location) old
       else if (ip.ivyHome == defaultIvyCache) old
-      else ip.ivyHome.getOrElse(old)
+      else
+        ip.ivyHome match {
+          case Some(home) => home / "coursier-cache"
+          case _          => old
+        }
     },
     dependencyCacheDirectory := {
       val st = state.value
