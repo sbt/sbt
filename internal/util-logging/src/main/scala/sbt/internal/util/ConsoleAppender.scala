@@ -96,18 +96,19 @@ class ConsoleLogger private[ConsoleLogger] (
 }
 
 object ConsoleAppender {
-  private[sbt] final val ScrollUp = "\u001B[S"
   private[sbt] def cursorUp(n: Int): String = s"\u001B[${n}A"
   private[sbt] def cursorDown(n: Int): String = s"\u001B[${n}B"
   private[sbt] def scrollUp(n: Int): String = s"\u001B[${n}S"
   private[sbt] final val DeleteLine = "\u001B[2K"
   private[sbt] final val CursorLeft1000 = "\u001B[1000D"
+  private[sbt] final val CursorDown1 = cursorDown(1)
   private[this] val widthHolder: AtomicInteger = new AtomicInteger
   private[sbt] def terminalWidth = widthHolder.get
   private[sbt] def setTerminalWidth(n: Int): Unit = widthHolder.set(n)
   private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
   def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
   def showProgress: Boolean = showProgressHolder.get
+  private[sbt] val lastTaskCount = new AtomicInteger(0)
 
   /** Hide stack trace altogether. */
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
@@ -454,23 +455,18 @@ class ConsoleAppender private[ConsoleAppender] (
     appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
   }
 
+  // leave some blank lines for tasks that might use println(...)
+  private val blankZone = 5
   private def write(msg: String): Unit = {
     if (!useFormat || !ansiCodesSupported) {
       out.println(EscHelpers.removeEscapeSequences(msg))
     } else if (ConsoleAppender.showProgress) {
-      val textLength = msg.length - 5
-      val scrollNum =
-        if (ConsoleAppender.terminalWidth == 0) 1
-        else (textLength / ConsoleAppender.terminalWidth) + 1
-      if (scrollNum > 1) {
-        out.print(s"${cursorDown(1)}$DeleteLine" * (scrollNum - 1) + s"${cursorUp(scrollNum - 1)}")
+      val clearNum = lastTaskCount.get + blankZone
+      if (clearNum > 1) {
+        deleteConsoleLines(clearNum)
+        out.print(s"${cursorUp(clearNum)}")
       }
-      out.print(
-        s"$ScrollUp$DeleteLine$msg${CursorLeft1000}" + (
-          if (scrollNum <= 1) ""
-          else scrollUp(scrollNum - 1)
-        )
-      )
+      out.println(msg)
       out.flush()
     } else {
       out.println(msg)
@@ -497,19 +493,50 @@ class ConsoleAppender private[ConsoleAppender] (
     codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
   }
 
+  private def appendProgressEvent(pe: ProgressEvent): Unit =
+    if (ConsoleAppender.showProgress) {
+      out.lockObject.synchronized {
+        deleteConsoleLines(blankZone)
+        val currentTasksCount = pe.items.size
+        val ltc = pe.lastTaskCount.getOrElse(0)
+        val sorted = pe.items.sortBy(_.name).sortBy(x => -x.elapsedMicros)
+        sorted foreach { item =>
+          val elapsed = item.elapsedMicros / 1000000L
+          out.println(s"$DeleteLine  | => ${item.name} ${elapsed}s")
+        }
+        if (ltc > currentTasksCount) deleteConsoleLines(ltc - currentTasksCount)
+        else ()
+        out.print(cursorUp(math.max(currentTasksCount, ltc) + blankZone))
+        out.flush()
+        lastTaskCount.set(ltc)
+      }
+    } else ()
+
+  private def deleteConsoleLines(n: Int): Unit = {
+    (1 to n) foreach { _ =>
+      out.println(DeleteLine)
+    }
+  }
+
   private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {
     def appendEvent(oe: ObjectEvent[_]): Unit = {
       val contentType = oe.contentType
-      if (contentType == "sbt.internal.util.TraceEvent") {
-        appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
-      } else
-        LogExchange.stringCodec[AnyRef](contentType) match {
-          case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
-            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }
-          case Some(codec) =>
-            codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach (appendLog(level, _))
-          case _ => appendLog(level, oe.message.toString)
-        }
+      contentType match {
+        case "sbt.internal.util.TraceEvent" => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
+        case "sbt.internal.util.ProgressEvent" =>
+          appendProgressEvent(oe.message.asInstanceOf[ProgressEvent])
+        case _ =>
+          LogExchange.stringCodec[AnyRef](contentType) match {
+            case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
+              codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach { success(_) }
+            case Some(codec) =>
+              codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector foreach (appendLog(
+                level,
+                _
+              ))
+            case _ => appendLog(level, oe.message.toString)
+          }
+      }
     }
 
     o match {
