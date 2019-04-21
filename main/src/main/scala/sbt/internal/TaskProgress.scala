@@ -10,7 +10,6 @@ package internal
 
 import sbt.internal.util.{
   RMap,
-  ConsoleOut,
   ConsoleAppender,
   LogOption,
   JLine,
@@ -62,7 +61,6 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     }
   }
 
-  private[this] val console = ConsoleOut.systemOut
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
     // send an empty progress report to clear out the previous report
     val event = ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None)
@@ -72,7 +70,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
   }
   private[this] val skipReportTasks =
     Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject")
-  private[this] def report(): Unit = console.lockObject.synchronized {
+  private[this] def report(): Unit = {
     val currentTasks = activeTasks.toVector
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
