@@ -2307,7 +2307,7 @@ object Classpaths {
     updateClassifiers := (Def.task {
       val s = streams.value
       val is = ivySbt.value
-      val lm = new DependencyResolution(new IvyDependencyResolution(is))
+      val lm = dependencyResolution.value
       val mod = (classifiersModule in updateClassifiers).value
       val updateConfig0 = updateConfiguration.value
       val updateConfig = updateConfig0
