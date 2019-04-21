@@ -75,7 +75,7 @@ object AbstractTaskExecuteProgress {
     def durationNanos: Long = endNanos - startNanos
     def startMicros: Long = (startNanos.toDouble / 1000).toLong
     def durationMicros: Long = (durationNanos.toDouble / 1000).toLong
-    def currentElapsedSeconds: Long =
-      ((System.nanoTime() - startNanos).toDouble / 1000000000L).toLong
+    def currentElapsedMicros: Long =
+      ((System.nanoTime() - startNanos).toDouble / 1000).toLong
   }
 }
