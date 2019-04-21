@@ -438,7 +438,8 @@ class ConsoleAppender private[ConsoleAppender] (
     out.lockObject.synchronized {
       message.linesIterator.foreach { line =>
         val builder = new java.lang.StringBuilder(
-          labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3)
+          labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3
+        )
         def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
         builder.append(reset).append('[')
         fmted(labelColor, label)
@@ -468,7 +469,8 @@ class ConsoleAppender private[ConsoleAppender] (
         s"$ScrollUp$DeleteLine$msg${CursorLeft1000}" + (
           if (scrollNum <= 1) ""
           else scrollUp(scrollNum - 1)
-        ))
+        )
+      )
       out.flush()
     } else {
       out.println(msg)

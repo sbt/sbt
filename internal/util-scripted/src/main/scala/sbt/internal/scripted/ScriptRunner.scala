@@ -15,7 +15,9 @@ class ScriptRunner {
     def processStatement(handler: StatementHandler, statement: Statement): Unit = {
       val state = states(handler).asInstanceOf[handler.State]
       val nextState =
-        try { Right(handler(statement.command, statement.arguments, state)) } catch {
+        try {
+          Right(handler(statement.command, statement.arguments, state))
+        } catch {
           case e: Exception => Left(e)
         }
       nextState match {
@@ -42,7 +44,9 @@ class ScriptRunner {
       statements foreach (Function.tupled(processStatement))
     } finally {
       for (handler <- handlers; state <- states.get(handler)) {
-        try { handler.finish(state.asInstanceOf[handler.State]) } catch { case e: Exception => () }
+        try {
+          handler.finish(state.asInstanceOf[handler.State])
+        } catch { case e: Exception => () }
       }
     }
   }

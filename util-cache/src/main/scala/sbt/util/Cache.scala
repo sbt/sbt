@@ -60,7 +60,7 @@ object Cache {
           val result = default(key)
           update(result)
           result
-    }
+      }
 
   def debug[I](label: String, cache: SingletonCache[I]): SingletonCache[I] =
     new SingletonCache[I] {
