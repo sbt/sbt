@@ -7,125 +7,138 @@
 
 package sbt
 
-import Project._
 import sbt.internal.util.Types.idFun
 import sbt.internal.TestBuild._
-import sbt.librarymanagement.Configuration
-import org.scalacheck._
-import Prop._
-import Gen._
+import hedgehog.{ Result => Assert, _ }
+import hedgehog.Result.{ all, assert, failure, success }
+import hedgehog.runner._
 
-object Delegates extends Properties("delegates") {
-  property("generate non-empty configs") = forAll { (c: Vector[Configuration]) =>
-    c.nonEmpty
-  }
-  property("generate non-empty tasks") = forAll { (t: Vector[Taskk]) =>
-    t.nonEmpty
-  }
+object Delegates extends Properties {
 
-  property("no duplicate scopes") = forAll { (keys: TestKeys) =>
-    allDelegates(keys) { (_, ds) =>
-      ds.distinct.size == ds.size
-    }
-  }
-  property("delegates non-empty") = forAll { (keys: TestKeys) =>
-    allDelegates(keys) { (_, ds) =>
-      ds.nonEmpty
-    }
-  }
-
-  property("An initially Zero axis is Zero in all delegates") = allAxes(alwaysZero)
-
-  property("Projects precede builds precede Zero") = forAll { (keys: TestKeys) =>
-    allDelegates(keys) { (scope, ds) =>
-      val projectAxes = ds.map(_.project)
-      val nonProject = projectAxes.dropWhile {
-        case Select(_: ProjectRef) => true; case _ => false
-      }
-      val global = nonProject.dropWhile { case Select(_: BuildRef) => true; case _ => false }
-      global forall { _ == Zero }
-    }
-  }
-
-  property("Initial scope present with all combinations of Global axes") = allAxes(
-    (s, ds, _) => globalCombinations(s, ds)
-  )
-
-  property("initial scope first") = forAll { (keys: TestKeys) =>
-    allDelegates(keys) { (scope, ds) =>
-      ds.head == scope
-    }
-  }
-
-  property("global scope last") = forAll { (keys: TestKeys) =>
-    allDelegates(keys) { (_, ds) =>
-      ds.last == Scope.GlobalScope
-    }
-  }
-
-  property("Project axis delegates to BuildRef then Zero") = forAll { (keys: TestKeys) =>
-    allDelegates(keys) { (key, ds) =>
-      key.project match {
-        case Zero => true // filtering out of testing
-        case Select(rr: ResolvedReference) =>
-          rr match {
-            case BuildRef(_) => ds.indexOf(key) < ds.indexOf(key.copy(project = Zero))
-            case ProjectRef(uri, _) =>
-              val buildScoped = key.copy(project = Select(BuildRef(uri)))
-              val idxKey = ds.indexOf(key)
-              val idxB = ds.indexOf(buildScoped)
-              val z = key.copy(project = Zero)
-              val idxZ = ds.indexOf(z)
-              if (z == Scope.GlobalScope) true
-              else
-                (s"idxKey = $idxKey; idxB = $idxB; idxZ = $idxZ") |: (idxKey < idxB) && (idxB < idxZ)
+  override def tests: List[Test] =
+    List(
+      property("generate non-empty configs", cGen.forAll.map { c =>
+        assert(c.nonEmpty)
+      }),
+      property("generate non-empty tasks", tGen.forAll.map { t =>
+        assert(t.nonEmpty)
+      }),
+      property("no duplicate scopes", keysGen.forAll.map { keys =>
+        allDelegates(keys) { (_, ds) =>
+          ds.distinct.size ==== ds.size
+        }
+      }),
+      property("delegates non-empty", keysGen.forAll.map { keys =>
+        allDelegates(keys) { (_, ds) =>
+          assert(ds.nonEmpty)
+        }
+      }),
+      property("An initially Zero axis is Zero in all delegates", allAxes(alwaysZero)),
+      property(
+        "Projects precede builds precede Zero",
+        keysGen.forAll.map { keys =>
+          allDelegates(keys) { (scope, ds) =>
+            val projectAxes = ds.map(_.project)
+            val nonProject = projectAxes.dropWhile {
+              case Select(_: ProjectRef) => true; case _ => false
+            }
+            val global = nonProject.dropWhile { case Select(_: BuildRef) => true; case _ => false }
+            all(global.map { _ ==== Zero }.toList)
           }
-        case Select(_) | This =>
-          throw new AssertionError(s"Scope's reference should be resolved, but was ${key.project}")
-      }
-    }
-  }
-
-  property("Config axis delegates to parent configuration") = forAll { (keys: TestKeys) =>
-    allDelegates(keys) { (key, ds) =>
-      key.config match {
-        case Zero => true
-        case Select(config) if key.project.isSelect =>
-          val p = key.project.toOption.get
-          val r = keys.env.resolve(p)
-          keys.env.inheritConfig(r, config).headOption.fold(Prop(true)) { parent =>
-            val idxKey = ds.indexOf(key)
-            val a = key.copy(config = Select(parent))
-            val idxA = ds.indexOf(a)
-            (s"idxKey = $idxKey; a = $a; idxA = $idxA") |: idxKey < idxA
+        }
+      ),
+      property(
+        "Initial scope present with all combinations of Global axes",
+        allAxes(
+          (s, ds, _) => globalCombinations(s, ds)
+        )
+      ),
+      property("initial scope first", keysGen.forAll.map { keys =>
+        allDelegates(keys) { (scope, ds) =>
+          ds.head ==== scope
+        }
+      }),
+      property("global scope last", keysGen.forAll.map { keys =>
+        allDelegates(keys) { (_, ds) =>
+          ds.last ==== Scope.GlobalScope
+        }
+      }),
+      property(
+        "Project axis delegates to BuildRef then Zero",
+        keysGen.forAll.map { keys =>
+          allDelegates(keys) {
+            (key, ds) =>
+              key.project match {
+                case Zero => success // filtering out of testing
+                case Select(rr: ResolvedReference) =>
+                  rr match {
+                    case BuildRef(_) =>
+                      assert(ds.indexOf(key) < ds.indexOf(key.copy(project = Zero)))
+                    case ProjectRef(uri, _) =>
+                      val buildScoped = key.copy(project = Select(BuildRef(uri)))
+                      val idxKey = ds.indexOf(key)
+                      val idxB = ds.indexOf(buildScoped)
+                      val z = key.copy(project = Zero)
+                      val idxZ = ds.indexOf(z)
+                      (z ==== Scope.GlobalScope)
+                        .or(
+                          assert((idxKey < idxB) && (idxB < idxZ))
+                            .log(s"idxKey = $idxKey; idxB = $idxB; idxZ = $idxZ")
+                        )
+                  }
+                case Select(_) | This =>
+                  failure.log(s"Scope's reference should be resolved, but was ${key.project}")
+              }
           }
-        case _ => true
-      }
-    }
-  }
+        }
+      ),
+      property(
+        "Config axis delegates to parent configuration",
+        keysGen.forAll.map { keys =>
+          allDelegates(keys) {
+            (key, ds) =>
+              key.config match {
+                case Zero => success
+                case Select(config) if key.project.isSelect =>
+                  val p = key.project.toOption.get
+                  val r = keys.env.resolve(p)
+                  keys.env.inheritConfig(r, config).headOption.fold(success) { parent =>
+                    val idxKey = ds.indexOf(key)
+                    val a = key.copy(config = Select(parent))
+                    val idxA = ds.indexOf(a)
+                    assert(idxKey < idxA)
+                      .log(s"idxKey = $idxKey; a = $a; idxA = $idxA")
+                  }
+                case _ => success
+              }
+          }
+        }
+      )
+    )
 
-  def allAxes(f: (Scope, Seq[Scope], Scope => ScopeAxis[_]) => Prop): Prop = forAll {
-    (keys: TestKeys) =>
+  def allAxes(f: (Scope, Seq[Scope], Scope => ScopeAxis[_]) => Assert): Property =
+    keysGen.forAll.map { keys =>
       allDelegates(keys) { (s, ds) =>
-        all(f(s, ds, _.project), f(s, ds, _.config), f(s, ds, _.task), f(s, ds, _.extra))
+        all(List(f(s, ds, _.project), f(s, ds, _.config), f(s, ds, _.task), f(s, ds, _.extra)))
       }
-  }
+    }
 
-  def allDelegates(keys: TestKeys)(f: (Scope, Seq[Scope]) => Prop): Prop =
-    all(keys.scopes map { scope =>
+  def allDelegates(keys: TestKeys)(f: (Scope, Seq[Scope]) => Assert): Assert =
+    all(keys.scopes.map { scope =>
       val delegates = keys.env.delegates(scope)
-      ("Scope: " + Scope.display(scope, "_")) |:
-        ("Delegates:\n\t" + delegates.map(scope => Scope.display(scope, "_")).mkString("\n\t")) |:
-        f(scope, delegates)
-    }: _*)
+      f(scope, delegates)
+        .log("Scope: " + Scope.display(scope, "_"))
+        .log("Delegates:\n\t" + delegates.map(scope => Scope.display(scope, "_")).mkString("\n\t"))
+    }.toList)
 
-  def alwaysZero(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Prop =
-    (axis(s) != Zero) ||
-      all(ds map { d =>
-        (axis(d) == Zero): Prop
-      }: _*)
+  def alwaysZero(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Assert =
+    assert(axis(s) != Zero).or(
+      all(ds.map { d =>
+        axis(d) ==== Zero
+      }.toList)
+    )
 
-  def globalCombinations(s: Scope, ds: Seq[Scope]): Prop = {
+  def globalCombinations(s: Scope, ds: Seq[Scope]): Assert = {
     val mods = List[Scope => Scope](
       _.copy(project = Zero),
       _.copy(config = Zero),
@@ -143,6 +156,6 @@ object Delegates extends Properties("delegates") {
             loop(s, s :: acc, xs)
           }
       }
-    all(loop(s, Nil, modAndIdent).map(ds contains _: Prop): _*)
+    all(loop(s, Nil, modAndIdent).map(x => assert(ds contains x)).toList)
   }
 }

@@ -7,9 +7,6 @@
 
 import java.net.URI
 
-import org.scalatest.matchers.MatchResult
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{ Matchers, PropSpec }
 import sbt.Def._
 import sbt._
 import sbt.internal.TestBuild
@@ -17,31 +14,26 @@ import sbt.internal.TestBuild._
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
+import hedgehog._
+import hedgehog.runner._
 
-class ParserSpec extends PropSpec with PropertyChecks with Matchers {
-  property("can parse any build") {
-    forAll(TestBuild.uriGen) { uri =>
-      parse(buildURI = uri)
-    }
-  }
-
-  property("can parse any project") {
-    forAll(TestBuild.nonEmptyId) { id =>
-      parse(projectID = id)
-    }
-  }
-
-  property("can parse any configuration") {
-    forAll(TestBuild.nonEmptyId.map(_.capitalize)) { name =>
-      parse(configName = name)
-    }
-  }
-
-  property("can parse any attribute") {
-    forAll(TestBuild.kebabIdGen) { name =>
-      parse(attributeName = name)
-    }
-  }
+object ParserSpec extends Properties {
+  override def tests: List[Test] =
+    List(
+      property("can parse any build", TestBuild.uriGen.forAll.map { uri =>
+        parse(buildURI = uri)
+      }),
+      property("can parse any project", TestBuild.nonEmptyId.forAll.map { id =>
+        parse(projectID = id)
+      }),
+      property("can parse any configuration", TestBuild.nonEmptyId.map(_.capitalize).forAll.map {
+        name =>
+          parse(configName = name)
+      }),
+      property("can parse any attribute", TestBuild.kebabIdGen.forAll.map { name =>
+        parse(attributeName = name)
+      })
+    )
 
   private def parse(
       buildURI: URI = new java.net.URI("file", "///path/", null),
@@ -71,14 +63,9 @@ class ParserSpec extends PropSpec with PropertyChecks with Matchers {
     val structure = TestBuild.structure(env, settings, build.allProjects.head._1)
     val string = displayMasked(scopedKey, ScopeMask())
     val parser = makeParser(structure)
-    string should { left =>
-      val result = DefaultParsers.result(parser, left)
-      val resultStr = result.fold(_ => "<parse error>", _.toString)
-      MatchResult(
-        result == Right(scopedKey),
-        s"$left parsed back to $resultStr rather than $scopedKey",
-        s"$left parsed back to $scopedKey",
-      )
-    }
+    val result = DefaultParsers.result(parser, string)
+    val resultStr = result.fold(_ => "<parse error>", _.toString)
+    (result ==== Right(scopedKey))
+      .log(s"$string parsed back to $resultStr rather than $scopedKey")
   }
 }
