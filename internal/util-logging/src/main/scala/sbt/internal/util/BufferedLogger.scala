@@ -50,7 +50,11 @@ class BufferedAppender private[BufferedAppender] (name: String, delegate: Append
   def record() = synchronized { recording = true }
   def buffer[T](f: => T): T = {
     record()
-    try { f } finally { stopQuietly() }
+    try {
+      f
+    } finally {
+      stopQuietly()
+    }
   }
   def bufferQuietly[T](f: => T): T = {
     record()
@@ -60,7 +64,11 @@ class BufferedAppender private[BufferedAppender] (name: String, delegate: Append
       result
     } catch { case e: Throwable => stopQuietly(); throw e }
   }
-  def stopQuietly() = synchronized { try { stopBuffer() } catch { case _: Exception => () } }
+  def stopQuietly() = synchronized {
+    try {
+      stopBuffer()
+    } catch { case _: Exception => () }
+  }
 
   /**
    * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
@@ -99,7 +107,11 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
   def record() = synchronized { recording = true }
   def buffer[T](f: => T): T = {
     record()
-    try { f } finally { stopQuietly() }
+    try {
+      f
+    } finally {
+      stopQuietly()
+    }
   }
   def bufferQuietly[T](f: => T): T = {
     record()
@@ -109,7 +121,11 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       result
     } catch { case e: Throwable => stopQuietly(); throw e }
   }
-  def stopQuietly() = synchronized { try { stop() } catch { case _: Exception => () } }
+  def stopQuietly() = synchronized {
+    try {
+      stop()
+    } catch { case _: Exception => () }
+  }
 
   /**
    * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate

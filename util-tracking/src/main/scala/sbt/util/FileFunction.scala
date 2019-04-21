@@ -137,16 +137,15 @@ object FileFunction {
   ): Set[File] => Set[File] = {
     lazy val inCache = Difference.inputs(storeFactory.make("in-cache"), inStyle)
     lazy val outCache = Difference.outputs(storeFactory.make("out-cache"), outStyle)
-    inputs =>
-      {
-        inCache(inputs) { inReport =>
-          outCache { outReport =>
-            if (inReport.modified.isEmpty && outReport.modified.isEmpty)
-              outReport.checked
-            else
-              action(inReport, outReport)
-          }
+    inputs => {
+      inCache(inputs) { inReport =>
+        outCache { outReport =>
+          if (inReport.modified.isEmpty && outReport.modified.isEmpty)
+            outReport.checked
+          else
+            action(inReport, outReport)
         }
       }
+    }
   }
 }

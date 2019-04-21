@@ -8,7 +8,7 @@ scala:
 script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
   ++$TRAVIS_SCALA_VERSION
   mimaReportBinaryIssues
-  scalafmtCheck
+  scalafmtCheckAll
   whitesourceCheckPolicies
   test
 

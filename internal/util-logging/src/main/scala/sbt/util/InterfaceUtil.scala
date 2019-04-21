@@ -46,19 +46,21 @@ object InterfaceUtil {
       sourcePath0: Option[String],
       sourceFile0: Option[File]
   ): Position =
-    position(line0,
-             content,
-             offset0,
-             pointer0,
-             pointerSpace0,
-             sourcePath0,
-             sourceFile0,
-             None,
-             None,
-             None,
-             None,
-             None,
-             None)
+    position(
+      line0,
+      content,
+      offset0,
+      pointer0,
+      pointerSpace0,
+      sourcePath0,
+      sourceFile0,
+      None,
+      None,
+      None,
+      None,
+      None,
+      None
+    )
 
   def position(
       line0: Option[Integer],
@@ -75,29 +77,33 @@ object InterfaceUtil {
       endLine0: Option[Integer],
       endColumn0: Option[Integer]
   ): Position =
-    new ConcretePosition(line0,
-                         content,
-                         offset0,
-                         pointer0,
-                         pointerSpace0,
-                         sourcePath0,
-                         sourceFile0,
-                         startOffset0,
-                         endOffset0,
-                         startLine0,
-                         startColumn0,
-                         endLine0,
-                         endColumn0)
+    new ConcretePosition(
+      line0,
+      content,
+      offset0,
+      pointer0,
+      pointerSpace0,
+      sourcePath0,
+      sourceFile0,
+      startOffset0,
+      endOffset0,
+      startLine0,
+      startColumn0,
+      endLine0,
+      endColumn0
+    )
 
   @deprecated("Use the overload of this method with more arguments", "1.2.2")
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
     problem(cat, pos, msg, sev, None)
 
-  def problem(cat: String,
-              pos: Position,
-              msg: String,
-              sev: Severity,
-              rendered: Option[String]): Problem =
+  def problem(
+      cat: String,
+      pos: Position,
+      msg: String,
+      sev: Severity,
+      rendered: Option[String]
+  ): Problem =
     new ConcreteProblem(cat, pos, msg, sev, rendered)
 
   private final class ConcreteT2[A1, A2](a1: A1, a2: A2) extends T2[A1, A2] {
