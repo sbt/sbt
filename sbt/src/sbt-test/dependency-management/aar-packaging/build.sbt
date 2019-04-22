@@ -1,4 +1,4 @@
-scalaVersion := "2.11.8"
+ThisBuild / scalaVersion := "2.11.12"
 
 libraryDependencies += ("com.rengwuxian.materialedittext" % "library" % "2.1.4")
   .exclude("com.android.support", "support-v4")

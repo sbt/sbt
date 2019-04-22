@@ -1,11 +1,7 @@
-
-lazy val sharedSettings = Seq(
-  scalaVersion := "2.11.8"
-)
+ThisBuild / scalaVersion := "2.11.12"
 
 /** Module with the same Maven coordinates as shapeless 2.3.1 */
 lazy val `shapeless-mock` = project
-  .settings(sharedSettings)
   .settings(
     organization := "com.chuusai",
     name := "shapeless",
@@ -13,7 +9,6 @@ lazy val `shapeless-mock` = project
   )
 
 lazy val a = project
-  .settings(sharedSettings)
   .settings(
     organization := "com.pany",
     name := "a",
@@ -23,7 +18,6 @@ lazy val a = project
 /** Transitively depends on the - real - shapeless 2.3.1 */
 lazy val b = project
   .dependsOn(a)
-  .settings(sharedSettings)
   .settings(
     organization := "com.pany",
     name := "b",

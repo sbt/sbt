@@ -1,5 +1,5 @@
 
-scalaVersion := "2.11.8"
+ThisBuild / scalaVersion := "2.11.12"
 
 organization := "io.get-coursier.test"
 name := "sbt-coursier-exclude-dependencies"
