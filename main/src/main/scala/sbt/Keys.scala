@@ -355,6 +355,7 @@ object Keys {
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)
   val csrCachePath = settingKey[File]("Coursier cache path").withRank(CSetting)
+  val csrMavenProfiles = settingKey[Set[String]]("").withRank(CSetting)
   private[sbt] val csrConfiguration = taskKey[CoursierConfiguration]("General dependency management (Coursier) settings, such as the resolvers and options to use.").withRank(DTask)
   private[sbt] val csrProject = taskKey[coursier.core.Project]("")
   private[sbt] val csrResolvers = taskKey[Seq[Resolver]]("")
@@ -362,7 +363,6 @@ object Keys {
   private[sbt] val csrSbtResolvers = taskKey[Seq[Resolver]]("Resolvers used for sbt artifacts.")
   private[sbt] val csrInterProjectDependencies = taskKey[Seq[coursier.core.Project]]("Projects the current project depends on, possibly transitively")
   private[sbt] val csrFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
-  private[sbt] val csrMavenProfiles = settingKey[Set[String]]("")
   private[sbt] val csrLogger = taskKey[Option[CacheLogger]]("")
   private[sbt] val csrExtraCredentials = taskKey[Seq[coursier.credentials.Credentials]]("")
   private[sbt] val csrPublications = taskKey[Seq[(coursier.core.Configuration, coursier.core.Publication)]]("")

@@ -17,6 +17,7 @@ env:
     - SBT_CMD="scripted dependency-management/*2of4"
     - SBT_CMD="scripted dependency-management/*3of4"
     - SBT_CMD="scripted dependency-management/*4of4"
+    - SBT_CMD="scripted plugins/*"
     - SBT_CMD="scripted package/* reporter/* run/* project-load/*"
     - SBT_CMD="scripted project/*1of2"
     - SBT_CMD="scripted project/*2of2"
