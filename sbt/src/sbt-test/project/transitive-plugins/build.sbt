@@ -1,17 +1,44 @@
+ThisBuild / organization := "org.example"
 
 lazy val root = (project in file("."))
+  .settings(
+    commonSettings
+  )
 
-lazy val a = proj(project in file("a"))
-lazy val b = proj(project in file("b"))
-lazy val c = proj(project in file("c"))
+lazy val commonSettings = Seq(
+  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+  publishTo := Some(Resolver.file("test-publish", (baseDirectory in ThisBuild).value / "repo/")),
+  // to get sbt artifacts
+  resolvers += {
+    val ivyHome = Classpaths.bootIvyHome(appConfiguration.value) getOrElse sys.error("Launcher did not provide the Ivy home directory.")
+    Resolver.file("real-local",  ivyHome / "local")(Resolver.ivyStylePatterns)
+  },
+  resolvers += Resolver.mavenLocal,
+  resolvers += ("test-repo" at ((baseDirectory in ThisBuild).value / "repo/").asURL.toString)
+)
 
-def proj(p: Project): Project =
-  p.settings(
-    ivyPaths := IvyPaths((baseDirectory in root).value, Some((target in root).value / "ivy-cache")),
-    resolvers += {
-      val ivyHome = Classpaths.bootIvyHome(appConfiguration.value) getOrElse sys.error("Launcher did not provide the Ivy home directory.")
-      Resolver.file("real-local",  ivyHome / "local")(Resolver.ivyStylePatterns)
-    },
-    resolvers += Resolver.typesafeIvyRepo("releases"), // not sure why this isn't included by default
-    resolvers += Resolver.mavenLocal
+lazy val a = (project in file("a"))
+  .enablePlugins(SbtPlugin)
+  .settings(
+    commonSettings,
+    name := "demo1",
+    version := "0.1"
+  )
+
+lazy val b = (project in file("b"))
+  .enablePlugins(SbtPlugin)
+  .settings(
+    commonSettings,
+    name := "demo2",
+    version := "0.2",
+    addSbtPlugin("org.example" % "demo1" % "0.1")
+  )
+
+lazy val c = (project in file("c"))
+  .enablePlugins(SbtPlugin)
+  .settings(
+    commonSettings,
+    name := "demo3",
+    version := "0.3",
+    addSbtPlugin("org.example" % "demo2" % "0.2")
   )
