@@ -30,7 +30,7 @@ import sbt.internal._
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.ZincUtil
 import sbt.internal.io.{ Source, WatchState }
-import sbt.internal.librarymanagement._
+import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
@@ -217,6 +217,8 @@ object Defaults extends BuildCommon {
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
       conflictManager := ConflictManager.default,
+      CustomHttp.okhttpClientBuilder :== CustomHttp.defaultHttpClientBuilder,
+      CustomHttp.okhttpClient := CustomHttp.okhttpClientBuilder.value.build,
       pomExtra :== NodeSeq.Empty,
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
@@ -2179,8 +2181,11 @@ object Classpaths {
         )
       else None
     },
-    dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
-    publisher := IvyPublisher(ivyConfiguration.value),
+    dependencyResolution := IvyDependencyResolution(
+      ivyConfiguration.value,
+      CustomHttp.okhttpClient.value
+    ),
+    publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
       val confs = thisProject.value.configurations
@@ -2427,7 +2432,7 @@ object Classpaths {
   private[sbt] def ivySbt0: Initialize[Task[IvySbt]] =
     Def.task {
       Credentials.register(credentials.value, streams.value.log)
-      new IvySbt(ivyConfiguration.value)
+      new IvySbt(ivyConfiguration.value, CustomHttp.okhttpClient.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     ModuleDescriptorConfiguration(projectID.value, projectInfo.value)
@@ -2498,7 +2503,10 @@ object Classpaths {
               ).withScalaOrganization(scalaOrganization.value)
             )
           },
-          dependencyResolution := IvyDependencyResolution(ivyConfiguration.value),
+          dependencyResolution := IvyDependencyResolution(
+            ivyConfiguration.value,
+            CustomHttp.okhttpClient.value
+          ),
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
             val s = streams.value
