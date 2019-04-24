@@ -16,7 +16,7 @@ import sbt.Project.richInitializeTask
 import sbt.Scope.Global
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
-import sbt.internal.TransitiveGlobs._
+import sbt.internal.TransitiveDynamicInputs._
 import sbt.internal.util._
 import sbt.internal.{ BuildStructure, GCUtil, Load, TaskProgress, TaskTimings, TaskTraceEvent, _ }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
@@ -572,33 +572,31 @@ object EvaluateTask {
           stream
         }).value
       })
-    } else if (scoped.key == transitiveInputs.key) {
+    } else if (scoped.key == transitiveDynamicInputs.key) {
       scoped.scope.task.toOption.toSeq.map { key =>
         val updatedKey = ScopedKey(scoped.scope.copy(task = Zero), key)
-        transitiveInputs in scoped.scope := InputGraph.inputsTask(updatedKey).value
-      }
-    } else if (scoped.key == transitiveTriggers.key) {
-      scoped.scope.task.toOption.toSeq.map { key =>
-        val updatedKey = ScopedKey(scoped.scope.copy(task = Zero), key)
-        transitiveTriggers in scoped.scope := InputGraph.triggersTask(updatedKey).value
-      }
-    } else if (scoped.key == transitiveGlobs.key) {
-      scoped.scope.task.toOption.toSeq.map { key =>
-        val updatedKey = ScopedKey(scoped.scope.copy(task = Zero), key)
-        transitiveGlobs in scoped.scope := InputGraph.task(updatedKey).value
+        transitiveDynamicInputs in scoped.scope := InputGraph.task(updatedKey).value
       }
     } else if (scoped.key == dynamicDependency.key) {
-      (dynamicDependency in scoped.scope := { () }) :: Nil
+      (dynamicDependency in scoped.scope := {
+        ()
+      }) :: Nil
     } else if (scoped.key == transitiveClasspathDependency.key) {
-      (transitiveClasspathDependency in scoped.scope := { () }) :: Nil
-    } else if (scoped.key == sbt.nio.Keys.fileInputs.key) {
-      (sbt.nio.Keys.fileHashes in scoped.scope) := {
-        import GlobLister._
-        val map = sbt.nio.FileStamp.fileHashMap.value
-        (sbt.nio.Keys.fileInputs in scoped.scope).value.all(fileTreeView.value).collect {
-          case (p, a) if a.isRegularFile => p -> map.get(p)
-        }
-      }
+      (transitiveClasspathDependency in scoped.scope := {
+        ()
+      }) :: Nil
+    } else if (scoped.key == sbt.nio.Keys.allFiles.key) {
+      sbt.nio.Settings.allFiles(scoped) :: Nil
+    } else if (scoped.key == sbt.nio.Keys.allPaths.key) {
+      sbt.nio.Settings.allPaths(scoped) :: Nil
+    } else if (scoped.key == sbt.nio.Keys.changedFiles.key) {
+      sbt.nio.Settings.changedFiles(scoped)
+    } else if (scoped.key == sbt.nio.Keys.modifiedFiles.key) {
+      sbt.nio.Settings.modifiedFiles(scoped)
+    } else if (scoped.key == sbt.nio.Keys.removedFiles.key) {
+      sbt.nio.Settings.removedFiles(scoped) :: Nil
+    } else if (scoped.key == sbt.nio.Keys.stamper.key) {
+      sbt.nio.Settings.stamper(scoped) :: Nil
     } else {
       Nil
     }

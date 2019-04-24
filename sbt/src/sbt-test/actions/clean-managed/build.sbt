@@ -1,4 +1,4 @@
-import sbt.nio.file.syntax._
+import sbt.nio.file.Glob
 
 Compile / sourceGenerators += Def.task {
   val files = Seq(sourceManaged.value / "foo.txt", sourceManaged.value / "bar.txt")
@@ -6,4 +6,4 @@ Compile / sourceGenerators += Def.task {
   files
 }
 
-cleanKeepGlobs += (sourceManaged.value / "bar.txt").toGlob
+cleanKeepGlobs += Glob(sourceManaged.value, "bar.txt")

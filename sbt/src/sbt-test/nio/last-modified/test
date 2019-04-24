@@ -1,0 +1,28 @@
+> fileInputTask
+
+-> fileInputTask
+
+$ touch base/Bar.md
+
+# this should succeed even though the contents didn't change
+> fileInputTask
+
+$ copy-file changes/Bar.md base/Bar.md
+
+# the last modified should change due to the copy
+> fileInputTask
+
+> setLastModified
+
+> fileInputTask
+
+$ copy-file changes/Bar2.md base/Bar.md
+
+> setLastModified
+
+# this should fail even though we changed the file with a copy
+-> fileInputTask
+
+$ touch base/Bar.md
+
+> fileInputTask

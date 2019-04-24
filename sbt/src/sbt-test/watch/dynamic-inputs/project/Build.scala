@@ -1,5 +1,6 @@
 package sbt.watch.task
 
+import java.nio.file.Path
 import sbt._
 import Keys._
 import sbt.nio.Keys._
@@ -8,7 +9,7 @@ object Build {
   val reloadFile = settingKey[File]("file to toggle whether or not to reload")
   val setStringValue = taskKey[Unit]("set a global string to a value")
   val checkStringValue = inputKey[Unit]("check the value of a global")
-  val foo = taskKey[Unit]("foo")
+  val foo = taskKey[Seq[Path]]("foo")
   def setStringValueImpl: Def.Initialize[Task[Unit]] = Def.task {
     val i = (setStringValue / fileInputs).value
     val (stringFile, string) = ("foo.txt", "bar")
@@ -22,23 +23,19 @@ object Build {
   lazy val root = (project in file(".")).settings(
     reloadFile := baseDirectory.value / "reload",
     foo / fileInputs += baseDirectory.value * "foo.txt",
+    foo := (foo / allFiles).value,
     setStringValue := Def.taskDyn {
       // This hides foo / fileInputs from the input graph
       Def.taskDyn {
-        val _ = (foo / fileInputs).value
-          .all(fileTreeView.value, sbt.internal.Continuous.dynamicInputs.value)
+        val inputs = foo.value
         // By putting setStringValueImpl.value inside a Def.task, we ensure that
         // (foo / fileInputs).value is registered with the file repository before modifying the file.
-        Def.task(setStringValueImpl.value)
+        if (inputs.isEmpty) Def.task(setStringValueImpl.value)
+        else Def.task(assert(false))
       }
     }.value,
     checkStringValue := checkStringValueImpl.evaluated,
-    watchOnInputEvent := { (_, _) =>
-      Watch.CancelWatch
-    },
-    watchOnTriggerEvent := { (_, _) =>
-      Watch.CancelWatch
-    },
+    watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },
     watchTasks := Def.inputTask {
       val prev = watchTasks.evaluated
       new StateTransform(prev.state.fail)

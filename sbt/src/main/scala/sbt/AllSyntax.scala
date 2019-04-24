@@ -12,7 +12,7 @@ private[sbt] trait IOSyntax0 extends IOSyntax1 {
     override def |(g: A => Option[B]): A => Option[B] = (a: A) => f(a) orElse g(a)
   }
 }
-private[sbt] trait IOSyntax1 extends sbt.io.IOSyntax
-private[sbt] trait Alternative[A, B] {
+private[sbt] sealed trait IOSyntax1 extends sbt.io.IOSyntax with sbt.nio.file.syntax0
+private[sbt] sealed trait Alternative[A, B] {
   def |(g: A => Option[B]): A => Option[B]
 }

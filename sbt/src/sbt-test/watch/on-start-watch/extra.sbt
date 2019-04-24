@@ -1,1 +1,1 @@
-watchOnStart := { _ => () => Watch.Reload }
+watchOnIteration := { _ => Watch.Reload }

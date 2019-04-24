@@ -6,16 +6,19 @@
  */
 
 package sbt
-import java.io.InputStream
+
 import java.nio.file.Path
+import java.time.format.{ DateTimeFormatter, TextStyle }
+import java.time.{ Instant, ZoneId, ZonedDateTime }
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
+import sbt.internal.util.Util
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser._
-import sbt.internal.util.{ JLine, Util }
 import sbt.nio.file.FileAttributes
 import sbt.util.{ Level, Logger }
 
@@ -24,67 +27,94 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 object Watch {
+
+  /**
+   * Represents a file event that has been detected during a continuous build.
+   */
   sealed trait Event {
+
+    /**
+     * The path that triggered the event.
+     *
+     * @return the path that triggered the event.
+     */
     def path: Path
-    def previousAttributes: Option[FileAttributes]
-    def attributes: Option[FileAttributes]
+
+    /**
+     * The time specified in milliseconds from the epoch at which this event occurred.
+     *
+     * @return the time at which the event occurred.
+     */
     def occurredAt: FiniteDuration
   }
+  private[this] val formatter = DateTimeFormatter.ofPattern("yyyy-MMM-dd HH:mm:ss.SSS")
+  private[this] val timeZone = ZoneId.systemDefault
+  private[this] val timeZoneName = timeZone.getDisplayName(TextStyle.SHORT, Locale.getDefault)
+  private[this] implicit class DurationOps(val d: Duration) extends AnyVal {
+    def finite: FiniteDuration = d match {
+      case f: FiniteDuration => f
+      case _                 => new FiniteDuration(Long.MaxValue, TimeUnit.MILLISECONDS)
+    }
+    def toEpochString: String = {
+      val zdt = ZonedDateTime.ofInstant(Instant.ofEpochMilli(d.toMillis), timeZone)
+      s"${formatter.format(zdt)} $timeZoneName"
+    }
+  }
+  private[sbt] implicit class EventOps(val event: Event) extends AnyVal {
+    def toEpochString: String = event.occurredAt.toEpochString
+  }
   private[sbt] object Event {
-    private implicit class DurationOps(val d: Duration) extends AnyVal {
-      def finite: FiniteDuration = d match {
-        case f: FiniteDuration => f
-        case _                 => new FiniteDuration(Long.MaxValue, TimeUnit.MILLISECONDS)
+    trait Impl { self: Event =>
+      private val name = self.getClass.getSimpleName
+      override def equals(o: Any): Boolean = o match {
+        case that: Event => this.path == that.path
+        case _           => false
       }
+      override def hashCode: Int = path.hashCode
+      override def toString: String = s"$name($path)"
     }
     def fromIO(fileEvent: FileEvent[FileAttributes]): Watch.Event = fileEvent match {
-      case c @ FileEvent.Creation(p, a) => new Watch.Creation(p, a, c.occurredAt.value.finite)
-      case d @ FileEvent.Deletion(p, a) => new Watch.Deletion(p, a, d.occurredAt.value.finite)
-      case u @ FileEvent.Update(p, prev, attrs) =>
-        new Watch.Update(p, prev, attrs, u.occurredAt.value.finite)
+      case c @ FileEvent.Creation(p, _) => new Watch.Creation(p, c.occurredAt.value.finite)
+      case d @ FileEvent.Deletion(p, _) => new Watch.Deletion(p, d.occurredAt.value.finite)
+      case u @ FileEvent.Update(p, _, _) =>
+        new Watch.Update(p, u.occurredAt.value.finite)
     }
-  }
-  final class Deletion private[sbt] (
-      override val path: Path,
-      private[this] val attrs: FileAttributes,
-      override val occurredAt: FiniteDuration
-  ) extends Event {
-    override def previousAttributes: Option[FileAttributes] = Some(attrs)
-    override def attributes: Option[FileAttributes] = None
-  }
-  object Deletion {
-    def unapply(deletion: Deletion): Option[(Path, FileAttributes)] =
-      deletion.previousAttributes.map(a => deletion.path -> a)
   }
   final class Creation private[sbt] (
       override val path: Path,
-      private[this] val attrs: FileAttributes,
       override val occurredAt: FiniteDuration
-  ) extends Event {
-    override def attributes: Option[FileAttributes] = Some(attrs)
-    override def previousAttributes: Option[FileAttributes] = None
+  ) extends Event
+      with Event.Impl {
+    override def toString: String = s"Creation($path, ${occurredAt.toEpochString})"
   }
   object Creation {
-    def unapply(creation: Creation): Option[(Path, FileAttributes)] =
-      creation.attributes.map(a => creation.path -> a)
+    def apply(event: FileEvent[FileAttributes]): Creation =
+      new Creation(event.path, event.occurredAt.value.finite)
+    def unapply(creation: Creation): Option[Path] = Some(creation.path)
+  }
+  final class Deletion private[sbt] (
+      override val path: Path,
+      override val occurredAt: FiniteDuration
+  ) extends Event
+      with Event.Impl {
+    override def toString: String = s"Deletion($path, ${occurredAt.toEpochString})"
+  }
+  object Deletion {
+    def apply(event: FileEvent[FileAttributes]): Deletion =
+      new Deletion(event.path, event.occurredAt.value.finite)
+    def unapply(deletion: Deletion): Option[Path] = Some(deletion.path)
   }
   final class Update private[sbt] (
       override val path: Path,
-      private[this] val prevAttrs: FileAttributes,
-      private[this] val attrs: FileAttributes,
       override val occurredAt: FiniteDuration
-  ) extends Event {
-    override def previousAttributes: Option[FileAttributes] = Some(prevAttrs)
-    override def attributes: Option[FileAttributes] = Some(attrs)
+  ) extends Event
+      with Event.Impl {
+    override def toString: String = s"Update(path, ${occurredAt.toEpochString})"
   }
   object Update {
-    def unapply(update: Update): Option[(Path, FileAttributes, FileAttributes)] =
-      update.previousAttributes
-        .zip(update.attributes)
-        .map {
-          case (previous, current) => (update.path, previous, current)
-        }
-        .headOption
+    def apply(event: FileEvent[FileAttributes]): Update =
+      new Update(event.path, event.occurredAt.value.finite)
+    def unapply(update: Update): Option[Path] = Some(update.path)
   }
 
   /**
@@ -299,32 +329,12 @@ object Watch {
     def toExec: Exec = Exec(s, None)
   }
 
-  private[sbt] def withCharBufferedStdIn[R](f: InputStream => R): R =
-    if (!Util.isWindows) JLine.usingTerminal { terminal =>
-      terminal.init()
-      val in = terminal.wrapInIfNeeded(System.in)
-      try {
-        f(in)
-      } finally {
-        terminal.reset()
-      }
-    } else
-      f(System.in)
-
   /**
    * A constant function that returns [[Trigger]].
    */
   final val trigger: (Int, Event) => Watch.Action = { (_: Int, _: Event) =>
     Trigger
   }.label("Watched.trigger")
-
-  def ifChanged(action: Action): (Int, Event) => Watch.Action =
-    (_: Int, event: Event) =>
-      event match {
-        case Update(_, previousAttributes, attributes) if previousAttributes != attributes => action
-        case _: Creation | _: Deletion                                                     => action
-        case _                                                                             => Ignore
-      }
 
   /**
    * The minimum delay between build triggers for the same file. If the file is detected
@@ -432,14 +442,14 @@ object Watch {
    * `Keys.watchTriggeredMessage := Watched.defaultOnTriggerMessage`, then nothing is logged when
    * a build is triggered.
    */
-  final val defaultOnTriggerMessage: (Int, Event, Seq[String]) => Option[String] =
-    ((_: Int, e: Event, commands: Seq[String]) => {
-      val msg = s"Build triggered by ${e.path}. " +
+  final val defaultOnTriggerMessage: (Int, Path, Seq[String]) => Option[String] =
+    ((_: Int, path: Path, commands: Seq[String]) => {
+      val msg = s"Build triggered by $path. " +
         s"Running ${commands.mkString("'", "; ", "'")}."
       Some(msg)
     }).label("Watched.defaultOnTriggerMessage")
 
-  final val noTriggerMessage: (Int, Event, Seq[String]) => Option[String] =
+  final val noTriggerMessage: (Int, Path, Seq[String]) => Option[String] =
     (_, _, _) => None
 
   /**

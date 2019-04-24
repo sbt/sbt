@@ -8,6 +8,4 @@ setStringValue := setStringValueImpl.evaluated
 
 checkStringValue := checkStringValueImpl.evaluated
 
-watchOnTriggerEvent := { (_, _) => Watch.CancelWatch }
-watchOnInputEvent := { (_, _) => Watch.CancelWatch }
-watchOnMetaBuildEvent := { (_, _) => Watch.CancelWatch }
+watchOnFileInputEvent := { (_, _) => Watch.CancelWatch }

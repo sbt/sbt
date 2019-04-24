@@ -718,6 +718,18 @@ lazy val sbtIgnoredProblems = {
     exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$WatchSource_="),
     exclude[ReversedMissingMethodProblem]("sbt.Import.WatchSource"),
 
+    exclude[ReversedMissingMethodProblem]("sbt.Import.AnyPath"),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$**_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$*_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$AnyPath_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$Glob_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$RecursiveGlob_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$RelativeGlob_="),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.*"),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.**"),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.RecursiveGlob"),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.Glob"),
+    exclude[ReversedMissingMethodProblem]("sbt.Import.RelativeGlob"),
     // Dropped in favour of kind-projector's polymorphic lambda literals
     exclude[DirectMissingMethodProblem]("sbt.Import.Param"),
     exclude[DirectMissingMethodProblem]("sbt.package.Param"),

@@ -1,0 +1,1 @@
+val root = sbt.interproject.inputs.Build.root

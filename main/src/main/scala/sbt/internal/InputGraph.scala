@@ -15,16 +15,15 @@ import sbt.internal.io.Source
 import sbt.internal.util.AttributeMap
 import sbt.internal.util.complete.Parser
 import sbt.io.syntax._
-import sbt.nio.Keys._
 import sbt.nio.file.Glob
+import sbt.nio.FileStamper
+import sbt.nio.Keys._
 
 import scala.annotation.tailrec
 
-object TransitiveGlobs {
-  val transitiveTriggers = Def.taskKey[Seq[Glob]]("The transitive triggers for a key")
-  val transitiveInputs = Def.taskKey[Seq[Glob]]("The transitive inputs for a key")
-  val transitiveGlobs =
-    Def.taskKey[(Seq[Glob], Seq[Glob])]("The transitive inputs and triggers for a key")
+private[sbt] object TransitiveDynamicInputs {
+  val transitiveDynamicInputs =
+    Def.taskKey[Seq[DynamicInput]]("The transitive inputs and triggers for a key")
 }
 private[sbt] object InputGraph {
   private implicit class SourceOps(val source: Source) {
@@ -33,18 +32,12 @@ private[sbt] object InputGraph {
       if (source.recursive) source.base ** filter else source.base * filter
     }
   }
-  private[sbt] def inputsTask: Def.Initialize[Task[Seq[Glob]]] =
-    Def.task(transitiveGlobs(arguments.value)._1.sorted)
-  private[sbt] def inputsTask(key: ScopedKey[_]): Def.Initialize[Task[Seq[Glob]]] =
-    withParams((e, cm) => Def.task(transitiveGlobs(argumentsImpl(key, e, cm).value)._1.sorted))
-  private[sbt] def triggersTask: Def.Initialize[Task[Seq[Glob]]] =
-    Def.task(transitiveGlobs(arguments.value)._2.sorted)
-  private[sbt] def triggersTask(key: ScopedKey[_]): Def.Initialize[Task[Seq[Glob]]] =
-    withParams((e, cm) => Def.task(transitiveGlobs(argumentsImpl(key, e, cm).value)._2.sorted))
-  private[sbt] def task: Def.Initialize[Task[(Seq[Glob], Seq[Glob])]] =
-    Def.task(transitiveGlobs(arguments.value))
-  private[sbt] def task(key: ScopedKey[_]): Def.Initialize[Task[(Seq[Glob], Seq[Glob])]] =
-    withParams((e, cm) => Def.task(transitiveGlobs(argumentsImpl(key, e, cm).value)))
+  private[sbt] def task: Def.Initialize[Task[Seq[DynamicInput]]] =
+    Def.task(transitiveDynamicInputs(arguments.value))
+  private[sbt] def task(
+      key: ScopedKey[_]
+  ): Def.Initialize[Task[Seq[DynamicInput]]] =
+    withParams((e, cm) => Def.task(transitiveDynamicInputs(argumentsImpl(key, e, cm).value)))
   private def withParams[R](
       f: (Extracted, CompiledMap) => Def.Initialize[Task[R]]
   ): Def.Initialize[Task[R]] = Def.taskDyn {
@@ -100,7 +93,7 @@ private[sbt] object InputGraph {
       }
     }.value
   }
-  private[sbt] def transitiveGlobs(args: Arguments): (Seq[Glob], Seq[Glob]) = {
+  private[sbt] def transitiveDynamicInputs(args: Arguments): Seq[DynamicInput] = {
     import args._
     val taskScope = Project.fillTaskAxis(scopedKey).scope
     def delegates(sk: ScopedKey[_]): Seq[ScopedKey[_]] =
@@ -111,15 +104,35 @@ private[sbt] object InputGraph {
     val allKeys: Seq[ScopedKey[_]] =
       (delegates(scopedKey).toSet ++ delegates(ScopedKey(taskScope, watchTriggers.key))).toSeq
     val keys = collectKeys(args, allKeys, Set.empty, Set.empty)
-    def getGlobs(scopedKey: ScopedKey[Seq[Glob]]): Seq[Glob] =
-      data.get(scopedKey.scope).flatMap(_.get(scopedKey.key)).getOrElse(Nil)
-    val (inputGlobs, triggerGlobs) = keys.partition(_.key == fileInputs.key) match {
-      case (i, t) => (i.flatMap(getGlobs), t.flatMap(getGlobs))
+    def getDynamicInputs(scopedKey: ScopedKey[Seq[Glob]], trigger: Boolean): Seq[DynamicInput] = {
+      data
+        .get(scopedKey.scope)
+        .map { am =>
+          am.get(scopedKey.key) match {
+            case Some(globs: Seq[Glob]) =>
+              if (trigger) {
+                val stamper = am.get(fileStamper.key).getOrElse(FileStamper.Hash)
+                val forceTrigger = am.get(watchForceTriggerOnAnyChange.key).getOrElse(false)
+                globs.map(g => DynamicInput(g, stamper, forceTrigger))
+              } else {
+                globs.map(g => DynamicInput(g, FileStamper.LastModified, forceTrigger = true))
+              }
+            case None => Nil: Seq[DynamicInput]
+          }
+        }
+        .getOrElse(Nil)
     }
-    (inputGlobs.distinct, (triggerGlobs ++ legacy(keys :+ scopedKey, args)).distinct)
+    val (inputGlobs, triggerGlobs) = keys.partition(_.key == fileInputs.key) match {
+      case (inputs, triggers) =>
+        (
+          inputs.flatMap(getDynamicInputs(_, trigger = false)),
+          triggers.flatMap(getDynamicInputs(_, trigger = true))
+        )
+    }
+    (inputGlobs ++ triggerGlobs ++ legacy(keys :+ scopedKey, args)).distinct.sorted
   }
 
-  private def legacy(keys: Seq[ScopedKey[_]], args: Arguments): Seq[Glob] = {
+  private def legacy(keys: Seq[ScopedKey[_]], args: Arguments): Seq[DynamicInput] = {
     import args._
     val projectScopes =
       keys.view
@@ -143,10 +156,12 @@ private[sbt] object InputGraph {
             None
           }
       }.toSeq
+    def toDynamicInput(glob: Glob): DynamicInput =
+      DynamicInput(glob, FileStamper.LastModified, forceTrigger = true)
     scopes.flatMap {
       case Left(scope) =>
-        extracted.runTask(Keys.watchSources in scope, state)._2.map(_.toGlob)
-      case Right(globs) => globs
+        extracted.runTask(Keys.watchSources in scope, state)._2.map(s => toDynamicInput(s.toGlob))
+      case Right(globs) => globs.map(toDynamicInput)
     }
   }
   @tailrec

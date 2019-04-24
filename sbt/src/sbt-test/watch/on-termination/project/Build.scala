@@ -20,7 +20,7 @@ object Build {
     setStringValue / watchTriggers += baseDirectory.value * "foo.txt",
     setStringValue := setStringValueImpl.evaluated,
     checkStringValue := checkStringValueImpl.evaluated,
-    watchOnTriggerEvent := { (_, _) => Watch.CancelWatch },
+    watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },
     watchTasks := Def.inputTask {
       val prev = watchTasks.evaluated
       new StateTransform(prev.state.fail)
