@@ -1,10 +1,10 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import java.io.File
 
 import coursier.core.{Module, ModuleName, Organization}
 
-object SbtBootJars {
+private[coursier] object SbtBootJars {
   def apply(
     scalaOrg: Organization,
     scalaVersion: String,

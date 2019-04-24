@@ -1,8 +1,9 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
+import coursier.lmcoursier.CoursierConfiguration
 import sbt.librarymanagement._
 
-final case class CoursierModuleDescriptor(
+private[lmcoursier] final case class CoursierModuleDescriptor(
   descriptor: ModuleDescriptorConfiguration,
   conf: CoursierConfiguration
 ) extends ModuleDescriptor {

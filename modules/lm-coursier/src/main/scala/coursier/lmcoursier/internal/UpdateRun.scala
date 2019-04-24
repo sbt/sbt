@@ -1,4 +1,4 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import coursier.core.Resolution.ModuleVersion
 import coursier.core._
@@ -6,7 +6,7 @@ import coursier.util.Print
 import sbt.librarymanagement.UpdateReport
 import sbt.util.Logger
 
-object UpdateRun {
+private[coursier] object UpdateRun {
 
   // Move back to coursier.util (in core module) after 1.0?
   private def allDependenciesByConfig(
@@ -54,7 +54,7 @@ object UpdateRun {
     params: UpdateParams,
     verbosityLevel: Int,
     log: Logger
-  ): UpdateReport = {
+  ): UpdateReport = Lock.lock.synchronized {
 
     val configResolutions = params.res.flatMap {
       case (configs, r) =>
@@ -83,7 +83,7 @@ object UpdateRun {
       log.info(repr.split('\n').map("  " + _).mkString("\n"))
     }
 
-    ToSbt.updateReport(
+    SbtUpdateReport(
       depsByConfig,
       configResolutions,
       params.configs,

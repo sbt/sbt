@@ -1,4 +1,4 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import java.io.File
 
@@ -8,7 +8,7 @@ import coursier.core.Type
 import coursier.util.Sync
 import sbt.util.Logger
 
-object ArtifactsRun {
+private[coursier] object ArtifactsRun {
 
   def artifacts(
     params: ArtifactsParams,

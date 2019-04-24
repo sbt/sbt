@@ -1,4 +1,4 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import coursier.{Resolution, Resolve}
 import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
@@ -8,9 +8,9 @@ import coursier.maven.MavenRepository
 import coursier.util.Sync
 import sbt.util.Logger
 
-object ResolutionRun {
+private[coursier] object ResolutionRun {
 
-  def resolution(
+  private def resolution(
     params: ResolutionParams,
     verbosityLevel: Int,
     log: Logger,

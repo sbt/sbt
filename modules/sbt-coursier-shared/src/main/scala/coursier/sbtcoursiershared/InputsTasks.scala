@@ -1,16 +1,48 @@
 package coursier.sbtcoursiershared
 
-import coursier.core._
+import coursier.core.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Type}
 import coursier.credentials.DirectCredentials
-import coursier.lmcoursier._
+import coursier.lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
 import sbt.Def
 import sbt.Keys._
+import sbt.librarymanagement.{InclExclRule, ModuleID}
+import sbt.util.Logger
 
 import scala.collection.JavaConverters._
 
 object InputsTasks {
+
+  private def coursierProject0(
+    projId: ModuleID,
+    dependencies: Seq[ModuleID],
+    excludeDeps: Seq[InclExclRule],
+    configurations: Seq[sbt.librarymanagement.Configuration],
+    sv: String,
+    sbv: String,
+    log: Logger
+  ): Project = {
+
+    val exclusions0 = Inputs.exclusions(excludeDeps, sv, sbv, log)
+
+    val configMap = Inputs.configExtends(configurations)
+
+    val proj = FromSbt.project(
+      projId,
+      dependencies,
+      configMap,
+      sv,
+      sbv
+    )
+
+    proj.copy(
+      dependencies = proj.dependencies.map {
+        case (config, dep) =>
+          (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
+      }
+    )
+  }
 
   def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
     Def.taskDyn {
@@ -21,7 +53,7 @@ object InputsTasks {
       val allDependenciesTask = allDependencies.in(projectRef).get(state)
 
       Def.task {
-        Inputs.coursierProject(
+        coursierProject0(
           projectID.in(projectRef).get(state),
           allDependenciesTask.value,
           excludeDependencies.in(projectRef).get(state),

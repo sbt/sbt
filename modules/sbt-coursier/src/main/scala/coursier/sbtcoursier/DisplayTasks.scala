@@ -1,7 +1,6 @@
 package coursier.sbtcoursier
 
 import coursier.core._
-import coursier.lmcoursier._
 import coursier.parse.ModuleParser
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
@@ -26,7 +25,7 @@ object DisplayTasks {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
           val cm = coursierSbtClassifiersModule.value
-          FromSbt.sbtClassifiersProject(cm, sv, sbv)
+          SbtCoursierFromSbt.sbtClassifiersProject(cm, sv, sbv)
         }
       else
         Def.task {

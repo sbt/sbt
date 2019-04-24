@@ -15,14 +15,15 @@ import scala.collection.JavaConverters._
 
 object FromSbt {
 
-  def sbtModuleIdName(
+  private def sbtModuleIdName(
     moduleId: ModuleID,
     scalaVersion: => String,
     scalaBinaryVersion: => String,
     optionalCrossVer: Boolean = false
   ): String = {
     val name0 = moduleId.name
-    val updatedName = sbtCrossVersionName(name0, moduleId.crossVersion, scalaVersion, scalaBinaryVersion)
+    val updatedName = CrossVersion(moduleId.crossVersion, scalaVersion, scalaBinaryVersion)
+      .fold(name0)(_(name0))
     if (!optionalCrossVer || updatedName.length <= name0.length)
       updatedName
     else {
@@ -34,36 +35,34 @@ object FromSbt {
     }
   }
 
-  def sbtCrossVersionName(
-    name: String,
-    crossVersion: CrossVersion,
-    scalaVersion: => String,
-    scalaBinaryVersion: => String
-  ): String =
-    CrossVersion(crossVersion, scalaVersion, scalaBinaryVersion)
-      .fold(name)(_(name))
-
-  def attributes(attr: Map[String, String]): Map[String, String] =
+  private def attributes(attr: Map[String, String]): Map[String, String] =
     attr.map { case (k, v) =>
       k.stripPrefix("e:") -> v
     }.filter { case (k, _) =>
       !k.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX)
     }
 
-  def moduleVersion(
+  private def moduleVersion(
     module: ModuleID,
     scalaVersion: String,
     scalaBinaryVersion: String,
-    optionalCrossVer: Boolean = false
+    optionalCrossVer: Boolean
   ): (Module, String) = {
 
     val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion, optionalCrossVer)
 
-    val module0 = Module(Organization(module.organization), ModuleName(fullName), FromSbt.attributes(module.extraDependencyAttributes))
+    val module0 = Module(Organization(module.organization), ModuleName(fullName), attributes(module.extraDependencyAttributes))
     val version = module.revision
 
     (module0, version)
   }
+
+  def moduleVersion(
+    module: ModuleID,
+    scalaVersion: String,
+    scalaBinaryVersion: String
+  ): (Module, String) =
+    moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer = false)
 
   def dependencies(
     module: ModuleID,
@@ -120,34 +119,6 @@ object FromSbt {
       FallbackDependency(module0, version, url, module.isChanging)
     }
 
-  def sbtClassifiersProject(
-    cm: GetClassifiersModule,
-    scalaVersion: String,
-    scalaBinaryVersion: String
-  ) = {
-
-    val p = FromSbt.project(
-      cm.id,
-      cm.dependencies,
-      cm.configurations.map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name))).toMap,
-      scalaVersion,
-      scalaBinaryVersion
-    )
-
-    // for w/e reasons, the dependencies sometimes don't land in the right config above
-    // this is a loose attempt at fixing that
-    cm.configurations match {
-      case Seq(cfg) =>
-        p.copy(
-          dependencies = p.dependencies.map {
-            case (_, d) => (Configuration(cfg.name), d)
-          }
-        )
-      case _ =>
-        p
-    }
-  }
-
   def project(
     projectID: ModuleID,
     allDependencies: Seq[ModuleID],
@@ -162,7 +133,7 @@ object FromSbt {
       Module(
         Organization(projectID.organization),
         ModuleName(sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion)),
-        FromSbt.attributes(projectID.extraDependencyAttributes)
+        attributes(projectID.extraDependencyAttributes)
       ),
       projectID.revision,
       deps,

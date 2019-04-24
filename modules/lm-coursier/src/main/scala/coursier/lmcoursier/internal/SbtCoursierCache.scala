@@ -1,11 +1,11 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import java.util.concurrent.ConcurrentHashMap
 
 import coursier.core._
 import sbt.librarymanagement.UpdateReport
 
-class SbtCoursierCache {
+private[coursier] class SbtCoursierCache {
 
   import SbtCoursierCache._
 
@@ -35,7 +35,7 @@ class SbtCoursierCache {
 
 }
 
-object SbtCoursierCache {
+private[coursier] object SbtCoursierCache {
 
   final case class ResolutionKey(
     dependencies: Seq[(Configuration, Dependency)],

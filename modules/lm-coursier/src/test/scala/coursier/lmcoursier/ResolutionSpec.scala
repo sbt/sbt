@@ -152,15 +152,4 @@ final class ResolutionSpec extends PropSpec with Matchers {
 
     resolution should be('right)
   }
-
-  property("reorder fast and slow resolvers") {
-    val resolvers = Vector(
-      JavaNet2Repository,
-      Resolver.sbtPluginRepo("releases"),
-      DefaultMavenRepository
-    )
-    val engine = new CoursierDependencyResolution(CoursierConfiguration().withResolvers(resolvers))
-    engine.resolvers.last.name should be("sbt-plugin-releases")
-    engine.resolvers should have size resolvers.length
-  }
 }

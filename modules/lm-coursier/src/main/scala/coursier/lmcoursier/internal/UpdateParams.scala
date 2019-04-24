@@ -1,10 +1,10 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import java.io.File
 
 import coursier.core._
 
-final case class UpdateParams(
+private[coursier] final case class UpdateParams(
   shadedConfigOpt: Option[(String, Configuration)],
   artifacts: Map[Artifact, File],
   classifiers: Option[Seq[Classifier]],

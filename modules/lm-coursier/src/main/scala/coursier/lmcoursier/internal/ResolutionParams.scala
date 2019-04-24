@@ -1,14 +1,14 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import java.io.File
 
 import coursier.cache.{CacheLogger, FileCache}
 import coursier.ProjectCache
 import coursier.core._
+import coursier.lmcoursier.FallbackDependency
 import coursier.util.{InMemoryRepository, Task}
-import sbt.librarymanagement.{Resolver, URLRepository}
 
-final case class ResolutionParams(
+private[coursier] final case class ResolutionParams(
   dependencies: Seq[(Configuration, Dependency)],
   fallbackDependencies: Seq[FallbackDependency],
   configGraphs: Seq[Set[Configuration]],
@@ -67,7 +67,7 @@ final case class ResolutionParams(
 
 }
 
-object ResolutionParams {
+private[coursier] object ResolutionParams {
 
   private lazy val m = {
     val cls = classOf[FileCache[Task]]
@@ -98,41 +98,5 @@ object ResolutionParams {
       "sbt.ivy.home" -> sbtIvyHome
     ) ++ sys.props
   }
-
-  private val slowReposBase = Seq(
-    "https://repo.typesafe.com/",
-    "https://repo.scala-sbt.org/",
-    "http://repo.typesafe.com/",
-    "http://repo.scala-sbt.org/"
-  )
-
-  private val fastReposBase = Seq(
-    "http://repo1.maven.org/",
-    "https://repo1.maven.org/"
-  )
-
-  private def url(res: Resolver): Option[String] =
-    res match {
-      case m: sbt.librarymanagement.MavenRepository =>
-        Some(m.root)
-      case u: URLRepository =>
-        u.patterns.artifactPatterns.headOption
-          .orElse(u.patterns.ivyPatterns.headOption)
-      case _ =>
-        None
-    }
-
-  private def fastRepo(res: Resolver): Boolean =
-    url(res).exists(u => fastReposBase.exists(u.startsWith))
-
-  private def slowRepo(res: Resolver): Boolean =
-    url(res).exists(u => slowReposBase.exists(u.startsWith))
-
-  def reorderResolvers(resolvers: Seq[Resolver]): Seq[Resolver] =
-    if (resolvers.exists(fastRepo) && resolvers.exists(slowRepo)) {
-      val (slow, other) = resolvers.partition(slowRepo)
-      other ++ slow
-    } else
-      resolvers
 
 }

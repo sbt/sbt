@@ -1,7 +1,7 @@
 package coursier.sbtcoursier
 
 import coursier.core._
-import coursier.lmcoursier._
+import coursier.lmcoursier.internal.{SbtBootJars, SbtCoursierCache, UpdateParams, UpdateRun}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
@@ -22,7 +22,7 @@ object UpdateTasks {
         Def.task {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
-          FromSbt.sbtClassifiersProject(coursierSbtClassifiersModule.value, sv, sbv)
+          SbtCoursierFromSbt.sbtClassifiersProject(coursierSbtClassifiersModule.value, sv, sbv)
         }
       else
         Def.task {
@@ -134,10 +134,7 @@ object UpdateTasks {
               sbtBootJarOverrides
             )
 
-            val rep =
-              Lock.lock.synchronized {
-                UpdateRun.update(params, verbosityLevel, log)
-              }
+            val rep = UpdateRun.update(params, verbosityLevel, log)
             SbtCoursierCache.default.putReport(key, rep)
             rep
           }

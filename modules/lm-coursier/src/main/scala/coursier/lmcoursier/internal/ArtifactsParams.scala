@@ -1,10 +1,10 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import coursier.cache.{CacheLogger, FileCache}
 import coursier.core.{Classifier, Resolution}
 import coursier.util.Task
 
-final case class ArtifactsParams(
+private[coursier] final case class ArtifactsParams(
   classifiers: Option[Seq[Classifier]],
   resolutions: Seq[Resolution],
   includeSignatures: Boolean,

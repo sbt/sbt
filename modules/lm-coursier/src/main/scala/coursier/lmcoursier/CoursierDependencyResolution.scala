@@ -4,8 +4,9 @@ import java.io.File
 
 import _root_.coursier.{Artifact, Organization, Resolution, organizationString}
 import _root_.coursier.core.{Classifier, Configuration, ModuleName}
-import coursier.cache.{CacheDefaults, FileCache}
+import coursier.cache.CacheDefaults
 import coursier.internal.Typelevel
+import coursier.lmcoursier.internal.{ArtifactsParams, ArtifactsRun, CoursierModuleDescriptor, InterProjectRepository, ResolutionParams, ResolutionRun, SbtBootJars, UpdateParams, UpdateRun}
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
 import sbt.util.Logger
@@ -18,12 +19,6 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
    * sbt-coursier, that was moved to this module.
    */
 
-  lazy val resolvers =
-    if (conf.reorderResolvers)
-      ResolutionParams.reorderResolvers(conf.resolvers)
-    else
-      conf.resolvers
-
   private lazy val excludeDependencies = conf
     .excludeDependencies
     .map {
@@ -32,7 +27,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     }
     .toSet
 
-  def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): CoursierModuleDescriptor =
+  def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
     CoursierModuleDescriptor(moduleSetting, conf)
 
   def update(
@@ -88,7 +83,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     val authenticationByRepositoryId = conf.authenticationByRepositoryId.toMap
 
-    val mainRepositories = resolvers
+    val mainRepositories = conf
+      .resolvers
       .flatMap { resolver =>
         FromSbt.repository(
           resolver,
@@ -149,7 +145,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         .withTypelevel(typelevel)
     )
 
-    def artifactsParams(resolutions: Map[Set[Configuration], Resolution]) =
+    def artifactsParams(resolutions: Map[Set[Configuration], Resolution]): ArtifactsParams =
       ArtifactsParams(
         classifiers = classifiers,
         resolutions = resolutions.values.toSeq,

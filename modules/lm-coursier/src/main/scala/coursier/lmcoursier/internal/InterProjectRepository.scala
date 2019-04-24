@@ -1,9 +1,9 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import coursier.core._
 import coursier.util.{EitherT, Monad}
 
-final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
+private[coursier] final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
 
   private val map = projects
     .map(proj => proj.moduleVersion -> proj)

@@ -1,6 +1,5 @@
 package coursier.sbtlmcoursier
 
-import coursier.core.Classifier
 import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared
@@ -67,9 +66,9 @@ object LmCoursierPlugin extends AutoPlugin {
           coursierSbtResolvers
         else
           coursierRecursiveResolvers
-      val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[Classifier]]]] =
+      val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[String]]]] =
         if (withClassifiers && !sbtClassifiers)
-          Def.task(Some(sbt.Keys.transitiveClassifiers.value.map(Classifier(_))))
+          Def.task(Some(sbt.Keys.transitiveClassifiers.value))
         else
           Def.task(None)
       Def.task {
@@ -118,7 +117,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withSbtScalaJars(sbtBootJars.toVector)
           .withSbtScalaVersion(sbtScalaVersion)
           .withSbtScalaOrganization(sbtScalaOrganization)
-          .withClassifiers(classifiers.toVector.flatten.map(_.value))
+          .withClassifiers(classifiers.toVector.flatten)
           .withHasClassifiers(classifiers.nonEmpty)
           .withMavenProfiles(profiles.toVector.sorted)
           .withScalaOrganization(scalaOrg)

@@ -1,4 +1,4 @@
-package coursier.lmcoursier
+package coursier.lmcoursier.internal
 
 import java.io.File
 import java.net.URL
@@ -11,7 +11,7 @@ import coursier.maven.MavenAttributes
 import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
 import sbt.util.Logger
 
-object ToSbt {
+private[internal] object SbtUpdateReport {
 
   private def caching[K, V](f: K => V): K => V = {
 
@@ -27,7 +27,7 @@ object ToSbt {
       }
   }
 
-  val moduleId = caching[(Dependency, String, Map[String, String]), ModuleID] {
+  private val moduleId = caching[(Dependency, String, Map[String, String]), ModuleID] {
     case (dependency, version, extraProperties) =>
       sbt.librarymanagement.ModuleID(
         dependency.module.organization.value,
@@ -52,7 +52,7 @@ object ToSbt {
       )
   }
 
-  val artifact = caching[(Module, Map[String, String], Attributes, Artifact), sbt.librarymanagement.Artifact] {
+  private val artifact = caching[(Module, Map[String, String], Attributes, Artifact), sbt.librarymanagement.Artifact] {
     case (module, extraProperties, attr, artifact) =>
       sbt.librarymanagement.Artifact(module.name.value)
         // FIXME Get these two from publications
@@ -69,16 +69,16 @@ object ToSbt {
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
-  val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Attributes, Artifact, Option[File])]), ModuleReport] {
+  private val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Attributes, Artifact, Option[File])]), ModuleReport] {
     case (dependency, dependees, project, artifacts) =>
 
     val sbtArtifacts = artifacts.collect {
-      case (attr, artifact, Some(file)) =>
-        (ToSbt.artifact(dependency.module, project.properties.toMap, attr, artifact), file)
+      case (attr, artifact0, Some(file)) =>
+        (artifact(dependency.module, project.properties.toMap, attr, artifact0), file)
     }
     val sbtMissingArtifacts = artifacts.collect {
-      case (attr, artifact, None) =>
-        ToSbt.artifact(dependency.module, project.properties.toMap, attr, artifact)
+      case (attr, artifact0, None) =>
+        artifact(dependency.module, project.properties.toMap, attr, artifact0)
     }
 
     val publicationDate = project.info.publication.map { dt =>
@@ -88,7 +88,7 @@ object ToSbt {
     val callers = dependees.map {
       case (dependee, dependeeProj) =>
         Caller(
-          ToSbt.moduleId(dependee, dependeeProj.version, dependeeProj.properties.toMap),
+          moduleId(dependee, dependeeProj.version, dependeeProj.properties.toMap),
           dependeeProj.configurations.keys.toVector.map(c => ConfigRef(c.value)),
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
@@ -100,7 +100,7 @@ object ToSbt {
     }
 
     ModuleReport(
-      ToSbt.moduleId(dependency, project.version, project.properties.toMap),
+      moduleId(dependency, project.version, project.properties.toMap),
       sbtArtifacts.toVector,
       sbtMissingArtifacts.toVector
     )
@@ -121,7 +121,7 @@ object ToSbt {
       .withCallers(callers.toVector)
   }
 
-  def moduleReports(
+  private def moduleReports(
     res: Resolution,
     classifiersOpt: Option[Seq[Classifier]],
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
@@ -196,7 +196,7 @@ object ToSbt {
             (dependee, dependeeProj)
           }
 
-        ToSbt.moduleReport(
+        moduleReport(
           dep,
           dependees,
           proj,
@@ -205,7 +205,7 @@ object ToSbt {
     }
   }
 
-  def updateReport(
+  def apply(
     configDependencies: Map[Configuration, Seq[Dependency]],
     resolutions: Map[Configuration, Resolution],
     configs: Map[Configuration, Set[Configuration]],
@@ -225,7 +225,7 @@ object ToSbt {
           .distinct
         val subRes = resolutions(config).subset(configDeps)
 
-        val reports = ToSbt.moduleReports(
+        val reports = moduleReports(
           subRes,
           classifiersOpt,
           artifactFileOpt,
@@ -240,7 +240,7 @@ object ToSbt {
             // appears first in the update report, see https://github.com/coursier/coursier/issues/650
             val dep = subRes.rootDependencies.head
             val (_, proj) = subRes.projectCache(dep.moduleVersion)
-            val mod = ToSbt.moduleId(dep, proj.version, proj.properties.toMap)
+            val mod = moduleId(dep, proj.version, proj.properties.toMap)
             val (main, other) = reports.partition { r =>
               r.module.organization == mod.organization &&
                 r.module.name == mod.name &&

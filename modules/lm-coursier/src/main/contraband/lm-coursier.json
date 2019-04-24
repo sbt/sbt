@@ -20,12 +20,6 @@
           "since": "0.0.1"
         },
         {
-          "name": "reorderResolvers",
-          "type": "Boolean",
-          "default": "true",
-          "since": "0.0.1"
-        },
-        {
           "name": "parallelDownloads",
           "type": "Int",
           "default": "6",

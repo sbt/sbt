@@ -4,7 +4,8 @@ import coursier.ProjectCache
 import coursier.cache.FileCache
 import coursier.core._
 import coursier.internal.Typelevel
-import coursier.lmcoursier._
+import coursier.lmcoursier.{FallbackDependency, FromSbt}
+import coursier.lmcoursier.internal.{InterProjectRepository, ResolutionParams, ResolutionRun}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
@@ -23,7 +24,7 @@ object ResolutionTasks {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
           val cm = coursierSbtClassifiersModule.value
-          val proj = FromSbt.sbtClassifiersProject(cm, sv, sbv)
+          val proj = SbtCoursierFromSbt.sbtClassifiersProject(cm, sv, sbv)
 
           val fallbackDeps = FromSbt.fallbackDependencies(
             cm.dependencies,
