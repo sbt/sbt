@@ -6,7 +6,7 @@ import sbt.{Classpaths, Def}
 import sbt.Keys._
 import sbt.librarymanagement.{Resolver, URLRepository}
 
-object RepositoriesTasks {
+private[sbtcoursiershared] object RepositoriesTasks {
 
   private object Resolvers {
 

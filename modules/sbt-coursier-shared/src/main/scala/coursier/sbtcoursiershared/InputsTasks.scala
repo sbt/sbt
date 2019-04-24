@@ -1,8 +1,8 @@
 package coursier.sbtcoursiershared
 
-import coursier.core.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Type}
 import coursier.credentials.DirectCredentials
-import coursier.lmcoursier.{FallbackDependency, FromSbt, Inputs}
+import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Type}
+import lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
 import sbt.Def
@@ -44,7 +44,7 @@ object InputsTasks {
     )
   }
 
-  def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
+  private[sbtcoursiershared] def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
     Def.taskDyn {
 
       val state = sbt.Keys.state.value
@@ -95,7 +95,13 @@ object InputsTasks {
     val configurations = desc
       .getModuleConfigurations
       .toVector
-      .flatMap(s => coursier.ivy.IvyXml.mappings(s))
+      .flatMap { s =>
+        // FIXME Don't call this from here
+        coursier.ivy.IvyXml.mappings(s).map {
+          case (from, to) =>
+            (Configuration(from.value), Configuration(to.value))
+        }
+      }
 
     def dependency(conf: Configuration, attr: Attributes) = Dependency(
       module,
@@ -112,13 +118,13 @@ object InputsTasks {
       val artifacts = desc.getAllDependencyArtifacts
 
       val m = artifacts.toVector.flatMap { art =>
-        val attr = Attributes(Type(art.getType), Classifier.empty)
+        val attr = Attributes(Type(art.getType), Classifier(""))
         art.getConfigurations.map(Configuration(_)).toVector.map { conf =>
           conf -> attr
         }
       }.toMap
 
-      c => m.getOrElse(c, Attributes.empty)
+      c => m.getOrElse(c, Attributes(Type(""), Classifier("")))
     }
 
     configurations.map {
@@ -127,7 +133,7 @@ object InputsTasks {
     }
   }
 
-  def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[Project]]] =
+  private[sbtcoursiershared] def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[Project]]] =
     Def.taskDyn {
 
       val state = sbt.Keys.state.value
@@ -173,17 +179,10 @@ object InputsTasks {
                 v.getModuleRevisionId.getRevision,
                 deps,
                 configurations,
-                None,
-                Nil,
-                Nil,
                 Nil,
                 None,
-                None,
-                None,
-                relocated = false,
-                None,
                 Nil,
-                Info.empty
+                Info("", "", Nil, Nil, None)
               )
           }
 
@@ -191,7 +190,7 @@ object InputsTasks {
       }
     }
 
-  def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
+  private[sbtcoursiershared] def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
     Def.taskDyn {
 
       val state = sbt.Keys.state.value

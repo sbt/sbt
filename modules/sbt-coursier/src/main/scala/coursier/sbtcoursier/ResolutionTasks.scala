@@ -4,8 +4,9 @@ import coursier.ProjectCache
 import coursier.cache.FileCache
 import coursier.core._
 import coursier.internal.Typelevel
-import coursier.lmcoursier.{FallbackDependency, FromSbt}
-import coursier.lmcoursier.internal.{InterProjectRepository, ResolutionParams, ResolutionRun}
+import lmcoursier.definitions.ToCoursier
+import lmcoursier.{FallbackDependency, FromSbt}
+import lmcoursier.internal.{InterProjectRepository, ResolutionParams, ResolutionRun, Resolvers}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
@@ -24,7 +25,7 @@ object ResolutionTasks {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
           val cm = coursierSbtClassifiersModule.value
-          val proj = SbtCoursierFromSbt.sbtClassifiersProject(cm, sv, sbv)
+          val proj = ToCoursier.project(SbtCoursierFromSbt.sbtClassifiersProject(cm, sv, sbv))
 
           val fallbackDeps = FromSbt.fallbackDependencies(
             cm.dependencies,
@@ -37,7 +38,8 @@ object ResolutionTasks {
       else
         Def.task {
           val baseConfigGraphs = coursierConfigGraphs.value
-          (coursierProject.value.copy(publications = coursierPublications.value), coursierFallbackDependencies.value, baseConfigGraphs)
+          val publications = coursierPublications.value
+          (ToCoursier.project(coursierProject.value.copy(publications = publications)), coursierFallbackDependencies.value, baseConfigGraphs)
         }
 
     val resolversTask =
@@ -52,7 +54,7 @@ object ResolutionTasks {
       val sv = scalaVersion.value
       val sbv = scalaBinaryVersion.value
 
-      val interProjectDependencies = coursierInterProjectDependencies.value
+      val interProjectDependencies = coursierInterProjectDependencies.value.map(ToCoursier.project)
 
       val parallelDownloads = coursierParallelDownloads.value
       val checksums = coursierChecksums.value
@@ -70,6 +72,10 @@ object ResolutionTasks {
       val userForceVersions = dependencyOverrides
         .value
         .map(FromSbt.moduleVersion(_, sv, sbv))
+        .map {
+          case (k, v) =>
+            ToCoursier.module(k) -> v
+        }
         .toMap
 
       val verbosityLevel = coursierVerbosity.value
@@ -101,11 +107,18 @@ object ResolutionTasks {
 
       val mainRepositories = resolvers
         .flatMap { resolver =>
-          FromSbt.repository(
+          Resolvers.repository(
             resolver,
             ivyProperties,
             log,
-            authenticationByRepositoryId.get(resolver.name)
+            authenticationByRepositoryId.get(resolver.name).map { a =>
+              Authentication(
+                a.user,
+                a.password,
+                a.optional,
+                a.realmOpt
+              )
+            }
           )
         }
 

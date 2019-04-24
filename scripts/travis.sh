@@ -14,8 +14,10 @@ sbtShading() {
 }
 
 runLmCoursierTests() {
+  # publishing locally to ensure shading runs fine
   ./metadata/scripts/with-test-repo.sh sbt \
     ++$TRAVIS_SCALA_VERSION \
+    lm-coursier-shaded/publishLocal \
     lm-coursier/test \
     "sbt-lm-coursier/scripted shared-$TEST_GROUP/*"
 }

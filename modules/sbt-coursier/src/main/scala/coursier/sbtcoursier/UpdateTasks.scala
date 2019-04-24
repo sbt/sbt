@@ -1,7 +1,8 @@
 package coursier.sbtcoursier
 
 import coursier.core._
-import coursier.lmcoursier.internal.{SbtBootJars, SbtCoursierCache, UpdateParams, UpdateRun}
+import lmcoursier.definitions.ToCoursier
+import lmcoursier.internal.{SbtBootJars, SbtCoursierCache, UpdateParams, UpdateRun}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
@@ -28,7 +29,6 @@ object UpdateTasks {
         Def.task {
           val proj = coursierProject.value
           val publications = coursierPublications.value
-
           proj.copy(publications = publications)
         }
 
@@ -103,7 +103,7 @@ object UpdateTasks {
 
       val verbosityLevel = coursierVerbosity.value
 
-      val dependencies = currentProjectTask.value.dependencies
+      val dependencies = ToCoursier.project(currentProjectTask.value).dependencies
       val res = resTask.value
 
       val key = SbtCoursierCache.ReportKey(

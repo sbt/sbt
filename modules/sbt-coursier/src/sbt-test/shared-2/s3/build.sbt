@@ -23,9 +23,9 @@ check := {
   // Have Coursier SBT Plugin Parse the SBT Resolvers
   val parsedCoursierResolvers: Seq[coursier.core.Repository] =
     sbtResolvers.flatMap{ sbtResolver: sbt.librarymanagement.Resolver =>
-      coursier.lmcoursier.FromSbt.repository(
+      lmcoursier.internal.Resolvers.repository(
         resolver = sbtResolver,
-        ivyProperties = coursier.lmcoursier.internal.ResolutionParams.defaultIvyProperties(),
+        ivyProperties = lmcoursier.internal.ResolutionParams.defaultIvyProperties(),
         log = s.log,
         authentication = None,
       )

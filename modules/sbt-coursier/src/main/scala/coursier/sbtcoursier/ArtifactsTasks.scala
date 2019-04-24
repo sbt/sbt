@@ -5,8 +5,7 @@ import java.io.File
 import coursier.Artifact
 import coursier.cache.FileCache
 import coursier.core._
-import coursier.lmcoursier._
-import coursier.lmcoursier.internal.{ArtifactsParams, ArtifactsRun}
+import lmcoursier.internal.{ArtifactsParams, ArtifactsRun}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierLogger}

@@ -4,6 +4,7 @@ import java.io.File
 
 import coursier.core.Configuration
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
+import lmcoursier.definitions.{ToCoursier, Configuration => DConfiguration}
 import coursier.sbtcoursier.{CoursierPlugin, InputsTasks, Keys}
 import coursier.sbtcoursiershared.{IvyXml, SbtCoursierShared}
 import sbt.Keys._
@@ -25,7 +26,7 @@ object ShadingPlugin extends AutoPlugin {
     transitive = true
   )
 
-  private val baseDependencyConfiguration = Configuration.compile
+  private val baseDependencyConfiguration = Configuration("compile")
   val Shaded = sbt.Configuration.of(
     id = "Shaded",
     name = "shaded",
@@ -101,8 +102,8 @@ object ShadingPlugin extends AutoPlugin {
         CoursierPlugin.coursierSettings(
           Some(baseDependencyConfiguration.value -> Configuration(Shaded.name))
         ) ++
-        IvyXml.generateIvyXmlSettings(Some(Configuration(Shaded.name))) ++
-        Seq(SbtCoursierShared.publicationsSetting(Seq(Shading -> Configuration.compile))) ++
+        IvyXml.generateIvyXmlSettings(Some(lmcoursier.definitions.Configuration(Shaded.name))) ++
+        Seq(SbtCoursierShared.publicationsSetting(Seq(Shading -> DConfiguration("compile")))) ++
         CoursierPlugin.treeSettings ++
         Seq(
           configuration := baseSbtConfiguration, // wuw
@@ -120,7 +121,7 @@ object ShadingPlugin extends AutoPlugin {
           unmanagedSourceDirectories := (unmanagedSourceDirectories in Compile).value,
           toShadeJars := {
             coursier.Shading.toShadeJars(
-              coursierProject.in(baseSbtConfiguration).value,
+              ToCoursier.project(coursierProject.in(baseSbtConfiguration).value),
               coursierResolutions
                 .in(baseSbtConfiguration)
                 .value

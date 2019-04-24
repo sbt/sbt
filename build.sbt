@@ -17,7 +17,6 @@ inThisBuild(List(
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
-  .enablePlugins(ContrabandPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -29,11 +28,28 @@ lazy val `lm-coursier` = project
       // is ignored).
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.7" % Test
+    )
+  )
+
+lazy val `lm-coursier-shaded` = project
+  .in(file("modules/lm-coursier/target/shaded-module"))
+  .enablePlugins(ShadingPlugin)
+  .settings(
+    shared,
+    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
+    shading,
+    shadingNamespace := "lmcoursier.internal.shaded",
+    shadeNamespaces ++= Set(
+      "coursier",
+      "shapeless",
+      "argonaut"
     ),
-    managedSourceDirectories in Compile +=
-      baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats
+    libraryDependencies ++= Seq(
+      "io.get-coursier" %% "coursier" % "1.1.0-M14-1" % "shaded",
+      "org.scala-lang.modules" %% "scala-xml" % "1.1.1", // depending on that one so that it doesn't get shaded
+      "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
+      "org.scalatest" %% "scalatest" % "3.0.7" % Test
+    )
   )
 
 lazy val `sbt-coursier-shared` = project
@@ -125,6 +141,7 @@ lazy val `sbt-coursier-root` = project
   .in(file("."))
   .aggregate(
     `lm-coursier`,
+    `lm-coursier-shaded`,
     `sbt-coursier`,
     `sbt-coursier-shared`,
     `sbt-lm-coursier`,

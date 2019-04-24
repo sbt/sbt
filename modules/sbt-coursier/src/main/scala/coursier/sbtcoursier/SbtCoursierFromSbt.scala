@@ -1,7 +1,7 @@
 package coursier.sbtcoursier
 
-import coursier.core.Configuration
-import coursier.lmcoursier.FromSbt
+import lmcoursier.FromSbt
+import lmcoursier.definitions.Configuration
 import sbt.librarymanagement.GetClassifiersModule
 
 object SbtCoursierFromSbt {

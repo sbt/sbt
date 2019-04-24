@@ -1,6 +1,7 @@
 package coursier.sbtlmcoursier
 
-import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
+import lmcoursier.definitions.Authentication
+import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
@@ -86,7 +87,10 @@ object LmCoursierPlugin extends AutoPlugin {
         val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
         val profiles = mavenProfiles.value
 
-        val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
+        val authenticationByRepositoryId = coursierCredentials.value.mapValues { c =>
+          val a = c.authentication
+          Authentication(a.user, a.password, a.optional, a.realmOpt)
+        }
         val credentials = credentialsTask.value
 
         val createLogger = coursierLogger.value
@@ -107,11 +111,11 @@ object LmCoursierPlugin extends AutoPlugin {
           .withExcludeDependencies(
             excludeDeps
               .toVector
-              .sorted
               .map {
                 case (o, n) =>
                   (o.value, n.value)
               }
+              .sorted
           )
           .withAutoScalaLibrary(autoScalaLib)
           .withSbtScalaJars(sbtBootJars.toVector)

@@ -4,10 +4,10 @@ import java.io.File
 
 import coursier.cache.{CacheDefaults, CacheLogger}
 import coursier.{Credentials => LegacyCredentials}
-import coursier.core.{Configuration, Project, Publication}
 import coursier.credentials.Credentials
-import coursier.lmcoursier.FallbackDependency
-import coursier.lmcoursier.internal.SbtCoursierCache
+import lmcoursier.FallbackDependency
+import lmcoursier.definitions.{Configuration, Project, Publication}
+import lmcoursier.internal.SbtCoursierCache
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
 import sbt.librarymanagement.{Resolver, URLRepository}
