@@ -64,10 +64,19 @@ lazy val `sbt-coursier-shared` = project
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
+lazy val `sbt-coursier-shared-shaded` = project
+  .in(file("modules/sbt-coursier-shared/target/shaded-module"))
+  .dependsOn(`lm-coursier-shaded`)
+  .settings(
+    plugin,
+    generatePropertyFile,
+    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`sbt-coursier-shared`).value
+  )
+
 lazy val `sbt-lm-coursier` = project
   .in(file("modules/sbt-lm-coursier"))
   .enablePlugins(ScriptedPlugin)
-  .dependsOn(`sbt-coursier-shared`)
+  .dependsOn(`sbt-coursier-shared-shaded`)
   .settings(
     plugin,
     sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
@@ -76,8 +85,8 @@ lazy val `sbt-lm-coursier` = project
 
       // TODO Get those automatically
       // (but shouldn't scripted itself handle that…?)
-       publishLocal.in(`lm-coursier`).value
-       publishLocal.in(`sbt-coursier-shared`).value
+       publishLocal.in(`lm-coursier-shaded`).value
+       publishLocal.in(`sbt-coursier-shared-shaded`).value
      }
    )
 
@@ -145,6 +154,7 @@ lazy val `sbt-coursier-root` = project
     `lm-coursier-shaded`,
     `sbt-coursier`,
     `sbt-coursier-shared`,
+    `sbt-coursier-shared-shaded`,
     `sbt-lm-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`
