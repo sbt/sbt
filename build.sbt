@@ -56,7 +56,6 @@ lazy val `lm-coursier-shaded` = project
 
 lazy val `sbt-coursier-shared` = project
   .in(file("modules/sbt-coursier-shared"))
-  .enablePlugins(ScriptedPlugin)
   .dependsOn(`lm-coursier`)
   .settings(
     plugin,
