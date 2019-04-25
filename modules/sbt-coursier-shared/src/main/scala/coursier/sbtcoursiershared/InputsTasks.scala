@@ -208,6 +208,8 @@ object InputsTasks {
                 .withUsername(c.userName)
                 .withPassword(c.passwd)
                 .withRealm(Some(c.realm).filter(_.nonEmpty))
+                .withHttpsOnly(false)
+                .withMatchHost(true)
             }
         }
       else

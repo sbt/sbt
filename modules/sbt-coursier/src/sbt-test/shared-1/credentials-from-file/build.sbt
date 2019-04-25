@@ -9,6 +9,8 @@ coursierExtraCredentials += {
     s"""foo.host=${uri(sys.env("TEST_REPOSITORY")).getHost}
        |foo.username=user
        |foo.password=pass
+       |foo.auto=true
+       |foo.https-only=false
      """.stripMargin
   val dest = baseDirectory.in(ThisBuild).value / "project" / "target" / "cred"
   Files.write(dest.toPath, content.getBytes("UTF-8"))
