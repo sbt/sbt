@@ -21,6 +21,7 @@ lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
   .settings(
     shared,
+    Mima.settings,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
       // We depend on librarymanagement-ivy rather than just
