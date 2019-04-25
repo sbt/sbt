@@ -36,6 +36,9 @@ package object sbt
   implicit val fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
     FileStamp.fileStampJsonFormatter
   implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.pathJsonFormatter
+  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.fileJsonFormatter
+  implicit val singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.pathJson
+  implicit val singleFileJsonFormatter: JsonFormat[File] = FileStamp.fileJson
   // others
 
   object CompileOrder {

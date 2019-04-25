@@ -7,7 +7,7 @@
 
 package sbt.nio
 
-import java.io.IOException
+import java.io.{ File, IOException }
 import java.nio.file.{ Path, Paths }
 
 import sbt.internal.inc.{ EmptyStamp, Stamper, LastModified => IncLastModified }
@@ -80,6 +80,41 @@ private[sbt] object FileStamp {
         case None =>
           deserializationError("Expected JsArray but found None")
       }
+  }
+
+  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = new JsonFormat[Seq[File]] {
+    override def write[J](obj: Seq[File], builder: Builder[J]): Unit = {
+      builder.beginArray()
+      obj.foreach { file =>
+        builder.writeString(file.toString)
+      }
+      builder.endArray()
+    }
+
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[File] =
+      jsOpt match {
+        case Some(js) =>
+          val size = unbuilder.beginArray(js)
+          val res = (1 to size) map { _ =>
+            new File(unbuilder.readString(unbuilder.nextElement))
+          }
+          unbuilder.endArray()
+          res
+        case None =>
+          deserializationError("Expected JsArray but found None")
+      }
+  }
+  implicit val fileJson: JsonFormat[File] = new JsonFormat[File] {
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): File =
+      fileJsonFormatter.read(jsOpt, unbuilder).head
+    override def write[J](obj: File, builder: Builder[J]): Unit =
+      fileJsonFormatter.write(obj :: Nil, builder)
+  }
+  implicit val pathJson: JsonFormat[Path] = new JsonFormat[Path] {
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Path =
+      pathJsonFormatter.read(jsOpt, unbuilder).head
+    override def write[J](obj: Path, builder: Builder[J]): Unit =
+      pathJsonFormatter.write(obj :: Nil, builder)
   }
   implicit val fileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
     new JsonFormat[Seq[(Path, FileStamp)]] {

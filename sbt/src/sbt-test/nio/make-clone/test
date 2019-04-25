@@ -1,0 +1,25 @@
+> executeMain 1
+
+#> executeMain 1
+
+#> compileLib / clean
+
+#> linkLib / clean
+
+#> executeMain 1 2 3
+
+#> compileLib / clean
+
+#> executeMain 2 3 4
+
+#> compileMain / clean
+
+#> executeMain 4 5 6
+
+#> clean
+
+#> executeMain 4
+
+#> compileLib / clean
+
+#> executeMain 3

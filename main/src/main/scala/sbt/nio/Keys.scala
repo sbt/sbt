@@ -11,7 +11,7 @@ import java.io.InputStream
 import java.nio.file.Path
 
 import sbt.BuildSyntax.{ settingKey, taskKey }
-import sbt.KeyRanks.{ BMinusSetting, DSetting }
+import sbt.KeyRanks.{ BMinusSetting, DSetting, Invisible }
 import sbt.internal.DynamicInput
 import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
@@ -22,45 +22,46 @@ import sbt.{ Def, InputKey, State, StateTransform }
 import scala.concurrent.duration.FiniteDuration
 
 object Keys {
-  val allPaths = taskKey[Seq[Path]](
-    "All of the file inputs for a task with no filters applied. Regular files and directories are included."
+  val allInputFiles =
+    taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
+  val allInputPaths = taskKey[Seq[Path]](
+    "All of the file inputs for a task with no filters applied. Regular files and directories are included. Excludes hidden files"
   )
-  val changedFiles =
+  val changedInputFiles =
     taskKey[Seq[Path]](
       "All of the file inputs for a task that have changed since the last run. Includes new and modified files but excludes deleted files."
     )
-  val modifiedFiles =
+  val modifiedInputFiles =
     taskKey[Seq[Path]](
-      "All of the file inputs for a task that have changed since the last run. Files are considered modified based on either the last modified time or the file stamp for the file."
+      "All of the file inputs for a task that have changed since the last run. Excludes new files. Files are considered modified based on either the last modified time or the file stamp for the file."
     )
-  val removedFiles =
+  val removedInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task that have changed since the last run.")
-  val allFiles =
-    taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
   val fileInputs = settingKey[Seq[Glob]](
     "The file globs that are used by a task. This setting will generally be scoped per task. It will also be used to determine the sources to watch during continuous execution."
   )
-  val fileOutputs = taskKey[Seq[Glob]]("Describes the output files of a task.")
-  val fileStamper = settingKey[FileStamper](
+  val fileOutputs = settingKey[Seq[Glob]]("Describes the output files of a task.")
+  val allOutputPaths =
+    taskKey[Seq[Path]]("All of the file output for a task with no filters applied.")
+  val changedOutputPaths =
+    taskKey[Seq[Path]]("All of the task file outputs that have changed since the last run.")
+  val modifiedOutputPaths =
+    taskKey[Seq[Path]](
+      "All of the task file outputs that have been modified since the last run. Excludes new files."
+    )
+  val removedOutputPaths =
+    taskKey[Seq[Path]](
+      "All of the output paths that have been removed since the last run."
+    )
+
+  val inputFileStamper = settingKey[FileStamper](
+    "Toggles the file stamping implementation used to determine whether or not a file has been modified."
+  )
+  val outputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
   val fileTreeView =
     taskKey[FileTreeView.Nio[FileAttributes]]("A view of the local file system tree")
-  private[sbt] val fileStamps =
-    taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of files")
-  private[sbt] type FileAttributeMap =
-    java.util.HashMap[Path, FileStamp]
-  private[sbt] val persistentFileAttributeMap =
-    AttributeKey[FileAttributeMap]("persistent-file-attribute-map", Int.MaxValue)
-  private[sbt] val allPathsAndAttributes =
-    taskKey[Seq[(Path, FileAttributes)]]("Get all of the file inputs for a task")
-  private[sbt] val fileAttributeMap = taskKey[FileAttributeMap](
-    "Map of file stamps that may be cleared between task evaluation runs."
-  )
-  private[sbt] val pathToFileStamp = taskKey[Path => FileStamp](
-    "A function that computes a file stamp for a path. It may have the side effect of updating a cache."
-  )
-
   val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration](
     "Wall clock Duration for which a FileEventMonitor will store anti-entropy events. This prevents spurious triggers when a task takes a long time to run. Higher values will consume more memory but make spurious triggers less likely."
   ).withRank(BMinusSetting)
@@ -71,6 +72,7 @@ object Keys {
     "Force the watch process to rerun the current task(s) if any relevant source change is " +
       "detected regardless of whether or not the underlying file has actually changed."
 
+  // watch related keys
   val watchForceTriggerOnAnyChange =
     Def.settingKey[Boolean](forceTriggerOnAnyChangeMessage).withRank(DSetting)
   val watchLogLevel =
@@ -109,23 +111,48 @@ object Keys {
     "Watch a task (or multiple tasks) and rebuild when its file inputs change or user input is received. The semantics are more or less the same as the `~` command except that it cannot transform the state on exit. This means that it cannot be used to reload the build."
   ).withRank(DSetting)
   val watchTrackMetaBuild = settingKey[Boolean](
-    "Toggles whether or not changing the build files (e.g. **/*.sbt, project/**/(*.scala | *.java)) should automatically trigger a project reload"
+    s"Toggles whether or not changing the build files (e.g. **/*.sbt, project/**/*.{scala,java}) should automatically trigger a project reload"
   ).withRank(DSetting)
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
     "The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count."
   ).withRank(DSetting)
 
+  // internal keys
   private[sbt] val globalFileTreeRepository = AttributeKey[FileTreeRepository[FileAttributes]](
     "global-file-tree-repository",
     "Provides a view into the file system that may or may not cache the tree in memory",
-    1000
+    Int.MaxValue
   )
   private[sbt] val dynamicDependency = settingKey[Unit](
     "Leaves a breadcrumb that the scoped task is evaluated inside of a dynamic task"
-  )
+  ).withRank(Invisible)
   private[sbt] val transitiveClasspathDependency = settingKey[Unit](
     "Leaves a breadcrumb that the scoped task has transitive classpath dependencies"
-  )
+  ).withRank(Invisible)
   private[sbt] val transitiveDynamicInputs =
-    taskKey[Seq[DynamicInput]]("The transitive inputs and triggers for a key")
+    taskKey[Seq[DynamicInput]]("The transitive inputs and triggers for a key").withRank(Invisible)
+  private[sbt] val dynamicFileOutputs =
+    taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
+  private[sbt] val autoClean =
+    taskKey[Unit]("Automatically clean up a task returning file or path").withRank(Invisible)
+
+  private[sbt] val inputFileStamps =
+    taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
+      .withRank(Invisible)
+  private[sbt] val outputFileStamps =
+    taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task output files")
+      .withRank(Invisible)
+  private[sbt] type FileAttributeMap =
+    java.util.HashMap[Path, FileStamp]
+  private[sbt] val persistentFileAttributeMap =
+    AttributeKey[FileAttributeMap]("persistent-file-attribute-map", Int.MaxValue)
+  private[sbt] val allInputPathsAndAttributes =
+    taskKey[Seq[(Path, FileAttributes)]]("Get all of the file inputs for a task")
+      .withRank(Invisible)
+  private[sbt] val fileAttributeMap = taskKey[FileAttributeMap](
+    "Map of file stamps that may be cleared between task evaluation runs."
+  ).withRank(Invisible)
+  private[sbt] val pathToFileStamp = taskKey[Path => FileStamp](
+    "A function that computes a file stamp for a path. It may have the side effect of updating a cache."
+  ).withRank(Invisible)
 }

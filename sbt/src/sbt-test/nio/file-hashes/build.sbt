@@ -1,14 +1,15 @@
 import sbt.nio.Keys._
 
-Global / fileInputs := Seq(
+val foo = taskKey[Unit]("foo")
+foo / fileInputs := Seq(
   (baseDirectory.value / "base").toGlob / "*.md",
   (baseDirectory.value / "base").toGlob / "*.txt",
 )
 
 val checkModified = taskKey[Unit]("check that modified files are returned")
 checkModified := Def.taskDyn {
-  val changed = (Global / changedFiles).value
-  val modified = (Global / modifiedFiles).value
+  val changed = (foo / changedInputFiles).value
+  val modified = (foo / modifiedInputFiles).value
   if (modified.sameElements(changed)) Def.task(assert(true))
   else Def.task {
     assert(modified != changed)
@@ -18,8 +19,8 @@ checkModified := Def.taskDyn {
 
 val checkRemoved = taskKey[Unit]("check that modified files are returned")
 checkRemoved := Def.taskDyn {
-  val files = (Global / allFiles).value
-  val removed = (Global / removedFiles).value
+  val files = (foo / allInputFiles).value
+  val removed = (foo / removedInputFiles).value
   if (removed.isEmpty) Def.task(assert(true))
   else Def.task {
     assert(files == Seq((baseDirectory.value / "base" / "Foo.txt").toPath))
@@ -29,8 +30,8 @@ checkRemoved := Def.taskDyn {
 
 val checkAdded = taskKey[Unit]("check that modified files are returned")
 checkAdded := Def.taskDyn {
-  val files = (Global / allFiles).value
-  val added = (Global / modifiedFiles).value
+  val files = (foo / allInputFiles).value
+  val added = (foo / modifiedInputFiles).value
   if (added.isEmpty || files.sameElements(added)) Def.task(assert(true))
   else Def.task {
     val base = baseDirectory.value / "base"

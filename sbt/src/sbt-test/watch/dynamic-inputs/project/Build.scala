@@ -24,7 +24,7 @@ object Build {
   lazy val root = (project in file(".")).settings(
     reloadFile := baseDirectory.value / "reload",
     foo / fileInputs += baseDirectory.value * "foo.txt",
-    foo := (foo / allFiles).value,
+    foo := (foo / allInputFiles).value,
     setStringValue := Def.taskDyn {
       // This hides foo / fileInputs from the input graph
       Def.taskDyn {

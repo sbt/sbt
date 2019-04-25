@@ -148,9 +148,11 @@ object Defaults extends BuildCommon {
       pathToFileStamp :== sbt.nio.FileStamp.hash,
       classLoaderCache := ClassLoaderCache(4),
       fileInputs :== Nil,
-      fileStamper :== sbt.nio.FileStamper.Hash,
+      inputFileStamper :== sbt.nio.FileStamper.Hash,
+      outputFileStamper :== sbt.nio.FileStamper.LastModified,
       watchForceTriggerOnAnyChange :== true,
       watchTriggers :== Nil,
+      clean := { () },
       sbt.nio.Keys.fileAttributeMap := {
         state.value
           .get(sbt.nio.Keys.persistentFileAttributeMap)
@@ -419,7 +421,7 @@ object Defaults extends BuildCommon {
       val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
       unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources
     },
-    unmanagedSources := (unmanagedSources / fileStamps).value.map(_._1.toFile),
+    unmanagedSources := (unmanagedSources / inputFileStamps).value.map(_._1.toFile),
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := {
       val stamper = sbt.nio.Keys.pathToFileStamp.value
@@ -428,7 +430,6 @@ object Defaults extends BuildCommon {
       res
     },
     sourceGenerators :== Nil,
-    sourceGenerators / fileOutputs := Seq(managedDirectory.value ** AllPassFilter),
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
@@ -451,7 +452,7 @@ object Defaults extends BuildCommon {
       }
       unmanagedResourceDirectories.value.map(_ ** filter)
     },
-    unmanagedResources := (unmanagedResources / allPaths).value.map(_.toFile),
+    unmanagedResources := (unmanagedResources / allInputPaths).value.map(_.toFile),
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
@@ -591,14 +592,11 @@ object Defaults extends BuildCommon {
     globalDefaults(enableBinaryCompileAnalysis := true)
 
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings :+ (clean := Clean.taskIn(ThisScope).value)
+    compileInputsSettings
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
-    fileOutputs := Seq(
-      compileAnalysisFileTask.value.toGlob,
-      classDirectory.value ** "*.class"
-    ) ++ (sourceGenerators / fileOutputs).value,
+    clean := Clean.task(ThisScope, full = false).value,
+    fileOutputs := Seq(classDirectory.value ** "*.class"),
     compile := compileTask.value,
-    clean := Clean.taskIn(ThisScope).value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
@@ -650,11 +648,10 @@ object Defaults extends BuildCommon {
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := Vector.empty,
     cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
-    clean := Clean.taskIn(ThisScope).value,
+    clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value,
-    fileOutputs += target.value ** AllPassFilter,
     transitiveDynamicInputs := SettingsGraph.task.value,
   )
 
@@ -2081,6 +2078,8 @@ object Classpaths {
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
         docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
+        cleanKeepFiles :== Nil,
+        cleanKeepGlobs :== Nil,
         fileOutputs :== Nil,
         sbtDependency := {
           val app = appConfiguration.value

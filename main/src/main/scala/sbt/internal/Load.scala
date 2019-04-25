@@ -245,7 +245,9 @@ private[sbt] object Load {
     val settings = timed("Load.apply: finalTransforms", log) {
       finalTransforms(buildConfigurations(loaded, getRootProject(projects), config.injectSettings))
     }
-    val delegates = timed("Load.apply: config.delegates", log) { config.delegates(loaded) }
+    val delegates = timed("Load.apply: config.delegates", log) {
+      config.delegates(loaded)
+    }
     val data = timed("Load.apply: Def.make(settings)...", log) {
       // When settings.size is 100000, Def.make takes around 10s.
       if (settings.size > 10000) {
@@ -402,11 +404,7 @@ private[sbt] object Load {
       settings: Seq[Setting[_]]
   ): Seq[Setting[_]] = {
     val transformed = Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
-    transformed.flatMap {
-      case s if s.key.key == sbt.nio.Keys.fileInputs.key =>
-        Seq[Setting[_]](s, Settings.allPathsAndAttributes(s.key), Settings.fileStamps(s.key))
-      case s => s :: Nil
-    }
+    Settings.inject(transformed)
   }
 
   def projectScope(project: Reference): Scope = Scope(Select(project), Zero, Zero, Zero)

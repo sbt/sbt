@@ -5,7 +5,7 @@ val foo = taskKey[Seq[File]]("Retrieve Foo.txt")
 
 foo / fileInputs += baseDirectory.value ** "*.txt"
 
-foo := (foo / allPaths).value.map(_.toFile)
+foo := (foo / allInputPaths).value.map(_.toFile)
 
 val checkFoo = taskKey[Unit]("Check that the Foo.txt file is retrieved")
 
@@ -16,7 +16,7 @@ val bar = taskKey[Seq[File]]("Retrieve Bar.md")
 
 bar / fileInputs += baseDirectory.value / "base/subdir/nested-subdir" * "*.md"
 
-bar := (bar / allPaths).value.map(_.toFile)
+bar := (bar / allInputPaths).value.map(_.toFile)
 
 val checkBar = taskKey[Unit]("Check that the Bar.md file is retrieved")
 
@@ -32,7 +32,7 @@ val checkAll = taskKey[Unit]("Check that the Bar.md file is retrieved")
 checkAll := {
   import sbt.dsl.LinterLevel.Ignore
   val expected = Set("Foo.txt", "Bar.md").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
-  val actual = (all / allFiles).value.map(_.toFile).toSet
+  val actual = (all / allInputFiles).value.map(_.toFile).toSet
   assert(actual == expected)
 }
 
@@ -55,6 +55,6 @@ depth / fileInputs ++= {
 
 checkDepth := {
   val expected = Seq("Bar.md").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
-  val actual = (depth / allFiles).value.map(_.toFile)
+  val actual = (depth / allInputFiles).value.map(_.toFile)
   assert(actual == expected)
 }

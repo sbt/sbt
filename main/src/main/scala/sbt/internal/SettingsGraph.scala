@@ -15,9 +15,9 @@ import sbt.internal.io.Source
 import sbt.internal.util.AttributeMap
 import sbt.internal.util.complete.Parser
 import sbt.io.syntax._
-import sbt.nio.file.Glob
 import sbt.nio.FileStamper
 import sbt.nio.Keys._
+import sbt.nio.file.Glob
 
 import scala.annotation.tailrec
 
@@ -107,7 +107,7 @@ private[sbt] object SettingsGraph {
           am.get(scopedKey.key) match {
             case Some(globs: Seq[Glob]) =>
               if (trigger) {
-                val stamper = am.get(fileStamper.key).getOrElse(FileStamper.Hash)
+                val stamper = am.get(inputFileStamper.key).getOrElse(FileStamper.Hash)
                 val forceTrigger = am.get(watchForceTriggerOnAnyChange.key).getOrElse(false)
                 globs.map(g => DynamicInput(g, stamper, forceTrigger))
               } else {

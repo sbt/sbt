@@ -4,10 +4,10 @@ val fileInputTask = taskKey[Unit]("task with file inputs")
 
 fileInputTask / fileInputs += (baseDirectory.value / "base").toGlob / "*.md"
 
-fileInputTask / fileStamper := sbt.nio.FileStamper.LastModified
+fileInputTask / inputFileStamper := sbt.nio.FileStamper.LastModified
 
 fileInputTask := Def.taskDyn {
-  if ((fileInputTask / changedFiles).value.nonEmpty) Def.task(assert(true))
+  if ((fileInputTask / changedInputFiles).value.nonEmpty) Def.task(assert(true))
   else Def.task(assert(false))
 }.value
 
