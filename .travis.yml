@@ -5,7 +5,7 @@ git:
   depth: false # https://stackoverflow.com/a/51727114/3714539
 before_install:
   - mkdir .bin
-  - curl -Lo .bin/sbt https://raw.githubusercontent.com/coursier/sbt-extras/77c93346a2b52cf35cc72382125cfdbb25a00197/sbt
+  - curl -Lo .bin/sbt https://github.com/coursier/sbt-extras/raw/5fb3c11d689d5aad1ead8c2ecf02e1177e5d6a88/sbt
   - chmod +x .bin/sbt
   - export PATH="$(pwd)/.bin:$PATH"
   - export TRAVIS_SCALA_VERSION=2.12.8
