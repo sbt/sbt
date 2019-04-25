@@ -3,12 +3,14 @@ package coursier.sbtlmcoursier
 import lmcoursier.definitions.Authentication
 import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
-import coursier.sbtcoursiershared.SbtCoursierShared
+import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
+
+import scala.language.reflectiveCalls
 
 object LmCoursierPlugin extends AutoPlugin {
 
@@ -78,7 +80,7 @@ object LmCoursierPlugin extends AutoPlugin {
         val scalaVer = scalaVersion.value
         val interProjectDependencies = coursierInterProjectDependencies.value
         val excludeDeps = Inputs.exclusions(
-          excludeDependencies.value,
+          InputsTasks.actualExcludeDependencies.value,
           scalaVer,
           scalaBinaryVersion.value,
           streams.value.log

@@ -5,14 +5,25 @@ import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency
 import lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
-import sbt.Def
+import sbt.{Def, SettingKey}
 import sbt.Keys._
 import sbt.librarymanagement.{InclExclRule, ModuleID}
 import sbt.util.Logger
 
 import scala.collection.JavaConverters._
+import scala.language.reflectiveCalls
 
 object InputsTasks {
+
+  lazy val actualExcludeDependencies =
+    try {
+      sbt.Keys
+        .asInstanceOf[{ def allExcludeDependencies: SettingKey[scala.Seq[InclExclRule]] }]
+        .allExcludeDependencies
+    } catch {
+      case _: NoSuchMethodException =>
+        excludeDependencies
+    }
 
   private def coursierProject0(
     projId: ModuleID,
@@ -56,7 +67,7 @@ object InputsTasks {
         coursierProject0(
           projectID.in(projectRef).get(state),
           allDependenciesTask.value,
-          excludeDependencies.in(projectRef).get(state),
+          actualExcludeDependencies.in(projectRef).get(state),
           // should projectID.configurations be used instead?
           ivyConfigurations.in(projectRef).get(state),
           scalaVersion.in(projectRef).get(state),
