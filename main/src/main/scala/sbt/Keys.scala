@@ -370,6 +370,7 @@ object Keys {
   val ivyModule = taskKey[IvySbt#Module]("Provides the sbt interface to a configured Ivy module.").withRank(CTask)
   val updateCacheName = taskKey[String]("Defines the directory name used to store the update cache files (inside the streams cacheDirectory).").withRank(DTask)
   val update = taskKey[UpdateReport]("Resolves and optionally retrieves dependencies, producing a report.").withRank(ATask)
+  val updateFull = taskKey[UpdateReport]("Resolves and optionally retrieves dependencies, producing a full report with callers.").withRank(CTask)
   val evicted = taskKey[EvictionWarning]("Display detailed eviction warnings.").withRank(CTask)
   val evictionWarningOptions = settingKey[EvictionWarningOptions]("Options on eviction warnings after resolving managed dependencies.").withRank(DSetting)
   val transitiveUpdate = taskKey[Seq[UpdateReport]]("UpdateReports for the internal dependencies of this project.").withRank(DTask)
