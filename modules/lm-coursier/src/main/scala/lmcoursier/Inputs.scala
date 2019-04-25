@@ -1,5 +1,6 @@
 package lmcoursier
 
+import coursier.ivy.IvyXml.{mappings => initialIvyXmlMappings}
 import lmcoursier.definitions.{Configuration, ModuleName, Organization}
 import sbt.librarymanagement.{CrossVersion, InclExclRule}
 import sbt.util.Logger
@@ -7,6 +8,12 @@ import sbt.util.Logger
 import scala.collection.mutable
 
 object Inputs {
+
+  def ivyXmlMappings(mapping: String): Seq[(Configuration, Configuration)] =
+    initialIvyXmlMappings(mapping).map {
+      case (from, to) =>
+        Configuration(from.value) -> Configuration(to.value)
+    }
 
   def configExtends(configurations: Seq[sbt.librarymanagement.Configuration]): Map[Configuration, Seq[Configuration]] =
     configurations

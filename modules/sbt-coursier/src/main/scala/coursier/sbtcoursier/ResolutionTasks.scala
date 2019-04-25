@@ -62,7 +62,7 @@ object ResolutionTasks {
       val cachePolicies = coursierCachePolicies.value
       val ttl = coursierTtl.value
       val cache = coursierCache.value
-      val createLogger = coursierLogger.value
+      val createLogger = coursierLogger.value.map(ToCoursier.cacheLogger)
 
       val log = streams.value.log
 
@@ -98,7 +98,7 @@ object ResolutionTasks {
 
       // TODO Warn about possible duplicated modules from source repositories?
 
-      val credentials = credentialsTask.value
+      val credentials = credentialsTask.value.map(ToCoursier.credentials)
 
       val parentProjectCache: ProjectCache = coursierParentProjectCache.value
         .get(resolvers)

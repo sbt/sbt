@@ -1,5 +1,7 @@
 package lmcoursier.definitions
 
+import lmcoursier.credentials.{Credentials, DirectCredentials, FileCredentials}
+
 // TODO Make private[lmcoursier]
 // private[coursier]
 object ToCoursier {
@@ -98,5 +100,49 @@ object ToCoursier {
         }
       )
     )
+
+  def credentials(credentials: Credentials): coursier.credentials.Credentials =
+    credentials match {
+      case d: DirectCredentials =>
+        coursier.credentials.DirectCredentials()
+          .withHost(d.host)
+          .withUsername(d.username)
+          .withPassword(d.password)
+          .withRealm(d.realm)
+          .withOptional(d.optional)
+          .withMatchHost(d.matchHost)
+          .withHttpsOnly(d.httpsOnly)
+      case f: FileCredentials =>
+        coursier.credentials.FileCredentials(f.path)
+          .withOptional(f.optional)
+    }
+
+  def cacheLogger(logger: CacheLogger): coursier.cache.CacheLogger =
+    new coursier.cache.CacheLogger {
+      override def foundLocally(url: String): Unit =
+        logger.foundLocally(url)
+      override def downloadingArtifact(url: String): Unit =
+        logger.downloadingArtifact(url)
+      override def downloadProgress(url: String, downloaded: Long): Unit =
+        logger.downloadProgress(url, downloaded)
+      override def downloadedArtifact(url: String, success: Boolean): Unit =
+        logger.downloadedArtifact(url, success)
+      override def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit =
+        logger.checkingUpdates(url, currentTimeOpt)
+      override def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]): Unit =
+        logger.checkingUpdatesResult(url, currentTimeOpt, remoteTimeOpt)
+      override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit =
+        logger.downloadLength(url, totalLength, alreadyDownloaded, watching)
+      override def gettingLength(url: String): Unit =
+        logger.gettingLength(url)
+      override def gettingLengthResult(url: String, length: Option[Long]): Unit =
+        logger.gettingLengthResult(url, length)
+      override def removedCorruptFile(url: String, reason: Option[String]): Unit =
+        logger.removedCorruptFile(url, reason)
+      override def init(sizeHint: Option[Int] = None): Unit =
+        logger.init(sizeHint)
+      override def stop(): Unit =
+        logger.stop()
+    }
 
 }

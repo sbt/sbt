@@ -82,7 +82,6 @@ object FromSbt {
     )
 
     val mapping = module.configurations.getOrElse("compile")
-    // FIXME Don't call this from here
     val allMappings = ivyXmlMappings(mapping).map {
       case (from, to) =>
         (Configuration(from.value), Configuration(to.value))

@@ -1,10 +1,10 @@
 package coursier.sbtcoursiershared
 
-import coursier.credentials.DirectCredentials
 import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Type}
 import lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
+import lmcoursier.credentials.DirectCredentials
 import sbt.{Def, SettingKey}
 import sbt.Keys._
 import sbt.librarymanagement.{InclExclRule, ModuleID}
@@ -106,13 +106,7 @@ object InputsTasks {
     val configurations = desc
       .getModuleConfigurations
       .toVector
-      .flatMap { s =>
-        // FIXME Don't call this from here
-        coursier.ivy.IvyXml.mappings(s).map {
-          case (from, to) =>
-            (Configuration(from.value), Configuration(to.value))
-        }
-      }
+      .flatMap(Inputs.ivyXmlMappings)
 
     def dependency(conf: Configuration, attr: Attributes) = Dependency(
       module,

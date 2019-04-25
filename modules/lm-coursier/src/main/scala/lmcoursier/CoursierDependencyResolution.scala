@@ -68,7 +68,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val verbosityLevel = 0
 
     val ttl = CacheDefaults.ttl
-    val loggerOpt = conf.logger
+    val loggerOpt = conf.logger.map(ToCoursier.cacheLogger)
     val cache = conf.cache.getOrElse(CacheDefaults.location)
     val cachePolicies = CacheDefaults.cachePolicies
     val checksums = CacheDefaults.checksums
@@ -123,7 +123,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       .withCachePolicies(cachePolicies)
       .withTtl(ttl)
       .withChecksums(checksums)
-      .withCredentials(conf.credentials)
+      .withCredentials(conf.credentials.map(ToCoursier.credentials))
 
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,
@@ -239,4 +239,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 object CoursierDependencyResolution {
   def apply(configuration: CoursierConfiguration): DependencyResolution =
     DependencyResolution(new CoursierDependencyResolution(configuration))
+
+  def defaultCacheLocation: File =
+    CacheDefaults.location
 }
