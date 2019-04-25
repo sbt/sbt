@@ -15,12 +15,14 @@ inThisBuild(List(
   )
 ))
 
+val coursierVersion0 = "1.1.0-M14-2"
+
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % "1.1.0-M14-2",
+      "io.get-coursier" %% "coursier" % coursierVersion0,
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an
@@ -45,7 +47,7 @@ lazy val `lm-coursier-shaded` = project
       "argonaut"
     ),
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % "1.1.0-M14-1" % "shaded",
+      "io.get-coursier" %% "coursier" % coursierVersion0 % "shaded",
       "org.scala-lang.modules" %% "scala-xml" % "1.1.1", // depending on that one so that it doesn't get shaded
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.7" % Test
