@@ -1,6 +1,6 @@
 package coursier.sbtcoursier
 
-import coursier.cache.{CacheDefaults, CachePolicy}
+import coursier.cache.CacheDefaults
 import coursier.core.{Configuration, ResolutionProcess}
 import coursier.sbtcoursiershared.SbtCoursierShared
 import sbt.{Cache => _, Configuration => _, _}

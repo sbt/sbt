@@ -15,13 +15,15 @@ inThisBuild(List(
   )
 ))
 
+val coursierVersion0 = "1.1.0-M14-2"
+
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
-  .enablePlugins(ContrabandPlugin)
   .settings(
     shared,
+    Mima.settings,
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % "1.1.0-M14-2",
+      "io.get-coursier" %% "coursier" % coursierVersion0,
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an
@@ -29,16 +31,32 @@ lazy val `lm-coursier` = project
       // is ignored).
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.7" % Test
+    )
+  )
+
+lazy val `lm-coursier-shaded` = project
+  .in(file("modules/lm-coursier/target/shaded-module"))
+  .enablePlugins(ShadingPlugin)
+  .settings(
+    shared,
+    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
+    shading,
+    shadingNamespace := "lmcoursier.internal.shaded",
+    shadeNamespaces ++= Set(
+      "coursier",
+      "shapeless",
+      "argonaut"
     ),
-    managedSourceDirectories in Compile +=
-      baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats
+    libraryDependencies ++= Seq(
+      "io.get-coursier" %% "coursier" % coursierVersion0 % "shaded",
+      "org.scala-lang.modules" %% "scala-xml" % "1.1.1", // depending on that one so that it doesn't get shaded
+      "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
+      "org.scalatest" %% "scalatest" % "3.0.7" % Test
+    )
   )
 
 lazy val `sbt-coursier-shared` = project
   .in(file("modules/sbt-coursier-shared"))
-  .enablePlugins(ScriptedPlugin)
   .dependsOn(`lm-coursier`)
   .settings(
     plugin,
@@ -47,10 +65,19 @@ lazy val `sbt-coursier-shared` = project
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
+lazy val `sbt-coursier-shared-shaded` = project
+  .in(file("modules/sbt-coursier-shared/target/shaded-module"))
+  .dependsOn(`lm-coursier-shaded`)
+  .settings(
+    plugin,
+    generatePropertyFile,
+    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`sbt-coursier-shared`).value
+  )
+
 lazy val `sbt-lm-coursier` = project
   .in(file("modules/sbt-lm-coursier"))
   .enablePlugins(ScriptedPlugin)
-  .dependsOn(`sbt-coursier-shared`)
+  .dependsOn(`sbt-coursier-shared-shaded`)
   .settings(
     plugin,
     sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
@@ -59,8 +86,8 @@ lazy val `sbt-lm-coursier` = project
 
       // TODO Get those automatically
       // (but shouldn't scripted itself handle that…?)
-       publishLocal.in(`lm-coursier`).value
-       publishLocal.in(`sbt-coursier-shared`).value
+       publishLocal.in(`lm-coursier-shaded`).value
+       publishLocal.in(`sbt-coursier-shared-shaded`).value
      }
    )
 
@@ -125,8 +152,10 @@ lazy val `sbt-coursier-root` = project
   .in(file("."))
   .aggregate(
     `lm-coursier`,
+    `lm-coursier-shaded`,
     `sbt-coursier`,
     `sbt-coursier-shared`,
+    `sbt-coursier-shared-shaded`,
     `sbt-lm-coursier`,
     `sbt-pgp-coursier`,
     `sbt-shading`

@@ -1,7 +1,7 @@
 package coursier.sbtcoursier
 
 import coursier.core._
-import coursier.lmcoursier._
+import lmcoursier.definitions.ToCoursier
 import coursier.parse.ModuleParser
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
@@ -26,7 +26,7 @@ object DisplayTasks {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
           val cm = coursierSbtClassifiersModule.value
-          FromSbt.sbtClassifiersProject(cm, sv, sbv)
+          SbtCoursierFromSbt.sbtClassifiersProject(cm, sv, sbv)
         }
       else
         Def.task {
@@ -40,14 +40,14 @@ object DisplayTasks {
         Def.task {
           val currentProject = currentProjectTask.value
           val classifiersRes = coursierSbtClassifiersResolution.value
-          Map(currentProject.configurations.keySet -> classifiersRes)
+          Map(currentProject.configurations.keySet.map(ToCoursier.configuration) -> classifiersRes)
         }
       else
         Def.task(coursierResolutions.value)
 
     Def.task {
 
-      val currentProject = currentProjectTask.value
+      val currentProject = ToCoursier.project(currentProjectTask.value)
 
       val config = Configuration(configuration.value.name)
       val configs = coursierConfigurations.value

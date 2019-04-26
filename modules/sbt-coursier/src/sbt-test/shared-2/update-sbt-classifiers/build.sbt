@@ -32,13 +32,19 @@ updateSbtClassifiersCheck := {
       .toSeq
       .flatten
 
-  def ensureHasArtifact(org: String, name: String) =
+  def ensureHasArtifact(orgName: (String, String)*) =
     assert(
-      artifacts(org, name).exists(_._2.getName.endsWith("-sources.jar")),
-      s"$org:$name not found"
+      orgName.exists {
+        case (org, name) =>
+          artifacts(org, name).exists(_._2.getName.endsWith("-sources.jar"))
+      },
+      s"Any of $orgName not found"
     )
 
-  ensureHasArtifact("org.scala-lang", "scala-library")
-  ensureHasArtifact("io.get-coursier", "coursier-core_" + scalaBinaryVersion.value)
-  ensureHasArtifact("io.get-coursier", "lm-coursier_" + scalaBinaryVersion.value)
+  ensureHasArtifact("org.scala-lang" -> "scala-library")
+  ensureHasArtifact("org.scala-lang.modules" -> s"scala-xml_${scalaBinaryVersion.value}")
+  ensureHasArtifact(
+    "io.get-coursier" -> s"lm-coursier_${scalaBinaryVersion.value}",
+    "io.get-coursier" -> s"lm-coursier-shaded_${scalaBinaryVersion.value}"
+  )
 }

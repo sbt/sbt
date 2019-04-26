@@ -5,10 +5,11 @@ import java.io.File
 import coursier.Artifact
 import coursier.cache.FileCache
 import coursier.core._
-import coursier.lmcoursier._
+import lmcoursier.internal.{ArtifactsParams, ArtifactsRun}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport.{coursierCache, coursierLogger}
+import lmcoursier.definitions.ToCoursier
 import sbt.Def
 import sbt.Keys._
 
@@ -45,8 +46,8 @@ object ArtifactsTasks {
       val cachePolicies = coursierCachePolicies.value
       val ttl = coursierTtl.value
       val cache = coursierCache.value
-      val createLogger = coursierLogger.value
-      val credentials = credentialsTask.value
+      val createLogger = coursierLogger.value.map(ToCoursier.cacheLogger)
+      val credentials = credentialsTask.value.map(ToCoursier.credentials)
 
       val log = streams.value.log
 

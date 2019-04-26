@@ -1,7 +1,6 @@
 package coursier.sbtcoursiershared
 
-import coursier.core.Configuration
-import coursier.{Info, Module, Project, moduleNameString, organizationString}
+import lmcoursier.definitions.{Configuration, Info, Module, ModuleName, Organization, Project}
 import utest._
 
 object IvyXmlTests extends TestSuite {
@@ -10,23 +9,16 @@ object IvyXmlTests extends TestSuite {
     "no truncation" - {
 
       val project = Project(
-        Module(org"org", name"name"),
+        Module(Organization("org"), ModuleName("name"), Map()),
         "ver",
         Nil,
         Map(
           Configuration("foo") -> (1 to 80).map(n => Configuration("bar" + n)) // long list of configurations -> no truncation any way
         ),
-        None,
-        Nil,
-        Nil,
         Nil,
         None,
-        None,
-        None,
-        relocated = false,
-        None,
         Nil,
-        Info.empty
+        Info("", "", Nil, Nil, None)
       )
 
       val content = IvyXml.rawContent(project, None)

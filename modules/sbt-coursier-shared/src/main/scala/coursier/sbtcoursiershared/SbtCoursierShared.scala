@@ -2,11 +2,11 @@ package coursier.sbtcoursiershared
 
 import java.io.File
 
-import coursier.cache.{CacheDefaults, CacheLogger}
 import coursier.{Credentials => LegacyCredentials}
-import coursier.core.{Configuration, Project, Publication}
-import coursier.credentials.Credentials
-import coursier.lmcoursier.{FallbackDependency, SbtCoursierCache}
+import lmcoursier.credentials.Credentials
+import lmcoursier.{CoursierDependencyResolution, FallbackDependency}
+import lmcoursier.definitions.{CacheLogger, Configuration, Project, Publication}
+import lmcoursier.internal.SbtCoursierCache
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
 import sbt.librarymanagement.{Resolver, URLRepository}
@@ -64,7 +64,7 @@ object SbtCoursierShared extends AutoPlugin {
       coursierReorderResolvers := true,
       coursierKeepPreloaded := false,
       coursierLogger := None,
-      coursierCache := CacheDefaults.location
+      coursierCache := CoursierDependencyResolution.defaultCacheLocation
     )
 
   private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"

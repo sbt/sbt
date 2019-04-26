@@ -1,13 +1,12 @@
 package coursier.sbtcoursiershared
 
-import coursier.core._
-import coursier.lmcoursier._
+import lmcoursier.definitions.{Classifier, Configuration, Extension, Publication, Type}
 import coursier.sbtcoursiershared.Structure._
 import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
 import sbt.Def
 import sbt.Keys._
 
-object ArtifactsTasks {
+private[sbtcoursiershared] object ArtifactsTasks {
 
   def coursierPublicationsTask(
     configsMap: (sbt.librarymanagement.Configuration, Configuration)*
@@ -97,18 +96,14 @@ object ArtifactsTasks {
 
       def artifactPublication(artifact: sbt.Artifact) = {
 
-        val name = FromSbt.sbtCrossVersionName(
-          artifact.name,
-          projId.crossVersion,
-          sv,
-          sbv
-        )
+        val name = CrossVersion(projId.crossVersion, sv, sbv)
+          .fold(artifact.name)(_(artifact.name))
 
         Publication(
           name,
           Type(artifact.`type`),
           Extension(artifact.extension),
-          artifact.classifier.fold(Classifier.empty)(Classifier(_))
+          artifact.classifier.fold(Classifier(""))(Classifier(_))
         )
       }
 

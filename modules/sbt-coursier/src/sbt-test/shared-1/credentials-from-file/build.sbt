@@ -14,7 +14,7 @@ coursierExtraCredentials += {
      """.stripMargin
   val dest = baseDirectory.in(ThisBuild).value / "project" / "target" / "cred"
   Files.write(dest.toPath, content.getBytes("UTF-8"))
-  coursier.credentials.Credentials(dest)
+  lmcoursier.credentials.Credentials(dest)
 }
 
 libraryDependencies += "com.abc" % "test" % "0.1"

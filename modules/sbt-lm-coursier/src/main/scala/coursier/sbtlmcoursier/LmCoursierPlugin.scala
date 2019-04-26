@@ -1,14 +1,16 @@
 package coursier.sbtlmcoursier
 
-import coursier.core.Classifier
-import coursier.lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
+import lmcoursier.definitions.Authentication
+import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
 import coursier.sbtcoursiershared.InputsTasks.credentialsTask
-import coursier.sbtcoursiershared.SbtCoursierShared
+import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, excludeDependencies, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
+
+import scala.language.reflectiveCalls
 
 object LmCoursierPlugin extends AutoPlugin {
 
@@ -67,9 +69,9 @@ object LmCoursierPlugin extends AutoPlugin {
           coursierSbtResolvers
         else
           coursierRecursiveResolvers
-      val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[Classifier]]]] =
+      val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[String]]]] =
         if (withClassifiers && !sbtClassifiers)
-          Def.task(Some(sbt.Keys.transitiveClassifiers.value.map(Classifier(_))))
+          Def.task(Some(sbt.Keys.transitiveClassifiers.value))
         else
           Def.task(None)
       Def.task {
@@ -78,7 +80,7 @@ object LmCoursierPlugin extends AutoPlugin {
         val scalaVer = scalaVersion.value
         val interProjectDependencies = coursierInterProjectDependencies.value
         val excludeDeps = Inputs.exclusions(
-          excludeDependencies.value,
+          InputsTasks.actualExcludeDependencies.value,
           scalaVer,
           scalaBinaryVersion.value,
           streams.value.log
@@ -87,7 +89,10 @@ object LmCoursierPlugin extends AutoPlugin {
         val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
         val profiles = mavenProfiles.value
 
-        val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
+        val authenticationByRepositoryId = coursierCredentials.value.mapValues { c =>
+          val a = c.authentication
+          Authentication(a.user, a.password, a.optional, a.realmOpt)
+        }
         val credentials = credentialsTask.value
 
         val createLogger = coursierLogger.value
@@ -108,17 +113,17 @@ object LmCoursierPlugin extends AutoPlugin {
           .withExcludeDependencies(
             excludeDeps
               .toVector
-              .sorted
               .map {
                 case (o, n) =>
                   (o.value, n.value)
               }
+              .sorted
           )
           .withAutoScalaLibrary(autoScalaLib)
           .withSbtScalaJars(sbtBootJars.toVector)
           .withSbtScalaVersion(sbtScalaVersion)
           .withSbtScalaOrganization(sbtScalaOrganization)
-          .withClassifiers(classifiers.toVector.flatten.map(_.value))
+          .withClassifiers(classifiers.toVector.flatten)
           .withHasClassifiers(classifiers.nonEmpty)
           .withMavenProfiles(profiles.toVector.sorted)
           .withScalaOrganization(scalaOrg)

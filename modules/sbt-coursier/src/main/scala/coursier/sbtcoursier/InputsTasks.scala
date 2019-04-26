@@ -2,7 +2,8 @@ package coursier.sbtcoursier
 
 import coursier.ProjectCache
 import coursier.core._
-import coursier.lmcoursier._
+import lmcoursier._
+import lmcoursier.definitions.ToCoursier
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
@@ -16,13 +17,19 @@ object InputsTasks {
     shadedConfig: Option[(String, Configuration)]
   ): Def.Initialize[sbt.Task[Map[Configuration, Set[Configuration]]]] =
     Def.task {
-      Inputs.coursierConfigurations(ivyConfigurations.value, shadedConfig)
+      Inputs.coursierConfigurations(ivyConfigurations.value, shadedConfig.map {
+        case (from, to) =>
+          (from, lmcoursier.definitions.Configuration(to.value))
+      }).map {
+        case (k, v) =>
+          ToCoursier.configuration(k) -> v.map(ToCoursier.configuration)
+      }
     }
 
   def ivyGraphsTask: Def.Initialize[sbt.Task[Seq[Set[Configuration]]]] =
     Def.task {
       val p = coursierProject.value
-      Inputs.ivyGraphs(p.configurations)
+      Inputs.ivyGraphs(p.configurations).map(_.map(ToCoursier.configuration))
     }
 
   def parentProjectCacheTask: Def.Initialize[sbt.Task[Map[Seq[sbt.librarymanagement.Resolver], Seq[coursier.ProjectCache]]]] =

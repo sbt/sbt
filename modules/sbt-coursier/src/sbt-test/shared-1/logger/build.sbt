@@ -14,7 +14,7 @@ coursierLogger := {
   }
   val cacheFile = coursierCache.value
 
-  val logger = new coursier.cache.CacheLogger {
+  val logger = new lmcoursier.definitions.CacheLogger {
     override def init(sizeHint: Option[Int]): Unit = {
       logStream = new java.io.PrintStream(
         new java.io.FileOutputStream(logFile.value, true)

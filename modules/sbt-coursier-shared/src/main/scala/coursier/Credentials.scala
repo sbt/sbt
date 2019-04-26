@@ -3,7 +3,7 @@ package coursier
 import java.io.{File, FileInputStream}
 import java.util.Properties
 
-import coursier.core.Authentication
+import lmcoursier.definitions.Authentication
 
 @deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
 sealed abstract class Credentials extends Product with Serializable {

@@ -1,18 +1,61 @@
 package coursier.sbtcoursiershared
 
-import coursier.core._
-import coursier.credentials.DirectCredentials
-import coursier.lmcoursier._
+import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Type}
+import lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
-import sbt.Def
+import lmcoursier.credentials.DirectCredentials
+import sbt.{Def, SettingKey}
 import sbt.Keys._
+import sbt.librarymanagement.{InclExclRule, ModuleID}
+import sbt.util.Logger
 
 import scala.collection.JavaConverters._
+import scala.language.reflectiveCalls
 
 object InputsTasks {
 
-  def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
+  lazy val actualExcludeDependencies =
+    try {
+      sbt.Keys
+        .asInstanceOf[{ def allExcludeDependencies: SettingKey[scala.Seq[InclExclRule]] }]
+        .allExcludeDependencies
+    } catch {
+      case _: NoSuchMethodException =>
+        excludeDependencies
+    }
+
+  private def coursierProject0(
+    projId: ModuleID,
+    dependencies: Seq[ModuleID],
+    excludeDeps: Seq[InclExclRule],
+    configurations: Seq[sbt.librarymanagement.Configuration],
+    sv: String,
+    sbv: String,
+    log: Logger
+  ): Project = {
+
+    val exclusions0 = Inputs.exclusions(excludeDeps, sv, sbv, log)
+
+    val configMap = Inputs.configExtends(configurations)
+
+    val proj = FromSbt.project(
+      projId,
+      dependencies,
+      configMap,
+      sv,
+      sbv
+    )
+
+    proj.copy(
+      dependencies = proj.dependencies.map {
+        case (config, dep) =>
+          (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
+      }
+    )
+  }
+
+  private[sbtcoursiershared] def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
     Def.taskDyn {
 
       val state = sbt.Keys.state.value
@@ -21,10 +64,10 @@ object InputsTasks {
       val allDependenciesTask = allDependencies.in(projectRef).get(state)
 
       Def.task {
-        Inputs.coursierProject(
+        coursierProject0(
           projectID.in(projectRef).get(state),
           allDependenciesTask.value,
-          excludeDependencies.in(projectRef).get(state),
+          actualExcludeDependencies.in(projectRef).get(state),
           // should projectID.configurations be used instead?
           ivyConfigurations.in(projectRef).get(state),
           scalaVersion.in(projectRef).get(state),
@@ -63,7 +106,7 @@ object InputsTasks {
     val configurations = desc
       .getModuleConfigurations
       .toVector
-      .flatMap(s => coursier.ivy.IvyXml.mappings(s))
+      .flatMap(Inputs.ivyXmlMappings)
 
     def dependency(conf: Configuration, attr: Attributes) = Dependency(
       module,
@@ -80,13 +123,13 @@ object InputsTasks {
       val artifacts = desc.getAllDependencyArtifacts
 
       val m = artifacts.toVector.flatMap { art =>
-        val attr = Attributes(Type(art.getType), Classifier.empty)
+        val attr = Attributes(Type(art.getType), Classifier(""))
         art.getConfigurations.map(Configuration(_)).toVector.map { conf =>
           conf -> attr
         }
       }.toMap
 
-      c => m.getOrElse(c, Attributes.empty)
+      c => m.getOrElse(c, Attributes(Type(""), Classifier("")))
     }
 
     configurations.map {
@@ -95,7 +138,7 @@ object InputsTasks {
     }
   }
 
-  def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[Project]]] =
+  private[sbtcoursiershared] def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[Project]]] =
     Def.taskDyn {
 
       val state = sbt.Keys.state.value
@@ -141,17 +184,10 @@ object InputsTasks {
                 v.getModuleRevisionId.getRevision,
                 deps,
                 configurations,
-                None,
-                Nil,
-                Nil,
                 Nil,
                 None,
-                None,
-                None,
-                relocated = false,
-                None,
                 Nil,
-                Info.empty
+                Info("", "", Nil, Nil, None)
               )
           }
 
@@ -159,7 +195,7 @@ object InputsTasks {
       }
     }
 
-  def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
+  private[sbtcoursiershared] def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
     Def.taskDyn {
 
       val state = sbt.Keys.state.value
