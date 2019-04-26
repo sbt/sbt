@@ -594,7 +594,7 @@ lazy val mainProj = (project in file("main"))
       scalaXml.value ++
       Seq(launcherInterface) ++
       log4jDependencies ++
-      Seq(scalaCacheCaffeine, lmCousier)
+      Seq(scalaCacheCaffeine, lmCoursierShaded)
     },
     Compile / scalacOptions -= "-Xfatal-warnings",
     managedSourceDirectories in Compile +=

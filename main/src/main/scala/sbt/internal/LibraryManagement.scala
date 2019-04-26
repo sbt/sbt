@@ -8,7 +8,7 @@
 package sbt
 package internal
 
-import coursier.lmcoursier.CoursierDependencyResolution
+import lmcoursier.CoursierDependencyResolution
 import java.io.File
 import sbt.internal.librarymanagement._
 import sbt.internal.util.{ ConsoleAppender, LogOption }

@@ -12,7 +12,7 @@ package librarymanagement
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
-import coursier.core.{ Configuration, Project }
+import lmcoursier.definitions.{ Configuration, Project }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import Def.Setting
 import sbt.Keys.{
@@ -29,7 +29,7 @@ import scala.xml.{ Node, PrefixedAttribute }
 object IvyXml {
   import sbt.Project._
 
-  def rawContent(
+  private def rawContent(
       currentProject: Project,
       shadedConfigOpt: Option[Configuration]
   ): String = {
@@ -47,7 +47,7 @@ object IvyXml {
   }
 
   // These are required for publish to be fine, later on.
-  def writeFiles(
+  private def writeFiles(
       currentProject: Project,
       shadedConfigOpt: Option[Configuration],
       ivySbt: IvySbt,
@@ -77,12 +77,12 @@ object IvyXml {
     ()
   }
 
-  def content(project0: Project, shadedConfigOpt: Option[Configuration]): Node = {
+  private def content(project0: Project, shadedConfigOpt: Option[Configuration]): Node = {
 
     val filterOutDependencies =
       shadedConfigOpt.toSet[Configuration].flatMap { shadedConfig =>
         project0.dependencies
-          .collect { case (`shadedConfig`, dep) => dep }
+          .collect { case (conf, dep) if conf.value == shadedConfig.value => dep }
       }
 
     val project: Project = project0.copy(
@@ -118,8 +118,8 @@ object IvyXml {
     } % infoAttrs
 
     val confElems = project.configurations.toVector.collect {
-      case (name, extends0) if !shadedConfigOpt.contains(name) =>
-        val extends1 = shadedConfigOpt.fold(extends0)(c => extends0.filter(_ != c))
+      case (name, extends0) if !shadedConfigOpt.exists(_.value == name.value) =>
+        val extends1 = shadedConfigOpt.fold(extends0)(c => extends0.filter(_.value != c.value))
         val n = <conf name={name.value} visibility="public" description="" />
         if (extends1.nonEmpty)
           n % <x extends={extends1.map(_.value).mkString(",")} />.attributes
@@ -138,7 +138,7 @@ object IvyXml {
             configs.map(_.value).mkString(",")
           } />
 
-        if (pub.classifier.nonEmpty)
+        if (pub.classifier.value.nonEmpty)
           n % <x e:classifier={pub.classifier.value} />.attributes
         else
           n
@@ -174,7 +174,7 @@ object IvyXml {
     </ivy-module>
   }
 
-  def makeIvyXmlBefore[T](
+  private def makeIvyXmlBefore[T](
       task: TaskKey[T],
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =
@@ -220,6 +220,6 @@ object IvyXml {
   def generateIvyXmlSettings(
       shadedConfigOpt: Option[Configuration] = None
   ): Seq[Setting[_]] =
-    (needsIvyXml ++ needsIvyXmlLocal).map(IvyXml.makeIvyXmlBefore(_, shadedConfigOpt))
+    (needsIvyXml ++ needsIvyXmlLocal).map(makeIvyXmlBefore(_, shadedConfigOpt))
 
 }

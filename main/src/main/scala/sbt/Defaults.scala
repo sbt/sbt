@@ -12,7 +12,7 @@ import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
-import coursier.core.{ Configuration => CConfiguration }
+import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
@@ -230,7 +230,7 @@ object Defaults extends BuildCommon {
       // coursier settings
       csrExtraCredentials :== Nil,
       csrLogger :== None,
-      csrCachePath :== coursier.cache.CacheDefaults.location,
+      csrCachePath :== LMCoursier.defaultCacheLocation,
       csrMavenProfiles :== Set.empty,
     )
 
@@ -2136,7 +2136,7 @@ object Classpaths {
       val old = csrCachePath.value
       val ip = ivyPaths.value
       val defaultIvyCache = bootIvyHome(appConfiguration.value)
-      if (old != coursier.cache.CacheDefaults.location) old
+      if (old != LMCoursier.defaultCacheLocation) old
       else if (ip.ivyHome == defaultIvyCache) old
       else
         ip.ivyHome match {
@@ -2406,13 +2406,13 @@ object Classpaths {
         } tag (Tags.Update, Tags.Network)).value,
       )
     ) ++ Seq(
-    csrProject := LMCoursier.coursierProjectTask.value,
+    csrProject := CoursierInputsTasks.coursierProjectTask.value,
     csrConfiguration := LMCoursier.coursierConfigurationTask(false, false).value,
-    csrResolvers := LMCoursier.coursierResolversTask.value,
-    csrRecursiveResolvers := LMCoursier.coursierRecursiveResolversTask.value,
+    csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
+    csrRecursiveResolvers := CoursierRepositoriesTasks.coursierRecursiveResolversTask.value,
     csrSbtResolvers := LMCoursier.coursierSbtResolversTask.value,
-    csrInterProjectDependencies := LMCoursier.coursierInterProjectDependenciesTask.value,
-    csrFallbackDependencies := LMCoursier.coursierFallbackDependenciesTask.value,
+    csrInterProjectDependencies := CoursierInputsTasks.coursierInterProjectDependenciesTask.value,
+    csrFallbackDependencies := CoursierInputsTasks.coursierFallbackDependenciesTask.value,
   ) ++
     IvyXml.generateIvyXmlSettings() ++
     LMCoursier.publicationsSetting(Seq(Compile, Test).map(c => c -> CConfiguration(c.name)))

@@ -32,8 +32,8 @@ import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, Upda
 import sbt.testing.Framework
 import sbt.util.{ Level, Logger }
 import xsbti.compile._
-import coursier.cache.CacheLogger
-import coursier.lmcoursier.{ CoursierConfiguration, FallbackDependency }
+import lmcoursier.definitions.CacheLogger
+import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 import scala.xml.{ NodeSeq, Node => XNode }
@@ -357,15 +357,15 @@ object Keys {
   val csrCachePath = settingKey[File]("Coursier cache path").withRank(CSetting)
   val csrMavenProfiles = settingKey[Set[String]]("").withRank(CSetting)
   private[sbt] val csrConfiguration = taskKey[CoursierConfiguration]("General dependency management (Coursier) settings, such as the resolvers and options to use.").withRank(DTask)
-  private[sbt] val csrProject = taskKey[coursier.core.Project]("")
+  private[sbt] val csrProject = taskKey[lmcoursier.definitions.Project]("")
   private[sbt] val csrResolvers = taskKey[Seq[Resolver]]("")
   private[sbt] val csrRecursiveResolvers = taskKey[Seq[Resolver]]("Resolvers of the current project, plus those of all from its inter-dependency projects")
   private[sbt] val csrSbtResolvers = taskKey[Seq[Resolver]]("Resolvers used for sbt artifacts.")
-  private[sbt] val csrInterProjectDependencies = taskKey[Seq[coursier.core.Project]]("Projects the current project depends on, possibly transitively")
+  private[sbt] val csrInterProjectDependencies = taskKey[Seq[lmcoursier.definitions.Project]]("Projects the current project depends on, possibly transitively")
   private[sbt] val csrFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
   private[sbt] val csrLogger = taskKey[Option[CacheLogger]]("")
-  private[sbt] val csrExtraCredentials = taskKey[Seq[coursier.credentials.Credentials]]("")
-  private[sbt] val csrPublications = taskKey[Seq[(coursier.core.Configuration, coursier.core.Publication)]]("")
+  private[sbt] val csrExtraCredentials = taskKey[Seq[lmcoursier.credentials.Credentials]]("")
+  private[sbt] val csrPublications = taskKey[Seq[(lmcoursier.definitions.Configuration, lmcoursier.definitions.Publication)]]("")
 
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)
