@@ -12,6 +12,7 @@ package librarymanagement
 import sbt.librarymanagement._
 import sbt.Keys._
 import sbt.ScopeFilter.Make._
+import sbt.io.IO
 
 private[sbt] object CoursierRepositoriesTasks {
   private object CResolvers {
@@ -80,20 +81,38 @@ private[sbt] object CoursierRepositoriesTasks {
       val overrideFlag = overrideBuildResolvers.value
 
       Def.task {
-        val result = resultTask(bootResOpt, overrideFlag).value
+        val result0 = resultTask(bootResOpt, overrideFlag).value
         val reorderResolvers = true // coursierReorderResolvers.value
         val keepPreloaded = true // coursierKeepPreloaded.value
 
-        val result0 =
-          if (reorderResolvers)
-            CResolvers.reorderResolvers(result)
-          else
-            result
+        val paths = ivyPaths.value
+        val result1 =
+          if (reorderResolvers) CResolvers.reorderResolvers(result0)
+          else result0
+        val result2 =
+          paths.ivyHome match {
+            case Some(ivyHome) =>
+              val ivyHomeUri = IO.toURI(ivyHome).getSchemeSpecificPart
+              result1 map {
+                case r: FileRepository =>
+                  val ivyPatterns = r.patterns.ivyPatterns map {
+                    _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                  }
+                  val artifactPatterns = r.patterns.artifactPatterns map {
+                    _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                  }
+                  val p =
+                    r.patterns.withIvyPatterns(ivyPatterns).withArtifactPatterns(artifactPatterns)
+                  r.withPatterns(p)
+                case r => r
+              }
+            case _ => result1
+          }
 
         if (keepPreloaded)
-          result0
+          result2
         else
-          result0.filter { r =>
+          result2.filter { r =>
             !r.name.startsWith("local-preloaded")
           }
       }
