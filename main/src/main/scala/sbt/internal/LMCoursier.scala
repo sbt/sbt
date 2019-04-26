@@ -41,7 +41,7 @@ private[sbt] object LMCoursier {
         val scalaVer = scalaVersion.value
         val interProjectDependencies = csrInterProjectDependencies.value
         val excludeDeps = Inputs.exclusions(
-          excludeDependencies.value,
+          allExcludeDependencies.value,
           scalaVer,
           scalaBinaryVersion.value,
           streams.value.log
