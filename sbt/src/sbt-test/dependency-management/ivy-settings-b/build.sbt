@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 externalIvySettings()
 
 libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5"

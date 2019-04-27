@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 addSbtPlugin("org.example" % "def" % "latest.integration")
 
 resolvers ++= {

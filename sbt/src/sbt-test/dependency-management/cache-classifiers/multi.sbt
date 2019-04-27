@@ -1,5 +1,8 @@
 ThisBuild / scalaVersion := "2.12.8"
 
+// TTL of Coursier is 24h
+ThisBuild / useCoursier := false
+
 def localCache =
 	ivyPaths := IvyPaths(baseDirectory.value, Some((baseDirectory in ThisBuild).value / "ivy" / "cache"))
 

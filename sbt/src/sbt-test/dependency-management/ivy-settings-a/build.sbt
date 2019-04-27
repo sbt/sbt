@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 externalIvySettings()
 externalIvyFile()
 

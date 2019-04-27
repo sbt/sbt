@@ -9,14 +9,14 @@ val repatchTwitter = "com.eed3si9n" %% "repatch-twitter-core" % "dispatch0.11.1_
 
 lazy val a = (project in file("a")).
   settings(
-    scalaVersion := "2.11.4",
+    scalaVersion := "2.11.12",
     libraryDependencies += dispatch,
     excludeDependencies += "org.slf4j"
   )
 
 lazy val b = (project in file("b")).
   settings(
-    scalaVersion := "2.11.4",
+    scalaVersion := "2.11.12",
     libraryDependencies += repatchTwitter,
     excludeDependencies += "net.databinder.dispatch" %% "dispatch-core"
   )

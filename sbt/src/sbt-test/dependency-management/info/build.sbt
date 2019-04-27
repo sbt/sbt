@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 import scala.xml._
 
 lazy val root = (project in file(".")).

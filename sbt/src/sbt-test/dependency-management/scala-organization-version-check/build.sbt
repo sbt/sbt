@@ -2,7 +2,7 @@ scalaOrganization := "org.other"
 
 scalaArtifacts += "thing"
 
-scalaVersion := "2.11.8"
+ThisBuild / scalaVersion := "2.11.12"
 
 libraryDependencies ++= Seq(
   "org.other" % "thing" % "1.2.3",

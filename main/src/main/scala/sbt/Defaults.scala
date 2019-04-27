@@ -12,6 +12,7 @@ import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
+import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
@@ -200,6 +201,7 @@ object Defaults extends BuildCommon {
       exportJars :== false,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
+      useCoursier :== LibraryManagement.defaultUseCoursier,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
@@ -213,7 +215,7 @@ object Defaults extends BuildCommon {
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
       version :== "0.1.0-SNAPSHOT",
-      classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
+      classpathTypes :== Set("jar", "bundle", "maven-plugin", "test-jar") ++ CustomPomParser.JarPackagings,
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
       conflictManager := ConflictManager.default,
@@ -224,7 +226,12 @@ object Defaults extends BuildCommon {
       pomAllRepositories :== false,
       pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
       updateOptions := UpdateOptions(),
-      forceUpdatePeriod :== None
+      forceUpdatePeriod :== None,
+      // coursier settings
+      csrExtraCredentials :== Nil,
+      csrLogger :== None,
+      csrCachePath :== LMCoursier.defaultCacheLocation,
+      csrMavenProfiles :== Set.empty,
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -1909,6 +1916,7 @@ object Classpaths {
       managedClasspath := {
         val isMeta = isMetaBuild.value
         val force = reresolveSbtArtifacts.value
+        val csr = useCoursier.value
         val app = appConfiguration.value
         val sbtCp0 = app.provider.mainClasspath.toList
         val sbtCp = sbtCp0 map { Attributed.blank(_) }
@@ -1917,7 +1925,7 @@ object Classpaths {
           classpathTypes.value,
           update.value
         )
-        if (isMeta && !force) mjars ++ sbtCp
+        if (isMeta && !force && !csr) mjars ++ sbtCp
         else mjars
       },
       exportedProducts := trackedExportedProducts(TrackLevel.TrackAlways).value,
@@ -2125,6 +2133,18 @@ object Classpaths {
       }).value,
     moduleName := normalizedName.value,
     ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
+    csrCachePath := {
+      val old = csrCachePath.value
+      val ip = ivyPaths.value
+      val defaultIvyCache = bootIvyHome(appConfiguration.value)
+      if (old != LMCoursier.defaultCacheLocation) old
+      else if (ip.ivyHome == defaultIvyCache) old
+      else
+        ip.ivyHome match {
+          case Some(home) => home / "coursier-cache"
+          case _          => old
+        }
+    },
     dependencyCacheDirectory := {
       val st = state.value
       BuildPaths.getDependencyDirectory(st, BuildPaths.getGlobalBase(st))
@@ -2181,10 +2201,7 @@ object Classpaths {
         )
       else None
     },
-    dependencyResolution := IvyDependencyResolution(
-      ivyConfiguration.value,
-      CustomHttp.okhttpClient.value
-    ),
+    dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
     publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
@@ -2197,6 +2214,44 @@ object Classpaths {
     ivyConfigurations ++= {
       if (managedScalaInstance.value && scalaHome.value.isEmpty) Configurations.ScalaTool :: Nil
       else Nil
+    },
+    // Coursier needs these
+    ivyConfigurations := {
+      val confs = ivyConfigurations.value
+      val names = confs.map(_.name).toSet
+      val extraSources =
+        if (names("sources"))
+          None
+        else
+          Some(
+            Configuration.of(
+              id = "Sources",
+              name = "sources",
+              description = "",
+              isPublic = true,
+              extendsConfigs = Vector.empty,
+              transitive = false
+            )
+          )
+
+      val extraDocs =
+        if (names("docs"))
+          None
+        else
+          Some(
+            Configuration.of(
+              id = "Docs",
+              name = "docs",
+              description = "",
+              isPublic = true,
+              extendsConfigs = Vector.empty,
+              transitive = false
+            )
+          )
+
+      val use = useCoursier.value
+      if (use) confs ++ extraSources.toSeq ++ extraDocs.toSeq
+      else confs
     },
     moduleSettings := moduleSettings0.value,
     makePomConfiguration := MakePomConfiguration()
@@ -2298,52 +2353,70 @@ object Classpaths {
       ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
-    classifiersModule in updateClassifiers := {
-      implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
-      val projectDeps = projectDependencies.value.iterator.map(key).toSet
-      val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
-      GetClassifiersModule(
-        projectID.value,
-        None,
-        externalModules,
-        ivyConfigurations.in(updateClassifiers).value.toVector,
-        transitiveClassifiers.in(updateClassifiers).value.toVector
+  ) ++
+    inTask(updateClassifiers)(
+      Seq(
+        classifiersModule := {
+          implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+          val projectDeps = projectDependencies.value.iterator.map(key).toSet
+          val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
+          GetClassifiersModule(
+            projectID.value,
+            None,
+            externalModules,
+            ivyConfigurations.value.toVector,
+            transitiveClassifiers.value.toVector
+          )
+        },
+        dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+        csrConfiguration := LMCoursier.coursierConfigurationTask(true, false).value,
+        updateClassifiers in TaskGlobal := (Def.task {
+          val s = streams.value
+          val is = ivySbt.value
+          val lm = dependencyResolution.value
+          val mod = classifiersModule.value
+          val updateConfig0 = updateConfiguration.value
+          val updateConfig = updateConfig0
+            .withMetadataDirectory(dependencyCacheDirectory.value)
+            .withArtifactFilter(
+              updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted))
+            )
+          val app = appConfiguration.value
+          val srcTypes = sourceArtifactTypes.value
+          val docTypes = docArtifactTypes.value
+          val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+          val uwConfig = (unresolvedWarningConfiguration in update).value
+          withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+            lm.updateClassifiers(
+              GetClassifiersConfiguration(
+                mod,
+                excludes.toVector,
+                updateConfig,
+                // scalaModule,
+                srcTypes.toVector,
+                docTypes.toVector
+              ),
+              uwConfig,
+              Vector.empty,
+              s.log
+            ) match {
+              case Left(_)   => ???
+              case Right(ur) => ur
+            }
+          }
+        } tag (Tags.Update, Tags.Network)).value,
       )
-    },
-    updateClassifiers := (Def.task {
-      val s = streams.value
-      val is = ivySbt.value
-      val lm = dependencyResolution.value
-      val mod = (classifiersModule in updateClassifiers).value
-      val updateConfig0 = updateConfiguration.value
-      val updateConfig = updateConfig0
-        .withMetadataDirectory(dependencyCacheDirectory.value)
-        .withArtifactFilter(updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted)))
-      val app = appConfiguration.value
-      val srcTypes = sourceArtifactTypes.value
-      val docTypes = docArtifactTypes.value
-      val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-      val uwConfig = (unresolvedWarningConfiguration in update).value
-      withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-        lm.updateClassifiers(
-          GetClassifiersConfiguration(
-            mod,
-            excludes.toVector,
-            updateConfig,
-            // scalaModule,
-            srcTypes.toVector,
-            docTypes.toVector
-          ),
-          uwConfig,
-          Vector.empty,
-          s.log
-        ) match {
-          case Left(_)   => ???
-          case Right(ur) => ur
-        }
-      }
-    } tag (Tags.Update, Tags.Network)).value
-  )
+    ) ++ Seq(
+    csrProject := CoursierInputsTasks.coursierProjectTask.value,
+    csrConfiguration := LMCoursier.coursierConfigurationTask(false, false).value,
+    csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
+    csrRecursiveResolvers := CoursierRepositoriesTasks.coursierRecursiveResolversTask.value,
+    csrSbtResolvers := LMCoursier.coursierSbtResolversTask.value,
+    csrInterProjectDependencies := CoursierInputsTasks.coursierInterProjectDependenciesTask.value,
+    csrFallbackDependencies := CoursierInputsTasks.coursierFallbackDependenciesTask.value,
+  ) ++
+    IvyXml.generateIvyXmlSettings() ++
+    LMCoursier.publicationsSetting(Seq(Compile, Test).map(c => c -> CConfiguration(c.name)))
 
   val jvmBaseSettings: Seq[Setting[_]] = Seq(
     libraryDependencies ++= autoLibraryDependency(
@@ -2376,19 +2449,18 @@ object Classpaths {
       val isMeta = isMetaBuild.value
       val force = reresolveSbtArtifacts.value
       val excludes = excludeDependencies.value
-      val sbtModules = Vector(
-        "sbt",
-        "zinc_2.12",
-        "librarymanagement-core_2.12",
-        "librarymanagement-ivy_2.12",
-        "util-logging_2.12",
-        "util-position_2.12",
-        "io_2.12"
+      val csr = useCoursier.value
+      val o = sbtdeps.organization
+      val sbtModulesExcludes = Vector[ExclusionRule](
+        o % "sbt",
+        o %% "scripted-plugin",
+        o %% "librarymanagement-core",
+        o %% "librarymanagement-ivy",
+        o %% "util-logging",
+        o %% "util-position",
+        o %% "io"
       )
-      val sbtModulesExcludes = sbtModules map { nm: String =>
-        ExclusionRule(organization = sbtdeps.organization, name = nm)
-      }
-      if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
+      if (isMeta && !force && !csr) excludes.toVector ++ sbtModulesExcludes
       else excludes
     },
     dependencyOverrides ++= {
@@ -2504,10 +2576,8 @@ object Classpaths {
               ).withScalaOrganization(scalaOrganization.value)
             )
           },
-          dependencyResolution := IvyDependencyResolution(
-            ivyConfiguration.value,
-            CustomHttp.okhttpClient.value
-          ),
+          dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+          csrConfiguration := LMCoursier.coursierConfigurationTask(false, true).value,
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
             val s = streams.value
