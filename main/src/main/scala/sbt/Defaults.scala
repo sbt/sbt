@@ -1916,6 +1916,7 @@ object Classpaths {
       managedClasspath := {
         val isMeta = isMetaBuild.value
         val force = reresolveSbtArtifacts.value
+        val csr = useCoursier.value
         val app = appConfiguration.value
         val sbtCp0 = app.provider.mainClasspath.toList
         val sbtCp = sbtCp0 map { Attributed.blank(_) }
@@ -1924,7 +1925,7 @@ object Classpaths {
           classpathTypes.value,
           update.value
         )
-        if (isMeta && !force) sbtCp ++ mjars
+        if (isMeta && !force && !csr) mjars ++ sbtCp
         else mjars
       },
       exportedProducts := trackedExportedProducts(TrackLevel.TrackAlways).value,
@@ -2448,19 +2449,18 @@ object Classpaths {
       val isMeta = isMetaBuild.value
       val force = reresolveSbtArtifacts.value
       val excludes = excludeDependencies.value
-      val sbtModules = Vector(
-        "sbt",
-        "zinc_2.12",
-        "librarymanagement-core_2.12",
-        "librarymanagement-ivy_2.12",
-        "util-logging_2.12",
-        "util-position_2.12",
-        "io_2.12"
+      val csr = useCoursier.value
+      val o = sbtdeps.organization
+      val sbtModulesExcludes = Vector[ExclusionRule](
+        o % "sbt",
+        o %% "scripted-plugin",
+        o %% "librarymanagement-core",
+        o %% "librarymanagement-ivy",
+        o %% "util-logging",
+        o %% "util-position",
+        o %% "io"
       )
-      val sbtModulesExcludes = sbtModules map { nm: String =>
-        ExclusionRule(organization = sbtdeps.organization, name = nm)
-      }
-      if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
+      if (isMeta && !force && !csr) excludes.toVector ++ sbtModulesExcludes
       else excludes
     },
     dependencyOverrides ++= {
