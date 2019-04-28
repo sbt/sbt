@@ -1,4 +1,4 @@
-scalaVersion := "2.11.11"
+ThisBuild / scalaVersion := "2.11.12"
 
 ivyConfiguration := {
   throw new RuntimeException("updateSbtClassifiers should use updateSbtClassifiers / ivyConfiguration")

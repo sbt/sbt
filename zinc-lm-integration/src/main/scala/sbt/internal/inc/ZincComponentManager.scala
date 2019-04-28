@@ -122,7 +122,11 @@ object ZincComponentManager {
   lazy val (version, timestamp) = {
     val properties = new java.util.Properties
     val propertiesStream = versionResource.openStream
-    try { properties.load(propertiesStream) } finally { propertiesStream.close() }
+    try {
+      properties.load(propertiesStream)
+    } finally {
+      propertiesStream.close()
+    }
     (properties.getProperty("version"), properties.getProperty("timestamp"))
   }
   lazy val stampedVersion = version + "_" + timestamp

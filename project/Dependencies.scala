@@ -16,7 +16,7 @@ object Dependencies {
       case Some(version) => version
       case _             => "1.3.0-M3"
     }
-  val zincVersion = "1.3.0-M3"
+  val zincVersion = "1.3.0-M4"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -30,22 +30,6 @@ object Dependencies {
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
-
-  private val libraryManagementImpl = {
-    val lmOrganization =
-      sys.props.get("sbt.build.lm.organization") match {
-        case Some(impl) => impl
-        case _          => "org.scala-sbt"
-      }
-
-    val lmModuleName =
-      sys.props.get("sbt.build.lm.moduleName") match {
-        case Some(impl) => impl
-        case _          => "librarymanagement-ivy"
-      }
-
-    lmOrganization %% lmModuleName % lmVersion
-  }
 
   val launcherVersion = "1.0.4"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
@@ -108,7 +92,7 @@ object Dependencies {
   def addSbtLmCore(p: Project): Project =
     addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
   def addSbtLmImpl(p: Project): Project =
-    addSbtModule(p, sbtLmPath, "lmImpl", libraryManagementImpl)
+    addSbtModule(p, sbtLmPath, "lmImpl", libraryManagementIvy)
   def addSbtLmIvyTest(p: Project): Project =
     addSbtModule(p, sbtLmPath, "lmIvy", libraryManagementIvy, Some(Test))
 
@@ -125,6 +109,9 @@ object Dependencies {
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
   def addSbtZincCompileCore(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
+
+  val lmCoursierVersion = "1.1.0-M14-1"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
 
   val sjsonNewScalaJson = Def.setting {
     "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value

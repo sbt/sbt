@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 organization := "org.dummy"
 
 scalaOrganization := "org.other"

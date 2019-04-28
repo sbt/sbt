@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 libraryDependencies += "log4j" % "log4j" % "1.2.16" % "compile"
 
 autoScalaLibrary := false

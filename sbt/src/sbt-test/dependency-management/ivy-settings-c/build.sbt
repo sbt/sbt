@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 lazy val commonSettings = Seq(
   autoScalaLibrary := false,
   scalaModuleInfo := None,

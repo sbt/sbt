@@ -1,8 +1,9 @@
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
-
 import scala.collection.JavaConverters._
 val rewriteIvy = inputKey[Unit]("Rewrite ivy directory")
+
+ThisBuild / useCoursier := false
 
 val snapshot = (project in file(".")).settings(
   name := "akka-test",
