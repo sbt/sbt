@@ -655,7 +655,7 @@ object Defaults extends BuildCommon {
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value,
     fileOutputs += target.value ** AllPassFilter,
-    transitiveDynamicInputs := InputGraph.task.value,
+    transitiveDynamicInputs := SettingsGraph.task.value,
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =

@@ -167,8 +167,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     // Extract all of the globs that we will monitor during the continuous build.
     val inputs = {
       val configs = scopedKey.get(internalDependencyConfigurations).getOrElse(Nil)
-      val args = new InputGraph.Arguments(scopedKey, extracted, compiledMap, logger, configs, state)
-      InputGraph.transitiveDynamicInputs(args)
+      val args =
+        new SettingsGraph.Arguments(scopedKey, extracted, compiledMap, logger, configs, state)
+      SettingsGraph.transitiveDynamicInputs(args)
     }
 
     val repository = getRepository(state)
@@ -343,7 +344,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       inputs: Seq[(String, State)]
   )(implicit extracted: Extracted, logger: Logger): Seq[Config] = {
     val commandKeys = inputs.map { case (c, s) => s -> parseCommand(c, s) }
-    val compiledMap = InputGraph.compile(extracted.structure)
+    val compiledMap = SettingsGraph.compile(extracted.structure)
     commandKeys.flatMap {
       case (s, scopedKeys) => scopedKeys.map(getConfig(s, _, compiledMap))
     }
@@ -800,8 +801,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    * Container class for all of the components we need to setup a watch for a particular task or
    * input task.
    *
-   * @param key the [[ScopedKey]] instance for the task we will watch
-   * @param inputs the transitive task inputs (see [[InputGraph]])
+   * @param key           the [[ScopedKey]] instance for the task we will watch
+   * @param inputs        the transitive task inputs (see [[SettingsGraph]])
    * @param watchSettings the [[WatchSettings]] instance for the task
    */
   private final class Config private[internal] (

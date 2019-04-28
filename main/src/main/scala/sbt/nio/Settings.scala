@@ -10,7 +10,7 @@ package nio
 
 import java.nio.file.{ Files, Path }
 
-import sbt.internal.{ Continuous, DynamicInput, InputGraph }
+import sbt.internal.{ Continuous, DynamicInput, SettingsGraph }
 import sbt.nio.FileStamp.{ fileStampJsonFormatter, pathJsonFormatter }
 import sbt.nio.FileStamper.{ Hash, LastModified }
 import sbt.nio.Keys._
@@ -20,7 +20,7 @@ private[sbt] object Settings {
     if (scopedKey.key == transitiveDynamicInputs.key) {
       scopedKey.scope.task.toOption.toSeq.map { key =>
         val updatedKey = Def.ScopedKey(scopedKey.scope.copy(task = Zero), key)
-        transitiveDynamicInputs in scopedKey.scope := InputGraph.task(updatedKey).value
+        transitiveDynamicInputs in scopedKey.scope := SettingsGraph.task(updatedKey).value
       }
     } else if (scopedKey.key == dynamicDependency.key) {
       (dynamicDependency in scopedKey.scope := { () }) :: Nil
