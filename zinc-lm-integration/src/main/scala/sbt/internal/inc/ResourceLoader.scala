@@ -14,14 +14,20 @@ private[inc] object ResourceLoader {
   def getPropertiesFor(resource: String, classLoader: ClassLoader): Properties = {
     val properties = new java.util.Properties
     val propertiesStream = getClass.getResource(resource).openStream
-    try { properties.load(propertiesStream) } finally { propertiesStream.close() }
+    try {
+      properties.load(propertiesStream)
+    } finally {
+      propertiesStream.close()
+    }
     properties
   }
 
   def getSafePropertiesFor(resource: String, classLoader: ClassLoader): Properties = {
     val properties = new Properties
     val propertiesStream = classLoader.getResourceAsStream(resource)
-    try { properties.load(propertiesStream) } catch { case _: Exception => } finally {
+    try {
+      properties.load(propertiesStream)
+    } catch { case _: Exception => } finally {
       if (propertiesStream ne null) propertiesStream.close()
     }
     properties
