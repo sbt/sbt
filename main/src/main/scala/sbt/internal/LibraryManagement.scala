@@ -5,12 +5,15 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
+package sbt
+package internal
 
+import lmcoursier.CoursierDependencyResolution
 import java.io.File
-
 import sbt.internal.librarymanagement._
+import sbt.internal.util.{ ConsoleAppender, LogOption }
 import sbt.librarymanagement._
+import sbt.librarymanagement.ivy.IvyDependencyResolution
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 import sbt.io.IO
@@ -18,6 +21,43 @@ import sbt.io.IO
 private[sbt] object LibraryManagement {
 
   private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
+
+  def defaultUseCoursier: Boolean = {
+    val coursierOpt = sys.props
+      .get("sbt.coursier")
+      .flatMap(
+        str =>
+          ConsoleAppender.parseLogOption(str) match {
+            case LogOption.Always => Some(true)
+            case LogOption.Never  => Some(false)
+            case _                => None
+          }
+      )
+    val ivyOpt = sys.props
+      .get("sbt.ivy")
+      .flatMap(
+        str =>
+          ConsoleAppender.parseLogOption(str) match {
+            case LogOption.Always => Some(true)
+            case LogOption.Never  => Some(false)
+            case _                => None
+          }
+      )
+    val notIvyOpt = ivyOpt map { !_ }
+    coursierOpt.orElse(notIvyOpt).getOrElse(true)
+  }
+
+  def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] = Def.taskDyn {
+    if (Keys.useCoursier.value) {
+      Def.task { CoursierDependencyResolution(Keys.csrConfiguration.value) }
+    } else
+      Def.task {
+        IvyDependencyResolution(
+          Keys.ivyConfiguration.value,
+          CustomHttp.okhttpClient.value
+        )
+      }
+  }
 
   def cachedUpdate(
       lm: DependencyResolution,
@@ -33,6 +73,8 @@ private[sbt] object LibraryManagement {
       ewo: EvictionWarningOptions,
       mavenStyle: Boolean,
       compatWarning: CompatibilityWarningOptions,
+      includeCallers: Boolean,
+      includeDetails: Boolean,
       log: Logger
   ): UpdateReport = {
 
@@ -50,15 +92,15 @@ private[sbt] object LibraryManagement {
           throw unresolvedWarning.resolveException
       }
       log.debug(s"Done updating $label")
-      val finalReport = transform(report)
+      val report1 = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val ew = EvictionWarning(module, ewo, finalReport)
+      val ew = EvictionWarning(module, ewo, report1)
       ew.lines.foreach(log.warn(_))
       ew.infoAllTheThings.foreach(log.info(_))
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
-
-      finalReport
+      val report2 = transformDetails(report1, includeCallers, includeDetails)
+      report2
     }
 
     /* Check if a update report is still up to date or we must resolve again. */
@@ -90,7 +132,9 @@ private[sbt] object LibraryManagement {
         import sbt.librarymanagement.LibraryManagementCodec._
         val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
           case (_, Some(out)) if upToDate(inChanged, out) => markAsCached(out)
-          case _                                          => resolve
+          case pair =>
+            log.debug(s""""not up to date. inChanged = $inChanged, force = $force""")
+            resolve
         }
         import scala.util.control.Exception.catching
         catching(classOf[NullPointerException], classOf[OutOfMemoryError])
@@ -150,4 +194,24 @@ private[sbt] object LibraryManagement {
       .withExtraAttributes(m.extraAttributes)
       .withConfigurations(if (confs) m.configurations else None)
       .branch(m.branchName)
+
+  private[this] def transformDetails(
+      ur: UpdateReport,
+      includeCallers: Boolean,
+      includeDetails: Boolean
+  ): UpdateReport = {
+    val crs0 = ur.configurations
+    val crs1 =
+      if (includeDetails) crs0
+      else crs0 map { _.withDetails(Vector()) }
+    val crs2 =
+      if (includeCallers) crs1
+      else
+        crs1 map { cr =>
+          val mrs0 = cr.modules
+          val mrs1 = mrs0 map { _.withCallers(Vector()) }
+          cr.withModules(mrs1)
+        }
+    ur.withConfigurations(crs2)
+  }
 }

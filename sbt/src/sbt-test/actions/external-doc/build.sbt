@@ -1,3 +1,6 @@
+// https://github.com/coursier/coursier/issues/1123
+ThisBuild / useCoursier := false
+
 Seq(
 	autoAPIMappings in ThisBuild := true,
 	publishArtifact in (ThisBuild, packageDoc) := false,

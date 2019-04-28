@@ -29,23 +29,7 @@ object Dependencies {
   private val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
-  private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
-
-  private val libraryManagementImpl = {
-    val lmOrganization =
-      sys.props.get("sbt.build.lm.organization") match {
-        case Some(impl) => impl
-        case _          => "org.scala-sbt"
-      }
-
-    val lmModuleName =
-      sys.props.get("sbt.build.lm.moduleName") match {
-        case Some(impl) => impl
-        case _          => "librarymanagement-ivy"
-      }
-
-    lmOrganization %% lmModuleName % lmVersion
-  }
+  private val libraryManagementImpl = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
   val launcherVersion = "1.0.4"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
@@ -125,6 +109,9 @@ object Dependencies {
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
   def addSbtZincCompileCore(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
+
+  val lmCoursierVersion = "1.1.0-M14-1"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
 
   val sjsonNewScalaJson = Def.setting {
     "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value

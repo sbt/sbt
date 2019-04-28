@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 lazy val check = taskKey[Unit]("Runs the check")
 
 def commonSettings: Seq[Def.Setting[_]] =

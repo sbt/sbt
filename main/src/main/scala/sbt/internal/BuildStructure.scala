@@ -38,6 +38,12 @@ final class BuildStructure(
     case (build, unit) => refs(build, unit.defined.values.toSeq)
   }
   def allProjectRefs(build: URI): Seq[ProjectRef] = refs(build, allProjects(build))
+  def allProjectPairs: Seq[(ResolvedProject, ProjectRef)] =
+    for {
+      (build, unit) <- units.toSeq
+      p: ResolvedProject <- unit.defined.values.toSeq
+    } yield (p, ProjectRef(build, p.id))
+
   val extra: BuildUtil[ResolvedProject] = BuildUtil(root, units, index.keyIndex, data)
   private[this] def refs(build: URI, projects: Seq[ResolvedProject]): Seq[ProjectRef] =
     projects.map { p =>

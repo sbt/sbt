@@ -758,6 +758,28 @@ object Project extends ProjectExtra {
   def updateExtraBuilds(s: State, f: List[URI] => List[URI]): State =
     setExtraBuilds(s, f(extraBuilds(s)))
 
+  // used by Coursier integration
+  private[sbt] def transitiveInterDependencies(
+      state: State,
+      projectRef: ProjectRef
+  ): Seq[ProjectRef] = {
+    def dependencies(map: Map[ProjectRef, Seq[ProjectRef]], id: ProjectRef): Set[ProjectRef] = {
+      def helper(map: Map[ProjectRef, Seq[ProjectRef]], acc: Set[ProjectRef]): Set[ProjectRef] =
+        if (acc.exists(map.contains)) {
+          val (kept, rem) = map.partition { case (k, _) => acc(k) }
+          helper(rem, acc ++ kept.valuesIterator.flatten)
+        } else
+          acc
+      helper(map - id, map.getOrElse(id, Nil).toSet)
+    }
+    val allProjectsDeps: Map[ProjectRef, Seq[ProjectRef]] =
+      (for {
+        (p, ref) <- Project.structure(state).allProjectPairs
+      } yield ref -> p.dependencies.map(_.project)).toMap
+    val deps = dependencies(allProjectsDeps.toMap, projectRef)
+    Project.structure(state).allProjectRefs.filter(p => deps(p))
+  }
+
   object LoadAction extends Enumeration {
     val Return, Current, Plugins = Value
   }

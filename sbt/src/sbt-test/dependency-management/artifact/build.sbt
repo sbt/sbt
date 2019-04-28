@@ -3,8 +3,10 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 lazy val checkFull = taskKey[Unit]("")
 lazy val check = taskKey[Unit]("")
 
-lazy val root = (project in file(".")).
-  settings(
+ThisBuild / useCoursier := false
+
+lazy val root = (project in file("."))
+  .settings(
     ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
     resolvers += (baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }).value,
@@ -34,8 +36,10 @@ def publishedID = org % artifactID % vers artifacts(mainArtifact)
 def retrieveID = org % "test-retrieve" % "2.0"
 
 // check that the test class is on the compile classpath, either because it was compiled or because it was properly retrieved
-def checkTask(classpath: TaskKey[Classpath]) = Def task {
-  val loader = ClasspathUtilities.toLoader((classpath in Compile).value.files, scalaInstance.value.loader)
+def checkTask(classpath: TaskKey[Classpath]) = Def.task {
+  val deps = libraryDependencies.value
+  val cp = (classpath in Compile).value.files
+  val loader = ClasspathUtilities.toLoader(cp, scalaInstance.value.loader)
   try { Class.forName("test.Test", false, loader); () }
-  catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error("Dependency not retrieved properly") }
+  catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error(s"Dependency not retrieved properly: $deps, $cp") }
 }

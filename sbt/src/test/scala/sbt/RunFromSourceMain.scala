@@ -14,7 +14,7 @@ import xsbti._
 import scala.sys.process.Process
 
 object RunFromSourceMain {
-  private val sbtVersion = "1.1.4" // TestBuildInfo.version
+  private val sbtVersion = TestBuildInfo.version
   private val scalaVersion = "2.12.6"
 
   def fork(workingDirectory: File): Process = {

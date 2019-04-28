@@ -450,6 +450,7 @@ object TaskMacro {
 
     def expand(nme: String, tpe: Type, tree: Tree): Converted[c.type] = nme match {
       case WrapInitTaskName         => Converted.Success(wrapInitTask(tree)(c.WeakTypeTag(tpe)))
+      case WrapPreviousName         => Converted.Success(wrapInitTask(tree)(c.WeakTypeTag(tpe)))
       case ParserInput.WrapInitName => Converted.Success(wrapInitParser(tree)(c.WeakTypeTag(tpe)))
       case WrapInitInputName        => Converted.Success(wrapInitInput(tree)(c.WeakTypeTag(tpe)))
       case WrapInputName            => Converted.Success(wrapInput(tree)(c.WeakTypeTag(tpe)))
