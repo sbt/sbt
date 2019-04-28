@@ -40,14 +40,11 @@ private[sbt] object ZincComponentCompiler {
   private[sbt] def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
     def compilerBridgeId(scalaVersion: String) = {
       scalaVersion match {
-        case sc if (sc startsWith "2.10.")       => "compiler-bridge_2.10"
-        case sc if (sc startsWith "2.11.")       => "compiler-bridge_2.11"
-        case sc if (sc startsWith "2.12.")       => "compiler-bridge_2.12"
-        case "2.13.0-M1"                         => "compiler-bridge_2.12"
-        case sc if (sc startsWith "2.13.0-pre-") => "compiler-bridge_2.13.0-M5"
-        case sc if (sc startsWith "2.13.0-M")    => "compiler-bridge_2.13.0-M5"
-        case sc if (sc startsWith "2.13.0-RC")   => "compiler-bridge_2.13.0-M5"
-        case _                                   => "compiler-bridge_2.13"
+        case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
+        case sc if (sc startsWith "2.11.") => "compiler-bridge_2.11"
+        case sc if (sc startsWith "2.12.") => "compiler-bridge_2.12"
+        case "2.13.0-M1"                   => "compiler-bridge_2.12"
+        case _                             => "compiler-bridge_2.13"
       }
     }
     import xsbti.ArtifactInfo.SbtOrganization
