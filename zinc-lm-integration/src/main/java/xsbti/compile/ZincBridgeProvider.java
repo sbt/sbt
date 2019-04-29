@@ -69,11 +69,13 @@ public interface ZincBridgeProvider {
      * @param logger            The logger.
      * @return A compiler bridge provider capable of fetching scala jars and the compiler bridge.
      */
-    public static CompilerBridgeProvider getProvider(File scalaJarsTarget,
-                                                     GlobalLock lock,
-                                                     ComponentProvider componentProvider,
-                                                     DependencyResolution dependencyResolution,
-                                                     Logger logger) {
+    public static CompilerBridgeProvider getProvider(
+        File scalaJarsTarget,
+        GlobalLock lock,
+        ComponentProvider componentProvider,
+        DependencyResolution dependencyResolution,
+        Logger logger
+    ) {
         ZincComponentManager manager = new ZincComponentManager(lock, componentProvider, None$.empty(), logger);
         return ZincComponentCompiler.interfaceProvider(manager, dependencyResolution, scalaJarsTarget);
     }

@@ -68,9 +68,8 @@ abstract class IvyBridgeProviderSpecification extends FlatSpec with Matchers {
       baseDirectory: File,
       ivyHome: File,
       resolvers0: Array[Resolver],
-      log: xsbti.Logger
+      log: xsbti.Logger,
   ): InlineIvyConfiguration = {
-    import sbt.io.syntax._
     val resolvers = resolvers0.toVector
     val chainResolver = ChainedResolver("zinc-chain", resolvers)
     InlineIvyConfiguration()
