@@ -11,9 +11,10 @@ import Configurations._
 
 trait BaseIvySpecification extends AbstractEngineSpec {
   def currentBase: File = new File(".")
-  def currentTarget: File = currentBase / "target" / "ivyhome"
-  def currentManaged: File = currentBase / "target" / "lib_managed"
-  def currentDependency: File = currentBase / "target" / "dependency"
+  def label: String = this.getClass.getSimpleName
+  def currentTarget: File = currentBase / "target" / label / "ivyhome"
+  def currentManaged: File = currentBase / "target" / label / "lib_managed"
+  def currentDependency: File = currentBase / "target" / label / "dependency"
   def defaultModuleId: ModuleID =
     ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile"))
 
