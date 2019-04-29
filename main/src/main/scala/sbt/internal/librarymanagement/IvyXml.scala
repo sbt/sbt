@@ -68,7 +68,7 @@ object IvyXml {
 
     val content0 = rawContent(currentProject, shadedConfigOpt)
     cacheIvyFile.getParentFile.mkdirs()
-    log.info(s"Writing Ivy file $cacheIvyFile")
+    log.debug(s"writing Ivy file $cacheIvyFile")
     Files.write(cacheIvyFile.toPath, content0.getBytes(UTF_8))
 
     // Just writing an empty file here... Are these only used?

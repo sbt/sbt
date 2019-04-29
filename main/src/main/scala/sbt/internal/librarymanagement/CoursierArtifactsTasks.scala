@@ -10,7 +10,7 @@ package internal
 package librarymanagement
 
 import lmcoursier.definitions.{
-  Classifier,
+  Classifier => CClassifier,
   Configuration => CConfiguration,
   Extension => CExtension,
   Publication => CPublication,
@@ -120,7 +120,7 @@ object CoursierArtifactsTasks {
           name,
           CType(artifact.`type`),
           CExtension(artifact.extension),
-          artifact.classifier.fold(Classifier(""))(Classifier(_))
+          artifact.classifier.fold(CClassifier(""))(CClassifier(_))
         )
       }
 
