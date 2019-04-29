@@ -10,7 +10,7 @@ package internal
 
 import sbt.util.Logger
 import sbt.internal.util.JLine
-import sbt.internal.inc.{ ScalaInstance, ZincUtil }
+import sbt.internal.inc.{ ScalaInstance, ZincLmUtil, ZincUtil }
 import xsbti.compile.ClasspathOptionsUtil
 
 object ConsoleProject {
@@ -41,7 +41,7 @@ object ConsoleProject {
           compilerBridgeJar = jar
         )
       case None =>
-        ZincUtil.scalaCompiler(
+        ZincLmUtil.scalaCompiler(
           scalaInstance = scalaInstance,
           classpathOptions = ClasspathOptionsUtil.repl,
           globalLock = launcher.globalLock,

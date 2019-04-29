@@ -89,15 +89,18 @@ def baseSettings: Seq[Setting[_]] =
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
-val mimaSettings = Def settings (
+def sbt10Plus = Seq(
+  "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
+  "1.1.0", "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6",
+  "1.2.0", "1.2.1", /*DOA,*/ "1.2.3", "1.2.4", /*DOA,*/ "1.2.6", "1.2.7", "1.2.8",
+) ++ sbt13Plus
+def sbt13Plus = Seq() // Add sbt 1.3+ stable versions when released
+
+def mimaSettings = mimaSettingsSince(sbt10Plus)
+def mimaSettingsSince(versions: Seq[String]) = Def settings (
   mimaPreviousArtifacts := {
-    Seq(
-      "1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4",
-      "1.1.0", "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6",
-      "1.2.0", "1.2.1", "1.2.3"
-    ).map { v =>
-      organization.value % moduleName.value % v cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
-    }.toSet
+    val crossVersion = if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled
+    versions.map(v => organization.value % moduleName.value % v cross crossVersion).toSet
   },
   mimaBinaryIssueFilters ++= Seq(
     // Changes in the internal package
@@ -425,7 +428,6 @@ lazy val actionsProj = (project in file("main-actions"))
     addSbtCompilerClasspath,
     addSbtCompilerApiInfo,
     addSbtLmCore,
-    addSbtCompilerIvyIntegration,
     addSbtZinc
   )
 
@@ -576,11 +578,25 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     addSbtLmCore
   )
 
+lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
+  .enablePlugins(BuildInfoPlugin)
+  .settings(
+    name := "Zinc LM Integration",
+    testedBaseSettings,
+    buildInfo in Compile := Nil, // Only generate build info for tests
+    BuildInfoPlugin.buildInfoScopedSettings(Test),
+    buildInfoPackage in Test := "sbt.internal.inc",
+    buildInfoObject in Test := "ZincLmIntegrationBuildInfo",
+    buildInfoKeys in Test := List[BuildInfoKey]("zincVersion" -> zincVersion),
+    mimaSettingsSince(sbt13Plus),
+  )
+  .configure(addSbtZincCompileCore, addSbtLmCore, addSbtLmIvyTest)
+
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
   .dependsOn(logicProj, actionsProj, mainSettingsProj, runProj, commandProj, collectionProj,
-    scriptedSbtReduxProj, scriptedPluginProj)
+    scriptedSbtReduxProj, scriptedPluginProj, zincLmIntegrationProj)
   .settings(
     testedBaseSettings,
     name := "Main",
@@ -805,6 +821,7 @@ def allProjects =
     actionsProj,
     commandProj,
     mainSettingsProj,
+    zincLmIntegrationProj,
     mainProj,
     sbtProj,
     bundledLauncherProj,

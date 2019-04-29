@@ -16,7 +16,7 @@ object Dependencies {
       case Some(version) => version
       case _             => "1.3.0-M3"
     }
-  private val zincVersion = "1.3.0-M3"
+  val zincVersion = "1.3.0-M4"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -29,7 +29,7 @@ object Dependencies {
   private val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
-  private val libraryManagementImpl = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
+  private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
   val launcherVersion = "1.0.4"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
@@ -41,9 +41,9 @@ object Dependencies {
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
   private val compilerApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % zincVersion
   private val compilerBridge = "org.scala-sbt" %% "compiler-bridge" % zincVersion
-  private val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
   private val zinc = "org.scala-sbt" %% "zinc" % zincVersion
   private val zincCompile = "org.scala-sbt" %% "zinc-compile" % zincVersion
+  private val zincCompileCore = "org.scala-sbt" %% "zinc-compile-core" % zincVersion
 
   def getSbtModulePath(key: String, name: String) = {
     val localProps = new java.util.Properties()
@@ -58,11 +58,19 @@ object Dependencies {
   lazy val sbtLmPath = getSbtModulePath("sbtlm.path", "sbt/lm")
   lazy val sbtZincPath = getSbtModulePath("sbtzinc.path", "sbt/zinc")
 
-  def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID) =
+  def addSbtModule(
+      p: Project,
+      path: Option[String],
+      projectName: String,
+      moduleId: ModuleID,
+      c: Option[Configuration] = None
+    ) = {
+    val m = moduleId.withConfigurations(c.map(_.name))
     path match {
-      case Some(f) => p dependsOn ProjectRef(file(f), projectName)
+      case Some(f) => p dependsOn ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name))
       case None    => p settings (libraryDependencies += m, dependencyOverrides += m)
     }
+  }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
@@ -84,7 +92,9 @@ object Dependencies {
   def addSbtLmCore(p: Project): Project =
     addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
   def addSbtLmImpl(p: Project): Project =
-    addSbtModule(p, sbtLmPath, "lmImpl", libraryManagementImpl)
+    addSbtModule(p, sbtLmPath, "lmImpl", libraryManagementIvy)
+  def addSbtLmIvyTest(p: Project): Project =
+    addSbtModule(p, sbtLmPath, "lmIvy", libraryManagementIvy, Some(Test))
 
   def addSbtCompilerInterface(p: Project): Project =
     addSbtModule(p, sbtZincPath, "compilerInterface212", compilerInterface)
@@ -94,11 +104,11 @@ object Dependencies {
     addSbtModule(p, sbtZincPath, "zincApiInfo212", compilerApiInfo)
   def addSbtCompilerBridge(p: Project): Project =
     addSbtModule(p, sbtZincPath, "compilerBridge212", compilerBridge)
-  def addSbtCompilerIvyIntegration(p: Project): Project =
-    addSbtModule(p, sbtZincPath, "zincIvyIntegration", compilerIvyIntegration)
   def addSbtZinc(p: Project): Project = addSbtModule(p, sbtZincPath, "zinc", zinc)
   def addSbtZincCompile(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
+  def addSbtZincCompileCore(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
 
   val lmCoursierVersion = "1.1.0-M14-1"
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
