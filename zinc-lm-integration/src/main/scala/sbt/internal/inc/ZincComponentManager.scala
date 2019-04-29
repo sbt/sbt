@@ -14,31 +14,32 @@ import java.util.concurrent.Callable
 
 import sbt.internal.util.FullLogger
 import sbt.io.IO
+import xsbti._
+import xsbti.ArtifactInfo.SbtOrganization
 
 /**
  * A component manager provides access to the pieces of zinc that are distributed as components.
  * Compiler bridge is distributed as a source jar so that it can be compiled against a specific
  * version of Scala.
  *
- * The component manager provides services to install and retrieve components to the local filesystem.
- * This is used for compiled source jars so that the compilation need not be repeated for other projects on the same
- * machine.
+ * The component manager provides services to install and retrieve components to the local
+ * filesystem. This is used for compiled source jars so that the compilation need not be repeated
+ * for other projects on the same machine.
  */
 class ZincComponentManager(
-    globalLock: xsbti.GlobalLock,
-    provider: xsbti.ComponentProvider,
+    globalLock: GlobalLock,
+    provider: ComponentProvider,
     secondaryCacheDir: Option[File],
-    log0: xsbti.Logger
+    log0: Logger,
 ) {
   val log = new FullLogger(log0)
 
   /** Get all of the files for component 'id', throwing an exception if no files exist for the component. */
   def files(id: String)(ifMissing: IfMissing): Iterable[File] = {
-    def notFound = invalid("Could not find required component '" + id + "'")
+    def notFound = invalid(s"Could not find required component '$id'")
     def getOrElse(orElse: => Iterable[File]): Iterable[File] = {
       val existing = provider.component(id)
-      if (existing.isEmpty) orElse
-      else existing
+      if (existing.isEmpty) orElse else existing
     }
 
     def createAndCache = {
@@ -63,12 +64,12 @@ class ZincComponentManager(
     lockLocalCache(getOrElse(fromSecondary))
   }
 
-  /** Get the file for component 'id', throwing an exception if no files or multiple files exist for the component. */
+  /** Get the file for component 'id',
+   *  throwing an exception if no files or multiple files exist for the component. */
   def file(id: String)(ifMissing: IfMissing): File = {
     files(id)(ifMissing).toList match {
       case x :: Nil => x
-      case xs =>
-        invalid("Expected single file for component '" + id + "', found: " + xs.mkString(", "))
+      case xs       => invalid(s"Expected single file for component '$id', found: ${xs.mkString(", ")}")
     }
   }
 
@@ -76,15 +77,14 @@ class ZincComponentManager(
   def define(id: String, files: Iterable[File]): Unit =
     lockLocalCache(provider.defineComponent(id, files.toSeq.toArray))
 
-  /** This is used to lock the local cache in project/boot/.  By checking the local cache first, we can avoid grabbing a global lock. */
+  /** This is used to lock the local cache in project/boot/.
+   *  By checking the local cache first, we can avoid grabbing a global lock. */
   private def lockLocalCache[T](action: => T): T = lock(provider.lockFile)(action)
 
-  /** This is used to ensure atomic access to components in the global Ivy cache.*/
+  /** This is used to ensure atomic access to components in the global Ivy cache. */
   private def lockSecondaryCache[T](action: => T): Option[T] =
-    secondaryCacheDir map { dir =>
-      val lockFile = new File(dir, ".sbt.cache.lock")
-      lock(lockFile)(action)
-    }
+    secondaryCacheDir.map(dir => lock(new File(dir, ".sbt.cache.lock"))(action))
+
   private def lock[T](file: File)(action: => T): T =
     globalLock(file, new Callable[T] { def call = action })
 
@@ -92,8 +92,8 @@ class ZincComponentManager(
 
   /** Retrieve the file for component 'id' from the secondary cache. */
   private def update(id: String): Unit = {
-    secondaryCacheDir foreach { dir =>
-      val file = seondaryCacheFile(id, dir)
+    secondaryCacheDir.foreach { dir =>
+      val file = secondaryCacheFile(id, dir)
       if (file.exists) {
         define(id, Seq(file))
       }
@@ -103,35 +103,20 @@ class ZincComponentManager(
   /** Install the files for component 'id' to the secondary cache. */
   private def cacheToSecondaryCache(id: String): Unit = {
     val fromPrimaryCache = file(id)(IfMissing.fail)
-    secondaryCacheDir match {
-      case Some(dir) =>
-        val file = seondaryCacheFile(id, dir)
-        IO.copyFile(fromPrimaryCache, file)
-      case _ => ()
+    secondaryCacheDir.foreach { dir =>
+      IO.copyFile(fromPrimaryCache, secondaryCacheFile(id, dir))
     }
-    ()
   }
-  private val sbtOrg = xsbti.ArtifactInfo.SbtOrganization
-  private def seondaryCacheFile(id: String, dir: File): File = {
-    val fileName = id + "-" + ZincComponentManager.stampedVersion + ".jar"
-    new File(new File(dir, sbtOrg), fileName)
+
+  private def secondaryCacheFile(id: String, dir: File): File = {
+    new File(new File(dir, SbtOrganization), s"$id-${ZincComponentManager.stampedVersion}.jar")
   }
 }
 
 object ZincComponentManager {
   lazy val (version, timestamp) = {
-    val properties = new java.util.Properties
-    val propertiesStream = versionResource.openStream
-    try {
-      properties.load(propertiesStream)
-    } finally {
-      propertiesStream.close()
-    }
+    val properties = ResourceLoader.getPropertiesFor("/incrementalcompiler.version.properties")
     (properties.getProperty("version"), properties.getProperty("timestamp"))
   }
-  lazy val stampedVersion = version + "_" + timestamp
-
-  import java.net.URL
-  private def versionResource: URL =
-    getClass.getResource("/incrementalcompiler.version.properties")
+  lazy val stampedVersion = s"${version}_$timestamp"
 }

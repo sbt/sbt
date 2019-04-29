@@ -11,24 +11,24 @@ import java.util.Properties
 
 /** Defines utilities to load Java properties from the JVM. */
 private[inc] object ResourceLoader {
-  def getPropertiesFor(resource: String, classLoader: ClassLoader): Properties = {
-    val properties = new java.util.Properties
+  def getPropertiesFor(resource: String): Properties = {
+    val properties = new Properties
     val propertiesStream = getClass.getResource(resource).openStream
     try {
       properties.load(propertiesStream)
-    } finally {
-      propertiesStream.close()
-    }
+    } finally propertiesStream.close()
     properties
   }
 
   def getSafePropertiesFor(resource: String, classLoader: ClassLoader): Properties = {
     val properties = new Properties
     val propertiesStream = classLoader.getResourceAsStream(resource)
-    try {
-      properties.load(propertiesStream)
-    } catch { case _: Exception => } finally {
-      if (propertiesStream ne null) propertiesStream.close()
+    if (propertiesStream ne null) {
+      try {
+        properties.load(propertiesStream)
+      } catch {
+        case _: Exception =>
+      } finally propertiesStream.close()
     }
     properties
   }
