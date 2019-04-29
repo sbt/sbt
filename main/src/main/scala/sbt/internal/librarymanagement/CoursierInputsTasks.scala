@@ -9,21 +9,20 @@ package sbt
 package internal
 package librarymanagement
 
+import java.net.URL
 import sbt.librarymanagement._
 import sbt.util.Logger
 import sbt.Keys._
 import lmcoursier.definitions.{
   Attributes => CAttributes,
-  Classifier,
+  Classifier => CClassifier,
   Configuration => CConfiguration,
   Dependency => CDependency,
-  // Extension => CExtension,
   Info => CInfo,
-  Module,
-  ModuleName,
+  Module => CModule,
+  ModuleName => CModuleName,
   Organization => COrganization,
   Project => CProject,
-  // Publication => CPublication,
   Type => CType
 }
 import lmcoursier.credentials.DirectCredentials
@@ -44,6 +43,7 @@ private[sbt] object CoursierInputsTasks {
       configurations: Seq[sbt.librarymanagement.Configuration],
       sv: String,
       sbv: String,
+      auOpt: Option[URL],
       log: Logger
   ): CProject = {
 
@@ -51,47 +51,45 @@ private[sbt] object CoursierInputsTasks {
 
     val configMap = Inputs.configExtends(configurations)
 
-    val proj = FromSbt.project(
+    val proj0 = FromSbt.project(
       projId,
       dependencies,
       configMap,
       sv,
       sbv
     )
-
-    proj.copy(
-      dependencies = proj.dependencies.map {
+    val proj1 = proj0.copy(
+      dependencies = proj0.dependencies.map {
         case (config, dep) =>
           (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
       }
     )
+    auOpt match {
+      case Some(au) =>
+        val props = proj1.properties :+ ("info.apiURL" -> au.toString)
+        proj1.copy(properties = props)
+      case _ => proj1
+    }
   }
 
   private[sbt] def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
     Def.task {
-      val auOpt = apiURL.value
-      val proj = coursierProject0(
+      coursierProject0(
         projectID.value,
         allDependencies.value,
         allExcludeDependencies.value,
-        // should projectID.configurations be used instead?
         ivyConfigurations.value,
         scalaVersion.value,
         scalaBinaryVersion.value,
+        apiURL.value,
         streams.value.log
       )
-      auOpt match {
-        case Some(au) =>
-          val props = proj.properties :+ ("info.apiURL" -> au.toString)
-          proj.copy(properties = props)
-        case _ => proj
-      }
     }
 
-  private def moduleFromIvy(id: org.apache.ivy.core.module.id.ModuleRevisionId): Module =
-    Module(
+  private def moduleFromIvy(id: org.apache.ivy.core.module.id.ModuleRevisionId): CModule =
+    CModule(
       COrganization(id.getOrganisation),
-      ModuleName(id.getName),
+      CModuleName(id.getName),
       id.getExtraAttributes.asScala.map {
         case (k0, v0) => k0.asInstanceOf[String] -> v0.asInstanceOf[String]
       }.toMap
@@ -107,7 +105,7 @@ private[sbt] object CoursierInputsTasks {
       // we're ignoring rule.getConfigurations and rule.getMatcher here
       val modId = rule.getId.getModuleId
       // we're ignoring modId.getAttributes here
-      (COrganization(modId.getOrganisation), ModuleName(modId.getName))
+      (COrganization(modId.getOrganisation), CModuleName(modId.getName))
     }.toSet
 
     val configurations = desc.getModuleConfigurations.toVector
@@ -128,13 +126,13 @@ private[sbt] object CoursierInputsTasks {
       val artifacts = desc.getAllDependencyArtifacts
 
       val m = artifacts.toVector.flatMap { art =>
-        val attr = CAttributes(CType(art.getType), Classifier(""))
+        val attr = CAttributes(CType(art.getType), CClassifier(""))
         art.getConfigurations.map(CConfiguration(_)).toVector.map { conf =>
           conf -> attr
         }
       }.toMap
 
-      c => m.getOrElse(c, CAttributes(CType(""), Classifier("")))
+      c => m.getOrElse(c, CAttributes(CType(""), CClassifier("")))
     }
 
     configurations.map {
@@ -191,10 +189,9 @@ private[sbt] object CoursierInputsTasks {
   private[sbt] def coursierFallbackDependenciesTask
       : Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
     Def.taskDyn {
-      val state = sbt.Keys.state.value
-      val projectRef = sbt.Keys.thisProjectRef.value
-
-      val projects = Project.transitiveInterDependencies(state, projectRef)
+      val s = state.value
+      val projectRef = thisProjectRef.value
+      val projects = Project.transitiveInterDependencies(s, projectRef)
 
       Def.task {
         val allDeps =

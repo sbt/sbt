@@ -120,9 +120,9 @@ private[sbt] object CoursierRepositoriesTasks {
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
     Def.taskDyn {
-      val state = sbt.Keys.state.value
-      val projectRef = sbt.Keys.thisProjectRef.value
-      val projects = Project.transitiveInterDependencies(state, projectRef)
+      val s = state.value
+      val projectRef = thisProjectRef.value
+      val projects = Project.transitiveInterDependencies(s, projectRef)
       Def.task {
         csrResolvers.all(ScopeFilter(inProjects(projectRef +: projects: _*))).value.flatten
       }
