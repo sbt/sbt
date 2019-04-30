@@ -8,6 +8,7 @@
 package sbt.internal.inc
 
 import java.io.File
+import java.net.URLClassLoader
 
 import sbt.io.IO
 import sbt.io.syntax._
@@ -59,6 +60,8 @@ abstract class IvyBridgeProviderSpecification extends FlatSpec with Matchers {
     val provider = getZincProvider(bridge1, targetDir, log)
     val scalaInstance = provider.fetchScalaInstance(scalaVersion, log)
     val bridge = provider.fetchCompiledBridge(scalaInstance, log)
+    scalaInstance.loader.asInstanceOf[URLClassLoader].close()
+    scalaInstance.loaderLibraryOnly.asInstanceOf[URLClassLoader].close()
     val target = targetDir / s"target-bridge-$scalaVersion.jar"
     IO.copyFile(bridge, target)
     target
