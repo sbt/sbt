@@ -1,1 +1,1 @@
-addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.2.6")
+addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.3.1")
