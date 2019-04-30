@@ -5,7 +5,7 @@ val foo = taskKey[Seq[File]]("Retrieve Foo.txt")
 
 foo / fileInputs += baseDirectory.value ** "*.txt"
 
-foo := (foo / allInputPaths).value.map(_.toFile)
+foo := (foo / allInputFiles).value.map(_.toFile)
 
 val checkFoo = taskKey[Unit]("Check that the Foo.txt file is retrieved")
 
@@ -16,7 +16,7 @@ val bar = taskKey[Seq[File]]("Retrieve Bar.md")
 
 bar / fileInputs += baseDirectory.value / "base/subdir/nested-subdir" * "*.md"
 
-bar := (bar / allInputPaths).value.map(_.toFile)
+bar := (bar / allInputFiles).value.map(_.toFile)
 
 val checkBar = taskKey[Unit]("Check that the Bar.md file is retrieved")
 

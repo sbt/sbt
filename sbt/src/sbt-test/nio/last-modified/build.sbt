@@ -7,8 +7,10 @@ fileInputTask / fileInputs += (baseDirectory.value / "base").toGlob / "*.md"
 fileInputTask / inputFileStamper := sbt.nio.FileStamper.LastModified
 
 fileInputTask := Def.taskDyn {
-  if ((fileInputTask / changedInputFiles).value.nonEmpty) Def.task(assert(true))
-  else Def.task(assert(false))
+  (fileInputTask / changedInputFiles).value match {
+    case Some(ChangedFiles(_, _, u)) if u.nonEmpty => Def.task(assert(true))
+    case None => Def.task(assert(false))
+  }
 }.value
 
 val setLastModified = taskKey[Unit]("Reset the last modified time")

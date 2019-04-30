@@ -18,11 +18,13 @@ import sbt.internal.{ Clean, Continuous, DynamicInput, SettingsGraph }
 import sbt.nio.FileStamp.{ fileStampJsonFormatter, pathJsonFormatter, _ }
 import sbt.nio.FileStamper.{ Hash, LastModified }
 import sbt.nio.Keys._
+import sbt.nio.file.ChangedFiles
 import sbt.std.TaskExtra._
 import sjsonnew.JsonFormat
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.collection.immutable.VectorBuilder
 
 private[sbt] object Settings {
   private[sbt] def inject(transformed: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
@@ -142,15 +144,8 @@ private[sbt] object Settings {
         (transitiveClasspathDependency in scopedKey.scope := { () }) :: Nil
       case allInputFiles.key     => allFilesImpl(scopedKey) :: Nil
       case changedInputFiles.key => changedInputFilesImpl(scopedKey)
-      case changedOutputPaths.key =>
-        changedFilesImpl(scopedKey, changedOutputPaths, outputFileStamps)
-      case modifiedInputFiles.key => modifiedInputFilesImpl(scopedKey)
-      case modifiedOutputPaths.key =>
-        modifiedFilesImpl(scopedKey, modifiedOutputPaths, outputFileStamps)
-      case removedInputFiles.key =>
-        removedFilesImpl(scopedKey, removedInputFiles, allInputPaths) :: Nil
-      case removedOutputPaths.key =>
-        removedFilesImpl(scopedKey, removedOutputPaths, allOutputPaths) :: Nil
+      case changedOutputFiles.key =>
+        changedFilesImpl(scopedKey, changedOutputFiles, outputFileStamps)
       case pathToFileStamp.key => stamper(scopedKey) :: Nil
       case _                   => Nil
     }
@@ -211,26 +206,13 @@ private[sbt] object Settings {
       }
       dynamicInputs.foreach(_ ++= inputs.map(g => DynamicInput(g, stamper, forceTrigger)))
       view.list(inputs)
-    }) :: fileStamps(scopedKey) :: allPathsImpl(scopedKey) :: Nil
+    }) :: fileStamps(scopedKey) :: allFilesImpl(scopedKey) :: Nil
   }
 
   private[this] val taskClass = classOf[Task[_]]
   private[this] val seqClass = classOf[Seq[_]]
   private[this] val fileClass = classOf[java.io.File]
   private[this] val pathClass = classOf[java.nio.file.Path]
-
-  /**
-   * Returns all of the paths described by a glob with no additional filtering.
-   * No additional filtering is performed.
-   *
-   * @param scopedKey the key whose file inputs we are seeking
-   * @return a task definition that retrieves the input files and their attributes scoped to a
-   *         particular task.
-   */
-  private[this] def allPathsImpl(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
-    addTaskDefinition(Keys.allInputPaths in scopedKey.scope := {
-      (Keys.allInputPathsAndAttributes in scopedKey.scope).value.map(_._1)
-    })
 
   /**
    * Returns all of the paths for the regular files described by a glob. Directories and hidden
@@ -265,14 +247,39 @@ private[sbt] object Settings {
       }) :: Nil
   private[this] def changedFilesImpl(
       scopedKey: Def.ScopedKey[_],
-      changeKey: TaskKey[Seq[Path]],
+      changeKey: TaskKey[Option[ChangedFiles]],
       stampKey: TaskKey[Seq[(Path, FileStamp)]]
   ): Def.Setting[_] =
     addTaskDefinition(changeKey in scopedKey.scope := {
       val current = (stampKey in scopedKey.scope).value
       (stampKey in scopedKey.scope).previous match {
-        case Some(previous) => (current diff previous).map(_._1)
-        case None           => current.map(_._1)
+        case Some(previous) =>
+          val createdBuilder = new VectorBuilder[Path]
+          val deletedBuilder = new VectorBuilder[Path]
+          val updatedBuilder = new VectorBuilder[Path]
+          val currentMap = current.toMap
+          val prevMap = previous.toMap
+          current.foreach {
+            case (path, currentStamp) =>
+              prevMap.get(path) match {
+                case Some(oldStamp) => if (oldStamp != currentStamp) updatedBuilder += path
+                case None           => createdBuilder += path
+              }
+          }
+          previous.foreach {
+            case (path, _) =>
+              if (currentMap.get(path).isEmpty) deletedBuilder += path
+          }
+          val created = createdBuilder.result()
+          val deleted = deletedBuilder.result()
+          val updated = updatedBuilder.result()
+          if (created.isEmpty && deleted.isEmpty && updated.isEmpty) {
+            None
+          } else {
+            val cf = ChangedFiles(created = created, deleted = deleted, updated = updated)
+            Some(cf)
+          }
+        case None => None
       }
     })
 
@@ -326,7 +333,7 @@ private[sbt] object Settings {
     Vector(allOutputPathsImpl(scope), outputFileStampsImpl(scope)) ++ cleanImpl(taskKey)
   }
   private[this] def allOutputPathsImpl(scope: Scope): Def.Setting[_] =
-    addTaskDefinition(allOutputPaths in scope := {
+    addTaskDefinition(allOutputFiles in scope := {
       val fileOutputGlobs = (fileOutputs in scope).value
       val allFileOutputs = fileTreeView.value.list(fileOutputGlobs).map(_._1)
       val dynamicOutputs = (dynamicFileOutputs in scope).value
@@ -338,62 +345,7 @@ private[sbt] object Settings {
         case LastModified => FileStamp.lastModified
         case Hash         => FileStamp.hash
       }
-      (allOutputPaths in scope).value.map(p => p -> stamper(p))
-    })
-
-  /**
-   * Returns all of the regular files whose stamp has changed since the last time the
-   * task was evaluated. The result includes modified files but neither new nor deleted
-   * files nor files whose stamp has not changed since the previous run. Directories and
-   * hidden files are excluded.
-   *
-   * @param scopedKey the key whose modified files we are seeking
-   * @return a task definition that retrieves the changed input files scoped to the key.
-   */
-  private[this] def modifiedInputFilesImpl(scopedKey: Def.ScopedKey[_]): Seq[Def.Setting[_]] =
-    modifiedFilesImpl(scopedKey, modifiedInputFiles, inputFileStamps) ::
-      (watchForceTriggerOnAnyChange in scopedKey.scope := {
-        (watchForceTriggerOnAnyChange in scopedKey.scope).?.value match {
-          case Some(t) => t
-          case None    => false
-        }
-      }) :: Nil
-
-  private[this] def modifiedFilesImpl(
-      scopedKey: Def.ScopedKey[_],
-      modifiedKey: TaskKey[Seq[Path]],
-      stampKey: TaskKey[Seq[(Path, FileStamp)]]
-  ): Def.Setting[_] =
-    addTaskDefinition(modifiedKey in scopedKey.scope := {
-      val current = (stampKey in scopedKey.scope).value
-      (stampKey in scopedKey.scope).previous match {
-        case Some(previous) =>
-          val previousPathSet = previous.view.map(_._1).toSet
-          (current diff previous).collect { case (p, _) if previousPathSet(p) => p }
-        case None => current.map(_._1)
-      }
-    })
-
-  /**
-   * Returns all of the files that have been removed since the previous run.
-   * task was evaluated. The result includes modified files but neither new nor deleted
-   * files nor files whose stamp has not changed since the previous run. Directories and
-   * hidden files are excluded
-   *
-   * @param scopedKey the key whose removed files we are seeking
-   * @return a task definition that retrieves the changed input files scoped to the key.
-   */
-  private[this] def removedFilesImpl(
-      scopedKey: Def.ScopedKey[_],
-      removeKey: TaskKey[Seq[Path]],
-      allKey: TaskKey[Seq[Path]]
-  ): Def.Setting[_] =
-    addTaskDefinition(removeKey in scopedKey.scope := {
-      val current = (allKey in scopedKey.scope).value
-      (allKey in scopedKey.scope).previous match {
-        case Some(previous) => previous diff current
-        case None           => Nil
-      }
+      (allOutputFiles in scope).value.map(p => p -> stamper(p))
     })
 
   /**

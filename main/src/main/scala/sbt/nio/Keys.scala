@@ -16,7 +16,7 @@ import sbt.internal.DynamicInput
 import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
-import sbt.nio.file.{ FileAttributes, FileTreeView, Glob }
+import sbt.nio.file.{ ChangedFiles, FileAttributes, FileTreeView, Glob }
 import sbt.{ Def, InputKey, State, StateTransform }
 
 import scala.concurrent.duration.FiniteDuration
@@ -24,44 +24,27 @@ import scala.concurrent.duration.FiniteDuration
 object Keys {
   val allInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
-  val allInputPaths = taskKey[Seq[Path]](
-    "All of the file inputs for a task with no filters applied. Regular files and directories are included. Excludes hidden files"
-  )
-  val changedInputFiles =
-    taskKey[Seq[Path]](
-      "All of the file inputs for a task that have changed since the last run. Includes new and modified files but excludes deleted files."
-    )
-  val modifiedInputFiles =
-    taskKey[Seq[Path]](
-      "All of the file inputs for a task that have changed since the last run. Excludes new files. Files are considered modified based on either the last modified time or the file stamp for the file."
-    )
-  val removedInputFiles =
-    taskKey[Seq[Path]]("All of the file inputs for a task that have changed since the last run.")
+  val changedInputFiles = taskKey[Option[ChangedFiles]]("The changed files for a task")
   val fileInputs = settingKey[Seq[Glob]](
     "The file globs that are used by a task. This setting will generally be scoped per task. It will also be used to determine the sources to watch during continuous execution."
   )
-  val fileOutputs = settingKey[Seq[Glob]]("Describes the output files of a task.")
-  val allOutputPaths =
-    taskKey[Seq[Path]]("All of the file output for a task with no filters applied.")
-  val changedOutputPaths =
-    taskKey[Seq[Path]]("All of the task file outputs that have changed since the last run.")
-  val modifiedOutputPaths =
-    taskKey[Seq[Path]](
-      "All of the task file outputs that have been modified since the last run. Excludes new files."
-    )
-  val removedOutputPaths =
-    taskKey[Seq[Path]](
-      "All of the output paths that have been removed since the last run."
-    )
-
   val inputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
+
+  val fileOutputs = settingKey[Seq[Glob]]("Describes the output files of a task.")
+  val allOutputFiles =
+    taskKey[Seq[Path]]("All of the file output for a task excluding directories and hidden files.")
+  val changedOutputFiles =
+    taskKey[Option[ChangedFiles]]("The files that have changed since the last task run.")
   val outputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
+
   val fileTreeView =
     taskKey[FileTreeView.Nio[FileAttributes]]("A view of the local file system tree")
+
+  // watch related settings
   val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration](
     "Wall clock Duration for which a FileEventMonitor will store anti-entropy events. This prevents spurious triggers when a task takes a long time to run. Higher values will consume more memory but make spurious triggers less likely."
   ).withRank(BMinusSetting)

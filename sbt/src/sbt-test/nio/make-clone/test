@@ -1,25 +1,25 @@
 > executeMain 1
 
-#> executeMain 1
+> checkDirectoryContents out/main main.out
 
-#> compileLib / clean
+> compileMain / clean
 
-#> linkLib / clean
+> checkDirectoryContents out/main empty
 
-#> executeMain 1 2 3
+> checkDirectoryContents out/lib libfoo*
 
-#> compileLib / clean
+> linkLib / clean
 
-#> executeMain 2 3 4
+> checkDirectoryContents out/lib empty
 
-#> compileMain / clean
+> executeMain 1
 
-#> executeMain 4 5 6
+> checkDirectoryContents out/main main.out
 
-#> clean
+> checkDirectoryContents out/lib libfoo*
 
-#> executeMain 4
+> checkOutput 2 8
 
-#> compileLib / clean
+$ copy-file changes/lib.c src/lib/lib.c
 
-#> executeMain 3
+> checkOutput 2 4

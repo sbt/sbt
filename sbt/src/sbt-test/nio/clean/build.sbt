@@ -1,18 +1,24 @@
+import java.nio.file.Path
+
 import sjsonnew.BasicJsonProtocol._
 
 val copyFile = taskKey[Int]("dummy task")
 copyFile / fileInputs += baseDirectory.value.toGlob / "base" / "*.txt"
 copyFile / fileOutputs += baseDirectory.value.toGlob / "out" / "*.txt"
+copyFile / target := baseDirectory.value / "out"
 
 copyFile := Def.task {
   val prev = copyFile.previous
+  val changes: Option[Seq[Path]] = (copyFile / changedInputFiles).value.map {
+    case ChangedFiles(c, _, u) => c ++ u
+  }
   prev match {
-    case Some(v: Int) if (copyFile / changedInputFiles).value.isEmpty => v
+    case Some(v: Int) if changes.isEmpty => v
     case _ =>
-      (copyFile / changedInputFiles).value.foreach { p =>
-        val outdir = baseDirectory.value / "out"
-        IO.createDirectory(baseDirectory.value / "out")
-        IO.copyFile(p.toFile, outdir / p.getFileName.toString)
+      changes.getOrElse((copyFile / allInputFiles).value).foreach { p =>
+        val outDir = baseDirectory.value / "out"
+        IO.createDirectory(outDir)
+        IO.copyFile(p.toFile, outDir / p.getFileName.toString)
       }
       prev.map(_ + 1).getOrElse(1)
   }

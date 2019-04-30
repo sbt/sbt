@@ -1,5 +1,3 @@
-> fileInputTask
-
 -> fileInputTask
 
 $ copy-file changes/Bar.md base/Bar.md

@@ -51,3 +51,9 @@ $ copy-file changes/Foo.txt base/Foo.txt
 > checkOutDirectoryIsEmpty
 
 > checkCount 0
+
+> copyFile / allOutputFiles
+
+> checkCount 1
+
+> checkOutDirectoryHasFile

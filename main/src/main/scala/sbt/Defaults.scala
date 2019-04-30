@@ -452,7 +452,7 @@ object Defaults extends BuildCommon {
       }
       unmanagedResourceDirectories.value.map(_ ** filter)
     },
-    unmanagedResources := (unmanagedResources / allInputPaths).value.map(_.toFile),
+    unmanagedResources := (unmanagedResources / allInputFiles).value.map(_.toFile),
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
