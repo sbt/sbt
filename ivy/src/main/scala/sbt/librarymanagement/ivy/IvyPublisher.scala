@@ -14,14 +14,18 @@ class IvyPublisher private[sbt] (val ivySbt: IvySbt) extends PublisherInterface 
     new Module(moduleSetting)
   }
 
-  override def makePomFile(module: ModuleDescriptor,
-                           configuration: MakePomConfiguration,
-                           log: Logger): File =
+  override def makePomFile(
+      module: ModuleDescriptor,
+      configuration: MakePomConfiguration,
+      log: Logger
+  ): File =
     IvyActions.makePomFile(toModule(module), configuration, log)
 
-  override def publish(module: ModuleDescriptor,
-                       configuration: PublishConfiguration,
-                       log: Logger): Unit =
+  override def publish(
+      module: ModuleDescriptor,
+      configuration: PublishConfiguration,
+      log: Logger
+  ): Unit =
     IvyActions.publish(toModule(module), configuration, log)
 
   private[sbt] def toModule(module: ModuleDescriptor): Module =

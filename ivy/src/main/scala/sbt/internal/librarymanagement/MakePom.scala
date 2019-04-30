@@ -137,27 +137,27 @@ class MakePom(val log: Logger) {
   ): XNode =
     (<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
        <modelVersion>4.0.0</modelVersion>
-       { makeModuleID(module) }
-       <name>{ moduleInfo.nameFormal }</name>
-       { makeStartYear(moduleInfo) }
-       { makeOrganization(moduleInfo) }
-       { makeScmInfo(moduleInfo) }
-       { makeDeveloperInfo(moduleInfo) }
-       { extra }
+       {makeModuleID(module)}
+       <name>{moduleInfo.nameFormal}</name>
+       {makeStartYear(moduleInfo)}
+       {makeOrganization(moduleInfo)}
+       {makeScmInfo(moduleInfo)}
+       {makeDeveloperInfo(moduleInfo)}
+       {extra}
        {
-         val deps = depsInConfs(module, configurations)
-         makeProperties(module, deps) ++
-           makeDependencies(deps, includeTypes, module.getAllExcludeRules)
-       }
-       { makeRepositories(ivy.getSettings, allRepositories, filterRepositories) }
+      val deps = depsInConfs(module, configurations)
+      makeProperties(module, deps) ++
+        makeDependencies(deps, includeTypes, module.getAllExcludeRules)
+    }
+       {makeRepositories(ivy.getSettings, allRepositories, filterRepositories)}
      </project>)
 
   def makeModuleID(module: ModuleDescriptor): NodeSeq = {
     val mrid = moduleDescriptor(module)
     val a: NodeSeq =
-      (<groupId>{ mrid.getOrganisation }</groupId>
-       <artifactId>{ mrid.getName }</artifactId>
-       <packaging>{ packaging(module) }</packaging>)
+      (<groupId>{mrid.getOrganisation}</groupId>
+       <artifactId>{mrid.getName}</artifactId>
+       <packaging>{packaging(module)}</packaging>)
     val b: NodeSeq =
       ((description(module.getDescription) ++
         homePage(module.getHomePage) ++
@@ -168,32 +168,32 @@ class MakePom(val log: Logger) {
 
   def makeStartYear(moduleInfo: ModuleInfo): NodeSeq =
     moduleInfo.startYear match {
-      case Some(y) => <inceptionYear>{ y }</inceptionYear>
+      case Some(y) => <inceptionYear>{y}</inceptionYear>
       case _       => NodeSeq.Empty
     }
   def makeOrganization(moduleInfo: ModuleInfo): NodeSeq = {
     <organization>
-      <name>{ moduleInfo.organizationName }</name>
+      <name>{moduleInfo.organizationName}</name>
       {
-        moduleInfo.organizationHomepage match {
-          case Some(h)=> <url>{ h }</url>
-          case _   => NodeSeq.Empty
-        }
+      moduleInfo.organizationHomepage match {
+        case Some(h) => <url>{h}</url>
+        case _       => NodeSeq.Empty
       }
+    }
     </organization>
   }
   def makeScmInfo(moduleInfo: ModuleInfo): NodeSeq = {
     moduleInfo.scmInfo match {
       case Some(s) =>
         <scm>
-          <url>{ s.browseUrl }</url>
-          <connection>{ s.connection }</connection>
+          <url>{s.browseUrl}</url>
+          <connection>{s.connection}</connection>
           {
-            s.devConnection match {
-              case Some(d)=> <developerConnection>{ d }</developerConnection>
-              case _=> NodeSeq.Empty
-            }
+          s.devConnection match {
+            case Some(d) => <developerConnection>{d}</developerConnection>
+            case _       => NodeSeq.Empty
           }
+        }
         </scm>
       case _ => NodeSeq.Empty
     }
@@ -202,20 +202,20 @@ class MakePom(val log: Logger) {
     if (moduleInfo.developers.nonEmpty) {
       <developers>
         {
-          moduleInfo.developers.map { developer: Developer =>
-            <developer>
-              <id>{ developer.id }</id>
-              <name>{ developer.name }</name>
-              <url>{ developer.url }</url>
+        moduleInfo.developers.map { developer: Developer =>
+          <developer>
+              <id>{developer.id}</id>
+              <name>{developer.name}</name>
+              <url>{developer.url}</url>
               {
-                developer.email match {
-                    case "" | null => NodeSeq.Empty
-                    case e         => <email>{ e }</email>
-                }
-              }
-            </developer>
+            developer.email match {
+              case "" | null => NodeSeq.Empty
+              case e         => <email>{e}</email>
+            }
           }
+            </developer>
         }
+      }
       </developers>
     } else NodeSeq.Empty
   }
@@ -232,7 +232,8 @@ class MakePom(val log: Logger) {
       if (k == PomExtraDependencyAttributes.ExtraAttributesKey) xmlSpacePreserve
       else scala.xml.Null
     <properties> {
-      for ((key, value) <- extra) yield (<x>{ value }</x>).copy(label = key, attributes = _extraAttributes(key))
+      for ((key, value) <- extra)
+        yield (<x>{value}</x>).copy(label = key, attributes = _extraAttributes(key))
     } </properties>
   }
 
@@ -244,18 +245,34 @@ class MakePom(val log: Logger) {
   def xmlSpacePreserve = new PrefixedAttribute("xml", "space", "preserve", scala.xml.Null)
 
   def description(d: String) =
-    if ((d eq null) || d.isEmpty) NodeSeq.Empty else <description>{ d }</description>
+    if ((d eq null) || d.isEmpty) NodeSeq.Empty
+    else
+      <description>{
+        d
+      }</description>
   def licenses(ls: Array[License]) =
-    if (ls == null || ls.isEmpty) NodeSeq.Empty else <licenses>{ ls.map(license) }</licenses>
+    if (ls == null || ls.isEmpty) NodeSeq.Empty
+    else
+      <licenses>{
+        ls.map(license)
+      }</licenses>
   def license(l: License) =
     <license>
-      <name>{ l.getName }</name>
-      <url>{ l.getUrl }</url>
+      <name>{l.getName}</name>
+      <url>{l.getUrl}</url>
       <distribution>repo</distribution>
     </license>
-  def homePage(homePage: String) = if (homePage eq null) NodeSeq.Empty else <url>{ homePage }</url>
+  def homePage(homePage: String) =
+    if (homePage eq null) NodeSeq.Empty
+    else
+      <url>{
+        homePage
+      }</url>
   def revision(version: String) =
-    if (version ne null) <version>{ version }</version> else NodeSeq.Empty
+    if (version ne null) <version>{
+      version
+    }</version>
+    else NodeSeq.Empty
   def packaging(module: ModuleDescriptor) =
     module.getAllArtifacts match {
       case Array()  => "pom"
@@ -286,7 +303,9 @@ class MakePom(val log: Logger) {
       NodeSeq.Empty
     else
       <dependencies>
-        { dependencies.map(makeDependency(_, includeTypes, excludes)) }
+        {
+        dependencies.map(makeDependency(_, includeTypes, excludes))
+      }
       </dependencies>
 
   @deprecated("Use `makeDependency` variant which takes excludes", "0.13.9")
@@ -360,14 +379,14 @@ class MakePom(val log: Logger) {
   ): Elem = {
     val mrid = dependency.getDependencyRevisionId
     <dependency>
-      <groupId>{ mrid.getOrganisation }</groupId>
-      <artifactId>{ mrid.getName }</artifactId>
-      <version>{ makeDependencyVersion(mrid.getRevision) }</version>
-      { scopeElem(scope) }
-      { optionalElem(optional) }
-      { classifierElem(classifier) }
-      { typeElem(tpe) }
-      { exclusions(dependency, excludes) }
+      <groupId>{mrid.getOrganisation}</groupId>
+      <artifactId>{mrid.getName}</artifactId>
+      <version>{makeDependencyVersion(mrid.getRevision)}</version>
+      {scopeElem(scope)}
+      {optionalElem(optional)}
+      {classifierElem(classifier)}
+      {typeElem(tpe)}
+      {exclusions(dependency, excludes)}
     </dependency>
   }
 
@@ -385,7 +404,7 @@ class MakePom(val log: Logger) {
     }
   def typeElem(tpe: Option[String]): NodeSeq =
     tpe match {
-      case Some(t) => <type>{ t }</type>
+      case Some(t) => <type>{t}</type>
       case None    => NodeSeq.Empty
     }
 
@@ -393,7 +412,7 @@ class MakePom(val log: Logger) {
     Option(artifact.getExtraAttribute("classifier"))
   def classifierElem(classifier: Option[String]): NodeSeq =
     classifier match {
-      case Some(c) => <classifier>{ c }</classifier>
+      case Some(c) => <classifier>{c}</classifier>
       case None    => NodeSeq.Empty
     }
 
@@ -404,7 +423,7 @@ class MakePom(val log: Logger) {
   }
   def scopeElem(scope: Option[String]): NodeSeq = scope match {
     case None | Some(Configurations.Compile.name) => NodeSeq.Empty
-    case Some(s)                                  => <scope>{ s }</scope>
+    case Some(s)                                  => <scope>{s}</scope>
   }
   def optionalElem(opt: Boolean) = if (opt) <optional>true</optional> else NodeSeq.Empty
   def moduleDescriptor(module: ModuleDescriptor) = module.getModuleRevisionId
@@ -426,7 +445,9 @@ class MakePom(val log: Logger) {
     val excl = dependency.getExcludeRules(dependency.getModuleConfigurations) ++ excludes
     val (warns, excls) = IvyUtil.separate(excl.map(makeExclusion))
     if (warns.nonEmpty) log.warn(warns.mkString(IO.Newline))
-    if (excls.nonEmpty) <exclusions>{ excls }</exclusions>
+    if (excls.nonEmpty) <exclusions>{
+      excls
+    }</exclusions>
     else NodeSeq.Empty
   }
   def makeExclusion(exclRule: ExcludeRule): Either[String, NodeSeq] = {
@@ -440,8 +461,8 @@ class MakePom(val log: Logger) {
     else
       Right(
         <exclusion>
-          <groupId>{ g }</groupId>
-          <artifactId>{ a }</artifactId>
+          <groupId>{g}</groupId>
+          <artifactId>{a}</artifactId>
         </exclusion>
       )
   }
@@ -466,7 +487,10 @@ class MakePom(val log: Logger) {
       }
     val repositoryElements = mavenRepositories.filter(filterRepositories).map(mavenRepository)
     if (repositoryElements.isEmpty) repositoryElements
-    else <repositories>{ repositoryElements }</repositories>
+    else
+      <repositories>{
+        repositoryElements
+      }</repositories>
   }
   def allResolvers(settings: IvySettings): Seq[DependencyResolver] =
     flatten(castResolvers(settings.getResolvers)).distinct
@@ -487,10 +511,10 @@ class MakePom(val log: Logger) {
     mavenRepository(toID(repo.name), repo.name, repo.root)
   def mavenRepository(id: String, name: String, root: String): XNode =
     <repository>
-      <id>{ id }</id>
-      <name>{ name }</name>
-      <url>{ root }</url>
-      <layout>{ "default" }</layout>
+      <id>{id}</id>
+      <name>{name}</name>
+      <url>{root}</url>
+      <layout>{"default"}</layout>
     </repository>
 
   /**

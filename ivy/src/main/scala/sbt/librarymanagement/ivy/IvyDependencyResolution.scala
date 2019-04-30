@@ -14,10 +14,12 @@ class IvyDependencyResolution private[sbt] (val ivySbt: IvySbt)
     new Module(moduleSetting)
   }
 
-  override def update(module: ModuleDescriptor,
-                      configuration: UpdateConfiguration,
-                      uwconfig: UnresolvedWarningConfiguration,
-                      log: Logger): Either[UnresolvedWarning, UpdateReport] =
+  override def update(
+      module: ModuleDescriptor,
+      configuration: UpdateConfiguration,
+      uwconfig: UnresolvedWarningConfiguration,
+      log: Logger
+  ): Either[UnresolvedWarning, UpdateReport] =
     IvyActions.updateEither(toModule(module), configuration, uwconfig, log)
 
   private[sbt] def toModule(module: ModuleDescriptor): Module =

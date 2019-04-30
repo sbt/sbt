@@ -169,8 +169,10 @@ private[librarymanagement] abstract class ResolverFunctions {
    * Add the local Ivy repository to the user repositories.
    * If `mavenCentral` is true, add the Maven Central repository.
    */
-  def combineDefaultResolvers(userResolvers: Vector[Resolver],
-                              mavenCentral: Boolean): Vector[Resolver] =
+  def combineDefaultResolvers(
+      userResolvers: Vector[Resolver],
+      mavenCentral: Boolean
+  ): Vector[Resolver] =
     combineDefaultResolvers(userResolvers, jcenter = false, mavenCentral)
 
   /**

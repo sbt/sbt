@@ -14,9 +14,11 @@ import org.apache.ivy.util.filter.Filter
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ Await, ExecutionContext, Future }
 
-private[ivyint] case class DownloadResult(dep: IvyNode,
-                                          report: DownloadReport,
-                                          totalSizeDownloaded: Long)
+private[ivyint] case class DownloadResult(
+    dep: IvyNode,
+    report: DownloadReport,
+    totalSizeDownloaded: Long
+)
 
 object ParallelResolveEngine {
   private lazy val resolveExecutionContext: ExecutionContext = {
@@ -28,14 +30,17 @@ object ParallelResolveEngine {
 }
 
 /** Define an ivy [[ResolveEngine]] that resolves dependencies in parallel. */
-private[sbt] class ParallelResolveEngine(settings: ResolveEngineSettings,
-                                         eventManager: EventManager,
-                                         sortEngine: SortEngine)
-    extends ResolveEngine(settings, eventManager, sortEngine) {
+private[sbt] class ParallelResolveEngine(
+    settings: ResolveEngineSettings,
+    eventManager: EventManager,
+    sortEngine: SortEngine
+) extends ResolveEngine(settings, eventManager, sortEngine) {
 
-  override def downloadArtifacts(report: ResolveReport,
-                                 artifactFilter: Filter,
-                                 options: DownloadOptions): Unit = {
+  override def downloadArtifacts(
+      report: ResolveReport,
+      artifactFilter: Filter,
+      options: DownloadOptions
+  ): Unit = {
     import scala.collection.JavaConverters._
     val start = System.currentTimeMillis
     report.getArtifacts match {
@@ -82,9 +87,11 @@ private[sbt] class ParallelResolveEngine(settings: ResolveEngineSettings,
    *
    * Return the report and the total downloaded size.
    */
-  private def downloadNodeArtifacts(dependency: IvyNode,
-                                    artifactFilter: Filter,
-                                    options: DownloadOptions): DownloadResult = {
+  private def downloadNodeArtifacts(
+      dependency: IvyNode,
+      artifactFilter: Filter,
+      options: DownloadOptions
+  ): DownloadResult = {
 
     val resolver = dependency.getModuleRevision.getArtifactResolver
     val selectedArtifacts = dependency.getSelectedArtifacts(artifactFilter)

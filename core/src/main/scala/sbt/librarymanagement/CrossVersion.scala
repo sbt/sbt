@@ -175,8 +175,10 @@ object Full {
 trait DisabledFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val DisabledFormat: JsonFormat[sbt.librarymanagement.Disabled] =
     new JsonFormat[sbt.librarymanagement.Disabled] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.librarymanagement.Disabled = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.Disabled = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -196,8 +198,10 @@ trait DisabledFormats { self: sjsonnew.BasicJsonProtocol =>
 
   implicit lazy val DisabledObjectFormat: JsonFormat[sbt.librarymanagement.Disabled.type] =
     new JsonFormat[sbt.librarymanagement.Disabled.type] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.librarymanagement.Disabled.type = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.Disabled.type = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -219,8 +223,10 @@ trait DisabledFormats { self: sjsonnew.BasicJsonProtocol =>
 trait BinaryFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val BinaryFormat: JsonFormat[sbt.librarymanagement.Binary] =
     new JsonFormat[sbt.librarymanagement.Binary] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.librarymanagement.Binary = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.Binary = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -244,8 +250,10 @@ trait BinaryFormats { self: sjsonnew.BasicJsonProtocol =>
 trait ConstantFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val ConstantFormat: JsonFormat[sbt.librarymanagement.Constant] =
     new JsonFormat[sbt.librarymanagement.Constant] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.librarymanagement.Constant = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.Constant = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -267,8 +275,10 @@ trait ConstantFormats { self: sjsonnew.BasicJsonProtocol =>
 trait PatchFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val PatchFormat: JsonFormat[sbt.librarymanagement.Patch] =
     new JsonFormat[sbt.librarymanagement.Patch] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.librarymanagement.Patch = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.Patch = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -290,8 +300,10 @@ trait PatchFormats { self: sjsonnew.BasicJsonProtocol =>
 trait FullFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val FullFormat: JsonFormat[sbt.librarymanagement.Full] =
     new JsonFormat[sbt.librarymanagement.Full] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.librarymanagement.Full = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.Full = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -320,11 +332,13 @@ trait CrossVersionFormats {
     with sbt.librarymanagement.PatchFormats
     with sbt.librarymanagement.FullFormats =>
   implicit lazy val CrossVersionFormat: JsonFormat[sbt.librarymanagement.CrossVersion] =
-    flatUnionFormat6[sbt.librarymanagement.CrossVersion,
-                     sbt.librarymanagement.Disabled,
-                     sbt.librarymanagement.Disabled.type,
-                     sbt.librarymanagement.Binary,
-                     sbt.librarymanagement.Constant,
-                     sbt.librarymanagement.Patch,
-                     sbt.librarymanagement.Full]("type")
+    flatUnionFormat6[
+      sbt.librarymanagement.CrossVersion,
+      sbt.librarymanagement.Disabled,
+      sbt.librarymanagement.Disabled.type,
+      sbt.librarymanagement.Binary,
+      sbt.librarymanagement.Constant,
+      sbt.librarymanagement.Patch,
+      sbt.librarymanagement.Full
+    ]("type")
 }

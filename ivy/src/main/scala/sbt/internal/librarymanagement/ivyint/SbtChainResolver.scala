@@ -94,9 +94,11 @@ private[sbt] case class SbtChainResolver(
 
   /** Implements the custom sbt chain resolution with support for snapshots and caching. */
   private object CustomSbtResolution {
-    def getCached(dd: DependencyDescriptor,
-                  data: ResolveData,
-                  resolved0: Option[ResolvedModuleRevision]): Option[ResolvedModuleRevision] = {
+    def getCached(
+        dd: DependencyDescriptor,
+        data: ResolveData,
+        resolved0: Option[ResolvedModuleRevision]
+    ): Option[ResolvedModuleRevision] = {
       resolved0.orElse {
         val resolverName = getName
         Message.verbose(s"$resolverName: Checking cache for: $dd")
@@ -144,7 +146,8 @@ private[sbt] case class SbtChainResolver(
       var currentlyResolved = resolved0
 
       def performResolution(
-          resolver: DependencyResolver): Option[(ResolvedModuleRevision, DependencyResolver)] = {
+          resolver: DependencyResolver
+      ): Option[(ResolvedModuleRevision, DependencyResolver)] = {
         // Resolve all resolvers when the module is changing
         val previouslyResolved = currentlyResolved
         if (useLatest) data.setCurrentResolvedModuleRevision(null)
@@ -152,8 +155,9 @@ private[sbt] case class SbtChainResolver(
         currentlyResolved = Option(resolver.getDependency(descriptor, data))
         if (currentlyResolved eq previouslyResolved) None
         else if (useLatest) {
-          currentlyResolved.map(x =>
-            (reparseModuleDescriptor(descriptor, data, resolver, x), resolver))
+          currentlyResolved.map(
+            x => (reparseModuleDescriptor(descriptor, data, resolver, x), resolver)
+          )
         } else currentlyResolved.map(x => (forcedRevision(x), resolver))
       }
 
@@ -179,9 +183,11 @@ private[sbt] case class SbtChainResolver(
     }
 
     private final val prefix = "Undefined resolution order"
-    def resolveLatest(foundRevisions: Seq[(ResolvedModuleRevision, DependencyResolver)],
-                      descriptor: DependencyDescriptor,
-                      data: ResolveData): Option[ResolvedModuleRevision] = {
+    def resolveLatest(
+        foundRevisions: Seq[(ResolvedModuleRevision, DependencyResolver)],
+        descriptor: DependencyDescriptor,
+        data: ResolveData
+    ): Option[ResolvedModuleRevision] = {
 
       val sortedRevisions = foundRevisions.sortBy {
         case (rmr, resolver) =>
@@ -220,13 +226,15 @@ private[sbt] case class SbtChainResolver(
         if (resolvedModule.getId.getRevision.contains("SNAPSHOT")) {
 
           Message.warn(
-            "Resolving a snapshot version. It's going to be slow unless you use `updateOptions := updateOptions.value.withLatestSnapshots(false)` options.")
+            "Resolving a snapshot version. It's going to be slow unless you use `updateOptions := updateOptions.value.withLatestSnapshots(false)` options."
+          )
           val resolvers = sortedRevisions.map(_._2.getName)
           sortedRevisions.foreach(h => {
             val (module, resolver) = h
             Message.info(
               s"Out of ${sortedRevisions.size} candidates we found for ${module.getId} in ${resolvers
-                .mkString(" and ")}, we are choosing ${resolver}.")
+                .mkString(" and ")}, we are choosing ${resolver}."
+            )
           })
         } else {
           Message.warn(s"Choosing $resolver for ${resolvedModule.getId}")

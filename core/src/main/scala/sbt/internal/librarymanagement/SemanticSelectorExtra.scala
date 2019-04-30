@@ -19,7 +19,8 @@ private[librarymanagement] abstract class SemSelAndChunkFunctions {
           // from and to can not have an operator.
           if (hasOperator(fromStr) || hasOperator(toStr)) {
             throw new IllegalArgumentException(
-              s"Invalid ' - ' range, both side of comparators can not have an operator: $fromStr - $toStr")
+              s"Invalid ' - ' range, both side of comparators can not have an operator: $fromStr - $toStr"
+            )
           }
           val from = SemComparator(fromStr)
           val to = SemComparator(toStr)
@@ -33,7 +34,8 @@ private[librarymanagement] abstract class SemSelAndChunkFunctions {
             (comparatorsBefore ++ comparatorsAfter)
         case _ =>
           throw new IllegalArgumentException(
-            s"Invalid ' - ' range position, both side of versions must be specified: $andClauseToken")
+            s"Invalid ' - ' range position, both side of versions must be specified: $andClauseToken"
+          )
       }
     }
     SemSelAndChunk(comparators.flatMap(_.expandWildcard))
@@ -165,7 +167,8 @@ private[librarymanagement] abstract class SemComparatorFunctions {
         if (hasXrangeSelector) {
           if (tags.nonEmpty)
             throw new IllegalArgumentException(
-              s"Pre-release version requires major, minor, patch versions to be specified: $comparator")
+              s"Pre-release version requires major, minor, patch versions to be specified: $comparator"
+            )
           val numbers = Seq(major, minor, patch).takeWhile {
             case Some(str) => str.matches("\\d+")
             case None      => false
@@ -180,7 +183,8 @@ private[librarymanagement] abstract class SemComparatorFunctions {
         } else {
           if (tags.nonEmpty && (major.isEmpty || minor.isEmpty || patch.isEmpty))
             throw new IllegalArgumentException(
-              s"Pre-release version requires major, minor, patch versions to be specified: $comparator")
+              s"Pre-release version requires major, minor, patch versions to be specified: $comparator"
+            )
           val operator = opStr match {
             case Some("<")  => Lt
             case Some("<=") => Lte

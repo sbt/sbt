@@ -35,9 +35,11 @@ class Publisher private[sbt] (publisherEngine: PublisherInterface) {
    * @param log The logger.
    * @return The `File` containing the POM descriptor.
    */
-  def makePomFile(module: ModuleDescriptor,
-                  configuration: MakePomConfiguration,
-                  log: Logger): File =
+  def makePomFile(
+      module: ModuleDescriptor,
+      configuration: MakePomConfiguration,
+      log: Logger
+  ): File =
     publisherEngine.makePomFile(module, configuration, log)
 }
 

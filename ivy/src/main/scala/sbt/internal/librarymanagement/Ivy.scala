@@ -73,7 +73,11 @@ final class IvySbt(
       IvySbt.synchronized {
         val originalLogger = Message.getDefaultLogger
         Message.setDefaultLogger(logger)
-        try { f } finally { Message.setDefaultLogger(originalLogger) }
+        try {
+          f
+        } finally {
+          Message.setDefaultLogger(originalLogger)
+        }
       }
     // Ivy is not thread-safe nor can the cache be used concurrently.
     // If provided a GlobalLock, we can use that to ensure safe access to the cache.
@@ -207,7 +211,9 @@ final class IvySbt(
       ivyint.ErrorMessageAuthenticator.install()
       ivy.pushContext()
       ivy.getLoggerEngine.pushLogger(log)
-      try { f(ivy) } finally {
+      try {
+        f(ivy)
+      } finally {
         ivy.getLoggerEngine.popLogger()
         ivy.popContext()
       }
@@ -275,7 +281,8 @@ final class IvySbt(
       IvySbt.setConflictManager(moduleID, conflictManager, ivy.getSettings)
       val defaultConf = defaultConfiguration getOrElse Configuration.of(
         "Default",
-        ModuleDescriptor.DEFAULT_CONFIGURATION)
+        ModuleDescriptor.DEFAULT_CONFIGURATION
+      )
       log.debug(
         s"Using inline dependencies specified in Scala${(if (ivyXML.isEmpty) "" else " and XML")}."
       )
@@ -383,7 +390,7 @@ final class IvySbt(
 
       // Redefine to use a subset of properties, that are serialisable
       override implicit lazy val InlineIvyConfigurationFormat
-        : JsonFormat[InlineIvyConfiguration] = {
+          : JsonFormat[InlineIvyConfiguration] = {
         def hlToInlineIvy(i: InlineIvyHL): InlineIvyConfiguration = {
           val (
             paths,
@@ -406,7 +413,7 @@ final class IvySbt(
 
       // Redefine to use a subset of properties, that are serialisable
       override implicit lazy val ExternalIvyConfigurationFormat
-        : JsonFormat[ExternalIvyConfiguration] = {
+          : JsonFormat[ExternalIvyConfiguration] = {
         def hlToExternalIvy(e: ExternalIvyHL): ExternalIvyConfiguration = {
           val (baseDirectory, _) = e
           ExternalIvyConfiguration(
@@ -729,9 +736,11 @@ private[sbt] object IvySbt {
       allConfigurations: Vector[ConfigRef]
   ): MDArtifact = {
     val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
-    copyConfigurations(a,
-                       (ref: ConfigRef) => { artifact.addConfiguration(ref.name) },
-                       allConfigurations)
+    copyConfigurations(
+      a,
+      (ref: ConfigRef) => { artifact.addConfiguration(ref.name) },
+      allConfigurations
+    )
     artifact
   }
   def getExtraAttributes(revID: ExtendableItem): Map[String, String] = {
@@ -757,21 +766,21 @@ private[sbt] object IvySbt {
   private def wrapped(module: ModuleID, dependencies: NodeSeq) = {
     <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
       {
-        if (hasInfo(module, dependencies))
-          NodeSeq.Empty
-        else
-          addExtraAttributes(defaultInfo(module), module.extraAttributes)
-      }
-      { dependencies }
+      if (hasInfo(module, dependencies))
+        NodeSeq.Empty
+      else
+        addExtraAttributes(defaultInfo(module), module.extraAttributes)
+    }
+      {dependencies}
       {
-        // this is because Ivy adds a default artifact if none are specified.
-        if ((dependencies \\ "publications").isEmpty) <publications/> else NodeSeq.Empty
-      }
+      // this is because Ivy adds a default artifact if none are specified.
+      if ((dependencies \\ "publications").isEmpty) <publications/> else NodeSeq.Empty
+    }
     </ivy-module>
   }
   private[this] def defaultInfo(module: ModuleID): scala.xml.Elem = {
     import module._
-    val base = <info organisation={ organization } module={ name } revision={ revision }/>
+    val base = <info organisation={organization} module={name} revision={revision}/>
     branchName.fold(base) { br =>
       base % new scala.xml.UnprefixedAttribute("branch", br, scala.xml.Null)
     }
@@ -784,7 +793,7 @@ private[sbt] object IvySbt {
       case (e, (key, value)) => e % new scala.xml.UnprefixedAttribute(key, value, scala.xml.Null)
     }
   private def hasInfo(module: ModuleID, x: scala.xml.NodeSeq) = {
-    val info = <g>{ x }</g> \ "info"
+    val info = <g>{x}</g> \ "info"
     if (info.nonEmpty) {
       def check(found: NodeSeq, expected: String, label: String) =
         if (found.isEmpty)
@@ -995,7 +1004,8 @@ private[sbt] object IvySbt {
   ): Unit = excludes.foreach(exclude => addExclude(moduleID, scalaModuleInfo)(exclude))
 
   def addExclude(moduleID: DefaultModuleDescriptor, scalaModuleInfo: Option[ScalaModuleInfo])(
-      exclude0: ExclusionRule): Unit = {
+      exclude0: ExclusionRule
+  ): Unit = {
     // this adds _2.11 postfix
     val exclude = CrossVersion.substituteCross(exclude0, scalaModuleInfo)
     val confs =

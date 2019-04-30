@@ -55,7 +55,7 @@ object ConfigMacroSpec extends Properties("ConfigMacroSpec") {
       s"Actual name: ${c.name}" |:
       s"Actual isPublic: ${c.isPublic}" |:
       (c.id == id) &&
-    (c.name == name) &&
+      (c.name == name) &&
     (c.isPublic == isPublic)
   }
 }

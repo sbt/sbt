@@ -178,8 +178,9 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
     val artifact =
       for {
         artifacts <- modules get ((moduleOrganisation, moduleName, moduleRevision))
-        artifact <- artifacts find (a =>
-          a.name == art.getName && a.tpe == art.getType && a.ext == art.getExt)
+        artifact <- artifacts find (
+            a => a.name == art.getName && a.tpe == art.getType && a.ext == art.getExt
+        )
       } yield new ArtifactOrigin(art, /* isLocal = */ true, artifact.file.toURI.toURL.toString)
 
     artifact.orNull

@@ -67,7 +67,9 @@ class ComponentManagerTest extends UnitSpec {
           withManagerHome(ivyHome) { usingManager =>
             checksum(usingManager.file(TestID)(Fail)) shouldBe hash
           }
-        } finally { definingManager.clearCache(TestID) }
+        } finally {
+          definingManager.clearCache(TestID)
+        }
       }
     }
   }
@@ -82,7 +84,8 @@ class ComponentManagerTest extends UnitSpec {
   private def createFile[T](manager: ComponentManager, id: String, name: String)(f: File => T): T =
     createFiles(manager, id, name)(files => f(files.toList.head))
   private def createFiles[T](manager: ComponentManager, id: String, names: String*)(
-      f: Seq[File] => T): T =
+      f: Seq[File] => T
+  ): T =
     withTemporaryDirectory { dir =>
       val files = names.map(name => new File(dir, name))
       files.foreach(writeRandomContent)
@@ -113,7 +116,8 @@ class ComponentManagerTest extends UnitSpec {
             val location = componentLocation(id)
             if (location.exists)
               throw new RuntimeException(
-                s"Cannot redefine component.  ID: $id, files: ${files.mkString(",")}")
+                s"Cannot redefine component.  ID: $id, files: ${files.mkString(",")}"
+              )
             else {
               IO.copy(files.map { f =>
                 f -> new java.io.File(location, f.getName)

@@ -24,17 +24,21 @@ trait BaseIvySpecification extends AbstractEngineSpec {
 
   def configurations = Vector(Compile, Test, Runtime)
 
-  def module(moduleId: ModuleID,
-             deps: Vector[ModuleID],
-             scalaFullVersion: Option[String]): ModuleDescriptor = {
+  def module(
+      moduleId: ModuleID,
+      deps: Vector[ModuleID],
+      scalaFullVersion: Option[String]
+  ): ModuleDescriptor = {
     module(moduleId, deps, scalaFullVersion, UpdateOptions(), true)
   }
 
-  def module(moduleId: ModuleID,
-             deps: Vector[ModuleID],
-             scalaFullVersion: Option[String],
-             uo: UpdateOptions = UpdateOptions(),
-             overrideScalaVersion: Boolean = true): IvySbt#Module = {
+  def module(
+      moduleId: ModuleID,
+      deps: Vector[ModuleID],
+      scalaFullVersion: Option[String],
+      uo: UpdateOptions = UpdateOptions(),
+      overrideScalaVersion: Boolean = true
+  ): IvySbt#Module = {
     val scalaModuleInfo = scalaFullVersion map { fv =>
       ScalaModuleInfo(
         scalaFullVersion = fv,
@@ -71,8 +75,10 @@ trait BaseIvySpecification extends AbstractEngineSpec {
       .withUpdateOptions(uo)
   }
 
-  def makeUpdateConfiguration(offline: Boolean,
-                              metadataDirectory: Option[File]): UpdateConfiguration = {
+  def makeUpdateConfiguration(
+      offline: Boolean,
+      metadataDirectory: Option[File]
+  ): UpdateConfiguration = {
     val retrieveConfig = RetrieveConfiguration()
       .withRetrieveDirectory(currentManaged)
       .withOutputPattern(Resolver.defaultRetrievePattern)
@@ -108,8 +114,10 @@ trait BaseIvySpecification extends AbstractEngineSpec {
   def ivyUpdate(module: ModuleDescriptor): UpdateReport =
     update(module)
 
-  def mkPublishConfiguration(resolver: Resolver,
-                             artifacts: Map[Artifact, File]): PublishConfiguration = {
+  def mkPublishConfiguration(
+      resolver: Resolver,
+      artifacts: Map[Artifact, File]
+  ): PublishConfiguration = {
     PublishConfiguration()
       .withResolverName(resolver.name)
       .withArtifacts(artifacts.toVector)
