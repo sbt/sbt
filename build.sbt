@@ -29,6 +29,8 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
     }
   },
   inCompileAndTest(scalacOptions in console --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint")),
+  scalafmtOnCompile := true,
+  Test / scalafmtOnCompile := true,
   publishArtifact in Compile := true,
   publishArtifact in Test := false,
   parallelExecution in Test := false
@@ -57,7 +59,6 @@ lazy val lmRoot = (project in file("."))
           Some(ScmInfo(url(s"https://github.com/$slug"), s"git@github.com:$slug.git"))
         },
         bintrayPackage := "librarymanagement",
-        scalafmtOnCompile in Sbt := false,
         git.baseVersion := "1.3.0",
         version := {
           val v = version.value
