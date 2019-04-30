@@ -40,6 +40,7 @@ private[sbt] object ClassLoaders {
       rawRuntimeDependencies =
         dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude),
       allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
+      globalCache = (Scope.GlobalScope / classLoaderCache).value,
       runtimeCache = (Runtime / classLoaderCache).value,
       testCache = (Test / classLoaderCache).value,
       resources = ClasspathUtilities.createClasspathResources(fullCP, si),
@@ -73,6 +74,7 @@ private[sbt] object ClassLoaders {
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
         }
+        val globalCache = (Scope.GlobalScope / classLoaderCache).value
         val runtimeCache = (Runtime / classLoaderCache).value
         val testCache = (Test / classLoaderCache).value
         val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.allJars
@@ -86,6 +88,7 @@ private[sbt] object ClassLoaders {
               fullCP = classpath,
               rawRuntimeDependencies = runtimeDeps,
               allDependencies = allDeps,
+              globalCache = globalCache,
               runtimeCache = runtimeCache,
               testCache = testCache,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
@@ -114,6 +117,7 @@ private[sbt] object ClassLoaders {
       fullCP: Seq[File],
       rawRuntimeDependencies: Seq[File],
       allDependencies: Seq[File],
+      globalCache: ClassLoaderCache,
       runtimeCache: ClassLoaderCache,
       testCache: ClassLoaderCache,
       resources: Map[String, String],
@@ -143,7 +147,8 @@ private[sbt] object ClassLoaders {
         val allTestDependencies = if (layerTestDependencies) allDependenciesSet else Set.empty[File]
         val allRuntimeDependencies = (if (layerDependencies) rawRuntimeDependencies else Nil).toSet
 
-        val scalaInstanceLayer = new ScalaInstanceLoader(si)
+        val scalaInstanceLayer =
+          globalCache.get((si.allJars.toSeq, interfaceLoader, resources, tmp))
         // layer 2
         val runtimeDependencySet = allDependenciesSet intersect allRuntimeDependencies
         val runtimeDependencies = rawRuntimeDependencies.filter(runtimeDependencySet)
@@ -185,17 +190,6 @@ private[sbt] object ClassLoaders {
     val (snapshots, jars) = classpath.partition(_.toString.contains("-SNAPSHOT"))
     val jarLoader = if (jars.isEmpty) parent else cache.get((jars, parent, resources, tmp))
     if (snapshots.isEmpty) jarLoader else cache.get((snapshots, jarLoader, resources, tmp))
-  }
-
-  private class ScalaInstanceLoader(val instance: ScalaInstance)
-      extends URLClassLoader(instance.allJars.map(_.toURI.toURL), interfaceLoader) {
-    override def equals(o: Any): Boolean = o match {
-      case that: ScalaInstanceLoader => this.instance.allJars.sameElements(that.instance.allJars)
-      case _                         => false
-    }
-    override def hashCode: Int = instance.hashCode
-    override lazy val toString: String =
-      s"ScalaInstanceLoader($interfaceLoader, jars = {${instance.allJars.mkString(", ")}})"
   }
 
   // helper methods
