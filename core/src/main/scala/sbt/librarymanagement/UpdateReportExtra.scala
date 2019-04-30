@@ -74,24 +74,32 @@ private[librarymanagement] abstract class ModuleReportExtra {
       reportStr(
         "extraAttributes",
         if (extraAttributes.isEmpty) None
-        else { Some(extraAttributes.toString) }
+        else {
+          Some(extraAttributes.toString)
+        }
       ) +
       reportStr("isDefault", isDefault map { _.toString }) +
       reportStr("branch", branch) +
       reportStr(
         "configurations",
         if (configurations.isEmpty) None
-        else { Some(configurations.mkString(", ")) }
+        else {
+          Some(configurations.mkString(", "))
+        }
       ) +
       reportStr(
         "licenses",
         if (licenses.isEmpty) None
-        else { Some(licenses.mkString(", ")) }
+        else {
+          Some(licenses.mkString(", "))
+        }
       ) +
       reportStr(
         "callers",
         if (callers.isEmpty) None
-        else { Some(callers.mkString(", ")) }
+        else {
+          Some(callers.mkString(", "))
+        }
       )
   private[sbt] def reportStr(key: String, value: Option[String]): String =
     value map { x =>

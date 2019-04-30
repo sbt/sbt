@@ -27,7 +27,7 @@ trait UpdateOptionsFormat { self: BasicJsonProtocol with ModuleIDFormats with Re
           uo.cachedResolution,
           uo.gigahorse,
           uo.moduleResolvers
-      ),
+        ),
       (xs: (String, Boolean, Boolean, Boolean, Boolean, Map[ModuleID, Resolver])) =>
         new UpdateOptions(
           levels(xs._1),
@@ -37,7 +37,7 @@ trait UpdateOptionsFormat { self: BasicJsonProtocol with ModuleIDFormats with Re
           xs._5,
           PartialFunction.empty,
           xs._6
-      )
+        )
     )
 
   private val levels: Map[String, CircularDependencyLevel] = Map(

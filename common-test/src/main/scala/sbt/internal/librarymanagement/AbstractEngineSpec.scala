@@ -5,9 +5,11 @@ import sbt.librarymanagement._
 abstract class AbstractEngineSpec extends UnitSpec {
   def cleanCache(): Unit
 
-  def module(moduleId: ModuleID,
-             deps: Vector[ModuleID],
-             scalaFullVersion: Option[String]): ModuleDescriptor
+  def module(
+      moduleId: ModuleID,
+      deps: Vector[ModuleID],
+      scalaFullVersion: Option[String]
+  ): ModuleDescriptor
 
   def updateEither(module: ModuleDescriptor): Either[UnresolvedWarning, UpdateReport]
 

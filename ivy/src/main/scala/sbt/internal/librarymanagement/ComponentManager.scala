@@ -30,7 +30,9 @@ class ComponentManager(
   def files(id: String)(ifMissing: IfMissing): Iterable[File] = {
     def fromGlobal =
       lockGlobalCache {
-        try { update(id); getOrElse(createAndCache) } catch {
+        try {
+          update(id); getOrElse(createAndCache)
+        } catch {
           case _: NotInCache => createAndCache
         }
       }
@@ -100,7 +102,11 @@ object ComponentManager {
   lazy val (version, timestamp) = {
     val properties = new java.util.Properties
     val propertiesStream = versionResource.openStream
-    try { properties.load(propertiesStream) } finally { propertiesStream.close() }
+    try {
+      properties.load(propertiesStream)
+    } finally {
+      propertiesStream.close()
+    }
     (properties.getProperty("version"), properties.getProperty("timestamp"))
   }
   lazy val stampedVersion = version + "_" + timestamp

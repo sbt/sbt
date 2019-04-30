@@ -61,19 +61,23 @@ class IvyRepoSpec extends BaseIvySpecification {
     val clMod = {
       val externalModules = Vector(dep)
       // Note: need to extract ourModuleID so we can plug it in here, can't fish it back out of the IvySbt#Module (`m`)
-      GetClassifiersModule(ourModuleID,
-                           scalaModuleInfo,
-                           externalModules,
-                           Vector(Configurations.Compile),
-                           attemptedClassifiers)
+      GetClassifiersModule(
+        ourModuleID,
+        scalaModuleInfo,
+        externalModules,
+        Vector(Configurations.Compile),
+        attemptedClassifiers
+      )
     }
 
     val artifactFilter = getArtifactTypeFilter(c.artifactFilter)
-    val gcm = GetClassifiersConfiguration(clMod,
-                                          Vector.empty,
-                                          c.withArtifactFilter(artifactFilter.invert),
-                                          srcTypes,
-                                          docTypes)
+    val gcm = GetClassifiersConfiguration(
+      clMod,
+      Vector.empty,
+      c.withArtifactFilter(artifactFilter.invert),
+      srcTypes,
+      docTypes
+    )
 
     val report2 =
       lmEngine()

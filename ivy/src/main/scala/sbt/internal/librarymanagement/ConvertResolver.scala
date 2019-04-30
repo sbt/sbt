@@ -246,9 +246,11 @@ private[sbt] object ConvertResolver {
     def managedChecksumsEnabled: Boolean
 
     import sbt.io.syntax._
-    private def downloadChecksum(resource: Resource,
-                                 targetChecksumFile: File,
-                                 algorithm: String): Boolean = {
+    private def downloadChecksum(
+        resource: Resource,
+        targetChecksumFile: File,
+        algorithm: String
+    ): Boolean = {
       if (!ChecksumHelper.isKnownAlgorithm(algorithm))
         throw new IllegalArgumentException(s"Unknown checksum algorithm: $algorithm")
 

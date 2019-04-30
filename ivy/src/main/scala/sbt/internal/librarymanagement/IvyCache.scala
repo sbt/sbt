@@ -58,7 +58,9 @@ class IvyCache(val ivyHome: Option[File]) {
 
   /** Clears the cache of the jar for the given ID.*/
   def clearCachedJar(id: ModuleID, lock: Option[xsbti.GlobalLock], log: Logger): Unit = {
-    try { withCachedJar(id, lock, log)(_.delete); () } catch {
+    try {
+      withCachedJar(id, lock, log)(_.delete); ()
+    } catch {
       case e: Exception => log.debug("Error cleaning cached jar: " + e.toString)
     }
   }

@@ -62,7 +62,8 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val m2 = "org.scala-sbt" % "util-logging_2.12" % "1.1.0"
     assert(
       EvictionWarningOptions
-        .defaultGuess((m1, Option(m2), Option(dummyScalaModuleInfo("2.12.4")))))
+        .defaultGuess((m1, Option(m2), Option(dummyScalaModuleInfo("2.12.4"))))
+    )
   }
 
   def akkaActor214 =

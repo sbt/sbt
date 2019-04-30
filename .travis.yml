@@ -42,7 +42,7 @@ install:
 script: sbt -Dfile.encoding=UTF8
   ++$TRAVIS_SCALA_VERSION!
   mimaReportBinaryIssues
-  scalafmt::test test:scalafmt::test sbt:scalafmt::test
+  scalafmtCheckAll
   whitesourceCheckPolicies
   test
   scriptedIvy

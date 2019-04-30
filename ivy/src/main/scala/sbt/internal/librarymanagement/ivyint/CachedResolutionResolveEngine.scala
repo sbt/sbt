@@ -51,12 +51,12 @@ private[sbt] class CachedResolutionResolveCache {
     concurrent.TrieMap()
   // Used for subproject
   val projectReportCache
-    : concurrent.Map[(ModuleRevisionId, LogicalClock), Either[ResolveException, UpdateReport]] =
+      : concurrent.Map[(ModuleRevisionId, LogicalClock), Either[ResolveException, UpdateReport]] =
     concurrent.TrieMap()
   val resolveReportCache: concurrent.Map[ModuleRevisionId, ResolveReport] = concurrent.TrieMap()
   val resolvePropertiesCache: concurrent.Map[ModuleRevisionId, String] = concurrent.TrieMap()
   val conflictCache
-    : concurrent.Map[(ModuleID, ModuleID), (Vector[ModuleID], Vector[ModuleID], String)] =
+      : concurrent.Map[(ModuleID, ModuleID), (Vector[ModuleID], Vector[ModuleID], String)] =
     concurrent.TrieMap()
   val maxConflictCacheSize: Int = 1024
   val maxUpdateReportCacheSize: Int = 1024
@@ -188,11 +188,13 @@ private[sbt] class CachedResolutionResolveCache {
     val (pathOrg, pathName, pathRevision, pathScalaVersion, pathSbtVersion) = md match {
       case x: ArtificialModuleDescriptor =>
         val tmrid = x.targetModuleRevisionId
-        (tmrid.getOrganisation,
-         tmrid.getName,
-         tmrid.getRevision + "_" + mrid.getName,
-         scalaVersion(tmrid),
-         sbtVersion(tmrid))
+        (
+          tmrid.getOrganisation,
+          tmrid.getName,
+          tmrid.getRevision + "_" + mrid.getName,
+          scalaVersion(tmrid),
+          sbtVersion(tmrid)
+        )
       case _ =>
         (mrid.getOrganisation, mrid.getName, mrid.getRevision, scalaVersion(mrid), sbtVersion(mrid))
     }
@@ -328,7 +330,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val ivy = makeInstance
       ivy.pushContext()
       ivy.getLoggerEngine.pushLogger(log)
-      try { f(ivy) } finally {
+      try {
+        f(ivy)
+      } finally {
         ivy.getLoggerEngine.popLogger()
         ivy.popContext()
       }
@@ -336,7 +340,11 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   def withDefaultLogger[A](log: MessageLogger)(f: => A): A = {
     val originalLogger = Message.getDefaultLogger
     Message.setDefaultLogger(log)
-    try { f } finally { Message.setDefaultLogger(originalLogger) }
+    try {
+      f
+    } finally {
+      Message.setDefaultLogger(originalLogger)
+    }
   }
 
   /**
@@ -488,8 +496,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         case (failed, paths) =>
           if (paths.isEmpty) (failed, paths)
           else
-            (failed,
-             List(IvyRetrieve.toModuleID(md0.getResolvedModuleRevisionId)) ::: paths.toList.tail)
+            (
+              failed,
+              List(IvyRetrieve.toModuleID(md0.getResolvedModuleRevisionId)) ::: paths.toList.tail
+            )
       }
     }
     new ResolveException(messages, failed, ListMap(failedPaths: _*))
@@ -577,8 +587,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           ((organization, name), xs)
       }: _*)
     // this returns a List of Lists of (org, name). should be deterministic
-    def detectLoops(allModules: Map[(String, String), Vector[OrganizationArtifactReport]])
-      : List[List[(String, String)]] = {
+    def detectLoops(
+        allModules: Map[(String, String), Vector[OrganizationArtifactReport]]
+    ): List[List[(String, String)]] = {
       val loopSets: mutable.Set[Set[(String, String)]] = mutable.Set.empty
       val loopLists: mutable.ListBuffer[List[(String, String)]] = mutable.ListBuffer.empty
       def testLoop(
@@ -949,8 +960,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     val configurations0: Vector[ConfigurationReport] = ur.configurations.toVector
     // This is how md looks from md0 via dd's mapping.
     val remappedConfigs0: Map[String, Vector[String]] = Map(rootModuleConfs map { conf0 =>
-      val remapped
-        : Vector[String] = dd.getDependencyConfigurations(conf0.getName).toVector flatMap { conf =>
+      val remapped: Vector[String] = dd
+        .getDependencyConfigurations(conf0.getName)
+        .toVector flatMap { conf =>
         node.getRealConfs(conf).toVector
       }
       conf0.getName -> remapped

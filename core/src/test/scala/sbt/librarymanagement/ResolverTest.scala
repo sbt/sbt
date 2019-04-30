@@ -11,11 +11,14 @@ object ResolverTest extends UnitSpec {
     val patsExpected = Vector("http://foo.com/test/[orgPath]")
     val patterns = Resolver
       .url("test", new URL("http://foo.com/test"))(
-        Patterns(pats,
-                 pats,
-                 isMavenCompatible = false,
-                 descriptorOptional = true,
-                 skipConsistencyCheck = true))
+        Patterns(
+          pats,
+          pats,
+          isMavenCompatible = false,
+          descriptorOptional = true,
+          skipConsistencyCheck = true
+        )
+      )
       .patterns
 
     patterns.ivyPatterns shouldBe patsExpected

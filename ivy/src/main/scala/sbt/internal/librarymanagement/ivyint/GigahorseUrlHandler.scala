@@ -52,12 +52,16 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
         if (checkStatusCode(url, response)) {
           val bodyCharset =
             BasicURLHandler.getCharSetFromContentType(
-              Option(response.body().contentType()).map(_.toString).orNull)
+              Option(response.body().contentType()).map(_.toString).orNull
+            )
           Some(
-            new SbtUrlInfo(true,
-                           response.body().contentLength(),
-                           lastModifiedTimestamp(response),
-                           bodyCharset))
+            new SbtUrlInfo(
+              true,
+              response.body().contentLength(),
+              lastModifiedTimestamp(response),
+              bodyCharset
+            )
+          )
         } else None
         //
         //      Commented out for now - can potentially be used for non HTTP urls
@@ -75,7 +79,8 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
           Message.warn("Host " + e.getMessage + " not found. url=" + url)
           Message.info(
             "You probably access the destination server through "
-              + "a proxy server that is not well configured.")
+              + "a proxy server that is not well configured."
+          )
           None
         case e: IOException =>
           Message.error("Server access Error: " + e.getMessage + " url=" + url)
@@ -106,7 +111,8 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
       if (!checkStatusCode(url, response)) {
         throw new IOException(
           "The HTTP response code for " + url + " did not indicate a success."
-            + " See log for more detail.")
+            + " See log for more detail."
+        )
       }
       response
     } catch {
@@ -145,7 +151,8 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
         IO.delete(dest)
         throw new IOException(
           "Downloaded file size doesn't match expected Content Length for " + url
-            + ". Please retry.")
+            + ". Please retry."
+        )
       }
 
       val lastModified = lastModifiedTimestamp(response)
@@ -198,11 +205,12 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
 
 object GigahorseUrlHandler {
   // This is requires to access the constructor of URLInfo.
-  private[sbt] class SbtUrlInfo(available: Boolean,
-                                contentLength: Long,
-                                lastModified: Long,
-                                bodyCharset: String)
-      extends URLInfo(available, contentLength, lastModified, bodyCharset) {
+  private[sbt] class SbtUrlInfo(
+      available: Boolean,
+      contentLength: Long,
+      lastModified: Long,
+      bodyCharset: String
+  ) extends URLInfo(available, contentLength, lastModified, bodyCharset) {
     def this(available: Boolean, contentLength: Long, lastModified: Long) = {
       this(available, contentLength, lastModified, null)
     }
@@ -220,7 +228,8 @@ object GigahorseUrlHandler {
           Message.warn("Your proxy requires authentication.")
         } else if (status == 401) {
           Message.warn(
-            "CLIENT ERROR: 401 Unauthorized. Check your resolvers username and password.")
+            "CLIENT ERROR: 401 Unauthorized. Check your resolvers username and password."
+          )
         } else if (String.valueOf(status).startsWith("4")) {
           Message.verbose("CLIENT ERROR: " + response.message() + " url=" + url)
         } else if (String.valueOf(status).startsWith("5")) {

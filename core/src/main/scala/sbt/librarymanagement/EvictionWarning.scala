@@ -98,7 +98,7 @@ object EvictionWarningOptions {
     guessSbtOne orElse guessSecondSegment orElse guessSemVer orElse guessFalse
 
   lazy val guessSecondSegment
-    : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), Some(scalaModuleInfo))
         if m2.name.endsWith("_" + scalaModuleInfo.scalaFullVersion) || m2.name.endsWith(
           "_" + scalaModuleInfo.scalaBinaryVersion
@@ -112,7 +112,7 @@ object EvictionWarningOptions {
   }
 
   lazy val guessSbtOne
-    : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), Some(scalaModuleInfo))
         if (m2.organization == "org.scala-sbt") &&
           (m2.name.endsWith("_" + scalaModuleInfo.scalaFullVersion) ||
@@ -126,7 +126,7 @@ object EvictionWarningOptions {
   }
 
   lazy val guessSemVer
-    : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (m1, Some(m2), _) =>
       (m1.revision, m2.revision) match {
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
@@ -137,7 +137,7 @@ object EvictionWarningOptions {
   }
 
   lazy val guessFalse
-    : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (_, _, _) => false
   }
 }

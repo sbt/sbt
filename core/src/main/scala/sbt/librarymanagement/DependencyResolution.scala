@@ -30,9 +30,11 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
    * @param configurations The configurations that this module has.
    * @return A `ModuleDescriptor` describing a subproject and its dependencies.
    */
-  def moduleDescriptor(moduleId: ModuleID,
-                       directDependencies: Vector[ModuleID],
-                       scalaModuleInfo: Option[ScalaModuleInfo]): ModuleDescriptor = {
+  def moduleDescriptor(
+      moduleId: ModuleID,
+      directDependencies: Vector[ModuleID],
+      scalaModuleInfo: Option[ScalaModuleInfo]
+  ): ModuleDescriptor = {
     val moduleSetting = ModuleDescriptorConfiguration(moduleId, ModuleInfo(moduleId.name))
       .withScalaModuleInfo(scalaModuleInfo)
       .withDependencies(directDependencies)
@@ -49,10 +51,12 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
    * @return The result, either an unresolved warning or an update report. Note that this
    *         update report will or will not be successful depending on the `missingOk` option.
    */
-  def update(module: ModuleDescriptor,
-             configuration: UpdateConfiguration,
-             uwconfig: UnresolvedWarningConfiguration,
-             log: Logger): Either[UnresolvedWarning, UpdateReport] =
+  def update(
+      module: ModuleDescriptor,
+      configuration: UpdateConfiguration,
+      uwconfig: UnresolvedWarningConfiguration,
+      log: Logger
+  ): Either[UnresolvedWarning, UpdateReport] =
     lmEngine.update(module, configuration, uwconfig, log)
 
   /**
@@ -71,8 +75,10 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
    * @param scalaModuleInfo The information about the Scala verson used, if any.
    * @return A `ModuleDescriptor` that depends on `dependencyId`.
    */
-  def wrapDependencyInModule(dependencyId: ModuleID,
-                             scalaModuleInfo: Option[ScalaModuleInfo]): ModuleDescriptor = {
+  def wrapDependencyInModule(
+      dependencyId: ModuleID,
+      scalaModuleInfo: Option[ScalaModuleInfo]
+  ): ModuleDescriptor = {
     val sha1 = Hash.toHex(Hash(dependencyId.name))
     val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, dependencyId.revision)
       .withConfigurations(dependencyId.configurations)
@@ -88,10 +94,12 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
    * @param log The logger.
    * @return The result, either an unresolved warning or a sequence of files.
    */
-  def retrieve(dependencyId: ModuleID,
-               scalaModuleInfo: Option[ScalaModuleInfo],
-               retrieveDirectory: File,
-               log: Logger): Either[UnresolvedWarning, Vector[File]] =
+  def retrieve(
+      dependencyId: ModuleID,
+      scalaModuleInfo: Option[ScalaModuleInfo],
+      retrieveDirectory: File,
+      log: Logger
+  ): Either[UnresolvedWarning, Vector[File]] =
     retrieve(wrapDependencyInModule(dependencyId, scalaModuleInfo), retrieveDirectory, log)
 
   /**
@@ -102,9 +110,11 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
    * @param log The logger.
    * @return The result, either an unresolved warning or a sequence of files.
    */
-  def retrieve(module: ModuleDescriptor,
-               retrieveDirectory: File,
-               log: Logger): Either[UnresolvedWarning, Vector[File]] = {
+  def retrieve(
+      module: ModuleDescriptor,
+      retrieveDirectory: File,
+      log: Logger
+  ): Either[UnresolvedWarning, Vector[File]] = {
     // Using the default artifact type filter here, so sources and docs are excluded.
     val retrieveConfiguration = RetrieveConfiguration()
       .withRetrieveDirectory(retrieveDirectory)

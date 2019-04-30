@@ -49,7 +49,9 @@ class FrozenModeSpec extends BaseIvySpecification {
     val toExplicitResolve = module(defaultModuleId, explicitStoml, None, normalOptions)
     val frozenResolution = update(toExplicitResolve, frozenConf)
     assert(frozenResolution.isRight)
-    assert(frozenResolution.right.get.allModules.size == numberResolved,
-           s"The number of explicit modules in frozen mode should be equal than $numberResolved")
+    assert(
+      frozenResolution.right.get.allModules.size == numberResolved,
+      s"The number of explicit modules in frozen mode should be equal than $numberResolved"
+    )
   }
 }

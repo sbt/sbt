@@ -10,8 +10,10 @@ trait ConfigurationFormats {
   self: sbt.librarymanagement.ConfigurationFormats with sjsonnew.BasicJsonProtocol =>
   implicit lazy val ConfigurationFormat: JsonFormat[sbt.librarymanagement.Configuration] =
     new JsonFormat[sbt.librarymanagement.Configuration] {
-      override def read[J](jsOpt: Option[J],
-                           unbuilder: Unbuilder[J]): sbt.librarymanagement.Configuration = {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.Configuration = {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
@@ -23,12 +25,14 @@ trait ConfigurationFormats {
               unbuilder.readField[Vector[sbt.librarymanagement.Configuration]]("extendsConfigs")
             val transitive = unbuilder.readField[Boolean]("transitive")
             unbuilder.endObject()
-            new sbt.librarymanagement.Configuration(id,
-                                                    name,
-                                                    description,
-                                                    isPublic,
-                                                    extendsConfigs,
-                                                    transitive)
+            new sbt.librarymanagement.Configuration(
+              id,
+              name,
+              description,
+              isPublic,
+              extendsConfigs,
+              transitive
+            )
           case None =>
             deserializationError("Expected JsObject but found None")
         }

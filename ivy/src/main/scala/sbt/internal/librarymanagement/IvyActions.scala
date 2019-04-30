@@ -152,7 +152,11 @@ object IvyActions {
   ): T = {
     val previous = resolver.getChecksumAlgorithms
     resolver.setChecksums(checksums mkString ",")
-    try { act } finally { resolver.setChecksums(previous mkString ",") }
+    try {
+      act
+    } finally {
+      resolver.setChecksums(previous mkString ",")
+    }
   }
   private def crossVersionMap(moduleSettings: ModuleSettings): Option[String => String] =
     moduleSettings match {
@@ -367,12 +371,14 @@ object IvyActions {
       resolveOptions.setTransitive(false)
       resolveOptions.setCheckIfChanged(false)
     }
-    resolver.customResolve(descriptor,
-                           missingOk,
-                           updateConfiguration.logicalClock,
-                           resolveOptions,
-                           cache,
-                           log)
+    resolver.customResolve(
+      descriptor,
+      missingOk,
+      updateConfiguration.logicalClock,
+      resolveOptions,
+      cache,
+      log
+    )
   }
 
   private def retrieve(
@@ -496,7 +502,11 @@ object IvyActions {
         resolver.commitPublishTransaction()
       } catch {
         case e: Throwable =>
-          try { resolver.abortPublishTransaction() } finally { throw e }
+          try {
+            resolver.abortPublishTransaction()
+          } finally {
+            throw e
+          }
       }
     }
   }

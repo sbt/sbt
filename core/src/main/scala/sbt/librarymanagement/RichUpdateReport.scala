@@ -14,12 +14,14 @@ final class RichUpdateReport(report: UpdateReport) {
     val stamps = files
       .map(
         f =>
-          (f,
-           // TODO: The list of files may also contain some odd files that do not actually exist like:
-           // "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml".
-           // IO.getModifiedTimeOrZero() will just return zero, but the list of files should not contain such
-           // files to begin with, in principle.
-           IO.getModifiedTimeOrZero(f))
+          (
+            f,
+            // TODO: The list of files may also contain some odd files that do not actually exist like:
+            // "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml".
+            // IO.getModifiedTimeOrZero() will just return zero, but the list of files should not contain such
+            // files to begin with, in principle.
+            IO.getModifiedTimeOrZero(f)
+          )
       )
       .toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)

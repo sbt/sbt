@@ -90,12 +90,14 @@ private[librarymanagement] abstract class ConfigurationExtra {
   def describedAs(newDescription: String) =
     Configuration.of(id, name, newDescription, isPublic, extendsConfigs, transitive)
   def extend(configs: Configuration*) =
-    Configuration.of(id,
-                     name,
-                     description,
-                     isPublic,
-                     configs.toVector ++ extendsConfigs,
-                     transitive)
+    Configuration.of(
+      id,
+      name,
+      description,
+      isPublic,
+      configs.toVector ++ extendsConfigs,
+      transitive
+    )
   def notTransitive = intransitive
   def intransitive = Configuration.of(id, name, description, isPublic, extendsConfigs, false)
   def hide = Configuration.of(id, name, description, false, extendsConfigs, transitive)
@@ -109,7 +111,8 @@ private[sbt] object ConfigurationMacro {
     val enclosingValName = definingValName(
       c,
       methodName =>
-        s"""$methodName must be directly assigned to a val, such as `val Tooling = $methodName("tooling")`.""")
+        s"""$methodName must be directly assigned to a val, such as `val Tooling = $methodName("tooling")`."""
+    )
     if (enclosingValName.head.isLower) {
       c.error(c.enclosingPosition, "configuration id must be capitalized")
     }
