@@ -188,6 +188,7 @@ final class ScriptedTests(
       case "java/varargs-main"                           => LauncherBased // sbt/Package$
       case "package/lazy-name"                           => LauncherBased // sbt/Package$
       case "package/manifest"                            => LauncherBased // sbt/Package$
+      case "package/mappings"                            => LauncherBased // sbt/Package$
       case "package/resources"                           => LauncherBased // sbt/Package$
       case "project/Class.forName"                       => LauncherBased // sbt/Package$
       case "project/binary-plugin"                       => LauncherBased // sbt/Package$
