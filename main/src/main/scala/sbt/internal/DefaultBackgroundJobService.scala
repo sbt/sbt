@@ -209,7 +209,6 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     }
     val xs = (products.toVector map { syncTo(workingDirectory / "target") }) ++
       ((full diff products) map { syncTo(serviceTempDir / "target") })
-    Thread.sleep(100)
     xs
   }
 
