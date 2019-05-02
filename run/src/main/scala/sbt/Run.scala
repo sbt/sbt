@@ -8,19 +8,19 @@
 package sbt
 
 import java.io.File
-import java.lang.reflect.{ Method, Modifier }
-import Modifier.{ isPublic, isStatic }
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier.{ isPublic, isStatic }
+import java.net.URLClassLoader
 
-import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtilities }
 import sbt.internal.util.MessageOnlyException
 import sbt.io.Path
 import sbt.util.Logger
 
-import scala.reflect.internal.util.ScalaClassLoader.URLClassLoader
-import scala.util.{ Failure, Success, Try }
-import scala.util.control.NonFatal
 import scala.sys.process.Process
+import scala.util.control.NonFatal
+import scala.util.{ Failure, Success, Try }
 
 sealed trait ScalaRun {
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit]
@@ -98,8 +98,9 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
       invokeMain(loader, main, options)
     } finally {
       loader match {
-        case u: URLClassLoader => u.close()
-        case _                 =>
+        case u: URLClassLoader  => u.close()
+        case c: ClasspathFilter => c.close()
+        case _                  =>
       }
     }
   }

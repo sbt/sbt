@@ -50,6 +50,11 @@ final class xMain extends xsbti.AppMain {
       case e: InvocationTargetException =>
         // This propogates xsbti.FullReload to the launcher
         throw e.getCause
+    } finally {
+      loader match {
+        case a: AutoCloseable => a.close()
+        case _                =>
+      }
     }
   }
   /*

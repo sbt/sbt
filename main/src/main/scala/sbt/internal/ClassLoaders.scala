@@ -226,6 +226,11 @@ private[sbt] object SbtMetaBuildClassLoader {
     }
     new URLClassLoader(rest, updatedLibraryLoader) {
       override def toString: String = s"SbtMetaBuildClassLoader"
+      override def close(): Unit = {
+        super.close()
+        updatedLibraryLoader.close()
+        interfaceLoader.close()
+      }
     }
   }
 }

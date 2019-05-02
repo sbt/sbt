@@ -29,6 +29,7 @@ import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
 import sbt.internal.inc.JavaInterfaceUtil._
+import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
@@ -795,13 +796,17 @@ object Defaults extends BuildCommon {
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
-      val loader = testLoader.value match { case u: URLClassLoader => Some(u); case _ => None }
+      val close = testLoader.value match {
+        case u: URLClassLoader  => Some(() => u.close())
+        case c: ClasspathFilter => Some(() => c.close())
+        case _                  => None
+      }
       val trl = (testResultLogger in (Test, test)).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
       try {
         trl.run(streams.value.log, executeTests.value, taskName)
       } finally {
-        loader.foreach(_.close())
+        close.foreach(_.apply())
       }
     },
     testOnly := inputTests(testOnly).evaluated,
