@@ -234,14 +234,13 @@ object EvaluateTask {
       structure: BuildStructure,
       state: State
   ): ExecuteProgress[Task] = {
-    import Types.const
-    val maker: State => Seq[Keys.TaskProgress] = getSetting(
+    val maker: Seq[Keys.TaskProgress] = getSetting(
       Keys.progressReports,
-      const(Seq()),
+      Seq(),
       extracted,
       structure
     )
-    val reporters = maker(state) map { _.progress }
+    val reporters = maker map { _.progress }
     // configure the logger for super shell
     ConsoleAppender.setShowProgress((reporters collect {
       case p: TaskProgress => ()

@@ -473,7 +473,7 @@ object Keys {
   }
   val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
   // This key can be used to add custom ExecuteProgress instances
-  val progressReports = settingKey[State => Seq[TaskProgress]]("A function that returns a list of progress reporters.").withRank(DTask)
+  val progressReports = settingKey[Seq[TaskProgress]]("A function that returns a list of progress reporters.").withRank(DTask)
   private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
