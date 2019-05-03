@@ -42,7 +42,6 @@ trait Import {
   val ExistsFileFilter = sbt.io.ExistsFileFilter
   val FileFilter = sbt.io.FileFilter
   type FileFilter = sbt.io.FileFilter
-  type Glob = sbt.io.Glob
   val GlobFilter = sbt.io.GlobFilter
   val Hash = sbt.io.Hash
   val HiddenFileFilter = sbt.io.HiddenFileFilter
@@ -60,6 +59,18 @@ trait Import {
   type SimpleFilter = sbt.io.SimpleFilter
   type WatchSource = sbt.internal.io.Source
   val WatchSource = sbt.internal.io.Source
+
+  // sbt.nio
+  val ** = sbt.nio.file.**
+  val * = sbt.nio.file.*
+  val AnyPath = sbt.nio.file.AnyPath
+  type ChangedFiles = sbt.nio.file.ChangedFiles
+  val ChangedFiles = sbt.nio.file.ChangedFiles
+  type Glob = sbt.nio.file.Glob
+  val Glob = sbt.nio.file.Glob
+  type RelativeGlob = sbt.nio.file.RelativeGlob
+  val RelativeGlob = sbt.nio.file.RelativeGlob
+  val RecursiveGlob = sbt.nio.file.RecursiveGlob
 
   // sbt.util
   type AbstractLogger = sbt.util.AbstractLogger

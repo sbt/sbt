@@ -2,6 +2,8 @@ package sbt.watch.task
 
 import sbt._
 import Keys._
+import sbt.nio.Watch
+import sbt.nio.Keys._
 
 object Build {
   val reloadFile = settingKey[File]("file to toggle whether or not to reload")
@@ -20,7 +22,7 @@ object Build {
     setStringValue / watchTriggers += baseDirectory.value * "foo.txt",
     setStringValue := setStringValueImpl.evaluated,
     checkStringValue := checkStringValueImpl.evaluated,
-    watchOnTriggerEvent := { (_, _) => Watch.CancelWatch },
+    watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },
     watchTasks := Def.inputTask {
       val prev = watchTasks.evaluated
       new StateTransform(prev.state.fail)

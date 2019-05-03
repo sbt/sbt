@@ -31,11 +31,11 @@ import sbt.internal._
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
 import sbt.internal.io.{ Source, WatchState }
-import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
+import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.server.{
   Definition,
   LanguageServerProtocol,
@@ -43,7 +43,6 @@ import sbt.internal.server.{
   ServerHandler
 }
 import sbt.internal.testing.TestLogger
-import sbt.internal.TransitiveGlobs._
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types._
 import sbt.internal.util._
@@ -65,6 +64,10 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+import sbt.nio.Watch
+import sbt.nio.Keys._
+import sbt.nio.file.FileTreeView
+import sbt.nio.file.syntax._
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
@@ -82,7 +85,6 @@ import scala.xml.NodeSeq
 
 // incremental compiler
 import sbt.SlashSyntax0._
-import sbt.internal.GlobLister._
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
@@ -143,9 +145,19 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
+      pathToFileStamp :== sbt.nio.FileStamp.hash,
       classLoaderCache := ClassLoaderCache(4),
       fileInputs :== Nil,
+      inputFileStamper :== sbt.nio.FileStamper.Hash,
+      outputFileStamper :== sbt.nio.FileStamper.LastModified,
+      watchForceTriggerOnAnyChange :== true,
       watchTriggers :== Nil,
+      clean := { () },
+      sbt.nio.Keys.fileAttributeMap := {
+        state.value
+          .get(sbt.nio.Keys.persistentFileAttributeMap)
+          .getOrElse(new sbt.nio.Keys.FileAttributeMap)
+      },
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
@@ -184,14 +196,14 @@ object Defaults extends BuildCommon {
       artifactClassifier in packageSrc :== Some(SourceClassifier),
       artifactClassifier in packageDoc :== Some(DocClassifier),
       includeFilter :== NothingFilter,
-      includeFilter in unmanagedSources :== ("*.java" | "*.scala") -- DirectoryFilter,
+      includeFilter in unmanagedSources :== ("*.java" | "*.scala"),
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
       bgList := { bgJobService.value.jobs },
       ps := psTask.value,
       bgStop := bgStopTask.evaluated,
       bgWaitFor := bgWaitForTask.evaluated,
-      bgCopyClasspath :== true
+      bgCopyClasspath :== true,
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -242,10 +254,14 @@ object Defaults extends BuildCommon {
       settingsData := buildStructure.value.data,
       settingsData / fileInputs := {
         val baseDir = file(".").getCanonicalFile
-        val sourceFilter = ("*.sbt" || "*.scala" || "*.java") -- HiddenFileFilter
+        val sourceFilter = ("*.sbt" || "*.scala" || "*.java")
+        val projectDir = baseDir / "project"
         Seq(
-          Glob(baseDir, "*.sbt" -- HiddenFileFilter, 0),
-          Glob(baseDir / "project", sourceFilter, Int.MaxValue)
+          baseDir * "*.sbt",
+          projectDir * sourceFilter,
+          // We only want to recursively look in source because otherwise we have to search
+          // the project target directories which is expensive.
+          projectDir / "src" ** sourceFilter,
         )
       },
       trapExit :== true,
@@ -271,7 +287,6 @@ object Defaults extends BuildCommon {
       extraLoggers :== { _ =>
         Nil
       },
-      pollingGlobs :== Nil,
       watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
       taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
@@ -296,15 +311,8 @@ object Defaults extends BuildCommon {
       Previous.references :== new Previous.References,
       concurrentRestrictions := defaultRestrictions.value,
       parallelExecution :== true,
-      fileTreeRepository := state.value
-        .get(globalFileTreeRepository)
-        .map(FileTree.repository)
-        .getOrElse(FileTree.Repository.polling),
+      fileTreeView :== FileTreeView.default,
       Continuous.dynamicInputs := Continuous.dynamicInputsImpl.value,
-      externalHooks := {
-        val repository = fileTreeRepository.value
-        compileOptions => Some(ExternalHooks(compileOptions, repository))
-      },
       logBuffered :== false,
       commands :== Nil,
       showSuccess :== true,
@@ -345,9 +353,7 @@ object Defaults extends BuildCommon {
       watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
       watchLogLevel :== Level.Info,
       watchOnEnter :== Watch.defaultOnEnter,
-      watchOnMetaBuildEvent :== Watch.ifChanged(Watch.Reload),
-      watchOnInputEvent :== Watch.trigger,
-      watchOnTriggerEvent :== Watch.trigger,
+      watchOnFileInputEvent :== Watch.trigger,
       watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
       watchService :== Watched.newWatchService,
       watchStartMessage :== Watch.defaultStartWatch,
@@ -406,16 +412,24 @@ object Defaults extends BuildCommon {
         )
     },
     unmanagedSources / fileInputs := {
-      val filter =
-        (includeFilter in unmanagedSources).value -- (excludeFilter in unmanagedSources).value
+      val include = (includeFilter in unmanagedSources).value
+      val filter = (excludeFilter in unmanagedSources).value match {
+        // Hidden files are already filtered out by the FileStamps method
+        case NothingFilter | HiddenFileFilter => include
+        case exclude                          => include -- exclude
+      }
       val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
       unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources
     },
-    unmanagedSources := (unmanagedSources / fileInputs).value.all.map(Stamped.file),
+    unmanagedSources := (unmanagedSources / inputFileStamps).value.map(_._1.toFile),
     managedSourceDirectories := Seq(sourceManaged.value),
-    managedSources := generate(sourceGenerators).value,
+    managedSources := {
+      val stamper = sbt.nio.Keys.pathToFileStamp.value
+      val res = generate(sourceGenerators).value
+      res.foreach(f => stamper(f.toPath))
+      res
+    },
     sourceGenerators :== Nil,
-    sourceGenerators / fileOutputs := Seq(managedDirectory.value ** AllPassFilter),
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
@@ -430,11 +444,15 @@ object Defaults extends BuildCommon {
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
     unmanagedResources / fileInputs := {
-      val filter =
-        (includeFilter in unmanagedResources).value -- (excludeFilter in unmanagedResources).value
+      val include = (includeFilter in unmanagedResources).value
+      val filter = (excludeFilter in unmanagedResources).value match {
+        // Hidden files are already filtered out by the FileStamps method
+        case NothingFilter | HiddenFileFilter => include
+        case exclude                          => include -- exclude
+      }
       unmanagedResourceDirectories.value.map(_ ** filter)
     },
-    unmanagedResources := (unmanagedResources / fileInputs).value.all.map(Stamped.file),
+    unmanagedResources := (unmanagedResources / allInputFiles).value.map(_.toFile),
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
@@ -574,14 +592,11 @@ object Defaults extends BuildCommon {
     globalDefaults(enableBinaryCompileAnalysis := true)
 
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings :+ (clean := Clean.taskIn(ThisScope).value)
+    compileInputsSettings
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
-    fileOutputs := Seq(
-      compileAnalysisFileTask.value.toGlob,
-      classDirectory.value ** "*.class"
-    ) ++ (sourceGenerators / fileOutputs).value,
+    clean := Clean.task(ThisScope, full = false).value,
+    fileOutputs := Seq(classDirectory.value ** "*.class"),
     compile := compileTask.value,
-    clean := Clean.taskIn(ThisScope).value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
@@ -595,7 +610,12 @@ object Defaults extends BuildCommon {
         else ""
       s"inc_compile$extra.zip"
     },
-    compileIncSetup := compileIncSetupTask.value,
+    compileIncSetup := {
+      val base = compileIncSetupTask.value
+      val incOptions =
+        base.incrementalCompilerOptions.withExternalHooks(ExternalHooks.default.value)
+      base.withIncrementalCompilerOptions(incOptions)
+    },
     console := consoleTask.value,
     collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
     consoleQuick := consoleQuickTask.value,
@@ -628,14 +648,11 @@ object Defaults extends BuildCommon {
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := Vector.empty,
     cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
-    clean := Clean.taskIn(ThisScope).value,
+    clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value,
-    fileOutputs += target.value ** AllPassFilter,
-    transitiveGlobs := InputGraph.task.value,
-    transitiveInputs := InputGraph.inputsTask.value,
-    transitiveTriggers := InputGraph.triggersTask.value,
+    transitiveDynamicInputs := SettingsGraph.task.value,
   )
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
@@ -1228,7 +1245,10 @@ object Defaults extends BuildCommon {
       exclude: ScopedTaskable[FileFilter]
   ): Initialize[Task[Seq[File]]] = Def.task {
     val filter = include.toTask.value -- exclude.toTask.value
-    dirs.toTask.value.map(_ ** filter).all.map(Stamped.file)
+    val view = fileTreeView.value
+    view.list(dirs.toTask.value.map(_ ** filter)).collect {
+      case (p, a) if !a.isDirectory => p.toFile
+    }
   }
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
@@ -1594,7 +1614,14 @@ object Defaults extends BuildCommon {
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
     }
-    analysisResult.analysis
+    val map = sbt.nio.Keys.fileAttributeMap.value
+    val analysis = analysisResult.analysis
+    import scala.collection.JavaConverters._
+    analysis.readStamps.getAllProductStamps.asScala.foreach {
+      case (f, s) =>
+        map.put(f.toPath, sbt.nio.FileStamp.LastModified(s.getLastModified.orElse(-1L)))
+    }
+    analysis
   }
   def compileIncrementalTask = Def.task {
     // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
@@ -1603,13 +1630,14 @@ object Defaults extends BuildCommon {
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Inputs): CompileResult = {
     lazy val x = s.text(ExportStream)
-    def onArgs(cs: Compilers) =
+    def onArgs(cs: Compilers) = {
       cs.withScalac(
         cs.scalac match {
           case ac: AnalyzingCompiler => ac.onArgs(exported(x, "scalac"))
           case x                     => x
         }
       )
+    }
     // .withJavac(
     //  cs.javac.onArgs(exported(x, "javac"))
     //)
@@ -1677,13 +1705,7 @@ object Defaults extends BuildCommon {
         Inputs.of(
           compilers.value,
           options,
-          externalHooks
-            .value(options)
-            .map { hooks =>
-              val newOptions = setup.incrementalCompilerOptions.withExternalHooks(hooks)
-              setup.withIncrementalCompilerOptions(newOptions)
-            }
-            .getOrElse(setup),
+          setup,
           previousCompile.value
         )
       }
@@ -2056,6 +2078,8 @@ object Classpaths {
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
         docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
+        cleanKeepFiles :== Nil,
+        cleanKeepGlobs :== Nil,
         fileOutputs :== Nil,
         sbtDependency := {
           val app = appConfiguration.value
@@ -2073,9 +2097,7 @@ object Classpaths {
         shellPrompt := shellPromptFromState,
         dynamicDependency := { (): Unit },
         transitiveClasspathDependency := { (): Unit },
-        transitiveGlobs := { (Nil: Seq[Glob], Nil: Seq[Glob]) },
-        transitiveInputs := Nil,
-        transitiveTriggers := Nil,
+        transitiveDynamicInputs :== Nil,
       )
     )
 
@@ -3037,31 +3059,21 @@ object Classpaths {
   ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
     Def.taskDyn {
       val dirs = productDirectories.value
-      def containsClassFile(fs: List[File]): Boolean =
-        (fs exists { dir =>
-          (dir ** DirectoryFilter).get exists { d =>
-            (d * "*.class").get.nonEmpty
-          }
-        })
+      val view = fileTreeView.value
+      def containsClassFile(): Boolean = view.list(dirs.map(_ ** "*.class")).nonEmpty
       TrackLevel.intersection(track, exportToInternal.value) match {
         case TrackLevel.TrackAlways =>
           Def.task {
             products.value map { (_, compile.value) }
           }
-        case TrackLevel.TrackIfMissing if !containsClassFile(dirs.toList) =>
+        case TrackLevel.TrackIfMissing if !containsClassFile() =>
           Def.task {
             products.value map { (_, compile.value) }
           }
         case _ =>
           Def.task {
-            val analysisOpt = previousCompile.value.analysis.toOption
-            dirs map { x =>
-              (
-                x,
-                if (analysisOpt.isDefined) analysisOpt.get
-                else Analysis.empty
-              )
-            }
+            val analysis = previousCompile.value.analysis.toOption.getOrElse(Analysis.empty)
+            dirs.map(_ -> analysis)
           }
       }
     }
@@ -3394,8 +3406,9 @@ object Classpaths {
       base: File,
       filter: FileFilter,
       excl: FileFilter
-  ): Classpath =
+  ): Classpath = {
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
+  }
   @deprecated(
     "The method only works for Scala 2, use the overloaded version to support both Scala 2 and Scala 3",
     "1.1.5"

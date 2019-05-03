@@ -5,6 +5,10 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+import sbt.nio.FileStamp
+import sjsonnew.JsonFormat
+import java.nio.file.{ Path => NioPath }
+
 import scala.language.experimental.macros
 
 package object sbt
@@ -21,8 +25,7 @@ package object sbt
     with sbt.BuildSyntax
     with sbt.OptionSyntax
     with sbt.SlashSyntax
-    with sbt.Import
-    with sbt.internal.GlobListers {
+    with sbt.Import {
   // IO
   def uri(s: String): URI = new URI(s)
   def file(s: String): File = new File(s)
@@ -30,7 +33,12 @@ package object sbt
   implicit def fileToRichFile(file: File): sbt.io.RichFile = new sbt.io.RichFile(file)
   implicit def filesToFinder(cc: Traversable[File]): sbt.io.PathFinder =
     sbt.io.PathFinder.strict(cc)
-
+  implicit val fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
+    FileStamp.fileStampJsonFormatter
+  implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.pathJsonFormatter
+  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.fileJsonFormatter
+  implicit val singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.pathJson
+  implicit val singleFileJsonFormatter: JsonFormat[File] = FileStamp.fileJson
   // others
 
   object CompileOrder {

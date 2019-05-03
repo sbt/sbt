@@ -1,2 +1,4 @@
+import sbt.nio.file.Glob
+
 cleanKeepGlobs in Compile +=
-  ((classDirectory in Compile in compile).value / "X.class").toGlob
+  Glob((classDirectory in Compile in compile).value, "X.class")

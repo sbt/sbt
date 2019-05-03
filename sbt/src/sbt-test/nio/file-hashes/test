@@ -1,0 +1,17 @@
+> checkModified
+
+$ copy-file changes/Bar.md base/Bar.md
+
+> checkModified
+
+> checkRemoved
+
+$ delete base/Bar.md
+
+> checkRemoved
+
+> checkAdded
+
+$ copy-file original/Bar.md base/Bar.md
+
+> checkAdded

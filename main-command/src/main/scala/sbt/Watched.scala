@@ -51,7 +51,6 @@ trait Watched {
 
 object Watched {
 
-  @deprecated("WatchSource is replaced by sbt.io.Glob", "1.3.0")
   type WatchSource = Source
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
@@ -60,7 +59,6 @@ object Watched {
 
   def clearScreen: String = "\u001b[2J\u001b[0;0H"
 
-  @deprecated("WatchSource has been replaced by sbt.io.Glob", "1.3.0")
   object WatchSource {
 
     /**

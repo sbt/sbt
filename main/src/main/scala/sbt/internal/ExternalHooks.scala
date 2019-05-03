@@ -10,34 +10,53 @@ package sbt.internal
 import java.nio.file.Paths
 import java.util.Optional
 
-import sbt.Stamped
-import sbt.internal.inc.ExternalLookup
+import sbt.Def
+import sbt.Keys._
+import sbt.internal.inc.{ EmptyStamp, ExternalLookup, Stamper }
 import sbt.io.syntax._
-import sbt.io.{ AllPassFilter, TypedPath }
+import sbt.nio.Keys._
+import sbt.nio.file.RecursiveGlob
+import sbt.nio.file.syntax._
 import xsbti.compile._
 import xsbti.compile.analysis.Stamp
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
-  def apply(options: CompileOptions, repo: FileTree.Repository): DefaultExternalHooks = {
-    import scala.collection.JavaConverters._
-    val sources = options.sources()
-    val cachedSources = new java.util.HashMap[File, Stamp]
-    val converter: File => Stamp = f => Stamped.sourceConverter(TypedPath(f.toPath))
-    sources.foreach {
-      case sf: Stamped => cachedSources.put(sf, sf.stamp)
-      case f: File     => cachedSources.put(f, converter(f))
+  private[this] implicit class StampOps(val s: Stamp) extends AnyVal {
+    def hash: String = s.getHash.orElse("")
+    def lastModified: Long = s.getLastModified.orElse(-1L)
+  }
+  def default: Def.Initialize[sbt.Task[ExternalHooks]] = Def.task {
+    val attributeMap = fileAttributeMap.value
+    val cp = dependencyClasspath.value.map(_.data)
+    cp.foreach { file =>
+      val path = file.toPath
+      attributeMap.get(path) match {
+        case null => attributeMap.put(path, sbt.nio.FileStamp.lastModified(path))
+        case _    =>
+      }
     }
-    val allBinaries = new java.util.HashMap[File, Stamp]
-    options.classpath.foreach {
-      case f if f.getName.endsWith(".jar") =>
-        repo.get(f.toGlob) foreach { case (p, a) => allBinaries.put(p.toFile, a.stamp) }
-      case f =>
-        repo.get(f ** AllPassFilter) foreach { case (p, a) => allBinaries.put(p.toFile, a.stamp) }
+    val classGlob = classDirectory.value.toGlob / RecursiveGlob / "*.class"
+    fileTreeView.value.list(classGlob).foreach {
+      case (path, _) => attributeMap.put(path, sbt.nio.FileStamp.lastModified(path))
     }
-
+    apply(
+      (compileOptions in compile).value,
+      (file: File) => {
+        attributeMap.get(file.toPath) match {
+          case null => EmptyStamp
+          case s    => s.stamp
+        }
+      }
+    )
+  }
+  private def apply(
+      options: CompileOptions,
+      attributeMap: File => Stamp
+  ): DefaultExternalHooks = {
     val lookup = new ExternalLookup {
       override def changedSources(previousAnalysis: CompileAnalysis): Option[Changes[File]] = Some {
         new Changes[File] {
@@ -51,19 +70,19 @@ private[sbt] object ExternalHooks {
             previousAnalysis.readStamps().getAllSourceStamps.asScala
           prevSources.foreach {
             case (file: File, s: Stamp) =>
-              cachedSources.get(file) match {
+              attributeMap(file) match {
                 case null =>
                   getRemoved.add(file)
                 case stamp =>
-                  if ((stamp.getHash.orElse("") == s.getHash.orElse("")) && (stamp.getLastModified
-                        .orElse(-1L) == s.getLastModified.orElse(-1L))) {
+                  val hash = (if (stamp.getHash.isPresent) stamp else Stamper.forHash(file)).hash
+                  if (hash == s.hash) {
                     getUnmodified.add(file)
                   } else {
                     getChanged.add(file)
                   }
               }
           }
-          sources.foreach(file => if (!prevSources.contains(file)) getAdded.add(file))
+          options.sources.foreach(file => if (!prevSources.contains(file)) getAdded.add(file))
         }
       }
 
@@ -79,26 +98,23 @@ private[sbt] object ExternalHooks {
       override def changedBinaries(previousAnalysis: CompileAnalysis): Option[Set[File]] = {
         Some(previousAnalysis.readStamps.getAllBinaryStamps.asScala.flatMap {
           case (file, stamp) =>
-            allBinaries.get(file) match {
-              case null =>
+            attributeMap(file) match {
+              case cachedStamp if stamp.getLastModified == cachedStamp.getLastModified => None
+              case _ =>
                 javaHome match {
                   case Some(h) if file.toPath.startsWith(h) => None
                   case _                                    => Some(file)
                 }
-              case cachedStamp if stamp == cachedStamp => None
-              case _                                   => Some(file)
             }
         }.toSet)
       }
 
       override def removedProducts(previousAnalysis: CompileAnalysis): Option[Set[File]] = {
         Some(previousAnalysis.readStamps.getAllProductStamps.asScala.flatMap {
-          case (file, s) =>
-            allBinaries get file match {
-              case null => Some(file)
-              case stamp if stamp.getLastModified.orElse(0L) != s.getLastModified.orElse(0L) =>
-                Some(file)
-              case _ => None
+          case (file, stamp) =>
+            attributeMap(file) match {
+              case s if s.getLastModified == stamp.getLastModified => None
+              case _                                               => Some(file)
             }
         }.toSet)
       }

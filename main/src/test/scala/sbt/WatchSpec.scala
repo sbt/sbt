@@ -12,12 +12,13 @@ import java.nio.file.{ Files, Path }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import org.scalatest.{ FlatSpec, Matchers }
-import sbt.Watch.{ NullLogger, _ }
 import sbt.WatchSpec._
-import sbt.internal.FileAttributes
-import sbt.io.FileEventMonitor.Event
+import sbt.internal.nio.{ FileEvent, FileEventMonitor, FileTreeRepository }
 import sbt.io._
 import sbt.io.syntax._
+import sbt.nio.Watch
+import sbt.nio.Watch.{ NullLogger, _ }
+import sbt.nio.file.{ FileAttributes, Glob }
 import sbt.util.Logger
 
 import scala.collection.mutable
@@ -30,31 +31,26 @@ class WatchSpec extends FlatSpec with Matchers {
   object TestDefaults {
     def callbacks(
         inputs: Seq[Glob],
-        fileEventMonitor: Option[FileEventMonitor[FileAttributes]] = None,
+        fileEventMonitor: Option[FileEventMonitor[FileEvent[FileAttributes]]] = None,
         logger: Logger = NullLogger,
         parseEvent: () => Watch.Action = () => Ignore,
         onStartWatch: () => Watch.Action = () => CancelWatch: Watch.Action,
-        onWatchEvent: Event[FileAttributes] => Watch.Action = _ => Ignore,
-        triggeredMessage: Event[FileAttributes] => Option[String] = _ => None,
+        onWatchEvent: FileEvent[FileAttributes] => Watch.Action = _ => Ignore,
+        triggeredMessage: FileEvent[FileAttributes] => Option[String] = _ => None,
         watchingMessage: () => Option[String] = () => None
     ): (NextAction, NextAction) = {
-      val monitor = fileEventMonitor.getOrElse {
-        val fileTreeRepository = FileTreeRepository.default(FileAttributes.default)
+      val monitor: FileEventMonitor[FileEvent[FileAttributes]] = fileEventMonitor.getOrElse {
+        val fileTreeRepository = FileTreeRepository.default
         inputs.foreach(fileTreeRepository.register)
-        val m =
-          FileEventMonitor.antiEntropy(
-            fileTreeRepository,
-            50.millis,
-            m => logger.debug(m.toString),
-            50.millis,
-            10.minutes
-          )
-        new FileEventMonitor[FileAttributes] {
-          override def poll(duration: Duration): Seq[Event[FileAttributes]] = m.poll(duration)
-          override def close(): Unit = m.close()
-        }
+        FileEventMonitor.antiEntropy(
+          fileTreeRepository,
+          50.millis,
+          m => logger.debug(m.toString),
+          50.millis,
+          10.minutes
+        )
       }
-      val onTrigger: Event[FileAttributes] => Unit = event => {
+      val onTrigger: FileEvent[FileAttributes] => Unit = event => {
         triggeredMessage(event).foreach(logger.info(_))
       }
       val onStart: () => Watch.Action = () => {
@@ -63,7 +59,7 @@ class WatchSpec extends FlatSpec with Matchers {
       }
       val nextAction: NextAction = () => {
         val inputAction = parseEvent()
-        val fileActions = monitor.poll(10.millis).map { e: Event[FileAttributes] =>
+        val fileActions = monitor.poll(10.millis).map { e: FileEvent[FileAttributes] =>
           onWatchEvent(e) match {
             case Trigger => onTrigger(e); Trigger
             case action  => action
@@ -113,8 +109,8 @@ class WatchSpec extends FlatSpec with Matchers {
     val callbacks = TestDefaults.callbacks(
       inputs = Seq(realDir ** AllPassFilter),
       onStartWatch = () => if (task.getCount == 2) CancelWatch else Ignore,
-      onWatchEvent = e => if (e.entry.typedPath.toPath == foo) Trigger else Ignore,
-      triggeredMessage = e => { queue += e.entry.typedPath.toPath; None },
+      onWatchEvent = e => if (e.path == foo) Trigger else Ignore,
+      triggeredMessage = e => { queue += e.path; None },
       watchingMessage = () => {
         IO.touch(bar.toFile); Thread.sleep(5); IO.touch(foo.toFile)
         None
@@ -132,8 +128,8 @@ class WatchSpec extends FlatSpec with Matchers {
     val callbacks = TestDefaults.callbacks(
       inputs = Seq(realDir ** AllPassFilter),
       onStartWatch = () => if (task.getCount == 3) CancelWatch else Ignore,
-      onWatchEvent = _ => Trigger,
-      triggeredMessage = e => { queue += e.entry.typedPath.toPath; None },
+      onWatchEvent = e => if (e.path != realDir.toPath) Trigger else Ignore,
+      triggeredMessage = e => { queue += e.path; None },
       watchingMessage = () => {
         task.getCount match {
           case 1 => Files.createFile(bar)

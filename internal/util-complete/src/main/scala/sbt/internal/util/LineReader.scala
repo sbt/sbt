@@ -12,6 +12,7 @@ import jline.console.history.{ FileHistory, MemoryHistory }
 import java.io.{ File, FileDescriptor, FileInputStream, FilterInputStream, InputStream }
 
 import complete.Parser
+import jline.Terminal
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -119,7 +120,7 @@ private[sbt] object JLine {
 
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
-  private[sbt] def terminal = jline.TerminalFactory.get
+  private[sbt] def terminal: Terminal = jline.TerminalFactory.get
 
   private def withTerminal[T](f: jline.Terminal => T): T =
     synchronized {

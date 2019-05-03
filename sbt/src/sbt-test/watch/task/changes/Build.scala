@@ -2,6 +2,8 @@ package sbt.watch.task
 
 import sbt._
 import Keys._
+import sbt.nio.Keys._
+import sbt.nio.Watch
 
 object Build {
   val setStringValue = inputKey[Unit]("set a global string to a value")
@@ -22,6 +24,6 @@ object Build {
       IO.touch(baseDirectory.value / "foo.txt", true)
       Some("watching")
     },
-    watchOnStart := { _ => () => Watch.CancelWatch }
+    watchOnIteration := { _ => Watch.CancelWatch }
   )
 }

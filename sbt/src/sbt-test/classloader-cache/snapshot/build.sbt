@@ -16,8 +16,8 @@ val snapshot = (project in file(".")).settings(
   libraryDependencies += "sbt" %% "foo-lib" % "0.1.0-SNAPSHOT",
   rewriteIvy := {
     val dir = Def.spaceDelimited().parsed.head
-    sbt.IO.delete(file("ivy"))
-    sbt.IO.copyDirectory(file(s"libraries/library-$dir/ivy"), file("ivy"))
+    sbt.IO.delete(baseDirectory.value / "ivy")
+    sbt.IO.copyDirectory(baseDirectory.value / s"libraries/library-$dir/ivy", baseDirectory.value / "ivy")
     Files.walk(file("ivy").getCanonicalFile.toPath).iterator.asScala.foreach { f =>
      Files.setLastModifiedTime(f, FileTime.fromMillis(System.currentTimeMillis + 3000))
     }
