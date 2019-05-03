@@ -284,7 +284,7 @@ $ProjectCommand ..
 
 $ProjectsCommand add <URI>+
 	Adds the builds at the provided URIs to this session.
-	These builds may be selected using the sProjectCommand command.
+	These builds may be selected using the $ProjectCommand command.
 	Alternatively, tasks from these builds may be run using the explicit syntax {URI}project/task
 
 $ProjectsCommand remove <URI>+
