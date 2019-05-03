@@ -296,7 +296,7 @@ object Defaults extends BuildCommon {
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
       useSuperShell := { if (insideCI.value) false else sbt.internal.TaskProgress.isEnabled },
-      progressReports := { (s: State) =>
+      progressReports := {
         val progress = useSuperShell.value
         val rs = EvaluateTask.taskTimingProgress.toVector ++
           EvaluateTask.taskTraceEvent.toVector ++ {
