@@ -3,7 +3,6 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala210 = "2.10.7"
   val scala211 = "2.11.12"
   val scala212 = "2.12.8"
 

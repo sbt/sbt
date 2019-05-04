@@ -16,8 +16,6 @@ matrix:
   include:
   - scala: 2.12.7
     jdk: openjdk11
-  - scala: 2.10.6
-    script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION compile"
 
 env:
   global:
