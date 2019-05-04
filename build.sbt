@@ -93,7 +93,7 @@ lazy val utilLogging = (project in internalPath / "util-logging")
   .dependsOn(utilInterface)
   .settings(
     commonSettings,
-    crossScalaVersions := Seq(scala210, scala211, scala212),
+    crossScalaVersions := Seq(scala211, scala212),
     name := "Util Logging",
     libraryDependencies ++=
       Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value),
