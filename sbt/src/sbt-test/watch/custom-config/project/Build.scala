@@ -18,7 +18,7 @@ object Build {
   }
   lazy val foo = project.settings(
     watchStartMessage := { (count: Int, _, _) => Some(s"FOO $count") },
-    Compile / compile / watchTriggers += baseDirectory.value * "foo.txt",
+    Compile / compile / watchTriggers += baseDirectory.value.toGlob / "foo.txt",
     Compile / compile / watchStartMessage := { (count: Int, _, _) =>
       // this checks that Compile / compile / watchStartMessage
       // is preferred to Compile / watchStartMessage
@@ -35,7 +35,9 @@ object Build {
     checkStringValue := checkStringValueImpl.evaluated,
     watchOnFileInputEvent := { (_, _) => Watch.CancelWatch }
   )
-  lazy val bar = project.settings(fileInputs in setStringValue += baseDirectory.value * "foo.txt")
+  lazy val bar = project.settings(
+    fileInputs in setStringValue += baseDirectory.value.toGlob / "foo.txt"
+  )
   lazy val root = (project in file(".")).aggregate(foo, bar).settings(
     watchOnFileInputEvent := { (_, _) => Watch.CancelWatch }
   )

@@ -37,6 +37,7 @@ import sbt.internal.librarymanagement.mavenint.{
   SbtPomExtraProperties
 }
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
+import sbt.internal.nio.Globs
 import sbt.internal.server.{
   Definition,
   LanguageServerProtocol,
@@ -67,7 +68,7 @@ import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
 import sbt.nio.Watch
 import sbt.nio.Keys._
-import sbt.nio.file.FileTreeView
+import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
 import sbt.nio.file.syntax._
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
@@ -254,15 +255,15 @@ object Defaults extends BuildCommon {
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
       settingsData / fileInputs := {
-        val baseDir = file(".").getCanonicalFile
-        val sourceFilter = ("*.sbt" || "*.scala" || "*.java")
+        val baseDir = file(".").getCanonicalFile()
+        val sourceFilter = "*.{sbt,scala,java}"
         val projectDir = baseDir / "project"
         Seq(
-          baseDir * "*.sbt",
-          projectDir * sourceFilter,
+          Glob(baseDir, "*.sbt"),
+          Glob(projectDir, sourceFilter),
           // We only want to recursively look in source because otherwise we have to search
           // the project target directories which is expensive.
-          projectDir / "src" ** sourceFilter,
+          Glob(projectDir / "src", RecursiveGlob / sourceFilter),
         )
       },
       trapExit :== true,
@@ -419,8 +420,11 @@ object Defaults extends BuildCommon {
         case NothingFilter | HiddenFileFilter => include
         case exclude                          => include -- exclude
       }
-      val baseSources = if (sourcesInBase.value) baseDirectory.value * filter :: Nil else Nil
-      unmanagedSourceDirectories.value.map(_ ** filter) ++ baseSources
+      val baseSources =
+        if (sourcesInBase.value) Globs(baseDirectory.value.toPath, recursive = false, filter) :: Nil
+        else Nil
+      unmanagedSourceDirectories.value
+        .map(d => Globs(d.toPath, recursive = true, filter)) ++ baseSources
     },
     unmanagedSources := (unmanagedSources / inputFileStamps).value.map(_._1.toFile),
     managedSourceDirectories := Seq(sourceManaged.value),
@@ -451,9 +455,9 @@ object Defaults extends BuildCommon {
         case NothingFilter | HiddenFileFilter => include
         case exclude                          => include -- exclude
       }
-      unmanagedResourceDirectories.value.map(_ ** filter)
+      unmanagedResourceDirectories.value.map(d => Globs(d.toPath, recursive = true, filter))
     },
-    unmanagedResources := (unmanagedResources / allInputFiles).value.map(_.toFile),
+    unmanagedResources := (unmanagedResources / inputFileStamps).value.map(_._1.toFile),
     resourceGenerators :== Nil,
     resourceGenerators += Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
@@ -596,7 +600,7 @@ object Defaults extends BuildCommon {
     compileInputsSettings
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     clean := Clean.task(ThisScope, full = false).value,
-    fileOutputs := Seq(classDirectory.value ** "*.class"),
+    fileOutputs := Seq(Glob(classDirectory.value, RecursiveGlob / "*.class")),
     compile := compileTask.value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
@@ -1249,7 +1253,7 @@ object Defaults extends BuildCommon {
   ): Initialize[Task[Seq[File]]] = Def.task {
     val filter = include.toTask.value -- exclude.toTask.value
     val view = fileTreeView.value
-    view.list(dirs.toTask.value.map(_ ** filter)).collect {
+    view.list(dirs.toTask.value.map(f => Globs(f.toPath, recursive = true, filter))).collect {
       case (p, a) if !a.isDirectory => p.toFile
     }
   }
@@ -3063,7 +3067,8 @@ object Classpaths {
     Def.taskDyn {
       val dirs = productDirectories.value
       val view = fileTreeView.value
-      def containsClassFile(): Boolean = view.list(dirs.map(_ ** "*.class")).nonEmpty
+      def containsClassFile(): Boolean =
+        view.list(dirs.map(Glob(_, RecursiveGlob / "*.class"))).nonEmpty
       TrackLevel.intersection(track, exportToInternal.value) match {
         case TrackLevel.TrackAlways =>
           Def.task {

@@ -3,7 +3,7 @@
 // Check that we can correctly extract Foo.txt with a recursive source
 val foo = taskKey[Seq[File]]("Retrieve Foo.txt")
 
-foo / fileInputs += baseDirectory.value ** "*.txt"
+foo / fileInputs += baseDirectory.value.toGlob / ** / "*.txt"
 
 foo := (foo / allInputFiles).value.map(_.toFile)
 
@@ -14,7 +14,7 @@ checkFoo := assert(foo.value == Seq(baseDirectory.value / "base/subdir/nested-su
 // Check that we can correctly extract Bar.md with a non-recursive source
 val bar = taskKey[Seq[File]]("Retrieve Bar.md")
 
-bar / fileInputs += baseDirectory.value / "base/subdir/nested-subdir" * "*.md"
+bar / fileInputs += baseDirectory.value.toGlob / "base/subdir/nested-subdir/*.md"
 
 bar := (bar / allInputFiles).value.map(_.toFile)
 
@@ -25,7 +25,7 @@ checkBar := assert(bar.value == Seq(baseDirectory.value / "base/subdir/nested-su
 // Check that we can correctly extract Bar.md and Foo.md with a non-recursive source
 val all = taskKey[Seq[File]]("Retrieve all files")
 
-all / fileInputs += baseDirectory.value / "base" / "subdir" / "nested-subdir" * AllPassFilter
+all / fileInputs += baseDirectory.value.toGlob / "base" / "subdir" / "nested-subdir" / *
 
 val checkAll = taskKey[Unit]("Check that the Bar.md file is retrieved")
 
@@ -39,8 +39,8 @@ checkAll := {
 val set = taskKey[Seq[File]]("Specify redundant sources in a set")
 
 set / fileInputs ++= Seq(
-  baseDirectory.value / "base" ** -DirectoryFilter,
-  baseDirectory.value / "base" / "subdir" / "nested-subdir" * -DirectoryFilter
+  baseDirectory.value.toGlob / "base" / **,
+  baseDirectory.value.toGlob / "base" / "subdir" / "nested-subdir" / *
 )
 
 val depth = taskKey[Seq[File]]("Specify redundant sources with limited depth")

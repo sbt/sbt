@@ -14,7 +14,6 @@ import java.nio.file.{ DirectoryNotEmptyException, Files, Path }
 import sbt.Def._
 import sbt.Keys._
 import sbt.Project.richInitializeTask
-import sbt.io.AllPassFilter
 import sbt.io.syntax._
 import sbt.nio.Keys._
 import sbt.nio.file._
@@ -54,7 +53,7 @@ private[sbt] object Clean {
   private[this] def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
     val excludes = (cleanKeepFiles in scope).value.map {
       // This mimics the legacy behavior of cleanFilesTask
-      case f if f.isDirectory => f * AllPassFilter
+      case f if f.isDirectory => Glob(f, AnyPath)
       case f                  => f.toGlob
     } ++ (cleanKeepGlobs in scope).value
     p: Path => excludes.exists(_.matches(p))

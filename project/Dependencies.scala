@@ -9,7 +9,7 @@ object Dependencies {
   val baseScalaVersion = scala212
 
   // sbt modules
-  private val ioVersion = "1.3.0-M9"
+  private val ioVersion = "1.3.0-M10"
   private val utilVersion = "1.3.0-M6"
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {

@@ -2,8 +2,8 @@ import sbt.nio.Keys._
 
 val foo = taskKey[Unit]("foo")
 foo / fileInputs := Seq(
-  (baseDirectory.value / "base").toGlob / "*.md",
-  (baseDirectory.value / "base").toGlob / "*.txt",
+  baseDirectory.value.toGlob / "base" / "*.md",
+  baseDirectory.value.toGlob / "base" / "*.txt",
 )
 
 val checkModified = taskKey[Unit]("check that modified files are returned")

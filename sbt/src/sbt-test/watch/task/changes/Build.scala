@@ -17,7 +17,7 @@ object Build {
     assert(IO.read(file(stringFile)) == string)
   }
   lazy val root = (project in file(".")).settings(
-    setStringValue / watchTriggers += baseDirectory.value * "foo.txt",
+    setStringValue / watchTriggers += baseDirectory.value.toGlob / "foo.txt",
     setStringValue := setStringValueImpl.evaluated,
     checkStringValue := checkStringValueImpl.evaluated,
     watchStartMessage := { (_, _, _) =>

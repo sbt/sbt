@@ -10,20 +10,17 @@ package sbt
 import java.io.File
 import java.lang.reflect.Method
 
+import sbt.Def._
+import sbt.Keys._
+import sbt.Project._
+import sbt.internal.inc.ModuleUtilities
+import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io._
 import sbt.io.syntax._
-
-import sbt.internal.util.complete.{ Parser, DefaultParsers }
-
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
-
-import sbt.internal.inc.classpath.ClasspathUtilities
-import sbt.internal.inc.ModuleUtilities
-
-import Def._
-import Keys._
-import Project._
+import sbt.nio.file.{ Glob, RecursiveGlob }
 
 object ScriptedPlugin extends AutoPlugin {
 
@@ -89,7 +86,7 @@ object ScriptedPlugin extends AutoPlugin {
       use(analysis, pub)
     },
     scripted := scriptedTask.evaluated,
-    watchTriggers in scripted += sbtTestDirectory.value ** AllPassFilter
+    watchTriggers in scripted += Glob(sbtTestDirectory.value, RecursiveGlob)
   )
 
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =

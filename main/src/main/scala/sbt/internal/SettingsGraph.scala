@@ -12,9 +12,9 @@ import sbt.Keys._
 import sbt.Project.richInitializeTask
 import sbt._
 import sbt.internal.io.Source
+import sbt.internal.nio.Globs
 import sbt.internal.util.AttributeMap
 import sbt.internal.util.complete.Parser
-import sbt.io.syntax._
 import sbt.nio.FileStamper
 import sbt.nio.Keys._
 import sbt.nio.file.Glob
@@ -25,7 +25,7 @@ private[sbt] object SettingsGraph {
   private implicit class SourceOps(val source: Source) {
     def toGlob: Glob = {
       val filter = source.includeFilter -- source.excludeFilter
-      if (source.recursive) source.base ** filter else source.base * filter
+      Globs.apply(source.base.toPath, source.recursive, filter)
     }
   }
   private[sbt] def task: Def.Initialize[Task[Seq[DynamicInput]]] =
