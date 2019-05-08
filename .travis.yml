@@ -15,7 +15,7 @@ addons:
       - sourceline: 'deb https://dl.bintray.com/sbt/debian /'
       - key_url: 'https://bintray.com/user/downloadSubjectPublicKey?username=sbt'
     packages:
-      - sbt=1.1.6
+      - sbt=1.2.8
 
 # Undo _JAVA_OPTIONS environment variable
 before_script:
