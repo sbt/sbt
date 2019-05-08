@@ -1,21 +1,13 @@
 dist: trusty
 group: stable
 
-language: ruby
+language: scala
 jdk: oraclejdk8
 
 before_script:
  - export JVM_OPTS="-Dfile.encoding=UTF-8 -Xmx1G -Xms1G -server -XX:ReservedCodeCacheSize=128M"
 
 script: /usr/bin/sbt scripted
-
-addons:
-  apt:
-    sources:
-      - sourceline: 'deb https://dl.bintray.com/sbt/debian /'
-      - key_url: 'https://bintray.com/user/downloadSubjectPublicKey?username=sbt'
-    packages:
-      - sbt=1.2.8
 
 # Undo _JAVA_OPTIONS environment variable
 before_script:
