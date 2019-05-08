@@ -10,7 +10,7 @@ before_script:
 script: sbt scripted
 
 # Undo _JAVA_OPTIONS environment variable
-before_script:
+after_script:
   - unset _JAVA_OPTIONS
 
 cache:
