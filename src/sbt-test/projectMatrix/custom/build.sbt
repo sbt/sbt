@@ -9,24 +9,23 @@ ThisBuild / ivyPaths := {
 publish / skip := true
 
 lazy val core = (projectMatrix in file("core"))
-  .scalaVersions("2.12.6", "2.11.12")
   .settings(
     name := "core",
     ivyPaths := (ThisBuild / ivyPaths).value
   )
   .custom(
-    idSuffix = "config1_2_",
+    idSuffix = "Config1_2",
     directorySuffix = "-config1.2",
-    scalaVersions = Nil,
+    scalaVersions = Seq("2.12.8", "2.11.12"),
     _.settings(
       moduleName := name.value + "_config1.2",
       libraryDependencies += "com.typesafe" % "config" % "1.2.1"
     )
   )
   .custom(
-    idSuffix = "config1_3_",
+    idSuffix = "Config1_3",
     directorySuffix = "-config1.3",
-    scalaVersions = Nil,
+    scalaVersions = Seq("2.12.8", "2.11.12"),
     _.settings(
       moduleName := name.value + "_config1.3",
       libraryDependencies += "com.typesafe" % "config" % "1.3.3"
