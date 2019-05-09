@@ -85,6 +85,9 @@ object Keys {
   val watchOnTermination = settingKey[(Watch.Action, String, Int, State) => State](
     "Transforms the state upon completion of a watch. The String argument is the command that was run during the watch. The Int parameter specifies how many times the command was run during the watch."
   ).withRank(DSetting)
+  val watchPersistFileStamps = settingKey[Boolean](
+    "Toggles whether or not the continuous build will reuse the file stamps computed in previous runs. Setting this to true decrease watch startup latency but could cause inconsistent results if many source files are concurrently modified."
+  ).withRank(DSetting)
   val watchStartMessage = settingKey[(Int, String, Seq[String]) => Option[String]](
     "The message to show when triggered execution waits for sources to change. The parameters are the current watch iteration count, the current project name and the tasks that are being run with each build."
   ).withRank(DSetting)

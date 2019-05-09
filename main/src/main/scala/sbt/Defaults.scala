@@ -153,6 +153,7 @@ object Defaults extends BuildCommon {
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
       watchForceTriggerOnAnyChange :== true,
+      watchPersistFileStamps :== true,
       watchTriggers :== Nil,
       clean := { () },
       sbt.nio.Keys.fileStampCache := {

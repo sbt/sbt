@@ -291,20 +291,22 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     } else {
       FileTreeRepository.default
     }
-    val attributeMap = new FileStamp.Cache
-    repo.addObserver(t => attributeMap.invalidate(t.path))
+    val fileStampCache = new FileStamp.Cache
+    repo.addObserver(t => fileStampCache.invalidate(t.path))
     try {
-      val stateWithRepo = state
-        .put(globalFileTreeRepository, repo)
-        .put(persistentFileStampCache, attributeMap)
-      setup(stateWithRepo, command) { (commands, s, valid, invalid) =>
+      val stateWithRepo = state.put(globalFileTreeRepository, repo)
+      val fullState =
+        if (extracted.get(watchPersistFileStamps))
+          stateWithRepo.put(persistentFileStampCache, fileStampCache)
+        else stateWithRepo
+      setup(fullState, command) { (commands, s, valid, invalid) =>
         EvaluateTask.withStreams(extracted.structure, s)(_.use(streams in Global) { streams =>
           implicit val logger: Logger = streams.log
           if (invalid.isEmpty) {
             val currentCount = new AtomicInteger(count)
             val configs = getAllConfigs(valid.map(v => v._1 -> v._2))
             val callbacks =
-              aggregate(configs, logger, in, s, currentCount, isCommand, commands, attributeMap)
+              aggregate(configs, logger, in, s, currentCount, isCommand, commands, fileStampCache)
             val task = () => {
               currentCount.getAndIncrement()
               // abort as soon as one of the tasks fails
@@ -401,7 +403,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       count: AtomicInteger,
       isCommand: Boolean,
       commands: Seq[String],
-      attributeMap: FileStamp.Cache
+      fileStampCache: FileStamp.Cache
   )(
       implicit extracted: Extracted
   ): Callbacks = {
@@ -411,7 +413,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val onStart: () => Watch.Action = getOnStart(project, commands, configs, rawLogger, count)
     val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
     val (nextFileEvent, cleanupFileMonitor): (() => Option[(Watch.Event, Watch.Action)], () => Unit) =
-      getFileEvents(configs, rawLogger, state, count, commands, attributeMap)
+      getFileEvents(configs, rawLogger, state, count, commands, fileStampCache)
     val nextEvent: () => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, logger)
     val onExit = () => {
@@ -476,7 +478,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       state: State,
       count: AtomicInteger,
       commands: Seq[String],
-      attributeMap: FileStamp.Cache
+      fileStampCache: FileStamp.Cache
   )(implicit extracted: Extracted): (() => Option[(Watch.Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
@@ -491,7 +493,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       def watchEvent(stamper: FileStamper, forceTrigger: Boolean): Option[Watch.Event] = {
         if (!event.exists) {
           Some(Deletion(event))
-          attributeMap.remove(event.path) match {
+          fileStampCache.remove(event.path) match {
             case null => None
             case _    => Some(Deletion(event))
           }
