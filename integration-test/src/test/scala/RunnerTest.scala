@@ -10,10 +10,10 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     sbt.internal.Process(sbtScript.getAbsolutePath + " " + arg, new File("citest"),
       "JAVA_OPTS" -> "",
       "SBT_OPTS" -> "")
-  def sbtProcessWithOpts(arg: String) =
+  def sbtProcessWithOpts(arg: String, javaOpts: String, sbtOpts: String) =
     sbt.internal.Process(sbtScript.getAbsolutePath + " " + arg, new File("citest"),
-      "JAVA_OPTS" -> "-Xmx1024m",
-      "SBT_OPTS" -> "")
+      "JAVA_OPTS" -> javaOpts,
+      "SBT_OPTS" -> sbtOpts)
 
   test("sbt runs") {
     assert(sbtScript.exists)
@@ -58,9 +58,22 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
-  test("sbt -mem 503 with JAVA_OPTS") {
-    val out = sbtProcessWithOpts("compile -mem 503 -v").!!.linesIterator.toList
+  test("sbt with -mem 503 in JAVA_OPTS") {
+    val out = sbtProcessWithOpts("compile -mem 503 -v", "-Xmx1024m", "").!!.linesIterator.toList
     assert(out.contains[String]("-Xmx503m"))
     ()
   }
+
+  test("sbt with -Xms2048M -Xmx2048M -Xss6M in SBT_OPTS") {
+    val out = sbtProcessWithOpts("compile -v", "", "-Xms2048M -Xmx2048M -Xss6M").!!.linesIterator.toList
+    assert(out.contains[String]("-Xss6M"))
+    ()
+  }
+
+  test("sbt with --no-colors in SBT_OPTS") {
+    val out = sbtProcessWithOpts("compile -v", "", "--no-colors").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.log.noformat=true"))
+    ()
+  }
+
 }

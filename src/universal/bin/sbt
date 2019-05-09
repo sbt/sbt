@@ -224,43 +224,6 @@ jdk_version() {
   echo "$result"
 }
 
-process_args () {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-       -h|-help) usage; exit 1 ;;
-    -v|-verbose) verbose=1 && shift ;;
-      -d|-debug) debug=1 && addSbt "-debug" && shift ;;
-
-           -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
-           -mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
-     -jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
-         -batch) exec </dev/null && shift ;;
-
-       -sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
-   -sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
-     -java-home) require_arg path "$1" "$2" &&
-                 java_cmd="$2/bin/java" &&
-                 export JAVA_HOME="$2" &&
-                 export JDK_HOME="$2" &&
-                 export PATH="$2/bin:$PATH" &&
-                 shift 2 ;;
-
-          "-D*") addJava "$1" && shift ;;
-            -J*) addJava "${1:2}" && shift ;;
-              *) addResidual "$1" && shift ;;
-    esac
-  done
-
-  is_function_defined process_my_args && {
-    myargs=("${residual_args[@]}")
-    residual_args=()
-    process_my_args "${myargs[@]}"
-  }
-
-  java_version="$(jdk_version)"
-  vlog "[process_args] java_version = '$java_version'"
-}
-
 # Extracts the preloaded directory from either -Dsbt.preloaded or -Dsbt.global.base
 # properties by looking at:
 #   - _JAVA_OPTIONS environment variable,
@@ -361,11 +324,14 @@ copyRt() {
 }
 
 run() {
+  local retarr=()
   java_args=($JAVA_OPTS)
-  sbt_options=(${SBT_OPTS:-$default_sbt_opts})
-
+  sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
+  miniscript=$(map_args "${sbt_options0[@]}") && eval ${miniscript/retarr/sbt_options}
+  miniscript=$(map_args "$@") && eval ${miniscript/retarr/args1}
   # process the combined args, then reset "$@" to the residuals
-  process_args "$@"
+  process_args "${args1[@]}"
+  vlog "[sbt_options] $(declare -p sbt_options)"
   addDefaultMemory
   set -- "${residual_args[@]}"
   argumentCount=$#
@@ -468,23 +434,9 @@ shows precedence: JAVA_OPTS lowest, command line options highest.
 EOM
 }
 
-
-
 process_my_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-     -no-colors|--no-colors) addJava "-Dsbt.log.noformat=true" && shift ;;
-         -timings|--timings) addJava "-Dsbt.task.timings=true" && addJava "-Dsbt.task.timings.on.shutdown=true" && shift ;;
-           -traces|--traces) addJava "-Dsbt.traces=true" && shift ;;
-             --supershell=*) addJava "-Dsbt.supershell=${1:13}" && shift ;;
-              -supershell=*) addJava "-Dsbt.supershell=${1:12}" && shift ;;
-                  --color=*) addJava "-Dsbt.color=${1:8}" && shift ;;
-                   -color=*) addJava "-Dsbt.color=${1:7}" && shift ;;
-       -no-share|--no-share) addJava "$noshare_opts" && shift ;;
-     -no-global|--no-global) addJava "-Dsbt.global.base=$(pwd)/project/.sbtboot" && shift ;;
-       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;
-         -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && addJava "-Dsbt.global.base=$2" && shift 2 ;;
-     -debug-inc|--debug-inc) addJava "-Dxsbt.inc.debug=true" && shift ;;
              -batch|--batch) exec </dev/null && shift ;; #>
 
    -sbt-create|--sbt-create) sbt_create=true && shift ;;
@@ -514,6 +466,66 @@ process_my_args () {
       esac
     done
   }
+}
+
+## map over argument array. this is used to process both command line arguments and SBT_OPTS
+map_args () {
+  local retarr=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+     -no-colors|--no-colors) retarr=( "${retarr[@]}" "-Dsbt.log.noformat=true" ) && shift ;;
+         -timings|--timings) retarr=( "${retarr[@]}" "-Dsbt.task.timings=true" "-Dsbt.task.timings.on.shutdown=true" ) && shift ;;
+           -traces|--traces) retarr=( "${retarr[@]}" "-Dsbt.traces=true" ) && shift ;;
+             --supershell=*) retarr=( "${retarr[@]}" "-Dsbt.supershell=${1:13}" ) && shift ;;
+              -supershell=*) retarr=( "${retarr[@]}" "-Dsbt.supershell=${1:12}" ) && shift ;;
+                  --color=*) retarr=( "${retarr[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
+                   -color=*) retarr=( "${retarr[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
+       -no-share|--no-share) retarr=( "${retarr[@]}" "$noshare_opts" ) && shift ;;
+     -no-global|--no-global) retarr=( "${retarr[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
+       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && retarr=( "${retarr[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
+         -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && retarr=( "${retarr[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
+     -debug-inc|--debug-inc) retarr=( "${retarr[@]}" "-Dxsbt.inc.debug=true" ) && shift ;;
+                          *) retarr=( "${retarr[@]}" "$1" ) && shift ;;
+    esac
+  done
+  declare -p retarr
+}
+
+process_args () {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+       -h|-help) usage; exit 1 ;;
+    -v|-verbose) verbose=1 && shift ;;
+      -d|-debug) debug=1 && addSbt "-debug" && shift ;;
+
+           -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
+           -mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
+     -jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
+         -batch) exec </dev/null && shift ;;
+
+       -sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
+   -sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
+     -java-home) require_arg path "$1" "$2" &&
+                 java_cmd="$2/bin/java" &&
+                 export JAVA_HOME="$2" &&
+                 export JDK_HOME="$2" &&
+                 export PATH="$2/bin:$PATH" &&
+                 shift 2 ;;
+
+      "-D*"|-D*) addJava "$1" && shift ;;
+            -J*) addJava "${1:2}" && shift ;;
+              *) addResidual "$1" && shift ;;
+    esac
+  done
+
+  is_function_defined process_my_args && {
+    myargs=("${residual_args[@]}")
+    residual_args=()
+    process_my_args "${myargs[@]}"
+  }
+
+  java_version="$(jdk_version)"
+  vlog "[process_args] java_version = '$java_version'"
 }
 
 loadConfigFile() {
