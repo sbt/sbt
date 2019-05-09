@@ -6,12 +6,9 @@ jdk: oraclejdk8
 
 before_script:
  - export JVM_OPTS="-Dfile.encoding=UTF-8 -Xmx1G -Xms1G -server -XX:ReservedCodeCacheSize=128M"
+ - unset _JAVA_OPTIONS
 
 script: sbt scripted
-
-# Undo _JAVA_OPTIONS environment variable
-after_script:
-  - unset _JAVA_OPTIONS
 
 cache:
   directories:
