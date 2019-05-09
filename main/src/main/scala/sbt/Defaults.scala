@@ -155,10 +155,10 @@ object Defaults extends BuildCommon {
       watchForceTriggerOnAnyChange :== true,
       watchTriggers :== Nil,
       clean := { () },
-      sbt.nio.Keys.fileAttributeMap := {
+      sbt.nio.Keys.fileStampCache := {
         state.value
-          .get(sbt.nio.Keys.persistentFileAttributeMap)
-          .getOrElse(new sbt.nio.Keys.FileAttributeMap)
+          .get(sbt.nio.Keys.persistentFileStampCache)
+          .getOrElse(new sbt.nio.FileStamp.Cache)
       },
     ) ++ TaskRepository
       .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
@@ -1621,7 +1621,7 @@ object Defaults extends BuildCommon {
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
     }
-    val map = sbt.nio.Keys.fileAttributeMap.value
+    val map = sbt.nio.Keys.fileStampCache.value
     val analysis = analysisResult.analysis
     import scala.collection.JavaConverters._
     analysis.readStamps.getAllProductStamps.asScala.foreach {

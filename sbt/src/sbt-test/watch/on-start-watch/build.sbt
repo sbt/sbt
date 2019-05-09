@@ -19,6 +19,7 @@ failingTask := {
 Compile / compile := {
   Count.increment()
   // Trigger a new build by updating the last modified time
-  ((Compile / scalaSource).value / "A.scala").setLastModified(5000)
+  val file = (Compile / scalaSource).value / "A.scala"
+  IO.write(file, IO.read(file) + ("\n" * Count.get))
   (Compile / compile).value
 }

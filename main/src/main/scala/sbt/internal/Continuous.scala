@@ -125,8 +125,10 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   private[sbt] val dynamicInputs = taskKey[Option[mutable.Set[DynamicInput]]](
     "The input globs found during task evaluation that are used in watch."
   )
+
   private[sbt] def dynamicInputsImpl: Def.Initialize[Task[Option[mutable.Set[DynamicInput]]]] =
     Def.task(Keys.state.value.get(DynamicInputs))
+
   private[sbt] val DynamicInputs =
     AttributeKey[mutable.Set[DynamicInput]](
       "dynamic-inputs",
@@ -136,6 +138,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
   private[this] val continuousParser: State => Parser[(Int, String)] = {
     def toInt(s: String): Int = Try(s.toInt).getOrElse(0)
+
     // This allows us to re-enter the watch with the previous count.
     val digitParser: Parser[Int] =
       (Parsers.Space.* ~> matched(Parsers.Digit.+) <~ Parsers.Space.*).map(toInt)
@@ -189,6 +192,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       watchSettings
     )
   }
+
   private def getRepository(state: State): FileTreeRepository[FileAttributes] = {
     lazy val exception =
       new IllegalStateException("Tried to access FileTreeRepository for uninitialized state")
@@ -287,17 +291,20 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     } else {
       FileTreeRepository.default
     }
+    val attributeMap = new FileStamp.Cache
+    repo.addObserver(t => attributeMap.invalidate(t.path))
     try {
       val stateWithRepo = state
         .put(globalFileTreeRepository, repo)
-        .put(persistentFileAttributeMap, new sbt.nio.Keys.FileAttributeMap)
+        .put(persistentFileStampCache, attributeMap)
       setup(stateWithRepo, command) { (commands, s, valid, invalid) =>
         EvaluateTask.withStreams(extracted.structure, s)(_.use(streams in Global) { streams =>
           implicit val logger: Logger = streams.log
           if (invalid.isEmpty) {
             val currentCount = new AtomicInteger(count)
             val configs = getAllConfigs(valid.map(v => v._1 -> v._2))
-            val callbacks = aggregate(configs, logger, in, s, currentCount, isCommand, commands)
+            val callbacks =
+              aggregate(configs, logger, in, s, currentCount, isCommand, commands, attributeMap)
             val task = () => {
               currentCount.getAndIncrement()
               // abort as soon as one of the tasks fails
@@ -311,6 +318,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             // additional times whenever the state transition callbacks return Watched.Trigger.
             try {
               val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
+              terminationAction match {
+                case e: Watch.HandleUnexpectedError =>
+                  System.err.println("Caught unexpected error running continuous build:")
+                  e.throwable.printStackTrace(System.err)
+                case _ =>
+              }
               callbacks.onTermination(terminationAction, command, currentCount.get(), state)
             } finally {
               callbacks.onExit()
@@ -340,6 +353,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       case _ => Nil: Seq[ScopedKey[_]]
     }
   }
+
   private def getAllConfigs(
       inputs: Seq[(String, State)]
   )(implicit extracted: Extracted, logger: Logger): Seq[Config] = {
@@ -386,7 +400,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       state: State,
       count: AtomicInteger,
       isCommand: Boolean,
-      commands: Seq[String]
+      commands: Seq[String],
+      attributeMap: FileStamp.Cache
   )(
       implicit extracted: Extracted
   ): Callbacks = {
@@ -396,7 +411,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val onStart: () => Watch.Action = getOnStart(project, commands, configs, rawLogger, count)
     val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
     val (nextFileEvent, cleanupFileMonitor): (() => Option[(Watch.Event, Watch.Action)], () => Unit) =
-      getFileEvents(configs, rawLogger, state, count, commands)
+      getFileEvents(configs, rawLogger, state, count, commands, attributeMap)
     val nextEvent: () => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, logger)
     val onExit = () => {
@@ -454,14 +469,15 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       res
     }
   }
+
   private def getFileEvents(
       configs: Seq[Config],
       logger: Logger,
       state: State,
       count: AtomicInteger,
-      commands: Seq[String]
+      commands: Seq[String],
+      attributeMap: FileStamp.Cache
   )(implicit extracted: Extracted): (() => Option[(Watch.Event, Watch.Action)], () => Unit) = {
-    val attributeMap = state.get(persistentFileAttributeMap).get
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
       if (trackMetaBuild) extracted.getOpt(fileInputs in settingsData).getOrElse(Nil)
@@ -471,24 +487,38 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val quarantinePeriod = configs.map(_.watchSettings.deletionQuarantinePeriod).max
     val onEvent: Event => Seq[(Watch.Event, Watch.Action)] = event => {
       val path = event.path
+
       def watchEvent(stamper: FileStamper, forceTrigger: Boolean): Option[Watch.Event] = {
-        val stamp = FileStamp(path, stamper)
         if (!event.exists) {
+          Some(Deletion(event))
           attributeMap.remove(event.path) match {
             case null => None
             case _    => Some(Deletion(event))
           }
         } else {
-          import sbt.internal.inc.Stamp.equivStamp
-          attributeMap.put(path, stamp) match {
-            case null => Some(Creation(event))
-            case s =>
-              if (forceTrigger || !equivStamp.equiv(s.stamp, stamp.stamp))
+          fileStampCache.update(path, stamper) match {
+            case (None, Some(_)) => Some(Creation(event))
+            case (Some(_), None) => Some(Deletion(event))
+            case (Some(p), Some(c)) =>
+              if (forceTrigger) {
+                val msg =
+                  s"Creating forced update event for path $path (previous stamp: $p, current stamp: $c)"
+                logger.debug(msg)
                 Some(Update(event))
-              else None
+              } else if (p == c) {
+                logger.debug(s"Dropping event for unmodified path $path")
+                None
+              } else {
+                val msg =
+                  s"Creating update event for modified $path (previous stamp: $p, current stamp: $c)"
+                logger.debug(msg)
+                Some(Update(event))
+              }
+            case _ => None
           }
         }
       }
+
       if (buildGlobs.exists(_.matches(path))) {
         watchEvent(FileStamper.Hash, forceTrigger = false).map(e => e -> Watch.Reload).toSeq
       } else {
@@ -519,6 +549,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       private implicit class WatchLogger(val l: Logger) extends sbt.internal.nio.WatchLogger {
         override def debug(msg: Any): Unit = l.debug(msg.toString)
       }
+
       // TODO make this a normal monitor
       private[this] val monitors: Seq[FileEventMonitor[Event]] =
         configs.map { config =>
@@ -543,11 +574,13 @@ private[sbt] object Continuous extends DeprecatedContinuous {
                   retentionPeriod
                 ) :: Nil
               } else Nil)
+
       override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
         val res = monitors.flatMap(_.poll(0.millis, filter)).toSet.toVector
         if (res.isEmpty) Thread.sleep(duration.toMillis)
         res
       }
+
       override def close(): Unit = monitors.foreach(_.close())
     }
     val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
@@ -640,7 +673,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       val parser = any ~> inputParser ~ matched(any)
       // Each parser gets its own copy of System.in that it can modify while parsing.
       val systemInBuilder = new StringBuilder
+
       def inputStream(string: String): InputStream = new ByteArrayInputStream(string.getBytes)
+
       // This string is provided in the closure below by reading from System.in
       val default: String => Watch.Action =
         string => parse(inputStream(string), systemInBuilder, parser)
@@ -726,7 +761,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
      */
     new Logger {
       override def trace(t: => Throwable): Unit = logger.trace(t)
+
       override def success(message: => String): Unit = logger.success(message)
+
       override def log(level: Level.Value, message: => String): Unit = {
         val levelString = if (level < delegateLevel) s"[$level] " else ""
         val newMessage = s"[watch] $levelString$message"
@@ -812,12 +849,15 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   ) {
     private[sbt] def watchState(count: Int): DeprecatedWatchState =
       WatchState.empty(inputs().map(_.glob)).withCount(count)
+
     def arguments(logger: Logger): Arguments = new Arguments(logger, inputs())
   }
+
   private def getStartMessage(key: ScopedKey[_])(implicit e: Extracted): StartMessage = Some {
     lazy val default = key.get(watchStartMessage).getOrElse(Watch.defaultStartWatch)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
+
   private def getTriggerMessage(
       key: ScopedKey[_]
   )(implicit e: Extracted): TriggerMessage = {
@@ -926,9 +966,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
      */
     def withPrefix(prefix: String): Logger = new Logger {
       override def trace(t: => Throwable): Unit = logger.trace(t)
+
       override def success(message: => String): Unit = logger.success(message)
+
       override def log(level: Level.Value, message: => String): Unit =
         logger.log(level, s"$prefix - $message")
     }
   }
+
 }

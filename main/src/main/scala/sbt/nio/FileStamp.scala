@@ -16,8 +16,6 @@ import sbt.nio.file.FileAttributes
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import xsbti.compile.analysis.{ Stamp => XStamp }
 
-import scala.util.Try
-
 sealed trait FileStamper
 object FileStamper {
   case object Hash extends FileStamper
@@ -36,12 +34,11 @@ private[sbt] object FileStamp {
     }
   }
 
-  private[sbt] val converter: (Path, FileAttributes) => Try[FileStamp] = (p, a) => Try(apply(p, a))
-  def apply(path: Path, fileStamper: FileStamper): FileStamp = fileStamper match {
+  def apply(path: Path, fileStamper: FileStamper): Option[FileStamp] = fileStamper match {
     case FileStamper.Hash         => hash(path)
     case FileStamper.LastModified => lastModified(path)
   }
-  def apply(path: Path, fileAttributes: FileAttributes): FileStamp =
+  def apply(path: Path, fileAttributes: FileAttributes): Option[FileStamp] =
     try {
       if (fileAttributes.isDirectory) lastModified(path)
       else
@@ -51,11 +48,17 @@ private[sbt] object FileStamp {
           case _                         => hash(path)
         }
     } catch {
-      case e: IOException => Error(e)
+      case e: IOException => Some(Error(e))
     }
   def hash(string: String): Hash = new FileHashImpl(sbt.internal.inc.Hash.unsafeFromString(string))
-  def hash(path: Path): Hash = new FileHashImpl(Stamper.forHash(path.toFile))
-  def lastModified(path: Path): LastModified = LastModified(IO.getModifiedTimeOrZero(path.toFile))
+  def hash(path: Path): Option[Hash] = Stamper.forHash(path.toFile) match {
+    case EmptyStamp => None
+    case s          => Some(new FileHashImpl(s))
+  }
+  def lastModified(path: Path): Option[LastModified] = IO.getModifiedTimeOrZero(path.toFile) match {
+    case 0 => None
+    case l => Some(LastModified(l))
+  }
   private[this] class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.getHash.orElse(""))
   sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
   final case class LastModified private[sbt] (time: Long) extends FileStamp
@@ -209,4 +212,65 @@ private[sbt] object FileStamp {
         }
     }
 
+  private implicit class EitherOps(val e: Either[FileStamp, FileStamp]) extends AnyVal {
+    def value: Option[FileStamp] = if (e == null) None else Some(e.fold(identity, identity))
+  }
+
+  private[sbt] class Cache {
+    private[this] val underlying = new java.util.HashMap[Path, Either[FileStamp, FileStamp]]
+
+    /**
+     * Invalidate the cache entry, but don't re-stamp the file until it's actually used
+     * in a call to get or update.
+     *
+     * @param path the file whose stamp we are invalidating
+     */
+    def invalidate(path: Path): Unit = underlying.get(path) match {
+      case Right(s) =>
+        underlying.put(path, Left(s))
+        ()
+      case _ => ()
+    }
+    def get(path: Path): Option[FileStamp] =
+      underlying.get(path) match {
+        case null     => None
+        case Left(v)  => updateImpl(path, fileStampToStamper(v))
+        case Right(v) => Some(v)
+      }
+    def getOrElseUpdate(path: Path, stamper: FileStamper): Option[FileStamp] =
+      underlying.get(path) match {
+        case null     => updateImpl(path, stamper)
+        case Left(v)  => updateImpl(path, stamper)
+        case Right(v) => Some(v)
+      }
+    def remove(key: Path): Option[FileStamp] = {
+      underlying.remove(key).value
+    }
+    def put(key: Path, fileStamp: FileStamp): Option[FileStamp] =
+      underlying.put(key, Right(fileStamp)) match {
+        case null => None
+        case e    => e.value
+      }
+    def update(key: Path, stamper: FileStamper): (Option[FileStamp], Option[FileStamp]) = {
+      underlying.get(key) match {
+        case null => (None, updateImpl(key, stamper))
+        case v    => (v.value, updateImpl(key, stamper))
+      }
+    }
+
+    private def fileStampToStamper(stamp: FileStamp): FileStamper = stamp match {
+      case _: Hash => FileStamper.Hash
+      case _       => FileStamper.LastModified
+    }
+
+    private def updateImpl(path: Path, stamper: FileStamper): Option[FileStamp] = {
+      val stamp = FileStamp(path, stamper)
+      stamp match {
+        case None    => underlying.remove(path)
+        case Some(s) => underlying.put(path, Right(s))
+      }
+      stamp
+    }
+
+  }
 }

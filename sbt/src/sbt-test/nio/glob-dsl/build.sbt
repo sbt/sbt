@@ -14,13 +14,13 @@ checkFoo := assert(foo.value == Seq(baseDirectory.value / "base/subdir/nested-su
 // Check that we can correctly extract Bar.md with a non-recursive source
 val bar = taskKey[Seq[File]]("Retrieve Bar.md")
 
-bar / fileInputs += baseDirectory.value.toGlob / "base/subdir/nested-subdir/*.md"
+bar / fileInputs += baseDirectory.value.toGlob / "base" / "subdir" / "nested-subdir" / "*.md"
 
 bar := (bar / allInputFiles).value.map(_.toFile)
 
 val checkBar = taskKey[Unit]("Check that the Bar.md file is retrieved")
 
-checkBar := assert(bar.value == Seq(baseDirectory.value / "base/subdir/nested-subdir/Bar.md"))
+checkBar := assert(bar.value == Seq(baseDirectory.value / "base" / "subdir" / "nested-subdir" / "Bar.md"))
 
 // Check that we can correctly extract Bar.md and Foo.md with a non-recursive source
 val all = taskKey[Seq[File]]("Retrieve all files")
@@ -31,7 +31,7 @@ val checkAll = taskKey[Unit]("Check that the Bar.md file is retrieved")
 
 checkAll := {
   import sbt.dsl.LinterLevel.Ignore
-  val expected = Set("Foo.txt", "Bar.md").map(baseDirectory.value / "base/subdir/nested-subdir" / _)
+  val expected = Set("Foo.txt", "Bar.md").map(baseDirectory.value / "base" / "subdir" / "nested-subdir" / _)
   val actual = (all / allInputFiles).value.map(_.toFile).toSet
   assert(actual == expected)
 }

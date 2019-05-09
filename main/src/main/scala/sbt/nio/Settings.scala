@@ -319,8 +319,9 @@ private[sbt] object Settings {
   private[sbt] def fileStamps(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
     addTaskDefinition(Keys.inputFileStamps in scopedKey.scope := {
       val stamper = (Keys.pathToFileStamp in scopedKey.scope).value
-      (Keys.allInputPathsAndAttributes in scopedKey.scope).value.collect {
-        case (p, a) if a.isRegularFile && !Files.isHidden(p) => p -> stamper(p)
+      (Keys.allInputPathsAndAttributes in scopedKey.scope).value.flatMap {
+        case (p, a) if a.isRegularFile && !Files.isHidden(p) => stamper(p).map(p -> _)
+        case _                                               => None
       }
     })
   private[this] def outputsAndStamps[T: JsonFormat: ToSeqPath](
@@ -340,11 +341,11 @@ private[sbt] object Settings {
     })
   private[this] def outputFileStampsImpl(scope: Scope): Def.Setting[_] =
     addTaskDefinition(outputFileStamps in scope := {
-      val stamper: Path => FileStamp = (outputFileStamper in scope).value match {
+      val stamper: Path => Option[FileStamp] = (outputFileStamper in scope).value match {
         case LastModified => FileStamp.lastModified
         case Hash         => FileStamp.hash
       }
-      (allOutputFiles in scope).value.map(p => p -> stamper(p))
+      (allOutputFiles in scope).value.flatMap(p => stamper(p).map(p -> _))
     })
 
   /**
@@ -356,18 +357,8 @@ private[sbt] object Settings {
    */
   private[this] def stamper(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
     addTaskDefinition((Keys.pathToFileStamp in scopedKey.scope) := {
-      val attributeMap = Keys.fileAttributeMap.value
+      val attributeMap = Keys.fileStampCache.value
       val stamper = (Keys.inputFileStamper in scopedKey.scope).value
-      path: Path =>
-        attributeMap.get(path) match {
-          case null =>
-            val stamp = stamper match {
-              case Hash         => FileStamp.hash(path)
-              case LastModified => FileStamp.lastModified(path)
-            }
-            attributeMap.put(path, stamp)
-            stamp
-          case s => s
-        }
+      path: Path => attributeMap.getOrElseUpdate(path, stamper)
     })
 }
