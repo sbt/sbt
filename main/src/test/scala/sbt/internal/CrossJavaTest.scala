@@ -97,18 +97,21 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
   test("SDKMAN candidate parsing") {
     assert(
       CrossJava
-        .parseSdkmanString("11.0.2.hs-adpt") == JavaVersion(Vector(11L, 0L, 2L), Some("adopt"))
+        .parseSdkmanString("11.0.2.hs-adpt")
+        .get == JavaVersion(Vector(11L, 0L, 2L), Some("adopt"))
     )
     assert(
       CrossJava
-        .parseSdkmanString("11.0.2.j9-adpt") == JavaVersion(
+        .parseSdkmanString("11.0.2.j9-adpt")
+        .get == JavaVersion(
         Vector(11L, 0L, 2L),
         Some("adopt-openj9")
       )
     )
     assert(
       CrossJava
-        .parseSdkmanString("13.ea.13-open") == JavaVersion(
+        .parseSdkmanString("13.ea.13-open")
+        .get == JavaVersion(
         Vector(13L),
         Vector("ea13"),
         Some("openjdk")
@@ -116,21 +119,38 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
     )
     assert(
       CrossJava
-        .parseSdkmanString("12.0.0-zulu") == JavaVersion(
+        .parseSdkmanString("12.0.0-zulu")
+        .get == JavaVersion(
         Vector(12L, 0L, 0L),
         Some("zulu")
       )
     )
     assert(
       CrossJava
-        .parseSdkmanString("8.0.201-oracle") == JavaVersion(
+        .parseSdkmanString("8u152-zulu")
+        .get == JavaVersion(
+        Vector(8L, 0L, 152L),
+        Vector(),
+        Some("zulu")
+      )
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("8x152-zulu")
+        .isFailure
+    )
+    assert(
+      CrossJava
+        .parseSdkmanString("8.0.201-oracle")
+        .get == JavaVersion(
         Vector(8L, 0L, 201L),
         Some("oracle")
       )
     )
     assert(
       CrossJava
-        .parseSdkmanString("1.0.0-rc-14-grl") == JavaVersion(
+        .parseSdkmanString("1.0.0-rc-14-grl")
+        .get == JavaVersion(
         Vector(1L, 0L, 0L),
         Vector("rc14"),
         Some("graalvm")

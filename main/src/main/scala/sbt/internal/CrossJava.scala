@@ -11,6 +11,7 @@ package internal
 import java.io.File
 import scala.collection.immutable.ListMap
 import scala.annotation.tailrec
+import scala.util.{ Try, Success, Failure }
 import sbt.io.Path
 import sbt.io.syntax._
 import sbt.Cross._
@@ -45,7 +46,7 @@ private[sbt] object CrossJava {
     }
   }
 
-  def parseSdkmanString(version: String): JavaVersion = {
+  def parseSdkmanString(version: String): Try[JavaVersion] = Try {
     val Num = """([0-9]+)""".r
     def splitDash(str: String): Vector[String] =
       Option(str) match {
@@ -60,13 +61,19 @@ private[sbt] object CrossJava {
     splitDash(version) match {
       case xs if xs.size < 2 => sys.error(s"Invalid SDKMAN Java version: $version")
       case xs =>
-        val ds = splitDot(xs.init.head)
+        val first = xs.init.head
+        val ds =
+          if (!first.contains(".") && first.contains("u")) splitDot(first.replaceFirst("u", ".0."))
+          else splitDot(first)
         val nums = ds.takeWhile(
           _ match {
             case Num(_) => true
             case _      => false
           }
         ) map { _.toLong }
+        if (nums.isEmpty) {
+          sys.error(s"Invalid SDKMAN Java version: $version")
+        }
         val nonNum = ds.drop(nums.size).mkString("")
         // last dash indicates vendor code
         val (vnd0, tag0) = (xs.last, nonNum) match {
@@ -424,12 +431,13 @@ private[sbt] object CrossJava {
       val base: File = Path.userHome / ".sdkman" / "candidates" / "java"
       def candidates(): Vector[String] = wrapNull(base.list())
       def javaHomes: Vector[(String, File)] =
-        candidates
-          .collect {
-            case dir if dir.contains("-") =>
-              val v = CrossJava.parseSdkmanString(dir).toString
-              v -> (base / dir)
-          }
+        candidates.collect {
+          case dir if dir.contains("-") =>
+            CrossJava.parseSdkmanString(dir) match {
+              case Success(v) => Some(v.toString -> (base / dir))
+              case Failure(_) => None
+            }
+        }.flatten
     }
 
     class WindowsDiscoverConfig(base: File) extends JavaDiscoverConf {
