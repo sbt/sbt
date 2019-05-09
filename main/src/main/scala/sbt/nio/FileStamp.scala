@@ -58,6 +58,8 @@ private[sbt] object FileStamp {
   def lastModified(path: Path): LastModified = LastModified(IO.getModifiedTimeOrZero(path.toFile))
   private[this] class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.getHash.orElse(""))
   sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
+  final case class LastModified private[sbt] (time: Long) extends FileStamp
+  final case class Error(exception: IOException) extends FileStamp
 
   implicit val pathJsonFormatter: JsonFormat[Seq[Path]] = new JsonFormat[Seq[Path]] {
     override def write[J](obj: Seq[Path], builder: Builder[J]): Unit = {
@@ -207,6 +209,4 @@ private[sbt] object FileStamp {
         }
     }
 
-  final case class LastModified private[sbt] (time: Long) extends FileStamp
-  final case class Error(exception: IOException) extends FileStamp
 }
