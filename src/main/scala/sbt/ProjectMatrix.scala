@@ -12,16 +12,13 @@ import sbt.librarymanagement.CrossVersion.partialVersion
  *
  *  {{{
  *  lazy val core = (projectMatrix in file("core"))
- *    .scalaVersions("2.12.6", "2.11.12")
  *    .settings(
  *      name := "core"
  *    )
- *    .jvmPlatform()
+ *    .jvmPlatform(Seq("2.12.6", "2.11.12"))
  *  }}}
  */
 sealed trait ProjectMatrix extends CompositeProject {
-  def scalaVersions(sv: String*): ProjectMatrix
-
   def id: String
 
   /** The base directory for the project matrix.*/
@@ -63,11 +60,13 @@ sealed trait ProjectMatrix extends CompositeProject {
       process: Project => Project
   ): ProjectMatrix
 
-  def jvmPlatform(settings: Setting[_]*): ProjectMatrix
+  def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix
+  def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
 
   def jvm: ProjectFinder
 
-  def jsPlatform(settings: Setting[_]*): ProjectMatrix
+  def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix
+  def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
 
   def js: ProjectFinder
 
@@ -181,9 +180,6 @@ object ProjectMatrix {
     override def configs(cs: Configuration*): ProjectMatrix =
       copy(configurations = configurations ++ cs)
 
-    override def scalaVersions(sv: String*): ProjectMatrix =
-      copy(scalaVersions = sv)
-
     override def aggregate(refs: ProjectMatrixReference*): ProjectMatrix =
       copy(aggregate = (aggregate: Seq[ProjectMatrixReference]) ++ refs)
 
@@ -202,11 +198,15 @@ object ProjectMatrix {
 
     def setPlugins(ns: Plugins): ProjectMatrix = copy(plugins = ns)
 
-    override def jvmPlatform(settings: Setting[_]*): ProjectMatrix =
-      custom(jvmIdSuffix, jvmDirectorySuffix, Nil, { _.settings(settings) })
+    override def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix =
+      jvmPlatform(scalaVersions, Nil)
+    override def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
+      custom(jvmIdSuffix, jvmDirectorySuffix, scalaVersions, { _.settings(settings) })
 
-    override def jsPlatform(settings: Setting[_]*): ProjectMatrix =
-      custom(jsIdSuffix, jsDirectorySuffix, Nil, { _.settings(settings) })
+    override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
+      jsPlatform(scalaVersions, Nil)
+    override def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
+      custom(jsIdSuffix, jsDirectorySuffix, scalaVersions, { _.settings(settings) })
 
     override def jvm: ProjectFinder = new SuffixBaseProjectFinder(jvmIdSuffix)
 

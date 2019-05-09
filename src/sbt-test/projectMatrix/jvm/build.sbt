@@ -4,16 +4,14 @@
 //   )
 
 lazy val core = (projectMatrix in file("core"))
-  .scalaVersions("2.12.6", "2.11.12")
   .settings(
     name := "core"
   )
-  .jvmPlatform()
+  .jvmPlatform(scalaVersions = Seq("2.12.8", "2.11.12"))
 
 lazy val app = (projectMatrix in file("app"))
   .dependsOn(core)
-  .scalaVersions("2.12.6")
   .settings(
     name := "app"
   )
-  .jvmPlatform()
+  .jvmPlatform(scalaVersions = Seq("2.12.8"))
