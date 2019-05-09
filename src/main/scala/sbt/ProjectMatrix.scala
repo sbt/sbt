@@ -67,6 +67,10 @@ sealed trait ProjectMatrix extends CompositeProject {
 
   def jvm: ProjectFinder
 
+  def jsPlatform(settings: Setting[_]*): ProjectMatrix
+
+  def js: ProjectFinder
+
   def projectRefs: Seq[ProjectReference]
 }
 
@@ -86,6 +90,8 @@ object ProjectMatrix {
 
   val jvmIdSuffix: String = "JVM"
   val jvmDirectorySuffix: String = "-jvm"
+  val jsIdSuffix: String = "JS"
+  val jsDirectorySuffix: String = "-js"
 
   /** A row in the project matrix, typically representing a platform.
    */
@@ -199,18 +205,25 @@ object ProjectMatrix {
     override def jvmPlatform(settings: Setting[_]*): ProjectMatrix =
       custom(jvmIdSuffix, jvmDirectorySuffix, Nil, { _.settings(settings) })
 
-    override def jvm: ProjectFinder = new ProjectFinder {
-      def get: Seq[Project] = projectMatrix.toSeq collect {
-        case ((r, sv), v) if r.idSuffix == jvmIdSuffix => v
-      }
-      def apply(sv: String): Project =
-        (projectMatrix.toSeq collect {
-          case ((r, `sv`), v) if r.idSuffix == jvmIdSuffix => v
-        }).headOption.getOrElse(sys.error(s"$sv was not found"))
-    }
+    override def jsPlatform(settings: Setting[_]*): ProjectMatrix =
+      custom(jsIdSuffix, jsDirectorySuffix, Nil, { _.settings(settings) })
+
+    override def jvm: ProjectFinder = new SuffixBaseProjectFinder(jvmIdSuffix)
+
+    override def js: ProjectFinder = new SuffixBaseProjectFinder(jsIdSuffix)
 
     override def projectRefs: Seq[ProjectReference] =
       componentProjects map { case p => (p: ProjectReference) }
+
+    private final class SuffixBaseProjectFinder(idSuffix: String) extends ProjectFinder {
+      def get: Seq[Project] = projectMatrix.toSeq collect {
+        case ((r, sv), v) if r.idSuffix == idSuffix => v
+      }
+      def apply(sv: String): Project =
+        (projectMatrix.toSeq collectFirst {
+          case ((r, `sv`), v) if r.idSuffix == idSuffix => v
+        }).getOrElse(sys.error(s"$sv was not found"))
+    }
 
     override def custom(
         idSuffix: String,

@@ -1,0 +1,4 @@
+> compile
+
+$ exists core/target/js-2.12/classes/a/Core.class
+$ exists core/target/js-2.11/classes/a/Core.class
