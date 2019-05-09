@@ -251,7 +251,7 @@ lazy val testingProj = (project in file("testing"))
   .settings(
     baseSettings,
     name := "Testing",
-    libraryDependencies ++= Seq(testInterface, launcherInterface, sjsonNewScalaJson.value),
+    libraryDependencies ++= scalaXml.value ++ Seq(testInterface, launcherInterface, sjsonNewScalaJson.value),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -589,6 +589,7 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
     buildInfoObject in Test := "ZincLmIntegrationBuildInfo",
     buildInfoKeys in Test := List[BuildInfoKey]("zincVersion" -> zincVersion),
     mimaSettingsSince(sbt13Plus),
+    libraryDependencies += launcherInterface,
   )
   .configure(addSbtZincCompileCore, addSbtLmCore, addSbtLmIvyTest)
 
