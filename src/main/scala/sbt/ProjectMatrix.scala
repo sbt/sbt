@@ -62,13 +62,14 @@ sealed trait ProjectMatrix extends CompositeProject {
 
   def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix
   def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
-
   def jvm: ProjectFinder
 
   def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix
   def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
-
   def js: ProjectFinder
+
+  def crossLibrary(scalaVersions: Seq[String], suffix: String, settings: Seq[Setting[_]]): ProjectMatrix
+  def crossLib(suffix: String): ProjectFinder
 
   def projectRefs: Seq[ProjectReference]
 }
@@ -203,14 +204,26 @@ object ProjectMatrix {
     override def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
       custom(jvmIdSuffix, jvmDirectorySuffix, scalaVersions, { _.settings(settings) })
 
-    override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
-      jsPlatform(scalaVersions, Nil)
-    override def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
-      custom(jsIdSuffix, jsDirectorySuffix, scalaVersions, { _.settings(settings) })
-
     override def jvm: ProjectFinder = new SuffixBaseProjectFinder(jvmIdSuffix)
 
+    override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
+      jsPlatform(scalaVersions, Nil)
+    
+    override def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
+      custom(jsIdSuffix, jsDirectorySuffix, scalaVersions, { _.settings(settings) })
+    
     override def js: ProjectFinder = new SuffixBaseProjectFinder(jsIdSuffix)
+
+    override def crossLibrary(scalaVersions: Seq[String], suffix: String, settings: Seq[Setting[_]]): ProjectMatrix =
+      custom(suffix.replaceAllLiterally(".", "_"),
+        "-" + suffix.toLowerCase,
+        scalaVersions,
+        { _.settings(
+          Seq(moduleName := name.value + "_" + suffix.toLowerCase) ++ settings
+        ) })
+
+    override def crossLib(suffix: String): ProjectFinder =
+      new SuffixBaseProjectFinder(suffix.replaceAllLiterally(".", "_"))
 
     override def projectRefs: Seq[ProjectReference] =
       componentProjects map { case p => (p: ProjectReference) }
