@@ -4,6 +4,7 @@ import java.util.Locale
 import scala.collection.immutable.ListMap
 import Keys._
 import sbt.librarymanagement.CrossVersion.partialVersion
+import scala.util.Try
 
 /**
  * A project matrix is an implementation of a composite project
@@ -210,8 +211,23 @@ object ProjectMatrix {
       jsPlatform(scalaVersions, Nil)
     
     override def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
-      custom(jsIdSuffix, jsDirectorySuffix, scalaVersions, { _.settings(settings) })
-    
+      custom(jsIdSuffix, jsDirectorySuffix, scalaVersions,
+        { _
+            .enablePlugins(scalajsPlugin(this.getClass.getClassLoader).getOrElse(
+              sys.error("""Scala.js plugin was not found. Add the sbt-scalajs plugin into project/plugins.sbt:
+                          |  addSbtPlugin("org.scala-js" % "sbt-scalajs" % "x.y.z")
+                          |""".stripMargin)
+            ))
+            .settings(settings)
+        })
+
+    def scalajsPlugin(classLoader: ClassLoader): Try[AutoPlugin] = {
+      import sbtprojectmatrix.ReflectionUtil._
+      withContextClassloader(classLoader) { loader =>
+        getSingletonObject[AutoPlugin](loader, "org.scalajs.sbtplugin.ScalaJSPlugin$")
+      }
+    }
+
     override def js: ProjectFinder = new SuffixBaseProjectFinder(jsIdSuffix)
 
     override def crossLibrary(scalaVersions: Seq[String], suffix: String, settings: Seq[Setting[_]]): ProjectMatrix =

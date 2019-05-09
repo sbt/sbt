@@ -1,4 +1,5 @@
-> compile
+> fastOptJS
 
-$ exists core/target/js-2.12/classes/a/Core.class
-$ exists core/target/js-2.11/classes/a/Core.class
+$ exists app/target/js-2.12/app-fastopt.js
+$ exists core/target/js-2.12/core-fastopt.js
+$ exists core/target/js-2.11/core-fastopt.js
