@@ -589,6 +589,7 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
     buildInfoObject in Test := "ZincLmIntegrationBuildInfo",
     buildInfoKeys in Test := List[BuildInfoKey]("zincVersion" -> zincVersion),
     mimaSettingsSince(sbt13Plus),
+    libraryDependencies += launcherInterface,
   )
   .configure(addSbtZincCompileCore, addSbtLmCore, addSbtLmIvyTest)
 
