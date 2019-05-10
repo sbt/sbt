@@ -142,8 +142,6 @@ private[sbt] object Settings {
       case dynamicDependency.key => (dynamicDependency in scopedKey.scope := { () }) :: Nil
       case transitiveClasspathDependency.key =>
         (transitiveClasspathDependency in scopedKey.scope := { () }) :: Nil
-      case allInputFiles.key     => allFilesImpl(scopedKey) :: Nil
-      case changedInputFiles.key => changedInputFilesImpl(scopedKey)
       case changedOutputFiles.key =>
         changedFilesImpl(scopedKey, changedOutputFiles, outputFileStamps)
       case pathToFileStamp.key => stamper(scopedKey) :: Nil
@@ -206,7 +204,8 @@ private[sbt] object Settings {
       }
       dynamicInputs.foreach(_ ++= inputs.map(g => DynamicInput(g, stamper, forceTrigger)))
       view.list(inputs)
-    }) :: fileStamps(scopedKey) :: allFilesImpl(scopedKey) :: Nil
+    }) :: fileStamps(scopedKey) :: allFilesImpl(scopedKey) :: Nil ++
+      changedInputFilesImpl(scopedKey)
   }
 
   private[this] val taskClass = classOf[Task[_]]
