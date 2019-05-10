@@ -11,15 +11,14 @@ import java.io.PrintWriter
 import java.util.Properties
 
 import jline.TerminalFactory
+import sbt.internal.langserver.ErrorCodes
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
+import sbt.io.{ IO, Using }
+import sbt.protocol._
+import sbt.util.Logger
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-
-import sbt.io.{ IO, Using }
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
-import sbt.internal.langserver.ErrorCodes
-import sbt.util.Logger
-import sbt.protocol._
 
 object MainLoop {
 
@@ -140,7 +139,10 @@ object MainLoop {
       case Right(s)                  => s
       case Left(t: xsbti.FullReload) => throw t
       case Left(t: RebootCurrent)    => throw t
-      case Left(t)                   => state.handleError(t)
+      case Left(Reload) =>
+        val remaining = state.currentCommand.toList ::: state.remainingCommands
+        state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
+      case Left(t) => state.handleError(t)
     }
 
   /** This is the main function State transfer function of the sbt command processing. */

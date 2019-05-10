@@ -20,6 +20,9 @@ final case class Reboot(
 ) extends xsbti.Reboot {
   def arguments = argsList.toArray
 }
+
+case object Reload extends Exception
+
 final case class ApplicationID(
     groupID: String,
     name: String,

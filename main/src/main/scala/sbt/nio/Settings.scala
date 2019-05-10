@@ -196,7 +196,7 @@ private[sbt] object Settings {
       val inputs = (fileInputs in scopedKey.scope).value
       val stamper = (inputFileStamper in scopedKey.scope).value
       val forceTrigger = (watchForceTriggerOnAnyChange in scopedKey.scope).value
-      val dynamicInputs = Continuous.dynamicInputs.value
+      val dynamicInputs = (Continuous.dynamicInputs in scopedKey.scope).value
       // This makes watch work by ensuring that the input glob is registered with the
       // repository used by the watch process.
       sbt.Keys.state.value.get(globalFileTreeRepository).foreach { repo =>

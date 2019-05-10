@@ -1,0 +1,9 @@
+> foo
+
+$ copy-file changes/broken.sbt build.sbt
+
+-> foo
+
+$ copy-file changes/working.sbt build.sbt
+
+> foo

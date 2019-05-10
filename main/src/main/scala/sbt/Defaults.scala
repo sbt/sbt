@@ -37,7 +37,7 @@ import sbt.internal.librarymanagement.mavenint.{
   SbtPomExtraProperties
 }
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
-import sbt.internal.nio.Globs
+import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
   Definition,
   LanguageServerProtocol,
@@ -152,7 +152,8 @@ object Defaults extends BuildCommon {
       fileInputs :== Nil,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
-      watchForceTriggerOnAnyChange :== true,
+      onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
+      watchForceTriggerOnAnyChange :== false,
       watchPersistFileStamps :== true,
       watchTriggers :== Nil,
       clean := { () },
@@ -255,18 +256,10 @@ object Defaults extends BuildCommon {
       outputStrategy :== None, // TODO - This might belong elsewhere.
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
-      settingsData / fileInputs := {
-        val baseDir = file(".").getCanonicalFile()
-        val sourceFilter = "*.{sbt,scala,java}"
-        val projectDir = baseDir / "project"
-        Seq(
-          Glob(baseDir, "*.sbt"),
-          Glob(projectDir, sourceFilter),
-          // We only want to recursively look in source because otherwise we have to search
-          // the project target directories which is expensive.
-          Glob(projectDir / "src", RecursiveGlob / sourceFilter),
-        )
-      },
+      aggregate in checkBuildSources :== false,
+      checkBuildSources / Continuous.dynamicInputs := None,
+      checkBuildSources / fileInputs := CheckBuildSources.buildSourceFileInputs.value,
+      checkBuildSources := CheckBuildSources.needReloadImpl.value,
       trapExit :== true,
       connectInput :== false,
       cancelable :== true,
@@ -362,7 +355,6 @@ object Defaults extends BuildCommon {
       watchStartMessage :== Watch.defaultStartWatch,
       watchTasks := Continuous.continuousTask.evaluated,
       aggregate in watchTasks :== false,
-      watchTrackMetaBuild :== true,
       watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     )
   )

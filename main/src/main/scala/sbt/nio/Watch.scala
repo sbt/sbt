@@ -245,7 +245,7 @@ object Watch {
    * Action that indicates that the watch should pause while the build is reloaded. This is used to
    * automatically reload the project when the build files (e.g. build.sbt) are changed.
    */
-  case object Reload extends CancelWatch
+  private[sbt] case object Reload extends CancelWatch
 
   /**
    * Action that indicates that we should exit and run the provided command.

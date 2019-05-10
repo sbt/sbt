@@ -316,7 +316,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             callbacks.onEnter()
             // Here we enter the Watched.watch state machine. We will not return until one of the
             // state machine callbacks returns Watched.CancelWatch, Watched.Custom, Watched.HandleError
-            // or Watched.Reload. The task defined above will be run at least once. It will be run
+            // or Watched.ReloadException. The task defined above will be run at least once. It will be run
             // additional times whenever the state transition callbacks return Watched.Trigger.
             try {
               val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
@@ -482,7 +482,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   )(implicit extracted: Extracted): (() => Option[(Watch.Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
-      if (trackMetaBuild) extracted.getOpt(fileInputs in settingsData).getOrElse(Nil)
+      if (trackMetaBuild) extracted.getOpt(fileInputs in checkBuildSources).getOrElse(Nil)
       else Nil
 
     val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
@@ -558,7 +558,20 @@ private[sbt] object Continuous extends DeprecatedContinuous {
           // Create a logger with a scoped key prefix so that we can tell from which
           // monitor events occurred.
           FileEventMonitor.antiEntropy(
-            getRepository(state),
+            new Observable[Event] {
+              private[this] val repo = getRepository(state)
+              private[this] val observers = new Observers[Event] {
+                override def onNext(t: Event): Unit =
+                  if (config.inputs().exists(_.glob.matches(t.path))) super.onNext(t)
+              }
+              private[this] val handle = repo.addObserver(observers)
+              override def addObserver(observer: Observer[Event]): AutoCloseable =
+                observers.addObserver(observer)
+              override def close(): Unit = {
+                handle.close()
+                observers.close()
+              }
+            },
             config.watchSettings.antiEntropy,
             logger.withPrefix(config.key.show),
             config.watchSettings.deletionQuarantinePeriod,
@@ -825,7 +838,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val onTermination: Option[(Watch.Action, String, Int, State) => State] =
       key.get(watchOnTermination)
     val startMessage: StartMessage = getStartMessage(key)
-    val trackMetaBuild: Boolean = key.get(watchTrackMetaBuild).getOrElse(true)
+    val trackMetaBuild: Boolean =
+      key.get(onChangedBuildSource).fold(false)(_ == ReloadOnSourceChanges)
     val triggerMessage: TriggerMessage = getTriggerMessage(key)
 
     // Unlike the rest of the settings, InputStream is a TaskKey which means that if it is set,

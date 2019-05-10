@@ -267,7 +267,7 @@ object BuiltinCommands {
       BasicCommands.multi,
       act,
       continuous,
-      clearCaches
+      clearCaches,
     ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
@@ -880,6 +880,7 @@ object BuiltinCommands {
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
     registerGlobalCaches(Project.setProject(session, structure, s))
+      .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
   }
 
   def registerCompilerCache(s: State): State = {
