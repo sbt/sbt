@@ -110,7 +110,7 @@ object Watch {
       override val occurredAt: FiniteDuration
   ) extends Event
       with Event.Impl {
-    override def toString: String = s"Update(path, ${occurredAt.toEpochString})"
+    override def toString: String = s"Update($path, ${occurredAt.toEpochString})"
   }
   object Update {
     def apply(event: FileEvent[FileAttributes]): Update =
