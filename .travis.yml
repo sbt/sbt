@@ -30,6 +30,7 @@ before_install:
 
 install:
   - sdk install java $TRAVIS_JDK
+  - bin/fixpreloaded.sh
   - unset _JAVA_OPTIONS
   - java -Xmx32m -version
   # detect sbt version from project/build.properties
