@@ -106,7 +106,7 @@ private[sbt] object SettingsGraph {
         .map { am =>
           am.get(scopedKey.key) match {
             case Some(globs: Seq[Glob]) =>
-              if (trigger) {
+              if (!trigger) {
                 val stamper = am.get(inputFileStamper.key).getOrElse(FileStamper.Hash)
                 val forceTrigger = am.get(watchForceTriggerOnAnyChange.key).getOrElse(false)
                 globs.map(g => DynamicInput(g, stamper, forceTrigger))
