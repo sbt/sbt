@@ -14,6 +14,24 @@ lazy val sbtOfflineInstall =
 lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", {
         sys.error("-Dsbt.build.version must be set")
       }))
+
+lazy val scala210 = "2.10.7"
+lazy val scala212 = "2.12.8"
+lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
+lazy val jansi = {
+  if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.4"
+  else "org.fusesource.jansi" % "jansi" % "1.4"
+}
+lazy val scala212Jline = "jline" % "jline" % "2.14.6"
+lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
+lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
+lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
+
+lazy val sbt013ExtraDeps = {
+  if (sbtVersionToRelease startsWith "0.13.") Seq(scala210Jline)
+  else Seq()
+}
+
 lazy val isExperimental = (sbtVersionToRelease contains "RC") || (sbtVersionToRelease contains "M")
 val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
@@ -287,24 +305,6 @@ def publishToSettings =
 
 def bintrayRelease(repo: BintrayRepo, pkg: String, version: String, log: Logger): Unit =
   repo.release(pkg, version, log)
-
-
-lazy val scala210 = "2.10.7"
-lazy val scala212 = "2.12.7"
-lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
-lazy val jansi = {
-  if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.4"
-  else "org.fusesource.jansi" % "jansi" % "1.4"
-}
-lazy val scala212Jline = "jline" % "jline" % "2.14.6"
-lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
-lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
-lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
-
-lazy val sbt013ExtraDeps = {
-  if (sbtVersionToRelease startsWith "0.13.") Seq(scala210Jline)
-  else Seq()
-}
 
 def downloadUrl(uri: URI, out: File): Unit =
   {
