@@ -7,6 +7,8 @@ val _ = {
   sys.props += ("line.separator" -> "\n")
 }
 
+ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
 def commonSettings: Seq[Setting[_]] = Def.settings(
   scalaVersion := scala212,
   // publishArtifact in packageDoc := false,
