@@ -83,7 +83,9 @@ private[sbt] object CoursierRepositoriesTasks {
       Def.task {
         val result0 = resultTask(bootResOpt, overrideFlag).value
         val reorderResolvers = true // coursierReorderResolvers.value
-        val keepPreloaded = true // coursierKeepPreloaded.value
+        // local-preloaded-ivy contains dangling ivy.xml without JAR files
+        // https://github.com/sbt/sbt/issues/4661
+        val keepPreloaded = false // coursierKeepPreloaded.value
 
         val paths = ivyPaths.value
         val result1 =
