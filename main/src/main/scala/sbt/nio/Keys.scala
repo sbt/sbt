@@ -116,8 +116,6 @@ object Keys {
     taskKey[Seq[DynamicInput]]("The transitive inputs and triggers for a key").withRank(Invisible)
   private[sbt] val dynamicFileOutputs =
     taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
-  private[sbt] val autoClean =
-    taskKey[Unit]("Automatically clean up a task returning file or path").withRank(Invisible)
 
   private[sbt] val inputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
