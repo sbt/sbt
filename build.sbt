@@ -617,6 +617,8 @@ lazy val mainProj = (project in file("main"))
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    testOptions in Test += Tests
+      .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "10000"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // New and changed methods on KeyIndex. internal.
