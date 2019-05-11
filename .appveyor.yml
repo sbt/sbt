@@ -13,7 +13,7 @@ install:
       Add-Type -AssemblyName System.IO.Compression.FileSystem
       if (!(Test-Path -Path "C:\sbt" )) {
         (new-object System.Net.WebClient).DownloadFile(
-          'https://piccolo.link/sbt-0.13.17.zip',
+          'https://piccolo.link/sbt-0.13.18.zip',
           'C:\sbt-bin.zip'
         )
         [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\sbt-bin.zip", "C:\sbt")
@@ -22,7 +22,7 @@ install:
   - SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Dfile.encoding=UTF8
 
 test_script:
-  - sbt "-Dsbt.build.version=1.1.2" universal:packageBin
+  - sbt "-Dsbt.build.version=1.2.8" universal:packageBin
   - cd citest
   - test.bat
   - test1.bat
