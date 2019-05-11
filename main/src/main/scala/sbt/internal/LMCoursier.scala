@@ -15,9 +15,14 @@ import sbt.librarymanagement._
 import Keys._
 import sbt.internal.librarymanagement.{ CoursierArtifactsTasks, CoursierInputsTasks }
 import sbt.util.Logger
+import sbt.io.syntax._
 
 private[sbt] object LMCoursier {
-  def defaultCacheLocation: File = CoursierDependencyResolution.defaultCacheLocation
+  def defaultCacheLocation: File =
+    sys.props.get("sbt.coursier.home") match {
+      case Some(home) => new File(home).getAbsoluteFile / "cache"
+      case _          => CoursierDependencyResolution.defaultCacheLocation
+    }
 
   def coursierConfigurationTask(
       withClassifiers: Boolean,
@@ -56,7 +61,7 @@ private[sbt] object LMCoursier {
 
         val createLogger = csrLogger.value
 
-        val cache = csrCachePath.value
+        val cache = csrCacheDirectory.value
 
         val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
         val sbtBootJars = internalSbtScalaProvider.jars()

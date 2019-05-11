@@ -243,7 +243,7 @@ object Defaults extends BuildCommon {
       // coursier settings
       csrExtraCredentials :== Nil,
       csrLogger := LMCoursier.coursierLoggerTask.value,
-      csrCachePath :== LMCoursier.defaultCacheLocation,
+      csrCacheDirectory :== LMCoursier.defaultCacheLocation,
       csrMavenProfiles :== Set.empty,
     )
 
@@ -2160,8 +2160,8 @@ object Classpaths {
       }).value,
     moduleName := normalizedName.value,
     ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
-    csrCachePath := {
-      val old = csrCachePath.value
+    csrCacheDirectory := {
+      val old = csrCacheDirectory.value
       val ip = ivyPaths.value
       val defaultIvyCache = bootIvyHome(appConfiguration.value)
       if (old != LMCoursier.defaultCacheLocation) old
