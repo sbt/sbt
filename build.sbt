@@ -2,6 +2,17 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
+ThisBuild / git.baseVersion := "1.3.0"
+ThisBuild / version := {
+  val old = (ThisBuild / version).value
+  nightlyVersion match {
+    case Some(v) => v
+    case _ =>
+      if (old contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
+      else old
+  }
+}
+
 def internalPath = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -13,7 +24,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
-  crossScalaVersions := Seq(scala211, scala212),
+  crossScalaVersions := Seq(scala212),
   scalacOptions in console in Compile -= "-Ywarn-unused-import",
   scalacOptions in console in Test -= "-Ywarn-unused-import",
   publishArtifact in Compile := true,
@@ -45,12 +56,6 @@ lazy val utilRoot: Project = (project in file("."))
   .settings(
     inThisBuild(
       Seq(
-        git.baseVersion := "1.3.0",
-        version := {
-          val v = version.value
-          if (v contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
-          else v
-        },
         bintrayPackage := "util",
         homepage := Some(url("https://github.com/sbt/util")),
         description := "Util module for sbt",
@@ -93,7 +98,7 @@ lazy val utilLogging = (project in internalPath / "util-logging")
   .dependsOn(utilInterface)
   .settings(
     commonSettings,
-    crossScalaVersions := Seq(scala211, scala212),
+    crossScalaVersions := Seq(scala212),
     name := "Util Logging",
     libraryDependencies ++=
       Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value),
@@ -166,13 +171,7 @@ lazy val utilScripted = (project in internalPath / "util-scripted")
   .settings(
     commonSettings,
     name := "Util Scripted",
-    libraryDependencies ++= {
-      scalaVersion.value match {
-        case sv if sv startsWith "2.11" => Seq(parserCombinator211)
-        case sv if sv startsWith "2.12" => Seq(parserCombinator211)
-        case _                          => Seq()
-      }
-    },
+    libraryDependencies += parserCombinator,
     mimaSettings,
   )
   .configure(addSbtIO)
