@@ -10,7 +10,7 @@ package internal
 
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }
-import sbt.internal.util.Types.{ const, some }
+import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.librarymanagement.Configuration
 
@@ -39,8 +39,15 @@ abstract class TestBuild {
   def chooseShrinkable(min: Int, max: Int): Gen[Int] =
     sized(sz => choose(min, (max min sz) max 1))
 
-  implicit val cGen = Arbitrary { genConfigs(scalaIDGen, MaxDepsGen, MaxConfigsGen) }
-  implicit val tGen = Arbitrary { genTasks(lowerIDGen, MaxDepsGen, MaxTasksGen) }
+  val nonEmptyId = for {
+    c <- alphaLowerChar
+    cs <- listOfN(MaxIDSize, alphaNumChar)
+  } yield (c :: cs).mkString
+
+  implicit val cGen = Arbitrary {
+    genConfigs(nonEmptyId.map(_.capitalize), MaxDepsGen, MaxConfigsGen)
+  }
+  implicit val tGen = Arbitrary { genTasks(kebabIdGen, MaxDepsGen, MaxTasksGen) }
   val seed = rng.Seed.random
 
   class TestKeys(val env: Env, val scopes: Seq[Scope]) {
@@ -189,9 +196,11 @@ abstract class TestBuild {
     } toMap;
 
   implicit lazy val arbKeys: Arbitrary[TestKeys] = Arbitrary(keysGen)
-  lazy val keysGen: Gen[TestKeys] = for (env <- mkEnv; keyCount <- chooseShrinkable(1, KeysPerEnv);
-                                         keys <- listOfN(keyCount, scope(env)))
-    yield new TestKeys(env, keys)
+  lazy val keysGen: Gen[TestKeys] = for {
+    env <- mkEnv
+    keyCount <- chooseShrinkable(1, KeysPerEnv)
+    keys <- listOfN(keyCount, scope(env))
+  } yield new TestKeys(env, keys)
 
   def scope(env: Env): Gen[Scope] =
     for {
@@ -243,7 +252,7 @@ abstract class TestBuild {
 
   implicit lazy val mkEnv: Gen[Env] = {
     implicit val pGen = (uri: URI) =>
-      genProjects(uri)(idGen, MaxDepsGen, MaxProjectsGen, cGen.arbitrary)
+      genProjects(uri)(nonEmptyId, MaxDepsGen, MaxProjectsGen, cGen.arbitrary)
     envGen(buildGen(uriGen, pGen), tGen.arbitrary)
   }
 
@@ -253,68 +262,24 @@ abstract class TestBuild {
       yield ScopeMask(project = p, config = c, task = t, extra = x)
   }
 
-  val allChars: Seq[Char] = ((0x0000 to 0xD7FF) ++ (0xE000 to 0xFFFD)).map(_.toChar)
-
-  val letters: Seq[Char] = allChars.filter(_.isLetter)
-
-  val upperLetters: Gen[Char] = Gen.oneOf(letters.filter(_.isUpper))
-
-  val lowerLetters: Gen[Char] = Gen.oneOf(letters.filter(_.isLower))
-
-  val lettersAndDigits: Gen[Char] = Gen.oneOf(allChars.filter(_.isLetterOrDigit))
-
-  val scalaIDCharGen: Gen[Char] = {
-    val others = Gen.const('_')
-    frequency(19 -> lettersAndDigits, 1 -> others)
-  }
-
-  val idCharGen: Gen[Char] = {
-    val others = Gen.const('-')
-    frequency(19 -> scalaIDCharGen, 1 -> others)
-  }
-
-  def isIDChar(c: Char) = {
-    c.isLetterOrDigit || "-_".toSeq.contains(c)
-  }
-
-  val idGen: Gen[String] = idGen(upperLetters, idCharGen, _.isUpper)
-
-  val lowerIDGen: Gen[String] = idGen(lowerLetters, idCharGen, _.isLower)
-
-  val scalaIDGen: Gen[String] = idGen(upperLetters, scalaIDCharGen, _.isUpper)
-
-  def idGen(start: Gen[Char], end: Gen[Char], headFilter: Char => Boolean): Gen[String] = {
-    for {
-      size <- chooseShrinkable(1, MaxIDSize)
-      idStart <- start
-      idEnd <- listOfN(size - 1, end)
-    } yield idStart + idEnd.mkString
-  } filter { id =>
-    // The filter ensure that shrinking works
-    id.headOption.exists(headFilter) && id.tail.forall(isIDChar)
-  }
-
-  val schemeGen: Gen[String] = {
-    for {
-      schemeStart <- alphaChar
-      schemeEnd <- listOf(frequency(19 -> alphaNumChar, 1 -> oneOf('+', '-', '.')))
-    } yield schemeStart + schemeEnd.mkString
-  }
+  val kebabIdGen: Gen[String] = for {
+    c <- alphaLowerChar
+    cs <- listOfN(MaxIDSize - 2, frequency(MaxIDSize -> alphaNumChar, 1 -> Gen.const('-')))
+    end <- alphaNumChar
+  } yield (List(c) ++ cs ++ List(end)).mkString
 
   val uriChar: Gen[Char] = {
-    frequency(9 -> alphaNumChar, 1 -> oneOf(";/?:@&=+$,-_.!~*'()".toSeq))
+    frequency(9 -> alphaNumChar, 1 -> oneOf("/?-".toSeq))
   }
 
-  val uriStringGen: Gen[String] = nonEmptyListOf(uriChar).map(_.mkString)
-
-  val optIDGen: Gen[Option[String]] = oneOf(uriStringGen.map(some.fn), Gen.const(None))
+  val optIDGen: Gen[Option[String]] =
+    Gen.oneOf(nonEmptyId.map(x => Some(x)), Gen.const(None))
 
   val uriGen: Gen[URI] = {
     for {
-      sch <- schemeGen
-      ssp <- uriStringGen
+      ssp <- nonEmptyId
       frag <- optIDGen
-    } yield new URI(sch, ssp, frag.orNull)
+    } yield new URI("file", "///" + ssp + "/", frag.orNull)
   }
 
   implicit def envGen(implicit bGen: Gen[Build], tasks: Gen[Vector[Taskk]]): Gen[Env] =
