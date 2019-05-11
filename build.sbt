@@ -7,6 +7,17 @@ val _ = {
   sys.props += ("line.separator" -> "\n")
 }
 
+ThisBuild / git.baseVersion := "1.3.0"
+ThisBuild / version := {
+  val old = (ThisBuild / version).value
+  nightlyVersion match {
+    case Some(v) => v
+    case _ =>
+      if (old contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
+      else old
+  }
+}
+
 ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 
 def commonSettings: Seq[Setting[_]] = Def.settings(
@@ -61,12 +72,6 @@ lazy val lmRoot = (project in file("."))
           Some(ScmInfo(url(s"https://github.com/$slug"), s"git@github.com:$slug.git"))
         },
         bintrayPackage := "librarymanagement",
-        git.baseVersion := "1.3.0",
-        version := {
-          val v = version.value
-          if (v contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
-          else v
-        }
       )),
     commonSettings,
     name := "LM Root",
@@ -93,7 +98,7 @@ lazy val lmCore = (project in file("core"))
       scalaTest % Test,
       scalaCheck % Test
     ),
-    libraryDependencies ++= scalaXml.value,
+    libraryDependencies += scalaXml,
     resourceGenerators in Compile += Def
       .task(
         Util.generateVersionFile(
