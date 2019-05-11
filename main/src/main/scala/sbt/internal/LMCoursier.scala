@@ -9,14 +9,20 @@ package sbt
 package internal
 
 import java.io.File
-import lmcoursier.definitions.{ Classifier, Configuration => CConfiguration }
+import lmcoursier.definitions.{ Classifier, Configuration => CConfiguration, CacheLogger }
 import lmcoursier._
 import sbt.librarymanagement._
 import Keys._
 import sbt.internal.librarymanagement.{ CoursierArtifactsTasks, CoursierInputsTasks }
+import sbt.util.Logger
+import sbt.io.syntax._
 
 private[sbt] object LMCoursier {
-  def defaultCacheLocation: File = CoursierDependencyResolution.defaultCacheLocation
+  def defaultCacheLocation: File =
+    sys.props.get("sbt.coursier.home") match {
+      case Some(home) => new File(home).getAbsoluteFile / "cache"
+      case _          => CoursierDependencyResolution.defaultCacheLocation
+    }
 
   def coursierConfigurationTask(
       withClassifiers: Boolean,
@@ -55,7 +61,7 @@ private[sbt] object LMCoursier {
 
         val createLogger = csrLogger.value
 
-        val cache = csrCachePath.value
+        val cache = csrCacheDirectory.value
 
         val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
         val sbtBootJars = internalSbtScalaProvider.jars()
@@ -89,35 +95,16 @@ private[sbt] object LMCoursier {
       }
     }
 
-  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
+  def coursierLoggerTask: Def.Initialize[Task[Option[CacheLogger]]] = Def.task {
+    val st = Keys.streams.value
+    val progress = useSuperShell.value
+    if (progress) None
+    else Some(new CoursierLogger(st.log))
+  }
 
-  def coursierSbtResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
-    val resolvers =
-      sbt.Classpaths
-        .bootRepositories(appConfiguration.value)
-        .toSeq
-        .flatten ++ // required because of the hack above it seems
-        externalResolvers.in(updateSbtClassifiers).value
-
-    val pluginIvySnapshotsFound = resolvers.exists {
-      case repo: URLRepository =>
-        repo.patterns.artifactPatterns.headOption
-          .exists(_.startsWith(pluginIvySnapshotsBase))
-      case _ => false
-    }
-
-    val resolvers0 =
-      if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
-        resolvers :+ Classpaths.sbtPluginReleases
-      else
-        resolvers
-    val keepPreloaded = true // coursierKeepPreloaded.value
-    if (keepPreloaded)
-      resolvers0
-    else
-      resolvers0.filter { r =>
-        !r.name.startsWith("local-preloaded")
-      }
+  private[sbt] class CoursierLogger(logger: Logger) extends CacheLogger {
+    override def downloadedArtifact(url: String, success: Boolean): Unit =
+      logger.debug(s"downloaded $url")
   }
 
   def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[_] = {

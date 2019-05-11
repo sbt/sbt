@@ -242,8 +242,8 @@ object Defaults extends BuildCommon {
       forceUpdatePeriod :== None,
       // coursier settings
       csrExtraCredentials :== Nil,
-      csrLogger :== None,
-      csrCachePath :== LMCoursier.defaultCacheLocation,
+      csrLogger := LMCoursier.coursierLoggerTask.value,
+      csrCacheDirectory :== LMCoursier.defaultCacheLocation,
       csrMavenProfiles :== Set.empty,
     )
 
@@ -2160,8 +2160,8 @@ object Classpaths {
       }).value,
     moduleName := normalizedName.value,
     ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
-    csrCachePath := {
-      val old = csrCachePath.value
+    csrCacheDirectory := {
+      val old = csrCacheDirectory.value
       val ip = ivyPaths.value
       val defaultIvyCache = bootIvyHome(appConfiguration.value)
       if (old != LMCoursier.defaultCacheLocation) old
@@ -2438,7 +2438,7 @@ object Classpaths {
     csrConfiguration := LMCoursier.coursierConfigurationTask(false, false).value,
     csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
     csrRecursiveResolvers := CoursierRepositoriesTasks.coursierRecursiveResolversTask.value,
-    csrSbtResolvers := LMCoursier.coursierSbtResolversTask.value,
+    csrSbtResolvers := CoursierRepositoriesTasks.coursierSbtResolversTask.value,
     csrInterProjectDependencies := CoursierInputsTasks.coursierInterProjectDependenciesTask.value,
     csrFallbackDependencies := CoursierInputsTasks.coursierFallbackDependenciesTask.value,
   ) ++
