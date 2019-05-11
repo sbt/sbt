@@ -19,7 +19,6 @@ import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
 
 class ParserSpec extends PropSpec with PropertyChecks with Matchers {
-
   property("can parse any build") {
     forAll(TestBuild.uriGen) { uri =>
       parse(buildURI = uri)
@@ -27,25 +26,25 @@ class ParserSpec extends PropSpec with PropertyChecks with Matchers {
   }
 
   property("can parse any project") {
-    forAll(TestBuild.idGen) { id =>
+    forAll(TestBuild.nonEmptyId) { id =>
       parse(projectID = id)
     }
   }
 
   property("can parse any configuration") {
-    forAll(TestBuild.scalaIDGen) { name =>
+    forAll(TestBuild.nonEmptyId.map(_.capitalize)) { name =>
       parse(configName = name)
     }
   }
 
   property("can parse any attribute") {
-    forAll(TestBuild.lowerIDGen) { name =>
+    forAll(TestBuild.kebabIdGen) { name =>
       parse(attributeName = name)
     }
   }
 
   private def parse(
-      buildURI: URI = new java.net.URI("s", "p", null),
+      buildURI: URI = new java.net.URI("file", "///path/", null),
       projectID: String = "p",
       configName: String = "c",
       attributeName: String = "a"
