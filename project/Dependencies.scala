@@ -3,11 +3,11 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala211 = "2.11.12"
   val scala212 = "2.12.8"
 
-  private val ioVersion = "1.2.1"
+  def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M10")
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   def getSbtModulePath(key: String, name: String) = {
@@ -40,8 +40,8 @@ object Dependencies {
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0" % Test
-  val scalaTest  = "org.scalatest"  %% "scalatest"  % "3.0.5" % Test
-  val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
+  val scalaTest  = "org.scalatest"  %% "scalatest"  % "3.0.6-SNAP5" % Test
+  val parserCombinator = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 
   val sjsonnew = Def.setting {
     "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value
