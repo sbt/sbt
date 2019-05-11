@@ -651,10 +651,8 @@ object Defaults extends BuildCommon {
     cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
     clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     consoleProject := consoleProjectTask.value,
-    watchTransitiveSources := watchTransitiveSourcesTask.value,
-    watch := watchSetting.value,
     transitiveDynamicInputs := SettingsGraph.task.value,
-  )
+  ) ++ sbt.internal.DeprecatedContinuous.taskDefinitions
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =
     generators { _.join.map(_.flatten) }
@@ -2574,16 +2572,16 @@ object Classpaths {
             }
           },
           ivyConfiguration := InlineIvyConfiguration(
-            paths = ivyPaths.value,
+            lock = Option(lock(appConfiguration.value)),
+            log = Option(streams.value.log),
+            updateOptions = UpdateOptions(),
+            paths = Option(ivyPaths.value),
             resolvers = externalResolvers.value.toVector,
             otherResolvers = Vector.empty,
             moduleConfigurations = Vector.empty,
-            lock = Option(lock(appConfiguration.value)),
             checksums = checksums.value.toVector,
             managedChecksums = false,
             resolutionCacheDir = Some(crossTarget.value / "resolution-cache"),
-            updateOptions = UpdateOptions(),
-            log = streams.value.log
           ),
           ivySbt := ivySbt0.value,
           classifiersModule := classifiersModuleTask.value,

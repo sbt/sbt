@@ -69,6 +69,7 @@ final class xMain extends xsbti.AppMain {
       override def scalaProvider(): ScalaProvider = appProvider.scalaProvider
       override def id(): xsbti.ApplicationID = appProvider.id()
       override def loader(): ClassLoader = metaLoader
+      @deprecated("Implements deprecated api", "1.3.0")
       override def mainClass(): Class[_ <: AppMain] = appProvider.mainClass()
       override def entryPoint(): Class[_] = appProvider.entryPoint()
       override def newMain(): AppMain = appProvider.newMain()
