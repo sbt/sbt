@@ -242,7 +242,7 @@ object Defaults extends BuildCommon {
       forceUpdatePeriod :== None,
       // coursier settings
       csrExtraCredentials :== Nil,
-      csrLogger :== None,
+      csrLogger := LMCoursier.coursierLoggerTask.value,
       csrCachePath :== LMCoursier.defaultCacheLocation,
       csrMavenProfiles :== Set.empty,
     )

@@ -9,11 +9,12 @@ package sbt
 package internal
 
 import java.io.File
-import lmcoursier.definitions.{ Classifier, Configuration => CConfiguration }
+import lmcoursier.definitions.{ Classifier, Configuration => CConfiguration, CacheLogger }
 import lmcoursier._
 import sbt.librarymanagement._
 import Keys._
 import sbt.internal.librarymanagement.{ CoursierArtifactsTasks, CoursierInputsTasks }
+import sbt.util.Logger
 
 private[sbt] object LMCoursier {
   def defaultCacheLocation: File = CoursierDependencyResolution.defaultCacheLocation
@@ -88,6 +89,18 @@ private[sbt] object LMCoursier {
           .withLog(log)
       }
     }
+
+  def coursierLoggerTask: Def.Initialize[Task[Option[CacheLogger]]] = Def.task {
+    val st = Keys.streams.value
+    val progress = useSuperShell.value
+    if (progress) None
+    else Some(new CoursierLogger(st.log))
+  }
+
+  private[sbt] class CoursierLogger(logger: Logger) extends CacheLogger {
+    override def downloadedArtifact(url: String, success: Boolean): Unit =
+      logger.debug(s"downloaded $url")
+  }
 
   def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[_] = {
     csrPublications := CoursierArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value
