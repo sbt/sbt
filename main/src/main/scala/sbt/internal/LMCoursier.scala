@@ -89,37 +89,6 @@ private[sbt] object LMCoursier {
       }
     }
 
-  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
-
-  def coursierSbtResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
-    val resolvers =
-      sbt.Classpaths
-        .bootRepositories(appConfiguration.value)
-        .toSeq
-        .flatten ++ // required because of the hack above it seems
-        externalResolvers.in(updateSbtClassifiers).value
-
-    val pluginIvySnapshotsFound = resolvers.exists {
-      case repo: URLRepository =>
-        repo.patterns.artifactPatterns.headOption
-          .exists(_.startsWith(pluginIvySnapshotsBase))
-      case _ => false
-    }
-
-    val resolvers0 =
-      if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
-        resolvers :+ Classpaths.sbtPluginReleases
-      else
-        resolvers
-    val keepPreloaded = true // coursierKeepPreloaded.value
-    if (keepPreloaded)
-      resolvers0
-    else
-      resolvers0.filter { r =>
-        !r.name.startsWith("local-preloaded")
-      }
-  }
-
   def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[_] = {
     csrPublications := CoursierArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value
   }

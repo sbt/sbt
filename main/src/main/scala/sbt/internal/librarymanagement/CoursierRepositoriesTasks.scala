@@ -74,6 +74,10 @@ private[sbt] object CoursierRepositoriesTasks {
         }
     }
 
+  // local-preloaded-ivy contains dangling ivy.xml without JAR files
+  // https://github.com/sbt/sbt/issues/4661
+  private final val keepPreloaded = false // coursierKeepPreloaded.value
+
   def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
     Def.taskDyn {
 
@@ -83,9 +87,6 @@ private[sbt] object CoursierRepositoriesTasks {
       Def.task {
         val result0 = resultTask(bootResOpt, overrideFlag).value
         val reorderResolvers = true // coursierReorderResolvers.value
-        // local-preloaded-ivy contains dangling ivy.xml without JAR files
-        // https://github.com/sbt/sbt/issues/4661
-        val keepPreloaded = false // coursierKeepPreloaded.value
 
         val paths = ivyPaths.value
         val result1 =
@@ -119,6 +120,36 @@ private[sbt] object CoursierRepositoriesTasks {
           }
       }
     }
+
+  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
+
+  def coursierSbtResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+    val resolvers =
+      sbt.Classpaths
+        .bootRepositories(appConfiguration.value)
+        .toSeq
+        .flatten ++ // required because of the hack above it seems
+        externalResolvers.in(updateSbtClassifiers).value
+
+    val pluginIvySnapshotsFound = resolvers.exists {
+      case repo: URLRepository =>
+        repo.patterns.artifactPatterns.headOption
+          .exists(_.startsWith(pluginIvySnapshotsBase))
+      case _ => false
+    }
+
+    val resolvers0 =
+      if (pluginIvySnapshotsFound && !resolvers.contains(Classpaths.sbtPluginReleases))
+        resolvers :+ Classpaths.sbtPluginReleases
+      else
+        resolvers
+    if (keepPreloaded)
+      resolvers0
+    else
+      resolvers0.filter { r =>
+        !r.name.startsWith("local-preloaded")
+      }
+  }
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
     Def.taskDyn {

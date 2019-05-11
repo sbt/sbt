@@ -2438,7 +2438,7 @@ object Classpaths {
     csrConfiguration := LMCoursier.coursierConfigurationTask(false, false).value,
     csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
     csrRecursiveResolvers := CoursierRepositoriesTasks.coursierRecursiveResolversTask.value,
-    csrSbtResolvers := LMCoursier.coursierSbtResolversTask.value,
+    csrSbtResolvers := CoursierRepositoriesTasks.coursierSbtResolversTask.value,
     csrInterProjectDependencies := CoursierInputsTasks.coursierInterProjectDependenciesTask.value,
     csrFallbackDependencies := CoursierInputsTasks.coursierFallbackDependenciesTask.value,
   ) ++
