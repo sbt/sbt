@@ -46,14 +46,14 @@ object Build {
       },
       checkTriggers := {
         val actual = triggers((Compile / compile / transitiveDynamicInputs).value).toSet
-        val base = baseDirectory.value.getParentFile
+        val base = baseDirectory.value.getParentFile.toGlob
         // This checks that since foo depends on bar there is a transitive trigger generated
         // for the "bar.txt" trigger added to bar / Compile / unmanagedResources (which is a
         // transitive dependency of
-        val expected: Set[Glob] = Set(base * "baz.txt", (base / "bar") * "bar.txt")
+        val expected: Set[Glob] = Set(base / "baz.txt", base / "bar" / "bar.txt")
         assert(actual == expected)
       },
-      Test / test / watchTriggers += (baseDirectory.value / "test.txt").toGlob,
+      Test / test / watchTriggers += baseDirectory.value.toGlob / "test.txt",
       Test / checkTriggers := {
         val testTriggers = triggers((Test / test / transitiveDynamicInputs).value).toSet
         // This validates that since the "test.txt" trigger is only added to the Test / test task,
@@ -61,34 +61,34 @@ object Build {
         // are found in the test above for the compile configuration because of the transitive
         // classpath dependency that is added in Defaults.internalDependencies.
         val compileTriggers = triggers((Test / compile / transitiveDynamicInputs).value).toSet
-        val base = baseDirectory.value.getParentFile
+        val base = baseDirectory.value.getParentFile.toGlob
         val expected: Set[Glob] =
-          Set(base * "baz.txt", (base / "bar") * "bar.txt", (base / "foo") * "test.txt")
+          Set(base / "baz.txt", base / "bar" / "bar.txt", base / "foo" / "test.txt")
         assert(testTriggers == expected)
-        assert((testTriggers - ((base / "foo") * "test.txt")) == compileTriggers)
+        assert((testTriggers - (base / "foo" / "test.txt")) == compileTriggers)
       },
     )
     .dependsOn(bar)
 
   lazy val bar = project.settings(
-    fileInputs in setStringValue += baseDirectory.value * "foo.txt",
-    setStringValue / watchTriggers += baseDirectory.value * "bar.txt",
+    fileInputs in setStringValue += baseDirectory.value.toGlob / "foo.txt",
+    setStringValue / watchTriggers += baseDirectory.value.toGlob / "bar.txt",
     // This trigger should transitively propagate to foo / compile and foo / Test / compile
-    Compile / unmanagedResources / watchTriggers += baseDirectory.value * "bar.txt",
+    Compile / unmanagedResources / watchTriggers += baseDirectory.value.toGlob / "bar.txt",
     checkTriggers := {
-      val base = baseDirectory.value.getParentFile
+      val base = baseDirectory.value.getParentFile.toGlob
       val actual = triggers((Compile / compile / transitiveDynamicInputs).value).toSet
-      val expected: Set[Glob] = Set((base / "bar") * "bar.txt", base * "baz.txt")
+      val expected: Set[Glob] = Set(base / "bar" / "bar.txt", base / "baz.txt")
       assert(actual == expected)
     },
     // This trigger should not transitively propagate to any foo task
-    Test / unmanagedResources / watchTriggers += baseDirectory.value * "bar-test.txt",
+    Test / unmanagedResources / watchTriggers += baseDirectory.value.toGlob / "bar-test.txt",
     Test / checkTriggers := {
       val testTriggers = triggers((Test / test / transitiveDynamicInputs).value).toSet
       val compileTriggers = triggers((Test / compile / transitiveDynamicInputs).value).toSet
-      val base = baseDirectory.value.getParentFile
+      val base = baseDirectory.value.getParentFile.toGlob
       val expected: Set[Glob] =
-        Set(base * "baz.txt", (base / "bar") * "bar.txt", (base / "bar") * "bar-test.txt")
+        Set(base / "baz.txt", base / "bar" / "bar.txt", base / "bar" / "bar-test.txt")
       assert(testTriggers == expected)
       assert(testTriggers == compileTriggers)
     },
@@ -101,7 +101,7 @@ object Build {
       },
       checkTriggers := {
         val actual = triggers((Compile / compile / transitiveDynamicInputs).value)
-        val expected: Seq[Glob] = baseDirectory.value * "baz.txt" :: Nil
+        val expected: Seq[Glob] = baseDirectory.value.toGlob / "baz.txt" :: Nil
         assert(actual == expected)
       },
     )

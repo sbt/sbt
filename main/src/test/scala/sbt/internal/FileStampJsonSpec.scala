@@ -45,6 +45,6 @@ class FileStampJsonSpec extends FlatSpec {
     val both: Seq[(Path, FileStamp)] = hashes ++ lastModifiedTimes
     val json = Converter.toJsonUnsafe(both)(fileStampJsonFormatter)
     val deserialized = Converter.fromJsonUnsafe(json)(fileStampJsonFormatter)
-    assert(both.sameElements(deserialized))
+    assert(both == deserialized)
   }
 }

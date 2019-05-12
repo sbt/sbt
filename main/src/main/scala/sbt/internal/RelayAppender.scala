@@ -13,13 +13,20 @@ import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.core.async.RingBufferLogEvent
+import org.apache.logging.log4j.core.config.Property
 import sbt.util.Level
 import sbt.internal.util._
 import sbt.protocol.LogEvent
 import sbt.internal.util.codec._
 
 class RelayAppender(name: String)
-    extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {
+    extends AbstractAppender(
+      name,
+      null,
+      PatternLayout.createDefaultLayout(),
+      true,
+      Property.EMPTY_ARRAY
+    ) {
   lazy val exchange = StandardMain.exchange
 
   def append(event: XLogEvent): Unit = {

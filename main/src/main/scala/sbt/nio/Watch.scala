@@ -110,7 +110,7 @@ object Watch {
       override val occurredAt: FiniteDuration
   ) extends Event
       with Event.Impl {
-    override def toString: String = s"Update(path, ${occurredAt.toEpochString})"
+    override def toString: String = s"Update($path, ${occurredAt.toEpochString})"
   }
   object Update {
     def apply(event: FileEvent[FileAttributes]): Update =
@@ -217,13 +217,22 @@ object Watch {
    * Action that indicates that an error has occurred. The watch will be terminated when this action
    * is produced.
    */
-  final class HandleError(val throwable: Throwable) extends CancelWatch {
+  sealed class HandleError(val throwable: Throwable) extends CancelWatch {
     override def equals(o: Any): Boolean = o match {
       case that: HandleError => this.throwable == that.throwable
       case _                 => false
     }
     override def hashCode: Int = throwable.hashCode
     override def toString: String = s"HandleError($throwable)"
+  }
+
+  /**
+   * Action that indicates that an error has occurred. The watch will be terminated when this action
+   * is produced.
+   */
+  private[sbt] final class HandleUnexpectedError(override val throwable: Throwable)
+      extends HandleError(throwable) {
+    override def toString: String = s"HandleUnexpectedError($throwable)"
   }
 
   /**
@@ -236,7 +245,7 @@ object Watch {
    * Action that indicates that the watch should pause while the build is reloaded. This is used to
    * automatically reload the project when the build files (e.g. build.sbt) are changed.
    */
-  case object Reload extends CancelWatch
+  private[sbt] case object Reload extends CancelWatch
 
   /**
    * Action that indicates that we should exit and run the provided command.
@@ -279,7 +288,12 @@ object Watch {
   def apply(task: () => Unit, onStart: NextAction, nextAction: NextAction): Watch.Action = {
     def safeNextAction(delegate: NextAction): Watch.Action =
       try delegate()
-      catch { case NonFatal(t) => new HandleError(t) }
+      catch {
+        case NonFatal(t) =>
+          System.err.println(s"Watch caught unexpected error:")
+          t.printStackTrace(System.err)
+          new HandleError(t)
+      }
     @tailrec def next(): Watch.Action = safeNextAction(nextAction) match {
       // This should never return Ignore due to this condition.
       case Ignore => next()
@@ -379,11 +393,10 @@ object Watch {
 
   private[this] val options = {
     val enter = "<enter>"
-    val newLine = if (Util.isWindows) enter else ""
     val opts = Seq(
       s"$enter: return to the shell",
-      s"'r$newLine': repeat the current command",
-      s"'x$newLine': exit sbt"
+      s"'r': repeat the current command",
+      s"'x': exit sbt"
     )
     s"Options:\n${opts.mkString("  ", "\n  ", "")}"
   }

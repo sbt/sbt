@@ -4,4 +4,4 @@ val root = Build.root
 val foo = Build.foo
 val bar = Build.bar
 
-Global / watchTriggers += baseDirectory.value * "baz.txt"
+Global / watchTriggers += baseDirectory.value.toGlob / "baz.txt"

@@ -16,9 +16,10 @@ import sbt.Project.richInitializeTask
 import sbt.Scope.Global
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
-import sbt.internal.util._
 import sbt.internal._
+import sbt.internal.util._
 import sbt.librarymanagement.{ Resolver, UpdateReport }
+import sbt.nio.Keys.IgnoreSourceChanges
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
 
@@ -274,7 +275,7 @@ object EvaluateTask {
   def injectSettings: Seq[Setting[_]] = Seq(
     (state in Global) ::= dummyState,
     (streamsManager in Global) ::= Def.dummyStreamsManager,
-    (executionRoots in Global) ::= dummyRoots
+    (executionRoots in Global) ::= dummyRoots,
   )
 
   @deprecated("Use variant which doesn't take a logger", "1.1.1")
@@ -346,7 +347,7 @@ object EvaluateTask {
       ExceptionCategory(ex) match {
         case AlreadyHandled => ()
         case m: MessageOnly => if (msg.isEmpty) log.error(m.message)
-        case f: Full        => log.trace(f.exception)
+        case f: Full        => if (f.exception != Reload) log.trace(f.exception)
       }
     }
 
@@ -439,7 +440,7 @@ object EvaluateTask {
       case Some(t: Task[_]) => transformNode(t).isEmpty
       case _                => true
     }
-    def run() = {
+    def run[R](s: State, toRun: Task[R], doShutdown: Boolean) = {
       val x = new Execute[Task](
         Execute.config(config.checkCycles, overwriteNode),
         triggers,
@@ -447,12 +448,12 @@ object EvaluateTask {
       )(taskToNode)
       val (newState, result) =
         try {
-          val results = x.runKeep(root)(service)
-          storeValuesForPrevious(results, state, streams)
-          applyResults(results, state, root)
-        } catch { case inc: Incomplete => (state, Inc(inc)) } finally shutdown()
+          val results = x.runKeep(toRun)(service)
+          storeValuesForPrevious(results, s, streams)
+          applyResults(results, s, toRun)
+        } catch { case inc: Incomplete => (s, Inc(inc)) } finally if (doShutdown) shutdown()
       val replaced = transformInc(result)
-      logIncResult(replaced, state, streams)
+      logIncResult(replaced, s, streams)
       (newState, replaced)
     }
     object runningEngine extends RunningTaskEngine {
@@ -466,8 +467,24 @@ object EvaluateTask {
     // Register with our cancel handler we're about to start.
     val strat = config.cancelStrategy
     val cancelState = strat.onTaskEngineStart(runningEngine)
-    try run()
-    finally {
+    try {
+      (state.get(stateBuildStructure), state.get(sessionSettings)) match {
+        case (Some(structure), Some(settings)) =>
+          val extracted: Extracted = Project.extract(settings, structure)
+          if (extracted.get(sbt.nio.Keys.onChangedBuildSource) == IgnoreSourceChanges) {
+            run(state, root, doShutdown = true)
+          } else {
+            run(state, extracted.get(sbt.nio.Keys.checkBuildSources), doShutdown = false) match {
+              case (newState, r) =>
+                r.toEither match {
+                  case Left(i) => (newState, Result.fromEither(Left(i)))
+                  case _       => run(newState, root, doShutdown = true)
+                }
+            }
+          }
+        case _ => run(state, root, doShutdown = true)
+      }
+    } finally {
       strat.onTaskEngineFinish(cancelState)
       currentlyRunningEngine.set(null)
       lastEvaluatedState.set(SafeState(state))

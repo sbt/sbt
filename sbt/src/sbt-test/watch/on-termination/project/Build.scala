@@ -19,7 +19,7 @@ object Build {
   }
   lazy val root = (project in file(".")).settings(
     reloadFile := baseDirectory.value / "reload",
-    setStringValue / watchTriggers += baseDirectory.value * "foo.txt",
+    setStringValue / watchTriggers += baseDirectory.value.toGlob / "foo.txt",
     setStringValue := setStringValueImpl.evaluated,
     checkStringValue := checkStringValueImpl.evaluated,
     watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },

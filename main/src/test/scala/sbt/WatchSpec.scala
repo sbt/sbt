@@ -15,10 +15,10 @@ import org.scalatest.{ FlatSpec, Matchers }
 import sbt.WatchSpec._
 import sbt.internal.nio.{ FileEvent, FileEventMonitor, FileTreeRepository }
 import sbt.io._
-import sbt.io.syntax._
 import sbt.nio.Watch
 import sbt.nio.Watch.{ NullLogger, _ }
-import sbt.nio.file.{ FileAttributes, Glob }
+import sbt.nio.file.{ FileAttributes, Glob, RecursiveGlob }
+import sbt.nio.file.syntax._
 import sbt.util.Logger
 
 import scala.collection.mutable
@@ -84,13 +84,13 @@ class WatchSpec extends FlatSpec with Matchers {
   }
   "Watch" should "stop" in IO.withTemporaryDirectory { dir =>
     val task = new Task
-    watch(task, TestDefaults.callbacks(inputs = Seq(dir.toRealPath ** AllPassFilter))) shouldBe CancelWatch
+    watch(task, TestDefaults.callbacks(inputs = Seq(dir.toRealPath.toGlob / RecursiveGlob))) shouldBe CancelWatch
   }
   it should "trigger" in IO.withTemporaryDirectory { dir =>
     val triggered = new AtomicBoolean(false)
     val task = new Task
     val callbacks = TestDefaults.callbacks(
-      inputs = Seq(dir.toRealPath ** AllPassFilter),
+      inputs = Seq(dir.toRealPath.toGlob / RecursiveGlob),
       onStartWatch = () => if (task.getCount == 2) CancelWatch else Ignore,
       onWatchEvent = _ => { triggered.set(true); Trigger },
       watchingMessage = () => {
@@ -107,7 +107,7 @@ class WatchSpec extends FlatSpec with Matchers {
     val bar = realDir.toPath.resolve("bar")
     val task = new Task
     val callbacks = TestDefaults.callbacks(
-      inputs = Seq(realDir ** AllPassFilter),
+      inputs = Seq(realDir.toGlob / RecursiveGlob),
       onStartWatch = () => if (task.getCount == 2) CancelWatch else Ignore,
       onWatchEvent = e => if (e.path == foo) Trigger else Ignore,
       triggeredMessage = e => { queue += e.path; None },
@@ -126,7 +126,7 @@ class WatchSpec extends FlatSpec with Matchers {
     val bar = realDir.toPath.resolve("bar")
     val task = new Task
     val callbacks = TestDefaults.callbacks(
-      inputs = Seq(realDir ** AllPassFilter),
+      inputs = Seq(realDir.toGlob / RecursiveGlob),
       onStartWatch = () => if (task.getCount == 3) CancelWatch else Ignore,
       onWatchEvent = e => if (e.path != realDir.toPath) Trigger else Ignore,
       triggeredMessage = e => { queue += e.path; None },
@@ -148,19 +148,19 @@ class WatchSpec extends FlatSpec with Matchers {
     val exception = new IllegalStateException("halt")
     val task = new Task { override def apply(): Unit = throw exception }
     val callbacks = TestDefaults.callbacks(
-      Seq(dir.toRealPath ** AllPassFilter),
+      Seq(dir.toRealPath.toGlob / RecursiveGlob),
     )
     watch(task, callbacks) shouldBe new HandleError(exception)
   }
   it should "reload" in IO.withTemporaryDirectory { dir =>
     val task = new Task
     val callbacks = TestDefaults.callbacks(
-      inputs = Seq(dir.toRealPath ** AllPassFilter),
+      inputs = Seq(dir.toRealPath.toGlob / RecursiveGlob),
       onStartWatch = () => Ignore,
-      onWatchEvent = _ => Reload,
+      onWatchEvent = _ => Watch.Reload,
       watchingMessage = () => { new File(dir, "file").createNewFile(); None }
     )
-    watch(task, callbacks) shouldBe Reload
+    watch(task, callbacks) shouldBe Watch.Reload
   }
 }
 

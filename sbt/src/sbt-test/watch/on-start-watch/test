@@ -1,6 +1,3 @@
-# verify that reloading occurs if watchOnStart returns Watch.Reload
-$ copy-file changes/extra.sbt extra.sbt
-
 > ~compile
 > checkReloaded
 

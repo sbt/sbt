@@ -19,3 +19,9 @@ private[internal] trait DeprecatedContinuous {
   protected val deprecatedWatchingMessage = sbt.Keys.watchingMessage
   protected val deprecatedTriggeredMessage = sbt.Keys.triggeredMessage
 }
+private[sbt] object DeprecatedContinuous {
+  private[sbt] val taskDefinitions = Seq(
+    sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,
+    sbt.Keys.watch := sbt.Defaults.watchSetting.value,
+  )
+}

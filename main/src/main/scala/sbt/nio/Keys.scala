@@ -9,6 +9,7 @@ package sbt.nio
 
 import java.io.InputStream
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.BuildSyntax.{ settingKey, taskKey }
 import sbt.KeyRanks.{ BMinusSetting, DSetting, Invisible }
@@ -22,6 +23,10 @@ import sbt.{ Def, InputKey, State, StateTransform }
 import scala.concurrent.duration.FiniteDuration
 
 object Keys {
+  sealed trait WatchBuildSourceOption
+  case object IgnoreSourceChanges extends WatchBuildSourceOption
+  case object WarnOnSourceChanges extends WatchBuildSourceOption
+  case object ReloadOnSourceChanges extends WatchBuildSourceOption
   val allInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
   val changedInputFiles = taskKey[Option[ChangedFiles]]("The changed files for a task")
@@ -44,10 +49,17 @@ object Keys {
   val fileTreeView =
     taskKey[FileTreeView.Nio[FileAttributes]]("A view of the local file system tree")
 
+  val checkBuildSources =
+    taskKey[Unit]("Check if any meta build sources have changed").withRank(DSetting)
+
   // watch related settings
   val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration](
     "Wall clock Duration for which a FileEventMonitor will store anti-entropy events. This prevents spurious triggers when a task takes a long time to run. Higher values will consume more memory but make spurious triggers less likely."
   ).withRank(BMinusSetting)
+  val onChangedBuildSource = settingKey[WatchBuildSourceOption](
+    "Determines what to do if the sbt meta build sources have changed"
+  ).withRank(DSetting)
+
   val watchDeletionQuarantinePeriod = settingKey[FiniteDuration](
     "Period for which deletion events will be quarantined. This is to prevent spurious builds when a file is updated with a rename which manifests as a file deletion followed by a file creation. The higher this value is set, the longer the delay will be between a file deletion and a build trigger but the less likely it is for a spurious trigger."
   ).withRank(DSetting)
@@ -85,6 +97,9 @@ object Keys {
   val watchOnTermination = settingKey[(Watch.Action, String, Int, State) => State](
     "Transforms the state upon completion of a watch. The String argument is the command that was run during the watch. The Int parameter specifies how many times the command was run during the watch."
   ).withRank(DSetting)
+  val watchPersistFileStamps = settingKey[Boolean](
+    "Toggles whether or not the continuous build will reuse the file stamps computed in previous runs. Setting this to true decrease watch startup latency but could cause inconsistent results if many source files are concurrently modified."
+  ).withRank(DSetting)
   val watchStartMessage = settingKey[(Int, String, Seq[String]) => Option[String]](
     "The message to show when triggered execution waits for sources to change. The parameters are the current watch iteration count, the current project name and the tasks that are being run with each build."
   ).withRank(DSetting)
@@ -92,9 +107,6 @@ object Keys {
   val watchTasks = InputKey[StateTransform](
     "watch",
     "Watch a task (or multiple tasks) and rebuild when its file inputs change or user input is received. The semantics are more or less the same as the `~` command except that it cannot transform the state on exit. This means that it cannot be used to reload the build."
-  ).withRank(DSetting)
-  val watchTrackMetaBuild = settingKey[Boolean](
-    s"Toggles whether or not changing the build files (e.g. **/*.sbt, project/**/*.{scala,java}) should automatically trigger a project reload"
   ).withRank(DSetting)
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
     "The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count."
@@ -116,8 +128,6 @@ object Keys {
     taskKey[Seq[DynamicInput]]("The transitive inputs and triggers for a key").withRank(Invisible)
   private[sbt] val dynamicFileOutputs =
     taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
-  private[sbt] val autoClean =
-    taskKey[Unit]("Automatically clean up a task returning file or path").withRank(Invisible)
 
   private[sbt] val inputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
@@ -126,16 +136,25 @@ object Keys {
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task output files")
       .withRank(Invisible)
   private[sbt] type FileAttributeMap =
-    java.util.HashMap[Path, FileStamp]
-  private[sbt] val persistentFileAttributeMap =
-    AttributeKey[FileAttributeMap]("persistent-file-attribute-map", Int.MaxValue)
+    java.util.Map[Path, FileStamp]
+  private[sbt] val persistentFileStampCache =
+    AttributeKey[FileStamp.Cache]("persistent-file-stamp-cache", Int.MaxValue)
   private[sbt] val allInputPathsAndAttributes =
     taskKey[Seq[(Path, FileAttributes)]]("Get all of the file inputs for a task")
       .withRank(Invisible)
-  private[sbt] val fileAttributeMap = taskKey[FileAttributeMap](
+  private[sbt] val fileStampCache = taskKey[FileStamp.Cache](
     "Map of file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
-  private[sbt] val pathToFileStamp = taskKey[Path => FileStamp](
+  private[sbt] val pathToFileStamp = taskKey[Path => Option[FileStamp]](
     "A function that computes a file stamp for a path. It may have the side effect of updating a cache."
   ).withRank(Invisible)
+
+  private[this] val hasCheckedMetaBuildMsg =
+    "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +
+      "user about build source changes if the build sources were changed while sbt was shutdown. " +
+      " When that occurs, the previous cache reflects the state of the old build files, but by " +
+      " the time the checkBuildSources task has run, the build will have already been loaded with the " +
+      " new meta build sources so we should neither warn the user nor automatically restart the build"
+  private[sbt] val hasCheckedMetaBuild =
+    AttributeKey[AtomicBoolean]("has-checked-meta-build", hasCheckedMetaBuildMsg, Int.MaxValue)
 }

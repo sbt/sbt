@@ -21,7 +21,7 @@ object Build {
       (Compile / unmanagedResources / fileInputs).value,
     Test / cached / fileInputs := (Test / unmanagedSources / fileInputs).value ++
       (Test / unmanagedResources / fileInputs).value,
-    Compile / newInputs / fileInputs += baseDirectory.value * "*.sc",
+    Compile / newInputs / fileInputs += baseDirectory.value.toGlob / "*.sc",
     Compile / unmanagedSources / fileInputs ++= (Compile / newInputs / fileInputs).value,
     checkCompile := {
       val actual = (Compile / compile / transitiveDynamicInputs).value.map(_.glob).toSet

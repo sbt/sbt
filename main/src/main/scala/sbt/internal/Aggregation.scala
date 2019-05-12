@@ -111,6 +111,9 @@ object Aggregation {
     val complete = timedRun[T](s, ts, extra)
     showRun(complete, show)
     complete.results match {
+      case Inc(i) if i.directCause.contains(Reload) =>
+        val remaining = s.currentCommand.toList ::: s.remainingCommands
+        complete.state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
       case Inc(i)   => complete.state.handleError(i)
       case Value(_) => complete.state
     }
