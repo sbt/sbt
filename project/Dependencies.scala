@@ -5,8 +5,10 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 object Dependencies {
   val scala212 = "2.12.8"
 
-  private val ioVersion = "1.3.0-M7"
-  private val utilVersion = "1.3.0-M5"
+  def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
+
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M10")
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M5")
   private val coursierVersion = "1.1.0-M7"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -50,8 +52,8 @@ object Dependencies {
   val jsch = "com.jcraft" % "jsch" % "0.1.54" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
-  val scalaXml = scala211Module("scala-xml", "1.0.5")
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.5"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.6-SNAP5"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val sjsonnew = Def.setting {
     "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value
@@ -61,12 +63,4 @@ object Dependencies {
   }
   val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.4.0"
   val okhttpUrlconnection = "com.squareup.okhttp3" % "okhttp-urlconnection" % "3.7.0"
-
-  private def scala211Module(name: String, moduleVersion: String) =
-    Def.setting {
-      scalaVersion.value match {
-        case sv if (sv startsWith "2.9.") || (sv startsWith "2.10.") => Nil
-        case _                                                       => ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
-      }
-    }
 }
