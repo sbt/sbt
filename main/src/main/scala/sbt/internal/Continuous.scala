@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.io.{ ByteArrayInputStream, InputStream, File => _ }
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import sbt.BasicCommandStrings.{
   ContinuousExecutePrefix,
@@ -269,13 +269,45 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     f(commands, s, valid, invalid)
   }
 
-  private[this] def withCharBufferedStdIn[R](f: InputStream => R): R =
-    if (!Util.isWindows) {
-      val terminal = JLine.terminal
-      terminal.init()
-      terminal.setEchoEnabled(true)
-      f(terminal.wrapInIfNeeded(System.in))
-    } else f(System.in)
+  private[this] def withCharBufferedStdIn[R](f: InputStream => R): R = {
+    val terminal = JLine.terminal
+    terminal.init()
+    terminal.setEchoEnabled(true)
+    val wrapped = terminal.wrapInIfNeeded(System.in)
+    if (Util.isNonCygwinWindows) {
+      val inputStream: InputStream with AutoCloseable = new InputStream with AutoCloseable {
+        private[this] val buffer = new java.util.LinkedList[Int]
+        private[this] val closed = new AtomicBoolean(false)
+        private[this] val thread = new Thread("Continuous-input-stream-reader") {
+          setDaemon(true)
+          start()
+          @tailrec
+          override def run(): Unit = {
+            try {
+              if (!closed.get()) {
+                buffer.add(wrapped.read())
+              }
+            } catch {
+              case _: InterruptedException =>
+            }
+            if (!closed.get()) run()
+          }
+        }
+        override def available(): Int = buffer.size()
+        override def read(): Int = buffer.poll()
+        override def close(): Unit = if (closed.compareAndSet(false, true)) {
+          thread.interrupt()
+        }
+      }
+      try {
+        f(inputStream)
+      } finally {
+        inputStream.close()
+      }
+    } else {
+      f(wrapped)
+    }
+  }
 
   private[sbt] def runToTermination(
       state: State,

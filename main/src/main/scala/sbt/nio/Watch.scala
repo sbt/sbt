@@ -393,11 +393,10 @@ object Watch {
 
   private[this] val options = {
     val enter = "<enter>"
-    val newLine = if (Util.isWindows) enter else ""
     val opts = Seq(
       s"$enter: return to the shell",
-      s"'r$newLine': repeat the current command",
-      s"'x$newLine': exit sbt"
+      s"'r': repeat the current command",
+      s"'x': exit sbt"
     )
     s"Options:\n${opts.mkString("  ", "\n  ", "")}"
   }
