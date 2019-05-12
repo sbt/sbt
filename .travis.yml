@@ -48,7 +48,6 @@ script: sbt -Dfile.encoding=UTF8
   scalafmtCheckAll
   whitesourceCheckPolicies
   test
-  scriptedIvy
   packagedArtifacts # ensure that all artifacts for publish package without failure
 
 before_cache:

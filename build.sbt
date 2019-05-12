@@ -285,13 +285,14 @@ lazy val lmScriptedTest = (project in file("scripted-test"))
     scriptedBufferLog := false
   ).enablePlugins(SbtScriptedIT)
 
-addCommandAlias("scriptedIvy", Seq(
-  "lmCore/publishLocal",
-  "lmIvy/publishLocal",
-  "lmScriptedTest/clean",
-  """set ThisBuild / scriptedTestLMImpl := "ivy"""",
-  """set ThisBuild / scriptedLaunchOpts += "-Ddependency.resolution=ivy" """,
-  "lmScriptedTest/scripted").mkString(";",";",""))
+// we are updating the nightly process, so we are commenting this out for now
+// addCommandAlias("scriptedIvy", Seq(
+//   "lmCore/publishLocal",
+//   "lmIvy/publishLocal",
+//   "lmScriptedTest/clean",
+//   """set ThisBuild / scriptedTestLMImpl := "ivy"""",
+//   """set ThisBuild / scriptedLaunchOpts += "-Ddependency.resolution=ivy" """,
+//   "lmScriptedTest/scripted").mkString(";",";",""))
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
