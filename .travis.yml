@@ -1,12 +1,18 @@
-dist: trusty
+dist: xenial
 group: stable
 
 language: scala
-jdk: oraclejdk8
+jdk: openjdk11
 
 before_script:
  - export JVM_OPTS="-Dfile.encoding=UTF-8 -Xmx1G -Xms1G -server -XX:ReservedCodeCacheSize=128M"
  - unset _JAVA_OPTIONS
+
+addons:
+  apt:
+    packages:
+      - clang
+      - libunwind-dev
 
 script: sbt scripted
 

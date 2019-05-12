@@ -69,6 +69,10 @@ sealed trait ProjectMatrix extends CompositeProject {
   def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
   def js: ProjectFinder
 
+  def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix
+  def nativePlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
+  def native: ProjectFinder
+
   def crossLibrary(scalaVersions: Seq[String], suffix: String, settings: Seq[Setting[_]]): ProjectMatrix
   def crossLib(suffix: String): ProjectFinder
 
@@ -93,6 +97,8 @@ object ProjectMatrix {
   val jvmDirectorySuffix: String = "-jvm"
   val jsIdSuffix: String = "JS"
   val jsDirectorySuffix: String = "-js"
+  val nativeIdSuffix: String = "NATIVE"
+  val nativeDirectorySuffix: String = "-native"
 
   /** A row in the project matrix, typically representing a platform.
    */
@@ -209,7 +215,7 @@ object ProjectMatrix {
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
-    
+
     override def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
       custom(jsIdSuffix, jsDirectorySuffix, scalaVersions,
         { _
@@ -225,6 +231,29 @@ object ProjectMatrix {
       import sbtprojectmatrix.ReflectionUtil._
       withContextClassloader(classLoader) { loader =>
         getSingletonObject[AutoPlugin](loader, "org.scalajs.sbtplugin.ScalaJSPlugin$")
+      }
+    }
+
+    override def native: ProjectFinder = new SuffixBaseProjectFinder(nativeIdSuffix)
+
+    override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
+      nativePlatform(scalaVersions, Nil)
+
+    override def nativePlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
+      custom(nativeIdSuffix, nativeDirectorySuffix, scalaVersions,
+        { _
+          .enablePlugins(nativePlugin(this.getClass.getClassLoader).getOrElse(
+            sys.error("""Scala Native plugin was not found. Add the sbt-scala-native plugin into project/plugins.sbt:
+                        |  addSbtPlugin("org.scala-native" % "sbt-scala-natiev" % "x.y.z")
+                        |""".stripMargin)
+          ))
+          .settings(settings)
+        })
+
+    def nativePlugin(classLoader: ClassLoader): Try[AutoPlugin] = {
+      import sbtprojectmatrix.ReflectionUtil._
+      withContextClassloader(classLoader) { loader =>
+        getSingletonObject[AutoPlugin](loader, "scala.scalanative.sbtplugin.ScalaNativePlugin$")
       }
     }
 

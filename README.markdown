@@ -74,7 +74,7 @@ This is an example where `core` builds against Scala 2.11 and 2.12, but app only
 
 ### Scala.js support
 
-Scala.js support was added in sbt-projectmatrix 0.2.0.
+[Scala.js](http://scala-js.org/) support was added in sbt-projectmatrix 0.2.0.
 To use this, you need to setup sbt-scalajs as well:
 
 ```scala
@@ -86,6 +86,22 @@ lazy val core = (projectMatrix in file("core"))
 ```
 
 This will create subprojects `coreJS2_11` and `coreJS2_12`.
+
+### Scala Native support
+
+[Scala Native](http://scala-native.org) support will be added in upcoming release.
+To use this, you need to setup sbt-scala-native` as well:
+
+```scala
+lazy val core = (projectMatrix in file("core"))
+  .settings(
+    name := "core"
+  )
+  .nativePlatform(scalaVersions = Seq("2.12.8", "2.11.12"))
+```
+
+This will create subprojects `coreJS2_11` and `coreJS2_12`.
+
 
 ### parallel cross-library building
 
