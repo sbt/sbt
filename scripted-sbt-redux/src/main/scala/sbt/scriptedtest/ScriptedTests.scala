@@ -129,13 +129,16 @@ final class ScriptedTests(
         case s => s
       }
 
-      val (launcherBasedTests, runFromSourceBasedTests) = labelsAndDirs.partition {
-        case (testName, _) =>
-          determineRemoteSbtCreatorKind(testName) match {
-            case RemoteSbtCreatorKind.LauncherBased      => true
-            case RemoteSbtCreatorKind.RunFromSourceBased => false
-          }
-      }
+      val (launcherBasedTestsUnfiltered, runFromSourceBasedTestsUnfiltered) =
+        labelsAndDirs.partition {
+          case (testName, _) =>
+            determineRemoteSbtCreatorKind(testName) match {
+              case RemoteSbtCreatorKind.LauncherBased      => true
+              case RemoteSbtCreatorKind.RunFromSourceBased => false
+            }
+        }
+      val launcherBasedTests = launcherBasedTestsUnfiltered.filterNot(windowsExclude)
+      val runFromSourceBasedTests = runFromSourceBasedTestsUnfiltered.filterNot(windowsExclude)
 
       def logTests(size: Int, how: String) =
         log.info(
@@ -163,6 +166,17 @@ final class ScriptedTests(
     }
   }
 
+  private[this] val windowsExclude: (((String, String), File)) => Boolean =
+    if (scala.util.Properties.isWin) {
+      case (testName, _) =>
+        testName match {
+          case ("classloader-cache", "jni") => true // no native lib is built for windows
+          case ("classloader-cache", "snapshot") =>
+            true // the test overwrites a jar that is being used which is verboten in windows
+          case ("nio", "make-clone") => true // uses gcc which isn't set up on all systems
+          case _                     => false
+        }
+    } else _ => false
   private def determineRemoteSbtCreatorKind(testName: (String, String)): RemoteSbtCreatorKind = {
     import RemoteSbtCreatorKind._
     val (group, name) = testName
