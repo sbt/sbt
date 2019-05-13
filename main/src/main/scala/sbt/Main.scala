@@ -27,7 +27,7 @@ import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
-import xsbti.{ AppMain, AppProvider, ComponentProvider, ScalaProvider }
+import xsbti.{ AppMain, AppProvider, ComponentProvider, Launcher, ScalaProvider }
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
@@ -70,11 +70,19 @@ final class xMain extends xsbti.AppMain {
    */
   private class ModifiedConfiguration(val configuration: xsbti.AppConfiguration)
       extends xsbti.AppConfiguration {
-    private[this] val initLoader = configuration.provider.loader
-    private[this] val scalaLoader = configuration.provider.scalaProvider.loader
-    private[this] val metaLoader: ClassLoader = SbtMetaBuildClassLoader(scalaLoader, initLoader)
+    private[this] val metaLoader: ClassLoader = SbtMetaBuildClassLoader(configuration.provider)
+
     private class ModifiedAppProvider(val appProvider: AppProvider) extends AppProvider {
-      override def scalaProvider(): ScalaProvider = appProvider.scalaProvider
+      override def scalaProvider(): ScalaProvider = new ScalaProvider {
+        val delegate = configuration.provider.scalaProvider
+        override def launcher(): Launcher = delegate.launcher
+        override def version(): String = delegate.version
+        override def loader(): ClassLoader = metaLoader.getParent
+        override def jars(): Array[File] = delegate.jars
+        override def libraryJar(): File = delegate.libraryJar
+        override def compilerJar(): File = delegate.compilerJar
+        override def app(id: xsbti.ApplicationID): AppProvider = delegate.app(id)
+      }
       override def id(): xsbti.ApplicationID = appProvider.id()
       override def loader(): ClassLoader = metaLoader
       @deprecated("Implements deprecated api", "1.3.0")
