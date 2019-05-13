@@ -6,7 +6,7 @@ import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
 import coursier.{Artifact, Attributes, Dependency, Module, Project, Resolution}
-import coursier.core.{Classifier, Configuration, Type}
+import coursier.core.{Classifier, Configuration, Extension, Publication, Type}
 import coursier.maven.MavenAttributes
 import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
 import sbt.util.Logger
@@ -52,16 +52,16 @@ private[internal] object SbtUpdateReport {
       )
   }
 
-  private val artifact = caching[(Module, Map[String, String], Attributes, Artifact), sbt.librarymanagement.Artifact] {
-    case (module, extraProperties, attr, artifact) =>
+  private val artifact = caching[(Module, Map[String, String], Publication, Artifact), sbt.librarymanagement.Artifact] {
+    case (module, extraProperties, pub, artifact) =>
       sbt.librarymanagement.Artifact(module.name.value)
         // FIXME Get these two from publications
-        .withType(attr.`type`.value)
-        .withExtension(MavenAttributes.typeExtension(attr.`type`).value)
+        .withType(pub.`type`.value)
+        .withExtension(MavenAttributes.typeExtension(pub.`type`).value)
         .withClassifier(
-          Some(attr.classifier)
+          Some(pub.classifier)
             .filter(_.nonEmpty)
-            .orElse(MavenAttributes.typeDefaultClassifierOpt(attr.`type`))
+            .orElse(MavenAttributes.typeDefaultClassifierOpt(pub.`type`))
             .map(_.value)
         )
         // .withConfigurations(Vector())
@@ -69,16 +69,16 @@ private[internal] object SbtUpdateReport {
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
-  private val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Attributes, Artifact, Option[File])]), ModuleReport] {
+  private val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Publication, Artifact, Option[File])]), ModuleReport] {
     case (dependency, dependees, project, artifacts) =>
 
     val sbtArtifacts = artifacts.collect {
-      case (attr, artifact0, Some(file)) =>
-        (artifact(dependency.module, project.properties.toMap, attr, artifact0), file)
+      case (pub, artifact0, Some(file)) =>
+        (artifact((dependency.module, project.properties.toMap, pub, artifact0)), file)
     }
     val sbtMissingArtifacts = artifacts.collect {
-      case (attr, artifact0, None) =>
-        artifact(dependency.module, project.properties.toMap, attr, artifact0)
+      case (pub, artifact0, None) =>
+        artifact((dependency.module, project.properties.toMap, pub, artifact0))
     }
 
     val publicationDate = project.info.publication.map { dt =>
@@ -88,7 +88,7 @@ private[internal] object SbtUpdateReport {
     val callers = dependees.map {
       case (dependee, dependeeProj) =>
         Caller(
-          moduleId(dependee, dependeeProj.version, dependeeProj.properties.toMap),
+          moduleId((dependee, dependeeProj.version, dependeeProj.properties.toMap)),
           dependeeProj.configurations.keys.toVector.map(c => ConfigRef(c.value)),
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
@@ -100,7 +100,7 @@ private[internal] object SbtUpdateReport {
     }
 
     ModuleReport(
-      moduleId(dependency, project.version, project.properties.toMap),
+      moduleId((dependency, project.version, project.properties.toMap)),
       sbtArtifacts.toVector,
       sbtMissingArtifacts.toVector
     )
@@ -136,7 +136,7 @@ private[internal] object SbtUpdateReport {
         depArtifacts1
       else
         depArtifacts1.filter {
-          case (_, attr, _) => attr != Attributes(Type.pom, Classifier.empty)
+          case (_, pub, _) => pub.attributes != Attributes(Type.pom, Classifier.empty)
         }
 
     val depArtifacts =
@@ -146,10 +146,14 @@ private[internal] object SbtUpdateReport {
 
         if (notFound.isEmpty)
           depArtifacts0.flatMap {
-            case (dep, attr, a) =>
-              Seq((dep, attr, a)) ++
-                // not too sure about the attributes here
-                a.extra.get("sig").toSeq.map((dep, Attributes(Type(s"${attr.`type`.value}.asc"), attr.classifier), _))
+            case (dep, pub, a) =>
+              val sigPub = pub.copy(
+                // not too sure about those
+                ext = Extension(pub.ext.value),
+                `type` = Type(pub.`type`.value)
+              )
+              Seq((dep, pub, a)) ++
+                a.extra.get("sig").toSeq.map((dep, sigPub, _))
           }
         else {
           for ((_, _, a) <- notFound)
@@ -196,12 +200,12 @@ private[internal] object SbtUpdateReport {
             (dependee, dependeeProj)
           }
 
-        moduleReport(
+        moduleReport((
           dep,
           dependees,
           proj,
-          artifacts.map { case (attr, a) => (attr, a, artifactFileOpt(proj.module, proj.version, attr, a)) }
-        )
+          artifacts.map { case (pub, a) => (pub, a, artifactFileOpt(proj.module, proj.version, pub.attributes, a)) }
+        ))
     }
   }
 
@@ -240,7 +244,7 @@ private[internal] object SbtUpdateReport {
             // appears first in the update report, see https://github.com/coursier/coursier/issues/650
             val dep = subRes.rootDependencies.head
             val (_, proj) = subRes.projectCache(dep.moduleVersion)
-            val mod = moduleId(dep, proj.version, proj.properties.toMap)
+            val mod = moduleId((dep, proj.version, proj.properties.toMap))
             val (main, other) = reports.partition { r =>
               r.module.organization == mod.organization &&
                 r.module.name == mod.name &&

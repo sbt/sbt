@@ -35,16 +35,11 @@ object ArtifactsRun {
           .withResolutions(params.resolutions)
           .withArtifactTypes(Set(Type.all))
           .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
-          .transformArtifacts { l =>
-            val l0 =
-              if (params.includeSignatures)
-                l.flatMap { a =>
-                  val sigOpt = a.extra.get("sig")
-                  Seq(a) ++ sigOpt.toSeq
-                }
-              else
-                l
-            l0.distinct // temporary, until we can use https://github.com/coursier/coursier/pull/1077 from here
+          .addExtraArtifacts { l =>
+            if (params.includeSignatures)
+              l.flatMap(_._3.extra.get("sig").toSeq)
+            else
+              Nil
           }
           .withCache(
             params
