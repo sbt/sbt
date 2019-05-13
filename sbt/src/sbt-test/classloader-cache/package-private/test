@@ -4,6 +4,6 @@
 
 > run
 
-> set Runtime / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaInstance
+> set Runtime / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
 
 > run

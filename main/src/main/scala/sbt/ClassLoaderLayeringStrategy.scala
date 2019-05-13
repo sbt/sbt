@@ -77,47 +77,47 @@ object ClassLoaderLayeringStrategy {
   case object Flat extends ClassLoaderLayeringStrategy
 
   /**
-   * Add a layer for the scala instance class loader.
+   * Add a layer for the scala library class loader.
    */
-  sealed trait ScalaInstance extends ClassLoaderLayeringStrategy
+  sealed trait ScalaLibrary extends ClassLoaderLayeringStrategy
 
   /**
    * This should indicate that we use a two layer ClassLoader where the top layer is the scala
    * instance and all of the dependencies and project class paths are included in the search path
    * of the second layer.
    */
-  case object ScalaInstance extends ScalaInstance
+  case object ScalaLibrary extends ScalaLibrary
 
   /**
-   * Add a layer on top of the ScalaInstance layer for the runtime jar dependencies.
+   * Add a layer on top of the ScalaLibrary layer for the runtime jar dependencies.
    */
-  sealed trait RuntimeDependencies extends ScalaInstance
+  sealed trait RuntimeDependencies extends ScalaLibrary
 
   /**
-   * Add a layer on top of the ScalaInstance layer for the runtime jar dependencies.
+   * Add a layer on top of the ScalaLibrary layer for the runtime jar dependencies.
    */
-  case object RuntimeDependencies extends ScalaInstance with RuntimeDependencies
+  case object RuntimeDependencies extends ScalaLibrary with RuntimeDependencies
+
+  /**
+   * Add a layer on top of the ScalaLibrary layer for the test jar dependencies.
+   */
+  sealed trait TestDependencies extends ScalaLibrary
 
   /**
    * Add a layer on top of the ScalaInstance layer for the test jar dependencies.
    */
-  sealed trait TestDependencies extends ScalaInstance
-
-  /**
-   * Add a layer on top of the ScalaInstance layer for the test jar dependencies.
-   */
-  case object TestDependencies extends ScalaInstance with TestDependencies
+  case object TestDependencies extends ScalaLibrary with TestDependencies
 
   /**
    * Add the TestDependencies layer on top of the RuntimeDependencies layer on top of the
-   * ScalaInstance layer. This differs from TestDependencies in that it will not reload the
+   * ScalaLibrary layer. This differs from TestDependencies in that it will not reload the
    * runtime classpath. The drawback to using this is that if the test dependencies evict
    * classes provided in the runtime layer, then tests can fail. In order for sharing the runtime
    * layer to work, it is necessary to set [[Keys.bgCopyClasspath]] to false. Otherwise the
    * runtime and test classpaths are completely different.
    */
   case object ShareRuntimeDependenciesLayerWithTestDependencies
-      extends ScalaInstance
+      extends ScalaLibrary
       with RuntimeDependencies
       with TestDependencies
 

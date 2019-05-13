@@ -4,7 +4,7 @@
 
 > run
 
-> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaInstance
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
 
 > run
 
@@ -20,7 +20,7 @@
 
 > Test / runMain sbt.scripted.TestAkkaTest
 
-> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaInstance
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
 
 > Test / runMain sbt.scripted.TestAkkaTest
 

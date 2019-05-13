@@ -11,7 +11,7 @@ package internal
 import java.io.File
 import java.net.{ URL, URLClassLoader }
 
-import sbt.ClassLoaderLayeringStrategy.{ ScalaInstance => ScalaInstanceLayer, _ }
+import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
 import sbt.SlashSyntax0._
 import sbt.internal.inc.ScalaInstance
@@ -130,7 +130,7 @@ private[sbt] object ClassLoaders {
       case _ =>
         val (layerDependencies, layerTestDependencies) = strategy match {
           case ShareRuntimeDependenciesLayerWithTestDependencies if isTest => (true, true)
-          case ScalaInstanceLayer                                          => (false, false)
+          case ScalaLibrary                                                => (false, false)
           case RuntimeDependencies                                         => (true, false)
           case TestDependencies if isTest                                  => (false, true)
           case badStrategy =>
@@ -147,15 +147,15 @@ private[sbt] object ClassLoaders {
         val allTestDependencies = if (layerTestDependencies) allDependenciesSet else Set.empty[File]
         val allRuntimeDependencies = (if (layerDependencies) rawRuntimeDependencies else Nil).toSet
 
-        val scalaInstanceLayer =
-          globalCache.get((si.allJars.toSeq, interfaceLoader, resources, tmp))
+        val scalaLibraryLayer =
+          globalCache.get((List(si.libraryJar), interfaceLoader, resources, tmp))
         // layer 2
         val runtimeDependencySet = allDependenciesSet intersect allRuntimeDependencies
         val runtimeDependencies = rawRuntimeDependencies.filter(runtimeDependencySet)
         lazy val runtimeLayer =
           if (layerDependencies)
-            layer(runtimeDependencies, scalaInstanceLayer, runtimeCache, resources, tmp)
-          else scalaInstanceLayer
+            layer(runtimeDependencies, scalaLibraryLayer, runtimeCache, resources, tmp)
+          else scalaLibraryLayer
 
         // layer 3 (optional if testDependencies are empty)
         val testDependencySet = allTestDependencies diff runtimeDependencySet
