@@ -1091,7 +1091,7 @@ object Defaults extends BuildCommon {
       out.events.foreach {
         case (suite, e) =>
           if (strategy != ClassLoaderLayeringStrategy.Flat ||
-              strategy != ClassLoaderLayeringStrategy.ScalaInstance) {
+              strategy != ClassLoaderLayeringStrategy.ScalaLibrary) {
             (e.throwables ++ e.throwables.flatMap(t => Option(t.getCause)))
               .find { t =>
                 t.isInstanceOf[NoClassDefFoundError] ||
@@ -1116,11 +1116,11 @@ object Defaults extends BuildCommon {
                     + " jvm enforces package private at the classloader level.\n\n"
                     + "These issues, along with others that were not enumerated above, may be"
                     + " resolved by changing the class loader layering strategy.\n"
-                    + "The Flat and ScalaInstance strategies bundle the full project classpath in"
+                    + "The Flat and ScalaLibrary strategies bundle the full project classpath in"
                     + " the same class loader.\nTo use one of these strategies, set the "
                     + " ClassLoaderLayeringStrategy key\nin your configuration, for example:\n\n"
                     + s"set ${projectId}Test / classLoaderLayeringStrategy :="
-                    + " ClassLoaderLayeringStrategy.ScalaInstance\n"
+                    + " ClassLoaderLayeringStrategy.ScalaLibrary\n"
                     + s"set ${projectId}Test / classLoaderLayeringStrategy :="
                     + " ClassLoaderLayeringStrategy.Flat\n\n"
                     + "See ClassLoaderLayeringStrategy.scala for the full list of options."
