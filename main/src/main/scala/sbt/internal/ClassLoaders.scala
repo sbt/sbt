@@ -31,8 +31,8 @@ private[sbt] object ClassLoaders {
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
     val rawCP = data(fullClasspath.value)
-    val fullCP = if (si.isManagedVersion) rawCP else si.allJars.toSeq ++ rawCP
-    val exclude = dependencyJars(exportedProducts).value.toSet ++ si.allJars
+    val fullCP = if (si.isManagedVersion) rawCP else List(si.libraryJar) ++ rawCP
+    val exclude = dependencyJars(exportedProducts).value.toSet ++ Set(si.libraryJar)
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
       si = si,
