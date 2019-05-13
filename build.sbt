@@ -6,13 +6,17 @@ import local.Scripted
 import scala.xml.{ Node => XmlNode, NodeSeq => XmlNodeSeq, _ }
 import scala.xml.transform.{ RewriteRule, RuleTransformer }
 
+ThisBuild / version := {
+  val v = "1.3.0-SNAPSHOT"
+  nightlyVersion.getOrElse(v)
+}
+
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] =
   inThisBuild(
     Seq(
       organization := "org.scala-sbt",
-      version := "1.3.0-SNAPSHOT",
       description := "sbt is an interactive build tool",
       bintrayOrganization := Some("sbt"),
       bintrayRepository := {
