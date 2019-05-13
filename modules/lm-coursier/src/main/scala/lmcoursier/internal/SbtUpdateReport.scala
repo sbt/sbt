@@ -54,10 +54,9 @@ private[internal] object SbtUpdateReport {
 
   private val artifact = caching[(Module, Map[String, String], Publication, Artifact), sbt.librarymanagement.Artifact] {
     case (module, extraProperties, pub, artifact) =>
-      sbt.librarymanagement.Artifact(module.name.value)
-        // FIXME Get these two from publications
+      sbt.librarymanagement.Artifact(pub.name)
         .withType(pub.`type`.value)
-        .withExtension(MavenAttributes.typeExtension(pub.`type`).value)
+        .withExtension(pub.ext.value)
         .withClassifier(
           Some(pub.classifier)
             .filter(_.nonEmpty)
