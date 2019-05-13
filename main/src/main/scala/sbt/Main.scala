@@ -44,6 +44,14 @@ final class xMain extends xsbti.AppMain {
     val instance = clazz.getField("MODULE$").get(null)
     val runMethod = clazz.getMethod("run", classOf[xsbti.AppConfiguration])
     try {
+      new Thread("sbt-load-global-instance") {
+        setDaemon(true)
+        override def run(): Unit = {
+          // This preloads the scala.tools.nsc.Global as a performance optimization"
+          loader.loadClass("sbt.internal.parser.SbtParser$").getField("MODULE$").get(null)
+          ()
+        }
+      }.start()
       runMethod.invoke(instance, modifiedConfiguration).asInstanceOf[xsbti.MainResult]
     } catch {
       case e: InvocationTargetException =>
