@@ -78,7 +78,8 @@ object IvyXml {
       }
     )
 
-    val infoAttrs = project.module.attributes.foldLeft[xml.MetaData](xml.Null) {
+    val props = project.module.attributes.toSeq ++ project.properties
+    val infoAttrs = props.foldLeft[xml.MetaData](xml.Null) {
       case (acc, (k, v)) =>
         new PrefixedAttribute("e", k, v, acc)
     }

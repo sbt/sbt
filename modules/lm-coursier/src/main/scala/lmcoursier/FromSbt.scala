@@ -128,6 +128,14 @@ object FromSbt {
 
     val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion))
 
+    val prefix = "e:" + SbtPomExtraProperties.POM_INFO_KEY_PREFIX
+    val properties = projectID
+      .extraAttributes
+      .filterKeys(_.startsWith(prefix))
+      .toSeq
+      .map { case (k, v) => (k.stripPrefix("e:"), v) }
+      .sortBy(_._1)
+
     Project(
       Module(
         Organization(projectID.organization),
@@ -137,7 +145,7 @@ object FromSbt {
       projectID.revision,
       deps,
       ivyConfigurations,
-      Nil,
+      properties,
       None,
       Nil,
       Info("", "", Nil, Nil, None)
