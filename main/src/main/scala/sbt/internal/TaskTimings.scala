@@ -38,9 +38,7 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean)
 
   if (reportOnShutdown) {
     start = System.nanoTime
-    Runtime.getRuntime.addShutdownHook(new Thread {
-      override def run() = report()
-    })
+    ShutdownHooks.add(() => report())
   }
 
   override def initial(): Unit = {
