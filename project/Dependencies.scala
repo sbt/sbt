@@ -7,16 +7,17 @@ object Dependencies {
   val scala212 = "2.12.8"
   lazy val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
+  def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = "1.3.0-M10"
-  private val utilVersion = "1.3.0-M6"
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M10")
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M7")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _             => "1.3.0-M3"
+      case _             => nightlyVersion.getOrElse("1.3.0-M3")
     }
-  val zincVersion = "1.3.0-M4"
+  val zincVersion = nightlyVersion.getOrElse("1.3.0-M4")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -64,11 +65,12 @@ object Dependencies {
       projectName: String,
       moduleId: ModuleID,
       c: Option[Configuration] = None
-    ) = {
+  ) = {
     val m = moduleId.withConfigurations(c.map(_.name))
     path match {
-      case Some(f) => p dependsOn ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name))
-      case None    => p settings (libraryDependencies += m, dependencyOverrides += m)
+      case Some(f) =>
+        p dependsOn ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name))
+      case None => p settings (libraryDependencies += m, dependencyOverrides += m)
     }
   }
 
@@ -110,7 +112,7 @@ object Dependencies {
   def addSbtZincCompileCore(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierVersion = "1.1.0-M14-1"
+  val lmCoursierVersion = "1.1.0-M14-2"
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
 
   val sjsonNewScalaJson = Def.setting {
@@ -128,8 +130,8 @@ object Dependencies {
     ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
   )
 
-  val scalaXml = scala211Module("scala-xml", "1.1.1")
-  val scalaParsers = scala211Module("scala-parser-combinators", "1.1.1")
+  val scalaXml = scala211Module("scala-xml", "1.2.0")
+  val scalaParsers = scala211Module("scala-parser-combinators", "1.1.2")
 
   def log4jVersion = "2.11.2"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
