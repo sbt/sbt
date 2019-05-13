@@ -9,7 +9,12 @@ package sbt
 package internal
 
 import java.io.File
-import lmcoursier.definitions.{ Classifier, Configuration => CConfiguration, CacheLogger }
+import lmcoursier.definitions.{
+  Classifier,
+  Configuration => CConfiguration,
+  CacheLogger,
+  Project => CProject
+}
 import lmcoursier._
 import sbt.librarymanagement._
 import Keys._
@@ -45,7 +50,12 @@ private[sbt] object LMCoursier {
         val rs = resolversTask.value
         val scalaOrg = scalaOrganization.value
         val scalaVer = scalaVersion.value
-        val interProjectDependencies = csrInterProjectDependencies.value
+        val interProjectDependencies0 = csrInterProjectDependencies.value.toVector
+        // during the resolution of sbt artifacts, such as compiler bridge source
+        // interproject dependencies should not be used (otherwise you can't compile sbt/zinc using sbt)
+        val interProjectDependencies: Vector[CProject] =
+          if (sbtClassifiers) Vector()
+          else interProjectDependencies0
         val excludeDeps = Inputs.exclusions(
           allExcludeDependencies.value,
           scalaVer,
@@ -71,7 +81,7 @@ private[sbt] object LMCoursier {
         Classpaths.warnResolversConflict(rs, log)
         CoursierConfiguration()
           .withResolvers(rs.toVector)
-          .withInterProjectDependencies(interProjectDependencies.toVector)
+          .withInterProjectDependencies(interProjectDependencies)
           .withFallbackDependencies(fallbackDeps.toVector)
           .withExcludeDependencies(
             excludeDeps.toVector.map {
