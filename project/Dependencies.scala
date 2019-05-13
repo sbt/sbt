@@ -8,8 +8,7 @@ object Dependencies {
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
   private val ioVersion = nightlyVersion.getOrElse("1.3.0-M10")
-  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M5")
-  private val coursierVersion = "1.1.0-M7"
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M7")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -43,8 +42,6 @@ object Dependencies {
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-cb9cc189e9f3af519f9f102e6c5d446488ff6832"
-  val coursier = "io.get-coursier" %% "coursier" % coursierVersion
-  val coursierCache = "io.get-coursier" %% "coursier-cache" % coursierVersion
 
   val sbtV = "1.0"
   val scalaV = "2.12"
