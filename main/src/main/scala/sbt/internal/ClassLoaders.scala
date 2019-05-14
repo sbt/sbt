@@ -20,8 +20,7 @@ import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
 import sbt.librarymanagement.Configurations.{ Runtime, Test }
-
-import scala.annotation.tailrec
+import xsbti.AppProvider
 
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -202,36 +201,15 @@ private[sbt] object ClassLoaders {
 }
 
 private[sbt] object SbtMetaBuildClassLoader {
-  private[this] implicit class Ops(val c: ClassLoader) {
-    def urls: Array[URL] = c match {
-      case u: URLClassLoader => u.getURLs
-      case cl =>
-        throw new IllegalStateException(s"sbt was launched with a non URLClassLoader: $cl")
-    }
-  }
-  def apply(scalaProviderLoader: ClassLoader, fullLoader: ClassLoader): ClassLoader = {
-    val libFilter: URL => Boolean = _.getFile.endsWith("scala-library.jar")
-    def bootLoader(loader: ClassLoader): ClassLoader = {
-      @tailrec def getAllParents(
-          classLoader: ClassLoader,
-          parents: List[ClassLoader]
-      ): List[ClassLoader] = classLoader.getParent match {
-        case null => parents
-        case cl   => getAllParents(cl, classLoader :: parents)
-      }
-      @tailrec def getLoader(remaining: List[ClassLoader]): ClassLoader = remaining match {
-        case head :: (next: URLClassLoader) :: _ if next.getURLs.exists(libFilter) => head
-        case head :: Nil                                                           => head
-        case _ :: tail                                                             => getLoader(tail)
-      }
-      getLoader(getAllParents(loader, Nil))
-    }
+  def apply(appProvider: AppProvider): ClassLoader = {
     val interfaceFilter: URL => Boolean = _.getFile.endsWith("test-interface-1.0.jar")
-    val (interfaceURL, rest) = fullLoader.urls.partition(interfaceFilter)
-    val interfaceLoader = new URLClassLoader(interfaceURL, bootLoader(scalaProviderLoader)) {
+    def urls(jars: Array[File]): Array[URL] = jars.map(_.toURI.toURL)
+    val (interfaceURL, rest) = urls(appProvider.mainClasspath).partition(interfaceFilter)
+    val scalaProvider = appProvider.scalaProvider
+    val interfaceLoader = new URLClassLoader(interfaceURL, scalaProvider.launcher.topLoader) {
       override def toString: String = s"SbtTestInterfaceClassLoader(${getURLs.head})"
     }
-    val updatedLibraryLoader = new URLClassLoader(scalaProviderLoader.urls, interfaceLoader) {
+    val updatedLibraryLoader = new URLClassLoader(urls(scalaProvider.jars), interfaceLoader) {
       override def toString: String = s"ScalaClassLoader(jars = {${getURLs.mkString(", ")}}"
     }
     new URLClassLoader(rest, updatedLibraryLoader) {

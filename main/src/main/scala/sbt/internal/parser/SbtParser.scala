@@ -108,7 +108,7 @@ private[sbt] object SbtParser {
   private[sbt] final val globalReporter = new UniqueParserReporter
   private[sbt] var scalacGlobalInitReporter: Option[ConsoleReporter] = None
 
-  private[sbt] final lazy val defaultGlobalForParser = {
+  private[sbt] final val defaultGlobalForParser = {
     val options = "-cp" :: s"$defaultClasspath" :: "-Yrangepos" :: Nil
     val reportError = (msg: String) => System.err.println(msg)
     val command = new CompilerCommand(options, reportError)
