@@ -32,7 +32,8 @@ final class CoursierConfiguration private (
   val authenticationByRepositoryId: Vector[(String, Authentication)],
   val credentials: Seq[Credentials],
   val logger: Option[CacheLogger],
-  val cache: Option[File]
+  val cache: Option[File],
+  val ivyHome: Option[File]
 ) extends Serializable {
   
   private def this() =
@@ -55,6 +56,7 @@ final class CoursierConfiguration private (
       None,
       Vector.empty,
       Vector.empty,
+      None,
       None,
       None
     )
@@ -81,7 +83,8 @@ final class CoursierConfiguration private (
           authenticationByRepositoryId == other.authenticationByRepositoryId &&
           credentials == other.credentials &&
           logger == other.logger &&
-          cache == other.cache
+          cache == other.cache &&
+          ivyHome == other.ivyHome
       case _ => false
     }
 
@@ -107,11 +110,12 @@ final class CoursierConfiguration private (
     code = 37 * (code + credentials.##)
     code = 37 * (code + logger.##)
     code = 37 * (code + cache.##)
+    code = 37 * (code + ivyHome.##)
     code
   }
 
   override def toString: String =
-    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache)"
+    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome)"
 
   private[this] def copy(
     log: Option[Logger] = log,
@@ -133,7 +137,8 @@ final class CoursierConfiguration private (
     authenticationByRepositoryId: Vector[(String, Authentication)] = authenticationByRepositoryId,
     credentials: Seq[Credentials] = credentials,
     logger: Option[CacheLogger] = logger,
-    cache: Option[File] = cache
+    cache: Option[File] = cache,
+    ivyHome: Option[File] = ivyHome
   ): CoursierConfiguration =
     new CoursierConfiguration(
       log,
@@ -155,7 +160,8 @@ final class CoursierConfiguration private (
       authenticationByRepositoryId,
       credentials,
       logger,
-      cache
+      cache,
+      ivyHome
     )
 
   def withLog(log: Option[Logger]): CoursierConfiguration =
@@ -238,6 +244,11 @@ final class CoursierConfiguration private (
 
   def withCache(cache: File): CoursierConfiguration =
     copy(cache = Option(cache))
+
+  def withIvyHome(ivyHomeOpt: Option[File]): CoursierConfiguration =
+    copy(ivyHome = ivyHomeOpt)
+  def withIvyHome(ivyHome: File): CoursierConfiguration =
+    copy(ivyHome = Option(ivyHome))
 }
 
 object CoursierConfiguration {
@@ -287,7 +298,8 @@ object CoursierConfiguration {
       authenticationByRepositoryId, 
       credentials, 
       logger, 
-      cache
+      cache,
+      None
     )
   
   def apply(
@@ -332,6 +344,54 @@ object CoursierConfiguration {
       authenticationByRepositoryId, 
       credentials, 
       Option(logger), 
-      Option(cache)
+      Option(cache),
+      None
+    )
+
+  def apply(
+    log: Option[Logger],
+    resolvers: Vector[Resolver],
+    parallelDownloads: Int,
+    maxIterations: Int,
+    sbtScalaOrganization: Option[String],
+    sbtScalaVersion: Option[String],
+    sbtScalaJars: Vector[File],
+    interProjectDependencies: Vector[Project],
+    excludeDependencies: Vector[(String, String)],
+    fallbackDependencies: Vector[FallbackDependency],
+    autoScalaLibrary: Boolean,
+    hasClassifiers: Boolean,
+    classifiers: Vector[String],
+    mavenProfiles: Vector[String],
+    scalaOrganization: Option[String],
+    scalaVersion: Option[String],
+    authenticationByRepositoryId: Vector[(String, Authentication)],
+    credentials: Seq[Credentials],
+    logger: Option[CacheLogger],
+    cache: Option[File],
+    ivyHome: Option[File]
+  ): CoursierConfiguration =
+    new CoursierConfiguration(
+      log,
+      resolvers,
+      parallelDownloads,
+      maxIterations,
+      sbtScalaOrganization,
+      sbtScalaVersion,
+      sbtScalaJars,
+      interProjectDependencies,
+      excludeDependencies,
+      fallbackDependencies,
+      autoScalaLibrary,
+      hasClassifiers,
+      classifiers,
+      mavenProfiles,
+      scalaOrganization,
+      scalaVersion,
+      authenticationByRepositoryId,
+      credentials,
+      logger,
+      cache,
+      ivyHome
     )
 }

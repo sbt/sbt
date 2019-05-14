@@ -74,7 +74,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val checksums = CacheDefaults.checksums
     val projectName = "" // used for logging only…
 
-    val ivyProperties = ResolutionParams.defaultIvyProperties()
+    val ivyProperties = ResolutionParams.defaultIvyProperties(conf.ivyHome)
 
     val classifiers =
       if (conf.hasClassifiers)
