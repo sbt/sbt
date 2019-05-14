@@ -80,10 +80,18 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
     def report0(): Unit = {
-      val event = ProgressEvent("Info", currentTasks map { task =>
-        val elapsed = timings.get(task).currentElapsedMicros
-        ProgressItem(taskName(task), elapsed)
-      }, Some(ltc), None, None)
+      val event = ProgressEvent(
+        "Info",
+        currentTasks
+          .map { task =>
+            val elapsed = timings.get(task).currentElapsedMicros
+            ProgressItem(taskName(task), elapsed)
+          }
+          .sortBy(_.name),
+        Some(ltc),
+        None,
+        None
+      )
       import sbt.internal.util.codec.JsonProtocol._
       log.logEvent(Level.Info, event)
     }
