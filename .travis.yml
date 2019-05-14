@@ -3,7 +3,16 @@ group: stable
 sudo: required
 
 language: scala
-jdk: openjdk11
+matrix:
+  include:
+    - jdk: openjdk8
+      before_install:
+        - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
+        - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+      apt:
+        packages:
+          - openjdk8
+    - jdk: openjdk11
 
 before_install:
   - bash scripts/travis_setup.sh
