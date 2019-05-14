@@ -16,4 +16,4 @@ failingTask := {
   throw new IllegalStateException("failed")
 }
 
-onChangedBuildSource := ReloadOnSourceChanges
+Global / onChangedBuildSource := ReloadOnSourceChanges

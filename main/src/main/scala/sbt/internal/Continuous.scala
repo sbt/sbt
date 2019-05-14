@@ -27,7 +27,7 @@ import sbt.internal.nio._
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.internal.util.{ AttributeKey, JLine, Util }
-import sbt.nio.Keys.{ fileInputs, _ }
+import sbt.nio.Keys._
 import sbt.nio.Watch.{ Creation, Deletion, Update }
 import sbt.nio.file.FileAttributes
 import sbt.nio.{ FileStamp, FileStamper, Watch }
@@ -512,11 +512,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       commands: Seq[String],
       fileStampCache: FileStamp.Cache
   )(implicit extracted: Extracted): (() => Option[(Watch.Event, Watch.Action)], () => Unit) = {
-    val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
-    val buildGlobs =
-      if (trackMetaBuild) extracted.getOpt(fileInputs in checkBuildSources).getOrElse(Nil)
-      else Nil
 
+    val buildGlobs = extracted.get(fileInputs in checkBuildSources)
+    val autoReload = extracted.get(onChangedBuildSource) == ReloadOnSourceChanges
     val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
     val quarantinePeriod = configs.map(_.watchSettings.deletionQuarantinePeriod).max
     val onEvent: Event => Seq[(Watch.Event, Watch.Action)] = event => {
@@ -553,29 +551,35 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       }
 
-      if (buildGlobs.exists(_.matches(path))) {
-        watchEvent(FileStamper.Hash, forceTrigger = false).map(e => e -> Watch.Reload).toSeq
-      } else {
-        configs
-          .flatMap { config =>
-            config
-              .inputs()
-              .collectFirst {
-                case d if d.glob.matches(path) => (d.forceTrigger, true, d.fileStamper)
-              }
-              .flatMap {
-                case (forceTrigger, accepted, stamper) =>
-                  if (accepted) {
-                    watchEvent(stamper, forceTrigger).flatMap { e =>
+      configs
+        .flatMap { config =>
+          config
+            .inputs()
+            .collectFirst {
+              case d if d.glob.matches(path) => (d.forceTrigger, true, d.fileStamper)
+            }
+            .flatMap {
+              case (forceTrigger, accepted, stamper) =>
+                if (accepted) {
+                  watchEvent(stamper, forceTrigger).flatMap { e =>
+                    if (buildGlobs.exists(_.matches(path))) {
+                      if (autoReload) {
+                        logger.info(s"Build source $path was updated. Reloading the build...")
+                        Some(e -> Watch.Reload)
+                      } else {
+                        logger.debug(s"Ignoring build source update for $path")
+                        None
+                      }
+                    } else {
                       val action = config.watchSettings.onFileInputEvent(count.get(), e)
                       if (action != Watch.Ignore) Some(e -> action) else None
                     }
-                  } else None
-              }
-          } match {
-          case events if events.isEmpty => Nil
-          case events                   => events.minBy(_._2) :: Nil
-        }
+                  }
+                } else None
+            }
+        } match {
+        case events if events.isEmpty => Nil
+        case events                   => events.minBy(_._2) :: Nil
       }
     }
     val monitor: FileEventMonitor[Event] = new FileEventMonitor[Event] {
@@ -609,18 +613,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             config.watchSettings.deletionQuarantinePeriod,
             config.watchSettings.antiEntropyRetentionPeriod
           )
-        } ++ (if (trackMetaBuild) {
-                val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
-                val repo = getRepository(state)
-                buildGlobs.foreach(repo.register)
-                FileEventMonitor.antiEntropy(
-                  repo,
-                  antiEntropy,
-                  logger.withPrefix("meta-build"),
-                  quarantinePeriod,
-                  retentionPeriod
-                ) :: Nil
-              } else Nil)
+        }
 
       override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
         val res = monitors.flatMap(_.poll(0.millis, filter)).toSet.toVector
@@ -870,8 +863,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val onTermination: Option[(Watch.Action, String, Int, State) => State] =
       key.get(watchOnTermination)
     val startMessage: StartMessage = getStartMessage(key)
-    val trackMetaBuild: Boolean =
-      key.get(onChangedBuildSource).fold(false)(_ == ReloadOnSourceChanges)
     val triggerMessage: TriggerMessage = getTriggerMessage(key)
 
     // Unlike the rest of the settings, InputStream is a TaskKey which means that if it is set,

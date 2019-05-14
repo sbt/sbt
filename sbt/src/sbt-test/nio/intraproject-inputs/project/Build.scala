@@ -17,6 +17,7 @@ object Build {
   val checkTest = taskKey[Unit]("check test inputs")
 
   val root = (project in file(".")).settings(
+    Global / onChangedBuildSource := IgnoreSourceChanges,
     Compile / cached / fileInputs := (Compile / unmanagedSources / fileInputs).value ++
       (Compile / unmanagedResources / fileInputs).value,
     Test / cached / fileInputs := (Test / unmanagedSources / fileInputs).value ++

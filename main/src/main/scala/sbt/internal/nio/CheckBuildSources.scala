@@ -19,7 +19,7 @@ private[sbt] object CheckBuildSources {
     val logger = streams.value.log
     val checkMetaBuildParam = state.value.get(hasCheckedMetaBuild)
     val firstTime = checkMetaBuildParam.fold(true)(_.get == false)
-    (onChangedBuildSource in Scope.Global).value match {
+    onChangedBuildSource.value match {
       case IgnoreSourceChanges => ()
       case o =>
         logger.debug("Checking for meta build source updates")

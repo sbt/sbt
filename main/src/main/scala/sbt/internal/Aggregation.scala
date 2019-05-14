@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.text.DateFormat
+
 import Def.ScopedKey
 import Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.internal.util.complete.Parser
@@ -16,6 +17,8 @@ import sbt.internal.util.{ Dag, HList, Settings, Util }
 import sbt.util.{ Logger, Show }
 import Parser.{ failure, seq, success }
 import std.Transform.DummyTaskMap
+
+import scala.annotation.tailrec
 
 sealed trait Aggregation
 object Aggregation {
@@ -110,8 +113,19 @@ object Aggregation {
   )(implicit display: Show[ScopedKey[_]]): State = {
     val complete = timedRun[T](s, ts, extra)
     showRun(complete, show)
+    @tailrec def findReload(
+        incomplete: Incomplete,
+        remaining: List[Incomplete],
+        visited: Set[Incomplete]
+    ): Boolean = {
+      incomplete.directCause.contains(Reload) || ((remaining ::: incomplete.causes.toList)
+        .filterNot(visited) match {
+        case Nil       => false
+        case h :: tail => findReload(h, tail.filterNot(visited), visited + incomplete)
+      })
+    }
     complete.results match {
-      case Inc(i) if i.directCause.contains(Reload) =>
+      case Inc(i) if findReload(i, i.causes.toList, Set.empty) =>
         val remaining = s.currentCommand.toList ::: s.remainingCommands
         complete.state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
       case Inc(i)   => complete.state.handleError(i)
