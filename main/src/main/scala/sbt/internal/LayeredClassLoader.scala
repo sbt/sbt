@@ -49,12 +49,10 @@ private[sbt] class LayeredClassLoader(
 
 private[internal] object NativeLibs {
   private[this] val nativeLibs = new jutil.HashSet[File].asScala
-  Runtime.getRuntime.addShutdownHook(new Thread("sbt.internal.native-library-deletion") {
-    override def run(): Unit = {
-      nativeLibs.foreach(IO.delete)
-      IO.deleteIfEmpty(nativeLibs.map(_.getParentFile).toSet)
-      nativeLibs.clear()
-    }
+  ShutdownHooks.add(() => {
+    nativeLibs.foreach(IO.delete)
+    IO.deleteIfEmpty(nativeLibs.map(_.getParentFile).toSet)
+    nativeLibs.clear()
   })
   def addNativeLib(lib: String): Unit = {
     nativeLibs.add(new File(lib))

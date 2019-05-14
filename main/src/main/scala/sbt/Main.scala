@@ -98,33 +98,36 @@ final class xMain extends xsbti.AppMain {
   }
 }
 private[sbt] object xMainImpl {
-  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
-    import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
-    import BasicCommands.early
-    import BuiltinCommands.defaults
-    import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-    import sbt.internal.client.NetworkClient
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+    try {
+      import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
+      import BasicCommands.early
+      import BuiltinCommands.defaults
+      import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
+      import sbt.internal.client.NetworkClient
 
-    // if we detect -Dsbt.client=true or -client, run thin client.
-    val clientModByEnv = java.lang.Boolean.getBoolean("sbt.client")
-    val userCommands = configuration.arguments.map(_.trim)
-    if (clientModByEnv || (userCommands.exists { cmd =>
+      // if we detect -Dsbt.client=true or -client, run thin client.
+      val clientModByEnv = java.lang.Boolean.getBoolean("sbt.client")
+      val userCommands = configuration.arguments.map(_.trim)
+      if (clientModByEnv || (userCommands.exists { cmd =>
+            (cmd == DashClient) || (cmd == DashDashClient)
+          })) {
+        val args = userCommands.toList filterNot { cmd =>
           (cmd == DashClient) || (cmd == DashDashClient)
-        })) {
-      val args = userCommands.toList filterNot { cmd =>
-        (cmd == DashClient) || (cmd == DashDashClient)
+        }
+        NetworkClient.run(configuration, args)
+        Exit(0)
+      } else {
+        val state = StandardMain.initialState(
+          configuration,
+          Seq(defaults, early),
+          runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+        )
+        StandardMain.runManaged(state)
       }
-      NetworkClient.run(configuration, args)
-      Exit(0)
-    } else {
-      val state = StandardMain.initialState(
-        configuration,
-        Seq(defaults, early),
-        runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-      )
-      StandardMain.runManaged(state)
+    } finally {
+      ShutdownHooks.close()
     }
-  }
 }
 
 final class ScriptMain extends xsbti.AppMain {
@@ -155,30 +158,21 @@ object StandardMain {
   import scalacache.caffeine._
   private[sbt] lazy val cache: scalacache.Cache[Any] = CaffeineCache[Any]
 
-  private[this] val closeRunnable: Runnable = () => {
+  private[this] val closeRunnable = () => {
     cache.close()(scalacache.modes.sync.mode)
     cache.close()(scalacache.modes.scalaFuture.mode(ExecutionContext.global))
     exchange.shutdown()
   }
-  private[sbt] val shutdownHook = new Thread(closeRunnable)
 
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
     try {
       try {
-        val hooked = try {
-          Runtime.getRuntime.addShutdownHook(shutdownHook)
-          true
-        } catch {
-          case _: IllegalArgumentException => false
-        }
+        val hook = ShutdownHooks.add(closeRunnable)
         try {
           MainLoop.runLogged(s)
         } finally {
-          closeRunnable.run()
-          if (hooked) {
-            Runtime.getRuntime.removeShutdownHook(shutdownHook)
-          }
+          hook.close()
           ()
         }
       } finally DefaultBackgroundJobService.backgroundJobService.shutdown()

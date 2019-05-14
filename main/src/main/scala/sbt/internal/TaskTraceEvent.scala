@@ -36,9 +36,7 @@ private[sbt] final class TaskTraceEvent
   override def stop(): Unit = ()
 
   start = System.nanoTime
-  Runtime.getRuntime.addShutdownHook(new Thread {
-    override def run() = report()
-  })
+  ShutdownHooks.add(() => report())
 
   private[this] def report() = {
     if (timings.asScala.nonEmpty) {
