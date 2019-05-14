@@ -8,7 +8,7 @@ lazy val core = (projectMatrix in file("core"))
     name := "core",
     mainClass in (Compile, run) := Some("a.CoreMain")
   )
-  .nativePlatform(scalaVersions = Seq("2.11.12", "2.11.11"))
+  .nativePlatform(scalaVersions = Seq("2.11.12", "2.12.4"))
 
 lazy val app = (projectMatrix in file("app"))
   .dependsOn(core)
