@@ -1,0 +1,74 @@
+#!/bin/bash
+#
+# Format C/C++ code using clang-format.
+#
+# To ensure reproducible formatting the script checks that clang-format
+# is from the most recent version of LLVM supported by Scala Native.
+#
+# Usage: $0 [--test]
+#
+# Set CLANG_FORMAT_PATH to configure path to clang-format.
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# The required version of clang-format.
+CLANG_FORMAT_VERSION=5.0
+CLANG_FORMAT_VERSION_STRING="clang-format version $CLANG_FORMAT_VERSION"
+
+die() {
+  while [ "$#" -gt 0 ]; do
+    echo >&2 "$1"; shift
+  done
+  exit 1
+}
+
+check_clang_format_version() {
+  cmd="$1"
+  [ -e "$(type -P "$cmd")" ] && \
+    "$cmd" --version 2> /dev/null | grep -q "$CLANG_FORMAT_VERSION_STRING"
+}
+
+clang_format=
+
+if [ -n "${CLANG_FORMAT_PATH:-}" ]; then
+  check_clang_format_version "$CLANG_FORMAT_PATH" || \
+    die "CLANG_FORMAT_PATH does not have required version $CLANG_FORMAT_VERSION" \
+        "CLANG_FORMAT_PATH points to $CLANG_FORMAT_PATH"
+  clang_format="$CLANG_FORMAT_PATH"
+else
+  for cmd in "clang-format-$CLANG_FORMAT_VERSION" clang-format; do
+    if check_clang_format_version "$cmd"; then
+      clang_format="$cmd"
+      break
+    fi
+  done
+fi
+
+if [ -z "$clang_format" ]; then
+  die "clang-format version $CLANG_FORMAT_VERSION not found" \
+      "Install LLVM version $CLANG_FORMAT_VERSION and rerun."
+fi
+
+test_mode=
+
+while [ "$#" -gt 0 ]; do
+  arg="$1"
+  case "$arg" in
+    --test) test_mode=true; shift ;;
+    --*)    die "Unknown argument: $arg" "Usage: $0 [--test]" ;;
+    *)      break ;;
+  esac
+done
+
+if [ "$#" -gt 0 ]; then
+  "$clang_format" --style=file -i "$@"
+else
+  find . -name "*.[ch]" -or -name "*.cpp" | xargs "$clang_format" --style=file -i
+fi
+
+if [ "$test_mode" = true ]; then
+  git diff --quiet --exit-code || \
+    die "C/C++ code formatting changes detected" \
+        "Run \`$0\` to reformat."
+fi

@@ -1,18 +1,16 @@
 dist: xenial
 group: stable
+sudo: required
 
 language: scala
 jdk: openjdk11
 
+before_install:
+  - bash scripts/travis_setup.sh
+
 before_script:
  - export JVM_OPTS="-Dfile.encoding=UTF-8 -Xmx1G -Xms1G -server -XX:ReservedCodeCacheSize=128M"
  - unset _JAVA_OPTIONS
-
-addons:
-  apt:
-    packages:
-      - clang
-      - libunwind-dev
 
 script: sbt scripted
 
