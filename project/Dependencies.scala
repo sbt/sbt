@@ -17,7 +17,7 @@ object Dependencies {
       case Some(version) => version
       case _             => nightlyVersion.getOrElse("1.3.0-M3")
     }
-  val zincVersion = nightlyVersion.getOrElse("1.3.0-M4")
+  val zincVersion = nightlyVersion.getOrElse("1.3.0-M5")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
