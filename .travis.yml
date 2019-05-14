@@ -1,6 +1,9 @@
-dist: xenial
+dist: trusty
 group: stable
 sudo: required
+
+env:
+  - SCALANATIVE_GC=boehm
 
 language: scala
 matrix:
@@ -12,7 +15,7 @@ matrix:
       apt:
         packages:
           - openjdk8
-    - jdk: openjdk11
+#    - jdk: openjdk11
 
 before_install:
   - bash scripts/travis_setup.sh
