@@ -6,7 +6,7 @@ language: scala
 
 env:
   global:
-  - SBT_VER=1.2.8
+  - SBT_VER=1.3.0-M4
 
 matrix:
   include:

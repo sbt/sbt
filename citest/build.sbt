@@ -10,11 +10,10 @@ lazy val root = (project in file("."))
       println(xs)
 
       assert(xs(0) startsWith "[info] Loading project definition")
-      assert(xs(1) startsWith "[info] Loading settings from build.sbt")
+      assert(xs(1) startsWith "[info] Loading settings")
       assert(xs(2) startsWith "[info] Set current project to Hello")
       assert(xs(3) startsWith "[info] This is sbt")
       assert(xs(4) startsWith "[info] The current project")
-      assert(xs(5) startsWith "[info] The current project is built against Scala 2.12.4")
 
       val ys = IO.readLines(file("err.txt")).toVector.distinct
 

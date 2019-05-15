@@ -32,6 +32,7 @@ lazy val sbt013ExtraDeps = {
   else Seq()
 }
 
+lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
 lazy val isExperimental = (sbtVersionToRelease contains "RC") || (sbtVersionToRelease contains "M")
 val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
@@ -50,6 +51,9 @@ val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[r
 val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
 val debianBuildId = settingKey[Int]("build id for Debian")
+
+val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
+val exportRepoCsrDirectory = settingKey[File]("")
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
@@ -186,7 +190,12 @@ val root = (project in file(".")).
       Seq(launchJar -> "bin/sbt-launch.jar", rtExportJar -> "bin/java9-rt-export.jar")
     },
     mappings in Universal ++= (Def.taskDyn {
-      if (sbtOfflineInstall)
+      if (sbtOfflineInstall && sbtVersionToRelease.startsWith("1."))
+        Def.task {
+          val _ = (exportRepoUsingCoursier in dist).value
+          directory((target in dist).value / "lib")
+        }
+      else if (sbtOfflineInstall)
         Def.task {
           val _ = (exportRepo in dist).value
           directory((target in dist).value / "lib")
@@ -330,15 +339,7 @@ lazy val dist = (project in file("dist"))
       val old = exportRepo.value
       sbtVersionToRelease match {
         case v if v.startsWith("1.") =>
-          val zincBase = exportRepoDirectory.value / "org.scala-sbt" / "zinc_2.12"
-          val zincVersion = (zincBase * DirectoryFilter).get.head.getName
-          val utilBase = exportRepoDirectory.value / "org.scala-sbt" / "util-logging_2.12"
-          val utilVersion = (utilBase * DirectoryFilter).get.head.getName
-          val outbase = exportRepoDirectory.value / "org" / "scala-sbt" / "compiler-interface" / zincVersion
-          val uribase = s"https://oss.sonatype.org/content/repositories/public/org/scala-sbt/compiler-interface/$zincVersion/"
-          downloadUrl(uri(uribase + s"compiler-interface-${zincVersion}.jar"), outbase / s"compiler-interface-${zincVersion}.jar")
-          downloadUrl(uri(uribase + s"compiler-interface-${zincVersion}-sources.jar"), outbase / s"compiler-interface-${zincVersion}-sources.jar")
-          downloadUrl(uri(uribase + s"compiler-interface-${zincVersion}.pom"), outbase / s"compiler-interface-${zincVersion}.pom")
+          sys.error("sbt 1.x should use coursier")
         case v if v.startsWith("0.13.") =>
           val outbase = exportRepoDirectory.value / "org.scala-sbt" / "compiler-interface" / v
           val uribase = s"https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/compiler-interface/$v/"
@@ -350,6 +351,31 @@ lazy val dist = (project in file("dist"))
       old
     },
     exportRepoDirectory := target.value / "lib" / "local-preloaded",
+    exportRepoCsrDirectory := exportRepoDirectory.value,
+    exportRepoUsingCoursier := {
+      val outDirectory = exportRepoCsrDirectory.value
+      val csr =
+        if (isWindows) (baseDirectory in LocalRootProject).value / "bin" / "coursier.bat"
+        else (baseDirectory in LocalRootProject).value / "bin" / "coursier"
+      val cache = target.value / "coursier"
+      IO.delete(cache)
+      val v = sbtVersionToRelease
+      s"$csr fetch --cache $cache org.scala-sbt:sbt:$v".!
+      val mavenCache = cache / "https" / "repo1.maven.org" / "maven2"
+      val compilerBridgeVer = IO.listFiles(mavenCache / "org" / "scala-sbt" / "compiler-bridge_2.12", DirectoryFilter).toList.headOption
+      compilerBridgeVer match {
+        case Some(bridgeDir) =>
+          val bridgeVer = bridgeDir.getName
+          s"$csr fetch --cache $cache --sources org.scala-sbt:compiler-bridge_2.10:$bridgeVer".!
+          s"$csr fetch --cache $cache --sources org.scala-sbt:compiler-bridge_2.11:$bridgeVer".!
+          s"$csr fetch --cache $cache --sources org.scala-sbt:compiler-bridge_2.12:$bridgeVer".!
+          s"$csr fetch --cache $cache --sources org.scala-sbt:compiler-bridge_2.13:$bridgeVer".!
+        case _ =>
+          sys.error("bridge not found")
+      }
+      IO.copyDirectory(mavenCache, outDirectory, true, true)
+      outDirectory
+    },
     conflictWarning := ConflictWarning.disable,
     publish := (),
     publishLocal := (),

@@ -264,7 +264,7 @@ syncPreloaded() {
   local target_preloaded="$(getPreloaded)"
   if [[ "$init_sbt_version" == "" ]]; then
     # FIXME: better $init_sbt_version detection
-    init_sbt_version="$(ls -1 "$source_preloaded/org.scala-sbt/sbt/")"
+    init_sbt_version="$(ls -1 "$source_preloaded/org/scala-sbt/sbt/")"
   fi
   [[ -f "$target_preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
     # lib/local-preloaded exists (This is optional)
