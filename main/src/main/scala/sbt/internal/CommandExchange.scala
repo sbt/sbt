@@ -56,6 +56,7 @@ private[sbt] final class CommandExchange {
   def blockUntilNextExec: Exec = blockUntilNextExec(Duration.Inf, NullLogger)
   // periodically move all messages from all the channels
   private[sbt] def blockUntilNextExec(interval: Duration, logger: Logger): Exec = {
+    val start = System.currentTimeMillis
     @tailrec def impl(deadline: Option[Deadline]): Exec = {
       @tailrec def slurpMessages(): Unit =
         channels.foldLeft(Option.empty[Exec]) { _ orElse _.poll } match {
@@ -68,7 +69,10 @@ private[sbt] final class CommandExchange {
       Option(commandQueue.poll) match {
         case Some(x) => x
         case None =>
-          Thread.sleep(20)
+          (System.currentTimeMillis - start) match {
+            case e if e > Idle.value.toMillis => Thread.sleep(Idle.idleTimeout.toMillis)
+            case _                            => Thread.sleep(Idle.activeTimout.toMillis)
+          }
           val newDeadline = if (deadline.fold(false)(_.isOverdue())) {
             GCUtil.forceGcWithInterval(interval, logger)
             None

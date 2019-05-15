@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.io.{ ByteArrayInputStream, InputStream, File => _ }
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicLong }
 
 import sbt.BasicCommandStrings.{
   ContinuousExecutePrefix,
@@ -135,6 +135,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       "Stores the inputs (dynamic and regular) for a task",
       10000
     )
+
+  private[this] val lastTrigger = AttributeKey[AtomicLong](
+    "last-trigger-time",
+    "The time in millis that a command was last executed",
+    10000
+  )
 
   private[this] val continuousParser: State => Parser[(Int, String)] = {
     def toInt(s: String): Int = Try(s.toInt).getOrElse(0)
@@ -326,7 +332,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val fileStampCache = new FileStamp.Cache
     repo.addObserver(t => fileStampCache.invalidate(t.path))
     try {
-      val stateWithRepo = state.put(globalFileTreeRepository, repo)
+      val stateWithRepo = state
+        .put(globalFileTreeRepository, repo)
+        .put(lastTrigger, new AtomicLong(System.currentTimeMillis))
       val fullState =
         if (extracted.get(watchPersistFileStamps))
           stateWithRepo.put(persistentFileStampCache, fileStampCache)
@@ -341,6 +349,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               aggregate(configs, logger, in, s, currentCount, isCommand, commands, fileStampCache)
             val task = () => {
               currentCount.getAndIncrement()
+              s.get(lastTrigger).foreach(_.set(System.currentTimeMillis()))
               // abort as soon as one of the tasks fails
               valid.takeWhile(_._3.apply())
               ()
@@ -657,7 +666,11 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
 
     (() => {
-      val actions = antiEntropyMonitor.poll(20.milliseconds).flatMap(onEvent)
+      val pollDuration = state.get(lastTrigger).map(_.get) match {
+        case Some(t) if System.currentTimeMillis - t > Idle.value.toMillis => Idle.idleTimeout
+        case _                                                             => Idle.activeTimout
+      }
+      val actions = antiEntropyMonitor.poll(pollDuration).flatMap(onEvent)
       if (actions.exists(_._2 != Watch.Ignore)) {
         val builder = new StringBuilder
         val min = actions.minBy {
