@@ -467,6 +467,7 @@ object EvaluateTask {
     // Register with our cancel handler we're about to start.
     val strat = config.cancelStrategy
     val cancelState = strat.onTaskEngineStart(runningEngine)
+    config.progressReporter.initial()
     try {
       (state.get(stateBuildStructure), state.get(sessionSettings)) match {
         case (Some(structure), Some(settings)) =>
