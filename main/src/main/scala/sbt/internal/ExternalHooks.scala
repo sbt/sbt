@@ -84,6 +84,7 @@ private[sbt] object ExternalHooks {
               case _ =>
                 javaHome match {
                   case Some(h) if file.toPath.startsWith(h) => None
+                  case _ if file.getName == "rt.jar"        => None
                   case _                                    => Some(file)
                 }
             }
