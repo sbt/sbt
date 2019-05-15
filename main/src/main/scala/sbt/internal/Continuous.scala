@@ -657,7 +657,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
 
     (() => {
-      val actions = antiEntropyMonitor.poll(2.milliseconds).flatMap(onEvent)
+      val actions = antiEntropyMonitor.poll(20.milliseconds).flatMap(onEvent)
       if (actions.exists(_._2 != Watch.Ignore)) {
         val builder = new StringBuilder
         val min = actions.minBy {

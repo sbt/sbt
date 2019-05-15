@@ -68,7 +68,7 @@ private[sbt] final class CommandExchange {
       Option(commandQueue.poll) match {
         case Some(x) => x
         case None =>
-          Thread.sleep(2)
+          Thread.sleep(20)
           val newDeadline = if (deadline.fold(false)(_.isOverdue())) {
             GCUtil.forceGcWithInterval(interval, logger)
             None
