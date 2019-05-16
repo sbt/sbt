@@ -17,7 +17,6 @@ import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt._
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
-import sbt.internal.util.Util
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser._
 import sbt.nio.file.FileAttributes
