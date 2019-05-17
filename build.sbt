@@ -10,6 +10,8 @@ ThisBuild / version := {
   val v = "1.3.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
+ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
+ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -43,7 +45,6 @@ def buildLevelSettings: Seq[Setting[_]] =
       homepage := Some(url("https://github.com/sbt/sbt")),
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
       resolvers += Resolver.mavenLocal,
-      scalafmtOnCompile := true,
     )
   )
 
