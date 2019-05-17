@@ -4,7 +4,7 @@
 
 Visualize your project's dependencies.
 
-**Note: sbt 1.3.x is currently not supported because by default sbt 1.3.x. [replaced Ivy with coursier](https://www.lightbend.com/blog/sbt-1.3.0-release). For the time being, if you want to use sbt-dependency-graph, either stay on sbt 1.2.x, or disable coursier (`ThisBuild / useCoursier := false`). Please also consider helping out implementing support for coursier in this plugin (see [#178](https://github.com/jrudolph/sbt-dependency-graph/issues/178)).**
+**Note: sbt 1.3.x is currently not supported (but hopefully fixed soon), see [#178](https://github.com/jrudolph/sbt-dependency-graph/issues/178)).**
 
 ## Usage Instructions
 
