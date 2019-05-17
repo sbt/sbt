@@ -146,8 +146,9 @@ private[sbt] object ClassLoaders {
         val allTestDependencies = if (layerTestDependencies) allDependenciesSet else Set.empty[File]
         val allRuntimeDependencies = (if (layerDependencies) rawRuntimeDependencies else Nil).toSet
 
+        val scalaLibrarySet = Set(si.libraryJar)
         val scalaLibraryLayer =
-          globalCache.get((List(si.libraryJar), interfaceLoader, resources, tmp))
+          globalCache.get((scalaLibrarySet.toList, interfaceLoader, resources, tmp))
         // layer 2
         val runtimeDependencySet = allDependenciesSet intersect allRuntimeDependencies
         val runtimeDependencies = rawRuntimeDependencies.filter(runtimeDependencySet)
@@ -163,7 +164,7 @@ private[sbt] object ClassLoaders {
 
         // layer 4
         val dynamicClasspath =
-          fullCP.filterNot(testDependencySet ++ runtimeDependencies ++ si.allJars)
+          fullCP.filterNot(testDependencySet ++ runtimeDependencies ++ scalaLibrarySet)
         if (dynamicClasspath.nonEmpty)
           new LayeredClassLoader(dynamicClasspath, testLayer, resources, tmp)
         else testLayer
