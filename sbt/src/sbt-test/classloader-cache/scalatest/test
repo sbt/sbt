@@ -1,5 +1,19 @@
 > test
 
-$ copy-file changes/ScalatestTest.scala src/test/scala/sbt/ScalatestTest.scala
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+
+> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+
+> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies
+
+$ copy-file changes/bad.scala src/test/scala/sbt/ScalatestTest.scala
 
 -> test

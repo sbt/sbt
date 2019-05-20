@@ -181,16 +181,13 @@ final class ScriptedTests(
     import RemoteSbtCreatorKind._
     val (group, name) = testName
     s"$group/$name" match {
-      case "actions/add-alias"                           => LauncherBased // sbt/Package$
-      case "actions/cross-multiproject"                  => LauncherBased // tbd
-      case "actions/external-doc"                        => LauncherBased // sbt/Package$
-      case "actions/input-task"                          => LauncherBased // sbt/Package$
-      case "actions/input-task-dyn"                      => LauncherBased // sbt/Package$
-      case "classloader-cache/akka-actor-system"         => LauncherBased // sbt/Package$
-      case "classloader-cache/jni"                       => LauncherBased // sbt/Package$
-      case "classloader-cache/library-mismatch"          => LauncherBased // sbt/Package$
-      case "classloader-cache/runtime-layers"            => LauncherBased // sbt/Package$
-      case "classloader-cache/package-private"           => LauncherBased // sbt/Package$
+      case "actions/add-alias"          => LauncherBased // sbt/Package$
+      case "actions/cross-multiproject" => LauncherBased // tbd
+      case "actions/external-doc"       => LauncherBased // sbt/Package$
+      case "actions/input-task"         => LauncherBased // sbt/Package$
+      case "actions/input-task-dyn"     => LauncherBased // sbt/Package$
+      case gn if gn.startsWith("classloader-cache/") =>
+        LauncherBased // This should be tested using launcher
       case "compiler-project/dotty-compiler-plugin"      => LauncherBased // sbt/Package$
       case "compiler-project/run-test"                   => LauncherBased // sbt/Package$
       case "compiler-project/src-dep-plugin"             => LauncherBased // sbt/Package$
