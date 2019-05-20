@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.io.File
-import java.net.{ URL, URLClassLoader }
+import java.net.URLClassLoader
 
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
@@ -20,7 +20,6 @@ import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
 import sbt.librarymanagement.Configurations.{ Runtime, Test }
-import xsbti.AppProvider
 
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -199,27 +198,4 @@ private[sbt] object ClassLoaders {
         s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
     }
 
-}
-
-private[sbt] object SbtMetaBuildClassLoader {
-  def apply(appProvider: AppProvider): ClassLoader = {
-    val interfaceFilter: URL => Boolean = _.getFile.endsWith("test-interface-1.0.jar")
-    def urls(jars: Array[File]): Array[URL] = jars.map(_.toURI.toURL)
-    val (interfaceURL, rest) = urls(appProvider.mainClasspath).partition(interfaceFilter)
-    val scalaProvider = appProvider.scalaProvider
-    val interfaceLoader = new URLClassLoader(interfaceURL, scalaProvider.launcher.topLoader) {
-      override def toString: String = s"SbtTestInterfaceClassLoader(${getURLs.head})"
-    }
-    val updatedLibraryLoader = new URLClassLoader(urls(scalaProvider.jars), interfaceLoader) {
-      override def toString: String = s"ScalaClassLoader(jars = {${getURLs.mkString(", ")}}"
-    }
-    new URLClassLoader(rest, updatedLibraryLoader) {
-      override def toString: String = s"SbtMetaBuildClassLoader"
-      override def close(): Unit = {
-        super.close()
-        updatedLibraryLoader.close()
-        interfaceLoader.close()
-      }
-    }
-  }
 }
