@@ -52,6 +52,11 @@ object Resolvers {
         None
     }
 
+  // this handles whitespace in path
+  private def pathToUriString(path: String): String = {
+    "file://" + path.replaceAllLiterally(" ", "%20")
+  }
+
   def repository(
     resolver: Resolver,
     ivyProperties: Map[String, String],
@@ -72,8 +77,8 @@ object Resolvers {
           case None =>
 
             val repo = IvyRepository.parse(
-              "file://" + r.patterns.artifactPatterns.head,
-              metadataPatternOpt = Some("file://" + r.patterns.ivyPatterns.head),
+              pathToUriString(r.patterns.artifactPatterns.head),
+              metadataPatternOpt = Some(pathToUriString(r.patterns.ivyPatterns.head)),
               changing = Some(true),
               properties = ivyProperties,
               dropInfoAttributes = true,
@@ -90,7 +95,7 @@ object Resolvers {
             Some(repo)
 
           case Some(mavenCompatibleBase) =>
-            mavenRepositoryOpt("file://" + mavenCompatibleBase, log, authentication)
+            mavenRepositoryOpt(pathToUriString(mavenCompatibleBase), log, authentication)
         }
 
       case r: URLRepository if patternMatchGuard(r.patterns) =>
