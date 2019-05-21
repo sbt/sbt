@@ -22,7 +22,7 @@ import sbt.internal.librarymanagement.{ CoursierArtifactsTasks, CoursierInputsTa
 import sbt.util.Logger
 import sbt.io.syntax._
 
-private[sbt] object LMCoursier {
+object LMCoursier {
   def defaultCacheLocation: File =
     sys.props.get("sbt.coursier.home") match {
       case Some(home) => new File(home).getAbsoluteFile / "cache"
@@ -112,7 +112,7 @@ private[sbt] object LMCoursier {
     else Some(new CoursierLogger(st.log))
   }
 
-  private[sbt] class CoursierLogger(logger: Logger) extends CacheLogger {
+  class CoursierLogger(logger: Logger) extends CacheLogger {
     override def downloadedArtifact(url: String, success: Boolean): Unit =
       logger.debug(s"downloaded $url")
   }
