@@ -87,6 +87,7 @@ private[sbt] object Load {
       dependencyResolution = dependencyResolution,
       compilerBridgeSource = ZincLmUtil.getDefaultBridgeModule(scalaProvider.version),
       scalaJarsTarget = zincDir,
+      state.get(BasicKeys.classLoaderCache),
       log = log
     )
     val compilers = ZincUtil.compilers(
@@ -374,8 +375,9 @@ private[sbt] object Load {
           val projectSettings = build.defined flatMap {
             case (id, project) =>
               val ref = ProjectRef(uri, id)
-              val defineConfig: Seq[Setting[_]] = for (c <- project.configurations)
-                yield ((configuration in (ref, ConfigKey(c.name))) :== c)
+              val defineConfig: Seq[Setting[_]] =
+                for (c <- project.configurations)
+                  yield ((configuration in (ref, ConfigKey(c.name))) :== c)
               val builtin: Seq[Setting[_]] =
                 (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
               val settings = builtin ++ project.settings ++ injectSettings.project

@@ -9,7 +9,8 @@ package sbt
 
 import java.io.File
 
-import sbt.internal.inc.classpath.ClassLoaderCache
+import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
+import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
@@ -82,8 +83,13 @@ object BasicKeys {
     "True if commands are currently being entered from an interactive environment.",
     10
   )
-  private[sbt] val classLoaderCache = AttributeKey[ClassLoaderCache](
+  private[sbt] val classLoaderCache = AttributeKey[IncClassLoaderCache](
     "class-loader-cache",
+    "Caches class loaders based on the classpath entries and last modified times.",
+    10
+  )
+  private[sbt] val extendedClassLoaderCache = AttributeKey[ClassLoaderCache](
+    "extended-class-loader-cache",
     "Caches class loaders based on the classpath entries and last modified times.",
     10
   )

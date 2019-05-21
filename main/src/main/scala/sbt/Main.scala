@@ -864,7 +864,9 @@ object BuiltinCommands {
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    Command.command(ClearCaches, help)(registerGlobalCaches _ andThen registerCompilerCache)
+    Command.command(ClearCaches, help)(
+      registerGlobalCaches _ andThen registerCompilerCache andThen (_.initializeClassLoaderCache)
+    )
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>

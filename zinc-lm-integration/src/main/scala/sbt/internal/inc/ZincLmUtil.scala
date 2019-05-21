@@ -8,10 +8,9 @@
 package sbt.internal.inc
 
 import java.io.File
-import java.net.URLClassLoader
 
-import sbt.librarymanagement.{ DependencyResolution, ModuleID }
 import sbt.internal.inc.classpath.ClassLoaderCache
+import sbt.librarymanagement.{ DependencyResolution, ModuleID }
 import xsbti._
 import xsbti.compile._
 
@@ -32,6 +31,7 @@ object ZincLmUtil {
       dependencyResolution: DependencyResolution,
       compilerBridgeSource: ModuleID,
       scalaJarsTarget: File,
+      classLoaderCache: Option[ClassLoaderCache],
       log: Logger
   ): AnalyzingCompiler = {
     val compilerBridgeProvider = ZincComponentCompiler.interfaceProvider(
@@ -40,8 +40,13 @@ object ZincLmUtil {
       dependencyResolution,
       scalaJarsTarget,
     )
-    val loader = Some(new ClassLoaderCache(new URLClassLoader(new Array(0))))
-    new AnalyzingCompiler(scalaInstance, compilerBridgeProvider, classpathOptions, _ => (), loader)
+    new AnalyzingCompiler(
+      scalaInstance,
+      compilerBridgeProvider,
+      classpathOptions,
+      _ => (),
+      classLoaderCache
+    )
   }
 
   def getDefaultBridgeModule(scalaVersion: String): ModuleID =

@@ -8,9 +8,10 @@
 package sbt
 package internal
 
-import sbt.util.Logger
+import sbt.internal.classpath.AlternativeZincUtil
+import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
 import sbt.internal.util.JLine
-import sbt.internal.inc.{ ScalaInstance, ZincLmUtil, ZincUtil }
+import sbt.util.Logger
 import xsbti.compile.ClasspathOptionsUtil
 
 object ConsoleProject {
@@ -35,10 +36,11 @@ object ConsoleProject {
     val launcher = app.provider.scalaProvider.launcher
     val compiler = scalaCompilerBridgeBinaryJar match {
       case Some(jar) =>
-        ZincUtil.scalaCompiler(
+        AlternativeZincUtil.scalaCompiler(
           scalaInstance = scalaInstance,
           classpathOptions = ClasspathOptionsUtil.repl,
-          compilerBridgeJar = jar
+          compilerBridgeJar = jar,
+          classLoaderCache = state1.get(BasicKeys.classLoaderCache)
         )
       case None =>
         ZincLmUtil.scalaCompiler(
@@ -50,6 +52,7 @@ object ConsoleProject {
           dependencyResolution = dependencyResolution,
           compilerBridgeSource = extracted.get(Keys.scalaCompilerBridgeSource),
           scalaJarsTarget = zincDir,
+          classLoaderCache = state1.get(BasicKeys.classLoaderCache),
           log = log
         )
     }

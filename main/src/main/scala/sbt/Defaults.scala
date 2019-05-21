@@ -28,6 +28,7 @@ import sbt.Project.{
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
+import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
@@ -550,10 +551,11 @@ object Defaults extends BuildCommon {
       val scalac =
         scalaCompilerBridgeBinaryJar.value match {
           case Some(jar) =>
-            ZincUtil.scalaCompiler(
+            AlternativeZincUtil.scalaCompiler(
               scalaInstance = scalaInstance.value,
               classpathOptions = classpathOptions.value,
-              compilerBridgeJar = jar
+              compilerBridgeJar = jar,
+              classLoaderCache = st.get(BasicKeys.classLoaderCache)
             )
           case _ =>
             ZincLmUtil.scalaCompiler(
@@ -565,6 +567,7 @@ object Defaults extends BuildCommon {
               dependencyResolution = dr,
               compilerBridgeSource = scalaCompilerBridgeSource.value,
               scalaJarsTarget = zincDir,
+              classLoaderCache = st.get(BasicKeys.classLoaderCache),
               log = streams.value.log
             )
         }
