@@ -39,6 +39,7 @@ lazy val `lm-coursier-shaded` = project
   .enablePlugins(ShadingPlugin)
   .settings(
     shared,
+    Mima.settings,
     unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
     shading,
     shadingNamespace := "lmcoursier.internal.shaded",
