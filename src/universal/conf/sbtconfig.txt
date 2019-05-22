@@ -1,14 +1,12 @@
-# Set the java args to high
+# sbt configuration file for Windows
 
--Xmx512M
+# Set the java args
 
--XX:MaxPermSize=256m
-
+-Xms1024m
+-Xmx1024m
+-Xss2M
 -XX:ReservedCodeCacheSize=128m
 
+# Set the extra sbt options
 
-
-# Set the extra SBT options
-
--Dsbt.log.format=true
-
+# -Dsbt.log.format=true

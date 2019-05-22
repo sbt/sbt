@@ -19,7 +19,7 @@ install:
         [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\sbt-bin.zip", "C:\sbt")
       }
   - SET PATH=C:\sbt\sbt\bin;%PATH%
-  - SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g -Dfile.encoding=UTF8
+  - SET SBT_OPTS=-Xmx4g -Dfile.encoding=UTF8
 
 test_script:
   - sbt "-Dsbt.build.version=1.3.0-M4" universal:packageBin
