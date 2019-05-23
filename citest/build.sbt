@@ -17,7 +17,6 @@ lazy val root = (project in file("."))
 
       val ys = IO.readLines(file("err.txt")).toVector.distinct
 
-      assert(ys.size == 1, s"ys has more than one item: $ys")
-      assert(ys(0) startsWith "Java HotSpot(TM) 64-Bit Server VM warning")
+      assert(ys.isEmpty, s"there's an stderr: $ys")
     }
   )
