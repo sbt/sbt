@@ -4,7 +4,7 @@
 
 -Xms1024m
 -Xmx1024m
--Xss2M
+-Xss4M
 -XX:ReservedCodeCacheSize=128m
 
 # Set the extra sbt options

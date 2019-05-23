@@ -148,7 +148,7 @@ addMemory () {
 
   addJava "-Xms${mem}m"
   addJava "-Xmx${mem}m"
-  addJava "-Xss2M"
+  addJava "-Xss4M"
   addJava "-XX:ReservedCodeCacheSize=${codecache}m"
   if [[ (( $java_version < 8 )) ]]; then
     addJava "-XX:${class_metadata_opt}=${class_metadata_size}m"
