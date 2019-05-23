@@ -16,7 +16,7 @@ Usage: sbt [options]
   -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
   -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
-  -mem    <integer>  set memory options (default: 1024, which is -Xms1024m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:MaxMetaspaceSize=256m)
+  -mem    <integer>  set memory options (default: 1024, which is -Xms1024m -Xmx1024m -XX:ReservedCodeCacheSize=128m)
   -no-share          use all local caches; no sharing
   -no-global         uses global caches, but does not use global ~/.sbt directory.
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.

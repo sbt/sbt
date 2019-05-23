@@ -13,7 +13,7 @@ export SBT_OPTS=-Dfile.encoding=UTF-8
 
 ./freshly-baked/sbt/bin/sbt about run -v
 
-export SBT_OPTS="-Dfile.encoding=UTF-8 -Xms2048M -Xmx2048M -Xss2M -XX:MaxPermSize=512M"
+export SBT_OPTS="-Dfile.encoding=UTF-8 -Xms2048M -Xmx2048M -Xss4M"
 
 ./freshly-baked/sbt/bin/sbt about run
 
