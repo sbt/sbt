@@ -25,7 +25,9 @@ check := {
     sbtResolvers.flatMap{ sbtResolver: sbt.librarymanagement.Resolver =>
       lmcoursier.internal.Resolvers.repository(
         resolver = sbtResolver,
-        ivyProperties = lmcoursier.internal.ResolutionParams.defaultIvyProperties(),
+        ivyProperties = lmcoursier.internal.ResolutionParams.defaultIvyProperties(
+          ivyPaths.value.ivyHome
+        ),
         log = s.log,
         authentication = None,
       )

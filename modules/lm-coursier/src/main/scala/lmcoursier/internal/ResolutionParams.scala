@@ -84,12 +84,12 @@ object ResolutionParams {
   private def cacheKey(cache: FileCache[Task]): Object =
     m.invoke(cache)
 
-  def defaultIvyProperties(): Map[String, String] = {
+  def defaultIvyProperties(ivyHomeOpt: Option[File]): Map[String, String] = {
 
-    val ivyHome = sys.props.getOrElse(
-      "ivy.home",
-      new File(sys.props("user.home")).toURI.getPath + ".ivy2"
-    )
+    val ivyHome = sys.props
+      .get("ivy.home")
+      .orElse(ivyHomeOpt.map(_.getAbsoluteFile.toURI.getPath))
+      .getOrElse(new File(sys.props("user.home")).toURI.getPath + ".ivy2")
 
     val sbtIvyHome = sys.props.getOrElse(
       "sbt.ivy.home",

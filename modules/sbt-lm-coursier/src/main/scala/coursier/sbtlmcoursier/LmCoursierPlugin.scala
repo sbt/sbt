@@ -7,7 +7,7 @@ import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, ivyPaths, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 import scala.language.reflectiveCalls
@@ -133,6 +133,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withLogger(createLogger)
           .withCache(cache)
           .withLog(s.log)
+          .withIvyHome(ivyPaths.value.ivyHome)
       }
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =

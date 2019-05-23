@@ -86,7 +86,7 @@ object ResolutionTasks {
 
       val interProjectRepo = InterProjectRepository(interProjectDependencies)
 
-      val ivyProperties = ResolutionParams.defaultIvyProperties()
+      val ivyProperties = ResolutionParams.defaultIvyProperties(ivyPaths.value.ivyHome)
 
       val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
 
