@@ -124,7 +124,6 @@ object Cross {
 
   private def crossBuildCommandImpl(state: State, args: CrossArgs): State = {
     val x = Project.extract(state)
-    import x._
     val (aggs, aggCommand) = parseSlashCommand(x)(args.command)
 
     val projCrossVersions = aggs map { proj =>
@@ -164,9 +163,10 @@ object Cross {
           }
 
           // Execute using a blanket switch
-          projCrossVersions.toMap.apply(currentRef).flatMap { version =>
-            // Force scala version
-            Seq(s"$SwitchCommand $verbose $version!", aggCommand)
+          projVersions.flatMap {
+            case (proj, version) =>
+              // Force scala version
+              Seq(s"$SwitchCommand $verbose $version!", s"${proj}/$aggCommand")
           }
 
         case Right(_) =>

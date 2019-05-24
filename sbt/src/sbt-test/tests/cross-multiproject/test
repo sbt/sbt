@@ -1,0 +1,15 @@
+> test
+> testOnly foo.PassTest
+> testOnly -- -v
+
+> foo/test
+> foo/testOnly foo.PassTest
+> foo/testOnly -- -v
+
+> +test
+> +testOnly foo.PassTest
+> +testOnly -- -v
+
+> +foo/test
+> +foo/testOnly foo.PassTest
+> +foo/testOnly -- -v
