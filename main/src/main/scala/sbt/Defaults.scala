@@ -713,8 +713,16 @@ object Defaults extends BuildCommon {
         val scalaProvider = appConfiguration.value.provider.scalaProvider
         val version = scalaVersion.value
         if (version == scalaProvider.version) // use the same class loader as the Scala classes used by sbt
-          Def.task(ScalaInstance(version, scalaProvider))
-        else
+          Def.task {
+            val allJars = scalaProvider.jars
+            val libraryJars = allJars.filter(_.getName == "scala-library.jar")
+            allJars.filter(_.getName == "scala-compiler.jar") match {
+              case Array(compilerJar) if libraryJars.nonEmpty =>
+                val cache = state.value.classLoaderCache
+                mkScalaInstance(version, allJars, libraryJars, compilerJar, cache)
+              case _ => ScalaInstance(version, scalaProvider)
+            }
+          } else
           scalaInstanceFromUpdate
     }
   }
@@ -748,20 +756,51 @@ object Defaults extends BuildCommon {
     val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val compilerJar = file(ScalaArtifacts.CompilerID)
-    new ScalaInstance(
+    mkScalaInstance(
       scalaVersion.value,
-      makeClassLoader(state.value)(allJars.toList),
-      makeClassLoader(state.value)(List(libraryJar)),
-      libraryJar,
+      allJars,
+      Array(libraryJar),
+      compilerJar,
+      state.value.classLoaderCache
+    )
+  }
+  private[this] def mkScalaInstance(
+      version: String,
+      allJars: Seq[File],
+      libraryJars: Array[File],
+      compilerJar: File,
+      classLoaderCache: sbt.internal.inc.classpath.ClassLoaderCache
+  ): ScalaInstance = {
+    val libraryLoader = classLoaderCache(libraryJars.toList)
+    class ScalaLoader extends URLClassLoader(allJars.map(_.toURI.toURL).toArray, libraryLoader)
+    val fullLoader = classLoaderCache.cachedCustomClassloader(
+      allJars.toList,
+      () => new URLClassLoader(allJars.map(_.toURI.toURL).toArray, libraryLoader)
+    )
+    new ScalaInstance(
+      version,
+      fullLoader,
+      libraryLoader,
+      libraryJars,
       compilerJar,
       allJars.toArray,
-      None
+      Some(version)
     )
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
-    ScalaInstance(dir)(makeClassLoader(state.value))
+    val dummy = ScalaInstance(dir)(state.value.classLoaderCache.apply)
+    Seq(dummy.loader, dummy.loaderLibraryOnly).foreach {
+      case a: AutoCloseable => a.close()
+      case cl               =>
+    }
+    mkScalaInstance(
+      dummy.version,
+      dummy.allJars,
+      dummy.libraryJars,
+      dummy.compilerJar,
+      state.value.classLoaderCache
+    )
   }
-  private[this] def makeClassLoader(state: State) = state.classLoaderCache.apply _
 
   private[this] def testDefaults =
     Defaults.globalDefaults(
