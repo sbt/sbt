@@ -183,6 +183,7 @@ object Keys {
   val fileInputOptions = settingKey[Seq[String]]("Options that take file input, which may invalidate the cache.").withRank(CSetting)
   val scalaCompilerBridgeBinaryJar = taskKey[Option[File]]("Optionally, the jar of the compiler bridge. When not None, this takes precedence over scalaCompilerBridgeSource").withRank(CSetting)
   val scalaCompilerBridgeSource = settingKey[ModuleID]("Configures the module ID of the sources of the compiler bridge when scalaCompilerBridgeBinaryJar is None").withRank(CSetting)
+  val scalaCompilerBridgeScope = taskKey[Unit]("The compiler bridge scope.").withRank(DTask)
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
   val enableBinaryCompileAnalysis = settingKey[Boolean]("Writes the analysis file in binary format")
   val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
@@ -344,6 +345,7 @@ object Keys {
   // This setting was created to work around the limitation of derived tasks not being able to use task-scoped task: ivyConfiguration in updateSbtClassifiers
   val bootIvyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, configured to retrieve sbt's components.").withRank(DTask)
   val bootDependencyResolution = taskKey[DependencyResolution]("Dependency resolution to retrieve sbt's components.").withRank(CTask)
+  val scalaCompilerBridgeDependencyResolution = taskKey[DependencyResolution]("Dependency resolution to retrieve the compiler bridge.").withRank(CTask)
   val moduleSettings = taskKey[ModuleSettings]("Module settings, which configure dependency management for a specific module, such as a project.").withRank(DTask)
   val unmanagedBase = settingKey[File]("The default directory for manually managed libraries.").withRank(ASetting)
   val updateConfiguration = settingKey[UpdateConfiguration]("Configuration for resolving and retrieving managed dependencies.").withRank(DSetting)
@@ -403,6 +405,7 @@ object Keys {
   val projectResolver = taskKey[Resolver]("Resolver that handles inter-project dependencies.").withRank(DTask)
   val fullResolvers = taskKey[Seq[Resolver]]("Combines the project resolver, default resolvers, and user-defined resolvers.").withRank(CTask)
   val otherResolvers = taskKey[Seq[Resolver]]("Resolvers not included in the main resolver chain, such as those in module configurations.").withRank(CSetting)
+  val scalaCompilerBridgeResolvers = taskKey[Seq[Resolver]]("Resolvers used to resolve compiler bridges.").withRank(CSetting)
   val useJCenter = settingKey[Boolean]("Use JCenter as the default repository.").withRank(BSetting)
   val moduleConfigurations = settingKey[Seq[ModuleConfiguration]]("Defines module configurations, which override resolvers on a per-module basis.").withRank(BMinusSetting)
   val retrievePattern = settingKey[String]("Pattern used to retrieve managed dependencies to the current build.").withRank(DSetting)

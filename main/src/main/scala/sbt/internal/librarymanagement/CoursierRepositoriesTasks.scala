@@ -53,73 +53,58 @@ private[sbt] object CoursierRepositoriesTasks {
         resolvers
   }
 
-  private def resultTask(
-      bootResOpt: Option[Seq[Resolver]],
-      overrideFlag: Boolean
-  ): Def.Initialize[sbt.Task[Seq[Resolver]]] =
-    bootResOpt.filter(_ => overrideFlag) match {
-      case Some(r) => Def.task(r)
-      case None =>
-        Def.taskDyn {
-          val extRes = externalResolvers.value
-          val isSbtPlugin = sbtPlugin.value
-          if (isSbtPlugin)
-            Def.task {
-              Seq(
-                sbtResolver.value,
-                Classpaths.sbtPluginReleases
-              ) ++ extRes
-            } else
-            Def.task(extRes)
-        }
-    }
-
   // local-preloaded-ivy contains dangling ivy.xml without JAR files
   // https://github.com/sbt/sbt/issues/4661
   private final val keepPreloaded = false // coursierKeepPreloaded.value
 
-  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
-    Def.taskDyn {
-
-      val bootResOpt = bootResolvers.value
-      val overrideFlag = overrideBuildResolvers.value
-
-      Def.task {
-        val result0 = resultTask(bootResOpt, overrideFlag).value
-        val reorderResolvers = true // coursierReorderResolvers.value
-
-        val paths = ivyPaths.value
-        val result1 =
-          if (reorderResolvers) CResolvers.reorderResolvers(result0)
-          else result0
-        val result2 =
-          paths.ivyHome match {
-            case Some(ivyHome) =>
-              val ivyHomeUri = IO.toURI(ivyHome).getSchemeSpecificPart
-              result1 map {
-                case r: FileRepository =>
-                  val ivyPatterns = r.patterns.ivyPatterns map {
-                    _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
-                  }
-                  val artifactPatterns = r.patterns.artifactPatterns map {
-                    _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
-                  }
-                  val p =
-                    r.patterns.withIvyPatterns(ivyPatterns).withArtifactPatterns(artifactPatterns)
-                  r.withPatterns(p)
-                case r => r
-              }
-            case _ => result1
-          }
-
-        if (keepPreloaded)
-          result2
-        else
-          result2.filter { r =>
-            !r.name.startsWith("local-preloaded")
-          }
-      }
+  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+    val bootResOpt = bootResolvers.value
+    val overrideFlag = overrideBuildResolvers.value
+    val result0 = bootResOpt.filter(_ => overrideFlag) match {
+      case Some(r) => r
+      case None =>
+        val extRes = externalResolvers.value
+        val isSbtPlugin = sbtPlugin.value
+        if (isSbtPlugin)
+          Seq(
+            sbtResolver.value,
+            Classpaths.sbtPluginReleases
+          ) ++ extRes
+        else extRes
     }
+    val reorderResolvers = true // coursierReorderResolvers.value
+
+    val paths = ivyPaths.value
+    val result1 =
+      if (reorderResolvers) CResolvers.reorderResolvers(result0)
+      else result0
+    val result2 =
+      paths.ivyHome match {
+        case Some(ivyHome) =>
+          val ivyHomeUri = IO.toURI(ivyHome).getSchemeSpecificPart
+          result1 map {
+            case r: FileRepository =>
+              val ivyPatterns = r.patterns.ivyPatterns map {
+                _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+              }
+              val artifactPatterns = r.patterns.artifactPatterns map {
+                _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+              }
+              val p =
+                r.patterns.withIvyPatterns(ivyPatterns).withArtifactPatterns(artifactPatterns)
+              r.withPatterns(p)
+            case r => r
+          }
+        case _ => result1
+      }
+
+    if (keepPreloaded)
+      result2
+    else
+      result2.filter { r =>
+        !r.name.startsWith("local-preloaded")
+      }
+  }
 
   private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
