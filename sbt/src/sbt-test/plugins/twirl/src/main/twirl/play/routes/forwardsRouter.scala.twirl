@@ -1,0 +1,3 @@
+@import play.routes.compiler._
+@import play.routes.compiler.templates._
+@import InjectedRoutesGenerator.Dependency
