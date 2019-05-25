@@ -1242,15 +1242,12 @@ object Defaults extends BuildCommon {
     }
   def collectFiles(
       dirs: ScopedTaskable[Seq[File]],
-      include: ScopedTaskable[FileFilter],
-      exclude: ScopedTaskable[FileFilter]
-  ): Initialize[Task[Seq[File]]] = Def.task {
-    val filter = include.toTask.value -- exclude.toTask.value
-    val view = fileTreeView.value
-    view.list(dirs.toTask.value.map(f => Globs(f.toPath, recursive = true, filter))).collect {
-      case (p, a) if !a.isDirectory => p.toFile
+      filter: ScopedTaskable[FileFilter],
+      excludes: ScopedTaskable[FileFilter]
+  ): Initialize[Task[Seq[File]]] =
+    Def.task {
+      dirs.toTask.value.descendantsExcept(filter.toTask.value, excludes.toTask.value).get
     }
-  }
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
