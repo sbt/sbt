@@ -546,6 +546,7 @@ object Defaults extends BuildCommon {
       val zincDir = BuildPaths.getZincDirectory(st, g)
       val app = appConfiguration.value
       val launcher = app.provider.scalaProvider.launcher
+      val dr = scalaCompilerBridgeDependencyResolution.value
       val scalac =
         scalaCompilerBridgeBinaryJar.value match {
           case Some(jar) =>
@@ -561,7 +562,7 @@ object Defaults extends BuildCommon {
               globalLock = launcher.globalLock,
               componentProvider = app.provider.components,
               secondaryCacheDir = Option(zincDir),
-              dependencyResolution = bootDependencyResolution.value,
+              dependencyResolution = dr,
               compilerBridgeSource = scalaCompilerBridgeSource.value,
               scalaJarsTarget = zincDir,
               log = streams.value.log
@@ -2391,7 +2392,7 @@ object Classpaths {
           )
         },
         dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
-        csrConfiguration := LMCoursier.coursierConfigurationTask(true, false).value,
+        csrConfiguration := LMCoursier.updateClassifierConfigurationTask.value,
         updateClassifiers in TaskGlobal := (Def.task {
           val s = streams.value
           val is = ivySbt.value
@@ -2430,7 +2431,7 @@ object Classpaths {
       )
     ) ++ Seq(
     csrProject := CoursierInputsTasks.coursierProjectTask.value,
-    csrConfiguration := LMCoursier.coursierConfigurationTask(false, false).value,
+    csrConfiguration := LMCoursier.coursierConfigurationTask.value,
     csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
     csrRecursiveResolvers := CoursierRepositoriesTasks.coursierRecursiveResolversTask.value,
     csrSbtResolvers := CoursierRepositoriesTasks.coursierSbtResolversTask.value,
@@ -2560,13 +2561,7 @@ object Classpaths {
               .plugins
               .pluginData
               .resolvers
-            // https://github.com/sbt/sbt/issues/4408
-            (explicit, boot) match {
-              case (Some(ex), Some(b)) => (ex.toVector ++ b.toVector).distinct
-              case (Some(ex), None)    => ex
-              case (None, Some(b))     => b
-              case _                   => externalResolvers.value
-            }
+            explicit orElse boot getOrElse externalResolvers.value
           },
           ivyConfiguration := InlineIvyConfiguration(
             lock = Option(lock(appConfiguration.value)),
@@ -2599,7 +2594,7 @@ object Classpaths {
             )
           },
           dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
-          csrConfiguration := LMCoursier.coursierConfigurationTask(false, true).value,
+          csrConfiguration := LMCoursier.updateSbtClassifierConfigurationTask.value,
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
             val s = streams.value
@@ -2638,9 +2633,48 @@ object Classpaths {
             }
           } tag (Tags.Update, Tags.Network)).value
         )
+      ) ++
+      inTask(scalaCompilerBridgeScope)(
+        Seq(
+          dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+          csrConfiguration := LMCoursier.scalaCompilerBridgeConfigurationTask.value,
+          csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
+          externalResolvers := scalaCompilerBridgeResolvers.value,
+          ivyConfiguration := InlineIvyConfiguration(
+            lock = Option(lock(appConfiguration.value)),
+            log = Option(streams.value.log),
+            updateOptions = UpdateOptions(),
+            paths = Option(ivyPaths.value),
+            resolvers = scalaCompilerBridgeResolvers.value.toVector,
+            otherResolvers = Vector.empty,
+            moduleConfigurations = Vector.empty,
+            checksums = checksums.value.toVector,
+            managedChecksums = false,
+            resolutionCacheDir = Some(crossTarget.value / "bridge-resolution-cache"),
+          )
+        )
       ) ++ Seq(
       bootIvyConfiguration := (updateSbtClassifiers / ivyConfiguration).value,
-      bootDependencyResolution := (updateSbtClassifiers / dependencyResolution).value
+      bootDependencyResolution := (updateSbtClassifiers / dependencyResolution).value,
+      scalaCompilerBridgeResolvers := {
+        val boot = bootResolvers.value
+        val explicit = buildStructure.value
+          .units(thisProjectRef.value.build)
+          .unit
+          .plugins
+          .pluginData
+          .resolvers
+        val ext = externalResolvers.value.toVector
+        // https://github.com/sbt/sbt/issues/4408
+        val xs = (explicit, boot) match {
+          case (Some(ex), Some(b)) => (ex.toVector ++ b.toVector).distinct
+          case (Some(ex), None)    => ex.toVector
+          case (None, Some(b))     => b.toVector
+          case _                   => Vector()
+        }
+        (xs ++ ext).distinct
+      },
+      scalaCompilerBridgeDependencyResolution := (scalaCompilerBridgeScope / dependencyResolution).value
     )
 
   def classifiersModuleTask: Initialize[Task[GetClassifiersModule]] =

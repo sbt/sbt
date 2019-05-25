@@ -47,17 +47,18 @@ private[sbt] object LibraryManagement {
     coursierOpt.orElse(notIvyOpt).getOrElse(true)
   }
 
-  def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] = Def.taskDyn {
-    if (Keys.useCoursier.value) {
-      Def.task { CoursierDependencyResolution(Keys.csrConfiguration.value) }
-    } else
-      Def.task {
-        IvyDependencyResolution(
-          Keys.ivyConfiguration.value,
-          CustomHttp.okhttpClient.value
-        )
-      }
-  }
+  def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
+    Def.taskDyn {
+      if (Keys.useCoursier.value) {
+        Def.task { CoursierDependencyResolution(Keys.csrConfiguration.value) }
+      } else
+        Def.task {
+          IvyDependencyResolution(
+            Keys.ivyConfiguration.value,
+            CustomHttp.okhttpClient.value
+          )
+        }
+    }
 
   def cachedUpdate(
       lm: DependencyResolution,

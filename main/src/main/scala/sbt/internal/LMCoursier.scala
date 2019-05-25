@@ -17,10 +17,12 @@ import lmcoursier.definitions.{
 }
 import lmcoursier._
 import sbt.librarymanagement._
+import lmcoursier.credentials.Credentials
 import Keys._
 import sbt.internal.librarymanagement.{ CoursierArtifactsTasks, CoursierInputsTasks }
 import sbt.util.Logger
 import sbt.io.syntax._
+import xsbti.AppConfiguration
 
 private[sbt] object LMCoursier {
   def defaultCacheLocation: File =
@@ -29,81 +31,148 @@ private[sbt] object LMCoursier {
       case _          => CoursierDependencyResolution.defaultCacheLocation
     }
 
-  def coursierConfigurationTask(
-      withClassifiers: Boolean,
-      sbtClassifiers: Boolean
-  ): Def.Initialize[Task[CoursierConfiguration]] =
-    Def.taskDyn {
-      val s = streams.value
-      val log = s.log
-      val resolversTask =
-        if (sbtClassifiers)
-          csrSbtResolvers
-        else
-          csrRecursiveResolvers
-      val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[Classifier]]]] =
-        if (withClassifiers && !sbtClassifiers)
-          Def.task(Some(sbt.Keys.transitiveClassifiers.value.map(Classifier(_))))
-        else
-          Def.task(None)
-      Def.task {
-        val rs = resolversTask.value
-        val scalaOrg = scalaOrganization.value
-        val scalaVer = scalaVersion.value
-        val interProjectDependencies0 = csrInterProjectDependencies.value.toVector
-        // during the resolution of sbt artifacts, such as compiler bridge source
-        // interproject dependencies should not be used (otherwise you can't compile sbt/zinc using sbt)
-        val interProjectDependencies: Vector[CProject] =
-          if (sbtClassifiers) Vector()
-          else interProjectDependencies0
-        val excludeDeps = Inputs.exclusions(
-          allExcludeDependencies.value,
-          scalaVer,
-          scalaBinaryVersion.value,
-          streams.value.log
-        )
-        val fallbackDeps = csrFallbackDependencies.value
-        val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(
-          _.overrideScalaVersion
-        )
-        val profiles = csrMavenProfiles.value
-        val credentials = CoursierInputsTasks.credentialsTask.value
-
-        val createLogger = csrLogger.value
-
-        val cache = csrCacheDirectory.value
-
-        val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
-        val sbtBootJars = internalSbtScalaProvider.jars()
-        val sbtScalaVersion = internalSbtScalaProvider.version()
-        val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
-        val classifiers = classifiersTask.value
-        Classpaths.warnResolversConflict(rs, log)
-        CoursierConfiguration()
-          .withResolvers(rs.toVector)
-          .withInterProjectDependencies(interProjectDependencies)
-          .withFallbackDependencies(fallbackDeps.toVector)
-          .withExcludeDependencies(
-            excludeDeps.toVector.map {
-              case (o, n) =>
-                (o.value, n.value)
-            }.sorted
-          )
-          .withAutoScalaLibrary(autoScalaLib)
-          .withSbtScalaJars(sbtBootJars.toVector)
-          .withSbtScalaVersion(sbtScalaVersion)
-          .withSbtScalaOrganization(sbtScalaOrganization)
-          .withClassifiers(classifiers.toVector.flatten.map(_.value))
-          .withHasClassifiers(classifiers.nonEmpty)
-          .withMavenProfiles(profiles.toVector.sorted)
-          .withScalaOrganization(scalaOrg)
-          .withScalaVersion(scalaVer)
-          .withCredentials(credentials)
-          .withLogger(createLogger)
-          .withCache(cache)
-          .withLog(log)
+  def coursierConfiguration(
+      rs: Seq[Resolver],
+      interProjectDependencies: Seq[CProject],
+      fallbackDeps: Seq[FallbackDependency],
+      appConfig: AppConfiguration,
+      classifiers: Option[Seq[Classifier]],
+      profiles: Set[String],
+      scalaOrg: String,
+      scalaVer: String,
+      scalaBinaryVer: String,
+      autoScalaLib: Boolean,
+      scalaModInfo: Option[ScalaModuleInfo],
+      excludeDeps: Seq[InclExclRule],
+      credentials: Seq[Credentials],
+      createLogger: Option[CacheLogger],
+      cacheDirectory: File,
+      log: Logger
+  ): CoursierConfiguration = {
+    val coursierExcludeDeps = Inputs
+      .exclusions(
+        excludeDeps,
+        scalaVer,
+        scalaBinaryVer,
+        log
+      )
+      .toVector
+      .map {
+        case (o, n) =>
+          (o.value, n.value)
       }
-    }
+      .sorted
+    val autoScala = autoScalaLib && scalaModInfo.forall(
+      _.overrideScalaVersion
+    )
+    val internalSbtScalaProvider = appConfig.provider.scalaProvider
+    val sbtBootJars = internalSbtScalaProvider.jars()
+    val sbtScalaVersion = internalSbtScalaProvider.version()
+    val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
+    Classpaths.warnResolversConflict(rs, log)
+    CoursierConfiguration()
+      .withResolvers(rs.toVector)
+      .withInterProjectDependencies(interProjectDependencies.toVector)
+      .withFallbackDependencies(fallbackDeps.toVector)
+      .withExcludeDependencies(coursierExcludeDeps)
+      .withAutoScalaLibrary(autoScala)
+      .withSbtScalaJars(sbtBootJars.toVector)
+      .withSbtScalaVersion(sbtScalaVersion)
+      .withSbtScalaOrganization(sbtScalaOrganization)
+      .withClassifiers(classifiers.toVector.flatten.map(_.value))
+      .withHasClassifiers(classifiers.nonEmpty)
+      .withMavenProfiles(profiles.toVector.sorted)
+      .withScalaOrganization(scalaOrg)
+      .withScalaVersion(scalaVer)
+      .withCredentials(credentials)
+      .withLogger(createLogger)
+      .withCache(cacheDirectory)
+      .withLog(log)
+  }
+
+  def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    coursierConfiguration(
+      csrRecursiveResolvers.value,
+      csrInterProjectDependencies.value.toVector,
+      csrFallbackDependencies.value,
+      appConfiguration.value,
+      None,
+      csrMavenProfiles.value,
+      scalaOrganization.value,
+      scalaVersion.value,
+      scalaBinaryVersion.value,
+      autoScalaLibrary.value,
+      scalaModuleInfo.value,
+      allExcludeDependencies.value,
+      CoursierInputsTasks.credentialsTask.value,
+      csrLogger.value,
+      csrCacheDirectory.value,
+      streams.value.log
+    )
+  }
+
+  def updateClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    coursierConfiguration(
+      csrRecursiveResolvers.value,
+      csrInterProjectDependencies.value.toVector,
+      csrFallbackDependencies.value,
+      appConfiguration.value,
+      Some(transitiveClassifiers.value.map(Classifier(_))),
+      csrMavenProfiles.value,
+      scalaOrganization.value,
+      scalaVersion.value,
+      scalaBinaryVersion.value,
+      autoScalaLibrary.value,
+      scalaModuleInfo.value,
+      allExcludeDependencies.value,
+      CoursierInputsTasks.credentialsTask.value,
+      csrLogger.value,
+      csrCacheDirectory.value,
+      streams.value.log
+    )
+  }
+
+  def updateSbtClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    coursierConfiguration(
+      csrSbtResolvers.value,
+      Vector(),
+      csrFallbackDependencies.value,
+      appConfiguration.value,
+      None,
+      csrMavenProfiles.value,
+      scalaOrganization.value,
+      scalaVersion.value,
+      scalaBinaryVersion.value,
+      autoScalaLibrary.value,
+      scalaModuleInfo.value,
+      allExcludeDependencies.value,
+      CoursierInputsTasks.credentialsTask.value,
+      csrLogger.value,
+      csrCacheDirectory.value,
+      streams.value.log
+    )
+  }
+
+  def scalaCompilerBridgeConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    coursierConfiguration(
+      csrResolvers.value,
+      Vector(),
+      csrFallbackDependencies.value,
+      appConfiguration.value,
+      None,
+      csrMavenProfiles.value,
+      scalaOrganization.value,
+      scalaVersion.value,
+      scalaBinaryVersion.value,
+      autoScalaLibrary.value,
+      scalaModuleInfo.value,
+      allExcludeDependencies.value,
+      CoursierInputsTasks.credentialsTask.value,
+      csrLogger.value,
+      csrCacheDirectory.value,
+      streams.value.log
+    )
+  }
 
   def coursierLoggerTask: Def.Initialize[Task[Option[CacheLogger]]] = Def.task {
     val st = Keys.streams.value
