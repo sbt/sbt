@@ -773,7 +773,7 @@ object Defaults extends BuildCommon {
     class ScalaLoader extends URLClassLoader(allJars.map(_.toURI.toURL).toArray, libraryLoader)
     val fullLoader = classLoaderCache.cachedCustomClassloader(
       allJars.toList,
-      () => new URLClassLoader(allJars.map(_.toURI.toURL).toArray, libraryLoader)
+      () => new ScalaLoader
     )
     new ScalaInstance(
       version,

@@ -230,10 +230,12 @@ private[sbt] object ClassLoaders {
     } else parent
   }
 
+  private[this] class FlatLoader(classpath: Seq[File], parent: ClassLoader)
+      extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent) {
+    override def toString: String =
+      s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
+  }
   // helper methods
   private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
-    new URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent) {
-      override def toString: String =
-        s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
-    }
+    new FlatLoader(classpath, parent)
 }
