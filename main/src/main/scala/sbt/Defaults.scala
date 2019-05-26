@@ -594,7 +594,7 @@ object Defaults extends BuildCommon {
     compileInputsSettings
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     clean := Clean.task(ThisScope, full = false).value,
-    fileOutputs := Seq(Glob(classDirectory.value, RecursiveGlob / "*.class")),
+    fileOutputs in compile := Seq(Glob(classDirectory.value, RecursiveGlob / "*.class")),
     compile := compileTask.value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
