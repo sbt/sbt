@@ -14,12 +14,13 @@ import java.net.URLClassLoader
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
 import sbt.SlashSyntax0._
+import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
-import sbt.librarymanagement.Configurations.{ Runtime, Test }
+import sbt.librarymanagement.Configurations.Runtime
 
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -38,9 +39,7 @@ private[sbt] object ClassLoaders {
       rawRuntimeDependencies =
         dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude),
       allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
-      globalCache = (Scope.GlobalScope / classLoaderCache).value,
-      runtimeCache = (Runtime / classLoaderCache).value,
-      testCache = (Test / classLoaderCache).value,
+      cache = extendedClassLoaderCache.value,
       resources = ClasspathUtilities.createClasspathResources(fullCP, si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
       scope = resolvedScoped.value.scope
@@ -72,9 +71,6 @@ private[sbt] object ClassLoaders {
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
         }
-        val globalCache = (Scope.GlobalScope / classLoaderCache).value
-        val runtimeCache = (Runtime / classLoaderCache).value
-        val testCache = (Test / classLoaderCache).value
         val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.allJars
         val runtimeDeps = dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude)
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
@@ -86,9 +82,7 @@ private[sbt] object ClassLoaders {
               fullCP = classpath,
               rawRuntimeDependencies = runtimeDeps,
               allDependencies = allDeps,
-              globalCache = globalCache,
-              runtimeCache = runtimeCache,
-              testCache = testCache,
+              cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
               scope = resolvedScope
@@ -99,12 +93,19 @@ private[sbt] object ClassLoaders {
     }
   }
 
+  private[this] def extendedClassLoaderCache: Def.Initialize[Task[ClassLoaderCache]] = Def.task {
+    val errorMessage = "Tried to extract classloader cache for uninitialized state."
+    state.value
+      .get(BasicKeys.extendedClassLoaderCache)
+      .getOrElse(throw new IllegalStateException(errorMessage))
+  }
   /*
-   * Create a layered classloader. There are up to four layers:
+   * Create a layered classloader. There are up to five layers:
    * 1) the scala instance class loader
-   * 2) the runtime dependencies
-   * 3) the test dependencies
-   * 4) the rest of the classpath
+   * 2) the resource layer
+   * 3) the runtime dependencies
+   * 4) the test dependencies
+   * 5) the rest of the classpath
    * The first two layers may be optionally cached to reduce memory usage and improve
    * start up latency. Because there may be mutually incompatible libraries in the runtime
    * and test dependencies, it's important to be able to configure which layers are used.
@@ -115,9 +116,7 @@ private[sbt] object ClassLoaders {
       fullCP: Seq[File],
       rawRuntimeDependencies: Seq[File],
       allDependencies: Seq[File],
-      globalCache: ClassLoaderCache,
-      runtimeCache: ClassLoaderCache,
-      testCache: ClassLoaderCache,
+      cache: ClassLoaderCache,
       resources: Map[String, String],
       tmp: File,
       scope: Scope
@@ -145,25 +144,29 @@ private[sbt] object ClassLoaders {
         val allTestDependencies = if (layerTestDependencies) allDependenciesSet else Set.empty[File]
         val allRuntimeDependencies = (if (layerDependencies) rawRuntimeDependencies else Nil).toSet
 
-        val scalaLibrarySet = Set(si.libraryJar)
-        val scalaLibraryLayer =
-          globalCache.get((scalaLibrarySet.toList, interfaceLoader, resources, tmp))
-        // layer 2
+        val scalaLibraryLayer = layer(si.libraryJar :: Nil, interfaceLoader, cache, resources, tmp)
+
+        // layer 2 (resources)
+        val resourceLayer =
+          if (layerDependencies) getResourceLayer(fullCP, scalaLibraryLayer, cache, resources)
+          else scalaLibraryLayer
+
+        // layer 3 (optional if in the test config and the runtime layer is not shared)
         val runtimeDependencySet = allDependenciesSet intersect allRuntimeDependencies
         val runtimeDependencies = rawRuntimeDependencies.filter(runtimeDependencySet)
         lazy val runtimeLayer =
           if (layerDependencies)
-            layer(runtimeDependencies, scalaLibraryLayer, runtimeCache, resources, tmp)
-          else scalaLibraryLayer
+            layer(runtimeDependencies, resourceLayer, cache, resources, tmp)
+          else resourceLayer
 
-        // layer 3 (optional if testDependencies are empty)
+        // layer 4 (optional if testDependencies are empty)
         val testDependencySet = allTestDependencies diff runtimeDependencySet
         val testDependencies = allDependencies.filter(testDependencySet)
-        val testLayer = layer(testDependencies, runtimeLayer, testCache, resources, tmp)
+        val testLayer = layer(testDependencies, runtimeLayer, cache, resources, tmp)
 
-        // layer 4
+        // layer 5
         val dynamicClasspath =
-          fullCP.filterNot(testDependencySet ++ runtimeDependencies ++ scalaLibrarySet)
+          fullCP.filterNot(testDependencySet ++ runtimeDependencies + si.libraryJar)
         if (dynamicClasspath.nonEmpty)
           new LayeredClassLoader(dynamicClasspath, testLayer, resources, tmp)
         else testLayer
@@ -186,9 +189,45 @@ private[sbt] object ClassLoaders {
       resources: Map[String, String],
       tmp: File
   ): ClassLoader = {
-    val (snapshots, jars) = classpath.partition(_.toString.contains("-SNAPSHOT"))
-    val jarLoader = if (jars.isEmpty) parent else cache.get((jars, parent, resources, tmp))
-    if (snapshots.isEmpty) jarLoader else cache.get((snapshots, jarLoader, resources, tmp))
+    if (classpath.nonEmpty) {
+      cache(
+        classpath.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
+        parent,
+        () => new LayeredClassLoader(classpath, parent, resources, tmp)
+      )
+    } else parent
+  }
+
+  private class ResourceLoader(
+      classpath: Seq[File],
+      parent: ClassLoader,
+      resources: Map[String, String]
+  ) extends LayeredClassLoader(classpath, parent, resources, new File("/dev/null")) {
+    override def loadClass(name: String, resolve: Boolean): Class[_] = {
+      val clazz = parent.loadClass(name)
+      if (resolve) resolveClass(clazz)
+      clazz
+    }
+    override def toString: String = "ResourceLoader"
+  }
+  // Creates a one or two layered classloader for the provided classpaths depending on whether
+  // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
+  // above the regular jar layer. This allows the snapshot layer to be invalidated without
+  // invalidating the regular jar layer. If the classpath is empty, it just returns the parent
+  // loader.
+  private def getResourceLayer(
+      classpath: Seq[File],
+      parent: ClassLoader,
+      cache: ClassLoaderCache,
+      resources: Map[String, String]
+  ): ClassLoader = {
+    if (classpath.nonEmpty) {
+      cache(
+        classpath.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
+        parent,
+        () => new ResourceLoader(classpath, parent, resources)
+      )
+    } else parent
   }
 
   // helper methods
@@ -197,5 +236,4 @@ private[sbt] object ClassLoaders {
       override def toString: String =
         s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
     }
-
 }

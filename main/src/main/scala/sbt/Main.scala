@@ -828,7 +828,8 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
-    registerGlobalCaches(Project.setProject(session, structure, s))
+    Project
+      .setProject(session, structure, s)
       .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
   }
 
@@ -848,25 +849,11 @@ object BuiltinCommands {
       }
     s.put(Keys.stateCompilerCache, cache)
   }
-  private[sbt] def registerGlobalCaches(s: State): State =
-    try {
-      val cleanedUp = new AtomicBoolean(false)
-      def cleanup(): Unit = {
-        s.get(Keys.taskRepository).foreach(_.close())
-        ()
-      }
-      cleanup()
-      s.addExitHook(if (cleanedUp.compareAndSet(false, true)) cleanup())
-        .put(Keys.taskRepository, new TaskRepository.Repr)
-    } catch {
-      case NonFatal(_) => s
-    }
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    Command.command(ClearCaches, help)(
-      registerGlobalCaches _ andThen registerCompilerCache andThen (_.initializeClassLoaderCache)
-    )
+    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache)
+    Command.command(ClearCaches, help)(f)
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>

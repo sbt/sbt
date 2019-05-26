@@ -149,7 +149,6 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       pathToFileStamp :== sbt.nio.FileStamp.hash,
-      classLoaderCache := ClassLoaderCache(4),
       fileInputs :== Nil,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
@@ -163,8 +162,7 @@ object Defaults extends BuildCommon {
           .get(sbt.nio.Keys.persistentFileStampCache)
           .getOrElse(new sbt.nio.FileStamp.Cache)
       },
-    ) ++ TaskRepository
-      .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
+    ) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
 
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
@@ -1868,13 +1866,6 @@ object Defaults extends BuildCommon {
     configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++
       Classpaths.addUnmanagedLibrary ++
       Vector(
-        TaskRepository.proxy(
-          Compile / classLoaderCache,
-          // We need a cache of size four so that the subset of the runtime dependencies that are used
-          // by the test task layers may be cached without evicting the runtime classloader layers. The
-          // cache size should be a multiple of two to support snapshot layers.
-          ClassLoaderCache(4)
-        ),
         bgCopyClasspath in bgRun := {
           val old = (bgCopyClasspath in bgRun).value
           old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
@@ -1885,14 +1876,7 @@ object Defaults extends BuildCommon {
         },
       )
 
-  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++
-    Vector(
-      TaskRepository.proxy(
-        Test / classLoaderCache,
-        // We need a cache of size two for the test dependency layers (regular and snapshot).
-        ClassLoaderCache(2)
-      )
-    )
+  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
     testSettings
