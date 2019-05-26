@@ -52,7 +52,7 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
           + " using a layered class loader that cannot reach the sbt.testing.Framework class."
           + " The most likely cause is that your project has a runtime dependency on your"
           + " test framework, e.g. scalatest. To fix this, you can try to set\n"
-          + "Test / classLoaderLayeringStrategy := new ClassLoaderLayeringStrategy.Test(false, true)\nor\n"
+          + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary\nor\n"
           + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat"
       )
       None
@@ -138,8 +138,9 @@ final class TestRunner(
       val nestedTasks =
         try testTask.execute(handler, loggers.map(_.log).toArray)
         catch {
-          case NonFatal(e)           => errorEvents(e)
-          case e: IllegalAccessError => errorEvents(e)
+          case e: NoClassDefFoundError => errorEvents(e)
+          case NonFatal(e)             => errorEvents(e)
+          case e: IllegalAccessError   => errorEvents(e)
         } finally {
           loggers.foreach(_.flush())
         }
