@@ -1973,7 +1973,8 @@ object Classpaths {
         includeFilter in unmanagedJars value,
         excludeFilter in unmanagedJars value
       )
-    ).map(exportClasspath)
+    ).map(exportClasspath) :+
+      (sbt.nio.Keys.classpathFiles := data(fullClasspath.value).map(_.toPath))
 
   private[this] def exportClasspath(s: Setting[Task[Classpath]]): Setting[Task[Classpath]] =
     s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })

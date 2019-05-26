@@ -10,6 +10,7 @@ package internal
 
 import java.io.File
 import java.net.URLClassLoader
+import java.nio.file.Path
 
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
@@ -19,6 +20,9 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
+import sbt.nio.FileStamp
+import sbt.nio.FileStamp.LastModified
+import sbt.nio.Keys._
 
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -27,16 +31,20 @@ private[sbt] object ClassLoaders {
    */
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
-    val rawCP = data(fullClasspath.value)
-    val fullCP = if (si.isManagedVersion) rawCP else List(si.libraryJar) ++ rawCP
+    val rawCP = modifiedTimes((outputFileStamps in classpathFiles).value)
+    val fullCP =
+      if (si.isManagedVersion) rawCP
+      else List(si.libraryJar -> IO.getModifiedTimeOrZero(si.libraryJar)) ++ rawCP
     val exclude = dependencyJars(exportedProducts).value.toSet ++ Set(si.libraryJar)
+    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
       si = si,
       fullCP = fullCP,
+      resourceCP = resourceCP,
       allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
       cache = extendedClassLoaderCache.value,
-      resources = ClasspathUtilities.createClasspathResources(fullCP, si),
+      resources = ClasspathUtilities.createClasspathResources(fullCP.map(_._1), si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
       scope = resolvedScoped.value.scope
     )
@@ -48,6 +56,7 @@ private[sbt] object ClassLoaders {
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
+    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
       Def.task(new ForkRun(opts))
@@ -74,7 +83,8 @@ private[sbt] object ClassLoaders {
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
-              fullCP = classpath,
+              fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
+              resourceCP = resourceCP,
               allDependencies = allDeps,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
@@ -94,7 +104,7 @@ private[sbt] object ClassLoaders {
       .getOrElse(throw new IllegalStateException(errorMessage))
   }
   /*
-   * Create a layered classloader. There are up to five layers:
+   * Create a layered classloader. There are up to four layers:
    * 1) the scala instance class loader
    * 2) the resource layer
    * 3) the dependency jars
@@ -106,15 +116,17 @@ private[sbt] object ClassLoaders {
   private def buildLayers(
       strategy: ClassLoaderLayeringStrategy,
       si: ScalaInstance,
-      fullCP: Seq[File],
+      fullCP: Seq[(File, Long)],
+      resourceCP: Seq[(File, Long)],
       allDependencies: Seq[File],
       cache: ClassLoaderCache,
       resources: Map[String, String],
       tmp: File,
       scope: Scope
   ): ClassLoader = {
+    val cpFiles = fullCP.map(_._1)
     val raw = strategy match {
-      case Flat => flatLoader(fullCP, interfaceLoader)
+      case Flat => flatLoader(cpFiles, interfaceLoader)
       case _ =>
         val layerDependencies = strategy match {
           case _: AllLibraryJars => true
@@ -122,10 +134,12 @@ private[sbt] object ClassLoaders {
         }
         val allDependenciesSet = allDependencies.toSet
         val scalaLibraryLayer = layer(si.libraryJar :: Nil, interfaceLoader, cache, resources, tmp)
+        val cpFiles = fullCP.map(_._1)
 
         // layer 2 (resources)
         val resourceLayer =
-          if (layerDependencies) getResourceLayer(fullCP, scalaLibraryLayer, cache, resources)
+          if (layerDependencies)
+            getResourceLayer(cpFiles, resourceCP, scalaLibraryLayer, cache, resources)
           else scalaLibraryLayer
 
         // layer 3 (optional if in the test config and the runtime layer is not shared)
@@ -134,14 +148,12 @@ private[sbt] object ClassLoaders {
           else resourceLayer
 
         // layer 4
-        val dynamicClasspath =
-          fullCP.filterNot(allDependenciesSet + si.libraryJar)
-        if (dynamicClasspath.nonEmpty)
-          new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
-        else dependencyLayer
+        val dynamicClasspath = cpFiles.filterNot(allDependenciesSet + si.libraryJar)
+        new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
-    ClasspathUtilities.filterByClasspath(fullCP, raw)
+    ClasspathUtilities.filterByClasspath(cpFiles, raw)
   }
+
   private def dependencyJars(
       key: sbt.TaskKey[Seq[Attributed[File]]]
   ): Def.Initialize[Task[Seq[File]]] = Def.task(data(key.value).filter(_.getName.endsWith(".jar")))
@@ -186,15 +198,16 @@ private[sbt] object ClassLoaders {
   // loader.
   private def getResourceLayer(
       classpath: Seq[File],
+      resources: Seq[(File, Long)],
       parent: ClassLoader,
       cache: ClassLoaderCache,
-      resources: Map[String, String]
+      resourceMap: Map[String, String]
   ): ClassLoader = {
-    if (classpath.nonEmpty) {
+    if (resources.nonEmpty) {
       cache(
-        classpath.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
+        resources.toList,
         parent,
-        () => new ResourceLoader(classpath, parent, resources)
+        () => new ResourceLoader(classpath, parent, resourceMap)
       )
     } else parent
   }
@@ -207,4 +220,10 @@ private[sbt] object ClassLoaders {
   // helper methods
   private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
     new FlatLoader(classpath, parent)
+  private[this] def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
+    case (p, LastModified(lm)) => p.toFile -> lm
+    case (p, _) =>
+      val f = p.toFile
+      f -> IO.getModifiedTimeOrZero(f)
+  }
 }
