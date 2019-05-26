@@ -168,8 +168,7 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
     Seq(
       compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
-      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.RuntimeDependencies,
-      classLoaderLayeringStrategy in Test :== ClassLoaderLayeringStrategy.TestDependencies,
+      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.AllLibraryJars,
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
@@ -1059,7 +1058,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution = false,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.TestDependencies,
+      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
       projectId = "",
     )
   }
@@ -1082,7 +1081,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.TestDependencies,
+      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
       projectId = "",
     )
   }
@@ -1863,18 +1862,7 @@ object Defaults extends BuildCommon {
       Classpaths.compilerPluginConfig ++ deprecationSettings
 
   lazy val compileSettings: Seq[Setting[_]] =
-    configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++
-      Classpaths.addUnmanagedLibrary ++
-      Vector(
-        bgCopyClasspath in bgRun := {
-          val old = (bgCopyClasspath in bgRun).value
-          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
-        },
-        bgCopyClasspath in bgRunMain := {
-          val old = (bgCopyClasspath in bgRunMain).value
-          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
-        },
-      )
+    configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++ Classpaths.addUnmanagedLibrary
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 

@@ -13,14 +13,12 @@ import java.net.URLClassLoader
 
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
-import sbt.SlashSyntax0._
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
-import sbt.librarymanagement.Configurations.Runtime
 
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -36,8 +34,6 @@ private[sbt] object ClassLoaders {
       strategy = classLoaderLayeringStrategy.value,
       si = si,
       fullCP = fullCP,
-      rawRuntimeDependencies =
-        dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude),
       allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
       cache = extendedClassLoaderCache.value,
       resources = ClasspathUtilities.createClasspathResources(fullCP, si),
@@ -72,7 +68,6 @@ private[sbt] object ClassLoaders {
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
         }
         val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.allJars
-        val runtimeDeps = dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude)
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
         val newLoader =
           (classpath: Seq[File]) => {
@@ -80,7 +75,6 @@ private[sbt] object ClassLoaders {
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
               fullCP = classpath,
-              rawRuntimeDependencies = runtimeDeps,
               allDependencies = allDeps,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
@@ -103,10 +97,9 @@ private[sbt] object ClassLoaders {
    * Create a layered classloader. There are up to five layers:
    * 1) the scala instance class loader
    * 2) the resource layer
-   * 3) the runtime dependencies
-   * 4) the test dependencies
-   * 5) the rest of the classpath
-   * The first two layers may be optionally cached to reduce memory usage and improve
+   * 3) the dependency jars
+   * 4) the rest of the classpath
+   * The first three layers may be optionally cached to reduce memory usage and improve
    * start up latency. Because there may be mutually incompatible libraries in the runtime
    * and test dependencies, it's important to be able to configure which layers are used.
    */
@@ -114,36 +107,20 @@ private[sbt] object ClassLoaders {
       strategy: ClassLoaderLayeringStrategy,
       si: ScalaInstance,
       fullCP: Seq[File],
-      rawRuntimeDependencies: Seq[File],
       allDependencies: Seq[File],
       cache: ClassLoaderCache,
       resources: Map[String, String],
       tmp: File,
       scope: Scope
   ): ClassLoader = {
-    val isTest = scope.config.toOption.map(_.name) == Option("test")
     val raw = strategy match {
       case Flat => flatLoader(fullCP, interfaceLoader)
       case _ =>
-        val (layerDependencies, layerTestDependencies) = strategy match {
-          case ShareRuntimeDependenciesLayerWithTestDependencies if isTest => (true, true)
-          case ScalaLibrary                                                => (false, false)
-          case RuntimeDependencies                                         => (true, false)
-          case TestDependencies if isTest                                  => (false, true)
-          case badStrategy =>
-            val msg = s"Layering strategy $badStrategy is not valid for the classloader in " +
-              s"$scope. Valid options are: ClassLoaderLayeringStrategy.{ " +
-              "Flat, ScalaInstance, RuntimeDependencies }"
-            throw new IllegalArgumentException(msg)
+        val layerDependencies = strategy match {
+          case _: AllLibraryJars => true
+          case _                 => false
         }
         val allDependenciesSet = allDependencies.toSet
-        // The raw declarations are to avoid having to make a dynamic task. The
-        // allDependencies and allTestDependencies create a mutually exclusive list of jar
-        // dependencies for layers 2 and 3. Note that in the Runtime or Compile configs, it
-        // should always be the case that allTestDependencies == Nil
-        val allTestDependencies = if (layerTestDependencies) allDependenciesSet else Set.empty[File]
-        val allRuntimeDependencies = (if (layerDependencies) rawRuntimeDependencies else Nil).toSet
-
         val scalaLibraryLayer = layer(si.libraryJar :: Nil, interfaceLoader, cache, resources, tmp)
 
         // layer 2 (resources)
@@ -152,24 +129,16 @@ private[sbt] object ClassLoaders {
           else scalaLibraryLayer
 
         // layer 3 (optional if in the test config and the runtime layer is not shared)
-        val runtimeDependencySet = allDependenciesSet intersect allRuntimeDependencies
-        val runtimeDependencies = rawRuntimeDependencies.filter(runtimeDependencySet)
-        lazy val runtimeLayer =
-          if (layerDependencies)
-            layer(runtimeDependencies, resourceLayer, cache, resources, tmp)
+        val dependencyLayer =
+          if (layerDependencies) layer(allDependencies, resourceLayer, cache, resources, tmp)
           else resourceLayer
 
-        // layer 4 (optional if testDependencies are empty)
-        val testDependencySet = allTestDependencies diff runtimeDependencySet
-        val testDependencies = allDependencies.filter(testDependencySet)
-        val testLayer = layer(testDependencies, runtimeLayer, cache, resources, tmp)
-
-        // layer 5
+        // layer 4
         val dynamicClasspath =
-          fullCP.filterNot(testDependencySet ++ runtimeDependencies + si.libraryJar)
+          fullCP.filterNot(allDependenciesSet + si.libraryJar)
         if (dynamicClasspath.nonEmpty)
-          new LayeredClassLoader(dynamicClasspath, testLayer, resources, tmp)
-        else testLayer
+          new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
+        else dependencyLayer
     }
     ClasspathUtilities.filterByClasspath(fullCP, raw)
   }

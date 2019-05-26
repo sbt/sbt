@@ -6,6 +6,6 @@ publishTo := Some(Resolver.file("test-resolver", file("").getCanonicalFile / "iv
 
 version := "0.1.0"
 
-classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Dependencies
+classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
 
-Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Dependencies
+Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars

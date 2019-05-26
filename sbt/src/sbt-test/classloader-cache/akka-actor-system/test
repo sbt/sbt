@@ -1,4 +1,4 @@
-> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
+> run
 
 > run
 

@@ -8,13 +8,9 @@
 
 > run
 
-> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
 
 > run
-
-> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies
-
--> run
 
 > set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 
@@ -24,14 +20,6 @@
 
 > Test / runMain sbt.scripted.TestAkkaTest
 
-> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.RuntimeDependencies
-
-> Test / runMain sbt.scripted.TestAkkaTest
-
-> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
-
-> Test / runMain sbt.scripted.TestAkkaTest
-
-> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.TestDependencies
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
 
 > Test / runMain sbt.scripted.TestAkkaTest
