@@ -51,7 +51,8 @@ object SbtCoursierCache {
     dependencies: Seq[(Configuration, Dependency)],
     resolution: Map[Set[Configuration], Resolution],
     withClassifiers: Boolean,
-    sbtClassifiers: Boolean
+    sbtClassifiers: Boolean,
+    includeSignatures: Boolean
   )
 
 

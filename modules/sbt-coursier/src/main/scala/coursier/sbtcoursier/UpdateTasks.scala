@@ -110,7 +110,8 @@ object UpdateTasks {
         dependencies,
         res,
         withClassifiers,
-        sbtClassifiers
+        sbtClassifiers,
+        includeSignatures
       )
 
       SbtCoursierCache.default.reportOpt(key) match {
