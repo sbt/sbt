@@ -609,12 +609,8 @@ object Defaults extends BuildCommon {
         else ""
       s"inc_compile$extra.zip"
     },
-    compileIncSetup := {
-      val base = compileIncSetupTask.value
-      val incOptions =
-        base.incrementalCompilerOptions.withExternalHooks(ExternalHooks.default.value)
-      base.withIncrementalCompilerOptions(incOptions)
-    },
+    incOptions := { incOptions.value.withExternalHooks(ExternalHooks.default.value) },
+    compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
     collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
     consoleQuick := consoleQuickTask.value,
