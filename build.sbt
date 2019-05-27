@@ -117,7 +117,7 @@ lazy val `sbt-pgp-coursier` = project
     libraryDependencies += {
       val sbtv = CrossVersion.binarySbtVersion(sbtVersion.in(pluginCrossBuild).value)
       val sv = scalaBinaryVersion.value
-      val ver = "1.1.1"
+      val ver = "1.1.2-1"
       Defaults.sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)
     },
     scriptedDependencies := {
