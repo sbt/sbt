@@ -7,6 +7,8 @@
 
 package sbt
 
+import java.util.concurrent.ExecutionException
+
 import sbt.internal.util.ErrorHandling.wideConvert
 import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
 import sbt.internal.util.Types._
@@ -109,7 +111,15 @@ private[sbt] final class Execute[F[_] <: AnyRef](
         }
       }
 
-      (strategy.take()).process()
+      try {
+        strategy.take().process()
+      } catch {
+        case e: ExecutionException =>
+          e.getCause match {
+            case oom: OutOfMemoryError => throw oom
+            case _                     => throw e
+          }
+      }
       if (reverse.nonEmpty) next()
     }
     next()
