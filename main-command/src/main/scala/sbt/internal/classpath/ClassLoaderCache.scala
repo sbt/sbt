@@ -99,6 +99,33 @@ private[sbt] class ClassLoaderCache(
     }
   }
 
+  /*
+   * We need to manage the cache differently depending on whether or not sbt is started up with
+   * -XX:MaxMetaspaceSize=XXX. The reason is that when the metaspace limit is reached, the jvm
+   * will run a few Full GCs that will clear SoftReferences so that it can cleanup any classes
+   * that only softly reachable. If the GC during this phase is able to collect a classloader, it
+   * will free the metaspace (or at least some of it) previously occupied by the loader. This can
+   * prevent sbt from crashing with an OOM: Metaspace. The issue with this is that when a loader
+   * is collected in this way, it will leak handles to its url classpath. To prevent the resource
+   * leak, we can store a reference to a wrapper loader. That reference, in turn, holds a
+   * strong reference to the underlying loader. Under heap memory pressure, the jvm will clear the
+   * soft reference for the wrapped loader and add it to the reference queue. We add a thread
+   * that reads from the reference queue and closes the underlying URLClassLoader, preventing the
+   * resource leak. When the system is under heap memory pressure, this eviction approach works
+   * well. The problem is that we cannot prevent OOM: MetaSpace because the jvm doesn't give us
+   * a long enough window to clear the ClassLoader references. The wrapper class will get cleared
+   * during the Metaspace Full GC window, but, even though we quickly clear the strong reference
+   * to the underlying classloader and close it, the jvm gives up and crashes with an OOM.
+   *
+   * To avoid these crashes, if the user starts with a limit on metaspace size via
+   * -XX:MetaSpaceSize=XXX, we will just store direct soft references to the URLClassLoader and
+   * leak url classpath handles when loaders are evicted by garbage collection. This is consistent
+   * with the behavior of sbt versions < 1.3.0. In general, these leaks are probably not a big deal
+   * except on windows where they prevent any files for which the leaked class loader has an open
+   * handle from being modified. On linux and mac, we probably leak some file descriptors but it's
+   * fairly uncommon for sbt to run out of file descriptors.
+   *
+   */
   private[this] val metaspaceIsLimited =
     ManagementFactory.getMemoryPoolMXBeans.asScala
       .exists(b => (b.getName == "Metaspace") && (b.getUsage.getMax > 0))
