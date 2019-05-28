@@ -14,7 +14,7 @@
 		"node": "*"
 	},
 	"dependencies": {
-		"vscode-languageserver": "^3.5.1"
+		"vscode-languageserver": "^5.2.1"
 	},
 	"scripts": {
 		"installServer": "installServerIntoExtension ../client ./package.json ./tsconfig.json",
