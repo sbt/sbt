@@ -34,8 +34,8 @@ private[sbt] object ClassLoaders {
     val rawCP = modifiedTimes((outputFileStamps in classpathFiles).value)
     val fullCP =
       if (si.isManagedVersion) rawCP
-      else List(si.libraryJar -> IO.getModifiedTimeOrZero(si.libraryJar)) ++ rawCP
-    val exclude = dependencyJars(exportedProducts).value.toSet ++ Set(si.libraryJar)
+      else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
+    val exclude = dependencyJars(exportedProducts).value.toSet ++ si.libraryJars
     val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
@@ -133,7 +133,7 @@ private[sbt] object ClassLoaders {
           case _                 => false
         }
         val allDependenciesSet = allDependencies.toSet
-        val scalaLibraryLayer = layer(si.libraryJar :: Nil, interfaceLoader, cache, resources, tmp)
+        val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
         val cpFiles = fullCP.map(_._1)
 
         // layer 2 (resources)
@@ -148,7 +148,7 @@ private[sbt] object ClassLoaders {
           else resourceLayer
 
         // layer 4
-        val dynamicClasspath = cpFiles.filterNot(allDependenciesSet + si.libraryJar)
+        val dynamicClasspath = cpFiles.filterNot(allDependenciesSet ++ si.libraryJars)
         new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
     ClasspathUtilities.filterByClasspath(cpFiles, raw)
