@@ -12,7 +12,7 @@
   "description": "Scala language support using sbt",
   "icon": "images/sbt-logo-bgwhite-455x262.png",
   "engines": {
-    "vscode": "^1.16.0"
+    "vscode": "^1.23.0"
   },
   "categories": [
     "Languages"
@@ -44,16 +44,11 @@
     "workspaceContains:build.sbt"
   ],
   "main": "./out/src/extension",
-  "scripts": {
-    "vscode:prepublish": "tsc -p ./",
-    "compile": "tsc -p ./",
-    "watch": "tsc -w -p ./",
-    "update-vscode": "node ./node_modules/vscode/bin/install",
-    "postinstall": "node ./node_modules/vscode/bin/install"
-  },
+  "scripts": {},
   "dependencies": {
-    "vscode": "^1.1.30",
-    "vscode-languageclient": "^3.5.1",
-    "hoek": "^4.2.1"
+    "vscode-languageclient": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.32.0"
   }
 }
