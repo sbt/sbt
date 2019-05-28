@@ -2574,6 +2574,7 @@ object Classpaths {
           // to fix https://github.com/sbt/sbt/issues/2686
           scalaVersion := appConfiguration.value.provider.scalaProvider.version,
           scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
+          scalaOrganization := ScalaArtifacts.Organization,
           scalaModuleInfo := {
             Some(
               ScalaModuleInfo(
