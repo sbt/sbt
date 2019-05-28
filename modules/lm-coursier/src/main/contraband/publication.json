@@ -1,0 +1,29 @@
+{
+  "types": [
+    {
+      "name": "Publication",
+      "namespace": "lmcoursier.definitions",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String"
+        },
+        {
+          "name": "type",
+          "type": "Type"
+        },
+        {
+          "name": "ext",
+          "type": "Extension"
+        },
+        {
+          "name": "classifier",
+          "type": "Classifier"
+        }
+      ]
+    }
+  ]
+}

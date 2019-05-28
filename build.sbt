@@ -18,6 +18,7 @@ inThisBuild(List(
 val coursierVersion0 = "1.1.0-M14-5"
 
 lazy val `lm-coursier` = project
+  // .enablePlugins(ContrabandPlugin)
   .in(file("modules/lm-coursier"))
   .settings(
     shared,

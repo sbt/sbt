@@ -1,0 +1,37 @@
+{
+  "types": [
+    {
+      "name": "DateTime",
+      "namespace": "lmcoursier.definitions",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "year",
+          "type": "Int"
+        },
+        {
+          "name": "month",
+          "type": "Int"
+        },
+        {
+          "name": "day",
+          "type": "Int"
+        },
+        {
+          "name": "hour",
+          "type": "Int"
+        },
+        {
+          "name": "minute",
+          "type": "Int"
+        },
+        {
+          "name": "second",
+          "type": "Int"
+        }
+      ]
+    }
+  ]
+}

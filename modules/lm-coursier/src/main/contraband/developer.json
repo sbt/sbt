@@ -1,0 +1,25 @@
+{
+  "types": [
+    {
+      "name": "Developer",
+      "namespace": "lmcoursier.definitions",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "id",
+          "type": "String"
+        },
+        {
+          "name": "name",
+          "type": "String"
+        },
+        {
+          "name": "url",
+          "type": "String"
+        }
+      ]
+    }
+  ]
+}

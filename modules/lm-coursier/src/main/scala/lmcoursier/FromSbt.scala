@@ -101,7 +101,12 @@ object FromSbt {
     for {
       (from, to) <- allMappings
       attr <- attributes
-    } yield from -> dep.copy(configuration = to, attributes = attr)
+    } yield {
+      val dep0 = dep
+        .withConfiguration(to)
+        .withAttributes(attr)
+      from -> dep0
+    }
   }
 
   def fallbackDependencies(

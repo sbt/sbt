@@ -1,0 +1,29 @@
+{
+  "types": [
+    {
+      "name": "FallbackDependency",
+      "namespace": "lmcoursier",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "module",
+          "type": "lmcoursier.definitions.Module"
+        },
+        {
+          "name": "version",
+          "type": "String"
+        },
+        {
+          "name": "url",
+          "type": "java.net.URL"
+        },
+        {
+          "name": "changing",
+          "type": "Boolean"
+        }
+      ]
+    }
+  ]
+}

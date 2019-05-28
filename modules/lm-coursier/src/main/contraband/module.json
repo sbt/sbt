@@ -1,0 +1,25 @@
+{
+  "types": [
+    {
+      "name": "Module",
+      "namespace": "lmcoursier.definitions",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "organization",
+          "type": "Organization"
+        },
+        {
+          "name": "name",
+          "type": "ModuleName"
+        },
+        {
+          "name": "attributes",
+          "type": "Map[String, String]"
+        }
+      ]
+    }
+  ]
+}

@@ -47,10 +47,11 @@ object InputsTasks {
       sbv
     )
 
-    proj.copy(
-      dependencies = proj.dependencies.map {
+    proj.withDependencies(
+      proj.dependencies.map {
         case (config, dep) =>
-          (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
+          val dep0 = dep.withExclusions(dep.exclusions ++ exclusions0)
+          (config, dep0)
       }
     )
   }

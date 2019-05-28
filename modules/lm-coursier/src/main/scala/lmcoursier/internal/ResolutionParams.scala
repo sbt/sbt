@@ -31,10 +31,11 @@ final case class ResolutionParams(
     if (fallbackDependencies.isEmpty)
       Nil
     else {
-      val map = fallbackDependencies.map {
-        case FallbackDependency(mod, ver, url, changing) =>
-          (ToCoursier.module(mod), ver) -> ((url, changing))
-      }.toMap
+      val map = fallbackDependencies
+        .map { dep =>
+          (ToCoursier.module(dep.module), dep.version) -> ((dep.url, dep.changing))
+        }
+        .toMap
 
       Seq(
         InMemoryRepository(map)

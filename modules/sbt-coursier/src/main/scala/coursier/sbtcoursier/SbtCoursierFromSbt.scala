@@ -24,8 +24,8 @@ object SbtCoursierFromSbt {
     // this is a loose attempt at fixing that
     cm.configurations match {
       case Seq(cfg) =>
-        p.copy(
-          dependencies = p.dependencies.map {
+        p.withDependencies(
+          p.dependencies.map {
             case (_, d) => (Configuration(cfg.name), d)
           }
         )

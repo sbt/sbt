@@ -1,0 +1,41 @@
+{
+  "types": [
+    {
+      "name": "Dependency",
+      "namespace": "lmcoursier.definitions",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "module",
+          "type": "Module"
+        },
+        {
+          "name": "version",
+          "type": "String"
+        },
+        {
+          "name": "configuration",
+          "type": "Configuration"
+        },
+        {
+          "name": "exclusions",
+          "type": "Set[(Organization, ModuleName)]"
+        },
+        {
+          "name": "attributes",
+          "type": "Attributes"
+        },
+        {
+          "name": "optional",
+          "type": "Boolean"
+        },
+        {
+          "name": "transitive",
+          "type": "Boolean"
+        }
+      ]
+    }
+  ]
+}

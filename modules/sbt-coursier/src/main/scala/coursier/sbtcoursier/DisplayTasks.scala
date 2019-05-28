@@ -32,7 +32,7 @@ object DisplayTasks {
         Def.task {
           val proj = coursierProject.value
           val publications = coursierPublications.value
-          proj.copy(publications = publications)
+          proj.withPublications(publications)
         }
 
     val resolutionsTask =

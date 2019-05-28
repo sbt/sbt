@@ -39,7 +39,7 @@ object ResolutionTasks {
         Def.task {
           val baseConfigGraphs = coursierConfigGraphs.value
           val publications = coursierPublications.value
-          (ToCoursier.project(coursierProject.value.copy(publications = publications)), coursierFallbackDependencies.value, baseConfigGraphs)
+          (ToCoursier.project(coursierProject.value.withPublications(publications)), coursierFallbackDependencies.value, baseConfigGraphs)
         }
 
     val resolversTask =

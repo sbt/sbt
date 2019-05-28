@@ -72,8 +72,8 @@ object IvyXml {
           .collect { case (conf, dep) if conf.value == shadedConfig.value => dep }
       }
 
-    val project: Project = project0.copy(
-      dependencies = project0.dependencies.collect {
+    val project = project0.withDependencies(
+      project0.dependencies.collect {
         case p @ (_, dep) if !filterOutDependencies(dep) => p
       }
     )
@@ -169,7 +169,7 @@ object IvyXml {
             val currentProject = {
               val proj = coursierProject.value
               val publications = coursierPublications.value
-              proj.copy(publications = publications)
+              proj.withPublications(publications)
             }
             writeFiles(currentProject, shadedConfigOpt, sbt.Keys.ivySbt.value, sbt.Keys.streams.value.log)
           }

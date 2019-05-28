@@ -1,0 +1,45 @@
+{
+  "types": [
+    {
+      "name": "Project",
+      "namespace": "lmcoursier.definitions",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "module",
+          "type": "Module"
+        },
+        {
+          "name": "version",
+          "type": "String"
+        },
+        {
+          "name": "dependencies",
+          "type": "Seq[(Configuration, Dependency)]"
+        },
+        {
+          "name": "configurations",
+          "type": "Map[Configuration, Seq[Configuration]]"
+        },
+        {
+          "name": "properties",
+          "type": "Seq[(String, String)]"
+        },
+        {
+          "name": "packagingOpt",
+          "type": "Option[Type]"
+        },
+        {
+          "name": "publications",
+          "type": "Seq[(Configuration, Publication)]"
+        },
+        {
+          "name": "info",
+          "type": "Info"
+        }
+      ]
+    }
+  ]
+}
