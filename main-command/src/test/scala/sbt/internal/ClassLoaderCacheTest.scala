@@ -48,7 +48,6 @@ class ClassLoaderCacheTest extends FlatSpec with Matchers {
       IO.setModifiedTimeOrFalse(snapshotJar, System.currentTimeMillis + 5000L)
       val secondLoader = cache.get(jarClassPath)
       assert(initLoader != secondLoader)
-      assert(initLoader.getParent == secondLoader.getParent)
       assert(cache.get(jarClassPath) == secondLoader)
       assert(cache.get(jarClassPath) != initLoader)
     }
