@@ -15,7 +15,7 @@ lazy val root = (project in file("."))
     artifact in (Compile, packageBin) := mainArtifact,
     libraryDependencies ++= (if (baseDirectory.value / "retrieve" exists) publishedID :: Nil else Nil),
       // needed to add a jar with a different type to the managed classpath
-    unmanagedClasspath in Compile += scalaInstance.map(_.libraryJar).value,
+    unmanagedClasspath in Compile ++= scalaInstance.value.libraryJars.toSeq,
     classpathTypes := Set(tpe),
     check := checkTask(dependencyClasspath).value,
     checkFull := checkTask(fullClasspath).value
