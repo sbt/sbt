@@ -9,18 +9,20 @@ package sbt
 package internal
 
 import java.io.File
-import java.net.{ URL, URLClassLoader }
+import java.net.URLClassLoader
+import java.nio.file.Path
 
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
-import sbt.SlashSyntax0._
+import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
-import sbt.librarymanagement.Configurations.{ Runtime, Test }
-import xsbti.AppProvider
+import sbt.nio.FileStamp
+import sbt.nio.FileStamp.LastModified
+import sbt.nio.Keys._
 
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -29,20 +31,20 @@ private[sbt] object ClassLoaders {
    */
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
-    val rawCP = data(fullClasspath.value)
-    val fullCP = if (si.isManagedVersion) rawCP else List(si.libraryJar) ++ rawCP
-    val exclude = dependencyJars(exportedProducts).value.toSet ++ Set(si.libraryJar)
+    val rawCP = modifiedTimes((outputFileStamps in classpathFiles).value)
+    val fullCP =
+      if (si.isManagedVersion) rawCP
+      else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
+    val exclude = dependencyJars(exportedProducts).value.toSet ++ si.libraryJars
+    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
       si = si,
       fullCP = fullCP,
-      rawRuntimeDependencies =
-        dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude),
+      resourceCP = resourceCP,
       allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
-      globalCache = (Scope.GlobalScope / classLoaderCache).value,
-      runtimeCache = (Runtime / classLoaderCache).value,
-      testCache = (Test / classLoaderCache).value,
-      resources = ClasspathUtilities.createClasspathResources(fullCP, si),
+      cache = extendedClassLoaderCache.value,
+      resources = ClasspathUtilities.createClasspathResources(fullCP.map(_._1), si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
       scope = resolvedScoped.value.scope
     )
@@ -54,6 +56,7 @@ private[sbt] object ClassLoaders {
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
+    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
       Def.task(new ForkRun(opts))
@@ -73,23 +76,17 @@ private[sbt] object ClassLoaders {
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
         }
-        val globalCache = (Scope.GlobalScope / classLoaderCache).value
-        val runtimeCache = (Runtime / classLoaderCache).value
-        val testCache = (Test / classLoaderCache).value
         val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.allJars
-        val runtimeDeps = dependencyJars(Runtime / dependencyClasspath).value.filterNot(exclude)
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
         val newLoader =
           (classpath: Seq[File]) => {
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
-              fullCP = classpath,
-              rawRuntimeDependencies = runtimeDeps,
+              fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
+              resourceCP = resourceCP,
               allDependencies = allDeps,
-              globalCache = globalCache,
-              runtimeCache = runtimeCache,
-              testCache = testCache,
+              cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
               scope = resolvedScope
@@ -100,77 +97,63 @@ private[sbt] object ClassLoaders {
     }
   }
 
+  private[this] def extendedClassLoaderCache: Def.Initialize[Task[ClassLoaderCache]] = Def.task {
+    val errorMessage = "Tried to extract classloader cache for uninitialized state."
+    state.value
+      .get(BasicKeys.extendedClassLoaderCache)
+      .getOrElse(throw new IllegalStateException(errorMessage))
+  }
   /*
    * Create a layered classloader. There are up to four layers:
    * 1) the scala instance class loader
-   * 2) the runtime dependencies
-   * 3) the test dependencies
+   * 2) the resource layer
+   * 3) the dependency jars
    * 4) the rest of the classpath
-   * The first two layers may be optionally cached to reduce memory usage and improve
+   * The first three layers may be optionally cached to reduce memory usage and improve
    * start up latency. Because there may be mutually incompatible libraries in the runtime
    * and test dependencies, it's important to be able to configure which layers are used.
    */
   private def buildLayers(
       strategy: ClassLoaderLayeringStrategy,
       si: ScalaInstance,
-      fullCP: Seq[File],
-      rawRuntimeDependencies: Seq[File],
+      fullCP: Seq[(File, Long)],
+      resourceCP: Seq[(File, Long)],
       allDependencies: Seq[File],
-      globalCache: ClassLoaderCache,
-      runtimeCache: ClassLoaderCache,
-      testCache: ClassLoaderCache,
+      cache: ClassLoaderCache,
       resources: Map[String, String],
       tmp: File,
       scope: Scope
   ): ClassLoader = {
-    val isTest = scope.config.toOption.map(_.name) == Option("test")
+    val cpFiles = fullCP.map(_._1)
     val raw = strategy match {
-      case Flat => flatLoader(fullCP, interfaceLoader)
+      case Flat => flatLoader(cpFiles, interfaceLoader)
       case _ =>
-        val (layerDependencies, layerTestDependencies) = strategy match {
-          case ShareRuntimeDependenciesLayerWithTestDependencies if isTest => (true, true)
-          case ScalaLibrary                                                => (false, false)
-          case RuntimeDependencies                                         => (true, false)
-          case TestDependencies if isTest                                  => (false, true)
-          case badStrategy =>
-            val msg = s"Layering strategy $badStrategy is not valid for the classloader in " +
-              s"$scope. Valid options are: ClassLoaderLayeringStrategy.{ " +
-              "Flat, ScalaInstance, RuntimeDependencies }"
-            throw new IllegalArgumentException(msg)
+        val layerDependencies = strategy match {
+          case _: AllLibraryJars => true
+          case _                 => false
         }
         val allDependenciesSet = allDependencies.toSet
-        // The raw declarations are to avoid having to make a dynamic task. The
-        // allDependencies and allTestDependencies create a mutually exclusive list of jar
-        // dependencies for layers 2 and 3. Note that in the Runtime or Compile configs, it
-        // should always be the case that allTestDependencies == Nil
-        val allTestDependencies = if (layerTestDependencies) allDependenciesSet else Set.empty[File]
-        val allRuntimeDependencies = (if (layerDependencies) rawRuntimeDependencies else Nil).toSet
+        val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
+        val cpFiles = fullCP.map(_._1)
 
-        val scalaLibrarySet = Set(si.libraryJar)
-        val scalaLibraryLayer =
-          globalCache.get((scalaLibrarySet.toList, interfaceLoader, resources, tmp))
-        // layer 2
-        val runtimeDependencySet = allDependenciesSet intersect allRuntimeDependencies
-        val runtimeDependencies = rawRuntimeDependencies.filter(runtimeDependencySet)
-        lazy val runtimeLayer =
+        // layer 2 (resources)
+        val resourceLayer =
           if (layerDependencies)
-            layer(runtimeDependencies, scalaLibraryLayer, runtimeCache, resources, tmp)
+            getResourceLayer(cpFiles, resourceCP, scalaLibraryLayer, cache, resources)
           else scalaLibraryLayer
 
-        // layer 3 (optional if testDependencies are empty)
-        val testDependencySet = allTestDependencies diff runtimeDependencySet
-        val testDependencies = allDependencies.filter(testDependencySet)
-        val testLayer = layer(testDependencies, runtimeLayer, testCache, resources, tmp)
+        // layer 3 (optional if in the test config and the runtime layer is not shared)
+        val dependencyLayer =
+          if (layerDependencies) layer(allDependencies, resourceLayer, cache, resources, tmp)
+          else resourceLayer
 
         // layer 4
-        val dynamicClasspath =
-          fullCP.filterNot(testDependencySet ++ runtimeDependencies ++ scalaLibrarySet)
-        if (dynamicClasspath.nonEmpty)
-          new LayeredClassLoader(dynamicClasspath, testLayer, resources, tmp)
-        else testLayer
+        val dynamicClasspath = cpFiles.filterNot(allDependenciesSet ++ si.libraryJars)
+        new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
-    ClasspathUtilities.filterByClasspath(fullCP, raw)
+    ClasspathUtilities.filterByClasspath(cpFiles, raw)
   }
+
   private def dependencyJars(
       key: sbt.TaskKey[Seq[Attributed[File]]]
   ): Def.Initialize[Task[Seq[File]]] = Def.task(data(key.value).filter(_.getName.endsWith(".jar")))
@@ -187,39 +170,60 @@ private[sbt] object ClassLoaders {
       resources: Map[String, String],
       tmp: File
   ): ClassLoader = {
-    val (snapshots, jars) = classpath.partition(_.toString.contains("-SNAPSHOT"))
-    val jarLoader = if (jars.isEmpty) parent else cache.get((jars, parent, resources, tmp))
-    if (snapshots.isEmpty) jarLoader else cache.get((snapshots, jarLoader, resources, tmp))
+    if (classpath.nonEmpty) {
+      cache(
+        classpath.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
+        parent,
+        () => new LayeredClassLoader(classpath, parent, resources, tmp)
+      )
+    } else parent
   }
 
+  private class ResourceLoader(
+      classpath: Seq[File],
+      parent: ClassLoader,
+      resources: Map[String, String]
+  ) extends LayeredClassLoader(classpath, parent, resources, new File("/dev/null")) {
+    override def loadClass(name: String, resolve: Boolean): Class[_] = {
+      val clazz = parent.loadClass(name)
+      if (resolve) resolveClass(clazz)
+      clazz
+    }
+    override def toString: String = "ResourceLoader"
+  }
+  // Creates a one or two layered classloader for the provided classpaths depending on whether
+  // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
+  // above the regular jar layer. This allows the snapshot layer to be invalidated without
+  // invalidating the regular jar layer. If the classpath is empty, it just returns the parent
+  // loader.
+  private def getResourceLayer(
+      classpath: Seq[File],
+      resources: Seq[(File, Long)],
+      parent: ClassLoader,
+      cache: ClassLoaderCache,
+      resourceMap: Map[String, String]
+  ): ClassLoader = {
+    if (resources.nonEmpty) {
+      cache(
+        resources.toList,
+        parent,
+        () => new ResourceLoader(classpath, parent, resourceMap)
+      )
+    } else parent
+  }
+
+  private[this] class FlatLoader(classpath: Seq[File], parent: ClassLoader)
+      extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent) {
+    override def toString: String =
+      s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
+  }
   // helper methods
   private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
-    new URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent) {
-      override def toString: String =
-        s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
-    }
-
-}
-
-private[sbt] object SbtMetaBuildClassLoader {
-  def apply(appProvider: AppProvider): ClassLoader = {
-    val interfaceFilter: URL => Boolean = _.getFile.endsWith("test-interface-1.0.jar")
-    def urls(jars: Array[File]): Array[URL] = jars.map(_.toURI.toURL)
-    val (interfaceURL, rest) = urls(appProvider.mainClasspath).partition(interfaceFilter)
-    val scalaProvider = appProvider.scalaProvider
-    val interfaceLoader = new URLClassLoader(interfaceURL, scalaProvider.launcher.topLoader) {
-      override def toString: String = s"SbtTestInterfaceClassLoader(${getURLs.head})"
-    }
-    val updatedLibraryLoader = new URLClassLoader(urls(scalaProvider.jars), interfaceLoader) {
-      override def toString: String = s"ScalaClassLoader(jars = {${getURLs.mkString(", ")}}"
-    }
-    new URLClassLoader(rest, updatedLibraryLoader) {
-      override def toString: String = s"SbtMetaBuildClassLoader"
-      override def close(): Unit = {
-        super.close()
-        updatedLibraryLoader.close()
-        interfaceLoader.close()
-      }
-    }
+    new FlatLoader(classpath, parent)
+  private[this] def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
+    case (p, LastModified(lm)) => p.toFile -> lm
+    case (p, _) =>
+      val f = p.toFile
+      f -> IO.getModifiedTimeOrZero(f)
   }
 }

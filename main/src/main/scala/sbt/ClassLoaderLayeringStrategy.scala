@@ -89,36 +89,12 @@ object ClassLoaderLayeringStrategy {
   case object ScalaLibrary extends ScalaLibrary
 
   /**
-   * Add a layer on top of the ScalaLibrary layer for the runtime jar dependencies.
+   * Add a layer on top of the ScalaLibrary layer for all of the task jar dependencies.
    */
-  sealed trait RuntimeDependencies extends ScalaLibrary
+  sealed trait AllLibraryJars extends ScalaLibrary
 
   /**
-   * Add a layer on top of the ScalaLibrary layer for the runtime jar dependencies.
+   * Add a layer on top of the ScalaLibrary layer for all of the jar dependencies.
    */
-  case object RuntimeDependencies extends ScalaLibrary with RuntimeDependencies
-
-  /**
-   * Add a layer on top of the ScalaLibrary layer for the test jar dependencies.
-   */
-  sealed trait TestDependencies extends ScalaLibrary
-
-  /**
-   * Add a layer on top of the ScalaInstance layer for the test jar dependencies.
-   */
-  case object TestDependencies extends ScalaLibrary with TestDependencies
-
-  /**
-   * Add the TestDependencies layer on top of the RuntimeDependencies layer on top of the
-   * ScalaLibrary layer. This differs from TestDependencies in that it will not reload the
-   * runtime classpath. The drawback to using this is that if the test dependencies evict
-   * classes provided in the runtime layer, then tests can fail. In order for sharing the runtime
-   * layer to work, it is necessary to set [[Keys.bgCopyClasspath]] to false. Otherwise the
-   * runtime and test classpaths are completely different.
-   */
-  case object ShareRuntimeDependenciesLayerWithTestDependencies
-      extends ScalaLibrary
-      with RuntimeDependencies
-      with TestDependencies
-
+  object AllLibraryJars extends AllLibraryJars
 }

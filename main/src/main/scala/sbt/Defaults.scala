@@ -28,6 +28,7 @@ import sbt.Project.{
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
+import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
@@ -148,7 +149,6 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       pathToFileStamp :== sbt.nio.FileStamp.hash,
-      classLoaderCache := ClassLoaderCache(4),
       fileInputs :== Nil,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
@@ -162,15 +162,13 @@ object Defaults extends BuildCommon {
           .get(sbt.nio.Keys.persistentFileStampCache)
           .getOrElse(new sbt.nio.FileStamp.Cache)
       },
-    ) ++ TaskRepository
-      .proxy(GlobalScope / classLoaderCache, ClassLoaderCache(4)) ++ globalIvyCore ++ globalJvmCore
+    ) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
 
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
     Seq(
       compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
-      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.RuntimeDependencies,
-      classLoaderLayeringStrategy in Test :== ClassLoaderLayeringStrategy.TestDependencies,
+      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.AllLibraryJars,
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
@@ -550,10 +548,11 @@ object Defaults extends BuildCommon {
       val scalac =
         scalaCompilerBridgeBinaryJar.value match {
           case Some(jar) =>
-            ZincUtil.scalaCompiler(
+            AlternativeZincUtil.scalaCompiler(
               scalaInstance = scalaInstance.value,
               classpathOptions = classpathOptions.value,
-              compilerBridgeJar = jar
+              compilerBridgeJar = jar,
+              classLoaderCache = st.get(BasicKeys.classLoaderCache)
             )
           case _ =>
             ZincLmUtil.scalaCompiler(
@@ -565,6 +564,7 @@ object Defaults extends BuildCommon {
               dependencyResolution = dr,
               compilerBridgeSource = scalaCompilerBridgeSource.value,
               scalaJarsTarget = zincDir,
+              classLoaderCache = st.get(BasicKeys.classLoaderCache),
               log = streams.value.log
             )
         }
@@ -594,7 +594,7 @@ object Defaults extends BuildCommon {
     compileInputsSettings
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     clean := Clean.task(ThisScope, full = false).value,
-    fileOutputs := Seq(Glob(classDirectory.value, RecursiveGlob / "*.class")),
+    fileOutputs in compile := Seq(Glob(classDirectory.value, RecursiveGlob / "*.class")),
     compile := compileTask.value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
@@ -710,8 +710,16 @@ object Defaults extends BuildCommon {
         val scalaProvider = appConfiguration.value.provider.scalaProvider
         val version = scalaVersion.value
         if (version == scalaProvider.version) // use the same class loader as the Scala classes used by sbt
-          Def.task(ScalaInstance(version, scalaProvider))
-        else
+          Def.task {
+            val allJars = scalaProvider.jars
+            val libraryJars = allJars.filter(_.getName == "scala-library.jar")
+            allJars.filter(_.getName == "scala-compiler.jar") match {
+              case Array(compilerJar) if libraryJars.nonEmpty =>
+                val cache = state.value.classLoaderCache
+                mkScalaInstance(version, allJars, libraryJars, compilerJar, cache)
+              case _ => ScalaInstance(version, scalaProvider)
+            }
+          } else
           scalaInstanceFromUpdate
     }
   }
@@ -745,20 +753,51 @@ object Defaults extends BuildCommon {
     val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val compilerJar = file(ScalaArtifacts.CompilerID)
-    new ScalaInstance(
+    mkScalaInstance(
       scalaVersion.value,
-      makeClassLoader(state.value)(allJars.toList),
-      makeClassLoader(state.value)(List(libraryJar)),
-      libraryJar,
+      allJars,
+      Array(libraryJar),
+      compilerJar,
+      state.value.classLoaderCache
+    )
+  }
+  private[this] def mkScalaInstance(
+      version: String,
+      allJars: Seq[File],
+      libraryJars: Array[File],
+      compilerJar: File,
+      classLoaderCache: sbt.internal.inc.classpath.ClassLoaderCache
+  ): ScalaInstance = {
+    val libraryLoader = classLoaderCache(libraryJars.toList)
+    class ScalaLoader extends URLClassLoader(allJars.map(_.toURI.toURL).toArray, libraryLoader)
+    val fullLoader = classLoaderCache.cachedCustomClassloader(
+      allJars.toList,
+      () => new ScalaLoader
+    )
+    new ScalaInstance(
+      version,
+      fullLoader,
+      libraryLoader,
+      libraryJars,
       compilerJar,
       allJars.toArray,
-      None
+      Some(version)
     )
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
-    ScalaInstance(dir)(makeClassLoader(state.value))
+    val dummy = ScalaInstance(dir)(state.value.classLoaderCache.apply)
+    Seq(dummy.loader, dummy.loaderLibraryOnly).foreach {
+      case a: AutoCloseable => a.close()
+      case cl               =>
+    }
+    mkScalaInstance(
+      dummy.version,
+      dummy.allJars,
+      dummy.libraryJars,
+      dummy.compilerJar,
+      state.value.classLoaderCache
+    )
   }
-  private[this] def makeClassLoader(state: State) = state.classLoaderCache.apply _
 
   private[this] def testDefaults =
     Defaults.globalDefaults(
@@ -1019,7 +1058,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution = false,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.TestDependencies,
+      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
       projectId = "",
     )
   }
@@ -1042,7 +1081,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.TestDependencies,
+      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
       projectId = "",
     )
   }
@@ -1823,34 +1862,9 @@ object Defaults extends BuildCommon {
       Classpaths.compilerPluginConfig ++ deprecationSettings
 
   lazy val compileSettings: Seq[Setting[_]] =
-    configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++
-      Classpaths.addUnmanagedLibrary ++
-      Vector(
-        TaskRepository.proxy(
-          Compile / classLoaderCache,
-          // We need a cache of size four so that the subset of the runtime dependencies that are used
-          // by the test task layers may be cached without evicting the runtime classloader layers. The
-          // cache size should be a multiple of two to support snapshot layers.
-          ClassLoaderCache(4)
-        ),
-        bgCopyClasspath in bgRun := {
-          val old = (bgCopyClasspath in bgRun).value
-          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
-        },
-        bgCopyClasspath in bgRunMain := {
-          val old = (bgCopyClasspath in bgRunMain).value
-          old && (Test / classLoaderLayeringStrategy).value != ClassLoaderLayeringStrategy.ShareRuntimeDependenciesLayerWithTestDependencies
-        },
-      )
+    configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++ Classpaths.addUnmanagedLibrary
 
-  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks ++
-    Vector(
-      TaskRepository.proxy(
-        Test / classLoaderCache,
-        // We need a cache of size two for the test dependency layers (regular and snapshot).
-        ClassLoaderCache(2)
-      )
-    )
+  lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
     testSettings
@@ -1959,7 +1973,8 @@ object Classpaths {
         includeFilter in unmanagedJars value,
         excludeFilter in unmanagedJars value
       )
-    ).map(exportClasspath)
+    ).map(exportClasspath) :+
+      (sbt.nio.Keys.classpathFiles := data(fullClasspath.value).map(_.toPath))
 
   private[this] def exportClasspath(s: Setting[Task[Classpath]]): Setting[Task[Classpath]] =
     s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })

@@ -174,7 +174,7 @@ object LogManager {
       key: ScopedKey[_],
       state: State
   ): SuppressedTraceContext => Option[String] = {
-    lazy val display = Project.showContextKey(state)
+    val display = Project.showContextKey(state)
     def commandBase = "last " + display.show(unwrapStreamsKey(key))
     def command(useFormat: Boolean) =
       if (useFormat) BLUE + commandBase + RESET else s"'$commandBase'"

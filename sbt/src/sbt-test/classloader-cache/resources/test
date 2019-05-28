@@ -1,0 +1,15 @@
+> run foo.txt main
+
+$ copy-file changes/updated-main.txt src/main/resources/foo.txt
+
+> run foo.txt updated-main
+
+> test
+
+$ copy-file changes/updated-test.txt src/test/resources/bar.txt
+
+-> test
+
+$ copy-file changes/UpdatedResourceTest.scala src/test/scala/scripted/ResourceTest.scala
+
+> test

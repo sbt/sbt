@@ -8,7 +8,6 @@
 package sbt
 
 import java.io.{ File, IOException }
-import java.lang.reflect.InvocationTargetException
 import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
@@ -27,7 +26,6 @@ import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
-import xsbti.{ AppMain, AppProvider, ComponentProvider, Launcher, ScalaProvider }
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
@@ -35,67 +33,8 @@ import scala.util.control.NonFatal
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
-    val modifiedConfiguration = new ModifiedConfiguration(configuration)
-    val loader = modifiedConfiguration.provider.loader
-    // No need to memoize the old class loader. It is reset by the launcher anyway.
-    Thread.currentThread.setContextClassLoader(loader)
-    val clazz = loader.loadClass("sbt.xMainImpl$")
-    val instance = clazz.getField("MODULE$").get(null)
-    val runMethod = clazz.getMethod("run", classOf[xsbti.AppConfiguration])
-    try {
-      new Thread("sbt-load-global-instance") {
-        setDaemon(true)
-        override def run(): Unit = {
-          // This preloads the scala.tools.nsc.Global as a performance optimization"
-          loader.loadClass("sbt.internal.parser.SbtParser$").getField("MODULE$").get(null)
-          ()
-        }
-      }.start()
-      runMethod.invoke(instance, modifiedConfiguration).asInstanceOf[xsbti.MainResult]
-    } catch {
-      case e: InvocationTargetException =>
-        // This propogates xsbti.FullReload to the launcher
-        throw e.getCause
-    } finally {
-      loader match {
-        case a: AutoCloseable => a.close()
-        case _                =>
-      }
-    }
-  }
-  /*
-   * Replaces the AppProvider.loader method with a new loader that puts the sbt test interface
-   * jar ahead of the rest of the sbt classpath in the classloading hierarchy.
-   */
-  private class ModifiedConfiguration(val configuration: xsbti.AppConfiguration)
-      extends xsbti.AppConfiguration {
-    private[this] val metaLoader: ClassLoader = SbtMetaBuildClassLoader(configuration.provider)
-
-    private class ModifiedAppProvider(val appProvider: AppProvider) extends AppProvider {
-      override def scalaProvider(): ScalaProvider = new ScalaProvider {
-        val delegate = configuration.provider.scalaProvider
-        override def launcher(): Launcher = delegate.launcher
-        override def version(): String = delegate.version
-        override def loader(): ClassLoader = metaLoader.getParent
-        override def jars(): Array[File] = delegate.jars
-        override def libraryJar(): File = delegate.libraryJar
-        override def compilerJar(): File = delegate.compilerJar
-        override def app(id: xsbti.ApplicationID): AppProvider = delegate.app(id)
-      }
-      override def id(): xsbti.ApplicationID = appProvider.id()
-      override def loader(): ClassLoader = metaLoader
-      @deprecated("Implements deprecated api", "1.3.0")
-      override def mainClass(): Class[_ <: AppMain] = appProvider.mainClass()
-      override def entryPoint(): Class[_] = appProvider.entryPoint()
-      override def newMain(): AppMain = appProvider.newMain()
-      override def mainClasspath(): Array[File] = appProvider.mainClasspath()
-      override def components(): ComponentProvider = appProvider.components()
-    }
-    override def arguments(): Array[String] = configuration.arguments
-    override def baseDirectory(): File = configuration.baseDirectory
-    override def provider(): AppProvider = new ModifiedAppProvider(configuration.provider)
-  }
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+    new XMainConfiguration().runXMain(configuration)
 }
 private[sbt] object xMainImpl {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
@@ -889,7 +828,8 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
-    registerGlobalCaches(Project.setProject(session, structure, s))
+    Project
+      .setProject(session, structure, s)
       .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
   }
 
@@ -909,23 +849,11 @@ object BuiltinCommands {
       }
     s.put(Keys.stateCompilerCache, cache)
   }
-  private[sbt] def registerGlobalCaches(s: State): State =
-    try {
-      val cleanedUp = new AtomicBoolean(false)
-      def cleanup(): Unit = {
-        s.get(Keys.taskRepository).foreach(_.close())
-        ()
-      }
-      cleanup()
-      s.addExitHook(if (cleanedUp.compareAndSet(false, true)) cleanup())
-        .put(Keys.taskRepository, new TaskRepository.Repr)
-    } catch {
-      case NonFatal(_) => s
-    }
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    Command.command(ClearCaches, help)(registerGlobalCaches _ andThen registerCompilerCache)
+    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache)
+    Command.command(ClearCaches, help)(f)
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>

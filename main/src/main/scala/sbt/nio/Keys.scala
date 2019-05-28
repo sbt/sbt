@@ -148,6 +148,8 @@ object Keys {
   private[sbt] val pathToFileStamp = taskKey[Path => Option[FileStamp]](
     "A function that computes a file stamp for a path. It may have the side effect of updating a cache."
   ).withRank(Invisible)
+  private[sbt] val classpathFiles =
+    taskKey[Seq[Path]]("The classpath for a task.").withRank(Invisible)
 
   private[this] val hasCheckedMetaBuildMsg =
     "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +

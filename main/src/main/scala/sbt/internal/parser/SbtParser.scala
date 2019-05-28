@@ -163,6 +163,16 @@ private[sbt] object SbtParser {
   }
 }
 
+private class SbtParserInit {
+  new Thread("sbt-parser-init-thread") {
+    setDaemon(true)
+    start()
+    override def run(): Unit = {
+      val _ = SbtParser.defaultGlobalForParser
+    }
+  }
+}
+
 /**
  * This method solely exists to add scaladoc to members in SbtParser which
  * are defined using pattern matching.

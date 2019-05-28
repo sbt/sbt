@@ -135,14 +135,44 @@ object MainLoop {
     }
 
   def next(state: State): State =
-    ErrorHandling.wideConvert { state.process(processCommand) } match {
-      case Right(s)                  => s
-      case Left(t: xsbti.FullReload) => throw t
-      case Left(t: RebootCurrent)    => throw t
-      case Left(Reload) =>
-        val remaining = state.currentCommand.toList ::: state.remainingCommands
-        state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
-      case Left(t) => state.handleError(t)
+    try {
+      ErrorHandling.wideConvert {
+        state.process(processCommand)
+      } match {
+        case Right(s)                  => s
+        case Left(t: xsbti.FullReload) => throw t
+        case Left(t: RebootCurrent)    => throw t
+        case Left(Reload) =>
+          val remaining = state.currentCommand.toList ::: state.remainingCommands
+          state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
+        case Left(t) => state.handleError(t)
+      }
+    } catch {
+      case oom: OutOfMemoryError if oom.getMessage.contains("Metaspace") =>
+        System.gc() // Since we're under memory pressure, see if more can be freed with a manual gc.
+        val isTestOrRun = state.remainingCommands.headOption.exists { exec =>
+          val cmd = exec.commandLine
+          cmd.contains("test") || cmd.contains("run")
+        }
+        val isConsole = state.remainingCommands.exists(_.commandLine == "shell") ||
+          (state.remainingCommands.last.commandLine == "iflast shell")
+        val testOrRunMessage =
+          if (!isTestOrRun) ""
+          else
+            " If this error occurred during a test or run evaluation, it can be caused by the " +
+              "choice of ClassLoaderLayeringStrategy. Of the available strategies, " +
+              "ClassLoaderLayeringStrategy.ScalaLibrary will typically use the least metaspace. " +
+              (if (isConsole)
+                 " To change the layering strategy for this session, run:\n\n" +
+                   "set ThisBuild / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy." +
+                   "ScalaLibrary"
+               else "")
+        val msg: String =
+          s"Caught $oom\nTo best utilize classloader caching and to prevent file handle leaks, we" +
+            s"recommend running sbt without a MaxMetaspaceSize limit. $testOrRunMessage"
+        state.log.error(msg)
+        state.log.error("\n")
+        state.handleError(oom)
     }
 
   /** This is the main function State transfer function of the sbt command processing. */

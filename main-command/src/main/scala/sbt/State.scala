@@ -9,6 +9,9 @@ package sbt
 
 import java.io.File
 import java.util.concurrent.Callable
+
+import sbt.internal.classpath.ClassLoaderCache
+import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
 import sbt.util.Logger
 import sbt.internal.util.{
   AttributeKey,
@@ -19,7 +22,6 @@ import sbt.internal.util.{
   GlobalLogging
 }
 import sbt.internal.util.complete.{ HistoryCommands, Parser }
-import sbt.internal.inc.classpath.ClassLoaderCache
 
 /**
  * Data structure representing all command execution information.
@@ -193,7 +195,7 @@ trait StateOps extends Any {
   def setInteractive(flag: Boolean): State
 
   /** Get the class loader cache for the application.*/
-  def classLoaderCache: ClassLoaderCache
+  def classLoaderCache: IncClassLoaderCache
 
   /** Create and register a class loader cache.  This should be called once at the application entry-point.*/
   def initializeClassLoaderCache: State
@@ -221,6 +223,7 @@ object State {
 
   /**
    * Provides a list of recently executed commands.  The commands are stored as processed instead of as entered by the user.
+   *
    * @param executed the list of the most recently executed commands, with the most recent command first.
    * @param maxSize the maximum number of commands to keep, or 0 to keep an unlimited number.
    */
@@ -334,11 +337,18 @@ object State {
     def interactive = getBoolean(s, BasicKeys.interactive, false)
     def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 
-    def classLoaderCache: ClassLoaderCache =
-      s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
-    def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
+    def classLoaderCache: IncClassLoaderCache =
+      s get BasicKeys.classLoaderCache getOrElse (throw new IllegalStateException(
+        "Tried to get classloader cache for uninitialized state."
+      ))
+    def initializeClassLoaderCache: State = {
+      s.get(BasicKeys.extendedClassLoaderCache).foreach(_.close())
+      val cache = newClassLoaderCache
+      s.put(BasicKeys.extendedClassLoaderCache, cache)
+        .put(BasicKeys.classLoaderCache, new IncClassLoaderCache(cache))
+    }
     private[this] def newClassLoaderCache =
-      new ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
+      new ClassLoaderCache(s.configuration.provider.scalaProvider)
   }
 
   import ExceptionCategory._

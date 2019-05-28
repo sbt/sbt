@@ -54,7 +54,7 @@ install:
 
 script:
   # It doesn't need that much memory because compile and run are forked
-  - sbt -Dsbt.version=1.2.6 -Dsbt.ci=true -J-XX:ReservedCodeCacheSize=128m -J-Xmx800M -J-Xms800M -J-server "$SBT_CMD"
+  - sbt -Dsbt.ci=true -J-XX:ReservedCodeCacheSize=128m -J-Xmx800M -J-Xms800M -J-server "$SBT_CMD"
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -delete

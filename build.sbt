@@ -656,6 +656,7 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     testOptions in Test += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
+    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat, // Delete this after 1.3.0-RC2.
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // New and changed methods on KeyIndex. internal.
@@ -895,6 +896,7 @@ def otherRootSettings =
     scripted := scriptedTask.evaluated,
     scriptedUnpublished := scriptedUnpublishedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
+    watchTriggers in scripted += scriptedSource.value.toGlob / **,
     scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server"),
     publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
     publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
