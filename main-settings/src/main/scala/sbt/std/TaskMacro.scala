@@ -20,7 +20,7 @@ import sbt.internal.util.appmacro.{
 }
 import Instance.Transform
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
-import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition }
+import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition, ~> }
 
 import language.experimental.macros
 import scala.annotation.tailrec
@@ -63,21 +63,23 @@ object FullInstance
   )
 
   def flatten[T](in: Initialize[Task[Initialize[Task[T]]]]): Initialize[Task[T]] = {
-    import TupleSyntax._
-    (in, settingsData, Def.capturedTransformations) {
-      (a: Task[Initialize[Task[T]]], data: Task[SS], f) =>
+    type K[L[x]] = AList.T3K[Task[Initialize[Task[T]]], Task[SS], Initialize ~> Initialize]#l[L]
+    Def.app[K, Task[T]]((in, settingsData, Def.capturedTransformations)) {
+      case (a: Task[Initialize[Task[T]]], data: Task[SS], f) =>
         import TaskExtra.multT2Task
         (a, data) flatMap { case (a, d) => f(a) evaluate d }
-    }
+    }(AList.tuple3)
   }
 
   def flattenFun[S, T](in: Initialize[Task[S => Initialize[Task[T]]]]): Initialize[S => Task[T]] = {
-    import TupleSyntax._
-    (in, settingsData, Def.capturedTransformations) {
-      (a: Task[S => Initialize[Task[T]]], data: Task[SS], f) => (s: S) =>
+    type K[L[x]] =
+      AList.T3K[Task[S => Initialize[Task[T]]], Task[SS], Initialize ~> Initialize]#l[L]
+    Def.app[K, S => Task[T]]((in, settingsData, Def.capturedTransformations)) {
+      case (a: Task[S => Initialize[Task[T]]], data: Task[SS], f) => { (s: S) =>
         import TaskExtra.multT2Task
         (a, data) flatMap { case (af, d) => f(af(s)) evaluate d }
-    }
+      }
+    }(AList.tuple3)
   }
 }
 

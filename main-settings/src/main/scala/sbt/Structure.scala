@@ -99,10 +99,7 @@ sealed abstract class SettingKey[T]
 
   protected[this] def make[S](other: Initialize[S], source: SourcePosition)(
       f: (T, S) => T
-  ): Setting[T] = {
-    import TupleSyntax._
-    set((this, other)(f), source)
-  }
+  ): Setting[T] = set(this.zipWith(other)(f), source)
 
   final def withRank(rank: Int): SettingKey[T] =
     SettingKey(AttributeKey.copyWithRank(key, rank))
@@ -169,10 +166,7 @@ sealed abstract class TaskKey[T]
 
   private[this] def make[S](other: Initialize[Task[S]], source: SourcePosition)(
       f: (T, S) => T
-  ): Setting[Task[T]] = {
-    import TupleSyntax._
-    set((this, other)((a, b) => (a, b) map f.tupled), source)
-  }
+  ): Setting[Task[T]] = set(this.zipWith(other)((a, b) => (a, b) map f.tupled), source)
 
   final def withRank(rank: Int): TaskKey[T] =
     TaskKey(AttributeKey.copyWithRank(key, rank))
@@ -297,10 +291,7 @@ object Scoped {
      * @param i value to return if this setting doesn't have a value.
      * @return currently bound setting value, or `i` if unbound.
      */
-    final def or[T >: S](i: Initialize[T]): Initialize[T] = {
-      import TupleSyntax._
-      (this.?, i)(_ getOrElse _)
-    }
+    final def or[T >: S](i: Initialize[T]): Initialize[T] = ?.zipWith(i)(_.getOrElse(_))
 
     /**
      * Like [[?]], but with a call-by-name parameter rather than an existing [[Def.Initialize]].
@@ -366,8 +357,7 @@ object Scoped {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
     def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = {
-      import TupleSyntax._
-      (i, Initialize.joinAny[Task](tasks))((thisTask, deps) => thisTask.dependsOn(deps: _*))
+      i.zipWith(Initialize.joinAny[Task](tasks))((thisTask, deps) => thisTask.dependsOn(deps: _*))
     }
 
     def failure: Initialize[Task[Incomplete]] = i(_.failure)
@@ -385,10 +375,8 @@ object Scoped {
     private[this] def nonLocal(
         tasks: Seq[AnyInitTask],
         key: AttributeKey[Seq[Task[_]]]
-    ): Initialize[Task[S]] = {
-      import TupleSyntax._
-      (Initialize.joinAny[Task](tasks), i)((ts, i) => i.copy(info = i.info.set(key, ts)))
-    }
+    ): Initialize[Task[S]] =
+      Initialize.joinAny[Task](tasks).zipWith(i)((ts, i) => i.copy(info = i.info.set(key, ts)))
   }
 
   /** Enriches `Initialize[InputTask[S]]` types.
@@ -402,8 +390,7 @@ object Scoped {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
 
     def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = {
-      import TupleSyntax._
-      (i, Initialize.joinAny[Task](tasks))(
+      i.zipWith(Initialize.joinAny[Task](tasks))(
         (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*))
       )
     }
