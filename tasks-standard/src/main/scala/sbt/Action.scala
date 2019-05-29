@@ -62,7 +62,6 @@ final case class Task[T](info: Info[T], work: Action[T]) {
   override def toString = info.name getOrElse ("Task(" + info + ")")
   override def hashCode = info.hashCode
 
-  private[sbt] def mapTask(g: Task ~> Task): Task[T] = g(Task(info, work.mapTask(g)))
   def tag(tags: Tag*): Task[T] = tagw(tags.map(t => (t, 1)): _*)
   def tagw(tags: (Tag, Int)*): Task[T] =
     copy(info = info.set(tagsKey, info.get(tagsKey).getOrElse(Map.empty) ++ tags))
