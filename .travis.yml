@@ -11,44 +11,23 @@ env:
     - secure: d3bu2KNwsVHwfhbGgO+gmRfDKBJhfICdCJFGWKf2w3Gv86AJZX9nuTYRxz0KtdvEHO5Xw8WTBZLPb2thSJqhw9OCm4J8TBAVqCP0ruUj4+aqBUFy4bVexQ6WKE6nWHs4JPzPk8c6uC1LG3hMuzlC8RGETXtL/n81Ef1u7NjyXjs=
   matrix:
     - SBT_CMD=";mimaReportBinaryIssues ;scalafmtCheckAll ;headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests; doc"
-    - SBT_CMD="scripted actions/*"
-    - SBT_CMD="scripted apiinfo/* compiler-project/* ivy-deps-management/*"
-    - SBT_CMD="scripted dependency-management/*1of4"
-    - SBT_CMD="scripted dependency-management/*2of4"
-    - SBT_CMD="scripted dependency-management/*3of4"
-    - SBT_CMD="scripted dependency-management/*4of4"
-    - SBT_CMD="scripted plugins/*"
-    - SBT_CMD="scripted package/* reporter/* run/* project-load/*"
-    - SBT_CMD="scripted project/*1of2"
-    - SBT_CMD="scripted project/*2of2"
-    - SBT_CMD="scripted source-dependencies/*1of3"
-    - SBT_CMD="scripted source-dependencies/*2of3"
-    - SBT_CMD="scripted source-dependencies/*3of3"
-    - SBT_CMD="scripted tests/* watch/* classloader-cache/*"
-    - SBT_CMD="repoOverrideTest:scripted dependency-management/*"
+    - SBT_CMD="scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
+    - SBT_CMD="scripted dependency-management/* plugins/* project-load/* java/* run/*"
+    - SBT_CMD="repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
 
 matrix:
   fast_finish: true
   include:
     - env:
-        - SBT_CMD="scripted java/*"
-      install:
-        - /home/travis/.jabba/bin/jabba install openjdk@1.10
-    - env:
         - TRAVIS_JDK=adopt@1.8.192-12
-        - SBT_CMD="scripted actions/*"
-    - env:
-        - TRAVIS_JDK=adopt@1.8.192-12
-        - SBT_CMD="scripted source-dependencies/*1of3"
-    - env:
-        - TRAVIS_JDK=adopt@1.8.192-12
-        - SBT_CMD="scripted dependency-management/*1of4"
+        - SBT_CMD="scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
 
 before_install:
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.11.0/install.sh | bash && . ~/.jabba/jabba.sh
 
 install:
   - $JABBA_HOME/bin/jabba install $TRAVIS_JDK
+  - $JABBA_HOME/bin/jabba install openjdk@1.10
   - unset _JAVA_OPTIONS
   - export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH" && java -Xmx32m -version
 
