@@ -348,6 +348,10 @@ lazy val stdTaskProj = (project in file("tasks-standard"))
     name := "Task System",
     testExclusive,
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // unused private[sbt]
+      exclude[DirectMissingMethodProblem]("sbt.Task.mapTask"),
+    ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilCache)
 
