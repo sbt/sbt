@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion0 = "1.1.0-M14-5"
+val coursierVersion0 = "1.1.0-M14-6"
 
 lazy val `lm-coursier` = project
   // .enablePlugins(ContrabandPlugin)
