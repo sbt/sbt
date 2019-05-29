@@ -148,7 +148,6 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
-      pathToFileStamp :== sbt.nio.FileStamp.hash,
       fileInputs :== Nil,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
@@ -157,11 +156,9 @@ object Defaults extends BuildCommon {
       watchPersistFileStamps :== true,
       watchTriggers :== Nil,
       clean := { () },
-      sbt.nio.Keys.fileStampCache := {
-        state.value
-          .get(sbt.nio.Keys.persistentFileStampCache)
-          .getOrElse(new sbt.nio.FileStamp.Cache)
-      },
+      unmanagedFileStampCache :=
+        state.value.get(persistentFileStampCache).getOrElse(new sbt.nio.FileStamp.Cache),
+      managedFileStampCache := new sbt.nio.FileStamp.Cache,
     ) ++ globalIvyCore ++ globalJvmCore
   ) ++ globalSbtCore
 
@@ -420,9 +417,12 @@ object Defaults extends BuildCommon {
     unmanagedSources := (unmanagedSources / inputFileStamps).value.map(_._1.toFile),
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := {
-      val stamper = sbt.nio.Keys.pathToFileStamp.value
+      val stamper = inputFileStamper.value
+      val cache = managedFileStampCache.value
       val res = generate(sourceGenerators).value
-      res.foreach(f => stamper(f.toPath))
+      res.foreach { f =>
+        cache.putIfAbsent(f.toPath, stamper)
+      }
       res
     },
     sourceGenerators :== Nil,
@@ -1647,7 +1647,7 @@ object Defaults extends BuildCommon {
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
     }
-    val map = sbt.nio.Keys.fileStampCache.value
+    val map = managedFileStampCache.value
     val analysis = analysisResult.analysis
     import scala.collection.JavaConverters._
     analysis.readStamps.getAllProductStamps.asScala.foreach {

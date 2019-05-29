@@ -9,6 +9,7 @@ package sbt.nio
 
 import java.io.{ File, IOException }
 import java.nio.file.{ Path, Paths }
+import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.inc.{ EmptyStamp, Stamper, LastModified => IncLastModified }
 import sbt.io.IO
@@ -217,7 +218,7 @@ private[sbt] object FileStamp {
   }
 
   private[sbt] class Cache {
-    private[this] val underlying = new java.util.HashMap[Path, Either[FileStamp, FileStamp]]
+    private[this] val underlying = new ConcurrentHashMap[Path, Either[FileStamp, FileStamp]]
 
     /**
      * Invalidate the cache entry, but don't re-stamp the file until it's actually used
@@ -251,6 +252,14 @@ private[sbt] object FileStamp {
         case null => None
         case e    => e.value
       }
+
+    def putIfAbsent(key: Path, stamper: FileStamper): Unit = {
+      underlying.get(key) match {
+        case null => updateImpl(key, stamper)
+        case _    =>
+      }
+      ()
+    }
     def update(key: Path, stamper: FileStamper): (Option[FileStamp], Option[FileStamp]) = {
       underlying.get(key) match {
         case null => (None, updateImpl(key, stamper))

@@ -142,11 +142,11 @@ object Keys {
   private[sbt] val allInputPathsAndAttributes =
     taskKey[Seq[(Path, FileAttributes)]]("Get all of the file inputs for a task")
       .withRank(Invisible)
-  private[sbt] val fileStampCache = taskKey[FileStamp.Cache](
-    "Map of file stamps that may be cleared between task evaluation runs."
+  private[sbt] val unmanagedFileStampCache = taskKey[FileStamp.Cache](
+    "Map of managed file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
-  private[sbt] val pathToFileStamp = taskKey[Path => Option[FileStamp]](
-    "A function that computes a file stamp for a path. It may have the side effect of updating a cache."
+  private[sbt] val managedFileStampCache = taskKey[FileStamp.Cache](
+    "Map of managed file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
   private[sbt] val classpathFiles =
     taskKey[Seq[Path]]("The classpath for a task.").withRank(Invisible)

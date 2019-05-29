@@ -28,21 +28,23 @@ import scala.collection.mutable
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
   def default: Def.Initialize[sbt.Task[ExternalHooks]] = Def.task {
-    val cache = fileStampCache.value
+    val unmanagedCache = unmanagedFileStampCache.value
+    val managedCache = managedFileStampCache.value
     val cp = dependencyClasspath.value.map(_.data)
     cp.foreach { file =>
       val path = file.toPath
-      cache.getOrElseUpdate(path, FileStamper.LastModified)
+      managedCache.getOrElseUpdate(path, FileStamper.LastModified)
     }
     val classGlob = classDirectory.value.toGlob / RecursiveGlob / "*.class"
     fileTreeView.value.list(classGlob).foreach {
-      case (path, _) => cache.update(path, FileStamper.LastModified)
+      case (path, _) => managedCache.update(path, FileStamper.LastModified)
     }
-    apply((compileOptions in compile).value, cache)
+    apply((compileOptions in compile).value, unmanagedCache, managedCache)
   }
   private def apply(
       options: CompileOptions,
-      fileStampCache: FileStamp.Cache
+      unmanagedCache: FileStamp.Cache,
+      managedCache: FileStamp.Cache
   ): DefaultExternalHooks = {
     val lookup = new ExternalLookup {
       override def changedSources(previousAnalysis: CompileAnalysis): Option[Changes[File]] = Some {
@@ -57,7 +59,10 @@ private[sbt] object ExternalHooks {
             previousAnalysis.readStamps().getAllSourceStamps.asScala
           prevSources.foreach {
             case (file: File, s: Stamp) =>
-              fileStampCache.getOrElseUpdate(file.toPath, FileStamper.Hash) match {
+              val path = file.toPath
+              unmanagedCache
+                .get(path)
+                .orElse(managedCache.getOrElseUpdate(file.toPath, FileStamper.Hash)) match {
                 case None => getRemoved.add(file)
                 case Some(stamp) =>
                   if (equiv(stamp.stamp, s)) getUnmodified.add(file) else getChanged.add(file)
@@ -79,7 +84,7 @@ private[sbt] object ExternalHooks {
       override def changedBinaries(previousAnalysis: CompileAnalysis): Option[Set[File]] = {
         Some(previousAnalysis.readStamps.getAllBinaryStamps.asScala.flatMap {
           case (file, stamp) =>
-            fileStampCache.get(file.toPath) match {
+            managedCache.get(file.toPath) match {
               case Some(cachedStamp) if equiv(cachedStamp.stamp, stamp) => None
               case _ =>
                 javaHome match {
@@ -94,7 +99,7 @@ private[sbt] object ExternalHooks {
       override def removedProducts(previousAnalysis: CompileAnalysis): Option[Set[File]] = {
         Some(previousAnalysis.readStamps.getAllProductStamps.asScala.flatMap {
           case (file, stamp) =>
-            fileStampCache.get(file.toPath) match {
+            managedCache.get(file.toPath) match {
               case Some(s) if equiv(s.stamp, stamp) => None
               case _                                => Some(file)
             }
