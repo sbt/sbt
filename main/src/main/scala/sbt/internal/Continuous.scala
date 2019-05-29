@@ -380,12 +380,21 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     // We have to add the <~ Parsers.any.* to ensure that we're able to extract the input key
     // from input tasks.
     val scopedKeyParser: Parser[Seq[ScopedKey[_]]] = Act.aggregatedKeyParser(state) <~ Parsers.any.*
-    Parser.parse(command, scopedKeyParser) match {
-      case Right(scopedKeys: Seq[ScopedKey[_]]) => scopedKeys
-      case Left(e) =>
-        throw new IllegalStateException(s"Error attempting to extract scope from $command: $e.")
-      case _ => Nil: Seq[ScopedKey[_]]
+    @tailrec def impl(current: String): Seq[ScopedKey[_]] = {
+      Parser.parse(current, scopedKeyParser) match {
+        case Right(scopedKeys: Seq[ScopedKey[_]]) => scopedKeys
+        case Left(e) =>
+          val aliases = BasicCommands.allAliases(state)
+          aliases.collectFirst { case (`command`, aliased) => aliased } match {
+            case Some(aliased) => impl(aliased)
+            case _ =>
+              val msg = s"Error attempting to extract scope from $command: $e."
+              throw new IllegalStateException(msg)
+          }
+        case _ => Nil: Seq[ScopedKey[_]]
+      }
     }
+    impl(command)
   }
 
   private def getAllConfigs(
