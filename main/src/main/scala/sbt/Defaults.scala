@@ -3426,7 +3426,7 @@ object Classpaths {
 
   def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] = Def.taskDyn {
     if (autoScalaLibrary.value && scalaHome.value.isDefined)
-      Def.task { scalaInstance.value.libraryJar :: Nil } else
+      Def.task { scalaInstance.value.libraryJars } else
       Def.task { Nil }
   }
 
