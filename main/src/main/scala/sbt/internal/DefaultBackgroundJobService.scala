@@ -57,8 +57,15 @@ private[sbt] abstract class AbstractJobHandle extends JobHandle {
 private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobService {
   private val nextId = new AtomicLong(1)
   private val pool = new BackgroundThreadPool()
-  private val serviceTempDir = IO.createTemporaryDirectory
 
+  private var serviceTempDirOpt: Option[File] = None
+  private def serviceTempDir = serviceTempDirOpt match {
+    case Some(dir) => dir
+    case _ =>
+      val dir = IO.createTemporaryDirectory
+      serviceTempDirOpt = Some(dir)
+      dir
+  }
   // hooks for sending start/stop events
   protected def onAddJob(@deprecated("unused", "") job: JobHandle): Unit = ()
   protected def onRemoveJob(@deprecated("unused", "") job: JobHandle): Unit = ()
@@ -150,7 +157,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       }
     }
     pool.close()
-    IO.delete(serviceTempDir)
+    serviceTempDirOpt foreach IO.delete
   }
 
   private def withHandle(job: JobHandle)(f: ThreadJobHandle => Unit): Unit = job match {
