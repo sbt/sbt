@@ -608,51 +608,48 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         override def debug(msg: Any): Unit = l.debug(msg.toString)
       }
 
-      // TODO make this a normal monitor
-      private[this] val monitors: Seq[FileEventMonitor[Event]] =
+      private[this] val observers: Observers[Event] = new Observers
+      private[this] val repo = getRepository(state)
+      private[this] val handle = repo.addObserver(observers)
+      private[this] val eventMonitorObservers = new Observers[Event]
+      private[this] val delegateHandles: Seq[AutoCloseable] =
         configs.map { config =>
-          // Create a logger with a scoped key prefix so that we can tell from which
-          // monitor events occurred.
-          FileEventMonitor.antiEntropy(
-            new Observable[Event] {
-              private[this] val repo = getRepository(state)
-              private[this] val observers = new Observers[Event] {
-                override def onNext(t: Event): Unit =
-                  if (config.inputs().exists(_.glob.matches(t.path))) super.onNext(t)
-              }
-              private[this] val handle = repo.addObserver(observers)
-              override def addObserver(observer: Observer[Event]): AutoCloseable =
-                observers.addObserver(observer)
-              override def close(): Unit = {
-                handle.close()
-                observers.close()
-              }
-            },
-            config.watchSettings.antiEntropy,
-            logger.withPrefix(config.key.show),
-            config.watchSettings.deletionQuarantinePeriod,
-            config.watchSettings.antiEntropyRetentionPeriod
-          )
-        } ++ (if (trackMetaBuild) {
-                val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
-                val repo = getRepository(state)
-                buildGlobs.foreach(repo.register)
-                FileEventMonitor.antiEntropy(
-                  repo,
-                  antiEntropy,
-                  logger.withPrefix("meta-build"),
-                  quarantinePeriod,
-                  retentionPeriod
-                ) :: Nil
-              } else Nil)
+          // Create a logger with a scoped key prefix so that we can tell from which task there
+          // were inputs that matched the event path.
+          val configLogger = logger.withPrefix(config.key.show)
+          observers.addObserver { e =>
+            if (config.inputs().exists(_.glob.matches(e.path))) {
+              configLogger.debug(s"Accepted event for ${e.path}")
+              eventMonitorObservers.onNext(e)
+            }
+          }
+        }
+      if (trackMetaBuild) {
+        buildGlobs.foreach(repo.register)
+        val metaLogger = logger.withPrefix("meta-build")
+        observers.addObserver { e =>
+          if (buildGlobs.exists(_.matches(e.path))) {
+            metaLogger.debug(s"Accepted event for ${e.path}")
+            eventMonitorObservers.onNext(e)
+          }
+        }
+      }
+      private[this] val monitor = FileEventMonitor.antiEntropy(
+        eventMonitorObservers,
+        configs.map(_.watchSettings.antiEntropy).max,
+        logger,
+        quarantinePeriod,
+        retentionPeriod
+      )
 
       override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
-        val res = monitors.flatMap(_.poll(0.millis, filter)).toSet.toVector
-        if (res.isEmpty) Thread.sleep(duration.toMillis)
-        res
+        monitor.poll(duration, filter)
       }
 
-      override def close(): Unit = monitors.foreach(_.close())
+      override def close(): Unit = {
+        delegateHandles.foreach(_.close())
+        handle.close()
+      }
     }
     val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
     val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
@@ -681,7 +678,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
 
     (() => {
-      val actions = antiEntropyMonitor.poll(2.milliseconds).flatMap(onEvent)
+      val actions = antiEntropyMonitor.poll(30.milliseconds).flatMap(onEvent)
       if (actions.exists(_._2 != Watch.Ignore)) {
         val builder = new StringBuilder
         val min = actions.minBy {
