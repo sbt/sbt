@@ -6,8 +6,7 @@
  */
 
 package sbt
-package internal
-package librarymanagement
+package coursierint
 
 import lmcoursier.definitions.{
   Classifier => CClassifier,

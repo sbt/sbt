@@ -6,8 +6,7 @@
  */
 
 package sbt
-package internal
-package librarymanagement
+package coursierint
 
 import java.net.URL
 import sbt.librarymanagement._
@@ -35,7 +34,7 @@ import sbt.librarymanagement.ivy.{
 import sbt.ScopeFilter.Make._
 import scala.collection.JavaConverters._
 
-private[sbt] object CoursierInputsTasks {
+object CoursierInputsTasks {
   private def coursierProject0(
       projId: ModuleID,
       dependencies: Seq[ModuleID],
@@ -70,7 +69,7 @@ private[sbt] object CoursierInputsTasks {
     }
   }
 
-  private[sbt] def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
+  def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
     Def.task {
       coursierProject0(
         projectID.value,
