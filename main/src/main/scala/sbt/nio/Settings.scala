@@ -144,8 +144,7 @@ private[sbt] object Settings {
         (transitiveClasspathDependency in scopedKey.scope := { () }) :: Nil
       case changedOutputFiles.key =>
         changedFilesImpl(scopedKey, changedOutputFiles, outputFileStamps)
-      case pathToFileStamp.key => stamper(scopedKey) :: Nil
-      case _                   => Nil
+      case _ => Nil
     }
 
   /**
@@ -318,10 +317,12 @@ private[sbt] object Settings {
    */
   private[sbt] def fileStamps(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
     addTaskDefinition(Keys.inputFileStamps in scopedKey.scope := {
-      val stamper = (Keys.pathToFileStamp in scopedKey.scope).value
+      val cache = (unmanagedFileStampCache in scopedKey.scope).value
+      val stamper = (Keys.inputFileStamper in scopedKey.scope).value
       (Keys.allInputPathsAndAttributes in scopedKey.scope).value.flatMap {
-        case (p, a) if a.isRegularFile && !Files.isHidden(p) => stamper(p).map(p -> _)
-        case _                                               => None
+        case (p, a) if a.isRegularFile && !Files.isHidden(p) =>
+          cache.getOrElseUpdate(p, stamper).map(p -> _)
+        case _ => None
       }
     })
   private[this] def outputsAndStamps[T: JsonFormat: ToSeqPath](
@@ -348,17 +349,4 @@ private[sbt] object Settings {
       (allOutputFiles in scope).value.flatMap(p => stamper(p).map(p -> _))
     })
 
-  /**
-   * Returns a function from `Path` to [[FileStamp]] that can be used by tasks to retrieve
-   * the stamp for a file. It has the side effect of stamping the file if it has not already
-   * been stamped during the task evaluation.
-   *
-   * @return a task definition for a function from `Path` to [[FileStamp]].
-   */
-  private[this] def stamper(scopedKey: Def.ScopedKey[_]): Def.Setting[_] =
-    addTaskDefinition((Keys.pathToFileStamp in scopedKey.scope) := {
-      val attributeMap = Keys.fileStampCache.value
-      val stamper = (Keys.inputFileStamper in scopedKey.scope).value
-      path: Path => attributeMap.getOrElseUpdate(path, stamper)
-    })
 }
