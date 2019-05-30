@@ -58,16 +58,14 @@ private[sbt] object CoursierInputsTasks {
       sv,
       sbv
     )
-    val proj1 = proj0.copy(
-      dependencies = proj0.dependencies.map {
-        case (config, dep) =>
-          (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
-      }
-    )
+    val proj1 = proj0.withDependencies(proj0.dependencies.map {
+      case (config, dep) =>
+        (config, dep.withExclusions(dep.exclusions ++ exclusions0))
+    })
     auOpt match {
       case Some(au) =>
         val props = proj1.properties :+ ("info.apiURL" -> au.toString)
-        proj1.copy(properties = props)
+        proj1.withProperties(props)
       case _ => proj1
     }
   }

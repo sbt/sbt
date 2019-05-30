@@ -85,11 +85,9 @@ object IvyXml {
           .collect { case (conf, dep) if conf.value == shadedConfig.value => dep }
       }
 
-    val project: Project = project0.copy(
-      dependencies = project0.dependencies.collect {
-        case p @ (_, dep) if !filterOutDependencies(dep) => p
-      }
-    )
+    val project: Project = project0.withDependencies(project0.dependencies.collect {
+      case p @ (_, dep) if !filterOutDependencies(dep) => p
+    })
 
     val infoAttrs =
       (project.module.attributes.toSeq ++ project.properties).foldLeft[xml.MetaData](xml.Null) {
@@ -186,7 +184,7 @@ object IvyXml {
             val currentProject = {
               val proj = csrProject.value
               val publications = csrPublications.value
-              proj.copy(publications = publications)
+              proj.withPublications(publications)
             }
             IvyXml.writeFiles(
               currentProject,
