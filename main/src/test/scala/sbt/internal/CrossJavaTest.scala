@@ -157,4 +157,28 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
       )
     )
   }
+
+  test("SDKMAN version can round trip") {
+    assert(
+      CrossJava.parseJavaVersion(
+        CrossJava
+          .parseSdkmanString("11.0.2.hs-adpt")
+          .get
+          .toString
+      ) == JavaVersion(Vector(11L, 0L, 2L), Some("adopt"))
+    )
+
+    assert(
+      CrossJava.parseJavaVersion(
+        CrossJava
+          .parseSdkmanString("1.0.0-rc-14-grl")
+          .get
+          .toString
+      ) == JavaVersion(
+        Vector(1L, 0L, 0L),
+        Vector("rc14"),
+        Some("graalvm")
+      )
+    )
+  }
 }
