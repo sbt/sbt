@@ -132,7 +132,6 @@ private[sbt] object ClassLoaders {
           case _: AllLibraryJars => true
           case _                 => false
         }
-        val allDependenciesSet = allDependencies.toSet
         val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
         val cpFiles = fullCP.map(_._1)
 
@@ -148,7 +147,10 @@ private[sbt] object ClassLoaders {
           else resourceLayer
 
         // layer 4
-        val dynamicClasspath = cpFiles.filterNot(allDependenciesSet ++ si.libraryJars)
+        val filteredSet =
+          if (layerDependencies) allDependencies.toSet ++ si.libraryJars
+          else Set(si.libraryJars: _*)
+        val dynamicClasspath = cpFiles.filterNot(filteredSet)
         new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
     ClasspathUtilities.filterByClasspath(cpFiles, raw)
