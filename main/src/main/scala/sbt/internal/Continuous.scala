@@ -27,6 +27,7 @@ import sbt.internal.nio._
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.internal.util.{ AttributeKey, JLine, Util }
+import sbt.nio.FileStamper.LastModified
 import sbt.nio.Keys.{ fileInputs, _ }
 import sbt.nio.Watch.{ Creation, Deletion, Update }
 import sbt.nio.file.FileAttributes
@@ -531,7 +532,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val onEvent: Event => Seq[(Watch.Event, Watch.Action)] = event => {
       val path = event.path
 
-      def watchEvent(stamper: FileStamper, forceTrigger: Boolean): Option[Watch.Event] = {
+      def watchEvent(forceTrigger: Boolean): Option[Watch.Event] = {
         if (!event.exists) {
           Some(Deletion(event))
           fileStampCache.remove(event.path) match {
@@ -539,7 +540,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             case _    => Some(Deletion(event))
           }
         } else {
-          fileStampCache.update(path, stamper) match {
+          fileStampCache.update(path, FileStamper.Hash) match {
             case (None, Some(_)) => Some(Creation(event))
             case (Some(_), None) => Some(Deletion(event))
             case (Some(p), Some(c)) =>
@@ -563,23 +564,37 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       }
 
       if (buildGlobs.exists(_.matches(path))) {
-        watchEvent(FileStamper.Hash, forceTrigger = false).map(e => e -> Watch.Reload).toSeq
+        watchEvent(forceTrigger = false).map(e => e -> Watch.Reload).toSeq
       } else {
         configs
           .flatMap { config =>
             config
               .inputs()
-              .collectFirst {
-                case d if d.glob.matches(path) => (d.forceTrigger, true, d.fileStamper)
-              }
-              .flatMap {
-                case (forceTrigger, accepted, stamper) =>
-                  if (accepted) {
-                    watchEvent(stamper, forceTrigger).flatMap { e =>
+              .filter(_.glob.matches(path))
+              .sortBy(_.fileStamper match {
+                case FileStamper.Hash         => -1
+                case FileStamper.LastModified => 0
+              })
+              .headOption
+              .flatMap { d =>
+                val forceTrigger = d.forceTrigger
+                d.fileStamper match {
+                  // We do not update the file stamp cache because we only want hashes in that
+                  // cache or else it can mess up the external hooks that use that cache.
+                  case LastModified =>
+                    logger.debug(s"Trigger path detected $path")
+                    val watchEvent =
+                      if (!event.exists) Deletion(event)
+                      else if (fileStampCache.get(path).isDefined) Creation(event)
+                      else Update(event)
+                    val action = config.watchSettings.onFileInputEvent(count.get(), watchEvent)
+                    Some(watchEvent -> action)
+                  case _ =>
+                    watchEvent(forceTrigger).flatMap { e =>
                       val action = config.watchSettings.onFileInputEvent(count.get(), e)
                       if (action != Watch.Ignore) Some(e -> action) else None
                     }
-                  } else None
+                }
               }
           } match {
           case events if events.isEmpty => Nil
