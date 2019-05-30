@@ -241,7 +241,7 @@ private[sbt] object FileStamp {
     def getOrElseUpdate(path: Path, stamper: FileStamper): Option[FileStamp] =
       underlying.get(path) match {
         case null     => updateImpl(path, stamper)
-        case Left(v)  => updateImpl(path, stamper)
+        case Left(_)  => updateImpl(path, stamper)
         case Right(v) => Some(v)
       }
     def remove(key: Path): Option[FileStamp] = {
