@@ -920,7 +920,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   )(implicit e: Extracted): TriggerMessage = {
     lazy val default =
       key.get(watchTriggeredMessage).getOrElse(Watch.defaultOnTriggerMessage)
-    key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
+    key.get(deprecatedTriggeredMessage).map(Left(_)).getOrElse(Right(default))
   }
 
   private implicit class ScopeOps(val scope: Scope) {
