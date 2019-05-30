@@ -12,6 +12,7 @@ import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
 import java.util.concurrent.{ Callable, TimeUnit }
 
+import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
@@ -1910,6 +1911,19 @@ object Defaults extends BuildCommon {
         }
       )
     )
+
+  def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
+    Def.taskDyn {
+      if (useCoursier.value) {
+        Def.task { CoursierDependencyResolution(csrConfiguration.value) }
+      } else
+        Def.task {
+          IvyDependencyResolution(
+            ivyConfiguration.value,
+            CustomHttp.okhttpClient.value
+          )
+        }
+    }
 }
 object Classpaths {
   import Defaults._
@@ -2232,7 +2246,7 @@ object Classpaths {
         )
       else None
     },
-    dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+    dependencyResolution := dependencyResolutionTask.value,
     publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
@@ -2399,7 +2413,7 @@ object Classpaths {
             transitiveClassifiers.value.toVector
           )
         },
-        dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+        dependencyResolution := dependencyResolutionTask.value,
         csrConfiguration := LMCoursier.updateClassifierConfigurationTask.value,
         updateClassifiers in TaskGlobal := (Def.task {
           val s = streams.value
@@ -2602,7 +2616,7 @@ object Classpaths {
               ).withScalaOrganization(scalaOrganization.value)
             )
           },
-          dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+          dependencyResolution := dependencyResolutionTask.value,
           csrConfiguration := LMCoursier.updateSbtClassifierConfigurationTask.value,
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
@@ -2645,7 +2659,7 @@ object Classpaths {
       ) ++
       inTask(scalaCompilerBridgeScope)(
         Seq(
-          dependencyResolution := LibraryManagement.dependencyResolutionTask.value,
+          dependencyResolution := dependencyResolutionTask.value,
           csrConfiguration := LMCoursier.scalaCompilerBridgeConfigurationTask.value,
           csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
           externalResolvers := scalaCompilerBridgeResolvers.value,

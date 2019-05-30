@@ -8,12 +8,10 @@
 package sbt
 package internal
 
-import lmcoursier.CoursierDependencyResolution
 import java.io.File
 import sbt.internal.librarymanagement._
 import sbt.internal.util.{ ConsoleAppender, LogOption }
 import sbt.librarymanagement._
-import sbt.librarymanagement.ivy.IvyDependencyResolution
 import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 import sbt.io.IO
@@ -46,19 +44,6 @@ private[sbt] object LibraryManagement {
     val notIvyOpt = ivyOpt map { !_ }
     coursierOpt.orElse(notIvyOpt).getOrElse(true)
   }
-
-  def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
-    Def.taskDyn {
-      if (Keys.useCoursier.value) {
-        Def.task { CoursierDependencyResolution(Keys.csrConfiguration.value) }
-      } else
-        Def.task {
-          IvyDependencyResolution(
-            Keys.ivyConfiguration.value,
-            CustomHttp.okhttpClient.value
-          )
-        }
-    }
 
   def cachedUpdate(
       lm: DependencyResolution,
