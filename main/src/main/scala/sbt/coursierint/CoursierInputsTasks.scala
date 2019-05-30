@@ -6,8 +6,7 @@
  */
 
 package sbt
-package internal
-package librarymanagement
+package coursierint
 
 import java.net.URL
 import sbt.librarymanagement._
@@ -35,7 +34,7 @@ import sbt.librarymanagement.ivy.{
 import sbt.ScopeFilter.Make._
 import scala.collection.JavaConverters._
 
-private[sbt] object CoursierInputsTasks {
+object CoursierInputsTasks {
   private def coursierProject0(
       projId: ModuleID,
       dependencies: Seq[ModuleID],
@@ -58,21 +57,19 @@ private[sbt] object CoursierInputsTasks {
       sv,
       sbv
     )
-    val proj1 = proj0.copy(
-      dependencies = proj0.dependencies.map {
-        case (config, dep) =>
-          (config, dep.copy(exclusions = dep.exclusions ++ exclusions0))
-      }
-    )
+    val proj1 = proj0.withDependencies(proj0.dependencies.map {
+      case (config, dep) =>
+        (config, dep.withExclusions(dep.exclusions ++ exclusions0))
+    })
     auOpt match {
       case Some(au) =>
         val props = proj1.properties :+ ("info.apiURL" -> au.toString)
-        proj1.copy(properties = props)
+        proj1.withProperties(props)
       case _ => proj1
     }
   }
 
-  private[sbt] def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
+  def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
     Def.task {
       coursierProject0(
         projectID.value,

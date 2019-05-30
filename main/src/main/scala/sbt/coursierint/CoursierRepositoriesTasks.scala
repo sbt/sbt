@@ -6,15 +6,14 @@
  */
 
 package sbt
-package internal
-package librarymanagement
+package coursierint
 
 import sbt.librarymanagement._
 import sbt.Keys._
 import sbt.ScopeFilter.Make._
 import sbt.io.IO
 
-private[sbt] object CoursierRepositoriesTasks {
+object CoursierRepositoriesTasks {
   private object CResolvers {
     private val slowReposBase = Seq(
       "https://repo.typesafe.com/",

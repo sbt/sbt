@@ -6,7 +6,7 @@
  */
 
 package sbt
-package internal
+package coursierint
 
 import java.io.File
 import lmcoursier.definitions.{
@@ -16,10 +16,9 @@ import lmcoursier.definitions.{
   Project => CProject
 }
 import lmcoursier._
-import sbt.librarymanagement._
 import lmcoursier.credentials.Credentials
 import Keys._
-import sbt.internal.librarymanagement.{ CoursierArtifactsTasks, CoursierInputsTasks }
+import sbt.librarymanagement._
 import sbt.util.Logger
 import sbt.io.syntax._
 import xsbti.AppConfiguration
