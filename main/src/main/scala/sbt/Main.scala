@@ -741,7 +741,7 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     val result = (SimpleReader.readLine(
-      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? "
+      "Project loading failed: (R)etry, (q)uit, (l)ast, or (i)gnore? "
     ) getOrElse Quit)
       .toLowerCase(Locale.ENGLISH)
     def matches(s: String) = !result.isEmpty && (s startsWith result)
