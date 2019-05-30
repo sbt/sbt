@@ -29,19 +29,28 @@ import sbt.internal.CommandStrings.{
 private[sbt] object CrossJava {
   // parses jabba style version number adopt@1.8
   def parseJavaVersion(version: String): JavaVersion = {
+    val Num = """([0-9]+)""".r
     def splitDot(s: String): Vector[Long] =
       Option(s) match {
-        case Some(x) => x.split('.').toVector.filterNot(_ == "").map(_.toLong)
-        case _       => Vector()
+        case Some(x) =>
+          x.split('.').toVector collect {
+            case Num(n) => n.toLong
+          }
+        case _ => Vector()
       }
+    def splitDash(str: String): Vector[String] =
+      Option(str).fold(Vector.empty[String])(_.split('-').toVector)
     def splitAt(s: String): Vector[String] =
-      Option(s) match {
-        case Some(x) => x.split('@').toVector
-        case _       => Vector()
+      Option(s).fold(Vector.empty[String])(_.split('@').toVector)
+    def parse0(str: String): JavaVersion =
+      splitDash(str) match {
+        case Vector()  => sys.error(s"Invalid JavaVersion: $version")
+        case Vector(h) => JavaVersion(splitDot(h), Vector(), None)
+        case xs        => JavaVersion(splitDot(xs.head), xs.tail, None)
       }
     splitAt(version) match {
-      case Vector(vendor, rest) => JavaVersion(splitDot(rest), Option(vendor))
-      case Vector(rest)         => JavaVersion(splitDot(rest), None)
+      case Vector(vendor, rest) => parse0(rest).withVendor(vendor)
+      case Vector(rest)         => parse0(rest)
       case _                    => sys.error(s"Invalid JavaVersion: $version")
     }
   }
@@ -49,10 +58,7 @@ private[sbt] object CrossJava {
   def parseSdkmanString(version: String): Try[JavaVersion] = Try {
     val Num = """([0-9]+)""".r
     def splitDash(str: String): Vector[String] =
-      Option(str) match {
-        case Some(x) => x.split('-').toVector
-        case _       => Vector()
-      }
+      Option(str).fold(Vector.empty[String])(_.split('-').toVector)
     def splitDot(str: String): Vector[String] =
       Option(str) match {
         case Some(x) => x.split('.').toVector.filterNot(_ == "")
