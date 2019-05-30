@@ -234,7 +234,7 @@ private[sbt] object Definition {
 
   private[sbt] def getAnalyses: Future[Seq[Analysis]] = {
     import scalacache.modes.scalaFuture._
-    import scala.concurrent.ExecutionContext.Implicits.global
+    implicit val executionContext: ExecutionContext = StandardMain.executionContext
     AnalysesAccess
       .getFrom(StandardMain.cache)
       .collect { case Some(a) => a }
