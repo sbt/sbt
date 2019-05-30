@@ -37,6 +37,15 @@ abstract class JLine extends LineReader {
         Option("")
     }
 
+  def readCharacter(prompt: String): Char = {
+    reader.setPrompt(prompt)
+    reader.println(prompt)
+    reader.flush()
+    val wrapped = JLine.terminal.wrapInIfNeeded(System.in)
+    JLine.terminal.init()
+    wrapped.read().toChar
+  }
+
   private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
     readLineWithHistory(prompt, mask) map { x =>
       x.trim

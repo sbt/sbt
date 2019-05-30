@@ -740,9 +740,9 @@ object BuiltinCommands {
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
-    val result = (SimpleReader.readLine(
-      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? "
-    ) getOrElse Quit)
+    val result = SimpleReader
+      .readCharacter("Project loading failed: (r)etry (default), (q)uit, (l)ast, or (i)gnore? ")
+      .toString
       .toLowerCase(Locale.ENGLISH)
     def matches(s: String) = !result.isEmpty && (s startsWith result)
     def retry = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
@@ -750,12 +750,12 @@ object BuiltinCommands {
       if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
     result match {
-      case ""                     => retry
+      case "\n" | "\r"            => retry
       case _ if matches("retry")  => retry
       case _ if matches(Quit)     => s.exit(ok = false)
       case _ if matches("ignore") => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
       case _ if matches("last")   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-      case _                      => println("Invalid response."); doLoadFailed(s, loadArg)
+      case c                      => println(s"Invalid response '$c'."); doLoadFailed(s, loadArg)
     }
   }
 
