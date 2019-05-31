@@ -105,7 +105,7 @@ private[sbt] object ClassLoaders {
   }
   /*
    * Create a layered classloader. There are up to four layers:
-   * 1) the scala instance class loader
+   * 1) the scala instance class loader (may actually be two layers if scala-reflect is used)
    * 2) the resource layer
    * 3) the dependency jars
    * 4) the rest of the classpath
@@ -132,15 +132,21 @@ private[sbt] object ClassLoaders {
           case _: AllLibraryJars => true
           case _                 => false
         }
-        val allDependenciesSet = allDependencies.toSet
         val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
         val cpFiles = fullCP.map(_._1)
+
+        val scalaReflectJar = allDependencies.find(_.getName == "scala-reflect.jar")
+        val scalaReflectLayer = scalaReflectJar
+          .map { file =>
+            layer(file :: Nil, scalaLibraryLayer, cache, resources, tmp)
+          }
+          .getOrElse(scalaLibraryLayer)
 
         // layer 2 (resources)
         val resourceLayer =
           if (layerDependencies)
-            getResourceLayer(cpFiles, resourceCP, scalaLibraryLayer, cache, resources)
-          else scalaLibraryLayer
+            getResourceLayer(cpFiles, resourceCP, scalaReflectLayer, cache, resources)
+          else scalaReflectLayer
 
         // layer 3 (optional if in the test config and the runtime layer is not shared)
         val dependencyLayer =
@@ -148,7 +154,10 @@ private[sbt] object ClassLoaders {
           else resourceLayer
 
         // layer 4
-        val dynamicClasspath = cpFiles.filterNot(allDependenciesSet ++ si.libraryJars)
+        val filteredSet =
+          if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
+          else Set(si.libraryJars ++ scalaReflectJar: _*)
+        val dynamicClasspath = cpFiles.filterNot(filteredSet)
         new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
     ClasspathUtilities.filterByClasspath(cpFiles, raw)
