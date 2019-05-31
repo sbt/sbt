@@ -1,0 +1,46 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
+package sbt.internal.util
+
+import Classes.Applicative
+import Types._
+
+// Separated so it can be auto-generated.
+private[sbt] trait AListArity { _: AList.type =>
+
+[2..11#
+  sealed trait T1K[[#P1#]] {
+    type l[L[x]] = ([#L[P1]#])
+  }
+
+  type T1List[[#P1#]] = AList[T1K[[#P1#]]\#l]
+
+  def tuple1[[#P1#]]: T1List[[#P1#]] =
+    new T1List[[#P1#]] {
+      type T1[M[_]] = ([#M[P1]#])
+
+      def transform[M[_], N[_]](t: T1[M], f: M ~> N): T1[N] =
+        ([#f(t._1)#, ])
+
+      def foldr[M[_], T](t: T1[M], f: (M[_], T) => T, init: T): T =
+        [#f(t._1#, ], init[# #)])
+
+      def traverse[M[_], N[_], P[_]](t: T1[M], f: M ~> (N ∙ P)\#l)(
+          implicit np: Applicative[N]
+      ): N[T1[P]] = {
+        val g = (Tuple1.apply[[#P[P1]#]] _).curried
+        [2..#np.apply(# ]
+          np.map(g,
+          [#f(t._1#)), ]))
+      }
+    }#
+
+
+]
+
+}

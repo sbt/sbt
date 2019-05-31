@@ -1,3 +1,4 @@
+import sbtbuild._
 import Util._
 import Dependencies._
 import Sxr.sxr
@@ -84,6 +85,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
     )
   },
   crossScalaVersions := Seq(baseScalaVersion),
+  MimaSettings.mimaSettings,
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   publishArtifact in Test := false,
@@ -116,8 +118,12 @@ def sbt10Plus =
     "1.1.5",
     "1.1.6",
     "1.2.0",
-    "1.2.1", /*DOA,*/ "1.2.3",
-    "1.2.4", /*DOA,*/ "1.2.6",
+    "1.2.1",
+    // 1.2.2 DOA
+    "1.2.3",
+    "1.2.4",
+    // 1.2.5 DOA
+    "1.2.6",
     "1.2.7",
     "1.2.8",
   ) ++ sbt13Plus
@@ -214,6 +220,7 @@ lazy val bundledLauncherProj =
 /* ** subproject declarations ** */
 
 val collectionProj = (project in file("internal") / "util-collection")
+  .enablePlugins(BoilerplatePlugin)
   .settings(
     testedBaseSettings,
     Util.keywordsSettings,
@@ -581,6 +588,7 @@ lazy val coreMacrosProj = (project in file("core-macros"))
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
   .dependsOn(completeProj, commandProj, stdTaskProj, coreMacrosProj)
+  .enablePlugins(BoilerplatePlugin)
   .settings(
     testedBaseSettings,
     name := "Main Settings",

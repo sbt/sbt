@@ -1,0 +1,31 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
+package sbt
+
+import sbt.Def.Initialize
+
+/** The sbt 0.10 style DSL was deprecated in 0.13.13, favouring the use of the '.value' macro.
+ *
+ * See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
+ */
+trait TupleSyntax {
+  import Scoped._
+
+  // format: off
+
+  // this is the least painful arrangement I came up with
+  [2..11#implicit def t1ToTable1[[#P1#]](t1: ([#ScopedTaskable[P1]#])): RichTaskable1[[#P1#]] = new RichTaskable1(t1)#
+  ]
+
+  [2..11#implicit def t1ToApp1[[#P1#]](t1: ([#Initialize[P1]#])): Apply1[[#P1#]] = new Apply1(t1)#
+  ]
+
+  // format: on
+}
+
+object TupleSyntax extends TupleSyntax

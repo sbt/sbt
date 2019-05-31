@@ -1,0 +1,63 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
+package sbt
+
+import sbt.internal.util.Types._
+import sbt.internal.util.{ ~>, AList }
+import sbt.Def.Initialize
+import sbt.std.TaskExtra._
+
+// Separated so it can be auto-generated.
+private[sbt] trait ScopedArity { _: Scoped.type =>
+  sealed abstract class RichTaskables[K[L[x]]](final val keys: K[ScopedTaskable])(
+      implicit a: AList[K]
+  ) {
+
+    type App[T] = Initialize[Task[T]]
+    type Fun[M[_], Ret]
+
+    protected def convert[M[_], Ret](f: Fun[M, Ret]): K[M] => Ret
+
+    private[this] val inputs: K[App] = a.transform(keys, λ[ScopedTaskable ~> App](_.toTask))
+
+    private[this] def onTasks[T](f: K[Task] => Task[T]): App[T] =
+      Def.app[λ[L[x] => K[(L ∙ Task)#l]], Task[T]](inputs)(f)(AList.asplit[K, Task](a))
+
+    def flatMap[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMap(convert(f)))
+    def flatMapR[T](f: Fun[Result, Task[T]]): App[T] = onTasks(_.flatMapR(convert(f)))
+    def map[T](f: Fun[Id, T]): App[T] = onTasks(_.mapR(convert(f) compose allM))
+    def mapR[T](f: Fun[Result, T]): App[T] = onTasks(_.mapR(convert(f)))
+    def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = onTasks(_ flatFailure f)
+    def mapFailure[T](f: Seq[Incomplete] => T): App[T] = onTasks(_ mapFailure f)
+  }
+
+  type ST[X] = ScopedTaskable[X]
+
+  // format: off
+
+[2..11#
+  final class RichTaskable1[[#P1#]](t1: ([#ST[P1]#])) extends RichTaskables[AList.T1K[[#P1#]]\#l](t1)(AList.tuple1[[#P1#]]) {
+    type Fun[M[_], Ret] = ([#M[P1]#]) => Ret
+    def identityMap = map(mkTuple1)
+    protected def convert[M[_], R](f: ([#M[P1]#]) => R) = f.tupled
+  }#
+]
+
+[2..15#
+   def mkTuple1[[#P1#]] = ([#p1: P1#]) => ([#p1#])#
+]
+
+[2..11#
+  final class Apply1[[#P1#]](t1: ([#Initialize[P1]#])) {
+    def apply[T](z: ([#P1#]) => T) = Def.app[AList.T1K[[#P1#]]\#l, T](t1)(z.tupled)(AList.tuple1[[#P1#]])
+    def identity = apply(mkTuple1)
+  }#
+]
+
+  // format: on
+}
