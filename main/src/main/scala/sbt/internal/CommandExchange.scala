@@ -10,7 +10,7 @@ package internal
 
 import java.io.IOException
 import java.net.Socket
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.{ ConcurrentLinkedQueue, LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic._
 
 import sbt.BasicKeys._
@@ -47,11 +47,15 @@ private[sbt] final class CommandExchange {
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
+  private val commandChannelQueue = new LinkedBlockingQueue[CommandChannel]
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
 
   def channels: List[CommandChannel] = channelBuffer.toList
-  def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized(channelBuffer.append(c))
+  def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized {
+    channelBuffer.append(c)
+    c.register(commandChannelQueue)
+  }
 
   def blockUntilNextExec: Exec = blockUntilNextExec(Duration.Inf, NullLogger)
   // periodically move all messages from all the channels
@@ -64,11 +68,11 @@ private[sbt] final class CommandExchange {
             commandQueue.add(x)
             slurpMessages()
         }
+      commandChannelQueue.poll(1, TimeUnit.SECONDS)
       slurpMessages()
       Option(commandQueue.poll) match {
         case Some(x) => x
         case None =>
-          Thread.sleep(2)
           val newDeadline = if (deadline.fold(false)(_.isOverdue())) {
             GCUtil.forceGcWithInterval(interval, logger)
             None
