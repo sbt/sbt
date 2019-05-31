@@ -1,1 +1,0 @@
-- [ ] I've read the [CONTRIBUTING](https://github.com/sbt/sbt/blob/develop/CONTRIBUTING.md) guidelines
