@@ -93,9 +93,9 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       val workingDirectory: File,
       val job: BackgroundJob
   ) extends AbstractJobHandle {
+    implicit val executionContext: ExecutionContext = StandardMain.executionContext
     def humanReadableName: String = job.humanReadableName
     // EC for onStop handler below
-    import ExecutionContext.Implicits.global
     job.onStop { () =>
       // TODO: Fix this
       // logger.close()
