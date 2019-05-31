@@ -13,13 +13,15 @@ import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
-import sbt.protocol.{ SettingQuery => Q, CompletionParams => CP }
+import sbt.protocol.{ CompletionParams => CP, SettingQuery => Q }
 import sbt.internal.langserver.{ CancelRequestParams => CRP }
 import sbt.internal.protocol._
 import sbt.internal.protocol.codec._
 import sbt.internal.langserver._
 import sbt.internal.util.ObjectEvent
 import sbt.util.Logger
+
+import scala.concurrent.ExecutionContext
 
 private[sbt] final case class LangServerError(code: Long, message: String)
     extends Throwable(message)
@@ -70,7 +72,7 @@ private[sbt] object LanguageServerProtocol {
               jsonRpcRespond(InitializeResult(serverCapabilities), Option(r.id))
 
             case r: JsonRpcRequestMessage if r.method == "textDocument/definition" =>
-              import scala.concurrent.ExecutionContext.Implicits.global
+              implicit val executionContext: ExecutionContext = StandardMain.executionContext
               Definition.lspDefinition(json(r), r.id, CommandSource(name), log)
               ()
             case r: JsonRpcRequestMessage if r.method == "sbt/exec" =>

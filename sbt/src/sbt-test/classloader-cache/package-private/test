@@ -1,3 +1,5 @@
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
 -> run
 
 > set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
