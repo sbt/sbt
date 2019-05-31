@@ -329,9 +329,11 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     try {
       val stateWithRepo = state.put(globalFileTreeRepository, repo)
       val fullState =
-        if (extracted.get(watchPersistFileStamps))
-          stateWithRepo.put(persistentFileStampCache, fileStampCache)
-        else stateWithRepo
+        addLegacyWatchSetting(
+          if (extracted.get(watchPersistFileStamps))
+            stateWithRepo.put(persistentFileStampCache, fileStampCache)
+          else stateWithRepo
+        )
       setup(fullState, command) { (commands, s, valid, invalid) =>
         EvaluateTask.withStreams(extracted.structure, s)(_.use(streams in Global) { streams =>
           implicit val logger: Logger = streams.log
@@ -344,6 +346,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               currentCount.getAndIncrement()
               // abort as soon as one of the tasks fails
               valid.takeWhile(_._3.apply())
+              updateLegacyWatchState(s, configs.flatMap(_.inputs().map(_.glob)), currentCount.get())
               ()
             }
             callbacks.onEnter()
