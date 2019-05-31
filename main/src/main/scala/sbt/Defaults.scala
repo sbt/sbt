@@ -255,6 +255,7 @@ object Defaults extends BuildCommon {
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
       aggregate in checkBuildSources :== false,
+      aggregate in checkBuildSources / changedInputFiles := false,
       checkBuildSources / Continuous.dynamicInputs := None,
       checkBuildSources / fileInputs := CheckBuildSources.buildSourceFileInputs.value,
       checkBuildSources := CheckBuildSources.needReloadImpl.value,

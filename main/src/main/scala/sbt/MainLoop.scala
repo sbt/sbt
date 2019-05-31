@@ -11,8 +11,9 @@ import java.io.PrintWriter
 import java.util.Properties
 
 import jline.TerminalFactory
-import sbt.internal.ShutdownHooks
+import sbt.internal.{ Aggregation, ShutdownHooks }
 import sbt.internal.langserver.ErrorCodes
+import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
@@ -189,23 +190,47 @@ object MainLoop {
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
 
     try {
-      val newState = runCommand()
-      val doneEvent = ExecStatusEvent(
-        "Done",
-        channelName,
-        exec.execId,
-        newState.remainingCommands.toVector map (_.commandLine),
-        exitCode(newState, state),
-      )
-      if (doneEvent.execId.isDefined) { // send back a response or error
-        import sbt.protocol.codec.JsonProtocol._
-        StandardMain.exchange publishEvent doneEvent
-      } else { // send back a notification
-        StandardMain.exchange publishEventMessage doneEvent
+      def process(): State = {
+        val newState = runCommand()
+        val doneEvent = ExecStatusEvent(
+          "Done",
+          channelName,
+          exec.execId,
+          newState.remainingCommands.toVector map (_.commandLine),
+          exitCode(newState, state),
+        )
+        if (doneEvent.execId.isDefined) { // send back a response or error
+          import sbt.protocol.codec.JsonProtocol._
+          StandardMain.exchange publishEvent doneEvent
+        } else { // send back a notification
+          StandardMain.exchange publishEventMessage doneEvent
+        }
+        newState
       }
-      newState
+      val checkCommand = state.currentCommand match {
+        // If the user runs reload directly, we want to be sure that we update the previous
+        // cache for checkBuildSources / changedInputFiles but we don't want to display any
+        // warnings. Without filling the previous cache, it's possible for the user to run
+        // reload and be prompted with a warning in spite of reload having just run and no build
+        // sources having changed.
+        case Some(exec) if exec.commandLine == "reload" => "checkBuildSources / changedInputFiles"
+        case _                                          => "checkBuildSources"
+      }
+      Parser.parse(
+        checkCommand,
+        state.put(Aggregation.suppressShow, true).combinedParser
+      ) match {
+        case Right(cmd) =>
+          cmd() match {
+            case s if s.remainingCommands.headOption.map(_.commandLine).contains("reload") =>
+              s.remove(Aggregation.suppressShow)
+            case _ => process()
+          }
+        case Left(_) => process()
+      }
     } catch {
       case err: Throwable =>
+        err.printStackTrace()
         val errorEvent = ExecStatusEvent(
           "Error",
           channelName,
