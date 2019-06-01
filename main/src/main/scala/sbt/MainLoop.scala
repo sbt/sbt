@@ -177,21 +177,14 @@ object MainLoop {
     }
 
   /** This is the main function State transfer function of the sbt command processing. */
-  def processCommand(exec: Exec, state: State): State =
-    processCommand(exec, state, () => Command.process(exec.commandLine, state))
-
-  private[sbt] def processCommand(
-      exec: Exec,
-      state: State,
-      runCommand: () => State
-  ): State = {
+  def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
     StandardMain.exchange publishEventMessage
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
 
     try {
       def process(): State = {
-        val newState = runCommand()
+        val newState = Command.process(exec.commandLine, state)
         val doneEvent = ExecStatusEvent(
           "Done",
           channelName,

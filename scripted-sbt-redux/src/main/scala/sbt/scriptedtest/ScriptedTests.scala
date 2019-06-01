@@ -232,7 +232,9 @@ final class ScriptedTests(
       case "source-dependencies/linearization"           => LauncherBased // sbt/Package$
       case "source-dependencies/named"                   => LauncherBased // sbt/Package$
       case "source-dependencies/specialized"             => LauncherBased // sbt/Package$
-      case "watch/managed"                               => LauncherBased // sbt/Package$
+      case "watch/commands" =>
+        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
+      case "watch/managed" => LauncherBased // sbt/Package$
       case "tests/test-cross" =>
         LauncherBased // the sbt metabuild classpath leaks into the test interface classloader in older versions of sbt
       case _ => RunFromSourceBased
