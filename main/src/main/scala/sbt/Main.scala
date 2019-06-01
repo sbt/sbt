@@ -9,7 +9,7 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
-import java.util.concurrent.{ Executors, ForkJoinPool }
+import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
 
