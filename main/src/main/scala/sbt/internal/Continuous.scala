@@ -188,7 +188,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     inputs.foreach(i => repository.register(i.glob))
     val watchSettings = new WatchSettings(scopedKey)
     new Config(
-      scopedKey,
+      scopedKey.show,
       () => dynamicInputs.toSeq.sorted,
       watchSettings
     )
@@ -212,7 +212,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val onFail = Command.command(failureCommandName)(identity)
     // This adds the "SbtContinuousWatchOnFail" onFailure handler which allows us to determine
     // whether or not the last task successfully ran. It is used in the makeTask method below.
-    val s = (FailureWall :: state).copy(
+    val s = state.copy(
       onFailure = Some(Exec(failureCommandName, None)),
       definedCommands = state.definedCommands :+ onFail
     )
@@ -226,22 +226,29 @@ private[sbt] object Continuous extends DeprecatedContinuous {
      * if they are not visible in the input graph due to the use of Def.taskDyn.
      */
     def makeTask(cmd: String): (String, State, () => Boolean) = {
-      val newState = s.put(DynamicInputs, mutable.Set.empty[DynamicInput])
-      val task = Parser
-        .parse(cmd, Command.combine(newState.definedCommands)(newState))
-        .getOrElse(
-          throw new IllegalStateException(
-            "No longer able to parse command after transforming state"
-          )
-        )
+      val newState = s
+        .put(DynamicInputs, mutable.Set.empty[DynamicInput])
+        .copy(remainingCommands = Exec(cmd, None, None) :: Exec(FailureWall, None, None) :: Nil)
       (
         cmd,
         newState,
         () => {
-          MainLoop
-            .processCommand(Exec(cmd, None), newState, task)
-            .remainingCommands
-            .forall(_.commandLine != failureCommandName)
+          @tailrec
+          def impl(s: State): Boolean = {
+            s.remainingCommands match {
+              case exec :: rest =>
+                val updatedState = MainLoop.processCommand(exec, s.copy(remainingCommands = rest))
+                val remaining =
+                  updatedState.remainingCommands.takeWhile(_.commandLine != FailureWall)
+                remaining match {
+                  case Nil =>
+                    updatedState.remainingCommands.forall(_.commandLine != failureCommandName)
+                  case _ => impl(updatedState)
+                }
+              case Nil => true
+            }
+          }
+          impl(newState)
         }
       )
     }
@@ -256,7 +263,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
     // Convert the command strings to runnable tasks, which are represented by
     // () => Try[Boolean].
-    val taskParser = Command.combine(s.definedCommands)(s)
+    val taskParser = s.combinedParser
     // This specified either the task corresponding to a command or the command itself if the
     // the command cannot be converted to a task.
     val (invalid, valid) =
@@ -378,6 +385,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     } finally repo.close()
   }
 
+  // This is defined so we can assign a task key to a command to parse the WatchSettings.
+  private[this] val globalWatchSettingKey =
+    taskKey[Unit]("Internal task key. Not actually used.").withRank(KeyRanks.Invisible)
   private def parseCommand(command: String, state: State): Seq[ScopedKey[_]] = {
     // Collect all of the scoped keys that are used to delegate the multi commands. These are
     // necessary to extract all of the transitive globs that we need to monitor during watch.
@@ -391,9 +401,13 @@ private[sbt] object Continuous extends DeprecatedContinuous {
           val aliases = BasicCommands.allAliases(state)
           aliases.collectFirst { case (`command`, aliased) => aliased } match {
             case Some(aliased) => impl(aliased)
-            case _ =>
-              val msg = s"Error attempting to extract scope from $command: $e."
-              throw new IllegalStateException(msg)
+            case None =>
+              Parser.parse(command, state.combinedParser) match {
+                case Right(_) => globalWatchSettingKey.scopedKey :: Nil
+                case _ =>
+                  val msg = s"Error attempting to extract scope from $command: $e."
+                  throw new IllegalStateException(msg)
+              }
           }
         case _ => Nil: Seq[ScopedKey[_]]
       }
@@ -619,7 +633,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         configs.map { config =>
           // Create a logger with a scoped key prefix so that we can tell from which task there
           // were inputs that matched the event path.
-          val configLogger = logger.withPrefix(config.key.show)
+          val configLogger = logger.withPrefix(config.command)
           observers.addObserver { e =>
             if (config.inputs().exists(_.glob.matches(e.path))) {
               configLogger.debug(s"Accepted event for ${e.path}")
@@ -910,12 +924,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    * Container class for all of the components we need to setup a watch for a particular task or
    * input task.
    *
-   * @param key           the [[ScopedKey]] instance for the task we will watch
+   * @param command       the name of the command/task to run with each iteration
    * @param inputs        the transitive task inputs (see [[SettingsGraph]])
    * @param watchSettings the [[WatchSettings]] instance for the task
    */
   private final class Config private[internal] (
-      val key: ScopedKey[_],
+      val command: String,
       val inputs: () => Seq[DynamicInput],
       val watchSettings: WatchSettings
   ) {
