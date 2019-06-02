@@ -40,7 +40,7 @@ object Build {
       watchOnFileInputEvent := { (_, _) =>
         Watch.CancelWatch
       },
-      Compile / compile / watchOnIteration := { _ =>
+      Compile / compile / watchOnIteration := { (_, _, _) =>
         Watch.CancelWatch
       },
       checkTriggers := {

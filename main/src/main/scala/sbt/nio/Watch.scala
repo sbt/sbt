@@ -420,7 +420,7 @@ object Watch {
   /**
    * Default no-op callback.
    */
-  val defaultOnEnter: () => Unit = () => {}
+  val defaultBeforeCommand: () => Unit = () => {}
 
   private[sbt] val defaultCommandOnTermination: (Action, String, Int, State) => State =
     onTerminationImpl(ContinuousExecutePrefix).label("Watched.defaultCommandOnTermination")
@@ -473,16 +473,25 @@ object Watch {
   final val defaultPollInterval: FiniteDuration = 500.milliseconds
 
   /**
-   * A constant function that returns an Option wrapped string that clears the screen when
-   * written to stdout.
+   * Clears the console screen when evaluated.
    */
-  final val clearOnTrigger: Int => Option[String] =
-    ((_: Int) => Some(Watched.clearScreen)).label("Watched.clearOnTrigger")
+  final val clearScreen: () => Unit =
+    (() => println("\u001b[2J\u001b[0;0H")).label("Watch.clearScreen")
+
+  /**
+   * A function that first clears the screen and then returns the default on trigger message.
+   */
+  final val clearScreenOnTrigger: (Int, Path, Seq[String]) => Option[String] = {
+    (count: Int, path: Path, commands: Seq[String]) =>
+      clearScreen()
+      defaultOnTriggerMessage(count, path, commands)
+  }.label("Watch.clearScreenOnTrigger")
+
   private[sbt] def defaults: Seq[Def.Setting[_]] = Seq(
     sbt.Keys.watchAntiEntropy :== Watch.defaultAntiEntropy,
     watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
     watchLogLevel :== Level.Info,
-    watchOnEnter :== Watch.defaultOnEnter,
+    watchBeforeCommand :== Watch.defaultBeforeCommand,
     watchOnFileInputEvent :== Watch.trigger,
     watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
     sbt.Keys.watchService :== Watched.newWatchService,

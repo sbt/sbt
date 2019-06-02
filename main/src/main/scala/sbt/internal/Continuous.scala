@@ -351,17 +351,17 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               aggregate(configs, logger, in, s, currentCount, isCommand, commands, fileStampCache)
             val task = () => {
               currentCount.getAndIncrement()
+              callbacks.beforeCommand()
               // abort as soon as one of the tasks fails
               valid.takeWhile(_._3.apply())
               updateLegacyWatchState(s, configs.flatMap(_.inputs().map(_.glob)), currentCount.get())
               ()
             }
-            callbacks.onEnter()
-            // Here we enter the Watched.watch state machine. We will not return until one of the
-            // state machine callbacks returns Watched.CancelWatch, Watched.Custom, Watched.HandleError
-            // or Watched.ReloadException. The task defined above will be run at least once. It will be run
-            // additional times whenever the state transition callbacks return Watched.Trigger.
             try {
+              // Here we enter the Watched.watch state machine. We will not return until one of the
+              // state machine callbacks returns Watched.CancelWatch, Watched.Custom, Watched.HandleError
+              // or Watched.ReloadException. The task defined above will be run at least once. It will be run
+              // additional times whenever the state transition callbacks return Watched.Trigger.
               val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
               terminationAction match {
                 case e: Watch.HandleUnexpectedError =>
@@ -427,7 +427,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
   private class Callbacks(
       val nextEvent: () => Watch.Action,
-      val onEnter: () => Unit,
+      val beforeCommand: () => Unit,
       val onExit: () => Unit,
       val onStart: () => Watch.Action,
       val onTermination: (Watch.Action, String, Int, State) => State
@@ -468,19 +468,16 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   ): Callbacks = {
     val project = extracted.currentRef.project
     val logger = setLevel(rawLogger, configs.map(_.watchSettings.logLevel).min, state)
-    val onEnter = () => configs.foreach(_.watchSettings.onEnter())
+    val beforeCommand = () => configs.foreach(_.watchSettings.beforeCommand())
     val onStart: () => Watch.Action = getOnStart(project, commands, configs, rawLogger, count)
     val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
     val (nextFileEvent, cleanupFileMonitor): (() => Option[(Watch.Event, Watch.Action)], () => Unit) =
       getFileEvents(configs, rawLogger, state, count, commands, fileStampCache)
     val nextEvent: () => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, logger)
-    val onExit = () => {
-      cleanupFileMonitor()
-      configs.foreach(_.watchSettings.onExit())
-    }
+    val onExit = () => cleanupFileMonitor()
     val onTermination = getOnTermination(configs, isCommand)
-    new Callbacks(nextEvent, onEnter, onExit, onStart, onTermination)
+    new Callbacks(nextEvent, beforeCommand, onExit, onStart, onTermination)
   }
 
   private def getOnTermination(
@@ -509,7 +506,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val f: () => Seq[Watch.Action] = () => {
       configs.map { params =>
         val ws = params.watchSettings
-        ws.onIteration.map(_(count.get)).getOrElse {
+        ws.onIteration.map(_(count.get, project, commands)).getOrElse {
           if (configs.size == 1) { // Only allow custom start messages for single tasks
             ws.startMessage match {
               case Some(Left(sm))  => logger.info(sm(params.watchState(count.get())))
@@ -900,11 +897,10 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val inputParser: Parser[Watch.Action] =
       key.get(watchInputParser).getOrElse(Watch.defaultInputParser)
     val logLevel: Level.Value = key.get(watchLogLevel).getOrElse(Level.Info)
-    val onEnter: () => Unit = key.get(watchOnEnter).getOrElse(() => {})
-    val onExit: () => Unit = key.get(watchOnExit).getOrElse(() => {})
+    val beforeCommand: () => Unit = key.get(watchBeforeCommand).getOrElse(() => {})
     val onFileInputEvent: WatchOnEvent =
       key.get(watchOnFileInputEvent).getOrElse(Watch.trigger)
-    val onIteration: Option[Int => Watch.Action] = key.get(watchOnIteration)
+    val onIteration: Option[(Int, String, Seq[String]) => Watch.Action] = key.get(watchOnIteration)
     val onTermination: Option[(Watch.Action, String, Int, State) => State] =
       key.get(watchOnTermination)
     val startMessage: StartMessage = getStartMessage(key)

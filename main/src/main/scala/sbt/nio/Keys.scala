@@ -68,12 +68,12 @@ object Keys {
       "detected regardless of whether or not the underlying file has actually changed."
 
   // watch related keys
+  val watchBeforeCommand = settingKey[() => Unit](
+    "Function to run prior to running a command in a continuous build."
+  ).withRank(DSetting)
   val watchForceTriggerOnAnyChange =
     Def.settingKey[Boolean](forceTriggerOnAnyChangeMessage).withRank(DSetting)
-  val watchLogLevel =
-    settingKey[sbt.util.Level.Value]("Transform the default logger in continuous builds.")
-      .withRank(DSetting)
-  val watchInputHandler = settingKey[InputStream => Watch.Action](
+  private[sbt] val watchInputHandler = settingKey[InputStream => Watch.Action](
     "Function that is periodically invoked to determine if the continuous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands. This is only invoked if watchInputStream is set."
   ).withRank(DSetting)
   val watchInputStream = taskKey[InputStream](
@@ -82,16 +82,13 @@ object Keys {
   val watchInputParser = settingKey[Parser[Watch.Action]](
     "A parser of user input that can be used to trigger or exit a continuous build"
   ).withRank(DSetting)
-  val watchOnEnter = settingKey[() => Unit](
-    "Function to run prior to beginning a continuous build. This will run before the continuous task(s) is(are) first evaluated."
-  ).withRank(DSetting)
-  val watchOnExit = settingKey[() => Unit](
-    "Function to run upon exit of a continuous build. It can be used to cleanup resources used during the watch."
-  ).withRank(DSetting)
+  val watchLogLevel =
+    settingKey[sbt.util.Level.Value]("Transform the default logger in continuous builds.")
+      .withRank(DSetting)
   val watchOnFileInputEvent = settingKey[(Int, Watch.Event) => Watch.Action](
     "Callback to invoke if an event is triggered in a continuous build by one of the files matching an fileInput glob for the task and its transitive dependencies"
   ).withRank(DSetting)
-  val watchOnIteration = settingKey[Int => Watch.Action](
+  val watchOnIteration = settingKey[(Int, String, Seq[String]) => Watch.Action](
     "Function that is invoked before waiting for file system events or user input events."
   ).withRank(DSetting)
   val watchOnTermination = settingKey[(Watch.Action, String, Int, State) => State](

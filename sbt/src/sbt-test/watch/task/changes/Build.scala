@@ -24,6 +24,6 @@ object Build {
       IO.touch(baseDirectory.value / "foo.txt", true)
       Some("watching")
     },
-    watchOnIteration := { _ => Watch.CancelWatch }
+    watchOnIteration := { (_, _, _) => Watch.CancelWatch }
   )
 }
