@@ -6,7 +6,6 @@ import complete.Parser._
 
 import java.io.{ PipedInputStream, PipedOutputStream }
 import Keys._
-import sbt.nio.Watch
 import sbt.nio.Keys._
 
 object Build {

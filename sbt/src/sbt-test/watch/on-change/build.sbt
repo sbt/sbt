@@ -1,9 +1,6 @@
 import java.nio.file._
 import java.nio.file.attribute.FileTime
 
-import sbt.nio.Keys._
-import sbt.nio._
-
 import scala.concurrent.duration._
 
 watchTriggeredMessage := { (i, path: Path, c) =>

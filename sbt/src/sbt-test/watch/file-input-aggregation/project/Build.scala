@@ -4,7 +4,6 @@ package input.aggregation
 import java.nio.file.Paths
 import sbt.Keys._
 import sbt.internal.DynamicInput
-import sbt.nio.{ file => _, _ }
 import sbt.nio.Keys._
 
 /**
