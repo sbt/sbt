@@ -234,14 +234,14 @@ final class NetworkChannel(
   }
   thread.start()
 
-  private[sbt] def isLanguageServerProtocol: Boolean = {
+  def isLanguageServerProtocol: Boolean = {
     contentType match {
       case "" | VsCode | VsCodeOld => true
       case _                       => false
     }
   }
 
-  private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
+  def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
     if (isLanguageServerProtocol) {
       jsonRpcNotify(method, params)
     } else {

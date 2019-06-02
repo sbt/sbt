@@ -94,7 +94,7 @@ final class ConsoleMain extends xsbti.AppMain {
 }
 
 object StandardMain {
-  private[sbt] lazy val exchange = new CommandExchange()
+  lazy val exchange = new CommandExchange()
   import scalacache.caffeine._
   private[sbt] lazy val cache: scalacache.Cache[Any] = CaffeineCache[Any]
   // The access to the pool should be thread safe because lazy val instantiation is thread safe

@@ -26,7 +26,7 @@ import scala.concurrent.ExecutionContext
 private[sbt] final case class LangServerError(code: Long, message: String)
     extends Throwable(message)
 
-private[sbt] object LanguageServerProtocol {
+object LanguageServerProtocol {
   lazy val internalJsonProtocol = new InitializeOptionFormats with sjsonnew.BasicJsonProtocol {}
 
   lazy val serverCapabilities: ServerCapabilities = {
@@ -102,7 +102,7 @@ private[sbt] object LanguageServerProtocol {
 }
 
 /** Implements Language Server Protocol <https://github.com/Microsoft/language-server-protocol>. */
-private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
+trait LanguageServerProtocol extends CommandChannel { self =>
 
   lazy val internalJsonProtocol = new InitializeOptionFormats with sjsonnew.BasicJsonProtocol {}
 
@@ -161,7 +161,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   }
 
   /** Respond back to Language Server's client. */
-  private[sbt] def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
+  def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
     val m =
       JsonRpcResponseMessage("2.0", execId, Option(Converter.toJson[A](event).get), None)
     val bytes = Serialization.serializeResponseMessage(m)
@@ -169,11 +169,11 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   }
 
   /** Respond back to Language Server's client. */
-  private[sbt] def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit =
+  def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit =
     jsonRpcRespondErrorImpl(execId, code, message, None)
 
   /** Respond back to Language Server's client. */
-  private[sbt] def jsonRpcRespondError[A: JsonFormat](
+  def jsonRpcRespondError[A: JsonFormat](
       execId: Option[String],
       code: Long,
       message: String,
@@ -194,7 +194,7 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   }
 
   /** Notify to Language Server's client. */
-  private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
+  def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
     val m =
       JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
     log.debug(s"jsonRpcNotify: $m")
