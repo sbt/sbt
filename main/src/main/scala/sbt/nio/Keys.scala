@@ -108,6 +108,8 @@ object Keys {
     "watch",
     "Watch a task (or multiple tasks) and rebuild when its file inputs change or user input is received. The semantics are more or less the same as the `~` command except that it cannot transform the state on exit. This means that it cannot be used to reload the build."
   ).withRank(DSetting)
+  val watchTriggers =
+    settingKey[Seq[Glob]]("Describes files that should trigger a new continuous build.")
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
     "The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count."
   ).withRank(DSetting)

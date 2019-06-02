@@ -154,15 +154,11 @@ object Defaults extends BuildCommon {
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
       onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
-      watchTriggeredMessage :== sbt.nio.Watch.defaultOnTriggerMessage,
-      watchForceTriggerOnAnyChange :== false,
-      watchPersistFileStamps :== true,
-      watchTriggers :== Nil,
       clean := { () },
       unmanagedFileStampCache :=
         state.value.get(persistentFileStampCache).getOrElse(new sbt.nio.FileStamp.Cache),
       managedFileStampCache := new sbt.nio.FileStamp.Cache,
-    ) ++ globalIvyCore ++ globalJvmCore
+    ) ++ globalIvyCore ++ globalJvmCore ++ Watch.defaults
   ) ++ globalSbtCore
 
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
@@ -344,17 +340,6 @@ object Defaults extends BuildCommon {
         sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
-      watchAntiEntropy :== Watch.defaultAntiEntropy,
-      watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
-      watchLogLevel :== Level.Info,
-      watchOnEnter :== Watch.defaultOnEnter,
-      watchOnFileInputEvent :== Watch.trigger,
-      watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
-      watchService :== Watched.newWatchService,
-      watchStartMessage :== Watch.defaultStartWatch,
-      watchTasks := Continuous.continuousTask.evaluated,
-      aggregate in watchTasks :== false,
-      watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     )
   )
 

@@ -15,10 +15,12 @@ import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt._
+import sbt.internal.Continuous
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser._
+import sbt.nio.Keys._
 import sbt.nio.file.FileAttributes
 import sbt.util.{ Level, Logger }
 
@@ -476,4 +478,20 @@ object Watch {
    */
   final val clearOnTrigger: Int => Option[String] =
     ((_: Int) => Some(Watched.clearScreen)).label("Watched.clearOnTrigger")
+  private[sbt] def defaults: Seq[Def.Setting[_]] = Seq(
+    sbt.Keys.watchAntiEntropy :== Watch.defaultAntiEntropy,
+    watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
+    watchLogLevel :== Level.Info,
+    watchOnEnter :== Watch.defaultOnEnter,
+    watchOnFileInputEvent :== Watch.trigger,
+    watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
+    sbt.Keys.watchService :== Watched.newWatchService,
+    watchStartMessage :== Watch.defaultStartWatch,
+    watchTasks := Continuous.continuousTask.evaluated,
+    sbt.Keys.aggregate in watchTasks :== false,
+    watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
+    watchForceTriggerOnAnyChange :== false,
+    watchPersistFileStamps :== true,
+    watchTriggers :== Nil,
+  )
 }
