@@ -365,8 +365,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               val terminationAction = Watch(task, callbacks.onStart, callbacks.nextEvent)
               terminationAction match {
                 case e: Watch.HandleUnexpectedError =>
-                  System.err.println("Caught unexpected error running continuous build:")
-                  e.throwable.printStackTrace(System.err)
+                  logger.error("Caught unexpected error running continuous build:")
+                  e.throwable.getStackTrace.foreach(e => logger.error(e.toString))
                 case _ =>
               }
               callbacks.onTermination(terminationAction, command, currentCount.get(), state)
