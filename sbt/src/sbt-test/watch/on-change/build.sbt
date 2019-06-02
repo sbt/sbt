@@ -1,8 +1,10 @@
 import java.nio.file._
+import java.nio.file.attribute.FileTime
+
 import sbt.nio.Keys._
 import sbt.nio._
+
 import scala.concurrent.duration._
-import StandardCopyOption.{ REPLACE_EXISTING => replace }
 
 watchTriggeredMessage := { (i, path: Path, c) =>
   val prev = watchTriggeredMessage.value
@@ -16,14 +18,15 @@ watchOnIteration := { i: Int =>
   val src =
     base.resolve("src").resolve("main").resolve("scala").resolve("sbt").resolve("test")
   val changes = base.resolve("changes")
-  Files.copy(changes.resolve("C.scala"), src.resolve("C.scala"), replace)
-  if (i < 5) {
+  def copy(fileName: String): Unit = {
     val content =
-      new String(Files.readAllBytes(changes.resolve("A.scala"))) + "\n" + ("//" * i)
-    Files.write(src.resolve("A.scala"), content.getBytes)
-  } else {
-    Files.copy(changes.resolve("B.scala"), src.resolve("B.scala"), replace)
+      new String(Files.readAllBytes(changes.resolve(fileName))) + "\n" + ("//" * i)
+    Files.write(src.resolve(fileName), content.getBytes)
   }
+  val c = src.resolve("C.scala")
+  Files.setLastModifiedTime(c, FileTime.fromMillis(Files.getLastModifiedTime(c).toMillis + 1111))
+  if (i < 5) copy("A.scala")
+  else copy("B.scala")
   println(s"Waiting for changes...")
   Watch.Ignore
 }
