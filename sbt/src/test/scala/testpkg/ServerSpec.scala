@@ -7,18 +7,19 @@
 
 package testpkg
 
+import java.io.{ File, IOException }
+
 import org.scalatest._
-import scala.concurrent._
-import sbt.protocol.ClientSocket
-import scala.util.Try
-import TestServer.withTestServer
-import java.io.File
-import sbt.io.syntax._
-import sbt.io.IO
 import sbt.RunFromSourceMain
-import scala.util.Try
-import scala.concurrent.ExecutionContext
-import java.util.concurrent.ForkJoinPool
+import sbt.io.IO
+import sbt.io.syntax._
+import sbt.protocol.ClientSocket
+import testpkg.TestServer.withTestServer
+
+import scala.annotation.tailrec
+import scala.concurrent._
+import scala.concurrent.duration._
+import scala.util.{ Success, Try }
 
 class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture with Matchers {
   "server" - {
@@ -27,7 +28,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
         p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id": "3", "method": "sbt/setting", "params": { "setting": "root/name" } }"""
         )
-        assert(p.waitForString(10) { s =>
+        assert(p.waitForString(10.seconds) { s =>
           s contains """"id":"3""""
         })
       }
@@ -38,7 +39,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
         p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "root/name" } }"""
         )
-        assert(p.waitForString(10) { s =>
+        assert(p.waitForString(10.seconds) { s =>
           s contains """"id":3"""
         })
       }
@@ -49,7 +50,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
         p.sendJsonRpc(
           """{ "jsonrpc": "2.0", "id": 11, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
         )
-        assert(p.waitForString(10) { s =>
+        assert(p.waitForString(10.seconds) { s =>
           (s contains """"id":11""") && (s contains """"error":""")
         })
       }
@@ -64,7 +65,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
           """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "55" } }"""
         )
 
-        assert(p.waitForString(20) { s =>
+        assert(p.waitForString(20.seconds) { s =>
           (s contains """"error":{"code":-32800""")
         })
       }
@@ -76,7 +77,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
           """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
         )
 
-        assert(p.waitForString(60) { s =>
+        assert(p.waitForString(1.minute) { s =>
           p.sendJsonRpc(
             """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "12" } }"""
           )
@@ -91,7 +92,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
           """{ "jsonrpc": "2.0", "id": "foo", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
         )
 
-        assert(p.waitForString(60) { s =>
+        assert(p.waitForString(1.minute) { s =>
           p.sendJsonRpc(
             """{ "jsonrpc": "2.0", "id": "bar", "method": "sbt/cancelRequest", "params": { "id": "foo" } }"""
           )
@@ -107,7 +108,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
           s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
         )
 
-        assert(p.waitForString(10) { s =>
+        assert(p.waitForString(10.seconds) { s =>
           s contains """"result":{"items":["""
         })
       }
@@ -120,7 +121,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
           s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
         )
 
-        assert(p.waitForString(10) { s =>
+        assert(p.waitForString(10.seconds) { s =>
           s contains """"result":{"items":["hello"]}"""
         })
       }
@@ -133,7 +134,7 @@ class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture
           s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
         )
 
-        assert(p.waitForString(10) { s =>
+        assert(p.waitForString(10.seconds) { s =>
           s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]}"""
         })
       }
@@ -159,20 +160,19 @@ object TestServer {
       f: TestServer => Future[Assertion]
   )(implicit td: TestData): Future[Assertion] = {
     // Each test server instance will be executed in a Thread pool separated from the tests
-    val testServer = TestServer(baseDirectory)(
-      ExecutionContext.fromExecutor(new ForkJoinPool())
-    )
+    val testServer = TestServer(baseDirectory)
     // checking last log message after initialization
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
       Try {
-        testServer.waitForString(30) { s =>
+        testServer.waitForString(30.seconds) { s =>
+          println(s)
           s contains """"message":"Done""""
         }
-      }.toOption
+      }
 
     init match {
-      case Some(_) =>
+      case Success(_) =>
         try {
           f(testServer)
         } finally {
@@ -194,7 +194,7 @@ object TestServer {
   }
 }
 
-case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
+case class TestServer(baseDirectory: File) {
   import TestServer.hostLog
 
   val readBuffer = new Array[Byte](40960)
@@ -204,27 +204,28 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
   private val RetByte = '\r'.toByte
 
   hostLog("fork to a new sbt instance")
-  val process =
-    Future {
-      RunFromSourceMain.fork(baseDirectory)
-    }
+  val process = RunFromSourceMain.fork(baseDirectory)
 
   lazy val portfile = baseDirectory / "project" / "target" / "active.json"
 
-  hostLog("wait 30s until the server is ready to respond")
-  def waitForPortfile(n: Int): Unit =
-    if (portfile.exists) ()
-    else {
-      if (n <= 0) sys.error(s"Timeout. $portfile is not found.")
-      else {
-        Thread.sleep(1000)
-        if ((n - 1) % 10 == 0) {
-          hostLog("waiting for the server...")
-        }
-        waitForPortfile(n - 1)
+  def portfileIsEmpty(): Boolean =
+    try IO.read(portfile).isEmpty
+    catch { case _: IOException => true }
+  def waitForPortfile(duration: FiniteDuration): Unit = {
+    val deadline = duration.fromNow
+    var nextLog = 10.seconds.fromNow
+    while (portfileIsEmpty && !deadline.isOverdue && process.isAlive) {
+      if (nextLog.isOverdue) {
+        hostLog("waiting for the server...")
+        nextLog = 10.seconds.fromNow
       }
     }
-  waitForPortfile(90)
+    if (deadline.isOverdue) sys.error(s"Timeout. $portfile is not found.")
+    if (!process.isAlive) sys.error(s"Server unexpectedly terminated.")
+  }
+  private val waitDuration: FiniteDuration = 120.seconds
+  hostLog(s"wait $waitDuration until the server is ready to respond")
+  waitForPortfile(90.seconds)
 
   // make connection to the socket described in the portfile
   val (sk, tkn) = ClientSocket.socket(portfile)
@@ -245,11 +246,12 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
     sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }"""
     )
-    for {
-      p <- process
-    } {
-      p.destroy()
+    val deadline = 10.seconds.fromNow
+    while (!deadline.isOverdue && process.isAlive) {
+      Thread.sleep(10)
     }
+    // We gave the server a chance to exit but it didn't within a reasonable time frame.
+    if (deadline.isOverdue) process.destroy()
   }
 
   def sendJsonRpc(message: String): Unit = {
@@ -286,17 +288,14 @@ case class TestServer(baseDirectory: File)(implicit ec: ExecutionContext) {
     readContentLength(l)
   }
 
-  final def waitForString(num: Int)(f: String => Boolean): Boolean = {
-    val res = Future {
-      var done = false
-      while (!done) {
-        done = readFrame.fold(false)(f)
-      }
-      true
-    }(ec)
-
-    import scala.concurrent.duration._
-    Await.result(res, num.seconds)
+  final def waitForString(duration: FiniteDuration)(f: String => Boolean): Boolean = {
+    val deadline = duration.fromNow
+    @tailrec
+    def impl(): Boolean = {
+      if (deadline.isOverdue) false
+      else readFrame.fold(false)(f) || impl
+    }
+    impl()
   }
 
   def readLine: Option[String] = {
