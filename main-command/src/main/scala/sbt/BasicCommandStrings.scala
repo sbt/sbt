@@ -151,7 +151,7 @@ $HelpCommand <regular expression>
   def Multi: String = ";"
   def MultiBrief: (String, String) =
     (
-      Multi + " <command> (" + Multi + " <command>)*",
+      "<command> (" + Multi + " <command>)*",
       "Runs the provided semicolon-separated commands."
     )
   def MultiDetailed: String =
