@@ -8,8 +8,12 @@
 package sbt.internal
 
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicReference
 
-import sbt.internal.io.{ WatchState => WS }
+import sbt.{ State, Watched }
+import sbt.internal.io.{ EventMonitor, Source, WatchState => WS }
+import sbt.internal.util.AttributeKey
+import sbt.nio.file.Glob
 
 private[internal] trait DeprecatedContinuous {
   protected type StartMessage =
@@ -18,6 +22,38 @@ private[internal] trait DeprecatedContinuous {
   protected type DeprecatedWatchState = WS
   protected val deprecatedWatchingMessage = sbt.Keys.watchingMessage
   protected val deprecatedTriggeredMessage = sbt.Keys.triggeredMessage
+  protected def watchState(globs: Seq[Glob], count: Int): WS = {
+    WS.empty(globs).withCount(count)
+  }
+  private[this] val legacyWatchState =
+    AttributeKey[AtomicReference[WS]]("legacy-watch-state", Int.MaxValue)
+  protected def addLegacyWatchSetting(state: State): State = {
+    val legacyState = new AtomicReference[WS](WS.empty(Nil).withCount(1))
+    state
+      .put(
+        Watched.ContinuousEventMonitor,
+        new EventMonitor {
+
+          /** Block indefinitely until the monitor receives a file event or the user stops the watch. */
+          override def awaitEvent(): Boolean = false
+
+          /** A snapshot of the WatchState that includes the number of build triggers and watch sources. */
+          override def state(): WS = legacyState.get()
+          override def close(): Unit = ()
+        }
+      )
+      .put(legacyWatchState, legacyState)
+      .put(Watched.Configuration, new Watched {
+        override def watchSources(s: State): Seq[Source] =
+          s.get(legacyWatchState).map(_.get.sources).getOrElse(Nil)
+      })
+  }
+  def updateLegacyWatchState(state: State, globs: Seq[Glob], count: Int): Unit = {
+    state.get(legacyWatchState).foreach { ref =>
+      val ws = WS.empty(globs).withCount(count)
+      ref.set(ws)
+    }
+  }
 }
 private[sbt] object DeprecatedContinuous {
   private[sbt] val taskDefinitions = Seq(
