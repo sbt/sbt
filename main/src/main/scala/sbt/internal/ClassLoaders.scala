@@ -79,12 +79,14 @@ private[sbt] object ClassLoaders {
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
         val newLoader =
           (classpath: Seq[File]) => {
+            val mappings = classpath.map(f => f.getName -> f).toMap
+            val transformedDependencies = allDeps.map(f => mappings.get(f.getName).getOrElse(f))
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
               fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
               resourceCP = resourceCP,
-              allDependencies = allDeps,
+              allDependencies = transformedDependencies,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
