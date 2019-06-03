@@ -126,7 +126,7 @@ private[sbt] object ClassLoaders {
       scope: Scope
   ): ClassLoader = {
     val cpFiles = fullCP.map(_._1)
-    val raw = strategy match {
+    strategy match {
       case Flat => flatLoader(cpFiles, interfaceLoader)
       case _ =>
         val layerDependencies = strategy match {
@@ -169,7 +169,6 @@ private[sbt] object ClassLoaders {
         val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
         new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
-    ClasspathUtilities.filterByClasspath(cpFiles, raw)
   }
 
   private def dependencyJars(
