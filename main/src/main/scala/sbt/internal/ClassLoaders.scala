@@ -9,7 +9,6 @@ package sbt
 package internal
 
 import java.io.File
-import java.net.URLClassLoader
 import java.nio.file.Path
 
 import sbt.ClassLoaderLayeringStrategy._
@@ -139,17 +138,12 @@ private[sbt] object ClassLoaders {
           case f if f.getName == "scala-reflect.jar" =>
             si.allJars.find(_.getName == "scala-reflect.jar")
         }.flatten
-        class ScalaReflectClassLoader(jar: File)
-            extends URLClassLoader(Array(jar.toURI.toURL), scalaLibraryLayer) {
-          override def toString: String =
-            s"ScalaReflectClassLoader($jar, parent = $scalaLibraryLayer)"
-        }
         val scalaReflectLayer = scalaReflectJar
           .map { file =>
             cache.apply(
               file -> IO.getModifiedTimeOrZero(file) :: Nil,
               scalaLibraryLayer,
-              () => new ScalaReflectClassLoader(file)
+              () => new ScalaReflectClassLoader(file.toURI.toURL, scalaLibraryLayer)
             )
           }
           .getOrElse(scalaLibraryLayer)
@@ -201,19 +195,6 @@ private[sbt] object ClassLoaders {
     } else parent
   }
 
-  private class ResourceLoader(
-      classpath: Seq[File],
-      parent: ClassLoader,
-      resources: Map[String, String]
-  ) extends LayeredClassLoader(classpath, parent, resources, new File("/dev/null")) {
-    override def findClass(name: String): Class[_] = throw new ClassNotFoundException(name)
-    override def loadClass(name: String, resolve: Boolean): Class[_] = {
-      val clazz = parent.loadClass(name)
-      if (resolve) resolveClass(clazz)
-      clazz
-    }
-    override def toString: String = "ResourceLoader"
-  }
   // Creates a one or two layered classloader for the provided classpaths depending on whether
   // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
   // above the regular jar layer. This allows the snapshot layer to be invalidated without
@@ -235,14 +216,9 @@ private[sbt] object ClassLoaders {
     } else parent
   }
 
-  private[this] class FlatLoader(classpath: Seq[File], parent: ClassLoader)
-      extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent) {
-    override def toString: String =
-      s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
-  }
   // helper methods
   private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
-    new FlatLoader(classpath, parent)
+    new FlatLoader(classpath.map(_.toURI.toURL).toArray, parent)
   private[this] def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
     case (p, LastModified(lm)) => p.toFile -> lm
     case (p, _) =>
