@@ -206,6 +206,7 @@ private[sbt] object ClassLoaders {
       parent: ClassLoader,
       resources: Map[String, String]
   ) extends LayeredClassLoader(classpath, parent, resources, new File("/dev/null")) {
+    override def findClass(name: String): Class[_] = throw new ClassNotFoundException(name)
     override def loadClass(name: String, resolve: Boolean): Class[_] = {
       val clazz = parent.loadClass(name)
       if (resolve) resolveClass(clazz)

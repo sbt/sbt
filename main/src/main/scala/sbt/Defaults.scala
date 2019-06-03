@@ -855,9 +855,12 @@ object Defaults extends BuildCommon {
       }
       val trl = (testResultLogger in (Test, test)).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
+      val currentLoader = Thread.currentThread.getContextClassLoader
       try {
+        Thread.currentThread.setContextClassLoader(testLoader.value)
         trl.run(streams.value.log, executeTests.value, taskName)
       } finally {
+        Thread.currentThread.setContextClassLoader(currentLoader)
         close.foreach(_.apply())
       }
     },
@@ -1022,8 +1025,13 @@ object Defaults extends BuildCommon {
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
-      val processed = output.map(out => trl.run(s.log, out, taskName))
-      processed
+      val currentLoader = Thread.currentThread.getContextClassLoader
+      try {
+        Thread.currentThread.setContextClassLoader(testLoader.value)
+        output.map(out => trl.run(s.log, out, taskName))
+      } finally {
+        Thread.currentThread.setContextClassLoader(currentLoader)
+      }
     }
   }
 

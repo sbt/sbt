@@ -1,0 +1,12 @@
+> set classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+> test
+
+> testOnly
+
+> set classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+
+> test
+
+> testOnly
+
