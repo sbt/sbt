@@ -76,7 +76,7 @@ private[sbt] object ClassLoaders {
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
         }
-        val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.allJars
+        val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.libraryJars
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
         val newLoader =
           (classpath: Seq[File]) => {
@@ -135,10 +135,22 @@ private[sbt] object ClassLoaders {
         val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
         val cpFiles = fullCP.map(_._1)
 
-        val scalaReflectJar = allDependencies.find(_.getName == "scala-reflect.jar")
+        val scalaReflectJar = allDependencies.collectFirst {
+          case f if f.getName == "scala-reflect.jar" =>
+            si.allJars.find(_.getName == "scala-reflect.jar")
+        }.flatten
+        class ScalaReflectClassLoader(jar: File)
+            extends URLClassLoader(Array(jar.toURI.toURL), scalaLibraryLayer) {
+          override def toString: String =
+            s"ScalaReflectClassLoader($jar, parent = $scalaLibraryLayer)"
+        }
         val scalaReflectLayer = scalaReflectJar
           .map { file =>
-            layer(file :: Nil, scalaLibraryLayer, cache, resources, tmp)
+            cache.apply(
+              file -> IO.getModifiedTimeOrZero(file) :: Nil,
+              scalaLibraryLayer,
+              () => new ScalaReflectClassLoader(file)
+            )
           }
           .getOrElse(scalaLibraryLayer)
 
@@ -153,11 +165,12 @@ private[sbt] object ClassLoaders {
           if (layerDependencies) layer(allDependencies, resourceLayer, cache, resources, tmp)
           else resourceLayer
 
+        val scalaJarNames = (si.libraryJars ++ scalaReflectJar).map(_.getName).toSet
         // layer 4
         val filteredSet =
           if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
           else Set(si.libraryJars ++ scalaReflectJar: _*)
-        val dynamicClasspath = cpFiles.filterNot(filteredSet)
+        val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
         new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
     ClasspathUtilities.filterByClasspath(cpFiles, raw)
