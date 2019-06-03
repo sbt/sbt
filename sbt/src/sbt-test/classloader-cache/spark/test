@@ -1,0 +1,11 @@
+> set classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+> run
+
+> set classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+
+> run
+
+> set classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> run
