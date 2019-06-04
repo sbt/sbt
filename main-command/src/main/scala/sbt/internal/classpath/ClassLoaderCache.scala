@@ -10,7 +10,7 @@ package sbt.internal.classpath
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.lang.ref.{ Reference, ReferenceQueue, SoftReference }
-import java.net.{ URL, URLClassLoader }
+import java.net.URLClassLoader
 import java.util.concurrent.atomic.AtomicInteger
 
 import sbt.internal.inc.classpath.{
@@ -142,14 +142,6 @@ private[sbt] class ClassLoaderCache(
   private[this] val cleanupThread = new CleanupThread(ClassLoaderCache.threadID.getAndIncrement())
   private[this] val lock = new Object
 
-  private class WrappedLoader(parent: ClassLoader) extends URLClassLoader(Array.empty, parent) {
-    // This is to make dotty work which extracts the URLs from the loader
-    override def getURLs: Array[URL] = parent match {
-      case u: URLClassLoader => u.getURLs
-      case _                 => Array.empty
-    }
-    override def toString: String = s"WrappedLoader($parent)"
-  }
   private def close(classLoader: ClassLoader): Unit = classLoader match {
     case a: AutoCloseable => a.close()
     case _                =>

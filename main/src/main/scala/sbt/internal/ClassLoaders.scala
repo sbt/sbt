@@ -9,7 +9,6 @@ package sbt
 package internal
 
 import java.io.File
-import java.net.URLClassLoader
 import java.nio.file.Path
 
 import sbt.ClassLoaderLayeringStrategy._
@@ -76,16 +75,18 @@ private[sbt] object ClassLoaders {
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
         }
-        val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.allJars
+        val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.libraryJars
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
         val newLoader =
           (classpath: Seq[File]) => {
+            val mappings = classpath.map(f => f.getName -> f).toMap
+            val transformedDependencies = allDeps.map(f => mappings.get(f.getName).getOrElse(f))
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
               fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
               resourceCP = resourceCP,
-              allDependencies = allDeps,
+              allDependencies = transformedDependencies,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
@@ -125,7 +126,7 @@ private[sbt] object ClassLoaders {
       scope: Scope
   ): ClassLoader = {
     val cpFiles = fullCP.map(_._1)
-    val raw = strategy match {
+    strategy match {
       case Flat => flatLoader(cpFiles, interfaceLoader)
       case _ =>
         val layerDependencies = strategy match {
@@ -135,10 +136,17 @@ private[sbt] object ClassLoaders {
         val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
         val cpFiles = fullCP.map(_._1)
 
-        val scalaReflectJar = allDependencies.find(_.getName == "scala-reflect.jar")
+        val scalaReflectJar = allDependencies.collectFirst {
+          case f if f.getName == "scala-reflect.jar" =>
+            si.allJars.find(_.getName == "scala-reflect.jar")
+        }.flatten
         val scalaReflectLayer = scalaReflectJar
           .map { file =>
-            layer(file :: Nil, scalaLibraryLayer, cache, resources, tmp)
+            cache.apply(
+              file -> IO.getModifiedTimeOrZero(file) :: Nil,
+              scalaLibraryLayer,
+              () => new ScalaReflectClassLoader(file.toURI.toURL, scalaLibraryLayer)
+            )
           }
           .getOrElse(scalaLibraryLayer)
 
@@ -153,14 +161,14 @@ private[sbt] object ClassLoaders {
           if (layerDependencies) layer(allDependencies, resourceLayer, cache, resources, tmp)
           else resourceLayer
 
+        val scalaJarNames = (si.libraryJars ++ scalaReflectJar).map(_.getName).toSet
         // layer 4
         val filteredSet =
           if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
           else Set(si.libraryJars ++ scalaReflectJar: _*)
-        val dynamicClasspath = cpFiles.filterNot(filteredSet)
+        val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
         new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
     }
-    ClasspathUtilities.filterByClasspath(cpFiles, raw)
   }
 
   private def dependencyJars(
@@ -188,18 +196,6 @@ private[sbt] object ClassLoaders {
     } else parent
   }
 
-  private class ResourceLoader(
-      classpath: Seq[File],
-      parent: ClassLoader,
-      resources: Map[String, String]
-  ) extends LayeredClassLoader(classpath, parent, resources, new File("/dev/null")) {
-    override def loadClass(name: String, resolve: Boolean): Class[_] = {
-      val clazz = parent.loadClass(name)
-      if (resolve) resolveClass(clazz)
-      clazz
-    }
-    override def toString: String = "ResourceLoader"
-  }
   // Creates a one or two layered classloader for the provided classpaths depending on whether
   // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
   // above the regular jar layer. This allows the snapshot layer to be invalidated without
@@ -221,14 +217,9 @@ private[sbt] object ClassLoaders {
     } else parent
   }
 
-  private[this] class FlatLoader(classpath: Seq[File], parent: ClassLoader)
-      extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent) {
-    override def toString: String =
-      s"FlatClassLoader(parent = $interfaceLoader, jars =\n${classpath.mkString("\n")}\n)"
-  }
   // helper methods
   private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
-    new FlatLoader(classpath, parent)
+    new FlatLoader(classpath.map(_.toURI.toURL).toArray, parent)
   private[this] def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
     case (p, LastModified(lm)) => p.toFile -> lm
     case (p, _) =>
