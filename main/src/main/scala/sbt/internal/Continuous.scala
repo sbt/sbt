@@ -466,7 +466,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   )(
       implicit extracted: Extracted
   ): Callbacks = {
-    val project = extracted.currentRef.project
+    val project = extracted.currentRef
     val logger = setLevel(rawLogger, configs.map(_.watchSettings.logLevel).min, state)
     val beforeCommand = () => configs.foreach(_.watchSettings.beforeCommand())
     val onStart: () => Watch.Action = getOnStart(project, commands, configs, rawLogger, count)
@@ -497,7 +497,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   }
 
   private def getOnStart(
-      project: String,
+      project: ProjectRef,
       commands: Seq[String],
       configs: Seq[Config],
       logger: Logger,
@@ -900,7 +900,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val beforeCommand: () => Unit = key.get(watchBeforeCommand).getOrElse(() => {})
     val onFileInputEvent: WatchOnEvent =
       key.get(watchOnFileInputEvent).getOrElse(Watch.trigger)
-    val onIteration: Option[(Int, String, Seq[String]) => Watch.Action] = key.get(watchOnIteration)
+    val onIteration: Option[(Int, ProjectRef, Seq[String]) => Watch.Action] =
+      key.get(watchOnIteration)
     val onTermination: Option[(Watch.Action, String, Int, State) => State] =
       key.get(watchOnTermination)
     val startMessage: StartMessage = getStartMessage(key)

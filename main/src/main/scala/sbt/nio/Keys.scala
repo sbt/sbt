@@ -18,7 +18,7 @@ import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
 import sbt.nio.file.{ ChangedFiles, FileAttributes, FileTreeView, Glob }
-import sbt.{ Def, InputKey, State, StateTransform }
+import sbt.{ Def, InputKey, ProjectRef, State, StateTransform }
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -88,7 +88,7 @@ object Keys {
   val watchOnFileInputEvent = settingKey[(Int, Watch.Event) => Watch.Action](
     "Callback to invoke if an event is triggered in a continuous build by one of the files matching an fileInput glob for the task and its transitive dependencies"
   ).withRank(DSetting)
-  val watchOnIteration = settingKey[(Int, String, Seq[String]) => Watch.Action](
+  val watchOnIteration = settingKey[(Int, ProjectRef, Seq[String]) => Watch.Action](
     "Function that is invoked before waiting for file system events or user input events."
   ).withRank(DSetting)
   val watchOnTermination = settingKey[(Watch.Action, String, Int, State) => State](
@@ -97,7 +97,7 @@ object Keys {
   val watchPersistFileStamps = settingKey[Boolean](
     "Toggles whether or not the continuous build will reuse the file stamps computed in previous runs. Setting this to true decrease watch startup latency but could cause inconsistent results if many source files are concurrently modified."
   ).withRank(DSetting)
-  val watchStartMessage = settingKey[(Int, String, Seq[String]) => Option[String]](
+  val watchStartMessage = settingKey[(Int, ProjectRef, Seq[String]) => Option[String]](
     "The message to show when triggered execution waits for sources to change. The parameters are the current watch iteration count, the current project name and the tasks that are being run with each build."
   ).withRank(DSetting)
   // The watchTasks key should really be named watch, but that is already taken by the deprecated watch key. I'd be surprised if there are any plugins that use it so I think we should consider breaking binary compatibility to rename this task.

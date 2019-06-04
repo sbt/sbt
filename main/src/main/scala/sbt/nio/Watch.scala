@@ -401,19 +401,19 @@ object Watch {
     )
     s"Options:\n${opts.mkString("  ", "\n  ", "")}"
   }
-  private def waitMessage(project: String, commands: Seq[String]): String = {
+  private def waitMessage(project: ProjectRef, commands: Seq[String]): String = {
     val plural = if (commands.size > 1) "s" else ""
     val cmds = commands.mkString("; ")
     s"Monitoring source files for updates...\n" +
-      s"Project: $project\nCommand$plural: $cmds\n$options"
+      s"Project: ${project.project}\nCommand$plural: $cmds\n$options"
   }
 
   /**
    * A function that prints out the current iteration count and gives instructions for exiting
    * or triggering the build.
    */
-  val defaultStartWatch: (Int, String, Seq[String]) => Option[String] = {
-    (count: Int, project: String, commands: Seq[String]) =>
+  val defaultStartWatch: (Int, ProjectRef, Seq[String]) => Option[String] = {
+    (count: Int, project: ProjectRef, commands: Seq[String]) =>
       Some(s"$count. ${waitMessage(project, commands)}")
   }.label("Watched.defaultStartWatch")
 
