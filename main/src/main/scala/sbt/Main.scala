@@ -13,6 +13,9 @@ import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
 
+import org.apache.logging.log4j.{ LogManager => XLogManager }
+
+import org.apache.logging.log4j.core.LoggerContext
 import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
@@ -31,6 +34,8 @@ import xsbti.compile.CompilerCache
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
+
+import scala.collection.JavaConverters._
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
@@ -838,9 +843,38 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
+    val s2 = registerLoggerCleanup(s)
     Project
-      .setProject(session, structure, s)
+      .setProject(session, structure, s2)
       .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
+  }
+
+  private def registerLoggerCleanup(state: State): State = {
+    state.addExitHook(clearLoggerAppenders(state))
+  }
+
+  private def clearLoggerAppenders(state: State): Unit = {
+    state.log.debug("Removing left over appenders")
+    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
+    val config = ctx.getConfiguration
+
+    config.getLoggers.asScala.foreach {
+      case (loggerName, loggerConfig) =>
+        loggerConfig.getAppenders.asScala.foreach {
+          case (appenderName, appender) =>
+            // We don't remove RelayAppenders, since it leads to test failures and it is effectively a singleton
+            if (appender.getClass.getSimpleName != "RelayAppender") {
+              state.log.warn(
+                s"Potential memory leak averted, by removing the appender $appenderName (${appender.getClass.getSimpleName}) from logger $loggerName."
+              )
+              loggerConfig.removeAppender(appenderName)
+            } else {
+              state.log.debug(
+                s"Skipping removal of the appender $appenderName (${appender.getClass.getSimpleName}, ${System.identityHashCode(appender)}) from logger $loggerName."
+              )
+            }
+        }
+    }
   }
 
   def registerCompilerCache(s: State): State = {
