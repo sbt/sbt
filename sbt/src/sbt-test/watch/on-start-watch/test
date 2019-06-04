@@ -3,19 +3,19 @@
 
 # verify that the watch terminates when we reach the specified count
 > resetCount
-> set watchOnIteration := { (count: Int) => if (count == 2) sbt.nio.Watch.CancelWatch else sbt.nio.Watch.Ignore }
+> set watchOnIteration := { (count: Int, _, _) => if (count == 2) sbt.nio.Watch.CancelWatch else sbt.nio.Watch.Ignore }
 > ~compile
 > checkCount 2
 
 # verify that the watch terminates and returns an error when we reach the specified count
 > resetCount
-> set watchOnIteration := { (count: Int) => if (count == 2) new sbt.nio.Watch.HandleError(new Exception("")) else sbt.nio.Watch.Ignore }
+> set watchOnIteration := { (count: Int, _, _) => if (count == 2) new sbt.nio.Watch.HandleError(new Exception("")) else sbt.nio.Watch.Ignore }
 # Returning Watch.HandleError causes the '~' command to fail
 -> ~compile
 > checkCount 2
 
 # verify that a re-build is triggered when we reach the specified count
 > resetCount
-> set watchOnIteration := { (count: Int) => if (count == 2) sbt.nio.Watch.Trigger else if (count == 3) sbt.nio.Watch.CancelWatch else sbt.nio.Watch.Ignore }
+> set watchOnIteration := { (count: Int, _, _) => if (count == 2) sbt.nio.Watch.Trigger else if (count == 3) sbt.nio.Watch.CancelWatch else sbt.nio.Watch.Ignore }
 > ~compile
 > checkCount 3

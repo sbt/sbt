@@ -18,7 +18,7 @@ import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
 import sbt.nio.file.{ ChangedFiles, FileAttributes, FileTreeView, Glob }
-import sbt.{ Def, InputKey, State, StateTransform }
+import sbt.{ Def, InputKey, ProjectRef, State, StateTransform }
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -68,12 +68,12 @@ object Keys {
       "detected regardless of whether or not the underlying file has actually changed."
 
   // watch related keys
+  val watchBeforeCommand = settingKey[() => Unit](
+    "Function to run prior to running a command in a continuous build."
+  ).withRank(DSetting)
   val watchForceTriggerOnAnyChange =
     Def.settingKey[Boolean](forceTriggerOnAnyChangeMessage).withRank(DSetting)
-  val watchLogLevel =
-    settingKey[sbt.util.Level.Value]("Transform the default logger in continuous builds.")
-      .withRank(DSetting)
-  val watchInputHandler = settingKey[InputStream => Watch.Action](
+  private[sbt] val watchInputHandler = settingKey[InputStream => Watch.Action](
     "Function that is periodically invoked to determine if the continuous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands. This is only invoked if watchInputStream is set."
   ).withRank(DSetting)
   val watchInputStream = taskKey[InputStream](
@@ -82,16 +82,13 @@ object Keys {
   val watchInputParser = settingKey[Parser[Watch.Action]](
     "A parser of user input that can be used to trigger or exit a continuous build"
   ).withRank(DSetting)
-  val watchOnEnter = settingKey[() => Unit](
-    "Function to run prior to beginning a continuous build. This will run before the continuous task(s) is(are) first evaluated."
-  ).withRank(DSetting)
-  val watchOnExit = settingKey[() => Unit](
-    "Function to run upon exit of a continuous build. It can be used to cleanup resources used during the watch."
-  ).withRank(DSetting)
+  val watchLogLevel =
+    settingKey[sbt.util.Level.Value]("Transform the default logger in continuous builds.")
+      .withRank(DSetting)
   val watchOnFileInputEvent = settingKey[(Int, Watch.Event) => Watch.Action](
     "Callback to invoke if an event is triggered in a continuous build by one of the files matching an fileInput glob for the task and its transitive dependencies"
   ).withRank(DSetting)
-  val watchOnIteration = settingKey[Int => Watch.Action](
+  val watchOnIteration = settingKey[(Int, ProjectRef, Seq[String]) => Watch.Action](
     "Function that is invoked before waiting for file system events or user input events."
   ).withRank(DSetting)
   val watchOnTermination = settingKey[(Watch.Action, String, Int, State) => State](
@@ -100,7 +97,7 @@ object Keys {
   val watchPersistFileStamps = settingKey[Boolean](
     "Toggles whether or not the continuous build will reuse the file stamps computed in previous runs. Setting this to true decrease watch startup latency but could cause inconsistent results if many source files are concurrently modified."
   ).withRank(DSetting)
-  val watchStartMessage = settingKey[(Int, String, Seq[String]) => Option[String]](
+  val watchStartMessage = settingKey[(Int, ProjectRef, Seq[String]) => Option[String]](
     "The message to show when triggered execution waits for sources to change. The parameters are the current watch iteration count, the current project name and the tasks that are being run with each build."
   ).withRank(DSetting)
   // The watchTasks key should really be named watch, but that is already taken by the deprecated watch key. I'd be surprised if there are any plugins that use it so I think we should consider breaking binary compatibility to rename this task.
@@ -108,8 +105,10 @@ object Keys {
     "watch",
     "Watch a task (or multiple tasks) and rebuild when its file inputs change or user input is received. The semantics are more or less the same as the `~` command except that it cannot transform the state on exit. This means that it cannot be used to reload the build."
   ).withRank(DSetting)
+  val watchTriggers =
+    settingKey[Seq[Glob]]("Describes files that should trigger a new continuous build.")
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
-    "The message to show before triggered execution executes an action after sources change. The parameters are the path that triggered the build and the current watch iteration count."
+    "The message to show before triggered execution executes an action after sources change. The parameters are the current watch iteration count, the path that triggered the build and the names of the commands to run."
   ).withRank(DSetting)
 
   // internal keys

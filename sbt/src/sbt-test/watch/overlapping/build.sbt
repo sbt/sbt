@@ -1,8 +1,6 @@
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
-import sbt.nio.Watch
-
 import scala.concurrent.duration._
 
 val foo = taskKey[Unit]("foo.txt")

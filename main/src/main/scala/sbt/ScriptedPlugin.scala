@@ -12,6 +12,7 @@ import java.lang.reflect.Method
 
 import sbt.Def._
 import sbt.Keys._
+import sbt.nio.Keys._
 import sbt.Project._
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.inc.classpath.ClasspathUtilities

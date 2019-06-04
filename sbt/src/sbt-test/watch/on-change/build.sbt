@@ -1,9 +1,6 @@
 import java.nio.file._
 import java.nio.file.attribute.FileTime
 
-import sbt.nio.Keys._
-import sbt.nio._
-
 import scala.concurrent.duration._
 
 watchTriggeredMessage := { (i, path: Path, c) =>
@@ -13,7 +10,7 @@ watchTriggeredMessage := { (i, path: Path, c) =>
   prev(i, path, c)
 }
 
-watchOnIteration := { i: Int =>
+watchOnIteration := { (i: Int, _, _) =>
   val base = baseDirectory.value.toPath
   val src =
     base.resolve("src").resolve("main").resolve("scala").resolve("sbt").resolve("test")

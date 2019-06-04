@@ -10,14 +10,14 @@ package sbt.internal
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
-import sbt.{ State, Watched }
+import sbt.{ ProjectRef, State, Watched }
 import sbt.internal.io.{ EventMonitor, Source, WatchState => WS }
 import sbt.internal.util.AttributeKey
 import sbt.nio.file.Glob
 
 private[internal] trait DeprecatedContinuous {
   protected type StartMessage =
-    Option[Either[WS => String, (Int, String, Seq[String]) => Option[String]]]
+    Option[Either[WS => String, (Int, ProjectRef, Seq[String]) => Option[String]]]
   protected type TriggerMessage = Either[WS => String, (Int, Path, Seq[String]) => Option[String]]
   protected type DeprecatedWatchState = WS
   protected val deprecatedWatchingMessage = sbt.Keys.watchingMessage
