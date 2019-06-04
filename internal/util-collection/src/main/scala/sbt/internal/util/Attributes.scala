@@ -17,11 +17,11 @@ import sbt.util.OptJsonWriter
 
 /**
  * A key in an [[AttributeMap]] that constrains its associated value to be of type `T`.
- * The key is uniquely defined by its [[label]] and type `T`, represented at runtime by [[manifest]].
+ * The key is uniquely defined by its `label` and type `T`, represented at runtime by `manifest`.
  */
 sealed trait AttributeKey[T] {
 
-  /** The runtime evidence for `T` */
+  /** The runtime evidence for `T`. */
   def manifest: Manifest[T]
 
   /** The label is the identifier for the key and is camelCase by convention. */
@@ -103,10 +103,10 @@ object AttributeKey {
       rank0: Int
   )(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     new SharedAttributeKey[T] {
-      require(name.headOption match {
-        case Some(c) => c.isLower
-        case None    => false
-      }, s"A named attribute key must start with a lowercase letter: $name")
+      require(
+        name.headOption.exists(_.isLower),
+        s"A named attribute key must start with a lowercase letter: $name"
+      )
 
       def manifest = mf
       val label = Util.hyphenToCamel(name)
@@ -220,18 +220,13 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
 
   def keys: Iterable[AttributeKey[_]] = backing.keys
 
-  def ++(o: Iterable[AttributeEntry[_]]): AttributeMap = {
-    val newBacking = (backing /: o) {
-      case (b, AttributeEntry(key, value)) => b.updated(key, value)
-    }
-    new BasicAttributeMap(newBacking)
-  }
+  def ++(o: Iterable[AttributeEntry[_]]): AttributeMap =
+    new BasicAttributeMap(o.foldLeft(backing)((b, e) => b.updated(e.key, e.value)))
 
-  def ++(o: AttributeMap): AttributeMap =
-    o match {
-      case bam: BasicAttributeMap => new BasicAttributeMap(backing ++ bam.backing)
-      case _                      => o ++ this
-    }
+  def ++(o: AttributeMap): AttributeMap = o match {
+    case bam: BasicAttributeMap => new BasicAttributeMap(backing ++ bam.backing)
+    case _                      => o ++ this
+  }
 
   def entries: Iterable[AttributeEntry[_]] =
     backing.collect {

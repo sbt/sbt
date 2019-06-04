@@ -667,11 +667,10 @@ object BuiltinCommands {
 
   def act: Command = Command.customHelp(Act.actParser, actHelp)
 
-  def actHelp: State => Help =
-    s =>
-      CommandStrings.showHelp ++ CommandStrings.printHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(
-        s
-      )
+  def actHelp: State => Help = { s =>
+    CommandStrings.showHelp ++ CommandStrings.printHelp ++ CommandStrings.multiTaskHelp ++
+      keysHelp(s)
+  }
 
   def keysHelp(s: State): Help =
     if (Project.isProjectLoaded(s))

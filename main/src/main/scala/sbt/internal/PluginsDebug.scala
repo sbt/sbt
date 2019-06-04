@@ -124,7 +124,7 @@ private[sbt] object PluginsDebug {
       def helpBuild(uri: URI, build: LoadedBuildUnit): String = {
         val pluginStrings = for (plugin <- availableAutoPlugins(build)) yield {
           val activatedIn =
-            build.defined.values.toList.filter(_.autoPlugins.contains(plugin)).map(_.id)
+            build.projects.toList.filter(_.autoPlugins.contains(plugin)).map(_.id)
           val actString =
             if (activatedIn.nonEmpty) activatedIn.mkString(": enabled in ", ", ", "")
             else "" // TODO: deal with large builds
