@@ -50,7 +50,7 @@ object TestResultLogger {
   /** A `TestResultLogger` that does nothing. */
   val Null = const(_ => ())
 
-  /** SBT's default `TestResultLogger`. Use `copy()` to change selective portions. */
+  /** sbt's default `TestResultLogger`. Use `copy()` to change selective portions. */
   val Default = Defaults.Main()
 
   /** Twist on the default which is completely silent when the subject module doesn't contain any tests. */
@@ -84,7 +84,7 @@ object TestResultLogger {
 
   object Defaults {
 
-    /** SBT's default `TestResultLogger`. Use `copy()` to change selective portions. */
+    /** sbt's default `TestResultLogger`. Use `copy()` to change selective portions. */
     case class Main(
         printStandard_? : Output => Boolean = Defaults.printStandard_?,
         printSummary: TestResultLogger = Defaults.printSummary,

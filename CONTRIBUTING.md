@@ -76,7 +76,7 @@ The subject of the bug report doesn't matter. A more descriptive subject is cert
 
 If possible, please format code or console outputs.
 
-On Github it's:
+On GitHub it's:
 
     ```scala
     name := "foo"
