@@ -133,7 +133,13 @@ private[sbt] object ClassLoaders {
           case _: AllLibraryJars => true
           case _                 => false
         }
-        val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
+        val scalaLibraryLayer = {
+          cache.apply(
+            si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toList,
+            interfaceLoader,
+            () => new ScalaLibraryClassLoader(si.libraryJars.map(_.toURI.toURL), interfaceLoader)
+          )
+        }
         val cpFiles = fullCP.map(_._1)
 
         val scalaReflectJar = allDependencies.collectFirst {
