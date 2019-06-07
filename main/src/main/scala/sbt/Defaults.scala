@@ -833,25 +833,25 @@ object Defaults extends BuildCommon {
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
-      val close = testLoader.value match {
-        case u: URLClassLoader  => Some(() => u.close())
-        case c: ClasspathFilter => Some(() => c.close())
-        case _                  => None
-      }
       val trl = (testResultLogger in (Test, test)).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
-      val currentLoader = Thread.currentThread.getContextClassLoader
-      try {
-        Thread.currentThread.setContextClassLoader(testLoader.value)
-        trl.run(streams.value.log, executeTests.value, taskName)
-      } finally {
-        Thread.currentThread.setContextClassLoader(currentLoader)
-        close.foreach(_.apply())
-      }
+      try trl.run(streams.value.log, executeTests.value, taskName)
+      finally close(testLoader.value)
     },
-    testOnly := inputTests(testOnly).evaluated,
-    testQuick := inputTests(testQuick).evaluated
+    testOnly := {
+      try inputTests(testOnly).evaluated
+      finally close(testLoader.value)
+    },
+    testQuick := {
+      try inputTests(testQuick).evaluated
+      finally close(testLoader.value)
+    }
   )
+  private def close(sbtLoader: ClassLoader): Unit = sbtLoader match {
+    case u: AutoCloseable   => u.close()
+    case c: ClasspathFilter => c.close()
+    case _                  =>
+  }
 
   /**
    * A scope whose task axis is set to Zero.
@@ -1010,13 +1010,7 @@ object Defaults extends BuildCommon {
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
-      val currentLoader = Thread.currentThread.getContextClassLoader
-      try {
-        Thread.currentThread.setContextClassLoader(testLoader.value)
-        output.map(out => trl.run(s.log, out, taskName))
-      } finally {
-        Thread.currentThread.setContextClassLoader(currentLoader)
-      }
+      output.map(out => trl.run(s.log, out, taskName))
     }
   }
 
