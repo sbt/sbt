@@ -11,7 +11,7 @@ import java.io.File;
 import scala.collection.immutable.Map;
 import scala.collection.Seq;
 
-class ResourceLoader extends ResourceLoaderImpl {
+final class ResourceLoader extends ResourceLoaderImpl {
   ResourceLoader(
       final Seq<File> classpath, final ClassLoader parent, final Map<String, String> resources) {
     super(classpath, parent, resources);

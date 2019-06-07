@@ -11,7 +11,7 @@ import java.io.File;
 import scala.collection.immutable.Map;
 import scala.collection.Seq;
 
-class LayeredClassLoader extends LayeredClassLoaderImpl {
+final class LayeredClassLoader extends LayeredClassLoaderImpl {
   LayeredClassLoader(
       final Seq<File> classpath,
       final ClassLoader parent,
