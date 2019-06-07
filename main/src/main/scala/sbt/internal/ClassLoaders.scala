@@ -80,7 +80,7 @@ private[sbt] object ClassLoaders {
         val newLoader =
           (classpath: Seq[File]) => {
             val mappings = classpath.map(f => f.getName -> f).toMap
-            val transformedDependencies = allDeps.map(f => mappings.get(f.getName).getOrElse(f))
+            val transformedDependencies = allDeps.map(f => mappings.getOrElse(f.getName, f))
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
@@ -133,7 +133,13 @@ private[sbt] object ClassLoaders {
           case _: AllLibraryJars => true
           case _                 => false
         }
-        val scalaLibraryLayer = layer(si.libraryJars, interfaceLoader, cache, resources, tmp)
+        val scalaLibraryLayer = {
+          cache.apply(
+            si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toList,
+            interfaceLoader,
+            () => new ScalaLibraryClassLoader(si.libraryJars.map(_.toURI.toURL), interfaceLoader)
+          )
+        }
         val cpFiles = fullCP.map(_._1)
 
         val scalaReflectJar = allDependencies.collectFirst {
@@ -158,8 +164,13 @@ private[sbt] object ClassLoaders {
 
         // layer 3 (optional if in the test config and the runtime layer is not shared)
         val dependencyLayer =
-          if (layerDependencies) layer(allDependencies, resourceLayer, cache, resources, tmp)
-          else resourceLayer
+          if (layerDependencies && allDependencies.nonEmpty) {
+            cache(
+              allDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
+              resourceLayer,
+              () => new ReverseLookupClassLoaderHolder(allDependencies, resourceLayer)
+            )
+          } else resourceLayer
 
         val scalaJarNames = (si.libraryJars ++ scalaReflectJar).map(_.getName).toSet
         // layer 4
@@ -167,34 +178,21 @@ private[sbt] object ClassLoaders {
           if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
           else Set(si.libraryJars ++ scalaReflectJar: _*)
         val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
-        new LayeredClassLoader(dynamicClasspath, dependencyLayer, resources, tmp)
+        dependencyLayer match {
+          case dl: ReverseLookupClassLoaderHolder =>
+            dl.checkout(dynamicClasspath, tmp)
+          case cl =>
+            cl.getParent match {
+              case dl: ReverseLookupClassLoaderHolder => dl.checkout(dynamicClasspath, tmp)
+              case _                                  => new LayeredClassLoader(dynamicClasspath, cl, tmp)
+            }
+        }
     }
   }
 
   private def dependencyJars(
       key: sbt.TaskKey[Seq[Attributed[File]]]
   ): Def.Initialize[Task[Seq[File]]] = Def.task(data(key.value).filter(_.getName.endsWith(".jar")))
-
-  // Creates a one or two layered classloader for the provided classpaths depending on whether
-  // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
-  // above the regular jar layer. This allows the snapshot layer to be invalidated without
-  // invalidating the regular jar layer. If the classpath is empty, it just returns the parent
-  // loader.
-  private def layer(
-      classpath: Seq[File],
-      parent: ClassLoader,
-      cache: ClassLoaderCache,
-      resources: Map[String, String],
-      tmp: File
-  ): ClassLoader = {
-    if (classpath.nonEmpty) {
-      cache(
-        classpath.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
-        parent,
-        () => new LayeredClassLoader(classpath, parent, resources, tmp)
-      )
-    } else parent
-  }
 
   // Creates a one or two layered classloader for the provided classpaths depending on whether
   // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
@@ -209,11 +207,8 @@ private[sbt] object ClassLoaders {
       resourceMap: Map[String, String]
   ): ClassLoader = {
     if (resources.nonEmpty) {
-      cache(
-        resources.toList,
-        parent,
-        () => new ResourceLoader(classpath, parent, resourceMap)
-      )
+      val mkLoader = () => new ResourceLoader(classpath, parent, resourceMap)
+      cache(resources.toList, parent, mkLoader)
     } else parent
   }
 

@@ -8,16 +8,14 @@
 package sbt.internal;
 
 import java.io.File;
-import scala.collection.immutable.Map;
 import scala.collection.Seq;
 
-class LayeredClassLoader extends LayeredClassLoaderImpl {
+final class LayeredClassLoader extends LayeredClassLoaderImpl {
   LayeredClassLoader(
       final Seq<File> classpath,
       final ClassLoader parent,
-      final Map<String, String> resources,
       final File tempDir) {
-    super(classpath, parent, resources, tempDir);
+    super(classpath, parent, tempDir);
   }
 
   static {

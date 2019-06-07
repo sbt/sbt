@@ -10,7 +10,7 @@ package sbt.internal;
 import java.net.URL;
 import java.net.URLClassLoader;
 
-class FlatLoader extends URLClassLoader {
+final class FlatLoader extends URLClassLoader {
   static {
     ClassLoader.registerAsParallelCapable();
   }
