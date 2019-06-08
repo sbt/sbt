@@ -73,6 +73,8 @@ object SysProp {
 
   def residentLimit: Int = int("sbt.resident.limit", 0)
 
+  def closeClassLoaders: Boolean = getOrTrue("sbt.classloader.close")
+
   /**
    * Indicates whether formatting has been disabled in environment variables.
    * 1. -Dsbt.log.noformat=true means no formatting.

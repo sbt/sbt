@@ -7,6 +7,7 @@
 
 package sbt.internal;
 
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 
@@ -28,5 +29,10 @@ final class FlatLoader extends URLClassLoader {
       jars.append("\n");
     }
     return "FlatLoader(\n  parent = " + getParent() + "\n  jars = " + jars.toString() + ")";
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (SysProp.closeClassLoaders()) super.close();
   }
 }
