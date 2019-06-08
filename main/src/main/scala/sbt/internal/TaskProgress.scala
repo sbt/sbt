@@ -23,7 +23,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     with ExecuteProgress[Task] {
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val currentProgressThread = new AtomicReference[Option[ProgressThread]](None)
-  private[this] val sleepDuration = SysProp.supersheelSleep
+  private[this] val sleepDuration = SysProp.supershellSleep
   private[this] final class ProgressThread
       extends Thread("task-progress-report-thread")
       with AutoCloseable {
