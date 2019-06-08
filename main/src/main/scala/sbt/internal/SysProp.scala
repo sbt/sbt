@@ -84,7 +84,7 @@ object SysProp {
 
   def supershell: Boolean = color && getOrTrue("sbt.supershell")
 
-  def supersheelSleep: Long = long("sbt.supershell.sleep", 100L)
+  def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
 
   def defaultUseCoursier: Boolean = {
     val coursierOpt = booleanOpt("sbt.coursier")
