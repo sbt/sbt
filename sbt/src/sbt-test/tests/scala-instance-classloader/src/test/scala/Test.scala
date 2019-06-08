@@ -1,6 +1,8 @@
 package akka.actor
 
 import org.junit._
+import scala.concurrent._
+import scala.concurrent.duration._
 
 class BadTest {
 
@@ -13,7 +15,7 @@ class BadTest {
     val system = ActorSystem()
     def evilGetThreadExectionContextName =
       system.asInstanceOf[ActorSystemImpl].internalCallingThreadExecutionContext.getClass.getName
-    system.terminate()
+    Await.result(system.terminate(), 5.seconds)
     val expected = "scala.concurrent.Future$InternalCallbackExecutor$"
     Assert.assertEquals("Failed to grab appropriate Akka name", expected, evilGetThreadExectionContextName)
   }
