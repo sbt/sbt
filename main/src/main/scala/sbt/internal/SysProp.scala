@@ -82,6 +82,8 @@ object SysProp {
    */
   lazy val color: Boolean = ConsoleAppender.formatEnabledInEnv
 
+  def closeClassLoaders: Boolean = getOrTrue("sbt.classloader.close")
+
   def supershell: Boolean = color && getOrTrue("sbt.supershell")
 
   def supershellSleep: Long = long("sbt.supershell.sleep", 100L)

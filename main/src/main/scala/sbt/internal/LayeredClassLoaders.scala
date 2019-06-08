@@ -31,6 +31,7 @@ private[internal] class LayeredClassLoaderImpl(
 ) extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent)
     with NativeLoader {
   setTempDir(tempDir)
+  override def close(): Unit = if (SysProp.closeClassLoaders) super.close()
 }
 
 /**
@@ -146,6 +147,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     }
     override def loadClass(name: String, resolve: Boolean): Class[_] =
       loadClass(name, resolve, reverseLookup = true)
+    override def close(): Unit = if (SysProp.closeClassLoaders) super.close()
   }
 
   /**
@@ -193,7 +195,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     }
     override def close(): Unit = {
       checkin(parent)
-      super.close()
+      if (SysProp.closeClassLoaders) super.close()
     }
   }
 }
