@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
+import java.nio.file.{ FileAlreadyExistsException, Files }
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
@@ -214,6 +215,7 @@ object BuiltinCommands {
       plugins,
       addPluginSbtFile,
       writeSbtVersion,
+      skipBanner,
       notifyUsersAboutShell,
       shell,
       startServer,
@@ -862,7 +864,8 @@ object BuiltinCommands {
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
     import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
     val exchange = StandardMain.exchange
-    val s1 = exchange run s0
+    val welcomeState = displayWelcomeBanner(s0)
+    val s1 = exchange run welcomeState
     exchange publishEventMessage ConsolePromptEvent(s0)
     val minGCInterval = Project
       .extract(s1)
@@ -943,4 +946,35 @@ object BuiltinCommands {
     Command.command(NotifyUsersAboutShell) { state =>
       notifyUsersAboutShell(state); state
     }
+
+  private[this] def skipWelcomeFile(state: State, version: String) = {
+    val base = BuildPaths.getGlobalBase(state).toPath
+    base.resolve("preferences").resolve(version).resolve(SkipBannerFileName)
+  }
+  private def displayWelcomeBanner(state: State): State = {
+    if (!state.get(bannerHasBeenShown).getOrElse(false)) {
+      try {
+        val version = sbtVersion(state)
+        val skipFile = skipWelcomeFile(state, version)
+        Files.createDirectories(skipFile.getParent)
+        val suppress = !SysProp.banner || Files.exists(skipFile)
+        if (!suppress) state.log.info(Banner(version))
+      } catch { case _: IOException => /* Don't let errors in this command prevent startup */ }
+      state.put(bannerHasBeenShown, true)
+    } else state
+  }
+  private[this] val bannerHasBeenShown =
+    AttributeKey[Boolean]("banner-has-been-shown", Int.MaxValue)
+  private[this] val SkipBannerFileName = "skip-banner"
+  private[this] val SkipBanner = "skipBanner"
+  private[this] def skipBanner: Command = Command.command(SkipBanner)(skipBanner)
+  private def skipBanner(state: State): State = {
+    val skipFile = skipWelcomeFile(state, sbtVersion(state))
+    try Files.createFile(skipFile)
+    catch {
+      case _: FileAlreadyExistsException =>
+      case e: IOException                => state.log.error(s"Couldn't create file $skipFile: $e")
+    }
+    state
+  }
 }
