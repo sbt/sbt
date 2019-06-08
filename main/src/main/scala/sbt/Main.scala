@@ -47,7 +47,7 @@ private[sbt] object xMainImpl {
       import sbt.internal.client.NetworkClient
 
       // if we detect -Dsbt.client=true or -client, run thin client.
-      val clientModByEnv = java.lang.Boolean.getBoolean("sbt.client")
+      val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments.map(_.trim)
       if (clientModByEnv || (userCommands.exists { cmd =>
             (cmd == DashClient) || (cmd == DashDashClient)
@@ -845,18 +845,11 @@ object BuiltinCommands {
 
   def registerCompilerCache(s: State): State = {
     s.get(Keys.stateCompilerCache).foreach(_.clear())
-    val maxCompilers = System.getProperty("sbt.resident.limit")
+
+    val maxCompilers: Int = SysProp.residentLimit
     val cache =
-      if (maxCompilers == null)
-        CompilerCache.fresh
-      else {
-        val num = try maxCompilers.toInt
-        catch {
-          case e: NumberFormatException =>
-            throw new RuntimeException("Resident compiler limit must be an integer.", e)
-        }
-        if (num <= 0) CompilerCache.fresh else CompilerCache.createCacheFor(num)
-      }
+      if (maxCompilers <= 0) CompilerCache.fresh
+      else CompilerCache.createCacheFor(maxCompilers)
     s.put(Keys.stateCompilerCache, cache)
   }
 
@@ -925,7 +918,7 @@ object BuiltinCommands {
     state.remainingCommands exists (_.commandLine == TemplateCommand)
 
   private def writeSbtVersion(state: State) =
-    if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
+    if (SysProp.genBuildProps && !intendsToInvokeNew(state))
       writeSbtVersionUnconditionally(state)
 
   private def WriteSbtVersion = "writeSbtVersion"

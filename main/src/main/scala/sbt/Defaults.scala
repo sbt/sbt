@@ -211,7 +211,7 @@ object Defaults extends BuildCommon {
       exportJars :== false,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
-      useCoursier :== LibraryManagement.defaultUseCoursier,
+      useCoursier :== SysProp.defaultUseCoursier,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
@@ -285,7 +285,7 @@ object Defaults extends BuildCommon {
         val tempDirectory = taskTemporaryDirectory.value
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
-      useSuperShell := { if (insideCI.value) false else sbt.internal.TaskProgress.isEnabled },
+      useSuperShell := { if (insideCI.value) false else SysProp.supershell },
       progressReports := {
         val progress = useSuperShell.value
         val rs = EvaluateTask.taskTimingProgress.toVector ++
@@ -337,7 +337,7 @@ object Defaults extends BuildCommon {
           ++ Vector(ServerHandler.fallback))
       },
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
-        sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
+        sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
     )
@@ -2072,7 +2072,7 @@ object Classpaths {
         licenses :== Nil,
         developers :== Nil,
         scmInfo :== None,
-        offline :== java.lang.Boolean.getBoolean("sbt.offline"),
+        offline :== SysProp.offline,
         defaultConfiguration :== Some(Configurations.Compile),
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,

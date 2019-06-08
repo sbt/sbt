@@ -324,7 +324,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       isCommand: Boolean
   ): State = withCharBufferedStdIn { in =>
     implicit val extracted: Extracted = Project.extract(state)
-    val repo = if ("polling" == System.getProperty("sbt.watch.mode")) {
+    val repo = if ("polling" == SysProp.watchMode) {
       val service = new PollingWatchService(extracted.getOpt(pollInterval).getOrElse(500.millis))
       FileTreeRepository
         .legacy((_: Any) => {}, service)
