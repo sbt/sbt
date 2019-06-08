@@ -93,6 +93,8 @@ object SysProp {
     coursierOpt.orElse(notIvyOpt).getOrElse(true)
   }
 
+  def banner: Boolean = getOrTrue("sbt.banner")
+
   def turbo: Boolean = getOrFalse("sbt.turbo")
 
   def taskTimings: Boolean = getOrFalse("sbt.task.timings")
