@@ -164,7 +164,6 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
     Seq(
       compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
-      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.AllLibraryJars,
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
@@ -211,7 +210,7 @@ object Defaults extends BuildCommon {
       exportJars :== false,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
-      useCoursier :== LibraryManagement.defaultUseCoursier,
+      useCoursier :== SysProp.defaultUseCoursier,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
@@ -285,7 +284,8 @@ object Defaults extends BuildCommon {
         val tempDirectory = taskTemporaryDirectory.value
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
-      useSuperShell := { if (insideCI.value) false else sbt.internal.TaskProgress.isEnabled },
+      turbo :== SysProp.turbo,
+      useSuperShell := { if (insideCI.value) false else SysProp.supershell },
       progressReports := {
         val progress = useSuperShell.value
         val rs = EvaluateTask.taskTimingProgress.toVector ++
@@ -337,7 +337,7 @@ object Defaults extends BuildCommon {
           ++ Vector(ServerHandler.fallback))
       },
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
-        sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
+        sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
     )
@@ -1049,7 +1049,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution = false,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
+      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
     )
   }
@@ -1072,7 +1072,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
+      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
     )
   }
@@ -1886,7 +1886,11 @@ object Defaults extends BuildCommon {
         }
         val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
         CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
-      }
+      },
+      classLoaderLayeringStrategy := {
+        if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
+        else ClassLoaderLayeringStrategy.ScalaLibrary
+      },
     )
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
@@ -2072,7 +2076,7 @@ object Classpaths {
         licenses :== Nil,
         developers :== Nil,
         scmInfo :== None,
-        offline :== java.lang.Boolean.getBoolean("sbt.offline"),
+        offline :== SysProp.offline,
         defaultConfiguration :== Some(Configurations.Compile),
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,

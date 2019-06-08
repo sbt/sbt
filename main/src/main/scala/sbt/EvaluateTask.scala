@@ -156,8 +156,8 @@ object EvaluateTask {
 
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
-    if (java.lang.Boolean.getBoolean("sbt.task.timings")) {
-      if (java.lang.Boolean.getBoolean("sbt.task.timings.on.shutdown"))
+    if (SysProp.taskTimings) {
+      if (SysProp.taskTimingsOnShutdown)
         Some(sharedProgress)
       else
         Some(new TaskTimings(reportOnShutdown = false))
@@ -165,7 +165,7 @@ object EvaluateTask {
 
   lazy private val sharedTraceEvent = new TaskTraceEvent()
   def taskTraceEvent: Option[ExecuteProgress[Task]] =
-    if (java.lang.Boolean.getBoolean("sbt.traces")) {
+    if (SysProp.traces) {
       Some(sharedTraceEvent)
     } else None
 

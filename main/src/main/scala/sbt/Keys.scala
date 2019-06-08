@@ -474,6 +474,7 @@ object Keys {
     def apply(progress: ExecuteProgress[Task]): TaskProgress = new TaskProgress(progress)
   }
   val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
+  val turbo = settingKey[Boolean]("Enables (true) or disables optional performance features.")
   // This key can be used to add custom ExecuteProgress instances
   val progressReports = settingKey[Seq[TaskProgress]]("A function that returns a list of progress reporters.").withRank(DTask)
   private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)

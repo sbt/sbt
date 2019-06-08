@@ -1,3 +1,5 @@
+ThisBuild / turbo := true
+
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 import scala.collection.JavaConverters._
