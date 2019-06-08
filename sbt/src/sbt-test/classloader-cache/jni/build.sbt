@@ -10,6 +10,8 @@ val wrappedTest = taskKey[Unit]("Test with modified java.library.path")
 def wrap(task: InputKey[Unit]): Def.Initialize[Task[Unit]] =
   Def.sequential(appendToLibraryPath, task.toTask(""), dropLibraryPath)
 
+ThisBuild / turbo := true
+
 val root = (project in file(".")).settings(
   scalaVersion := "2.12.8",
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-h",

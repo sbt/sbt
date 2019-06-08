@@ -1,3 +1,5 @@
+ThisBuild / turbo := true
+
 val utestTest = (project in file(".")).settings(
   name := "utest-test",
   scalaVersion := "2.12.8",

@@ -1,3 +1,5 @@
+ThisBuild / turbo := true
+
 val snapshot = (project in file(".")).settings(
   name := "mismatched-libraries",
   scalaVersion := "2.12.8",

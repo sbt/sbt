@@ -164,7 +164,6 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
     Seq(
       compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
-      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.AllLibraryJars,
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
@@ -285,6 +284,7 @@ object Defaults extends BuildCommon {
         val tempDirectory = taskTemporaryDirectory.value
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
+      turbo :== SysProp.turbo,
       useSuperShell := { if (insideCI.value) false else SysProp.supershell },
       progressReports := {
         val progress = useSuperShell.value
@@ -1049,7 +1049,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution = false,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
+      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
     )
   }
@@ -1072,7 +1072,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
+      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
     )
   }
@@ -1886,7 +1886,11 @@ object Defaults extends BuildCommon {
         }
         val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
         CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
-      }
+      },
+      classLoaderLayeringStrategy := {
+        if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
+        else ClassLoaderLayeringStrategy.ScalaLibrary
+      },
     )
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =

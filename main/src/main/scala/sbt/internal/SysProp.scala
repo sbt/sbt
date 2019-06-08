@@ -93,6 +93,8 @@ object SysProp {
     coursierOpt.orElse(notIvyOpt).getOrElse(true)
   }
 
+  def turbo: Boolean = getOrFalse("sbt.turbo")
+
   def taskTimings: Boolean = getOrFalse("sbt.task.timings")
   def taskTimingsOnShutdown: Boolean = getOrFalse("sbt.task.timings.on.shutdown")
   def taskTimingsThreshold: Long = long("sbt.task.timings.threshold", 0L)
