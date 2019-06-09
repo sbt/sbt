@@ -223,7 +223,6 @@ object MainLoop {
       }
     } catch {
       case err: Throwable =>
-        err.printStackTrace()
         val errorEvent = ExecStatusEvent(
           "Error",
           channelName,
