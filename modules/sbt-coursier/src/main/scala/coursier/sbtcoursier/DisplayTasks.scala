@@ -83,8 +83,7 @@ object DisplayTasks {
 
     val resolutions = coursierResolutionTask(sbtClassifiers, ignoreArtifactErrors).value
     for (ResolutionResult(subGraphConfigs, resolution, dependencies) <- resolutions) {
-      // use sbt logging?
-      println(
+      streams.value.log.info(
         s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
           Print.dependencyTree(
             resolution,
@@ -125,7 +124,7 @@ object DisplayTasks {
           reverse = true,
           colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
         )
-      println(strToPrint)
+      streams.value.log.info(strToPrint)
       result.append(strToPrint)
       result.append("\n")
     }
