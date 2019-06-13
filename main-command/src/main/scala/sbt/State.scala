@@ -41,7 +41,8 @@ final case class State(
     currentCommand: Option[Exec],
     next: State.Next
 ) extends Identity {
-  lazy val combinedParser = Command.combine(definedCommands)(this)
+  private[sbt] lazy val nonMultiParsers = Command.combine(definedCommands)(this)
+  lazy val combinedParser = (BasicCommands.multiApplied(this) | nonMultiParsers).failOnException
 
   def source: Option[CommandSource] =
     currentCommand match {

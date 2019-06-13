@@ -19,3 +19,10 @@
 -> setStringValue foo; taskThatFails; setStringValue bar
 
 > checkStringValue foo
+
+# this fails even though the checkInput parser would parse the input into Seq("foo", "bar")
+-> checkInput foo; bar
+
+> checkInput foo
+
+> compile; checkInput foo

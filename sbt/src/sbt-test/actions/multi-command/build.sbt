@@ -12,3 +12,5 @@ taskThatFails := {
   throw new IllegalArgumentException("")
   ()
 }
+
+checkInput := checkInputImpl.evaluated

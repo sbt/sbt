@@ -178,8 +178,7 @@ object Command {
     )
 
   def process(command: String, state: State): State = {
-    val parser = combine(state.definedCommands)
-    parse(command, parser(state)) match {
+    parse(command, state.combinedParser) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log error errMsg

@@ -161,11 +161,22 @@ object BasicCommands {
       ((nonSemi & nonQuote).map(_.toString) | StringEscapable.map(c => s""""$c"""")).+,
       hide = const(true)
     )
-    def commandParser = state.map(s => (s.combinedParser & cmdPart) | cmdPart).getOrElse(cmdPart)
-    val part = semi.flatMap(_ => matched(commandParser) <~ token(OptSpace)).map(_.trim)
-    (cmdPart.? ~ part.+ <~ semi.?).map {
-      case (Some(h), t) => h.mkString.trim +: t.toList
-      case (_, t)       => t.toList
+    lazy val combinedParser =
+      state.map(s => (s.nonMultiParsers & cmdPart) | cmdPart).getOrElse(cmdPart)
+    val part = semi.flatMap(_ => matched(combinedParser) <~ token(OptSpace))
+    (matched(cmdPart).? ~ part.+ <~ semi.?).map {
+      case (h, t) =>
+        val commands = (h ++ t).toList.map(_.trim)
+        commands.collect { case c if Parser.parse(c, combinedParser).isLeft => c } match {
+          case Nil     => commands
+          case invalid =>
+            /*
+             * This is to prevent the user from running something like 'run a;b'. Instead, they
+             * must do 'run "a;b"' if they wish to have semicolongs in the task input.
+             */
+            val msg = s"Couldn't parse commands: ${invalid.mkString("'", "', '", "'")}"
+            throw new IllegalArgumentException(msg)
+        }
     }
   }
 
