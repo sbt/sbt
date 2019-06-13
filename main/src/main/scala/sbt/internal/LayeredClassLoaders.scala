@@ -102,6 +102,22 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     }
   }
 
+  private class ClassLoadingLock {
+    private[this] val locks = new ConcurrentHashMap[String, AnyRef]()
+    def withLock[R](name: String)(f: => R): R = {
+      val newLock = new AnyRef
+      val lock = locks.synchronized(locks.put(name, newLock) match {
+        case null => newLock
+        case l    => l
+      })
+      try lock.synchronized(f)
+      finally locks.synchronized {
+        locks.remove(name)
+        ()
+      }
+    }
+  }
+
   /**
    * A ClassLoader for the dependency layer of a run or test task. It is almost a normal
    * URLClassLoader except that it has the ability to look one level down the classloading
@@ -130,19 +146,22 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     private[this] val directDescendant: AtomicReference[BottomClassLoader] =
       new AtomicReference
     private[this] val dirty = new AtomicBoolean(false)
+    private[this] val classLoadingLock = new ClassLoadingLock
     def isDirty: Boolean = dirty.get()
     def setDescendant(classLoader: BottomClassLoader): Unit = directDescendant.set(classLoader)
     def loadClass(name: String, resolve: Boolean, reverseLookup: Boolean): Class[_] = {
-      try super.loadClass(name, resolve)
-      catch {
-        case e: ClassNotFoundException if reverseLookup =>
-          directDescendant.get match {
-            case null => throw e
-            case cl =>
-              val res = cl.lookupClass(name)
-              dirty.set(true)
-              res
-          }
+      classLoadingLock.withLock(name) {
+        try super.loadClass(name, resolve)
+        catch {
+          case e: ClassNotFoundException if reverseLookup =>
+            directDescendant.get match {
+              case null => throw e
+              case cl =>
+                val res = cl.lookupClass(name)
+                dirty.set(true)
+                res
+            }
+        }
       }
     }
     override def loadClass(name: String, resolve: Boolean): Class[_] =
@@ -174,12 +193,21 @@ private[internal] final class ReverseLookupClassLoaderHolder(
       with NativeLoader {
     parent.setDescendant(this)
     setTempDir(tempDir)
+    val classLoadingLock = new ClassLoadingLock
 
     final def lookupClass(name: String): Class[_] = findClass(name)
 
-    override def findClass(name: String): Class[_] = findLoadedClass(name) match {
-      case null => super.findClass(name)
-      case c    => c
+    override def findClass(name: String): Class[_] = {
+      findLoadedClass(name) match {
+        case null =>
+          classLoadingLock.withLock(name) {
+            findLoadedClass(name) match {
+              case null => super.findClass(name)
+              case c    => c
+            }
+          }
+        case c => c
+      }
     }
     override def loadClass(name: String, resolve: Boolean): Class[_] = {
       val clazz = findLoadedClass(name) match {
