@@ -19,3 +19,10 @@
 -> setStringValue foo; taskThatFails; setStringValue bar
 
 > checkStringValue foo
+
+> checkInputContainsSemicolon foo; bar
+
+> checkInputContainsSemicolon foo; bar;
+
+# This fails because the parser interprets this as 'compile', 'checkInputContainsSemicolon foo', 'bar'
+-> compile; checkInputContainsSemicolon foo; bar

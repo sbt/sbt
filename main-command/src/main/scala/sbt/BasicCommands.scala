@@ -161,8 +161,8 @@ object BasicCommands {
       ((nonSemi & nonQuote).map(_.toString) | StringEscapable.map(c => s""""$c"""")).+,
       hide = const(true)
     )
-    def commandParser = state.map(s => (s.combinedParser & cmdPart) | cmdPart).getOrElse(cmdPart)
-    val part = semi.flatMap(_ => matched(commandParser) <~ token(OptSpace)).map(_.trim)
+    lazy val combinedParser = state.map(s => s.combinedParser & cmdPart).getOrElse(cmdPart)
+    val part = semi.flatMap(_ => matched(combinedParser) <~ token(OptSpace)).map(_.trim)
     (cmdPart.? ~ part.+ <~ semi.?).map {
       case (Some(h), t) => h.mkString.trim +: t.toList
       case (_, t)       => t.toList
