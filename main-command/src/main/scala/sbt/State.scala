@@ -365,6 +365,7 @@ object State {
                     case _ =>
                   }
               }
+            case _ =>
           }
       }
       s.put(BasicKeys.extendedClassLoaderCache, cache)
