@@ -190,6 +190,7 @@ object BuiltinCommands {
 
   def DefaultCommands: Seq[Command] =
     Seq(
+      BasicCommands.multi,
       about,
       tasks,
       settingsCommand,
@@ -226,7 +227,6 @@ object BuiltinCommands {
       export,
       boot,
       initialize,
-      BasicCommands.multi,
       act,
       continuous,
       clearCaches,
