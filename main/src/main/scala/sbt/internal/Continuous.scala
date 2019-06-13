@@ -469,7 +469,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val project = extracted.currentRef
     val logger = setLevel(rawLogger, configs.map(_.watchSettings.logLevel).min, state)
     val beforeCommand = () => configs.foreach(_.watchSettings.beforeCommand())
-    val onStart: () => Watch.Action = getOnStart(project, commands, configs, rawLogger, count)
+    val onStart: () => Watch.Action =
+      getOnStart(project, commands, configs, rawLogger, count, extracted)
     val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
     val (nextFileEvent, cleanupFileMonitor): (() => Option[(Watch.Event, Watch.Action)], () => Unit) =
       getFileEvents(configs, rawLogger, state, count, commands, fileStampCache)
@@ -501,7 +502,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       commands: Seq[String],
       configs: Seq[Config],
       logger: Logger,
-      count: AtomicInteger
+      count: AtomicInteger,
+      extracted: Extracted,
   ): () => Watch.Action = {
     val f: () => Seq[Watch.Action] = () => {
       configs.map { params =>
@@ -522,8 +524,11 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     () => {
       val res = f().min
       // Print the default watch message if there are multiple tasks
-      if (configs.size > 1)
-        Watch.defaultStartWatch(count.get(), project, commands).foreach(logger.info(_))
+      if (configs.size > 1) {
+        val onStartWatch =
+          extracted.getOpt(watchStartMessage in project).getOrElse(Watch.defaultStartWatch)
+        onStartWatch(count.get(), project, commands).foreach(logger.info(_))
+      }
       res
     }
   }
