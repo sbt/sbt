@@ -17,7 +17,6 @@ import sbt.BasicCommandStrings.{
   continuousBriefHelp,
   continuousDetail
 }
-import sbt.BasicCommands.otherCommandParser
 import sbt.Def._
 import sbt.Keys._
 import sbt.Scope.Global
@@ -105,8 +104,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    */
   private[sbt] def continuous: Command =
     Command(ContinuousExecutePrefix, continuousBriefHelp, continuousDetail)(continuousParser) {
-      case (s, (initialCount, command)) =>
-        runToTermination(s, command, initialCount, isCommand = true)
+      case (s, (initialCount, commands)) =>
+        runToTermination(s, commands, initialCount, isCommand = true)
     }
 
   /**
@@ -117,9 +116,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    */
   private[sbt] def continuousTask: Def.Initialize[InputTask[StateTransform]] =
     Def.inputTask {
-      val (initialCount, command) = continuousParser.parsed
+      val (initialCount, commands) = continuousParser.parsed
       new StateTransform(
-        runToTermination(state.value, command, initialCount, isCommand = false)
+        runToTermination(state.value, commands, initialCount, isCommand = false)
       )
     }
 
@@ -137,15 +136,20 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       10000
     )
 
-  private[this] val continuousParser: State => Parser[(Int, String)] = {
+  private[this] val continuousParser: State => Parser[(Int, Seq[String])] = {
     def toInt(s: String): Int = Try(s.toInt).getOrElse(0)
 
     // This allows us to re-enter the watch with the previous count.
     val digitParser: Parser[Int] =
       (Parsers.Space.* ~> matched(Parsers.Digit.+) <~ Parsers.Space.*).map(toInt)
     state =>
-      val ocp = otherCommandParser(state)
-      (digitParser.? ~ ocp).map { case (i, s) => (i.getOrElse(0), s) }
+      val ocp = BasicCommands.multiParserImpl(Some(state)) |
+        BasicCommands.otherCommandParser(state).map(_ :: Nil)
+      (digitParser.? ~ ocp).flatMap {
+        case (i, cmds) if cmds.exists(_.nonEmpty) =>
+          Parser.success((i.getOrElse(0), cmds.filter(_.nonEmpty)))
+        case (_, cmds) => Parser.failure("Couldn't parse any commands")
+      }
   }
 
   /**
@@ -202,8 +206,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       .getOrElse(throw exception)
   }
 
-  private[sbt] def setup[R](state: State, command: String)(
-      f: (Seq[String], State, Seq[(String, State, () => Boolean)], Seq[String]) => R
+  private[sbt] def setup[R](state: State, commands: Seq[String])(
+      f: (State, Seq[(String, State, () => Boolean)], Seq[String]) => R
   ): R = {
     // First set up the state so that we can capture whether or not a task completed successfully
     // or if it threw an Exception (we lose the actual exception, but that should still be printed
@@ -253,14 +257,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       )
     }
 
-    // We support multiple commands in watch, so it's necessary to run the command string through
-    // the multi parser.
-    val trimmed = command.trim
-    val commands = Parser.parse(trimmed, BasicCommands.multiParserImpl(Some(s))) match {
-      case Left(_)  => trimmed :: Nil
-      case Right(c) => c
-    }
-
     // Convert the command strings to runnable tasks, which are represented by
     // () => Try[Boolean].
     val taskParser = s.combinedParser
@@ -274,7 +270,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             case Left(c)  => (i :+ c, v)
           }
       }
-    f(commands, s, valid, invalid)
+    f(s, valid, invalid)
   }
 
   private[this] def withCharBufferedStdIn[R](f: InputStream => R): R = {
@@ -319,7 +315,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
   private[sbt] def runToTermination(
       state: State,
-      command: String,
+      commands: Seq[String],
       count: Int,
       isCommand: Boolean
   ): State = withCharBufferedStdIn { in =>
@@ -341,7 +337,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             stateWithRepo.put(persistentFileStampCache, fileStampCache)
           else stateWithRepo
         )
-      setup(fullState, command) { (commands, s, valid, invalid) =>
+      setup(fullState, commands) { (s, valid, invalid) =>
         EvaluateTask.withStreams(extracted.structure, s)(_.use(streams in Global) { streams =>
           implicit val logger: Logger = streams.log
           if (invalid.isEmpty) {
@@ -369,7 +365,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
                   e.throwable.getStackTrace.foreach(e => logger.error(e.toString))
                 case _ =>
               }
-              callbacks.onTermination(terminationAction, command, currentCount.get(), state)
+              val fullCommand = commands.mkString("; ")
+              callbacks.onTermination(terminationAction, fullCommand, currentCount.get(), state)
             } finally {
               callbacks.onExit()
             }
