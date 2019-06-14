@@ -7,7 +7,7 @@
 
 package sbt
 
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.FlatSpec
 import sbt.internal.util.complete.Parser
 
 object MultiParserSpec {
@@ -18,47 +18,54 @@ object MultiParserSpec {
   }
 }
 import sbt.MultiParserSpec._
-class MultiParserSpec extends FlatSpec with Matchers {
+class MultiParserSpec extends FlatSpec {
   "parsing" should "parse single commands" in {
-    ";foo".parse shouldBe Seq("foo")
-    ";   foo".parse shouldBe Seq("foo")
+    assert(";foo".parse == Seq("foo"))
+    assert(";   foo".parse == Seq("foo"))
   }
   it should "parse multiple commands" in {
-    ";foo;bar".parse shouldBe Seq("foo", "bar")
+    assert(";foo;bar".parse == Seq("foo", "bar"))
   }
   it should "parse single command with leading spaces" in {
-    ";     foo".parse shouldBe Seq("foo")
+    assert(";     foo".parse == Seq("foo"))
   }
   it should "parse multiple commands with leading spaces" in {
-    ";     foo;bar".parse shouldBe Seq("foo", "bar")
-    ";     foo;    bar".parse shouldBe Seq("foo", "bar")
-    ";foo; bar".parse shouldBe Seq("foo", "bar")
+    assert(";     foo;bar".parse == Seq("foo", "bar"))
+    assert(";     foo;    bar".parse == Seq("foo", "bar"))
+    assert(";foo; bar".parse == Seq("foo", "bar"))
+    assert("; foo ; bar ; baz".parse == Seq("foo", "bar", "baz"))
   }
   it should "parse command with string literal" in {
-    "; foo \"barbaz\"".parse shouldBe Seq("foo \"barbaz\"")
-    "; foo \"bar;baz\"".parse shouldBe Seq("foo \"bar;baz\"")
-    "; foo \"barbaz\"; bar".parse shouldBe Seq("foo \"barbaz\"", "bar")
-    "; foo \"barbaz\"; bar \"blah\"".parse shouldBe Seq("foo \"barbaz\"", "bar \"blah\"")
-    "; foo \"bar;baz\"; bar".parse shouldBe Seq("foo \"bar;baz\"", "bar")
-    "; foo \"bar;baz\"; bar \"buzz\"".parse shouldBe Seq("foo \"bar;baz\"", "bar \"buzz\"")
-    "; foo \"bar;baz\"; bar \"buzz;two\"".parse shouldBe Seq("foo \"bar;baz\"", "bar \"buzz;two\"")
-    """; foo "bar;\"baz\""; bar""".parse shouldBe Seq("""foo "bar;\"baz\""""", "bar")
-    """; setStringValue "foo;bar"; checkStringValue "foo;bar"""".parse shouldBe
-      Seq("""setStringValue "foo;bar"""", """checkStringValue "foo;bar"""")
+    assert("; foo \"barbaz\"".parse == Seq("foo \"barbaz\""))
+    assert("; foo \"bar;baz\"".parse == Seq("foo \"bar;baz\""))
+    assert("; foo \"barbaz\"; bar".parse == Seq("foo \"barbaz\"", "bar"))
+    assert("; foo \"barbaz\"; bar \"blah\"".parse == Seq("foo \"barbaz\"", "bar \"blah\""))
+    assert("; foo \"bar;baz\"; bar".parse == Seq("foo \"bar;baz\"", "bar"))
+    assert("; foo \"bar;baz\"; bar \"buzz\"".parse == Seq("foo \"bar;baz\"", "bar \"buzz\""))
+    assert(
+      "; foo \"bar;baz\"; bar \"buzz;two\"".parse == Seq("foo \"bar;baz\"", "bar \"buzz;two\"")
+    )
+    assert("""; foo "bar;\"baz\""; bar""".parse == Seq("""foo "bar;\"baz\""""", "bar"))
+    assert(
+      """; setStringValue "foo;bar"; checkStringValue "foo;bar"""".parse ==
+        Seq("""setStringValue "foo;bar"""", """checkStringValue "foo;bar"""")
+    )
   }
   it should "parse commands without leading ';'" in {
-    "setStringValue foo; setStringValue bar".parse shouldBe Seq(
-      "setStringValue foo",
-      "setStringValue bar"
+    assert(
+      "setStringValue foo; setStringValue bar".parse == Seq(
+        "setStringValue foo",
+        "setStringValue bar"
+      )
     )
-    "foo; bar".parse shouldBe Seq("foo", "bar")
-    "foo bar ;bar".parse shouldBe Seq("foo bar", "bar")
-    "foo \"a;b\"; bar".parse shouldBe Seq("foo \"a;b\"", "bar")
-    " foo ; bar \"b;c\"".parse shouldBe Seq("foo", "bar \"b;c\"")
+    assert("foo; bar".parse == Seq("foo", "bar"))
+    assert("foo bar ;bar".parse == Seq("foo bar", "bar"))
+    assert("foo \"a;b\"; bar".parse == Seq("foo \"a;b\"", "bar"))
+    assert(" foo ; bar \"b;c\"".parse == Seq("foo", "bar \"b;c\""))
   }
   it should "not parse single commands without leading ';'" in {
-    "foo".parseEither shouldBe Left("Expected ';'\nfoo\n   ^")
-    "foo bar baz".parseEither shouldBe Left("Expected ';'\nfoo bar baz\n           ^")
+    assert("foo".parseEither == Left("Expected ';'\nfoo\n   ^"))
+    assert("foo bar baz".parseEither == Left("Expected ';'\nfoo bar baz\n           ^"))
   }
   it should "not parse empty commands" in {
     assert(";;;".parseEither.isLeft)
@@ -85,8 +92,8 @@ class MultiParserSpec extends FlatSpec with Matchers {
     assert(s"$emptyBraces;".parse == emptyBraces :: Nil)
   }
   it should "parse multiple commands with braces" in {
-    s"compile; $consecutive".parse shouldBe "compile" :: consecutive :: Nil
-    s"compile; $consecutive ; test".parse shouldBe "compile" :: consecutive :: "test" :: Nil
+    assert(s"compile; $consecutive".parse == "compile" :: consecutive :: Nil)
+    assert(s"compile; $consecutive ; test".parse == "compile" :: consecutive :: "test" :: Nil)
   }
   it should "not parse unclosed braces" in {
     val extraRight = "{ { val x = 1}}{ val x = 2 } }"
