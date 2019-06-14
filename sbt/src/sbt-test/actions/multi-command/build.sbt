@@ -14,3 +14,7 @@ taskThatFails := {
 }
 
 checkInput := checkInputImpl.evaluated
+
+val dynamicTask = taskKey[Unit]("dynamic input task")
+
+dynamicTask := { println("not yet et") }

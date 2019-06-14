@@ -1,3 +1,11 @@
+> ;set dynamicTask := { println("1");  println("2") }; dynamicTask
+
+-> ; set dynamicTask := { throw new IllegalStateException("fail") }; dynamicTask
+
+> set dynamicTask := { println("1");  println("2") }; dynamicTask
+
+-> set dynamicTask := { throw new IllegalStateException("fail") }; dynamicTask
+
 > ; setStringValue baz
 
 > ; checkStringValue baz

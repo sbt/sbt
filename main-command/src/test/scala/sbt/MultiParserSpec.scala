@@ -59,12 +59,41 @@ class MultiParserSpec extends FlatSpec with Matchers {
   it should "not parse single commands without leading ';'" in {
     "foo".parseEither shouldBe Left("Expected ';'\nfoo\n   ^")
     "foo bar baz".parseEither shouldBe Left("Expected ';'\nfoo bar baz\n           ^")
-    "foo bar baz;".parseEither shouldBe
-      Left("Expected not ';'\nExpected '\"'\nfoo bar baz;\n            ^")
-    "foo;".parseEither shouldBe Left("Expected not ';'\nExpected '\"'\nfoo;\n    ^")
+  }
+  it should "not parse empty commands" in {
+    assert(";;;".parseEither.isLeft)
+    assert("; ; ;".parseEither.isLeft)
   }
   it should "parse commands with trailing semi-colon" in {
-    "foo;bar;".parse shouldBe Seq("foo", "bar")
-    "foo;   bar    ;".parse shouldBe Seq("foo", "bar")
+    assert("foo;bar;".parse == Seq("foo", "bar"))
+    assert("foo;   bar    ;".parse == Seq("foo", "bar"))
+  }
+  val consecutive = "{ { val x = 1}; { val x = 2 } }"
+  val oneBrace = "set foo := { val x = 1; x + 1 }"
+  val twoBrace = "set foo := { val x = { val y = 2; y + 2 }; x + 1 }"
+  val threeBrace = "set foo := { val x = { val y = 2; { val z = 3; y + 2 } }; x + 1 }"
+  val doubleBrace = "set foo := { val x = { val y = 2; y + 2 }; { x + 1 } }"
+  val tripleBrace = "set foo := { val x = { val y = 2; y + 2 }; val y = { x + 1 }; { z + y } }"
+  val emptyBraces = "{{{{}}}}"
+  it should "parse commands with braces" in {
+    assert(s"$consecutive;".parse == consecutive :: Nil)
+    assert(s"$oneBrace;".parse == oneBrace :: Nil)
+    assert(s"$twoBrace;".parse == twoBrace :: Nil)
+    assert(s"$threeBrace;".parse == threeBrace :: Nil)
+    assert(s"$doubleBrace;".parse == doubleBrace :: Nil)
+    assert(s"$tripleBrace;".parse == tripleBrace :: Nil)
+    assert(s"$emptyBraces;".parse == emptyBraces :: Nil)
+  }
+  it should "parse multiple commands with braces" in {
+    s"compile; $consecutive".parse shouldBe "compile" :: consecutive :: Nil
+    s"compile; $consecutive ; test".parse shouldBe "compile" :: consecutive :: "test" :: Nil
+  }
+  it should "not parse unclosed braces" in {
+    val extraRight = "{ { val x = 1}}{ val x = 2 } }"
+    assert(s"compile; $extraRight".parseEither.isLeft)
+    val extraLeft = "{{{ val x = 1}{ val x = 2 } }"
+    assert(s"compile; $extraLeft".parseEither.isLeft)
+    val unmatchedEmptyBraces = "{{{{}}}"
+    assert(s"compile; $unmatchedEmptyBraces".parseEither.isLeft)
   }
 }
