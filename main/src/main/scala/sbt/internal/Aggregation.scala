@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.text.DateFormat
+import java.util.{ Collections, IdentityHashMap }
 
 import Def.ScopedKey
 import Keys.{ showSuccess, showTiming, timingFormat }
@@ -114,19 +115,23 @@ object Aggregation {
   )(implicit display: Show[ScopedKey[_]]): State = {
     val complete = timedRun[T](s, ts, extra)
     showRun(complete, show)
-    @tailrec def findReload(
-        incomplete: Incomplete,
-        remaining: List[Incomplete],
-        visited: Set[Incomplete]
-    ): Boolean = {
+    /*
+     * In the first implementation, we tried to use Set[Incomplete] for visited. It had very poor
+     * performance because hashCode can be expensive on Incomplete -- especially when the
+     * Incomplete has many instances in the causes field.
+     */
+    lazy val visited = Collections
+      .newSetFromMap[Incomplete](new IdentityHashMap[Incomplete, java.lang.Boolean])
+    @tailrec def findReload(incomplete: Incomplete, remaining: List[Incomplete]): Boolean = {
+      visited.add(incomplete)
       incomplete.directCause.contains(Reload) || ((remaining ::: incomplete.causes.toList)
-        .filterNot(visited) match {
+        .filterNot(visited.contains) match {
         case Nil       => false
-        case h :: tail => findReload(h, tail.filterNot(visited), visited + incomplete)
+        case h :: tail => findReload(h, tail.filterNot(visited.contains))
       })
     }
     complete.results match {
-      case Inc(i) if findReload(i, i.causes.toList, Set.empty) =>
+      case Inc(i) if findReload(i, i.causes.toList) =>
         val remaining = s.currentCommand.toList ::: s.remainingCommands
         complete.state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
       case Inc(i)   => complete.state.handleError(i)
