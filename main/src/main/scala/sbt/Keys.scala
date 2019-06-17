@@ -17,6 +17,7 @@ import sbt.BuildSyntax._
 import sbt.Def.ScopedKey
 import sbt.KeyRanks._
 import sbt.internal._
+import sbt.internal.FiniteDurationCodec._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }

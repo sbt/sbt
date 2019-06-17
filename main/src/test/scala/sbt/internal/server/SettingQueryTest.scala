@@ -204,7 +204,10 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
   "setting query" should {
     "bippy/scalaVersion" in qok("\"2.13.0\"", "java.lang.String")
-    // "bippy/pollInterval" in qok("500", "Int")
+    "bippy/pollInterval" in qok(
+      """{"length":500,"unit":"MILLISECONDS"}""",
+      "scala.concurrent.duration.FiniteDuration"
+    )
     "bippy/sourcesInBase" in qok("true", "Boolean")
     "bippy/startYear" in qok("null", "scala.Option[Int]")
     "bippy/scalaArtifacts" in qok(
