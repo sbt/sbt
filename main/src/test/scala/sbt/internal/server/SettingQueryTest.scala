@@ -19,12 +19,12 @@ import scala.collection.mutable
 import xsbti.{ Logger => _, _ }
 import sbt.io.IO
 import sbt.internal.util._
-import sbt.internal.BuildStreams.{ Streams => _, _ }
+import sbt.internal.BuildStreams._
 import sbt.internal.Load._
 import sbt.util._
 import sbt.BuildPaths._
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting }
-import sbt.Keys._
+import sbt.Project.project
 
 object SettingQueryTest extends org.specs2.mutable.Specification {
   implicit class PathOps(val path: Path) extends AnyVal {
@@ -41,6 +41,10 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
   val baseUri: URI = IO directoryURI baseFile
   IO assertAbsolute baseUri
 
+  val sbtVersion = "1.2.8"
+  val scalaVersion = "2.12.8"
+  val bippy = project.settings(Keys.scalaVersion := "2.13.0")
+
   val globalDirFile: File = globalDir.toFile
 
   def ??? : Nothing = { Thread.dumpStack(); throw new NotImplementedError }
@@ -51,9 +55,8 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     def apply[T](lockFile: File, run: Callable[T]) = run.call()
   }
 
+  // Must be lazy or the test hangs
   lazy val buildStructure: BuildStructure = {
-    val projectSettings: Seq[Setting[_]] = Seq(scalaVersion := "2.12.1")
-
     val appConfig: AppConfiguration = new AppConfiguration {
       def baseDirectory(): File = baseFile
       def arguments(): Array[String] = Array()
@@ -77,7 +80,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
             def ivyHome(): File = SettingQueryTest.this.ivyHome.toFile
             def checksums(): Array[String] = Array()
           }
-          def version(): String = "2.12.1"
+          def version(): String = scalaVersion
 
           def loader(): ClassLoader = noopLoader
           def jars(): Array[File] = Array(libraryJar, compilerJar)
@@ -91,7 +94,7 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
         def id(): ApplicationID = sbt.ApplicationID(
           "org.scala-sbt",
           "sbt",
-          "0.13.13",
+          sbtVersion,
           "sbt.xMain",
           components = Seq(),
           crossVersionedValue = CrossValue.Disabled,
@@ -132,12 +135,12 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
         )
 
       val project: Project = {
-        val project0 = Project("t", baseFile) settings projectSettings
+        val project = bippy
         val fileToLoadedSbtFileMap = new mutable.HashMap[File, LoadedSbtFile]
-        val autoPlugins = loadedPlugins.detected.deducePluginsFromProject(project0, state.log)
+        val autoPlugins = loadedPlugins.detected.deducePluginsFromProject(project, state.log)
         val injectSettings = config.injectSettings
         resolveProject(
-          project0,
+          project,
           autoPlugins,
           loadedPlugins,
           injectSettings,
@@ -200,26 +203,26 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     query(_) must_== """{"type":"SettingQueryFailure","message":"""" + msg + """"}"""
 
   "setting query" should {
-    "t/scalaVersion" in qok("\"2.12.1\"", "java.lang.String")
-    // "t/pollInterval" in qok("500", "Int")
-    "t/sourcesInBase" in qok("true", "Boolean")
-    "t/startYear" in qok("null", "scala.Option[Int]")
-    "t/scalaArtifacts" in qok(
+    "bippy/scalaVersion" in qok("\"2.13.0\"", "java.lang.String")
+    // "bippy/pollInterval" in qok("500", "Int")
+    "bippy/sourcesInBase" in qok("true", "Boolean")
+    "bippy/startYear" in qok("null", "scala.Option[Int]")
+    "bippy/scalaArtifacts" in qok(
       """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
       "scala.collection.Seq[java.lang.String]"
     )
 
-    "t/libraryDependencies" in qok(
-      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
+    "bippy/libraryDependencies" in qok(
+      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.13.0","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
       "scala.collection.Seq[sbt.librarymanagement.ModuleID]"
     )
 
     "scalaVersion" in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
-    "t/scalacOptions" in qko(
-      s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"t\\") / Compile / scalacOptions is a task, can only query settings"""
+    "bippy/scalacOptions" in qko(
+      s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"bippy\\") / Compile / scalacOptions is a task, can only query settings"""
     )
-    "t/fooo" in qko(
-      "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^"
+    "bippy/fooo" in qko(
+      "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nbippy/fooo\\n          ^"
     )
   }
 }
