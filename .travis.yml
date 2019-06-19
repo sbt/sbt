@@ -14,9 +14,9 @@ env:
 matrix:
   include:
   - env:
-      - TRAVIS_JDK=11.0.2.hs-adpt
+      - TRAVIS_JDK=11.0.3.hs-adpt
   - env:
-      - TRAVIS_JDK=8.0.202.hs-adpt
+      - TRAVIS_JDK=8.0.212.hs-adpt
 
 before_install:
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.11.0/install.sh | bash && . ~/.jabba/jabba.sh
