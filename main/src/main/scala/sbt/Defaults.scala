@@ -10,7 +10,7 @@ package sbt
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
-import java.util.concurrent.{ Callable, TimeUnit }
+import java.util.concurrent.TimeUnit
 
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
@@ -79,7 +79,6 @@ import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import xsbti.CrossValue
 import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
 
@@ -127,8 +126,7 @@ object Defaults extends BuildCommon {
   def nameForSrc(config: String) = if (config == Configurations.Compile.name) "main" else config
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
 
-  def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock =
-    app.provider.scalaProvider.launcher.globalLock
+  def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = LibraryManagement.lock(app)
 
   def extractAnalysis[T](a: Attributed[T]): (T, CompileAnalysis) =
     (a.data, a.metadata get Keys.analysis getOrElse Analysis.Empty)
@@ -2409,41 +2407,7 @@ object Classpaths {
         },
         dependencyResolution := dependencyResolutionTask.value,
         csrConfiguration := LMCoursier.updateClassifierConfigurationTask.value,
-        updateClassifiers in TaskGlobal := (Def.task {
-          val s = streams.value
-          val is = ivySbt.value
-          val lm = dependencyResolution.value
-          val mod = classifiersModule.value
-          val updateConfig0 = updateConfiguration.value
-          val updateConfig = updateConfig0
-            .withMetadataDirectory(dependencyCacheDirectory.value)
-            .withArtifactFilter(
-              updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted))
-            )
-          val app = appConfiguration.value
-          val srcTypes = sourceArtifactTypes.value
-          val docTypes = docArtifactTypes.value
-          val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-          val uwConfig = (unresolvedWarningConfiguration in update).value
-          withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-            lm.updateClassifiers(
-              GetClassifiersConfiguration(
-                mod,
-                excludes.toVector,
-                updateConfig,
-                // scalaModule,
-                srcTypes.toVector,
-                docTypes.toVector
-              ),
-              uwConfig,
-              Vector.empty,
-              s.log
-            ) match {
-              case Left(_)   => ???
-              case Right(ur) => ur
-            }
-          }
-        } tag (Tags.Update, Tags.Network)).value,
+        updateClassifiers in TaskGlobal := LibraryManagement.updateClassifiersTask.value,
       )
     ) ++ Seq(
     csrProject := CoursierInputsTasks.coursierProjectTask.value,
@@ -2747,38 +2711,7 @@ object Classpaths {
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
-  ): UpdateReport = {
-    import sbt.librarymanagement.LibraryManagementCodec._
-    import sbt.util.FileBasedStore
-    implicit val isoString: sjsonnew.IsoString[JValue] =
-      sjsonnew.IsoString.iso(
-        sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
-        sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
-      )
-    val exclName = "exclude_classifiers"
-    val file = out / exclName
-    val store = new FileBasedStore(file, sjsonnew.support.scalajson.unsafe.Converter)
-    lock(
-      out / (exclName + ".lock"),
-      new Callable[UpdateReport] {
-        def call = {
-          implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
-          val excludes =
-            store
-              .read[Map[ModuleID, Vector[ConfigRef]]](
-                default = Map.empty[ModuleID, Vector[ConfigRef]]
-              )
-          val report = f(excludes)
-          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++ IvyActions
-            .extractExcludes(report)
-            .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
-          store.write(allExcludes)
-          IvyActions
-            .addExcluded(report, classifiers.toVector, allExcludes.mapValues(_.map(_.name).toSet))
-        }
-      }
-    )
-  }
+  ): UpdateReport = LibraryManagement.withExcludes(out, classifiers, lock)(f)
 
   /**
    * Substitute unmanaged jars for managed jars when the major.minor parts of
