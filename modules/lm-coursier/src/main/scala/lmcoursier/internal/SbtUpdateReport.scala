@@ -27,29 +27,34 @@ private[internal] object SbtUpdateReport {
       }
   }
 
+  private def infoProperties(project: Project): Seq[(String, String)] =
+    project.properties.filter(_._1.startsWith("info."))
+
   private val moduleId = caching[(Dependency, String, Map[String, String]), ModuleID] {
     case (dependency, version, extraProperties) =>
-      sbt.librarymanagement.ModuleID(
+      val mod = sbt.librarymanagement.ModuleID(
         dependency.module.organization.value,
         dependency.module.name.value,
         version
-      ).withConfigurations(
-        Some(dependency.configuration.value)
-      ).withExtraAttributes(
-        dependency.module.attributes ++ extraProperties
-      ).withExclusions(
-        dependency
-          .exclusions
-          .toVector
-          .map {
-            case (org, name) =>
-              sbt.librarymanagement.InclExclRule()
-                .withOrganization(org.value)
-                .withName(name.value)
-          }
-      ).withIsTransitive(
-        dependency.transitive
       )
+      mod
+        .withConfigurations(
+          Some(dependency.configuration.value)
+            .filter(_.nonEmpty) // ???
+        )
+        .withExtraAttributes(dependency.module.attributes ++ extraProperties)
+        .withExclusions(
+          dependency
+            .exclusions
+            .toVector
+            .map {
+              case (org, name) =>
+                sbt.librarymanagement.InclExclRule()
+                  .withOrganization(org.value)
+                  .withName(name.value)
+            }
+        )
+        .withIsTransitive(dependency.transitive)
   }
 
   private val artifact = caching[(Module, Map[String, String], Publication, Artifact), sbt.librarymanagement.Artifact] {
@@ -73,36 +78,39 @@ private[internal] object SbtUpdateReport {
 
     val sbtArtifacts = artifacts.collect {
       case (pub, artifact0, Some(file)) =>
-        (artifact((dependency.module, project.properties.toMap, pub, artifact0)), file)
+        (artifact((dependency.module, infoProperties(project).toMap, pub, artifact0)), file)
     }
     val sbtMissingArtifacts = artifacts.collect {
       case (pub, artifact0, None) =>
-        artifact((dependency.module, project.properties.toMap, pub, artifact0))
+        artifact((dependency.module, infoProperties(project).toMap, pub, artifact0))
     }
 
     val publicationDate = project.info.publication.map { dt =>
       new GregorianCalendar(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     }
 
-    val callers = dependees.map {
+    val callers = dependees.distinct.map {
       case (dependee, dependeeProj) =>
         Caller(
-          moduleId((dependee, dependeeProj.version, dependeeProj.properties.toMap)),
+          moduleId((dependee, dependeeProj.version, Map.empty)),
+          // FIXME Shouldn't we only keep the configurations pulling dependency?
           dependeeProj.configurations.keys.toVector.map(c => ConfigRef(c.value)),
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
           isForceDependency = false,
           isChangingDependency = false,
-          isTransitiveDependency = false,
+          isTransitiveDependency = dependency.transitive,
           isDirectlyForceDependency = false
         )
     }
 
-    ModuleReport(
-      moduleId((dependency, project.version, project.properties.toMap)),
+    val rep = ModuleReport(
+      moduleId((dependency, project.version, infoProperties(project).toMap)),
       sbtArtifacts.toVector,
       sbtMissingArtifacts.toVector
     )
+
+    rep
       // .withStatus(None)
       .withPublicationDate(publicationDate)
       // .withResolver(None)
@@ -112,7 +120,8 @@ private[internal] object SbtUpdateReport {
       // .withEvictedReason(None)
       // .withProblem(None)
       .withHomepage(Some(project.info.homePage).filter(_.nonEmpty))
-      .withExtraAttributes(dependency.module.attributes ++ project.properties)
+      .withLicenses(project.info.licenses.toVector)
+      .withExtraAttributes(dependency.module.attributes ++ infoProperties(project))
       // .withIsDefault(None)
       // .withBranch(None)
       .withConfigurations(project.configurations.keys.toVector.map(c => ConfigRef(c.value)))
@@ -243,7 +252,7 @@ private[internal] object SbtUpdateReport {
             // appears first in the update report, see https://github.com/coursier/coursier/issues/650
             val dep = subRes.rootDependencies.head
             val (_, proj) = subRes.projectCache(dep.moduleVersion)
-            val mod = moduleId((dep, proj.version, proj.properties.toMap))
+            val mod = moduleId((dep, proj.version, infoProperties(proj).toMap))
             val (main, other) = reports.partition { r =>
               r.module.organization == mod.organization &&
                 r.module.name == mod.name &&
@@ -253,10 +262,14 @@ private[internal] object SbtUpdateReport {
           } else
             reports.toVector
 
+        val details = reports0.map { rep =>
+          OrganizationArtifactReport(rep.module.organization, rep.module.name, Vector(rep))
+        }
+
         ConfigurationReport(
           ConfigRef(config.value),
           reports0,
-          Vector()
+          details
         )
     }
 
