@@ -262,9 +262,41 @@ private[internal] object SbtUpdateReport {
           } else
             reports.toVector
 
-        val details = reports0.map { rep =>
+        val mainReportDetails = reports0.map { rep =>
           OrganizationArtifactReport(rep.module.organization, rep.module.name, Vector(rep))
         }
+
+        val evicted = coursier.graph.Conflict(subRes).flatMap { c =>
+          // FIXME The project for c.wantedVersion is possibly not around (it's likely it was just not fetched)
+          val projOpt = subRes.projectCache.get((c.module, c.wantedVersion))
+            .orElse(subRes.projectCache.get((c.module, c.version)))
+          projOpt.toSeq.map {
+            case (_, proj) =>
+              // likely misses some details (transitive, exclusions, …)
+              val dep = Dependency(c.module, c.wantedVersion)
+              val dependee = Dependency(c.dependeeModule, c.dependeeVersion)
+              val dependeeProj = subRes.projectCache
+                .get((c.dependeeModule, c.dependeeVersion))
+                .map(_._2)
+                .getOrElse {
+                  // should not happen
+                  Project(c.dependeeModule, c.dependeeVersion, Nil, Map(), None, Nil, Nil, Nil, None, None, None, false, None, Nil, coursier.core.Info.empty)
+                }
+              val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.copy(version = c.wantedVersion), Nil))
+                .withEvicted(true)
+                .withEvictedData(Some("version selection")) // ??? put latest-revision like sbt/ivy here?
+              OrganizationArtifactReport(c.module.organization.value, c.module.name.value, Vector(rep))
+          }
+        }
+
+        val details = (mainReportDetails ++ evicted)
+          .groupBy(r => (r.organization, r.name))
+          .toVector // order?
+          .map {
+            case ((org, name), l) =>
+              val modules = l.flatMap(_.modules)
+              OrganizationArtifactReport(org, name, modules)
+          }
 
         ConfigurationReport(
           ConfigRef(config.value),
