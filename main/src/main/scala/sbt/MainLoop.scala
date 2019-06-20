@@ -18,6 +18,7 @@ import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.Logger
+import sbt.nio.Keys._
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -185,6 +186,8 @@ object MainLoop {
     try {
       def process(): State = {
         val newState = Command.process(exec.commandLine, state)
+        if (exec.commandLine.contains("session"))
+          newState.get(hasCheckedMetaBuild).foreach(_.set(false))
         val doneEvent = ExecStatusEvent(
           "Done",
           channelName,
