@@ -14,13 +14,19 @@ sbtShading() {
 }
 
 runLmCoursierTests() {
+  if [ "$TEST_GROUP" = 1 ]; then
+    SCRIPTED_EXTRA="sbt-lm-coursier/*"
+  else
+    SCRIPTED_EXTRA=""
+  fi
+
   # publishing locally to ensure shading runs fine
   ./metadata/scripts/with-test-repo.sh sbt \
     ++$TRAVIS_SCALA_VERSION! \
     mimaReportBinaryIssues \
     lm-coursier-shaded/publishLocal \
     lm-coursier/test \
-    "sbt-lm-coursier/scripted shared-$TEST_GROUP/*"
+    "sbt-lm-coursier/scripted shared-$TEST_GROUP/* $SCRIPTED_EXTRA"
 }
 
 runSbtCoursierTests() {
