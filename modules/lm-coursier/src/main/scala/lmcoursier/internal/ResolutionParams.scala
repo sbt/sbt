@@ -47,23 +47,24 @@ final case class ResolutionParams(
       mainRepositories ++
       fallbackDependenciesRepositories
 
-  lazy val resolutionKey = SbtCoursierCache.ResolutionKey(
-    dependencies,
-    repositories,
-    copy(
-      parentProjectCache = Map.empty,
-      loggerOpt = None,
-      cache = null, // temporary, until we can use https://github.com/coursier/coursier/pull/1090
-      parallel = 0
-    ),
-    ResolutionParams.cacheKey {
-      cache
-        .withPool(null)
-        .withLogger(null)
-        .withSync[Task](null)
-    },
-    sbtClassifiers
-  )
+  lazy val resolutionKey = {
+    val cleanCache = cache
+      .withPool(null)
+      .withLogger(null)
+      .withSync[Task](null)
+    SbtCoursierCache.ResolutionKey(
+      dependencies,
+      repositories,
+      copy(
+        parentProjectCache = Map.empty,
+        loggerOpt = None,
+        parallel = 0,
+        cache = cleanCache
+      ),
+      ResolutionParams.cacheKey(cleanCache),
+      sbtClassifiers
+    )
+  }
 
   override lazy val hashCode =
     ResolutionParams.unapply(this).get.##
