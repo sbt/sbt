@@ -38,7 +38,7 @@ final case class ResolutionParams(
         .toMap
 
       Seq(
-        InMemoryRepository(map)
+        TemporaryInMemoryRepository(map, cache)
       )
     }
 
