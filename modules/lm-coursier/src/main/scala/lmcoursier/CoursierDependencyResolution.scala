@@ -122,6 +122,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       .withTtl(ttl)
       .withChecksums(checksums)
       .withCredentials(conf.credentials.map(ToCoursier.credentials))
+      .withFollowHttpToHttpsRedirections(conf.followHttpToHttpsRedirections.getOrElse(true))
 
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,

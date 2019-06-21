@@ -140,7 +140,8 @@ object ResolutionTasks {
             .withCachePolicies(cachePolicies)
             .withTtl(ttl)
             .withChecksums(checksums)
-            .withCredentials(credentials),
+            .withCredentials(credentials)
+            .withFollowHttpToHttpsRedirections(true),
           parallel = parallelDownloads,
           params = coursier.params.ResolutionParams()
             .withMaxIterations(maxIterations)

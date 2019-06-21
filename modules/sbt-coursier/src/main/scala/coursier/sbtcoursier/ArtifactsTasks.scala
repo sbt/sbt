@@ -68,7 +68,8 @@ object ArtifactsTasks {
           .withChecksums(artifactsChecksums)
           .withTtl(ttl)
           .withCachePolicies(cachePolicies)
-          .withCredentials(credentials),
+          .withCredentials(credentials)
+          .withFollowHttpToHttpsRedirections(true),
         parallel = parallelDownloads
       )
 
