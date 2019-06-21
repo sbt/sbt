@@ -155,18 +155,33 @@ object BasicCommands {
 
   private[sbt] def multiParserImpl(state: Option[State]): Parser[List[String]] = {
     val nonSemi = charClass(_ != ';', "not ';'")
-    val semi = token(';' ~> OptSpace)
-    val nonQuote = charClass(_ != '"', label = "not '\"'")
-    val cmdPart = token(
-      ((nonSemi & nonQuote).map(_.toString) | StringEscapable.map(c => s""""$c"""")).+,
-      hide = const(true)
-    )
-    def commandParser = state.map(s => (s.combinedParser & cmdPart) | cmdPart).getOrElse(cmdPart)
-    val part = semi.flatMap(_ => matched(commandParser) <~ token(OptSpace)).map(_.trim)
-    (cmdPart.? ~ part.+ <~ semi.?).map {
-      case (Some(h), t) => h.mkString.trim +: t.toList
-      case (_, t)       => t.toList
-    }
+    val semi = token(OptSpace ~> ';' ~> OptSpace)
+    val nonDelim = charClass(c => c != '"' && c != '{' && c != '}', label = "not '\"', '{', '}'")
+    val cmdPart = OptSpace ~> matched(
+      token(
+        (nonSemi & nonDelim).map(_.toString) | StringEscapable | braces('{', '}'),
+        hide = const(true)
+      ).+
+    ) <~ OptSpace
+    val strictParser: Option[Parser[String]] =
+      state.map(s => OptSpace ~> matched(s.nonMultiParsers) <~ OptSpace)
+    val parser = strictParser.map(sp => sp & cmdPart).getOrElse(cmdPart)
+    /*
+     * There are two cases that need to be handled separately:
+     * 1) There are multiple commands separated by at least one semicolon with an optional
+     *    leading semicolon.
+     * 2) There is a leading semicolon, but only on one command
+     * These have to be handled separately because the performance degrades badly if the first
+     * case is implemented with the following parser:
+     * (semi.? ~> ((combinedParser <~ semi).* ~ combinedParser <~ semi.?)
+     */
+    (semi.? ~> (parser <~ semi).+ ~ (parser <~ semi.?).?).flatMap {
+      case (prefix, last) =>
+        (prefix ++ last).toList.map(_.trim).filter(_.nonEmpty) match {
+          case Nil  => Parser.failure("No commands were parsed")
+          case cmds => Parser.success(cmds)
+        }
+    } | semi ~> parser.map(_.trim :: Nil) <~ semi.?
   }
 
   def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
@@ -429,8 +444,7 @@ object BasicCommands {
   def aliasBody(name: String, value: String)(state: State): Parser[() => State] = {
     val aliasRemoved = removeAlias(state, name)
     // apply the alias value to the commands of `state` except for the alias to avoid recursion (#933)
-    val partiallyApplied =
-      Parser(Command.combine(aliasRemoved.definedCommands)(aliasRemoved))(value)
+    val partiallyApplied = Parser(aliasRemoved.combinedParser)(value)
     val arg = matched(partiallyApplied & (success(()) | (SpaceClass ~ any.*)))
     // by scheduling the expanded alias instead of directly executing,
     // we get errors on the expanded string (#598)

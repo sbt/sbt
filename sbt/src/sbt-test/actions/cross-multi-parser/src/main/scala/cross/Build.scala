@@ -1,0 +1,3 @@
+package cross
+
+object Build

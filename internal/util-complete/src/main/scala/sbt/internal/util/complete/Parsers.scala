@@ -220,6 +220,30 @@ trait Parsers {
       (DQuoteChar ~ DQuoteChar) ^^^ "")
 
   /**
+   * Parses a brace enclosed string and, if each opening brace is matched with a closing brace,
+   * it returns the entire string including the braces.
+   *
+   * @param open the opening character, e.g. '{'
+   * @param close the closing character, e.g. '}'
+   * @return a parser for the brace encloosed string.
+   */
+  private[sbt] def braces(open: Char, close: Char): Parser[String] = {
+    val notDelim = charClass(c => c != open && c != close).*.string
+    def impl(): Parser[String] = {
+      (open ~ (notDelim ~ close).?).flatMap {
+        case (l, Some((content, r))) => Parser.success(l + content + r)
+        case (l, None) =>
+          ((notDelim ~ impl()).map {
+            case (leftPrefix, nestedBraces) => leftPrefix + nestedBraces
+          }.+ ~ notDelim ~ close).map {
+            case ((nested, suffix), r) => l + nested.mkString + suffix + r
+          }
+      }
+    }
+    impl()
+  }
+
+  /**
    * Parses a single escape sequence into the represented Char.
    * Escapes start with a backslash and are followed by `u` for a [[UnicodeEscape]] or by `b`, `t`, `n`, `f`, `r`, `"`, `'`, `\` for standard escapes.
    */

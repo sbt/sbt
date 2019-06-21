@@ -1,3 +1,11 @@
+> ;set dynamicTask := { println("1");  println("2") }; dynamicTask
+
+-> ; set dynamicTask := { throw new IllegalStateException("fail") }; dynamicTask
+
+> set dynamicTask := { println("1");  println("2") }; dynamicTask
+
+-> set dynamicTask := { throw new IllegalStateException("fail") }; dynamicTask
+
 > ; setStringValue baz
 
 > ; checkStringValue baz
@@ -19,3 +27,10 @@
 -> setStringValue foo; taskThatFails; setStringValue bar
 
 > checkStringValue foo
+
+# this fails even though the checkInput parser would parse the input into Seq("foo", "bar")
+-> checkInput foo; bar
+
+> checkInput foo
+
+> compile; checkInput foo
