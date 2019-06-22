@@ -443,6 +443,7 @@ object Keys {
   val autoScalaLibrary = settingKey[Boolean]("Adds a dependency on scala-library if true.").withRank(ASetting)
   val managedScalaInstance = settingKey[Boolean]("Automatically obtains Scala tools as managed dependencies if true.").withRank(BSetting)
   val sbtResolver = settingKey[Resolver]("Provides a resolver for obtaining sbt as a dependency.").withRank(BMinusSetting)
+  val sbtResolvers = settingKey[Seq[Resolver]]("The external resolvers for sbt and plugin dependencies.").withRank(BMinusSetting)
   val sbtDependency = settingKey[ModuleID]("Provides a definition for declaring the current version of sbt.").withRank(BMinusSetting)
   val sbtVersion = settingKey[String]("Provides the version of sbt.  This setting should not be modified.").withRank(AMinusSetting)
   val sbtBinaryVersion = settingKey[String]("Defines the binary compatibility version substring.").withRank(BPlusSetting)
