@@ -381,15 +381,15 @@ object Watch {
 
   /**
    * Converts user input to an Action with the following rules:
-   * 1) 'x' or 'X' will exit sbt
+   * 1) 'q' or 'Q' will exit sbt
    * 2) 'r' or 'R' will trigger a build
    * 3) new line characters cancel the watch and return to the shell
    */
   final val defaultInputParser: Parser[Action] = {
-    val exitParser: Parser[Action] = chars("xX") ^^^ new Run("exit")
+    val quitParser: Parser[Action] = chars("qQ") ^^^ new Run("exit")
     val rebuildParser: Parser[Action] = chars("rR") ^^^ Trigger
     val cancelParser: Parser[Action] = chars(legal = "\n\r") ^^^ new Run("iflast shell")
-    exitParser | rebuildParser | cancelParser
+    quitParser | rebuildParser | cancelParser
   }
 
   private[this] val options = {
@@ -397,7 +397,7 @@ object Watch {
     val opts = Seq(
       s"$enter: return to the shell",
       s"'r': repeat the current command",
-      s"'x': exit sbt"
+      s"'q': quit sbt"
     )
     s"Options:\n${opts.mkString("  ", "\n  ", "")}"
   }
