@@ -157,39 +157,88 @@ object BasicCommands {
     val nonSemi = charClass(_ != ';', "not ';'")
     val semi = token(OptSpace ~> ';' ~> OptSpace)
     val nonDelim = charClass(c => c != '"' && c != '{' && c != '}', label = "not '\"', '{', '}'")
-    val cmdPart = OptSpace ~> matched(
-      token(
-        (nonSemi & nonDelim).map(_.toString) | StringEscapable | braces('{', '}'),
-        hide = const(true)
-      ).+
-    ) <~ OptSpace
-    val strictParser: Option[Parser[String]] =
-      state.map(s => OptSpace ~> matched(s.nonMultiParsers) <~ OptSpace)
-    val parser = strictParser.map(sp => sp & cmdPart).getOrElse(cmdPart)
+    val components = ((nonSemi & nonDelim) | StringEscapable | braces('{', '}')).+
+    val cmdPart = matched(components)
+
+    val completionParser: Option[Parser[String]] =
+      state.map(s => OptSpace ~> matched(s.nonMultiParser) <~ OptSpace)
+    val cmdParser = completionParser.map(sp => sp & cmdPart).getOrElse(cmdPart).map(_.trim)
+    val multiCmdParser: Parser[String] = semi ~> cmdParser
     /*
      * There are two cases that need to be handled separately:
-     * 1) There are multiple commands separated by at least one semicolon with an optional
-     *    leading semicolon.
-     * 2) There is a leading semicolon, but only on one command
+     * 1) leading semicolon with one or more commands separated by a semicolon
+     * 2) no leading semicolon and at least one command followed by a trailing semicolon
+     *    and zero or more commands separated by a semicolon
+     * Both cases allow an optional trailing semi-colon.
+     *
      * These have to be handled separately because the performance degrades badly if the first
      * case is implemented with the following parser:
      * (semi.? ~> ((combinedParser <~ semi).* ~ combinedParser <~ semi.?)
      */
-    (semi.? ~> (parser <~ semi).+ ~ (parser <~ semi.?).?).flatMap {
-      case (prefix, last) =>
-        (prefix ++ last).toList.map(_.trim).filter(_.nonEmpty) match {
-          case Nil  => Parser.failure("No commands were parsed")
-          case cmds => Parser.success(cmds)
-        }
-    } | semi ~> parser.map(_.trim :: Nil) <~ semi.?
+    val noLeadingSemi = (cmdParser ~ (multiCmdParser.+ | semi.map(_ => Nil))).map {
+      case (prefix, last) => (prefix :: Nil ::: last.toList).filter(_.nonEmpty)
+    }
+    val leadingSemi = multiCmdParser.+.map(_.toList.filter(_.nonEmpty))
+    ((leadingSemi | noLeadingSemi) <~ semi.?).flatMap {
+      case Nil      => Parser.failure("No commands were parsed")
+      case commands => Parser.success(commands)
+    }
   }
 
   def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
 
-  def multiApplied(s: State): Parser[() => State] =
-    Command.applyEffect(multiParser(s))(_ ::: s)
+  def multiApplied(state: State): Parser[() => State] =
+    Command.applyEffect(multiParserImpl(Some(state))) {
+      // the (@ _ :: _) ensures tail length >= 1.
+      case commands @ first :: (tail @ _ :: _) =>
+        require(first.head != ' ', s"Commands must be trimmed. Received: '$first'.")
+        // Note: scalafmt refuses to align on '*' using multiline /*...*/ here
+        //
+        // This case is only executed if the multi parser actually returns multiple commands to run.
+        // Otherwise we just prefix the single extracted command with the semicolon stripped to the
+        // state. Since there is no semicolon in the stripped command, the multi command parser will
+        // fail to parse that single command so we do not end up in a loop.
+        //
+        // If there are multiple commands, we give a named command a chance to parse the raw input
+        // and possibly directly evaluate the side effects. This is desirable if, for example,
+        // the command runs other commands. The continuous (~) command is one such example. If the
+        // input command is `~foo; bar`, the multi parser would extract "~foo" :: "bar" :: Nil.
+        // If we naively just prepended the state with both of these commands, it would run '~foo'
+        // and then when watch exited, it'd run 'bar', which is likely unexpected. To address this,
+        // we search for a named command whose name is a prefix of the first command in the list.
+        // In this case, we'd find '~' and then pass 'foo;bar' into its parser. If this succeeds,
+        // which it will in the case of continuous (so long as foo and bar are valid commands),
+        // then we directly evaluate the `() => State` returned by the parser. Otherwise, we
+        // fall back to prefixing the multi commands to the state.
+        //
+        state.nonMultiCommands.view.flatMap {
+          case command =>
+            command.nameOption match {
+              case Some(commandName) if first.startsWith(commandName) =>
+                // A lot of commands expect leading semicolons in their parsers. In order to
+                // ensure that they are multi-command capable, we strip off any leading spaces.
+                // Without doing this, we could run simple commands like `set` with the full
+                // input. This would likely fail because `set` doesn't know how to handle
+                // semicolons. This is a bit of a hack that is specifically there
+                // to handle `~` which doesn't require a space before its argument. Any command
+                // whose parser accepts multi commands without a leading space should be accepted.
+                // All other commands should be rejected. Note that `alias` is also handled by
+                // this case.
+                val commandArgs =
+                  (first.drop(commandName.length).trim :: Nil ::: tail).mkString(";")
+                parse(commandArgs, command.parser(state)).toOption
+              case _ => None
+            }
+          case _ => None
+        }.headOption match {
+          case Some(s) => s()
+          case _       => commands ::: state
+        }
+      case commands => commands ::: state
+    }
 
-  def multi: Command = Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed))
+  val multi: Command =
+    Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed), Multi)
 
   lazy val otherCommandParser: State => Parser[String] =
     (s: State) => token(OptSpace ~> combinedLax(s, NotSpaceClass ~ any.*))

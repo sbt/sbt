@@ -146,9 +146,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       val ocp = BasicCommands.multiParserImpl(Some(state)) |
         BasicCommands.otherCommandParser(state).map(_ :: Nil)
       (digitParser.? ~ ocp).flatMap {
-        case (i, cmds) if cmds.exists(_.nonEmpty) =>
-          Parser.success((i.getOrElse(0), cmds.filter(_.nonEmpty)))
-        case (_, cmds) => Parser.failure("Couldn't parse any commands")
+        case (i, commands) if commands.exists(_.nonEmpty) =>
+          Parser.success((i.getOrElse(0), commands.filter(_.nonEmpty)))
+        case (_, _) => Parser.failure("Couldn't parse any commands")
       }
   }
 

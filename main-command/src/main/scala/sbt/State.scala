@@ -41,25 +41,10 @@ final case class State(
     currentCommand: Option[Exec],
     next: State.Next
 ) extends Identity {
-  /*
-   * The `~` and `alias` commands effectively run other commands so they need to be run before
-   * the multi parser. For example, if the user runs `~foo;bar` and the multi parser runs before
-   * the `~` parser, then then it will be parsed as two commands `~foo` and `bar`. By running
-   * the high priority commands before the multi parser, we ensure that the high priority commands
-   * parse the full command input. Any other command that runs other commands would likely need
-   * to be added to this list but at the time of writing this comment {~, alias} are the two
-   * commands that we know need this special treatment.
-   *
-   * TODO: add a structured way of indicating that a command needs to run before the multi parser.
-   */
-  private[this] val highPriorityCommands = Set("~", "alias")
-  private[this] lazy val (highPriority, regularPriority) =
-    definedCommands.partition(_.nameOption.exists(highPriorityCommands))
-  private[this] lazy val highPriorityParser = Command.combine(highPriority)(this)
-  private[this] lazy val lowPriorityParser = Command.combine(regularPriority)(this)
-  private[sbt] lazy val nonMultiParsers = highPriorityParser | lowPriorityParser
-  lazy val combinedParser =
-    highPriorityParser | BasicCommands.multiApplied(this) | lowPriorityParser
+  private[sbt] lazy val (multiCommands, nonMultiCommands) =
+    definedCommands.partition(_.nameOption.contains(BasicCommandStrings.Multi))
+  private[sbt] lazy val nonMultiParser = Command.combine(nonMultiCommands)(this)
+  lazy val combinedParser = multiCommands.foldRight(nonMultiParser)(_.parser(this) | _)
 
   def source: Option[CommandSource] =
     currentCommand match {
