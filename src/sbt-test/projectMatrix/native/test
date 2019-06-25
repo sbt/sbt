@@ -1,0 +1,4 @@
+> nativeLink
+
+$ exists app/target/native-2.11/app-out
+$ exists core/target/native-2.11/core-out

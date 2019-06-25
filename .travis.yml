@@ -1,8 +1,18 @@
 dist: trusty
 group: stable
+sudo: required
+
+env:
+  - SCALANATIVE_GC=boehm
 
 language: scala
-jdk: oraclejdk8
+matrix:
+  include:
+    - jdk: openjdk8
+#    - jdk: openjdk11
+
+before_install:
+  - bash scripts/travis_setup.sh
 
 before_script:
  - export JVM_OPTS="-Dfile.encoding=UTF-8 -Xmx1G -Xms1G -server -XX:ReservedCodeCacheSize=128M"

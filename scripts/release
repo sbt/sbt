@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -ex
+
+sbt rebuild test-all
+sbt "tools/mimaReportBinaryIssues"
+sbt publishSigned
+sbt "project nscplugin" ++2.11.12 publishSigned
+sbt "project nscplugin" ++2.11.11 publishSigned
+sbt "project nscplugin" ++2.11.8 publishSigned
+sbt ^^1.0.4 sbtScalaNative/publishSigned nir/publishSigned tools/publishSigned util/publishSigned testRunner/publishSigned
