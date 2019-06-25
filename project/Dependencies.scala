@@ -7,7 +7,7 @@ object Dependencies {
 
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
-  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M10")
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M11")
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   def getSbtModulePath(key: String, name: String) = {
@@ -40,7 +40,7 @@ object Dependencies {
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0" % Test
-  val scalaTest  = "org.scalatest"  %% "scalatest"  % "3.0.6-SNAP5" % Test
+  val scalaTest  = "org.scalatest"  %% "scalatest"  % "3.0.8" % Test
   val parserCombinator = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 
   val sjsonnew = Def.setting {
@@ -57,6 +57,6 @@ object Dependencies {
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.2"
-  val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.2" % Provided
+  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.1"
+  val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.4.1" % Provided
 }

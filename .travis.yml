@@ -2,7 +2,7 @@ language: scala
 jdk: oraclejdk8
 
 scala:
-  - 2.12.7
+  - 2.12.8
 
 script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
   ++$TRAVIS_SCALA_VERSION
@@ -13,7 +13,7 @@ script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
 
 matrix:
   include:
-  - scala: 2.12.7
+  - scala: 2.12.8
     jdk: openjdk11
 
 env:
