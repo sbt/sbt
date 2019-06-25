@@ -97,7 +97,7 @@ object ProjectMatrix {
   val jvmDirectorySuffix: String = "-jvm"
   val jsIdSuffix: String = "JS"
   val jsDirectorySuffix: String = "-js"
-  val nativeIdSuffix: String = "NATIVE"
+  val nativeIdSuffix: String = "Native"
   val nativeDirectorySuffix: String = "-native"
 
   /** A row in the project matrix, typically representing a platform.
