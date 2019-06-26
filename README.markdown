@@ -13,7 +13,7 @@ setup
 In `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.2.0")
+addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.3.0")
 
 // add also the following for Scala.js support
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.27")
@@ -97,11 +97,10 @@ lazy val core = (projectMatrix in file("core"))
   .settings(
     name := "core"
   )
-  .nativePlatform(scalaVersions = Seq("2.12.8", "2.11.12"))
+  .nativePlatform(scalaVersions = Seq("2.11.12"))
 ```
 
-This will create subprojects `coreJS2_11` and `coreJS2_12`.
-
+This will create subproject `coreNative2_11`.
 
 ### parallel cross-library building
 
