@@ -149,8 +149,6 @@ final class TemporaryInMemoryRepository private(
       .fold[Either[String, (Artifact.Source, Project)]](Left("No fallback URL found")) {
         case (url, _) =>
 
-          println(s"($module, $version) -> $url")
-
           val urlStr = url.toExternalForm
           val idx = urlStr.lastIndexOf('/')
 
@@ -160,7 +158,6 @@ final class TemporaryInMemoryRepository private(
             val (dirUrlStr, fileName) = urlStr.splitAt(idx + 1)
 
             if (TemporaryInMemoryRepository.exists(url, localArtifactsShouldBeCached, cacheOpt)) {
-              println("returning proj")
               val proj = Project(
                 module,
                 version,
@@ -194,13 +191,11 @@ final class TemporaryInMemoryRepository private(
     project: Project,
     overrideClassifiers: Option[Seq[Classifier]]
   ): Seq[(Publication, Artifact)] = {
-    println(s"artifacts($dependency)")
     fallbacks
       .get(dependency.moduleVersion)
       .toSeq
       .map {
         case (url, changing) =>
-          println(s"$url, $changing")
           val url0 = url.toString
           val ext = url0.substring(url0.lastIndexOf('.') + 1)
           val pub = Publication(

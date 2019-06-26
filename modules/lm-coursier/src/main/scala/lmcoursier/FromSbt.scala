@@ -1,8 +1,7 @@
 package lmcoursier
 
 import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
-
-import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Type}
+import lmcoursier.definitions.{Classifier, Configuration, Dependency, Extension, Info, Module, ModuleName, Organization, Project, Publication, Type}
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.{Configuration => _, MavenRepository => _, _}
 
@@ -76,7 +75,7 @@ object FromSbt {
         // FIXME Other `rule` fields are ignored here
         (Organization(rule.organization), ModuleName(rule.name))
       }.toSet,
-      Attributes(Type(""), Classifier("")),
+      Publication("", Type(""), Extension(""), Classifier("")),
       optional = false,
       transitive = module.isTransitive
     )
@@ -87,24 +86,28 @@ object FromSbt {
         (Configuration(from.value), Configuration(to.value))
     }
 
-    val attributes =
+    val publications =
       if (module.explicitArtifacts.isEmpty)
-        Seq(Attributes(Type(""), Classifier("")))
+        Seq(Publication("", Type(""), Extension(""), Classifier("")))
       else
-        module.explicitArtifacts.map { a =>
-          Attributes(
-            `type` = Type(a.`type`),
-            classifier = a.classifier.fold(Classifier(""))(Classifier(_))
-          )
-        }
+        module
+          .explicitArtifacts
+          .map { a =>
+            Publication(
+              name = a.name,
+              `type` = Type(a.`type`),
+              ext = Extension(a.extension),
+              classifier = a.classifier.fold(Classifier(""))(Classifier(_))
+            )
+          }
 
     for {
       (from, to) <- allMappings
-      attr <- attributes
+      pub <- publications
     } yield {
       val dep0 = dep
         .withConfiguration(to)
-        .withAttributes(attr)
+        .withPublication(pub)
       from -> dep0
     }
   }

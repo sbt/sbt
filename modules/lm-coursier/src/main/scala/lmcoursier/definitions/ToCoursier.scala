@@ -47,7 +47,7 @@ object ToCoursier {
         case (org, name) =>
           (coursier.core.Organization(org.value), coursier.core.ModuleName(name.value))
       },
-      attributes(dependency.attributes),
+      publication(dependency.publication),
       dependency.optional,
       dependency.transitive
     )
