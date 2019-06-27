@@ -78,12 +78,9 @@ final class DirectCredentials private(
   }
 
   def authentication: Authentication =
-    Authentication(
-      username,
-      password,
-      realmOpt = realm,
-      optional = optional
-    )
+    Authentication(username, password)
+      .withRealm(realm)
+      .withOptional(optional)
 
   def get(): Seq[DirectCredentials] =
     Seq(this)

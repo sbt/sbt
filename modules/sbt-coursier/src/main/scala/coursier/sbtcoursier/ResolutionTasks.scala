@@ -112,12 +112,9 @@ object ResolutionTasks {
             ivyProperties,
             log,
             authenticationByRepositoryId.get(resolver.name).map { a =>
-              Authentication(
-                a.user,
-                a.password,
-                a.optional,
-                a.realmOpt
-              )
+              Authentication(a.user, a.password)
+                .withOptional(a.optional)
+                .withRealm(a.realmOpt)
             }
           )
         }

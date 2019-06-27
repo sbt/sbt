@@ -24,12 +24,9 @@ object ToCoursier {
     )
 
   def authentication(authentication: Authentication): coursier.core.Authentication =
-    coursier.core.Authentication(
-      authentication.user,
-      authentication.password,
-      authentication.optional,
-      authentication.realmOpt
-    )
+    coursier.core.Authentication(authentication.user, authentication.password)
+      .withOptional(authentication.optional)
+      .withRealm(authentication.realmOpt)
 
   def module(module: Module): coursier.core.Module =
     coursier.core.Module(
