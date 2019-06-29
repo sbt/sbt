@@ -209,13 +209,18 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
     val os = new ByteArrayOutputStream(ErrorBodyTruncateLen)
     var count = 0
     var b = is.read()
-    while (b >= 0 && count < ErrorBodyTruncateLen) {
-      os.write(b)
-      count += 1
-      b = is.read()
+    var truncated = false
+    while (!truncated && b >= 0) {
+      if (count >= ErrorBodyTruncateLen) {
+        truncated = true
+      } else {
+        os.write(b)
+        count += 1
+        b = is.read()
+      }
     }
     if (count > 0) {
-      Some((os.toByteArray, count >= ErrorBodyTruncateLen))
+      Some((os.toByteArray, truncated))
     } else {
       None
     }
