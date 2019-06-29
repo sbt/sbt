@@ -204,25 +204,50 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
   private val ErrorBodyTruncateLen = 512 // in case some bad service returns files rather than messages in error bodies
   private val DefaultErrorCharset = java.nio.charset.StandardCharsets.UTF_8
 
-  // this is perhaps overly cautious, but oh well
-  private def readTruncated(is: InputStream): Option[(Array[Byte], Boolean)] = {
-    val os = new ByteArrayOutputStream(ErrorBodyTruncateLen)
-    var count = 0
-    var b = is.read()
-    var truncated = false
-    while (!truncated && b >= 0) {
-      if (count >= ErrorBodyTruncateLen) {
-        truncated = true
-      } else {
-        os.write(b)
-        count += 1
-        b = is.read()
+  // neurotic resource managemement...
+  // we could use this elsewhere in the class too
+  private def borrow[S <: AutoCloseable, T](rsrc: => S)(op: S => T): T = {
+    val r = rsrc
+    val out = {
+      try {
+        op(r)
+      } catch {
+        case NonFatal(t) => {
+          try {
+            r.close()
+          } catch {
+            case NonFatal(ct) => t.addSuppressed(ct)
+          }
+          throw t
+        }
       }
     }
-    if (count > 0) {
-      Some((os.toByteArray, truncated))
-    } else {
-      None
+    r.close()
+    out
+  }
+
+  // this is perhaps overly cautious, but oh well
+  private def readTruncated(byteStream: InputStream): Option[(Array[Byte], Boolean)] = {
+    borrow(byteStream) { is =>
+      borrow(new ByteArrayOutputStream(ErrorBodyTruncateLen)) { os =>
+        var count = 0
+        var b = is.read()
+        var truncated = false
+        while (!truncated && b >= 0) {
+          if (count >= ErrorBodyTruncateLen) {
+            truncated = true
+          } else {
+            os.write(b)
+            count += 1
+            b = is.read()
+          }
+        }
+        if (count > 0) {
+          Some((os.toByteArray, truncated))
+        } else {
+          None
+        }
+      }
     }
   }
 
