@@ -195,12 +195,71 @@ class GigahorseUrlHandler(http: OkHttpClient) extends AbstractURLHandler {
       if (l != null) {
         l.end(new CopyProgressEvent(EmptyBuffer, source.length()))
       }
-      validatePutStatusCode(dest, response.code(), response.message())
+      validatePutStatusCode(dest, response)
     } finally {
       response.close()
     }
   }
 
+  private val ErrorBodyTruncateLen = 512 // in case some bad service returns files rather than messages in error bodies
+  private val DefaultErrorCharset = java.nio.charset.StandardCharsets.UTF_8
+
+  // this is perhaps overly cautious, but oh well
+  private def readTruncated(is: InputStream): Option[(Array[Byte], Boolean)] = {
+    val os = new ByteArrayOutputStream(ErrorBodyTruncateLen)
+    var count = 0
+    var b = is.read()
+    while (b >= 0 && count < ErrorBodyTruncateLen) {
+      os.write(b)
+      count += 1
+      b = is.read()
+    }
+    if (count > 0) {
+      Some((os.toByteArray, count >= ErrorBodyTruncateLen))
+    } else {
+      None
+    }
+  }
+
+  /*
+   * Supplements the IOException emitted on a bad status code by our inherited validatePutStatusCode(...)
+   * method with any message that might be present in an error response body.
+   *
+   * after calling this method, the object given as the response parameter must be reliably closed.
+   */
+  private def validatePutStatusCode(dest: URL, response: Response): Unit = {
+    try {
+      validatePutStatusCode(dest, response.code(), response.message())
+    } catch {
+      case ioe: IOException => {
+        val mbBodyMessage = {
+          for {
+            body <- Option(response.body())
+            is <- Option(body.byteStream)
+            (bytes, truncated) <- readTruncated(is)
+            charset <- Option(body.contentType()).map(_.charset(DefaultErrorCharset)) orElse Some(
+              DefaultErrorCharset
+            )
+          } yield {
+            val raw = new String(bytes, charset)
+            if (truncated) raw + "..." else raw
+          }
+        }
+
+        mbBodyMessage match {
+          case Some(bodyMessage) => { // reconstruct the IOException
+            val newMessage = ioe.getMessage() + s"; Response Body: ${bodyMessage}"
+            val reconstructed = new IOException(newMessage, ioe.getCause())
+            reconstructed.setStackTrace(ioe.getStackTrace())
+            throw reconstructed
+          }
+          case None => {
+            throw ioe
+          }
+        }
+      }
+    }
+  }
 }
 
 object GigahorseUrlHandler {
