@@ -67,6 +67,9 @@ if "%~1" == "" goto args_end
 if "%~1" == "-jvm-debug" set JVM_DEBUG=true
 if "%~1" == "--jvm-debug" set JVM_DEBUG=true
 
+if "%~1" == "-java-home" set SET_JAVA_HOME=true
+if "%~1" == "--java-home" set SET_JAVA_HOME=true
+
 if "%JVM_DEBUG%" == "true" (
   set /a JVM_DEBUG_PORT=5005 2>nul >nul
 ) else if "!JVM_DEBUG!" == "true" (
@@ -79,6 +82,24 @@ if "%JVM_DEBUG%" == "true" (
   set SBT_ARGS=!SBT_ARGS! %1
 ) else (
   set SBT_ARGS=!SBT_ARGS! %1
+)
+
+if "%SET_JAVA_HOME%" == "true" (
+  set SET_JAVA_HOME=
+  if NOT "%~2" == "" (
+    if exist "%~2\bin\java.exe" (
+      set _JAVACMD="%~2\bin\java.exe"
+      set JAVA_HOME="%~2"
+      set JDK_HOME="%~2"
+      shift
+    ) else (
+      echo Directory "%~2" for JAVA_HOME is not valid
+      goto error
+    )
+  ) else (
+    echo Second argument for --java-home missing
+    goto error
+  )
 )
 
 shift
