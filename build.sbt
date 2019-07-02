@@ -23,6 +23,7 @@ lazy val `lm-coursier` = project
   .settings(
     shared,
     Mima.settings,
+    Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
       // We depend on librarymanagement-ivy rather than just
@@ -41,6 +42,8 @@ lazy val `lm-coursier-shaded` = project
   .settings(
     shared,
     Mima.settings,
+    Mima.lmCoursierFilters,
+    Mima.lmCoursierShadedFilters,
     unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
     shading,
     shadingNamespace := "lmcoursier.internal.shaded",

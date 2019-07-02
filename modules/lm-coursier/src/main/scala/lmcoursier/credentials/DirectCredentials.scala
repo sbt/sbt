@@ -2,8 +2,6 @@ package lmcoursier.credentials
 
 import java.net.URI
 
-import coursier.core.Authentication
-
 final class DirectCredentials private(
   val host: String,
   val username: String,
@@ -76,11 +74,6 @@ final class DirectCredentials private(
       hostOpt.contains(host) &&
       user == username
   }
-
-  def authentication: Authentication =
-    Authentication(username, password)
-      .withRealm(realm)
-      .withOptional(optional)
 
   def get(): Seq[DirectCredentials] =
     Seq(this)

@@ -1,5 +1,6 @@
 
 import com.typesafe.tools.mima.plugin.MimaPlugin
+import com.typesafe.tools.mima.plugin.MimaKeys._
 import sbt._
 import sbt.Keys._
 import sys.process._
@@ -29,5 +30,29 @@ object Mima {
       }
     }
   )
+
+  lazy val lmCoursierFilters = {
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+
+      Seq(
+        // Removed unused method, shouldn't have been there in the first place
+        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.authentication")
+      )
+    }
+  }
+
+  lazy val lmCoursierShadedFilters = {
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+
+      Seq(
+        // Should have been put under lmcoursier.internal?
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.definitions.ToCoursier.")),
+        // ignore shaded and internal stuff related errors
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.internal."))
+      )
+    }
+  }
 
 }
