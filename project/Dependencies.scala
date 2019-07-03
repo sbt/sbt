@@ -112,7 +112,7 @@ object Dependencies {
   def addSbtZincCompileCore(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierVersion = "1.1.0-M14-4"
+  val lmCoursierVersion = "2.0.0-RC2-1"
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
 
   val sjsonNewScalaJson = Def.setting {
