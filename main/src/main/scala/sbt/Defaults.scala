@@ -1379,10 +1379,11 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val service = bgJobService.value
       val (mainClass, args) = parser.parsed
+      val hashClasspath = (bgHashClasspath in bgRunMain).value
       service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val cp =
           if (copyClasspath.value)
-            service.copyClasspath(products.value, classpath.value, workingDir)
+            service.copyClasspath(products.value, classpath.value, workingDir, hashClasspath)
           else classpath.value
         scalaRun.value.run(mainClass, data(cp), args, logger).get
       }
@@ -1401,10 +1402,11 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val service = bgJobService.value
       val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
+      val hashClasspath = (bgHashClasspath in bgRun).value
       service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val cp =
           if (copyClasspath.value)
-            service.copyClasspath(products.value, classpath.value, workingDir)
+            service.copyClasspath(products.value, classpath.value, workingDir, hashClasspath)
           else classpath.value
         scalaRun.value.run(mainClass, data(cp), parser.parsed, logger).get
       }
@@ -1890,6 +1892,7 @@ object Defaults extends BuildCommon {
         val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
         CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
       },
+      bgHashClasspath := !turbo.value,
       classLoaderLayeringStrategy := {
         if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
         else ClassLoaderLayeringStrategy.ScalaLibrary

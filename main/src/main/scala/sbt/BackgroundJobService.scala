@@ -43,6 +43,13 @@ abstract class BackgroundJobService extends Closeable {
 
   /** Copies classpath to temporary directories. */
   def copyClasspath(products: Classpath, full: Classpath, workingDirectory: File): Classpath
+
+  private[sbt] def copyClasspath(
+      products: Classpath,
+      full: Classpath,
+      workingDirectory: File,
+      hashContents: Boolean
+  ): Classpath = copyClasspath(products, full, workingDirectory)
 }
 
 object BackgroundJobService {

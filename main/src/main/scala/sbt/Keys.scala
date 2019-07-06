@@ -258,6 +258,7 @@ object Keys {
   val bgRunMain = inputKey[JobHandle]("Start a provided main class as a background job")
   val fgRunMain = inputKey[Unit]("Start a provided main class as a foreground job")
   val bgCopyClasspath = settingKey[Boolean]("Copies classpath on bgRun to prevent conflict.")
+  val bgHashClasspath = settingKey[Boolean]("Toggles whether to use a hash or the last modified time to stamp the classpath jars")
   val classLoaderLayeringStrategy = settingKey[ClassLoaderLayeringStrategy]("Creates the classloader layering strategy for the particular configuration.")
 
   // Test Keys
