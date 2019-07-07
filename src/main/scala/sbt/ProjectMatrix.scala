@@ -149,6 +149,7 @@ object ProjectMatrix {
           .setPlugins(plugins)
           .configs(configurations: _*)
           .settings(
+            name := self.id,
             Keys.scalaVersion := sv,
             target := base.getAbsoluteFile / "target" / svDirSuffix.dropWhile(_ == '-'),
             crossTarget := Keys.target.value,
