@@ -142,7 +142,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         .withMaxIterations(conf.maxIterations)
         .withProfiles(conf.mavenProfiles.toSet)
         .withForceVersion(Map.empty)
-        .withTypelevel(typelevel)
+        .withTypelevel(typelevel),
+      strictOpt = conf.strict.map(ToCoursier.strict)
     )
 
     def artifactsParams(resolutions: Map[Set[Configuration], Resolution]): ArtifactsParams =

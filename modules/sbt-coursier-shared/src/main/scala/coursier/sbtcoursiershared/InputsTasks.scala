@@ -1,13 +1,13 @@
 package coursier.sbtcoursiershared
 
-import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Type}
+import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Strict, Type}
 import lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
 import lmcoursier.credentials.DirectCredentials
 import sbt.{Def, SettingKey}
 import sbt.Keys._
-import sbt.librarymanagement.{InclExclRule, ModuleID}
+import sbt.librarymanagement.{ConflictManager, InclExclRule, ModuleID}
 import sbt.util.Logger
 
 import scala.collection.JavaConverters._
@@ -256,5 +256,24 @@ object InputsTasks {
       fromSbt.value ++ coursierExtraCredentials.value
     }
   }
+
+
+  def strictTask = Def.task {
+    val cm = conflictManager.value
+    val log = streams.value.log
+
+    cm.name match {
+      case ConflictManager.latestRevision.name =>
+        None
+      case ConflictManager.strict.name =>
+        val strict = Strict()
+          .withInclude(Set((cm.organization, cm.module)))
+        Some(strict)
+      case other =>
+        log.warn(s"Unsupported conflict manager $other")
+        None
+    }
+  }
+
 
 }

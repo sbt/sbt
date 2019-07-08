@@ -5,9 +5,10 @@ import java.io.File
 import coursier.cache.{CacheLogger, FileCache}
 import coursier.ProjectCache
 import coursier.core._
+import coursier.params.rule.Strict
 import lmcoursier.FallbackDependency
 import lmcoursier.definitions.ToCoursier
-import coursier.util.{InMemoryRepository, Task}
+import coursier.util.Task
 
 // private[coursier]
 final case class ResolutionParams(
@@ -24,7 +25,8 @@ final case class ResolutionParams(
   loggerOpt: Option[CacheLogger],
   cache: coursier.cache.FileCache[Task],
   parallel: Int,
-  params: coursier.params.ResolutionParams
+  params: coursier.params.ResolutionParams,
+  strictOpt: Option[Strict]
 ) {
 
   val fallbackDependenciesRepositories =

@@ -4,14 +4,15 @@ import coursier.ProjectCache
 import coursier.cache.FileCache
 import coursier.core._
 import coursier.internal.Typelevel
-import lmcoursier.definitions.ToCoursier
+import lmcoursier.definitions.{Strict, ToCoursier}
 import lmcoursier.{FallbackDependency, FromSbt}
 import lmcoursier.internal.{InterProjectRepository, ResolutionParams, ResolutionRun, Resolvers}
 import coursier.sbtcoursier.Keys._
-import coursier.sbtcoursiershared.InputsTasks.credentialsTask
+import coursier.sbtcoursiershared.InputsTasks.{credentialsTask, strictTask}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
 import sbt.Keys._
+import sbt.librarymanagement.ConflictManager
 
 object ResolutionTasks {
 
@@ -100,6 +101,8 @@ object ResolutionTasks {
 
       val credentials = credentialsTask.value.map(ToCoursier.credentials)
 
+      val strictOpt = strictTask.value.map(ToCoursier.strict)
+
       val parentProjectCache: ProjectCache = coursierParentProjectCache.value
         .get(resolvers)
         .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
@@ -144,7 +147,8 @@ object ResolutionTasks {
             .withMaxIterations(maxIterations)
             .withProfiles(userEnabledProfiles)
             .withForceVersion(userForceVersions)
-            .withTypelevel(typelevel)
+            .withTypelevel(typelevel),
+          strictOpt = strictOpt
         ),
         verbosityLevel,
         log

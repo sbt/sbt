@@ -2,7 +2,7 @@ package coursier.sbtlmcoursier
 
 import lmcoursier.definitions.Authentication
 import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
-import coursier.sbtcoursiershared.InputsTasks.credentialsTask
+import coursier.sbtcoursiershared.InputsTasks.{credentialsTask, strictTask}
 import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
@@ -94,6 +94,7 @@ object LmCoursierPlugin extends AutoPlugin {
           Authentication(a.user, a.password, a.optional, a.realmOpt)
         }
         val credentials = credentialsTask.value
+        val strict = strictTask.value
 
         val createLogger = coursierLogger.value
 
@@ -134,6 +135,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withCache(cache)
           .withLog(s.log)
           .withIvyHome(ivyPaths.value.ivyHome)
+          .withStrict(strict)
       }
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =

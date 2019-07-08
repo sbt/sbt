@@ -6,6 +6,7 @@ import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay
 import coursier.core._
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
+import coursier.params.rule.RuleResolution
 import sbt.util.Logger
 
 // private[coursier]
@@ -17,6 +18,8 @@ object ResolutionRun {
     log: Logger,
     configs: Set[Configuration]
   ): Either[coursier.error.ResolutionError, Resolution] = {
+
+    val rules = params.strictOpt.map(s => Seq((s, RuleResolution.Fail))).getOrElse(Nil)
 
     val isCompileConfig =
       configs(Configuration.compile) || configs(Configuration("scala-tool"))
@@ -81,6 +84,7 @@ object ResolutionRun {
             .withForceScalaVersion(isCompileConfig && params.autoScalaLibOpt.nonEmpty)
             .withScalaVersion(params.autoScalaLibOpt.map(_._2))
             .withTypelevel(params.params.typelevel && isCompileConfig)
+            .withRules(rules)
         )
         .withCache(
           params

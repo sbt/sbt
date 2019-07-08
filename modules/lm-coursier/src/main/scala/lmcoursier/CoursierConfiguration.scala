@@ -8,7 +8,7 @@ package lmcoursier
 import java.io.File
 
 import lmcoursier.credentials.Credentials
-import lmcoursier.definitions.{Authentication, CacheLogger, Project}
+import lmcoursier.definitions.{Authentication, CacheLogger, Project, Strict}
 import sbt.librarymanagement.Resolver
 import xsbti.Logger
 
@@ -34,7 +34,8 @@ final class CoursierConfiguration private (
   val logger: Option[CacheLogger],
   val cache: Option[File],
   val ivyHome: Option[File],
-  val followHttpToHttpsRedirections: Option[Boolean]
+  val followHttpToHttpsRedirections: Option[Boolean],
+  val strict: Option[Strict]
 ) extends Serializable {
   
   private def this() =
@@ -60,6 +61,57 @@ final class CoursierConfiguration private (
       None,
       None,
       None,
+      None,
+      None
+    )
+
+  def this(
+    log: Option[Logger],
+    resolvers: Vector[Resolver],
+    parallelDownloads: Int,
+    maxIterations: Int,
+    sbtScalaOrganization: Option[String],
+    sbtScalaVersion: Option[String],
+    sbtScalaJars: Vector[File],
+    interProjectDependencies: Vector[Project],
+    excludeDependencies: Vector[(String, String)],
+    fallbackDependencies: Vector[FallbackDependency],
+    autoScalaLibrary: Boolean,
+    hasClassifiers: Boolean,
+    classifiers: Vector[String],
+    mavenProfiles: Vector[String],
+    scalaOrganization: Option[String],
+    scalaVersion: Option[String],
+    authenticationByRepositoryId: Vector[(String, Authentication)],
+    credentials: Seq[Credentials],
+    logger: Option[CacheLogger],
+    cache: Option[File],
+    ivyHome: Option[File],
+    followHttpToHttpsRedirections: Option[Boolean]
+  ) =
+    this(
+      log,
+      resolvers,
+      parallelDownloads,
+      maxIterations,
+      sbtScalaOrganization,
+      sbtScalaVersion,
+      sbtScalaJars,
+      interProjectDependencies,
+      excludeDependencies,
+      fallbackDependencies,
+      autoScalaLibrary,
+      hasClassifiers,
+      classifiers,
+      mavenProfiles,
+      scalaOrganization,
+      scalaVersion,
+      authenticationByRepositoryId,
+      credentials,
+      logger,
+      cache,
+      ivyHome,
+      followHttpToHttpsRedirections,
       None
     )
   
@@ -87,7 +139,8 @@ final class CoursierConfiguration private (
           logger == other.logger &&
           cache == other.cache &&
           ivyHome == other.ivyHome &&
-          followHttpToHttpsRedirections == other.followHttpToHttpsRedirections
+          followHttpToHttpsRedirections == other.followHttpToHttpsRedirections &&
+          strict == other.strict
       case _ => false
     }
 
@@ -115,11 +168,12 @@ final class CoursierConfiguration private (
     code = 37 * (code + cache.##)
     code = 37 * (code + ivyHome.##)
     code = 37 * (code + followHttpToHttpsRedirections.##)
+    code = 37 * (code + strict.##)
     code
   }
 
   override def toString: String =
-    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome, $followHttpToHttpsRedirections)"
+    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome, $followHttpToHttpsRedirections, $strict)"
 
   private[this] def copy(
     log: Option[Logger] = log,
@@ -143,7 +197,8 @@ final class CoursierConfiguration private (
     logger: Option[CacheLogger] = logger,
     cache: Option[File] = cache,
     ivyHome: Option[File] = ivyHome,
-    followHttpToHttpsRedirections: Option[Boolean] = followHttpToHttpsRedirections
+    followHttpToHttpsRedirections: Option[Boolean] = followHttpToHttpsRedirections,
+    strict: Option[Strict] = strict
   ): CoursierConfiguration =
     new CoursierConfiguration(
       log,
@@ -167,7 +222,8 @@ final class CoursierConfiguration private (
       logger,
       cache,
       ivyHome,
-      followHttpToHttpsRedirections
+      followHttpToHttpsRedirections,
+      strict
     )
 
   def withLog(log: Option[Logger]): CoursierConfiguration =
@@ -262,6 +318,11 @@ final class CoursierConfiguration private (
     copy(followHttpToHttpsRedirections = Some(followHttpToHttpsRedirections))
   def withFollowHttpToHttpsRedirections(): CoursierConfiguration =
     copy(followHttpToHttpsRedirections = Some(true))
+
+  def withStrict(strict: Strict): CoursierConfiguration =
+    copy(strict = Some(strict))
+  def withStrict(strictOpt: Option[Strict]): CoursierConfiguration =
+    copy(strict = strictOpt)
 }
 
 object CoursierConfiguration {
@@ -313,6 +374,7 @@ object CoursierConfiguration {
       logger, 
       cache,
       None,
+      None,
       None
     )
   
@@ -359,6 +421,7 @@ object CoursierConfiguration {
       credentials, 
       Option(logger), 
       Option(cache),
+      None,
       None,
       None
     )
@@ -408,6 +471,7 @@ object CoursierConfiguration {
       logger,
       cache,
       ivyHome,
+      None,
       None
     )
 }
