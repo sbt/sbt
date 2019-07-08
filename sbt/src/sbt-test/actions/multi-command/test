@@ -34,3 +34,7 @@
 > checkInput foo
 
 > compile; checkInput foo
+
+> ++ 2.11.12 compile; setStringValue bar; checkStringValue bar
+
+> ++2.12.8 compile; setStringValue foo; checkStringValue foo

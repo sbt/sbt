@@ -185,6 +185,8 @@ final class ScriptedTests(
       case "actions/cross-multiproject" => LauncherBased // tbd
       case "actions/cross-multi-parser" =>
         LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
+      case "actions/multi-command" =>
+        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
       case "actions/external-doc"   => LauncherBased // sbt/Package$
       case "actions/input-task"     => LauncherBased // sbt/Package$
       case "actions/input-task-dyn" => LauncherBased // sbt/Package$

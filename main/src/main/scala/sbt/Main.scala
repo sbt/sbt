@@ -190,6 +190,7 @@ object BuiltinCommands {
 
   def DefaultCommands: Seq[Command] =
     Seq(
+      multi,
       about,
       tasks,
       settingsCommand,
