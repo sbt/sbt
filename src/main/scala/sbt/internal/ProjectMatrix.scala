@@ -1,10 +1,12 @@
 package sbt
+package internal
 
 import java.util.Locale
 import scala.collection.immutable.ListMap
+import scala.collection.mutable
 import Keys._
-import sbt.librarymanagement.CrossVersion.partialVersion
 import scala.util.Try
+import sbt.internal.inc.ReflectUtilities
 
 /**
  * A project matrix is an implementation of a composite project
@@ -46,23 +48,54 @@ sealed trait ProjectMatrix extends CompositeProject {
   def settings(ss: Def.SettingsDefinition*): ProjectMatrix
 
   /**
-   * Sets the [[AutoPlugin]]s of this project.
-   * A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to enable on a project.
+   * Sets the [[sbt.AutoPlugin]]s of this project.
+   * An [[sbt.AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to enable on a project.
    */
   def enablePlugins(ns: Plugins*): ProjectMatrix
 
   /** Disable the given plugins on this project. */
   def disablePlugins(ps: AutoPlugin*): ProjectMatrix
 
-  def custom(
-      idSuffix: String,
-      directorySuffix: String,
-      scalaVersions: Seq[String],
-      process: Project => Project
+
+  /**
+   * If autoScalaLibrary is false, add non-Scala row.
+   * Otherwise, add custom rows for each scalaVersions.
+   */
+  def customRow(
+    autoScalaLibrary: Boolean,
+    scalaVersions: Seq[String],
+    axisValues: Seq[VirtualAxis],
+    process: Project => Project
+  ): ProjectMatrix
+
+  def customRow(
+    scalaVersions: Seq[String],
+    axisValues: Seq[VirtualAxis],
+    process: Project => Project
+  ): ProjectMatrix
+
+  def customRow(
+    autoScalaLibrary: Boolean,
+    axisValues: Seq[VirtualAxis],
+    process: Project => Project
+  ): ProjectMatrix
+
+  def customRow(
+    scalaVersions: Seq[String],
+    axisValues: Seq[VirtualAxis],
+    settings: Seq[Setting[_]]
+  ): ProjectMatrix
+
+  def customRow(
+    autoScalaLibrary: Boolean,
+    axisValues: Seq[VirtualAxis],
+    settings: Seq[Setting[_]]
   ): ProjectMatrix
 
   def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix
+  def jvmPlatform(autoScalaLibrary: Boolean): ProjectMatrix
   def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
+  def jvmPlatform(autoScalaLibrary: Boolean, scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
   def jvm: ProjectFinder
 
   def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix
@@ -73,10 +106,14 @@ sealed trait ProjectMatrix extends CompositeProject {
   def nativePlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
   def native: ProjectFinder
 
-  def crossLibrary(scalaVersions: Seq[String], suffix: String, settings: Seq[Setting[_]]): ProjectMatrix
-  def crossLib(suffix: String): ProjectFinder
-
   def projectRefs: Seq[ProjectReference]
+
+  def filterProjects(axisValues: Seq[VirtualAxis]): Seq[Project]
+  def filterProjects(autoScalaLibrary: Boolean, axisValues: Seq[VirtualAxis]): Seq[Project]
+  def finder(axisValues: VirtualAxis*): ProjectFinder
+
+  // resolve to the closest match for the given row
+  private[sbt] def resolveMatch(thatRow: ProjectMatrix.ProjectRow): ProjectReference
 }
 
 /** Represents a reference to a project matrix with an optional configuration string.
@@ -87,6 +124,7 @@ sealed trait MatrixClasspathDep[MR <: ProjectMatrixReference] {
 
 trait ProjectFinder {
   def apply(scalaVersion: String): Project
+  def apply(autoScalaLibrary: Boolean): Project
   def get: Seq[Project]
 }
 
@@ -100,14 +138,27 @@ object ProjectMatrix {
   val nativeIdSuffix: String = "Native"
   val nativeDirectorySuffix: String = "-native"
 
-  /** A row in the project matrix, typically representing a platform.
+  private[sbt] val allMatrices: mutable.Map[String, ProjectMatrix] = mutable.Map.empty
+
+  /** A row in the project matrix, typically representing a platform + Scala version.
    */
   final class ProjectRow(
-      val idSuffix: String,
-      val directorySuffix: String,
-      val scalaVersions: Seq[String],
+      val autoScalaLibrary: Boolean,
+      val axisValues: Seq[VirtualAxis],
       val process: Project => Project
-  ) {}
+  ) {
+    def scalaVersionOpt: Option[String] =
+      if (autoScalaLibrary)
+        (axisValues collect {
+          case sv: VirtualAxis.ScalaVersionAxis => sv.scalaVersion
+        }).headOption
+      else None
+
+    def isMatch(that: ProjectRow): Boolean =
+      VirtualAxis.isMatch(this.axisValues, that.axisValues)
+
+    override def toString: String = s"ProjectRow($autoScalaLibrary, $axisValues)"
+  }
 
   final case class MatrixClasspathDependency(
       matrix: ProjectMatrixReference,
@@ -125,23 +176,40 @@ object ProjectMatrix {
       val configurations: Seq[Configuration],
       val plugins: Plugins
   ) extends ProjectMatrix { self =>
-    lazy val projectMatrix: ListMap[(ProjectRow, String), Project] = {
+    lazy val resolvedMappings: ListMap[ProjectRow, Project] = resolveMappings
+    private def resolveProjectIds: Map[ProjectRow, String] = {
+      Map((for {
+        r <- rows
+      } yield {
+        val axes = r.axisValues.sortBy(_.suffixOrder)
+        val idSuffix = axes.map(_.idSuffix).mkString("")
+        val childId = self.id + idSuffix
+        r -> childId
+      }): _*)
+    }
+
+    private def resolveMappings: ListMap[ProjectRow, Project] = {
+      val projectIds = resolveProjectIds
+
       ListMap((for {
         r <- rows
-        svs = if (r.scalaVersions.nonEmpty) r.scalaVersions
-        else if (scalaVersions.nonEmpty) scalaVersions
-        else sys.error(s"project matrix $id must specify scalaVersions.")
-        sv <- svs
       } yield {
-        val idSuffix = r.idSuffix + scalaVersionIdSuffix(sv)
-        val svDirSuffix = r.directorySuffix + "-" + scalaVersionDirSuffix(sv)
-        val childId = self.id + idSuffix
-        val deps = dependencies map {
-          case MatrixClasspathDependency(matrix: LocalProjectMatrix, configuration) =>
-            ClasspathDependency(LocalProject(matrix.id + idSuffix), configuration)
-        }
+        val axes = r.axisValues.sortBy(_.suffixOrder)
+        val svDirSuffix = axes.map(_.directorySuffix).mkString("-")
+        val nonScalaDirSuffix = (axes filter {
+          case _: VirtualAxis.ScalaVersionAxis => false
+          case _                               => true
+        }).map(_.directorySuffix).mkString("-")
+
+        val platform = (axes collect {
+          case pa: VirtualAxis.PlatformAxis => pa
+        }).headOption.getOrElse(sys.error(s"platform axis is missing in $axes"))
+        val childId = projectIds(r)
+        val deps = dependencies map { resolveMatrixDependency(_, r) }
         val aggs = aggregate map {
-          case ref: LocalProjectMatrix => LocalProject(ref.id + idSuffix)
+          case ref: LocalProjectMatrix =>
+            val other = lookupMatrix(ref)
+            resolveMatrixAggregate(other, r)
         }
         val p = Project(childId, new sbt.File(childId).getAbsoluteFile)
           .dependsOn(deps: _*)
@@ -149,21 +217,50 @@ object ProjectMatrix {
           .setPlugins(plugins)
           .configs(configurations: _*)
           .settings(
-            name := self.id,
-            Keys.scalaVersion := sv,
+            name := self.id
+          )
+          .settings(
+            r.scalaVersionOpt.toList map { sv =>
+              Keys.scalaVersion := sv
+            }
+          )
+          .settings(
             target := base.getAbsoluteFile / "target" / svDirSuffix.dropWhile(_ == '-'),
             crossTarget := Keys.target.value,
             sourceDirectory := base.getAbsoluteFile / "src",
-            inConfig(Compile)(makeSources(r.directorySuffix, svDirSuffix)),
-            inConfig(Test)(makeSources(r.directorySuffix, svDirSuffix))
+            inConfig(Compile)(makeSources(nonScalaDirSuffix, svDirSuffix)),
+            inConfig(Test)(makeSources(nonScalaDirSuffix, svDirSuffix))
           )
           .settings(self.settings)
 
-        (r, sv) -> r.process(p)
+        r -> r.process(p)
       }): _*)
     }
 
-    override lazy val componentProjects: Seq[Project] = projectMatrix.values.toList
+
+    override lazy val componentProjects: Seq[Project] = resolvedMappings.values.toList
+
+    private def resolveMatrixAggregate(
+      other: ProjectMatrix,
+      thisRow: ProjectRow,
+    ): ProjectReference = other.resolveMatch(thisRow)
+
+    private def resolveMatrixDependency(
+      dep: MatrixClasspathDep[ProjectMatrixReference],
+      thisRow: ProjectRow
+    ): ClasspathDep[ProjectReference] =
+      dep match {
+        case MatrixClasspathDependency(matrix0: LocalProjectMatrix, configuration) =>
+          val other = lookupMatrix(matrix0)
+          ClasspathDependency(other.resolveMatch(thisRow), configuration)
+      }
+
+    // resolve to the closest match for the given row
+    private[sbt] def resolveMatch(thatRow: ProjectRow): ProjectReference =
+      rows.find(r => r.isMatch(thatRow)) match {
+        case Some(r) => LocalProject(resolveProjectIds(r))
+        case _       => sys.error(s"no rows were found in $id matching $thatRow: $rows")
+      }
 
     private def makeSources(dirSuffix: String, svDirSuffix: String): Setting[_] = {
       unmanagedSourceDirectories ++= Seq(
@@ -171,16 +268,6 @@ object ProjectMatrix {
         scalaSource.value.getParentFile / s"scala$svDirSuffix"
       )
     }
-
-    private def scalaVersionIdSuffix(sv: String): String = {
-      scalaVersionDirSuffix(sv).toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "_")
-    }
-
-    private def scalaVersionDirSuffix(sv: String): String =
-      partialVersion(sv) match {
-        case Some((m, n)) => s"$m.$n"
-        case _            => sv
-      }
 
     override def withId(id: String): ProjectMatrix = copy(id = id)
 
@@ -209,16 +296,20 @@ object ProjectMatrix {
 
     override def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jvmPlatform(scalaVersions, Nil)
+    override def jvmPlatform(autoScalaLibrary: Boolean): ProjectMatrix =
+      jvmPlatform(autoScalaLibrary, Nil, Nil)
     override def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
-      custom(jvmIdSuffix, jvmDirectorySuffix, scalaVersions, { _.settings(settings) })
+      jvmPlatform(true, scalaVersions, settings)
+    override def jvmPlatform(autoScalaLibrary: Boolean, scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
+      customRow(autoScalaLibrary, scalaVersions, Seq(VirtualAxis.jvm), { _.settings(settings) })
 
-    override def jvm: ProjectFinder = new SuffixBaseProjectFinder(jvmIdSuffix)
+    override def jvm: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.jvm))
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
 
     override def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
-      custom(jsIdSuffix, jsDirectorySuffix, scalaVersions,
+      customRow(true, scalaVersions, Seq(VirtualAxis.js),
         { _
             .enablePlugins(scalajsPlugin(this.getClass.getClassLoader).getOrElse(
               sys.error("""Scala.js plugin was not found. Add the sbt-scalajs plugin into project/plugins.sbt:
@@ -235,17 +326,19 @@ object ProjectMatrix {
       }
     }
 
-    override def native: ProjectFinder = new SuffixBaseProjectFinder(nativeIdSuffix)
+    override def js: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.js))
+
+    override def native: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.native))
 
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
 
     override def nativePlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
-      custom(nativeIdSuffix, nativeDirectorySuffix, scalaVersions,
+      customRow(true, scalaVersions, Seq(VirtualAxis.native),
         { _
           .enablePlugins(nativePlugin(this.getClass.getClassLoader).getOrElse(
             sys.error("""Scala Native plugin was not found. Add the sbt-scala-native plugin into project/plugins.sbt:
-                        |  addSbtPlugin("org.scala-native" % "sbt-scala-natiev" % "x.y.z")
+                        |  addSbtPlugin("org.scala-native" % "sbt-scala-native" % "x.y.z")
                         |""".stripMargin)
           ))
           .settings(settings)
@@ -258,39 +351,71 @@ object ProjectMatrix {
       }
     }
 
-    override def js: ProjectFinder = new SuffixBaseProjectFinder(jsIdSuffix)
-
-    override def crossLibrary(scalaVersions: Seq[String], suffix: String, settings: Seq[Setting[_]]): ProjectMatrix =
-      custom(suffix.replaceAllLiterally(".", "_"),
-        "-" + suffix.toLowerCase,
-        scalaVersions,
-        { _.settings(
-          Seq(moduleName := name.value + "_" + suffix.toLowerCase) ++ settings
-        ) })
-
-    override def crossLib(suffix: String): ProjectFinder =
-      new SuffixBaseProjectFinder(suffix.replaceAllLiterally(".", "_"))
-
     override def projectRefs: Seq[ProjectReference] =
       componentProjects map { case p => (p: ProjectReference) }
 
-    private final class SuffixBaseProjectFinder(idSuffix: String) extends ProjectFinder {
-      def get: Seq[Project] = projectMatrix.toSeq collect {
-        case ((r, sv), v) if r.idSuffix == idSuffix => v
+    override def filterProjects(axisValues: Seq[VirtualAxis]): Seq[Project] =
+      resolvedMappings.toSeq collect {
+        case (r, p) if axisValues.forall(v => r.axisValues.contains(v)) => p
       }
+    override def filterProjects(autoScalaLibrary: Boolean, axisValues: Seq[VirtualAxis]): Seq[Project] =
+      resolvedMappings.toSeq collect {
+        case (r, p) if r.autoScalaLibrary == autoScalaLibrary && axisValues.forall(v => r.axisValues.contains(v)) => p
+      }
+
+    private final class AxisBaseProjectFinder(axisValues: Seq[VirtualAxis]) extends ProjectFinder {
+      def get: Seq[Project] = filterProjects(axisValues)
       def apply(sv: String): Project =
-        (projectMatrix.toSeq collectFirst {
-          case ((r, `sv`), v) if r.idSuffix == idSuffix => v
-        }).getOrElse(sys.error(s"$sv was not found"))
+        filterProjects(true, axisValues ++ Seq(VirtualAxis.scalaPartialVersion(sv))).headOption
+        .getOrElse(sys.error(s"project matching $axisValues and $sv was not found"))
+      def apply(autoScalaLibrary: Boolean): Project =
+        filterProjects(autoScalaLibrary, axisValues).headOption
+        .getOrElse(sys.error(s"project matching $axisValues and $autoScalaLibrary was not found"))
     }
 
-    override def custom(
-        idSuffix: String,
-        directorySuffix: String,
-        scalaVersions: Seq[String],
-        process: Project => Project
+    override def customRow(
+      scalaVersions: Seq[String],
+      axisValues: Seq[VirtualAxis],
+      settings: Seq[Setting[_]]
+    ): ProjectMatrix = customRow(true, scalaVersions, axisValues, { _.settings(settings) })
+
+    override def customRow(
+      autoScalaLibrary: Boolean,
+      axisValues: Seq[VirtualAxis],
+      settings: Seq[Setting[_]]
+    ): ProjectMatrix = customRow(autoScalaLibrary, Nil, axisValues, { _.settings(settings) })
+
+    override def customRow(
+      scalaVersions: Seq[String],
+      axisValues: Seq[VirtualAxis],
+      process: Project => Project
+    ): ProjectMatrix = customRow(true, scalaVersions, axisValues, process)
+
+    override def customRow(
+      autoScalaLibrary: Boolean,
+      scalaVersions: Seq[String],
+      axisValues: Seq[VirtualAxis],
+      process: Project => Project
     ): ProjectMatrix =
-      copy(rows = rows :+ new ProjectRow(idSuffix, directorySuffix, scalaVersions, process))
+      if (autoScalaLibrary) {
+        scalaVersions.foldLeft(this: ProjectMatrix) { (acc, sv) =>
+          acc.customRow(autoScalaLibrary, axisValues ++ Seq(VirtualAxis.scalaPartialVersion(sv)), process)
+        }
+      } else {
+        customRow(autoScalaLibrary, Seq(VirtualAxis.jvm), process)
+      }
+
+    override def customRow(
+      autoScalaLibrary: Boolean,
+      axisValues: Seq[VirtualAxis],
+      process: Project => Project
+    ): ProjectMatrix = {
+      val newRow: ProjectRow = new ProjectRow(autoScalaLibrary, axisValues, process)
+      copy(rows = this.rows :+ newRow)
+    }
+
+    override def finder(axisValues: VirtualAxis*): ProjectFinder =
+      new AxisBaseProjectFinder(axisValues.toSeq)
 
     def copy(
         id: String = id,
@@ -302,8 +427,8 @@ object ProjectMatrix {
         settings: Seq[Setting[_]] = settings,
         configurations: Seq[Configuration] = configurations,
         plugins: Plugins = plugins
-    ): ProjectMatrix =
-      unresolved(
+    ): ProjectMatrix = {
+      val matrix = unresolved(
         id,
         base,
         scalaVersions,
@@ -314,10 +439,16 @@ object ProjectMatrix {
         configurations,
         plugins
       )
+      allMatrices(id) = matrix
+      matrix
+    }
   }
 
+  // called by macro
   def apply(id: String, base: sbt.File): ProjectMatrix = {
-    unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty)
+    val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty)
+    allMatrices(id) = matrix
+    matrix
   }
 
   private[sbt] def unresolved(
@@ -342,6 +473,10 @@ object ProjectMatrix {
       configurations,
       plugins
     )
+
+  def lookupMatrix(local: LocalProjectMatrix): ProjectMatrix = {
+    allMatrices.getOrElse(local.id, sys.error(s"${local.id} was not found"))
+  }
 
   implicit def projectMatrixToLocalProjectMatrix(m: ProjectMatrix): LocalProjectMatrix =
     LocalProjectMatrix(m.id)

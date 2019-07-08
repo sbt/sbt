@@ -1,6 +1,7 @@
 package sbtprojectmatrix
 
 import sbt._
+import internal._
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.language.experimental.macros
 
