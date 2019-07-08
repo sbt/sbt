@@ -47,7 +47,7 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
   }
 
   def fork(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Process = {
-    log.info("Running (fork) " + mainClass + " " + options.mkString(" "))
+    log.info(s"running (fork) $mainClass ${Run.runOptionsStr(options)}")
 
     val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
     val configLogged =
@@ -65,7 +65,7 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
 
   /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
-    log.info("Running " + mainClass + " " + options.mkString(" "))
+    log.info(s"running $mainClass ${Run.runOptionsStr(options)}")
 
     def execute() =
       try {
@@ -159,4 +159,12 @@ object Run {
       Success(())
     } else Failure(new MessageOnlyException("Nonzero exit code: " + exitCode))
   }
+
+  // quotes the option that includes a whitespace
+  // https://github.com/sbt/sbt/issues/4834
+  private[sbt] def runOptionsStr(options: Seq[String]): String =
+    (options map {
+      case str if str.contains(" ") => "\"" + str + "\""
+      case str                      => str
+    }).mkString(" ")
 }
