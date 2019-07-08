@@ -37,7 +37,9 @@ object Mima {
 
       Seq(
         // Removed unused method, shouldn't have been there in the first place
-        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.authentication")
+        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.authentication"),
+        // ignore shaded and internal stuff related errors
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.internal."))
       )
     }
   }
@@ -48,9 +50,7 @@ object Mima {
 
       Seq(
         // Should have been put under lmcoursier.internal?
-        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.definitions.ToCoursier.")),
-        // ignore shaded and internal stuff related errors
-        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.internal."))
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.definitions.ToCoursier."))
       )
     }
   }
