@@ -1,0 +1,3 @@
+-> a/update
+# enable once when we bump the coursier version
+# > b/update

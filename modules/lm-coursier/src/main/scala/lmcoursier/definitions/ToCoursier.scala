@@ -1,5 +1,6 @@
 package lmcoursier.definitions
 
+import coursier.util.ModuleMatcher
 import lmcoursier.credentials.{Credentials, DirectCredentials, FileCredentials}
 
 // TODO Make private[lmcoursier]
@@ -141,5 +142,16 @@ object ToCoursier {
       override def stop(): Unit =
         logger.stop()
     }
+
+  def strict(strict: Strict): coursier.params.rule.Strict =
+    coursier.params.rule.Strict(
+      include = strict.include.map {
+        case (o, n) => ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
+      },
+      exclude = strict.exclude.map {
+        case (o, n) => ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
+      },
+      // ignoreIfForcedVersion = strict.ignoreIfForcedVersion // should be around once the coursier version is bumped
+    )
 
 }
