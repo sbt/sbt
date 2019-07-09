@@ -3347,7 +3347,8 @@ object Classpaths {
   def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
   val sbtIvySnapshots: URLRepository = Resolver.sbtIvyRepo("snapshots")
-  val typesafeReleases: URLRepository = Resolver.typesafeIvyRepo("releases")
+  val typesafeReleases: URLRepository =
+    Resolver.typesafeIvyRepo("releases").withName("typesafe-alt-ivy-releases")
   val sbtPluginReleases: URLRepository = Resolver.sbtPluginRepo("releases")
   val sbtMavenSnapshots: MavenRepository =
     MavenRepository("sbt-maven-snapshot", Resolver.SbtRepositoryRoot + "/" + "maven-snapshots/")
