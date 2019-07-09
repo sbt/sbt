@@ -62,7 +62,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   ),
   scalaVersion := baseScalaVersion,
   componentID := None,
-  resolvers += Resolver.typesafeIvyRepo("releases"),
+  resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
   addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),
