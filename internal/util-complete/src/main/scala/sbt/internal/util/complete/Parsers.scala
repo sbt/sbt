@@ -220,6 +220,12 @@ trait Parsers {
       (DQuoteChar ~ DQuoteChar) ^^^ "")
 
   /**
+   * Parses a size unit string. For example, `128K` parsers to `128L * 1024`, and `1.25g` parses
+   * to `1024L * 1024 * 1024 * 5 / 4`.
+   */
+  lazy val Size: Parser[Long] = SizeParser.value
+
+  /**
    * Parses a brace enclosed string and, if each opening brace is matched with a closing brace,
    * it returns the entire string including the braces.
    *

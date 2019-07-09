@@ -258,6 +258,7 @@ object Defaults extends BuildCommon {
       checkBuildSources / Continuous.dynamicInputs := None,
       checkBuildSources / fileInputs := CheckBuildSources.buildSourceFileInputs.value,
       checkBuildSources := CheckBuildSources.needReloadImpl.value,
+      fileCacheSize := "128M",
       trapExit :== true,
       connectInput :== false,
       cancelable :== true,

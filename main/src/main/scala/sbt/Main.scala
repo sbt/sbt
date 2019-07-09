@@ -23,7 +23,7 @@ import sbt.internal._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
-import sbt.internal.util.complete.Parser
+import sbt.internal.util.complete.{ SizeParser, Parser }
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
@@ -848,7 +848,11 @@ object BuiltinCommands {
   }
 
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
-    val size = Project.extract(s).getOpt(Keys.fileCacheSize).getOrElse(SysProp.fileCacheSize)
+    val size = Project
+      .extract(s)
+      .getOpt(Keys.fileCacheSize)
+      .flatMap(SizeParser(_))
+      .getOrElse(SysProp.fileCacheSize)
     s.get(Keys.cacheStoreFactory).foreach(_.close())
     s.put(Keys.cacheStoreFactory, InMemoryCacheStore.factory(size))
   }
