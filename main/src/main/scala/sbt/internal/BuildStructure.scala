@@ -10,14 +10,16 @@ package internal
 
 import java.io.File
 import java.net.URI
-import Def.{ displayFull, ScopedKey, ScopeLocal, Setting }
+
+import Def.{ ScopeLocal, ScopedKey, Setting, displayFull }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
 import sbt.io.syntax._
-import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
+import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
+import sjsonnew.SupportConverter
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 final class BuildStructure(
@@ -305,7 +307,10 @@ object BuildStreams {
         path(units, root, data),
         displayFull,
         LogManager.construct(data, s),
-        sjsonnew.support.scalajson.unsafe.Converter
+        sjsonnew.support.scalajson.unsafe.Converter, {
+          val factory = s.get(Keys.cacheStoreFactory).getOrElse(InMemoryCacheStore.factory(0))
+          (file, converter: SupportConverter[JValue]) => factory(file.toPath, converter)
+        }
       )
     }
   }

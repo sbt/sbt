@@ -840,9 +840,17 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
-    Project
-      .setProject(session, structure, s)
-      .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
+    addCacheStoreFactoryFactory(
+      Project
+        .setProject(session, structure, s)
+        .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
+    )
+  }
+
+  private val addCacheStoreFactoryFactory: State => State = (s: State) => {
+    val size = Project.extract(s).getOpt(Keys.fileCacheSize).getOrElse(SysProp.fileCacheSize)
+    s.get(Keys.cacheStoreFactory).foreach(_.close())
+    s.put(Keys.cacheStoreFactory, InMemoryCacheStore.factory(size))
   }
 
   def registerCompilerCache(s: State): State = {
@@ -857,7 +865,7 @@ object BuiltinCommands {
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache)
+    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache) andThen addCacheStoreFactoryFactory
     Command.command(ClearCaches, help)(f)
   }
 

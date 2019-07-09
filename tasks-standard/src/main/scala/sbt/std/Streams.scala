@@ -8,29 +8,14 @@
 package sbt
 package std
 
-import java.io.{
-  BufferedInputStream,
-  BufferedOutputStream,
-  BufferedReader,
-  BufferedWriter,
-  Closeable,
-  File,
-  FileInputStream,
-  FileOutputStream,
-  IOException,
-  InputStreamReader,
-  OutputStreamWriter,
-  PrintWriter
-}
+import java.io.{ File => _, _ }
 
 import sbt.internal.io.DeferredWriter
+import sbt.internal.util.ManagedLogger
 import sbt.io.IO
 import sbt.io.syntax._
-
-import sbt.internal.util.ManagedLogger
-
+import sbt.util._
 import sjsonnew.{ IsoString, SupportConverter }
-import sbt.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, PlainInput, PlainOutput }
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
@@ -137,6 +122,20 @@ object Streams {
       name: Key => String,
       mkLogger: (Key, PrintWriter) => ManagedLogger,
       converter: SupportConverter[J]
+  ): Streams[Key] =
+    apply(
+      taskDirectory,
+      name,
+      mkLogger,
+      converter,
+      (file, s: SupportConverter[J]) => new DirectoryStoreFactory[J](file, s)
+    )
+  private[sbt] def apply[Key, J: IsoString](
+      taskDirectory: Key => File,
+      name: Key => String,
+      mkLogger: (Key, PrintWriter) => ManagedLogger,
+      converter: SupportConverter[J],
+      mkFactory: (File, SupportConverter[J]) => CacheStoreFactory
   ): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
@@ -178,8 +177,7 @@ object Streams {
         dir
       }
 
-      lazy val cacheStoreFactory: CacheStoreFactory =
-        new DirectoryStoreFactory(cacheDirectory, converter)
+      lazy val cacheStoreFactory: CacheStoreFactory = mkFactory(cacheDirectory, converter)
 
       def log(sid: String): ManagedLogger = mkLogger(a, text(sid))
 
