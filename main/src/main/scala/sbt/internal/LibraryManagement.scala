@@ -9,41 +9,20 @@ package sbt
 package internal
 
 import java.io.File
+import java.util.concurrent.Callable
 import sbt.internal.librarymanagement._
-import sbt.internal.util.{ ConsoleAppender, LogOption }
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
-import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
+import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked, Level }
 import sbt.io.IO
+import sbt.io.syntax._
+import sbt.Project.richInitializeTask
+import sbt.dsl.LinterLevel.Ignore
+import sjsonnew.JsonFormat
 
 private[sbt] object LibraryManagement {
 
   private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
-
-  def defaultUseCoursier: Boolean = {
-    val coursierOpt = sys.props
-      .get("sbt.coursier")
-      .flatMap(
-        str =>
-          ConsoleAppender.parseLogOption(str) match {
-            case LogOption.Always => Some(true)
-            case LogOption.Never  => Some(false)
-            case _                => None
-          }
-      )
-    val ivyOpt = sys.props
-      .get("sbt.ivy")
-      .flatMap(
-        str =>
-          ConsoleAppender.parseLogOption(str) match {
-            case LogOption.Always => Some(true)
-            case LogOption.Never  => Some(false)
-            case _                => None
-          }
-      )
-    val notIvyOpt = ivyOpt map { !_ }
-    coursierOpt.orElse(notIvyOpt).getOrElse(true)
-  }
 
   def cachedUpdate(
       lm: DependencyResolution,
@@ -200,4 +179,155 @@ private[sbt] object LibraryManagement {
         }
     ur.withConfigurations(crs2)
   }
+
+  val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
+    new sjsonnew.JsonKeyFormat[ModuleID] {
+      import LibraryManagementCodec._
+      import sjsonnew.support.scalajson.unsafe._
+      val moduleIdFormat: JsonFormat[ModuleID] = implicitly[JsonFormat[ModuleID]]
+      def write(key: ModuleID): String =
+        CompactPrinter(Converter.toJsonUnsafe(key)(moduleIdFormat))
+      def read(key: String): ModuleID =
+        Converter.fromJsonUnsafe[ModuleID](Parser.parseUnsafe(key))(moduleIdFormat)
+    }
+
+  /**
+   * Resolves and optionally retrieves classified artifacts, such as javadocs and sources,
+   * for dependency definitions, transitively.
+   */
+  def updateClassifiersTask: Def.Initialize[Task[UpdateReport]] =
+    (Def.task {
+      import Keys._
+      val s = streams.value
+      val cacheDirectory = streams.value.cacheDirectory
+      val csr = useCoursier.value
+      val lm = dependencyResolution.value
+
+      if (csr) {
+        // following copied from https://github.com/coursier/sbt-coursier/blob/9173406bb399879508aa481fed16efda72f55820/modules/sbt-lm-coursier/src/main/scala/sbt/hack/Foo.scala
+        val isRoot = executionRoots.value contains resolvedScoped.value
+        val shouldForce = isRoot || {
+          forceUpdatePeriod.value match {
+            case None => false
+            case Some(period) =>
+              val fullUpdateOutput = cacheDirectory / "out"
+              val now = System.currentTimeMillis
+              val diff = now - fullUpdateOutput.lastModified()
+              val elapsedDuration = new scala.concurrent.duration.FiniteDuration(
+                diff,
+                java.util.concurrent.TimeUnit.MILLISECONDS
+              )
+              fullUpdateOutput.exists() && elapsedDuration > period
+          }
+        }
+        val state0 = state.value
+        val updateConf = {
+          import UpdateLogging.{ Full, DownloadOnly, Default }
+          val conf = updateConfiguration.value
+          val maybeUpdateLevel = (logLevel in update).?.value
+          val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
+            case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
+            case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
+            case _                                            => conf
+          }
+          // logical clock is folded into UpdateConfiguration
+          conf1.withLogicalClock(LogicalClock(state0.hashCode))
+        }
+        val evictionOptions = Def.taskDyn {
+          if (executionRoots.value.exists(_.key == evicted.key))
+            Def.task(EvictionWarningOptions.empty)
+          else Def.task((evictionWarningOptions in update).value)
+        }.value
+        cachedUpdate(
+          // LM API
+          lm = lm,
+          // Ivy-free ModuleDescriptor
+          module = ivyModule.value,
+          s.cacheStoreFactory.sub(updateCacheName.value),
+          Reference.display(thisProjectRef.value),
+          updateConf,
+          identity,
+          skip = (skip in update).value,
+          force = shouldForce,
+          depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
+          uwConfig = (unresolvedWarningConfiguration in update).value,
+          ewo = evictionOptions,
+          mavenStyle = publishMavenStyle.value,
+          compatWarning = compatibilityWarningOptions.value,
+          includeCallers = false,
+          includeDetails = false,
+          log = s.log
+        )
+      } else {
+        val is = ivySbt.value
+        val mod = classifiersModule.value
+        val updateConfig0 = updateConfiguration.value
+        lazy val updateConfig = updateConfig0
+          .withMetadataDirectory(dependencyCacheDirectory.value)
+          .withArtifactFilter(
+            updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted))
+          )
+        val app = appConfiguration.value
+        val srcTypes = sourceArtifactTypes.value
+        val docTypes = docArtifactTypes.value
+        val uwConfig = (unresolvedWarningConfiguration in update).value
+        val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+        withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+          lm.updateClassifiers(
+            GetClassifiersConfiguration(
+              mod,
+              excludes.toVector,
+              updateConfig,
+              srcTypes.toVector,
+              docTypes.toVector
+            ),
+            uwConfig,
+            Vector.empty,
+            s.log
+          ) match {
+            case Left(_)   => ???
+            case Right(ur) => ur
+          }
+        }
+      }
+    } tag (Tags.Update, Tags.Network))
+
+  def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
+      f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
+  ): UpdateReport = {
+    import sjsonnew.shaded.scalajson.ast.unsafe.JValue
+    import sbt.librarymanagement.LibraryManagementCodec._
+    import sbt.util.FileBasedStore
+    implicit val isoString: sjsonnew.IsoString[JValue] =
+      sjsonnew.IsoString.iso(
+        sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
+        sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
+      )
+    val exclName = "exclude_classifiers"
+    val file = out / exclName
+    val store = new FileBasedStore(file, sjsonnew.support.scalajson.unsafe.Converter)
+    lock(
+      out / (exclName + ".lock"),
+      new Callable[UpdateReport] {
+        def call = {
+          implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
+          val excludes =
+            store
+              .read[Map[ModuleID, Vector[ConfigRef]]](
+                default = Map.empty[ModuleID, Vector[ConfigRef]]
+              )
+          val report = f(excludes)
+          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++ IvyActions
+            .extractExcludes(report)
+            .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
+          store.write(allExcludes)
+          IvyActions
+            .addExcluded(report, classifiers.toVector, allExcludes.mapValues(_.map(_.name).toSet))
+        }
+      }
+    )
+  }
+
+  def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock =
+    app.provider.scalaProvider.launcher.globalLock
 }

@@ -46,7 +46,7 @@ object Resolve {
       scope
     else {
       val (resolvedRef, proj) = scope.project match {
-        case Zero | This => (None, index.rootProject(index.root))
+        case Zero | This => (None, index.thisRootProject)
         case Select(ref) =>
           val r = index resolveRef ref
           (Some(r), index.projectFor(r))

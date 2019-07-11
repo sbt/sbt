@@ -52,8 +52,11 @@ private[sbt] final class SimpleCommand(
 private[sbt] final class ArbitraryCommand(
     val parser: State => Parser[() => State],
     val help: State => Help,
-    val tags: AttributeMap
+    val tags: AttributeMap,
+    override val nameOption: Option[String]
 ) extends Command {
+  def this(parser: State => Parser[() => State], help: State => Help, tags: AttributeMap) =
+    this(parser, help, tags, None)
   def tag[T](key: AttributeKey[T], value: T): ArbitraryCommand =
     new ArbitraryCommand(parser, help, tags.put(key, value))
 }
@@ -124,6 +127,8 @@ object Command {
   def customHelp(parser: State => Parser[() => State], help: State => Help): Command =
     new ArbitraryCommand(parser, help, AttributeMap.empty)
 
+  private[sbt] def custom(parser: State => Parser[() => State], help: Help, name: String): Command =
+    new ArbitraryCommand(parser, const(help), AttributeMap.empty, Some(name))
   def custom(parser: State => Parser[() => State], help: Help = Help.empty): Command =
     customHelp(parser, const(help))
 
@@ -178,8 +183,7 @@ object Command {
     )
 
   def process(command: String, state: State): State = {
-    val parser = combine(state.definedCommands)
-    parse(command, parser(state)) match {
+    parse(command, state.combinedParser) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log error errMsg

@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.util.concurrent.ConcurrentLinkedQueue
+
 import sbt.protocol.EventMessage
 import sjsonnew.JsonFormat
 
@@ -19,7 +20,19 @@ import sjsonnew.JsonFormat
  */
 abstract class CommandChannel {
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
-  def append(exec: Exec): Boolean = commandQueue.add(exec)
+  private val registered: java.util.Set[java.util.Queue[CommandChannel]] = new java.util.HashSet
+  private[sbt] final def register(queue: java.util.Queue[CommandChannel]): Unit = {
+    registered.add(queue)
+    ()
+  }
+  private[sbt] final def unregister(queue: java.util.Queue[CommandChannel]): Unit = {
+    registered.remove(queue)
+    ()
+  }
+  def append(exec: Exec): Boolean = {
+    registered.forEach(q => q.synchronized { if (!q.contains(this)) q.add(this); () })
+    commandQueue.add(exec)
+  }
   def poll: Option[Exec] = Option(commandQueue.poll)
 
   def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit

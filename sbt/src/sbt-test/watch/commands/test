@@ -1,0 +1,6 @@
+> ~ eval-foo
+
+> ~ write-bar
+
+> set watchOnFileInputEvent := (expectFailure / watchOnFileInputEvent).value
+> ~ +expectFailure

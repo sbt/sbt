@@ -34,7 +34,7 @@ export async function activate(context: ExtensionContext) {
 	terminal = vscode.window.createTerminal(`sbt`);
 	terminal.show();
 	terminal.sendText("sbt");
-	// Wait for SBT server to start
+	// Wait for sbt server to start
 	let retries = 60;
 	while (retries > 0) {
 		retries--;

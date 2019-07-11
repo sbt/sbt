@@ -665,8 +665,7 @@ private[sbt] object Load {
   def getProject(map: Map[URI, LoadedBuildUnit], uri: URI, id: String): ResolvedProject =
     getBuild(map, uri).defined.getOrElse(id, noProject(uri, id))
 
-  def getBuild[T](map: Map[URI, T], uri: URI): T =
-    map.getOrElse(uri, noBuild(uri))
+  def getBuild[T](map: Map[URI, T], uri: URI): T = map.getOrElse(uri, noBuild(uri))
 
   def emptyBuild(uri: URI) = sys.error(s"No root project defined for build unit '$uri'")
   def noBuild(uri: URI) = sys.error(s"Build unit '$uri' not defined.")
@@ -779,7 +778,7 @@ private[sbt] object Load {
       case Right(id) => id
       case Left(msg) => sys.error(autoIDError(f, msg))
     }
-    def nthParentName(f: File, i: Int): String =
+    @tailrec def nthParentName(f: File, i: Int): String =
       if (f eq null) BuildDef.defaultID(localBase)
       else if (i <= 0) normalizeID(f)
       else nthParentName(f.getParentFile, i - 1)

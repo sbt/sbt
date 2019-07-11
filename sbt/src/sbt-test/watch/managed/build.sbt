@@ -1,7 +1,5 @@
 import java.nio.file.Files
 
-import sbt.nio.Watch
-
 import scala.concurrent.duration._
 
 Compile / sourceGenerators += Def.task {

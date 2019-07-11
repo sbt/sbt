@@ -64,11 +64,7 @@ object CoursierRepositoriesTasks {
       case None =>
         val extRes = externalResolvers.value
         val isSbtPlugin = sbtPlugin.value
-        if (isSbtPlugin)
-          Seq(
-            sbtResolver.value,
-            Classpaths.sbtPluginReleases
-          ) ++ extRes
+        if (isSbtPlugin) sbtResolvers.value ++ extRes
         else extRes
     }
     val reorderResolvers = true // coursierReorderResolvers.value

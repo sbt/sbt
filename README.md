@@ -27,7 +27,7 @@ sbt 1.x
 ---------
 
 This is the 1.x series of sbt. The source code of sbt is split across
-several Github repositories, including this one.
+several GitHub repositories, including this one.
 
 - [sbt/io][sbt/io] hosts `sbt.io` module.
 - [sbt/util][sbt/util] hosts a collection of internally used modules.

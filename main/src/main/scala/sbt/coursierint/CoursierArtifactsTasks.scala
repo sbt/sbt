@@ -130,7 +130,7 @@ object CoursierArtifactsTasks {
 
       val stdArtifactsSet = sbtArtifacts.flatMap(_.map { case (_, a) => a }.toSeq).toSet
 
-      // Second-way of getting artifacts from SBT
+      // Second-way of getting artifacts from sbt
       // No obvious way of getting the corresponding  publishArtifact  value for the ones
       // only here, it seems.
       val extraSbtArtifacts = getOpt(
@@ -139,7 +139,7 @@ object CoursierArtifactsTasks {
       ).getOrElse(Nil)
         .filterNot(stdArtifactsSet)
 
-      // Seems that SBT does that - if an artifact has no configs,
+      // Seems that sbt does that - if an artifact has no configs,
       // it puts it in all of them. See for example what happens to
       // the standalone JAR artifact of the coursier cli module.
       def allConfigsIfEmpty(configs: Iterable[ConfigRef]): Iterable[ConfigRef] =

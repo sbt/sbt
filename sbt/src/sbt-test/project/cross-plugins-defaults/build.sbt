@@ -1,20 +1,16 @@
 val baseSbt = "1."
 
-val buildCrossList = List("2.10.6", "2.11.11", "2.12.2")
-scalaVersion in ThisBuild := "2.12.2"
+val buildCrossList = List("2.10.7", "2.11.12", "2.12.8")
+scalaVersion in ThisBuild := "2.12.8"
 crossScalaVersions in ThisBuild := buildCrossList
 
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.7.0")
 
 lazy val root = (project in file("."))
+  .enablePlugins(SbtPlugin)
   .settings(
-    sbtPlugin := true,
-
     TaskKey[Unit]("check") := mkCheck("2.12", "1.0", "1.").value,
     TaskKey[Unit]("check2") := mkCheck("2.10", "0.13", "0.13").value,
-
-    // Coursier requires extra resolver for sbt 0.13
-    resolvers += Resolver.typesafeIvyRepo("releases"),
   )
 
 lazy val app = (project in file("app"))

@@ -1,5 +1,4 @@
 import sbt.legacy.sources.Build._
-import sbt.nio.Watch
 
 Global / watchSources += new sbt.internal.io.Source(baseDirectory.value, "global.txt", NothingFilter, false)
 

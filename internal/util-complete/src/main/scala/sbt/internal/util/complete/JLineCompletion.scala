@@ -83,7 +83,8 @@ object JLineCompletion {
     val (insert, display) =
       ((Set.empty[String], Set.empty[String]) /: cs) {
         case (t @ (insert, display), comp) =>
-          if (comp.isEmpty) t else (insert + comp.append, appendNonEmpty(display, comp.display))
+          if (comp.isEmpty) t
+          else (appendNonEmpty(insert, comp.append), appendNonEmpty(display, comp.display))
       }
     (insert.toSeq, display.toSeq.sorted)
   }

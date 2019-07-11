@@ -8,20 +8,14 @@
 package sbt
 
 import java.io.File
+import java.net.{ URL, URLClassLoader }
 import java.util.concurrent.Callable
 
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
-import sbt.util.Logger
-import sbt.internal.util.{
-  AttributeKey,
-  AttributeMap,
-  ErrorHandling,
-  ExitHook,
-  ExitHooks,
-  GlobalLogging
-}
 import sbt.internal.util.complete.{ HistoryCommands, Parser }
+import sbt.internal.util._
+import sbt.util.Logger
 
 /**
  * Data structure representing all command execution information.
@@ -47,7 +41,10 @@ final case class State(
     currentCommand: Option[Exec],
     next: State.Next
 ) extends Identity {
-  lazy val combinedParser = Command.combine(definedCommands)(this)
+  private[sbt] lazy val (multiCommands, nonMultiCommands) =
+    definedCommands.partition(_.nameOption.contains(BasicCommandStrings.Multi))
+  private[sbt] lazy val nonMultiParser = Command.combine(nonMultiCommands)(this)
+  lazy val combinedParser = multiCommands.foldRight(nonMultiParser)(_.parser(this) | _)
 
   def source: Option[CommandSource] =
     currentCommand match {
@@ -202,6 +199,10 @@ trait StateOps extends Any {
 }
 
 object State {
+  private class UncloseableURLLoader(cp: Seq[File], parent: ClassLoader)
+      extends URLClassLoader(Array.empty, parent) {
+    override def getURLs: Array[URL] = cp.map(_.toURI.toURL).toArray
+  }
 
   /** Indicates where command execution should resume after a failure.*/
   val FailureWall = BasicCommandStrings.FailureWall
@@ -344,6 +345,32 @@ object State {
     def initializeClassLoaderCache: State = {
       s.get(BasicKeys.extendedClassLoaderCache).foreach(_.close())
       val cache = newClassLoaderCache
+      s.configuration.provider.scalaProvider.loader match {
+        case null => // This can happen in scripted
+        case fullScalaLoader =>
+          val jars = s.configuration.provider.scalaProvider.jars
+          val (library, rest) = jars.partition(_.getName == "scala-library.jar")
+          library.toList match {
+            case l @ lj :: Nil =>
+              fullScalaLoader.getParent match {
+                case null => // This can happen for old launchers.
+                case libraryLoader =>
+                  cache.cachedCustomClassloader(l, () => new UncloseableURLLoader(l, libraryLoader))
+                  fullScalaLoader match {
+                    case u: URLClassLoader
+                        if u.getURLs
+                          .filterNot(_ == lj.toURI.toURL)
+                          .sameElements(rest.map(_.toURI.toURL)) =>
+                      cache.cachedCustomClassloader(
+                        jars.toList,
+                        () => new UncloseableURLLoader(jars, fullScalaLoader)
+                      )
+                    case _ =>
+                  }
+              }
+            case _ =>
+          }
+      }
       s.put(BasicKeys.extendedClassLoaderCache, cache)
         .put(BasicKeys.classLoaderCache, new IncClassLoaderCache(cache))
     }

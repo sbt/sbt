@@ -23,7 +23,7 @@ private[sbt] final class GroupedAutoPlugins(
 private[sbt] object GroupedAutoPlugins {
   private[sbt] def apply(units: Map[URI, LoadedBuildUnit]): GroupedAutoPlugins = {
     val byBuild: Map[URI, Seq[AutoPlugin]] =
-      units.mapValues(unit => unit.defined.values.flatMap(_.autoPlugins).toSeq.distinct).toMap
+      units.mapValues(unit => unit.projects.flatMap(_.autoPlugins).toSeq.distinct).toMap
     val all: Seq[AutoPlugin] = byBuild.values.toSeq.flatten.distinct
     new GroupedAutoPlugins(all, byBuild)
   }

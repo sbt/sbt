@@ -21,8 +21,10 @@ final class BuildUtil[Proj](
     val configurations: Proj => Seq[ConfigKey],
     val aggregates: Relation[ProjectRef, ProjectRef]
 ) {
-  def rootProject(uri: URI): Proj =
-    project(uri, rootProjectID(uri))
+
+  def thisRootProject: Proj = rootProject(root)
+
+  def rootProject(uri: URI): Proj = project(uri, rootProjectID(uri))
 
   def resolveRef(ref: Reference): ResolvedReference =
     Scope.resolveReference(root, rootProjectID, ref)
@@ -31,14 +33,14 @@ final class BuildUtil[Proj](
     case ProjectRef(uri, id) => project(uri, id)
     case BuildRef(uri)       => rootProject(uri)
   }
+
   def projectRefFor(ref: ResolvedReference): ProjectRef = ref match {
     case p: ProjectRef => p
     case BuildRef(uri) => ProjectRef(uri, rootProjectID(uri))
   }
-  def projectForAxis(ref: Option[ResolvedReference]): Proj = ref match {
-    case Some(ref) => projectFor(ref)
-    case None      => rootProject(root)
-  }
+
+  def projectForAxis(ref: Option[ResolvedReference]): Proj = ref.fold(thisRootProject)(projectFor)
+
   def exactProject(refOpt: Option[Reference]): Option[Proj] = refOpt map resolveRef flatMap {
     case ProjectRef(uri, id) => Some(project(uri, id))
     case _                   => None
@@ -46,7 +48,9 @@ final class BuildUtil[Proj](
 
   val configurationsForAxis: Option[ResolvedReference] => Seq[String] =
     refOpt => configurations(projectForAxis(refOpt)).map(_.name)
+
 }
+
 object BuildUtil {
   def apply(
       root: URI,
@@ -57,14 +61,14 @@ object BuildUtil {
     val getp = (build: URI, project: String) => Load.getProject(units, build, project)
     val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
     val aggregates = aggregationRelation(units)
-    new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
+    new BuildUtil(keyIndex, data, root, Load.getRootProject(units), getp, configs, aggregates)
   }
 
   def dependencies(units: Map[URI, LoadedBuildUnit]): BuildDependencies = {
     import scala.collection.mutable
     val agg = new mutable.HashMap[ProjectRef, Seq[ProjectRef]]
     val cp = new mutable.HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
-    for (lbu <- units.values; rp <- lbu.defined.values) {
+    for (lbu <- units.values; rp <- lbu.projects) {
       val ref = ProjectRef(lbu.unit.uri, rp.id)
       cp(ref) = rp.dependencies
       agg(ref) = rp.aggregate
@@ -79,7 +83,7 @@ object BuildUtil {
     )(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject] =
       Dag.topologicalSort(proj)(p => base(p) map getRef)
     // check for cycles
-    for ((_, lbu) <- units; proj <- lbu.defined.values) {
+    for ((_, lbu) <- units; proj <- lbu.projects) {
       deps(proj)(_.dependencies.map(_.project))
       deps(proj)(_.aggregate)
     }
@@ -110,7 +114,7 @@ object BuildUtil {
     val depPairs =
       for {
         (uri, unit) <- units.toIterable // don't lose this toIterable, doing so breaks actions/cross-multiproject & actions/update-state-fail
-        project <- unit.defined.values
+        project <- unit.projects
         ref = ProjectRef(uri, project.id)
         agg <- project.aggregate
       } yield (ref, agg)

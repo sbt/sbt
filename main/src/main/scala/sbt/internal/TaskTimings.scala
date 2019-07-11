@@ -24,17 +24,9 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean)
     with ExecuteProgress[Task] {
   import AbstractTaskExecuteProgress.Timer
   private[this] var start = 0L
-  private[this] val threshold = java.lang.Long.getLong("sbt.task.timings.threshold", 0L)
-  private[this] val omitPaths = java.lang.Boolean.getBoolean("sbt.task.timings.omit.paths")
-  private[this] val (unit, divider) = System.getProperty("sbt.task.timings.unit", "ms") match {
-    case "ns" => ("ns", 0)
-    case "us" => ("µs", 3)
-    case "ms" => ("ms", 6)
-    case "s"  => ("sec", 9)
-    case x =>
-      System.err.println(s"Unknown sbt.task.timings.unit: $x.\nUsing milliseconds.")
-      ("ms", 6)
-  }
+  private[this] val threshold = SysProp.taskTimingsThreshold
+  private[this] val omitPaths = SysProp.taskTimingsOmitPaths
+  private[this] val (unit, divider) = SysProp.taskTimingsUnit
 
   if (reportOnShutdown) {
     start = System.nanoTime

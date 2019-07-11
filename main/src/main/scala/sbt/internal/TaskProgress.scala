@@ -14,7 +14,6 @@ import sbt.internal.util._
 import sbt.util.Level
 
 import scala.annotation.tailrec
-import scala.util.control.NonFatal
 
 /**
  * implements task progress display on the shell.
@@ -24,9 +23,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     with ExecuteProgress[Task] {
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val currentProgressThread = new AtomicReference[Option[ProgressThread]](None)
-  private[this] val sleepDuration =
-    try System.getProperty("sbt.supershell.sleep", "100").toLong
-    catch { case NonFatal(_) => 100L }
+  private[this] val sleepDuration = SysProp.supershellSleep
   private[this] final class ProgressThread
       extends Thread("task-progress-report-thread")
       with AutoCloseable {
@@ -104,19 +101,4 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     tasks
       .map(t => taskName(t))
       .exists(n => skipReportTasks.exists(m => n.endsWith("/ " + m)))
-}
-
-private[sbt] object TaskProgress {
-  def isEnabled: Boolean =
-    ConsoleAppender.formatEnabledInEnv && sys.props
-      .get("sbt.supershell")
-      .flatMap(
-        str =>
-          ConsoleAppender.parseLogOption(str) match {
-            case LogOption.Always => Some(true)
-            case LogOption.Never  => Some(false)
-            case _                => None
-          }
-      )
-      .getOrElse(true)
 }

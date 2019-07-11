@@ -11,12 +11,14 @@ import java.io.PrintWriter
 import java.util.Properties
 
 import jline.TerminalFactory
-import sbt.internal.ShutdownHooks
+import sbt.internal.{ Aggregation, ShutdownHooks }
 import sbt.internal.langserver.ErrorCodes
+import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.Logger
+import sbt.nio.Keys._
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -176,34 +178,52 @@ object MainLoop {
     }
 
   /** This is the main function State transfer function of the sbt command processing. */
-  def processCommand(exec: Exec, state: State): State =
-    processCommand(exec, state, () => Command.process(exec.commandLine, state))
-
-  private[sbt] def processCommand(
-      exec: Exec,
-      state: State,
-      runCommand: () => State
-  ): State = {
+  def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
     StandardMain.exchange publishEventMessage
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
 
     try {
-      val newState = runCommand()
-      val doneEvent = ExecStatusEvent(
-        "Done",
-        channelName,
-        exec.execId,
-        newState.remainingCommands.toVector map (_.commandLine),
-        exitCode(newState, state),
-      )
-      if (doneEvent.execId.isDefined) { // send back a response or error
-        import sbt.protocol.codec.JsonProtocol._
-        StandardMain.exchange publishEvent doneEvent
-      } else { // send back a notification
-        StandardMain.exchange publishEventMessage doneEvent
+      def process(): State = {
+        val newState = Command.process(exec.commandLine, state)
+        if (exec.commandLine.contains("session"))
+          newState.get(hasCheckedMetaBuild).foreach(_.set(false))
+        val doneEvent = ExecStatusEvent(
+          "Done",
+          channelName,
+          exec.execId,
+          newState.remainingCommands.toVector map (_.commandLine),
+          exitCode(newState, state),
+        )
+        if (doneEvent.execId.isDefined) { // send back a response or error
+          import sbt.protocol.codec.JsonProtocol._
+          StandardMain.exchange publishEvent doneEvent
+        } else { // send back a notification
+          StandardMain.exchange publishEventMessage doneEvent
+        }
+        newState
       }
-      newState
+      val checkCommand = state.currentCommand match {
+        // If the user runs reload directly, we want to be sure that we update the previous
+        // cache for checkBuildSources / changedInputFiles but we don't want to display any
+        // warnings. Without filling the previous cache, it's possible for the user to run
+        // reload and be prompted with a warning in spite of reload having just run and no build
+        // sources having changed.
+        case Some(exec) if exec.commandLine == "reload" => "checkBuildSources / changedInputFiles"
+        case _                                          => "checkBuildSources"
+      }
+      Parser.parse(
+        checkCommand,
+        state.put(Aggregation.suppressShow, true).combinedParser
+      ) match {
+        case Right(cmd) =>
+          cmd() match {
+            case s if s.remainingCommands.headOption.map(_.commandLine).contains("reload") =>
+              s.remove(Aggregation.suppressShow)
+            case _ => process()
+          }
+        case Left(_) => process()
+      }
     } catch {
       case err: Throwable =>
         val errorEvent = ExecStatusEvent(

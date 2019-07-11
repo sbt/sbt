@@ -15,10 +15,12 @@ import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.ContinuousExecutePrefix
 import sbt._
+import sbt.internal.Continuous
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser._
+import sbt.nio.Keys._
 import sbt.nio.file.FileAttributes
 import sbt.util.{ Level, Logger }
 
@@ -244,7 +246,7 @@ object Watch {
    * Action that indicates that the watch should pause while the build is reloaded. This is used to
    * automatically reload the project when the build files (e.g. build.sbt) are changed.
    */
-  private[sbt] case object Reload extends CancelWatch
+  case object Reload extends CancelWatch
 
   /**
    * Action that indicates that we should exit and run the provided command.
@@ -399,26 +401,26 @@ object Watch {
     )
     s"Options:\n${opts.mkString("  ", "\n  ", "")}"
   }
-  private def waitMessage(project: String, commands: Seq[String]): String = {
+  private def waitMessage(project: ProjectRef, commands: Seq[String]): String = {
     val plural = if (commands.size > 1) "s" else ""
     val cmds = commands.mkString("; ")
     s"Monitoring source files for updates...\n" +
-      s"Project: $project\nCommand$plural: $cmds\n$options"
+      s"Project: ${project.project}\nCommand$plural: $cmds\n$options"
   }
 
   /**
    * A function that prints out the current iteration count and gives instructions for exiting
    * or triggering the build.
    */
-  val defaultStartWatch: (Int, String, Seq[String]) => Option[String] = {
-    (count: Int, project: String, commands: Seq[String]) =>
+  val defaultStartWatch: (Int, ProjectRef, Seq[String]) => Option[String] = {
+    (count: Int, project: ProjectRef, commands: Seq[String]) =>
       Some(s"$count. ${waitMessage(project, commands)}")
   }.label("Watched.defaultStartWatch")
 
   /**
    * Default no-op callback.
    */
-  val defaultOnEnter: () => Unit = () => {}
+  val defaultBeforeCommand: () => Unit = () => {}
 
   private[sbt] val defaultCommandOnTermination: (Action, String, Int, State) => State =
     onTerminationImpl(ContinuousExecutePrefix).label("Watched.defaultCommandOnTermination")
@@ -471,9 +473,34 @@ object Watch {
   final val defaultPollInterval: FiniteDuration = 500.milliseconds
 
   /**
-   * A constant function that returns an Option wrapped string that clears the screen when
-   * written to stdout.
+   * Clears the console screen when evaluated.
    */
-  final val clearOnTrigger: Int => Option[String] =
-    ((_: Int) => Some(Watched.clearScreen)).label("Watched.clearOnTrigger")
+  final val clearScreen: () => Unit =
+    (() => println("\u001b[2J\u001b[0;0H")).label("Watch.clearScreen")
+
+  /**
+   * A function that first clears the screen and then returns the default on trigger message.
+   */
+  final val clearScreenOnTrigger: (Int, Path, Seq[String]) => Option[String] = {
+    (count: Int, path: Path, commands: Seq[String]) =>
+      clearScreen()
+      defaultOnTriggerMessage(count, path, commands)
+  }.label("Watch.clearScreenOnTrigger")
+
+  private[sbt] def defaults: Seq[Def.Setting[_]] = Seq(
+    sbt.Keys.watchAntiEntropy :== Watch.defaultAntiEntropy,
+    watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
+    watchLogLevel :== Level.Info,
+    watchBeforeCommand :== Watch.defaultBeforeCommand,
+    watchOnFileInputEvent :== Watch.trigger,
+    watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
+    sbt.Keys.watchService :== Watched.newWatchService,
+    watchStartMessage :== Watch.defaultStartWatch,
+    watchTasks := Continuous.continuousTask.evaluated,
+    sbt.Keys.aggregate in watchTasks :== false,
+    watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
+    watchForceTriggerOnAnyChange :== false,
+    watchPersistFileStamps :== true,
+    watchTriggers :== Nil,
+  )
 }

@@ -9,6 +9,8 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
+import java.nio.file.{ FileAlreadyExistsException, Files }
+import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
 
@@ -46,7 +48,7 @@ private[sbt] object xMainImpl {
       import sbt.internal.client.NetworkClient
 
       // if we detect -Dsbt.client=true or -client, run thin client.
-      val clientModByEnv = java.lang.Boolean.getBoolean("sbt.client")
+      val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments.map(_.trim)
       if (clientModByEnv || (userCommands.exists { cmd =>
             (cmd == DashClient) || (cmd == DashDashClient)
@@ -96,11 +98,21 @@ object StandardMain {
   private[sbt] lazy val exchange = new CommandExchange()
   import scalacache.caffeine._
   private[sbt] lazy val cache: scalacache.Cache[Any] = CaffeineCache[Any]
+  // The access to the pool should be thread safe because lazy val instantiation is thread safe
+  // and pool is only referenced directly in closeRunnable after the executionContext is sure
+  // to have been instantiated
+  private[this] var pool: Option[ForkJoinPool] = None
+  private[sbt] lazy val executionContext: ExecutionContext = ExecutionContext.fromExecutor({
+    val p = new ForkJoinPool
+    pool = Some(p)
+    p
+  })
 
   private[this] val closeRunnable = () => {
     cache.close()(scalacache.modes.sync.mode)
-    cache.close()(scalacache.modes.scalaFuture.mode(ExecutionContext.global))
+    cache.close()(scalacache.modes.scalaFuture.mode(executionContext))
     exchange.shutdown()
+    pool.foreach(_.shutdownNow())
   }
 
   def runManaged(s: State): xsbti.MainResult = {
@@ -178,6 +190,7 @@ object BuiltinCommands {
 
   def DefaultCommands: Seq[Command] =
     Seq(
+      multi,
       about,
       tasks,
       settingsCommand,
@@ -203,6 +216,7 @@ object BuiltinCommands {
       plugins,
       addPluginSbtFile,
       writeSbtVersion,
+      skipBanner,
       notifyUsersAboutShell,
       shell,
       startServer,
@@ -213,7 +227,6 @@ object BuiltinCommands {
       export,
       boot,
       initialize,
-      BasicCommands.multi,
       act,
       continuous,
       clearCaches,
@@ -656,11 +669,10 @@ object BuiltinCommands {
 
   def act: Command = Command.customHelp(Act.actParser, actHelp)
 
-  def actHelp: State => Help =
-    s =>
-      CommandStrings.showHelp ++ CommandStrings.printHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(
-        s
-      )
+  def actHelp: State => Help = { s =>
+    CommandStrings.showHelp ++ CommandStrings.printHelp ++ CommandStrings.multiTaskHelp ++
+      keysHelp(s)
+  }
 
   def keysHelp(s: State): Help =
     if (Project.isProjectLoaded(s))
@@ -835,18 +847,11 @@ object BuiltinCommands {
 
   def registerCompilerCache(s: State): State = {
     s.get(Keys.stateCompilerCache).foreach(_.clear())
-    val maxCompilers = System.getProperty("sbt.resident.limit")
+
+    val maxCompilers: Int = SysProp.residentLimit
     val cache =
-      if (maxCompilers == null)
-        CompilerCache.fresh
-      else {
-        val num = try maxCompilers.toInt
-        catch {
-          case e: NumberFormatException =>
-            throw new RuntimeException("Resident compiler limit must be an integer.", e)
-        }
-        if (num <= 0) CompilerCache.fresh else CompilerCache.createCacheFor(num)
-      }
+      if (maxCompilers <= 0) CompilerCache.fresh
+      else CompilerCache.createCacheFor(maxCompilers)
     s.put(Keys.stateCompilerCache, cache)
   }
 
@@ -859,7 +864,8 @@ object BuiltinCommands {
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
     import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
     val exchange = StandardMain.exchange
-    val s1 = exchange run s0
+    val welcomeState = displayWelcomeBanner(s0)
+    val s1 = exchange run welcomeState
     exchange publishEventMessage ConsolePromptEvent(s0)
     val minGCInterval = Project
       .extract(s1)
@@ -915,7 +921,7 @@ object BuiltinCommands {
     state.remainingCommands exists (_.commandLine == TemplateCommand)
 
   private def writeSbtVersion(state: State) =
-    if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
+    if (SysProp.genBuildProps && !intendsToInvokeNew(state))
       writeSbtVersionUnconditionally(state)
 
   private def WriteSbtVersion = "writeSbtVersion"
@@ -940,4 +946,35 @@ object BuiltinCommands {
     Command.command(NotifyUsersAboutShell) { state =>
       notifyUsersAboutShell(state); state
     }
+
+  private[this] def skipWelcomeFile(state: State, version: String) = {
+    val base = BuildPaths.getGlobalBase(state).toPath
+    base.resolve("preferences").resolve(version).resolve(SkipBannerFileName)
+  }
+  private def displayWelcomeBanner(state: State): State = {
+    if (!state.get(bannerHasBeenShown).getOrElse(false)) {
+      try {
+        val version = sbtVersion(state)
+        val skipFile = skipWelcomeFile(state, version)
+        Files.createDirectories(skipFile.getParent)
+        val suppress = !SysProp.banner || Files.exists(skipFile)
+        if (!suppress) state.log.info(Banner(version))
+      } catch { case _: IOException => /* Don't let errors in this command prevent startup */ }
+      state.put(bannerHasBeenShown, true)
+    } else state
+  }
+  private[this] val bannerHasBeenShown =
+    AttributeKey[Boolean]("banner-has-been-shown", Int.MaxValue)
+  private[this] val SkipBannerFileName = "skip-banner"
+  private[this] val SkipBanner = "skipBanner"
+  private[this] def skipBanner: Command = Command.command(SkipBanner)(skipBanner)
+  private def skipBanner(state: State): State = {
+    val skipFile = skipWelcomeFile(state, sbtVersion(state))
+    try Files.createFile(skipFile)
+    catch {
+      case _: FileAlreadyExistsException =>
+      case e: IOException                => state.log.error(s"Couldn't create file $skipFile: $e")
+    }
+    state
+  }
 }

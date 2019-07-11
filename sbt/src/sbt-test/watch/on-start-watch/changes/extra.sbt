@@ -1,7 +1,7 @@
 val checkReloaded = taskKey[Unit]("Asserts that the build was reloaded")
 checkReloaded := { () }
 
-watchOnIteration := { _ => sbt.nio.Watch.CancelWatch }
+watchOnIteration := { (_, _, _) => sbt.nio.Watch.CancelWatch }
 
 Compile / compile := {
   Count.increment()

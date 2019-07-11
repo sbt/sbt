@@ -183,9 +183,13 @@ final class ScriptedTests(
     s"$group/$name" match {
       case "actions/add-alias"          => LauncherBased // sbt/Package$
       case "actions/cross-multiproject" => LauncherBased // tbd
-      case "actions/external-doc"       => LauncherBased // sbt/Package$
-      case "actions/input-task"         => LauncherBased // sbt/Package$
-      case "actions/input-task-dyn"     => LauncherBased // sbt/Package$
+      case "actions/cross-multi-parser" =>
+        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
+      case "actions/multi-command" =>
+        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
+      case "actions/external-doc"   => LauncherBased // sbt/Package$
+      case "actions/input-task"     => LauncherBased // sbt/Package$
+      case "actions/input-task-dyn" => LauncherBased // sbt/Package$
       case gn if gn.startsWith("classloader-cache/") =>
         LauncherBased // This should be tested using launcher
       case "compiler-project/dotty-compiler-plugin"      => LauncherBased // sbt/Package$
@@ -232,7 +236,9 @@ final class ScriptedTests(
       case "source-dependencies/linearization"           => LauncherBased // sbt/Package$
       case "source-dependencies/named"                   => LauncherBased // sbt/Package$
       case "source-dependencies/specialized"             => LauncherBased // sbt/Package$
-      case "watch/managed"                               => LauncherBased // sbt/Package$
+      case "watch/commands" =>
+        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
+      case "watch/managed" => LauncherBased // sbt/Package$
       case "tests/test-cross" =>
         LauncherBased // the sbt metabuild classpath leaks into the test interface classloader in older versions of sbt
       case _ => RunFromSourceBased
@@ -322,18 +328,20 @@ final class ScriptedTests(
             IO.write(tempTestDir / "project" / "InstrumentScripted.scala", pluginImplementation)
             def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
             val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
-            val commandsToRun = ";reload;setUpScripted"
-            val statement = Statement(commandsToRun, Nil, successExpected = true, line = -1)
 
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
-              try runner.processStatement(sbtHandler, statement, states)
-              catch {
-                case t: Throwable =>
-                  val newMsg = "Reload for scripted batch execution failed."
-                  throw new TestException(statement, newMsg, t)
-              }
+              Seq("reload", "setUpScripted")
+                .map(Statement(_, Nil, successExpected = true, line = -1))
+                .foreach { statement =>
+                  try runner.processStatement(sbtHandler, statement, states)
+                  catch {
+                    case t: Throwable =>
+                      val newMsg = "Reload for scripted batch execution failed."
+                      throw new TestException(statement, newMsg, t)
+                  }
+                }
             }
 
             commonRunTest(label, tempTestDir, wrapHook, handlers, runner, states, buffer)

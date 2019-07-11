@@ -71,6 +71,7 @@ trait Import {
   type RelativeGlob = sbt.nio.file.RelativeGlob
   val RelativeGlob = sbt.nio.file.RelativeGlob
   val RecursiveGlob = sbt.nio.file.RecursiveGlob
+  val Watch = sbt.nio.Watch
 
   // sbt.util
   type AbstractLogger = sbt.util.AbstractLogger

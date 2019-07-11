@@ -27,7 +27,7 @@ package another.pkg {
 
 package console.test.pkg {
 	// we won't check console output in the report
-	// until SBT supports that
+	// until sbt supports that
 	class ConsoleTests {
 		@Test
 		def sayHello(): Unit = {

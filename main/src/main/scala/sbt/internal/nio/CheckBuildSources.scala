@@ -25,22 +25,24 @@ private[sbt] object CheckBuildSources {
         logger.debug("Checking for meta build source updates")
         (changedInputFiles in checkBuildSources).value match {
           case Some(cf: ChangedFiles) if !firstTime =>
-            val rawPrefix = s"Meta build source files have changed:\n" +
-              (if (cf.created.nonEmpty) s"creations: ${cf.created.mkString("\n  ", "  \n", "\n")}"
+            val rawPrefix = s"build source files have changed\n" +
+              (if (cf.created.nonEmpty) s"new files: ${cf.created.mkString("\n  ", "\n  ", "\n")}"
                else "") +
-              (if (cf.deleted.nonEmpty) s"deletions: ${cf.deleted.mkString("\n  ", "  \n", "\n")}"
+              (if (cf.deleted.nonEmpty)
+                 s"deleted files: ${cf.deleted.mkString("\n  ", "\n  ", "\n")}"
                else "") +
-              (if (cf.updated.nonEmpty) s"updates: ${cf.updated.mkString("\n  ", "  \n", "\n")}"
+              (if (cf.updated.nonEmpty)
+                 s"updated files: ${cf.updated.mkString("\n  ", "\n  ", "\n")}"
                else "")
             val prefix = rawPrefix.linesIterator.filterNot(_.trim.isEmpty).mkString("\n")
             if (o == ReloadOnSourceChanges) {
               logger.info(s"$prefix\nReloading sbt...")
               throw Reload
             } else {
-              val tail = "Reload sbt with the 'reload' command to apply these changes. " +
-                "To automatically reload upon meta build source changed detection, set " +
-                "`Global / onChangedBuildSource := ReloadOnSourceChanges`. To disable this " +
-                "warning, set `Global / onChangedBuildSource := IgnoreSourceChanges`"
+              val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
+                "build when source changes are detected by setting " +
+                "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
+                "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
               logger.warn(s"$prefix\n$tail")
             }
           case _ => ()

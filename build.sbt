@@ -28,6 +28,8 @@ def buildLevelSettings: Seq[Setting[_]] =
       bintrayPackage := "sbt",
       bintrayReleaseOnPublish := false,
       licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
+      javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
+      Compile / doc / javacOptions := Nil,
       developers := List(
         Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
         Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
@@ -60,7 +62,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   ),
   scalaVersion := baseScalaVersion,
   componentID := None,
-  resolvers += Resolver.typesafeIvyRepo("releases"),
+  resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
   addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),

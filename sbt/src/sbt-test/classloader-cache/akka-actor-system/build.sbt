@@ -1,3 +1,5 @@
+ThisBuild / turbo := true
+
 val akkaTest = (project in file(".")).settings(
   name := "akka-test",
   scalaVersion := "2.12.8",

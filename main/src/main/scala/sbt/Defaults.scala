@@ -10,7 +10,7 @@ package sbt
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, URLClassLoader }
 import java.util.Optional
-import java.util.concurrent.{ Callable, TimeUnit }
+import java.util.concurrent.TimeUnit
 
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
@@ -79,7 +79,6 @@ import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import xsbti.CrossValue
 import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
 
@@ -127,8 +126,7 @@ object Defaults extends BuildCommon {
   def nameForSrc(config: String) = if (config == Configurations.Compile.name) "main" else config
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
 
-  def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock =
-    app.provider.scalaProvider.launcher.globalLock
+  def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = LibraryManagement.lock(app)
 
   def extractAnalysis[T](a: Attributed[T]): (T, CompileAnalysis) =
     (a.data, a.metadata get Keys.analysis getOrElse Analysis.Empty)
@@ -154,20 +152,16 @@ object Defaults extends BuildCommon {
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
       onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
-      watchForceTriggerOnAnyChange :== false,
-      watchPersistFileStamps :== true,
-      watchTriggers :== Nil,
       clean := { () },
       unmanagedFileStampCache :=
         state.value.get(persistentFileStampCache).getOrElse(new sbt.nio.FileStamp.Cache),
       managedFileStampCache := new sbt.nio.FileStamp.Cache,
-    ) ++ globalIvyCore ++ globalJvmCore
+    ) ++ globalIvyCore ++ globalJvmCore ++ Watch.defaults
   ) ++ globalSbtCore
 
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
     Seq(
       compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
-      classLoaderLayeringStrategy :== ClassLoaderLayeringStrategy.AllLibraryJars,
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
@@ -214,7 +208,7 @@ object Defaults extends BuildCommon {
       exportJars :== false,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
-      useCoursier :== LibraryManagement.defaultUseCoursier,
+      useCoursier :== SysProp.defaultUseCoursier,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
@@ -224,6 +218,11 @@ object Defaults extends BuildCommon {
         val v = sbtVersion.value
         if (v.endsWith("-SNAPSHOT") || v.contains("-bin-")) Classpaths.sbtMavenSnapshots
         else Resolver.DefaultMavenRepository
+      },
+      sbtResolvers := {
+        // TODO: Remove Classpaths.typesafeReleases for sbt 2.x
+        // We need to keep it around for sbt 1.x to cross build plugins with sbt 0.13 - https://github.com/sbt/sbt/issues/4698
+        Vector(sbtResolver.value, Classpaths.sbtPluginReleases, Classpaths.typesafeReleases)
       },
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
@@ -254,6 +253,7 @@ object Defaults extends BuildCommon {
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
       aggregate in checkBuildSources :== false,
+      aggregate in checkBuildSources / changedInputFiles := false,
       checkBuildSources / Continuous.dynamicInputs := None,
       checkBuildSources / fileInputs := CheckBuildSources.buildSourceFileInputs.value,
       checkBuildSources := CheckBuildSources.needReloadImpl.value,
@@ -287,7 +287,8 @@ object Defaults extends BuildCommon {
         val tempDirectory = taskTemporaryDirectory.value
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
-      useSuperShell := { if (insideCI.value) false else sbt.internal.TaskProgress.isEnabled },
+      turbo :== SysProp.turbo,
+      useSuperShell := { if (insideCI.value) false else SysProp.supershell },
       progressReports := {
         val progress = useSuperShell.value
         val rs = EvaluateTask.taskTimingProgress.toVector ++
@@ -339,20 +340,9 @@ object Defaults extends BuildCommon {
           ++ Vector(ServerHandler.fallback))
       },
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
-        sys.env.contains("CI") || System.getProperty("sbt.ci", "false") == "true",
+        sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
-      watchAntiEntropy :== Watch.defaultAntiEntropy,
-      watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
-      watchLogLevel :== Level.Info,
-      watchOnEnter :== Watch.defaultOnEnter,
-      watchOnFileInputEvent :== Watch.trigger,
-      watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
-      watchService :== Watched.newWatchService,
-      watchStartMessage :== Watch.defaultStartWatch,
-      watchTasks := Continuous.continuousTask.evaluated,
-      aggregate in watchTasks :== false,
-      watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     )
   )
 
@@ -846,22 +836,25 @@ object Defaults extends BuildCommon {
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
-      val close = testLoader.value match {
-        case u: URLClassLoader  => Some(() => u.close())
-        case c: ClasspathFilter => Some(() => c.close())
-        case _                  => None
-      }
       val trl = (testResultLogger in (Test, test)).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
-      try {
-        trl.run(streams.value.log, executeTests.value, taskName)
-      } finally {
-        close.foreach(_.apply())
-      }
+      try trl.run(streams.value.log, executeTests.value, taskName)
+      finally close(testLoader.value)
     },
-    testOnly := inputTests(testOnly).evaluated,
-    testQuick := inputTests(testQuick).evaluated
+    testOnly := {
+      try inputTests(testOnly).evaluated
+      finally close(testLoader.value)
+    },
+    testQuick := {
+      try inputTests(testQuick).evaluated
+      finally close(testLoader.value)
+    }
   )
+  private def close(sbtLoader: ClassLoader): Unit = sbtLoader match {
+    case u: AutoCloseable   => u.close()
+    case c: ClasspathFilter => c.close()
+    case _                  =>
+  }
 
   /**
    * A scope whose task axis is set to Zero.
@@ -1020,8 +1013,7 @@ object Defaults extends BuildCommon {
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
-      val processed = output.map(out => trl.run(s.log, out, taskName))
-      processed
+      output.map(out => trl.run(s.log, out, taskName))
     }
   }
 
@@ -1060,7 +1052,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution = false,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
+      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
     )
   }
@@ -1083,7 +1075,7 @@ object Defaults extends BuildCommon {
       cp,
       forkedParallelExecution,
       javaOptions = Nil,
-      strategy = ClassLoaderLayeringStrategy.AllLibraryJars,
+      strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
     )
   }
@@ -1897,7 +1889,11 @@ object Defaults extends BuildCommon {
         }
         val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
         CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
-      }
+      },
+      classLoaderLayeringStrategy := {
+        if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
+        else ClassLoaderLayeringStrategy.ScalaLibrary
+      },
     )
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
@@ -2083,7 +2079,7 @@ object Classpaths {
         licenses :== Nil,
         developers :== Nil,
         scmInfo :== None,
-        offline :== java.lang.Boolean.getBoolean("sbt.offline"),
+        offline :== SysProp.offline,
         defaultConfiguration :== Some(Configurations.Compile),
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
@@ -2172,9 +2168,8 @@ object Classpaths {
         bootResolvers.value match {
           case Some(repos) if overrideBuildResolvers.value => proj +: repos
           case _ =>
-            val sbtResolverValue = sbtResolver.value
-            val base = if (sbtPlugin.value) sbtResolverValue +: sbtPluginReleases +: rs else rs
-            proj +: base
+            val base = if (sbtPlugin.value) sbtResolvers.value ++ rs else rs
+            (proj +: base).distinct
         }
       }).value,
     moduleName := normalizedName.value,
@@ -2416,41 +2411,7 @@ object Classpaths {
         },
         dependencyResolution := dependencyResolutionTask.value,
         csrConfiguration := LMCoursier.updateClassifierConfigurationTask.value,
-        updateClassifiers in TaskGlobal := (Def.task {
-          val s = streams.value
-          val is = ivySbt.value
-          val lm = dependencyResolution.value
-          val mod = classifiersModule.value
-          val updateConfig0 = updateConfiguration.value
-          val updateConfig = updateConfig0
-            .withMetadataDirectory(dependencyCacheDirectory.value)
-            .withArtifactFilter(
-              updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted))
-            )
-          val app = appConfiguration.value
-          val srcTypes = sourceArtifactTypes.value
-          val docTypes = docArtifactTypes.value
-          val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-          val uwConfig = (unresolvedWarningConfiguration in update).value
-          withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-            lm.updateClassifiers(
-              GetClassifiersConfiguration(
-                mod,
-                excludes.toVector,
-                updateConfig,
-                // scalaModule,
-                srcTypes.toVector,
-                docTypes.toVector
-              ),
-              uwConfig,
-              Vector.empty,
-              s.log
-            ) match {
-              case Left(_)   => ???
-              case Right(ur) => ur
-            }
-          }
-        } tag (Tags.Update, Tags.Network)).value,
+        updateClassifiers in TaskGlobal := LibraryManagement.updateClassifiersTask.value,
       )
     ) ++ Seq(
     csrProject := CoursierInputsTasks.coursierProjectTask.value,
@@ -2754,38 +2715,7 @@ object Classpaths {
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
-  ): UpdateReport = {
-    import sbt.librarymanagement.LibraryManagementCodec._
-    import sbt.util.FileBasedStore
-    implicit val isoString: sjsonnew.IsoString[JValue] =
-      sjsonnew.IsoString.iso(
-        sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
-        sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
-      )
-    val exclName = "exclude_classifiers"
-    val file = out / exclName
-    val store = new FileBasedStore(file, sjsonnew.support.scalajson.unsafe.Converter)
-    lock(
-      out / (exclName + ".lock"),
-      new Callable[UpdateReport] {
-        def call = {
-          implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
-          val excludes =
-            store
-              .read[Map[ModuleID, Vector[ConfigRef]]](
-                default = Map.empty[ModuleID, Vector[ConfigRef]]
-              )
-          val report = f(excludes)
-          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++ IvyActions
-            .extractExcludes(report)
-            .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
-          store.write(allExcludes)
-          IvyActions
-            .addExcluded(report, classifiers.toVector, allExcludes.mapValues(_.map(_.name).toSet))
-        }
-      }
-    )
-  }
+  ): UpdateReport = LibraryManagement.withExcludes(out, classifiers, lock)(f)
 
   /**
    * Substitute unmanaged jars for managed jars when the major.minor parts of
@@ -3417,7 +3347,8 @@ object Classpaths {
   def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
   val sbtIvySnapshots: URLRepository = Resolver.sbtIvyRepo("snapshots")
-  val typesafeReleases: URLRepository = Resolver.typesafeIvyRepo("releases")
+  val typesafeReleases: URLRepository =
+    Resolver.typesafeIvyRepo("releases").withName("typesafe-alt-ivy-releases")
   val sbtPluginReleases: URLRepository = Resolver.sbtPluginRepo("releases")
   val sbtMavenSnapshots: MavenRepository =
     MavenRepository("sbt-maven-snapshot", Resolver.SbtRepositoryRoot + "/" + "maven-snapshots/")

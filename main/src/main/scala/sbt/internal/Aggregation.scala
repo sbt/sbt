@@ -9,13 +9,17 @@ package sbt
 package internal
 
 import java.text.DateFormat
+import java.util.{ Collections, IdentityHashMap }
+
 import Def.ScopedKey
 import Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ Dag, HList, Settings, Util }
+import sbt.internal.util.{ AttributeKey, Dag, HList, Settings, Util }
 import sbt.util.{ Logger, Show }
 import Parser.{ failure, seq, success }
 import std.Transform.DummyTaskMap
+
+import scala.annotation.tailrec
 
 sealed trait Aggregation
 object Aggregation {
@@ -76,7 +80,8 @@ object Aggregation {
     results.toEither.right.foreach { r =>
       if (show.taskValues) printSettings(r, show.print)
     }
-    if (show.success) printSuccess(start, stop, extracted, success, log)
+    if (show.success && !state.get(suppressShow).getOrElse(false))
+      printSuccess(start, stop, extracted, success, log)
   }
 
   def timedRun[T](
@@ -110,8 +115,23 @@ object Aggregation {
   )(implicit display: Show[ScopedKey[_]]): State = {
     val complete = timedRun[T](s, ts, extra)
     showRun(complete, show)
+    /*
+     * In the first implementation, we tried to use Set[Incomplete] for visited. It had very poor
+     * performance because hashCode can be expensive on Incomplete -- especially when the
+     * Incomplete has many instances in the causes field.
+     */
+    lazy val visited = Collections
+      .newSetFromMap[Incomplete](new IdentityHashMap[Incomplete, java.lang.Boolean])
+    @tailrec def findReload(incomplete: Incomplete, remaining: List[Incomplete]): Boolean = {
+      visited.add(incomplete)
+      incomplete.directCause.contains(Reload) || ((remaining ::: incomplete.causes.toList)
+        .filterNot(visited.contains) match {
+        case Nil       => false
+        case h :: tail => findReload(h, tail.filterNot(visited.contains))
+      })
+    }
     complete.results match {
-      case Inc(i) if i.directCause.contains(Reload) =>
+      case Inc(i) if findReload(i, i.causes.toList) =>
         val remaining = s.currentCommand.toList ::: s.remainingCommands
         complete.state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
       case Inc(i)   => complete.state.handleError(i)
@@ -289,4 +309,6 @@ object Aggregation {
 
   def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
     Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
+  private[sbt] val suppressShow =
+    AttributeKey[Boolean]("suppress-aggregation-show", Int.MaxValue)
 }

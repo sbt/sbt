@@ -96,5 +96,5 @@ object ClassLoaderLayeringStrategy {
   /**
    * Add a layer on top of the ScalaLibrary layer for all of the jar dependencies.
    */
-  object AllLibraryJars extends AllLibraryJars
+  case object AllLibraryJars extends AllLibraryJars
 }

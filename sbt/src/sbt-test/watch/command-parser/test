@@ -19,3 +19,6 @@
 > ~; compile; setStringValue string.txt baz; checkStringValue string.txt baz
 # Ensure that trailing semi colons work
 > ~ compile; setStringValue string.txt baz; checkStringValue string.txt baz;
+
+# Ensure that no space is required between '~' and the command
+> ~compile;setStringValue string.txt foo;checkStringValue string.txt foo

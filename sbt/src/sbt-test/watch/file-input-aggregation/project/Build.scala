@@ -4,7 +4,6 @@ package input.aggregation
 import java.nio.file.Paths
 import sbt.Keys._
 import sbt.internal.DynamicInput
-import sbt.nio.{ file => _, _ }
 import sbt.nio.Keys._
 
 /**
@@ -41,7 +40,7 @@ object Build {
       watchOnFileInputEvent := { (_, _) =>
         Watch.CancelWatch
       },
-      Compile / compile / watchOnIteration := { _ =>
+      Compile / compile / watchOnIteration := { (_, _, _) =>
         Watch.CancelWatch
       },
       checkTriggers := {
