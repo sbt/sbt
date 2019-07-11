@@ -65,6 +65,21 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       sv.split('.').take(2).mkString(".")
     }
 
+    val interProjectDependencies = {
+      val (mod, ver) = FromSbt.moduleVersion(module0.module, sv, sbv, optionalCrossVer = true)
+
+      val needed = conf.interProjectDependencies.exists { p =>
+        p.module == mod && p.version == ver
+      }
+
+      if (needed)
+        conf.interProjectDependencies.map(ToCoursier.project)
+      else
+        Vector.empty[coursier.core.Project]
+    }
+
+    val extraProjects = conf.extraProjects.map(ToCoursier.project)
+
     val verbosityLevel = 0
 
     val ttl = CacheDefaults.ttl
@@ -95,7 +110,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         )
       }
 
-    val interProjectRepo = InterProjectRepository(conf.interProjectDependencies.map(ToCoursier.project))
+    val interProjectRepo = InterProjectRepository(interProjectDependencies)
+    val extraProjectsRepo = InterProjectRepository(extraProjects)
 
     val dependencies = module0
       .dependencies
@@ -131,8 +147,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       autoScalaLibOpt = if (conf.autoScalaLibrary) Some((so, sv)) else None,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
-      interProjectDependencies = conf.interProjectDependencies.map(ToCoursier.project),
-      internalRepositories = Seq(interProjectRepo),
+      interProjectDependencies = interProjectDependencies,
+      internalRepositories = Seq(interProjectRepo, extraProjectsRepo),
       sbtClassifiers = false,
       projectName = projectName,
       loggerOpt = loggerOpt,

@@ -21,6 +21,7 @@ object SbtCoursierShared extends AutoPlugin {
     val coursierGenerateIvyXml = settingKey[Boolean]("")
     val coursierProject = TaskKey[Project]("coursier-project")
     val coursierInterProjectDependencies = TaskKey[Seq[Project]]("coursier-inter-project-dependencies", "Projects the current project depends on, possibly transitively")
+    val coursierExtraProjects = TaskKey[Seq[Project]]("coursier-extra-projects", "")
     val coursierPublications = TaskKey[Seq[(Configuration, Publication)]]("coursier-publications")
 
     val coursierKeepPreloaded = settingKey[Boolean]("Whether to take into account sbt preloaded repositories or not")
@@ -79,7 +80,8 @@ object SbtCoursierShared extends AutoPlugin {
       },
       coursierGenerateIvyXml := true,
       coursierProject := InputsTasks.coursierProjectTask.value,
-      coursierInterProjectDependencies := InputsTasks.coursierInterProjectDependenciesTask.value
+      coursierInterProjectDependencies := InputsTasks.coursierInterProjectDependenciesTask.value,
+      coursierExtraProjects := InputsTasks.coursierExtraProjectsTask.value
     ) ++ {
       if (pubSettings)
         Seq(

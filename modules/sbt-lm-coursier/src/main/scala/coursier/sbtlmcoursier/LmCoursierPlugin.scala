@@ -69,6 +69,11 @@ object LmCoursierPlugin extends AutoPlugin {
           coursierSbtResolvers
         else
           coursierRecursiveResolvers
+      val interProjectDependenciesTask: sbt.Def.Initialize[sbt.Task[Seq[lmcoursier.definitions.Project]]] =
+        if (sbtClassifiers)
+          Def.task(Seq.empty[lmcoursier.definitions.Project])
+        else
+          Def.task(coursierInterProjectDependencies.value)
       val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[String]]]] =
         if (withClassifiers && !sbtClassifiers)
           Def.task(Some(sbt.Keys.transitiveClassifiers.value))
@@ -78,7 +83,8 @@ object LmCoursierPlugin extends AutoPlugin {
         val rs = resolversTask.value
         val scalaOrg = scalaOrganization.value
         val scalaVer = scalaVersion.value
-        val interProjectDependencies = coursierInterProjectDependencies.value
+        val interProjectDependencies = interProjectDependenciesTask.value
+        val extraProjects = coursierExtraProjects.value
         val excludeDeps = Inputs.exclusions(
           InputsTasks.actualExcludeDependencies.value,
           scalaVer,
@@ -110,6 +116,7 @@ object LmCoursierPlugin extends AutoPlugin {
         CoursierConfiguration()
           .withResolvers(rs.toVector)
           .withInterProjectDependencies(interProjectDependencies.toVector)
+          .withExtraProjects(extraProjects.toVector)
           .withFallbackDependencies(fallbackDeps.toVector)
           .withExcludeDependencies(
             excludeDeps

@@ -56,6 +56,7 @@ object ResolutionTasks {
       val sbv = scalaBinaryVersion.value
 
       val interProjectDependencies = coursierInterProjectDependencies.value.map(ToCoursier.project)
+      val extraProjects = coursierExtraProjects.value.map(ToCoursier.project)
 
       val parallelDownloads = coursierParallelDownloads.value
       val checksums = coursierChecksums.value
@@ -86,6 +87,7 @@ object ResolutionTasks {
       val typelevel = Organization(scalaOrganization.value) == Typelevel.typelevelOrg
 
       val interProjectRepo = InterProjectRepository(interProjectDependencies)
+      val extraProjectsRepo = InterProjectRepository(extraProjects)
 
       val ivyProperties = ResolutionParams.defaultIvyProperties(ivyPaths.value.ivyHome)
 
@@ -131,7 +133,7 @@ object ResolutionTasks {
           mainRepositories = mainRepositories,
           parentProjectCache = parentProjectCache,
           interProjectDependencies = interProjectDependencies,
-          internalRepositories = Seq(interProjectRepo),
+          internalRepositories = Seq(interProjectRepo, extraProjectsRepo),
           sbtClassifiers = sbtClassifiers,
           projectName = projectName,
           loggerOpt = createLogger,

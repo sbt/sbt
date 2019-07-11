@@ -35,7 +35,8 @@ final class CoursierConfiguration private (
   val cache: Option[File],
   val ivyHome: Option[File],
   val followHttpToHttpsRedirections: Option[Boolean],
-  val strict: Option[Strict]
+  val strict: Option[Strict],
+  val extraProjects: Vector[Project]
 ) extends Serializable {
   
   private def this() =
@@ -62,7 +63,8 @@ final class CoursierConfiguration private (
       None,
       None,
       None,
-      None
+      None,
+      Vector.empty
     )
 
   def this(
@@ -112,7 +114,8 @@ final class CoursierConfiguration private (
       cache,
       ivyHome,
       followHttpToHttpsRedirections,
-      None
+      None,
+      Vector.empty
     )
   
   override def equals(o: Any): Boolean =
@@ -140,7 +143,8 @@ final class CoursierConfiguration private (
           cache == other.cache &&
           ivyHome == other.ivyHome &&
           followHttpToHttpsRedirections == other.followHttpToHttpsRedirections &&
-          strict == other.strict
+          strict == other.strict &&
+          extraProjects == other.extraProjects
       case _ => false
     }
 
@@ -169,11 +173,12 @@ final class CoursierConfiguration private (
     code = 37 * (code + ivyHome.##)
     code = 37 * (code + followHttpToHttpsRedirections.##)
     code = 37 * (code + strict.##)
+    code = 37 * (code + extraProjects.##)
     code
   }
 
   override def toString: String =
-    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome, $followHttpToHttpsRedirections, $strict)"
+    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome, $followHttpToHttpsRedirections, $strict, $extraProjects)"
 
   private[this] def copy(
     log: Option[Logger] = log,
@@ -198,7 +203,8 @@ final class CoursierConfiguration private (
     cache: Option[File] = cache,
     ivyHome: Option[File] = ivyHome,
     followHttpToHttpsRedirections: Option[Boolean] = followHttpToHttpsRedirections,
-    strict: Option[Strict] = strict
+    strict: Option[Strict] = strict,
+    extraProjects: Vector[Project] = extraProjects
   ): CoursierConfiguration =
     new CoursierConfiguration(
       log,
@@ -223,7 +229,8 @@ final class CoursierConfiguration private (
       cache,
       ivyHome,
       followHttpToHttpsRedirections,
-      strict
+      strict,
+      extraProjects
     )
 
   def withLog(log: Option[Logger]): CoursierConfiguration =
@@ -323,6 +330,9 @@ final class CoursierConfiguration private (
     copy(strict = Some(strict))
   def withStrict(strictOpt: Option[Strict]): CoursierConfiguration =
     copy(strict = strictOpt)
+
+  def withExtraProjects(extraProjects: Vector[Project]): CoursierConfiguration =
+    copy(extraProjects = extraProjects)
 }
 
 object CoursierConfiguration {
@@ -375,7 +385,8 @@ object CoursierConfiguration {
       cache,
       None,
       None,
-      None
+      None,
+      Vector.empty
     )
   
   def apply(
@@ -423,7 +434,8 @@ object CoursierConfiguration {
       Option(cache),
       None,
       None,
-      None
+      None,
+      Vector.empty
     )
 
   def apply(
@@ -472,6 +484,7 @@ object CoursierConfiguration {
       cache,
       ivyHome,
       None,
-      None
+      None,
+      Vector.empty
     )
 }

@@ -147,10 +147,10 @@ object InputsTasks {
 
       val projectRefs = Structure.allRecursiveInterDependencies(state, projectRef)
 
-      val t = coursierProject.forAllProjectsOpt(state, projectRefs)
+      val t = coursierProject.forAllProjectsOpt(state, projectRefs :+ projectRef)
 
       Def.task {
-        val projects = t.value.toVector.flatMap {
+        t.value.toVector.flatMap {
           case (ref, None) =>
             if (ref.build != projectRef.build)
               state.log.warn(s"Cannot get coursier info for project under ${ref.build}, is sbt-coursier also added to it?")
@@ -158,42 +158,45 @@ object InputsTasks {
           case (_, Some(p)) =>
             Seq(p)
         }
-        val projectModules = projects.map(_.module).toSet
-
-        // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
-        val extraProjects = sbt.Keys.projectDescriptors.value
-          .map {
-            case (k, v) =>
-              moduleFromIvy(k) -> v
-          }
-          .filter {
-            case (module, _) =>
-              !projectModules(module)
-          }
-          .toVector
-          .map {
-            case (module, v) =>
-              val configurations = v
-                .getConfigurations
-                .map { c =>
-                  Configuration(c.getName) -> c.getExtends.map(Configuration(_)).toSeq
-                }
-                .toMap
-              val deps = v.getDependencies.flatMap(dependencyFromIvy)
-              Project(
-                module,
-                v.getModuleRevisionId.getRevision,
-                deps,
-                configurations,
-                Nil,
-                None,
-                Nil,
-                Info("", "", Nil, Nil, None)
-              )
-          }
-
-        projects ++ extraProjects
       }
+    }
+
+  private[sbtcoursiershared] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[Project]]] =
+    Def.task {
+      val projects = coursierInterProjectDependencies.value
+      val projectModules = projects.map(_.module).toSet
+
+      // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
+      sbt.Keys.projectDescriptors.value
+        .map {
+          case (k, v) =>
+            moduleFromIvy(k) -> v
+        }
+        .filter {
+          case (module, _) =>
+            !projectModules(module)
+        }
+        .toVector
+        .map {
+          case (module, v) =>
+            val configurations = v
+              .getConfigurations
+              .map { c =>
+                Configuration(c.getName) -> c.getExtends.map(Configuration(_)).toSeq
+              }
+              .toMap
+            val deps = v.getDependencies.flatMap(dependencyFromIvy)
+            Project(
+              module,
+              v.getModuleRevisionId.getRevision,
+              deps,
+              configurations,
+              Nil,
+              None,
+              Nil,
+              Info("", "", Nil, Nil, None)
+            )
+        }
     }
 
   private[sbtcoursiershared] def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =

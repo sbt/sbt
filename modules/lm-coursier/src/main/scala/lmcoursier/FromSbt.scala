@@ -34,7 +34,7 @@ object FromSbt {
       !k.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX)
     }
 
-  private def moduleVersion(
+  def moduleVersion(
     module: ModuleID,
     scalaVersion: String,
     scalaBinaryVersion: String,
