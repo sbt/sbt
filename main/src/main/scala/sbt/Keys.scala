@@ -376,6 +376,7 @@ object Keys {
   val packagedArtifacts = taskKey[Map[Artifact, File]]("Packages all artifacts for publishing and maps the Artifact definition to the generated file.").withRank(CTask)
   val publishMavenStyle = settingKey[Boolean]("Configures whether to generate and publish a pom (true) or Ivy file (false).").withRank(BSetting)
   val credentials = taskKey[Seq[Credentials]]("The credentials to use for updating and publishing.").withRank(BMinusTask)
+  val allCredentials = taskKey[Seq[Credentials]]("Aggregated credentials.").withRank(DTask)
 
   val makePom = taskKey[File]("Generates a pom for publishing when publishing Maven-style.").withRank(BPlusTask)
   val deliver = taskKey[File]("Generates the Ivy file for publishing to a repository.").withRank(BTask)

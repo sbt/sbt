@@ -2364,6 +2364,7 @@ object Classpaths {
     ),
     ivySbt := ivySbt0.value,
     ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
+    allCredentials := LMCoursier.allCredentialsTask.value,
     transitiveUpdate := transitiveUpdateTask.value,
     updateCacheName := {
       val binVersion = scalaBinaryVersion.value

@@ -9,6 +9,7 @@ package sbt
 package coursierint
 
 import java.io.File
+import scala.collection.mutable
 import lmcoursier.definitions.{
   Classifier,
   Configuration => CConfiguration,
@@ -19,11 +20,15 @@ import lmcoursier._
 import lmcoursier.credentials.Credentials
 import Keys._
 import sbt.librarymanagement._
+import sbt.librarymanagement.ivy.{ Credentials => IvyCredentials }
 import sbt.util.Logger
 import sbt.io.syntax._
 import xsbti.AppConfiguration
 
 object LMCoursier {
+  private[sbt] val credentialRegistry: mutable.Map[(String, String), IvyCredentials] =
+    mutable.Map.empty
+
   def defaultCacheLocation: File =
     sys.props.get("sbt.coursier.home") match {
       case Some(home) => new File(home).getAbsoluteFile / "cache"
@@ -187,5 +192,18 @@ object LMCoursier {
 
   def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[_] = {
     csrPublications := CoursierArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value
+  }
+
+  private[sbt] def registerCredentials(creds: IvyCredentials): Unit = {
+    val d = IvyCredentials.toDirect(creds)
+    credentialRegistry((d.host, d.realm)) = d
+  }
+
+  // This emulates Ivy's credential registration which basically keeps mutating global registry
+  def allCredentialsTask: Def.Initialize[Task[Seq[IvyCredentials]]] = Def.task {
+    (Keys.credentials in ThisBuild).value foreach registerCredentials
+    (Keys.credentials in LocalRootProject).value foreach registerCredentials
+    Keys.credentials.value foreach registerCredentials
+    credentialRegistry.values.toVector
   }
 }
