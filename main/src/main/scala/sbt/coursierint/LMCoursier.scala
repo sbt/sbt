@@ -9,7 +9,7 @@ package sbt
 package coursierint
 
 import java.io.File
-import scala.collection.mutable
+import java.util.concurrent.ConcurrentHashMap
 import lmcoursier.definitions.{
   Classifier,
   Configuration => CConfiguration,
@@ -26,8 +26,8 @@ import sbt.io.syntax._
 import xsbti.AppConfiguration
 
 object LMCoursier {
-  private[sbt] val credentialRegistry: mutable.Map[(String, String), IvyCredentials] =
-    mutable.Map.empty
+  private[this] val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
+    new ConcurrentHashMap
 
   def defaultCacheLocation: File =
     sys.props.get("sbt.coursier.home") match {
@@ -196,14 +196,16 @@ object LMCoursier {
 
   private[sbt] def registerCredentials(creds: IvyCredentials): Unit = {
     val d = IvyCredentials.toDirect(creds)
-    credentialRegistry((d.host, d.realm)) = d
+    credentialRegistry.put((d.host, d.realm), d)
+    ()
   }
 
   // This emulates Ivy's credential registration which basically keeps mutating global registry
   def allCredentialsTask: Def.Initialize[Task[Seq[IvyCredentials]]] = Def.task {
+    import scala.collection.JavaConverters._
     (Keys.credentials in ThisBuild).value foreach registerCredentials
     (Keys.credentials in LocalRootProject).value foreach registerCredentials
     Keys.credentials.value foreach registerCredentials
-    credentialRegistry.values.toVector
+    credentialRegistry.values.asScala.toVector
   }
 }
