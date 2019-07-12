@@ -133,19 +133,13 @@ lazy val `sbt-pgp-coursier` = project
 
 lazy val `sbt-shading` = project
   .in(file("modules/sbt-shading"))
-  .enablePlugins(ScriptedPlugin, ShadingPlugin)
+  .enablePlugins(ScriptedPlugin)
   .dependsOn(`sbt-coursier`)
   .settings(
     plugin,
-    shading,
-    libraryDependencies += "io.get-coursier.jarjar" % "jarjar-core" % "1.0.1-coursier-1" % "shaded",
-    // dependencies of jarjar-core - directly depending on these so that they don't get shaded
-    libraryDependencies ++= Seq(
-      "com.google.code.findbugs" % "jsr305" % "3.0.2",
-      "org.ow2.asm" % "asm-commons" % "7.0",
-      "org.ow2.asm" % "asm-util" % "7.0",
-      "org.slf4j" % "slf4j-api" % "1.7.26"
-    ),
+    libraryDependencies += ("org.pantsbuild" % "jarjar" % "1.7.2")
+      .exclude("org.apache.maven", "maven-plugin-api")
+      .exclude("org.apache.ant", "ant"),
     scriptedDependencies := {
       scriptedDependencies.value
       // TODO Get dependency projects automatically
