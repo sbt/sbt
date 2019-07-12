@@ -76,6 +76,8 @@ object Keys {
   private[sbt] val watchInputHandler = settingKey[InputStream => Watch.Action](
     "Function that is periodically invoked to determine if the continuous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands. This is only invoked if watchInputStream is set."
   ).withRank(DSetting)
+  val watchInputOptionsMessage = settingKey[String]("The help message for the watch input options")
+  val watchInputOptions = settingKey[Seq[Watch.InputOption]]("The available input options")
   val watchInputStream = taskKey[InputStream](
     "The input stream to read for user input events. This will usually be System.in"
   ).withRank(DSetting)
