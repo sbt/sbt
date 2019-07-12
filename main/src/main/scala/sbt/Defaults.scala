@@ -290,7 +290,7 @@ object Defaults extends BuildCommon {
       turbo :== SysProp.turbo,
       useSuperShell := { if (insideCI.value) false else SysProp.supershell },
       progressReports := {
-        val progress = useSuperShell.value
+        val progress = (ThisBuild / useSuperShell).value
         val rs = EvaluateTask.taskTimingProgress.toVector ++
           EvaluateTask.taskTraceEvent.toVector ++ {
           if (progress) Vector(EvaluateTask.taskProgress)

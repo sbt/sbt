@@ -10,7 +10,6 @@ import sbt.nio.Keys._
 
 object Build {
   val root = (project in file(".")).settings(
-    useSuperShell := false,
     watchInputStream := inputStream,
     watchStartMessage := { (_, _, _) =>
       Build.outputStream.write('\n'.toByte)

@@ -22,6 +22,7 @@ import sbt.librarymanagement._
 import sbt.util.Logger
 import sbt.io.syntax._
 import xsbti.AppConfiguration
+import sbt.SlashSyntax0._
 
 object LMCoursier {
   def defaultCacheLocation: File =
@@ -175,7 +176,7 @@ object LMCoursier {
 
   def coursierLoggerTask: Def.Initialize[Task[Option[CacheLogger]]] = Def.task {
     val st = Keys.streams.value
-    val progress = useSuperShell.value
+    val progress = (ThisBuild / useSuperShell).value
     if (progress) None
     else Some(new CoursierLogger(st.log))
   }
