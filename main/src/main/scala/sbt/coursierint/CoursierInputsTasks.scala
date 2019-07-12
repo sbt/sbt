@@ -204,7 +204,7 @@ object CoursierInputsTasks {
 
   val credentialsTask = Def.task {
     val log = streams.value.log
-    val creds = sbt.Keys.credentials.value
+    val creds = sbt.Keys.allCredentials.value
       .flatMap {
         case dc: IvyDirectCredentials => List(dc)
         case fc: FileCredentials =>
