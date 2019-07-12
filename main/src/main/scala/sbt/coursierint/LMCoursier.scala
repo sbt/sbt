@@ -24,6 +24,7 @@ import sbt.librarymanagement.ivy.{ Credentials => IvyCredentials }
 import sbt.util.Logger
 import sbt.io.syntax._
 import xsbti.AppConfiguration
+import sbt.SlashSyntax0._
 
 object LMCoursier {
   private[this] val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
@@ -180,7 +181,7 @@ object LMCoursier {
 
   def coursierLoggerTask: Def.Initialize[Task[Option[CacheLogger]]] = Def.task {
     val st = Keys.streams.value
-    val progress = useSuperShell.value
+    val progress = (ThisBuild / useSuperShell).value
     if (progress) None
     else Some(new CoursierLogger(st.log))
   }
