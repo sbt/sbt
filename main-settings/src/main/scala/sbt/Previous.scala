@@ -7,12 +7,13 @@
 
 package sbt
 
-import Def.{ Initialize, ScopedKey }
-import Previous._
-import sbt.internal.util.{ ~>, IMap, RMap }
-import sbt.util.{ Input, Output, StampedFormat }
+import sbt.Def.{ Initialize, ScopedKey }
+import sbt.Previous._
+import sbt.Scope.Global
+import sbt.internal.util.{ IMap, RMap, ~> }
+import sbt.util.StampedFormat
 import sjsonnew.JsonFormat
-import Scope.Global
+
 import scala.util.control.NonFatal
 
 /**
@@ -26,9 +27,8 @@ private[sbt] final class Previous(streams: Streams, referenced: IMap[ScopedTaskK
   private[this] final class ReferencedValue[T](referenced: Referenced[T]) {
     import referenced.{ stamped, task }
     lazy val previousValue: Option[T] = {
-      val in = streams(task).getInput(task, StreamName)
-      try read(in, stamped)
-      finally in.close()
+      try Option(streams(task).cacheStoreFactory.make(StreamName).read[T]()(stamped))
+      catch { case NonFatal(_) => None }
     }
   }
 
@@ -82,9 +82,9 @@ object Previous {
     val map = referenced.getReferences
     def impl[T](key: ScopedKey[_], result: T): Unit =
       for (i <- map.get(key.asInstanceOf[ScopedTaskKey[T]])) {
-        val out = streams.apply(i.task).getOutput(StreamName)
-        try write(out, i.stamped, result)
-        finally out.close()
+        val out = streams.apply(i.task).cacheStoreFactory.make(StreamName)
+        try out.write(result)(i.stamped)
+        catch { case NonFatal(_) => }
       }
 
     for {
@@ -92,14 +92,6 @@ object Previous {
       key <- info.attributes get Def.taskDefinitionKey
     } impl(key, result)
   }
-
-  private def read[T](input: Input, format: JsonFormat[T]): Option[T] =
-    try Some(input.read()(format))
-    catch { case NonFatal(_) => None }
-
-  private def write[T](output: Output, format: JsonFormat[T], value: T): Unit =
-    try output.write(value)(format)
-    catch { case NonFatal(_) => () }
 
   /** Public as a macro implementation detail.  Do not call directly. */
   def runtime[T](skey: TaskKey[T])(implicit format: JsonFormat[T]): Initialize[Task[Option[T]]] = {

@@ -10,12 +10,15 @@ package sbt
 import java.io.File
 import java.net.URL
 
+import lmcoursier.definitions.CacheLogger
+import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.logging.log4j.core.Appender
 import sbt.BuildSyntax._
 import sbt.Def.ScopedKey
 import sbt.KeyRanks._
+import sbt.internal.InMemoryCacheStore.CacheStoreFactoryFactory
 import sbt.internal._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
@@ -31,8 +34,6 @@ import sbt.nio.file.Glob
 import sbt.testing.Framework
 import sbt.util.{ Level, Logger }
 import xsbti.compile._
-import lmcoursier.definitions.CacheLogger
-import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 import scala.xml.{ NodeSeq, Node => XNode }
@@ -488,6 +489,8 @@ object Keys {
   val pluginData = taskKey[PluginData]("Information from the plugin build needed in the main build definition.").withRank(DTask)
   val globalPluginUpdate = taskKey[UpdateReport]("A hook to get the UpdateReport of the global plugin.").withRank(DTask)
   private[sbt] val taskCancelStrategy = settingKey[State => TaskCancellationStrategy]("Experimental task cancellation handler.").withRank(DTask)
+  private[sbt] val cacheStoreFactory = AttributeKey[CacheStoreFactoryFactory]("cache-store-factory")
+  val fileCacheSize = settingKey[String]("The approximate maximum size in bytes of the cache used to store previous task results. For example, it could be set to \"256M\" to make the maximum size 256 megabytes.")
 
   // Experimental in sbt 0.13.2 to enable grabbing semantic compile failures.
   private[sbt] val compilerReporter = taskKey[xsbti.Reporter]("Experimental hook to listen (or send) compilation failure messages.").withRank(DTask)

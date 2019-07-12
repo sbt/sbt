@@ -79,6 +79,7 @@ import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
+import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.CrossValue
 import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
 
@@ -257,6 +258,7 @@ object Defaults extends BuildCommon {
       checkBuildSources / Continuous.dynamicInputs := None,
       checkBuildSources / fileInputs := CheckBuildSources.buildSourceFileInputs.value,
       checkBuildSources := CheckBuildSources.needReloadImpl.value,
+      fileCacheSize := "128M",
       trapExit :== true,
       connectInput :== false,
       cancelable :== true,
@@ -2754,7 +2756,12 @@ object Classpaths {
   ): Initialize[Task[UpdateReport]] = Def.task {
     val s = streams.value
     val cacheDirectory = crossTarget.value / cacheLabel / updateCacheName.value
-    val cacheStoreFactory: CacheStoreFactory = CacheStoreFactory.directory(cacheDirectory)
+
+    import CacheStoreFactory.jvalueIsoString
+    val cacheStoreFactory: CacheStoreFactory = {
+      val factory = state.value.get(Keys.cacheStoreFactory).getOrElse(InMemoryCacheStore.factory(0))
+      factory(cacheDirectory.toPath, Converter)
+    }
 
     val isRoot = executionRoots.value contains resolvedScoped.value
     val shouldForce = isRoot || {

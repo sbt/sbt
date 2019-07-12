@@ -23,7 +23,7 @@ import sbt.internal._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
-import sbt.internal.util.complete.Parser
+import sbt.internal.util.complete.{ SizeParser, Parser }
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
@@ -840,9 +840,21 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
-    Project
-      .setProject(session, structure, s)
-      .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
+    addCacheStoreFactoryFactory(
+      Project
+        .setProject(session, structure, s)
+        .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
+    )
+  }
+
+  private val addCacheStoreFactoryFactory: State => State = (s: State) => {
+    val size = Project
+      .extract(s)
+      .getOpt(Keys.fileCacheSize)
+      .flatMap(SizeParser(_))
+      .getOrElse(SysProp.fileCacheSize)
+    s.get(Keys.cacheStoreFactory).foreach(_.close())
+    s.put(Keys.cacheStoreFactory, InMemoryCacheStore.factory(size))
   }
 
   def registerCompilerCache(s: State): State = {
@@ -857,7 +869,7 @@ object BuiltinCommands {
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache)
+    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache) andThen addCacheStoreFactoryFactory
     Command.command(ClearCaches, help)(f)
   }
 
