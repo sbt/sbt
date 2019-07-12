@@ -25,6 +25,7 @@ import sbt.nio.file.FileAttributes
 import sbt.util.{ Level, Logger }
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
@@ -164,8 +165,9 @@ object Watch {
      */
     implicit object ordering extends Ordering[ContinueWatch] {
       override def compare(left: ContinueWatch, right: ContinueWatch): Int = left match {
-        case Ignore  => if (right == Ignore) 0 else 1
-        case Trigger => if (right == Trigger) 0 else -1
+        case ShowOptions => if (right == ShowOptions) 0 else -1
+        case Ignore      => if (right == Ignore) 0 else 1
+        case Trigger     => if (right == Trigger) 0 else if (right == ShowOptions) 1 else -1
       }
     }
   }
@@ -238,9 +240,22 @@ object Watch {
 
   /**
    * Action that indicates that the watch should continue as though nothing happened. This may be
+   * because, for example, no user input was yet available. This trait can be used when we don't
+   * want to take action but we do want to perform a side effect like printing options to the
+   * terminal.
+   */
+  sealed trait Ignore extends ContinueWatch
+
+  /**
+   * Action that indicates that the available options should be printed.
+   */
+  case object ShowOptions extends Ignore
+
+  /**
+   * Action that indicates that the watch should continue as though nothing happened. This may be
    * because, for example, no user input was yet available.
    */
-  case object Ignore extends ContinueWatch
+  case object Ignore extends Ignore
 
   /**
    * Action that indicates that the watch should pause while the build is reloaded. This is used to
@@ -258,7 +273,8 @@ object Watch {
   }
   // For now leave this private in case this isn't the best unapply type signature since it can't
   // be evolved in a binary compatible way.
-  private object Run {
+  object Run {
+    def apply(commands: String*): Run = new Watch.Run(commands: _*)
     def unapply(r: Run): Option[List[Exec]] = Some(r.commands.toList.map(Exec(_, None)))
   }
 
@@ -273,6 +289,45 @@ object Watch {
    * the watch will terminate.
    */
   trait Custom extends CancelWatch
+
+  trait InputOption {
+    private[sbt] def parser: Parser[Watch.Action]
+    def input: String
+    def display: String
+    def description: String
+    override def toString: String =
+      s"InputOption(input = $input, display = $display, description = $description)"
+  }
+  object InputOption {
+    private class impl(
+        override val input: String,
+        override val display: String,
+        override val description: String,
+        action: Action
+    ) extends InputOption {
+      override private[sbt] def parser: Parser[Watch.Action] = input ^^^ action
+    }
+    def apply(key: Char, description: String, action: Action): InputOption =
+      new impl(key.toString, s"'$key'", description, action)
+    def apply(key: Char, display: String, description: String, action: Action): InputOption =
+      new impl(key.toString, display, description, action)
+    def apply(
+        display: String,
+        description: String,
+        action: Action,
+        chars: Char*
+    ): InputOption =
+      new impl(chars.mkString("|"), display, description, action) {
+        override private[sbt] def parser: Parser[Watch.Action] = chars match {
+          case Seq(c)            => c ^^^ action
+          case Seq(h, rest @ _*) => rest.foldLeft(h: Parser[Char])(_ | _) ^^^ action
+        }
+      }
+    def apply(input: String, description: String, action: Action): InputOption =
+      new impl(input, s"'$input'", description, action)
+    def apply(input: String, display: String, description: String, action: Action): InputOption =
+      new impl(input, display, description, action)
+  }
 
   private type NextAction = () => Watch.Action
 
@@ -385,27 +440,44 @@ object Watch {
    * 2) 'r' or 'R' will trigger a build
    * 3) new line characters cancel the watch and return to the shell
    */
-  final val defaultInputParser: Parser[Action] = {
-    val exitParser: Parser[Action] = chars("xX") ^^^ new Run("exit")
-    val rebuildParser: Parser[Action] = chars("rR") ^^^ Trigger
-    val cancelParser: Parser[Action] = chars(legal = "\n\r") ^^^ new Run("iflast shell")
-    exitParser | rebuildParser | cancelParser
-  }
+  final def defaultInputParser(options: Seq[Watch.InputOption]): Parser[Action] =
+    distinctOptions(options) match {
+      case Seq()             => (('\n': Parser[Char]) | '\r' | 4.toChar) ^^^ Run("")
+      case Seq(h, rest @ _*) => rest.foldLeft(h.parser)(_ | _.parser)
+    }
+  final val defaultInputOptions: Seq[Watch.InputOption] = Seq(
+    Watch.InputOption("<enter>", "interrupt (exits sbt in batch mode)", Run(""), '\n', '\r'),
+    Watch.InputOption(4.toChar, "<ctrl-d>", "interrupt (exits sbt in batch mode)", Run("")),
+    Watch.InputOption('r', "re-run the command", Trigger),
+    Watch.InputOption('s', "return to shell", Run("iflast shell")),
+    Watch.InputOption('q', "quit sbt", Run("exit")),
+    Watch.InputOption('?', "print options", ShowOptions)
+  )
 
-  private[this] val options = {
-    val enter = "<enter>"
-    val opts = Seq(
-      s"$enter: return to the shell",
-      s"'r': repeat the current command",
-      s"'x': exit sbt"
-    )
-    s"Options:\n${opts.mkString("  ", "\n  ", "")}"
+  def defaultInputOptionsMessage(options: Seq[InputOption]): String = {
+    val opts = distinctOptions(options).sortBy(_.input)
+    val alignmentLength = opts.map(_.display.length).max + 1
+    val formatted =
+      opts.map(o => s"${o.display}${" " * (alignmentLength - o.display.length)}: ${o.description}")
+    s"Options:\n${formatted.mkString("  ", "\n  ", "")}"
   }
-  private def waitMessage(project: ProjectRef, commands: Seq[String]): String = {
-    val plural = if (commands.size > 1) "s" else ""
-    val cmds = commands.mkString("; ")
-    s"Monitoring source files for updates...\n" +
-      s"Project: ${project.project}\nCommand$plural: $cmds\n$options"
+  private def distinctOptions(options: Seq[InputOption]): Seq[InputOption] = {
+    val distinctOpts = mutable.Set.empty[String]
+    val opts = new mutable.ArrayBuffer[InputOption]
+    (options match {
+      case Seq() => defaultInputOptions.headOption.toSeq
+      case s     => s
+    }).reverse.foreach { o =>
+      if (distinctOpts.add(o.input)) opts += o
+    }
+    opts.reverse
+  }
+  private def waitMessage(project: ProjectRef, commands: Seq[String]): Seq[String] = {
+    val cmds = commands.map(project.project + "/" + _.trim).mkString("; ")
+    Seq(
+      s"Monitoring source files for $cmds...",
+      s"Press <enter> to interrupt or '?' for more options."
+    )
   }
 
   /**
@@ -414,13 +486,16 @@ object Watch {
    */
   val defaultStartWatch: (Int, ProjectRef, Seq[String]) => Option[String] = {
     (count: Int, project: ProjectRef, commands: Seq[String]) =>
-      Some(s"$count. ${waitMessage(project, commands)}")
+      {
+        val countStr = s"$count. "
+        Some(s"$countStr${waitMessage(project, commands).mkString(s"\n${" " * countStr.length}")}")
+      }
   }.label("Watched.defaultStartWatch")
 
   /**
    * Default no-op callback.
    */
-  val defaultBeforeCommand: () => Unit = () => {}
+  val defaultBeforeCommand: () => Unit = (() => {}).label("Watch.defaultBeforeCommand")
 
   private[sbt] val defaultCommandOnTermination: (Action, String, Int, State) => State =
     onTerminationImpl(ContinuousExecutePrefix).label("Watched.defaultCommandOnTermination")
@@ -495,6 +570,7 @@ object Watch {
     watchOnFileInputEvent :== Watch.trigger,
     watchDeletionQuarantinePeriod :== Watch.defaultDeletionQuarantinePeriod,
     sbt.Keys.watchService :== Watched.newWatchService,
+    watchInputOptions :== Watch.defaultInputOptions,
     watchStartMessage :== Watch.defaultStartWatch,
     watchTasks := Continuous.continuousTask.evaluated,
     sbt.Keys.aggregate in watchTasks :== false,
