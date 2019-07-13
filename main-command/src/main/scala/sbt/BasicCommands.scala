@@ -211,25 +211,23 @@ object BasicCommands {
         // then we directly evaluate the `() => State` returned by the parser. Otherwise, we
         // fall back to prefixing the multi commands to the state.
         //
-        state.nonMultiCommands.view.flatMap {
-          case command =>
-            command.nameOption match {
-              case Some(commandName) if first.startsWith(commandName) =>
-                // A lot of commands expect leading semicolons in their parsers. In order to
-                // ensure that they are multi-command capable, we strip off any leading spaces.
-                // Without doing this, we could run simple commands like `set` with the full
-                // input. This would likely fail because `set` doesn't know how to handle
-                // semicolons. This is a bit of a hack that is specifically there
-                // to handle `~` which doesn't require a space before its argument. Any command
-                // whose parser accepts multi commands without a leading space should be accepted.
-                // All other commands should be rejected. Note that `alias` is also handled by
-                // this case.
-                val commandArgs =
-                  (first.drop(commandName.length).trim :: Nil ::: tail).mkString(";")
-                parse(commandArgs, command.parser(state)).toOption
-              case _ => None
-            }
-          case _ => None
+        state.nonMultiCommands.view.flatMap { command =>
+          command.nameOption match {
+            case Some(commandName) if first.startsWith(commandName) =>
+              // A lot of commands expect leading semicolons in their parsers. In order to
+              // ensure that they are multi-command capable, we strip off any leading spaces.
+              // Without doing this, we could run simple commands like `set` with the full
+              // input. This would likely fail because `set` doesn't know how to handle
+              // semicolons. This is a bit of a hack that is specifically there
+              // to handle `~` which doesn't require a space before its argument. Any command
+              // whose parser accepts multi commands without a leading space should be accepted.
+              // All other commands should be rejected. Note that `alias` is also handled by
+              // this case.
+              val commandArgs =
+                (first.drop(commandName.length).trim :: Nil ::: tail).mkString(";")
+              parse(commandArgs, command.parser(state)).toOption
+            case _ => None
+          }
         }.headOption match {
           case Some(s) => s()
           case _       => commands ::: state
