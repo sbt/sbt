@@ -56,8 +56,8 @@ private[sbt] object InMemoryCacheStore {
     override def read[T]()(implicit reader: JsonReader[T]): T = {
       val lastModified = IO.getModifiedTimeOrZero(path.toFile)
       store.get[T](path) match {
-        case Some((value: T, `lastModified`)) => value
-        case _                                => cacheStore.read[T]()
+        case Some((value, `lastModified`)) => value
+        case _                             => cacheStore.read[T]()
       }
     }
     override def write[T](value: T)(implicit writer: JsonWriter[T]): Unit = {
