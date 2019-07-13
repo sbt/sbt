@@ -1,9 +1,19 @@
-> foo
+> foo bar
+
+> exists bar
 
 $ copy-file changes/broken.sbt build.sbt
 
--> foo
+-> foo baz
+
+-> exists baz
 
 $ copy-file changes/working.sbt build.sbt
 
-> foo
+> foo baz
+
+> exists baz
+
+> foo foo; reload
+
+> exists foo
