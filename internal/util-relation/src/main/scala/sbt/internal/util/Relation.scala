@@ -183,7 +183,7 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]])
   }
 
   def groupBy[K](discriminator: ((A, B)) => K): Map[K, Relation[A, B]] =
-    all.groupBy(discriminator) mapValues { Relation.empty[A, B] ++ _ }
+    (all.groupBy(discriminator) mapValues { Relation.empty[A, B] ++ _ }).toMap
 
   def contains(a: A, b: B): Boolean = forward(a)(b)
 
