@@ -2,28 +2,45 @@ language: scala
 
 scala:
   - 2.12.8
+  - 2.13.0
 
-script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
-  ++$TRAVIS_SCALA_VERSION
-  mimaReportBinaryIssues
-  scalafmtCheckAll
-  whitesourceCheckPolicies
-  test
+env:
+  global: ADOPTOPENJDK=11
 
 matrix:
   include:
-  - jdk: openjdk8
-  - jdk: openjdk11
+    - scala: 2.12.8
+      env:
+        - ADOPTOPENJDK=8
+        - secure: JzxepvrNQIem+7MS8pBfBkcWDgt/oNKOreI3GJMJDN9P7lxCmrW0UVhpSftscjRzz9gXGQleqZ8t/I0hqysY9nO/DlxDQil6FKpsqrEKALdIsez8TjtbOlV69enDl6SBCXpg1B/rTQ/dL9mpV3WMvNkmDOhcNmbNyfO9Uk8wAAEvGQNKyE02s0gjZf6IgfOHXInBB2o3+uQFiWCABFHDWInN4t0QZVEhF/3P3iDKEfauWGwugf/YKLrwUUzNyN+J1i1goYEWZvviP+KCNbPlEsVN60In8F0t+jYuBJb0ePNcl3waT/4xBKQRidB4XRbhOXrZIATdpHLnzKzk2TPf3GxijNEscKYGdq3v6nWd128rfHGYz528pRSZ8bNOdQJotB/bJTmIEOnk5P9zU0z4z2cawMF6EyBJka7kXnC9Vz6TpifvyXDpzfmRzAkBrD6PC+diGPbyy5+4zvhpZuv31MRjMckohyNb76pR9qq70yDlomn+nVNoZ1fpp7dCqwjIxm9h2UjCWzXWY4xSByI8/CaPibq6Ma7RWHQE+4NGG2CCLQrqN4NB+BFsH3R0l5Js9khvDuEUYJkgSmJMFluXranWRV+pp/YMxk1IT4rOEPOc/hIqlQTrxasp/QxeyAfRk9OPzoz9L2kR0RH4ch3KuaARUv03WFNarfQ/ISz3P/s=
+      script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M
+        ++$TRAVIS_SCALA_VERSION!
+        mimaReportBinaryIssues
+        scalafmtCheckAll
+        whitesourceCheckPolicies
+        test
 
-env:
-  global:
-    - secure: JzxepvrNQIem+7MS8pBfBkcWDgt/oNKOreI3GJMJDN9P7lxCmrW0UVhpSftscjRzz9gXGQleqZ8t/I0hqysY9nO/DlxDQil6FKpsqrEKALdIsez8TjtbOlV69enDl6SBCXpg1B/rTQ/dL9mpV3WMvNkmDOhcNmbNyfO9Uk8wAAEvGQNKyE02s0gjZf6IgfOHXInBB2o3+uQFiWCABFHDWInN4t0QZVEhF/3P3iDKEfauWGwugf/YKLrwUUzNyN+J1i1goYEWZvviP+KCNbPlEsVN60In8F0t+jYuBJb0ePNcl3waT/4xBKQRidB4XRbhOXrZIATdpHLnzKzk2TPf3GxijNEscKYGdq3v6nWd128rfHGYz528pRSZ8bNOdQJotB/bJTmIEOnk5P9zU0z4z2cawMF6EyBJka7kXnC9Vz6TpifvyXDpzfmRzAkBrD6PC+diGPbyy5+4zvhpZuv31MRjMckohyNb76pR9qq70yDlomn+nVNoZ1fpp7dCqwjIxm9h2UjCWzXWY4xSByI8/CaPibq6Ma7RWHQE+4NGG2CCLQrqN4NB+BFsH3R0l5Js9khvDuEUYJkgSmJMFluXranWRV+pp/YMxk1IT4rOEPOc/hIqlQTrxasp/QxeyAfRk9OPzoz9L2kR0RH4ch3KuaARUv03WFNarfQ/ISz3P/s=
+before_install:
+  # adding $HOME/.sdkman to cache would create an empty directory, which interferes with the initial installation
+  - "[[ -d $HOME/.sdkman/bin ]] || rm -rf $HOME/.sdkman/"
+  - curl -sL https://get.sdkman.io | bash
+  - echo sdkman_auto_answer=true > "$HOME/.sdkman/etc/config"
+  - source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-cache:
-  directories:
-    - $HOME/.ivy2/cache
-    - $HOME/.sbt
+install:
+  - sdk install java $(sdk list java | grep -o "$ADOPTOPENJDK\.[0-9\.]*hs-adpt" | head -1)
+  - unset JAVA_HOME
+  - java -Xmx32m -version
+  - javac -J-Xmx32m -version
+
+script: sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M ++$TRAVIS_SCALA_VERSION! test
 
 before_cache:
   - find $HOME/.ivy2/cache -name "ivydata-*.properties" -delete
   - find $HOME/.sbt        -name "*.lock"               -delete
+
+cache:
+  directories:
+    - $HOME/.coursier
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt
