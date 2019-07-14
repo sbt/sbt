@@ -214,12 +214,12 @@ object MainLoop {
       }
       Parser.parse(
         checkCommand,
-        state.put(Aggregation.suppressShow, true).combinedParser
+        state.copy(remainingCommands = Nil).put(Aggregation.suppressShow, true).combinedParser
       ) match {
         case Right(cmd) =>
           cmd() match {
             case s if s.remainingCommands.headOption.map(_.commandLine).contains("reload") =>
-              s.remove(Aggregation.suppressShow)
+              Exec("reload", None, None) +: exec +: state
             case _ => process()
           }
         case Left(_) => process()
