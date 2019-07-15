@@ -47,10 +47,10 @@ private[sbt] object SizeParser {
       .map {
         case (number, unit) =>
           unit match {
-            case None | Some(Bytes) => multiply(number, right = 1)
-            case Some(KiloBytes)    => multiply(number, right = 1024)
-            case Some(MegaBytes)    => multiply(number, right = 1024 * 1024)
-            case Some(GigaBytes)    => multiply(number, right = 1024 * 1024 * 1024)
+            case None | Some(Bytes) => multiply(number, right = 1L)
+            case Some(KiloBytes)    => multiply(number, right = 1024L)
+            case Some(MegaBytes)    => multiply(number, right = 1024L * 1024)
+            case Some(GigaBytes)    => multiply(number, right = 1024L * 1024 * 1024)
           }
       }
 }
