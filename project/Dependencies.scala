@@ -10,14 +10,14 @@ object Dependencies {
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M11")
-  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M7")
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M12")
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M8")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _             => nightlyVersion.getOrElse("1.3.0-M3")
+      case _             => nightlyVersion.getOrElse("1.3.0-M5")
     }
-  val zincVersion = nightlyVersion.getOrElse("1.3.0-M7")
+  val zincVersion = nightlyVersion.getOrElse("1.3.0-M8")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
