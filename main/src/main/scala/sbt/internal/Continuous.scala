@@ -578,6 +578,62 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
     val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
     val quarantinePeriod = configs.map(_.watchSettings.deletionQuarantinePeriod).max
+    val monitor: FileEventMonitor[Event] = new FileEventMonitor[Event] {
+
+      private implicit class WatchLogger(val l: Logger) extends sbt.internal.nio.WatchLogger {
+        override def debug(msg: Any): Unit = l.debug(msg.toString)
+      }
+
+      private[this] val observers: Observers[Event] = new Observers
+      private[this] val repo = getRepository(state)
+      private[this] val handle = repo.addObserver(observers)
+      private[this] val eventMonitorObservers = new Observers[Event]
+      private[this] val configHandle: AutoCloseable =
+        observers.addObserver { e =>
+          // We only want to create one event per actual source file event. It doesn't matter
+          // which of the config inputs triggers the event because they all will be used in
+          // the onEvent callback above.
+          configs.find(_.inputs().exists(_.glob.matches(e.path))) match {
+            case Some(config) =>
+              val configLogger = logger.withPrefix(config.command)
+              configLogger.debug(s"Accepted event for ${e.path}")
+              eventMonitorObservers.onNext(e)
+            case None =>
+          }
+          if (trackMetaBuild && buildGlobs.exists(_.matches(e.path))) {
+            val metaLogger = logger.withPrefix("build")
+            metaLogger.debug(s"Accepted event for ${e.path}")
+            eventMonitorObservers.onNext(e)
+          }
+        }
+      if (trackMetaBuild) buildGlobs.foreach(repo.register)
+
+      private[this] val monitor = FileEventMonitor.antiEntropy(
+        eventMonitorObservers,
+        configs.map(_.watchSettings.antiEntropy).max,
+        logger,
+        quarantinePeriod,
+        retentionPeriod
+      )
+
+      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] =
+        monitor.poll(duration, filter)
+
+      override def close(): Unit = {
+        configHandle.close()
+        handle.close()
+      }
+    }
+    val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
+    val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
+    val antiEntropyMonitor = FileEventMonitor.antiEntropy(
+      monitor,
+      antiEntropy,
+      watchLogger,
+      quarantinePeriod,
+      retentionPeriod
+    )
+
     val onEvent: Event => Seq[(Watch.Event, Watch.Action)] = event => {
       val path = event.path
 
@@ -642,61 +698,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         } else Nil
       }
     }
-    val monitor: FileEventMonitor[Event] = new FileEventMonitor[Event] {
-
-      private implicit class WatchLogger(val l: Logger) extends sbt.internal.nio.WatchLogger {
-        override def debug(msg: Any): Unit = l.debug(msg.toString)
-      }
-
-      private[this] val observers: Observers[Event] = new Observers
-      private[this] val repo = getRepository(state)
-      private[this] val handle = repo.addObserver(observers)
-      private[this] val eventMonitorObservers = new Observers[Event]
-      private[this] val configHandle: AutoCloseable =
-        observers.addObserver { e =>
-          // We only want to create one event per actual source file event. It doesn't matter
-          // which of the config inputs triggers the event because they all will be used in
-          // the onEvent callback above.
-          configs.find(_.inputs().exists(_.glob.matches(e.path))) match {
-            case Some(config) =>
-              val configLogger = logger.withPrefix(config.command)
-              configLogger.debug(s"Accepted event for ${e.path}")
-              eventMonitorObservers.onNext(e)
-            case None =>
-          }
-          if (trackMetaBuild && buildGlobs.exists(_.matches(e.path))) {
-            val metaLogger = logger.withPrefix("build")
-            metaLogger.debug(s"Accepted event for ${e.path}")
-            eventMonitorObservers.onNext(e)
-          }
-        }
-      if (trackMetaBuild) buildGlobs.foreach(repo.register)
-
-      private[this] val monitor = FileEventMonitor.antiEntropy(
-        eventMonitorObservers,
-        configs.map(_.watchSettings.antiEntropy).max,
-        logger,
-        quarantinePeriod,
-        retentionPeriod
-      )
-
-      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] =
-        monitor.poll(duration, filter)
-
-      override def close(): Unit = {
-        configHandle.close()
-        handle.close()
-      }
-    }
-    val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
-    val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
-    val antiEntropyMonitor = FileEventMonitor.antiEntropy(
-      monitor,
-      antiEntropy,
-      watchLogger,
-      quarantinePeriod,
-      retentionPeriod
-    )
     /*
      * This is a callback that will be invoked whenever onEvent returns a Trigger action. The
      * motivation is to allow the user to specify this callback via setting so that, for example,
