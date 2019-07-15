@@ -576,7 +576,7 @@ object Watch {
     sbt.Keys.aggregate in watchTasks :== false,
     watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     watchForceTriggerOnAnyChange :== false,
-    watchPersistFileStamps :== true,
+    watchPersistFileStamps := (sbt.Keys.turbo in ThisBuild).value,
     watchTriggers :== Nil,
   )
 }

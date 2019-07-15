@@ -8,7 +8,8 @@
 package sbt
 package internal
 
-import java.io.{ ByteArrayInputStream, InputStream, File => _ }
+import java.io.{ ByteArrayInputStream, IOException, InputStream, File => _ }
+import java.nio.file.Path
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import sbt.BasicCommandStrings.{
@@ -28,7 +29,7 @@ import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.internal.util.{ AttributeKey, JLine, Util }
 import sbt.nio.Keys.{ fileInputs, _ }
 import sbt.nio.Watch.{ Creation, Deletion, ShowOptions, Update }
-import sbt.nio.file.FileAttributes
+import sbt.nio.file.{ FileAttributes, Glob }
 import sbt.nio.{ FileStamp, FileStamper, Watch }
 import sbt.util.{ Level, _ }
 
@@ -328,12 +329,14 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
     val fileStampCache = new FileStamp.Cache
     repo.addObserver(t => fileStampCache.invalidate(t.path))
+    val persistFileStamps = extracted.get(watchPersistFileStamps)
+    val cachingRepo: FileTreeRepository[FileAttributes] =
+      if (persistFileStamps) repo else new FileStampRepository(fileStampCache, repo)
     try {
-      val stateWithRepo = state.put(globalFileTreeRepository, repo)
+      val stateWithRepo = state.put(globalFileTreeRepository, cachingRepo)
       val fullState =
         addLegacyWatchSetting(
-          if (extracted.get(watchPersistFileStamps))
-            stateWithRepo.put(persistentFileStampCache, fileStampCache)
+          if (persistFileStamps) stateWithRepo.put(persistentFileStampCache, fileStampCache)
           else stateWithRepo
         )
       setup(fullState, commands) { (s, valid, invalid) =>
@@ -1091,4 +1094,17 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
   }
 
+  private[sbt] class FileStampRepository(
+      fileStampCache: FileStamp.Cache,
+      underlying: FileTreeRepository[FileAttributes]
+  ) extends FileTreeRepository[FileAttributes] {
+    def putIfAbsent(path: Path, stamper: FileStamper): (Option[FileStamp], Option[FileStamp]) =
+      fileStampCache.putIfAbsent(path, stamper)
+    override def list(path: Path): Seq[(Path, FileAttributes)] = underlying.list(path)
+    override def addObserver(observer: Observer[FileEvent[FileAttributes]]): AutoCloseable =
+      underlying.addObserver(observer)
+    override def register(glob: Glob): Either[IOException, Observable[FileEvent[FileAttributes]]] =
+      underlying.register(glob)
+    override def close(): Unit = underlying.close()
+  }
 }
