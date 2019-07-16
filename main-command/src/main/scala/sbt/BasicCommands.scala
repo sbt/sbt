@@ -158,11 +158,12 @@ object BasicCommands {
     val semi = token(OptSpace ~> ';' ~> OptSpace)
     val nonDelim = charClass(c => c != '"' && c != '{' && c != '}', label = "not '\"', '{', '}'")
     val components = ((nonSemi & nonDelim) | StringEscapable | braces('{', '}')).+
-    val cmdPart = matched(components)
+    val cmdPart = matched(components).examples()
 
     val completionParser: Option[Parser[String]] =
       state.map(s => OptSpace ~> matched(s.nonMultiParser) <~ OptSpace)
-    val cmdParser = completionParser.map(sp => sp & cmdPart).getOrElse(cmdPart).map(_.trim)
+    val cmdParser =
+      completionParser.map(sp => (sp & cmdPart) | cmdPart).getOrElse(cmdPart).map(_.trim)
     val multiCmdParser: Parser[String] = semi ~> cmdParser
     /*
      * There are two cases that need to be handled separately:
@@ -187,7 +188,14 @@ object BasicCommands {
 
   def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
 
-  def multiApplied(state: State): Parser[() => State] =
+  def multiApplied(state: State): Parser[() => State] = {
+    def generateCommands(commands: List[String]): State =
+      commands
+        .takeWhile(_ != "reload")
+        .collectFirst {
+          case c if Parser.parse(c, state.combinedParser).isLeft => c :: state
+        }
+        .getOrElse(commands ::: state)
     Command.applyEffect(multiParserImpl(Some(state))) {
       // the (@ _ :: _) ensures tail length >= 1.
       case commands @ first :: (tail @ _ :: _) =>
@@ -230,10 +238,11 @@ object BasicCommands {
           }
         }.headOption match {
           case Some(s) => s()
-          case _       => commands ::: state
+          case _       => generateCommands(commands)
         }
-      case commands => commands ::: state
+      case commands => generateCommands(commands)
     }
+  }
 
   val multi: Command =
     Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed), Multi)
