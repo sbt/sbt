@@ -253,12 +253,12 @@ private[sbt] object FileStamp {
         case e    => e.value
       }
 
-    def putIfAbsent(key: Path, stamper: FileStamper): Unit = {
+    def putIfAbsent(key: Path, stamper: FileStamper): (Option[FileStamp], Option[FileStamp]) = {
       underlying.get(key) match {
-        case null => updateImpl(key, stamper)
-        case _    =>
+        case null     => (None, updateImpl(key, stamper))
+        case Right(s) => (Some(s), None)
+        case Left(_)  => (None, None)
       }
-      ()
     }
     def update(key: Path, stamper: FileStamper): (Option[FileStamp], Option[FileStamp]) = {
       underlying.get(key) match {

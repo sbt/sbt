@@ -13,6 +13,7 @@ import java.nio.file.{ Files, Path }
 
 import sbt.Project._
 import sbt.internal.Clean.ToSeqPath
+import sbt.internal.Continuous.FileStampRepository
 import sbt.internal.util.{ AttributeKey, SourcePosition }
 import sbt.internal.{ Clean, Continuous, DynamicInput, SettingsGraph }
 import sbt.nio.FileStamp.{ fileStampJsonFormatter, pathJsonFormatter, _ }
@@ -319,10 +320,22 @@ private[sbt] object Settings {
     addTaskDefinition(Keys.inputFileStamps in scopedKey.scope := {
       val cache = (unmanagedFileStampCache in scopedKey.scope).value
       val stamper = (Keys.inputFileStamper in scopedKey.scope).value
+      val stampFile: Path => Option[(Path, FileStamp)] =
+        sbt.Keys.state.value.get(globalFileTreeRepository) match {
+          case Some(repo: FileStampRepository) =>
+            (path: Path) =>
+              repo.putIfAbsent(path, stamper) match {
+                case (None, Some(s)) =>
+                  cache.put(path, s)
+                  Some(path -> s)
+                case _ => cache.getOrElseUpdate(path, stamper).map(path -> _)
+              }
+          case _ =>
+            (path: Path) => cache.getOrElseUpdate(path, stamper).map(path -> _)
+        }
       (Keys.allInputPathsAndAttributes in scopedKey.scope).value.flatMap {
-        case (p, a) if a.isRegularFile && !Files.isHidden(p) =>
-          cache.getOrElseUpdate(p, stamper).map(p -> _)
-        case _ => None
+        case (path, a) if a.isRegularFile && !Files.isHidden(path) => stampFile(path)
+        case _                                                     => None
       }
     })
   private[this] def outputsAndStamps[T: JsonFormat: ToSeqPath](
