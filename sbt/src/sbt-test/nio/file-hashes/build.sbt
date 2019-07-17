@@ -32,10 +32,10 @@ val checkAdded = taskKey[Unit]("check that modified files are returned")
 checkAdded := Def.taskDyn {
   val files = (foo / allInputFiles).value
   val added = (foo / changedInputFiles).value.map(_.created).getOrElse(Nil)
-  if (added.isEmpty || files.sameElements(added)) Def.task(assert(true))
+  if (added.isEmpty || (files.toSet == added.toSet)) Def.task(assert(true))
   else Def.task {
     val base = baseDirectory.value / "base"
-    assert(files.sameElements(Seq("Bar.md", "Foo.txt").map(p => (base / p).toPath)))
+    assert(files.toSet == Set("Bar.md", "Foo.txt").map(p => (base / p).toPath))
     assert(added == Seq((baseDirectory.value / "base" / "Bar.md").toPath))
   }
 }.value

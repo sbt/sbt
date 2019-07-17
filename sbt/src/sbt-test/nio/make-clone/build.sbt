@@ -1,6 +1,8 @@
 import java.nio.file.{ Files, Path }
 import scala.sys.process._
 
+val compileOpts = settingKey[Seq[String]]("Extra compile options")
+compileOpts := { if (scala.util.Properties.isLinux) "-fPIC" :: "-std=gnu99" :: Nil else Nil }
 val compileLib = taskKey[Seq[Path]]("Compile the library")
 compileLib / sourceDirectory := sourceDirectory.value / "lib"
 compileLib / fileInputs := {
@@ -34,7 +36,8 @@ compileLib := {
       cFiles.map { file =>
         val outFile = objectDir.resolve(objectFileName(file))
         logger.info(s"Compiling $file to $outFile")
-        Seq("gcc", "-c", file.toString, s"-I$include", "-o", outFile.toString).!!
+        (Seq("gcc") ++ compileOpts.value ++
+          Seq("-c", file.toString, s"-I$include", "-o", outFile.toString)).!!
         outFile
       }
   }
@@ -87,15 +90,14 @@ compileMain := {
         case Seq(main) =>
           Files.createDirectories(outDir)
           logger.info(s"Building executable $outPath")
-          Seq(
-            "gcc",
+          (Seq("gcc") ++ compileOpts.value ++ Seq(
             main.toString,
             s"-I$include",
             "-o",
             outPath.toString,
             s"-L${library.getParent}",
             "-lfoo"
-          ).!!
+          )).!!
           outPath
         case main =>
           throw new IllegalStateException(s"multiple main files detected: ${main.mkString(",")}")
