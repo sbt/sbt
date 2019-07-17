@@ -328,20 +328,18 @@ final class ScriptedTests(
             IO.write(tempTestDir / "project" / "InstrumentScripted.scala", pluginImplementation)
             def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
             val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
+            val commandsToRun = ";reload;setUpScripted"
+            val statement = Statement(commandsToRun, Nil, successExpected = true, line = -1)
 
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
-              Seq("reload", "setUpScripted")
-                .map(Statement(_, Nil, successExpected = true, line = -1))
-                .foreach { statement =>
-                  try runner.processStatement(sbtHandler, statement, states)
-                  catch {
-                    case t: Throwable =>
-                      val newMsg = "Reload for scripted batch execution failed."
-                      throw new TestException(statement, newMsg, t)
-                  }
-                }
+              try runner.processStatement(sbtHandler, statement, states)
+              catch {
+                case t: Throwable =>
+                  val newMsg = "Reload for scripted batch execution failed."
+                  throw new TestException(statement, newMsg, t)
+              }
             }
 
             commonRunTest(label, tempTestDir, wrapHook, handlers, runner, states, buffer)
