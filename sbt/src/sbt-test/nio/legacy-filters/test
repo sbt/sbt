@@ -1,0 +1,9 @@
+> checkSources Foo.scala
+
+> compile
+
+> set Compile / excludeFilter := HiddenFileFilter
+
+> checkSources Foo.scala Bar.scala
+
+-> compile
