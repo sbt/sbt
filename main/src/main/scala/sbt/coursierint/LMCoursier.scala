@@ -20,7 +20,11 @@ import lmcoursier._
 import lmcoursier.credentials.Credentials
 import Keys._
 import sbt.librarymanagement._
-import sbt.librarymanagement.ivy.{ Credentials => IvyCredentials }
+import sbt.librarymanagement.ivy.{
+  Credentials => IvyCredentials,
+  DirectCredentials,
+  FileCredentials
+}
 import sbt.util.Logger
 import sbt.io.syntax._
 import xsbti.AppConfiguration
@@ -195,14 +199,20 @@ object LMCoursier {
     csrPublications := CoursierArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value
   }
 
-  private[sbt] def registerCredentials(creds: IvyCredentials): Unit = {
-    val d = IvyCredentials.toDirect(creds)
-    credentialRegistry.put((d.host, d.realm), d)
-    ()
-  }
-
   // This emulates Ivy's credential registration which basically keeps mutating global registry
   def allCredentialsTask: Def.Initialize[Task[Seq[IvyCredentials]]] = Def.task {
+    val st = streams.value
+    def registerCredentials(creds: IvyCredentials): Unit = {
+      (creds match {
+        case dc: DirectCredentials => Right[String, DirectCredentials](dc)
+        case fc: FileCredentials   => IvyCredentials.loadCredentials(fc.path)
+      }) match {
+        case Left(err) => st.log.warn(err)
+        case Right(d) =>
+          credentialRegistry.put((d.host, d.realm), d)
+          ()
+      }
+    }
     import scala.collection.JavaConverters._
     (Keys.credentials in ThisBuild).value foreach registerCredentials
     (Keys.credentials in LocalRootProject).value foreach registerCredentials
