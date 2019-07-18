@@ -6,6 +6,7 @@ declare -a java_args
 declare -a scalac_args
 declare -a sbt_commands
 declare -a sbt_options
+declare -a print_sbt_version
 declare java_cmd=java
 declare java_version
 declare init_sbt_version=_to_be_replaced
@@ -375,14 +376,19 @@ run() {
     addJava "-Dsbt.cygwin=true"
   fi
 
-  # run sbt
-  execRunner "$java_cmd" \
-    $(get_gc_opts) \
-    ${java_args[@]} \
-    ${sbt_options[@]} \
-    -jar "$sbt_jar" \
-    "${sbt_commands[@]}" \
-    "${residual_args[@]}"
+  if [[ $print_sbt_version ]]; then
+    # print sbtVersion
+    execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1
+  else
+    # run sbt
+    execRunner "$java_cmd" \
+      $(get_gc_opts) \
+      ${java_args[@]} \
+      ${sbt_options[@]} \
+      -jar "$sbt_jar" \
+      "${sbt_commands[@]}" \
+      "${residual_args[@]}"
+  fi
 
   exit_code=$?
 
@@ -442,7 +448,7 @@ Usage: `basename "$0"` [options]
                       are prepended to the runner args
   /etc/sbt/sbtopts    if this file exists, it is prepended to the runner args
   -Dkey=val           pass -Dkey=val directly to the java runtime
-  -J-X                pass option -X directly to the java runtime 
+  -J-X                pass option -X directly to the java runtime
                       (-J is stripped)
   -S-X                add -X to sbt's scalacOptions (-S is stripped)
 
@@ -465,7 +471,7 @@ process_my_args () {
   done
 
   # Now, ensure sbt version is used.
-  [[ "${sbt_version}XXX" != "XXX" ]] && addJava "-Dsbt.version=$sbt_version" 
+  [[ "${sbt_version}XXX" != "XXX" ]] && addJava "-Dsbt.version=$sbt_version"
 
   # Confirm a user's intent if the current directory does not look like an sbt
   # top-level directory and neither the -sbt-create option nor the "new"
@@ -513,7 +519,7 @@ process_args () {
     case "$1" in
        -h|-help) usage; exit 1 ;;
     -v|-verbose) verbose=1 && shift ;;
-    -V|-version) addSbt "sbtVersion" && shift ;;
+    -V|-version) print_sbt_version=1 && shift ;;
       -d|-debug) debug=1 && addSbt "-debug" && shift ;;
 
            -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
