@@ -378,7 +378,7 @@ run() {
 
   if [[ $print_sbt_version ]]; then
     # print sbtVersion
-    execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1
+    execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
   else
     # run sbt
     execRunner "$java_cmd" \
