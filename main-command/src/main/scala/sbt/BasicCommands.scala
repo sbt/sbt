@@ -189,13 +189,6 @@ object BasicCommands {
   def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
 
   def multiApplied(state: State): Parser[() => State] = {
-    def generateCommands(commands: List[String]): State =
-      commands
-        .takeWhile(_ != "reload")
-        .collectFirst {
-          case c if Parser.parse(c, state.combinedParser).isLeft => c :: state
-        }
-        .getOrElse(commands ::: state)
     Command.applyEffect(multiParserImpl(Some(state))) {
       // the (@ _ :: _) ensures tail length >= 1.
       case commands @ first :: (tail @ _ :: _) =>
@@ -238,9 +231,9 @@ object BasicCommands {
           }
         }.headOption match {
           case Some(s) => s()
-          case _       => generateCommands(commands)
+          case _       => commands ::: state
         }
-      case commands => generateCommands(commands)
+      case commands => commands ::: state
     }
   }
 
