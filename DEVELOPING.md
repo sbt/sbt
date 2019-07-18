@@ -134,7 +134,7 @@ Listening for transport dt_socket at address: 5005
 > show baseDirectory
 [info] /s/t
 > exit
-[info] shutting down server
+[info] shutting down sbt server
 [success] Total time: 19 s, completed 25-Apr-2018 15:04:58
 ```
 
