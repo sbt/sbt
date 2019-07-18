@@ -176,11 +176,10 @@ object BuildLoader {
       resolve <- cs.resolver(new ResolveInfo(uri, staging, config, state))
       base = resolve()
       build <- cs.builder(new BuildInfo(uri, base, config, state))
-    } yield
-      () => {
-        val unit = build()
-        cs.transformer(new TransformInfo(uri, base, unit, config, state))
-      }
+    } yield () => {
+      val unit = build()
+      cs.transformer(new TransformInfo(uri, base, unit, config, state))
+    }
   }
 }
 

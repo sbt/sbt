@@ -96,22 +96,21 @@ class CacheIvyTest extends Properties("CacheIvy") {
       inclusions <- Gen.listOf(arbitrary[InclExclRule])
       extraAttributes <- Gen.mapOf(arbitrary[(String, String)])
       crossVersion <- arbitrary[CrossVersion]
-    } yield
-      ModuleID(
-        organization = o,
-        name = n,
-        revision = r,
-        configurations = cs,
-        isChanging = isChanging,
-        isTransitive = isTransitive,
-        isForce = isForce,
-        explicitArtifacts = explicitArtifacts.toVector,
-        inclusions = inclusions.toVector,
-        exclusions = exclusions.toVector,
-        extraAttributes = extraAttributes,
-        crossVersion = crossVersion,
-        branchName = branch
-      )
+    } yield ModuleID(
+      organization = o,
+      name = n,
+      revision = r,
+      configurations = cs,
+      isChanging = isChanging,
+      isTransitive = isTransitive,
+      isForce = isForce,
+      explicitArtifacts = explicitArtifacts.toVector,
+      inclusions = inclusions.toVector,
+      exclusions = exclusions.toVector,
+      extraAttributes = extraAttributes,
+      crossVersion = crossVersion,
+      branchName = branch
+    )
   }
 
   property("moduleIDFormat") = forAll { (m: ModuleID) =>

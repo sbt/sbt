@@ -3024,12 +3024,11 @@ object Classpaths {
       val art = (artifact in packageBin).value
       val module = projectID.value
       val config = configuration.value
-      for { (f, analysis) <- trackedExportedProductsImplTask(track).value } yield
-        APIMappings
-          .store(analyzed(f, analysis), apiURL.value)
-          .put(artifact.key, art)
-          .put(moduleID.key, module)
-          .put(configuration.key, config)
+      for { (f, analysis) <- trackedExportedProductsImplTask(track).value } yield APIMappings
+        .store(analyzed(f, analysis), apiURL.value)
+        .put(artifact.key, art)
+        .put(moduleID.key, module)
+        .put(configuration.key, config)
     }
   private[sbt] def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
     Def.task {
@@ -3037,12 +3036,11 @@ object Classpaths {
       val art = (artifact in packageBin).value
       val module = projectID.value
       val config = configuration.value
-      for { (f, analysis) <- trackedJarProductsImplTask(track).value } yield
-        APIMappings
-          .store(analyzed(f, analysis), apiURL.value)
-          .put(artifact.key, art)
-          .put(moduleID.key, module)
-          .put(configuration.key, config)
+      for { (f, analysis) <- trackedJarProductsImplTask(track).value } yield APIMappings
+        .store(analyzed(f, analysis), apiURL.value)
+        .put(artifact.key, art)
+        .put(moduleID.key, module)
+        .put(configuration.key, config)
     }
   private[this] def trackedExportedProductsImplTask(
       track: TrackLevel
