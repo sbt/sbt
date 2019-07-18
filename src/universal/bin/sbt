@@ -405,6 +405,7 @@ Usage: `basename "$0"` [options]
 
   -h | --help         print this message
   -v | --verbose      this runner is chattier
+  -V | --version      print the version of mothership sbt
   -d | --debug        set sbt log level to debug
   --no-colors         disable ANSI color codes
   --color=auto|always|true|false|never
@@ -512,6 +513,7 @@ process_args () {
     case "$1" in
        -h|-help) usage; exit 1 ;;
     -v|-verbose) verbose=1 && shift ;;
+    -V|-version) addSbt "sbtVersion" && shift ;;
       -d|-debug) debug=1 && addSbt "-debug" && shift ;;
 
            -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
