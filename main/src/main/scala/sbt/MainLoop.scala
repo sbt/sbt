@@ -170,7 +170,7 @@ object MainLoop {
                    "ScalaLibrary"
                else "")
         val msg: String =
-          s"Caught $oom\nTo best utilize classloader caching and to prevent file handle leaks, we" +
+          s"Caught $oom\nTo best utilize classloader caching and to prevent file handle leaks, we " +
             s"recommend running sbt without a MaxMetaspaceSize limit. $testOrRunMessage"
         state.log.error(msg)
         state.log.error("\n")
