@@ -195,8 +195,9 @@ object Aggregation {
       inputs: Values[InputTask[I]],
       show: ShowConfig
   )(implicit display: Show[ScopedKey[_]]): Parser[() => State] = {
-    val parsers = for (KeyValue(k, it) <- inputs)
-      yield it.parser(s).map(v => KeyValue(k, v))
+    val parsers =
+      for (KeyValue(k, it) <- inputs)
+        yield it.parser(s).map(v => KeyValue(k, v))
     Command.applyEffect(seq(parsers)) { roots =>
       runTasks(s, roots, DummyTaskMap(Nil), show)
     }

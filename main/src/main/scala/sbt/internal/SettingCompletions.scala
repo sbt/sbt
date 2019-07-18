@@ -149,8 +149,7 @@ private[sbt] object SettingCompletions {
       defineKey <- scopedKeyParser(keyMap, settings, context)
       a <- assign(defineKey)
       _ <- valueParser(defineKey, a)
-    } yield
-      () // parser is currently only for completion and the parsed data structures are not used
+    } yield () // parser is currently only for completion and the parsed data structures are not used
 
     matched(full) | any.+.string
   }

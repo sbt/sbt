@@ -267,8 +267,9 @@ object Plugins extends PluginsFunctions {
 
   private[this] def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]): Unit = {
     val dupsByAtom = byAtom.groupBy(_._1).mapValues(_.map(_._2))
-    val dupStrings = for ((atom, dups) <- dupsByAtom if dups.size > 1)
-      yield s"${atom.label} by ${dups.mkString(", ")}"
+    val dupStrings =
+      for ((atom, dups) <- dupsByAtom if dups.size > 1)
+        yield s"${atom.label} by ${dups.mkString(", ")}"
     val (ns, nl) = if (dupStrings.size > 1) ("s", "\n\t") else ("", " ")
     val message = s"Plugin$ns provided by multiple AutoPlugins:$nl${dupStrings.mkString(nl)}"
     throw AutoPluginException(message)

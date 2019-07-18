@@ -89,15 +89,14 @@ object Act {
     def globalKey =
       for {
         g <- globalIdent
-      } yield
-        taskKeyExtra(
-          index,
-          defaultConfigs,
-          keyMap,
-          None,
-          ParsedZero,
-          ScopeMask(true, true, false, false)
-        )
+      } yield taskKeyExtra(
+        index,
+        defaultConfigs,
+        keyMap,
+        None,
+        ParsedZero,
+        ScopeMask(true, true, false, false)
+      )
 
     globalKey | fullKey
   }
@@ -112,16 +111,15 @@ object Act {
   ): Seq[Parser[ParsedKey]] =
     for {
       conf <- configs(confAmb, defaultConfigs, proj, index)
-    } yield
-      for {
-        taskAmb <- taskAxis(index.tasks(proj, conf), keyMap)
-        task = resolveTask(taskAmb)
-        key <- key(index, proj, conf, task, keyMap)
-        extra <- extraAxis(keyMap, IMap.empty)
-      } yield {
-        val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
-        new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
-      }
+    } yield for {
+      taskAmb <- taskAxis(index.tasks(proj, conf), keyMap)
+      task = resolveTask(taskAmb)
+      key <- key(index, proj, conf, task, keyMap)
+      extra <- extraAxis(keyMap, IMap.empty)
+    } yield {
+      val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
+      new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
+    }
 
   def makeScopedKey(
       proj: Option[ResolvedReference],

@@ -442,8 +442,9 @@ object Tests {
       case _ => false
     })
     // TODO: To pass in correct explicitlySpecified and selectors
-    val tests = for ((df, di) <- discovered; fingerprint <- toFingerprints(di))
-      yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
+    val tests =
+      for ((df, di) <- discovered; fingerprint <- toFingerprints(di))
+        yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
     val mains = discovered collect { case (df, di) if di.hasMain => df.name }
     (tests, mains.toSet)
   }

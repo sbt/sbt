@@ -135,8 +135,10 @@ object SettingsTest extends Properties("settings") {
     forAll(mkAttrKeys[Int](2)) {
       case List(key, derivedKey) =>
         val projectKeys = for { proj <- 1 to nrProjects } yield ScopedKey(Scope(1, proj), key)
-        val projectDerivedKeys = for { proj <- 1 to nrProjects } yield
-          ScopedKey(Scope(1, proj), derivedKey)
+        val projectDerivedKeys = for { proj <- 1 to nrProjects } yield ScopedKey(
+          Scope(1, proj),
+          derivedKey
+        )
         val globalKey = ScopedKey(Scope(0), key)
         val globalDerivedKey = ScopedKey(Scope(0), derivedKey)
         // Each project defines an initial value, but the update is defined in globalKey.
