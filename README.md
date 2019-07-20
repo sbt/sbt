@@ -10,6 +10,7 @@ Usage: sbt [options]
 
   -h | -help         print this message
   -v | -verbose      this runner is chattier
+  -V | -version      print the version of mothership sbt
   -d | -debug        set sbt log level to debug
   -no-colors         disable ANSI color codes
   -sbt-create        start sbt even if current directory contains no sbt project
