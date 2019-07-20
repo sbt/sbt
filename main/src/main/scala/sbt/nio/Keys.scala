@@ -39,7 +39,7 @@ object Keys {
 
   val fileOutputs = settingKey[Seq[Glob]]("Describes the output files of a task.")
   val allOutputFiles =
-    taskKey[Seq[Path]]("All of the file output for a task excluding directories and hidden files.")
+    taskKey[Seq[Path]]("All of the file outputs for a task excluding directories and hidden files.")
   val changedOutputFiles =
     taskKey[Option[ChangedFiles]]("The files that have changed since the last task run.")
   val outputFileStamper = settingKey[FileStamper](
