@@ -24,8 +24,8 @@ import sbt.std.TaskExtra._
 import sjsonnew.JsonFormat
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.collection.immutable.VectorBuilder
+import scala.collection.mutable
 
 private[sbt] object Settings {
   private[sbt] def inject(transformed: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
@@ -227,13 +227,14 @@ private[sbt] object Settings {
       }) :: Nil
   private[this] def changedFilesImpl(
       scopedKey: Def.ScopedKey[_],
-      changeKey: TaskKey[Option[ChangedFiles]],
+      changeKey: TaskKey[Seq[(Path, FileStamp)] => Option[ChangedFiles]],
       stampKey: TaskKey[Seq[(Path, FileStamp)]]
   ): Def.Setting[_] =
     addTaskDefinition(changeKey in scopedKey.scope := {
       val current = (stampKey in scopedKey.scope).value
-      (stampKey in scopedKey.scope).previous.flatMap(changedFiles(_, current))
+      previous => changedFiles(previous, current)
     })
+
   private[sbt] def changedFiles(
       previous: Seq[(Path, FileStamp)],
       current: Seq[(Path, FileStamp)]

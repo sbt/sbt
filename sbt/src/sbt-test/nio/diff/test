@@ -1,5 +1,9 @@
--> fileInputTask
+> fileInputTask
 
 $ copy-file changes/Bar.md base/Bar.md
 
 > fileInputTask
+
+$ copy-file changes/Bar.md base/foo.md
+
+-> fileInputTask

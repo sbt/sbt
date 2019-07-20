@@ -9,7 +9,7 @@ copyFile / target := baseDirectory.value / "out"
 
 copyFile := Def.task {
   val prev = copyFile.previous
-  val changes: Option[Seq[Path]] = (copyFile / changedInputFiles).value.map {
+  val changes: Option[Seq[Path]] = copyFile.changedInputFiles.map {
     case ChangedFiles(c, _, u) => c ++ u
   }
   prev match {
@@ -35,9 +35,15 @@ checkOutDirectoryHasFile := {
   assert(result == Seq(baseDirectory.value / "out" / "Foo.txt"))
 }
 
-val checkCount = inputKey[Unit]("Check that the expected number of evaluations have run.")
-checkCount := Def.inputTask {
-  val expected = Def.spaceDelimited("").parsed.head.toInt
+commands += Command.single("checkCount") { (s, digits) =>
+  s"writeCount $digits" :: "checkCountImpl" :: s
+}
+
+val writeCount = inputKey[Unit]("writes the count to a file")
+writeCount := IO.write(baseDirectory.value / "expectedCount", Def.spaceDelimited().parsed.head)
+val checkCountImpl = taskKey[Unit]("Check that the expected number of evaluations have run.")
+checkCountImpl := {
+  val expected = IO.read(baseDirectory.value / "expectedCount").toInt
   val previous = copyFile.previous.getOrElse(0)
   assert(previous == expected)
-}.evaluated
+}
