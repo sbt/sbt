@@ -7,20 +7,22 @@ foo / fileInputs := Seq(
 )
 
 val checkModified = taskKey[Unit]("check that modified files are returned")
-checkModified := Def.taskDyn {
-  val modified = (foo / changedInputFiles).value.map(_.updated).getOrElse(Nil)
+checkModified := {
+  val changes = foo.changedInputFiles
+  val modified = changes.map(_.updated).getOrElse(Nil)
+  println(modified)
   val allFiles = (foo / allInputFiles).value
-  if (modified.isEmpty) Def.task(assert(true))
-  else Def.task {
+  if (modified.isEmpty) assert(true)
+  else {
     assert(modified != allFiles)
     assert(modified == Seq((baseDirectory.value / "base" / "Bar.md").toPath))
   }
-}.value
+}
 
 val checkRemoved = taskKey[Unit]("check that removed files are returned")
 checkRemoved := Def.taskDyn {
   val files = (foo / allInputFiles).value
-  val removed = (foo / changedInputFiles).value.map(_.deleted).getOrElse(Nil)
+  val removed = foo.changedInputFiles.map(_.deleted).getOrElse(Nil)
   if (removed.isEmpty) Def.task(assert(true))
   else Def.task {
     assert(files == Seq((baseDirectory.value / "base" / "Foo.txt").toPath))
@@ -31,7 +33,7 @@ checkRemoved := Def.taskDyn {
 val checkAdded = taskKey[Unit]("check that modified files are returned")
 checkAdded := Def.taskDyn {
   val files = (foo / allInputFiles).value
-  val added = (foo / changedInputFiles).value.map(_.created).getOrElse(Nil)
+  val added = foo.changedInputFiles.map(_.created).getOrElse(Nil)
   if (added.isEmpty || (files.toSet == added.toSet)) Def.task(assert(true))
   else Def.task {
     val base = baseDirectory.value / "base"

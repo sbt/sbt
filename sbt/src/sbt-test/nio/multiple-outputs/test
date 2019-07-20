@@ -1,0 +1,23 @@
+> check
+
+$ copy-file changes/bad.md foo/foo.md
+
+$ copy-file changes/updated.md bar/bar.md
+
+# just in case the two of foo.md copies happen too quickly to update the last modified time
+> setModified foo/foo.md 123456
+
+-> check
+
+-> check
+
+$ copy-file changes/updated.md foo/foo.md
+
+# just in case the two of foo.md copies happen too quickly to update the last modified time
+> setModified foo/foo.md 12345678
+
+> check
+
+# the changes should be empty now but the content of foo/foo.md is no longer "foo"
+-> check
+

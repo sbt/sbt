@@ -10,6 +10,7 @@ package sbt.internal
 import java.nio.file.{ Path, Paths }
 
 import org.scalatest.FlatSpec
+import sbt.Scope
 import sbt.nio.FileStamp
 import sbt.nio.FileStamp.Formats
 import sjsonnew.support.scalajson.unsafe.Converter
@@ -49,5 +50,18 @@ class FileStampJsonSpec extends FlatSpec {
     val json = Converter.toJsonUnsafe(both)
     val deserialized = Converter.fromJsonUnsafe(json)
     assert(both == deserialized)
+  }
+  "maps" should "be serializable" in {
+    val hashes = Seq(
+      Paths.get("foo") -> (FileStamp.hash("bar"): FileStamp),
+      Paths.get("bar") -> (FileStamp.hash("buzz"): FileStamp)
+    )
+    val scope = Scope.Global.in(sbt.Keys.compile.key).toString
+    import Formats.fileStampJsonFormatter
+    import sjsonnew.BasicJsonProtocol._
+    val map = Map(scope -> hashes)
+    val json = Converter.toJsonUnsafe(map)
+    val deserialized = Converter.fromJsonUnsafe[Map[String, Seq[(Path, FileStamp)]]](json)
+    assert(map == deserialized)
   }
 }

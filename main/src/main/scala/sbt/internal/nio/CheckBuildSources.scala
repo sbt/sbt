@@ -22,8 +22,11 @@ private[sbt] object CheckBuildSources {
     (onChangedBuildSource in Scope.Global).value match {
       case IgnoreSourceChanges => ()
       case o =>
+        import sbt.nio.FileStamp.Formats._
         logger.debug("Checking for meta build source updates")
-        (changedInputFiles in checkBuildSources).value match {
+        val previous = (inputFileStamps in checkBuildSources).previous
+        val changes = (changedInputFiles in checkBuildSources).value
+        previous.flatMap(changes) match {
           case Some(cf: ChangedFiles) if !firstTime =>
             val rawPrefix = s"build source files have changed\n" +
               (if (cf.created.nonEmpty) s"new files: ${cf.created.mkString("\n  ", "\n  ", "\n")}"

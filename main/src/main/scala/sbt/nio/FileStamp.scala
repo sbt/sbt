@@ -22,9 +22,9 @@ object FileStamper {
   case object Hash extends FileStamper
   case object LastModified extends FileStamper
 }
-private[sbt] sealed trait FileStamp
+sealed trait FileStamp
 
-private[sbt] object FileStamp {
+object FileStamp {
   private[sbt] type Id[T] = T
 
   private[sbt] implicit class Ops(val fileStamp: FileStamp) {

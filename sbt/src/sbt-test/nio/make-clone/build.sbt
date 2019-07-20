@@ -11,18 +11,20 @@ compileLib / fileInputs := {
 }
 compileLib / target := baseDirectory.value / "out" / "objects"
 compileLib := {
+  val objectDir: Path = (compileLib / target).value.toPath / "objects"
+  def objectPath(path: Path): Path = {
+    val name = path.getFileName.toString
+    objectDir.resolve(name.substring(0, name.lastIndexOf('.')) + ".o")
+  }
   val allFiles: Seq[Path] = (compileLib / allInputFiles).value
-  val changedFiles: Option[Seq[Path]] = (compileLib / changedInputFiles).value match {
-    case Some(ChangedFiles(c, _, u)) => Some(c ++ u)
+  val changedFiles: Option[Seq[Path]] = compileLib.changedInputFiles match {
+    case Some(ChangedFiles(c, d, u)) =>
+      d.foreach(p => Files.deleteIfExists(objectPath(p)))
+      Some(c ++ u)
     case None => None
   }
   val include = (compileLib / sourceDirectory).value / "include"
-  val objectDir: Path = (compileLib / target).value.toPath / "objects"
   val logger = streams.value.log
-  def objectFileName(path: Path): String = {
-    val name = path.getFileName.toString
-    name.substring(0, name.lastIndexOf('.')) + ".o"
-  }
   compileLib.previous match {
     case Some(outputs: Seq[Path]) if changedFiles.isEmpty =>
       logger.info("Not compiling libfoo: no inputs have changed.")
@@ -34,20 +36,21 @@ compileLib := {
         if (changedFiles.fold(false)(_.exists(extensionFilter("h"))))
           allFiles.filter(extensionFilter("c"))
         else changedFiles.getOrElse(allFiles).filter(extensionFilter("c"))
-      cFiles.map { file =>
-        val outFile = objectDir.resolve(objectFileName(file))
+      cFiles.sorted.foreach { file =>
+        val outFile = objectPath(file)
         logger.info(s"Compiling $file to $outFile")
         (Seq("gcc") ++ compileOpts.value ++
           Seq("-c", file.toString, s"-I$include", "-o", outFile.toString)).!!
         outFile
       }
+      allFiles.filter(extensionFilter("c")).map(objectPath)
   }
 }
 
 val linkLib = taskKey[Path]("")
 linkLib / target := baseDirectory.value / "out" / "lib"
 linkLib := {
-  val changedObjects = (compileLib / changedOutputFiles).value
+  val changedObjects = compileLib.changedOutputFiles
   val outPath = (linkLib / target).value.toPath
   val allObjects = (compileLib / allOutputFiles).value.map(_.toString)
   val logger = streams.value.log
@@ -76,8 +79,8 @@ compileMain / fileInputs := (compileMain / sourceDirectory).value.toGlob / "main
 compileMain / target := baseDirectory.value / "out" / "main"
 compileMain := {
   val library = linkLib.value
-  val changed: Boolean = (compileMain / changedInputFiles).value.nonEmpty ||
-    (linkLib / changedOutputFiles).value.nonEmpty
+  val changed: Boolean = compileMain.changedInputFiles.nonEmpty ||
+    linkLib.changedOutputFiles.nonEmpty
   val include = (compileLib / sourceDirectory).value / "include"
   val logger = streams.value.log
   val outDir = (compileMain / target).value.toPath

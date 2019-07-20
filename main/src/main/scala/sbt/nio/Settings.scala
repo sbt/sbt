@@ -25,7 +25,6 @@ import sjsonnew.JsonFormat
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.collection.immutable.VectorBuilder
 
 private[sbt] object Settings {
   private[sbt] def inject(transformed: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
@@ -36,8 +35,51 @@ private[sbt] object Settings {
     val cleanScopes = new java.util.HashSet[Scope].asScala
     transformed.flatMap {
       case s if s.key.key == sbt.nio.Keys.fileInputs.key => inputPathSettings(s)
-      case s                                             => s :: maybeAddOutputsAndFileStamps(s, fileOutputScopes, cleanScopes)
+      case s =>
+        s ::
+          injectDependencyMapSettings(s) :::
+          maybeAddOutputsAndFileStamps(s, fileOutputScopes, cleanScopes)
     } ++ addCleanImpls(cleanScopes.toSeq)
+  }
+
+  private[this] def injectDependencyMapSettings(setting: Def.Setting[_]): List[Def.Setting[_]] = {
+    lazy val scope = setting.key.scope in setting.key.key
+    val fileMapDependencies = mutable.Set.empty[TaskKey[Map[String, Seq[(Path, FileStamp)]]]]
+    val injected = setting.dependencies.toList.flatMap {
+      case s if s.key == sbt.Keys.taskScope.key && s.scope.task.toOption.isDefined =>
+        val anyScope = s.asInstanceOf[Def.ScopedKey[Scope]]
+        val init = Def.pure(() => s.scopedKey.scope)
+        Def.setting[Scope](anyScope, init, setting.pos) :: Nil
+      case s if s.key == changedInputFiles.key =>
+        fileMapDependencies += inputFileDependencyMap in scope
+        injectDependencyMap(scope, s.scope, setting.pos, isInput = true)
+      case s if s.key == changedOutputFiles.key =>
+        fileMapDependencies += outputFileDependencyMap in scope
+        injectDependencyMap(scope, s.scope, setting.pos, isInput = false)
+      case _ => Nil
+    }
+    if (fileMapDependencies.nonEmpty) {
+      val taskSetting = setting.asInstanceOf[Def.Setting[Task[Any]]]
+      taskSetting.mapInitialize(_.dependsOn(fileMapDependencies.toSeq: _*)) :: injected
+    } else injected
+  }
+  private[this] def injectDependencyMap(
+      scope: Scope,
+      changeScope: Scope,
+      position: SourcePosition,
+      isInput: Boolean
+  ): List[Def.Setting[_]] = {
+    val injectKey =
+      Def.ScopedKey(scope, (if (isInput) inputFileDependencyMap else outputFileDependencyMap).key)
+    val stampKey = (if (isInput) inputFileStamps else outputFileStamps) in changeScope
+    addTaskDefinition {
+      val init: Def.Initialize[Task[Map[String, Seq[(Path, FileStamp)]]]] =
+        injectKey.zip(stampKey).flatMap {
+          case (mapT, stampsT) =>
+            mapT.flatMap(map => stampsT.map(stamps => map + (changeScope.toString -> stamps)))
+        }
+      Def.setting[Task[Map[String, Seq[(Path, FileStamp)]]]](injectKey, init, position)
+    } :: Nil
   }
 
   /**
@@ -227,40 +269,11 @@ private[sbt] object Settings {
       }) :: Nil
   private[this] def changedFilesImpl(
       scopedKey: Def.ScopedKey[_],
-      changeKey: TaskKey[Option[ChangedFiles]],
+      changeKey: TaskKey[Seq[(Path, FileStamp)] => Option[ChangedFiles]],
       stampKey: TaskKey[Seq[(Path, FileStamp)]]
   ): Def.Setting[_] =
     addTaskDefinition(changeKey in scopedKey.scope := {
-      val current = (stampKey in scopedKey.scope).value
-      (stampKey in scopedKey.scope).previous match {
-        case Some(previous) =>
-          val createdBuilder = new VectorBuilder[Path]
-          val deletedBuilder = new VectorBuilder[Path]
-          val updatedBuilder = new VectorBuilder[Path]
-          val currentMap = current.toMap
-          val prevMap = previous.toMap
-          current.foreach {
-            case (path, currentStamp) =>
-              prevMap.get(path) match {
-                case Some(oldStamp) => if (oldStamp != currentStamp) updatedBuilder += path
-                case None           => createdBuilder += path
-              }
-          }
-          previous.foreach {
-            case (path, _) =>
-              if (currentMap.get(path).isEmpty) deletedBuilder += path
-          }
-          val created = createdBuilder.result()
-          val deleted = deletedBuilder.result()
-          val updated = updatedBuilder.result()
-          if (created.isEmpty && deleted.isEmpty && updated.isEmpty) {
-            None
-          } else {
-            val cf = ChangedFiles(created = created, deleted = deleted, updated = updated)
-            Some(cf)
-          }
-        case None => None
-      }
+      FileChanges.apply((stampKey in scopedKey.scope).value, _)
     })
 
   /**

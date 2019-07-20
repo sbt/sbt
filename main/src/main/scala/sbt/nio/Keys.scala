@@ -29,7 +29,8 @@ object Keys {
   case object ReloadOnSourceChanges extends WatchBuildSourceOption
   val allInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
-  val changedInputFiles = taskKey[Option[ChangedFiles]]("The changed files for a task")
+  val changedInputFiles =
+    taskKey[Seq[(Path, FileStamp)] => Option[ChangedFiles]]("The changed files for a task")
   val fileInputs = settingKey[Seq[Glob]](
     "The file globs that are used by a task. This setting will generally be scoped per task. It will also be used to determine the sources to watch during continuous execution."
   )
@@ -41,7 +42,9 @@ object Keys {
   val allOutputFiles =
     taskKey[Seq[Path]]("All of the file outputs for a task excluding directories and hidden files.")
   val changedOutputFiles =
-    taskKey[Option[ChangedFiles]]("The files that have changed since the last task run.")
+    taskKey[Seq[(Path, FileStamp)] => Option[ChangedFiles]](
+      "The files that have changed since the last task run."
+    )
   val outputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
@@ -130,12 +133,19 @@ object Keys {
   private[sbt] val dynamicFileOutputs =
     taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
 
+  private def depMapDesc(kind: String): String =
+    s"A map containing the $kind paths and stamps for a number of tasks. The map is keyed by the " +
+      "string representation of the scope to which each collection of paths and stamps corresponds"
+  val inputFileDependencyMap =
+    taskKey[Map[String, Seq[(Path, FileStamp)]]](depMapDesc("input")).withRank(Invisible)
   private[sbt] val inputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
       .withRank(Invisible)
   private[sbt] val outputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task output files")
       .withRank(Invisible)
+  val outputFileDependencyMap =
+    taskKey[Map[String, Seq[(Path, FileStamp)]]](depMapDesc("output")).withRank(Invisible)
   private[sbt] type FileAttributeMap =
     java.util.Map[Path, FileStamp]
   private[sbt] val persistentFileStampCache =

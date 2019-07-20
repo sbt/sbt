@@ -11,6 +11,7 @@ import sbt.Def.{ Initialize, ScopedKey }
 import sbt.Previous._
 import sbt.Scope.Global
 import sbt.internal.util.{ IMap, RMap, ~> }
+import sbt.std.TaskExtra._
 import sbt.util.StampedFormat
 import sjsonnew.JsonFormat
 
@@ -61,6 +62,16 @@ object Previous {
     KeyRanks.Invisible
   )
 
+  private[sbt] trait Extractor {
+    def apply[T: JsonFormat](scopedKey: ScopedKey[Task[T]]): Option[T]
+  }
+  private class ExtractorImpl(previous: Previous, references: References) extends Extractor {
+    override def apply[T: JsonFormat](s: ScopedKey[Task[T]]): Option[T] = {
+      references.recordReference(s, implicitly[JsonFormat[T]])
+      previous.get(s)
+    }
+  }
+
   /** Records references to previous task value. This should be completely populated after settings finish loading. */
   private[sbt] final class References {
     private[this] var map = IMap.empty[ScopedTaskKey, Referenced]
@@ -99,8 +110,12 @@ object Previous {
     inputs {
       case ((prevTask, resolved), refs) =>
         refs.recordReference(resolved, format) // always evaluated on project load
-        import std.TaskExtra._
         prevTask.map(_ get resolved) // evaluated if this task is evaluated
     }
+  }
+
+  /** Public as a macro implementation detail. Do not call directly. */
+  def extractor: Initialize[Task[Extractor]] = {
+    (cache in Global).zip(references in Global) { case (c, r) => c.map(new ExtractorImpl(_, r)) }
   }
 }

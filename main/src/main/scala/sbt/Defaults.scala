@@ -150,6 +150,8 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       fileInputs :== Nil,
+      inputFileDependencyMap :== Map.empty,
+      outputFileDependencyMap :== Map.empty,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
       onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
