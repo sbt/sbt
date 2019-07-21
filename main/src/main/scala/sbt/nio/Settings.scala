@@ -36,7 +36,7 @@ private[sbt] object Settings {
     val cleanScopes = new java.util.HashSet[Scope].asScala
     transformed.flatMap {
       case s if s.key.key == sbt.nio.Keys.fileInputs.key => inputPathSettings(s)
-      case s                                             => maybeAddOutputsAndFileStamps(s, fileOutputScopes, cleanScopes)
+      case s                                             => s :: maybeAddOutputsAndFileStamps(s, fileOutputScopes, cleanScopes)
     } ++ addCleanImpls(cleanScopes.toSeq)
   }
 
@@ -57,27 +57,20 @@ private[sbt] object Settings {
       setting: Def.Setting[_],
       fileOutputScopes: Set[Scope],
       cleanScopes: mutable.Set[Scope]
-  ): Seq[Def.Setting[_]] = {
+  ): List[Def.Setting[_]] = {
     setting.key.key match {
       case ak: AttributeKey[_] if taskClass.isAssignableFrom(ak.manifest.runtimeClass) =>
-        def default: Seq[Def.Setting[_]] = {
+        def default: List[Def.Setting[_]] = {
           val scope = setting.key.scope.copy(task = Select(ak))
           if (fileOutputScopes.contains(scope)) {
             val sk = setting.asInstanceOf[Def.Setting[Task[Any]]].key
             val scopedKey = sk.scopedKey.copy(sk.scope in sk.key, Keys.dynamicFileOutputs.key)
             cleanScopes.add(scope)
-            Vector(
-              setting,
-              addTaskDefinition {
-                val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_ => Nil))
-                Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
-              }
-            ) ++ Vector(
-              allOutputPathsImpl(scope),
-              outputFileStampsImpl(scope),
-              cleanImpl(scope)
-            )
-          } else setting :: Nil
+            addTaskDefinition {
+              val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_ => Nil))
+              Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
+            } :: allOutputPathsImpl(scope) :: outputFileStampsImpl(scope) :: cleanImpl(scope) :: Nil
+          } else Nil
         }
         ak.manifest.typeArguments match {
           case t :: Nil if seqClass.isAssignableFrom(t.runtimeClass) =>
@@ -86,51 +79,39 @@ private[sbt] object Settings {
               case f :: Nil if fileClass.isAssignableFrom(f.runtimeClass) =>
                 val sk = setting.asInstanceOf[Def.Setting[Task[Seq[File]]]].key
                 val scopedKey = sk.scopedKey.copy(sk.scope in sk.key, Keys.dynamicFileOutputs.key)
-                Vector(
-                  setting,
-                  addTaskDefinition {
-                    val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_.map(_.toPath)))
-                    Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
-                  }
-                ) ++ outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
+                addTaskDefinition {
+                  val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_.map(_.toPath)))
+                  Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
+                } :: outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
               // Task[Seq[Path]]
               case p :: Nil if pathClass.isAssignableFrom(p.runtimeClass) =>
                 val sk = setting.asInstanceOf[Def.Setting[Task[Seq[Path]]]].key
                 val scopedKey = sk.scopedKey.copy(sk.scope in sk.key, Keys.dynamicFileOutputs.key)
-                Vector(
-                  setting,
-                  addTaskDefinition {
-                    val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(identity))
-                    Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
-                  }
-                ) ++ outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
+                addTaskDefinition {
+                  val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(identity))
+                  Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
+                } :: outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
               case _ => default
             }
           // Task[File]
           case t :: Nil if fileClass.isAssignableFrom(t.runtimeClass) =>
             val sk = setting.asInstanceOf[Def.Setting[Task[File]]].key
             val scopedKey = sk.scopedKey.copy(sk.scope in sk.key, Keys.dynamicFileOutputs.key)
-            Vector(
-              setting,
-              addTaskDefinition {
-                val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_.toPath :: Nil))
-                Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
-              }
-            ) ++ outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
+            addTaskDefinition {
+              val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_.toPath :: Nil))
+              Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
+            } :: outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
           // Task[Path]
           case t :: Nil if pathClass.isAssignableFrom(t.runtimeClass) =>
             val sk = setting.asInstanceOf[Def.Setting[Task[Path]]].key
             val scopedKey = sk.scopedKey.copy(sk.scope in sk.key, Keys.dynamicFileOutputs.key)
-            Vector(
-              setting,
-              addTaskDefinition {
-                val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_ :: Nil))
-                Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
-              }
-            ) ++ outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
+            addTaskDefinition {
+              val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_ :: Nil))
+              Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
+            } :: outputsAndStamps(TaskKey(sk.key) in sk.scope, cleanScopes)
           case _ => default
         }
-      case _ => setting :: Nil
+      case _ => Nil
     }
   }
   private[sbt] val inject: Def.ScopedKey[_] => Seq[Def.Setting[_]] = scopedKey =>
@@ -298,7 +279,7 @@ private[sbt] object Settings {
    * @param taskKey the task for which we add a custom clean implementation
    * @return a task specificic clean implementation
    */
-  private[sbt] def cleanImpl[T: JsonFormat: ToSeqPath](taskKey: TaskKey[T]): Seq[Def.Setting[_]] = {
+  private[sbt] def cleanImpl[T: JsonFormat: ToSeqPath](taskKey: TaskKey[T]): Def.Setting[_] = {
     val taskScope = taskKey.scope in taskKey.key
     addTaskDefinition(sbt.Keys.clean in taskScope := Def.taskDyn {
       // the clean file task needs to run first because the previous cache gets blown away
@@ -341,10 +322,10 @@ private[sbt] object Settings {
   private[this] def outputsAndStamps[T: JsonFormat: ToSeqPath](
       taskKey: TaskKey[T],
       cleanScopes: mutable.Set[Scope]
-  ): Seq[Def.Setting[_]] = {
+  ): List[Def.Setting[_]] = {
     val scope = taskKey.scope in taskKey.key
     cleanScopes.add(scope)
-    Vector(allOutputPathsImpl(scope), outputFileStampsImpl(scope)) ++ cleanImpl(taskKey)
+    allOutputPathsImpl(scope) :: outputFileStampsImpl(scope) :: cleanImpl(taskKey) :: Nil
   }
   private[this] def allOutputPathsImpl(scope: Scope): Def.Setting[_] =
     addTaskDefinition(allOutputFiles in scope := {
