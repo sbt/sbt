@@ -65,115 +65,22 @@ private[sbt] object FileStamp {
   final case class LastModified private[sbt] (time: Long) extends FileStamp
   final case class Error(exception: IOException) extends FileStamp
 
-  implicit val pathJsonFormatter: JsonFormat[Seq[Path]] = new JsonFormat[Seq[Path]] {
-    override def write[J](obj: Seq[Path], builder: Builder[J]): Unit = {
-      builder.beginArray()
-      obj.foreach { path =>
-        builder.writeString(path.toString)
-      }
-      builder.endArray()
-    }
-
-    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[Path] =
-      jsOpt match {
-        case Some(js) =>
-          val size = unbuilder.beginArray(js)
-          val res = (1 to size) map { _ =>
-            Paths.get(unbuilder.readString(unbuilder.nextElement))
-          }
-          unbuilder.endArray()
-          res
-        case None =>
-          deserializationError("Expected JsArray but found None")
-      }
-  }
-
-  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = new JsonFormat[Seq[File]] {
-    override def write[J](obj: Seq[File], builder: Builder[J]): Unit = {
-      builder.beginArray()
-      obj.foreach { file =>
-        builder.writeString(file.toString)
-      }
-      builder.endArray()
-    }
-
-    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[File] =
-      jsOpt match {
-        case Some(js) =>
-          val size = unbuilder.beginArray(js)
-          val res = (1 to size) map { _ =>
-            new File(unbuilder.readString(unbuilder.nextElement))
-          }
-          unbuilder.endArray()
-          res
-        case None =>
-          deserializationError("Expected JsArray but found None")
-      }
-  }
-  implicit val fileJson: JsonFormat[File] = new JsonFormat[File] {
-    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): File =
-      fileJsonFormatter.read(jsOpt, unbuilder).head
-    override def write[J](obj: File, builder: Builder[J]): Unit =
-      fileJsonFormatter.write(obj :: Nil, builder)
-  }
-  implicit val pathJson: JsonFormat[Path] = new JsonFormat[Path] {
-    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Path =
-      pathJsonFormatter.read(jsOpt, unbuilder).head
-    override def write[J](obj: Path, builder: Builder[J]): Unit =
-      pathJsonFormatter.write(obj :: Nil, builder)
-  }
-  implicit val fileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
-    new JsonFormat[Seq[(Path, FileStamp)]] {
-      override def write[J](obj: Seq[(Path, FileStamp)], builder: Builder[J]): Unit = {
-        val (hashes, lastModifiedTimes) = obj.partition(_._2.isInstanceOf[Hash])
-        builder.beginObject()
-        builder.addField("hashes", hashes.asInstanceOf[Seq[(Path, Hash)]])(fileHashJsonFormatter)
-        builder.addField(
-          "lastModifiedTimes",
-          lastModifiedTimes.asInstanceOf[Seq[(Path, LastModified)]]
-        )(
-          fileLastModifiedJsonFormatter
-        )
-        builder.endObject()
-      }
-
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[(Path, FileStamp)] =
-        jsOpt match {
-          case Some(js) =>
-            unbuilder.beginObject(js)
-            val hashes = unbuilder.readField("hashes")(fileHashJsonFormatter)
-            val lastModifieds =
-              unbuilder.readField("lastModifiedTimes")(fileLastModifiedJsonFormatter)
-            unbuilder.endObject()
-            hashes ++ lastModifieds
-          case None =>
-            deserializationError("Expected JsObject but found None")
-        }
-    }
-  val fileHashJsonFormatter: JsonFormat[Seq[(Path, Hash)]] =
-    new JsonFormat[Seq[(Path, Hash)]] {
-      override def write[J](obj: Seq[(Path, Hash)], builder: Builder[J]): Unit = {
+  object Formats {
+    implicit val pathJsonFormatter: JsonFormat[Seq[Path]] = new JsonFormat[Seq[Path]] {
+      override def write[J](obj: Seq[Path], builder: Builder[J]): Unit = {
         builder.beginArray()
-        obj.foreach {
-          case (p, h) =>
-            builder.beginArray()
-            builder.writeString(p.toString)
-            builder.writeString(h.hex)
-            builder.endArray()
+        obj.foreach { path =>
+          builder.writeString(path.toString)
         }
         builder.endArray()
       }
 
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[(Path, Hash)] =
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[Path] =
         jsOpt match {
           case Some(js) =>
             val size = unbuilder.beginArray(js)
             val res = (1 to size) map { _ =>
-              unbuilder.beginArray(unbuilder.nextElement)
-              val path = Paths.get(unbuilder.readString(unbuilder.nextElement))
-              val hash = FileStamp.hash(unbuilder.readString(unbuilder.nextElement))
-              unbuilder.endArray()
-              path -> hash
+              Paths.get(unbuilder.readString(unbuilder.nextElement))
             }
             unbuilder.endArray()
             res
@@ -181,30 +88,22 @@ private[sbt] object FileStamp {
             deserializationError("Expected JsArray but found None")
         }
     }
-  val fileLastModifiedJsonFormatter: JsonFormat[Seq[(Path, LastModified)]] =
-    new JsonFormat[Seq[(Path, LastModified)]] {
-      override def write[J](obj: Seq[(Path, LastModified)], builder: Builder[J]): Unit = {
+
+    implicit val fileJsonFormatter: JsonFormat[Seq[File]] = new JsonFormat[Seq[File]] {
+      override def write[J](obj: Seq[File], builder: Builder[J]): Unit = {
         builder.beginArray()
-        obj.foreach {
-          case (p, lm) =>
-            builder.beginArray()
-            builder.writeString(p.toString)
-            builder.writeLong(lm.time)
-            builder.endArray()
+        obj.foreach { file =>
+          builder.writeString(file.toString)
         }
         builder.endArray()
       }
 
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[(Path, LastModified)] =
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[File] =
         jsOpt match {
           case Some(js) =>
             val size = unbuilder.beginArray(js)
             val res = (1 to size) map { _ =>
-              unbuilder.beginArray(unbuilder.nextElement)
-              val path = Paths.get(unbuilder.readString(unbuilder.nextElement))
-              val hash = FileStamp.LastModified(unbuilder.readLong(unbuilder.nextElement))
-              unbuilder.endArray()
-              path -> hash
+              new File(unbuilder.readString(unbuilder.nextElement))
             }
             unbuilder.endArray()
             res
@@ -212,6 +111,111 @@ private[sbt] object FileStamp {
             deserializationError("Expected JsArray but found None")
         }
     }
+    implicit val fileJson: JsonFormat[File] = new JsonFormat[File] {
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): File =
+        fileJsonFormatter.read(jsOpt, unbuilder).head
+
+      override def write[J](obj: File, builder: Builder[J]): Unit =
+        fileJsonFormatter.write(obj :: Nil, builder)
+    }
+    implicit val pathJson: JsonFormat[Path] = new JsonFormat[Path] {
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Path =
+        pathJsonFormatter.read(jsOpt, unbuilder).head
+
+      override def write[J](obj: Path, builder: Builder[J]): Unit =
+        pathJsonFormatter.write(obj :: Nil, builder)
+    }
+    implicit val fileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
+      new JsonFormat[Seq[(Path, FileStamp)]] {
+        override def write[J](obj: Seq[(Path, FileStamp)], builder: Builder[J]): Unit = {
+          val (hashes, lastModifiedTimes) = obj.partition(_._2.isInstanceOf[Hash])
+          builder.beginObject()
+          builder.addField("hashes", hashes.asInstanceOf[Seq[(Path, Hash)]])(fileHashJsonFormatter)
+          builder.addField(
+            "lastModifiedTimes",
+            lastModifiedTimes.asInstanceOf[Seq[(Path, LastModified)]]
+          )(
+            fileLastModifiedJsonFormatter
+          )
+          builder.endObject()
+        }
+
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[(Path, FileStamp)] =
+          jsOpt match {
+            case Some(js) =>
+              unbuilder.beginObject(js)
+              val hashes = unbuilder.readField("hashes")(fileHashJsonFormatter)
+              val lastModifieds =
+                unbuilder.readField("lastModifiedTimes")(fileLastModifiedJsonFormatter)
+              unbuilder.endObject()
+              hashes ++ lastModifieds
+            case None =>
+              deserializationError("Expected JsObject but found None")
+          }
+      }
+    implicit val fileHashJsonFormatter: JsonFormat[Seq[(Path, Hash)]] =
+      new JsonFormat[Seq[(Path, Hash)]] {
+        override def write[J](obj: Seq[(Path, Hash)], builder: Builder[J]): Unit = {
+          builder.beginArray()
+          obj.foreach {
+            case (p, h) =>
+              builder.beginArray()
+              builder.writeString(p.toString)
+              builder.writeString(h.hex)
+              builder.endArray()
+          }
+          builder.endArray()
+        }
+
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[(Path, Hash)] =
+          jsOpt match {
+            case Some(js) =>
+              val size = unbuilder.beginArray(js)
+              val res = (1 to size) map { _ =>
+                unbuilder.beginArray(unbuilder.nextElement)
+                val path = Paths.get(unbuilder.readString(unbuilder.nextElement))
+                val hash = FileStamp.hash(unbuilder.readString(unbuilder.nextElement))
+                unbuilder.endArray()
+                path -> hash
+              }
+              unbuilder.endArray()
+              res
+            case None =>
+              deserializationError("Expected JsArray but found None")
+          }
+      }
+    implicit val fileLastModifiedJsonFormatter: JsonFormat[Seq[(Path, LastModified)]] =
+      new JsonFormat[Seq[(Path, LastModified)]] {
+        override def write[J](obj: Seq[(Path, LastModified)], builder: Builder[J]): Unit = {
+          builder.beginArray()
+          obj.foreach {
+            case (p, lm) =>
+              builder.beginArray()
+              builder.writeString(p.toString)
+              builder.writeLong(lm.time)
+              builder.endArray()
+          }
+          builder.endArray()
+        }
+
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[(Path, LastModified)] =
+          jsOpt match {
+            case Some(js) =>
+              val size = unbuilder.beginArray(js)
+              val res = (1 to size) map { _ =>
+                unbuilder.beginArray(unbuilder.nextElement)
+                val path = Paths.get(unbuilder.readString(unbuilder.nextElement))
+                val hash = FileStamp.LastModified(unbuilder.readLong(unbuilder.nextElement))
+                unbuilder.endArray()
+                path -> hash
+              }
+              unbuilder.endArray()
+              res
+            case None =>
+              deserializationError("Expected JsArray but found None")
+          }
+      }
+  }
 
   private implicit class EitherOps(val e: Either[FileStamp, FileStamp]) extends AnyVal {
     def value: Option[FileStamp] = if (e == null) None else Some(e.fold(identity, identity))
