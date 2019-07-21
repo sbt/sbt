@@ -34,11 +34,11 @@ package object sbt
   implicit def filesToFinder(cc: Traversable[File]): sbt.io.PathFinder =
     sbt.io.PathFinder.strict(cc)
   implicit val fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
-    FileStamp.fileStampJsonFormatter
-  implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.pathJsonFormatter
-  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.fileJsonFormatter
-  implicit val singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.pathJson
-  implicit val singleFileJsonFormatter: JsonFormat[File] = FileStamp.fileJson
+    FileStamp.Formats.seqPathFileStampJsonFormatter
+  implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.Formats.seqPathJsonFormatter
+  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.Formats.seqFileJsonFormatter
+  implicit val singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.Formats.pathJsonFormatter
+  implicit val singleFileJsonFormatter: JsonFormat[File] = FileStamp.Formats.fileJsonFormatter
   // others
 
   object CompileOrder {

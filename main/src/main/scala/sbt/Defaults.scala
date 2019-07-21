@@ -605,6 +605,7 @@ object Defaults extends BuildCommon {
       s"inc_compile$extra.zip"
     },
     externalHooks := {
+      import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
       val current =
         (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
       val previous = (externalHooks / inputFileStamps).previous
