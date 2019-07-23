@@ -6,6 +6,7 @@ mappings in (Compile, packageBin) ++= {
   val test = file("test")
   Seq(
     test -> "test1",
+    test -> "test1",
     test -> "test2"
   )
 }
