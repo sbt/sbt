@@ -7,7 +7,7 @@ import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
 import sbt.Project.inTask
 import sbt.KeyRanks.DTask
-import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyResolution, ivyPaths, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
+import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyOverrides, dependencyResolution, ivyPaths, scalaBinaryVersion, scalaModuleInfo, scalaOrganization, scalaVersion, streams, updateClassifiers, updateSbtClassifiers}
 import sbt.librarymanagement.DependencyResolution
 
 import scala.language.reflectiveCalls
@@ -83,6 +83,7 @@ object LmCoursierPlugin extends AutoPlugin {
         val rs = resolversTask.value
         val scalaOrg = scalaOrganization.value
         val scalaVer = scalaVersion.value
+        val sbv = scalaBinaryVersion.value
         val interProjectDependencies = interProjectDependenciesTask.value
         val extraProjects = coursierExtraProjects.value
         val excludeDeps = Inputs.exclusions(
@@ -94,6 +95,9 @@ object LmCoursierPlugin extends AutoPlugin {
         val fallbackDeps = coursierFallbackDependencies.value
         val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
         val profiles = mavenProfiles.value
+
+
+        val userForceVersions = Inputs.forceVersions(dependencyOverrides.value, scalaVer, sbv)
 
         val authenticationByRepositoryId = coursierCredentials.value.mapValues { c =>
           val a = c.authentication
@@ -143,6 +147,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withLog(s.log)
           .withIvyHome(ivyPaths.value.ivyHome)
           .withStrict(strict)
+          .withForceVersions(userForceVersions.toVector)
       }
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =

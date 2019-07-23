@@ -157,7 +157,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       params = coursier.params.ResolutionParams()
         .withMaxIterations(conf.maxIterations)
         .withProfiles(conf.mavenProfiles.toSet)
-        .withForceVersion(Map.empty)
+        .withForceVersion(conf.forceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
         .withTypelevel(typelevel),
       strictOpt = conf.strict.map(ToCoursier.strict)
     )

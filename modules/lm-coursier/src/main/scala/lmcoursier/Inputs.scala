@@ -1,8 +1,8 @@
 package lmcoursier
 
 import coursier.ivy.IvyXml.{mappings => initialIvyXmlMappings}
-import lmcoursier.definitions.{Configuration, ModuleName, Organization}
-import sbt.librarymanagement.{CrossVersion, InclExclRule}
+import lmcoursier.definitions.{Configuration, Module, ModuleName, Organization, ToCoursier}
+import sbt.librarymanagement.{CrossVersion, InclExclRule, ModuleID}
 import sbt.util.Logger
 
 import scala.collection.mutable
@@ -123,5 +123,8 @@ object Inputs {
 
     res
   }
+
+  def forceVersions(depOverrides: Seq[ModuleID], sv: String, sbv: String): Seq[(Module, String)] =
+    depOverrides.map(FromSbt.moduleVersion(_, sv, sbv))
 
 }

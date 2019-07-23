@@ -4,15 +4,14 @@ import coursier.ProjectCache
 import coursier.cache.FileCache
 import coursier.core._
 import coursier.internal.Typelevel
-import lmcoursier.definitions.{Strict, ToCoursier}
-import lmcoursier.{FallbackDependency, FromSbt}
+import lmcoursier.definitions.ToCoursier
+import lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import lmcoursier.internal.{InterProjectRepository, ResolutionParams, ResolutionRun, Resolvers}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.InputsTasks.{credentialsTask, strictTask}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import sbt.Def
 import sbt.Keys._
-import sbt.librarymanagement.ConflictManager
 
 object ResolutionTasks {
 
@@ -71,14 +70,7 @@ object ResolutionTasks {
       // are these always defined? (e.g. for Java only projects?)
       val so = Organization(scalaOrganization.value)
 
-      val userForceVersions = dependencyOverrides
-        .value
-        .map(FromSbt.moduleVersion(_, sv, sbv))
-        .map {
-          case (k, v) =>
-            ToCoursier.module(k) -> v
-        }
-        .toMap
+      val userForceVersions = Inputs.forceVersions(dependencyOverrides.value, sv, sbv)
 
       val verbosityLevel = coursierVerbosity.value
 
@@ -148,7 +140,7 @@ object ResolutionTasks {
           params = coursier.params.ResolutionParams()
             .withMaxIterations(maxIterations)
             .withProfiles(userEnabledProfiles)
-            .withForceVersion(userForceVersions)
+            .withForceVersion(userForceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
             .withTypelevel(typelevel),
           strictOpt = strictOpt
         ),

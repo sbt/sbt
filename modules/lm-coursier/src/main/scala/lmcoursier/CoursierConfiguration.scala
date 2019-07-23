@@ -8,7 +8,7 @@ package lmcoursier
 import java.io.File
 
 import lmcoursier.credentials.Credentials
-import lmcoursier.definitions.{Authentication, CacheLogger, Project, Strict}
+import lmcoursier.definitions.{Authentication, CacheLogger, Module, Project, Strict}
 import sbt.librarymanagement.Resolver
 import xsbti.Logger
 
@@ -36,7 +36,8 @@ final class CoursierConfiguration private (
   val ivyHome: Option[File],
   val followHttpToHttpsRedirections: Option[Boolean],
   val strict: Option[Strict],
-  val extraProjects: Vector[Project]
+  val extraProjects: Vector[Project],
+  val forceVersions: Vector[(Module, String)]
 ) extends Serializable {
   
   private def this() =
@@ -64,6 +65,7 @@ final class CoursierConfiguration private (
       None,
       None,
       None,
+      Vector.empty,
       Vector.empty
     )
 
@@ -115,6 +117,7 @@ final class CoursierConfiguration private (
       ivyHome,
       followHttpToHttpsRedirections,
       None,
+      Vector.empty,
       Vector.empty
     )
   
@@ -144,7 +147,8 @@ final class CoursierConfiguration private (
           ivyHome == other.ivyHome &&
           followHttpToHttpsRedirections == other.followHttpToHttpsRedirections &&
           strict == other.strict &&
-          extraProjects == other.extraProjects
+          extraProjects == other.extraProjects &&
+          forceVersions == other.forceVersions
       case _ => false
     }
 
@@ -174,11 +178,12 @@ final class CoursierConfiguration private (
     code = 37 * (code + followHttpToHttpsRedirections.##)
     code = 37 * (code + strict.##)
     code = 37 * (code + extraProjects.##)
+    code = 37 * (code + forceVersions.##)
     code
   }
 
   override def toString: String =
-    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome, $followHttpToHttpsRedirections, $strict, $extraProjects)"
+    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome, $followHttpToHttpsRedirections, $strict, $extraProjects, $forceVersions)"
 
   private[this] def copy(
     log: Option[Logger] = log,
@@ -204,7 +209,8 @@ final class CoursierConfiguration private (
     ivyHome: Option[File] = ivyHome,
     followHttpToHttpsRedirections: Option[Boolean] = followHttpToHttpsRedirections,
     strict: Option[Strict] = strict,
-    extraProjects: Vector[Project] = extraProjects
+    extraProjects: Vector[Project] = extraProjects,
+    forceVersions: Vector[(Module, String)] = forceVersions
   ): CoursierConfiguration =
     new CoursierConfiguration(
       log,
@@ -230,7 +236,8 @@ final class CoursierConfiguration private (
       ivyHome,
       followHttpToHttpsRedirections,
       strict,
-      extraProjects
+      extraProjects,
+      forceVersions
     )
 
   def withLog(log: Option[Logger]): CoursierConfiguration =
@@ -333,6 +340,9 @@ final class CoursierConfiguration private (
 
   def withExtraProjects(extraProjects: Vector[Project]): CoursierConfiguration =
     copy(extraProjects = extraProjects)
+
+  def withForceVersions(forceVersions: Vector[(Module, String)]): CoursierConfiguration =
+    copy(forceVersions = forceVersions)
 }
 
 object CoursierConfiguration {
@@ -386,6 +396,7 @@ object CoursierConfiguration {
       None,
       None,
       None,
+      Vector.empty,
       Vector.empty
     )
   
@@ -435,6 +446,7 @@ object CoursierConfiguration {
       None,
       None,
       None,
+      Vector.empty,
       Vector.empty
     )
 
@@ -485,6 +497,7 @@ object CoursierConfiguration {
       ivyHome,
       None,
       None,
+      Vector.empty,
       Vector.empty
     )
 }
