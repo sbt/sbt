@@ -1,8 +1,11 @@
 # Changelog
 
-## Version 0.10.0 (unreleased)
+## Version 0.10.0-RC1 (2019-07-24)
  * [#136](https://github.com/jrudolph/sbt-dependency-graph/pull/136): Added `dependencyBrowseTree` to open a searchable dependency tree in the browser.
    Thanks, [@pcejrowski](https://github.com/pcejrowski) for contributing this feature.
+ * [#163](https://github.com/jrudolph/sbt-dependency-graph/pull/163): Remove some usage of internal sbt APIs, this allows to run sbt-dependency-graph with sbt 1.3.0
+   but results are not entirely correct.
+ * [#165](https://github.com/jrudolph/sbt-dependency-graph/pull/165): For common operations introduce `asString`, `printToConsole`, and `toFile` subtasks
 
 ## Version 0.9.2 (2018-08-26)
  * [#159](https://github.com/jrudolph/sbt-dependency-graph/pull/159): Fixed regression in `whatDependsOn` where task parser failed when no other sbt-dependency-graph task was called before
