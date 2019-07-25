@@ -308,7 +308,8 @@ object BuildStreams {
         displayFull,
         LogManager.construct(data, s),
         sjsonnew.support.scalajson.unsafe.Converter, {
-          val factory = s.get(Keys.cacheStoreFactory).getOrElse(InMemoryCacheStore.factory(0))
+          val factory =
+            s.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
           (file, converter: SupportConverter[JValue]) => factory(file.toPath, converter)
         }
       )
