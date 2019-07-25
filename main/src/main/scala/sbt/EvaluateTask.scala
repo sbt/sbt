@@ -19,6 +19,7 @@ import sbt.internal.TaskName._
 import sbt.internal._
 import sbt.internal.util._
 import sbt.librarymanagement.{ Resolver, UpdateReport }
+import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileDependencyMap, outputFileDependencyMap }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
@@ -509,14 +510,39 @@ object EvaluateTask {
   private[this] def filterResultsForPrevious(results: RMap[Task, Result]): RMap[Task, Result] = {
     def isMapKey(s: ScopedKey[_]) =
       s.key == inputFileDependencyMap.key || s.key == outputFileDependencyMap.key
-    val fileDependencyMapScopes = new java.util.HashMap[Scope, results.TPair[_]]
+    val fileDependencyMapScopes =
+      new java.util.concurrent.ConcurrentHashMap[Scope, results.TPair[_]]
     val succeededTaskScopes = new java.util.HashSet[Scope]
     val newMap = PMap.empty[Task, Result]
     results.toTypedSeq.foreach {
       case r @ results.TPair(task, v @ Value(_)) =>
         task.scopedKey.foreach { sk =>
-          if (isMapKey(sk)) fileDependencyMapScopes.put(sk.scope, r) else newMap.update(task, v)
-          succeededTaskScopes.add(sk.scope in sk.key)
+          if (isMapKey(sk)) {
+            /*
+             * It is not deterministic what order the results of tasks that have multiple
+             * definitions appear in the results map. This means that if we append to a task
+             * that is a map, the order of the appends is not preserved. In the case of the
+             * inputFileDependencyMap and outputFileDependencyMap, it is relatively safe to just
+             * take the largest map. This assumes that users never try to modify these maps
+             * themselves. We also try to preserve the ordering by proxying the definition of
+             * (input|output)FileDependencyMap through (input|output)FileDependencies. That is
+             * probably sufficient to ensure that there is only one definition of the file
+             * dependency maps, but the merge should ensure that the largest map is written to
+             * the previous cache in the event that this assumption doesn't always hold.
+             */
+            type depMap = Map[String, Seq[(java.nio.file.Path, FileStamp)]]
+            fileDependencyMapScopes.merge(
+              sk.scope,
+              r, { (previous: results.TPair[_], current: results.TPair[_]) =>
+                val results.TPair(_, Value(oldMap: depMap @unchecked)) = previous
+                val results.TPair(_, Value(newMap: depMap @unchecked)) = current
+                if (newMap.size > oldMap.size) current else previous
+              }
+            )
+          } else {
+            newMap.update(task, v)
+            succeededTaskScopes.add(sk.scope in sk.key)
+          }
         }
       case _ =>
     }

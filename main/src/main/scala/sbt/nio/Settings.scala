@@ -52,34 +52,31 @@ private[sbt] object Settings {
         Def.setting[Scope](anyScope, init, setting.pos) :: Nil
       case s if s.key == changedInputFiles.key =>
         fileMapDependencies += inputFileDependencyMap in scope
-        injectDependencyMap(scope, s.scope, setting.pos, isInput = true)
+        injectDependencies(scope, s.scope, setting.pos, isInput = true)
       case s if s.key == changedOutputFiles.key =>
         fileMapDependencies += outputFileDependencyMap in scope
-        injectDependencyMap(scope, s.scope, setting.pos, isInput = false)
+        injectDependencies(scope, s.scope, setting.pos, isInput = false)
       case _ => Nil
     }
     if (fileMapDependencies.nonEmpty) {
       val taskSetting = setting.asInstanceOf[Def.Setting[Task[Any]]]
-      taskSetting.mapInitialize(_.dependsOn(fileMapDependencies.toSeq: _*)) :: injected
+      fileMapDependencies.toList.map { s =>
+        addTaskDefinition {
+          if (s.key == inputFileDependencyMap.key) s := (inputFileDependencies in scope).value.toMap
+          else s := (outputFileDependencies in scope).value.toMap
+        }
+      } ::: taskSetting.mapInitialize(_.dependsOn(fileMapDependencies.toSeq: _*)) :: injected
     } else injected
   }
-  private[this] def injectDependencyMap(
+  private[this] def injectDependencies(
       scope: Scope,
       changeScope: Scope,
       position: SourcePosition,
       isInput: Boolean
   ): List[Def.Setting[_]] = {
-    val injectKey =
-      Def.ScopedKey(scope, (if (isInput) inputFileDependencyMap else outputFileDependencyMap).key)
+    val injectKey = (if (isInput) inputFileDependencies else outputFileDependencies) in scope
     val stampKey = (if (isInput) inputFileStamps else outputFileStamps) in changeScope
-    addTaskDefinition {
-      val init: Def.Initialize[Task[Map[String, Seq[(Path, FileStamp)]]]] =
-        injectKey.zip(stampKey).flatMap {
-          case (mapT, stampsT) =>
-            mapT.flatMap(map => stampsT.map(stamps => map + (changeScope.toString -> stamps)))
-        }
-      Def.setting[Task[Map[String, Seq[(Path, FileStamp)]]]](injectKey, init, position)
-    } :: Nil
+    (injectKey += { changeScope.toString -> stampKey.value }) :: Nil
   }
 
   /**

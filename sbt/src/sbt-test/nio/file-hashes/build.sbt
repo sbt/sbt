@@ -11,7 +11,7 @@ checkModified := {
   val changes = foo.changedInputFiles
   val modified = changes.map(_.updated).getOrElse(Nil)
   println(modified)
-  val allFiles = (foo / allInputFiles).value
+  val allFiles = foo.inputFiles
   if (modified.isEmpty) assert(true)
   else {
     assert(modified != allFiles)
@@ -21,7 +21,7 @@ checkModified := {
 
 val checkRemoved = taskKey[Unit]("check that removed files are returned")
 checkRemoved := Def.taskDyn {
-  val files = (foo / allInputFiles).value
+  val files = foo.inputFiles
   val removed = foo.changedInputFiles.map(_.deleted).getOrElse(Nil)
   if (removed.isEmpty) Def.task(assert(true))
   else Def.task {
@@ -32,7 +32,7 @@ checkRemoved := Def.taskDyn {
 
 val checkAdded = taskKey[Unit]("check that modified files are returned")
 checkAdded := Def.taskDyn {
-  val files = (foo / allInputFiles).value
+  val files = foo.inputFiles
   val added = foo.changedInputFiles.map(_.created).getOrElse(Nil)
   if (added.isEmpty || (files.toSet == added.toSet)) Def.task(assert(true))
   else Def.task {
