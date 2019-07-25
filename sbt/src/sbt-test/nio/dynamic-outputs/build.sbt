@@ -5,7 +5,7 @@ foo / fileInputs += baseDirectory.value.toGlob / "base" / "*.txt"
 foo / target := baseDirectory.value / "out"
 foo := {
   val out = baseDirectory.value / "out"
-  ((foo / allInputFiles).value: Seq[Path]).map { p =>
+  foo.inputFiles.map { p =>
     val f = p.toFile
     val target = out / f.getName
     IO.copyFile (f, target)

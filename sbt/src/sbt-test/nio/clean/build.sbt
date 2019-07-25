@@ -15,7 +15,7 @@ copyFile := Def.task {
   prev match {
     case Some(v: Int) if changes.isEmpty => v
     case _ =>
-      changes.getOrElse((copyFile / allInputFiles).value).foreach { p =>
+      changes.getOrElse(copyFile.inputFiles).foreach { p =>
         val outDir = baseDirectory.value / "out"
         IO.createDirectory(outDir)
         IO.copyFile(p.toFile, outDir / p.getFileName.toString)

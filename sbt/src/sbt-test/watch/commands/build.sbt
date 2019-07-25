@@ -5,7 +5,7 @@ import scala.collection.JavaConverters._
 val foo = taskKey[Unit]("foo")
 foo := {
   val fooTxt = baseDirectory.value / "foo.txt"
-  val _ = println(s"foo inputs: ${(foo / allInputFiles).value}")
+  val _ = println(s"foo inputs: ${foo.inputFiles}")
   IO.write(fooTxt, "foo")
   println(s"foo wrote to $foo")
 }

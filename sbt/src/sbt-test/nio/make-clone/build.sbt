@@ -16,7 +16,7 @@ compileLib := {
     val name = path.getFileName.toString
     objectDir.resolve(name.substring(0, name.lastIndexOf('.')) + ".o")
   }
-  val allFiles: Seq[Path] = (compileLib / allInputFiles).value
+  val allFiles: Seq[Path] = compileLib.inputFiles
   val changedFiles: Option[Seq[Path]] = compileLib.changedInputFiles match {
     case Some(ChangedFiles(c, d, u)) =>
       d.foreach(p => Files.deleteIfExists(objectPath(p)))
@@ -52,7 +52,7 @@ linkLib / target := baseDirectory.value / "out" / "lib"
 linkLib := {
   val changedObjects = compileLib.changedOutputFiles
   val outPath = (linkLib / target).value.toPath
-  val allObjects = (compileLib / allOutputFiles).value.map(_.toString)
+  val allObjects = compileLib.outputFiles.map(_.toString)
   val logger = streams.value.log
   linkLib.previous match {
     case Some(p: Path) if changedObjects.isEmpty =>
@@ -90,7 +90,7 @@ compileMain := {
       logger.info(s"Not building $outPath: no dependencies have changed")
       p
     case _ =>
-      (compileMain / allInputFiles).value match {
+      compileMain.inputFiles match {
         case Seq(main) =>
           Files.createDirectories(outDir)
           logger.info(s"Building executable $outPath")
@@ -112,7 +112,7 @@ compileMain := {
 val executeMain = inputKey[Unit]("run the main method")
 executeMain := {
   val args = Def.spaceDelimited("<arguments>").parsed
-  val binary: Seq[Path] = (compileMain / allOutputFiles).value
+  val binary: Seq[Path] = compileMain.outputFiles
   val logger = streams.value.log
   binary match {
     case Seq(b) =>
@@ -131,7 +131,7 @@ executeMain := {
 val checkOutput = inputKey[Unit]("check the output value")
 checkOutput := {
   val args @ Seq(arg, res) = Def.spaceDelimited("").parsed
-  val binary: Path = (compileMain / allOutputFiles).value.head
+  val binary: Path = compileMain.outputFiles.head
   val output = RunBinary(binary, args, linkLib.value)
   assert(output.contains(s"f($arg) = $res"))
   ()
