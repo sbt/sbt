@@ -2772,7 +2772,8 @@ object Classpaths {
 
     import CacheStoreFactory.jvalueIsoString
     val cacheStoreFactory: CacheStoreFactory = {
-      val factory = state.value.get(Keys.cacheStoreFactory).getOrElse(InMemoryCacheStore.factory(0))
+      val factory =
+        state.value.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
       factory(cacheDirectory.toPath, Converter)
     }
 
