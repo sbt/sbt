@@ -21,8 +21,6 @@ final case class Reboot(
   def arguments = argsList.toArray
 }
 
-private[sbt] case object Reload extends Exception(null, null, false, false)
-
 final case class ApplicationID(
     groupID: String,
     name: String,
