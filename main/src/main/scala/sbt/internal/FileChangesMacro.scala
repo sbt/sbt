@@ -10,14 +10,13 @@ package internal
 
 import java.nio.file.{ Path => NioPath }
 
-import sbt.nio.file.ChangedFiles
-import sbt.nio.Keys._
-import sbt.Keys._
 import sbt.nio.FileStamp
+import sbt.nio.Keys._
+import sbt.nio.file.ChangedFiles
 
 import scala.annotation.compileTimeOnly
-import scala.reflect.macros.blackbox
 import scala.language.experimental.macros
+import scala.reflect.macros.blackbox
 
 /**
  * Provides extension methods to `TaskKey[T]` that can be use to fetch the input and output file
@@ -45,30 +44,25 @@ object FileChangesMacro {
     def outputFiles: Seq[NioPath] = macro outputFilesImpl[T]
   }
   def changedInputFilesImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[Option[ChangedFiles]] = {
-    impl[T](c)(c.universe.reify(changedInputFiles), c.universe.reify(inputFileDependencyMap))
+    impl[T](c)(c.universe.reify(changedInputFiles), c.universe.reify(inputFileStamps))
   }
   def changedOutputFilesImpl[T: c.WeakTypeTag](
       c: blackbox.Context
   ): c.Expr[Option[ChangedFiles]] = {
-    impl[T](c)(c.universe.reify(changedOutputFiles), c.universe.reify(outputFileDependencyMap))
+    impl[T](c)(c.universe.reify(changedOutputFiles), c.universe.reify(outputFileStamps))
   }
   private def impl[T: c.WeakTypeTag](
       c: blackbox.Context
   )(
       changeKey: c.Expr[TaskKey[Seq[(NioPath, FileStamp)] => Option[ChangedFiles]]],
-      mapKey: c.Expr[TaskKey[Map[String, Seq[(NioPath, FileStamp)]]]]
+      mapKey: c.Expr[TaskKey[Seq[(NioPath, FileStamp)]]]
   ): c.Expr[Option[ChangedFiles]] = {
     import c.universe._
     val taskKey = getTaskKey(c)
     reify {
-      val scopedKey = Keys.resolvedScoped.value
-      val scope = scopedKey.scope in scopedKey.key
-      val changeScope = (taskScope in taskKey.splice).value.toString
       val changes = (changeKey.splice in taskKey.splice).value
       import sbt.nio.FileStamp.Formats._
-      import sjsonnew.BasicJsonProtocol._
-      val extractor = Previous.extractor.value(mapKey.splice in scope)
-      extractor.flatMap(_.get(changeScope)).flatMap(changes)
+      Previous.runtimeInThis(mapKey.splice in taskKey.splice).value.flatMap(changes)
     }
   }
   def inputFilesImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[Seq[NioPath]] = {

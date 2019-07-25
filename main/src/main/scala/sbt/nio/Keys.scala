@@ -133,21 +133,12 @@ object Keys {
   private[sbt] val dynamicFileOutputs =
     taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
 
-  private def depMapDesc(kind: String): String =
-    s"A map containing the $kind paths and stamps for a number of tasks. The map is keyed by the " +
-      "string representation of the scope to which each collection of paths and stamps corresponds"
-  val inputFileDependencies = taskKey[Seq[(String, Seq[(Path, FileStamp)])]]("")
-  val inputFileDependencyMap =
-    taskKey[Map[String, Seq[(Path, FileStamp)]]](depMapDesc("input")).withRank(Invisible)
-  private[sbt] val inputFileStamps =
+  val inputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
       .withRank(Invisible)
-  private[sbt] val outputFileStamps =
+  val outputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task output files")
       .withRank(Invisible)
-  val outputFileDependencies = taskKey[Seq[(String, Seq[(Path, FileStamp)])]]("")
-  val outputFileDependencyMap =
-    taskKey[Map[String, Seq[(Path, FileStamp)]]](depMapDesc("output")).withRank(Invisible)
   private[sbt] type FileAttributeMap =
     java.util.Map[Path, FileStamp]
   private[sbt] val persistentFileStampCache =

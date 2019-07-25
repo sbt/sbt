@@ -15,6 +15,7 @@ import Def.{ ScopeLocal, ScopedKey, Setting, displayFull }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
+import sbt.LocalRootProject
 import sbt.io.syntax._
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
@@ -291,6 +292,7 @@ object BuildStreams {
   final val GlobalPath = "_global"
   final val BuildUnitPath = "_build"
   final val StreamsDirectory = "streams"
+  private final val RootPath = "_root"
 
   def mkStreams(
       units: Map[URI, LoadedBuildUnit],
@@ -338,14 +340,39 @@ object BuildStreams {
     pathComponent(scope.config, scoped, "config")(_.name) ::
       pathComponent(scope.task, scoped, "task")(_.label) ::
       pathComponent(scope.extra, scoped, "extra")(showAMap) ::
-      scoped.key.label ::
-      Nil
+      scoped.key.label :: previousComponent(scope.extra)
   }
 
+  def previousComponent(value: ScopeAxis[AttributeMap]): List[String] =
+    value match {
+      case Select(am) =>
+        am.get(Previous.scopedKeyAttribute) match {
+          case Some(sk) =>
+            val project = sk.scope.project match {
+              case Zero                                           => GlobalPath
+              case Select(BuildRef(_))                            => BuildUnitPath
+              case Select(ProjectRef(_, id))                      => id
+              case Select(LocalProject(id))                       => id
+              case Select(RootProject(_))                         => RootPath
+              case Select(LocalRootProject)                       => LocalRootProject.toString
+              case Select(ThisBuild) | Select(ThisProject) | This =>
+                // Don't want to crash if somehow an unresolved key makes it in here.
+                This.toString
+            }
+            List(Previous.DependencyDirectory, project) ++ nonProjectPath(sk)
+          case _ => Nil
+        }
+      case _ => Nil
+    }
   def showAMap(a: AttributeMap): String =
     a.entries.toStream
       .sortBy(_.key.label)
-      .map { case AttributeEntry(key, value) => s"${key.label}=$value" }
+      .flatMap {
+        // The Previous.scopedKeyAttribute is an implementation detail that allows us to get a
+        // more specific cache directory for a task stream.
+        case AttributeEntry(key, _) if key == Previous.scopedKeyAttribute => Nil
+        case AttributeEntry(key, value)                                   => s"${key.label}=$value" :: Nil
+      }
       .mkString(" ")
 
   def projectPath(

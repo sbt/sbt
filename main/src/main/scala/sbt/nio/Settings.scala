@@ -35,48 +35,8 @@ private[sbt] object Settings {
     val cleanScopes = new java.util.HashSet[Scope].asScala
     transformed.flatMap {
       case s if s.key.key == sbt.nio.Keys.fileInputs.key => inputPathSettings(s)
-      case s =>
-        s ::
-          injectDependencyMapSettings(s) :::
-          maybeAddOutputsAndFileStamps(s, fileOutputScopes, cleanScopes)
+      case s                                             => s :: maybeAddOutputsAndFileStamps(s, fileOutputScopes, cleanScopes)
     } ++ addCleanImpls(cleanScopes.toSeq)
-  }
-
-  private[this] def injectDependencyMapSettings(setting: Def.Setting[_]): List[Def.Setting[_]] = {
-    lazy val scope = setting.key.scope in setting.key.key
-    val fileMapDependencies = mutable.Set.empty[TaskKey[Map[String, Seq[(Path, FileStamp)]]]]
-    val injected = setting.dependencies.toList.flatMap {
-      case s if s.key == sbt.Keys.taskScope.key && s.scope.task.toOption.isDefined =>
-        val anyScope = s.asInstanceOf[Def.ScopedKey[Scope]]
-        val init = Def.pure(() => s.scopedKey.scope)
-        Def.setting[Scope](anyScope, init, setting.pos) :: Nil
-      case s if s.key == changedInputFiles.key =>
-        fileMapDependencies += inputFileDependencyMap in scope
-        injectDependencies(scope, s.scope, setting.pos, isInput = true)
-      case s if s.key == changedOutputFiles.key =>
-        fileMapDependencies += outputFileDependencyMap in scope
-        injectDependencies(scope, s.scope, setting.pos, isInput = false)
-      case _ => Nil
-    }
-    if (fileMapDependencies.nonEmpty) {
-      val taskSetting = setting.asInstanceOf[Def.Setting[Task[Any]]]
-      fileMapDependencies.toList.map { s =>
-        addTaskDefinition {
-          if (s.key == inputFileDependencyMap.key) s := (inputFileDependencies in scope).value.toMap
-          else s := (outputFileDependencies in scope).value.toMap
-        }
-      } ::: taskSetting.mapInitialize(_.dependsOn(fileMapDependencies.toSeq: _*)) :: injected
-    } else injected
-  }
-  private[this] def injectDependencies(
-      scope: Scope,
-      changeScope: Scope,
-      position: SourcePosition,
-      isInput: Boolean
-  ): List[Def.Setting[_]] = {
-    val injectKey = (if (isInput) inputFileDependencies else outputFileDependencies) in scope
-    val stampKey = (if (isInput) inputFileStamps else outputFileStamps) in changeScope
-    (injectKey += { changeScope.toString -> stampKey.value }) :: Nil
   }
 
   /**
