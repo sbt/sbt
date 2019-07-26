@@ -288,8 +288,8 @@ final class PartBuildUnit(
 object BuildStreams {
   type Streams = sbt.std.Streams[ScopedKey[_]]
 
-  final val GlobalPath = "$global"
-  final val BuildUnitPath = "$build"
+  final val GlobalPath = "_global"
+  final val BuildUnitPath = "_build"
   final val StreamsDirectory = "streams"
 
   def mkStreams(
