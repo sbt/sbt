@@ -1,0 +1,4 @@
+# currently, the coursier-based sbt launcher starts sbt in the scripted tests
+# without the coursier sbt plugins. This pulls the lm-coursier-shaded version
+# that sbt depends on, which lacks some methods
+> updateClassifiers

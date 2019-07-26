@@ -50,24 +50,71 @@ object Foo {
       else Def.task((evictionWarningOptions in update).value)
     }.value
 
-    LibraryManagement.cachedUpdate(
-      // LM API
-      lm = lm,
-      // Ivy-free ModuleDescriptor
-      module = ivyModule.value,
-      s.cacheStoreFactory.sub(updateCacheName.value),
-      Reference.display(thisProjectRef.value),
-      updateConf,
-      identity,
-      skip = (skip in update).value,
-      force = shouldForce,
-      depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
-      uwConfig = (unresolvedWarningConfiguration in update).value,
-      ewo = evictionOptions,
-      mavenStyle = publishMavenStyle.value,
-      compatWarning = compatibilityWarningOptions.value,
-      log = s.log
-    )
+    try {
+      LibraryManagement.cachedUpdate(
+        // LM API
+        lm = lm,
+        // Ivy-free ModuleDescriptor
+        module = ivyModule.value,
+        s.cacheStoreFactory.sub(updateCacheName.value),
+        Reference.display(thisProjectRef.value),
+        updateConf,
+        identity,
+        skip = (skip in update).value,
+        force = shouldForce,
+        depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
+        uwConfig = (unresolvedWarningConfiguration in update).value,
+        ewo = evictionOptions,
+        mavenStyle = publishMavenStyle.value,
+        compatWarning = compatibilityWarningOptions.value,
+        log = s.log
+      )
+    } catch {
+      case _: NoSuchMethodError =>
+        // cachedUpdate method changed in https://github.com/sbt/sbt/commit/6c7faf2b8611f122a37b824c6e08e950855d939f
+        import sbt.internal.librarymanagement.CompatibilityWarningOptions
+        import sbt.librarymanagement.{DependencyResolution, ModuleDescriptor, UnresolvedWarningConfiguration, UpdateConfiguration}
+        import sbt.util.CacheStoreFactory
+        LibraryManagement.asInstanceOf[{
+          def cachedUpdate(
+            lm: DependencyResolution,
+            module: ModuleDescriptor,
+            cacheStoreFactory: CacheStoreFactory,
+            label: String,
+            updateConfig: UpdateConfiguration,
+            transform: UpdateReport => UpdateReport,
+            skip: Boolean,
+            force: Boolean,
+            depsUpdated: Boolean,
+            uwConfig: UnresolvedWarningConfiguration,
+            ewo: EvictionWarningOptions,
+            mavenStyle: Boolean,
+            compatWarning: CompatibilityWarningOptions,
+            includeCallers: Boolean,
+            includeDetails: Boolean,
+            log: Logger
+          ): UpdateReport
+        }].cachedUpdate(
+          // LM API
+          lm = lm,
+          // Ivy-free ModuleDescriptor
+          module = ivyModule.value,
+          s.cacheStoreFactory.sub(updateCacheName.value),
+          Reference.display(thisProjectRef.value),
+          updateConf,
+          identity,
+          skip = (skip in update).value,
+          force = shouldForce,
+          depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
+          uwConfig = (unresolvedWarningConfiguration in update).value,
+          ewo = evictionOptions,
+          mavenStyle = publishMavenStyle.value,
+          compatWarning = compatibilityWarningOptions.value,
+          includeCallers = false,
+          includeDetails = false,
+          log = s.log
+        )
+    }
   }
 
 }
