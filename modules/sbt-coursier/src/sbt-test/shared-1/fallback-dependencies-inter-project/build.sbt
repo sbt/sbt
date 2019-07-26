@@ -2,7 +2,7 @@
 lazy val a = project
   .settings(sharedSettings)
   .settings(
-    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.234" from "https://oss.sonatype.org/content/repositories/releases/com/chuusai/shapeless_2.11/2.3.1/shapeless_2.11-2.3.1.jar"
+    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.234" from "https://oss.sonatype.org/content/repositories/releases/com/chuusai/shapeless_2.12/2.3.3/shapeless_2.12-2.3.3.jar"
   )
 
 lazy val b = project
@@ -16,5 +16,5 @@ lazy val root = project
 
 
 lazy val sharedSettings = Seq(
-  scalaVersion := "2.11.8"
+  scalaVersion := "2.12.8"
 )

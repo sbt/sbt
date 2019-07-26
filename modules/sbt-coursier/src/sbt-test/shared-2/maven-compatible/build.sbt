@@ -1,8 +1,8 @@
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.8"
 
 resolvers += Resolver.url(
-  "webjars-bintray",
-  new URL("https://dl.bintray.com/scalaz/releases/")
+  "jitpack",
+  new URL("https://jitpack.io")
 )(
   // patterns should be ignored - and the repo be considered a maven one - because
   // isMavenCompatible is true
@@ -15,4 +15,4 @@ resolvers += Resolver.url(
   )
 )
 
-libraryDependencies += "org.scalaz.stream" %% "scalaz-stream" % "0.7.1"
+libraryDependencies += "com.github.jupyter" % "jvm-repr" % "0.3.0"

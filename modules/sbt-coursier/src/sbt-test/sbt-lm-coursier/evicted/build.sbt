@@ -3,7 +3,7 @@
 
 lazy val a = project
   .settings(
-    scalaVersion := "2.11.8",
+    scalaVersion := "2.12.8",
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-effect" % "1.3.1",
       "org.typelevel" %% "cats-core" % "1.5.0"
@@ -12,9 +12,9 @@ lazy val a = project
 
 lazy val b = project
   .settings(
-    scalaVersion := "2.11.8",
+    scalaVersion := "2.12.8",
     libraryDependencies ++= Seq(
-      "org.slf4s" %% "slf4s-api" % "1.7.12",         // depends on org.slf4j:slf4j-api:1.7.12
+      "org.slf4s" %% "slf4s-api" % "1.7.25",         // depends on org.slf4j:slf4j-api:1.7.25
       "ch.qos.logback" % "logback-classic" % "1.1.2" // depends on org.slf4j:slf4j-api:1.7.6
     )
 )

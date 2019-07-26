@@ -2,7 +2,7 @@
 lazy val a = project
   .settings(sharedSettings)
   .settings(
-    resolvers += "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases"
+    resolvers += "Jitpack Repo" at "https://jitpack.io"
   )
 
 lazy val b = project
@@ -10,7 +10,7 @@ lazy val b = project
   .settings(sharedSettings)
   .settings(
     // resolver added in inter-project dependency only - should still be fine
-    libraryDependencies += "org.scalaz.stream" %% "scalaz-stream" % "0.7.1a"
+    libraryDependencies += "com.github.jupyter" % "jvm-repr" % "0.3.0"
   )
 
 lazy val root = project
@@ -20,5 +20,5 @@ lazy val root = project
 
 
 lazy val sharedSettings = Seq(
-  scalaVersion := "2.11.8"
+  scalaVersion := "2.12.8"
 )

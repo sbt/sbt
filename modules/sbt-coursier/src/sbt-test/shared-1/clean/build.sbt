@@ -1,4 +1,4 @@
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.8"
 
 val checkEmpty = TaskKey[Unit]("checkEmpty")
 

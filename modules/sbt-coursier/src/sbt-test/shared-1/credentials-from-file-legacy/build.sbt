@@ -1,4 +1,4 @@
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.8"
 
 resolvers += "authenticated" at sys.env("TEST_REPOSITORY")
 

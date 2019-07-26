@@ -17,7 +17,7 @@ lazy val bar = project
 lazy val shared = Seq(
   organization := org,
   version := ver,
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.12.8",
   confCheck := {
 
     val log = streams.value.log

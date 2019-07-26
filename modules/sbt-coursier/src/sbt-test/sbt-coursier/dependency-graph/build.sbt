@@ -1,4 +1,4 @@
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.8"
 
 libraryDependencies += {
   sys.props("sbt.log.noformat") = "true" // disables colors in coursierWhatDependsOn output

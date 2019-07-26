@@ -13,7 +13,7 @@ object Main extends App {
   val hadoopVersion = p.getProperty("version")
   Console.err.println(s"Found hadoop version $hadoopVersion")
 
-  assert(hadoopVersion == "2.6.0")
+  assert(hadoopVersion.startsWith("3.1."))
 
   Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
 }
