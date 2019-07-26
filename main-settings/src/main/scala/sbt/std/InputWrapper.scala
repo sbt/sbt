@@ -183,6 +183,25 @@ object InputWrapper {
     }
   }
 
+  /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value*/
+  def previousInThisMacroImpl[T: c.WeakTypeTag](
+      c: blackbox.Context
+  )(format: c.Expr[sjsonnew.JsonFormat[T]]): c.Expr[Option[T]] = {
+    import c.universe._
+    c.macroApplication match {
+      case a @ Apply(Select(Apply(_, t :: Nil), _), _) =>
+        if (t.tpe <:< c.weakTypeOf[TaskKey[T]]) {
+          val tsTyped = c.Expr[TaskKey[T]](t)
+          val newTree = c.universe.reify {
+            Previous.runtimeInThis[T](tsTyped.splice)(format.splice)
+          }
+          wrapPrevious[T](c)(newTree, a.pos)
+        } else
+          unexpectedType(c)(a.pos, t.tpe)
+      case x => ContextUtil.unexpectedTree(x)
+    }
+  }
+
   private def unexpectedType(c: blackbox.Context)(pos: c.Position, tpe: c.Type) =
     c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
 }
@@ -227,6 +246,13 @@ sealed abstract class MacroPrevious[T] {
   )
   def previous(implicit format: sjsonnew.JsonFormat[T]): Option[T] =
     macro InputWrapper.previousMacroImpl[T]
+}
+sealed abstract class MacroPreviousInThis[T] {
+  @compileTimeOnly(
+    "`previousInThis` can only be used within a task macro, such as :=, +=, ++=, or Def.task."
+  )
+  def previousInThis(implicit format: sjsonnew.JsonFormat[T]): Option[T] =
+    macro InputWrapper.previousInThisMacroImpl[T]
 }
 
 /** Implementation detail.  The wrap method temporarily holds the input parser (as a Tree, at compile time) until the input task macro processes it. */

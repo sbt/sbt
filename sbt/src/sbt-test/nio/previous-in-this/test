@@ -1,0 +1,11 @@
+> checkBaz 1
+
+> set foo := 2
+
+-> baz
+
+> set foo := 3
+
+> checkBaz 3
+
+> checkBaz -1

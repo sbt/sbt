@@ -243,6 +243,10 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   implicit def macroPrevious[T](@deprecated("unused", "") in: TaskKey[T]): MacroPrevious[T] = ???
 
+  implicit def macroPreviousInThis[T](
+      @deprecated("unused", "") in: TaskKey[T]
+  ): MacroPreviousInThis[T] = ???
+
   // The following conversions enable the types Parser[T], Initialize[Parser[T]], and
   // Initialize[State => Parser[T]] to be used in the inputTask macro as an input with an ultimate
   // result of type T
