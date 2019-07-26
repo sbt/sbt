@@ -2,7 +2,7 @@ import java.nio.file.{ Files, Path }
 import scala.sys.process._
 
 val compileOpts = settingKey[Seq[String]]("Extra compile options")
-compileOpts := { if (scala.util.Properties.isLinux) "-fPIC" :: "-std=gnu99" :: Nil else Nil }
+compileOpts := { "-fPIC" :: "-std=gnu99" :: Nil }
 val compileLib = taskKey[Seq[Path]]("Compile the library")
 compileLib / sourceDirectory := sourceDirectory.value / "lib"
 compileLib / fileInputs := {
@@ -31,7 +31,8 @@ compileLib := {
       Files.createDirectories(objectDir)
       def extensionFilter(ext: String): Path => Boolean = _.getFileName.toString.endsWith(s".$ext")
       val cFiles: Seq[Path] =
-        if (changedFiles.fold(false)(_.exists(extensionFilter("h")))) allFiles.filter(extensionFilter("c"))
+        if (changedFiles.fold(false)(_.exists(extensionFilter("h"))))
+          allFiles.filter(extensionFilter("c"))
         else changedFiles.getOrElse(allFiles).filter(extensionFilter("c"))
       cFiles.map { file =>
         val outFile = objectDir.resolve(objectFileName(file))
