@@ -14,6 +14,7 @@ recordPreviousIterations := {
         log.info("No previous analysis detected")
         0
       case Some(a: Analysis) => a.compilations.allCompilations.size
+      case Some(_) => -1 // should be unreachable but causes warnings
     }
   }
 }

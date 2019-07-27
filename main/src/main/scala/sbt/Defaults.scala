@@ -410,6 +410,7 @@ object Defaults extends BuildCommon {
     },
     unmanagedSources := (unmanagedSources / inputFileStamps).value.map(_._1.toFile),
     managedSourceDirectories := Seq(sourceManaged.value),
+    managedSources / outputFileStamper := sbt.nio.FileStamper.Hash,
     managedSources := {
       val stamper = inputFileStamper.value
       val cache = managedFileStampCache.value
@@ -603,7 +604,18 @@ object Defaults extends BuildCommon {
         else ""
       s"inc_compile$extra.zip"
     },
-    incOptions := { incOptions.value.withExternalHooks(ExternalHooks.default.value) },
+    externalHooks := {
+      val current =
+        (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
+      val previous = (externalHooks / inputFileStamps).previous
+      ExternalHooks.default.value(previous.flatMap(sbt.nio.Settings.changedFiles(_, current)))
+    },
+    externalHooks / inputFileStamps := {
+      compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
+      (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
+    },
+    externalHooks / inputFileStamps := (externalHooks / inputFileStamps).triggeredBy(compile).value,
+    incOptions := { incOptions.value.withExternalHooks(externalHooks.value) },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
     collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
