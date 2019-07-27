@@ -19,7 +19,7 @@ fileInputTask := {
     Try(IO.read(baseDirectory.value / "expected").split(" ").toSeq.filterNot(_.isEmpty))
       .getOrElse(Nil)
       .map(baseDirectory.value.toPath / "base" / _)
-  val actual = fileInputTask.changedInputFiles.toSeq.flatMap(_.updated)
+  val actual = fileInputTask.inputFileChanges.modified
   assert(actual.toSet == expectedChanges.toSet)
 }
 

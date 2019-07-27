@@ -66,6 +66,8 @@ trait Import {
   val AnyPath = sbt.nio.file.AnyPath
   type ChangedFiles = sbt.nio.file.ChangedFiles
   val ChangedFiles = sbt.nio.file.ChangedFiles
+  type FileChanges = sbt.nio.FileChanges
+  val FileChanges = sbt.nio.FileChanges
   type Glob = sbt.nio.file.Glob
   val Glob = sbt.nio.file.Glob
   type RelativeGlob = sbt.nio.file.RelativeGlob

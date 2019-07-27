@@ -9,8 +9,9 @@ copyFile / target := baseDirectory.value / "out"
 
 copyFile := Def.task {
   val prev = copyFile.previous
-  val changes: Option[Seq[Path]] = copyFile.changedInputFiles.map {
-    case ChangedFiles(c, _, u) => c ++ u
+  val changes: Option[Seq[Path]] = copyFile.inputFileChanges match {
+    case fc @ FileChanges(c, _, u, _) if fc.hasChanges => Some(c ++ u)
+    case _ => None
   }
   prev match {
     case Some(v: Int) if changes.isEmpty => v

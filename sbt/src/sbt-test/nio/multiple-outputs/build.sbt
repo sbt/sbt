@@ -8,8 +8,7 @@ bar := fileTreeView.value.list(baseDirectory.value.toGlob / "bar" / *).map(_._1)
 
 val check = taskKey[Unit]("check expected changes")
 check := {
-  foo.changedOutputFiles.toSeq.flatMap(_.updated) ++
-    bar.changedOutputFiles.toSeq.flatMap(_.updated) match {
+  foo.outputFileChanges.modified ++ bar.outputFileChanges.modified match {
     case Nil =>
       val contents = IO.read(baseDirectory.value / "foo" / "foo.md")
       assert(contents == "foo", s"expected 'foo', got '$contents")

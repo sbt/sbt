@@ -17,8 +17,8 @@ import sbt.internal.DynamicInput
 import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
-import sbt.nio.file.{ ChangedFiles, FileAttributes, FileTreeView, Glob }
-import sbt.{ Def, InputKey, ProjectRef, State, StateTransform }
+import sbt.nio.file.{ FileAttributes, FileTreeView, Glob }
+import sbt._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -30,7 +30,7 @@ object Keys {
   val allInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
   val changedInputFiles =
-    taskKey[Seq[(Path, FileStamp)] => Option[ChangedFiles]]("The changed files for a task")
+    taskKey[Seq[(Path, FileStamp)] => FileChanges]("The changed files for a task")
   val fileInputs = settingKey[Seq[Glob]](
     "The file globs that are used by a task. This setting will generally be scoped per task. It will also be used to determine the sources to watch during continuous execution."
   )
@@ -42,7 +42,7 @@ object Keys {
   val allOutputFiles =
     taskKey[Seq[Path]]("All of the file outputs for a task excluding directories and hidden files.")
   val changedOutputFiles =
-    taskKey[Seq[(Path, FileStamp)] => Option[ChangedFiles]](
+    taskKey[Seq[(Path, FileStamp)] => FileChanges](
       "The files that have changed since the last task run."
     )
   val outputFileStamper = settingKey[FileStamper](

@@ -69,7 +69,7 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
-import sbt.nio.Watch
+import sbt.nio.{ FileChanges, Watch }
 import sbt.nio.Keys._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
 import sbt.nio.file.syntax._
@@ -609,7 +609,10 @@ object Defaults extends BuildCommon {
       val current =
         (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
       val previous = (externalHooks / inputFileStamps).previous
-      ExternalHooks.default.value(previous.flatMap(sbt.nio.Settings.changedFiles(_, current)))
+      val changes = previous
+        .map(sbt.nio.Settings.changedFiles(_, current))
+        .getOrElse(FileChanges.noPrevious(current.map(_._1)))
+      ExternalHooks.default.value(changes)
     },
     externalHooks / inputFileStamps := {
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.

@@ -6,8 +6,7 @@ bar / fileInputs += baseDirectory.value.toGlob / "bar" / *
 
 val check = taskKey[Unit]("check expected changes")
 check := {
-  foo.changedInputFiles.toSeq.flatMap(_.updated) ++
-    bar.changedInputFiles.toSeq.flatMap(_.updated) match {
+  (foo.inputFileChanges.modified ++ bar.inputFileChanges.modified) match {
     case Nil =>
       val contents = IO.read(baseDirectory.value / "foo" / "foo.md")
       assert(contents == "foo", s"expected 'foo', got '$contents")
