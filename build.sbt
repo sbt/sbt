@@ -567,7 +567,7 @@ lazy val commandProj = (project in file("main-command"))
   )
 
 // The core macro project defines the main logic of the DSL, abstracted
-// away from several sbt implementators (tasks, settings, et cetera).
+// away from several sbt implementors (tasks, settings, et cetera).
 lazy val coreMacrosProj = (project in file("core-macros"))
   .dependsOn(collectionProj)
   .settings(
