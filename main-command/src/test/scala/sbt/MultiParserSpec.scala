@@ -123,4 +123,18 @@ class MultiParserSpec extends FlatSpec {
     // 100 commands and 3 milliseconds with 3 commands. With a bad parser, it will run indefinitely.
     assert(elapsed.nanoseconds < 10.seconds)
   }
+  it should "exclude alias" in {
+    val alias = """alias scalacFoo = ; set scalacOptions ++= Seq("-foo")"""
+    assert(alias.parseEither.isLeft)
+    assert(s"   $alias".parseEither.isLeft)
+    assert(s"   $alias;".parseEither.isLeft)
+    assert(s";$alias".parseEither.isLeft)
+    assert(s";   $alias".parseEither.isLeft)
+    assert(s";$alias;".parseEither.isLeft)
+    assert(s";   $alias;".parseEither.isLeft)
+    assert(s"foo; $alias".parseEither.isLeft)
+    assert(s"; foo;$alias".parseEither.isLeft)
+    assert(s"; foo;$alias; ".parseEither.isLeft)
+    assert(s"; foo;   $alias; ".parseEither.isLeft)
+  }
 }

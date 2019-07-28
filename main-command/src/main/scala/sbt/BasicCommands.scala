@@ -31,6 +31,8 @@ import BasicKeys._
 
 import java.io.File
 import sbt.io.IO
+
+import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 
 object BasicCommands {
@@ -153,35 +155,51 @@ object BasicCommands {
     state
   }
 
-  private[sbt] def multiParserImpl(state: Option[State]): Parser[List[String]] = {
+  private[sbt] def multiParserImpl(state: Option[State]): Parser[List[String]] =
+    multiParserImpl(state, "alias" :: Nil)
+  private[sbt] def multiParserImpl(
+      state: Option[State],
+      exclude: Seq[String]
+  ): Parser[List[String]] = {
     val nonSemi = charClass(_ != ';', "not ';'")
-    val semi = token(';')
     val nonDelim = charClass(c => c != '"' && c != '{' && c != '}', label = "not '\"', '{', '}'")
-    val components = ((nonSemi & nonDelim) | StringEscapable | braces('{', '}')).+
-    val cmdPart = matched(components).examples()
+    // Accept empty commands to simplify the parser.
+    val cmdPart =
+      matched(((nonSemi & nonDelim) | StringEscapable | braces('{', '}')).*).examples()
 
     val completionParser: Option[Parser[String]] =
-      state.map(s => OptSpace ~> matched((s.nonMultiParser & cmdPart) | cmdPart) <~ OptSpace)
-    val cmdParser = completionParser.getOrElse(cmdPart).map(_.trim)
-    val multiCmdParser: Parser[String] = semi ~> cmdParser
-    /*
-     * There are two cases that need to be handled separately:
-     * 1) leading semicolon with one or more commands separated by a semicolon
-     * 2) no leading semicolon and at least one command followed by a trailing semicolon
-     *    and zero or more commands separated by a semicolon
-     * Both cases allow an optional trailing semi-colon.
-     *
-     * These have to be handled separately because the performance degrades badly if the first
-     * case is implemented with the following parser:
-     * (semi.? ~> ((combinedParser <~ semi).* ~ combinedParser <~ semi.?)
-     */
-    val noLeadingSemi = (cmdParser ~ (multiCmdParser.+ | semi.map(_ => Nil))).map {
-      case (prefix, last) => (prefix :: Nil ::: last.toList).filter(_.nonEmpty)
+      state.map(s => (matched(s.nonMultiParser) & cmdPart) | cmdPart)
+    val cmdParser = {
+      val parser = completionParser.getOrElse(cmdPart).map(_.trim)
+      exclude.foldLeft(parser) { case (p, e) => p & not(OptSpace ~ s"$e ", s"!$e").examples() }
     }
-    val leadingSemi = multiCmdParser.+.map(_.toList.filter(_.nonEmpty))
-    ((leadingSemi | noLeadingSemi) <~ semi.?).flatMap {
-      case Nil      => Parser.failure("No commands were parsed")
-      case commands => Parser.success(commands)
+    val multiCmdParser: Parser[String] = token(';') ~> OptSpace ~> cmdParser
+
+    /*
+     * We accept empty commands at the end of the the list as an implementation detail that allows
+     * for a trailing semi-colon without an extra parser since the cmdParser accepts an empty string
+     * and the multi parser is `token(';') ~ cmdParser`. We do not want to accept empty commands
+     * that occur in the middle of the sequence so if  we find one, we return a failed parser. If
+     * we wanted to relax that restriction, then we could just replace the flatMap below with
+     * `rest.filterNot(_.isEmpty)`.
+     */
+    def validateCommands(s: Seq[String]): Parser[List[String]] = {
+      val result = new ListBuffer[String]
+      val it = s.iterator
+      var fail = false
+      while (it.hasNext && !fail) {
+        it.next match {
+          case ""   => fail = it.hasNext
+          case next => result += next
+        }
+      }
+      if (fail) Parser.failure(s"Couldn't parse empty commands in ${s.mkString(";")}")
+      else Parser.success(result.toList)
+    }
+
+    (cmdParser ~ multiCmdParser.+).flatMap {
+      case ("", rest) => validateCommands(rest)
+      case (p, rest)  => validateCommands(rest).map(p :: _)
     }
   }
 
