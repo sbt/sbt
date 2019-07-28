@@ -71,18 +71,26 @@ private[sbt] class ClassLoaderCache(
     new java.util.concurrent.ConcurrentHashMap[Key, Reference[ClassLoader]]()
   private[this] val referenceQueue = new ReferenceQueue[ClassLoader]
 
-  private[this] def closeExpiredLoaders(): Unit = {
-    val toClose = lock.synchronized(delegate.asScala.groupBy(_._1.files.toSet).flatMap {
+  private[this] def clearExpiredLoaders(): Unit = lock.synchronized {
+    val clear = (k: Key, ref: Reference[ClassLoader]) => {
+      ref.get() match {
+        case w: WrappedLoader => w.invalidate()
+        case _                =>
+      }
+      delegate.remove(k)
+      ()
+    }
+    def isInvalidated(classLoader: ClassLoader): Boolean = classLoader match {
+      case w: WrappedLoader => w.invalidated()
+      case _                => false
+    }
+    delegate.asScala.groupBy { case (k, _) => k.parent -> k.files.toSet }.foreach {
       case (_, pairs) if pairs.size > 1 =>
-        val max = pairs.maxBy(_._1.maxStamp)._1
-        pairs.filterNot(_._1 == max).flatMap {
-          case (k, v) =>
-            delegate.remove(k)
-            Option(v.get)
-        }
-      case _ => Nil
-    })
-    toClose.foreach(close)
+        val max = pairs.map(_._1.maxStamp).max
+        pairs.foreach { case (k, v) => if (k.maxStamp != max) clear(k, v) }
+      case _ =>
+    }
+    delegate.forEach((k, v) => if (isInvalidated(k.parent)) clear(k, v))
   }
   private[this] class CleanupThread(private[this] val id: Int)
       extends Thread(s"classloader-cache-cleanup-$id") {
@@ -97,7 +105,7 @@ private[sbt] class ClassLoaderCache(
             delegate.remove(key)
           case _ =>
         }
-        closeExpiredLoaders()
+        clearExpiredLoaders()
         false
       } catch {
         case _: InterruptedException => true
@@ -178,7 +186,7 @@ private[sbt] class ClassLoaderCache(
           val ref = mkReference(key, f())
           val loader = ref.get
           delegate.put(key, ref)
-          closeExpiredLoaders()
+          clearExpiredLoaders()
           loader
         }
         lock.synchronized {
