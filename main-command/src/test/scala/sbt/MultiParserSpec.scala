@@ -7,6 +7,7 @@
 
 package sbt
 
+import scala.concurrent.duration._
 import org.scalatest.FlatSpec
 import sbt.internal.util.complete.Parser
 
@@ -28,6 +29,15 @@ class MultiParserSpec extends FlatSpec {
   }
   it should "parse single command with leading spaces" in {
     assert(";     foo".parse == Seq("foo"))
+    assert("     ;     foo".parse == Seq("foo"))
+    assert("      foo;".parse == Seq("foo"))
+  }
+  it should "parse single command with trailing spaces" in {
+    assert(";     foo      ".parse == Seq("foo"))
+    assert(";foo      ".parse == Seq("foo"))
+    assert("foo;      ".parse == Seq("foo"))
+    assert("    foo;    ".parse == Seq("foo"))
+    assert("      foo   ;    ".parse == Seq("foo"))
   }
   it should "parse multiple commands with leading spaces" in {
     assert(";     foo;bar".parse == Seq("foo", "bar"))
@@ -102,5 +112,15 @@ class MultiParserSpec extends FlatSpec {
     assert(s"compile; $extraLeft".parseEither.isLeft)
     val unmatchedEmptyBraces = "{{{{}}}"
     assert(s"compile; $unmatchedEmptyBraces".parseEither.isLeft)
+  }
+  it should "handle cosmetic whitespace" in {
+    val commands = (1 to 100).map(_ => "compile")
+    val multiLine = commands.mkString("      \n      ;", "       \n       ;", "    \n        ")
+    val start = System.nanoTime
+    assert(multiLine.parse == commands)
+    val elapsed = System.nanoTime - start
+    // Make sure this took less than 10 seconds. It takes about 30 milliseconds to run with
+    // 100 commands and 3 milliseconds with 3 commands. With a bad parser, it will run indefinitely.
+    assert(elapsed.nanoseconds < 10.seconds)
   }
 }
