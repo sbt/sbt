@@ -35,13 +35,11 @@ private[sbt] object ClassLoaders {
       if (si.isManagedVersion) rawCP
       else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
     val exclude = dependencyJars(exportedProducts).value.toSet ++ si.libraryJars
-    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
       si = si,
       fullCP = fullCP,
-      resourceCP = resourceCP,
-      allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
+      allDependenciesSet = dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
       cache = extendedClassLoaderCache.value,
       resources = ClasspathUtilities.createClasspathResources(fullCP.map(_._1), si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
@@ -55,7 +53,6 @@ private[sbt] object ClassLoaders {
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
-    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
       Def.task(new ForkRun(opts))
@@ -85,8 +82,7 @@ private[sbt] object ClassLoaders {
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
               fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
-              resourceCP = resourceCP,
-              allDependencies = transformedDependencies,
+              allDependenciesSet = transformedDependencies.toSet,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
@@ -118,8 +114,7 @@ private[sbt] object ClassLoaders {
       strategy: ClassLoaderLayeringStrategy,
       si: ScalaInstance,
       fullCP: Seq[(File, Long)],
-      resourceCP: Seq[(File, Long)],
-      allDependencies: Seq[File],
+      allDependenciesSet: Set[File],
       cache: ClassLoaderCache,
       resources: Map[String, String],
       tmp: File,
@@ -142,6 +137,7 @@ private[sbt] object ClassLoaders {
         }
         val cpFiles = fullCP.map(_._1)
 
+        val allDependencies = cpFiles.filter(allDependenciesSet)
         val scalaReflectJar = allDependencies.collectFirst {
           case f if f.getName == "scala-reflect.jar" =>
             si.allJars.find(_.getName == "scala-reflect.jar")
@@ -156,34 +152,28 @@ private[sbt] object ClassLoaders {
           }
           .getOrElse(scalaLibraryLayer)
 
-        // layer 2 (resources)
-        val resourceLayer =
-          if (layerDependencies)
-            getResourceLayer(cpFiles, resourceCP, scalaReflectLayer, cache, resources)
-          else scalaReflectLayer
-
-        // layer 3 (optional if in the test config and the runtime layer is not shared)
-        val dependencyLayer =
+        // layer 2 (optional if in the test config and the runtime layer is not shared)
+        val dependencyLayer: ClassLoader =
           if (layerDependencies && allDependencies.nonEmpty) {
             cache(
               allDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
-              resourceLayer,
-              () => new ReverseLookupClassLoaderHolder(allDependencies, resourceLayer)
+              scalaReflectLayer,
+              () => new ReverseLookupClassLoaderHolder(allDependencies, scalaReflectLayer)
             )
-          } else resourceLayer
+          } else scalaReflectLayer
 
         val scalaJarNames = (si.libraryJars ++ scalaReflectJar).map(_.getName).toSet
-        // layer 4
+        // layer 3
         val filteredSet =
           if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
           else Set(si.libraryJars ++ scalaReflectJar: _*)
         val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
         dependencyLayer match {
           case dl: ReverseLookupClassLoaderHolder =>
-            dl.checkout(dynamicClasspath, tmp)
+            dl.checkout(cpFiles, tmp)
           case cl =>
             cl.getParent match {
-              case dl: ReverseLookupClassLoaderHolder => dl.checkout(dynamicClasspath, tmp)
+              case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
               case _                                  => new LayeredClassLoader(dynamicClasspath, cl, tmp)
             }
         }
@@ -193,24 +183,6 @@ private[sbt] object ClassLoaders {
   private def dependencyJars(
       key: sbt.TaskKey[Seq[Attributed[File]]]
   ): Def.Initialize[Task[Seq[File]]] = Def.task(data(key.value).filter(_.getName.endsWith(".jar")))
-
-  // Creates a one or two layered classloader for the provided classpaths depending on whether
-  // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
-  // above the regular jar layer. This allows the snapshot layer to be invalidated without
-  // invalidating the regular jar layer. If the classpath is empty, it just returns the parent
-  // loader.
-  private def getResourceLayer(
-      classpath: Seq[File],
-      resources: Seq[(File, Long)],
-      parent: ClassLoader,
-      cache: ClassLoaderCache,
-      resourceMap: Map[String, String]
-  ): ClassLoader = {
-    if (resources.nonEmpty) {
-      val mkLoader = () => new ResourceLoader(classpath, parent, resourceMap)
-      cache(resources.toList, parent, mkLoader)
-    } else parent
-  }
 
   // helper methods
   private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
