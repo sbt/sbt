@@ -39,7 +39,7 @@ private[sbt] object ClassLoaders {
       strategy = classLoaderLayeringStrategy.value,
       si = si,
       fullCP = fullCP,
-      allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
+      allDependenciesSet = dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
       cache = extendedClassLoaderCache.value,
       resources = ClasspathUtilities.createClasspathResources(fullCP.map(_._1), si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
@@ -82,7 +82,7 @@ private[sbt] object ClassLoaders {
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
               fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
-              allDependencies = transformedDependencies,
+              allDependenciesSet = transformedDependencies.toSet,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
@@ -114,7 +114,7 @@ private[sbt] object ClassLoaders {
       strategy: ClassLoaderLayeringStrategy,
       si: ScalaInstance,
       fullCP: Seq[(File, Long)],
-      allDependencies: Seq[File],
+      allDependenciesSet: Set[File],
       cache: ClassLoaderCache,
       resources: Map[String, String],
       tmp: File,
@@ -137,6 +137,7 @@ private[sbt] object ClassLoaders {
         }
         val cpFiles = fullCP.map(_._1)
 
+        val allDependencies = cpFiles.filter(allDependenciesSet)
         val scalaReflectJar = allDependencies.collectFirst {
           case f if f.getName == "scala-reflect.jar" =>
             si.allJars.find(_.getName == "scala-reflect.jar")
