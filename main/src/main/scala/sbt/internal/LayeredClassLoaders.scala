@@ -8,7 +8,7 @@
 package sbt.internal
 
 import java.io.File
-import java.net.URLClassLoader
+import java.net.{ URL, URLClassLoader }
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
@@ -69,7 +69,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
    *
    * @return a ClassLoader
    */
-  def checkout(dependencyClasspath: Seq[File], tempDir: File): ClassLoader = {
+  def checkout(fullClasspath: Seq[File], tempDir: File): ClassLoader = {
     if (closed.get()) {
       val msg = "Tried to extract class loader from closed ReverseLookupClassLoaderHolder. " +
         "Try running the `clearCaches` command and re-trying."
@@ -79,8 +79,8 @@ private[internal] final class ReverseLookupClassLoaderHolder(
       case null => new ReverseLookupClassLoader
       case c    => c
     }
-    reverseLookupClassLoader.setTempDir(tempDir)
-    new BottomClassLoader(dependencyClasspath, reverseLookupClassLoader, tempDir)
+    reverseLookupClassLoader.setup(tempDir, fullClasspath)
+    new BottomClassLoader(fullClasspath, reverseLookupClassLoader, tempDir)
   }
 
   private def checkin(reverseLookupClassLoader: ReverseLookupClassLoader): Unit = {
@@ -149,6 +149,19 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     private[this] val classLoadingLock = new ClassLoadingLock
     def isDirty: Boolean = dirty.get()
     def setDescendant(classLoader: BottomClassLoader): Unit = directDescendant.set(classLoader)
+    private[this] val resourceLoader = new AtomicReference[ResourceLoader](null)
+    private class ResourceLoader(cp: Seq[File])
+        extends URLClassLoader(cp.map(_.toURI.toURL).toArray, parent) {
+      def lookup(name: String): URL = findResource(name)
+    }
+    private[ReverseLookupClassLoaderHolder] def setup(tmpDir: File, cp: Seq[File]): Unit = {
+      setTempDir(tmpDir)
+      resourceLoader.set(new ResourceLoader(cp))
+    }
+    override def findResource(name: String): URL = resourceLoader.get() match {
+      case null => null
+      case l    => l.lookup(name)
+    }
     def loadClass(name: String, resolve: Boolean, reverseLookup: Boolean): Class[_] = {
       classLoadingLock.withLock(name) {
         try super.loadClass(name, resolve)
