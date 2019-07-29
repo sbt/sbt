@@ -5,6 +5,7 @@ import com.typesafe.tools.mima.core._, ProblemFilters._
 import local.Scripted
 import scala.xml.{ Node => XmlNode, NodeSeq => XmlNodeSeq, _ }
 import scala.xml.transform.{ RewriteRule, RuleTransformer }
+import scala.util.Try
 
 ThisBuild / version := {
   val v = "1.3.0-SNAPSHOT"
@@ -402,7 +403,9 @@ lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
       val extDepsCp = (externalDependencyClasspath in Compile in LocalProject("sbtProj")).value
       val cpStrings = (mainClassDir +: testClassDir +: classDirs) ++ extDepsCp.files map (_.toString)
       val file = (resourceManaged in Compile).value / "RunFromSource.classpath"
-      IO.writeLines(file, cpStrings)
+      if (!file.exists || Try(IO.readLines(file)).getOrElse(Nil).toSet != cpStrings.toSet) {
+        IO.writeLines(file, cpStrings)
+      }
       List(file)
     },
     mimaSettings,
@@ -564,7 +567,7 @@ lazy val commandProj = (project in file("main-command"))
   )
 
 // The core macro project defines the main logic of the DSL, abstracted
-// away from several sbt implementators (tasks, settings, et cetera).
+// away from several sbt implementors (tasks, settings, et cetera).
 lazy val coreMacrosProj = (project in file("core-macros"))
   .dependsOn(collectionProj)
   .settings(
