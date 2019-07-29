@@ -50,7 +50,7 @@ object Keys {
     taskKey[FileTreeView.Nio[FileAttributes]]("A view of the local file system tree")
 
   val checkBuildSources =
-    taskKey[Unit]("Check if any meta build sources have changed").withRank(DSetting)
+    taskKey[StateTransform]("Check if any meta build sources have changed").withRank(DSetting)
 
   // watch related settings
   val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration](

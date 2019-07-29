@@ -15,12 +15,12 @@ import sbt.nio.Keys._
 import sbt.nio.file.{ ChangedFiles, Glob, RecursiveGlob }
 
 private[sbt] object CheckBuildSources {
-  private[sbt] def needReloadImpl: Def.Initialize[Task[Unit]] = Def.task {
+  private[sbt] def needReloadImpl: Def.Initialize[Task[StateTransform]] = Def.task {
     val logger = streams.value.log
-    val checkMetaBuildParam = state.value.get(hasCheckedMetaBuild)
-    val firstTime = checkMetaBuildParam.fold(true)(_.get == false)
+    val st: State = state.value
+    val firstTime = st.get(hasCheckedMetaBuild).fold(true)(_.compareAndSet(false, true))
     (onChangedBuildSource in Scope.Global).value match {
-      case IgnoreSourceChanges => ()
+      case IgnoreSourceChanges => new StateTransform(st)
       case o =>
         logger.debug("Checking for meta build source updates")
         (changedInputFiles in checkBuildSources).value match {
@@ -37,18 +37,20 @@ private[sbt] object CheckBuildSources {
             val prefix = rawPrefix.linesIterator.filterNot(_.trim.isEmpty).mkString("\n")
             if (o == ReloadOnSourceChanges) {
               logger.info(s"$prefix\nReloading sbt...")
-              throw Reload
+              val remaining =
+                Exec("reload", None, None) :: st.currentCommand.toList ::: st.remainingCommands
+              new StateTransform(st.copy(currentCommand = None, remainingCommands = remaining))
             } else {
               val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
                 "build when source changes are detected by setting " +
                 "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
                 "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
               logger.warn(s"$prefix\n$tail")
+              new StateTransform(st)
             }
-          case _ => ()
+          case _ => new StateTransform(st)
         }
     }
-    checkMetaBuildParam.foreach(_.set(true))
   }
   private[sbt] def buildSourceFileInputs: Def.Initialize[Seq[Glob]] = Def.setting {
     if (onChangedBuildSource.value != IgnoreSourceChanges) {
