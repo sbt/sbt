@@ -1,0 +1,15 @@
+> createSymlinks
+
+> skipWindows ~compile; copySource file-source/Foo.scala
+
+> ~compile; copySource sources/Bar.scala
+
+> skipWindows ~compile; removeLink file-source/Foo.scala
+
+> ~compile; removeLink sources
+
+> ~compile; createSymlinks
+
+> copySource sources/Bar.scala
+
+> ~compile; removeLink sources/Bar.scala
