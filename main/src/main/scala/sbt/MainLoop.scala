@@ -144,10 +144,7 @@ object MainLoop {
         case Right(s)                  => s
         case Left(t: xsbti.FullReload) => throw t
         case Left(t: RebootCurrent)    => throw t
-        case Left(Reload) =>
-          val remaining = state.currentCommand.toList ::: state.remainingCommands
-          state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
-        case Left(t) => state.handleError(t)
+        case Left(t)                   => state.handleError(t)
       }
     } catch {
       case oom: OutOfMemoryError if oom.getMessage.contains("Metaspace") =>

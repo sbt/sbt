@@ -9,14 +9,24 @@ package sbt.internal.classpath;
 
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WrappedLoader extends URLClassLoader {
+  private final AtomicBoolean invalidated = new AtomicBoolean(false);
   static {
     ClassLoader.registerAsParallelCapable();
   }
 
   WrappedLoader(final ClassLoader parent) {
     super(new URL[] {}, parent);
+  }
+
+  void invalidate() {
+    invalidated.set(true);
+  }
+
+  boolean invalidated() {
+    return invalidated.get();
   }
 
   @Override

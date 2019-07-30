@@ -346,7 +346,7 @@ object EvaluateTask {
       ExceptionCategory(ex) match {
         case AlreadyHandled => ()
         case m: MessageOnly => if (msg.isEmpty) log.error(m.message)
-        case f: Full        => if (f.exception != Reload) log.trace(f.exception)
+        case f: Full        => log.trace(f.exception)
       }
     }
 
@@ -354,7 +354,7 @@ object EvaluateTask {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
       val log = getStreams(key, streams).log
       val display = contextDisplay(state, ConsoleAppender.formatEnabledInEnv)
-      if (!ex.contains(Reload)) log.error("(" + display.show(key) + ") " + msgString)
+      log.error("(" + display.show(key) + ") " + msgString)
     }
   }
 
