@@ -251,36 +251,38 @@ private[sbt] object Settings {
   ): Def.Setting[_] =
     addTaskDefinition(changeKey in scopedKey.scope := {
       val current = (stampKey in scopedKey.scope).value
-      (stampKey in scopedKey.scope).previous match {
-        case Some(previous) =>
-          val createdBuilder = new VectorBuilder[Path]
-          val deletedBuilder = new VectorBuilder[Path]
-          val updatedBuilder = new VectorBuilder[Path]
-          val currentMap = current.toMap
-          val prevMap = previous.toMap
-          current.foreach {
-            case (path, currentStamp) =>
-              prevMap.get(path) match {
-                case Some(oldStamp) => if (oldStamp != currentStamp) updatedBuilder += path
-                case None           => createdBuilder += path
-              }
-          }
-          previous.foreach {
-            case (path, _) =>
-              if (currentMap.get(path).isEmpty) deletedBuilder += path
-          }
-          val created = createdBuilder.result()
-          val deleted = deletedBuilder.result()
-          val updated = updatedBuilder.result()
-          if (created.isEmpty && deleted.isEmpty && updated.isEmpty) {
-            None
-          } else {
-            val cf = ChangedFiles(created = created, deleted = deleted, updated = updated)
-            Some(cf)
-          }
-        case None => None
-      }
+      (stampKey in scopedKey.scope).previous.flatMap(changedFiles(_, current))
     })
+  private[sbt] def changedFiles(
+      previous: Seq[(Path, FileStamp)],
+      current: Seq[(Path, FileStamp)]
+  ): Option[ChangedFiles] = {
+    val createdBuilder = new VectorBuilder[Path]
+    val deletedBuilder = new VectorBuilder[Path]
+    val updatedBuilder = new VectorBuilder[Path]
+    val currentMap = current.toMap
+    val prevMap = previous.toMap
+    current.foreach {
+      case (path, currentStamp) =>
+        prevMap.get(path) match {
+          case Some(oldStamp) => if (oldStamp != currentStamp) updatedBuilder += path
+          case None           => createdBuilder += path
+        }
+    }
+    previous.foreach {
+      case (path, _) =>
+        if (currentMap.get(path).isEmpty) deletedBuilder += path
+    }
+    val created = createdBuilder.result()
+    val deleted = deletedBuilder.result()
+    val updated = updatedBuilder.result()
+    if (created.isEmpty && deleted.isEmpty && updated.isEmpty) {
+      None
+    } else {
+      val cf = ChangedFiles(created = created, deleted = deleted, updated = updated)
+      Some(cf)
+    }
+  }
 
   /**
    * Provides an automatically generated clean method for a task that provides fileOutputs.
