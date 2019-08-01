@@ -7,7 +7,7 @@ package sbt.librarymanagement
 final class URLRepository private (
   name: String,
   patterns: sbt.librarymanagement.Patterns) extends sbt.librarymanagement.PatternsBasedRepository(name, patterns) with Serializable {
-  
+  Resolver.validatePatterns(patterns)
   
   
   override def equals(o: Any): Boolean = o match {

@@ -69,6 +69,7 @@ object DependencyBuilders {
   final class RepositoryName private[sbt] (name: String) {
     def at(location: String) = {
       nonEmpty(location, "Repository location")
+      Resolver.validateUrlString(location)
       MavenRepository(name, location)
     }
   }

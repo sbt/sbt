@@ -7,6 +7,7 @@ import java.io.{ IOException, File }
 import java.net.URL
 import scala.xml.XML
 import org.xml.sax.SAXParseException
+import sbt.util.{ Level, LogExchange }
 
 final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name) {
   override def toString = "Raw(" + resolver.toString + ")"
@@ -402,5 +403,29 @@ private[librarymanagement] abstract class ResolverFunctions {
   def defaultIvyPatterns = {
     val pList = Vector(localBasePattern)
     Patterns().withIvyPatterns(pList).withArtifactPatterns(pList).withIsMavenCompatible(false)
+  }
+
+  lazy val log = {
+    val log0 = LogExchange.logger("sbt.librarymanagement.ResolverExtra")
+    LogExchange.bindLoggerAppenders(
+      "sbt.librarymanagement.ResolverExtra",
+      List(LogExchange.buildAsyncStdout -> Level.Info)
+    )
+    log0
+  }
+  private[sbt] def warnHttp(value: String): Unit = {
+    log.warn(s"insecure HTTP request is deprecated '$value'; switch to HTTPS")
+  }
+  private[sbt] def validatePatterns(patterns: Patterns): Unit = {
+    val ivy = patterns.ivyPatterns.headOption map (_.startsWith("http:"))
+    val art = patterns.artifactPatterns.headOption map (_.startsWith("http:"))
+    (ivy orElse art) foreach { _ =>
+      warnHttp(patterns.toString)
+    }
+  }
+  private[sbt] def validateUrlString(url: String): Unit = {
+    if (url.startsWith("http:")) {
+      warnHttp(url)
+    }
   }
 }
