@@ -1,9 +1,6 @@
 ---
 name: No new issues
-about: No new issues
-title: ''
-labels: ''
-assignees: ''
+about: Use use https://github.com/sbt/sbt/issues/new/choose instead
 
 ---
 
