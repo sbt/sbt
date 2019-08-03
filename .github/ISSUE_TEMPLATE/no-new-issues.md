@@ -1,6 +1,6 @@
 ---
 name: No new issues
-about: Use use https://github.com/sbt/sbt/issues/new/choose instead
+about: Use https://github.com/sbt/sbt/issues/new/choose instead
 
 ---
 
