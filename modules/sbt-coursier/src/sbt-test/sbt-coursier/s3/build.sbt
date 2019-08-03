@@ -41,9 +41,11 @@ check := {
   )
 
   def containsRepo(repo: String): Boolean = {
-    parsedCoursierResolvers.collectFirst {
-      case m: coursier.maven.MavenRepository if m.root == repo => true
-    }.exists{ _ == true }
+    val accepted = Set(repo, repo.stripSuffix("/"))
+    parsedCoursierResolvers.exists {
+      case m: coursier.maven.MavenRepository => accepted(m.root)
+      case _ => false
+    }
   }
 
   assert(containsRepo("s3://s3-us-west-2.amazonaws.com/bucket-name/snapshots/"),

@@ -95,7 +95,8 @@ object ToCoursier {
             dt.minute,
             dt.second
           )
-        }
+        },
+        None // TODO Add scm field in lmcoursier.definitions.Info?
       )
     )
 
