@@ -13,15 +13,16 @@ import sbt.librarymanagement._
 import sbt.util.Logger
 import sbt.Keys._
 import lmcoursier.definitions.{
-  Attributes => CAttributes,
   Classifier => CClassifier,
   Configuration => CConfiguration,
   Dependency => CDependency,
+  Extension => CExtension,
   Info => CInfo,
   Module => CModule,
   ModuleName => CModuleName,
   Organization => COrganization,
   Project => CProject,
+  Publication => CPublication,
   Type => CType
 }
 import lmcoursier.credentials.DirectCredentials
@@ -108,33 +109,34 @@ object CoursierInputsTasks {
     val configurations = desc.getModuleConfigurations.toVector
       .flatMap(Inputs.ivyXmlMappings)
 
-    def dependency(conf: CConfiguration, attr: CAttributes) = CDependency(
+    def dependency(conf: CConfiguration, pub: CPublication) = CDependency(
       module,
       id.getRevision,
       conf,
       exclusions,
-      attr,
+      pub,
       optional = false,
       desc.isTransitive
     )
 
-    val attributes: CConfiguration => CAttributes = {
+    val publications: CConfiguration => CPublication = {
 
       val artifacts = desc.getAllDependencyArtifacts
 
       val m = artifacts.toVector.flatMap { art =>
-        val attr = CAttributes(CType(art.getType), CClassifier(""))
+        val pub =
+          CPublication(art.getName, CType(art.getType), CExtension(art.getExt()), CClassifier(""))
         art.getConfigurations.map(CConfiguration(_)).toVector.map { conf =>
-          conf -> attr
+          conf -> pub
         }
       }.toMap
 
-      c => m.getOrElse(c, CAttributes(CType(""), CClassifier("")))
+      c => m.getOrElse(c, CPublication("", CType(""), CExtension(""), CClassifier("")))
     }
 
     configurations.map {
       case (from, to) =>
-        from -> dependency(to, attributes(to))
+        from -> dependency(to, publications(to))
     }
   }
 
