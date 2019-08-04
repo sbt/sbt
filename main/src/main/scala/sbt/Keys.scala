@@ -10,7 +10,7 @@ package sbt
 import java.io.File
 import java.net.URL
 
-import lmcoursier.definitions.CacheLogger
+import lmcoursier.definitions.{ CacheLogger, ModuleMatchers, Reconciliation }
 import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
@@ -339,6 +339,7 @@ object Keys {
   val csrLogger = taskKey[Option[CacheLogger]]("")
   val csrExtraCredentials = taskKey[Seq[lmcoursier.credentials.Credentials]]("")
   val csrPublications = taskKey[Seq[(lmcoursier.definitions.Configuration, lmcoursier.definitions.Publication)]]("")
+  val csrReconciliations = settingKey[Seq[(ModuleMatchers, Reconciliation)]]("Strategy to reconcile version conflicts.")
 
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)

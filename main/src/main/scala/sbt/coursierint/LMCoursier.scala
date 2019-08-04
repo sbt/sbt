@@ -14,7 +14,9 @@ import lmcoursier.definitions.{
   Classifier,
   Configuration => CConfiguration,
   CacheLogger,
-  Project => CProject
+  Project => CProject,
+  ModuleMatchers,
+  Reconciliation,
 }
 import lmcoursier._
 import lmcoursier.credentials.Credentials
@@ -40,6 +42,9 @@ object LMCoursier {
       case _          => CoursierDependencyResolution.defaultCacheLocation
     }
 
+  def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
+    Vector((ModuleMatchers.all, Reconciliation.Relaxed))
+
   def coursierConfiguration(
       rs: Seq[Resolver],
       interProjectDependencies: Seq[CProject],
@@ -56,6 +61,7 @@ object LMCoursier {
       credentials: Seq[Credentials],
       createLogger: Option[CacheLogger],
       cacheDirectory: File,
+      reconciliation: Seq[(ModuleMatchers, Reconciliation)],
       log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
@@ -96,6 +102,7 @@ object LMCoursier {
       .withCredentials(credentials)
       .withLogger(createLogger)
       .withCache(cacheDirectory)
+      .withReconciliation(reconciliation.toVector)
       .withLog(log)
   }
 
@@ -116,6 +123,7 @@ object LMCoursier {
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
+      csrReconciliations.value,
       streams.value.log
     )
   }
@@ -137,6 +145,7 @@ object LMCoursier {
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
+      csrReconciliations.value,
       streams.value.log
     )
   }
@@ -158,6 +167,7 @@ object LMCoursier {
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
+      csrReconciliations.value,
       streams.value.log
     )
   }
@@ -179,6 +189,7 @@ object LMCoursier {
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
+      csrReconciliations.value,
       streams.value.log
     )
   }
