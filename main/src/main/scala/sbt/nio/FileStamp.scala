@@ -17,14 +17,39 @@ import sbt.nio.file.FileAttributes
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import xsbti.compile.analysis.{ Stamp => XStamp }
 
+/**
+ * A trait that indicates what file stamping implementation should be used to track the state of
+ * a given file. The two choices are [[FileStamper.Hash]] and [[FileStamper.LastModified]].
+ */
 sealed trait FileStamper
+
+/**
+ * Provides implementations of [[FileStamper]].
+ *
+ */
 object FileStamper {
+
+  /**
+   * Track files using a hash.
+   */
   case object Hash extends FileStamper
+
+  /**
+   * Track files using the last modified time.
+   */
   case object LastModified extends FileStamper
 }
-private[sbt] sealed trait FileStamp
 
-private[sbt] object FileStamp {
+/**
+ * Represents the state of a file. This representation is either a hash of the file contents or
+ * the last modified time.
+ */
+sealed trait FileStamp
+
+/**
+ * Provides json formatters for [[FileStamp]].
+ */
+object FileStamp {
   private[sbt] type Id[T] = T
 
   private[sbt] implicit class Ops(val fileStamp: FileStamp) {
@@ -35,11 +60,12 @@ private[sbt] object FileStamp {
     }
   }
 
-  def apply(path: Path, fileStamper: FileStamper): Option[FileStamp] = fileStamper match {
-    case FileStamper.Hash         => hash(path)
-    case FileStamper.LastModified => lastModified(path)
-  }
-  def apply(path: Path, fileAttributes: FileAttributes): Option[FileStamp] =
+  private[sbt] def apply(path: Path, fileStamper: FileStamper): Option[FileStamp] =
+    fileStamper match {
+      case FileStamper.Hash         => hash(path)
+      case FileStamper.LastModified => lastModified(path)
+    }
+  private[sbt] def apply(path: Path, fileAttributes: FileAttributes): Option[FileStamp] =
     try {
       if (fileAttributes.isDirectory) lastModified(path)
       else
@@ -51,19 +77,21 @@ private[sbt] object FileStamp {
     } catch {
       case e: IOException => Some(Error(e))
     }
-  def hash(string: String): Hash = new FileHashImpl(sbt.internal.inc.Hash.unsafeFromString(string))
-  def hash(path: Path): Option[Hash] = Stamper.forHash(path.toFile) match {
+  private[sbt] def hash(string: String): Hash =
+    new FileHashImpl(sbt.internal.inc.Hash.unsafeFromString(string))
+  private[sbt] def hash(path: Path): Option[Hash] = Stamper.forHash(path.toFile) match {
     case EmptyStamp => None
     case s          => Some(new FileHashImpl(s))
   }
-  def lastModified(path: Path): Option[LastModified] = IO.getModifiedTimeOrZero(path.toFile) match {
-    case 0 => None
-    case l => Some(LastModified(l))
-  }
+  private[sbt] def lastModified(path: Path): Option[LastModified] =
+    IO.getModifiedTimeOrZero(path.toFile) match {
+      case 0 => None
+      case l => Some(LastModified(l))
+    }
   private[this] class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.getHash.orElse(""))
-  sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
-  final case class LastModified private[sbt] (time: Long) extends FileStamp
-  final case class Error(exception: IOException) extends FileStamp
+  private[sbt] sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
+  private[sbt] final case class LastModified private[sbt] (time: Long) extends FileStamp
+  private[sbt] final case class Error(exception: IOException) extends FileStamp
 
   object Formats {
     implicit val seqPathJsonFormatter: JsonFormat[Seq[Path]] = new JsonFormat[Seq[Path]] {
