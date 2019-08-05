@@ -13,8 +13,9 @@ def checkSources(report: UpdateReport): Unit = {
   val srcs = getSources(report).map(_.getName)
   if(srcs.isEmpty)
     sys.error(s"No sources retrieved\n\n$report")
-  else if (srcs.size != 8 || !srcs.exists(_ == "akka-actor_2.12-2.5.22-sources.jar")) {
+  else if (srcs.size != 9 || !srcs.exists(_ == "akka-actor_2.12-2.5.22-sources.jar")) {
     // scala-library-2.12.9-sources.jar
+    // scala-java8-compat_2.12-0.8.0-sources.jar
     // config-1.3.3-sources.jar
     // akka-actor_2.12-2.5.22-sources.jar
     // scala-java8-compat_2.12-0.8.0-sources.jar
