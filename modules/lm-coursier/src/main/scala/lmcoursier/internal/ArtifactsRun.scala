@@ -35,6 +35,7 @@ object ArtifactsRun {
           .withResolutions(params.resolutions)
           .withArtifactTypes(Set(Type.all))
           .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
+          .withClasspathOrder(false)
           .addExtraArtifacts { l =>
             if (params.includeSignatures)
               l.flatMap(_._3.extra.get("sig").toSeq)
