@@ -2,7 +2,7 @@ ThisBuild / turbo := true
 
 val akkaTest = (project in file(".")).settings(
   name := "akka-test",
-  scalaVersion := "2.12.8",
+  scalaVersion := "2.12.9",
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-actor" % "2.5.16",
     "com.lihaoyi" %% "utest" % "0.6.6" % "test"
