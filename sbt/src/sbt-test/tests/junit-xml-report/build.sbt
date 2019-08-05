@@ -14,7 +14,7 @@ val nestedSuitesReportFile = "target/test-reports/my.scalatest.MyNestedSuites.xm
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 val junitinterface = "com.novocode" % "junit-interface" % "0.11"
 
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.12.9"
 
 lazy val root = (project in file(".")).
   settings(

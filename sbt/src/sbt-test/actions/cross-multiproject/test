@@ -13,7 +13,7 @@ $ exists lib/target/scala-2.13.0-M5
 
 # test safe switching
 > clean
-> ++ 2.12.8 -v compile
+> ++ 2.12.9 -v compile
 $ exists lib/target/scala-2.12
 -$ exists lib/target/scala-2.13.0-M5
 $ exists sbt-foo/target/scala-2.12
@@ -29,7 +29,7 @@ $ exists sbt-foo/target/scala-2.12
 
 # Test ++ leaves crossScalaVersions unchanged
 > clean
-> ++2.12.8
+> ++2.12.9
 > +extrasProj/compile
 $ exists extras/target/scala-2.13.0-M5
 $ exists extras/target/scala-2.12

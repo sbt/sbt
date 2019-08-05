@@ -3,7 +3,7 @@ lazy val check = taskKey[Unit]("Runs the check")
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 val junit = "junit" % "junit" % "4.11"
 
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.12.9"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
