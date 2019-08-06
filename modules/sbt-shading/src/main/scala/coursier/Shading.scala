@@ -86,7 +86,7 @@ object Shading {
     }
 
     val dependencyArtifacts = res
-      .dependencyArtifacts()
+      .dependencyArtifacts(None, classpathOrder = false)
       .filter { case (_, attr, _) => classpathTypes(attr.`type`) }
       .groupBy(_._1)
       .mapValues(_.map(t => (t._2, t._3)))
@@ -118,7 +118,7 @@ object Shading {
 
     def files(deps: Seq[Dependency]) = res
       .subset(deps)
-      .dependencies
+      .minDependencies
       .toSeq
       .flatMap(dependencyArtifacts.get)
       .flatten
