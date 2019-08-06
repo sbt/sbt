@@ -2338,10 +2338,8 @@ object Classpaths {
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         packagedArtifacts.in(publish).value.toVector,
-        checksums.in(publish).value.toVector, { //resolvername: not required if publishTo is false
-          val publishToOption = publishTo.value
-          if (publishArtifact.value) getPublishTo(publishToOption).name else "local"
-        },
+        checksums.in(publish).value.toVector,
+        getPublishTo(publishTo.value, publishArtifact.value).name, // error if publishTo is None and publishArtifact is true
         ivyLoggingLevel.value,
         isSnapshot.value
       )
@@ -2934,8 +2932,16 @@ object Classpaths {
 
   def defaultRepositoryFilter: MavenRepository => Boolean = repo => !repo.root.startsWith("file:")
 
-  def getPublishTo(repo: Option[Resolver]): Resolver =
-    repo getOrElse sys.error("Repository for publishing is not specified.")
+  def getPublishTo(repo: Option[Resolver], publishArtifact: Boolean): Resolver =
+    repo.getOrElse {
+      if (publishArtifact)
+        sys.error("Repository for publishing is not specified.")
+      else
+        Resolver.defaultLocal
+    }
+
+  @deprecated("No longer used", "1.4.0")
+  def getPublishTo(repo: Option[Resolver]): Resolver = getPublishTo(repo, true)
 
   def publishConfig(
       publishMavenStyle: Boolean,
