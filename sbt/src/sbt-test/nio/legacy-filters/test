@@ -7,3 +7,15 @@
 > checkSources Foo.scala Bar.scala
 
 -> compile
+
+> set Compile / unmanagedSources / excludeFilter := oldExcludeFilter.value
+
+> compile
+
+> set Compile / unmanagedSources / excludeFilter := HiddenFileFilter
+
+-> compile
+
+> set Compile / unmanagedSources / fileInputIncludeFilter := newFilter.value
+
+> compile

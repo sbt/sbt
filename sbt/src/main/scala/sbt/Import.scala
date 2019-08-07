@@ -70,6 +70,8 @@ trait Import {
   val FileChanges = sbt.nio.FileChanges
   type Glob = sbt.nio.file.Glob
   val Glob = sbt.nio.file.Glob
+  type PathFilter = sbt.nio.file.PathFilter
+  val PathFilter = sbt.nio.file.PathFilter
   type RelativeGlob = sbt.nio.file.RelativeGlob
   val RelativeGlob = sbt.nio.file.RelativeGlob
   val RecursiveGlob = sbt.nio.file.RecursiveGlob
