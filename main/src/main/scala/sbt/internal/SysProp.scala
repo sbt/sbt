@@ -87,7 +87,7 @@ object SysProp {
   def closeClassLoaders: Boolean = getOrTrue("sbt.classloader.close")
 
   def fileCacheSize: Long =
-    SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128 * 1024 * 1024)
+    SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128L * 1024 * 1024)
   def supershell: Boolean = color && getOrTrue("sbt.supershell")
 
   def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
