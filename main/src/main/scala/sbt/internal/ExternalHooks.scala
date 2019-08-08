@@ -16,8 +16,8 @@ import sbt.internal.inc.ExternalLookup
 import sbt.internal.inc.Stamp.equivStamp.equiv
 import sbt.io.syntax._
 import sbt.nio.Keys._
-import sbt.nio.file.RecursiveGlob
 import sbt.nio.file.syntax._
+import sbt.nio.file.{ FileAttributes, FileTreeView, RecursiveGlob }
 import sbt.nio.{ FileChanges, FileStamp, FileStamper }
 import xsbti.compile._
 import xsbti.compile.analysis.Stamp
@@ -26,7 +26,8 @@ import scala.collection.JavaConverters._
 
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
-  def default: Def.Initialize[sbt.Task[FileChanges => ExternalHooks]] = Def.task {
+  private type Func = (FileChanges, FileTreeView[(Path, FileAttributes)]) => ExternalHooks
+  def default: Def.Initialize[sbt.Task[Func]] = Def.task {
     val unmanagedCache = unmanagedFileStampCache.value
     val managedCache = managedFileStampCache.value
     val cp = dependencyClasspath.value.map(_.data)
@@ -35,11 +36,13 @@ private[sbt] object ExternalHooks {
       managedCache.getOrElseUpdate(path, FileStamper.LastModified)
     }
     val classGlob = classDirectory.value.toGlob / RecursiveGlob / "*.class"
-    fileTreeView.value.list(classGlob).foreach {
-      case (path, _) => managedCache.update(path, FileStamper.LastModified)
-    }
     val options = (compileOptions in compile).value
-    apply(_, options, unmanagedCache, managedCache)
+    (fc: FileChanges, fileTreeView: FileTreeView[(Path, FileAttributes)]) => {
+      fileTreeView.list(classGlob).foreach {
+        case (path, _) => managedCache.update(path, FileStamper.LastModified)
+      }
+      apply(fc, options, unmanagedCache, managedCache)
+    }
   }
   private def apply(
       changedFiles: FileChanges,

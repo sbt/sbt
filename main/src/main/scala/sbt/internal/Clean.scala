@@ -83,7 +83,7 @@ private[sbt] object Clean {
     Def.taskDyn {
       val state = Keys.state.value
       val extracted = Project.extract(state)
-      val view = fileTreeView.value
+      val view = (fileTreeView in scope).value
       val manager = streamsManager.value
       Def.task {
         val excludeFilter = cleanFilter(scope).value

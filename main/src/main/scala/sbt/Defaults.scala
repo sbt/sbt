@@ -616,7 +616,7 @@ object Defaults extends BuildCommon {
       val changes = previous
         .map(sbt.nio.Settings.changedFiles(_, current))
         .getOrElse(FileChanges.noPrevious(current.map(_._1)))
-      ExternalHooks.default.value(changes)
+      ExternalHooks.default.value(changes, fileTreeView.value)
     },
     externalHooks / inputFileStamps := {
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
