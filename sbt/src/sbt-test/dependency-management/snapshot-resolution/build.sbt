@@ -1,5 +1,5 @@
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.12.9"
+ThisBuild / scalaVersion := "2.12.8"
 
 // TTL is 24h so we can't detect the change
 ThisBuild / useCoursier := false

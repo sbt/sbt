@@ -19,4 +19,4 @@ val dynamicTask = taskKey[Unit]("dynamic input task")
 
 dynamicTask := { println("not yet et") }
 
-crossScalaVersions := "2.11.12" :: "2.12.9" :: Nil
+crossScalaVersions := "2.11.12" :: "2.12.8" :: Nil

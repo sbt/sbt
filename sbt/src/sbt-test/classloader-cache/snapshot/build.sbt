@@ -9,7 +9,7 @@ ThisBuild / useCoursier := false
 
 val snapshot = (project in file(".")).settings(
   name := "akka-test",
-  scalaVersion := "2.12.9",
+  scalaVersion := "2.12.8",
   libraryDependencies ++= Seq(
     "com.lihaoyi" %% "utest" % "0.6.6" % "test"
   ),
