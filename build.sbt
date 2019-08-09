@@ -58,7 +58,13 @@ lazy val `lm-coursier-shaded` = project
       "org.scala-lang.modules" %% "scala-xml" % "1.2.0", // depending on that one so that it doesn't get shaded
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test
-    )
+    ),
+    packageBin.in(Shading) := {
+      val jar = packageBin.in(Shading).value
+      // ignoreFiles is there temporarily, until https://github.com/coursier/coursier/pull/1317 is merged
+      Check.onlyNamespace("lmcoursier", jar, ignoreFiles = Set("coursier.properties"))
+      jar
+    }
   )
 
 lazy val `sbt-coursier-shared` = project
