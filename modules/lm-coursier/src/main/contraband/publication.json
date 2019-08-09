@@ -23,6 +23,10 @@
           "name": "classifier",
           "type": "Classifier"
         }
+      ],
+      "extra": [
+        "def attributes: Attributes = Attributes(`type`, classifier)",
+        "def withAttributes(attributes: Attributes): Publication = withType(attributes.`type`).withClassifier(attributes.classifier)"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 package coursier.sbtcoursiershared
 
-import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Info, Module, ModuleName, Organization, Project, Strict, Type}
+import lmcoursier.definitions.{Attributes, Classifier, Configuration, Dependency, Extension, Info, Module, ModuleName, Organization, Project, Publication, Strict, Type}
 import lmcoursier.{FallbackDependency, FromSbt, Inputs}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
 import coursier.sbtcoursiershared.Structure._
@@ -109,33 +109,33 @@ object InputsTasks {
       .toVector
       .flatMap(Inputs.ivyXmlMappings)
 
-    def dependency(conf: Configuration, attr: Attributes) = Dependency(
+    def dependency(conf: Configuration, pub: Publication) = Dependency(
       module,
       id.getRevision,
       conf,
       exclusions,
-      attr,
+      pub,
       optional = false,
       desc.isTransitive
     )
 
-    val attributes: Configuration => Attributes = {
+    val publications: Configuration => Publication = {
 
       val artifacts = desc.getAllDependencyArtifacts
 
       val m = artifacts.toVector.flatMap { art =>
-        val attr = Attributes(Type(art.getType), Classifier(""))
+        val pub = Publication(art.getName, Type(art.getType), Extension(art.getExt), Classifier(""))
         art.getConfigurations.map(Configuration(_)).toVector.map { conf =>
-          conf -> attr
+          conf -> pub
         }
       }.toMap
 
-      c => m.getOrElse(c, Attributes(Type(""), Classifier("")))
+      c => m.getOrElse(c, Publication("", Type(""), Extension(""), Classifier("")))
     }
 
     configurations.map {
       case (from, to) =>
-        from -> dependency(to, attributes(to))
+        from -> dependency(to, publications(to))
     }
   }
 

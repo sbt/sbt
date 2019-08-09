@@ -18,7 +18,7 @@ inThisBuild(List(
 val coursierVersion0 = "2.0.0-RC3-2"
 
 lazy val `lm-coursier` = project
-  // .enablePlugins(ContrabandPlugin)
+  .enablePlugins(ContrabandPlugin)
   .in(file("modules/lm-coursier"))
   .settings(
     shared,
@@ -33,7 +33,8 @@ lazy val `lm-coursier` = project
       // is ignored).
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test
-    )
+    ),
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "scala",
   )
 
 lazy val `lm-coursier-shaded` = project

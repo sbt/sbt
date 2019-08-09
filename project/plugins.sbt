@@ -4,8 +4,8 @@ plugins_(
   "io.get-coursier"    % "sbt-coursier"             % sbtCoursierVersion,
   "com.typesafe"       % "sbt-mima-plugin"          % "0.3.0",
   "com.jsuereth"       % "sbt-pgp"                  % "1.1.2",
-  "io.get-coursier"    % "sbt-shading"              % sbtCoursierVersion
-  // "org.scala-sbt"      % "sbt-contraband"           % "0.4.3"
+  "io.get-coursier"    % "sbt-shading"              % sbtCoursierVersion,
+  "org.scala-sbt"      % "sbt-contraband"           % "0.4.4"
 )
 
 libs ++= Seq(

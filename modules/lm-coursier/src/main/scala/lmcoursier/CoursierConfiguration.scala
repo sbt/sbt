@@ -8,7 +8,7 @@ package lmcoursier
 import java.io.File
 
 import lmcoursier.credentials.Credentials
-import lmcoursier.definitions.{Authentication, CacheLogger, Module, Project, Strict}
+import lmcoursier.definitions.{Authentication, CacheLogger, Module, ModuleMatchers, Project, Reconciliation, Strict}
 import sbt.librarymanagement.Resolver
 import xsbti.Logger
 
@@ -37,7 +37,8 @@ final class CoursierConfiguration private (
   val followHttpToHttpsRedirections: Option[Boolean],
   val strict: Option[Strict],
   val extraProjects: Vector[Project],
-  val forceVersions: Vector[(Module, String)]
+  val forceVersions: Vector[(Module, String)],
+  val reconciliation: Vector[(ModuleMatchers, Reconciliation)]
 ) extends Serializable {
   
   private def this() =
@@ -65,6 +66,7 @@ final class CoursierConfiguration private (
       None,
       None,
       None,
+      Vector.empty,
       Vector.empty,
       Vector.empty
     )
@@ -118,9 +120,66 @@ final class CoursierConfiguration private (
       followHttpToHttpsRedirections,
       None,
       Vector.empty,
+      Vector.empty,
       Vector.empty
     )
-  
+
+  def this(
+    log: Option[Logger],
+    resolvers: Vector[Resolver],
+    parallelDownloads: Int,
+    maxIterations: Int,
+    sbtScalaOrganization: Option[String],
+    sbtScalaVersion: Option[String],
+    sbtScalaJars: Vector[File],
+    interProjectDependencies: Vector[Project],
+    excludeDependencies: Vector[(String, String)],
+    fallbackDependencies: Vector[FallbackDependency],
+    autoScalaLibrary: Boolean,
+    hasClassifiers: Boolean,
+    classifiers: Vector[String],
+    mavenProfiles: Vector[String],
+    scalaOrganization: Option[String],
+    scalaVersion: Option[String],
+    authenticationByRepositoryId: Vector[(String, Authentication)],
+    credentials: Seq[Credentials],
+    logger: Option[CacheLogger],
+    cache: Option[File],
+    ivyHome: Option[File],
+    followHttpToHttpsRedirections: Option[Boolean],
+    strict: Option[Strict],
+    extraProjects: Vector[Project],
+    forceVersions: Vector[(Module, String)],
+  ) =
+    this(
+      log,
+      resolvers,
+      parallelDownloads,
+      maxIterations,
+      sbtScalaOrganization,
+      sbtScalaVersion,
+      sbtScalaJars,
+      interProjectDependencies,
+      excludeDependencies,
+      fallbackDependencies,
+      autoScalaLibrary,
+      hasClassifiers,
+      classifiers,
+      mavenProfiles,
+      scalaOrganization,
+      scalaVersion,
+      authenticationByRepositoryId,
+      credentials,
+      logger,
+      cache,
+      ivyHome,
+      followHttpToHttpsRedirections,
+      strict,
+      extraProjects,
+      forceVersions,
+      Vector.empty
+    )
+
   override def equals(o: Any): Boolean =
     o match {
       case other: CoursierConfiguration =>
@@ -148,7 +207,8 @@ final class CoursierConfiguration private (
           followHttpToHttpsRedirections == other.followHttpToHttpsRedirections &&
           strict == other.strict &&
           extraProjects == other.extraProjects &&
-          forceVersions == other.forceVersions
+          forceVersions == other.forceVersions &&
+          reconciliation == other.reconciliation
       case _ => false
     }
 
@@ -179,6 +239,7 @@ final class CoursierConfiguration private (
     code = 37 * (code + strict.##)
     code = 37 * (code + extraProjects.##)
     code = 37 * (code + forceVersions.##)
+    code = 37 * (code + reconciliation.##)
     code
   }
 
@@ -210,7 +271,8 @@ final class CoursierConfiguration private (
     followHttpToHttpsRedirections: Option[Boolean] = followHttpToHttpsRedirections,
     strict: Option[Strict] = strict,
     extraProjects: Vector[Project] = extraProjects,
-    forceVersions: Vector[(Module, String)] = forceVersions
+    forceVersions: Vector[(Module, String)] = forceVersions,
+    reconciliation: Vector[(ModuleMatchers, Reconciliation)] = reconciliation
   ): CoursierConfiguration =
     new CoursierConfiguration(
       log,
@@ -237,7 +299,8 @@ final class CoursierConfiguration private (
       followHttpToHttpsRedirections,
       strict,
       extraProjects,
-      forceVersions
+      forceVersions,
+      reconciliation
     )
 
   def withLog(log: Option[Logger]): CoursierConfiguration =
@@ -343,6 +406,9 @@ final class CoursierConfiguration private (
 
   def withForceVersions(forceVersions: Vector[(Module, String)]): CoursierConfiguration =
     copy(forceVersions = forceVersions)
+
+  def withReconciliation(reconciliation: Vector[(ModuleMatchers, Reconciliation)]): CoursierConfiguration =
+    copy(reconciliation = reconciliation)
 }
 
 object CoursierConfiguration {
@@ -397,6 +463,7 @@ object CoursierConfiguration {
       None,
       None,
       Vector.empty,
+      Vector.empty,
       Vector.empty
     )
   
@@ -446,6 +513,7 @@ object CoursierConfiguration {
       None,
       None,
       None,
+      Vector.empty,
       Vector.empty,
       Vector.empty
     )
@@ -497,6 +565,7 @@ object CoursierConfiguration {
       ivyHome,
       None,
       None,
+      Vector.empty,
       Vector.empty,
       Vector.empty
     )

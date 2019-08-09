@@ -12,11 +12,10 @@ final class Dependency private (
   val publication: Publication,
   val optional: Boolean,
   val transitive: Boolean) extends Serializable {
-
-
-  def attributes: Attributes =
-    publication.attributes
-
+  def attributes: Attributes = publication.attributes
+  def withAttributes(attributes: Attributes): Dependency = withPublication(publication.withType(attributes.`type`).withClassifier(attributes.classifier))
+  
+  
   override def equals(o: Any): Boolean = o match {
     case x: Dependency => (this.module == x.module) && (this.version == x.version) && (this.configuration == x.configuration) && (this.exclusions == x.exclusions) && (this.publication == x.publication) && (this.optional == x.optional) && (this.transitive == x.transitive)
     case _ => false
@@ -42,12 +41,6 @@ final class Dependency private (
   def withExclusions(exclusions: Set[(Organization, ModuleName)]): Dependency = {
     copy(exclusions = exclusions)
   }
-  def withAttributes(attributes: Attributes): Dependency =
-    copy(
-      publication = publication
-        .withType(attributes.`type`)
-        .withClassifier(attributes.classifier)
-    )
   def withPublication(publication: Publication): Dependency = {
     copy(publication = publication)
   }
@@ -59,7 +52,6 @@ final class Dependency private (
   }
 }
 object Dependency {
-  
   def apply(module: Module, version: String, configuration: Configuration, exclusions: Set[(Organization, ModuleName)], attributes: Attributes, optional: Boolean, transitive: Boolean): Dependency = new Dependency(module, version, configuration, exclusions, Publication("", attributes.`type`, Extension(""), attributes.classifier), optional, transitive)
   def apply(module: Module, version: String, configuration: Configuration, exclusions: Set[(Organization, ModuleName)], publication: Publication, optional: Boolean, transitive: Boolean): Dependency = new Dependency(module, version, configuration, exclusions, publication, optional, transitive)
 }

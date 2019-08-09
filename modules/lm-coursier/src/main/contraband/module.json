@@ -20,6 +20,30 @@
           "type": "Map[String, String]"
         }
       ]
+    },
+
+    {
+      "name": "ModuleMatchers",
+      "namespace": "lmcoursier.definitions",
+      "target": "Scala",
+      "parents": [],
+      "type": "record",
+      "fields": [
+        {
+          "name": "exclude",
+          "type": "Set[lmcoursier.definitions.Module]",
+          "doc": "Use \"*\" in either organization or name to match any."
+        },
+        {
+          "name": "include",
+          "type": "Set[lmcoursier.definitions.Module]",
+          "doc": "Use \"*\" in either organization or name to match any."
+        }
+      ],
+      "extraCompanion": [
+        "/** ModuleMatchers that matches to any modules. */",
+        "def all: ModuleMatchers = ModuleMatchers(Set.empty, Set.empty)"
+      ]
     }
   ]
 }

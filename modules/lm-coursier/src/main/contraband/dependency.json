@@ -24,8 +24,8 @@
           "type": "Set[(Organization, ModuleName)]"
         },
         {
-          "name": "attributes",
-          "type": "Attributes"
+          "name": "publication",
+          "type": "Publication"
         },
         {
           "name": "optional",
@@ -35,6 +35,13 @@
           "name": "transitive",
           "type": "Boolean"
         }
+      ],
+      "extra": [
+        "def attributes: Attributes = publication.attributes",
+        "def withAttributes(attributes: Attributes): Dependency = withPublication(publication.withType(attributes.`type`).withClassifier(attributes.classifier))"
+      ],
+      "extraCompanion": [
+        "def apply(module: Module, version: String, configuration: Configuration, exclusions: Set[(Organization, ModuleName)], attributes: Attributes, optional: Boolean, transitive: Boolean): Dependency = new Dependency(module, version, configuration, exclusions, Publication(\"\", attributes.`type`, Extension(\"\"), attributes.classifier), optional, transitive)"
       ]
     }
   ]

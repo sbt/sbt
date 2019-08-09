@@ -9,9 +9,9 @@ final class Publication private (
   val `type`: Type,
   val ext: Extension,
   val classifier: Classifier) extends Serializable {
+  def attributes: Attributes = Attributes(`type`, classifier)
+  def withAttributes(attributes: Attributes): Publication = withType(attributes.`type`).withClassifier(attributes.classifier)
   
-  def attributes: Attributes =
-    Attributes(`type`, classifier)
   
   override def equals(o: Any): Boolean = o match {
     case x: Publication => (this.name == x.name) && (this.`type` == x.`type`) && (this.ext == x.ext) && (this.classifier == x.classifier)
