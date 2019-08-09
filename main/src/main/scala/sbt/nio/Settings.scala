@@ -348,7 +348,11 @@ private[sbt] object Settings {
         case LastModified => FileStamp.lastModified
         case Hash         => FileStamp.hash
       }
-      (allOutputFiles in scope).value.flatMap(p => stamper(p).map(p -> _))
+      val allFiles = (allOutputFiles in scope).value
+      // The cache invalidation is specifically so that source formatters can run before
+      // the compile task and the file stamps seen by compile match the post-format stamps.
+      allFiles.foreach((unmanagedFileStampCache in scope).value.invalidate)
+      allFiles.flatMap(p => stamper(p).map(p -> _))
     })
 
 }
