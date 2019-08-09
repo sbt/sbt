@@ -21,6 +21,7 @@ object Mima {
       .filter(_.startsWith("v"))
       .map(_.stripPrefix("v"))
       .filter(stable)
+      .filter(_ != "2.0.0-RC3-2") // borked release
       .toSet
 
   def settings: Seq[Setting[_]] = Seq(
