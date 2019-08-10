@@ -142,48 +142,49 @@ object CoursierInputsTasks {
 
   private[sbt] def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[CProject]]] =
     Def.taskDyn {
-
       val state = sbt.Keys.state.value
       val projectRef = sbt.Keys.thisProjectRef.value
-
       val projectRefs = Project.transitiveInterDependencies(state, projectRef)
-
       Def.task {
-        val projects = csrProject.all(ScopeFilter(inProjects(projectRefs: _*))).value
-        val projectModules = projects.map(_.module).toSet
-
-        // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
-        val extraProjects = sbt.Keys.projectDescriptors.value
-          .map {
-            case (k, v) =>
-              moduleFromIvy(k) -> v
-          }
-          .filter {
-            case (module, _) =>
-              !projectModules(module)
-          }
-          .toVector
-          .map {
-            case (module, v) =>
-              val configurations = v.getConfigurations.map { c =>
-                CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
-              }.toMap
-              val deps = v.getDependencies.flatMap(dependencyFromIvy)
-              CProject(
-                module,
-                v.getModuleRevisionId.getRevision,
-                deps,
-                configurations,
-                Nil,
-                None,
-                Nil,
-                CInfo("", "", Nil, Nil, None)
-              )
-          }
-
-        projects ++ extraProjects
+        csrProject.all(ScopeFilter(inProjects(projectRefs :+ projectRef: _*))).value
       }
     }
+
+  private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
+    Def.task {
+      val projects = csrInterProjectDependencies.value
+      val projectModules = projects.map(_.module).toSet
+
+      // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
+      sbt.Keys.projectDescriptors.value
+        .map {
+          case (k, v) =>
+            moduleFromIvy(k) -> v
+        }
+        .filter {
+          case (module, _) =>
+            !projectModules(module)
+        }
+        .toVector
+        .map {
+          case (module, v) =>
+            val configurations = v.getConfigurations.map { c =>
+              CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
+            }.toMap
+            val deps = v.getDependencies.flatMap(dependencyFromIvy)
+            CProject(
+              module,
+              v.getModuleRevisionId.getRevision,
+              deps,
+              configurations,
+              Nil,
+              None,
+              Nil,
+              CInfo("", "", Nil, Nil, None)
+            )
+        }
+    }
+  }
 
   private[sbt] def coursierFallbackDependenciesTask
       : Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =

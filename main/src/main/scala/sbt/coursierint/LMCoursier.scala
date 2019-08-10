@@ -48,6 +48,7 @@ object LMCoursier {
   def coursierConfiguration(
       rs: Seq[Resolver],
       interProjectDependencies: Seq[CProject],
+      extraProjects: Seq[CProject],
       fallbackDeps: Seq[FallbackDependency],
       appConfig: AppConfiguration,
       classifiers: Option[Seq[Classifier]],
@@ -88,6 +89,7 @@ object LMCoursier {
     CoursierConfiguration()
       .withResolvers(rs.toVector)
       .withInterProjectDependencies(interProjectDependencies.toVector)
+      .withExtraProjects(extraProjects.toVector)
       .withFallbackDependencies(fallbackDeps.toVector)
       .withExcludeDependencies(coursierExcludeDeps)
       .withAutoScalaLibrary(autoScala)
@@ -110,6 +112,7 @@ object LMCoursier {
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
+      csrExtraProjects.value.toVector,
       csrFallbackDependencies.value,
       appConfiguration.value,
       None,
@@ -132,6 +135,7 @@ object LMCoursier {
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
+      csrExtraProjects.value.toVector,
       csrFallbackDependencies.value,
       appConfiguration.value,
       Some(transitiveClassifiers.value.map(Classifier(_))),
@@ -154,6 +158,7 @@ object LMCoursier {
     coursierConfiguration(
       csrSbtResolvers.value,
       Vector(),
+      Vector(),
       csrFallbackDependencies.value,
       appConfiguration.value,
       None,
@@ -175,6 +180,7 @@ object LMCoursier {
   def scalaCompilerBridgeConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
     coursierConfiguration(
       csrResolvers.value,
+      Vector(),
       Vector(),
       csrFallbackDependencies.value,
       appConfiguration.value,

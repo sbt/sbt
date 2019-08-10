@@ -2458,6 +2458,7 @@ object Classpaths {
     csrRecursiveResolvers := CoursierRepositoriesTasks.coursierRecursiveResolversTask.value,
     csrSbtResolvers := CoursierRepositoriesTasks.coursierSbtResolversTask.value,
     csrInterProjectDependencies := CoursierInputsTasks.coursierInterProjectDependenciesTask.value,
+    csrExtraProjects := CoursierInputsTasks.coursierExtraProjectsTask.value,
     csrFallbackDependencies := CoursierInputsTasks.coursierFallbackDependenciesTask.value,
   ) ++
     IvyXml.generateIvyXmlSettings() ++
