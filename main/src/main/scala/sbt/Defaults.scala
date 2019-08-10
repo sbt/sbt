@@ -16,7 +16,6 @@ import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
-import sbt.coursierint._
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import sbt.Keys._
 import sbt.Project.{
@@ -28,6 +27,7 @@ import sbt.Project.{
   richTaskSessionVar
 }
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
+import sbt.coursierint._
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
 import sbt.internal.classpath.AlternativeZincUtil
@@ -69,10 +69,10 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
-import sbt.nio.Watch
 import sbt.nio.Keys._
-import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
 import sbt.nio.file.syntax._
+import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
+import sbt.nio.{ FileChanges, Watch }
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
@@ -150,6 +150,10 @@ object Defaults extends BuildCommon {
     defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       fileInputs :== Nil,
+      fileInputIncludeFilter :== AllPassFilter.toNio,
+      fileInputExcludeFilter :== DirectoryFilter.toNio || HiddenFileFilter,
+      fileOutputIncludeFilter :== AllPassFilter.toNio,
+      fileOutputExcludeFilter :== NothingFilter.toNio,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
       onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
@@ -605,10 +609,14 @@ object Defaults extends BuildCommon {
       s"inc_compile$extra.zip"
     },
     externalHooks := {
+      import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
       val current =
         (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
       val previous = (externalHooks / inputFileStamps).previous
-      ExternalHooks.default.value(previous.flatMap(sbt.nio.Settings.changedFiles(_, current)))
+      val changes = previous
+        .map(sbt.nio.Settings.changedFiles(_, current))
+        .getOrElse(FileChanges.noPrevious(current.map(_._1)))
+      ExternalHooks.default.value(changes, fileTreeView.value)
     },
     externalHooks / inputFileStamps := {
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
@@ -2772,7 +2780,8 @@ object Classpaths {
 
     import CacheStoreFactory.jvalueIsoString
     val cacheStoreFactory: CacheStoreFactory = {
-      val factory = state.value.get(Keys.cacheStoreFactory).getOrElse(InMemoryCacheStore.factory(0))
+      val factory =
+        state.value.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
       factory(cacheDirectory.toPath, Converter)
     }
 

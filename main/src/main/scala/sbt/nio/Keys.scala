@@ -17,8 +17,8 @@ import sbt.internal.DynamicInput
 import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
-import sbt.nio.file.{ ChangedFiles, FileAttributes, FileTreeView, Glob }
-import sbt.{ Def, InputKey, ProjectRef, State, StateTransform }
+import sbt.nio.file.{ FileAttributes, FileTreeView, Glob, PathFilter }
+import sbt._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -29,19 +29,30 @@ object Keys {
   case object ReloadOnSourceChanges extends WatchBuildSourceOption
   val allInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
-  val changedInputFiles = taskKey[Option[ChangedFiles]]("The changed files for a task")
+  val changedInputFiles =
+    taskKey[Seq[(Path, FileStamp)] => FileChanges]("The changed files for a task")
   val fileInputs = settingKey[Seq[Glob]](
     "The file globs that are used by a task. This setting will generally be scoped per task. It will also be used to determine the sources to watch during continuous execution."
   )
+  val fileInputIncludeFilter =
+    settingKey[PathFilter]("A filter to apply to the input sources of a task.")
+  val fileInputExcludeFilter =
+    settingKey[PathFilter]("An exclusion filter to apply to the input sources of a task.")
   val inputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
 
   val fileOutputs = settingKey[Seq[Glob]]("Describes the output files of a task.")
+  val fileOutputIncludeFilter =
+    settingKey[PathFilter]("A filter to apply to the outputs of a task.")
+  val fileOutputExcludeFilter =
+    settingKey[PathFilter]("An exclusion filter to apply to the outputs of a task.")
   val allOutputFiles =
-    taskKey[Seq[Path]]("All of the file output for a task excluding directories and hidden files.")
+    taskKey[Seq[Path]]("All of the file outputs for a task excluding directories and hidden files.")
   val changedOutputFiles =
-    taskKey[Option[ChangedFiles]]("The files that have changed since the last task run.")
+    taskKey[Seq[(Path, FileStamp)] => FileChanges](
+      "The files that have changed since the last task run."
+    )
   val outputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
@@ -130,10 +141,10 @@ object Keys {
   private[sbt] val dynamicFileOutputs =
     taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
 
-  private[sbt] val inputFileStamps =
+  val inputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
       .withRank(Invisible)
-  private[sbt] val outputFileStamps =
+  val outputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task output files")
       .withRank(Invisible)
   private[sbt] type FileAttributeMap =

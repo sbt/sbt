@@ -1,0 +1,17 @@
+> compile
+
+> checkOutputs foo.txt bar.txt base
+
+> set outputTask / fileOutputIncludeFilter := sbt.io.RegularFileFilter
+
+> checkOutputs foo.txt bar.txt
+
+> set outputTask / fileOutputIncludeFilter := sbt.io.DirectoryFilter
+
+> checkOutputs base
+
+> set outputTask / fileOutputIncludeFilter := sbt.io.RegularFileFilter
+
+> set outputTask / fileOutputExcludeFilter := barFilter.value
+
+> checkOutputs foo.txt

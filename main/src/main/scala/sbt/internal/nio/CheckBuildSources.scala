@@ -11,8 +11,9 @@ package internal.nio
 import sbt.Keys.{ baseDirectory, state, streams }
 import sbt.SlashSyntax0._
 import sbt.io.syntax._
+import sbt.nio.FileChanges
 import sbt.nio.Keys._
-import sbt.nio.file.{ ChangedFiles, Glob, RecursiveGlob }
+import sbt.nio.file.{ Glob, RecursiveGlob }
 
 private[sbt] object CheckBuildSources {
   private[sbt] def needReloadImpl: Def.Initialize[Task[StateTransform]] = Def.task {
@@ -22,17 +23,21 @@ private[sbt] object CheckBuildSources {
     (onChangedBuildSource in Scope.Global).value match {
       case IgnoreSourceChanges => new StateTransform(st)
       case o =>
+        import sbt.nio.FileStamp.Formats._
         logger.debug("Checking for meta build source updates")
-        (changedInputFiles in checkBuildSources).value match {
-          case Some(cf: ChangedFiles) if !firstTime =>
+        val previous = (inputFileStamps in checkBuildSources).previous
+        val changes = (changedInputFiles in checkBuildSources).value
+        previous.map(changes) match {
+          case Some(fileChanges @ FileChanges(created, deleted, modified, _))
+              if fileChanges.hasChanges && !firstTime =>
             val rawPrefix = s"build source files have changed\n" +
-              (if (cf.created.nonEmpty) s"new files: ${cf.created.mkString("\n  ", "\n  ", "\n")}"
+              (if (created.nonEmpty) s"new files: ${created.mkString("\n  ", "\n  ", "\n")}"
                else "") +
-              (if (cf.deleted.nonEmpty)
-                 s"deleted files: ${cf.deleted.mkString("\n  ", "\n  ", "\n")}"
+              (if (deleted.nonEmpty)
+                 s"deleted files: ${deleted.mkString("\n  ", "\n  ", "\n")}"
                else "") +
-              (if (cf.updated.nonEmpty)
-                 s"updated files: ${cf.updated.mkString("\n  ", "\n  ", "\n")}"
+              (if (modified.nonEmpty)
+                 s"modified files: ${modified.mkString("\n  ", "\n  ", "\n")}"
                else "")
             val prefix = rawPrefix.linesIterator.filterNot(_.trim.isEmpty).mkString("\n")
             if (o == ReloadOnSourceChanges) {

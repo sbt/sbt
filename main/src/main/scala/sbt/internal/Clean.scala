@@ -83,7 +83,7 @@ private[sbt] object Clean {
     Def.taskDyn {
       val state = Keys.state.value
       val extracted = Project.extract(state)
-      val view = fileTreeView.value
+      val view = (fileTreeView in scope).value
       val manager = streamsManager.value
       Def.task {
         val excludeFilter = cleanFilter(scope).value
@@ -139,7 +139,9 @@ private[sbt] object Clean {
         // We do not want to inadvertently delete files that are not in the target directory.
         val excludeFilter: Path => Boolean = path => !path.startsWith(targetDir) || filter(path)
         val delete = cleanDelete(scope).value
+        val st = streams.in(scope).value
         taskKey.previous.foreach(_.toSeqPath.foreach(p => if (!excludeFilter(p)) delete(p)))
+        delete(st.cacheDirectory.toPath / Previous.DependencyDirectory)
       }
     } tag Tags.Clean
   private[this] def tryDelete(debug: String => Unit): Path => Unit = path => {

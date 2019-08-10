@@ -852,8 +852,8 @@ object BuiltinCommands {
       .getOpt(Keys.fileCacheSize)
       .flatMap(SizeParser(_))
       .getOrElse(SysProp.fileCacheSize)
-    s.get(Keys.cacheStoreFactory).foreach(_.close())
-    s.put(Keys.cacheStoreFactory, InMemoryCacheStore.factory(size))
+    s.get(Keys.cacheStoreFactoryFactory).foreach(_.close())
+    s.put(Keys.cacheStoreFactoryFactory, InMemoryCacheStore.factory(size))
   }
 
   def registerCompilerCache(s: State): State = {

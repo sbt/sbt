@@ -17,8 +17,8 @@ import sbt.internal.inc.Stamp.equivStamp.equiv
 import sbt.io.syntax._
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
-import sbt.nio.file.{ ChangedFiles, RecursiveGlob }
-import sbt.nio.{ FileStamp, FileStamper }
+import sbt.nio.file.{ FileAttributes, FileTreeView, RecursiveGlob }
+import sbt.nio.{ FileChanges, FileStamp, FileStamper }
 import xsbti.compile._
 import xsbti.compile.analysis.Stamp
 
@@ -26,7 +26,8 @@ import scala.collection.JavaConverters._
 
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
-  def default: Def.Initialize[sbt.Task[Option[ChangedFiles] => ExternalHooks]] = Def.task {
+  private type Func = (FileChanges, FileTreeView[(Path, FileAttributes)]) => ExternalHooks
+  def default: Def.Initialize[sbt.Task[Func]] = Def.task {
     val unmanagedCache = unmanagedFileStampCache.value
     val managedCache = managedFileStampCache.value
     val cp = dependencyClasspath.value.map(_.data)
@@ -35,14 +36,16 @@ private[sbt] object ExternalHooks {
       managedCache.getOrElseUpdate(path, FileStamper.LastModified)
     }
     val classGlob = classDirectory.value.toGlob / RecursiveGlob / "*.class"
-    fileTreeView.value.list(classGlob).foreach {
-      case (path, _) => managedCache.update(path, FileStamper.LastModified)
-    }
     val options = (compileOptions in compile).value
-    apply(_, options, unmanagedCache, managedCache)
+    (fc: FileChanges, fileTreeView: FileTreeView[(Path, FileAttributes)]) => {
+      fileTreeView.list(classGlob).foreach {
+        case (path, _) => managedCache.update(path, FileStamper.LastModified)
+      }
+      apply(fc, options, unmanagedCache, managedCache)
+    }
   }
   private def apply(
-      changedFiles: Option[ChangedFiles],
+      changedFiles: FileChanges,
       options: CompileOptions,
       unmanagedCache: FileStamp.Cache,
       managedCache: FileStamp.Cache
@@ -59,11 +62,12 @@ private[sbt] object ExternalHooks {
           }
           private def add(f: File, set: java.util.Set[File]): Unit = { set.add(f); () }
           val allChanges = new java.util.HashSet[File]
-          changedFiles foreach {
-            case ChangedFiles(c, d, u) =>
+          changedFiles match {
+            case FileChanges(c, d, m, _) =>
               c.foreach(add(_, getAdded, allChanges))
               d.foreach(add(_, getRemoved, allChanges))
-              u.foreach(add(_, getChanged, allChanges))
+              m.foreach(add(_, getChanged, allChanges))
+            case _ =>
           }
           override def isEmpty: java.lang.Boolean =
             getAdded.isEmpty && getRemoved.isEmpty && getChanged.isEmpty

@@ -2,7 +2,7 @@ import java.nio.file.{ Files, Path }
 import scala.sys.process._
 
 val compileOpts = settingKey[Seq[String]]("Extra compile options")
-compileOpts := { if (scala.util.Properties.isLinux) "-fPIC" :: "-std=gnu99" :: Nil else Nil }
+compileOpts := { "-fPIC" :: "-std=gnu99" :: Nil }
 val compileLib = taskKey[Seq[Path]]("Compile the library")
 compileLib / sourceDirectory := sourceDirectory.value / "lib"
 compileLib / fileInputs := {
@@ -11,62 +11,53 @@ compileLib / fileInputs := {
 }
 compileLib / target := baseDirectory.value / "out" / "objects"
 compileLib := {
-  val allFiles: Seq[Path] = (compileLib / allInputFiles).value
-  val changedFiles: Option[Seq[Path]] = (compileLib / changedInputFiles).value match {
-    case Some(ChangedFiles(c, _, u)) => Some(c ++ u)
-    case None => None
-  }
-  val include = (compileLib / sourceDirectory).value / "include"
-  val objectDir: Path = (compileLib / target).value.toPath / "objects"
+  val outputDir = Files.createDirectories(streams.value.cacheDirectory.toPath)
   val logger = streams.value.log
-  def objectFileName(path: Path): String = {
-    val name = path.getFileName.toString
-    name.substring(0, name.lastIndexOf('.')) + ".o"
+  val include = (compileLib / sourceDirectory).value / "include"
+  def outputPath(path: Path): Path =
+    outputDir / path.getFileName.toString.replaceAll(".c$", ".o")
+  def compile(path: Path): Path = {
+    val output = outputPath(path)
+    logger.info(s"Compiling $path to $output")
+    Seq("gcc", "-fPIC", "-std=gnu99", s"-I$include", "-c", s"$path", "-o", s"$output").!!
+    output
   }
-  compileLib.previous match {
-    case Some(outputs: Seq[Path]) if changedFiles.isEmpty =>
-      logger.info("Not compiling libfoo: no inputs have changed.")
-      outputs
-    case _ =>
-      Files.createDirectories(objectDir)
-      def extensionFilter(ext: String): Path => Boolean = _.getFileName.toString.endsWith(s".$ext")
-      val cFiles: Seq[Path] =
-        if (changedFiles.fold(false)(_.exists(extensionFilter("h")))) allFiles.filter(extensionFilter("c"))
-        else changedFiles.getOrElse(allFiles).filter(extensionFilter("c"))
-      cFiles.map { file =>
-        val outFile = objectDir.resolve(objectFileName(file))
-        logger.info(s"Compiling $file to $outFile")
-        (Seq("gcc") ++ compileOpts.value ++
-          Seq("-c", file.toString, s"-I$include", "-o", outFile.toString)).!!
-        outFile
-      }
-  }
+  val report = compileLib.inputFileChanges
+  val sourceMap = compileLib.inputFiles.view.collect {
+    case p: Path if p.getFileName.toString.endsWith(".c") => outputPath(p) -> p
+  }.toMap
+  val existingTargets = fileTreeView.value.list(outputDir.toGlob / **).flatMap { case (p, _) =>
+    if (!sourceMap.contains(p)) {
+      Files.deleteIfExists(p)
+      None
+    } else {
+      Some(p)
+    }
+  }.toSet
+  val updatedPaths = (report.created ++ report.modified).toSet
+  val needCompile =
+    if (updatedPaths.exists(_.getFileName.toString.endsWith(".h"))) sourceMap.values
+    else updatedPaths ++ sourceMap.filterKeys(!existingTargets(_)).values
+  needCompile.foreach(compile)
+  sourceMap.keys.toVector
 }
 
 val linkLib = taskKey[Path]("")
 linkLib / target := baseDirectory.value / "out" / "lib"
 linkLib := {
-  val changedObjects = (compileLib / changedOutputFiles).value
-  val outPath = (linkLib / target).value.toPath
-  val allObjects = (compileLib / allOutputFiles).value.map(_.toString)
+  val outputDir = Files.createDirectories(streams.value.cacheDirectory.toPath)
   val logger = streams.value.log
-  linkLib.previous match {
-    case Some(p: Path) if changedObjects.isEmpty =>
-      logger.info("Not running linker: no outputs have changed.")
-      p
-    case _ =>
-      val (linkOptions, libraryPath) = if (scala.util.Properties.isMac) {
-        val path = outPath.resolve("libfoo.dylib")
-        (Seq("-dynamiclib", "-o", path.toString), path)
-      } else {
-        val path = outPath.resolve("libfoo.so")
-        (Seq("-shared", "-fPIC", "-o", path.toString), path)
-      }
-      logger.info(s"Linking $libraryPath")
-      Files.createDirectories(outPath)
-      ("gcc" +: (linkOptions ++ allObjects)).!!
-      libraryPath
+  val isMac = scala.util.Properties.isMac
+  val library = outputDir / s"libfoo.${if (isMac) "dylib" else "so"}"
+  val (report, objects) = (compileLib.outputFileChanges, compileLib.outputFiles)
+  val linkOpts = if (isMac) Seq("-dynamiclib") else Seq("-shared", "-fPIC")
+  if (report.hasChanges || !Files.exists(library)) {
+    logger.info(s"Linking $library")
+    (Seq("gcc") ++ linkOpts ++ Seq("-o", s"$library") ++ objects.map(_.toString)).!!
+  } else {
+    logger.debug(s"Skipping linking of $library")
   }
+  library
 }
 
 val compileMain = taskKey[Path]("compile main")
@@ -75,40 +66,39 @@ compileMain / fileInputs := (compileMain / sourceDirectory).value.toGlob / "main
 compileMain / target := baseDirectory.value / "out" / "main"
 compileMain := {
   val library = linkLib.value
-  val changed: Boolean = (compileMain / changedInputFiles).value.nonEmpty ||
-    (linkLib / changedOutputFiles).value.nonEmpty
+  val changed: Boolean = compileMain.inputFileChanges.hasChanges ||
+    linkLib.outputFileChanges.hasChanges
   val include = (compileLib / sourceDirectory).value / "include"
   val logger = streams.value.log
   val outDir = (compileMain / target).value.toPath
   val outPath = outDir.resolve("main.out")
-  compileMain.previous match {
-    case Some(p: Path) if changed =>
-      logger.info(s"Not building $outPath: no dependencies have changed")
-      p
-    case _ =>
-      (compileMain / allInputFiles).value match {
-        case Seq(main) =>
-          Files.createDirectories(outDir)
-          logger.info(s"Building executable $outPath")
-          (Seq("gcc") ++ compileOpts.value ++ Seq(
-            main.toString,
-            s"-I$include",
-            "-o",
-            outPath.toString,
-            s"-L${library.getParent}",
-            "-lfoo"
-          )).!!
-          outPath
-        case main =>
-          throw new IllegalStateException(s"multiple main files detected: ${main.mkString(",")}")
-      }
+  val inputs = compileMain.inputFiles
+  if (changed || !Files.exists(outPath)) {
+    inputs match {
+      case Seq(main) =>
+        Files.createDirectories(outDir)
+        logger.info(s"Building executable $outPath")
+        (Seq("gcc") ++ compileOpts.value ++ Seq(
+          main.toString,
+          s"-I$include",
+          "-o",
+          outPath.toString,
+          s"-L${library.getParent}",
+          "-lfoo"
+        )).!!
+      case main =>
+        throw new IllegalStateException(s"multiple main files detected: ${main.mkString(",")}")
+    }
+  } else {
+    logger.info(s"Not building $outPath: no dependencies have changed")
   }
+  outPath
 }
 
 val executeMain = inputKey[Unit]("run the main method")
 executeMain := {
   val args = Def.spaceDelimited("<arguments>").parsed
-  val binary: Seq[Path] = (compileMain / allOutputFiles).value
+  val binary: Seq[Path] = compileMain.outputFiles
   val logger = streams.value.log
   binary match {
     case Seq(b) =>
@@ -126,9 +116,9 @@ executeMain := {
 
 val checkOutput = inputKey[Unit]("check the output value")
 checkOutput := {
-  val args @ Seq(arg, res) = Def.spaceDelimited("").parsed
-  val binary: Path = (compileMain / allOutputFiles).value.head
-  val output = RunBinary(binary, args, linkLib.value)
+  val Seq(arg, res) = Def.spaceDelimited("").parsed
+  val binary: Path = compileMain.outputFiles.head
+  val output = RunBinary(binary, arg :: Nil, linkLib.value)
   assert(output.contains(s"f($arg) = $res"))
   ()
 }

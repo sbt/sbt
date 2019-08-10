@@ -4,8 +4,8 @@ val fileInputTask = taskKey[Unit]("task with file inputs")
 
 fileInputTask / fileInputs += Glob(baseDirectory.value / "base", "*.md")
 
-fileInputTask := Def.taskDyn {
-  if ((fileInputTask / changedInputFiles).value.fold(false)(_.updated.nonEmpty))
-    Def.task(assert(true))
-  else Def.task(assert(false))
-}.value
+fileInputTask := {
+  val created = fileInputTask.inputFileChanges.created
+  if (created.exists(_.getFileName.toString.startsWith("foo"))) assert(false)
+  assert(true)
+}

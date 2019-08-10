@@ -8,7 +8,7 @@ foo / watchForceTriggerOnAnyChange := true
 foo / fileInputs := baseDirectory.value.toGlob / "files" / "foo.txt" :: Nil
 foo / watchTriggers := baseDirectory.value.toGlob / ** / "foo.txt" :: Nil
 foo := {
-  (foo / allInputFiles).value.foreach { p =>
+  foo.inputFiles.foreach { p =>
     Files.setLastModifiedTime(p, FileTime.fromMillis(Files.getLastModifiedTime(p).toMillis + 3000))
   }
   sbt.nio.Stamps.check(foo).value
