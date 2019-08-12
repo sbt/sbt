@@ -4,13 +4,18 @@
 package sbt.util
 
 import java.io.File
+
 import scala.util.control.NonFatal
 import sbt.io.{ Hash, IO }
-import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
-import CacheImplicits._
+import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
+import CacheImplicits.{ arrayFormat => _, _ }
 
 sealed trait FileInfo { def file: File }
-sealed trait HashFileInfo extends FileInfo { def hash: List[Byte] }
+sealed trait HashFileInfo extends FileInfo {
+  @deprecated("Use hashArray instead", "1.3.0")
+  def hash: List[Byte] = hashArray.toList
+  private[util] def hashArray: Array[Byte]
+}
 sealed trait ModifiedFileInfo extends FileInfo { def lastModified: Long }
 sealed trait PlainFileInfo extends FileInfo { def exists: Boolean }
 
@@ -31,8 +36,8 @@ object HashModifiedFileInfo {
 
 private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
-private final case class FileHash(file: File, hash: List[Byte]) extends HashFileInfo
-private final case class FileHashModified(file: File, hash: List[Byte], lastModified: Long)
+private final case class FileHash(file: File, hashArray: Array[Byte]) extends HashFileInfo
+private final case class FileHashModified(file: File, hashArray: Array[Byte], lastModified: Long)
     extends HashModifiedFileInfo
 
 final case class FilesInfo[F <: FileInfo] private (files: Set[F])
@@ -49,6 +54,29 @@ object FilesInfo {
 }
 
 object FileInfo {
+
+  /**
+   * Stores byte arrays as hex encoded strings, but falls back to reading an array of integers,
+   * which is how it used to be stored, if that fails.
+   */
+  implicit val byteArrayFormat: JsonFormat[Array[Byte]] = new JsonFormat[Array[Byte]] {
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Array[Byte] = {
+      jsOpt match {
+        case Some(js) =>
+          try {
+            Hash.fromHex(unbuilder.readString(js))
+          } catch {
+            case _: DeserializationException =>
+              CacheImplicits.arrayFormat[Byte].read(jsOpt, unbuilder)
+          }
+        case None => Array.empty
+      }
+    }
+
+    override def write[J](obj: Array[Byte], builder: Builder[J]): Unit = {
+      builder.writeString(Hash.toHex(obj))
+    }
+  }
 
   sealed trait Style {
     type F <: FileInfo
@@ -71,7 +99,7 @@ object FileInfo {
       def write[J](obj: HashModifiedFileInfo, builder: Builder[J]) = {
         builder.beginObject()
         builder.addField("file", obj.file)
-        builder.addField("hash", obj.hash)
+        builder.addField("hash", obj.hashArray)
         builder.addField("lastModified", obj.lastModified)
         builder.endObject()
       }
@@ -80,7 +108,7 @@ object FileInfo {
         case Some(js) =>
           unbuilder.beginObject(js)
           val file = unbuilder.readField[File]("file")
-          val hash = unbuilder.readField[List[Byte]]("hash")
+          val hash = unbuilder.readField[Array[Byte]]("hash")
           val lastModified = unbuilder.readField[Long]("lastModified")
           unbuilder.endObject()
           FileHashModified(file, hash, lastModified)
@@ -89,8 +117,8 @@ object FileInfo {
     }
 
     implicit def apply(file: File): HashModifiedFileInfo =
-      FileHashModified(file.getAbsoluteFile, Hash(file).toList, IO.getModifiedTimeOrZero(file))
-    def apply(file: File, hash: List[Byte], lastModified: Long): HashModifiedFileInfo =
+      FileHashModified(file.getAbsoluteFile, Hash(file), IO.getModifiedTimeOrZero(file))
+    def apply(file: File, hash: Array[Byte], lastModified: Long): HashModifiedFileInfo =
       FileHashModified(file.getAbsoluteFile, hash, lastModified)
   }
 
@@ -101,7 +129,7 @@ object FileInfo {
       def write[J](obj: HashFileInfo, builder: Builder[J]) = {
         builder.beginObject()
         builder.addField("file", obj.file)
-        builder.addField("hash", obj.hash)
+        builder.addField("hash", obj.hashArray)
         builder.endObject()
       }
 
@@ -109,7 +137,7 @@ object FileInfo {
         case Some(js) =>
           unbuilder.beginObject(js)
           val file = unbuilder.readField[File]("file")
-          val hash = unbuilder.readField[List[Byte]]("hash")
+          val hash = unbuilder.readField[Array[Byte]]("hash")
           unbuilder.endObject()
           FileHash(file, hash)
         case None => deserializationError("Expected JsObject but found None")
@@ -117,12 +145,12 @@ object FileInfo {
     }
 
     implicit def apply(file: File): HashFileInfo = FileHash(file.getAbsoluteFile, computeHash(file))
-    def apply(file: File, bytes: List[Byte]): HashFileInfo =
+    def apply(file: File, bytes: Array[Byte]): HashFileInfo =
       FileHash(file.getAbsoluteFile, bytes)
 
-    private def computeHash(file: File): List[Byte] =
-      try Hash(file).toList
-      catch { case NonFatal(_) => Nil }
+    private def computeHash(file: File): Array[Byte] =
+      try Hash(file)
+      catch { case NonFatal(_) => Array.empty }
   }
 
   object lastModified extends Style {
