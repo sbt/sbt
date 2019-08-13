@@ -152,6 +152,19 @@ lazy val utilCache = (project in file("util-cache"))
       Seq(sjsonnewScalaJson.value, sjsonnewMurmurhash.value, scalaReflect.value),
     libraryDependencies ++= Seq(scalaTest),
     mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // These are private case classes that have changed
+      exclude[IncompatibleMethTypeProblem]("sbt.util.FileHashModified.apply"),
+      exclude[IncompatibleResultTypeProblem]("sbt.util.FileHashModified.copy$default$2"),
+      exclude[IncompatibleMethTypeProblem]("sbt.util.FileHashModified.copy"),
+      exclude[IncompatibleMethTypeProblem]("sbt.util.FileHashModified.this"),
+      exclude[IncompatibleMethTypeProblem]("sbt.util.FileHash.apply"),
+      exclude[IncompatibleResultTypeProblem]("sbt.util.FileHash.copy$default$2"),
+      exclude[IncompatibleMethTypeProblem]("sbt.util.FileHash.copy"),
+      exclude[IncompatibleMethTypeProblem]("sbt.util.FileHash.this"),
+      // Added a method to a sealed trait, technically not a problem for Scala
+      exclude[ReversedMissingMethodProblem]("sbt.util.HashFileInfo.hashArray"),
+    )
   )
   .configure(addSbtIO)
 
