@@ -99,7 +99,10 @@ private[librarymanagement] abstract class ModuleIDExtra {
    * This value is only consulted if the module is not found in a repository.
    * It is not included in published metadata.
    */
-  def from(url: String) = artifacts(Artifact(name, new URL(url)))
+  def from(url: String) = {
+    Resolver.validateUrlString(url)
+    artifacts(Artifact(name, new URL(url)))
+  }
 
   /** Adds a dependency on the artifact for this module with classifier `c`. */
   def classifier(c: String) = artifacts(Artifact(name, c))

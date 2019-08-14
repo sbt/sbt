@@ -641,7 +641,10 @@
               "name": "URLRepository",
               "namespace": "sbt.librarymanagement",
               "target": "Scala",
-              "type": "record"
+              "type": "record",
+              "extra": [
+                "Resolver.validatePatterns(patterns)"
+              ]
             },
             {
               "name": "SshBasedRepository",
