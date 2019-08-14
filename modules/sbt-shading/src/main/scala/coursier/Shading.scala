@@ -203,7 +203,7 @@ object Shading {
       rename(cls, shadingNamespace + ".@0")
     }
 
-    val processor = JJProcessor(nsRules ++ clsRules, verbose = true, skipManifest = false)
+    val processor = JJProcessor(nsRules ++ clsRules, verbose = false, skipManifest = false)
     CoursierJarProcessor.run((baseJar +: toShadeJars).toArray, outputJar, processor.proc, true)
 
     outputJar
