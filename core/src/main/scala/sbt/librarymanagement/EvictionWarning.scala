@@ -183,7 +183,7 @@ object EvictionPair {
     }
     val winnerRev = a.winner match {
       case Some(r) => s":${r.module.revision} is selected over ${revsStr}"
-      case _       => " is evicted completely"
+      case _       => " is evicted for all versions"
     }
     val title = s"\t* ${a.organization}:${a.name}$winnerRev"
     title :: (if (a.showCallers) callers.reverse else Nil) ::: List("")
@@ -312,7 +312,9 @@ object EvictionWarning {
             binaryIncompatibleEvictionExists = true
         }
       case p =>
-        if (!guessCompatible(p)) {
+        // don't report on a transitive eviction that does not have a winner
+        // https://github.com/sbt/sbt/issues/4946
+        if (!guessCompatible(p) && p.winner.isDefined) {
           if (options.warnTransitiveEvictions)
             transitiveEvictions += p
           if (options.warnEvictionSummary)

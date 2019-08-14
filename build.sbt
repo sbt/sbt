@@ -27,6 +27,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.sbtPluginRepo("releases"),
   resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
+  testFrameworks += new TestFramework("verify.runner.Framework"),
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
@@ -96,7 +97,7 @@ lazy val lmCore = (project in file("core"))
       okhttpUrlconnection,
       sjsonnewScalaJson.value % Optional,
       scalaTest % Test,
-      scalaCheck % Test
+      scalaCheck % Test,
     ),
     libraryDependencies += scalaXml,
     resourceGenerators in Compile += Def
@@ -222,7 +223,7 @@ lazy val lmCommonTest = (project in file("common-test"))
     commonSettings,
     skip in publish := true,
     name := "common-test",
-    libraryDependencies ++= Seq(scalaTest, scalaCheck),
+    libraryDependencies ++= Seq(scalaTest, scalaCheck, scalaVerify),
     scalacOptions in (Compile, console) --=
       Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
     mimaSettings,

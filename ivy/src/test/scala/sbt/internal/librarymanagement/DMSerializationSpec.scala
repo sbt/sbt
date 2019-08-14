@@ -6,47 +6,59 @@ import java.io.File
 import sbt.librarymanagement._
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
-import org.scalatest.Assertion
 import LibraryManagementCodec._
+import verify.BasicTestSuite
 
-class DMSerializationSpec extends UnitSpec {
-  "CrossVersion.full" should "roundtrip" in {
+object DMSerializationSpec extends BasicTestSuite {
+  test("CrossVersion.full should roundtrip") {
     roundtripStr(CrossVersion.full: CrossVersion)
   }
-  "CrossVersion.binary" should "roundtrip" in {
+
+  test("CrossVersion.binary should roundtrip") {
     roundtripStr(CrossVersion.binary: CrossVersion)
   }
-  "CrossVersion.Disabled" should "roundtrip" in {
+
+  test("CrossVersion.Disabled should roundtrip") {
     roundtrip(Disabled(): CrossVersion)
   }
-  """Artifact("foo")""" should "roundtrip" in {
+
+  test("""Artifact("foo") should roundtrip""") {
     roundtrip(Artifact("foo"))
   }
-  """Artifact("foo", "sources")""" should "roundtrip" in {
+
+  test("""Artifact("foo", "sources") should roundtrip""") {
     roundtrip(Artifact("foo", "sources"))
   }
-  """Artifact.pom("foo")""" should "roundtrip" in {
+
+  test("""Artifact.pom("foo") should roundtrip""") {
     roundtrip(Artifact.pom("foo"))
   }
-  """Artifact("foo", url("http://example.com/"))""" should "roundtrip" in {
+
+  test("""Artifact("foo", url("http://example.com/")) should roundtrip""") {
     roundtrip(Artifact("foo", new URL("http://example.com/")))
   }
-  """Artifact("foo").extra(("key", "value"))""" should "roundtrip" in {
+
+  test("""Artifact("foo").extra(("key", "value")) should roundtrip""") {
     roundtrip(Artifact("foo").extra(("key", "value")))
   }
-  """ModuleID("org", "name", "1.0")""" should "roundtrip" in {
+
+  test("""ModuleID("org", "name", "1.0") should roundtrip""") {
     roundtrip(ModuleID("org", "name", "1.0"))
   }
-  """ModuleReport(ModuleID("org", "name", "1.0"), Nil, Nil)""" should "roundtrip" in {
+
+  test("""ModuleReport(ModuleID("org", "name", "1.0"), Nil, Nil) should roundtrip""") {
     roundtripStr(ModuleReport(ModuleID("org", "name", "1.0"), Vector.empty, Vector.empty))
   }
-  "Organization artifact report" should "roundtrip" in {
+
+  test("Organization artifact report should roundtrip") {
     roundtripStr(organizationArtifactReportExample)
   }
-  "Configuration report" should "roundtrip" in {
+
+  test("Configuration report should roundtrip") {
     roundtripStr(configurationReportExample)
   }
-  "Update report" should "roundtrip" in {
+
+  test("Update report should roundtrip") {
     roundtripStr(updateReportExample)
   }
 
@@ -68,13 +80,17 @@ class DMSerializationSpec extends UnitSpec {
   lazy val moduleReportExample =
     ModuleReport(ModuleID("org", "name", "1.0"), Vector.empty, Vector.empty)
 
-  def roundtrip[A: JsonReader: JsonWriter](a: A): Assertion =
-    roundtripBuilder(a) { _ shouldBe _ }
+  def roundtrip[A: JsonReader: JsonWriter](a: A): Unit =
+    roundtripBuilder(a) { (x1, x2) =>
+      assert(x1 == x2)
+    }
 
-  def roundtripStr[A: JsonReader: JsonWriter](a: A): Assertion =
-    roundtripBuilder(a) { _.toString shouldBe _.toString }
+  def roundtripStr[A: JsonReader: JsonWriter](a: A): Unit =
+    roundtripBuilder(a) { (x1, x2) =>
+      assert(x1.toString == x2.toString)
+    }
 
-  def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Assertion): Assertion = {
+  def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Unit): Unit = {
     val json = isoString to (Converter toJsonUnsafe a)
     println(json)
     val obj = Converter fromJsonUnsafe [A] (isoString from json)

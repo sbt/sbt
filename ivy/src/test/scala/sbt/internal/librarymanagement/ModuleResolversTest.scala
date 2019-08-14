@@ -5,7 +5,7 @@ import sbt.librarymanagement.syntax._
 import sbt.librarymanagement.ivy.UpdateOptions
 import Resolver._
 
-class ModuleResolversTest extends BaseIvySpecification {
+object ModuleResolversTest extends BaseIvySpecification {
   override final val resolvers = Vector(
     DefaultMavenRepository,
     JavaNet2Repository,
@@ -20,7 +20,7 @@ class ModuleResolversTest extends BaseIvySpecification {
     "com.jfrog.bintray.client" % "bintray-client-java-api" % "0.9.2" % "compile"
   ).map(_.withIsTransitive(false))
 
-  "The direct resolvers in update options" should "skip the rest of resolvers" in {
+  test("The direct resolvers in update options should skip the rest of resolvers") {
     cleanIvyCache()
     val updateOptions = UpdateOptions()
     val ivyModule = module(stubModule, dependencies, None, updateOptions)

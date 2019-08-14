@@ -7,65 +7,83 @@ import sbt.io.IO
 import org.apache.ivy.util.ChecksumHelper
 import IfMissing.Fail
 import xsbti.ComponentProvider
+import verify.BasicTestSuite
 
 // TODO - We need to re-enable this test.  Right now, we dont' have a "stub" launcher for this.
 //        This is testing something which uses a launcher interface, but was grabbing the underlying class directly
 //        when it really should, instead, be stubbing out the underyling class.
 
-class ComponentManagerTest extends UnitSpec {
+object ComponentManagerTest extends BasicTestSuite {
   val TestID = "manager-test"
-  "Component manager" should "throw an exception if 'file' is called for a non-existing component" in {
+  test(
+    "Component manager should throw an exception if 'file' is called for a non-existing component"
+  ) {
     withManager { manager =>
-      intercept[InvalidComponent] { manager.file(TestID)(Fail) }
-      ()
+      intercept[InvalidComponent] {
+        manager.file(TestID)(Fail)
+        ()
+      }
     }
   }
-  it should "throw an exception if 'file' is called for an empty component" in {
+
+  test("it should throw an exception if 'file' is called for an empty component") {
     withManager { manager =>
       manager.define(TestID, Nil)
-      intercept[InvalidComponent] { manager.file(TestID)(Fail) }
-      ()
+      intercept[InvalidComponent] {
+        manager.file(TestID)(Fail)
+        ()
+      }
     }
   }
-  it should "return the file for a single-file component" in {
+
+  test("it should return the file for a single-file component") {
     withManager { manager =>
       val hash = defineFile(manager, TestID, "a")
-      checksum(manager.file(TestID)(Fail)) shouldBe hash
+      assert(checksum(manager.file(TestID)(Fail)) == hash)
     }
   }
-  it should "throw an exception if 'file' is called for multi-file component" in {
+
+  test("it should throw an exception if 'file' is called for multi-file component") {
     withManager { manager =>
       defineFiles(manager, TestID, "a", "b")
-      intercept[InvalidComponent] { manager.file(TestID)(Fail) }
-      ()
+      intercept[InvalidComponent] {
+        manager.file(TestID)(Fail)
+        ()
+      }
     }
   }
-  it should "return the files for a multi-file component" in {
+
+  test("it should return the files for a multi-file component") {
     withManager { manager =>
       val hashes = defineFiles(manager, TestID, "a", "b")
-      checksum(manager.files(TestID)(Fail)) should contain theSameElementsAs (hashes)
+      assert(checksum(manager.files(TestID)(Fail)).toSet == hashes.toSet)
     }
   }
-  it should "return the files for a single-file component" in {
+
+  test("it should return the files for a single-file component") {
     withManager { manager =>
       val hashes = defineFiles(manager, TestID, "a")
-      checksum(manager.files(TestID)(Fail)) should contain theSameElementsAs (hashes)
+      assert(checksum(manager.files(TestID)(Fail)).toSet == hashes.toSet)
     }
   }
-  it should "throw an exception if 'files' is called for a non-existing component" in {
+
+  test("it should throw an exception if 'files' is called for a non-existing component") {
     withManager { manager =>
-      intercept[InvalidComponent] { manager.files(TestID)(Fail) }
-      ()
+      intercept[InvalidComponent] {
+        manager.files(TestID)(Fail)
+        ()
+      }
     }
   }
-  it should "properly cache a file and then retrieve it to an unresolved component" in {
+
+  test("it should properly cache a file and then retrieve it to an unresolved component") {
     withTemporaryDirectory { ivyHome =>
       withManagerHome(ivyHome) { definingManager =>
         val hash = defineFile(definingManager, TestID, "a")
         try {
           definingManager.cache(TestID)
           withManagerHome(ivyHome) { usingManager =>
-            checksum(usingManager.file(TestID)(Fail)) shouldBe hash
+            assert(checksum(usingManager.file(TestID)(Fail)) == hash)
           }
         } finally {
           definingManager.clearCache(TestID)
