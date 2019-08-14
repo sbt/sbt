@@ -5,6 +5,7 @@ import java.util.jar.JarInputStream
 import java.util.zip.{ZipEntry, ZipInputStream}
 
 import coursier.core.{Configuration, Orders}
+import coursier.util.Artifact
 import org.pantsbuild.jarjar._
 import org.pantsbuild.jarjar.util.CoursierJarProcessor
 

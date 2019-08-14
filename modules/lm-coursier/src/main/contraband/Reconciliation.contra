@@ -1,7 +1,0 @@
-package lmcoursier.definitions
-@target(Scala)
-
-enum Reconciliation {
-  Default
-  Relaxed
-}

@@ -5,9 +5,10 @@ import java.net.URL
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
-import coursier.{Artifact, Attributes, Dependency, Module, Project, Resolution}
+import coursier.{Attributes, Dependency, Module, Project, Resolution}
 import coursier.core.{Classifier, Configuration, Extension, Publication, Type}
 import coursier.maven.MavenAttributes
+import coursier.util.Artifact
 import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
 import sbt.util.Logger
 
