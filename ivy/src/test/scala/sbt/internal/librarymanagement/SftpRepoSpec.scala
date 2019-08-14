@@ -10,7 +10,7 @@ import java.nio.file.Paths
 //by default this test is ignored
 //to run this you need to change "repo" to point to some sftp repository which contains a dependency referring a dependency in same repo
 //it will then attempt to authenticate via key file and fetch the dependency specified via "org" and "module"
-class SftpRepoSpec extends BaseIvySpecification {
+object SftpRepoSpec extends BaseIvySpecification {
   val repo: Option[String] = None
 //  val repo: Option[String] = Some("some repo")
   //a dependency which depends on another in the repo
@@ -25,7 +25,7 @@ class SftpRepoSpec extends BaseIvySpecification {
     }.toVector ++ super.resolvers
   }
 
-  "resolving multiple deps from sftp repo" should "not hang or fail" in {
+  test("resolving multiple deps from sftp repo should not hang or fail") {
     repo match {
       case Some(repo) =>
         IO.delete(currentTarget / "cache" / org(repo))

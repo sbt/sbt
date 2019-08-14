@@ -7,7 +7,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.io.IO
 
-class ManagedChecksumsSpec extends BaseIvySpecification {
+object ManagedChecksumsSpec extends BaseIvySpecification {
   private final def targetDir = Some(currentDependency)
   private final def onlineConf = makeUpdateConfiguration(false, targetDir)
   private final def warningConf = UnresolvedWarningConfiguration()
@@ -47,7 +47,7 @@ class ManagedChecksumsSpec extends BaseIvySpecification {
     assert(shaFile.exists(), s"The checksum $Checksum for $file does not exist")
   }
 
-  "Managed checksums" should "should download the checksum files" in {
+  test("Managed checksums should should download the checksum files") {
     cleanAll()
     val updateOptions = UpdateOptions()
     val toResolve = module(defaultModuleId, dependencies, None, updateOptions)

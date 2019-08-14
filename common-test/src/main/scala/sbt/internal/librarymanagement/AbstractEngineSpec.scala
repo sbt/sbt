@@ -1,8 +1,9 @@
 package sbt.internal.librarymanagement
 
 import sbt.librarymanagement._
+import verify.BasicTestSuite
 
-abstract class AbstractEngineSpec extends UnitSpec {
+abstract class AbstractEngineSpec extends BasicTestSuite {
   def cleanCache(): Unit
 
   def module(

@@ -6,7 +6,7 @@ import java.io.File
 
 import sbt.librarymanagement.{ ModuleID, RawRepository, Resolver, UpdateReport, ResolveException }
 
-class FakeResolverSpecification extends BaseIvySpecification {
+object FakeResolverSpecification extends BaseIvySpecification {
   import FakeResolver._
 
   val myModule =
@@ -17,36 +17,42 @@ class FakeResolverSpecification extends BaseIvySpecification {
   val nonExisting =
     ModuleID("com.example", "does-not-exist", "1.2.3").withConfigurations(Some("compile"))
 
-  "The FakeResolver" should "find modules with only one artifact" in {
+  test("The FakeResolver should find modules with only one artifact") {
     val m = getModule(myModule)
     val report = ivyUpdate(m)
     val allFiles = getAllFiles(report)
 
-    report.allModules.length shouldBe 1
-    report.configurations.length shouldBe 3
-    allFiles.toSet.size shouldBe 1
-    allFiles(1).getName shouldBe "artifact1-0.0.1-SNAPSHOT.jar"
+    assert(report.allModules.length == 1)
+    assert(report.configurations.length == 3)
+    assert(allFiles.toSet.size == 1)
+    assert(allFiles(1).getName == "artifact1-0.0.1-SNAPSHOT.jar")
   }
 
-  it should "find modules with more than one artifact" in {
+  test("it should find modules with more than one artifact") {
     val m = getModule(example)
     val report = ivyUpdate(m)
     val allFiles = getAllFiles(report).toSet
 
-    report.allModules.length shouldBe 1
-    report.configurations.length shouldBe 3
-    allFiles.toSet.size shouldBe 2
-    allFiles map (_.getName) shouldBe Set("artifact1-1.0.0.jar", "artifact2-1.0.0.txt")
+    assert(report.allModules.length == 1)
+    assert(report.configurations.length == 3)
+    assert(allFiles.toSet.size == 2)
+    assert(allFiles.map(_.getName) == Set("artifact1-1.0.0.jar", "artifact2-1.0.0.txt"))
   }
 
-  it should "fail gracefully when asked for unknown modules" in {
+  test("it should fail gracefully when asked for unknown modules") {
     val m = getModule(nonExisting)
-    a[ResolveException] should be thrownBy ivyUpdate(m)
+    intercept[ResolveException] {
+      ivyUpdate(m)
+      ()
+    }
   }
 
-  it should "fail gracefully when some artifacts cannot be found" in {
+  test("it should fail gracefully when some artifacts cannot be found") {
     val m = getModule(anotherExample)
-    the[ResolveException] thrownBy ivyUpdate(m) should have message "download failed: com.example#another-example;1.0.0!non-existing.txt"
+    intercept[ResolveException] {
+      ivyUpdate(m)
+      ()
+    }
   }
 
   private def artifact1 = new File(getClass.getResource("/artifact1.jar").toURI.getPath)

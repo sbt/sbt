@@ -8,7 +8,7 @@ import sbt.librarymanagement.syntax._
 abstract class ResolutionSpec extends AbstractEngineSpec {
   import ShowLines._
 
-  "Resolving the same module twice" should "work" in {
+  test("Resolving the same module twice should work") {
     cleanCache()
     val m = module(
       exampleModuleId("0.1.0"),
@@ -22,10 +22,10 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
     println(report)
     // second resolution reads from the minigraph
     println(report.configurations.head.modules.head.artifacts)
-    report.configurations.size shouldBe 3
+    assert(report.configurations.size == 3)
   }
 
-  "Resolving the unsolvable module should" should "not work" in {
+  test("Resolving the unsolvable module should should not work") {
     // log.setLevel(Level.Debug)
     val m = module(
       exampleModuleId("0.2.0"),
@@ -40,11 +40,15 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
     updateEither(m) match {
       case Right(_) => sys.error("this should've failed 2")
       case Left(uw) =>
-        uw.lines should contain allOf ("\n\tNote: Unresolved dependencies path:",
-        "\t\tfoundrylogic.vpp:vpp:2.2.1",
-        "\t\t  +- org.apache.cayenne:cayenne-tools:3.0.2",
-        "\t\t  +- org.apache.cayenne.plugins:maven-cayenne-plugin:3.0.2",
-        "\t\t  +- com.example:foo:0.2.0")
+        List(
+          "\n\tNote: Unresolved dependencies path:",
+          "\t\tfoundrylogic.vpp:vpp:2.2.1",
+          "\t\t  +- org.apache.cayenne:cayenne-tools:3.0.2",
+          "\t\t  +- org.apache.cayenne.plugins:maven-cayenne-plugin:3.0.2",
+          "\t\t  +- com.example:foo:0.2.0"
+        ) foreach { line =>
+          assert(uw.lines.contains[String](line))
+        }
     }
   }
 
@@ -52,7 +56,7 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
   // data-avro:1.9.40 depends on avro:1.4.0, which depends on netty:3.2.1.Final.
   // avro:1.4.0 will be evicted by avro:1.7.7.
   // #2046 says that netty:3.2.0.Final is incorrectly evicted by netty:3.2.1.Final
-  "Resolving a module with a pseudo-conflict" should "work" in {
+  test("Resolving a module with a pseudo-conflict should work") {
     // log.setLevel(Level.Debug)
     cleanCache()
     val m = module(
@@ -74,7 +78,7 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
     }))
   }
 
-  "Resolving a module with sbt cross build" should "work" in {
+  test("Resolving a module with sbt cross build should work") {
     cleanCache()
     val attributes013 = Map("e:sbtVersion" -> "0.13", "e:scalaVersion" -> "2.10")
     val attributes10 = Map("e:sbtVersion" -> "1.0", "e:scalaVersion" -> "2.12")
@@ -88,11 +92,13 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
       Vector(sbtRelease.withExtraAttributes(attributes10)),
       Some("2.12.3")
     )
-    update(module013).configurations.head.modules.map(_.toString).loneElement should include(
-      "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.10, sbtVersion=0.13)"
+    assert(
+      update(module013).configurations.head.modules.map(_.toString).loneElement
+        contains "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.10, sbtVersion=0.13)"
     )
-    update(module10).configurations.head.modules.map(_.toString).loneElement should include(
-      "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.12, sbtVersion=1.0)"
+    assert(
+      update(module10).configurations.head.modules.map(_.toString).loneElement
+        contains "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.12, sbtVersion=1.0)"
     )
   }
 
