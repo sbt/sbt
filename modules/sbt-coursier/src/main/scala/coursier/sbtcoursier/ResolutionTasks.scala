@@ -10,6 +10,7 @@ import lmcoursier.internal.{InterProjectRepository, ResolutionParams, Resolution
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.InputsTasks.{credentialsTask, strictTask}
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
+import coursier.util.{ModuleMatcher, ModuleMatchers}
 import sbt.Def
 import sbt.Keys._
 
@@ -75,6 +76,16 @@ object ResolutionTasks {
       val verbosityLevel = coursierVerbosity.value
 
       val userEnabledProfiles = mavenProfiles.value
+      val versionReconciliations0 = versionReconciliation.value.map { mod =>
+        Reconciliation(mod.revision) match {
+          case Some(rec) =>
+            val (mod0, _) = FromSbt.moduleVersion(mod, sv, sbv)
+            val matcher = ModuleMatchers.only(Organization(mod0.organization.value), ModuleName(mod0.name.value))
+            matcher -> rec
+          case None =>
+            throw new Exception(s"Unrecognized reconciliation: '${mod.revision}'")
+        }
+      }
 
       val typelevel = Organization(scalaOrganization.value) == Typelevel.typelevelOrg
 
@@ -141,7 +152,8 @@ object ResolutionTasks {
             .withMaxIterations(maxIterations)
             .withProfiles(userEnabledProfiles)
             .withForceVersion(userForceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
-            .withTypelevel(typelevel),
+            .withTypelevel(typelevel)
+            .addReconciliation(versionReconciliations0: _*),
           strictOpt = strictOpt
         ),
         verbosityLevel,

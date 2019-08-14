@@ -49,6 +49,7 @@ object ToCoursier {
     r match {
       case Reconciliation.Default => coursier.core.Reconciliation.Default
       case Reconciliation.Relaxed => coursier.core.Reconciliation.Relaxed
+      case Reconciliation.Strict => coursier.core.Reconciliation.Strict
     }
 
   def reconciliation(rs: Vector[(ModuleMatchers, Reconciliation)]):
