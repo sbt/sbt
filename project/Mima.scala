@@ -37,6 +37,12 @@ object Mima {
       import com.typesafe.tools.mima.core._
 
       Seq(
+        // Methods that shouldn't have been there
+        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.FileCredentials.get"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.matches"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.get"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.autoMatches"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.Credentials.get"),
         // Removed unused method, shouldn't have been there in the first place
         ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.authentication"),
         // ignore shaded and internal stuff related errors

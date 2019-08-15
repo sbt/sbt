@@ -1,7 +1,5 @@
 package lmcoursier.credentials
 
-import java.net.URI
-
 final class DirectCredentials private(
   val host: String,
   val username: String,
@@ -52,32 +50,6 @@ final class DirectCredentials private(
     copy(matchHost = matchHost)
   def withHttpsOnly(httpsOnly: Boolean): DirectCredentials =
     copy(httpsOnly = httpsOnly)
-
-  def autoMatches(url: String, realm0: Option[String]): Boolean =
-    matchHost && {
-      val uri = new URI(url)
-      val schemeOpt = Option(uri.getScheme)
-      val hostOpt = Option(uri.getHost)
-      ((schemeOpt.contains("http") && !httpsOnly) || schemeOpt.contains("https")) &&
-        hostOpt.contains(host) &&
-        realm.forall(realm0.contains)
-    }
-
-  def matches(url: String, user: String): Boolean = {
-    val uri = new URI(url)
-    val schemeOpt = Option(uri.getScheme)
-    val hostOpt = Option(uri.getHost)
-    val userInfoOpt = Option(uri.getUserInfo)
-    // !matchHost && // ?
-    userInfoOpt.isEmpty &&
-      ((schemeOpt.contains("http") && !httpsOnly) || schemeOpt.contains("https")) &&
-      hostOpt.contains(host) &&
-      user == username
-  }
-
-  def get(): Seq[DirectCredentials] =
-    Seq(this)
-
 }
 object DirectCredentials {
 

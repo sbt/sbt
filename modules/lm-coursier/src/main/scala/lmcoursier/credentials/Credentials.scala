@@ -2,10 +2,7 @@ package lmcoursier.credentials
 
 import java.io.File
 
-abstract class Credentials extends Serializable {
-  // calling this may incur I/O
-  def get(): Seq[DirectCredentials]
-}
+abstract class Credentials extends Serializable
 
 object Credentials {
 
