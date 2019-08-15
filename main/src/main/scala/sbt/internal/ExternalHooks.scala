@@ -101,7 +101,7 @@ private[sbt] object ExternalHooks {
       override def changedBinaries(previousAnalysis: CompileAnalysis): Option[Set[File]] = {
         Some(previousAnalysis.readStamps.getAllBinaryStamps.asScala.flatMap {
           case (file, stamp) =>
-            managedCache.get(file.toPath) match {
+            managedCache.getOrElseUpdate(file.toPath, FileStamper.LastModified) match {
               case Some(cachedStamp) if equiv(cachedStamp.stamp, stamp) => None
               case _ =>
                 javaHome match {
