@@ -610,19 +610,30 @@ object Defaults extends BuildCommon {
     },
     externalHooks := {
       import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
-      val current =
+      val currentInputs =
         (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
-      val previous = (externalHooks / inputFileStamps).previous
-      val changes = previous
-        .map(sbt.nio.Settings.changedFiles(_, current))
-        .getOrElse(FileChanges.noPrevious(current.map(_._1)))
-      ExternalHooks.default.value(changes, fileTreeView.value)
+      val previousInputs = (externalHooks / inputFileStamps).previous
+      val inputChanges = previousInputs
+        .map(sbt.nio.Settings.changedFiles(_, currentInputs))
+        .getOrElse(FileChanges.noPrevious(currentInputs.map(_._1)))
+      val currentOutputs = (dependencyClasspathFiles / outputFileStamps).value
+      val previousOutputs = (externalHooks / outputFileStamps).previous
+      val outputChanges = previousOutputs
+        .map(sbt.nio.Settings.changedFiles(_, currentOutputs))
+        .getOrElse(FileChanges.noPrevious(currentOutputs.map(_._1)))
+      ExternalHooks.default.value(inputChanges, outputChanges, fileTreeView.value)
     },
     externalHooks / inputFileStamps := {
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
       (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
     },
     externalHooks / inputFileStamps := (externalHooks / inputFileStamps).triggeredBy(compile).value,
+    externalHooks / outputFileStamps := {
+      compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
+      (dependencyClasspathFiles / outputFileStamps).value
+    },
+    externalHooks / outputFileStamps :=
+      (externalHooks / outputFileStamps).triggeredBy(compile).value,
     incOptions := { incOptions.value.withExternalHooks(externalHooks.value) },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
@@ -2009,8 +2020,10 @@ object Classpaths {
         includeFilter in unmanagedJars value,
         excludeFilter in unmanagedJars value
       )
-    ).map(exportClasspath) :+
-      (sbt.nio.Keys.classpathFiles := data(fullClasspath.value).map(_.toPath))
+    ).map(exportClasspath) ++ Seq(
+      sbt.nio.Keys.classpathFiles := data(fullClasspath.value).map(_.toPath),
+      sbt.nio.Keys.dependencyClasspathFiles := data(dependencyClasspath.value).map(_.toPath),
+    )
 
   private[this] def exportClasspath(s: Setting[Task[Classpath]]): Setting[Task[Classpath]] =
     s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })
