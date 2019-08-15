@@ -16,7 +16,7 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
     fetch: Repository.Fetch[F]
   )(implicit
     F: Monad[F]
-  ): EitherT[F, String, (Artifact.Source, Project)] = {
+  ): EitherT[F, String, (ArtifactSource, Project)] = {
 
     val res = map
       .get((module, version))

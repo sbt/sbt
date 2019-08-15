@@ -1,6 +1,6 @@
 package coursier.sbtlmcoursier
 
-import lmcoursier.definitions.Authentication
+import lmcoursier.definitions.{Authentication, ModuleMatchers, Reconciliation}
 import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
 import coursier.sbtcoursiershared.InputsTasks.{credentialsTask, strictTask}
 import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
@@ -95,6 +95,16 @@ object LmCoursierPlugin extends AutoPlugin {
         val fallbackDeps = coursierFallbackDependencies.value
         val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
         val profiles = mavenProfiles.value
+        val versionReconciliations0 = versionReconciliation.value.map { mod =>
+          Reconciliation(mod.revision) match {
+            case Some(rec) =>
+              val (mod0, _) = lmcoursier.FromSbt.moduleVersion(mod, scalaVer, sbv)
+              val matcher = ModuleMatchers.only(mod0)
+              matcher -> rec
+            case None =>
+              throw new Exception(s"Unrecognized reconciliation: '${mod.revision}'")
+          }
+        }
 
 
         val userForceVersions = Inputs.forceVersions(dependencyOverrides.value, scalaVer, sbv)
@@ -138,6 +148,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withClassifiers(classifiers.toVector.flatten)
           .withHasClassifiers(classifiers.nonEmpty)
           .withMavenProfiles(profiles.toVector.sorted)
+          .withReconciliation(versionReconciliations0.toVector)
           .withScalaOrganization(scalaOrg)
           .withScalaVersion(scalaVer)
           .withAuthenticationByRepositoryId(authenticationByRepositoryId.toVector.sortBy(_._1))

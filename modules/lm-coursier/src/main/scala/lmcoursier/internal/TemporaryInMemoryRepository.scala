@@ -5,7 +5,7 @@ import java.net.{HttpURLConnection, URL, URLConnection}
 
 import coursier.cache.{CacheUrl, FileCache}
 import coursier.core._
-import coursier.util.{EitherT, Monad}
+import coursier.util.{Artifact, EitherT, Monad}
 
 import scala.util.Try
 
@@ -142,11 +142,11 @@ final class TemporaryInMemoryRepository private(
     fetch: Repository.Fetch[F]
   )(implicit
     F: Monad[F]
-  ): EitherT[F, String, (Artifact.Source, Project)] = {
+  ): EitherT[F, String, (ArtifactSource, Project)] = {
 
     def res = fallbacks
       .get((module, version))
-      .fold[Either[String, (Artifact.Source, Project)]](Left("No fallback URL found")) {
+      .fold[Either[String, (ArtifactSource, Project)]](Left("No fallback URL found")) {
         case (url, _) =>
 
           val urlStr = url.toExternalForm

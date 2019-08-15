@@ -9,7 +9,8 @@ import lmcoursier.definitions.{CacheLogger, Configuration, Project, Publication}
 import lmcoursier.internal.SbtCoursierCache
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
-import sbt.librarymanagement.{Resolver, URLRepository}
+import sbt.librarymanagement.DependencyBuilders.OrganizationArtifactName
+import sbt.librarymanagement.{ModuleID, Resolver, URLRepository}
 
 object SbtCoursierShared extends AutoPlugin {
 
@@ -35,6 +36,7 @@ object SbtCoursierShared extends AutoPlugin {
     val coursierFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
 
     val mavenProfiles = settingKey[Set[String]]("")
+    val versionReconciliation = taskKey[Seq[ModuleID]]("")
 
     val coursierUseSbtCredentials = settingKey[Boolean]("")
     @deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
@@ -166,7 +168,8 @@ object SbtCoursierShared extends AutoPlugin {
 
         confs ++ extraSources.toSeq ++ extraDocs.toSeq
       },
-      mavenProfiles := Set.empty
+      mavenProfiles := Set.empty,
+      versionReconciliation := Seq.empty
     ) ++ {
       if (pubSettings)
         IvyXml.generateIvyXmlSettings()

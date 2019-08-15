@@ -2,10 +2,10 @@ package lmcoursier.internal
 
 import java.io.File
 
-import coursier.Artifact
 import coursier.cache.internal.ThreadUtil
 import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core.Type
+import coursier.util.Artifact
 import sbt.util.Logger
 
 // private[coursier]

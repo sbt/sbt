@@ -3,6 +3,7 @@ package lmcoursier.internal
 import java.io.File
 
 import coursier.core._
+import coursier.util.Artifact
 
 // private[coursier]
 final case class UpdateParams(

@@ -5,6 +5,7 @@ import java.util.jar.JarInputStream
 import java.util.zip.{ZipEntry, ZipInputStream}
 
 import coursier.core.{Configuration, Orders}
+import coursier.util.Artifact
 import org.pantsbuild.jarjar._
 import org.pantsbuild.jarjar.util.CoursierJarProcessor
 
@@ -202,7 +203,7 @@ object Shading {
       rename(cls, shadingNamespace + ".@0")
     }
 
-    val processor = JJProcessor(nsRules ++ clsRules, verbose = true, skipManifest = false)
+    val processor = JJProcessor(nsRules ++ clsRules, verbose = false, skipManifest = false)
     CoursierJarProcessor.run((baseJar +: toShadeJars).toArray, outputJar, processor.proc, true)
 
     outputJar

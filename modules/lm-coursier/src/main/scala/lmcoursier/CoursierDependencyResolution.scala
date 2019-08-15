@@ -2,9 +2,10 @@ package lmcoursier
 
 import java.io.File
 
-import _root_.coursier.{Artifact, Organization, Resolution, organizationString}
-import _root_.coursier.core.{Classifier, Configuration}
+import coursier.{Organization, Resolution, organizationString}
+import coursier.core.{Classifier, Configuration}
 import coursier.cache.CacheDefaults
+import coursier.util.Artifact
 import coursier.internal.Typelevel
 import lmcoursier.definitions.ToCoursier
 import lmcoursier.internal.{ArtifactsParams, ArtifactsRun, CoursierModuleDescriptor, InterProjectRepository, ResolutionParams, ResolutionRun, Resolvers, SbtBootJars, UpdateParams, UpdateRun}
