@@ -242,12 +242,12 @@ private[sbt] object Settings {
     }
     prevMap.forEach((p, _) => deletedBuilder += p)
     val unmodified = unmodifiedBuilder.result()
-    if (unmodified.size == current.size) {
+    val deleted = deletedBuilder.result()
+    val created = createdBuilder.result()
+    val modified = modifiedBuilder.result()
+    if (created.isEmpty && deleted.isEmpty && modified.isEmpty) {
       FileChanges.unmodified(unmodifiedBuilder.result)
     } else {
-      val created = createdBuilder.result()
-      val deleted = deletedBuilder.result()
-      val modified = modifiedBuilder.result()
       FileChanges(created, deleted, modified, unmodified)
     }
   }

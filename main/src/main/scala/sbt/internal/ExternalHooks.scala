@@ -26,7 +26,8 @@ import scala.collection.JavaConverters._
 
 private[sbt] object ExternalHooks {
   private val javaHome = Option(System.getProperty("java.home")).map(Paths.get(_))
-  private type Func = (FileChanges, FileTreeView[(Path, FileAttributes)]) => ExternalHooks
+  private type Func =
+    (FileChanges, FileChanges, FileTreeView[(Path, FileAttributes)]) => ExternalHooks
   def default: Def.Initialize[sbt.Task[Func]] = Def.task {
     val unmanagedCache = unmanagedFileStampCache.value
     val managedCache = managedFileStampCache.value
@@ -37,15 +38,16 @@ private[sbt] object ExternalHooks {
     }
     val classGlob = classDirectory.value.toGlob / RecursiveGlob / "*.class"
     val options = (compileOptions in compile).value
-    (fc: FileChanges, fileTreeView: FileTreeView[(Path, FileAttributes)]) => {
+    ((inputFileChanges, outputFileChanges, fileTreeView) => {
       fileTreeView.list(classGlob).foreach {
         case (path, _) => managedCache.update(path, FileStamper.LastModified)
       }
-      apply(fc, options, unmanagedCache, managedCache)
-    }
+      apply(inputFileChanges, outputFileChanges, options, unmanagedCache, managedCache)
+    }): Func
   }
   private def apply(
-      changedFiles: FileChanges,
+      inputFileChanges: FileChanges,
+      outputFileChanges: FileChanges,
       options: CompileOptions,
       unmanagedCache: FileStamp.Cache,
       managedCache: FileStamp.Cache
@@ -62,7 +64,7 @@ private[sbt] object ExternalHooks {
           }
           private def add(f: File, set: java.util.Set[File]): Unit = { set.add(f); () }
           val allChanges = new java.util.HashSet[File]
-          changedFiles match {
+          inputFileChanges match {
             case FileChanges(c, d, m, _) =>
               c.foreach(add(_, getAdded, allChanges))
               d.foreach(add(_, getRemoved, allChanges))
@@ -99,9 +101,13 @@ private[sbt] object ExternalHooks {
         Optional.empty[Array[FileHash]]
 
       override def changedBinaries(previousAnalysis: CompileAnalysis): Option[Set[File]] = {
-        Some(previousAnalysis.readStamps.getAllBinaryStamps.asScala.flatMap {
+        val base =
+          (outputFileChanges.modified ++ outputFileChanges.created ++ outputFileChanges.deleted)
+            .map(_.toFile)
+            .toSet
+        Some(base ++ previousAnalysis.readStamps.getAllBinaryStamps.asScala.flatMap {
           case (file, stamp) =>
-            managedCache.get(file.toPath) match {
+            managedCache.getOrElseUpdate(file.toPath, FileStamper.LastModified) match {
               case Some(cachedStamp) if equiv(cachedStamp.stamp, stamp) => None
               case _ =>
                 javaHome match {
@@ -110,7 +116,7 @@ private[sbt] object ExternalHooks {
                   case _                                    => Some(file)
                 }
             }
-        }.toSet)
+        })
       }
 
       override def removedProducts(previousAnalysis: CompileAnalysis): Option[Set[File]] = {
