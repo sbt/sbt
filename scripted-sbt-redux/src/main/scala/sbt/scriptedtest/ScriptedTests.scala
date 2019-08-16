@@ -19,11 +19,13 @@ import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.control.NonFatal
 import sbt.internal.scripted._
 import sbt.internal.io.Resources
-import sbt.internal.util.{ BufferedLogger, FullLogger, ConsoleOut }
+import sbt.internal.util.{ BufferedLogger, ConsoleOut, FullLogger, Util }
 import sbt.io.syntax._
 import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
 import sbt.io.FileFilter._
 import sbt.util.{ AbstractLogger, Level, Logger }
+
+import scala.util.Try
 
 final class ScriptedTests(
     resourceBaseDirectory: File,
@@ -236,6 +238,8 @@ final class ScriptedTests(
       case "source-dependencies/linearization"           => LauncherBased // sbt/Package$
       case "source-dependencies/named"                   => LauncherBased // sbt/Package$
       case "source-dependencies/specialized"             => LauncherBased // sbt/Package$
+      case gn if gn.startsWith("watch/") && Util.isWindows =>
+        LauncherBased // there is an issue with jansi and coursier
       case "watch/commands" =>
         LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
       case "watch/managed" => LauncherBased // sbt/Package$
@@ -325,7 +329,8 @@ final class ScriptedTests(
           val runTest = () => {
             // Reload and initialize (to reload contents of .sbtrc files)
             val pluginImplementation = createAutoPlugin(name)
-            IO.write(tempTestDir / "project" / "InstrumentScripted.scala", pluginImplementation)
+            val pluginFile = tempTestDir / "project" / "InstrumentScripted.scala"
+            IO.write(pluginFile, pluginImplementation)
             def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
             val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
             val commandsToRun = ";reload;setUpScripted"
@@ -334,6 +339,9 @@ final class ScriptedTests(
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
+              while (!Try(IO.read(pluginFile)).toOption.contains(pluginImplementation)) {
+                IO.write(pluginFile, pluginImplementation)
+              }
               try runner.processStatement(sbtHandler, statement, states)
               catch {
                 case t: Throwable =>
