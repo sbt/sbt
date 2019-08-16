@@ -14,7 +14,9 @@ import lmcoursier.definitions.{
   Classifier,
   Configuration => CConfiguration,
   CacheLogger,
-  Project => CProject
+  Project => CProject,
+  ModuleMatchers,
+  Reconciliation,
 }
 import lmcoursier._
 import lmcoursier.credentials.Credentials
@@ -40,9 +42,13 @@ object LMCoursier {
       case _          => CoursierDependencyResolution.defaultCacheLocation
     }
 
+  def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
+    Vector((ModuleMatchers.all, Reconciliation.Relaxed))
+
   def coursierConfiguration(
       rs: Seq[Resolver],
       interProjectDependencies: Seq[CProject],
+      extraProjects: Seq[CProject],
       fallbackDeps: Seq[FallbackDependency],
       appConfig: AppConfiguration,
       classifiers: Option[Seq[Classifier]],
@@ -56,6 +62,7 @@ object LMCoursier {
       credentials: Seq[Credentials],
       createLogger: Option[CacheLogger],
       cacheDirectory: File,
+      reconciliation: Seq[(ModuleMatchers, Reconciliation)],
       log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
@@ -82,6 +89,7 @@ object LMCoursier {
     CoursierConfiguration()
       .withResolvers(rs.toVector)
       .withInterProjectDependencies(interProjectDependencies.toVector)
+      .withExtraProjects(extraProjects.toVector)
       .withFallbackDependencies(fallbackDeps.toVector)
       .withExcludeDependencies(coursierExcludeDeps)
       .withAutoScalaLibrary(autoScala)
@@ -96,6 +104,7 @@ object LMCoursier {
       .withCredentials(credentials)
       .withLogger(createLogger)
       .withCache(cacheDirectory)
+      .withReconciliation(reconciliation.toVector)
       .withLog(log)
   }
 
@@ -103,6 +112,7 @@ object LMCoursier {
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
+      csrExtraProjects.value.toVector,
       csrFallbackDependencies.value,
       appConfiguration.value,
       None,
@@ -116,6 +126,7 @@ object LMCoursier {
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
+      csrReconciliations.value,
       streams.value.log
     )
   }
@@ -124,6 +135,7 @@ object LMCoursier {
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
+      csrExtraProjects.value.toVector,
       csrFallbackDependencies.value,
       appConfiguration.value,
       Some(transitiveClassifiers.value.map(Classifier(_))),
@@ -137,6 +149,7 @@ object LMCoursier {
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
+      csrReconciliations.value,
       streams.value.log
     )
   }
@@ -145,26 +158,6 @@ object LMCoursier {
     coursierConfiguration(
       csrSbtResolvers.value,
       Vector(),
-      csrFallbackDependencies.value,
-      appConfiguration.value,
-      None,
-      csrMavenProfiles.value,
-      scalaOrganization.value,
-      scalaVersion.value,
-      scalaBinaryVersion.value,
-      autoScalaLibrary.value,
-      scalaModuleInfo.value,
-      allExcludeDependencies.value,
-      CoursierInputsTasks.credentialsTask.value,
-      csrLogger.value,
-      csrCacheDirectory.value,
-      streams.value.log
-    )
-  }
-
-  def scalaCompilerBridgeConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
-    coursierConfiguration(
-      csrResolvers.value,
       Vector(),
       csrFallbackDependencies.value,
       appConfiguration.value,
@@ -179,6 +172,30 @@ object LMCoursier {
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
+      csrReconciliations.value,
+      streams.value.log
+    )
+  }
+
+  def scalaCompilerBridgeConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    coursierConfiguration(
+      csrResolvers.value,
+      Vector(),
+      Vector(),
+      csrFallbackDependencies.value,
+      appConfiguration.value,
+      None,
+      csrMavenProfiles.value,
+      scalaOrganization.value,
+      scalaVersion.value,
+      scalaBinaryVersion.value,
+      autoScalaLibrary.value,
+      scalaModuleInfo.value,
+      allExcludeDependencies.value,
+      CoursierInputsTasks.credentialsTask.value,
+      csrLogger.value,
+      csrCacheDirectory.value,
+      csrReconciliations.value,
       streams.value.log
     )
   }

@@ -10,7 +10,7 @@ package sbt
 import java.io.File
 import java.net.URL
 
-import lmcoursier.definitions.CacheLogger
+import lmcoursier.definitions.{ CacheLogger, ModuleMatchers, Reconciliation }
 import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
@@ -335,11 +335,13 @@ object Keys {
   val csrRecursiveResolvers = taskKey[Seq[Resolver]]("Resolvers of the current project, plus those of all from its inter-dependency projects")
   val csrSbtResolvers = taskKey[Seq[Resolver]]("Resolvers used for sbt artifacts.")
   val csrInterProjectDependencies = taskKey[Seq[lmcoursier.definitions.Project]]("Projects the current project depends on, possibly transitively")
+  val csrExtraProjects = taskKey[Seq[lmcoursier.definitions.Project]]("").withRank(CTask)
   val csrFallbackDependencies = taskKey[Seq[FallbackDependency]]("")
   val csrLogger = taskKey[Option[CacheLogger]]("")
   val csrExtraCredentials = taskKey[Seq[lmcoursier.credentials.Credentials]]("")
   val csrPublications = taskKey[Seq[(lmcoursier.definitions.Configuration, lmcoursier.definitions.Publication)]]("")
-
+  val csrReconciliations = settingKey[Seq[(ModuleMatchers, Reconciliation)]]("Strategy to reconcile version conflicts.")
+  
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)
   val ivyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, such as the resolvers and paths to use.").withRank(DTask)
