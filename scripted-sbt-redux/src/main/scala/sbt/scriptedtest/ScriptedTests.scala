@@ -19,11 +19,13 @@ import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.control.NonFatal
 import sbt.internal.scripted._
 import sbt.internal.io.Resources
-import sbt.internal.util.{ BufferedLogger, FullLogger, ConsoleOut }
+import sbt.internal.util.{ BufferedLogger, ConsoleOut, FullLogger }
 import sbt.io.syntax._
 import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
 import sbt.io.FileFilter._
 import sbt.util.{ AbstractLogger, Level, Logger }
+
+import scala.util.Try
 
 final class ScriptedTests(
     resourceBaseDirectory: File,
@@ -325,7 +327,8 @@ final class ScriptedTests(
           val runTest = () => {
             // Reload and initialize (to reload contents of .sbtrc files)
             val pluginImplementation = createAutoPlugin(name)
-            IO.write(tempTestDir / "project" / "InstrumentScripted.scala", pluginImplementation)
+            val pluginFile = tempTestDir / "project" / "InstrumentScripted.scala"
+            IO.write(pluginFile, pluginImplementation)
             def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
             val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
             val commandsToRun = ";reload;setUpScripted"
@@ -334,6 +337,9 @@ final class ScriptedTests(
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
+              while (!Try(IO.read(pluginFile)).toOption.contains(pluginImplementation)) {
+                IO.write(pluginFile, pluginImplementation)
+              }
               try runner.processStatement(sbtHandler, statement, states)
               catch {
                 case t: Throwable =>
