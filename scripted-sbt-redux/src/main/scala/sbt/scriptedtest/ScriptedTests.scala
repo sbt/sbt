@@ -19,7 +19,7 @@ import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.control.NonFatal
 import sbt.internal.scripted._
 import sbt.internal.io.Resources
-import sbt.internal.util.{ BufferedLogger, ConsoleOut, FullLogger }
+import sbt.internal.util.{ BufferedLogger, ConsoleOut, FullLogger, Util }
 import sbt.io.syntax._
 import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
 import sbt.io.FileFilter._
@@ -238,6 +238,8 @@ final class ScriptedTests(
       case "source-dependencies/linearization"           => LauncherBased // sbt/Package$
       case "source-dependencies/named"                   => LauncherBased // sbt/Package$
       case "source-dependencies/specialized"             => LauncherBased // sbt/Package$
+      case gn if gn.startsWith("watch/") && Util.isWindows =>
+        LauncherBased // there is an issue with jansi and coursier
       case "watch/commands" =>
         LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
       case "watch/managed" => LauncherBased // sbt/Package$
