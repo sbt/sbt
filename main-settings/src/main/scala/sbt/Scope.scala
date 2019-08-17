@@ -178,6 +178,8 @@ object Scope {
   ): String =
     displayMasked(scope, sep, showProject, mask, false)
 
+  val customShowString = AttributeKey[String]("scope-custom-show-string")
+
   /**
    * unified slash style introduced in sbt 1.1.0.
    * By default, sbt will no longer display the Zero-config,
@@ -193,20 +195,22 @@ object Scope {
       showZeroConfig: Boolean
   ): String = {
     import scope.{ project, config, task, extra }
-    val zeroConfig = if (showZeroConfig) "Zero /" else ""
-    val configPrefix = config.foldStrict(display, zeroConfig, "./")
-    val taskPrefix = task.foldStrict(_.label + " /", "", "./")
-    val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
-    val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-    if (scope == GlobalScope) "Global / " + sep + postfix
-    else
-      mask.concatShow(
-        appendSpace(projectPrefix(project, showProject)),
-        appendSpace(configPrefix),
-        appendSpace(taskPrefix),
-        sep,
-        postfix
-      )
+    extra.toOption.flatMap(_.get(customShowString)).getOrElse {
+      val zeroConfig = if (showZeroConfig) "Zero /" else ""
+      val configPrefix = config.foldStrict(display, zeroConfig, "./")
+      val taskPrefix = task.foldStrict(_.label + " /", "", "./")
+      val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
+      val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
+      if (scope == GlobalScope) "Global / " + sep + postfix
+      else
+        mask.concatShow(
+          appendSpace(projectPrefix(project, showProject)),
+          appendSpace(configPrefix),
+          appendSpace(taskPrefix),
+          sep,
+          postfix
+        )
+    }
   }
 
   private[sbt] def appendSpace(s: String): String =
