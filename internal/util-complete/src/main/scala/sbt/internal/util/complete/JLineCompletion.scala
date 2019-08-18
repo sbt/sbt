@@ -8,8 +8,8 @@
 package sbt.internal.util
 package complete
 
-import jline.console.ConsoleReader
-import jline.console.completer.{ Completer, CompletionHandler }
+import sbt.internal.shaded.jline.console.ConsoleReader
+import sbt.internal.shaded.jline.console.completer.{ Completer, CompletionHandler }
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 

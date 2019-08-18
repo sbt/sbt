@@ -7,12 +7,12 @@
 
 package sbt.internal.util
 
-import jline.console.ConsoleReader
-import jline.console.history.{ FileHistory, MemoryHistory }
+import sbt.internal.shaded.jline.console.ConsoleReader
+import sbt.internal.shaded.jline.console.history.{ FileHistory, MemoryHistory }
 import java.io.{ File, FileDescriptor, FileInputStream, FilterInputStream, InputStream }
 
 import complete.Parser
-import jline.Terminal
+import sbt.internal.shaded.jline.{ Terminal, TerminalFactory }
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -85,7 +85,7 @@ abstract class JLine extends LineReader {
   }
 
   private[this] def resume(): Unit = {
-    jline.TerminalFactory.reset
+    TerminalFactory.reset
     JLine.terminal.init
     reader.drawLine()
     reader.flush()
@@ -120,9 +120,9 @@ private[sbt] object JLine {
 
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
-  private[sbt] def terminal: Terminal = jline.TerminalFactory.get
+  private[sbt] def terminal: Terminal = TerminalFactory.get
 
-  private def withTerminal[T](f: jline.Terminal => T): T =
+  private def withTerminal[T](f: Terminal => T): T =
     synchronized {
       val t = terminal
       t.synchronized { f(t) }
@@ -132,7 +132,7 @@ private[sbt] object JLine {
    * For accessing the JLine Terminal object.
    * This ensures synchronized access as well as re-enabling echo after getting the Terminal.
    */
-  def usingTerminal[T](f: jline.Terminal => T): T =
+  def usingTerminal[T](f: Terminal => T): T =
     withTerminal { t =>
       t.restore
       val result = f(t)

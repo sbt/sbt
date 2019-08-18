@@ -24,8 +24,8 @@ object JLineTest {
 
   val parsers = Map("1" -> one, "2" -> two, "3" -> three, "4" -> four, "5" -> five)
   def main(args: Array[String]): Unit = {
-    import jline.TerminalFactory
-    import jline.console.ConsoleReader
+    import sbt.internal.shaded.jline.TerminalFactory
+    import sbt.internal.shaded.jline.console.ConsoleReader
     val reader = new ConsoleReader()
     TerminalFactory.get.init
 

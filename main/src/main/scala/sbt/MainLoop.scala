@@ -10,7 +10,7 @@ package sbt
 import java.io.PrintWriter
 import java.util.Properties
 
-import jline.TerminalFactory
+import sbt.internal.shaded.jline.TerminalFactory
 import sbt.internal.{ Aggregation, ShutdownHooks }
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.util.complete.Parser
