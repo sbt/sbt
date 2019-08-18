@@ -417,9 +417,15 @@ private[librarymanagement] abstract class ResolverFunctions {
     log.warn(s"insecure HTTP request is deprecated '$value'; switch to HTTPS")
   }
   private[sbt] def validatePatterns(patterns: Patterns): Unit = {
-    val ivy = patterns.ivyPatterns.headOption map (_.startsWith("http:"))
-    val art = patterns.artifactPatterns.headOption map (_.startsWith("http:"))
-    (ivy orElse art) foreach { _ =>
+    val ivy = patterns.ivyPatterns.headOption match {
+      case Some(x) => x.startsWith("http:")
+      case _       => false
+    }
+    val art = patterns.artifactPatterns.headOption match {
+      case Some(x) => x.startsWith("http:")
+      case _       => false
+    }
+    if (ivy || art) {
       warnHttp(patterns.toString)
     }
   }

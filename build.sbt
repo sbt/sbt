@@ -98,6 +98,7 @@ lazy val lmCore = (project in file("core"))
       sjsonnewScalaJson.value % Optional,
       scalaTest % Test,
       scalaCheck % Test,
+      scalaVerify % Test,
     ),
     libraryDependencies += scalaXml,
     resourceGenerators in Compile += Def
@@ -217,25 +218,18 @@ lazy val lmCore = (project in file("core"))
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
-lazy val lmCommonTest = (project in file("common-test"))
+lazy val lmIvy = (project in file("ivy"))
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(lmCore)
   .settings(
     commonSettings,
-    skip in publish := true,
-    name := "common-test",
-    libraryDependencies ++= Seq(scalaTest, scalaCheck, scalaVerify),
-    scalacOptions in (Compile, console) --=
-      Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
-    mimaSettings,
-  )
-
-lazy val lmIvy = (project in file("ivy"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(lmCore, lmCommonTest % Test)
-  .settings(
-    commonSettings,
     name := "librarymanagement-ivy",
-    libraryDependencies ++= Seq(ivy),
+    libraryDependencies ++= Seq(
+      ivy,
+      scalaTest % Test,
+      scalaCheck % Test,
+      scalaVerify % Test,
+    ),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
