@@ -24,7 +24,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
-  crossScalaVersions := Seq(scala212),
+  crossScalaVersions := Seq(scala212, scala213),
   scalacOptions in console in Compile -= "-Ywarn-unused-import",
   scalacOptions in console in Test -= "-Ywarn-unused-import",
   publishArtifact in Compile := true,
@@ -98,7 +98,6 @@ lazy val utilLogging = (project in internalPath / "util-logging")
   .dependsOn(utilInterface)
   .settings(
     commonSettings,
-    crossScalaVersions := Seq(scala212),
     name := "Util Logging",
     libraryDependencies ++=
       Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson.value, scalaReflect.value),
