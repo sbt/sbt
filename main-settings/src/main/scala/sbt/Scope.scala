@@ -178,6 +178,20 @@ object Scope {
   ): String =
     displayMasked(scope, sep, showProject, mask, false)
 
+  /**
+   * Allows the user to override the result of `Scope.display` or `Scope.displayMasked` for a
+   * particular scope. This can be used to enhance super shell and/or error reporting for tasks
+   * that use mangled names. For example, one might have:
+   * {{{
+   *   val mangledKey = TaskKey[Unit]("foo_slash_bar")
+   *   val attributeMap = AttributeMap.empty.put(Scope.customShowString("foo/bar"))
+   *   val sanitizedKey = mangledKey.copy(scope = mangledKey.copy(extra = Select(attributeMap)))
+   *   sanitizedKey := { ... }
+   * }}}
+   *
+   * Now whenever the `foo_slash_bar` task specified by sanitizedKey is evaluated, it will display
+   * "foo/bar" in super shell progress and in the error message if an error is thrown.
+   */
   val customShowString = AttributeKey[String]("scope-custom-show-string")
 
   /**
