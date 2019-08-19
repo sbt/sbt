@@ -346,11 +346,30 @@ object EvaluateTask {
       ExceptionCategory(ex) match {
         case AlreadyHandled => ()
         case m: MessageOnly => if (msg.isEmpty) log.error(m.message)
-        case f: Full        => log.trace(f.exception)
+        case f: Full =>
+          val previousStackTrace = f.exception.getStackTrace
+          val showFull = Project.extract(state).get(sbt.Keys.showFullStackTrace)
+          def cleanupStackTrace(t: Throwable): Unit = if (!showFull) {
+            // As of sbt 1.3.0, stack traces generated in EvaluateTask always look like:
+            // ...
+            // at $FUNC(build.sbt:$LINE_NUMBER)
+            // at scala.Function1.$anonfun$compose$1(Function1.scala:49)
+            // at sbt.internal.util.$tilde$greater.$anonfun$$u2219$1(TypeFunctions.scala:62)
+            def stopAt(s: StackTraceElement): Boolean =
+              s.getFileName.contains("TypeFunctions") && s.getClassName.startsWith("sbt")
+            previousStackTrace.indexWhere(stopAt) match {
+              case -1 | 0 =>
+              case i      => f.exception.setStackTrace(previousStackTrace.take(i - 1))
+            }
+          }
+          try {
+            cleanupStackTrace(f.exception)
+            log.trace(f.exception)
+          } finally f.exception.setStackTrace(previousStackTrace)
       }
     }
 
-    for ((key, msg, ex) <- keyed if (msg.isDefined || ex.isDefined)) {
+    for ((key, msg, ex) <- keyed if msg.isDefined || ex.isDefined) {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
       val log = getStreams(key, streams).log
       val display = contextDisplay(state, ConsoleAppender.formatEnabledInEnv)

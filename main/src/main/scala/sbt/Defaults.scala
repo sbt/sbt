@@ -179,6 +179,7 @@ object Defaults extends BuildCommon {
       traceLevel in fgRun :== 0,
       traceLevel in console :== Int.MaxValue,
       traceLevel in consoleProject :== Int.MaxValue,
+      showFullStackTrace :== SysProp.showFullStackTrace,
       autoCompilerPlugins :== true,
       scalaHome :== None,
       apiURL := None,

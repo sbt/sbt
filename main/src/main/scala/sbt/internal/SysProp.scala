@@ -118,6 +118,8 @@ object SysProp {
         ("ms", 6)
     }
 
+  def showFullStackTrace: Boolean = sys.props.get("sbt.stacktrace").fold(false)(_ == "full")
+
   /** Generate build.properties if missing. */
   def genBuildProps: Boolean =
     booleanOpt("sbt.genbuildprops") match {
