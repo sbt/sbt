@@ -10,14 +10,14 @@ object Dependencies {
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M15")
-  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M8")
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M16")
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M9")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _             => nightlyVersion.getOrElse("1.3.0-M5")
+      case _             => nightlyVersion.getOrElse("1.3.0-M6")
     }
-  val zincVersion = nightlyVersion.getOrElse("1.3.0-M8")
+  val zincVersion = nightlyVersion.getOrElse("1.3.0-M9")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -32,7 +32,7 @@ object Dependencies {
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.1.1"
+  val launcherVersion = "1.1.2"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
@@ -120,7 +120,7 @@ object Dependencies {
   }
 
   val jline = "jline" % "jline" % "2.14.6"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.6-SNAP5"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"
