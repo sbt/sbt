@@ -54,12 +54,14 @@ object Def extends Init[Scope] with TaskMacroExtra {
       keyNameColor: Option[String] = None,
   ): Show[ScopedKey[_]] =
     Show[ScopedKey[_]](
-      key =>
-        Scope.display(
-          key.scope,
-          withColor(key.key.label, keyNameColor),
-          ref => displayRelative2(current, ref)
-        )
+      key => {
+        val color: String => String = withColor(_, keyNameColor)
+        key.scope.extra.toOption
+          .flatMap(_.get(Scope.customShowString).map(color))
+          .getOrElse {
+            Scope.display(key.scope, color(key.key.label), ref => displayRelative2(current, ref))
+          }
+      }
     )
 
   private[sbt] def showShortKey(
