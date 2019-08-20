@@ -481,16 +481,23 @@ class ConsoleAppender private[ConsoleAppender] (
     }
 
   private def appendTraceEvent(te: TraceEvent): Unit = {
-    val traceLevel = if (getTrace < 0) Int.MaxValue else getTrace
-    val throwableShowLines: ShowLines[Throwable] =
-      ShowLines[Throwable]((t: Throwable) => {
-        List(StackTrace.trimmed(t, traceLevel))
-      })
-    val codec: ShowLines[TraceEvent] =
-      ShowLines[TraceEvent]((t: TraceEvent) => {
-        throwableShowLines.showLines(t.message)
-      })
-    codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
+    val traceLevel = getTrace
+    if (traceLevel >= 0) {
+      val throwableShowLines: ShowLines[Throwable] =
+        ShowLines[Throwable]((t: Throwable) => {
+          List(StackTrace.trimmed(t, traceLevel))
+        })
+      val codec: ShowLines[TraceEvent] =
+        ShowLines[TraceEvent]((t: TraceEvent) => {
+          throwableShowLines.showLines(t.message)
+        })
+      codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
+    }
+    if (traceLevel <= 2) {
+      suppressedMessage(new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)) foreach {
+        appendLog(Level.Error, _)
+      }
+    }
   }
 
   private def appendProgressEvent(pe: ProgressEvent): Unit =

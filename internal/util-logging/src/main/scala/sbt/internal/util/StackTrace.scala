@@ -20,6 +20,9 @@ object StackTrace {
    * - If d is greater than 0, then up to that many lines are included,
    *   where the line for the Throwable is counted plus one line for each stack element.
    *   Less lines will be included if there are not enough stack elements.
+   *
+   * See also ConsoleAppender where d <= 2 is treated specially by
+   * printing a prepared statement.
    */
   def trimmedLines(t: Throwable, d: Int): List[String] = {
     require(d >= 0)
