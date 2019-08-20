@@ -479,10 +479,7 @@ object Project extends ProjectExtra {
       .put(sessionSettings, session)
       .put(Keys.onUnload.key, onUnload)
     val newState = unloaded.copy(attributes = newAttrs)
-    // TODO: Fix this
-    onLoad(
-      updateCurrent(newState) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
-    )
+    onLoad(updateCurrent(newState))
   }
 
   def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun

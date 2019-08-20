@@ -112,16 +112,6 @@ object MainLoop {
       finally out.close()
     }
 
-  // /** Transfers logging and trace levels from the old global loggers to the new ones. */
-  // private[this] def transferLevels(state: State, logging: GlobalLogging): Unit = {
-  //   val old = state.globalLogging
-  //   Logger.transferLevels(old.backed, logging.backed)
-  //   (old.full, logging.full) match { // well, this is a hack
-  //     case (oldLog: AbstractLogger, newLog: AbstractLogger) => Logger.transferLevels(oldLog, newLog)
-  //     case _                                                => ()
-  //   }
-  // }
-
   sealed trait RunNext
   final class ClearGlobalLog(val state: State) extends RunNext
   final class KeepGlobalLog(val state: State) extends RunNext

@@ -218,26 +218,6 @@ object LogManager {
     log
   }
 
-  // TODO: Fix this
-  // if global logging levels are not explicitly set, set them from project settings
-  // private[sbt] def setGlobalLogLevels(s: State, data: Settings[Scope]): State =
-  //   if (hasExplicitGlobalLogLevels(s))
-  //     s
-  //   else {
-  //     val logging = s.globalLogging
-  //     def get[T](key: SettingKey[T]) = key in GlobalScope get data
-  //     def transfer(l: AbstractLogger, traceKey: SettingKey[Int], levelKey: SettingKey[Level.Value]): Unit = {
-  //       get(traceKey).foreach(l.setTrace)
-  //       get(levelKey).foreach(l.setLevel)
-  //     }
-  //     logging.full match {
-  //       case a: AbstractLogger => transfer(a, traceLevel, logLevel)
-  //       case _                 => ()
-  //     }
-  //     transfer(logging.backed, persistTraceLevel, persistLogLevel)
-  //     s
-  //   }
-
   def setGlobalLogLevel(s: State, level: Level.Value): State = {
     val s1 = s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
     val gl = s1.globalLogging
