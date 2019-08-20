@@ -11,7 +11,7 @@ object Dependencies {
 
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.3.0-M16")
-  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M9")
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M10")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
