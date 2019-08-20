@@ -168,7 +168,7 @@ object LogManager {
     }
 
   def defaultTraceLevel(state: State): Int =
-    if (state.interactive) -1 else Int.MaxValue
+    if (state.interactive) 0 else Int.MaxValue
 
   def suppressedMessage(
       key: ScopedKey[_],
