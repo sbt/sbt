@@ -593,8 +593,14 @@ object Defaults extends BuildCommon {
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
     compileInputsSettings
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
-    clean := Clean.task(ThisScope, full = false).value,
-    fileOutputs in compile := Seq(Glob(classDirectory.value, RecursiveGlob / "*.class")),
+    compileOutputs := {
+      import scala.collection.JavaConverters._
+      val classFiles =
+        manipulateBytecode.value.analysis.readStamps.getAllProductStamps.keySet.asScala
+      classFiles.toSeq.map(_.toPath) :+ compileAnalysisFileTask.value.toPath
+    },
+    compileOutputs := compileOutputs.triggeredBy(compile).value,
+    clean := (compileOutputs / clean).value,
     compile := compileTask.value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
