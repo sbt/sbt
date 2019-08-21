@@ -36,9 +36,25 @@ object HashModifiedFileInfo {
 
 private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
-private final case class FileHash(file: File, hashArray: Array[Byte]) extends HashFileInfo
-private final case class FileHashModified(file: File, hashArray: Array[Byte], lastModified: Long)
-    extends HashModifiedFileInfo
+@deprecated("Kept for plugin compat, but will be removed in sbt 2.0", "1.3.0")
+private final case class FileHash(file: File, override val hash: List[Byte]) extends HashFileInfo {
+  override val hashArray: Array[Byte] = hash.toArray
+}
+private final case class FileHashArrayRepr(file: File, override val hashArray: Array[Byte])
+    extends HashFileInfo
+@deprecated("Kept for plugin compat, but will be removed in sbt 2.0", "1.3.0")
+private final case class FileHashModified(
+    file: File,
+    override val hash: List[Byte],
+    lastModified: Long
+) extends HashModifiedFileInfo {
+  override val hashArray: Array[Byte] = hash.toArray
+}
+private final case class FileHashModifiedArrayRepr(
+    file: File,
+    override val hashArray: Array[Byte],
+    lastModified: Long
+) extends HashModifiedFileInfo
 
 final case class FilesInfo[F <: FileInfo] private (files: Set[F])
 object FilesInfo {
@@ -111,15 +127,15 @@ object FileInfo {
           val hash = unbuilder.readField[Array[Byte]]("hash")
           val lastModified = unbuilder.readField[Long]("lastModified")
           unbuilder.endObject()
-          FileHashModified(file, hash, lastModified)
+          FileHashModifiedArrayRepr(file, hash, lastModified)
         case None => deserializationError("Expected JsObject but found None")
       }
     }
 
     implicit def apply(file: File): HashModifiedFileInfo =
-      FileHashModified(file.getAbsoluteFile, Hash(file), IO.getModifiedTimeOrZero(file))
+      FileHashModifiedArrayRepr(file.getAbsoluteFile, Hash(file), IO.getModifiedTimeOrZero(file))
     def apply(file: File, hash: Array[Byte], lastModified: Long): HashModifiedFileInfo =
-      FileHashModified(file.getAbsoluteFile, hash, lastModified)
+      FileHashModifiedArrayRepr(file.getAbsoluteFile, hash, lastModified)
   }
 
   object hash extends Style {
@@ -139,14 +155,15 @@ object FileInfo {
           val file = unbuilder.readField[File]("file")
           val hash = unbuilder.readField[Array[Byte]]("hash")
           unbuilder.endObject()
-          FileHash(file, hash)
+          FileHashArrayRepr(file, hash)
         case None => deserializationError("Expected JsObject but found None")
       }
     }
 
-    implicit def apply(file: File): HashFileInfo = FileHash(file.getAbsoluteFile, computeHash(file))
+    implicit def apply(file: File): HashFileInfo =
+      FileHashArrayRepr(file.getAbsoluteFile, computeHash(file))
     def apply(file: File, bytes: Array[Byte]): HashFileInfo =
-      FileHash(file.getAbsoluteFile, bytes)
+      FileHashArrayRepr(file.getAbsoluteFile, bytes)
 
     private def computeHash(file: File): Array[Byte] =
       try Hash(file)
