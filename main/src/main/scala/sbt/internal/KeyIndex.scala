@@ -28,10 +28,26 @@ object KeyIndex {
       extra: BuildUtil[_],
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
-  ): ExtendableKeyIndex =
-    (base(projects, configurations) /: known) { (index, key) =>
-      index.addAggregated(key, extra)
+  ): ExtendableKeyIndex = {
+    /*
+     * Used to be:
+     * (base(projects, configurations) /: known) { (index, key) =>
+     *   index.addAggregated(key, extra)
+     * }
+     * This was a significant serial bottleneck during project loading that we can work around by
+     * computing the aggregations in parallel and then bulk adding them to the index.
+     */
+    val toAggregate = known.par.map {
+      case key if validID(key.key.label) =>
+        Aggregation.aggregate(key, ScopeMask(), extra, reverse = true)
+      case _ => Nil
     }
+    (base(projects, configurations) /: toAggregate) {
+      case (index, Nil)  => index
+      case (index, keys) => (index /: keys)(_ add _)
+    }
+  }
+
   private[this] def base(
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
