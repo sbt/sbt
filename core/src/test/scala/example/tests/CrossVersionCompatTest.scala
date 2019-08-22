@@ -2,7 +2,9 @@ package example.tests
 
 import sbt.librarymanagement.{ CrossVersion, Disabled }
 import verify.BasicTestSuite
+import com.github.ghik.silencer.silent
 
+@silent
 object CrossVersionCompatTest extends BasicTestSuite {
   test("CrossVersion.Disabled is typed to be Disabled") {
     assert(CrossVersion.Disabled match {

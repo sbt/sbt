@@ -8,6 +8,10 @@ final case class ScalaVersion(full: String, binary: String)
 private[librarymanagement] abstract class CrossVersionFunctions {
 
   /** Compatibility with 0.13 */
+  @deprecated(
+    "use CrossVersion.disabled instead. prior to sbt 1.3.0, Diabled did not work without apply(). sbt/sbt#4977",
+    "1.3.0"
+  )
   final val Disabled = sbt.librarymanagement.Disabled
   final val Binary = sbt.librarymanagement.Binary
   final val Constant = sbt.librarymanagement.Constant
@@ -37,7 +41,7 @@ private[librarymanagement] abstract class CrossVersionFunctions {
   def binary: CrossVersion = Binary()
 
   /** Disables cross versioning for a module. */
-  def disabled: CrossVersion = Disabled
+  def disabled: CrossVersion = sbt.librarymanagement.Disabled
 
   /** Cross-versions a module with a constant string (typically the binary Scala version).  */
   def constant(value: String): CrossVersion = Constant(value)
