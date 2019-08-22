@@ -160,6 +160,9 @@ object Keys {
   private[sbt] val managedFileStampCache = taskKey[FileStamp.Cache](
     "Map of managed file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
+  private[sbt] val managedSourcePaths =
+    taskKey[Seq[Path]]("Transforms the managedSources to Seq[Path] to induce setting injection.")
+      .withRank(Invisible)
   private[sbt] val dependencyClasspathFiles =
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
   private[sbt] val classpathFiles =

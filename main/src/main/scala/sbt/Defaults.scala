@@ -415,7 +415,6 @@ object Defaults extends BuildCommon {
     },
     unmanagedSources := (unmanagedSources / inputFileStamps).value.map(_._1.toFile),
     managedSourceDirectories := Seq(sourceManaged.value),
-    managedSources / outputFileStamper := sbt.nio.FileStamper.Hash,
     managedSources := {
       val stamper = inputFileStamper.value
       val cache = managedFileStampCache.value
@@ -425,6 +424,8 @@ object Defaults extends BuildCommon {
       }
       res
     },
+    managedSourcePaths / outputFileStamper := sbt.nio.FileStamper.Hash,
+    managedSourcePaths := managedSources.value.map(_.toPath),
     sourceGenerators :== Nil,
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
@@ -618,7 +619,7 @@ object Defaults extends BuildCommon {
     externalHooks := {
       import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
       val currentInputs =
-        (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
+        (unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value
       val previousInputs = (externalHooks / inputFileStamps).previous
       val inputChanges = previousInputs
         .map(sbt.nio.Settings.changedFiles(_, currentInputs))
@@ -632,7 +633,7 @@ object Defaults extends BuildCommon {
     },
     externalHooks / inputFileStamps := {
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
-      (unmanagedSources / inputFileStamps).value ++ (managedSources / outputFileStamps).value
+      (unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value
     },
     externalHooks / inputFileStamps := (externalHooks / inputFileStamps).triggeredBy(compile).value,
     externalHooks / outputFileStamps := {

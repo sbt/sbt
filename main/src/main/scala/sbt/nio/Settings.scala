@@ -8,7 +8,6 @@
 package sbt
 package nio
 
-import java.io.File
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.ConcurrentHashMap
 
@@ -82,11 +81,9 @@ private[sbt] object Settings {
         ak.manifest.typeArguments match {
           case t :: Nil if seqClass.isAssignableFrom(t.runtimeClass) =>
             t.typeArguments match {
-              case f :: Nil if fileClass.isAssignableFrom(f.runtimeClass) => mkSetting[Seq[File]]
               case p :: Nil if pathClass.isAssignableFrom(p.runtimeClass) => mkSetting[Seq[Path]]
               case _                                                      => default
             }
-          case t :: Nil if fileClass.isAssignableFrom(t.runtimeClass) => mkSetting[File]
           case t :: Nil if pathClass.isAssignableFrom(t.runtimeClass) => mkSetting[Path]
           case _                                                      => default
         }
@@ -147,7 +144,6 @@ private[sbt] object Settings {
 
   private[this] val taskClass = classOf[Task[_]]
   private[this] val seqClass = classOf[Seq[_]]
-  private[this] val fileClass = classOf[java.io.File]
   private[this] val pathClass = classOf[java.nio.file.Path]
 
   /**
