@@ -61,4 +61,5 @@ object Dependencies {
   }
   val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.5.0"
   val okhttpUrlconnection = "com.squareup.okhttp3" % "okhttp-urlconnection" % "3.7.0"
+  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.1"
 }

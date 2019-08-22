@@ -100,6 +100,10 @@ lazy val lmCore = (project in file("core"))
       scalaCheck % Test,
       scalaVerify % Test,
     ),
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
     libraryDependencies += scalaXml,
     resourceGenerators in Compile += Def
       .task(
