@@ -537,9 +537,9 @@ trait Init[ScopeType] {
     // Take all the original defs and DerivedSettings along with locals, replace each DerivedSetting with the actual
     // settings that were derived.
     val allDefs = addLocal(init)(scopeLocal)
-    allDefs flatMap {
-      case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toStream.flatten;
-      case s                    => Stream(s)
+    allDefs.flatMap {
+      case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toSeq.flatten
+      case s                    => s :: Nil
     }
   }
 
