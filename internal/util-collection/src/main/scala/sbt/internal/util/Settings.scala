@@ -234,7 +234,7 @@ trait Init[ScopeType] {
     if (s.definitive) s :: Nil else ss :+ s
 
   def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
-    init.flatMap(_.dependencies flatMap scopeLocal) ++ init
+    init.par.map(_.dependencies flatMap scopeLocal).toVector.flatten ++ init
 
   def delegate(sMap: ScopedMap)(
       implicit delegates: ScopeType => Seq[ScopeType],
