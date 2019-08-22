@@ -39,7 +39,7 @@ sealed class Disabled private () extends sbt.librarymanagement.CrossVersion() wi
 
 }
 object Disabled extends sbt.librarymanagement.Disabled {
-  def apply(): Disabled = new Disabled()
+  def apply(): Disabled = Disabled
 }
 
 /**
