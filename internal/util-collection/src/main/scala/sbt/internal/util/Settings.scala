@@ -234,7 +234,7 @@ trait Init[ScopeType] {
     if (s.definitive) s :: Nil else ss :+ s
 
   def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
-    init.flatMap(_.dependencies flatMap scopeLocal) ++ init
+    init.par.map(_.dependencies flatMap scopeLocal).toVector.flatten ++ init
 
   def delegate(sMap: ScopedMap)(
       implicit delegates: ScopeType => Seq[ScopeType],
@@ -537,9 +537,9 @@ trait Init[ScopeType] {
     // Take all the original defs and DerivedSettings along with locals, replace each DerivedSetting with the actual
     // settings that were derived.
     val allDefs = addLocal(init)(scopeLocal)
-    allDefs flatMap {
-      case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toStream.flatten;
-      case s                    => Stream(s)
+    allDefs.flatMap {
+      case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toSeq.flatten
+      case s                    => s :: Nil
     }
   }
 
