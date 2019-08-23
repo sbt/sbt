@@ -18,7 +18,7 @@ private[sbt] object GCUtil {
   // as specified by system properties.
   val defaultForceGarbageCollection: Boolean = true
   val defaultMinForcegcInterval: Duration = 10.minutes
-  val lastGcCheck: AtomicLong = new AtomicLong(0L)
+  val lastGcCheck: AtomicLong = new AtomicLong(System.currentTimeMillis)
 
   def forceGcWithInterval(minForcegcInterval: Duration, log: Logger): Unit = {
     val now = System.currentTimeMillis
