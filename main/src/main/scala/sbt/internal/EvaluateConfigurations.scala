@@ -25,6 +25,7 @@ import Scope.GlobalScope
 import sbt.internal.parser.SbtParser
 
 import sbt.io.IO
+import scala.collection.JavaConverters._
 
 /**
  *  This file is responsible for compiling the .sbt files used to configure sbt builds.
@@ -340,11 +341,15 @@ object Index {
     pairs.toMap[Task[_], ScopedKey[Task[_]]]
   }
 
-  def allKeys(settings: Seq[Setting[_]]): Set[ScopedKey[_]] =
-    settings
-      .flatMap(s => if (s.key.key.isLocal) Nil else s.key +: s.dependencies)
-      .filter(!_.key.isLocal)
-      .toSet
+  def allKeys(settings: Seq[Setting[_]]): Set[ScopedKey[_]] = {
+    val result = new java.util.HashSet[ScopedKey[_]]
+    settings.foreach { s =>
+      if (!s.key.key.isLocal && result.add(s.key)) {
+        s.dependencies.foreach(k => if (!k.key.isLocal) result.add(s.key))
+      }
+    }
+    result.asScala.toSet
+  }
 
   def attributeKeys(settings: Settings[Scope]): Set[AttributeKey[_]] =
     settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]]
