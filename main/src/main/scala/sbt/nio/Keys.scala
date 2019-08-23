@@ -164,6 +164,7 @@ object Keys {
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
   private[sbt] val classpathFiles =
     taskKey[Seq[Path]]("The classpath for a task.").withRank(Invisible)
+  private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)
 
   private[this] val hasCheckedMetaBuildMsg =
     "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +
