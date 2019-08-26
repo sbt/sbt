@@ -184,6 +184,7 @@ final class ScriptedTests(
     val (group, name) = testName
     s"$group/$name" match {
       case "actions/add-alias"          => LauncherBased // sbt/Package$
+      case "actions/cross-incremental"  => LauncherBased // tbd
       case "actions/cross-multiproject" => LauncherBased // tbd
       case "actions/cross-multi-parser" =>
         LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher

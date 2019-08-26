@@ -47,6 +47,7 @@ import sbt.internal.server.{
   LanguageServerReporter,
   ServerHandler
 }
+import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
 import sbt.internal.testing.TestLogger
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types._
@@ -617,31 +618,42 @@ object Defaults extends BuildCommon {
       s"inc_compile$extra.zip"
     },
     externalHooks := {
-      import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
+      import sjsonnew.BasicJsonProtocol.mapFormat
       val currentInputs =
         (unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value
-      val previousInputs = (externalHooks / inputFileStamps).previous
+      val sv = scalaVersion.value
+      val previousInputs = compileSourceFileInputs.previous.flatMap(_.get(sv))
       val inputChanges = previousInputs
         .map(sbt.nio.Settings.changedFiles(_, currentInputs))
         .getOrElse(FileChanges.noPrevious(currentInputs.map(_._1)))
       val currentOutputs = (dependencyClasspathFiles / outputFileStamps).value
-      val previousOutputs = (externalHooks / outputFileStamps).previous
+      val previousOutputs = compileBinaryFileInputs.previous.flatMap(_.get(sv))
       val outputChanges = previousOutputs
         .map(sbt.nio.Settings.changedFiles(_, currentOutputs))
         .getOrElse(FileChanges.noPrevious(currentOutputs.map(_._1)))
       ExternalHooks.default.value(inputChanges, outputChanges, fileTreeView.value)
     },
-    externalHooks / inputFileStamps := {
+    compileSourceFileInputs := {
+      import sjsonnew.BasicJsonProtocol.mapFormat
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
-      (unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value
+      val version = scalaVersion.value
+      val versions = crossScalaVersions.value.toSet + version
+      val prev: Map[String, Seq[(java.nio.file.Path, sbt.nio.FileStamp)]] =
+        compileSourceFileInputs.previous.map(_.filterKeys(versions)).getOrElse(Map.empty)
+      prev + (version ->
+        ((unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value))
     },
-    externalHooks / inputFileStamps := (externalHooks / inputFileStamps).triggeredBy(compile).value,
-    externalHooks / outputFileStamps := {
+    compileSourceFileInputs := compileSourceFileInputs.triggeredBy(compile).value,
+    compileBinaryFileInputs := {
+      import sjsonnew.BasicJsonProtocol.mapFormat
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
-      (dependencyClasspathFiles / outputFileStamps).value
+      val version = scalaVersion.value
+      val versions = crossScalaVersions.value.toSet + version
+      val prev: Map[String, Seq[(java.nio.file.Path, sbt.nio.FileStamp)]] =
+        compileBinaryFileInputs.previous.map(_.filterKeys(versions)).getOrElse(Map.empty)
+      prev + (version -> (dependencyClasspathFiles / outputFileStamps).value)
     },
-    externalHooks / outputFileStamps :=
-      (externalHooks / outputFileStamps).triggeredBy(compile).value,
+    compileBinaryFileInputs := compileBinaryFileInputs.triggeredBy(compile).value,
     incOptions := { incOptions.value.withExternalHooks(externalHooks.value) },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
