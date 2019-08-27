@@ -28,7 +28,7 @@ private[sbt] class XMainConfiguration {
     case a: AutoCloseable => a.close()
     case _                =>
   }
-  def runXMain(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  def run(moduleName: String, configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val updatedConfiguration =
       if (configuration.provider.scalaProvider.launcher.topLoader.getClass.getCanonicalName
             .contains("TestInterfaceLoader")) {
@@ -38,7 +38,7 @@ private[sbt] class XMainConfiguration {
       }
     val loader = updatedConfiguration.provider.loader
     Thread.currentThread.setContextClassLoader(loader)
-    val clazz = loader.loadClass("sbt.xMainImpl$")
+    val clazz = loader.loadClass(s"sbt.$moduleName$$")
     val instance = clazz.getField("MODULE$").get(null)
     val runMethod = clazz.getMethod("run", classOf[xsbti.AppConfiguration])
     try {

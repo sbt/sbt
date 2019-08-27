@@ -36,9 +36,9 @@ import scala.util.control.NonFatal
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-    new XMainConfiguration().runXMain(configuration)
+    new XMainConfiguration().run("xMain", configuration)
 }
-private[sbt] object xMainImpl {
+private[sbt] object xMain {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     try {
       import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
@@ -72,7 +72,11 @@ private[sbt] object xMainImpl {
 }
 
 final class ScriptMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+    new XMainConfiguration().run("ScriptMain", configuration)
+}
+private[sbt] object ScriptMain {
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
     val state = StandardMain.initialState(
       configuration,
@@ -84,7 +88,11 @@ final class ScriptMain extends xsbti.AppMain {
 }
 
 final class ConsoleMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+    new XMainConfiguration().run("ConsoleMain", configuration)
+}
+private[sbt] object ConsoleMain {
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val state = StandardMain.initialState(
       configuration,
       BuiltinCommands.ConsoleCommands,
