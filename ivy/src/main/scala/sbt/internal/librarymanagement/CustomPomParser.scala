@@ -242,9 +242,6 @@ object CustomPomParser {
         transform(dd, _ => newId)
       case None => dd
     }
-  private[sbt] lazy val versionRangeFlag = sys.props.get("sbt.modversionrange") map {
-    _.toLowerCase == "true"
-  } getOrElse true
 
   import collection.JavaConverters._
   def addExtra(
@@ -281,7 +278,7 @@ object CustomPomParser {
       addExtra(dd, dependencyExtra)
     }
     val withVersionRangeMod: Seq[DependencyDescriptor] =
-      if (versionRangeFlag) withExtra map { stripVersionRange } else withExtra
+      if (LMSysProp.modifyVersionRange) withExtra map { stripVersionRange } else withExtra
     val unique = IvySbt.mergeDuplicateDefinitions(withVersionRangeMod)
     unique foreach dmd.addDependency
 

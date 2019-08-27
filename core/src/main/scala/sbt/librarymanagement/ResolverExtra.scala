@@ -95,8 +95,7 @@ private[sbt] class FakeRepository(resolver: AnyRef, name: String) extends xsbti.
 }
 
 private[librarymanagement] abstract class ResolverFunctions {
-  private[sbt] def useSecureResolvers =
-    sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
+  import sbt.internal.librarymanagement.LMSysProp.useSecureResolvers
 
   val TypesafeRepositoryRoot = typesafeRepositoryRoot(useSecureResolvers)
   val SbtRepositoryRoot = sbtRepositoryRoot(useSecureResolvers)
