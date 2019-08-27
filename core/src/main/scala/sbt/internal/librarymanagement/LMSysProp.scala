@@ -54,5 +54,5 @@ object LMSysProp {
     }
   }
 
-  lazy val useGigahorse: Boolean = getOrTrue("sbt.gigahorse")
+  lazy val useGigahorse: Boolean = getOrFalse("sbt.gigahorse")
 }
