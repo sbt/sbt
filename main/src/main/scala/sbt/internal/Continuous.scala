@@ -243,7 +243,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               case exec :: rest =>
                 val updatedState = MainLoop.processCommand(exec, s.copy(remainingCommands = rest))
                 val remaining =
-                  updatedState.remainingCommands.takeWhile(_.commandLine != FailureWall)
+                  updatedState.remainingCommands.takeWhile(_.commandLine != failureCommandName)
                 remaining match {
                   case Nil =>
                     updatedState.remainingCommands.forall(_.commandLine != failureCommandName)
@@ -351,7 +351,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               currentCount.getAndIncrement()
               callbacks.beforeCommand()
               // abort as soon as one of the tasks fails
-              valid.takeWhile(_._3.apply())
+              valid.takeWhile { case (_, _, task) => task() }
               updateLegacyWatchState(s, configs.flatMap(_.inputs().map(_.glob)), currentCount.get())
               ()
             }
