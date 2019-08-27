@@ -1,5 +1,5 @@
 addSbtPlugin("org.scala-sbt" % "sbt-houserules" % "0.3.9")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.0.0")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.0.3")
 addSbtPlugin("org.scala-sbt" % "sbt-contraband" % "0.4.4")
 addSbtPlugin("com.lightbend" % "sbt-whitesource" % "0.1.16")
-addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.4.1")
+addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.4.2")

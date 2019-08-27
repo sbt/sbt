@@ -58,6 +58,6 @@ object Dependencies {
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.1"
-  val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.4.1" % Provided
+  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.2"
+  val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.4.2" % Provided
 }
