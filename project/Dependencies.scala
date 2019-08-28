@@ -15,7 +15,7 @@ object Dependencies {
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _             => nightlyVersion.getOrElse("1.3.0-M6")
+      case _             => nightlyVersion.getOrElse("1.3.0-M7")
     }
   val zincVersion = nightlyVersion.getOrElse("1.3.0-M9")
 
