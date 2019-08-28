@@ -1,0 +1,3 @@
+> clean
+
+$ absent foo/bar/baz.txt
