@@ -7,7 +7,7 @@ import java.io.{ IOException, File }
 import java.net.URL
 import scala.xml.XML
 import org.xml.sax.SAXParseException
-import sbt.util.{ Level, LogExchange }
+import sbt.util.Logger
 
 final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name) {
   override def toString = "Raw(" + resolver.toString + ")"
@@ -404,33 +404,60 @@ private[librarymanagement] abstract class ResolverFunctions {
     Patterns().withIvyPatterns(pList).withArtifactPatterns(pList).withIsMavenCompatible(false)
   }
 
-  lazy val log = {
-    val log0 = LogExchange.logger("sbt.librarymanagement.ResolverExtra")
-    LogExchange.bindLoggerAppenders(
-      "sbt.librarymanagement.ResolverExtra",
-      List(LogExchange.buildAsyncStdout -> Level.Info)
-    )
-    log0
+  private[sbt] def warnHttp(value: String, suggestion: String, logger: Logger): Unit = {
+    logger.warn(s"insecure HTTP request is deprecated '$value'; switch to HTTPS$suggestion")
   }
-  private[sbt] def warnHttp(value: String): Unit = {
-    log.warn(s"insecure HTTP request is deprecated '$value'; switch to HTTPS")
+  private[sbt] def isInsecureUrl(str: String): Boolean = {
+    // don't try to parse str as URL because it could contain $variable from Ivy pattern
+    str.startsWith("http:") &&
+    !(str.startsWith("http://localhost/")
+      || str.startsWith("http://localhost:")
+      || str.startsWith("http://127.0.0.1/")
+      || str.startsWith("http://127.0.0.1:"))
   }
-  private[sbt] def validatePatterns(patterns: Patterns): Unit = {
-    val ivy = patterns.ivyPatterns.headOption match {
-      case Some(x) => x.startsWith("http:")
-      case _       => false
-    }
-    val art = patterns.artifactPatterns.headOption match {
-      case Some(x) => x.startsWith("http:")
-      case _       => false
-    }
-    if (ivy || art) {
-      warnHttp(patterns.toString)
+  private[sbt] def validateURLRepository(repo: URLRepository, logger: Logger): Unit = {
+    if (repo.allowInsecureProtocol) ()
+    else {
+      val patterns = repo.patterns
+      val ivy = patterns.ivyPatterns.headOption match {
+        case Some(x) => isInsecureUrl(x)
+        case _       => false
+      }
+      val art = patterns.artifactPatterns.headOption match {
+        case Some(x) => isInsecureUrl(x)
+        case _       => false
+      }
+      if (ivy || art) {
+        warnHttp(
+          patterns.toString,
+          s""" or opt-in as Resolver.url("${repo.name}", url(...)).withAllowInsecureProtocol(true)""",
+          logger
+        )
+      }
     }
   }
-  private[sbt] def validateUrlString(url: String): Unit = {
-    if (url.startsWith("http:")) {
-      warnHttp(url)
+
+  private[sbt] def validateMavenRepo(repo: MavenRepo, logger: Logger): Unit =
+    if (repo.allowInsecureProtocol) ()
+    else if (isInsecureUrl(repo.root)) {
+      warnHttp(
+        repo.root,
+        s""" or opt-in as ("${repo.name}" at "${repo.root}").withAllowInsecureProtocol(true)""",
+        logger
+      )
     }
-  }
+
+  private[sbt] def validateArtifact(art: Artifact, logger: Logger): Unit =
+    if (art.allowInsecureProtocol) ()
+    else {
+      art.url foreach { url =>
+        if (isInsecureUrl(url.toString)) {
+          warnHttp(
+            art.toString,
+            " or opt-in using from(url(...), allowInsecureProtocol = true) on ModuleID or .withAllowInsecureProtocol(true) on Artifact",
+            logger
+          )
+        }
+      }
+    }
 }

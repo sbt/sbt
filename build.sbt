@@ -238,6 +238,9 @@ lazy val lmCore = (project in file("core"))
       exclude[DirectMissingMethodProblem](
         "sbt.librarymanagement.ResolverFunctions.useSecureResolvers"
       ),
+      exclude[ReversedMissingMethodProblem](
+        "sbt.librarymanagement.MavenRepository.allowInsecureProtocol"
+      )
     ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
