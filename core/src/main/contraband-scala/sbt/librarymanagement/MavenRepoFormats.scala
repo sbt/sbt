@@ -14,8 +14,9 @@ implicit lazy val MavenRepoFormat: JsonFormat[sbt.librarymanagement.MavenRepo] =
       val name = unbuilder.readField[String]("name")
       val root = unbuilder.readField[String]("root")
       val localIfFile = unbuilder.readField[Boolean]("localIfFile")
+      val _allowInsecureProtocol = unbuilder.readField[Boolean]("_allowInsecureProtocol")
       unbuilder.endObject()
-      sbt.librarymanagement.MavenRepo(name, root, localIfFile)
+      sbt.librarymanagement.MavenRepo(name, root, localIfFile, _allowInsecureProtocol)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -25,6 +26,7 @@ implicit lazy val MavenRepoFormat: JsonFormat[sbt.librarymanagement.MavenRepo] =
     builder.addField("name", obj.name)
     builder.addField("root", obj.root)
     builder.addField("localIfFile", obj.localIfFile)
+    builder.addField("_allowInsecureProtocol", obj._allowInsecureProtocol)
     builder.endObject()
   }
 }

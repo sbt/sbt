@@ -26,14 +26,18 @@ private[librarymanagement] abstract class ArtifactFunctions {
     Artifact(name, `type`, extension, None, Vector.empty, None)
   def apply(name: String, `type`: String, extension: String, classifier: String): Artifact =
     Artifact(name, `type`, extension, Some(classifier), Vector.empty, None)
-  def apply(name: String, url: URL): Artifact =
+  def apply(name: String, url: URL): Artifact = Artifact(name, url, false)
+  def apply(name: String, url: URL, allowInsecureProtocol: Boolean): Artifact =
     Artifact(
       name,
       extract(url, DefaultType),
       extract(url, DefaultExtension),
       None,
       Vector.empty,
-      Some(url)
+      Some(url),
+      Map.empty,
+      None,
+      allowInsecureProtocol
     )
 
   private final val empty = Map.empty[String, String]

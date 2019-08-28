@@ -19,8 +19,9 @@ implicit lazy val ArtifactFormat: JsonFormat[sbt.librarymanagement.Artifact] = n
       val url = unbuilder.readField[Option[java.net.URL]]("url")
       val extraAttributes = unbuilder.readField[Map[String, String]]("extraAttributes")
       val checksum = unbuilder.readField[Option[sbt.librarymanagement.Checksum]]("checksum")
+      val allowInsecureProtocol = unbuilder.readField[Boolean]("allowInsecureProtocol")
       unbuilder.endObject()
-      sbt.librarymanagement.Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum)
+      sbt.librarymanagement.Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum, allowInsecureProtocol)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -35,6 +36,7 @@ implicit lazy val ArtifactFormat: JsonFormat[sbt.librarymanagement.Artifact] = n
     builder.addField("url", obj.url)
     builder.addField("extraAttributes", obj.extraAttributes)
     builder.addField("checksum", obj.checksum)
+    builder.addField("allowInsecureProtocol", obj.allowInsecureProtocol)
     builder.endObject()
   }
 }

@@ -6,7 +6,8 @@
 package sbt.librarymanagement
 abstract class Resolver(
   val name: String) extends Serializable {
-  
+  /** check for HTTP */
+  private[sbt] def validateProtocol(logger: sbt.util.Logger): Unit = ()
   
   
   

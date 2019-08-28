@@ -7,7 +7,7 @@ package sbt.librarymanagement
 final class ChainedResolver private (
   name: String,
   val resolvers: Vector[sbt.librarymanagement.Resolver]) extends sbt.librarymanagement.Resolver(name) with Serializable {
-  
+  private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = resolvers.foreach(_.validateProtocol(logger))
   
   
   override def equals(o: Any): Boolean = o match {
