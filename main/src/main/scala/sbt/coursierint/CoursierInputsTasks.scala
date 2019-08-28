@@ -145,9 +145,7 @@ object CoursierInputsTasks {
       val state = sbt.Keys.state.value
       val projectRef = sbt.Keys.thisProjectRef.value
       val projectRefs = Project.transitiveInterDependencies(state, projectRef)
-      Def.task {
-        csrProject.all(ScopeFilter(inProjects(projectRefs :+ projectRef: _*))).value
-      }
+      csrProject.all(ScopeFilter(inProjects(projectRefs: _*)))
     }
 
   private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
