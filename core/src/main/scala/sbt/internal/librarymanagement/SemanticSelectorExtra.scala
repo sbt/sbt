@@ -4,6 +4,7 @@ import sbt.librarymanagement.VersionNumber
 import sbt.internal.librarymanagement.SemSelOperator.{ Lt, Lte, Gt, Gte, Eq }
 
 import scala.annotation.tailrec
+import java.util.Locale
 
 private[librarymanagement] abstract class SemSelAndChunkFunctions {
   protected def parse(andClauseToken: String): SemSelAndChunk = {
@@ -123,10 +124,11 @@ private[librarymanagement] abstract class SemComparatorExtra {
         // Identifiers consisting of only digits are compared numerically.
         // Numeric identifiers always have lower precedence than non-numeric identifiers.
         // Identifiers with letters are compared case insensitive lexical order.
-        case (true, true)   => implicitly[Ordering[Long]].compare(ts1head.toLong, ts2head.toLong)
-        case (false, true)  => 1
-        case (true, false)  => -1
-        case (false, false) => ts1head.toLowerCase.compareTo(ts2head.toLowerCase)
+        case (true, true)  => implicitly[Ordering[Long]].compare(ts1head.toLong, ts2head.toLong)
+        case (false, true) => 1
+        case (true, false) => -1
+        case (false, false) =>
+          ts1head.toLowerCase(Locale.ENGLISH).compareTo(ts2head.toLowerCase(Locale.ENGLISH))
       }
       if (cmp == 0) compareTags(ts1.tail, ts2.tail)
       else cmp

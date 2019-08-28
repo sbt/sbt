@@ -4,6 +4,7 @@ package ivy
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.apache.ivy.core.settings.IvySettings
 import sbt.util.Logger
+import sbt.internal.librarymanagement.LMSysProp
 
 /**
  * Represents configurable options for update task.
@@ -109,7 +110,7 @@ object UpdateOptions {
       interProjectFirst = true,
       latestSnapshots = true,
       cachedResolution = false,
-      gigahorse = sys.props.get("sbt.gigahorse") map { _.toLowerCase == "true" } getOrElse true,
+      gigahorse = LMSysProp.useGigahorse,
       resolverConverter = PartialFunction.empty,
       moduleResolvers = Map.empty
     )
