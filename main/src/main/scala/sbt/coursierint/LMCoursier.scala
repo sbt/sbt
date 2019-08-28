@@ -17,6 +17,7 @@ import lmcoursier.definitions.{
   Project => CProject,
   ModuleMatchers,
   Reconciliation,
+  Strict => CStrict,
 }
 import lmcoursier._
 import lmcoursier.credentials.Credentials
@@ -63,6 +64,9 @@ object LMCoursier {
       createLogger: Option[CacheLogger],
       cacheDirectory: File,
       reconciliation: Seq[(ModuleMatchers, Reconciliation)],
+      ivyHome: Option[File],
+      strict: Option[CStrict],
+      depsOverrides: Seq[ModuleID],
       log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
@@ -85,6 +89,7 @@ object LMCoursier {
     val sbtBootJars = internalSbtScalaProvider.jars()
     val sbtScalaVersion = internalSbtScalaProvider.version()
     val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
+    val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
     Classpaths.warnResolversConflict(rs, log)
     CoursierConfiguration()
       .withResolvers(rs.toVector)
@@ -106,6 +111,9 @@ object LMCoursier {
       .withCache(cacheDirectory)
       .withReconciliation(reconciliation.toVector)
       .withLog(log)
+      .withIvyHome(ivyHome)
+      .withStrict(strict)
+      .withForceVersions(userForceVersions.toVector)
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -127,6 +135,9 @@ object LMCoursier {
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
+      ivyPaths.value.ivyHome,
+      CoursierInputsTasks.strictTask.value,
+      dependencyOverrides.value,
       streams.value.log
     )
   }
@@ -150,6 +161,9 @@ object LMCoursier {
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
+      ivyPaths.value.ivyHome,
+      CoursierInputsTasks.strictTask.value,
+      dependencyOverrides.value,
       streams.value.log
     )
   }
@@ -173,6 +187,9 @@ object LMCoursier {
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
+      ivyPaths.value.ivyHome,
+      CoursierInputsTasks.strictTask.value,
+      dependencyOverrides.value,
       streams.value.log
     )
   }
@@ -196,6 +213,9 @@ object LMCoursier {
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
+      ivyPaths.value.ivyHome,
+      CoursierInputsTasks.strictTask.value,
+      dependencyOverrides.value,
       streams.value.log
     )
   }
