@@ -10,6 +10,7 @@ package internal
 package librarymanagement
 
 import java.util.Locale
+import scala.util.control.NonFatal
 
 object LMSysProp {
   def booleanOpt(name: String): Option[Boolean] =
@@ -40,17 +41,21 @@ object LMSysProp {
 
   val useSecureResolvers: Boolean = getOrTrue("sbt.repository.secure")
 
-  def modifyVersionRange: Boolean = getOrTrue("sbt.modversionrange")
+  lazy val modifyVersionRange: Boolean = getOrTrue("sbt.modversionrange")
 
   lazy val isJavaVersion9Plus: Boolean = javaVersion > 8
   lazy val javaVersion: Int = {
-    // See Oracle section 1.5.3 at:
-    // https://docs.oracle.com/javase/8/docs/technotes/guides/versioning/spec/versioning2.html
-    val version = sys.props("java.specification.version").split("\\.").toList.map(_.toInt)
-    version match {
-      case 1 :: minor :: _ => minor
-      case major :: _      => major
-      case _               => 0
+    try {
+      // See Oracle section 1.5.3 at:
+      // https://docs.oracle.com/javase/8/docs/technotes/guides/versioning/spec/versioning2.html
+      val version = sys.props("java.specification.version").split("\\.").toList.map(_.toInt)
+      version match {
+        case 1 :: minor :: _ => minor
+        case major :: _      => major
+        case _               => 0
+      }
+    } catch {
+      case NonFatal(_) => 0
     }
   }
 
