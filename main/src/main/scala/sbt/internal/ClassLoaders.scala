@@ -30,7 +30,10 @@ private[sbt] object ClassLoaders {
    */
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
-    val rawCP = modifiedTimes((outputFileStamps in classpathFiles).value)
+    val cp = fullClasspath.value.map(_.data)
+    val dependencyStamps = modifiedTimes((outputFileStamps in dependencyClasspathFiles).value).toMap
+    def getLm(f: File): Long = dependencyStamps.getOrElse(f, IO.getModifiedTimeOrZero(f))
+    val rawCP = cp.map(f => f -> getLm(f))
     val fullCP =
       if (si.isManagedVersion) rawCP
       else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
