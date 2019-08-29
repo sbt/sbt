@@ -23,7 +23,8 @@ import lmcoursier.definitions.{
   Organization => COrganization,
   Project => CProject,
   Publication => CPublication,
-  Type => CType
+  Type => CType,
+  Strict => CStrict,
 }
 import lmcoursier.credentials.DirectCredentials
 import lmcoursier.{ FallbackDependency, FromSbt, Inputs }
@@ -228,5 +229,22 @@ object CoursierInputsTasks {
           .withMatchHost(true)
       }
     creds ++ csrExtraCredentials.value
+  }
+
+  val strictTask = Def.task {
+    val cm = conflictManager.value
+    val log = streams.value.log
+
+    cm.name match {
+      case ConflictManager.latestRevision.name =>
+        None
+      case ConflictManager.strict.name =>
+        val strict = CStrict()
+          .withInclude(Set((cm.organization, cm.module)))
+        Some(strict)
+      case other =>
+        log.warn(s"Unsupported conflict manager $other")
+        None
+    }
   }
 }
