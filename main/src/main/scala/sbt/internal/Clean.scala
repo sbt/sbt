@@ -89,11 +89,14 @@ private[sbt] object Clean {
         val excludeFilter = cleanFilter(scope).value
         val delete = cleanDelete(scope).value
         val targetDir = (target in scope).?.value.map(_.toPath)
-        val targetFiles = (if (full) targetDir else None).fold(Nil: Seq[Path]) { t =>
-          view.list(t.toGlob / **).collect { case (p, _) if !excludeFilter(p) => p }
+        def recursiveFiles(dir: Path): Seq[Path] =
+          view.list(dir.toGlob / **).collect { case (p, _) if !excludeFilter(p) => p }
+        val targetFiles = (if (full) targetDir else None).fold(Nil: Seq[Path])(recursiveFiles)
+        val cleanPaths = (cleanFiles in scope).?.value.getOrElse(Nil).flatMap { f =>
+          val path = f.toPath
+          if (Files.isDirectory(path)) path +: recursiveFiles(path) else path :: Nil
         }
-        val allFiles = (cleanFiles in scope).?.value.toSeq
-          .flatMap(_.map(_.toPath)) ++ targetFiles
+        val allFiles = cleanPaths.view ++ targetFiles
         allFiles.sorted.reverseIterator.foreach(delete)
 
         // This is the special portion of the task where we clear out the relevant streams
