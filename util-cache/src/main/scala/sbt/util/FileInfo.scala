@@ -41,7 +41,14 @@ private final case class FileHash(file: File, override val hash: List[Byte]) ext
   override val hashArray: Array[Byte] = hash.toArray
 }
 private final case class FileHashArrayRepr(file: File, override val hashArray: Array[Byte])
-    extends HashFileInfo
+    extends HashFileInfo {
+  override def hashCode(): Int = (file, java.util.Arrays.hashCode(hashArray)).hashCode()
+  override def equals(obj: Any): Boolean = obj match {
+    case that: FileHashArrayRepr =>
+      this.file == that.file && java.util.Arrays.equals(this.hashArray, that.hashArray)
+    case _ => false
+  }
+}
 @deprecated("Kept for plugin compat, but will be removed in sbt 2.0", "1.3.0")
 private final case class FileHashModified(
     file: File,
