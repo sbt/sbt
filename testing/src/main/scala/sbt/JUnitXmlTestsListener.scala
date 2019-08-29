@@ -244,8 +244,9 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
       new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
     // TODO would be nice to have a logger and log this with level debug
     // System.err.println("Writing JUnit XML test report: " + file)
-    XML.save(legacyFile, withTestSuite(_.stop()), "UTF-8", true, null)
-    XML.save(file, withTestSuite(_.stop()), "UTF-8", true, null)
+    val testSuiteResult = withTestSuite(_.stop())
+    XML.save(legacyFile, testSuiteResult, "UTF-8", true, null)
+    XML.save(file, testSuiteResult, "UTF-8", true, null)
     testSuite.remove()
   }
 
