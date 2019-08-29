@@ -2041,7 +2041,6 @@ object Classpaths {
         excludeFilter in unmanagedJars value
       )
     ).map(exportClasspath) ++ Seq(
-      sbt.nio.Keys.classpathFiles := data(fullClasspath.value).map(_.toPath),
       sbt.nio.Keys.dependencyClasspathFiles := data(dependencyClasspath.value).map(_.toPath),
     )
 
