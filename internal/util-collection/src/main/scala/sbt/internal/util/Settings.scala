@@ -228,10 +228,10 @@ trait Init[ScopeType] {
     ((IMap.empty: ScopedMap) /: init)((m, s) => add(m, s))
 
   def add[T](m: ScopedMap, s: Setting[T]): ScopedMap =
-    m.mapValue[T](s.key, Nil, ss => append(ss, s))
+    m.mapValue[T](s.key, Vector.empty[Setting[T]], ss => append(ss, s))
 
   def append[T](ss: Seq[Setting[T]], s: Setting[T]): Seq[Setting[T]] =
-    if (s.definitive) s :: Nil else ss :+ s
+    if (s.definitive) Vector(s) else ss :+ s
 
   def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
     init.par.map(_.dependencies flatMap scopeLocal).toVector.flatten ++ init
