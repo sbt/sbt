@@ -2548,6 +2548,14 @@ object Classpaths {
     }
   }
 
+  private[sbt] def warnInsecureProtocol(ress: Seq[Resolver], log: Logger): Unit = {
+    ress.foreach(_.validateProtocol(log))
+  }
+  // this warns about .from("http:/...") in ModuleID
+  private[sbt] def warnInsecureProtocolInModules(mods: Seq[ModuleID], log: Logger): Unit = {
+    mods.foreach(_.validateProtocol(log))
+  }
+
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
     val base = ModuleID(organization.value, moduleName.value, version.value)
       .cross(crossVersion in projectID value)
@@ -2573,10 +2581,12 @@ object Classpaths {
       new IvySbt(ivyConfiguration.value, CustomHttp.okhttpClient.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
+    val deps = allDependencies.value.toVector
+    warnInsecureProtocolInModules(deps, streams.value.log)
     ModuleDescriptorConfiguration(projectID.value, projectInfo.value)
       .withValidate(ivyValidate.value)
       .withScalaModuleInfo(scalaModuleInfo.value)
-      .withDependencies(allDependencies.value.toVector)
+      .withDependencies(deps)
       .withOverrides(dependencyOverrides.value.toVector)
       .withExcludes(allExcludeDependencies.value.toVector)
       .withIvyXML(ivyXML.value)
@@ -3203,6 +3213,7 @@ object Classpaths {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
       val s = streams.value
       warnResolversConflict(rs ++: other, s.log)
+      warnInsecureProtocol(rs ++: other, s.log)
       InlineIvyConfiguration()
         .withPaths(ivyPaths.value)
         .withResolvers(rs)
