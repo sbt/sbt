@@ -105,7 +105,7 @@ object BasicCommands {
   def help: Command = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
 
   def helpParser(s: State): Parser[() => State] = {
-    val h = (Help.empty /: s.definedCommands)(
+    val h = s.definedCommands.foldLeft(Help.empty)(
       (a, b) =>
         a ++ (try b.help(s)
         catch { case NonFatal(_) => Help.empty })
@@ -319,7 +319,7 @@ object BasicCommands {
           if (cp.isEmpty) parentLoader else toLoader(cp.map(f => new File(f)), parentLoader)
         val loaded =
           args.map(arg => ModuleUtilities.getObject(arg, loader).asInstanceOf[State => State])
-        (state /: loaded)((s, obj) => obj(s))
+        loaded.foldLeft(state)((s, obj) => obj(s))
     }
 
   def callParser: Parser[(Seq[String], Seq[String])] =

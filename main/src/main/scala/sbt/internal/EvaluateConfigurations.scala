@@ -65,7 +65,7 @@ private[sbt] object EvaluateConfigurations {
       evaluateSbtFile(eval, src, IO.readLines(src), imports, 0)
     }
     loader =>
-      (LoadedSbtFile.empty /: loadFiles) { (loaded, load) =>
+      loadFiles.foldLeft(LoadedSbtFile.empty) { (loaded, load) =>
         loaded merge load(loader)
       }
   }

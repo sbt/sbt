@@ -77,7 +77,7 @@ abstract class EvaluateSettings[ScopeType] {
   }
 
   private[this] def getResults(implicit delegates: ScopeType => Seq[ScopeType]) =
-    (empty /: static.toTypedSeq) {
+    static.toTypedSeq.foldLeft(empty) {
       case (ss, static.TPair(key, node)) =>
         if (key.key.isLocal) ss else ss.set(key.scope, key.key, node.get)
     }
