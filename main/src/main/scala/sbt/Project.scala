@@ -706,7 +706,7 @@ object Project extends ProjectExtra {
   ): Relation[ScopedKey[_], ScopedKey[_]] = {
     val cMap = Def.flattenLocals(Def.compiled(settings, actual))
     val emptyRelation = Relation.empty[ScopedKey[_], ScopedKey[_]]
-    (emptyRelation /: cMap) { case (r, (key, value)) => r + (key, value.dependencies) }
+    cMap.foldLeft(emptyRelation) { case (r, (key, value)) => r + (key, value.dependencies) }
   }
 
   def showDefinitions(key: AttributeKey[_], defs: Seq[Scope])(

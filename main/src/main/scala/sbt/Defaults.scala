@@ -3359,7 +3359,7 @@ object Classpaths {
   }
 
   def union[A, B](maps: Seq[A => Seq[B]]): A => Seq[B] =
-    a => (Seq[B]() /: maps) { _ ++ _(a) } distinct;
+    a => maps.foldLeft(Seq[B]()) { _ ++ _(a) } distinct;
 
   def parseList(s: String, allConfs: Seq[String]): Seq[String] =
     (trim(s split ",") flatMap replaceWildcard(allConfs)).distinct

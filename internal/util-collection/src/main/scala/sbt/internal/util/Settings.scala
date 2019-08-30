@@ -225,7 +225,7 @@ trait Init[ScopeType] {
     }.toMap
 
   def grouped(init: Seq[Setting[_]]): ScopedMap =
-    ((IMap.empty: ScopedMap) /: init)((m, s) => add(m, s))
+    init.foldLeft(IMap.empty: ScopedMap)((m, s) => add(m, s))
 
   def add[T](m: ScopedMap, s: Setting[T]): ScopedMap =
     m.mapValue[T](s.key, Vector.empty[Setting[T]], ss => append(ss, s))
@@ -399,7 +399,7 @@ trait Init[ScopeType] {
 
     val empty = Map.empty[ScopedKey[_], Flattened]
 
-    val flattenedLocals = (empty /: ordered) { (cmap, c) =>
+    val flattenedLocals = ordered.foldLeft(empty) { (cmap, c) =>
       cmap.updated(c.key, flatten(cmap, c.key, c.dependencies))
     }
 
@@ -859,7 +859,7 @@ trait Init[ScopeType] {
     }
 
     private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S =
-      (init /: alist.toList(inputs)) { (v, i) =>
+      alist.toList(inputs).foldLeft(init) { (v, i) =>
         i.processAttributes(v)(f)
       }
   }

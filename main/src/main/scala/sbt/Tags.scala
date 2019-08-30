@@ -48,7 +48,7 @@ object Tags {
   }
   private[this] final class Sum(tags: Seq[Tag], max: Int) extends Rule {
     checkMax(max)
-    def apply(m: TagMap) = (0 /: tags)((sum, t) => sum + getInt(m, t)) <= max
+    def apply(m: TagMap) = tags.foldLeft(0)((sum, t) => sum + getInt(m, t)) <= max
     override def toString = tags.mkString("Limit sum of ", ", ", " to " + max)
   }
   private[this] final class Or(a: Rule, b: Rule) extends Rule {

@@ -74,7 +74,7 @@ object KListBuilder extends TupleBuilder {
        * The type constructor is tcVariable, so that it can be applied to [X] X or M later.
        * When applied to `M`, this type gives the type of the `input` KList.
        */
-      val klistType: Type = (inputs :\ knilType)((in, klist) => kconsType(in.tpe, klist))
+      val klistType: Type = inputs.foldRight(knilType)((in, klist) => kconsType(in.tpe, klist))
 
       val representationC = internal.polyType(tcVariable :: Nil, klistType)
       val input = klist

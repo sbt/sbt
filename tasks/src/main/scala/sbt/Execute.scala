@@ -363,7 +363,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     val seen = IDSet.create[F[_]]
     def visit(n: F[_]): List[F[_]] =
       (seen process n)(List[F[_]]()) {
-        node :: (List[F[_]]() /: dependencies(n)) { (ss, dep) =>
+        node :: dependencies(n).foldLeft(List[F[_]]()) { (ss, dep) =>
           visit(dep) ::: ss
         }
       }

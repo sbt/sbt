@@ -326,7 +326,7 @@ ${listConflicts(conflicting)}""")
   }
   private[sbt] def and(a: Plugins, b: Plugins) = b match {
     case Empty    => a
-    case And(ns)  => (a /: ns)(_ && _)
+    case And(ns)  => ns.foldLeft(a)(_ && _)
     case b: Basic => a && b
   }
   private[sbt] def remove(a: Plugins, del: Set[Basic]): Plugins = a match {
