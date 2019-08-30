@@ -125,7 +125,7 @@ private[sbt] object SettingsGraph {
           triggers.flatMap(getDynamicInputs(_, trigger = true))
         )
     }
-    (inputGlobs ++ triggerGlobs ++ legacy(keys :+ scopedKey, args)).distinct.sorted
+    (inputGlobs ++ triggerGlobs ++ legacy(keys :+ scopedKey, args)).distinct
   }
 
   private def legacy(keys: Seq[ScopedKey[_]], args: Arguments): Seq[DynamicInput] = {

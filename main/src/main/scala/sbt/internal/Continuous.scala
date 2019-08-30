@@ -193,7 +193,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val watchSettings = new WatchSettings(scopedKey)
     new Config(
       scopedKey.show,
-      () => dynamicInputs.toSeq.sorted,
+      () => dynamicInputs.toSeq,
       watchSettings
     )
   }
