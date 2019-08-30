@@ -131,7 +131,7 @@ object TestEvent {
     }
 
   private[sbt] def overallResult(events: Seq[TEvent]): TestResult =
-    ((TestResult.Passed: TestResult) /: events) { (sum, event) =>
+    events.foldLeft(TestResult.Passed: TestResult) { (sum, event) =>
       (sum, event.status) match {
         case (TestResult.Error, _)  => TestResult.Error
         case (_, TStatus.Error)     => TestResult.Error

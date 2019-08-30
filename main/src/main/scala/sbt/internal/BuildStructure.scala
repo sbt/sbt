@@ -324,7 +324,7 @@ object BuildStreams {
     resolvePath(projectPath(units, root, scoped, data), nonProjectPath(scoped))
 
   def resolvePath(base: File, components: Seq[String]): File =
-    (base /: components)((b, p) => new File(b, p))
+    components.foldLeft(base)((b, p) => new File(b, p))
 
   def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(
       show: T => String

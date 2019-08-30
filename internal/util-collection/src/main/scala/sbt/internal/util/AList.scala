@@ -48,7 +48,7 @@ object AList {
   def seq[T]: SeqList[T] = new SeqList[T] {
     def transform[M[_], N[_]](s: List[M[T]], f: M ~> N) = s.map(f.fn[T])
     def foldr[M[_], A](s: List[M[T]], f: (M[_], A) => A, init: A): A =
-      (init /: s.reverse)((t, m) => f(m, t))
+      s.reverse.foldLeft(init)((t, m) => f(m, t))
 
     override def apply[M[_], C](s: List[M[T]], f: List[T] => C)(
         implicit ap: Applicative[M]

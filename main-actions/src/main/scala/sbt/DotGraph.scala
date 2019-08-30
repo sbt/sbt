@@ -85,7 +85,7 @@ object DotGraph {
 
   private def relativized(roots: Iterable[File], path: File): String = {
     val relativized = roots.flatMap(root => IO.relativize(root, path))
-    val shortest = (Int.MaxValue /: relativized)(_ min _.length)
+    val shortest = relativized.foldLeft(Int.MaxValue)(_ min _.length)
     relativized.find(_.length == shortest).getOrElse(path.getName)
   }
 }
