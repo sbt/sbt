@@ -165,8 +165,6 @@ object Keys {
       .withRank(Invisible)
   private[sbt] val dependencyClasspathFiles =
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
-  private[sbt] val classpathFiles =
-    taskKey[Seq[Path]]("The classpath for a task.").withRank(Invisible)
   private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)
   private[sbt] val compileSourceFileInputs =
     taskKey[Map[String, Seq[(Path, FileStamp)]]]("Source file stamps stored by scala version")

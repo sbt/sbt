@@ -170,10 +170,10 @@ object Logic {
   }
 
   private[this] def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
-    (Map.empty[Atom, Set[Literal]] /: clauses.clauses) {
+    clauses.clauses.foldLeft(Map.empty[Atom, Set[Literal]]) {
       case (m, Clause(formula, heads)) =>
         val deps = literals(formula)
-        (m /: heads) { (n, head) =>
+        heads.foldLeft(m) { (n, head) =>
           n.updated(head, n.getOrElse(head, Set.empty) ++ deps)
         }
     }
@@ -305,7 +305,7 @@ object Logic {
       case Clause(formula, head) +: tail =>
         // collect direct positive and negative literals and track them in separate graphs
         val (pos, neg) = directDeps(formula)
-        val (newPos, newNeg) = ((posDeps, negDeps) /: head) {
+        val (newPos, newNeg) = head.foldLeft((posDeps, negDeps)) {
           case ((pdeps, ndeps), d) =>
             (pdeps + (d, pos), ndeps + (d, neg))
         }

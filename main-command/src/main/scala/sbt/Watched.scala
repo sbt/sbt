@@ -131,7 +131,7 @@ object Watched {
   def multi(base: Watched, paths: Seq[Watched]): Watched =
     new AWatched {
       override def watchSources(s: State): Seq[Watched.WatchSource] =
-        (base.watchSources(s) /: paths)(_ ++ _.watchSources(s))
+        paths.foldLeft(base.watchSources(s))(_ ++ _.watchSources(s))
       override def terminateWatch(key: Int): Boolean = base.terminateWatch(key)
       override val pollInterval: FiniteDuration = (base +: paths).map(_.pollInterval).min
       override val antiEntropy: FiniteDuration = (base +: paths).map(_.antiEntropy).min

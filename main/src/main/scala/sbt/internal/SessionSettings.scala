@@ -156,7 +156,7 @@ object SessionSettings {
   }
 
   def removeRanges[T](in: Seq[T], ranges: Seq[(Int, Int)]): Seq[T] = {
-    val asSet = (Set.empty[Int] /: ranges) { case (s, (hi, lo)) => s ++ (hi to lo) }
+    val asSet = ranges.foldLeft(Set.empty[Int]) { case (s, (hi, lo)) => s ++ (hi to lo) }
     in.zipWithIndex.flatMap { case (t, index) => if (asSet(index + 1)) Nil else t :: Nil }
   }
 
@@ -218,7 +218,7 @@ object SessionSettings {
 
     val path = writeTo.getAbsolutePath
     val (inFile, other, _) =
-      ((List[Setting[_]](), List[Setting[_]](), Set.empty[ScopedKey[_]]) /: original.reverse) {
+      original.reverse.foldLeft((List[Setting[_]](), List[Setting[_]](), Set.empty[ScopedKey[_]])) {
         case ((in, oth, keys), s) =>
           s.pos match {
             case RangePosition(`path`, _) if !keys.contains(s.key) => (s :: in, oth, keys + s.key)
@@ -226,7 +226,7 @@ object SessionSettings {
           }
       }
 
-    val (_, oldShifted, replace) = ((0, List[Setting[_]](), Seq[SessionSetting]()) /: inFile) {
+    val (_, oldShifted, replace) = inFile.foldLeft((0, List[Setting[_]](), Seq[SessionSetting]())) {
       case ((offs, olds, repl), s) =>
         val RangePosition(_, r @ LineRange(start, end)) = s.pos
         settings find (_._1.key == s.key) match {
@@ -247,7 +247,7 @@ object SessionSettings {
     val adjusted = if (newSettings.nonEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
     val lines = adjusted ++ newSettings.flatMap(x => x._2 :+ "")
     IO.writeLines(writeTo, lines)
-    val (newWithPos, _) = ((List[SessionSetting](), adjusted.size + 1) /: newSettings) {
+    val (newWithPos, _) = newSettings.foldLeft((List[SessionSetting](), adjusted.size + 1)) {
       case ((acc, line), (s, newLines)) =>
         val endLine = line + newLines.size
         ((s withPos RangePosition(path, LineRange(line, endLine)), newLines) :: acc, endLine + 1)

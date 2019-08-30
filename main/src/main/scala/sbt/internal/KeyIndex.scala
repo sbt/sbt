@@ -22,7 +22,7 @@ object KeyIndex {
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
   ): ExtendableKeyIndex =
-    (base(projects, configurations) /: known) { _ add _ }
+    known.foldLeft(base(projects, configurations)) { _ add _ }
   def aggregate(
       known: Iterable[ScopedKey[_]],
       extra: BuildUtil[_],
@@ -44,7 +44,7 @@ object KeyIndex {
     }
     (base(projects, configurations) /: toAggregate) {
       case (index, Nil)  => index
-      case (index, keys) => (index /: keys)(_ add _)
+      case (index, keys) => keys.foldLeft(index)(_ add _)
     }
   }
 
@@ -84,7 +84,7 @@ object KeyIndex {
     def keys(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]]) =
       concat(_.keys(proj, conf, task))
     def concat[T](f: KeyIndex => Set[T]): Set[T] =
-      (Set.empty[T] /: indices)((s, k) => s ++ f(k))
+      indices.foldLeft(Set.empty[T])((s, k) => s ++ f(k))
   }
   private[sbt] def getOr[A, B](m: Map[A, B], key: A, or: B): B = m.getOrElse(key, or)
   private[sbt] def keySet[A, B](m: Map[Option[A], B]): Set[A] = m.keys.flatten.toSet
@@ -241,7 +241,7 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
       key: String
   ): Set[AttributeKey[_]] = keyIndex(proj, conf).tasks(key)
   def keys(proj: Option[ResolvedReference]): Set[String] =
-    (Set.empty[String] /: optConfigs(proj)) { (s, c) =>
+    optConfigs(proj).foldLeft(Set.empty[String]) { (s, c) =>
       s ++ keys(proj, c)
     }
   def keys(proj: Option[ResolvedReference], conf: Option[String]): Set[String] =
@@ -270,7 +270,7 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
   def addAggregated(scoped: ScopedKey[_], extra: BuildUtil[_]): ExtendableKeyIndex =
     if (validID(scoped.key.label)) {
       val aggregateProjects = Aggregation.aggregate(scoped, ScopeMask(), extra, reverse = true)
-      ((this: ExtendableKeyIndex) /: aggregateProjects)(_ add _)
+      aggregateProjects.foldLeft(this: ExtendableKeyIndex)(_ add _)
     } else
       this
 

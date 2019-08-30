@@ -487,7 +487,7 @@ trait ParserMain {
 
   /** Applies parser `p` to input `s`. */
   def apply[T](p: Parser[T])(s: String): Parser[T] =
-    (p /: s)(derive1)
+    s.foldLeft(p)(derive1)
 
   /** Applies parser `p` to a single character of input. */
   def derive1[T](p: Parser[T], c: Char): Parser[T] =
