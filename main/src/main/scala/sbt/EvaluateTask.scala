@@ -156,12 +156,8 @@ object EvaluateTask {
 
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
-    if (SysProp.taskTimings) {
-      if (SysProp.taskTimingsOnShutdown)
-        Some(sharedProgress)
-      else
-        Some(new TaskTimings(reportOnShutdown = false))
-    } else None
+    if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)
+    else None
 
   lazy private val sharedTraceEvent = new TaskTraceEvent()
   def taskTraceEvent: Option[ExecuteProgress[Task]] =
@@ -240,7 +236,8 @@ object EvaluateTask {
       extracted,
       structure
     )
-    val reporters = maker map { _.progress }
+    val reporters = maker.map(_.progress) ++
+      (if (SysProp.taskTimings) new TaskTimings(reportOnShutdown = false) :: Nil else Nil)
     // configure the logger for super shell
     ConsoleAppender.setShowProgress((reporters collect {
       case p: TaskProgress => ()
