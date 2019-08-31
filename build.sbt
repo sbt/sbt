@@ -13,6 +13,7 @@ ThisBuild / version := {
 }
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
+ThisBuild / turbo := true
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
