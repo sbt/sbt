@@ -3,7 +3,7 @@ package sbt.internal.util
 import sbt.util._
 import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
 import org.apache.logging.log4j.{ Level => XLevel }
 import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
@@ -108,7 +108,6 @@ object ConsoleAppender {
   private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
   def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
   def showProgress: Boolean = showProgressHolder.get
-  private[sbt] val lastTaskCount = new AtomicInteger(0)
 
   /** Hide stack trace altogether. */
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
@@ -311,6 +310,80 @@ object ConsoleAppender {
 
 }
 
+/**
+ * Caches the task progress lines so that they can be reprinted whenever the default
+ * appender logs additional messages. This makes it so that the progress lines are
+ * more stable with less appearance of flickering.
+ */
+private object SuperShellLogger {
+  private val progressLines = new AtomicReference[Seq[String]](Nil)
+  // leave some blank lines for tasks that might use println(...)
+  private val blankZone = 5
+
+  /**
+   * Splits a log message into individual lines and interlaces each line with
+   * the task progress report to reduce the appearance of flickering. It is assumed
+   * that this method is only called while holding the out.lockObject.
+   */
+  private[util] def writeMsg(out: ConsoleOut, msg: String): Unit = {
+    val progress = progressLines.get
+    msg.linesIterator.foreach { l =>
+      out.println(s"$DeleteLine$l")
+      if (progress.length > 0) {
+        deleteConsoleLines(out, blankZone)
+        progress.foreach(out.println)
+        out.print(cursorUp(blankZone + progress.length))
+      }
+    }
+    out.flush()
+  }
+
+  /**
+   * Receives a new task report and replaces the old one. In the event that the new
+   * report has fewer lines than the previous report, the report is shifted up by
+   * the difference in the previous and current number of lines. As new log lines
+   * are added by the regular console appender, the report will shift down until the
+   * padding is filled. This allows the regular log lines to be viewable as a continuous
+   * line stream with no holes. The unfortunate part is that the super shell output
+   * location does shift around a little bit. There are at least two ways to address this
+   *
+   * 1) Add an invariant that the super shell region never shrinks, but may grow, during
+   *    task evaluation. We'd have to add some kind of special message to send to the
+   *    appender to let it now that task evaluation is completely done so that it can
+   *    reset the progress area size.
+   *
+   * 2) Refactor ConsoleAppender so that knows the log level. Right now, we print lines
+   *    to the console appender that ultimately get discarded because they are at the
+   *    debug level. As a result, it's impossible to know whether or not the line
+   *    out.println(s"$DeleteLine$l") actually prints anything to the console. If we
+   *    could guarantee that every line in a message passed into writeMsg was actually
+   *    written to the screen, then we could apply the padding at the top and reduce
+   *    the padding whenever a new line is logged until it is no longer necessary to
+   *    apply padding to the progress region to keep the lines stream contiguous.
+   *
+   */
+  private[util] def update(out: ConsoleOut, pe: ProgressEvent): Unit = {
+    val sorted = pe.items.sortBy(x => x.elapsedMicros)
+    val info = sorted map { item =>
+      val elapsed = item.elapsedMicros / 1000000L
+      s"$DeleteLine  | => ${item.name} ${elapsed}s"
+    }
+
+    deleteConsoleLines(out, blankZone)
+    info.foreach(i => out.println(i))
+
+    val previousLines = progressLines.getAndSet(info)
+    val padding = math.max(0, previousLines.length - info.length)
+    deleteConsoleLines(out, padding)
+    out.print(cursorUp(blankZone + info.length + padding))
+    out.flush()
+  }
+  private def deleteConsoleLines(out: ConsoleOut, n: Int): Unit = {
+    (1 to n) foreach { _ =>
+      out.println(DeleteLine)
+    }
+  }
+}
 // See http://stackoverflow.com/questions/24205093/how-to-create-a-custom-appender-in-log4j2
 // for custom appender using Java.
 // http://logging.apache.org/log4j/2.x/manual/customconfig.html
@@ -455,19 +528,11 @@ class ConsoleAppender private[ConsoleAppender] (
     appendLog(SUCCESS_LABEL_COLOR, Level.SuccessLabel, SUCCESS_MESSAGE_COLOR, message)
   }
 
-  // leave some blank lines for tasks that might use println(...)
-  private val blankZone = 5
   private def write(msg: String): Unit = {
     if (!useFormat || !ansiCodesSupported) {
       out.println(EscHelpers.removeEscapeSequences(msg))
     } else if (ConsoleAppender.showProgress) {
-      val clearNum = lastTaskCount.get + blankZone
-      if (clearNum > 1) {
-        deleteConsoleLines(clearNum)
-        out.print(s"${cursorUp(clearNum)}")
-      }
-      out.println(msg)
-      out.flush()
+      SuperShellLogger.writeMsg(out, msg)
     } else {
       out.println(msg)
     }
@@ -503,27 +568,9 @@ class ConsoleAppender private[ConsoleAppender] (
   private def appendProgressEvent(pe: ProgressEvent): Unit =
     if (ConsoleAppender.showProgress) {
       out.lockObject.synchronized {
-        deleteConsoleLines(blankZone)
-        val currentTasksCount = pe.items.size
-        val ltc = pe.lastTaskCount.getOrElse(0)
-        val sorted = pe.items.sortBy(_.name).sortBy(x => -x.elapsedMicros)
-        sorted foreach { item =>
-          val elapsed = item.elapsedMicros / 1000000L
-          out.println(s"$DeleteLine  | => ${item.name} ${elapsed}s")
-        }
-        if (ltc > currentTasksCount) deleteConsoleLines(ltc - currentTasksCount)
-        else ()
-        out.print(cursorUp(math.max(currentTasksCount, ltc) + blankZone))
-        out.flush()
-        lastTaskCount.set(ltc)
+        SuperShellLogger.update(out, pe)
       }
-    } else ()
-
-  private def deleteConsoleLines(n: Int): Unit = {
-    (1 to n) foreach { _ =>
-      out.println(DeleteLine)
     }
-  }
 
   private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {
     def appendEvent(oe: ObjectEvent[_]): Unit = {
