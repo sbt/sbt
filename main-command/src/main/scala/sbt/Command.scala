@@ -151,7 +151,7 @@ object Command {
   def combine(cmds: Seq[Command]): State => Parser[() => State] = {
     val (simple, arbs) = separateCommands(cmds)
     state =>
-      (simpleParser(simple)(state) /: arbs.map(_ parser state))(_ | _)
+      arbs.map(_.parser(state).failOnException).foldLeft(simpleParser(simple)(state))(_ | _.failOnException)
   }
 
   private[this] def separateCommands(
