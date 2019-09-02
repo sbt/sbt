@@ -184,6 +184,9 @@ object Streams {
       def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
         checkOpen()
         val file = taskDirectory(a) / sid
+        // The call to IO.createDirectory is an attempt to reduce scripted test failures in the
+        // call to IO.touch. It may be removed if it doesn't affect the scripted failures.
+        Option(file.getParentFile).foreach(IO.createDirectory)
         IO.touch(file, false)
         val t = f(file)
         opened ::= t
