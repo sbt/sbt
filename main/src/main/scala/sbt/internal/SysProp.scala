@@ -88,7 +88,7 @@ object SysProp {
 
   def fileCacheSize: Long =
     SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128L * 1024 * 1024)
-  def supershell: Boolean = color && getOrTrue("sbt.supershell")
+  def supershell: Boolean = booleanOpt("sbt.supershell").getOrElse(color)
 
   def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
 
