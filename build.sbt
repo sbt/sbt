@@ -13,6 +13,7 @@ ThisBuild / version := {
 }
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
+ThisBuild / turbo := true
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -665,7 +666,6 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     testOptions in Test += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
-    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat, // Delete this after 1.3.0-RC2.
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // New and changed methods on KeyIndex. internal.
