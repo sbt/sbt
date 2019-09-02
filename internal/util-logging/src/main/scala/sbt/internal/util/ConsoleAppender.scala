@@ -319,6 +319,8 @@ private object SuperShellLogger {
   private val progressLines = new AtomicReference[Seq[String]](Nil)
   // leave some blank lines for tasks that might use println(...)
   private val blankZone = 5
+  private val padding = new AtomicInteger(0)
+  private val ascii = "[^\\p{ASCII}]".r.pattern
 
   /**
    * Splits a log message into individual lines and interlaces each line with
@@ -330,9 +332,15 @@ private object SuperShellLogger {
     msg.linesIterator.foreach { l =>
       out.println(s"$DeleteLine$l")
       if (progress.length > 0) {
-        deleteConsoleLines(out, blankZone)
+        val stripped = ascii.matcher(l).replaceAll("")
+        val isDebugLine =
+          l.startsWith("[debug]") || l.startsWith(s"${scala.Console.RESET}[debug]")
+        // As long as the line isn't a debug line, we can assume it was printed to
+        // the console and reduce the top padding.
+        val pad = if (padding.get > 0 && !isDebugLine) padding.decrementAndGet else padding.get
+        deleteConsoleLines(out, blankZone + pad)
         progress.foreach(out.println)
-        out.print(cursorUp(blankZone + progress.length))
+        out.print(cursorUp(blankZone + progress.length + padding.get))
       }
     }
     out.flush()
@@ -340,27 +348,10 @@ private object SuperShellLogger {
 
   /**
    * Receives a new task report and replaces the old one. In the event that the new
-   * report has fewer lines than the previous report, the report is shifted up by
-   * the difference in the previous and current number of lines. As new log lines
-   * are added by the regular console appender, the report will shift down until the
-   * padding is filled. This allows the regular log lines to be viewable as a continuous
-   * line stream with no holes. The unfortunate part is that the super shell output
-   * location does shift around a little bit. There are at least two ways to address this
-   *
-   * 1) Add an invariant that the super shell region never shrinks, but may grow, during
-   *    task evaluation. We'd have to add some kind of special message to send to the
-   *    appender to let it now that task evaluation is completely done so that it can
-   *    reset the progress area size.
-   *
-   * 2) Refactor ConsoleAppender so that knows the log level. Right now, we print lines
-   *    to the console appender that ultimately get discarded because they are at the
-   *    debug level. As a result, it's impossible to know whether or not the line
-   *    out.println(s"$DeleteLine$l") actually prints anything to the console. If we
-   *    could guarantee that every line in a message passed into writeMsg was actually
-   *    written to the screen, then we could apply the padding at the top and reduce
-   *    the padding whenever a new line is logged until it is no longer necessary to
-   *    apply padding to the progress region to keep the lines stream contiguous.
-   *
+   * report has fewer lines than the previous report, padding lines are added on top
+   * so that the console log lines remain contiguous. When a console line is printed
+   * at the info or greater level, we can decrement the padding because the console
+   * line will have filled in the blank line.
    */
   private[util] def update(out: ConsoleOut, pe: ProgressEvent): Unit = {
     val sorted = pe.items.sortBy(x => x.elapsedMicros)
@@ -369,13 +360,16 @@ private object SuperShellLogger {
       s"$DeleteLine  | => ${item.name} ${elapsed}s"
     }
 
+    val previousLines = progressLines.getAndSet(info)
+    val prevPadding = padding.get
+    val newPadding = math.max(0, previousLines.length + prevPadding - info.length)
+    padding.set(newPadding)
+
+    deleteConsoleLines(out, newPadding)
     deleteConsoleLines(out, blankZone)
     info.foreach(i => out.println(i))
 
-    val previousLines = progressLines.getAndSet(info)
-    val padding = math.max(0, previousLines.length - info.length)
-    deleteConsoleLines(out, padding)
-    out.print(cursorUp(blankZone + info.length + padding))
+    out.print(cursorUp(blankZone + info.length + newPadding))
     out.flush()
   }
   private def deleteConsoleLines(out: ConsoleOut, n: Int): Unit = {
