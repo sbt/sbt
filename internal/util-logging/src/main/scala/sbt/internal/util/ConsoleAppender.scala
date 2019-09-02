@@ -523,12 +523,12 @@ class ConsoleAppender private[ConsoleAppender] (
   }
 
   private def write(msg: String): Unit = {
-    if (!useFormat || !ansiCodesSupported) {
-      out.println(EscHelpers.removeEscapeSequences(msg))
-    } else if (ConsoleAppender.showProgress) {
-      SuperShellLogger.writeMsg(out, msg)
+    val toWrite =
+      if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg) else msg
+    if (ConsoleAppender.showProgress) {
+      SuperShellLogger.writeMsg(out, toWrite)
     } else {
-      out.println(msg)
+      out.println(toWrite)
     }
   }
 
