@@ -306,7 +306,10 @@ object Tests {
       fun: TestFunction,
       tags: Seq[(Tag, Int)]
   ): Task[Map[String, SuiteResult]] = {
-    val base = task { (name, fun.apply()) }
+    val base = Task[(String, (SuiteResult, Seq[TestTask]))](
+      Info[(String, (SuiteResult, Seq[TestTask]))]().setName(name),
+      Pure(() => (name, fun.apply()), `inline` = false)
+    )
     val taggedBase = base.tagw(tags: _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)): _*)
     taggedBase flatMap {
       case (name, (result, nested)) =>
