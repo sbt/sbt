@@ -8,7 +8,7 @@ object Dependencies {
 
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
-  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M12")
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0")
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   def getSbtModulePath(key: String, name: String) = {
