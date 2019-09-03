@@ -310,74 +310,6 @@ object ConsoleAppender {
 
 }
 
-/**
- * Caches the task progress lines so that they can be reprinted whenever the default
- * appender logs additional messages. This makes it so that the progress lines are
- * more stable with less appearance of flickering.
- */
-private object SuperShellLogger {
-  private val progressLines = new AtomicReference[Seq[String]](Nil)
-  // leave some blank lines for tasks that might use println(...)
-  private val blankZone = 5
-  private val padding = new AtomicInteger(0)
-  private val ascii = "[^\\p{ASCII}]".r.pattern
-
-  /**
-   * Splits a log message into individual lines and interlaces each line with
-   * the task progress report to reduce the appearance of flickering. It is assumed
-   * that this method is only called while holding the out.lockObject.
-   */
-  private[util] def writeMsg(out: ConsoleOut, msg: String): Unit = {
-    val progress = progressLines.get
-    msg.linesIterator.foreach { l =>
-      out.println(s"$DeleteLine$l")
-      if (progress.length > 0) {
-        val stripped = ascii.matcher(l).replaceAll("")
-        val isDebugLine =
-          l.startsWith("[debug]") || l.startsWith(s"${scala.Console.RESET}[debug]")
-        // As long as the line isn't a debug line, we can assume it was printed to
-        // the console and reduce the top padding.
-        val pad = if (padding.get > 0 && !isDebugLine) padding.decrementAndGet else padding.get
-        deleteConsoleLines(out, blankZone + pad)
-        progress.foreach(out.println)
-        out.print(cursorUp(blankZone + progress.length + padding.get))
-      }
-    }
-    out.flush()
-  }
-
-  /**
-   * Receives a new task report and replaces the old one. In the event that the new
-   * report has fewer lines than the previous report, padding lines are added on top
-   * so that the console log lines remain contiguous. When a console line is printed
-   * at the info or greater level, we can decrement the padding because the console
-   * line will have filled in the blank line.
-   */
-  private[util] def update(out: ConsoleOut, pe: ProgressEvent): Unit = {
-    val sorted = pe.items.sortBy(x => x.elapsedMicros)
-    val info = sorted map { item =>
-      val elapsed = item.elapsedMicros / 1000000L
-      s"$DeleteLine  | => ${item.name} ${elapsed}s"
-    }
-
-    val previousLines = progressLines.getAndSet(info)
-    val prevPadding = padding.get
-    val newPadding = math.max(0, previousLines.length + prevPadding - info.length)
-    padding.set(newPadding)
-
-    deleteConsoleLines(out, newPadding)
-    deleteConsoleLines(out, blankZone)
-    info.foreach(i => out.println(i))
-
-    out.print(cursorUp(blankZone + info.length + newPadding))
-    out.flush()
-  }
-  private def deleteConsoleLines(out: ConsoleOut, n: Int): Unit = {
-    (1 to n) foreach { _ =>
-      out.println(DeleteLine)
-    }
-  }
-}
 // See http://stackoverflow.com/questions/24205093/how-to-create-a-custom-appender-in-log4j2
 // for custom appender using Java.
 // http://logging.apache.org/log4j/2.x/manual/customconfig.html
@@ -397,6 +329,64 @@ class ConsoleAppender private[ConsoleAppender] (
     suppressedMessage: SuppressedTraceContext => Option[String]
 ) extends AbstractAppender(name, null, LogExchange.dummyLayout, true, Array.empty) {
   import scala.Console.{ BLUE, GREEN, RED, YELLOW }
+
+  private val progressState: AtomicReference[ProgressState] = new AtomicReference(null)
+  private[sbt] def setProgressState(state: ProgressState) = progressState.set(state)
+
+  /**
+   * Splits a log message into individual lines and interlaces each line with
+   * the task progress report to reduce the appearance of flickering. It is assumed
+   * that this method is only called while holding the out.lockObject.
+   */
+  private def supershellInterlaceMsg(msg: String): Unit = {
+    val state = progressState.get
+    import state._
+    val progress = progressLines.get
+    msg.linesIterator.foreach { l =>
+      out.println(s"$DeleteLine$l")
+      if (progress.length > 0) {
+        val pad = if (padding.get > 0) padding.decrementAndGet() else 0
+        deleteConsoleLines(blankZone + pad)
+        progress.foreach(out.println)
+        out.print(cursorUp(blankZone + progress.length + padding.get))
+      }
+    }
+    out.flush()
+  }
+
+  /**
+   * Receives a new task report and replaces the old one. In the event that the new
+   * report has fewer lines than the previous report, padding lines are added on top
+   * so that the console log lines remain contiguous. When a console line is printed
+   * at the info or greater level, we can decrement the padding because the console
+   * line will have filled in the blank line.
+   */
+  private def updateProgressState(pe: ProgressEvent): Unit = {
+    val state = progressState.get
+    import state._
+    val sorted = pe.items.sortBy(x => x.elapsedMicros)
+    val info = sorted map { item =>
+      val elapsed = item.elapsedMicros / 1000000L
+      s"$DeleteLine  | => ${item.name} ${elapsed}s"
+    }
+
+    val previousLines = progressLines.getAndSet(info)
+    val prevPadding = padding.get
+    val newPadding = math.max(0, previousLines.length + prevPadding - info.length)
+    padding.set(newPadding)
+
+    deleteConsoleLines(newPadding)
+    deleteConsoleLines(blankZone)
+    info.foreach(i => out.println(i))
+
+    out.print(cursorUp(blankZone + info.length + newPadding))
+    out.flush()
+  }
+  private def deleteConsoleLines(n: Int): Unit = {
+    (1 to n) foreach { _ =>
+      out.println(DeleteLine)
+    }
+  }
 
   private val reset: String = {
     if (ansiCodesSupported && useFormat) scala.Console.RESET
@@ -525,8 +515,8 @@ class ConsoleAppender private[ConsoleAppender] (
   private def write(msg: String): Unit = {
     val toWrite =
       if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg) else msg
-    if (ConsoleAppender.showProgress) {
-      SuperShellLogger.writeMsg(out, toWrite)
+    if (progressState.get != null) {
+      supershellInterlaceMsg(toWrite)
     } else {
       out.println(toWrite)
     }
@@ -560,10 +550,8 @@ class ConsoleAppender private[ConsoleAppender] (
   }
 
   private def appendProgressEvent(pe: ProgressEvent): Unit =
-    if (ConsoleAppender.showProgress) {
-      out.lockObject.synchronized {
-        SuperShellLogger.update(out, pe)
-      }
+    if (progressState.get != null) {
+      out.lockObject.synchronized(updateProgressState(pe))
     }
 
   private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {
@@ -596,3 +584,14 @@ class ConsoleAppender private[ConsoleAppender] (
 }
 
 final class SuppressedTraceContext(val traceLevel: Int, val useFormat: Boolean)
+private[sbt] final class ProgressState(
+    val progressLines: AtomicReference[Seq[String]],
+    val padding: AtomicInteger,
+    val blankZone: Int
+) {
+  def this(blankZone: Int) = this(new AtomicReference(Nil), new AtomicInteger(0), blankZone)
+  def reset(): Unit = {
+    progressLines.set(Nil)
+    padding.set(0)
+  }
+}
