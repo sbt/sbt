@@ -298,13 +298,12 @@ object Defaults extends BuildCommon {
       turbo :== SysProp.turbo,
       useSuperShell := { if (insideCI.value) false else SysProp.supershell },
       progressReports := {
-        val progress = (ThisBuild / useSuperShell).value
-        val rs = EvaluateTask.taskTimingProgress.toVector ++
-          EvaluateTask.taskTraceEvent.toVector ++ {
-          if (progress) Vector(EvaluateTask.taskProgress)
-          else Vector()
-        }
+        val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
         rs map { Keys.TaskProgress(_) }
+      },
+      progressState := {
+        if ((ThisBuild / useSuperShell).value) Some(new ProgressState(SysProp.supershellBlankZone))
+        else None
       },
       Previous.cache := new Previous(
         Def.streamsManagerKey.value,

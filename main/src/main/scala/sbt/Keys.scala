@@ -24,7 +24,7 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.server.ServerHandler
-import sbt.internal.util.{ AttributeKey, SourcePosition }
+import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
@@ -484,6 +484,7 @@ object Keys {
   val turbo = settingKey[Boolean]("Enables (true) or disables optional performance features.")
   // This key can be used to add custom ExecuteProgress instances
   val progressReports = settingKey[Seq[TaskProgress]]("A function that returns a list of progress reporters.").withRank(DTask)
+  private[sbt] val progressState = settingKey[Option[ProgressState]]("The optional progress state if supershell is enabled.").withRank(Invisible)
   private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
