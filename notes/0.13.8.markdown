@@ -13,7 +13,7 @@
   [@j-keck]: https://github.com/j-keck
   [@xuwei-k]: https://github.com/xuwei-k
   [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
-  [Custom-Settings0]: http://www.scala-sbt.org/0.13/tutorial/Custom-Settings.html
+  [Custom-Settings0]: https://www.scala-sbt.org/0.13/tutorial/Custom-Settings.html
   [321]: https://github.com/sbt/sbt/issues/321
   [647]: https://github.com/sbt/sbt/issues/647
   [679]: https://github.com/sbt/sbt/issues/679

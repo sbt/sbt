@@ -262,8 +262,8 @@ that would should work together to allow dependency locking.
 
 Too many people to thank here. See [Credits][Credits]
 
-  [Credits]: http://www.scala-sbt.org/1.x/docs/Credits.html
-  [Migrating-from-sbt-013x]: http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html
+  [Credits]: https://www.scala-sbt.org/1.x/docs/Credits.html
+  [Migrating-from-sbt-013x]: https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: https://github.com/dwijnand
   [@jvican]: https://github.com/jvican

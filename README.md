@@ -4,8 +4,8 @@
 
   [sbt/sbt-zero-seven]: https://github.com/sbt/sbt-zero-seven
   [CONTRIBUTING]: CONTRIBUTING.md
-  [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
-  [FAQ]: http://www.scala-sbt.org/release/docs/Faq.html
+  [Setup]: https://www.scala-sbt.org/release/docs/Getting-Started/Setup
+  [FAQ]: https://www.scala-sbt.org/release/docs/Faq.html
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
   [searching]: https://stackoverflow.com/tags/sbt
   [asking]: https://stackoverflow.com/questions/ask?tags=sbt
@@ -21,7 +21,7 @@ sbt
 
 sbt is a build tool for Scala, Java, and more.
 
-For general documentation, see http://www.scala-sbt.org/.
+For general documentation, see https://www.scala-sbt.org/.
 
 sbt 1.x
 ---------
