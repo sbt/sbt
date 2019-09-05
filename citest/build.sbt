@@ -1,4 +1,5 @@
 lazy val check = taskKey[Unit]("")
+lazy val check2 = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
   .settings(
@@ -8,7 +9,6 @@ lazy val root = (project in file("."))
       val xs = IO.readLines(file("output.txt")).toVector
 
       println(xs)
-
       assert(xs(0) startsWith "[info] Loading project definition")
       assert(xs(1) startsWith "[info] Loading settings")
       assert(xs(2) startsWith "[info] Set current project to Hello")
@@ -18,5 +18,12 @@ lazy val root = (project in file("."))
       val ys = IO.readLines(file("err.txt")).toVector.distinct
 
       assert(ys.isEmpty, s"there's an stderr: $ys")
+    },
+
+    check2 := {
+      val xs = IO.readLines(file("output.txt")).toVector
+      println(xs)
+      val ys = IO.readLines(file("err.txt")).toVector.distinct
+      assert(!ys.exists(_.contains("Ignoring option MaxPermSize; support was removed in 8.0")), s"there's an stderr: $ys")
     }
   )
