@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
   <info organisation="org.other" module="scala-reflect" revision="2.11.8" status="release" publication="20160520164058">
-    <license name="BSD 3-Clause" url="http://www.scala-lang.org/license.html"/>
-    <description homepage="http://www.scala-lang.org">
+    <license name="BSD 3-Clause" url="https://www.scala-lang.org/license.html"/>
+    <description homepage="https://www.scala-lang.org">
     Scala Reflection Library
     </description>
   </info>

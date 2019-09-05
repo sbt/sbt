@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='ISO-8859-1'?>
 <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
   <info publication="20160520164059" status="release" revision="2.11.8" module="scala-compiler" organisation="org.other">
-    <license url="http://www.scala-lang.org/license.html" name="BSD 3-Clause"/>
-    <description homepage="http://www.scala-lang.org">
+    <license url="https://www.scala-lang.org/license.html" name="BSD 3-Clause"/>
+    <description homepage="https://www.scala-lang.org">
     Scala Compiler
     </description>
   </info>
