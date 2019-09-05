@@ -45,19 +45,20 @@ matrix:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
         - cd citest && ./test.sh
 
-    ## build using JDK 8, test using JDK 8
-    - script:
+    - name: "build using JDK 8 test using JDK 8"
+      script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - cd citest && ./test.sh
 
-    ## build using JDK 8, test using OpenJDK 11
-    - script:
+    - name: "build using JDK 8, test using OpenJDK 11"
+      script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - $JABBA_HOME/bin/jabba install $TRAVIS_JDK11 && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK11" && export PATH="$JAVA_HOME/bin:$PATH"
         - java -Xmx32m -version
         - cd citest && ./test.sh
 
-    - script:
+    - name: "Linux package testing"
+      script:
         - sbt -Dsbt.build.version=$SBT_VER rpm:packageBin debian:packageBin
       addons:
         apt:
