@@ -8,7 +8,7 @@ import scala.xml.transform.{ RewriteRule, RuleTransformer }
 import scala.util.Try
 
 ThisBuild / version := {
-  val v = "1.3.1-SNAPSHOT"
+  val v = "1.4.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
