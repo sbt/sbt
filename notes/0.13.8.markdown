@@ -6,7 +6,7 @@
   [@aerskine]: https://github.com/aerskine
   [@ajozwik]: https://github.com/ajozwik
   [@dwickern]: https://github.com/dwickern
-  [@dwijnand]: http://github.com/dwijnand
+  [@dwijnand]: https://github.com/dwijnand
   [@Duhemm]: https://github.com/Duhemm
   [@kretes]: https://github.com/kretes
   [@indrajitr]: https://github.com/indrajitr

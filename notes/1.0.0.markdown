@@ -265,7 +265,7 @@ Too many people to thank here. See [Credits][Credits]
   [Credits]: http://www.scala-sbt.org/1.x/docs/Credits.html
   [Migrating-from-sbt-013x]: http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html
   [@eed3si9n]: https://github.com/eed3si9n
-  [@dwijnand]: http://github.com/dwijnand
+  [@dwijnand]: https://github.com/dwijnand
   [@jvican]: https://github.com/jvican
   [@Duhemm]: https://github.com/Duhemm
   [@jsuereth]: https://github.com/jsuereth
