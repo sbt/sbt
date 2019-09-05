@@ -7,7 +7,7 @@
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [FAQ]: http://www.scala-sbt.org/release/docs/Faq.html
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
-  [searching]: http://stackoverflow.com/tags/sbt
+  [searching]: https://stackoverflow.com/tags/sbt
   [asking]: https://stackoverflow.com/questions/ask?tags=sbt
   [LICENSE]: LICENSE
   [sbt/io]: https://github.com/sbt/io

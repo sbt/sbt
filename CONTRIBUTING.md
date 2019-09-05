@@ -1,4 +1,4 @@
-  [StackOverflow]: http://stackoverflow.com/tags/sbt
+  [StackOverflow]: https://stackoverflow.com/tags/sbt
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
   [sbt-contrib]: https://gitter.im/sbt/sbt-contrib
