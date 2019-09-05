@@ -53,8 +53,10 @@ object Scripted {
     val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
 
     // A parser for page definitions
-    val pageP: Parser[ScriptedTestPage] = ("*" ~ NatBasic ~ "of" ~ NatBasic) map {
-      case _ ~ page ~ _ ~ total => ScriptedTestPage(page, total)
+    val pageNumber = NatBasic & not('0', "zero page number")
+    val pageP: Parser[ScriptedTestPage] = ("*" ~> pageNumber ~ ("of" ~> pageNumber)) flatMap {
+      case (page, total) if page <= total => success(ScriptedTestPage(page, total))
+      case (page, total)                  => failure(s"Page $page was greater than $total")
     }
 
     // Grabs the filenames from a given test group in the current page definition.

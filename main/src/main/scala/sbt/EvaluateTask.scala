@@ -156,24 +156,14 @@ object EvaluateTask {
 
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
-    if (SysProp.taskTimings) {
-      if (SysProp.taskTimingsOnShutdown)
-        Some(sharedProgress)
-      else
-        Some(new TaskTimings(reportOnShutdown = false))
-    } else None
+    if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)
+    else None
 
   lazy private val sharedTraceEvent = new TaskTraceEvent()
   def taskTraceEvent: Option[ExecuteProgress[Task]] =
     if (SysProp.traces) {
       Some(sharedTraceEvent)
     } else None
-
-  def taskProgress: ExecuteProgress[Task] = {
-    val appender = MainAppender.defaultScreen(StandardMain.console)
-    val log = LogManager.progressLogger(appender)
-    new TaskProgress(log)
-  }
 
   // sbt-pgp calls this
   @deprecated("No longer used", "1.3.0")
@@ -240,11 +230,19 @@ object EvaluateTask {
       extracted,
       structure
     )
-    val reporters = maker map { _.progress }
-    // configure the logger for super shell
-    ConsoleAppender.setShowProgress((reporters collect {
-      case p: TaskProgress => ()
-    }).nonEmpty)
+    val progressReporter = extracted.get(progressState in ThisBuild).map { ps =>
+      ps.reset()
+      ConsoleAppender.setShowProgress(true)
+      val appender = MainAppender.defaultScreen(StandardMain.console)
+      appender match {
+        case c: ConsoleAppender => c.setProgressState(ps)
+        case _                  =>
+      }
+      val log = LogManager.progressLogger(appender)
+      new TaskProgress(log)
+    }
+    val reporters = maker.map(_.progress) ++ progressReporter ++
+      (if (SysProp.taskTimings) new TaskTimings(reportOnShutdown = false) :: Nil else Nil)
     reporters match {
       case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
       case xs if xs.size == 1 => xs.head
