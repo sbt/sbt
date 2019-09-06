@@ -794,7 +794,7 @@ object Defaults extends BuildCommon {
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
-    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
+    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2)).distinct
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val compilerJar = file(ScalaArtifacts.CompilerID)
     mkScalaInstance(
