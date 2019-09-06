@@ -161,17 +161,20 @@ object Watched {
   val Configuration =
     AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 
-  @deprecated("Use defaultStartWatch in conjunction with the watchStartMessage key", "1.3.0")
+  @deprecated("Use Watch.defaultStartWatch in conjunction with the watchStartMessage key", "1.3.0")
   val defaultWatchingMessage: WatchState => String =
     ((ws: WatchState) => s"${ws.count}. ${waitMessage("")} ")
       .label("Watched.projectWatchingMessage")
   @deprecated(
-    "Use defaultOnTriggerMessage in conjunction with the watchTriggeredMessage key",
+    "Use Watch.defaultOnTriggerMessage in conjunction with the watchTriggeredMessage key",
     "1.3.0"
   )
   val defaultTriggeredMessage: WatchState => String =
     const("").label("Watched.defaultTriggeredMessage")
-  @deprecated("Use clearOnTrigger in conjunction with the watchTriggeredMessage key", "1.3.0")
+  @deprecated(
+    "Use Watch.clearScreenOnTrigger in conjunction with the watchTriggeredMessage key",
+    "1.3.0"
+  )
   val clearWhenTriggered: WatchState => String =
     const(clearScreen).label("Watched.clearWhenTriggered")
 }
