@@ -120,6 +120,17 @@ object Keys {
   ).withRank(DSetting)
   val watchTriggers =
     settingKey[Seq[Glob]]("Describes files that should trigger a new continuous build.")
+
+  /**
+   * Sets the message to display after a new build is triggered. By default,
+   * it prints the file that triggered the build and what command(s) will be run.
+   * To clear the screen, add
+   * {{{
+   *   watchTriggeredMessage := Watch.clearScreenOnTrigger
+   * }}}
+   * to the build.
+   *
+   */
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
     "The message to show before triggered execution executes an action after sources change. The parameters are the current watch iteration count, the path that triggered the build and the names of the commands to run."
   ).withRank(DSetting)
