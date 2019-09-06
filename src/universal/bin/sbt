@@ -163,15 +163,12 @@ addMemory () {
   if [[ -z $java_version ]]; then
       java_version=$(jdk_version)
   fi
-  local class_metadata_opt="MaxPermSize"
 
   addJava "-Xms${mem}m"
   addJava "-Xmx${mem}m"
   addJava "-Xss4M"
   addJava "-XX:ReservedCodeCacheSize=${codecache}m"
-  if [[ (( $java_version < 8 )) ]]; then
-    addJava "-XX:${class_metadata_opt}=${class_metadata_size}m"
-  fi
+  (( $java_version >= 8 )) || addJava "-XX:MaxPermSize=${class_metadata_size}m"
 }
 
 addDefaultMemory() {
