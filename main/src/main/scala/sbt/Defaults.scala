@@ -812,10 +812,12 @@ object Defaults extends BuildCommon {
       compilerJar: File,
       classLoaderCache: sbt.internal.inc.classpath.ClassLoaderCache
   ): ScalaInstance = {
+    val allJarsDistinct = allJars.distinct
     val libraryLoader = classLoaderCache(libraryJars.toList)
-    class ScalaLoader extends URLClassLoader(allJars.map(_.toURI.toURL).toArray, libraryLoader)
+    class ScalaLoader
+        extends URLClassLoader(allJarsDistinct.map(_.toURI.toURL).toArray, libraryLoader)
     val fullLoader = classLoaderCache.cachedCustomClassloader(
-      allJars.toList,
+      allJarsDistinct.toList,
       () => new ScalaLoader
     )
     new ScalaInstance(
@@ -824,7 +826,7 @@ object Defaults extends BuildCommon {
       libraryLoader,
       libraryJars,
       compilerJar,
-      allJars.toArray,
+      allJarsDistinct.toArray,
       Some(version)
     )
   }
