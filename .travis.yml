@@ -1,6 +1,7 @@
 sudo: false
 language: scala
 jdk: oraclejdk8
+dist: trusty
 script:
 - sbt ";^test ;^scripted"
 

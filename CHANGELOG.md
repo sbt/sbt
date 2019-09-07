@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+ * [#184](https://github.com/jrudolph/sbt-dependency-graph/pull/184): Fix regression in 0.10.0-RC1 for recent sbt versions when
+   `cachedResolution` (with coursier turned off). Thanks [@bjaglin](https://github.com/bjaglin) for the report and the fix.
+
 ## Version 0.10.0-RC1 (2019-07-24)
  * [#136](https://github.com/jrudolph/sbt-dependency-graph/pull/136): Added `dependencyBrowseTree` to open a searchable dependency tree in the browser.
    Thanks, [@pcejrowski](https://github.com/pcejrowski) for contributing this feature.
