@@ -814,7 +814,8 @@ object Defaults extends BuildCommon {
   ): ScalaInstance = {
     val allJarsDistinct = allJars.distinct
     val libraryLoader = classLoaderCache(libraryJars.toList)
-    class ScalaLoader extends URLClassLoader(allJarsDistinct.map(_.toURI.toURL).toArray, libraryLoader)
+    class ScalaLoader
+        extends URLClassLoader(allJarsDistinct.map(_.toURI.toURL).toArray, libraryLoader)
     val fullLoader = classLoaderCache.cachedCustomClassloader(
       allJarsDistinct.toList,
       () => new ScalaLoader
