@@ -794,7 +794,7 @@ object Defaults extends BuildCommon {
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
-    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2)).distinct
+    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val compilerJar = file(ScalaArtifacts.CompilerID)
     mkScalaInstance(
@@ -812,10 +812,11 @@ object Defaults extends BuildCommon {
       compilerJar: File,
       classLoaderCache: sbt.internal.inc.classpath.ClassLoaderCache
   ): ScalaInstance = {
+    val allJarsDistinct = allJars.distinct
     val libraryLoader = classLoaderCache(libraryJars.toList)
-    class ScalaLoader extends URLClassLoader(allJars.map(_.toURI.toURL).toArray, libraryLoader)
+    class ScalaLoader extends URLClassLoader(allJarsDistinct.map(_.toURI.toURL).toArray, libraryLoader)
     val fullLoader = classLoaderCache.cachedCustomClassloader(
-      allJars.toList,
+      allJarsDistinct.toList,
       () => new ScalaLoader
     )
     new ScalaInstance(
@@ -824,7 +825,7 @@ object Defaults extends BuildCommon {
       libraryLoader,
       libraryJars,
       compilerJar,
-      allJars.toArray,
+      allJarsDistinct.toArray,
       Some(version)
     )
   }
