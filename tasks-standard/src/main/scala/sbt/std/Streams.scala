@@ -184,7 +184,14 @@ object Streams {
       def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
         checkOpen()
         val file = taskDirectory(a) / sid
-        IO.touch(file, false)
+        val parent = file.getParentFile
+        try IO.touch(file, false)
+        catch {
+          case e: IOException if parent.exists =>
+            throw new IOException(s"Couldn't create $file though $parent exists.", e)
+          case e: IOException =>
+            throw new IOException(s"Couldn't create $file because $parent did not exist.", e)
+        }
         val t = f(file)
         opened ::= t
         t
