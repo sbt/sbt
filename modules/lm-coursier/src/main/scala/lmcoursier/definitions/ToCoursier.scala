@@ -50,6 +50,7 @@ object ToCoursier {
       case Reconciliation.Default => coursier.core.Reconciliation.Default
       case Reconciliation.Relaxed => coursier.core.Reconciliation.Relaxed
       case Reconciliation.Strict => coursier.core.Reconciliation.Strict
+      case Reconciliation.SemVer => coursier.core.Reconciliation.SemVer
     }
 
   def reconciliation(rs: Vector[(ModuleMatchers, Reconciliation)]):
