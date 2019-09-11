@@ -882,6 +882,7 @@ object BuiltinCommands {
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
     import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
+    SysProp.setCloseClassLoaders()
     val exchange = StandardMain.exchange
     val welcomeState = displayWelcomeBanner(s0)
     val s1 = exchange run welcomeState

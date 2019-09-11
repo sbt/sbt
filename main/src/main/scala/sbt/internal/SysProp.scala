@@ -84,7 +84,9 @@ object SysProp {
    */
   lazy val color: Boolean = ConsoleAppender.formatEnabledInEnv
 
-  def closeClassLoaders: Boolean = getOrTrue("sbt.classloader.close")
+  def closeClassLoaders: Boolean = getOrFalse("sbt.classloader.close")
+  def setCloseClassLoaders(): Unit =
+    System.getProperties.putIfAbsent("sbt.classloader.close", "true")
 
   def fileCacheSize: Long =
     SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128L * 1024 * 1024)
