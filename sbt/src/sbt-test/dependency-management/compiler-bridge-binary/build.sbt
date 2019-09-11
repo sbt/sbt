@@ -1,9 +1,9 @@
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.12.10"
 
 lazy val check = taskKey[Unit]("")
 
 // We can't use "%%" here without breaking the "== bridgeModule" check below
-val bridgeModule = "org.scala-sbt" % s"compiler-bridge_2.12" % "1.3.0-M3"
+val bridgeModule = "org.scala-sbt" % "compiler-bridge_2.12" % "1.3.0"
 
 libraryDependencies += bridgeModule % Configurations.ScalaTool
 

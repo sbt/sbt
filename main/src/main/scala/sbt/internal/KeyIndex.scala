@@ -42,7 +42,7 @@ object KeyIndex {
         Aggregation.aggregate(key, ScopeMask(), extra, reverse = true)
       case _ => Nil
     }
-    (base(projects, configurations) /: toAggregate) {
+    toAggregate.foldLeft(base(projects, configurations)) {
       case (index, Nil)  => index
       case (index, keys) => keys.foldLeft(index)(_ add _)
     }
