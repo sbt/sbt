@@ -1,7 +1,7 @@
 import Tests._
 import Defaults._
 
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.12.10"
 val check = taskKey[Unit]("Check that tests are executed in parallel")
 
 lazy val root = (project in file("."))
