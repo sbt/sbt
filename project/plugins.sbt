@@ -1,6 +1,6 @@
 
 plugins_(
-  "com.geirsson"       % "sbt-ci-release"           % "1.2.6",
+  "com.geirsson"       % "sbt-ci-release"           % "1.3.1",
   "io.get-coursier"    % "sbt-coursier"             % sbtCoursierVersion,
   "com.typesafe"       % "sbt-mima-plugin"          % "0.3.0",
   "com.jsuereth"       % "sbt-pgp"                  % "1.1.2",
