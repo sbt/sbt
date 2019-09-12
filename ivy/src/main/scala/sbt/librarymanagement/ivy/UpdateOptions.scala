@@ -37,8 +37,8 @@ final class UpdateOptions private[sbt] (
     copy(interProjectFirst = interProjectFirst)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
     copy(latestSnapshots = latestSnapshots)
-  def withCachedResolution(cachedResoluton: Boolean): UpdateOptions =
-    copy(cachedResolution = cachedResoluton)
+  def withCachedResolution(cachedResolution: Boolean): UpdateOptions =
+    copy(cachedResolution = cachedResolution)
 
   def withGigahorse(gigahorse: Boolean): UpdateOptions =
     copy(gigahorse = gigahorse)
