@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.12.10"
 
 // TTL of Coursier is 24h
 ThisBuild / useCoursier := false

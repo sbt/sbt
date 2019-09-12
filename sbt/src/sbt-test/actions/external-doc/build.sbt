@@ -24,7 +24,7 @@ val bResolver = Def.setting {
 
 val apiBaseSetting = apiURL := Some(apiBase(name.value))
 def apiBase(projectName: String) = url(s"http://example.org/${projectName}")
-def scalaLibraryBase(v: String) = url(s"http://www.scala-lang.org/api/$v/")
+def scalaLibraryBase(v: String) = url(s"https://www.scala-lang.org/api/$v/")
 def addDep(projectName: String) =
 	libraryDependencies += organization.value %% projectName % version.value
 
