@@ -19,10 +19,17 @@ object ResolutionRun {
     configs: Set[Configuration]
   ): Either[coursier.error.ResolutionError, Resolution] = {
 
-    val rules = params.strictOpt.map(s => Seq((s, RuleResolution.Fail))).getOrElse(Nil)
-
     val isCompileConfig =
+      configs(Configuration.compile)
+    val isCompileOrScalaToolConfig =
       configs(Configuration.compile) || configs(Configuration("scala-tool"))
+
+    val repositories =
+      params.internalRepositories.drop(if (isCompileConfig) 0 else 1) ++
+        params.mainRepositories ++
+        params.fallbackDependenciesRepositories
+
+    val rules = params.strictOpt.map(s => Seq((s, RuleResolution.Fail))).getOrElse(Nil)
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
@@ -46,7 +53,7 @@ object ResolutionRun {
       ).flatten.mkString("\n")
 
     if (verbosityLevel >= 2) {
-      val repoReprs = params.repositories.map {
+      val repoReprs = repositories.map {
         case r: IvyRepository =>
           s"ivy:${r.pattern}"
         case _: InterProjectRepository =>
@@ -76,14 +83,14 @@ object ResolutionRun {
               dep
           }
         )
-        .withRepositories(params.repositories)
+        .withRepositories(repositories)
         .withResolutionParams(
           params
             .params
-            .addForceVersion(params.interProjectDependencies.map(_.moduleVersion): _*)
-            .withForceScalaVersion(isCompileConfig && params.autoScalaLibOpt.nonEmpty)
+            .addForceVersion((if (isCompileConfig) params.interProjectDependencies.map(_.moduleVersion) else Nil): _*)
+            .withForceScalaVersion(isCompileOrScalaToolConfig && params.autoScalaLibOpt.nonEmpty)
             .withScalaVersion(params.autoScalaLibOpt.map(_._2))
-            .withTypelevel(params.params.typelevel && isCompileConfig)
+            .withTypelevel(params.params.typelevel && isCompileOrScalaToolConfig)
             .withRules(rules)
         )
         .withCache(

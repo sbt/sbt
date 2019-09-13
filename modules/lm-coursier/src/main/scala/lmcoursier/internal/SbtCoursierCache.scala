@@ -41,7 +41,9 @@ object SbtCoursierCache {
 
   final case class ResolutionKey(
     dependencies: Seq[(Configuration, Dependency)],
-    repositories: Seq[Repository],
+    internalRepositories: Seq[Repository],
+    mainRepositories: Seq[Repository],
+    fallbackRepositories: Seq[Repository],
     params: ResolutionParams,
     tmpCacheKey: Object, // temporary, until we can use https://github.com/coursier/coursier/pull/1090
     sbtClassifiers: Boolean

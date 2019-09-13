@@ -44,11 +44,6 @@ final case class ResolutionParams(
       )
     }
 
-  val repositories =
-    internalRepositories ++
-      mainRepositories ++
-      fallbackDependenciesRepositories
-
   lazy val resolutionKey = {
     val cleanCache = cache
       .withPool(null)
@@ -56,7 +51,9 @@ final case class ResolutionParams(
       .withSync[Task](null)
     SbtCoursierCache.ResolutionKey(
       dependencies,
-      repositories,
+      internalRepositories,
+      mainRepositories,
+      fallbackDependenciesRepositories,
       copy(
         parentProjectCache = Map.empty,
         loggerOpt = None,
