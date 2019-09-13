@@ -672,12 +672,14 @@ lazy val mainProj = (project in file("main"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       // internal
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.LanguageServerReporter.*"),
+
       // Changed signature or removed private[sbt] methods
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
       exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
       exclude[DirectMissingMethodProblem]("sbt.Plugins.topologicalSort"),
       exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
-      exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook")
+      exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook"),
+      exclude[MissingClassProblem]("sbt.internal.ResourceLoaderImpl"),
     )
   )
   .configure(

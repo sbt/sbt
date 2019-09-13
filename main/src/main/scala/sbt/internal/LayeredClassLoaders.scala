@@ -12,8 +12,8 @@ import java.net.{ URL, URLClassLoader }
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
-import sbt.internal.inc.classpath._
 import sbt.io.IO
+import sbt.util.Logger
 
 import scala.collection.JavaConverters._
 
@@ -27,11 +27,11 @@ import scala.collection.JavaConverters._
 private[internal] class LayeredClassLoaderImpl(
     classpath: Seq[File],
     parent: ClassLoader,
-    tempDir: File
-) extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent)
-    with NativeLoader {
+    tempDir: File,
+    allowZombies: Boolean,
+    logger: Logger
+) extends ManagedClassLoader(classpath.toArray.map(_.toURI.toURL), parent, allowZombies, logger) {
   setTempDir(tempDir)
-  override def close(): Unit = if (SysProp.closeClassLoaders) super.close()
 }
 
 /**
@@ -58,10 +58,13 @@ private[internal] class LayeredClassLoaderImpl(
  */
 private[internal] final class ReverseLookupClassLoaderHolder(
     val classpath: Seq[File],
-    val parent: ClassLoader
+    val parent: ClassLoader,
+    val allowZombies: Boolean,
+    val logger: Logger
 ) extends URLClassLoader(Array.empty, null) {
   private[this] val cached: AtomicReference[ReverseLookupClassLoader] = new AtomicReference
   private[this] val closed = new AtomicBoolean(false)
+  private[this] val urls = classpath.map(_.toURI.toURL).toArray
 
   /**
    * Get a classloader. If there is a loader available in the cache, it will use that loader,
@@ -141,8 +144,9 @@ private[internal] final class ReverseLookupClassLoaderHolder(
    *
    */
   private class ReverseLookupClassLoader
-      extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent)
+      extends ManagedClassLoader(urls, parent, allowZombies, logger)
       with NativeLoader {
+    override def getURLs: Array[URL] = urls
     private[this] val directDescendant: AtomicReference[BottomClassLoader] =
       new AtomicReference
     private[this] val dirty = new AtomicBoolean(false)
@@ -179,7 +183,6 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     }
     override def loadClass(name: String, resolve: Boolean): Class[_] =
       loadClass(name, resolve, reverseLookup = true)
-    override def close(): Unit = if (SysProp.closeClassLoaders) super.close()
   }
 
   /**
@@ -202,7 +205,12 @@ private[internal] final class ReverseLookupClassLoaderHolder(
       dynamicClasspath: Seq[File],
       parent: ReverseLookupClassLoader,
       tempDir: File
-  ) extends URLClassLoader(dynamicClasspath.map(_.toURI.toURL).toArray, parent)
+  ) extends ManagedClassLoader(
+        dynamicClasspath.map(_.toURI.toURL).toArray,
+        parent,
+        allowZombies,
+        logger
+      )
       with NativeLoader {
     parent.setDescendant(this)
     setTempDir(tempDir)
@@ -236,7 +244,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     }
     override def close(): Unit = {
       checkin(parent)
-      if (SysProp.closeClassLoaders) super.close()
+      super.close()
     }
   }
 }
@@ -294,21 +302,6 @@ private trait NativeLoader extends ClassLoader with AutoCloseable {
   }
 }
 
-private[internal] class ResourceLoaderImpl(
-    classpath: Seq[File],
-    parent: ClassLoader,
-    override val resources: Map[String, String]
-) extends URLClassLoader(classpath.map(_.toURI.toURL).toArray, parent)
-    with RawResources {
-  override def findClass(name: String): Class[_] = throw new ClassNotFoundException(name)
-  override def loadClass(name: String, resolve: Boolean): Class[_] = {
-    val clazz = parent.loadClass(name)
-    if (resolve) resolveClass(clazz)
-    clazz
-  }
-  override def toString: String = "ResourceLoader"
-}
-
 private[internal] object NativeLibs {
   private[this] val nativeLibs = new java.util.HashSet[File].asScala
   ShutdownHooks.add(() => {
@@ -325,5 +318,66 @@ private[internal] object NativeLibs {
     nativeLibs.remove(file)
     file.delete()
     ()
+  }
+}
+
+private sealed abstract class ManagedClassLoader(
+    urls: Array[URL],
+    parent: ClassLoader,
+    allowZombies: Boolean,
+    logger: Logger
+) extends URLClassLoader(urls, parent)
+    with NativeLoader {
+  private[this] val closed = new AtomicBoolean(false)
+  private[this] val printedWarning = new AtomicBoolean(false)
+  private[this] val zombieLoader = new AtomicReference[ZombieClassLoader]
+  private class ZombieClassLoader extends URLClassLoader(urls, this) {
+    def lookupClass(name: String): Class[_] =
+      try findClass(name)
+      catch {
+        case e: ClassNotFoundException =>
+          val deleted = urls.flatMap { u =>
+            val f = new File(u.getPath)
+            if (f.exists) None else Some(f)
+          }
+          if (deleted.toSeq.nonEmpty) {
+            // TODO - add doc link
+            val msg = s"Couldn't load class $name. " +
+              s"The following urls on the classpath do not exist:\n${deleted mkString "\n"}\n" +
+              "This may be due to shutdown hooks added during an invocation of `run`."
+            // logging may be shutdown at this point so we need to print directly to System.err.
+            System.err.println(msg)
+          }
+          throw e
+      }
+  }
+  private def getZombieLoader(name: String): ZombieClassLoader = {
+    if (printedWarning.compareAndSet(false, true) && !allowZombies) {
+      // TODO - Need to add link to documentation in website
+      val thread = Thread.currentThread
+      val msg =
+        s"$thread loading $name after test or run has completed. This is a likely resource leak."
+      logger.warn(msg)
+    }
+    zombieLoader.get match {
+      case null =>
+        val zb = new ZombieClassLoader
+        zombieLoader.set(zb)
+        zb
+      case zb => zb
+    }
+  }
+  override def findResource(name: String): URL = {
+    if (closed.get) getZombieLoader(name).findResource(name)
+    else super.findResource(name)
+  }
+  override def findClass(name: String): Class[_] = {
+    if (closed.get) getZombieLoader(name).lookupClass(name)
+    else super.findClass(name)
+  }
+  override def close(): Unit = {
+    closed.set(true)
+    Option(zombieLoader.getAndSet(null)).foreach(_.close())
+    super.close()
   }
 }
