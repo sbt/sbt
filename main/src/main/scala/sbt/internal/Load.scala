@@ -498,7 +498,7 @@ private[sbt] object Load {
     unit.definitions.builds.flatMap(_.buildLoaders).toList match {
       case Nil => loaders
       case x :: xs =>
-        val resolver = (x /: xs) { _ | _ }
+        val resolver = xs.foldLeft(x) { _ | _ }
         if (isRoot) loaders.setRoot(resolver) else loaders.addNonRoot(unit.uri, resolver)
     }
 
@@ -1072,7 +1072,7 @@ private[sbt] object Load {
           case sf: DefaultSbtFiles => settings(defaultSbtFiles.filter(sf.include))
           case p: AutoPlugins      => autoPluginSettings(p)
           case q: Sequence =>
-            (Seq.empty[Setting[_]] /: q.sequence) { (b, add) =>
+            q.sequence.foldLeft(Seq.empty[Setting[_]]) { (b, add) =>
               b ++ expandSettings(add)
             }
         }
@@ -1128,7 +1128,9 @@ private[sbt] object Load {
         0
       )(loader)
     // How to merge SbtFiles we read into one thing
-    def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = (LoadedSbtFile.empty /: ls) { _ merge _ }
+    def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = ls.foldLeft(LoadedSbtFile.empty) {
+      _ merge _
+    }
     // Loads a given file, or pulls from the cache.
 
     def memoLoadSettingsFile(src: File): LoadedSbtFile =
@@ -1148,7 +1150,7 @@ private[sbt] object Load {
       case sf: SbtFiles        => sf.files.map(f => IO.resolve(projectBase, f)).filterNot(_.isHidden)
       case sf: DefaultSbtFiles => defaultSbtFiles.filter(sf.include).filterNot(_.isHidden)
       case q: Sequence =>
-        (Seq.empty[File] /: q.sequence) { (b, add) =>
+        q.sequence.foldLeft(Seq.empty[File]) { (b, add) =>
           b ++ associatedFiles(add)
         }
       case _ => Seq.empty

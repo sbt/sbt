@@ -1,6 +1,6 @@
 import sbt.internal.server.{ ServerHandler, ServerIntent }
 
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.12.10"
 
 lazy val root = (project in file("."))
   .settings(

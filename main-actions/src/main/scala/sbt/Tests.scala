@@ -390,7 +390,7 @@ object Tests {
       }
     }
   def overall(results: Iterable[TestResult]): TestResult =
-    ((TestResult.Passed: TestResult) /: results) { (acc, result) =>
+    results.foldLeft(TestResult.Passed: TestResult) { (acc, result) =>
       if (severity(acc) < severity(result)) result else acc
     }
   def discover(
