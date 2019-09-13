@@ -330,8 +330,8 @@ copyRt() {
       echo Copying runtime jar.
       mkdir -p "$java9_ext"
       execRunner "$java_cmd" \
-        ${sbt_options[@]} \
-        ${java_args[@]} \
+        "${sbt_options[@]}" \
+        "${java_args[@]}" \
         -jar "$rtexport" \
         "${java9_rt}"
     fi
@@ -382,8 +382,8 @@ run() {
     # run sbt
     execRunner "$java_cmd" \
       $(get_gc_opts) \
-      ${java_args[@]} \
-      ${sbt_options[@]} \
+      "${java_args[@]}" \
+      "${sbt_options[@]}" \
       -jar "$sbt_jar" \
       "${sbt_commands[@]}" \
       "${residual_args[@]}"
