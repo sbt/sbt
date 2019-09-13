@@ -32,7 +32,7 @@ import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
-import sbt.internal.inc.classpath.ClasspathFilter
+import sbt.internal.inc.classpath.{ ClassLoaderCache, ClasspathFilter }
 import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement.mavenint.{
@@ -47,7 +47,6 @@ import sbt.internal.server.{
   LanguageServerReporter,
   ServerHandler
 }
-import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
 import sbt.internal.testing.TestLogger
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types._
@@ -70,6 +69,7 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
@@ -205,6 +205,7 @@ object Defaults extends BuildCommon {
       bgStop := bgStopTask.evaluated,
       bgWaitFor := bgWaitForTask.evaluated,
       bgCopyClasspath :== true,
+      allowZombieClassLoaders :== !SysProp.closeClassLoaders,
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -813,7 +814,7 @@ object Defaults extends BuildCommon {
       allJars: Seq[File],
       libraryJars: Array[File],
       compilerJar: File,
-      classLoaderCache: sbt.internal.inc.classpath.ClassLoaderCache
+      classLoaderCache: ClassLoaderCache,
   ): ScalaInstance = {
     val allJarsDistinct = allJars.distinct
     val libraryLoader = classLoaderCache(libraryJars.toList)
@@ -837,7 +838,7 @@ object Defaults extends BuildCommon {
     val dummy = ScalaInstance(dir)(state.value.classLoaderCache.apply)
     Seq(dummy.loader, dummy.loaderLibraryOnly).foreach {
       case a: AutoCloseable => a.close()
-      case cl               =>
+      case _                =>
     }
     mkScalaInstance(
       dummy.version,
