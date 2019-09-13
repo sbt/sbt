@@ -10,7 +10,7 @@ import coursier.ShadingPlugin.autoImport.{Shading, shadingNamespace}
 
 object Settings {
 
-  def scala212 = "2.12.7"
+  def scala212 = "2.12.10"
 
   def sbt10Version = "1.0.2"
 
