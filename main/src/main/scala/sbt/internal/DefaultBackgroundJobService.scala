@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import sbt.Def.{ Classpath, ScopedKey, Setting }
 import sbt.Scope.GlobalScope
+import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.util.{ Attributed, ManagedLogger }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
@@ -146,6 +147,12 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       start: (Logger, File) => Unit
   ): JobHandle = {
     pool.run(this, spawningTask, state)(start)
+  }
+
+  override private[sbt] def runInBackgroundWithLoader(spawningTask: ScopedKey[_], state: State)(
+      start: (Logger, File) => (Option[ClassLoader], () => Unit)
+  ): JobHandle = {
+    pool.runWithLoader(this, spawningTask, state)(start)
   }
 
   override final def close(): Unit = shutdown()
@@ -419,6 +426,20 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
         }
       }
   }
+  private class BackgroundRunnableWithLoader(
+      val loader: Option[ClassLoader],
+      taskName: String,
+      body: () => Unit
+  ) extends BackgroundRunnable(taskName, body) {
+    override def awaitTermination(): Unit = {
+      try super.awaitTermination()
+      finally loader.foreach {
+        case ac: AutoCloseable   => ac.close()
+        case cp: ClasspathFilter => cp.close()
+        case _                   =>
+      }
+    }
+  }
 
   def run(manager: AbstractBackgroundJobService, spawningTask: ScopedKey[_], state: State)(
       work: (Logger, File) => Unit
@@ -427,6 +448,22 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       val runnable = new BackgroundRunnable(spawningTask.key.label, { () =>
         work(logger, workingDir)
       })
+      executor.execute(runnable)
+      runnable
+    }
+    manager.doRunInBackground(spawningTask, state, start _)
+  }
+
+  private[sbt] def runWithLoader(
+      manager: AbstractBackgroundJobService,
+      spawningTask: ScopedKey[_],
+      state: State
+  )(
+      getWork: (Logger, File) => (Option[ClassLoader], () => Unit)
+  ): JobHandle = {
+    def start(logger: Logger, workingDir: File): BackgroundJob = {
+      val (loader, work) = getWork(logger, workingDir)
+      val runnable = new BackgroundRunnableWithLoader(loader, spawningTask.key.label, work)
       executor.execute(runnable)
       runnable
     }
