@@ -1434,12 +1434,19 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       val (mainClass, args) = parser.parsed
       val hashClasspath = (bgHashClasspath in bgRunMain).value
-      service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
-        val cp =
+      service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
+        val files =
           if (copyClasspath.value)
             service.copyClasspath(products.value, classpath.value, workingDir, hashClasspath)
           else classpath.value
-        scalaRun.value.run(mainClass, data(cp), args, logger).get
+        val cp = data(files)
+        scalaRun.value match {
+          case r: Run =>
+            val loader = r.newLoader(cp)
+            (Some(loader), () => r.runWithLoader(loader, cp, mainClass, args, logger).get)
+          case sr =>
+            (None, () => sr.run(mainClass, cp, args, logger).get)
+        }
       }
     }
   }
@@ -1457,12 +1464,20 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
       val hashClasspath = (bgHashClasspath in bgRun).value
-      service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
-        val cp =
+      service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
+        val files =
           if (copyClasspath.value)
             service.copyClasspath(products.value, classpath.value, workingDir, hashClasspath)
           else classpath.value
-        scalaRun.value.run(mainClass, data(cp), parser.parsed, logger).get
+        val cp = data(files)
+        val args = parser.parsed
+        scalaRun.value match {
+          case r: Run =>
+            val loader = r.newLoader(cp)
+            (Some(loader), () => r.runWithLoader(loader, cp, mainClass, args, logger).get)
+          case sr =>
+            (None, () => sr.run(mainClass, cp, args, logger).get)
+        }
       }
     }
   }
