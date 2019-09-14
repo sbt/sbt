@@ -9,10 +9,7 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   lazy val sbtScript =
     if (isWindows) new File("target/universal/stage/bin/sbt.bat")
     else new File("target/universal/stage/bin/sbt")
-  def sbtProcess(arg: String) =
-    sbt.internal.Process(sbtScript.getAbsolutePath + " " + arg, new File("citest"),
-      "JAVA_OPTS" -> "",
-      "SBT_OPTS" -> "")
+  def sbtProcess(arg: String) = sbtProcessWithOpts(arg, "", "")
   def sbtProcessWithOpts(arg: String, javaOpts: String, sbtOpts: String) =
     sbt.internal.Process(sbtScript.getAbsolutePath + " " + arg, new File("citest"),
       "JAVA_OPTS" -> javaOpts,
@@ -52,6 +49,12 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   test("sbt --timings") {
     val out = sbtProcess("compile --timings -v").!!.linesIterator.toList
     assert(out.contains[String]("-Dsbt.task.timings=true"))
+    ()
+  }
+
+  test("sbt --sbt-version") {
+    val out = sbtProcess("--sbt-version 1.3.0 compile -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.version=1.3.0"))
     ()
   }
 
