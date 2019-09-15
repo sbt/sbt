@@ -117,9 +117,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   private[sbt] def continuousTask: Def.Initialize[InputTask[StateTransform]] =
     Def.inputTask {
       val (initialCount, commands) = continuousParser.parsed
-      new StateTransform(
-        runToTermination(state.value, commands, initialCount, isCommand = false)
-      )
+      new StateTransform(runToTermination(state.value, commands, initialCount, isCommand = false))
     }
 
   private[sbt] val dynamicInputs = taskKey[Option[mutable.Set[DynamicInput]]](
