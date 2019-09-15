@@ -10,10 +10,9 @@ package sbt
 import java.io.File
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{ isPublic, isStatic }
-import java.net.URLClassLoader
 
 import sbt.internal.inc.ScalaInstance
-import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtilities }
+import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.util.MessageOnlyException
 import sbt.io.Path
 import sbt.util.Logger
@@ -59,17 +58,25 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
   private def classpathOption(classpath: Seq[File]) =
     "-classpath" :: Path.makeString(classpath) :: Nil
 }
-class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaRun {
+class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolean)
+    extends ScalaRun {
   def this(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) =
     this((cp: Seq[File]) => ClasspathUtilities.makeLoader(cp, instance, nativeTmp), trapExit)
 
-  /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
+  private[sbt] def runWithLoader(
+      loader: ClassLoader,
+      classpath: Seq[File],
+      mainClass: String,
+      options: Seq[String],
+      log: Logger
+  ): Try[Unit] = {
     log.info(s"running $mainClass ${Run.runOptionsStr(options)}")
 
-    def execute() =
+    def execute(): Unit =
       try {
-        run0(mainClass, classpath, options, log)
+        log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
+        val main = getMainMethod(mainClass, loader)
+        invokeMain(loader, main, options)
       } catch {
         case e: java.lang.reflect.InvocationTargetException => throw e.getCause
       }
@@ -85,24 +92,10 @@ class Run(newLoader: Seq[File] => ClassLoader, trapExit: Boolean) extends ScalaR
     if (trapExit) Run.executeTrapExit(execute(), log)
     else directExecute()
   }
-  private def run0(
-      mainClassName: String,
-      classpath: Seq[File],
-      options: Seq[String],
-      log: Logger
-  ): Unit = {
-    log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-    val loader = newLoader(classpath)
-    try {
-      val main = getMainMethod(mainClassName, loader)
-      invokeMain(loader, main, options)
-    } finally {
-      loader match {
-        case u: URLClassLoader  => u.close()
-        case c: ClasspathFilter => c.close()
-        case _                  =>
-      }
-    }
+
+  /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
+  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
+    runWithLoader(newLoader(classpath), classpath, mainClass, options, log)
   }
   private def invokeMain(
       loader: ClassLoader,
