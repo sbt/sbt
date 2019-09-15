@@ -71,7 +71,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     stop()
   }
   private[this] val skipReportTasks =
-    Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject", "consoleQuick")
+    Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject", "consoleQuick", "state")
   private[this] def report(): Unit = {
     val currentTasks = activeTasks.toVector
     val ltc = lastTaskCount.get
@@ -97,8 +97,9 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     lastTaskCount.set(currentTasksCount)
   }
 
-  private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean =
+  private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean = {
     tasks
       .map(t => taskName(t))
-      .exists(n => skipReportTasks.exists(m => n.endsWith("/ " + m)))
+      .exists(n => skipReportTasks.exists(m => m == n || n.endsWith("/ " + m)))
+  }
 }
