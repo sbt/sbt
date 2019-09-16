@@ -1,0 +1,1 @@
+libraryDependencies += "org.scala-sbt" % "sbt" % "1.3.0"

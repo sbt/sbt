@@ -17,3 +17,9 @@ $ copy-file changes/working.sbt build.sbt
 > foo foo; reload
 
 > exists foo
+
+-> compile
+
+$ copy-file changes/sub.sbt sub/build.sbt
+
+> compile
