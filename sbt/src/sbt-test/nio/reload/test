@@ -23,3 +23,9 @@ $ copy-file changes/working.sbt build.sbt
 $ copy-file changes/sub.sbt sub/build.sbt
 
 > compile
+
+-> scalafmt
+
+$ copy-file changes/ScalafmtVersion.scala project/project/ScalafmtVersion.scala
+
+> scalafmt
