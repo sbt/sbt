@@ -121,7 +121,7 @@ def sbt10Plus =
     "1.2.7",
     "1.2.8",
   ) ++ sbt13Plus
-def sbt13Plus = Seq() // Add sbt 1.3+ stable versions when released
+def sbt13Plus = Seq("1.3.0")
 
 def mimaSettings = mimaSettingsSince(sbt10Plus)
 def mimaSettingsSince(versions: Seq[String]) = Def settings (
