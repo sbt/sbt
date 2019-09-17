@@ -64,6 +64,11 @@ private[sbt] object xMain {
           Seq(defaults, early),
           runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
         )
+        if (xMain.getClass.getClassLoader.toString == "SbtMetaBuildClassLoader") {
+          val msg = s"sbt was launched with an old version of sbt-launcher. Please upgrade the " +
+            "launcher version (see https://www.scala-sbt.org/1.x/docs/Setup.html for instructions)."
+          state.globalLogging.full.warn(msg)
+        }
         StandardMain.runManaged(state)
       }
     } finally {
