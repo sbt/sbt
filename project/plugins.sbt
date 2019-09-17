@@ -1,6 +1,6 @@
 
 plugins_(
-  "com.geirsson"       % "sbt-ci-release"           % "1.3.1",
+  "com.geirsson"       % "sbt-ci-release"           % "1.3.2",
   "io.get-coursier"    % "sbt-coursier"             % sbtCoursierVersion,
   "com.typesafe"       % "sbt-mima-plugin"          % "0.3.0",
   "io.get-coursier"    % "sbt-shading"              % sbtCoursierVersion,
