@@ -13,7 +13,10 @@ import sbt.SlashSyntax0._
 import sbt.io.syntax._
 import sbt.nio.FileChanges
 import sbt.nio.Keys._
-import sbt.nio.file.{ Glob, RecursiveGlob }
+import sbt.nio.file.{ Glob, ** }
+import sbt.nio.file.syntax._
+
+import scala.annotation.tailrec
 
 private[sbt] object CheckBuildSources {
   private[sbt] def needReloadImpl: Def.Initialize[Task[StateTransform]] = Def.task {
@@ -60,15 +63,20 @@ private[sbt] object CheckBuildSources {
   private[sbt] def buildSourceFileInputs: Def.Initialize[Seq[Glob]] = Def.setting {
     if (onChangedBuildSource.value != IgnoreSourceChanges) {
       val baseDir = (LocalRootProject / baseDirectory).value
-      val sourceFilter = "*.{sbt,scala,java}"
       val projectDir = baseDir / "project"
-      Seq(
-        Glob(baseDir, "*.sbt"),
-        Glob(projectDir, sourceFilter),
-        // We only want to recursively look in source because otherwise we have to search
-        // the project target directories which is expensive.
-        Glob(projectDir / "src", RecursiveGlob / sourceFilter),
-      )
+      @tailrec
+      def projectGlobs(projectDir: File, globs: Seq[Glob]): Seq[Glob] = {
+        val glob = projectDir.toGlob
+        val base = Seq(
+          glob / "*.{sbt,scala,java}",
+          // We only want to recursively look in source because otherwise we have to search
+          // the project target directories which is expensive.
+          glob / "src" / ** / "*.{scala,java}"
+        )
+        val nextLevel = projectDir / "project"
+        if (nextLevel.exists) projectGlobs(nextLevel, base) else base
+      }
+      projectGlobs(projectDir, baseDir.toGlob / "*.sbt" :: Nil)
     } else Nil
   }
 }

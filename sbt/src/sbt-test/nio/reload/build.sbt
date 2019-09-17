@@ -11,3 +11,5 @@ exists := {
 }
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
+
+val sub = project
