@@ -371,13 +371,16 @@ object Defaults extends BuildCommon {
       }).value
   )
 
-  def paths = Seq(
+  // Appended to JvmPlugin.projectSettings
+  def paths: Seq[Setting[_]] = Seq(
     baseDirectory := thisProject.value.base,
     target := baseDirectory.value / "target",
     historyPath := (historyPath or target(t => Option(t / ".history"))).value,
     sourceDirectory := baseDirectory.value / "src",
     sourceManaged := crossTarget.value / "src_managed",
-    resourceManaged := crossTarget.value / "resource_managed"
+    resourceManaged := crossTarget.value / "resource_managed",
+    // Adds subproject build.sbt files to the global list of build files to monitor
+    Scope.Global / checkBuildSources / fileInputs += baseDirectory.value.toGlob / "*.sbt"
   )
 
   lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
