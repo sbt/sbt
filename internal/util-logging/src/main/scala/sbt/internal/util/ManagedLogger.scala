@@ -25,7 +25,7 @@ class ManagedLogger(
     )
   }
 
-  private val SuccessEventTag = scala.reflect.runtime.universe.typeTag[SuccessEvent]
+  private lazy val SuccessEventTag = scala.reflect.runtime.universe.typeTag[SuccessEvent]
   // send special event for success since it's not a real log level
   override def success(message: => String): Unit = {
     infoEvent[SuccessEvent](SuccessEvent(message))(
