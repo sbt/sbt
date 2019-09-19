@@ -1002,7 +1002,9 @@ object BuiltinCommands {
         val skipFile = skipWelcomeFile(state, version)
         Files.createDirectories(skipFile.getParent)
         val suppress = !SysProp.banner || Files.exists(skipFile)
-        if (!suppress) state.log.info(Banner(version))
+        if (!suppress) {
+          Banner(version).foreach(banner => state.log.info(banner))
+        }
       } catch { case _: IOException => /* Don't let errors in this command prevent startup */ }
       state.put(bannerHasBeenShown, true)
     } else state
