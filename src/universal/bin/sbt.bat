@@ -198,13 +198,6 @@ if /I %JAVA_VERSION% GEQ 9 (
     "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "!rtexport!" "!java9_rt!"
   )
   set _JAVA_OPTS=!_JAVA_OPTS! -Dscala.ext.dirs="!java9_ext!"
-
-  rem check to see if a GC has been set in the opts
-  echo !_JAVA_OPTS! | findstr /r "Use.*GC" >nul
-  if ERRORLEVEL 1 (
-    rem don't have a GC set - revert to old GC
-    set _JAVA_OPTS=!_JAVA_OPTS! -XX:+UseParallelGC
-  )
 )
 exit /B 0
 
