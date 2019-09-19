@@ -7,7 +7,6 @@
 
 package sbt.internal;
 
-import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 
@@ -26,10 +25,5 @@ final class ScalaReflectClassLoader extends URLClassLoader {
   @Override
   public String toString() {
     return "ScalaReflectClassLoader(" + jar + " parent = " + getParent() + ")";
-  }
-
-  @Override
-  public void close() throws IOException {
-    if (SysProp.closeClassLoaders()) super.close();
   }
 }
