@@ -9,6 +9,7 @@ package sbt
 package std
 
 import java.io.{ File => _, _ }
+import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.io.DeferredWriter
 import sbt.internal.util.ManagedLogger
@@ -98,6 +99,7 @@ object Streams {
     try {
       c.close()
     } catch { case _: IOException => () }
+  private[this] val streamLocks = new ConcurrentHashMap[File, AnyRef]()
 
   def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key] {
     private[this] val streams = new collection.mutable.HashMap[Key, ManagedStreams[Key]]
@@ -184,7 +186,18 @@ object Streams {
       def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
         checkOpen()
         val file = taskDirectory(a) / sid
-        IO.touch(file, false)
+        val parent = file.getParentFile
+        val newLock = new AnyRef
+        val lock = streamLocks.putIfAbsent(parent, newLock) match {
+          case null => newLock
+          case l    => l
+        }
+        try lock.synchronized {
+          if (!file.exists) IO.touch(file, setModified = false)
+        } finally {
+          streamLocks.remove(parent)
+          ()
+        }
         val t = f(file)
         opened ::= t
         t
