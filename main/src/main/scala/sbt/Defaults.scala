@@ -2175,6 +2175,7 @@ object Classpaths {
         moduleConfigurations :== Nil,
         publishTo :== None,
         resolvers :== Vector.empty,
+        includePluginResolvers :== false,
         useJCenter :== false,
         retrievePattern :== Resolver.defaultRetrievePattern,
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
@@ -2247,10 +2248,21 @@ object Classpaths {
       (Def.task {
         val proj = projectResolver.value
         val rs = externalResolvers.value
+        def pluginResolvers: Vector[Resolver] =
+          buildStructure.value
+            .units(thisProjectRef.value.build)
+            .unit
+            .plugins
+            .pluginData
+            .resolvers
+            .getOrElse(Vector.empty)
+        val pr =
+          if (includePluginResolvers.value) pluginResolvers
+          else Vector.empty
         bootResolvers.value match {
           case Some(repos) if overrideBuildResolvers.value => proj +: repos
           case _ =>
-            val base = if (sbtPlugin.value) sbtResolvers.value ++ rs else rs
+            val base = if (sbtPlugin.value) sbtResolvers.value ++ rs ++ pr else rs ++ pr
             (proj +: base).distinct
         }
       }).value,
