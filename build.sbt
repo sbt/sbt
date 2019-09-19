@@ -120,7 +120,7 @@ def sbt10Plus =
     "1.2.7",
     "1.2.8",
   ) ++ sbt13Plus
-def sbt13Plus = Seq() // Add sbt 1.3+ stable versions when released
+def sbt13Plus = Seq("1.3.0")
 
 def mimaSettings = mimaSettingsSince(sbt10Plus)
 def mimaSettingsSince(versions: Seq[String]) = Def settings (
@@ -672,12 +672,14 @@ lazy val mainProj = (project in file("main"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       // internal
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.LanguageServerReporter.*"),
+
       // Changed signature or removed private[sbt] methods
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
       exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
       exclude[DirectMissingMethodProblem]("sbt.Plugins.topologicalSort"),
       exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
-      exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook")
+      exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook"),
+      exclude[MissingClassProblem]("sbt.internal.ResourceLoaderImpl"),
     )
   )
   .configure(
