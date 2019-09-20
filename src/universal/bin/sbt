@@ -13,8 +13,8 @@ declare init_sbt_version=_to_be_replaced
 declare sbt_default_mem=1024
 declare -r default_sbt_opts=""
 declare -r default_java_opts="-Dfile.encoding=UTF-8"
-declare sbt_verbose=0
-declare sbt_debug=0
+declare sbt_verbose=
+declare sbt_debug=
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
