@@ -29,3 +29,7 @@ $ copy-file changes/sub.sbt sub/build.sbt
 $ copy-file changes/ScalafmtVersion.scala project/project/ScalafmtVersion.scala
 
 > scalafmt
+
+$ delete project/plugins.sbt
+
+-> scalafmt
