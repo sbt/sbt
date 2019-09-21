@@ -9,7 +9,7 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
-import java.nio.file.{ FileAlreadyExistsException, Files }
+import java.nio.file.{ FileAlreadyExistsException, Files, FileSystems }
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
@@ -940,14 +940,33 @@ object BuiltinCommands {
     state.remainingCommands exists (_.commandLine == TemplateCommand)
 
   private def writeSbtVersion(state: State) =
-    if (SysProp.genBuildProps && !intendsToInvokeNew(state))
+    if (SysProp.genBuildProps && !intendsToInvokeNew(state)) {
       writeSbtVersionUnconditionally(state)
+    }
+
+  private def checkRoot(state: State): Unit =
+    if (SysProp.allowRootDir) ()
+    else {
+      val baseDir = state.baseDir
+      import scala.collection.JavaConverters._
+      // this should return / on Unix and C:\ for Windows.
+      val rootOpt = FileSystems.getDefault.getRootDirectories.asScala.toList.headOption
+      rootOpt foreach { root =>
+        if (baseDir.getAbsolutePath == root.toString) {
+          throw new IllegalStateException(
+            "cannot run sbt from root directory without -Dsbt.rootdir=true; see sbt/sbt#1458"
+          )
+        }
+      }
+    }
 
   private def WriteSbtVersion = "writeSbtVersion"
 
   private def writeSbtVersion: Command =
     Command.command(WriteSbtVersion) { state =>
-      writeSbtVersion(state); state
+      checkRoot(state)
+      writeSbtVersion(state)
+      state
     }
 
   private def intendsToInvokeCompile(state: State) =
