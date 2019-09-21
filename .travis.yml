@@ -4,10 +4,6 @@ jdk: openjdk8
 git:
   depth: false # https://stackoverflow.com/a/51727114/3714539
 before_install:
-  - mkdir .bin
-  - curl -Lo .bin/sbt https://raw.githubusercontent.com/coursier/sbt-extras/79b6cd6e0869ea04c4ba3c1e9666ae61401244ff/sbt
-  - chmod +x .bin/sbt
-  - export PATH="$(pwd)/.bin:$PATH"
   - export TRAVIS_SCALA_VERSION=2.12.8
 script: scripts/travis.sh
 stages:
@@ -23,7 +19,7 @@ jobs:
     - env: LM_COURSIER=1 TEST_GROUP=1
     - env: LM_COURSIER=1 TEST_GROUP=2
     - stage: release
-      script: sbt ci-release
+      script: ./sbt ci-release
 branches:
   only:
   - master

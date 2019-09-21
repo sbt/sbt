@@ -23,7 +23,7 @@ runLmCoursierTests() {
   fi
 
   # publishing locally to ensure shading runs fine
-  ./metadata/scripts/with-test-repo.sh sbt \
+  ./metadata/scripts/with-test-repo.sh ./sbt \
     ++$TRAVIS_SCALA_VERSION! \
     mimaReportBinaryIssues \
     lm-coursier-shaded/publishLocal \
@@ -40,19 +40,19 @@ runSbtCoursierTests() {
     SCRIPTED_EXTRA=""
   fi
 
-  ./metadata/scripts/with-test-repo.sh sbt \
+  ./metadata/scripts/with-test-repo.sh ./sbt \
     ++$TRAVIS_SCALA_VERSION \
     sbt-coursier-shared/test \
     "sbt-coursier/scripted shared-$TEST_GROUP/* $SCRIPTED_EXTRA"
 }
 
 runSbtShadingTests() {
-  sbt ++$TRAVIS_SCALA_VERSION sbt-shading/scripted
+  ./sbt ++$TRAVIS_SCALA_VERSION sbt-shading/scripted
 }
 
 runSbtPgpCoursierTests() {
   addPgpKeys
-  sbt ++$TRAVIS_SCALA_VERSION sbt-pgp-coursier/compile
+  ./sbt ++$TRAVIS_SCALA_VERSION sbt-pgp-coursier/compile
   # disable for now, sbt ++$TRAVIS_SCALA_VERSION sbt-pgp-coursier/scripted
   # fails with "unknown signature key algorithm: 22"
   # and "No signatures found"
