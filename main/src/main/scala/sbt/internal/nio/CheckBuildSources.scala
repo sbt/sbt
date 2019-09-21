@@ -67,14 +67,14 @@ private[sbt] object CheckBuildSources {
       @tailrec
       def projectGlobs(projectDir: File, globs: Seq[Glob]): Seq[Glob] = {
         val glob = projectDir.toGlob
-        val base = Seq(
+        val updatedGlobs = globs ++ Seq(
           glob / "*.{sbt,scala,java}",
           // We only want to recursively look in source because otherwise we have to search
           // the project target directories which is expensive.
           glob / "src" / ** / "*.{scala,java}"
         )
         val nextLevel = projectDir / "project"
-        if (nextLevel.exists) projectGlobs(nextLevel, base) else base
+        if (nextLevel.exists) projectGlobs(nextLevel, updatedGlobs) else updatedGlobs
       }
       projectGlobs(projectDir, baseDir.toGlob / "*.sbt" :: Nil)
     } else Nil
