@@ -18,12 +18,5 @@ lazy val root = (project in file("."))
       val ys = IO.readLines(file("err.txt")).toVector.distinct
 
       assert(ys.isEmpty, s"there's an stderr: $ys")
-    },
-
-    check2 := {
-      val xs = IO.readLines(file("output.txt")).toVector
-      println(xs)
-      val ys = IO.readLines(file("err.txt")).toVector.distinct
-      assert(!ys.exists(_.contains("Ignoring option MaxPermSize; support was removed in 8.0")), s"there's an stderr: $ys")
     }
   )

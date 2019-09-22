@@ -15,7 +15,7 @@ unzip -qo ../target/universal/sbt.zip -d ./freshly-baked
 
 ./freshly-baked/sbt/bin/sbt -Dsbt.no.format=true about
 ./freshly-baked/sbt/bin/sbt -Dsbt.no.format=true about 1> output.txt 2> err.txt
-./freshly-baked/sbt/bin/sbt check2
+./freshly-baked/sbt/bin/sbt check
 
 ./freshly-baked/sbt/bin/sbt about run -v
 

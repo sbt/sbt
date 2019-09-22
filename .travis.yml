@@ -7,10 +7,12 @@ scala: 2.10.7
 
 env:
   global:
-    - SBT_VER=1.3.0-M4
+    - SBT_VER=1.3.0
     - TRAVIS_JDK=adopt@1.8.212-04
     - JABBA_HOME=$HOME/.jabba
     - TRAVIS_JDK11=openjdk@1.11.0
+    ## ignore Travis CI's default /etc/sbt/sbtopts
+    - SBT_ETC_FILE=$HOME/etc/sbt/sbtopts
 
 matrix:
   include:
@@ -41,6 +43,7 @@ matrix:
       install:
         - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK/Contents/Home" && export PATH="$JAVA_HOME/bin:$PATH"
         - java -Xmx32m -version
+        - unset SBT_OPTS
       script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
         - cd citest && ./test.sh
@@ -72,6 +75,7 @@ before_install:
 install:
   - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH"
   - java -Xmx32m -version
+  - unset SBT_OPTS
 
 cache:
   directories:
