@@ -3,65 +3,62 @@
 .\"
 .TH SBT 1 "NOVEMBER 2011" Linux "User Manuals"
 .SH NAME
-sbt \- Simple Build Tool
+sbt \- An interactive build tool for Scala, Java, and more.
 .SH SYNOPSIS
-.B sbt [-h] [-sbt-version
-.I sbt-version
-.B ]
+.B sbt [-h]
 .I <commands>
 .B ...
 .SH DESCRIPTION
-.B sbt
-Runs the Simple Build Tool using the currently installed
-.BR java (1)
+SBT is a build tool for Scala, Java, and more. It requires Java 1.8 or later.
 The current directory is assumed to be the project.
 .SH OPTIONS
-.IP "-h, -help"
+.IP "-h, --help"
 Show help options.
-.IP "-v, -verbose"
+.IP "-v, --verbose"
 turn up the noise
-.IP "-V, -version"
+.IP "-V, --version"
 print the version of mothership sbt
-.IP "-d, -debug"
+.IP "-d, --debug"
 set sbt log level to debug
-.IP -no-colors
+.IP --no-colors
 disable ANSI color codes
-.IP -sbt-create
+.IP "--color=auto|always|true|false|never"
+enable or disable ANSI color codes      (sbt 1.3 and above)
+.IP  "--supershell=auto|always|true|false|never"
+enable or disable supershell            (sbt 1.3 and above)
+.IP --traces
+generate Trace Event report on shutdown (sbt 1.3 and above)
+.IP --timings
+display task timings report on shutdown
+.IP --sbt-create
 start sbt even if current directory contains no sbt project
-.IP "-sbt-dir <path>"
+.IP "--sbt-dir <path>"
 path to global settings/plugins directory (default: ~/.sbt)
-.IP "-sbt-boot <path>"
+.IP "--sbt-boot <path>"
 path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
-.IP "-ivy <path>"
+.IP "--ivy <path>"
 path to local Ivy repository (default: ~/.ivy2)
-.IP "-mem <integer>"
-set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
-.IP "-no-share"
+.IP "--mem <integer>"
+set memory options (default: 1024)
+.IP "--no-share"
 use all local caches; no sharing
-.IP "-no-global"
+.IP "--no-global"
 uses global caches, but does not use global ~/.sbt directory.
-.IP "-jvm-debug <port>"
+.IP "--jvm-debug <port>"
 Turn on JVM debugging, open at the given port.
-.IP -batch
+.IP --batch
 Disable interactive mode
-.IP -offline
-put sbt in offline mode
 .SH SBT Version Options
-.IP "-sbt-version <sbt-version>"
+.IP "--sbt-version <version>"
 Use the alternate system wide
-.I sbt-version
-The Simple Build Tool version to use.  This script will
-download necessary versions using the
-.BR curl (1)
-tool.
-.IP "-sbt-jar <path>"
+.IP "--sbt-jar <path>"
 use the specified jar as the sbt launcher
-.IP "-sbt-rc"
+.IP "--sbt-rc"
 use an RC version of sbt
-.IP -sbt-snapshot
+.IP --sbt-snapshot
 use a snapshot version of sbt
 .SH Java Options
-.IP "-java-home <path>"
+.IP "--java-home <path>"
 alternate JAVA_HOME
 .IP "-Dkey=val"
 pass -Dkey=val directly to the java runtime
@@ -72,7 +69,7 @@ add -X to sbt's scalacOptions (-S is stripped)
 .SH FILES
 .I ~/.sbt
 .RS
-The user configuration file.
+The user configuration directory.
 .RE
 .I ".jvmopts"
 .RS
@@ -91,10 +88,11 @@ if this file exists, it is prepended to the runner args
 .IP JAVA_OPTS
 If non-null a set of arguments passed to java.
 .IP SBT_OPTS
-environment variable, if unset uses "$default_sbt_opts".
+environment variable, if unset uses "-Dfile.encoding=UTF-8".
+.SH NOTES
+In the case of duplicated or conflicting options, the order above
+shows precedence: JAVA_OPTS lowest, command line options highest.
 .SH EXAMPLES
 Most users of this script will only have to call "sbt" on the command line.
-.SH AUTHOR
-Paul Phillips <paulp@typesafe.com>
-
-
+.SH BUGS
+https://github.com/sbt/sbt/issues
