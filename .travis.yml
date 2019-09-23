@@ -27,7 +27,7 @@ matrix:
         - unzip /tmp/sbt.zip -d $HOME/sbt
         - export PATH="$HOME/sbt/sbt/bin:$PATH"
       script:
-        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
+        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - cd citest
         - "./test.bat"
         - "test3/test3.bat"

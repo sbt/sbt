@@ -1,4 +1,10 @@
 lazy val check = taskKey[Unit]("")
+lazy val checkNumericVersion = taskKey[Unit]("")
+lazy val checkScriptVersion = taskKey[Unit]("")
+lazy val checkVersion = taskKey[Unit]("")
+
+// 1.3.0, 1.3.0-M4
+lazy val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
 
 lazy val root = (project in file("."))
   .settings(
@@ -20,5 +26,27 @@ lazy val root = (project in file("."))
 
       assert(ys.size == 1, s"ys has more than one item: $ys")
       assert(ys(0) startsWith "Java HotSpot(TM) 64-Bit Server VM warning")
+    },
+    checkNumericVersion = {
+      val xs = IO.readLines(file("numericVersion.txt")).toVector
+      val expectedVersion = "^"+versionRegEx+"$"
+
+      assert(xs(0).matches(expectedVersion))
+    },
+    checkScriptVersion = {
+      val xs = IO.readLines(file("scriptVersion.txt")).toVector
+      val expectedVersion = "^"+versionRegEx+"$"
+
+      assert(xs(0).matches(expectedVersion))
+    },
+    checkVersion = {
+      val out = IO.readLines(file("version.txt")).toVector.mkString("\n")
+
+      val expectedVersion =
+        s"""|(?m)^sbt version in this project: $versionRegEx
+           |sbt script version: $versionRegEx$$
+           |""".stripMargin.trim.replace("\n", "\\n")
+
+      assert(out.matches(expectedVersion))
     }
   )
