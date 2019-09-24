@@ -179,10 +179,18 @@ object MainLoop {
     val channelName = exec.source map (_.channelName)
     StandardMain.exchange publishEventMessage
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
-
     try {
       def process(): State = {
-        val newState = Command.process(exec.commandLine, state)
+        val progressState = state.get(sbt.Keys.currentTaskProgress) match {
+          case Some(_) => state
+          case _ =>
+            if (state.get(Keys.stateBuildStructure).isDefined) {
+              val extracted = Project.extract(state)
+              val progress = EvaluateTask.executeProgress(extracted, extracted.structure, state)
+              state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
+            } else state
+        }
+        val newState = Command.process(exec.commandLine, progressState)
         if (exec.commandLine.contains("session"))
           newState.get(hasCheckedMetaBuild).foreach(_.set(false))
         val doneEvent = ExecStatusEvent(
@@ -198,7 +206,8 @@ object MainLoop {
         } else { // send back a notification
           StandardMain.exchange publishEventMessage doneEvent
         }
-        newState
+        newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
+        newState.remove(sbt.Keys.currentTaskProgress)
       }
       // The split on space is to handle 'reboot full' and 'reboot'.
       state.currentCommand.flatMap(_.commandLine.trim.split(" ").headOption) match {

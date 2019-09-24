@@ -224,29 +224,33 @@ object EvaluateTask {
       structure: BuildStructure,
       state: State
   ): ExecuteProgress[Task] = {
-    val maker: Seq[Keys.TaskProgress] = getSetting(
-      Keys.progressReports,
-      Seq(),
-      extracted,
-      structure
-    )
-    val progressReporter = extracted.get(progressState in ThisBuild).map { ps =>
-      ps.reset()
-      ConsoleAppender.setShowProgress(true)
-      val appender = MainAppender.defaultScreen(StandardMain.console)
-      appender match {
-        case c: ConsoleAppender => c.setProgressState(ps)
-        case _                  =>
+    state.get(currentTaskProgress).map(_.progress).getOrElse {
+      val maker: Seq[Keys.TaskProgress] = getSetting(
+        Keys.progressReports,
+        Seq(),
+        extracted,
+        structure
+      )
+      val progressReporter = extracted.getOpt(progressState in ThisBuild).flatMap {
+        case Some(ps) =>
+          ps.reset()
+          ConsoleAppender.setShowProgress(true)
+          val appender = MainAppender.defaultScreen(StandardMain.console)
+          appender match {
+            case c: ConsoleAppender => c.setProgressState(ps)
+            case _                  =>
+          }
+          val log = LogManager.progressLogger(appender)
+          Some(new TaskProgress(log))
+        case _ => None
       }
-      val log = LogManager.progressLogger(appender)
-      new TaskProgress(log)
-    }
-    val reporters = maker.map(_.progress) ++ progressReporter ++
-      (if (SysProp.taskTimings) new TaskTimings(reportOnShutdown = false) :: Nil else Nil)
-    reporters match {
-      case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
-      case xs if xs.size == 1 => xs.head
-      case xs                 => ExecuteProgress.aggregate[Task](xs)
+      val reporters = maker.map(_.progress) ++ progressReporter ++
+        (if (SysProp.taskTimings) new TaskTimings(reportOnShutdown = false) :: Nil else Nil)
+      reporters match {
+        case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
+        case xs if xs.size == 1 => xs.head
+        case xs                 => ExecuteProgress.aggregate[Task](xs)
+      }
     }
   }
   // TODO - Should this pull from Global or from the project itself?
