@@ -176,10 +176,18 @@ val root = (project in file(".")).
       val BinBat = BinSbt + ".bat"
       prev.toList map {
         case (k, BinSbt) =>
+          import java.nio.file.{Files, FileSystems}
+          
           val x = IO.read(k)
           IO.write(t / "sbt", x.replaceAllLiterally(
             "declare init_sbt_version=_to_be_replaced",
             s"""declare init_sbt_version=$sbtVersionToRelease"""))
+
+          if (FileSystems.getDefault.supportedFileAttributeViews.contains("posix")) {
+            val perms = Files.getPosixFilePermissions(k.toPath)
+            Files.setPosixFilePermissions(t / "sbt" toPath, perms)
+          }
+
           (t / "sbt", BinSbt)
         case (k, BinBat) =>
           val x = IO.read(k)
