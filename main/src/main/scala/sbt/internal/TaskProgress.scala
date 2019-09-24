@@ -73,7 +73,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
   private[this] val skipReportTasks =
     Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject", "consoleQuick", "state")
   private[this] def report(): Unit = {
-    val currentTasks = activeTasks.toVector
+    val currentTasks = activeTasks.toVector.filterNot(Def.isDummy)
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
     def report0(): Unit = {
