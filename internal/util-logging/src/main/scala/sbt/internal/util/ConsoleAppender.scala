@@ -346,9 +346,11 @@ class ConsoleAppender private[ConsoleAppender] (
       out.println(s"$DeleteLine$l")
       if (progress.length > 0) {
         val pad = if (padding.get > 0) padding.decrementAndGet() else 0
+        val width = ConsoleAppender.terminalWidth
+        val len: Int = progress.foldLeft(progress.length)(_ + terminalLines(width)(_))
         deleteConsoleLines(blankZone + pad)
         progress.foreach(out.println)
-        out.print(cursorUp(blankZone + progress.length + padding.get))
+        out.print(cursorUp(blankZone + len + padding.get))
       }
     }
     out.flush()
@@ -370,18 +372,25 @@ class ConsoleAppender private[ConsoleAppender] (
       s"$DeleteLine  | => ${item.name} ${elapsed}s"
     }
 
+    val width = ConsoleAppender.terminalWidth
+    val extra: Int = info.foldLeft(0)(_ + terminalLines(width)(_))
     val previousLines = progressLines.getAndSet(info)
+    val prevExtra = previousLines.foldLeft(0)(_ + terminalLines(width)(_))
+
     val prevPadding = padding.get
-    val newPadding = math.max(0, previousLines.length + prevPadding - info.length)
+    val newPadding =
+      math.max(0, previousLines.length + prevExtra + prevPadding - info.length - extra)
     padding.set(newPadding)
 
     deleteConsoleLines(newPadding)
     deleteConsoleLines(blankZone)
     info.foreach(i => out.println(i))
 
-    out.print(cursorUp(blankZone + info.length + newPadding))
+    out.print(cursorUp(blankZone + info.length + newPadding + extra))
     out.flush()
   }
+  private def terminalLines(width: Int): String => Int =
+    (progressLine: String) => (progressLine.length - 1) / width
   private def deleteConsoleLines(n: Int): Unit = {
     (1 to n) foreach { _ =>
       out.println(DeleteLine)
