@@ -389,7 +389,7 @@ class ConsoleAppender private[ConsoleAppender] (
     out.flush()
   }
   private def terminalLines(width: Int): String => Int =
-    (progressLine: String) => (progressLine.length - 1) / width
+    (progressLine: String) => if (width > 0) (progressLine.length - 1) / width else 0
   private def deleteConsoleLines(n: Int): Unit = {
     (1 to n) foreach { _ =>
       out.println(DeleteLine)
