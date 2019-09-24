@@ -482,6 +482,7 @@ object Keys {
   object TaskProgress {
     def apply(progress: ExecuteProgress[Task]): TaskProgress = new TaskProgress(progress)
   }
+  private[sbt] val currentTaskProgress = AttributeKey[TaskProgress]("current-task-progress")
   val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
   val turbo = settingKey[Boolean]("Enables (true) or disables optional performance features.")
   // This key can be used to add custom ExecuteProgress instances
