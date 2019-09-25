@@ -64,6 +64,7 @@ set INIT_SBT_VERSION=_TO_BE_REPLACED
 :args_loop
 if "%~1" == "" goto args_end
 
+set g=%1
 if "%~1" == "-jvm-debug" set JVM_DEBUG=true
 if "%~1" == "--jvm-debug" set JVM_DEBUG=true
 
@@ -80,6 +81,19 @@ if "%JVM_DEBUG%" == "true" (
 ) else if /I "%~1" == "new" (
   set sbt_new=true
   set SBT_ARGS=!SBT_ARGS! %1
+) else if /I "%g:~0,2%" == "-D" (
+  rem special handling for -D since '=' gets parsed away
+  if x%g:^==% == x%g% (
+    if not "%~2" == "" (
+      set SBT_ARGS=!SBT_ARGS! "%~1=%~2"
+      shift
+    ) else (
+      echo "%~1" is missing a value
+      goto error
+    )
+  ) else (
+    set SBT_ARGS=!SBT_ARGS! %1
+  )
 ) else (
   set SBT_ARGS=!SBT_ARGS! %1
 )
