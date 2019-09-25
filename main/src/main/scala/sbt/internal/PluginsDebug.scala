@@ -418,7 +418,7 @@ private[sbt] object PluginsDebug {
     def allSettings(p: AutoPlugin): Seq[Setting[_]] =
       p.projectSettings ++ p.buildSettings ++ p.globalSettings
     val empty = Relation.empty[AutoPlugin, AttributeKey[_]]
-    (empty /: available)((r, p) => r + (p, extractDefinedKeys(allSettings(p))))
+    available.foldLeft(empty)((r, p) => r + (p, extractDefinedKeys(allSettings(p))))
   }
 
   private[this] def excludedError(transitive: Boolean, dependencies: List[AutoPlugin]): String =

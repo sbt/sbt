@@ -12,7 +12,6 @@ import java.io.PrintWriter
 import Def.ScopedKey
 import Scope.GlobalScope
 import Keys.{ logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, traceLevel }
-import scala.Console.{ BLUE, RESET }
 import sbt.internal.util.{
   AttributeKey,
   ConsoleAppender,
@@ -141,7 +140,12 @@ object LogManager {
     val screenTrace = getOr(traceLevel.key, data, scope, state, defaultTraceLevel(state))
     val backingTrace = getOr(persistTraceLevel.key, data, scope, state, Int.MaxValue)
     val extraBacked = state.globalLogging.backed :: relay :: Nil
+    val ps = Project.extract(state).get(sbt.Keys.progressState in ThisBuild)
     val consoleOpt = consoleLocally(state, console)
+    consoleOpt foreach {
+      case a: ConsoleAppender => ps.foreach(a.setProgressState)
+      case _                  =>
+    }
     val config = MainAppender.MainAppenderConfig(
       consoleOpt,
       backed,
@@ -177,9 +181,14 @@ object LogManager {
     val display = Project.showContextKey(state)
     def commandBase = "last " + display.show(unwrapStreamsKey(key))
     def command(useFormat: Boolean) =
-      if (useFormat) BLUE + commandBase + RESET else s"'$commandBase'"
-    context =>
-      Some("Stack trace suppressed: run %s for the full output.".format(command(context.useFormat)))
+      if (useFormat) s"${scala.Console.MAGENTA}$commandBase${scala.Console.RESET}"
+      else s"'$commandBase'"
+
+    { context =>
+      Some(
+        s"stack trace is suppressed; run ${command(context.useFormat)} for the full output"
+      )
+    }
   }
 
   def unwrapStreamsKey(key: ScopedKey[_]): ScopedKey[_] = key.scope.task match {

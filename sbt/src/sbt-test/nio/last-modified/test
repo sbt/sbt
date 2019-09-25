@@ -1,8 +1,10 @@
--> fileInputTask
+> fileInputTask
 
 $ touch base/Bar.md
 
-# this should succeed even though the contents didn't change
+# The change to Bar.md should be detected since we set last modified instead of hash
+> setExpected Bar.md
+
 > fileInputTask
 
 $ copy-file changes/Bar.md base/Bar.md
@@ -18,9 +20,13 @@ $ copy-file changes/Bar2.md base/Bar.md
 
 > setLastModified
 
-# this should fail even though we changed the file with a copy
--> fileInputTask
+# Since we reverted to the previous last modified time, there should be no changes
+> setExpected
+
+> fileInputTask
 
 $ touch base/Bar.md
+
+> setExpected Bar.md
 
 > fileInputTask

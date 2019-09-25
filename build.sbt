@@ -5,13 +5,15 @@ import com.typesafe.tools.mima.core._, ProblemFilters._
 import local.Scripted
 import scala.xml.{ Node => XmlNode, NodeSeq => XmlNodeSeq, _ }
 import scala.xml.transform.{ RewriteRule, RuleTransformer }
+import scala.util.Try
 
 ThisBuild / version := {
-  val v = "1.3.0-SNAPSHOT"
+  val v = "1.4.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
+ThisBuild / turbo := true
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -119,7 +121,7 @@ def sbt10Plus =
     "1.2.7",
     "1.2.8",
   ) ++ sbt13Plus
-def sbt13Plus = Seq() // Add sbt 1.3+ stable versions when released
+def sbt13Plus = Seq("1.3.0")
 
 def mimaSettings = mimaSettingsSince(sbt10Plus)
 def mimaSettingsSince(versions: Seq[String]) = Def settings (
@@ -402,7 +404,9 @@ lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
       val extDepsCp = (externalDependencyClasspath in Compile in LocalProject("sbtProj")).value
       val cpStrings = (mainClassDir +: testClassDir +: classDirs) ++ extDepsCp.files map (_.toString)
       val file = (resourceManaged in Compile).value / "RunFromSource.classpath"
-      IO.writeLines(file, cpStrings)
+      if (!file.exists || Try(IO.readLines(file)).getOrElse(Nil).toSet != cpStrings.toSet) {
+        IO.writeLines(file, cpStrings)
+      }
       List(file)
     },
     mimaSettings,
@@ -564,7 +568,7 @@ lazy val commandProj = (project in file("main-command"))
   )
 
 // The core macro project defines the main logic of the DSL, abstracted
-// away from several sbt implementators (tasks, settings, et cetera).
+// away from several sbt implementors (tasks, settings, et cetera).
 lazy val coreMacrosProj = (project in file("core-macros"))
   .dependsOn(collectionProj)
   .settings(
@@ -662,19 +666,20 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     testOptions in Test += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
-    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat, // Delete this after 1.3.0-RC2.
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       // internal
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.LanguageServerReporter.*"),
+
       // Changed signature or removed private[sbt] methods
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
       exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
       exclude[DirectMissingMethodProblem]("sbt.Plugins.topologicalSort"),
       exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
-      exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook")
+      exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook"),
+      exclude[MissingClassProblem]("sbt.internal.ResourceLoaderImpl"),
     )
   )
   .configure(

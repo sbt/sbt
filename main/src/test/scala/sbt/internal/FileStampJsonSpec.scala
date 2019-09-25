@@ -11,7 +11,8 @@ import java.nio.file.{ Path, Paths }
 
 import org.scalatest.FlatSpec
 import sbt.nio.FileStamp
-import sbt.nio.FileStamp._
+import sbt.nio.FileStamp.Formats
+import sjsonnew.JsonFormat
 import sjsonnew.support.scalajson.unsafe.Converter
 
 class FileStampJsonSpec extends FlatSpec {
@@ -20,8 +21,10 @@ class FileStampJsonSpec extends FlatSpec {
       Paths.get("foo") -> FileStamp.hash("bar"),
       Paths.get("bar") -> FileStamp.hash("buzz")
     )
-    val json = Converter.toJsonUnsafe(hashes)(fileHashJsonFormatter)
-    val deserialized = Converter.fromJsonUnsafe(json)(fileHashJsonFormatter)
+    implicit val formatter: JsonFormat[Seq[(Path, FileStamp.Hash)]] =
+      Formats.seqPathHashJsonFormatter
+    val json = Converter.toJsonUnsafe(hashes)
+    val deserialized = Converter.fromJsonUnsafe(json)
     assert(hashes == deserialized)
   }
   "file last modified times" should "be serializable" in {
@@ -29,8 +32,10 @@ class FileStampJsonSpec extends FlatSpec {
       Paths.get("foo") -> FileStamp.LastModified(1234),
       Paths.get("bar") -> FileStamp.LastModified(5678)
     )
-    val json = Converter.toJsonUnsafe(lastModifiedTimes)(fileLastModifiedJsonFormatter)
-    val deserialized = Converter.fromJsonUnsafe(json)(fileLastModifiedJsonFormatter)
+    implicit val formatter: JsonFormat[Seq[(Path, FileStamp.LastModified)]] =
+      Formats.seqPathLastModifiedJsonFormatter
+    val json = Converter.toJsonUnsafe(lastModifiedTimes)
+    val deserialized = Converter.fromJsonUnsafe(json)
     assert(lastModifiedTimes == deserialized)
   }
   "both" should "be serializable" in {
@@ -43,8 +48,9 @@ class FileStampJsonSpec extends FlatSpec {
       Paths.get("bar") -> FileStamp.LastModified(5678)
     )
     val both: Seq[(Path, FileStamp)] = hashes ++ lastModifiedTimes
-    val json = Converter.toJsonUnsafe(both)(fileStampJsonFormatter)
-    val deserialized = Converter.fromJsonUnsafe(json)(fileStampJsonFormatter)
+    import Formats.seqPathFileStampJsonFormatter
+    val json = Converter.toJsonUnsafe(both)
+    val deserialized = Converter.fromJsonUnsafe(json)
     assert(both == deserialized)
   }
 }

@@ -12,7 +12,7 @@ env:
   matrix:
     - SBT_CMD=";mimaReportBinaryIssues ;scalafmtCheckAll ;headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests; doc"
     - SBT_CMD="scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
-    - SBT_CMD="scripted dependency-management/* plugins/* project-load/* java/* run/*"
+    - SBT_CMD="scripted dependency-management/* plugins/* project-load/* java/* run/* nio/*"
     - SBT_CMD="repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
 
 matrix:
@@ -36,11 +36,13 @@ script:
   - sbt -Dsbt.ci=true -J-XX:ReservedCodeCacheSize=128m -J-Xmx800M -J-Xms800M -J-server "$SBT_CMD"
 
 before_cache:
-  - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
-  - find $HOME/.sbt  -name "*.lock"               -delete
+  - find $HOME/.cache/coursier/v1 -name "ivydata-*.properties" -delete
+  - find $HOME/.ivy2              -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt               -name "*.lock"               -delete
 
 cache:
   directories:
+    - $HOME/.cache/coursier/v1
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot
     - $HOME/.jabba

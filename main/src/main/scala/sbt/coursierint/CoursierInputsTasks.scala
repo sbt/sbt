@@ -13,16 +13,18 @@ import sbt.librarymanagement._
 import sbt.util.Logger
 import sbt.Keys._
 import lmcoursier.definitions.{
-  Attributes => CAttributes,
   Classifier => CClassifier,
   Configuration => CConfiguration,
   Dependency => CDependency,
+  Extension => CExtension,
   Info => CInfo,
   Module => CModule,
   ModuleName => CModuleName,
   Organization => COrganization,
   Project => CProject,
-  Type => CType
+  Publication => CPublication,
+  Type => CType,
+  Strict => CStrict,
 }
 import lmcoursier.credentials.DirectCredentials
 import lmcoursier.{ FallbackDependency, FromSbt, Inputs }
@@ -108,80 +110,82 @@ object CoursierInputsTasks {
     val configurations = desc.getModuleConfigurations.toVector
       .flatMap(Inputs.ivyXmlMappings)
 
-    def dependency(conf: CConfiguration, attr: CAttributes) = CDependency(
+    def dependency(conf: CConfiguration, pub: CPublication) = CDependency(
       module,
       id.getRevision,
       conf,
       exclusions,
-      attr,
+      pub,
       optional = false,
       desc.isTransitive
     )
 
-    val attributes: CConfiguration => CAttributes = {
+    val publications: CConfiguration => CPublication = {
 
       val artifacts = desc.getAllDependencyArtifacts
 
       val m = artifacts.toVector.flatMap { art =>
-        val attr = CAttributes(CType(art.getType), CClassifier(""))
+        val pub =
+          CPublication(art.getName, CType(art.getType), CExtension(art.getExt()), CClassifier(""))
         art.getConfigurations.map(CConfiguration(_)).toVector.map { conf =>
-          conf -> attr
+          conf -> pub
         }
       }.toMap
 
-      c => m.getOrElse(c, CAttributes(CType(""), CClassifier("")))
+      c => m.getOrElse(c, CPublication("", CType(""), CExtension(""), CClassifier("")))
     }
 
     configurations.map {
       case (from, to) =>
-        from -> dependency(to, attributes(to))
+        from -> dependency(to, publications(to))
     }
   }
 
   private[sbt] def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[CProject]]] =
     Def.taskDyn {
-
       val state = sbt.Keys.state.value
       val projectRef = sbt.Keys.thisProjectRef.value
-
       val projectRefs = Project.transitiveInterDependencies(state, projectRef)
-
       Def.task {
-        val projects = csrProject.all(ScopeFilter(inProjects(projectRefs: _*))).value
-        val projectModules = projects.map(_.module).toSet
-
-        // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
-        val extraProjects = sbt.Keys.projectDescriptors.value
-          .map {
-            case (k, v) =>
-              moduleFromIvy(k) -> v
-          }
-          .filter {
-            case (module, _) =>
-              !projectModules(module)
-          }
-          .toVector
-          .map {
-            case (module, v) =>
-              val configurations = v.getConfigurations.map { c =>
-                CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
-              }.toMap
-              val deps = v.getDependencies.flatMap(dependencyFromIvy)
-              CProject(
-                module,
-                v.getModuleRevisionId.getRevision,
-                deps,
-                configurations,
-                Nil,
-                None,
-                Nil,
-                CInfo("", "", Nil, Nil, None)
-              )
-          }
-
-        projects ++ extraProjects
+        csrProject.all(ScopeFilter(inProjects(projectRefs :+ projectRef: _*))).value
       }
     }
+
+  private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
+    Def.task {
+      val projects = csrInterProjectDependencies.value
+      val projectModules = projects.map(_.module).toSet
+
+      // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
+      sbt.Keys.projectDescriptors.value
+        .map {
+          case (k, v) =>
+            moduleFromIvy(k) -> v
+        }
+        .filter {
+          case (module, _) =>
+            !projectModules(module)
+        }
+        .toVector
+        .map {
+          case (module, v) =>
+            val configurations = v.getConfigurations.map { c =>
+              CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
+            }.toMap
+            val deps = v.getDependencies.flatMap(dependencyFromIvy)
+            CProject(
+              module,
+              v.getModuleRevisionId.getRevision,
+              deps,
+              configurations,
+              Nil,
+              None,
+              Nil,
+              CInfo("", "", Nil, Nil, None)
+            )
+        }
+    }
+  }
 
   private[sbt] def coursierFallbackDependenciesTask
       : Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
@@ -204,7 +208,7 @@ object CoursierInputsTasks {
 
   val credentialsTask = Def.task {
     val log = streams.value.log
-    val creds = sbt.Keys.credentials.value
+    val creds = sbt.Keys.allCredentials.value
       .flatMap {
         case dc: IvyDirectCredentials => List(dc)
         case fc: FileCredentials =>
@@ -225,5 +229,22 @@ object CoursierInputsTasks {
           .withMatchHost(true)
       }
     creds ++ csrExtraCredentials.value
+  }
+
+  val strictTask = Def.task {
+    val cm = conflictManager.value
+    val log = streams.value.log
+
+    cm.name match {
+      case ConflictManager.latestRevision.name =>
+        None
+      case ConflictManager.strict.name =>
+        val strict = CStrict()
+          .withInclude(Set((cm.organization, cm.module)))
+        Some(strict)
+      case other =>
+        log.warn(s"Unsupported conflict manager $other")
+        None
+    }
   }
 }

@@ -8,29 +8,15 @@
 package sbt
 package std
 
-import java.io.{
-  BufferedInputStream,
-  BufferedOutputStream,
-  BufferedReader,
-  BufferedWriter,
-  Closeable,
-  File,
-  FileInputStream,
-  FileOutputStream,
-  IOException,
-  InputStreamReader,
-  OutputStreamWriter,
-  PrintWriter
-}
+import java.io.{ File => _, _ }
+import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.io.DeferredWriter
+import sbt.internal.util.ManagedLogger
 import sbt.io.IO
 import sbt.io.syntax._
-
-import sbt.internal.util.ManagedLogger
-
+import sbt.util._
 import sjsonnew.{ IsoString, SupportConverter }
-import sbt.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, PlainInput, PlainOutput }
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
@@ -113,6 +99,7 @@ object Streams {
     try {
       c.close()
     } catch { case _: IOException => () }
+  private[this] val streamLocks = new ConcurrentHashMap[File, AnyRef]()
 
   def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key] {
     private[this] val streams = new collection.mutable.HashMap[Key, ManagedStreams[Key]]
@@ -137,6 +124,20 @@ object Streams {
       name: Key => String,
       mkLogger: (Key, PrintWriter) => ManagedLogger,
       converter: SupportConverter[J]
+  ): Streams[Key] =
+    apply(
+      taskDirectory,
+      name,
+      mkLogger,
+      converter,
+      (file, s: SupportConverter[J]) => new DirectoryStoreFactory[J](file, s)
+    )
+  private[sbt] def apply[Key, J: IsoString](
+      taskDirectory: Key => File,
+      name: Key => String,
+      mkLogger: (Key, PrintWriter) => ManagedLogger,
+      converter: SupportConverter[J],
+      mkFactory: (File, SupportConverter[J]) => CacheStoreFactory
   ): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
@@ -178,15 +179,25 @@ object Streams {
         dir
       }
 
-      lazy val cacheStoreFactory: CacheStoreFactory =
-        new DirectoryStoreFactory(cacheDirectory, converter)
+      lazy val cacheStoreFactory: CacheStoreFactory = mkFactory(cacheDirectory, converter)
 
       def log(sid: String): ManagedLogger = mkLogger(a, text(sid))
 
       def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
         checkOpen()
         val file = taskDirectory(a) / sid
-        IO.touch(file, false)
+        val parent = file.getParentFile
+        val newLock = new AnyRef
+        val lock = streamLocks.putIfAbsent(parent, newLock) match {
+          case null => newLock
+          case l    => l
+        }
+        try lock.synchronized {
+          if (!file.exists) IO.touch(file, setModified = false)
+        } finally {
+          streamLocks.remove(parent)
+          ()
+        }
         val t = f(file)
         opened ::= t
         t

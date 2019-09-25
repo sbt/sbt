@@ -68,7 +68,7 @@ object IvyConsole {
       unmanaged: Seq[File]
   )
   def parseDependencies(args: Seq[String], log: Logger): Dependencies =
-    (Dependencies(Nil, Nil, Nil) /: args)(parseArgument(log))
+    args.foldLeft(Dependencies(Nil, Nil, Nil))(parseArgument(log))
   def parseArgument(log: Logger)(acc: Dependencies, arg: String): Dependencies =
     arg match {
       case _ if arg contains " at " => acc.copy(resolvers = parseResolver(arg) +: acc.resolvers)

@@ -1,0 +1,17 @@
+> check
+
+$ copy-file changes/bad.md foo/foo.md
+
+$ copy-file changes/updated.md bar/bar.md
+
+-> check
+
+-> check
+
+$ copy-file changes/updated.md foo/foo.md
+
+> check
+
+# the changes should be empty now but the content of foo/foo.md is no longer "foo"
+-> check
+

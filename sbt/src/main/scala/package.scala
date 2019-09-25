@@ -9,6 +9,8 @@ import sbt.nio.FileStamp
 import sjsonnew.JsonFormat
 import java.nio.file.{ Path => NioPath }
 
+import sbt.internal.FileChangesMacro
+
 import scala.language.experimental.macros
 
 package object sbt
@@ -33,12 +35,17 @@ package object sbt
   implicit def fileToRichFile(file: File): sbt.io.RichFile = new sbt.io.RichFile(file)
   implicit def filesToFinder(cc: Traversable[File]): sbt.io.PathFinder =
     sbt.io.PathFinder.strict(cc)
+  /*
+   * Provides macro extension methods. Because the extension methods are all macros, no instance
+   * of FileChangesMacro.TaskOps is ever made which is why it is ok to use `???`.
+   */
+  implicit def taskToTaskOpts[T](t: TaskKey[T]): FileChangesMacro.TaskOps[T] = ???
   implicit val fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
-    FileStamp.fileStampJsonFormatter
-  implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.pathJsonFormatter
-  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.fileJsonFormatter
-  implicit val singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.pathJson
-  implicit val singleFileJsonFormatter: JsonFormat[File] = FileStamp.fileJson
+    FileStamp.Formats.seqPathFileStampJsonFormatter
+  implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.Formats.seqPathJsonFormatter
+  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.Formats.seqFileJsonFormatter
+  implicit val singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.Formats.pathJsonFormatter
+  implicit val singleFileJsonFormatter: JsonFormat[File] = FileStamp.Formats.fileJsonFormatter
   // others
 
   object CompileOrder {

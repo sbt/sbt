@@ -4,20 +4,20 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.8"
+  val scala212 = "2.12.10"
   lazy val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M11")
-  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M7")
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0")
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _             => nightlyVersion.getOrElse("1.3.0-M3")
+      case _             => nightlyVersion.getOrElse("1.3.0")
     }
-  val zincVersion = nightlyVersion.getOrElse("1.3.0-M7")
+  val zincVersion = nightlyVersion.getOrElse("1.3.0")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -32,7 +32,7 @@ object Dependencies {
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.1.0"
+  val launcherVersion = "1.1.3"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
@@ -112,7 +112,7 @@ object Dependencies {
   def addSbtZincCompileCore(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierVersion = "2.0.0-RC2-1"
+  val lmCoursierVersion = "2.0.0-RC3-4"
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
 
   val sjsonNewScalaJson = Def.setting {
@@ -120,7 +120,7 @@ object Dependencies {
   }
 
   val jline = "jline" % "jline" % "2.14.6"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.6-SNAP5"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"
   val junit = "junit" % "junit" % "4.11"

@@ -22,6 +22,7 @@ import sbt.io.IO
 import sbt.nio.FileStamp
 import sbt.nio.FileStamp.LastModified
 import sbt.nio.Keys._
+import sbt.util.Logger
 
 private[sbt] object ClassLoaders {
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
@@ -30,22 +31,27 @@ private[sbt] object ClassLoaders {
    */
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
-    val rawCP = modifiedTimes((outputFileStamps in classpathFiles).value)
+    val cp = fullClasspath.value.map(_.data)
+    val dependencyStamps = modifiedTimes((outputFileStamps in dependencyClasspathFiles).value).toMap
+    def getLm(f: File): Long = dependencyStamps.getOrElse(f, IO.getModifiedTimeOrZero(f))
+    val rawCP = cp.map(f => f -> getLm(f))
     val fullCP =
       if (si.isManagedVersion) rawCP
       else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
     val exclude = dependencyJars(exportedProducts).value.toSet ++ si.libraryJars
-    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
+    val logger = state.value.globalLogging.full
+    val allowZombies = allowZombieClassLoaders.value
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
       si = si,
       fullCP = fullCP,
-      resourceCP = resourceCP,
-      allDependencies = dependencyJars(dependencyClasspath).value.filterNot(exclude),
+      allDependenciesSet = dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
       cache = extendedClassLoaderCache.value,
       resources = ClasspathUtilities.createClasspathResources(fullCP.map(_._1), si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
-      scope = resolvedScoped.value.scope
+      scope = resolvedScoped.value.scope,
+      logger = logger,
+      allowZombies = allowZombies,
     )
   }
 
@@ -55,7 +61,6 @@ private[sbt] object ClassLoaders {
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
-    val resourceCP = modifiedTimes((outputFileStamps in resources).value)
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
       Def.task(new ForkRun(opts))
@@ -77,6 +82,8 @@ private[sbt] object ClassLoaders {
         }
         val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.libraryJars
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
+        val logger = state.value.globalLogging.full
+        val allowZombies = allowZombieClassLoaders.value
         val newLoader =
           (classpath: Seq[File]) => {
             val mappings = classpath.map(f => f.getName -> f).toMap
@@ -85,12 +92,13 @@ private[sbt] object ClassLoaders {
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
               fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
-              resourceCP = resourceCP,
-              allDependencies = transformedDependencies,
+              allDependenciesSet = transformedDependencies.toSet,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtilities.createClasspathResources(classpath, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
-              scope = resolvedScope
+              scope = resolvedScope,
+              logger = logger,
+              allowZombies = allowZombies,
             )
           }
         new Run(newLoader, trapExit.value)
@@ -118,16 +126,17 @@ private[sbt] object ClassLoaders {
       strategy: ClassLoaderLayeringStrategy,
       si: ScalaInstance,
       fullCP: Seq[(File, Long)],
-      resourceCP: Seq[(File, Long)],
-      allDependencies: Seq[File],
+      allDependenciesSet: Set[File],
       cache: ClassLoaderCache,
       resources: Map[String, String],
       tmp: File,
-      scope: Scope
+      scope: Scope,
+      logger: Logger,
+      allowZombies: Boolean
   ): ClassLoader = {
     val cpFiles = fullCP.map(_._1)
     strategy match {
-      case Flat => flatLoader(cpFiles, interfaceLoader)
+      case Flat => new FlatLoader(cpFiles, interfaceLoader, tmp, allowZombies, logger)
       case _ =>
         val layerDependencies = strategy match {
           case _: AllLibraryJars => true
@@ -142,6 +151,7 @@ private[sbt] object ClassLoaders {
         }
         val cpFiles = fullCP.map(_._1)
 
+        val allDependencies = cpFiles.filter(allDependenciesSet)
         val scalaReflectJar = allDependencies.collectFirst {
           case f if f.getName == "scala-reflect.jar" =>
             si.allJars.find(_.getName == "scala-reflect.jar")
@@ -156,35 +166,35 @@ private[sbt] object ClassLoaders {
           }
           .getOrElse(scalaLibraryLayer)
 
-        // layer 2 (resources)
-        val resourceLayer =
-          if (layerDependencies)
-            getResourceLayer(cpFiles, resourceCP, scalaReflectLayer, cache, resources)
-          else scalaReflectLayer
-
-        // layer 3 (optional if in the test config and the runtime layer is not shared)
-        val dependencyLayer =
+        // layer 2 (optional if in the test config and the runtime layer is not shared)
+        val dependencyLayer: ClassLoader =
           if (layerDependencies && allDependencies.nonEmpty) {
             cache(
               allDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
-              resourceLayer,
-              () => new ReverseLookupClassLoaderHolder(allDependencies, resourceLayer)
+              scalaReflectLayer,
+              () =>
+                new ReverseLookupClassLoaderHolder(
+                  allDependencies,
+                  scalaReflectLayer,
+                  allowZombies,
+                  logger
+                )
             )
-          } else resourceLayer
+          } else scalaReflectLayer
 
         val scalaJarNames = (si.libraryJars ++ scalaReflectJar).map(_.getName).toSet
-        // layer 4
+        // layer 3
         val filteredSet =
           if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
           else Set(si.libraryJars ++ scalaReflectJar: _*)
         val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
         dependencyLayer match {
           case dl: ReverseLookupClassLoaderHolder =>
-            dl.checkout(dynamicClasspath, tmp)
+            dl.checkout(cpFiles, tmp)
           case cl =>
             cl.getParent match {
-              case dl: ReverseLookupClassLoaderHolder => dl.checkout(dynamicClasspath, tmp)
-              case _                                  => new LayeredClassLoader(dynamicClasspath, cl, tmp)
+              case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
+              case _                                  => new LayeredClassLoader(dynamicClasspath, cl, tmp, allowZombies, logger)
             }
         }
     }
@@ -194,27 +204,6 @@ private[sbt] object ClassLoaders {
       key: sbt.TaskKey[Seq[Attributed[File]]]
   ): Def.Initialize[Task[Seq[File]]] = Def.task(data(key.value).filter(_.getName.endsWith(".jar")))
 
-  // Creates a one or two layered classloader for the provided classpaths depending on whether
-  // or not the classpath contains any snapshots. If it does, the snapshots are placed in a layer
-  // above the regular jar layer. This allows the snapshot layer to be invalidated without
-  // invalidating the regular jar layer. If the classpath is empty, it just returns the parent
-  // loader.
-  private def getResourceLayer(
-      classpath: Seq[File],
-      resources: Seq[(File, Long)],
-      parent: ClassLoader,
-      cache: ClassLoaderCache,
-      resourceMap: Map[String, String]
-  ): ClassLoader = {
-    if (resources.nonEmpty) {
-      val mkLoader = () => new ResourceLoader(classpath, parent, resourceMap)
-      cache(resources.toList, parent, mkLoader)
-    } else parent
-  }
-
-  // helper methods
-  private def flatLoader(classpath: Seq[File], parent: ClassLoader): ClassLoader =
-    new FlatLoader(classpath.map(_.toURI.toURL).toArray, parent)
   private[this] def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
     case (p, LastModified(lm)) => p.toFile -> lm
     case (p, _) =>

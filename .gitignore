@@ -7,3 +7,4 @@ npm-debug.log
 *.vsix
 !sbt/src/server-test/completions/target
 .big
+.idea

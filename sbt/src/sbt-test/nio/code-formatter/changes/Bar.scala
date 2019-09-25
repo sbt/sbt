@@ -1,0 +1,1 @@
+class Bar {val x=2}

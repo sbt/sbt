@@ -179,6 +179,22 @@ object Scope {
     displayMasked(scope, sep, showProject, mask, false)
 
   /**
+   * Allows the user to override the result of `Scope.display` or `Scope.displayMasked` for a
+   * particular scope. This can be used to enhance super shell and/or error reporting for tasks
+   * that use mangled names. For example, one might have:
+   * {{{
+   *   val mangledKey = TaskKey[Unit]("foo_slash_bar")
+   *   val attributeMap = AttributeMap.empty.put(Scope.customShowString("foo/bar"))
+   *   val sanitizedKey = mangledKey.copy(scope = mangledKey.copy(extra = Select(attributeMap)))
+   *   sanitizedKey := { ... }
+   * }}}
+   *
+   * Now whenever the `foo_slash_bar` task specified by sanitizedKey is evaluated, it will display
+   * "foo/bar" in super shell progress and in the error message if an error is thrown.
+   */
+  val customShowString = AttributeKey[String]("scope-custom-show-string")
+
+  /**
    * unified slash style introduced in sbt 1.1.0.
    * By default, sbt will no longer display the Zero-config,
    * so `name` will render as `name` as opposed to `{uri}proj/Zero/name`.
@@ -193,20 +209,22 @@ object Scope {
       showZeroConfig: Boolean
   ): String = {
     import scope.{ project, config, task, extra }
-    val zeroConfig = if (showZeroConfig) "Zero /" else ""
-    val configPrefix = config.foldStrict(display, zeroConfig, "./")
-    val taskPrefix = task.foldStrict(_.label + " /", "", "./")
-    val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
-    val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-    if (scope == GlobalScope) "Global / " + sep + postfix
-    else
-      mask.concatShow(
-        appendSpace(projectPrefix(project, showProject)),
-        appendSpace(configPrefix),
-        appendSpace(taskPrefix),
-        sep,
-        postfix
-      )
+    extra.toOption.flatMap(_.get(customShowString)).getOrElse {
+      val zeroConfig = if (showZeroConfig) "Zero /" else ""
+      val configPrefix = config.foldStrict(display, zeroConfig, "./")
+      val taskPrefix = task.foldStrict(_.label + " /", "", "./")
+      val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
+      val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
+      if (scope == GlobalScope) "Global / " + sep + postfix
+      else
+        mask.concatShow(
+          appendSpace(projectPrefix(project, showProject)),
+          appendSpace(configPrefix),
+          appendSpace(taskPrefix),
+          sep,
+          postfix
+        )
+    }
   }
 
   private[sbt] def appendSpace(s: String): String =

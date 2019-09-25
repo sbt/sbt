@@ -10,14 +10,17 @@ package internal
 
 import java.io.File
 import java.net.URI
-import Def.{ displayFull, ScopedKey, ScopeLocal, Setting }
+
+import Def.{ ScopeLocal, ScopedKey, Setting, displayFull }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
+import sbt.LocalRootProject
 import sbt.io.syntax._
-import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
+import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
+import sjsonnew.SupportConverter
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 final class BuildStructure(
@@ -286,9 +289,10 @@ final class PartBuildUnit(
 object BuildStreams {
   type Streams = sbt.std.Streams[ScopedKey[_]]
 
-  final val GlobalPath = "$global"
-  final val BuildUnitPath = "$build"
+  final val GlobalPath = "_global"
+  final val BuildUnitPath = "_build"
   final val StreamsDirectory = "streams"
+  private final val RootPath = "_root"
 
   def mkStreams(
       units: Map[URI, LoadedBuildUnit],
@@ -305,7 +309,11 @@ object BuildStreams {
         path(units, root, data),
         displayFull,
         LogManager.construct(data, s),
-        sjsonnew.support.scalajson.unsafe.Converter
+        sjsonnew.support.scalajson.unsafe.Converter, {
+          val factory =
+            s.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
+          (file, converter: SupportConverter[JValue]) => factory(file.toPath, converter)
+        }
       )
     }
   }
@@ -316,7 +324,7 @@ object BuildStreams {
     resolvePath(projectPath(units, root, scoped, data), nonProjectPath(scoped))
 
   def resolvePath(base: File, components: Seq[String]): File =
-    (base /: components)((b, p) => new File(b, p))
+    components.foldLeft(base)((b, p) => new File(b, p))
 
   def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(
       show: T => String
@@ -332,14 +340,39 @@ object BuildStreams {
     pathComponent(scope.config, scoped, "config")(_.name) ::
       pathComponent(scope.task, scoped, "task")(_.label) ::
       pathComponent(scope.extra, scoped, "extra")(showAMap) ::
-      scoped.key.label ::
-      Nil
+      scoped.key.label :: previousComponent(scope.extra)
   }
 
+  private def previousComponent(value: ScopeAxis[AttributeMap]): List[String] =
+    value match {
+      case Select(am) =>
+        am.get(Previous.scopedKeyAttribute) match {
+          case Some(sk) =>
+            val project = sk.scope.project match {
+              case Zero                                           => GlobalPath
+              case Select(BuildRef(_))                            => BuildUnitPath
+              case Select(ProjectRef(_, id))                      => id
+              case Select(LocalProject(id))                       => id
+              case Select(RootProject(_))                         => RootPath
+              case Select(LocalRootProject)                       => LocalRootProject.toString
+              case Select(ThisBuild) | Select(ThisProject) | This =>
+                // Don't want to crash if somehow an unresolved key makes it in here.
+                This.toString
+            }
+            List(Previous.DependencyDirectory, project) ++ nonProjectPath(sk)
+          case _ => Nil
+        }
+      case _ => Nil
+    }
   def showAMap(a: AttributeMap): String =
     a.entries.toStream
       .sortBy(_.key.label)
-      .map { case AttributeEntry(key, value) => s"${key.label}=$value" }
+      .flatMap {
+        // The Previous.scopedKeyAttribute is an implementation detail that allows us to get a
+        // more specific cache directory for a task stream.
+        case AttributeEntry(key, _) if key == Previous.scopedKeyAttribute => Nil
+        case AttributeEntry(key, value)                                   => s"${key.label}=$value" :: Nil
+      }
       .mkString(" ")
 
   def projectPath(

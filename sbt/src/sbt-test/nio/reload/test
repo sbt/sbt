@@ -1,9 +1,35 @@
-> foo
+> foo bar
+
+> exists bar
 
 $ copy-file changes/broken.sbt build.sbt
 
--> foo
+-> foo baz
+
+-> exists baz
 
 $ copy-file changes/working.sbt build.sbt
 
-> foo
+> foo baz
+
+> exists baz
+
+> foo foo; reload
+
+> exists foo
+
+-> compile
+
+$ copy-file changes/sub.sbt sub/build.sbt
+
+> compile
+
+-> scalafmt
+
+$ copy-file changes/ScalafmtVersion.scala project/project/ScalafmtVersion.scala
+
+> scalafmt
+
+$ delete project/plugins.sbt
+
+-> scalafmt

@@ -1,0 +1,10 @@
+# hidden files are excluded
+> checkPaths bar.txt
+
+> set copyPaths / fileInputExcludeFilter := NothingFilter.toNio
+
+> checkPaths .foo.txt bar.txt
+
+> set copyPaths / fileInputIncludeFilter := fooFilter.value
+
+> checkPaths .foo.txt

@@ -1,0 +1,1 @@
+libraryDependencies += "org.scalameta" %% "scalafmt-dynamic" % "2.0.0"

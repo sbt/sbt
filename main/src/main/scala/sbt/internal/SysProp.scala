@@ -9,8 +9,10 @@ package sbt
 package internal
 
 import java.util.Locale
+
 import scala.util.control.NonFatal
 import sbt.internal.util.ConsoleAppender
+import sbt.internal.util.complete.SizeParser
 
 // See also BuildPaths.scala
 // See also LineReader.scala
@@ -84,9 +86,12 @@ object SysProp {
 
   def closeClassLoaders: Boolean = getOrTrue("sbt.classloader.close")
 
-  def supershell: Boolean = color && getOrTrue("sbt.supershell")
+  def fileCacheSize: Long =
+    SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128L * 1024 * 1024)
+  def supershell: Boolean = booleanOpt("sbt.supershell").getOrElse(color)
 
   def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
+  def supershellBlankZone: Int = int("sbt.supershell.blankzone", 5)
 
   def defaultUseCoursier: Boolean = {
     val coursierOpt = booleanOpt("sbt.coursier")

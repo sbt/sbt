@@ -1,0 +1,1 @@
+cleanFiles += baseDirectory.value / "foo"

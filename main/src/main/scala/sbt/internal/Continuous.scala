@@ -8,7 +8,8 @@
 package sbt
 package internal
 
-import java.io.{ ByteArrayInputStream, InputStream, File => _ }
+import java.io.{ ByteArrayInputStream, IOException, InputStream, File => _ }
+import java.nio.file.Path
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import sbt.BasicCommandStrings.{
@@ -26,10 +27,9 @@ import sbt.internal.nio._
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.internal.util.{ AttributeKey, JLine, Util }
-import sbt.nio.FileStamper.LastModified
 import sbt.nio.Keys.{ fileInputs, _ }
-import sbt.nio.Watch.{ Creation, Deletion, Update }
-import sbt.nio.file.FileAttributes
+import sbt.nio.Watch.{ Creation, Deletion, ShowOptions, Update }
+import sbt.nio.file.{ FileAttributes, Glob }
 import sbt.nio.{ FileStamp, FileStamper, Watch }
 import sbt.util.{ Level, _ }
 
@@ -117,9 +117,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   private[sbt] def continuousTask: Def.Initialize[InputTask[StateTransform]] =
     Def.inputTask {
       val (initialCount, commands) = continuousParser.parsed
-      new StateTransform(
-        runToTermination(state.value, commands, initialCount, isCommand = false)
-      )
+      new StateTransform(runToTermination(state.value, commands, initialCount, isCommand = false))
     }
 
   private[sbt] val dynamicInputs = taskKey[Option[mutable.Set[DynamicInput]]](
@@ -243,7 +241,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               case exec :: rest =>
                 val updatedState = MainLoop.processCommand(exec, s.copy(remainingCommands = rest))
                 val remaining =
-                  updatedState.remainingCommands.takeWhile(_.commandLine != FailureWall)
+                  updatedState.remainingCommands.takeWhile(_.commandLine != failureCommandName)
                 remaining match {
                   case Nil =>
                     updatedState.remainingCommands.forall(_.commandLine != failureCommandName)
@@ -329,12 +327,14 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
     val fileStampCache = new FileStamp.Cache
     repo.addObserver(t => fileStampCache.invalidate(t.path))
+    val persistFileStamps = extracted.get(watchPersistFileStamps)
+    val cachingRepo: FileTreeRepository[FileAttributes] =
+      if (persistFileStamps) repo else new FileStampRepository(fileStampCache, repo)
     try {
-      val stateWithRepo = state.put(globalFileTreeRepository, repo)
+      val stateWithRepo = state.put(globalFileTreeRepository, cachingRepo)
       val fullState =
         addLegacyWatchSetting(
-          if (extracted.get(watchPersistFileStamps))
-            stateWithRepo.put(persistentFileStampCache, fileStampCache)
+          if (persistFileStamps) stateWithRepo.put(persistentFileStampCache, fileStampCache)
           else stateWithRepo
         )
       setup(fullState, commands) { (s, valid, invalid) =>
@@ -349,7 +349,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
               currentCount.getAndIncrement()
               callbacks.beforeCommand()
               // abort as soon as one of the tasks fails
-              valid.takeWhile(_._3.apply())
+              valid.takeWhile { case (_, _, task) => task() }
               updateLegacyWatchState(s, configs.flatMap(_.inputs().map(_.glob)), currentCount.get())
               ()
             }
@@ -468,11 +468,13 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val beforeCommand = () => configs.foreach(_.watchSettings.beforeCommand())
     val onStart: () => Watch.Action =
       getOnStart(project, commands, configs, rawLogger, count, extracted)
-    val nextInputEvent: () => Watch.Action = parseInputEvents(configs, state, inputStream, logger)
+    val (message, parser, altParser) = getWatchInputOptions(configs, extracted)
+    val nextInputEvent: () => Watch.Action =
+      parseInputEvents(parser, altParser, state, inputStream, logger)
     val (nextFileEvent, cleanupFileMonitor): (() => Option[(Watch.Event, Watch.Action)], () => Unit) =
       getFileEvents(configs, rawLogger, state, count, commands, fileStampCache)
     val nextEvent: () => Watch.Action =
-      combineInputAndFileEvents(nextInputEvent, nextFileEvent, logger)
+      combineInputAndFileEvents(nextInputEvent, nextFileEvent, message, logger, rawLogger)
     val onExit = () => cleanupFileMonitor()
     val onTermination = getOnTermination(configs, isCommand)
     new Callbacks(nextEvent, beforeCommand, onExit, onStart, onTermination)
@@ -491,6 +493,38 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       case _ =>
         if (isCommand) Watch.defaultCommandOnTermination else Watch.defaultTaskOnTermination
+    }
+  }
+
+  private def getWatchInputOptions(
+      configs: Seq[Config],
+      extracted: Extracted
+  ): (String, Parser[Watch.Action], Option[(TaskKey[InputStream], InputStream => Watch.Action)]) = {
+    configs match {
+      case Seq(h) =>
+        val settings = h.watchSettings
+        val parser = settings.inputParser
+        val alt = settings.inputStream.map { k =>
+          k -> settings.inputHandler.getOrElse(defaultInputHandler(parser))
+        }
+        (settings.inputOptionsMessage, parser, alt)
+      case _ =>
+        val options =
+          extracted.getOpt(watchInputOptions in ThisBuild).getOrElse(Watch.defaultInputOptions)
+        val message = extracted
+          .getOpt(watchInputOptionsMessage in ThisBuild)
+          .getOrElse(Watch.defaultInputOptionsMessage(options))
+        val parser = extracted
+          .getOpt(watchInputParser in ThisBuild)
+          .getOrElse(Watch.defaultInputParser(options))
+        val alt = extracted
+          .getOpt(watchInputStream in ThisBuild)
+          .map { _ =>
+            (watchInputStream in ThisBuild) -> extracted
+              .getOpt(watchInputHandler in ThisBuild)
+              .getOrElse(defaultInputHandler(parser))
+          }
+        (message, parser, alt)
     }
   }
 
@@ -545,10 +579,66 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
     val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
     val quarantinePeriod = configs.map(_.watchSettings.deletionQuarantinePeriod).max
+    val monitor: FileEventMonitor[Event] = new FileEventMonitor[Event] {
+
+      private implicit class WatchLogger(val l: Logger) extends sbt.internal.nio.WatchLogger {
+        override def debug(msg: Any): Unit = l.debug(msg.toString)
+      }
+
+      private[this] val observers: Observers[Event] = new Observers
+      private[this] val repo = getRepository(state)
+      private[this] val handle = repo.addObserver(observers)
+      private[this] val eventMonitorObservers = new Observers[Event]
+      private[this] val configHandle: AutoCloseable =
+        observers.addObserver { e =>
+          // We only want to create one event per actual source file event. It doesn't matter
+          // which of the config inputs triggers the event because they all will be used in
+          // the onEvent callback above.
+          configs.find(_.inputs().exists(_.glob.matches(e.path))) match {
+            case Some(config) =>
+              val configLogger = logger.withPrefix(config.command)
+              configLogger.debug(s"Accepted event for ${e.path}")
+              eventMonitorObservers.onNext(e)
+            case None =>
+          }
+          if (trackMetaBuild && buildGlobs.exists(_.matches(e.path))) {
+            val metaLogger = logger.withPrefix("build")
+            metaLogger.debug(s"Accepted event for ${e.path}")
+            eventMonitorObservers.onNext(e)
+          }
+        }
+      if (trackMetaBuild) buildGlobs.foreach(repo.register)
+
+      private[this] val monitor = FileEventMonitor.antiEntropy(
+        eventMonitorObservers,
+        configs.map(_.watchSettings.antiEntropy).max,
+        logger,
+        quarantinePeriod,
+        retentionPeriod
+      )
+
+      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] =
+        monitor.poll(duration, filter)
+
+      override def close(): Unit = {
+        configHandle.close()
+        handle.close()
+      }
+    }
+    val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
+    val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
+    val antiEntropyMonitor = FileEventMonitor.antiEntropy(
+      monitor,
+      antiEntropy,
+      watchLogger,
+      quarantinePeriod,
+      retentionPeriod
+    )
+
     val onEvent: Event => Seq[(Watch.Event, Watch.Action)] = event => {
       val path = event.path
 
-      def watchEvent(forceTrigger: Boolean): Option[Watch.Event] = {
+      def getWatchEvent(forceTrigger: Boolean): Option[Watch.Event] = {
         if (!event.exists) {
           Some(Deletion(event))
           fileStampCache.remove(event.path) match {
@@ -580,102 +670,35 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       }
 
       if (buildGlobs.exists(_.matches(path))) {
-        watchEvent(forceTrigger = false).map(e => e -> Watch.Reload).toSeq
+        getWatchEvent(forceTrigger = false).map(e => e -> Watch.Reload).toSeq
       } else {
-        configs
-          .flatMap { config =>
-            config
-              .inputs()
-              .filter(_.glob.matches(path))
-              .sortBy(_.fileStamper match {
-                case FileStamper.Hash         => -1
-                case FileStamper.LastModified => 0
-              })
-              .headOption
-              .flatMap { d =>
-                val forceTrigger = d.forceTrigger
-                d.fileStamper match {
-                  // We do not update the file stamp cache because we only want hashes in that
-                  // cache or else it can mess up the external hooks that use that cache.
-                  case LastModified =>
-                    logger.debug(s"Trigger path detected $path")
-                    val watchEvent =
-                      if (!event.exists) Deletion(event)
-                      else if (fileStampCache.get(path).isDefined) Creation(event)
-                      else Update(event)
-                    val action = config.watchSettings.onFileInputEvent(count.get(), watchEvent)
-                    Some(watchEvent -> action)
-                  case _ =>
-                    watchEvent(forceTrigger).flatMap { e =>
-                      val action = config.watchSettings.onFileInputEvent(count.get(), e)
-                      if (action != Watch.Ignore) Some(e -> action) else None
-                    }
-                }
-              }
-          } match {
-          case events if events.isEmpty => Nil
-          case events                   => events.minBy(_._2) :: Nil
+        val acceptedConfigParameters = configs.flatMap { config =>
+          config.inputs().flatMap {
+            case i if i.glob.matches(path) =>
+              Some((i.forceTrigger, i.fileStamper, config.watchSettings.onFileInputEvent))
+            case _ => None
+          }
         }
-      }
-    }
-    val monitor: FileEventMonitor[Event] = new FileEventMonitor[Event] {
-
-      private implicit class WatchLogger(val l: Logger) extends sbt.internal.nio.WatchLogger {
-        override def debug(msg: Any): Unit = l.debug(msg.toString)
-      }
-
-      private[this] val observers: Observers[Event] = new Observers
-      private[this] val repo = getRepository(state)
-      private[this] val handle = repo.addObserver(observers)
-      private[this] val eventMonitorObservers = new Observers[Event]
-      private[this] val delegateHandles: Seq[AutoCloseable] =
-        configs.map { config =>
-          // Create a logger with a scoped key prefix so that we can tell from which task there
-          // were inputs that matched the event path.
-          val configLogger = logger.withPrefix(config.command)
-          observers.addObserver { e =>
-            if (config.inputs().exists(_.glob.matches(e.path))) {
-              configLogger.debug(s"Accepted event for ${e.path}")
-              eventMonitorObservers.onNext(e)
+        if (acceptedConfigParameters.nonEmpty) {
+          val useHash = acceptedConfigParameters.exists(_._2 == FileStamper.Hash)
+          val forceTrigger = acceptedConfigParameters.exists(_._1)
+          val watchEvent =
+            if (useHash) getWatchEvent(forceTrigger)
+            else {
+              logger.debug(s"Trigger path detected $path")
+              Some(
+                if (!event.exists) Deletion(event)
+                else if (fileStampCache.get(path).isDefined) Creation(event)
+                else Update(event)
+              )
             }
+          acceptedConfigParameters.flatMap {
+            case (_, _, callback) =>
+              watchEvent.map(e => e -> callback(count.get(), e))
           }
-        }
-      if (trackMetaBuild) {
-        buildGlobs.foreach(repo.register)
-        val metaLogger = logger.withPrefix("meta-build")
-        observers.addObserver { e =>
-          if (buildGlobs.exists(_.matches(e.path))) {
-            metaLogger.debug(s"Accepted event for ${e.path}")
-            eventMonitorObservers.onNext(e)
-          }
-        }
-      }
-      private[this] val monitor = FileEventMonitor.antiEntropy(
-        eventMonitorObservers,
-        configs.map(_.watchSettings.antiEntropy).max,
-        logger,
-        quarantinePeriod,
-        retentionPeriod
-      )
-
-      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
-        monitor.poll(duration, filter)
-      }
-
-      override def close(): Unit = {
-        delegateHandles.foreach(_.close())
-        handle.close()
+        } else Nil
       }
     }
-    val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
-    val antiEntropy = configs.map(_.watchSettings.antiEntropy).max
-    val antiEntropyMonitor = FileEventMonitor.antiEntropy(
-      monitor,
-      antiEntropy,
-      watchLogger,
-      quarantinePeriod,
-      retentionPeriod
-    )
     /*
      * This is a callback that will be invoked whenever onEvent returns a Trigger action. The
      * motivation is to allow the user to specify this callback via setting so that, for example,
@@ -694,7 +717,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
 
     (() => {
-      val actions = antiEntropyMonitor.poll(30.milliseconds).flatMap(onEvent)
+      val events = antiEntropyMonitor.poll(30.milliseconds)
+      val actions = events.flatMap(onEvent)
       if (actions.exists(_._2 != Watch.Ignore)) {
         val builder = new StringBuilder
         val min = actions.minBy {
@@ -708,7 +732,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
         logger.debug(s"Received file event actions: $builder. Returning: $min")
         if (min._2 == Watch.Trigger) onTrigger(min._1)
-        Some(min)
+        if (min._2 == Watch.ShowOptions) None else Some(min)
       } else None
     }, () => monitor.close())
   }
@@ -729,7 +753,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    * `() => Seq[Watch.Action]` which avoids actually exposing the InputStream anywhere.
    */
   private def parseInputEvents(
-      configs: Seq[Config],
+      parser: Parser[Watch.Action],
+      alternative: Option[(TaskKey[InputStream], InputStream => Watch.Action)],
       state: State,
       inputStream: InputStream,
       logger: Logger
@@ -751,10 +776,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     // If the Config.watchSettings.inputStream is set, the same process is applied except that
     // instead of passing in the wrapped InputStream for the input string, we directly pass
     // in the inputStream provided by Config.watchSettings.inputStream.
-    val inputHandlers: Seq[ActionParser] = configs.map { c =>
+    val inputHandler: String => Watch.Action = {
       val any = Parsers.any.*
-      val inputParser = c.watchSettings.inputParser
-      val parser = any ~> inputParser ~ matched(any)
+      val fullParser = any ~> parser ~ matched(any)
       // Each parser gets its own copy of System.in that it can modify while parsing.
       val systemInBuilder = new StringBuilder
 
@@ -762,34 +786,33 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
       // This string is provided in the closure below by reading from System.in
       val default: String => Watch.Action =
-        string => parse(inputStream(string), systemInBuilder, parser)
-      val alternative = c.watchSettings.inputStream
-        .map { inputStreamKey =>
-          val is = extracted.runTask(inputStreamKey, state)._2
-          val handler = c.watchSettings.inputHandler.getOrElse(defaultInputHandler(inputParser))
-          () => handler(is)
+        string => parse(inputStream(string), systemInBuilder, fullParser)
+      val alt = alternative
+        .map {
+          case (key, handler) =>
+            val is = extracted.runTask(key, state)._2
+            () => handler(is)
         }
         .getOrElse(() => Watch.Ignore)
-      (string: String) => (default(string) :: alternative() :: Nil).min
+      string: String => (default(string) :: alt() :: Nil).min
     }
     () => {
       val stringBuilder = new StringBuilder
       while (inputStream.available > 0) stringBuilder += inputStream.read().toChar
       val newBytes = stringBuilder.toString
       val parse: ActionParser => Watch.Action = parser => parser(newBytes)
-      val allEvents = inputHandlers.map(parse).filterNot(_ == Watch.Ignore)
-      if (allEvents.exists(_ != Watch.Ignore)) {
-        val res = allEvents.min
-        logger.debug(s"Received input events: ${allEvents mkString ","}. Taking $res")
-        res
-      } else Watch.Ignore
+      val event = parse(inputHandler)
+      if (event != Watch.Ignore) logger.debug(s"Received input event: $event.")
+      event
     }
   }
 
   private def combineInputAndFileEvents(
       nextInputAction: () => Watch.Action,
       nextFileEvent: () => Option[(Watch.Event, Watch.Action)],
-      logger: Logger
+      options: String,
+      logger: Logger,
+      rawLogger: Logger
   ): () => Watch.Action = () => {
     val (inputAction: Watch.Action, fileEvent: Option[(Watch.Event, Watch.Action)] @unchecked) =
       Seq(nextInputAction, nextFileEvent).map(_.apply()).toIndexedSeq match {
@@ -808,7 +831,13 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             (if (action != min) s" Dropping in favor of input event: $min" else "")
       }
       .foreach(logger.debug(_))
-    min
+    min match {
+      case ShowOptions =>
+        println("") // This is so the [info] tag appears at the head of a newline
+        rawLogger.info(options)
+        Watch.Ignore
+      case m => m
+    }
   }
 
   @tailrec
@@ -896,8 +925,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val deletionQuarantinePeriod: FiniteDuration =
       key.get(watchDeletionQuarantinePeriod).getOrElse(Watch.defaultDeletionQuarantinePeriod)
     val inputHandler: Option[InputStream => Watch.Action] = key.get(watchInputHandler)
+    val inputOptions: Seq[Watch.InputOption] =
+      key.get(watchInputOptions).getOrElse(Watch.defaultInputOptions)
+    val inputOptionsMessage: String =
+      key.get(watchInputOptionsMessage).getOrElse(Watch.defaultInputOptionsMessage(inputOptions))
     val inputParser: Parser[Watch.Action] =
-      key.get(watchInputParser).getOrElse(Watch.defaultInputParser)
+      key.get(watchInputParser).getOrElse(Watch.defaultInputParser(inputOptions))
     val logLevel: Level.Value = key.get(watchLogLevel).getOrElse(Level.Info)
     val beforeCommand: () => Unit = key.get(watchBeforeCommand).getOrElse(() => {})
     val onFileInputEvent: WatchOnEvent =
@@ -1059,4 +1092,17 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
   }
 
+  private[sbt] class FileStampRepository(
+      fileStampCache: FileStamp.Cache,
+      underlying: FileTreeRepository[FileAttributes]
+  ) extends FileTreeRepository[FileAttributes] {
+    def putIfAbsent(path: Path, stamper: FileStamper): (Option[FileStamp], Option[FileStamp]) =
+      fileStampCache.putIfAbsent(path, stamper)
+    override def list(path: Path): Seq[(Path, FileAttributes)] = underlying.list(path)
+    override def addObserver(observer: Observer[FileEvent[FileAttributes]]): AutoCloseable =
+      underlying.addObserver(observer)
+    override def register(glob: Glob): Either[IOException, Observable[FileEvent[FileAttributes]]] =
+      underlying.register(glob)
+    override def close(): Unit = underlying.close()
+  }
 }

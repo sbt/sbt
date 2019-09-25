@@ -20,6 +20,12 @@
 
 > checkOutput 2 8
 
+$ copy-file changes/bad.c src/lib/bad.c
+
 $ copy-file changes/lib.c src/lib/lib.c
+
+-> checkOutput 2 4
+
+$ delete src/lib/bad.c
 
 > checkOutput 2 4

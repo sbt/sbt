@@ -225,16 +225,16 @@ trait Init[ScopeType] {
     }.toMap
 
   def grouped(init: Seq[Setting[_]]): ScopedMap =
-    ((IMap.empty: ScopedMap) /: init)((m, s) => add(m, s))
+    init.foldLeft(IMap.empty: ScopedMap)((m, s) => add(m, s))
 
   def add[T](m: ScopedMap, s: Setting[T]): ScopedMap =
-    m.mapValue[T](s.key, Nil, ss => append(ss, s))
+    m.mapValue[T](s.key, Vector.empty[Setting[T]], ss => append(ss, s))
 
   def append[T](ss: Seq[Setting[T]], s: Setting[T]): Seq[Setting[T]] =
-    if (s.definitive) s :: Nil else ss :+ s
+    if (s.definitive) Vector(s) else ss :+ s
 
   def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
-    init.flatMap(_.dependencies flatMap scopeLocal) ++ init
+    init.par.map(_.dependencies flatMap scopeLocal).toVector.flatten ++ init
 
   def delegate(sMap: ScopedMap)(
       implicit delegates: ScopeType => Seq[ScopeType],
@@ -399,7 +399,7 @@ trait Init[ScopeType] {
 
     val empty = Map.empty[ScopedKey[_], Flattened]
 
-    val flattenedLocals = (empty /: ordered) { (cmap, c) =>
+    val flattenedLocals = ordered.foldLeft(empty) { (cmap, c) =>
       cmap.updated(c.key, flatten(cmap, c.key, c.dependencies))
     }
 
@@ -537,9 +537,9 @@ trait Init[ScopeType] {
     // Take all the original defs and DerivedSettings along with locals, replace each DerivedSetting with the actual
     // settings that were derived.
     val allDefs = addLocal(init)(scopeLocal)
-    allDefs flatMap {
-      case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toStream.flatten;
-      case s                    => Stream(s)
+    allDefs.flatMap {
+      case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toSeq.flatten
+      case s                    => s :: Nil
     }
   }
 
@@ -859,7 +859,7 @@ trait Init[ScopeType] {
     }
 
     private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S =
-      (init /: alist.toList(inputs)) { (v, i) =>
+      alist.toList(inputs).foldLeft(init) { (v, i) =>
         i.processAttributes(v)(f)
       }
   }

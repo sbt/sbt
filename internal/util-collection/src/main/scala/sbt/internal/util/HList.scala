@@ -36,5 +36,5 @@ final case class HCons[H, T <: HList](head: H, tail: T) extends HList {
 object HList {
   // contains no type information: not even A
   implicit def fromList[A](list: Traversable[A]): HList =
-    ((HNil: HList) /: list)((hl, v) => HCons(v, hl))
+    list.foldLeft(HNil: HList)((hl, v) => HCons(v, hl))
 }

@@ -17,8 +17,8 @@ import sbt.internal.DynamicInput
 import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
-import sbt.nio.file.{ ChangedFiles, FileAttributes, FileTreeView, Glob }
-import sbt.{ Def, InputKey, ProjectRef, State, StateTransform }
+import sbt.nio.file.{ FileAttributes, FileTreeView, Glob, PathFilter }
+import sbt._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -29,19 +29,30 @@ object Keys {
   case object ReloadOnSourceChanges extends WatchBuildSourceOption
   val allInputFiles =
     taskKey[Seq[Path]]("All of the file inputs for a task excluding directories and hidden files.")
-  val changedInputFiles = taskKey[Option[ChangedFiles]]("The changed files for a task")
+  val changedInputFiles =
+    taskKey[Seq[(Path, FileStamp)] => FileChanges]("The changed files for a task")
   val fileInputs = settingKey[Seq[Glob]](
     "The file globs that are used by a task. This setting will generally be scoped per task. It will also be used to determine the sources to watch during continuous execution."
   )
+  val fileInputIncludeFilter =
+    settingKey[PathFilter]("A filter to apply to the input sources of a task.")
+  val fileInputExcludeFilter =
+    settingKey[PathFilter]("An exclusion filter to apply to the input sources of a task.")
   val inputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
 
   val fileOutputs = settingKey[Seq[Glob]]("Describes the output files of a task.")
+  val fileOutputIncludeFilter =
+    settingKey[PathFilter]("A filter to apply to the outputs of a task.")
+  val fileOutputExcludeFilter =
+    settingKey[PathFilter]("An exclusion filter to apply to the outputs of a task.")
   val allOutputFiles =
-    taskKey[Seq[Path]]("All of the file output for a task excluding directories and hidden files.")
+    taskKey[Seq[Path]]("All of the file outputs for a task excluding directories and hidden files.")
   val changedOutputFiles =
-    taskKey[Option[ChangedFiles]]("The files that have changed since the last task run.")
+    taskKey[Seq[(Path, FileStamp)] => FileChanges](
+      "The files that have changed since the last task run."
+    )
   val outputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
@@ -50,7 +61,7 @@ object Keys {
     taskKey[FileTreeView.Nio[FileAttributes]]("A view of the local file system tree")
 
   val checkBuildSources =
-    taskKey[Unit]("Check if any meta build sources have changed").withRank(DSetting)
+    taskKey[StateTransform]("Check if any meta build sources have changed").withRank(DSetting)
 
   // watch related settings
   val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration](
@@ -76,6 +87,8 @@ object Keys {
   private[sbt] val watchInputHandler = settingKey[InputStream => Watch.Action](
     "Function that is periodically invoked to determine if the continuous build should be stopped or if a build should be triggered. It will usually read from stdin to respond to user commands. This is only invoked if watchInputStream is set."
   ).withRank(DSetting)
+  val watchInputOptionsMessage = settingKey[String]("The help message for the watch input options")
+  val watchInputOptions = settingKey[Seq[Watch.InputOption]]("The available input options")
   val watchInputStream = taskKey[InputStream](
     "The input stream to read for user input events. This will usually be System.in"
   ).withRank(DSetting)
@@ -107,6 +120,17 @@ object Keys {
   ).withRank(DSetting)
   val watchTriggers =
     settingKey[Seq[Glob]]("Describes files that should trigger a new continuous build.")
+
+  /**
+   * Sets the message to display after a new build is triggered. By default,
+   * it prints the file that triggered the build and what command(s) will be run.
+   * To clear the screen, add
+   * {{{
+   *   watchTriggeredMessage := Watch.clearScreenOnTrigger
+   * }}}
+   * to the build.
+   *
+   */
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
     "The message to show before triggered execution executes an action after sources change. The parameters are the current watch iteration count, the path that triggered the build and the names of the commands to run."
   ).withRank(DSetting)
@@ -128,10 +152,10 @@ object Keys {
   private[sbt] val dynamicFileOutputs =
     taskKey[Seq[Path]]("The outputs of a task").withRank(Invisible)
 
-  private[sbt] val inputFileStamps =
+  val inputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task input files")
       .withRank(Invisible)
-  private[sbt] val outputFileStamps =
+  val outputFileStamps =
     taskKey[Seq[(Path, FileStamp)]]("Retrieves the hashes for a set of task output files")
       .withRank(Invisible)
   private[sbt] type FileAttributeMap =
@@ -147,8 +171,18 @@ object Keys {
   private[sbt] val managedFileStampCache = taskKey[FileStamp.Cache](
     "Map of managed file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
-  private[sbt] val classpathFiles =
-    taskKey[Seq[Path]]("The classpath for a task.").withRank(Invisible)
+  private[sbt] val managedSourcePaths =
+    taskKey[Seq[Path]]("Transforms the managedSources to Seq[Path] to induce setting injection.")
+      .withRank(Invisible)
+  private[sbt] val dependencyClasspathFiles =
+    taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
+  private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)
+  private[sbt] val compileSourceFileInputs =
+    taskKey[Map[String, Seq[(Path, FileStamp)]]]("Source file stamps stored by scala version")
+      .withRank(Invisible)
+  private[sbt] val compileBinaryFileInputs =
+    taskKey[Map[String, Seq[(Path, FileStamp)]]]("Source file stamps stored by scala version")
+      .withRank(Invisible)
 
   private[this] val hasCheckedMetaBuildMsg =
     "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +

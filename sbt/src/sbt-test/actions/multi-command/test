@@ -37,4 +37,4 @@
 
 > ++ 2.11.12 compile; setStringValue bar; checkStringValue bar
 
-> ++2.12.8 compile; setStringValue foo; checkStringValue foo
+> ++2.12.10 compile; setStringValue foo; checkStringValue foo

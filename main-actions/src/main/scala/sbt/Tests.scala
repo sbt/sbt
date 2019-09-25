@@ -306,7 +306,10 @@ object Tests {
       fun: TestFunction,
       tags: Seq[(Tag, Int)]
   ): Task[Map[String, SuiteResult]] = {
-    val base = task { (name, fun.apply()) }
+    val base = Task[(String, (SuiteResult, Seq[TestTask]))](
+      Info[(String, (SuiteResult, Seq[TestTask]))]().setName(name),
+      Pure(() => (name, fun.apply()), `inline` = false)
+    )
     val taggedBase = base.tagw(tags: _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)): _*)
     taggedBase flatMap {
       case (name, (result, nested)) =>
@@ -387,7 +390,7 @@ object Tests {
       }
     }
   def overall(results: Iterable[TestResult]): TestResult =
-    ((TestResult.Passed: TestResult) /: results) { (acc, result) =>
+    results.foldLeft(TestResult.Passed: TestResult) { (acc, result) =>
       if (severity(acc) < severity(result)) result else acc
     }
   def discover(
@@ -442,8 +445,9 @@ object Tests {
       case _ => false
     })
     // TODO: To pass in correct explicitlySpecified and selectors
-    val tests = for ((df, di) <- discovered; fingerprint <- toFingerprints(di))
-      yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
+    val tests =
+      for ((df, di) <- discovered; fingerprint <- toFingerprints(di))
+        yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
     val mains = discovered collect { case (df, di) if di.hasMain => df.name }
     (tests, mains.toSet)
   }

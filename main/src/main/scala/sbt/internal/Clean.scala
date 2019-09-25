@@ -83,17 +83,20 @@ private[sbt] object Clean {
     Def.taskDyn {
       val state = Keys.state.value
       val extracted = Project.extract(state)
-      val view = fileTreeView.value
+      val view = (fileTreeView in scope).value
       val manager = streamsManager.value
       Def.task {
         val excludeFilter = cleanFilter(scope).value
         val delete = cleanDelete(scope).value
         val targetDir = (target in scope).?.value.map(_.toPath)
-        val targetFiles = (if (full) targetDir else None).fold(Nil: Seq[Path]) { t =>
-          view.list(t.toGlob / **).collect { case (p, _) if !excludeFilter(p) => p }
+        def recursiveFiles(dir: Path): Seq[Path] =
+          view.list(dir.toGlob / **).collect { case (p, _) if !excludeFilter(p) => p }
+        val targetFiles = (if (full) targetDir else None).fold(Nil: Seq[Path])(recursiveFiles)
+        val cleanPaths = (cleanFiles in scope).?.value.getOrElse(Nil).flatMap { f =>
+          val path = f.toPath
+          if (Files.isDirectory(path)) path +: recursiveFiles(path) else path :: Nil
         }
-        val allFiles = (cleanFiles in scope).?.value.toSeq
-          .flatMap(_.map(_.toPath)) ++ targetFiles
+        val allFiles = cleanPaths.view ++ targetFiles
         allFiles.sorted.reverseIterator.foreach(delete)
 
         // This is the special portion of the task where we clear out the relevant streams
@@ -139,7 +142,9 @@ private[sbt] object Clean {
         // We do not want to inadvertently delete files that are not in the target directory.
         val excludeFilter: Path => Boolean = path => !path.startsWith(targetDir) || filter(path)
         val delete = cleanDelete(scope).value
+        val st = streams.in(scope).value
         taskKey.previous.foreach(_.toSeqPath.foreach(p => if (!excludeFilter(p)) delete(p)))
+        delete(st.cacheDirectory.toPath / Previous.DependencyDirectory)
       }
     } tag Tags.Clean
   private[this] def tryDelete(debug: String => Unit): Path => Unit = path => {

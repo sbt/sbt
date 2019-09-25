@@ -11,57 +11,72 @@ package internal.nio
 import sbt.Keys.{ baseDirectory, state, streams }
 import sbt.SlashSyntax0._
 import sbt.io.syntax._
+import sbt.nio.FileChanges
 import sbt.nio.Keys._
-import sbt.nio.file.{ ChangedFiles, Glob, RecursiveGlob }
+import sbt.nio.file.{ Glob, ** }
+import sbt.nio.file.syntax._
+
+import scala.annotation.tailrec
 
 private[sbt] object CheckBuildSources {
-  private[sbt] def needReloadImpl: Def.Initialize[Task[Unit]] = Def.task {
+  private[sbt] def needReloadImpl: Def.Initialize[Task[StateTransform]] = Def.task {
     val logger = streams.value.log
-    val checkMetaBuildParam = state.value.get(hasCheckedMetaBuild)
-    val firstTime = checkMetaBuildParam.fold(true)(_.get == false)
+    val st: State = state.value
+    val firstTime = st.get(hasCheckedMetaBuild).fold(true)(_.compareAndSet(false, true))
     (onChangedBuildSource in Scope.Global).value match {
-      case IgnoreSourceChanges => ()
+      case IgnoreSourceChanges => new StateTransform(st)
       case o =>
+        import sbt.nio.FileStamp.Formats._
         logger.debug("Checking for meta build source updates")
-        (changedInputFiles in checkBuildSources).value match {
-          case Some(cf: ChangedFiles) if !firstTime =>
+        val previous = (inputFileStamps in checkBuildSources).previous
+        val changes = (changedInputFiles in checkBuildSources).value
+        previous.map(changes) match {
+          case Some(fileChanges @ FileChanges(created, deleted, modified, _))
+              if fileChanges.hasChanges && !firstTime =>
             val rawPrefix = s"build source files have changed\n" +
-              (if (cf.created.nonEmpty) s"new files: ${cf.created.mkString("\n  ", "\n  ", "\n")}"
+              (if (created.nonEmpty) s"new files: ${created.mkString("\n  ", "\n  ", "\n")}"
                else "") +
-              (if (cf.deleted.nonEmpty)
-                 s"deleted files: ${cf.deleted.mkString("\n  ", "\n  ", "\n")}"
+              (if (deleted.nonEmpty)
+                 s"deleted files: ${deleted.mkString("\n  ", "\n  ", "\n")}"
                else "") +
-              (if (cf.updated.nonEmpty)
-                 s"updated files: ${cf.updated.mkString("\n  ", "\n  ", "\n")}"
+              (if (modified.nonEmpty)
+                 s"modified files: ${modified.mkString("\n  ", "\n  ", "\n")}"
                else "")
             val prefix = rawPrefix.linesIterator.filterNot(_.trim.isEmpty).mkString("\n")
             if (o == ReloadOnSourceChanges) {
               logger.info(s"$prefix\nReloading sbt...")
-              throw Reload
+              val remaining =
+                Exec("reload", None, None) :: st.currentCommand.toList ::: st.remainingCommands
+              new StateTransform(st.copy(currentCommand = None, remainingCommands = remaining))
             } else {
               val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
                 "build when source changes are detected by setting " +
                 "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
                 "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
               logger.warn(s"$prefix\n$tail")
+              new StateTransform(st)
             }
-          case _ => ()
+          case _ => new StateTransform(st)
         }
     }
-    checkMetaBuildParam.foreach(_.set(true))
   }
   private[sbt] def buildSourceFileInputs: Def.Initialize[Seq[Glob]] = Def.setting {
     if (onChangedBuildSource.value != IgnoreSourceChanges) {
       val baseDir = (LocalRootProject / baseDirectory).value
-      val sourceFilter = "*.{sbt,scala,java}"
       val projectDir = baseDir / "project"
-      Seq(
-        Glob(baseDir, "*.sbt"),
-        Glob(projectDir, sourceFilter),
-        // We only want to recursively look in source because otherwise we have to search
-        // the project target directories which is expensive.
-        Glob(projectDir / "src", RecursiveGlob / sourceFilter),
-      )
+      @tailrec
+      def projectGlobs(projectDir: File, globs: Seq[Glob]): Seq[Glob] = {
+        val glob = projectDir.toGlob
+        val updatedGlobs = globs ++ Seq(
+          glob / "*.{sbt,scala,java}",
+          // We only want to recursively look in source because otherwise we have to search
+          // the project target directories which is expensive.
+          glob / "src" / ** / "*.{scala,java}"
+        )
+        val nextLevel = projectDir / "project"
+        if (nextLevel.exists) projectGlobs(nextLevel, updatedGlobs) else updatedGlobs
+      }
+      projectGlobs(projectDir, baseDir.toGlob / "*.sbt" :: Nil)
     } else Nil
   }
 }

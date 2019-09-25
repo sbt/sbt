@@ -133,7 +133,7 @@ private[sbt] object Server {
       }
 
       override def shutdown(): Unit = {
-        log.info("shutting down server")
+        log.info("shutting down sbt server")
         if (portfile.exists) {
           IO.delete(portfile)
         }

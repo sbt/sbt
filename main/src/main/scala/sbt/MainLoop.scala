@@ -144,10 +144,7 @@ object MainLoop {
         case Right(s)                  => s
         case Left(t: xsbti.FullReload) => throw t
         case Left(t: RebootCurrent)    => throw t
-        case Left(Reload) =>
-          val remaining = state.currentCommand.toList ::: state.remainingCommands
-          state.copy(remainingCommands = Exec("reload", None, None) :: remaining)
-        case Left(t) => state.handleError(t)
+        case Left(t)                   => state.handleError(t)
       }
     } catch {
       case oom: OutOfMemoryError if oom.getMessage.contains("Metaspace") =>
@@ -170,7 +167,7 @@ object MainLoop {
                    "ScalaLibrary"
                else "")
         val msg: String =
-          s"Caught $oom\nTo best utilize classloader caching and to prevent file handle leaks, we" +
+          s"Caught $oom\nTo best utilize classloader caching and to prevent file handle leaks, we " +
             s"recommend running sbt without a MaxMetaspaceSize limit. $testOrRunMessage"
         state.log.error(msg)
         state.log.error("\n")
@@ -182,10 +179,18 @@ object MainLoop {
     val channelName = exec.source map (_.channelName)
     StandardMain.exchange publishEventMessage
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
-
     try {
       def process(): State = {
-        val newState = Command.process(exec.commandLine, state)
+        val progressState = state.get(sbt.Keys.currentTaskProgress) match {
+          case Some(_) => state
+          case _ =>
+            if (state.get(Keys.stateBuildStructure).isDefined) {
+              val extracted = Project.extract(state)
+              val progress = EvaluateTask.executeProgress(extracted, extracted.structure, state)
+              state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
+            } else state
+        }
+        val newState = Command.process(exec.commandLine, progressState)
         if (exec.commandLine.contains("session"))
           newState.get(hasCheckedMetaBuild).foreach(_.set(false))
         val doneEvent = ExecStatusEvent(
@@ -201,28 +206,28 @@ object MainLoop {
         } else { // send back a notification
           StandardMain.exchange publishEventMessage doneEvent
         }
-        newState
+        newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
+        newState.remove(sbt.Keys.currentTaskProgress)
       }
-      val checkCommand = state.currentCommand match {
-        // If the user runs reload directly, we want to be sure that we update the previous
-        // cache for checkBuildSources / changedInputFiles but we don't want to display any
-        // warnings. Without filling the previous cache, it's possible for the user to run
-        // reload and be prompted with a warning in spite of reload having just run and no build
-        // sources having changed.
-        case Some(exec) if exec.commandLine == "reload" => "checkBuildSources / changedInputFiles"
-        case _                                          => "checkBuildSources"
-      }
-      Parser.parse(
-        checkCommand,
-        state.put(Aggregation.suppressShow, true).combinedParser
-      ) match {
-        case Right(cmd) =>
-          cmd() match {
-            case s if s.remainingCommands.headOption.map(_.commandLine).contains("reload") =>
-              s.remove(Aggregation.suppressShow)
+      // The split on space is to handle 'reboot full' and 'reboot'.
+      state.currentCommand.flatMap(_.commandLine.trim.split(" ").headOption) match {
+        case Some("reload") =>
+          // Reset the hasCheckedMetaBuild parameter so that the next call to checkBuildSources
+          // updates the previous cache for checkBuildSources / fileInputStamps but doesn't log.
+          state.get(hasCheckedMetaBuild).foreach(_.set(false))
+          process()
+        case Some("exit") | Some("reboot") => process()
+        case _ =>
+          val emptyState = state.copy(remainingCommands = Nil).put(Aggregation.suppressShow, true)
+          Parser.parse("checkBuildSources", emptyState.combinedParser) match {
+            case Right(cmd) =>
+              cmd() match {
+                case s if s.remainingCommands.headOption.map(_.commandLine).contains("reload") =>
+                  Exec("reload", None, None) +: exec +: state
+                case _ => process()
+              }
             case _ => process()
           }
-        case Left(_) => process()
       }
     } catch {
       case err: Throwable =>

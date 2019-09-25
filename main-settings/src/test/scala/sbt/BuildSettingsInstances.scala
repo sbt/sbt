@@ -70,10 +70,9 @@ object BuildSettingsInstances {
       20 -> AttributeMap.empty,
       1 -> {
         for (name <- Gen.identifier; isModule <- arbitrary[Boolean])
-          yield
-            AttributeMap.empty
-              .put(AttributeKey[String]("name"), name)
-              .put(AttributeKey[Boolean]("isModule"), isModule)
+          yield AttributeMap.empty
+            .put(AttributeKey[String]("name"), name)
+            .put(AttributeKey[Boolean]("isModule"), isModule)
       }
     )
   }

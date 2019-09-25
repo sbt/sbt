@@ -31,6 +31,8 @@ import BasicKeys._
 
 import java.io.File
 import sbt.io.IO
+
+import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 
 object BasicCommands {
@@ -103,7 +105,7 @@ object BasicCommands {
   def help: Command = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
 
   def helpParser(s: State): Parser[() => State] = {
-    val h = (Help.empty /: s.definedCommands)(
+    val h = s.definedCommands.foldLeft(Help.empty)(
       (a, b) =>
         a ++ (try b.help(s)
         catch { case NonFatal(_) => Help.empty })
@@ -153,41 +155,57 @@ object BasicCommands {
     state
   }
 
-  private[sbt] def multiParserImpl(state: Option[State]): Parser[List[String]] = {
+  private[sbt] def multiParserImpl(state: Option[State]): Parser[List[String]] =
+    multiParserImpl(state, "alias" :: Nil)
+  private[sbt] def multiParserImpl(
+      state: Option[State],
+      exclude: Seq[String]
+  ): Parser[List[String]] = {
     val nonSemi = charClass(_ != ';', "not ';'")
-    val semi = token(OptSpace ~> ';' ~> OptSpace)
     val nonDelim = charClass(c => c != '"' && c != '{' && c != '}', label = "not '\"', '{', '}'")
-    val components = ((nonSemi & nonDelim) | StringEscapable | braces('{', '}')).+
-    val cmdPart = matched(components)
+    // Accept empty commands to simplify the parser.
+    val cmdPart =
+      matched(((nonSemi & nonDelim) | StringEscapable | braces('{', '}')).*).examples()
 
     val completionParser: Option[Parser[String]] =
-      state.map(s => OptSpace ~> matched(s.nonMultiParser) <~ OptSpace)
-    val cmdParser = completionParser.map(sp => sp & cmdPart).getOrElse(cmdPart).map(_.trim)
-    val multiCmdParser: Parser[String] = semi ~> cmdParser
-    /*
-     * There are two cases that need to be handled separately:
-     * 1) leading semicolon with one or more commands separated by a semicolon
-     * 2) no leading semicolon and at least one command followed by a trailing semicolon
-     *    and zero or more commands separated by a semicolon
-     * Both cases allow an optional trailing semi-colon.
-     *
-     * These have to be handled separately because the performance degrades badly if the first
-     * case is implemented with the following parser:
-     * (semi.? ~> ((combinedParser <~ semi).* ~ combinedParser <~ semi.?)
-     */
-    val noLeadingSemi = (cmdParser ~ (multiCmdParser.+ | semi.map(_ => Nil))).map {
-      case (prefix, last) => (prefix :: Nil ::: last.toList).filter(_.nonEmpty)
+      state.map(s => (matched(s.nonMultiParser) & cmdPart) | cmdPart)
+    val cmdParser = {
+      val parser = completionParser.getOrElse(cmdPart).map(_.trim)
+      exclude.foldLeft(parser) { case (p, e) => p & not(OptSpace ~ s"$e ", s"!$e").examples() }
     }
-    val leadingSemi = multiCmdParser.+.map(_.toList.filter(_.nonEmpty))
-    ((leadingSemi | noLeadingSemi) <~ semi.?).flatMap {
-      case Nil      => Parser.failure("No commands were parsed")
-      case commands => Parser.success(commands)
+    val multiCmdParser: Parser[String] = token(';') ~> OptSpace ~> cmdParser
+
+    /*
+     * We accept empty commands at the end of the the list as an implementation detail that allows
+     * for a trailing semi-colon without an extra parser since the cmdParser accepts an empty string
+     * and the multi parser is `token(';') ~ cmdParser`. We do not want to accept empty commands
+     * that occur in the middle of the sequence so if  we find one, we return a failed parser. If
+     * we wanted to relax that restriction, then we could just replace the flatMap below with
+     * `rest.filterNot(_.isEmpty)`.
+     */
+    def validateCommands(s: Seq[String]): Parser[List[String]] = {
+      val result = new ListBuffer[String]
+      val it = s.iterator
+      var fail = false
+      while (it.hasNext && !fail) {
+        it.next match {
+          case ""   => fail = it.hasNext
+          case next => result += next
+        }
+      }
+      if (fail) Parser.failure(s"Couldn't parse empty commands in ${s.mkString(";")}")
+      else Parser.success(result.toList)
+    }
+
+    (cmdParser ~ multiCmdParser.+).flatMap {
+      case ("", rest) => validateCommands(rest)
+      case (p, rest)  => validateCommands(rest).map(p :: _)
     }
   }
 
   def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
 
-  def multiApplied(state: State): Parser[() => State] =
+  def multiApplied(state: State): Parser[() => State] = {
     Command.applyEffect(multiParserImpl(Some(state))) {
       // the (@ _ :: _) ensures tail length >= 1.
       case commands @ first :: (tail @ _ :: _) =>
@@ -211,31 +229,30 @@ object BasicCommands {
         // then we directly evaluate the `() => State` returned by the parser. Otherwise, we
         // fall back to prefixing the multi commands to the state.
         //
-        state.nonMultiCommands.view.flatMap {
-          case command =>
-            command.nameOption match {
-              case Some(commandName) if first.startsWith(commandName) =>
-                // A lot of commands expect leading semicolons in their parsers. In order to
-                // ensure that they are multi-command capable, we strip off any leading spaces.
-                // Without doing this, we could run simple commands like `set` with the full
-                // input. This would likely fail because `set` doesn't know how to handle
-                // semicolons. This is a bit of a hack that is specifically there
-                // to handle `~` which doesn't require a space before its argument. Any command
-                // whose parser accepts multi commands without a leading space should be accepted.
-                // All other commands should be rejected. Note that `alias` is also handled by
-                // this case.
-                val commandArgs =
-                  (first.drop(commandName.length).trim :: Nil ::: tail).mkString(";")
-                parse(commandArgs, command.parser(state)).toOption
-              case _ => None
-            }
-          case _ => None
+        state.nonMultiCommands.view.flatMap { command =>
+          command.nameOption match {
+            case Some(commandName) if first.startsWith(commandName) =>
+              // A lot of commands expect leading semicolons in their parsers. In order to
+              // ensure that they are multi-command capable, we strip off any leading spaces.
+              // Without doing this, we could run simple commands like `set` with the full
+              // input. This would likely fail because `set` doesn't know how to handle
+              // semicolons. This is a bit of a hack that is specifically there
+              // to handle `~` which doesn't require a space before its argument. Any command
+              // whose parser accepts multi commands without a leading space should be accepted.
+              // All other commands should be rejected. Note that `alias` is also handled by
+              // this case.
+              val commandArgs =
+                (first.drop(commandName.length).trim :: Nil ::: tail).mkString(";")
+              parse(commandArgs, command.parser(state)).toOption
+            case _ => None
+          }
         }.headOption match {
           case Some(s) => s()
           case _       => commands ::: state
         }
       case commands => commands ::: state
     }
+  }
 
   val multi: Command =
     Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed), Multi)
@@ -302,7 +319,7 @@ object BasicCommands {
           if (cp.isEmpty) parentLoader else toLoader(cp.map(f => new File(f)), parentLoader)
         val loaded =
           args.map(arg => ModuleUtilities.getObject(arg, loader).asInstanceOf[State => State])
-        (state /: loaded)((s, obj) => obj(s))
+        loaded.foldLeft(state)((s, obj) => obj(s))
     }
 
   def callParser: Parser[(Seq[String], Seq[String])] =

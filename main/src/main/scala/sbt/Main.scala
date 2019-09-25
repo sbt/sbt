@@ -23,7 +23,7 @@ import sbt.internal._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
-import sbt.internal.util.complete.Parser
+import sbt.internal.util.complete.{ SizeParser, Parser }
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
@@ -36,9 +36,9 @@ import scala.util.control.NonFatal
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-    new XMainConfiguration().runXMain(configuration)
+    new XMainConfiguration().run("xMain", configuration)
 }
-private[sbt] object xMainImpl {
+private[sbt] object xMain {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     try {
       import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
@@ -72,7 +72,11 @@ private[sbt] object xMainImpl {
 }
 
 final class ScriptMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+    new XMainConfiguration().run("ScriptMain", configuration)
+}
+private[sbt] object ScriptMain {
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
     val state = StandardMain.initialState(
       configuration,
@@ -84,7 +88,11 @@ final class ScriptMain extends xsbti.AppMain {
 }
 
 final class ConsoleMain extends xsbti.AppMain {
-  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+    new XMainConfiguration().run("ConsoleMain", configuration)
+}
+private[sbt] object ConsoleMain {
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val state = StandardMain.initialState(
       configuration,
       BuiltinCommands.ConsoleCommands,
@@ -584,19 +592,18 @@ object BuiltinCommands {
       kvs = Act.keyValues(structure)(lastOnly_keys._2)
       f <- if (lastOnly_keys._1) success(() => s)
       else Aggregation.evaluatingParser(s, show)(kvs)
-    } yield
-      () => {
-        def export0(s: State): State = lastImpl(s, kvs, Some(ExportStream))
-        val newS = try f()
-        catch {
-          case NonFatal(e) =>
-            try export0(s)
-            finally {
-              throw e
-            }
-        }
-        export0(newS)
+    } yield () => {
+      def export0(s: State): State = lastImpl(s, kvs, Some(ExportStream))
+      val newS = try f()
+      catch {
+        case NonFatal(e) =>
+          try export0(s)
+          finally {
+            throw e
+          }
       }
+      export0(newS)
+    }
   }
 
   def lastGrepParser(s: State): Parser[(String, Option[AnyKeys])] =
@@ -840,9 +847,21 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s)
-    Project
-      .setProject(session, structure, s)
-      .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
+    addCacheStoreFactoryFactory(
+      Project
+        .setProject(session, structure, s)
+        .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
+    )
+  }
+
+  private val addCacheStoreFactoryFactory: State => State = (s: State) => {
+    val size = Project
+      .extract(s)
+      .getOpt(Keys.fileCacheSize)
+      .flatMap(SizeParser(_))
+      .getOrElse(SysProp.fileCacheSize)
+    s.get(Keys.cacheStoreFactoryFactory).foreach(_.close())
+    s.put(Keys.cacheStoreFactoryFactory, InMemoryCacheStore.factory(size))
   }
 
   def registerCompilerCache(s: State): State = {
@@ -857,7 +876,7 @@ object BuiltinCommands {
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache)
+    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache) andThen addCacheStoreFactoryFactory
     Command.command(ClearCaches, help)(f)
   }
 

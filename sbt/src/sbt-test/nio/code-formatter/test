@@ -1,0 +1,47 @@
+> setLastModified Foo.scala 12345678
+
+# The first time we run compile, we expect an updated class file for Foo.class
+-> compileAndCheckNoClassFileUpdates
+
+# scalafmt should modify Foo.scala
+> checkLastModified Foo.scala !12345678
+
+# The first time we run compile, there should be no updates since Foo.scala hasn't changed since
+# scalafmt modified it in the first run
+> compileAndCheckNoClassFileUpdates
+
+$ copy-file changes/Foo.scala src/main/scala/Foo.scala
+
+$ copy-file changes/Bar-bad.scala src/main/scala/Bar.scala
+
+> setLastModified Foo.scala 12345678
+
+> setLastModified Bar.scala 12345678
+
+# formatting should fail because Bar.scala is invalid, but Foo.scala should be re-formatted
+-> scalafmt
+
+> checkLastModified Foo.scala !12345678
+
+> checkLastModified Bar.scala 12345678
+
+$ copy-file changes/Bar.scala src/main/scala/Bar.scala
+
+> setLastModified Foo.scala 12345678
+
+> setLastModified Bar.scala 12345678
+
+# Formatting should now succeed and Foo.scala should not be re-formatted
+> scalafmt
+
+> checkLastModified Foo.scala 12345678
+
+> checkLastModified Bar.scala !12345678
+
+# make sure that the custom clean task doesn't blow away the scala source files (it should exclude
+# any files not in the target directory
+> scalafmt / clean
+
+$ exists src/main/scala/Foo.scala
+
+$ exists src/main/scala/Bar.scala

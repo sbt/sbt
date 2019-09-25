@@ -1,6 +1,4 @@
-image:
-- Visual Studio 2015
-- Visual Studio 2017
+image: Visual Studio 2017
 build: off
 
 init:
@@ -26,5 +24,6 @@ test_script:
   - sbt "scripted actions/* classloader-cache/* nio/* watch/*" "testOnly sbt.ServerSpec"
 
 cache:
+  - '%LOCALAPPDATA%\Coursier\Cache\v1'
   - '%USERPROFILE%\.ivy2\cache'
   - '%USERPROFILE%\.sbt'

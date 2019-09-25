@@ -81,7 +81,7 @@ object JLineCompletion {
 
   def convertCompletions(cs: Set[Completion]): (Seq[String], Seq[String]) = {
     val (insert, display) =
-      ((Set.empty[String], Set.empty[String]) /: cs) {
+      cs.foldLeft((Set.empty[String], Set.empty[String])) {
         case (t @ (insert, display), comp) =>
           if (comp.isEmpty) t
           else (appendNonEmpty(insert, comp.append), appendNonEmpty(display, comp.display))
@@ -89,7 +89,10 @@ object JLineCompletion {
     (insert.toSeq, display.toSeq.sorted)
   }
 
-  def appendNonEmpty(set: Set[String], add: String) = if (add.trim.isEmpty) set else set + add
+  def appendNonEmpty(set: Set[String], add: String) = {
+    val trimmed = add.trim
+    if (trimmed.isEmpty || trimmed == ";") set else set + add
+  }
 
   def customCompletor(
       f: (String, Int) => (Seq[String], Seq[String])

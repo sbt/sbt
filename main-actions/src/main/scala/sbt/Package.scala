@@ -104,7 +104,7 @@ object Package {
     }
 
     val inputFiles = conf.sources.map(_._1).toSet
-    val inputs = conf.sources :+: lastModified(inputFiles) :+: manifest :+: HNil
+    val inputs = conf.sources.distinct :+: lastModified(inputFiles) :+: manifest :+: HNil
     cachedMakeJar(inputs)(() => exists(conf.jar))
     ()
   }

@@ -10,9 +10,42 @@ package sbt.internal
 import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.net.{ URL, URLClassLoader }
+import java.util.concurrent.{ ExecutorService, Executors }
 import java.util.regex.Pattern
 
+import sbt.plugins.{ CorePlugin, IvyPlugin, JvmPlugin }
+import sbt.util.LogExchange
 import xsbti._
+
+private[internal] object ClassLoaderWarmup {
+  def warmup(): Unit = {
+    if (Runtime.getRuntime.availableProcessors > 1) {
+      val executorService: ExecutorService =
+        Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors - 1)
+      def submit[R](f: => R): Unit = {
+        executorService.submit(new Runnable {
+          override def run(): Unit = { f; () }
+        })
+        ()
+      }
+
+      submit(LogExchange.context)
+      submit(Class.forName("sbt.internal.parser.SbtParserInit").getConstructor().newInstance())
+      submit(CorePlugin.projectSettings)
+      submit(IvyPlugin.projectSettings)
+      submit(JvmPlugin.projectSettings)
+      submit(() => {
+        try {
+          val clazz = Class.forName("scala.reflect.runtime.package$")
+          clazz.getMethod("universe").invoke(clazz.getField("MODULE$").get(null))
+        } catch {
+          case _: Exception =>
+        }
+        executorService.shutdown()
+      })
+    }
+  }
+}
 
 /**
  * Generates a new app configuration and invokes xMainImpl.run. For AppConfigurations generated
@@ -28,7 +61,7 @@ private[sbt] class XMainConfiguration {
     case a: AutoCloseable => a.close()
     case _                =>
   }
-  def runXMain(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  def run(moduleName: String, configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val updatedConfiguration =
       if (configuration.provider.scalaProvider.launcher.topLoader.getClass.getCanonicalName
             .contains("TestInterfaceLoader")) {
@@ -38,11 +71,12 @@ private[sbt] class XMainConfiguration {
       }
     val loader = updatedConfiguration.provider.loader
     Thread.currentThread.setContextClassLoader(loader)
-    val clazz = loader.loadClass("sbt.xMainImpl$")
+    val clazz = loader.loadClass(s"sbt.$moduleName$$")
     val instance = clazz.getField("MODULE$").get(null)
     val runMethod = clazz.getMethod("run", classOf[xsbti.AppConfiguration])
     try {
-      loader.loadClass("sbt.internal.parser.SbtParserInit").getConstructor().newInstance()
+      val clw = loader.loadClass("sbt.internal.ClassLoaderWarmup$")
+      clw.getMethod("warmup").invoke(clw.getField("MODULE$").get(null))
       runMethod.invoke(instance, updatedConfiguration).asInstanceOf[xsbti.MainResult]
     } catch {
       case e: InvocationTargetException =>
