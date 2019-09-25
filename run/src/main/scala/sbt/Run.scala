@@ -12,7 +12,7 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{ isPublic, isStatic }
 
 import sbt.internal.inc.ScalaInstance
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtilities }
 import sbt.internal.util.MessageOnlyException
 import sbt.io.Path
 import sbt.util.Logger
@@ -95,7 +95,13 @@ class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolea
 
   /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
-    runWithLoader(newLoader(classpath), classpath, mainClass, options, log)
+    val loader = newLoader(classpath)
+    try runWithLoader(loader, classpath, mainClass, options, log)
+    finally loader match {
+      case ac: AutoCloseable  => ac.close()
+      case c: ClasspathFilter => c.close()
+      case _                  =>
+    }
   }
   private def invokeMain(
       loader: ClassLoader,
