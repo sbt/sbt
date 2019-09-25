@@ -82,14 +82,36 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
-  test("sbt -V|-version should print sbtVersion") {
+  // 1.3.0, 1.3.0-M4
+  private val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
+
+  test("sbt -V|-version|--version should print sbtVersion") {
     val out = sbtProcessWithOpts("-version", "", "").!!.trim
-    val expectedVersion = "^sbt version in this project: \\d\\.\\d+\\.\\d+\\S*$"
+    val expectedVersion =
+      s"""|(?m)^sbt version in this project: $versionRegEx
+         |sbt script version: $versionRegEx$$
+         |""".stripMargin.trim.replace("\n", "\\n")
     assert(out.matches(expectedVersion))
 
-    val out2 = sbtProcessWithOpts("-V", "", "").!!.trim
+    val out2 = sbtProcessWithOpts("--version", "", "").!!.trim
     assert(out2.matches(expectedVersion))
+
+    val out3 = sbtProcessWithOpts("-V", "", "").!!.trim
+    assert(out3.matches(expectedVersion))
     ()
   }
 
+  test("sbt --numeric-version should print sbt script version") {
+    val out = sbtProcessWithOpts("--numeric-version", "", "").!!.trim
+    val expectedVersion = "^"+versionRegEx+"$"
+    assert(out.matches(expectedVersion))
+    ()
+  }
+
+  test("sbt --script-version should print sbtVersion") {
+    val out = sbtProcessWithOpts("--numeric-version", "", "").!!.trim
+    val expectedVersion = "^"+versionRegEx+"$"
+    assert(out.matches(expectedVersion))
+    ()
+  }
 }
