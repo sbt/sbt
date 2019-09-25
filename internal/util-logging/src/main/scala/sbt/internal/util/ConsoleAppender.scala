@@ -373,24 +373,23 @@ class ConsoleAppender private[ConsoleAppender] (
     }
 
     val width = ConsoleAppender.terminalWidth
-    val extra: Int = info.foldLeft(0)(_ + terminalLines(width)(_))
+    val currentLength = info.foldLeft(info.length)(_ + terminalLines(width)(_))
     val previousLines = progressLines.getAndSet(info)
-    val prevExtra = previousLines.foldLeft(0)(_ + terminalLines(width)(_))
+    val prevLength = previousLines.foldLeft(previousLines.length)(_ + terminalLines(width)(_))
 
     val prevPadding = padding.get
-    val newPadding =
-      math.max(0, previousLines.length + prevExtra + prevPadding - info.length - extra)
+    val newPadding = math.max(0, prevLength + prevPadding - currentLength)
     padding.set(newPadding)
 
     deleteConsoleLines(newPadding)
     deleteConsoleLines(blankZone)
     info.foreach(i => out.println(i))
 
-    out.print(cursorUp(blankZone + info.length + newPadding + extra))
+    out.print(cursorUp(blankZone + currentLength + newPadding))
     out.flush()
   }
   private def terminalLines(width: Int): String => Int =
-    (progressLine: String) => (progressLine.length - 1) / width
+    (progressLine: String) => if (width > 0) (progressLine.length - 1) / width else 0
   private def deleteConsoleLines(n: Int): Unit = {
     (1 to n) foreach { _ =>
       out.println(DeleteLine)
