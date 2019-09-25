@@ -12,6 +12,7 @@
 @echo off
 set SBT_HOME=%~dp0
 set SBT_ARGS=
+set SBT_VERBOSE=
 
 set DEFAULT_JAVA_OPTS=-Dfile.encoding=UTF-8
 
@@ -71,6 +72,19 @@ if "%~1" == "--jvm-debug" set JVM_DEBUG=true
 if "%~1" == "-java-home" set SET_JAVA_HOME=true
 if "%~1" == "--java-home" set SET_JAVA_HOME=true
 
+if "%~1" == "-v" (
+  set SBT_VERBOSE=true
+  goto args_next
+)
+if "%~1" == "-verbose" (
+  set SBT_VERBOSE=true
+  goto args_next
+)
+if "%~1" == "--verbose" (
+  set SBT_VERBOSE=true
+  goto args_next
+)
+
 if "%JVM_DEBUG%" == "true" (
   set /a JVM_DEBUG_PORT=5005 2>nul >nul
 ) else if "!JVM_DEBUG!" == "true" (
@@ -116,6 +130,7 @@ if "%SET_JAVA_HOME%" == "true" (
   )
 )
 
+:args_next
 shift
 goto args_loop
 :args_end
@@ -163,9 +178,26 @@ if ERRORLEVEL 1 goto error
 goto end
 
 :run
+if "%SBT_VERBOSE%" == "true" (
+  echo # Executing command line:
+  echo "%_JAVACMD%"
+  if not "%_JAVA_OPTS%" == "" ( call :echolist %_JAVA_OPTS% )
+  if not "%SBT_OPTS%" == "" ( call :echolist %SBT_OPTS% )
+  echo -cp "%SBT_HOME%sbt-launch.jar"
+  echo xsbt.boot.Boot
+  if not "%*" == "" ( call :echolist %* )
+  echo.
+)
 
 "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -cp "%SBT_HOME%sbt-launch.jar" xsbt.boot.Boot %*
 goto :eof
+
+:echolist
+for /F "tokens=1*" %%g in ("%*") do (
+  echo %%g
+  if not x%%h == x call :echolist %%h
+)
+exit /B 0
 
 :process
 rem Parses x out of 1.x; for example 8 out of java version 1.8.0_xx
