@@ -51,56 +51,28 @@ $ sbt
 > compile
 ```
 
-### Using Jenkins sbt-snapshots nighties
+### Nightly builds
 
-There is a Jenkins instance for sbt that every night builds and publishes (if successful) a timestamped version
-of sbt to http://jenkins.scala-sbt.org/sbt-snapshots and is available for 4-5 weeks. To use it do the following:
+The latest development versions are available as nightly builds on sbt-maven-snapshots (<https://repo.scala-sbt.org/scalasbt/maven-snapshots>) repo.
 
-1. Set the `sbt.version` in `project/build.properties`
+Note that currently following the URL would lead you to Bintray, but [/org/scala-sbt/sbt/](https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt/) would actually point to a Jenkins server.
 
-```bash
-echo "sbt.version=1.2.0-bin-20180423T192044" > project/build.properties
+To use a nightly build:
+
+1. Find out a version from [/org/scala-sbt/sbt/](https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt/).
+2. Put the version, for example `sbt.version=1.3.0-bin-20190813T192012` in `project/build.properties`.
+
+sbt launcher will resolve the sbt core artifacts based on the specification.
+
+Unless you're debugging the `sbt` script or the launcher JAR, you should be able to use any recent stable version of sbt installation as the launcher following the [Setup][Setup] instructions first.
+
+If you're overriding the repositories via `~/.sbt/repositories`, make sure that there's a following entry:
+
 ```
-
-2. Create an sbt repositories file (`./repositories`) that includes that Maven repository:
-
-```properties
 [repositories]
-  local
-  local-preloaded-ivy: file:///${sbt.preloaded-${sbt.global.base-${user.home}/.sbt}/preloaded/}, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
-  local-preloaded: file:///${sbt.preloaded-${sbt.global.base-${user.home}/.sbt}/preloaded/}
-  maven-central
-  sbt-maven-releases: https://repo.scala-sbt.org/scalasbt/maven-releases/, bootOnly
+  ...
   sbt-maven-snapshots: https://repo.scala-sbt.org/scalasbt/maven-snapshots/, bootOnly
-  typesafe-ivy-releases: https://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
-  sbt-ivy-snapshots: https://repo.scala-sbt.org/scalasbt/ivy-snapshots/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
-  sbt-snapshots: https://jenkins.scala-sbt.org/sbt-snapshots
 ```
-
-3. Start sbt with a stable launcher and the custom repositories file:
-
-```bash
-$ sbt -sbt-jar ~/.sbt/launchers/1.1.4/sbt-launch.jar -Dsbt.repository.config=repositories
-Getting org.scala-sbt sbt 1.2.0-bin-20180423T192044  (this may take some time)...
-downloading https://jenkins.scala-sbt.org/sbt-snapshots/org/scala-sbt/sbt/1.2.0-bin-20180423T192044/sbt-1.2.0-bin-20180423T192044.jar ...
-	[SUCCESSFUL ] org.scala-sbt#sbt;1.2.0-bin-20180423T192044!sbt.jar (139ms)
-...
-[info] sbt server started at local:///Users/dnw/.sbt/1.0/server/936e0f52ed9baf6b6d83/sock
-> show sbtVersion
-[info] 1.2.0-bin-20180423T192044
-```
-
-### Using Jenkins maven-snapshots nightlies
-
-As an alternative you can request a build that publishes to https://repo.scala-sbt.org/scalasbt/maven-snapshots
-and stays there forever by:
-
-1. Logging into https://jenkins.scala-sbt.org/job/sbt-validator/
-2. Clicking "Build with Parameters"
-3. Making sure `deploy_to_bintray` is enabled
-4. Hitting "Build"
-
-Afterwhich start sbt with a stable launcher: `sbt -sbt-jar ~/.sbt/launchers/1.1.4/sbt-launch.jar`
 
 ### Clearing out boot and local cache
 
