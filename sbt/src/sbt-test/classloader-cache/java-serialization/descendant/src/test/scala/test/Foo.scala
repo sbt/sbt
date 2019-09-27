@@ -1,6 +1,6 @@
 package test
 
-class Foo extends Serializable {
+class Foo extends Bar with Serializable {
   private[this] var value: Int = 0
   def getValue(): Int = value
   def setValue(newValue: Int): Unit = value = newValue
