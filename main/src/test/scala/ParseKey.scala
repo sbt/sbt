@@ -20,7 +20,7 @@ import hedgehog.runner._
  * This includes properly resolving omitted components.
  */
 object ParseKey extends Properties {
-  val exampleCount = 10000
+  val exampleCount = 5000
 
   override def tests: List[Test] = List(
     propertyN(
