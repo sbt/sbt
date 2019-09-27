@@ -19,7 +19,7 @@ matrix:
   fast_finish: true
   include:
     - env:
-        - TRAVIS_JDK=adopt@1.8.192-12
+        - TRAVIS_JDK=adopt@1.8.0-222
         - SBT_CMD="scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
 
 before_install:
