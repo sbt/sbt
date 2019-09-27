@@ -10,20 +10,20 @@ package sbt.internal;
 import java.io.File;
 import java.net.URL;
 import sbt.util.Logger;
-import scala.collection.Seq;
 
-final class FlatLoader extends LayeredClassLoaderImpl {
+final class FlatLoader extends ManagedClassLoader {
   static {
     ClassLoader.registerAsParallelCapable();
   }
 
   FlatLoader(
-      final Seq<File> files,
+      final URL[] urls,
       final ClassLoader parent,
       final File file,
       final boolean allowZombies,
       final Logger logger) {
-    super(files, parent, file, allowZombies, logger);
+    super(urls, parent, allowZombies, logger);
+    setTempDir(file);
   }
 
   @Override

@@ -8,13 +8,14 @@
 package sbt.internal;
 
 import java.io.File;
+import java.net.URL;
 import sbt.util.Logger;
-import scala.collection.Seq;
 
-final class LayeredClassLoader extends LayeredClassLoaderImpl {
-  LayeredClassLoader(final Seq<File> classpath, final ClassLoader parent, final File tempDir, final
+final class LayeredClassLoader extends ManagedClassLoader {
+  LayeredClassLoader(final URL[] classpath, final ClassLoader parent, final File tempDir, final
       boolean allowZombies, final Logger logger) {
-    super(classpath, parent, tempDir, allowZombies, logger);
+    super(classpath, parent, allowZombies, logger);
+    setTempDir(tempDir);
   }
 
   static {
