@@ -12,6 +12,7 @@ import sbt.internal.TestBuild._
 import sbt.internal.util.complete.Parser
 import sbt.internal.{ Resolve, TestBuild }
 import hedgehog.{ Result => Assert, _ }
+import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.runner._
 
 /**
@@ -19,22 +20,34 @@ import hedgehog.runner._
  * This includes properly resolving omitted components.
  */
 object ParseKey extends Properties {
+  val exampleCount = 10000
 
   override def tests: List[Test] = List(
-    property(
+    propertyN(
       "An explicitly specified axis is always parsed to that explicit value",
-      arbStructureKeyMask.forAll.map(roundtrip)
+      arbStructureKeyMask.forAll.map(roundtrip),
+      exampleCount
     ),
-    property(
+    propertyN(
       "An unspecified project axis resolves to the current project",
-      arbStructureKeyMask.forAll.map(noProject)
+      arbStructureKeyMask.forAll.map(noProject),
+      exampleCount
     ),
-    property("An unspecified task axis resolves to Zero", arbStructureKeyMask.forAll.map(noTask)),
-    property(
+    propertyN(
+      "An unspecified task axis resolves to Zero",
+      arbStructureKeyMask.forAll.map(noTask),
+      exampleCount
+    ),
+    propertyN(
       "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero",
-      arbStructureKeyMask.forAll.map(noConfig)
+      arbStructureKeyMask.forAll.map(noConfig),
+      exampleCount
     )
   )
+
+  def propertyN(name: String, result: => Property, n: Int): Test =
+    Test(name, result)
+      .config(_.copy(testLimit = SuccessCount(n), shrinkLimit = ShrinkLimit(n * 10)))
 
   def roundtrip(skm: StructureKeyMask) = {
     import skm.{ structure, key }
