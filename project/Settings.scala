@@ -5,7 +5,7 @@ import sbt._
 import sbt.Keys._
 import sbt.ScriptedPlugin.autoImport.{scriptedBufferLog, scriptedLaunchOpts}
 
-import com.typesafe.sbt.pgp._
+import com.jsuereth.sbtpgp._
 import coursier.ShadingPlugin.autoImport.{Shading, shadingNamespace}
 
 object Settings {
