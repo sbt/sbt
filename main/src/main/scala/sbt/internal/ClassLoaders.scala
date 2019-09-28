@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.io.File
+import java.net.URL
 import java.nio.file.Path
 
 import sbt.ClassLoaderLayeringStrategy._
@@ -25,6 +26,9 @@ import sbt.nio.Keys._
 import sbt.util.Logger
 
 private[sbt] object ClassLoaders {
+  private implicit class SeqFileOps(val files: Seq[File]) extends AnyVal {
+    def urls: Array[URL] = files.toArray.map(_.toURI.toURL)
+  }
   private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
   /*
    * Get the class loader for a test task. The configuration could be IntegrationTest or Test.
@@ -136,7 +140,7 @@ private[sbt] object ClassLoaders {
   ): ClassLoader = {
     val cpFiles = fullCP.map(_._1)
     strategy match {
-      case Flat => new FlatLoader(cpFiles, interfaceLoader, tmp, allowZombies, logger)
+      case Flat => new FlatLoader(cpFiles.urls, interfaceLoader, tmp, allowZombies, logger)
       case _ =>
         val layerDependencies = strategy match {
           case _: AllLibraryJars => true
@@ -194,7 +198,8 @@ private[sbt] object ClassLoaders {
           case cl =>
             cl.getParent match {
               case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
-              case _                                  => new LayeredClassLoader(dynamicClasspath, cl, tmp, allowZombies, logger)
+              case _ =>
+                new LayeredClassLoader(dynamicClasspath.urls, cl, tmp, allowZombies, logger)
             }
         }
     }

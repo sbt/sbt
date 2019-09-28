@@ -9,9 +9,8 @@ package sbt.internal
 
 import java.io.File
 import java.lang.reflect.InvocationTargetException
-import java.net.{ URL, URLClassLoader }
+import java.net.URL
 import java.util.concurrent.{ ExecutorService, Executors }
-import java.util.regex.Pattern
 
 import sbt.plugins.{ CorePlugin, IvyPlugin, JvmPlugin }
 import sbt.util.LogExchange
@@ -93,28 +92,19 @@ private[sbt] class XMainConfiguration {
     val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     // This loader doesn't have the scala library in it so it's critical that none of the code
     // in this file use the scala library.
-    val modifiedLoader = new URLClassLoader(urlArray, topLoader) {
-      override def loadClass(name: String, resolve: Boolean): Class[_] = {
-        if (name.startsWith("sbt.internal.XMainConfiguration")) {
-          val clazz = findClass(name)
-          if (resolve) resolveClass(clazz)
-          clazz
-        } else {
-          super.loadClass(name, resolve)
-        }
-      }
-    }
+    val modifiedLoader = new XMainClassLoader(urlArray, topLoader)
     val xMainConfigurationClass = modifiedLoader.loadClass("sbt.internal.XMainConfiguration")
     val instance: AnyRef =
       xMainConfigurationClass.getConstructor().newInstance().asInstanceOf[AnyRef]
 
-    val method = xMainConfigurationClass.getMethod("makeLoader", classOf[AppProvider])
-    val modifiedConfigurationClass =
-      modifiedLoader.loadClass("sbt.internal.XMainConfiguration$ModifiedConfiguration")
+    val metaBuildLoaderClass = modifiedLoader.loadClass("sbt.internal.MetaBuildLoader")
+    val method = metaBuildLoaderClass.getMethod("makeLoader", classOf[AppProvider])
 
-    val loader = method.invoke(instance, configuration.provider).asInstanceOf[ClassLoader]
+    val loader = method.invoke(null, configuration.provider).asInstanceOf[ClassLoader]
 
     Thread.currentThread.setContextClassLoader(loader)
+    val modifiedConfigurationClass =
+      modifiedLoader.loadClass("sbt.internal.XMainConfiguration$ModifiedConfiguration")
     val cons = modifiedConfigurationClass.getConstructors()(0)
     close(configuration.provider.loader)
     val scalaProvider = configuration.provider.scalaProvider
@@ -187,84 +177,4 @@ private[sbt] class XMainConfiguration {
     override def provider(): AppProvider = new ModifiedAppProvider(configuration.provider)
   }
 
-  /**
-   *  Rearrange the classloaders so that test-interface is above the scala library. Implemented
-   *  without using the scala standard library to minimize classloading.
-   * @param appProvider the appProvider that needs to be modified
-   * @return a ClassLoader with a URLClassLoader for the test-interface-1.0.jar above the
-   *         scala library.
-   */
-  private[sbt] def makeLoader(appProvider: AppProvider): ClassLoader = {
-    val pattern = Pattern.compile("test-interface-[0-9.]+\\.jar")
-    val cp = appProvider.mainClasspath
-    val interfaceURL = new Array[URL](1)
-    val rest = new Array[URL](cp.length - 1)
-
-    {
-      var i = 0
-      var j = 0 // index into rest
-      while (i < cp.length) {
-        val file = cp(i)
-        if (pattern.matcher(file.getName).find()) {
-          interfaceURL(0) = file.toURI.toURL
-        } else {
-          rest(j) = file.toURI.toURL
-          j += 1
-        }
-        i += 1
-      }
-    }
-    val scalaProvider = appProvider.scalaProvider
-    val topLoader = scalaProvider.launcher.topLoader
-    class InterfaceLoader extends URLClassLoader(interfaceURL, topLoader) {
-      override def toString: String = "SbtTestInterfaceClassLoader(" + interfaceURL(0) + ")"
-    }
-    val interfaceLoader = new InterfaceLoader
-    val siJars = scalaProvider.jars
-    val lib = new Array[URL](1)
-    val scalaRest = new Array[URL](siJars.length - 1)
-
-    {
-      var i = 0
-      var j = 0 // index into scalaRest
-      while (i < siJars.length) {
-        val file = siJars(i)
-        if (file.getName.equals("scala-library.jar")) {
-          lib(0) = file.toURI.toURL
-        } else {
-          scalaRest(j) = file.toURI.toURL
-          j += 1
-        }
-        i += 1
-      }
-    }
-    class LibraryLoader extends URLClassLoader(lib, interfaceLoader) {
-      override def toString: String = "ScalaLibraryLoader( " + lib(0) + ")"
-    }
-    val libraryLoader = new LibraryLoader
-    class FullLoader extends URLClassLoader(scalaRest, libraryLoader) {
-      private val jarString: String = {
-        val res = new java.lang.StringBuilder
-        var i = 0
-        while (i < scalaRest.length) {
-          res.append(scalaRest(i).getPath)
-          res.append(", ")
-          i += 1
-        }
-        res.toString
-      }
-      override def toString: String = "ScalaClassLoader(jars = " + jarString + ")"
-    }
-    val fullLoader = new FullLoader
-    class MetaBuildLoader extends URLClassLoader(rest, fullLoader) {
-      override def toString: String = "SbtMetaBuildClassLoader"
-      override def close(): Unit = {
-        super.close()
-        libraryLoader.close()
-        fullLoader.close()
-        interfaceLoader.close()
-      }
-    }
-    new MetaBuildLoader
-  }
 }
