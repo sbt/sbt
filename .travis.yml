@@ -8,7 +8,7 @@ scala: 2.10.7
 env:
   global:
     - SBT_VER=1.3.0
-    - TRAVIS_JDK=adopt@1.8.212-04
+    - TRAVIS_JDK=adopt@1.8.0-222
     - JABBA_HOME=$HOME/.jabba
     - TRAVIS_JDK11=openjdk@1.11.0
     ## ignore Travis CI's default /etc/sbt/sbtopts
