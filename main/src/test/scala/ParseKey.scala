@@ -20,18 +20,18 @@ import hedgehog.runner._
  * This includes properly resolving omitted components.
  */
 object ParseKey extends Properties {
-  val exampleCount = 5000
+  val exampleCount = 1000
 
   override def tests: List[Test] = List(
     propertyN(
       "An explicitly specified axis is always parsed to that explicit value",
       arbStructureKeyMask.forAll.map(roundtrip),
-      exampleCount
+      5000
     ),
     propertyN(
       "An unspecified project axis resolves to the current project",
       arbStructureKeyMask.forAll.map(noProject),
-      exampleCount
+      5000
     ),
     propertyN(
       "An unspecified task axis resolves to Zero",
@@ -58,7 +58,7 @@ object ParseKey extends Properties {
     // so we mitigate this by explicitly displaying the configuration axis set to Zero
     val hasZeroConfig = key.scope.config == Zero
 
-    val showZeroConfig = hasZeroConfig || hasAmbiguousLowercaseAxes(key)
+    val showZeroConfig = hasZeroConfig || hasAmbiguousLowercaseAxes(key, structure)
     val mask = if (showZeroConfig) skm.mask.copy(project = true) else skm.mask
 
     val expected = resolve(structure, key, mask)
@@ -76,11 +76,12 @@ object ParseKey extends Properties {
     val mask = skm.mask.copy(project = false)
     // skip when config axis is set to Zero
     val hasZeroConfig = key.scope.config ==== Zero
-    val showZeroConfig = hasAmbiguousLowercaseAxes(key)
+    val showZeroConfig = hasAmbiguousLowercaseAxes(key, structure)
     parseCheck(structure, key, mask, showZeroConfig)(
       sk =>
         (hasZeroConfig or sk.scope.project ==== Select(structure.current))
-          .log(s"Current: ${structure.current}")
+          .log(s"parsed subproject: ${sk.scope.project}")
+          .log(s"current subproject: ${structure.current}")
     )
   }
 
@@ -94,7 +95,7 @@ object ParseKey extends Properties {
     import skm.{ structure, key }
     val mask = ScopeMask(config = false)
     val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
-    val showZeroConfig = hasAmbiguousLowercaseAxes(key)
+    val showZeroConfig = hasAmbiguousLowercaseAxes(key, structure)
     parseCheck(structure, key, mask, showZeroConfig)(
       sk => (sk.scope.config ==== resolvedConfig) or (sk.scope ==== Scope.GlobalScope)
     ).log(s"Expected configuration: ${resolvedConfig map (_.name)}")
@@ -186,7 +187,12 @@ object ParseKey extends Properties {
   // then a scoped key like `foo/<conf>/foo/name` would render as `foo/name`
   // which would be interpreted as `foo/Zero/Zero/name`
   // so we mitigate this by explicitly displaying the configuration axis set to Zero
-  def hasAmbiguousLowercaseAxes(key: ScopedKey[_]) = PartialFunction.cond(key.scope) {
-    case Scope(Select(ProjectRef(_, proj)), _, Select(key), _) => proj == key.label
+  def hasAmbiguousLowercaseAxes(key: ScopedKey[_], structure: Structure): Boolean = {
+    val label = key.key.label
+    val allProjects = for {
+      uri <- structure.keyIndex.buildURIs
+      project <- structure.keyIndex.projects(uri)
+    } yield project
+    allProjects(label)
   }
 }
