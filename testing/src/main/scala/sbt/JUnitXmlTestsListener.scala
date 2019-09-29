@@ -103,6 +103,9 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
         TStatus.Pending
       )
 
+      // for sbt/junit-interface version 0.11 (in future versions this should be done there)
+      val classnameRegex = s"^($name|${name.split('.').last})\\.?".r
+
       val result =
         <testsuite hostname={hostname} name={name} tests={tests + ""} errors={errors + ""} failures={
           failures + ""
@@ -112,11 +115,17 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
                      {properties}
                      {
           for (e <- events)
-            yield <testcase classname={name} name={
+            yield <testcase classname={
               e.selector match {
-                case selector: TestSelector => selector.testName.split('.').last
-                case nested: NestedTestSelector =>
-                  nested.suiteId().split('.').last + "." + nested.testName()
+                case nested: NestedTestSelector => nested.suiteId()
+                case _                          => name
+              }
+            } name={
+              e.selector match {
+                case selector: TestSelector =>
+                  val matchEnd = classnameRegex.findFirstMatchIn(selector.testName).map(_.end).getOrElse(0)
+                  selector.testName.substring(matchEnd)
+                case nested: NestedTestSelector => nested.testName()
                 case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
               }
             } time={(e.duration() / 1000.0).toString}>
