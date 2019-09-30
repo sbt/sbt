@@ -176,11 +176,29 @@ addMemory () {
 addDefaultMemory() {
   # if we detect any of these settings in ${JAVA_OPTS} or ${JAVA_TOOL_OPTIONS} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
-  if [[ "${java_args[@]}" == *-Xmx* ]] || [[ "${java_args[@]}" == *-Xms* ]]; then
+  if [[ "${java_args[@]}" == *-Xmx* ]] || \
+     [[ "${java_args[@]}" == *-Xms* ]] || \
+     [[ "${java_args[@]}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
+     [[ "${java_args[@]}" == *-XX:MaxRAM* ]] || \
+     [[ "${java_args[@]}" == *-XX:InitialRAMPercentage* ]] || \
+     [[ "${java_args[@]}" == *-XX:MaxRAMPercentage* ]] || \
+     [[ "${java_args[@]}" == *-XX:MinRAMPercentage* ]]; then
     :
-  elif [[ "${JAVA_TOOL_OPTIONS}" == *-Xmx* ]] || [[ "${JAVA_TOOL_OPTIONS}" == *-Xms* ]]; then
+  elif [[ "${JAVA_TOOL_OPTIONS}" == *-Xmx* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-Xms* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxRAM* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:InitialRAMPercentage* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxRAMPercentage* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MinRAMPercentage* ]] ; then
     :
-  elif [[ "${sbt_options[@]}" == *-Xmx* ]] || [[ "${sbt_options[@]}" == *-Xms* ]]; then
+  elif [[ "${sbt_options[@]}" == *-Xmx* ]] || \
+       [[ "${sbt_options[@]}" == *-Xms* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:MaxRAM* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:InitialRAMPercentage* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:MaxRAMPercentage* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:MinRAMPercentage* ]] ; then
     :
   else
     addMemory $sbt_default_mem
