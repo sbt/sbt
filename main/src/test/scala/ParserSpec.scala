@@ -5,10 +5,11 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+package sbt
+
 import java.net.URI
 
 import sbt.Def._
-import sbt._
 import sbt.internal.TestBuild
 import sbt.internal.TestBuild._
 import sbt.internal.util.AttributeKey

@@ -9,7 +9,7 @@ package sbt
 
 import sbt.internal.util.Types.idFun
 import sbt.internal.TestBuild._
-import hedgehog.{ Result => Assert, _ }
+import hedgehog._
 import hedgehog.Result.{ all, assert, failure, success }
 import hedgehog.runner._
 
@@ -116,14 +116,14 @@ object Delegates extends Properties {
       )
     )
 
-  def allAxes(f: (Scope, Seq[Scope], Scope => ScopeAxis[_]) => Assert): Property =
+  def allAxes(f: (Scope, Seq[Scope], Scope => ScopeAxis[_]) => hedgehog.Result): Property =
     keysGen.forAll.map { keys =>
       allDelegates(keys) { (s, ds) =>
         all(List(f(s, ds, _.project), f(s, ds, _.config), f(s, ds, _.task), f(s, ds, _.extra)))
       }
     }
 
-  def allDelegates(keys: TestKeys)(f: (Scope, Seq[Scope]) => Assert): Assert =
+  def allDelegates(keys: TestKeys)(f: (Scope, Seq[Scope]) => hedgehog.Result): hedgehog.Result =
     all(keys.scopes.map { scope =>
       val delegates = keys.env.delegates(scope)
       f(scope, delegates)
@@ -131,14 +131,14 @@ object Delegates extends Properties {
         .log("Delegates:\n\t" + delegates.map(scope => Scope.display(scope, "_")).mkString("\n\t"))
     }.toList)
 
-  def alwaysZero(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Assert =
+  def alwaysZero(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): hedgehog.Result =
     assert(axis(s) != Zero).or(
       all(ds.map { d =>
         axis(d) ==== Zero
       }.toList)
     )
 
-  def globalCombinations(s: Scope, ds: Seq[Scope]): Assert = {
+  def globalCombinations(s: Scope, ds: Seq[Scope]): hedgehog.Result = {
     val mods = List[Scope => Scope](
       _.copy(project = Zero),
       _.copy(config = Zero),
