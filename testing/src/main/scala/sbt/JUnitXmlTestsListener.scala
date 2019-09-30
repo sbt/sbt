@@ -123,10 +123,11 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
             } name={
               e.selector match {
                 case selector: TestSelector =>
-                  val matchEnd = classnameRegex.findFirstMatchIn(selector.testName).map(_.end).getOrElse(0)
+                  val matchEnd =
+                    classnameRegex.findFirstMatchIn(selector.testName).map(_.end).getOrElse(0)
                   selector.testName.substring(matchEnd)
                 case nested: NestedTestSelector => nested.testName()
-                case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
+                case other                      => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
               }
             } time={(e.duration() / 1000.0).toString}>
                                                  {
