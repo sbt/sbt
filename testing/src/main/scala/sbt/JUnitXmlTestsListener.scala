@@ -38,7 +38,7 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
   def this(outputDir: String) = this(outputDir, null)
 
   /**Current hostname so we know which machine executed the tests*/
-  val hostname = {
+  val hostname: String = {
     val start = System.nanoTime
     val name = try InetAddress.getLocalHost.getHostName
     catch {
@@ -59,7 +59,7 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
   val targetDir = new File(outputDir + "/test-reports/")
 
   /**all system properties as XML*/
-  val properties =
+  val properties: Elem =
     <properties>
       {
       // create a clone, defending against [[ConcurrentModificationException]]
@@ -84,7 +84,7 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
     val events: ListBuffer[TEvent] = new ListBuffer()
 
     /**Adds one test result to this suite.*/
-    def addEvent(e: TEvent) = events += e
+    def addEvent(e: TEvent): ListBuffer[TEvent] = events += e
 
     /** Returns the number of tests of each state for the specified. */
     def count(status: TStatus) = events.count(_.status == status)
@@ -171,11 +171,11 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
     override def initialValue(): Option[TestSuite] = None
   }
 
-  private def withTestSuite[T](f: TestSuite => T) =
+  private def withTestSuite[T](f: TestSuite => T): T =
     testSuite.get().map(f).getOrElse(sys.error("no test suite"))
 
   /**Creates the output Dir*/
-  override def doInit() = {
+  override def doInit(): Unit = {
     val _ = targetDir.mkdirs()
   }
 
@@ -213,9 +213,9 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
    *       <system-err><![CDATA[]]></system-err>
    *  </testsuite>
    */
-  override def endGroup(name: String, t: Throwable) = {
+  override def endGroup(name: String, t: Throwable): Unit = {
     // create our own event to record the error
-    val event = new TEvent {
+    val event: TEvent = new TEvent {
       def fullyQualifiedName = name
       //def description =
       //"Throwable escaped the test run of '%s'".format(name)
@@ -233,7 +233,7 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
    * Ends the current suite, wraps up the result and writes it to an XML file
    *  in the output folder that is named after the suite.
    */
-  override def endGroup(name: String, result: TestResult) = {
+  override def endGroup(name: String, result: TestResult): Unit = {
     writeSuite()
   }
 
@@ -247,7 +247,7 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
   private[this] def formatISO8601DateTime(d: LocalDateTime): String =
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-  private def writeSuite() = {
+  private def writeSuite(): Unit = {
     val legacyFile =
       new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
     val file =
@@ -255,8 +255,8 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
     // TODO would be nice to have a logger and log this with level debug
     // System.err.println("Writing JUnit XML test report: " + file)
     val testSuiteResult = withTestSuite(_.stop())
-    XML.save(legacyFile, testSuiteResult, "UTF-8", true, null)
-    XML.save(file, testSuiteResult, "UTF-8", true, null)
+    XML.save(legacyFile, testSuiteResult, "UTF-8", xmlDecl = true, null)
+    XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
     testSuite.remove()
   }
 
