@@ -99,15 +99,18 @@ object Delegates extends Properties {
             (key, ds) =>
               key.config match {
                 case Zero => success
-                case Select(config) if key.project.isSelect =>
-                  val p = key.project.toOption.get
-                  val r = keys.env.resolve(p)
-                  keys.env.inheritConfig(r, config).headOption.fold(success) { parent =>
-                    val idxKey = ds.indexOf(key)
-                    val a = key.copy(config = Select(parent))
-                    val idxA = ds.indexOf(a)
-                    assert(idxKey < idxA)
-                      .log(s"idxKey = $idxKey; a = $a; idxA = $idxA")
+                case Select(config) =>
+                  key.project match {
+                    case Select(p @ ProjectRef(_, _)) =>
+                      val r = keys.env.resolve(p)
+                      keys.env.inheritConfig(r, config).headOption.fold(success) { parent =>
+                        val idxKey = ds.indexOf(key)
+                        val a = key.copy(config = Select(parent))
+                        val idxA = ds.indexOf(a)
+                        assert(idxKey < idxA)
+                          .log(s"idxKey = $idxKey; a = $a; idxA = $idxA")
+                      }
+                    case _ => success
                   }
                 case _ => success
               }
