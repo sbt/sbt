@@ -471,13 +471,6 @@ object Defaults extends BuildCommon {
 
   // This is included into JvmPlugin.projectSettings
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
-    incOptions := incOptions.value
-      .withClassfileManagerType(
-        Option(
-          TransactionalManagerType
-            .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType
-        ).toOptional
-      ),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
@@ -657,7 +650,20 @@ object Defaults extends BuildCommon {
       prev + (version -> (dependencyClasspathFiles / outputFileStamps).value)
     },
     compileBinaryFileInputs := compileBinaryFileInputs.triggeredBy(compile).value,
-    incOptions := { incOptions.value.withExternalHooks(externalHooks.value) },
+    incOptions := {
+      val old = incOptions.value
+      old
+        .withExternalHooks(externalHooks.value)
+        .withClassfileManagerType(
+          Option(
+            TransactionalManagerType
+              .of( // https://github.com/sbt/sbt/issues/1673
+                crossTarget.value / s"${prefix(configuration.value.name)}classes.bak",
+                sbt.util.Logger.Null
+              ): ClassFileManagerType
+          ).toOptional
+        )
+    },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
     collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
