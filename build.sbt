@@ -680,6 +680,12 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
       exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook"),
       exclude[MissingClassProblem]("sbt.internal.ResourceLoaderImpl"),
+      // Removed private internal classes
+      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$BottomClassLoader"),
+      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader$ResourceLoader"),
+      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ClassLoadingLock"),
+      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader"),
+      exclude[MissingClassProblem]("sbt.internal.LayeredClassLoaderImpl"),
     )
   )
   .configure(

@@ -1,12 +1,20 @@
-> set classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+> set descendant / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+# We run test a number of times to ensure that it doesn't deadlock
+> test
+
+> test
+
+> test
+
+> test
 
 > test
 
 > testOnly
 
-> set classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+> set descendant / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
 
 > test
 
 > testOnly
-
