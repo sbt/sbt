@@ -1,6 +1,4 @@
-sudo: false
-dist: trusty
-group: stable
+dist: xenial
 
 language: scala
 
