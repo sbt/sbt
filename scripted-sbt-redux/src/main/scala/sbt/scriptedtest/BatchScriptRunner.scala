@@ -8,8 +8,10 @@
 package sbt
 package scriptedtest
 
-import scala.collection.mutable
+import java.util.concurrent.{ Executors, TimeUnit, TimeoutException }
 
+import scala.collection.mutable
+import scala.concurrent.duration._
 import sbt.internal.scripted._
 
 private[sbt] object BatchScriptRunner {
@@ -17,8 +19,9 @@ private[sbt] object BatchScriptRunner {
 }
 
 /** Defines an alternative script runner that allows batch execution. */
-private[sbt] class BatchScriptRunner extends ScriptRunner {
+private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
   import BatchScriptRunner.States
+  private[this] val service = Executors.newCachedThreadPool()
 
   /** Defines a method to run batched execution.
    *
@@ -40,26 +43,35 @@ private[sbt] class BatchScriptRunner extends ScriptRunner {
     }
   }
 
+  private val timeout = 5.minutes
   def processStatement(handler: StatementHandler, statement: Statement, states: States): Unit = {
     val state = states(handler).asInstanceOf[handler.State]
-    val nextState =
-      try Right(handler(statement.command, statement.arguments, state))
-      catch { case e: Exception => Left(e) }
-    nextState match {
-      case Left(err) =>
-        if (statement.successExpected) {
-          err match {
-            case t: TestFailed =>
-              throw new TestException(statement, "Command failed: " + t.getMessage, null)
-            case _ => throw new TestException(statement, "Command failed", err)
-          }
-        } else
-          ()
-      case Right(s) =>
-        if (statement.successExpected)
-          states(handler) = s
-        else
-          throw new TestException(statement, "Command succeeded but failure was expected", null)
+    val nextStateFuture = service.submit(
+      () =>
+        try Right(handler(statement.command, statement.arguments, state))
+        catch { case e: Exception => Left(e) }
+    )
+    try {
+      nextStateFuture.get(timeout.toMillis, TimeUnit.MILLISECONDS) match {
+        case Left(err) =>
+          if (statement.successExpected) {
+            err match {
+              case t: TestFailed =>
+                throw new TestException(statement, "Command failed: " + t.getMessage, null)
+              case _ => throw new TestException(statement, "Command failed", err)
+            }
+          } else
+            ()
+        case Right(s) =>
+          if (statement.successExpected)
+            states(handler) = s
+          else
+            throw new TestException(statement, "Command succeeded but failure was expected", null)
+      }
+    } catch {
+      case e: TimeoutException => throw new TestException(statement, "Command timed out", e)
     }
   }
+
+  override def close(): Unit = service.shutdown()
 }

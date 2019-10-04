@@ -57,6 +57,10 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     ConsoleAppender.setTerminalWidth(JLine.terminal.getWidth)
   }
 
+  override def beforeWork(task: Task[_]): Unit = {
+    super.beforeWork(task)
+    if (containsSkipTasks(Vector(task)) || lastTaskCount.get == 0) report()
+  }
   override def afterReady(task: Task[_]): Unit = ()
 
   override def afterCompleted[A](task: Task[A], result: Result[A]): Unit = ()
@@ -76,10 +80,10 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     val currentTasks = activeTasks.toVector.filterNot(Def.isDummy)
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
-    def report0(): Unit = {
+    def report0(tasks: Vector[Task[_]]): Unit = {
       val event = ProgressEvent(
         "Info",
-        currentTasks
+        tasks
           .map { task =>
             val elapsed = timings.get(task).currentElapsedMicros
             ProgressItem(taskName(task), elapsed)
@@ -92,9 +96,15 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
       import sbt.internal.util.codec.JsonProtocol._
       log.logEvent(Level.Info, event)
     }
-    if (containsSkipTasks(currentTasks)) ()
-    else report0()
-    lastTaskCount.set(currentTasksCount)
+    if (containsSkipTasks(currentTasks)) {
+      if (ltc > 0) {
+        lastTaskCount.set(0)
+        report0(Vector.empty)
+      }
+    } else {
+      lastTaskCount.set(currentTasksCount)
+      report0(currentTasks)
+    }
   }
 
   private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean =
