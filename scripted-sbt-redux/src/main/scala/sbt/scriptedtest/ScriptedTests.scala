@@ -72,7 +72,8 @@ final class ScriptedTests(
               createScriptedHandlers(testDirectory, buffer, RemoteSbtCreatorKind.LauncherBased)
             val runner = new BatchScriptRunner
             val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
-            commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
+            try commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
+            finally runner.close()
           }
           runOrHandleDisabled(label, testDirectory, singleTestRunner, buffer)
         }
@@ -362,7 +363,10 @@ final class ScriptedTests(
     }
 
     try runBatchTests
-    finally runner.cleanUpHandlers(seqHandlers, states)
+    finally {
+      runner.cleanUpHandlers(seqHandlers, states)
+      runner.close()
+    }
   }
 
   private def runOrHandleDisabled(
@@ -415,6 +419,7 @@ final class ScriptedTests(
           case null | _: SocketException => log.error(s" Cause of test exception: ${t.getMessage}")
           case _                         => t.printStackTrace()
         }
+        log.play()
       }
       if (pending) None else Some(label)
     }
