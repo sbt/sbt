@@ -15,7 +15,7 @@ import java.io.File
 import Scope.Global
 import sbt.Def._
 
-object LintBuild {
+object LintUnused {
   lazy val lintSettings: Seq[Setting[_]] = Seq(
     excludeLintKeys := Set(
       aggregate,
@@ -32,31 +32,34 @@ object LintBuild {
       incOptions,
       compileOptions,
       packageOptions,
+      mainClass,
       mappings,
       testOptions,
+      classpathConfiguration,
+      ivyConfiguration,
     ),
-    lintBuild := lintBuildTask.evaluated,
+    Keys.lintUnused := lintUnusedTask.evaluated,
   )
 
-  // input task version of the lintBuild
-  def lintBuildTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
+  // input task version of the lintUnused
+  def lintUnusedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     val _ = Def.spaceDelimited().parsed // not used yet
     val state = Keys.state.value
     val log = streams.value.log
     val includeKeys = (includeLintKeys in Global).value map { _.scopedKey.key.label }
     val excludeKeys = (excludeLintKeys in Global).value map { _.scopedKey.key.label }
-    val result = lint(state, includeKeys, excludeKeys)
+    val result = lintUnused(state, includeKeys, excludeKeys)
     if (result.isEmpty) log.success("ok")
     else lintResultLines(result) foreach { log.warn(_) }
   }
 
-  // function version of the lintBuild, based on just state
-  def lintBuildFunc(s: State): State = {
+  // function version of the lintUnused, based on just state
+  def lintUnusedFunc(s: State): State = {
     val log = s.log
     val extracted = Project.extract(s)
     val includeKeys = extracted.get(includeLintKeys in Global) map { _.scopedKey.key.label }
     val excludeKeys = extracted.get(excludeLintKeys in Global) map { _.scopedKey.key.label }
-    val result = lint(s, includeKeys, excludeKeys)
+    val result = lintUnused(s, includeKeys, excludeKeys)
     lintResultLines(result) foreach { log.warn(_) }
     s
   }
@@ -81,15 +84,15 @@ object LintBuild {
     }
     buffer.append(" ")
     buffer.append(
-      "note: a setting might still be used by a command; to exclude a key from this `lintBuild` check"
+      "note: a setting might still be used by a command; to exclude a key from this `lintUnused` check"
     )
     buffer.append(
-      "either append it to `Global / excludeLintKeys` or set call .withRank(KeyRanks.Invisible) on the key"
+      "either append it to `Global / excludeLintKeys` or call .withRank(KeyRanks.Invisible) on the key"
     )
     buffer.toVector
   }
 
-  def lint(
+  def lintUnused(
       state: State,
       includeKeys: Set[String],
       excludeKeys: Set[String]
@@ -128,14 +131,14 @@ object LintBuild {
       case _                 => false
     }
     def isInvisible(u: UnusedKey): Boolean = u.scoped.key.rank == KeyRanks.Invisible
-    val unusedSettingKeys = withDefinedAts collect {
+    val unusedKeys = withDefinedAts collect {
       case u
           if !isExcludeKey(u) && !isInvisible(u)
             && (isSettingKey(u) || isIncludeKey(u))
             && isLocallyDefined(u) =>
         u
     }
-    (unusedSettingKeys map { u =>
+    (unusedKeys map { u =>
       (u.scoped, display.show(u.scoped), u.positions)
     }).sortBy(_._2)
   }

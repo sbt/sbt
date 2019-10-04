@@ -852,7 +852,7 @@ object BuiltinCommands {
         .setProject(session, structure, s2)
         .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
     )
-    LintBuild.lintBuildFunc(s3)
+    LintUnused.lintUnusedFunc(s3)
   }
 
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
