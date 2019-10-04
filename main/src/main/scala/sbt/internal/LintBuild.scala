@@ -38,6 +38,7 @@ object LintBuild {
     lintBuild := lintBuildTask.evaluated,
   )
 
+  // input task version of the lintBuild
   def lintBuildTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     val _ = Def.spaceDelimited().parsed // not used yet
     val state = Keys.state.value
@@ -47,6 +48,17 @@ object LintBuild {
     val result = lint(state, includeKeys, excludeKeys)
     if (result.isEmpty) log.success("ok")
     else lintResultLines(result) foreach { log.warn(_) }
+  }
+
+  // function version of the lintBuild, based on just state
+  def lintBuildFunc(s: State): State = {
+    val log = s.log
+    val extracted = Project.extract(s)
+    val includeKeys = extracted.get(includeLintKeys in Global) map { _.scopedKey.key.label }
+    val excludeKeys = extracted.get(excludeLintKeys in Global) map { _.scopedKey.key.label }
+    val result = lint(s, includeKeys, excludeKeys)
+    lintResultLines(result) foreach { log.warn(_) }
+    s
   }
 
   def lintResultLines(
