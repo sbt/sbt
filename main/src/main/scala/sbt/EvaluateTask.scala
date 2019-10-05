@@ -245,7 +245,9 @@ object EvaluateTask {
         case _ => None
       }
       val reporters = maker.map(_.progress) ++ progressReporter ++
-        (if (SysProp.taskTimings) new TaskTimings(reportOnShutdown = false) :: Nil else Nil)
+        (if (SysProp.taskTimings)
+           new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
+         else Nil)
       reporters match {
         case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
         case xs if xs.size == 1 => xs.head
