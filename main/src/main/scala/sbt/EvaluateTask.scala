@@ -224,36 +224,59 @@ object EvaluateTask {
       structure: BuildStructure,
       state: State
   ): ExecuteProgress[Task] = {
-    state.get(currentTaskProgress).map(_.progress).getOrElse {
-      val maker: Seq[Keys.TaskProgress] = getSetting(
-        Keys.progressReports,
-        Seq(),
-        extracted,
-        structure
-      )
-      val progressReporter = extracted.getOpt(progressState in ThisBuild).flatMap {
-        case Some(ps) =>
-          ps.reset()
-          ConsoleAppender.setShowProgress(true)
-          val appender = MainAppender.defaultScreen(StandardMain.console)
-          appender match {
-            case c: ConsoleAppender => c.setProgressState(ps)
-            case _                  =>
-          }
-          val log = LogManager.progressLogger(appender)
-          Some(new TaskProgress(log))
-        case _ => None
+    state
+      .get(currentTaskProgress)
+      .map { tp =>
+        new ExecuteProgress[Task] {
+          val progress = tp.progress
+          override def initial(): Unit = progress.initial()
+          override def afterRegistered(
+              task: Task[_],
+              allDeps: Iterable[Task[_]],
+              pendingDeps: Iterable[Task[_]]
+          ): Unit =
+            progress.afterRegistered(task, allDeps, pendingDeps)
+          override def afterReady(task: Task[_]): Unit = progress.afterReady(task)
+          override def beforeWork(task: Task[_]): Unit = progress.beforeWork(task)
+          override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit =
+            progress.afterWork(task, result)
+          override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
+            progress.afterCompleted(task, result)
+          override def afterAllCompleted(results: RMap[Task, Result]): Unit =
+            progress.afterAllCompleted(results)
+          override def stop(): Unit = {}
+        }
       }
-      val reporters = maker.map(_.progress) ++ progressReporter ++
-        (if (SysProp.taskTimings)
-           new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
-         else Nil)
-      reporters match {
-        case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
-        case xs if xs.size == 1 => xs.head
-        case xs                 => ExecuteProgress.aggregate[Task](xs)
+      .getOrElse {
+        val maker: Seq[Keys.TaskProgress] = getSetting(
+          Keys.progressReports,
+          Seq(),
+          extracted,
+          structure
+        )
+        val progressReporter = extracted.getOpt(progressState in ThisBuild).flatMap {
+          case Some(ps) =>
+            ps.reset()
+            ConsoleAppender.setShowProgress(true)
+            val appender = MainAppender.defaultScreen(StandardMain.console)
+            appender match {
+              case c: ConsoleAppender => c.setProgressState(ps)
+              case _                  =>
+            }
+            val log = LogManager.progressLogger(appender)
+            Some(new TaskProgress(log))
+          case _ => None
+        }
+        val reporters = maker.map(_.progress) ++ progressReporter ++
+          (if (SysProp.taskTimings)
+             new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
+           else Nil)
+        reporters match {
+          case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
+          case xs if xs.size == 1 => xs.head
+          case xs                 => ExecuteProgress.aggregate[Task](xs)
+        }
       }
-    }
   }
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def forcegc(extracted: Extracted, structure: BuildStructure): Boolean =

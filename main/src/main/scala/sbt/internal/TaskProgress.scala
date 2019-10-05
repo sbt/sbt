@@ -48,14 +48,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     }
   }
 
-  override def initial(): Unit = {
-    currentProgressThread.get() match {
-      case None =>
-        currentProgressThread.set(Some(new ProgressThread))
-      case _ =>
-    }
-    ConsoleAppender.setTerminalWidth(JLine.terminal.getWidth)
-  }
+  override def initial(): Unit = ConsoleAppender.setTerminalWidth(JLine.terminal.getWidth)
 
   override def beforeWork(task: Task[_]): Unit = {
     super.beforeWork(task)
@@ -72,15 +65,27 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     val event = ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None)
     import sbt.internal.util.codec.JsonProtocol._
     log.logEvent(Level.Info, event)
-    stop()
   }
   private[this] val skipReportTasks =
     Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject", "consoleQuick", "state")
+  private[this] def maybeStartThread(): Unit = {
+    currentProgressThread.get() match {
+      case None =>
+        currentProgressThread.synchronized {
+          currentProgressThread.get() match {
+            case None => currentProgressThread.set(Some(new ProgressThread))
+            case _    =>
+          }
+        }
+      case _ =>
+    }
+  }
   private[this] def report(): Unit = {
     val currentTasks = activeTasks.toVector.filterNot(Def.isDummy)
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
     def report0(tasks: Vector[Task[_]]): Unit = {
+      if (tasks.nonEmpty) maybeStartThread()
       val event = ProgressEvent(
         "Info",
         tasks

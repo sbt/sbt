@@ -95,6 +95,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     assert(results contains root, "No result for root node.")
     val finalResults = triggers.onComplete(results)
     progress.afterAllCompleted(finalResults)
+    progress.stop()
     finalResults
   }
 
