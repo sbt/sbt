@@ -484,10 +484,8 @@ object Defaults extends BuildCommon {
       sbtPlugin.value,
       crossPaths.value
     ),
-    clean := {
-      val _ = clean.value
-      IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
-    },
+    cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
+    clean := clean.dependsOn(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := None,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(scalaVersion.value),
   )
