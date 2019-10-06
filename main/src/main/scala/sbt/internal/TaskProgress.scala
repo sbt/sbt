@@ -35,6 +35,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
         try {
           report()
           Thread.sleep(sleepDuration)
+          if (active.isEmpty) TaskProgress.this.stop()
         } catch {
           case _: InterruptedException =>
         }
@@ -58,7 +59,9 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
 
   override def afterCompleted[A](task: Task[A], result: Result[A]): Unit = ()
 
-  override def stop(): Unit = currentProgressThread.getAndSet(None).foreach(_.close())
+  override def stop(): Unit = currentProgressThread.synchronized {
+    currentProgressThread.getAndSet(None).foreach(_.close())
+  }
 
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
     // send an empty progress report to clear out the previous report
@@ -80,8 +83,9 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
       case _ =>
     }
   }
+  private[this] def active: Vector[Task[_]] = activeTasks.toVector.filterNot(Def.isDummy)
   private[this] def report(): Unit = {
-    val currentTasks = activeTasks.toVector.filterNot(Def.isDummy)
+    val currentTasks = active
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
     def report0(tasks: Vector[Task[_]]): Unit = {
