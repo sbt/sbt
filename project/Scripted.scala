@@ -53,7 +53,10 @@ object Scripted {
     val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
 
     // A parser for page definitions
-    val pageNumber = NatBasic & not('0', "zero page number")
+    val pageNumber = (NatBasic & not('0', "zero page number")).flatMap { i =>
+      if (i <= pairs.size) Parser.success(i)
+      else Parser.failure(s"$i exceeds the number of tests (${pairs.size})")
+    }
     val pageP: Parser[ScriptedTestPage] = ("*" ~> pageNumber ~ ("of" ~> pageNumber)) flatMap {
       case (page, total) if page <= total => success(ScriptedTestPage(page, total))
       case (page, total)                  => failure(s"Page $page was greater than $total")
