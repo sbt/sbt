@@ -144,7 +144,7 @@ object ScriptedPlugin extends AutoPlugin {
 
     // Grabs the filenames from a given test group in the current page definition.
     def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
-      val files = pairMap(group).toSeq.sortBy(_.toLowerCase)
+      val files = pairMap.get(group).toSeq.flatten.sortBy(_.toLowerCase)
       val pageSize = files.size / page.total
       // The last page may loose some values, so we explicitly keep them
       val dropped = files.drop(pageSize * (page.page - 1))

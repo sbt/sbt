@@ -61,7 +61,7 @@ object Scripted {
 
     // Grabs the filenames from a given test group in the current page definition.
     def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
-      val files = pairMap(group).toSeq.sortBy(_.toLowerCase)
+      val files = pairMap.get(group).toSeq.flatten.sortBy(_.toLowerCase)
       val pageSize = if (page.total == 0) files.size else files.size / page.total
       // The last page may loose some values, so we explicitly keep them
       val dropped = files.drop(pageSize * (page.page - 1))
