@@ -349,11 +349,16 @@ class ConsoleAppender private[ConsoleAppender] (
         val width = ConsoleAppender.terminalWidth
         val len: Int = progress.foldLeft(progress.length)(_ + terminalLines(width)(_))
         deleteConsoleLines(blankZone + pad)
-        progress.foreach(out.println)
+        progress.foreach(printProgressLine)
         out.print(cursorUp(blankZone + len + padding.get))
       }
     }
     out.flush()
+  }
+
+  private def printProgressLine(line: String): Unit = {
+    out.print(DeleteLine)
+    out.println(line)
   }
 
   /**
@@ -369,7 +374,7 @@ class ConsoleAppender private[ConsoleAppender] (
     val sorted = pe.items.sortBy(x => x.elapsedMicros)
     val info = sorted map { item =>
       val elapsed = item.elapsedMicros / 1000000L
-      s"$DeleteLine  | => ${item.name} ${elapsed}s"
+      s"  | => ${item.name} ${elapsed}s"
     }
 
     val width = ConsoleAppender.terminalWidth
@@ -383,7 +388,7 @@ class ConsoleAppender private[ConsoleAppender] (
 
     deleteConsoleLines(newPadding)
     deleteConsoleLines(blankZone)
-    info.foreach(i => out.println(i))
+    info.foreach(printProgressLine)
 
     out.print(cursorUp(blankZone + currentLength + newPadding))
     out.flush()
