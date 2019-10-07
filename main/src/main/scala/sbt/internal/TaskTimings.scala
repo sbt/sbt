@@ -8,7 +8,8 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ RMap, ConsoleOut }
+import sbt.internal.util.{ ConsoleOut, RMap }
+import sbt.util.{ Level, Logger }
 
 /**
  * Measure the time elapsed for running tasks.
@@ -19,9 +20,17 @@ import sbt.internal.util.{ RMap, ConsoleOut }
  * - -Dsbt.task.timings.threshold=number
  * @param reportOnShutdown    Should the report be given when exiting the JVM (true) or immediately (false)?
  */
-private[sbt] final class TaskTimings(reportOnShutdown: Boolean)
+private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
     extends AbstractTaskExecuteProgress
     with ExecuteProgress[Task] {
+  @deprecated("Use the constructor that takes an sbt.util.Logger parameter.", "1.3.3")
+  def this(reportOnShutdown: Boolean) =
+    this(reportOnShutdown, new Logger {
+      override def trace(t: => Throwable): Unit = {}
+      override def success(message: => String): Unit = {}
+      override def log(level: Level.Value, message: => String): Unit =
+        ConsoleOut.systemOut.println(message)
+    })
   import AbstractTaskExecuteProgress.Timer
   private[this] var start = 0L
   private[this] val threshold = SysProp.taskTimingsThreshold
@@ -48,11 +57,10 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean)
   override def stop(): Unit = ()
 
   private[this] val reFilePath = raw"\{[^}]+\}".r
-  private[this] val console = ConsoleOut.systemOut
 
   private[this] def report() = {
     val total = divide(System.nanoTime - start)
-    console.println(s"Total time: $total $unit")
+    logger.info(s"Total time: $total $unit")
     import collection.JavaConverters._
     def sumTimes(in: Seq[(Task[_], Timer)]) = in.map(_._2.durationNanos).sum
     val timingsByName = timings.asScala.toSeq.groupBy { case (t, _) => taskName(t) } mapValues (sumTimes)
@@ -69,7 +77,7 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean)
       val maxTime = times.map { _._2 }.max.toString.length
       times.foreach {
         case (taskName, time) =>
-          console.println(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
+          logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
             .padTo(maxTime - time.toString.length, ' ')}$time $unit")
       }
     }
