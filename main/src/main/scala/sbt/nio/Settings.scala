@@ -27,13 +27,26 @@ import scala.collection.immutable.VectorBuilder
 
 private[sbt] object Settings {
   private[sbt] def inject(transformed: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
-    val fileOutputScopes = transformed.collect {
-      case s if s.key.key == fileOutputs.key && s.key.scope.task.toOption.isDefined =>
-        s.key.scope
+    val definedSettings = new java.util.HashMap[Def.ScopedKey[_], VectorBuilder[Def.Setting[_]]]
+    val fileOutputScopes = transformed.flatMap { s =>
+      val list = new VectorBuilder[Def.Setting[_]]
+      definedSettings.putIfAbsent(s.key, list) match {
+        case null => list += s
+        case l    => l += s
+      }
+      if (s.key.key == fileOutputs.key && s.key.scope.task.toOption.isDefined) Some(s.key.scope)
+      else None
     }.toSet
-    transformed.flatMap {
-      case s if s.key.key == fileInputs.key => inputPathSettings(s)
-      case s                                => s :: maybeAddOutputsAndFileStamps(s, fileOutputScopes)
+    transformed.flatMap { s =>
+      val inject =
+        if (s.key.key == fileInputs.key) inputPathSettings(s)
+        else maybeAddOutputsAndFileStamps(s, fileOutputScopes)
+      s +: inject.flatMap { setting =>
+        (definedSettings.get(setting.key) match {
+          case null => Vector(setting)
+          case set  => setting +: set.result()
+        }): Seq[Def.Setting[_]]
+      }
     }
   }
 
@@ -126,7 +139,7 @@ private[sbt] object Settings {
   private[sbt] def inputPathSettings(setting: Def.Setting[_]): Seq[Def.Setting[_]] = {
     val scopedKey = setting.key
     val scope = scopedKey.scope
-    setting :: (Keys.allInputPathsAndAttributes in scope := {
+    (Keys.allInputPathsAndAttributes in scope := {
       val view = (fileTreeView in scope).value
       val inputs = (fileInputs in scope).value
       val stamper = (inputFileStamper in scope).value
