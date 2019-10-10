@@ -181,7 +181,7 @@ val root = (project in file(".")).
           val x = IO.read(k)
           IO.write(t / "sbt", x.replaceAllLiterally(
             "declare init_sbt_version=_to_be_replaced",
-            s"""declare init_sbt_version=$sbtVersionToRelease"""))
+            s"declare init_sbt_version=$sbtVersionToRelease"))
 
           if (FileSystems.getDefault.supportedFileAttributeViews.contains("posix")) {
             val perms = Files.getPosixFilePermissions(k.toPath)
@@ -192,8 +192,8 @@ val root = (project in file(".")).
         case (k, BinBat) =>
           val x = IO.read(k)
           IO.write(t / "sbt.bat", x.replaceAllLiterally(
-            "set INIT_SBT_VERSION=_TO_BE_REPLACED",
-            s"""set INIT_SBT_VERSION=$sbtVersionToRelease"""))
+            "set init_sbt_version=_to_be_replaced",
+            s"set init_sbt_version=$sbtVersionToRelease"))
           (t / "sbt.bat", BinBat)
         case (k, v) => (k, v)
       }
@@ -249,7 +249,7 @@ lazy val integrationTest = (project in file("integration-test"))
     libraryDependencies ++= Seq(
       "io.monix" %% "minitest" % "2.3.2" % Test,
       "com.eed3si9n.expecty" %% "expecty" % "0.11.0" % Test,
-      "org.scala-sbt" %% "io" % "1.2.2" % Test
+      "org.scala-sbt" %% "io" % "1.3.1" % Test
     ),
     testFrameworks += new TestFramework("minitest.runner.Framework")
   )

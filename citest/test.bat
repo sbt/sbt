@@ -19,4 +19,13 @@ SET SBT_OPTS=-Xmx4g -Dfile.encoding=UTF8
 
 "freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true check
 
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true --numeric-version > numericVersion.txt
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkNumericVersion
+
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true --script-version > scriptVersion.txt
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkScriptVersion
+
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true --version > version.txt
+"freshly-baked\sbt\bin\sbt" -Dsbt.no.format=true checkVersion
+
 ENDLOCAL
