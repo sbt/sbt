@@ -28,6 +28,7 @@ set sbt_args_print_sbt_version=
 set sbt_args_print_sbt_script_version=
 set sbt_args_verbose=
 set sbt_args_debug=
+set sbt_args_debug_inc=
 set sbt_args_batch=
 set sbt_args_color=
 set sbt_args_no_colors=
@@ -238,6 +239,15 @@ if defined _debug_arg (
   goto args_loop
 )
 
+if "%~0" == "-debug-inc" set _debug_inc_arg=true
+if "%~0" == "--debug-inc" set _debug_inc_arg=true
+
+if defined _debug_inc_arg (
+  set _debug_inc_arg=
+  set sbt_args_debug_inc=1
+  goto args_loop
+)
+
 if "%~0" == "--sbt-version" set _sbt_version_arg=true
 if "%~0" == "-sbt-version" set _sbt_version_arg=true
 
@@ -438,6 +448,10 @@ goto end
 :run
 
 rem set arguments
+
+if defined sbt_args_debug_inc (
+  set _SBT_OPTS=-Dxsbt.inc.debug=true !_SBT_OPTS!
+)
 
 if defined sbt_args_no_colors (
   set _SBT_OPTS=-Dsbt.log.noformat=true !_SBT_OPTS!
@@ -723,6 +737,8 @@ echo   -V ^| --version      print sbt version information
 echo   --numeric-version   print the numeric sbt version (sbt sbtVersion)
 echo   --script-version    print the version of sbt script
 echo   -d ^| --debug        set sbt log level to debug
+echo   -debug-inc ^| --debug-inc
+echo                       enable extra debugging for the incremental debugger
 echo   --no-colors         disable ANSI color codes
 echo   --color=auto^|always^|true^|false^|never
 echo                       enable or disable ANSI color codes      ^(sbt 1.3 and above^)

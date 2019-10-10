@@ -424,6 +424,8 @@ Usage: `basename "$0"` [options]
   --numeric-version   print the numeric sbt version (sbt sbtVersion)
   --script-version    print the version of sbt script
   -d | --debug        set sbt log level to debug
+  -debug-inc | --debug-inc
+                      enable extra debugging for the incremental debugger
   --no-colors         disable ANSI color codes
   --color=auto|always|true|false|never
                       enable or disable ANSI color codes      (sbt 1.3 and above)

@@ -44,6 +44,12 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
+  test("sbt --debug-inc") {
+    val out = sbtProcess("compile --debug-inc -v").!!.linesIterator.toList
+    assert(out.contains[String]("-Dxsbt.inc.debug=true"))
+    ()
+  }
+
   test("sbt --supershell=never") {
     val out = sbtProcess("compile --supershell=never -v").!!.linesIterator.toList
     assert(out.contains[String]("-Dsbt.supershell=never"))
