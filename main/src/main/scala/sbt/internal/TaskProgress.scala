@@ -35,6 +35,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
         try {
           report()
           Thread.sleep(sleepDuration)
+          if (active.isEmpty) TaskProgress.this.stop()
         } catch {
           case _: InterruptedException =>
         }
@@ -48,38 +49,50 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     }
   }
 
-  override def initial(): Unit = {
-    currentProgressThread.get() match {
-      case None =>
-        currentProgressThread.set(Some(new ProgressThread))
-      case _ =>
-    }
-    ConsoleAppender.setTerminalWidth(JLine.terminal.getWidth)
-  }
+  override def initial(): Unit = ConsoleAppender.setTerminalWidth(JLine.terminal.getWidth)
 
+  override def beforeWork(task: Task[_]): Unit = {
+    super.beforeWork(task)
+    if (containsSkipTasks(Vector(task)) || lastTaskCount.get == 0) report()
+  }
   override def afterReady(task: Task[_]): Unit = ()
 
   override def afterCompleted[A](task: Task[A], result: Result[A]): Unit = ()
 
-  override def stop(): Unit = currentProgressThread.getAndSet(None).foreach(_.close())
+  override def stop(): Unit = currentProgressThread.synchronized {
+    currentProgressThread.getAndSet(None).foreach(_.close())
+  }
 
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
     // send an empty progress report to clear out the previous report
     val event = ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None)
     import sbt.internal.util.codec.JsonProtocol._
     log.logEvent(Level.Info, event)
-    stop()
   }
   private[this] val skipReportTasks =
     Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject", "consoleQuick", "state")
+  private[this] def maybeStartThread(): Unit = {
+    currentProgressThread.get() match {
+      case None =>
+        currentProgressThread.synchronized {
+          currentProgressThread.get() match {
+            case None => currentProgressThread.set(Some(new ProgressThread))
+            case _    =>
+          }
+        }
+      case _ =>
+    }
+  }
+  private[this] def active: Vector[Task[_]] = activeTasks.toVector.filterNot(Def.isDummy)
   private[this] def report(): Unit = {
-    val currentTasks = activeTasks.toVector.filterNot(Def.isDummy)
+    val currentTasks = active
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
-    def report0(): Unit = {
+    def report0(tasks: Vector[Task[_]]): Unit = {
+      if (tasks.nonEmpty) maybeStartThread()
       val event = ProgressEvent(
         "Info",
-        currentTasks
+        tasks
           .map { task =>
             val elapsed = timings.get(task).currentElapsedMicros
             ProgressItem(taskName(task), elapsed)
@@ -92,9 +105,15 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
       import sbt.internal.util.codec.JsonProtocol._
       log.logEvent(Level.Info, event)
     }
-    if (containsSkipTasks(currentTasks)) ()
-    else report0()
-    lastTaskCount.set(currentTasksCount)
+    if (containsSkipTasks(currentTasks)) {
+      if (ltc > 0) {
+        lastTaskCount.set(0)
+        report0(Vector.empty)
+      }
+    } else {
+      lastTaskCount.set(currentTasksCount)
+      report0(currentTasks)
+    }
   }
 
   private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean = {
