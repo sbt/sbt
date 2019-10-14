@@ -42,12 +42,12 @@ object UpdateRun {
     allDependenciesByConfig(res, depsByConfig, configs)
       .flatMap {
         case (config, deps) =>
-          deps.map(dep => dep.copy(configuration = config --> dep.configuration))
+          deps.map(dep => dep.withConfiguration(config --> dep.configuration))
       }
-      .groupBy(_.copy(configuration = Configuration.empty))
+      .groupBy(_.withConfiguration(Configuration.empty))
       .map {
         case (dep, l) =>
-          dep.copy(configuration = Configuration.join(l.map(_.configuration).toSeq: _*))
+          dep.withConfiguration(Configuration.join(l.map(_.configuration).toSeq: _*))
       }
       .toSet
 

@@ -122,7 +122,7 @@ object ResolutionTasks {
             authenticationByRepositoryId.get(resolver.name).map { a =>
               Authentication(a.user, a.password)
                 .withOptional(a.optional)
-                .withRealm(a.realmOpt)
+                .withRealmOpt(a.realmOpt)
             }
           )
         }

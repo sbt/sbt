@@ -89,7 +89,7 @@ object ResolutionRun {
             .params
             .addForceVersion((if (isCompileConfig) params.interProjectDependencies.map(_.moduleVersion) else Nil): _*)
             .withForceScalaVersion(isCompileOrScalaToolConfig && params.autoScalaLibOpt.nonEmpty)
-            .withScalaVersion(params.autoScalaLibOpt.map(_._2))
+            .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
             .withTypelevel(params.params.typelevel && isCompileOrScalaToolConfig)
             .withRules(rules)
         )

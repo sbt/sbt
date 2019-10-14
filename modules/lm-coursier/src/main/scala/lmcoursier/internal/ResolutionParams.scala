@@ -48,7 +48,7 @@ final case class ResolutionParams(
     val cleanCache = cache
       .withPool(null)
       .withLogger(null)
-      .withSync[Task](null)
+      .withS(null)
     SbtCoursierCache.ResolutionKey(
       dependencies,
       internalRepositories,
@@ -60,7 +60,7 @@ final case class ResolutionParams(
         parallel = 0,
         cache = cleanCache
       ),
-      ResolutionParams.cacheKey(cleanCache),
+      cleanCache,
       sbtClassifiers
     )
   }
@@ -72,18 +72,6 @@ final case class ResolutionParams(
 
 // private[coursier]
 object ResolutionParams {
-
-  private lazy val m = {
-    val cls = classOf[FileCache[Task]]
-    //cls.getDeclaredMethods.foreach(println)
-    val m = cls.getDeclaredMethod("params")
-    m.setAccessible(true)
-    m
-  }
-
-  // temporary, until we can use https://github.com/coursier/coursier/pull/1090
-  private def cacheKey(cache: FileCache[Task]): Object =
-    m.invoke(cache)
 
   def defaultIvyProperties(ivyHomeOpt: Option[File]): Map[String, String] = {
 

@@ -156,11 +156,10 @@ private[internal] object SbtUpdateReport {
         if (notFound.isEmpty)
           depArtifacts0.flatMap {
             case (dep, pub, a) =>
-              val sigPub = pub.copy(
+              val sigPub = pub
                 // not too sure about those
-                ext = Extension(pub.ext.value),
-                `type` = Type(pub.`type`.value)
-              )
+                .withExt(Extension(pub.ext.value))
+                .withType(Type(pub.`type`.value))
               Seq((dep, pub, a)) ++
                 a.extra.get("sig").toSeq.map((dep, sigPub, _))
           }
@@ -183,7 +182,10 @@ private[internal] object SbtUpdateReport {
     }.toMap
 
     def clean(dep: Dependency): Dependency =
-      dep.copy(configuration = Configuration.empty, exclusions = Set.empty, optional = false)
+      dep
+        .withConfiguration(Configuration.empty)
+        .withExclusions(Set.empty)
+        .withOptional(false)
 
     val reverseDependencies = res.reverseDependencies
       .toVector
@@ -201,10 +203,10 @@ private[internal] object SbtUpdateReport {
 
         // FIXME Likely flaky...
         val dependees = reverseDependencies
-          .getOrElse(clean(dep.copy(version = "")), Vector.empty)
+          .getOrElse(clean(dep.withVersion("")), Vector.empty)
           .map { dependee0 =>
             val version = versions(dependee0.module)
-            val dependee = dependee0.copy(version = version)
+            val dependee = dependee0.withVersion(version)
             val (_, dependeeProj) = res.projectCache(dependee.moduleVersion)
             (dependee, dependeeProj)
           }
@@ -283,7 +285,7 @@ private[internal] object SbtUpdateReport {
                   // should not happen
                   Project(c.dependeeModule, c.dependeeVersion, Nil, Map(), None, Nil, Nil, Nil, None, None, None, false, None, Nil, coursier.core.Info.empty)
                 }
-              val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.copy(version = c.wantedVersion), Nil))
+              val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.withVersion(c.wantedVersion), Nil))
                 .withEvicted(true)
                 .withEvictedData(Some("version selection")) // ??? put latest-revision like sbt/ivy here?
               OrganizationArtifactReport(c.module.organization.value, c.module.name.value, Vector(rep))

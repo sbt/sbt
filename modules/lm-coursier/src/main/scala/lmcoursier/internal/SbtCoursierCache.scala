@@ -4,6 +4,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 import coursier.core._
 import sbt.librarymanagement.UpdateReport
+import coursier.cache.FileCache
+import coursier.util.Task
 
 // private[coursier]
 class SbtCoursierCache {
@@ -45,7 +47,7 @@ object SbtCoursierCache {
     mainRepositories: Seq[Repository],
     fallbackRepositories: Seq[Repository],
     params: ResolutionParams,
-    tmpCacheKey: Object, // temporary, until we can use https://github.com/coursier/coursier/pull/1090
+    cache: FileCache[Task],
     sbtClassifiers: Boolean
   )
 
