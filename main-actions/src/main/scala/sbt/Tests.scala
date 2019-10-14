@@ -24,6 +24,7 @@ import testing.{
   SubclassFingerprint,
   Runner,
   TaskDef,
+  Selector,
   SuiteSelector,
   Task => TestTask
 }
@@ -155,14 +156,15 @@ object Tests {
 
     for (option <- config.options) {
       option match {
-        case Filter(include) => testFilters += include
+        case Filter(include) => testFilters += include; ()
         case Filters(includes) =>
           if (orderedFilters.nonEmpty) sys.error("Cannot define multiple ordered test filters.")
           else orderedFilters = includes
-        case Exclude(exclude)         => excludeTestsSet ++= exclude
-        case Listeners(listeners)     => testListeners ++= listeners
-        case Setup(setupFunction)     => setup += setupFunction
-        case Cleanup(cleanupFunction) => cleanup += cleanupFunction
+          ()
+        case Exclude(exclude)         => excludeTestsSet ++= exclude; ()
+        case Listeners(listeners)     => testListeners ++= listeners; ()
+        case Setup(setupFunction)     => setup += setupFunction; ()
+        case Cleanup(cleanupFunction) => cleanup += cleanupFunction; ()
         case _: Argument              => // now handled by whatever constructs `runners`
       }
     }
@@ -239,16 +241,18 @@ object Tests {
     val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
     val mainTasks =
       if (config.parallel)
-        makeParallel(loader, runnables, setupTasks, config.tags) //.toSeq.join
+        makeParallel(loader, runnables, setupTasks, config.tags).map(_.toList)
       else
         makeSerial(loader, runnables, setupTasks)
     val taggedMainTasks = mainTasks.tagw(config.tags: _*)
-    taggedMainTasks map processResults flatMap { results =>
-      val cleanupTasks = fj(partApp(userCleanup) :+ frameworkCleanup(results.overall))
-      cleanupTasks map { _ =>
-        results
+    taggedMainTasks
+      .map(processResults)
+      .flatMap { results =>
+        val cleanupTasks = fj(partApp(userCleanup) :+ frameworkCleanup(results.overall))
+        cleanupTasks map { _ =>
+          results
+        }
       }
-    }
   }
   type TestRunnable = (String, TestFunction)
 
@@ -367,13 +371,20 @@ object Tests {
     }
 
   def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
-    if (results.isEmpty)
-      task { Output(TestResult.Passed, Map.empty, Nil) } else if (parallel)
-      reduced(results.toIndexedSeq, {
-        case (Output(v1, m1, _), Output(v2, m2, _)) =>
-          Output(if (severity(v1) < severity(v2)) v2 else v1, m1 ++ m2, Iterable.empty)
-      })
-    else {
+    if (results.isEmpty) {
+      task { Output(TestResult.Passed, Map.empty, Nil) }
+    } else if (parallel) {
+      reduced[Output](
+        results.toIndexedSeq, {
+          case (Output(v1, m1, _), Output(v2, m2, _)) =>
+            Output(
+              (if (severity(v1) < severity(v2)) v2 else v1): TestResult,
+              Map((m1.toSeq ++ m2.toSeq): _*),
+              Iterable.empty[Summary]
+            )
+        }
+      )
+    } else {
       def sequence(tasks: List[Task[Output]], acc: List[Output]): Task[List[Output]] =
         tasks match {
           case Nil => task(acc.reverse)
@@ -386,7 +397,10 @@ object Tests {
         val (rs, ms) = ress.unzip { e =>
           (e.overall, e.events)
         }
-        Output(overall(rs), ms reduce (_ ++ _), Iterable.empty)
+        val m = ms reduce { (m1: Map[String, SuiteResult], m2: Map[String, SuiteResult]) =>
+          Map((m1.toSeq ++ m2.toSeq): _*)
+        }
+        Output(overall(rs), m, Iterable.empty)
       }
     }
   def overall(results: Iterable[TestResult]): TestResult =
@@ -406,9 +420,11 @@ object Tests {
       acs.flatMap { ac =>
         val companions = ac.api
         val all =
-          Seq(companions.classApi, companions.objectApi) ++
-            companions.classApi.structure.declared ++ companions.classApi.structure.inherited ++
-            companions.objectApi.structure.declared ++ companions.objectApi.structure.inherited
+          Seq(companions.classApi: Definition, companions.objectApi: Definition) ++
+            (companions.classApi.structure.declared.toSeq: Seq[Definition]) ++
+            (companions.classApi.structure.inherited.toSeq: Seq[Definition]) ++
+            (companions.objectApi.structure.declared.toSeq: Seq[Definition]) ++
+            (companions.objectApi.structure.inherited.toSeq: Seq[Definition])
 
         all
       }.toSeq
@@ -446,8 +462,10 @@ object Tests {
     })
     // TODO: To pass in correct explicitlySpecified and selectors
     val tests =
-      for ((df, di) <- discovered; fingerprint <- toFingerprints(di))
-        yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
+      for {
+        (df, di) <- discovered
+        fingerprint <- toFingerprints(di)
+      } yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector: Selector))
     val mains = discovered collect { case (df, di) if di.hasMain => df.name }
     (tests, mains.toSet)
   }

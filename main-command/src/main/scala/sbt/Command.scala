@@ -11,6 +11,7 @@ import sbt.internal.inc.ReflectUtilities
 import sbt.internal.util.complete.{ DefaultParsers, EditDistance, Parser }
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
+import sbt.internal.util.Util.{ nilSeq }
 
 /**
  * An operation that can be executed from the sbt console.
@@ -195,7 +196,7 @@ object Command {
     s"Not a valid $label: $value" + similar(value, allowed)
 
   def similar(value: String, allowed: Iterable[String]): String = {
-    val suggested = if (value.length > 2) suggestions(value, allowed.toSeq) else Nil
+    val suggested = if (value.length > 2) suggestions(value, allowed.toSeq) else nilSeq
     if (suggested.isEmpty) "" else suggested.mkString(" (similar: ", ", ", ")")
   }
 
@@ -240,7 +241,11 @@ private final class Help0(
     val more: Set[String]
 ) extends Help {
   def ++(h: Help): Help =
-    new Help0(Help0.this.brief ++ h.brief, Help0.this.detail ++ h.detail, more ++ h.more)
+    new Help0(
+      Help0.this.brief ++ h.brief,
+      Map(Help0.this.detail.toSeq ++ h.detail.toSeq: _*),
+      more ++ h.more
+    )
 }
 
 object Help {

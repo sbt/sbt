@@ -25,9 +25,11 @@ trait IDSet[T] {
 
 object IDSet {
   implicit def toTraversable[T]: IDSet[T] => Traversable[T] = _.all
-  def apply[T](values: T*): IDSet[T] = apply(values)
+  def apply[T](values: T*): IDSet[T] = fromIterable(values)
 
-  def apply[T](values: Iterable[T]): IDSet[T] = {
+  def apply[T](values: Iterable[T]): IDSet[T] = fromIterable(values)
+
+  private def fromIterable[T](values: Iterable[T]): IDSet[T] = {
     val s = create[T]
     s ++= values
     s

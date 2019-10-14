@@ -30,7 +30,14 @@ abstract class CommandChannel {
     ()
   }
   def append(exec: Exec): Boolean = {
-    registered.forEach(q => q.synchronized { if (!q.contains(this)) q.add(this); () })
+    registered.forEach(
+      q =>
+        q.synchronized {
+          if (!q.contains(this)) {
+            q.add(this); ()
+          }
+        }
+    )
     commandQueue.add(exec)
   }
   def poll: Option[Exec] = Option(commandQueue.poll)

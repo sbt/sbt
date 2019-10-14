@@ -19,6 +19,7 @@ import sbt.internal.util.complete.{
   TokenCompletions
 }
 import sbt.internal.util.Types.{ const, idFun }
+import sbt.internal.util.Util.{ AnyOps, nil, nilSeq, none }
 import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.client.NetworkClient
@@ -67,7 +68,7 @@ object BasicCommands {
     Iterator(Level.Debug, Level.Info, Level.Warn, Level.Error) map (l => token(l.toString)) reduce (_ | _)
 
   private[this] def addPluginSbtFileParser: Parser[File] = {
-    token(AddPluginSbtFileCommand) ~> (":" | "=" | Space) ~> (StringBasic).examples(
+    token(AddPluginSbtFileCommand) ~> (":" | "=" | Space.map(_.toString)) ~> (StringBasic).examples(
       "/some/extra.sbt"
     ) map {
       new File(_)
@@ -76,7 +77,7 @@ object BasicCommands {
 
   private[this] def addPluginSbtFileStringParser: Parser[String] = {
     token(
-      token(AddPluginSbtFileCommand) ~ (":" | "=" | Space) ~ (StringBasic)
+      token(AddPluginSbtFileCommand) ~ (":" | "=" | Space.map(_.toString)) ~ (StringBasic)
         .examples("/some/extra.sbt") map {
         case s1 ~ s2 ~ s3 => s1 + s2 + s3
       }
@@ -99,7 +100,7 @@ object BasicCommands {
   def addPluginSbtFile: Command = Command.arb(_ => addPluginSbtFileParser, addPluginSbtFileHelp) {
     (s, extraSbtFile) =>
       val extraFiles = s.get(BasicKeys.extraMetaSbtFiles).toList.flatten
-      s.put(BasicKeys.extraMetaSbtFiles, extraFiles :+ extraSbtFile)
+      s.put(BasicKeys.extraMetaSbtFiles, (extraFiles: Seq[File]) :+ extraSbtFile)
   }
 
   def help: Command = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
@@ -119,12 +120,12 @@ object BasicCommands {
 
     val (extraArgs, remainingCommands) = s.remainingCommands match {
       case xs :+ exec if exec.commandLine == "shell" => (xs, exec :: Nil)
-      case xs                                        => (xs, Nil)
+      case xs                                        => (xs, nil[Exec])
     }
 
     val topic = (arg.toList ++ extraArgs.map(_.commandLine)) match {
-      case Nil => None
-      case xs  => Some(xs.mkString(" "))
+      case Nil => none[String]
+      case xs  => xs.mkString(" ").some
     }
     val message = try Help.message(h, topic)
     catch { case NonFatal(ex) => ex.toString }
@@ -165,7 +166,8 @@ object BasicCommands {
     val nonDelim = charClass(c => c != '"' && c != '{' && c != '}', label = "not '\"', '{', '}'")
     // Accept empty commands to simplify the parser.
     val cmdPart =
-      matched(((nonSemi & nonDelim) | StringEscapable | braces('{', '}')).*).examples()
+      matched(((nonSemi & nonDelim).map(_.toString) | StringEscapable | braces('{', '}')).*)
+        .examples()
 
     val completionParser: Option[Parser[String]] =
       state.map(s => (matched(s.nonMultiParser) & cmdPart) | cmdPart)
@@ -189,8 +191,8 @@ object BasicCommands {
       var fail = false
       while (it.hasNext && !fail) {
         it.next match {
-          case ""   => fail = it.hasNext
-          case next => result += next
+          case ""   => fail = it.hasNext; ()
+          case next => result += next; ()
         }
       }
       if (fail) Parser.failure(s"Couldn't parse empty commands in ${s.mkString(";")}")
@@ -244,7 +246,7 @@ object BasicCommands {
               val commandArgs =
                 (first.drop(commandName.length).trim :: Nil ::: tail).mkString(";")
               parse(commandArgs, command.parser(state)).toOption
-            case _ => None
+            case _ => none[() => State]
           }
         }.headOption match {
           case Some(s) => s()
@@ -261,7 +263,7 @@ object BasicCommands {
     (s: State) => token(OptSpace ~> combinedLax(s, NotSpaceClass ~ any.*))
 
   def combinedLax(s: State, any: Parser[_]): Parser[String] =
-    matched(s.combinedParser | token(any, hide = const(true)))
+    matched((s.combinedParser: Parser[_]) | token(any, hide = const(true)))
 
   def ifLast: Command =
     Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser)(
@@ -286,7 +288,7 @@ object BasicCommands {
     )
 
   def popOnFailure: Command = Command.command(PopOnFailure) { s =>
-    val stack = s.get(OnFailureStack).getOrElse(Nil)
+    val stack = s.get(OnFailureStack).getOrElse(nil)
     val updated =
       if (stack.isEmpty) s.remove(OnFailureStack) else s.put(OnFailureStack, stack.tail)
     updated.copy(onFailure = stack.headOption.flatten)
@@ -323,7 +325,7 @@ object BasicCommands {
     }
 
   def callParser: Parser[(Seq[String], Seq[String])] =
-    token(Space) ~> ((classpathOptionParser ?? Nil) ~ rep1sep(className, token(Space)))
+    token(Space) ~> ((classpathOptionParser ?? nilSeq) ~ rep1sep(className, token(Space)))
 
   private[this] def className: Parser[String] = {
     val base = StringBasic & not('-' ~> any.*, "Class name cannot start with '-'.")
@@ -367,7 +369,7 @@ object BasicCommands {
     }
 
   def oldshell: Command = Command.command(OldShell, Help.more(Shell, OldShellDetailed)) { s =>
-    val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
+    val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
     val reader = new FullReader(history, s.combinedParser)
     val line = reader.readLine(prompt)
@@ -388,12 +390,12 @@ object BasicCommands {
     Command(Client, Help.more(Client, ClientDetailed))(_ => clientParser)(runClient)
 
   def clientParser: Parser[Seq[String]] =
-    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
+    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => nilSeq))
 
   def runClient(s0: State, inputArg: Seq[String]): State = {
     val arguments = inputArg.toList ++
       (s0.remainingCommands match {
-        case e :: Nil if e.commandLine == "shell" => Nil
+        case e :: Nil if e.commandLine == "shell" => nil
         case xs                                   => xs map (_.commandLine)
       })
     NetworkClient.run(s0.configuration, arguments)
@@ -511,7 +513,9 @@ object BasicCommands {
     val aliasRemoved = removeAlias(state, name)
     // apply the alias value to the commands of `state` except for the alias to avoid recursion (#933)
     val partiallyApplied = Parser(aliasRemoved.combinedParser)(value)
-    val arg = matched(partiallyApplied & (success(()) | (SpaceClass ~ any.*)))
+    val arg: Parser[String] = matched(
+      partiallyApplied & (success((): Any) | ((SpaceClass ~ any.*): Parser[Any]))
+    )
     // by scheduling the expanded alias instead of directly executing,
     // we get errors on the expanded string (#598)
     arg.map(str => () => (value + str) :: state)

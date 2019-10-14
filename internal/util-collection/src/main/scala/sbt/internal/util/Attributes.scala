@@ -216,16 +216,17 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
   def contains[T](k: AttributeKey[T]) = backing.contains(k)
 
   def put[T](k: AttributeKey[T], value: T): AttributeMap =
-    new BasicAttributeMap(backing.updated(k, value))
+    new BasicAttributeMap(backing.updated(k, value: Any))
 
   def keys: Iterable[AttributeKey[_]] = backing.keys
 
   def ++(o: Iterable[AttributeEntry[_]]): AttributeMap =
-    new BasicAttributeMap(o.foldLeft(backing)((b, e) => b.updated(e.key, e.value)))
+    new BasicAttributeMap(o.foldLeft(backing)((b, e) => b.updated(e.key, e.value: Any)))
 
   def ++(o: AttributeMap): AttributeMap = o match {
-    case bam: BasicAttributeMap => new BasicAttributeMap(backing ++ bam.backing)
-    case _                      => o ++ this
+    case bam: BasicAttributeMap =>
+      new BasicAttributeMap(Map(backing.toSeq ++ bam.backing.toSeq: _*))
+    case _ => o ++ this
   }
 
   def entries: Iterable[AttributeEntry[_]] =

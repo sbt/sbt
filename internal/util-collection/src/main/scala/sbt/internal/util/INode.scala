@@ -42,8 +42,8 @@ abstract class EvaluateSettings[ScopeType] {
       )
     case b: Bind[s, A1$] @unchecked           => new BindNode[s, A1$](transform(b.in), x => transform(b.f(x)))
     case v: Value[A1$] @unchecked             => constant(v.value)
-    case v: ValidationCapture[A1$] @unchecked => strictConstant(v.key)
-    case t: TransformCapture                  => strictConstant(t.f)
+    case v: ValidationCapture[A1$] @unchecked => strictConstant(v.key: A1$)
+    case t: TransformCapture                  => strictConstant(t.f: A1$)
     case o: Optional[s, A1$] @unchecked =>
       o.a match {
         case None    => constant(() => o.f(None))
@@ -120,7 +120,8 @@ abstract class EvaluateSettings[ScopeType] {
 
     private[this] def keyString =
       (static.toSeq.flatMap {
-        case (key, value) => if (value eq this) init.showFullKey.show(key) :: Nil else Nil
+        case (key, value) =>
+          if (value eq this) init.showFullKey.show(key) :: Nil else List.empty[String]
       }).headOption getOrElse "non-static"
 
     final def get: T = synchronized {
@@ -130,7 +131,10 @@ abstract class EvaluateSettings[ScopeType] {
 
     final def doneOrBlock(from: INode[_]): Boolean = synchronized {
       val ready = state == Evaluated
-      if (!ready) blocking += from
+      if (!ready) {
+        blocking += from
+        ()
+      }
       registerIfNew()
       ready
     }
@@ -191,9 +195,10 @@ abstract class EvaluateSettings[ScopeType] {
       registerIfNew()
       state match {
         case Evaluated => submitCallComplete(by, value)
-        case _         => calledBy += by
+        case _ =>
+          calledBy += by
+          ()
       }
-      ()
     }
 
     protected def dependsOn: Seq[INode[_]]

@@ -13,6 +13,7 @@ import java.lang.ProcessBuilder.Redirect
 import scala.sys.process.Process
 import OutputStrategy._
 import sbt.internal.util.Util
+import Util.{ AnyOps, none }
 
 import java.lang.{ ProcessBuilder => JProcessBuilder }
 
@@ -52,11 +53,13 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
     val jpb = new JProcessBuilder(command.toArray: _*)
     workingDirectory foreach (jpb directory _)
     environment foreach { case (k, v) => jpb.environment.put(k, v) }
-    if (connectInput)
+    if (connectInput) {
       jpb.redirectInput(Redirect.INHERIT)
+      ()
+    }
     val process = Process(jpb)
 
-    outputStrategy.getOrElse(StdoutOutput) match {
+    outputStrategy.getOrElse(StdoutOutput: OutputStrategy) match {
       case StdoutOutput => process.run(connectInput = false)
       case out: BufferedOutput =>
         out.logger.buffer { process.run(out.logger, connectInput = false) }
@@ -70,9 +73,9 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       arguments: Seq[String]
   ): Seq[String] = {
     val boot =
-      if (bootJars.isEmpty) None
+      if (bootJars.isEmpty) none[String]
       else
-        Some("-Xbootclasspath/a:" + bootJars.map(_.getAbsolutePath).mkString(File.pathSeparator))
+        ("-Xbootclasspath/a:" + bootJars.map(_.getAbsolutePath).mkString(File.pathSeparator)).some
     jvmOptions ++ boot.toList ++ runnerClass.toList ++ arguments
   }
 }

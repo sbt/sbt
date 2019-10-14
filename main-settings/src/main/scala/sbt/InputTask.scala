@@ -12,6 +12,7 @@ import Def.{ Initialize, ScopedKey }
 import std.TaskExtra._
 import sbt.internal.util.{ ~>, AttributeKey, Types }
 import sbt.internal.util.Types._
+import sbt.internal.util.Util._
 
 /** Parses input and produces a task to run.  Constructed using the companion object. */
 final class InputTask[T] private (val parser: State => Parser[Task[T]]) {
@@ -109,7 +110,7 @@ object InputTask {
 
   /** Implementation detail that is public because it is used by a macro.*/
   def initParserAsInput[T](i: Initialize[Parser[T]]): Initialize[State => Parser[T]] =
-    i(Types.const)
+    i(Types.const[State, Parser[T]])
 
   @deprecated("Use another InputTask constructor or the `Def.inputTask` macro.", "0.13.0")
   def apply[I, T](
@@ -147,7 +148,7 @@ object InputTask {
     val key = localKey[Option[I]]
     val f: () => I = () =>
       sys.error(s"Internal sbt error: InputTask stub was not substituted properly.")
-    val t: Task[I] = Task(Info[I]().set(key, None), Pure(f, false))
+    val t: Task[I] = Task(Info[I]().set(key, none), Pure(f, false))
     (key, t)
   }
 
@@ -163,7 +164,7 @@ object InputTask {
         if (t0 == null) {
           val newAction =
             if (t.info.get(marker).isDefined)
-              Pure(() => value.asInstanceOf[A], inline = true)
+              (Pure[A](() => value.asInstanceOf[A], inline = true): Action[A])
             else
               t.work.mapTask(f)
           val newTask = Task(t.info, newAction)

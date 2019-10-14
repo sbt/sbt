@@ -42,7 +42,7 @@ private[sbt] object LegacyWatched {
           override def close(): Unit = watchState.close()
         }
         (ClearOnFailure :: next :: FailureWall :: repeat :: s)
-          .put(ContinuousEventMonitor, monitor)
+          .put(ContinuousEventMonitor, monitor: EventMonitor)
       case Some(eventMonitor) =>
         Watched.printIfDefined(watched watchingMessage eventMonitor.state)
         @tailrec def impl(): State = {

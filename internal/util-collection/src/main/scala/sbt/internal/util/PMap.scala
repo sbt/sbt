@@ -72,8 +72,8 @@ object IMap {
       val mapped = backing.iterator.map {
         case (k, v) =>
           f(v) match {
-            case Left(l)  => Left((k, l))
-            case Right(r) => Right((k, r))
+            case Left(l)  => Left((k, l)): Either[(K[_], VL[_]), (K[_], VR[_])]
+            case Right(r) => Right((k, r)): Either[(K[_], VL[_]), (K[_], VR[_])]
           }
       }
       val (l, r) = Util.separateE[(K[_], VL[_]), (K[_], VR[_])](mapped.toList)
