@@ -16,14 +16,14 @@ lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.
       }))
 
 lazy val scala210 = "2.10.7"
-lazy val scala212 = "2.12.8"
+lazy val scala212 = "2.12.10"
 lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
 lazy val jansi = {
-  if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.4"
+  if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.12"
   else "org.fusesource.jansi" % "jansi" % "1.4"
 }
 lazy val scala212Jline = "jline" % "jline" % "2.14.6"
-lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
+lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.2.0"
 lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
 lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
 
@@ -245,7 +245,7 @@ val root = (project in file(".")).
 lazy val integrationTest = (project in file("integration-test"))
   .settings(
     name := "integration-test",
-    scalaVersion := "2.12.8",
+    scalaVersion := scala212,
     libraryDependencies ++= Seq(
       "io.monix" %% "minitest" % "2.3.2" % Test,
       "com.eed3si9n.expecty" %% "expecty" % "0.11.0" % Test,
