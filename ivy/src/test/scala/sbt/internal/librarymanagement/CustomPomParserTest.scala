@@ -8,9 +8,12 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyPaths }
 import sbt.io.IO.withTemporaryDirectory
 import sbt.internal.util.ConsoleLogger
+import verify.BasicTestSuite
 
-class CustomPomParserTest extends UnitSpec {
-  "CustomPomParser" should "resolve an artifact with packaging 'scala-jar' as a regular jar file." in {
+object CustomPomParserTest extends BasicTestSuite {
+  test(
+    "CustomPomParser should resolve an artifact with packaging 'scala-jar' as a regular jar file."
+  ) {
     val log = ConsoleLogger()
     withTemporaryDirectory { cacheDir =>
       val repoUrl = getClass.getResource("/test-maven-repo")
@@ -28,12 +31,12 @@ class CustomPomParserTest extends UnitSpec {
         ivy.resolve(mrid, resolveOpts, true)
       }
 
-      resolveReport.hasError shouldBe false
-      resolveReport.getArtifacts.size() shouldBe 1
+      assert(!resolveReport.hasError)
+      assert(resolveReport.getArtifacts.size() == 1)
       val artifact: IvyArtifact =
         resolveReport.getArtifacts.asInstanceOf[java.util.List[IvyArtifact]].get(0)
-      artifact.getModuleRevisionId shouldBe mrid
-      artifact.getExt shouldBe "jar"
+      assert(artifact.getModuleRevisionId == mrid)
+      assert(artifact.getExt == "jar")
     }
   }
 }

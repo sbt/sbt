@@ -67,7 +67,7 @@ object DependencyBuilders {
   }
 
   final class RepositoryName private[sbt] (name: String) {
-    def at(location: String) = {
+    def at(location: String): MavenRepository = {
       nonEmpty(location, "Repository location")
       MavenRepository(name, location)
     }

@@ -1,79 +1,87 @@
 package sbt.internal.librarymanagement
 
 import sbt.internal.util.ConsoleLogger
+import verify.BasicTestSuite
 
 // http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html
 // http://maven.apache.org/enforcer/enforcer-rules/versionRanges.html
-class MakePomSpec extends UnitSpec {
+object MakePomSpec extends BasicTestSuite {
   // This is a specification to check the Ivy revision number conversion to pom.
 
-  "1.0" should "convert to 1.0" in convertTo("1.0", "1.0")
+  test("1.0 should convert to 1.0") {
+    convertTo("1.0", "1.0")
+  }
 
-  "[1.0,2.0]" should "convert to [1.0,2.0]" in {
+  test("[1.0,2.0] should convert to [1.0,2.0]") {
     convertTo("[1.0,2.0]", "[1.0,2.0]")
   }
 
-  "[1.0,2.0[" should "convert to [1.0,2.0)" in {
+  test("[1.0,2.0[ should convert to [1.0,2.0)") {
     convertTo("[1.0,2.0[", "[1.0,2.0)")
   }
 
-  "]1.0,2.0]" should "convert to (1.0,2.0]" in {
+  test("]1.0,2.0] should convert to (1.0,2.0]") {
     convertTo("]1.0,2.0]", "(1.0,2.0]")
   }
 
-  "]1.0,2.0[" should "convert to (1.0,2.0)" in {
+  test("]1.0,2.0[ should convert to (1.0,2.0)") {
     convertTo("]1.0,2.0[", "(1.0,2.0)")
   }
 
-  "[1.0,)" should "convert to [1.0,)" in {
+  test("[1.0,) should convert to [1.0,)") {
     convertTo("[1.0,)", "[1.0,)")
   }
 
-  "]1.0,)" should "convert to (1.0,)" in {
+  test("]1.0,) should convert to (1.0,)") {
     convertTo("]1.0,)", "(1.0,)")
   }
 
-  "(,2.0]" should "convert to (,2.0]" in {
+  test("(,2.0] should convert to (,2.0]") {
     convertTo("(,2.0]", "(,2.0]")
   }
 
-  "(,2.0[" should "convert to (,2.0)" in {
+  test("(,2.0[ should convert to (,2.0)") {
     convertTo("(,2.0[", "(,2.0)")
   }
 
-  "1.+" should "convert to [1,2)" in {
+  test("1.+ should convert to [1,2)") {
     convertTo("1.+", "[1,2)")
   }
 
-  "1.2.3.4.+" should "convert to [1.2.3.4,1.2.3.5)" in {
+  test("1.2.3.4.+ should convert to [1.2.3.4,1.2.3.5)") {
     convertTo("1.2.3.4.+", "[1.2.3.4,1.2.3.5)")
   }
 
-  "12.31.42.+" should "convert to [12.31.42,12.31.43)" in {
+  test("12.31.42.+ should convert to [12.31.42,12.31.43)") {
     convertTo("12.31.42.+", "[12.31.42,12.31.43)")
   }
 
-  "1.1+" should "convert to [1.1,1.2),[1.10,1.20),[1.100,1.200),[1.1000,1.2000),[1.10000,1.20000)" in {
+  test(
+    "1.1+ should convert to [1.1,1.2),[1.10,1.20),[1.100,1.200),[1.1000,1.2000),[1.10000,1.20000)"
+  ) {
     convertTo("1.1+", "[1.1,1.2),[1.10,1.20),[1.100,1.200),[1.1000,1.2000),[1.10000,1.20000)")
   }
 
-  "1+" should "convert to [1,2),[10,20),[100,200),[1000,2000),[10000,20000)" in {
+  test("1+ should convert to [1,2),[10,20),[100,200),[1000,2000),[10000,20000)") {
     convertTo("1+", "[1,2),[10,20),[100,200),[1000,2000),[10000,20000)")
   }
 
-  "+" should "convert to [0,)" in convertTo("+", "[0,)")
+  test("+ should convert to [0,)") {
+    convertTo("+", "[0,)")
+  }
 
-  "foo+" should "convert to foo+" in beParsedAsError("foo+")
+  test("foo+ should convert to foo+") {
+    beParsedAsError("foo+")
+  }
 
   val mp = new MakePom(ConsoleLogger())
   def convertTo(s: String, expected: String): Unit = {
-    MakePom.makeDependencyVersion(s) shouldBe expected
-    ()
+    assert(MakePom.makeDependencyVersion(s) == expected)
   }
   def beParsedAsError(s: String): Unit = {
     intercept[Throwable] {
       MakePom.makeDependencyVersion(s)
+      ()
     }
-    ()
   }
 }

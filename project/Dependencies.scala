@@ -7,8 +7,8 @@ object Dependencies {
 
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
-  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M10")
-  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M7")
+  private val ioVersion = nightlyVersion.getOrElse("1.3.0-M16")
+  private val utilVersion = nightlyVersion.getOrElse("1.3.0-M9")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -51,6 +51,7 @@ object Dependencies {
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
   val scalaTest = "org.scalatest" %% "scalatest" % "3.0.6-SNAP5"
+  val scalaVerify = "com.eed3si9n.verify" %% "verify" % "0.1.0"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val sjsonnew = Def.setting {
     "com.eed3si9n" %% "sjson-new-core" % contrabandSjsonNewVersion.value
@@ -60,4 +61,5 @@ object Dependencies {
   }
   val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.5.0"
   val okhttpUrlconnection = "com.squareup.okhttp3" % "okhttp-urlconnection" % "3.7.0"
+  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.1"
 }

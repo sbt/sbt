@@ -8,6 +8,7 @@ import java.net.URL
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import scala.collection.mutable.ListBuffer
 import sbt.librarymanagement.syntax._
+import sbt.util.Logger
 
 private[librarymanagement] abstract class ModuleIDExtra {
   def organization: String
@@ -75,10 +76,10 @@ private[librarymanagement] abstract class ModuleIDExtra {
 
   // () required for chaining
   /** Do not follow dependencies of this module.  Synonym for `intransitive`.*/
-  def notTransitive() = intransitive()
+  def notTransitive(): ModuleID = intransitive()
 
   /** Do not follow dependencies of this module.  Synonym for `notTransitive`.*/
-  def intransitive() = withIsTransitive(false)
+  def intransitive(): ModuleID = withIsTransitive(false)
 
   /**
    * Marks this dependency as "changing".  Ivy will always check if the metadata has changed and then if the artifact has changed,
@@ -86,46 +87,58 @@ private[librarymanagement] abstract class ModuleIDExtra {
    *
    * See the "Changes in artifacts" section of https://ant.apache.org/ivy/history/trunk/concept.html for full details.
    */
-  def changing() = withIsChanging(true)
+  def changing(): ModuleID = withIsChanging(true)
 
   /**
    * Indicates that conflict resolution should only select this module's revision.
    * This prevents a newer revision from being pulled in by a transitive dependency, for example.
    */
-  def force() = withIsForce(true)
+  def force(): ModuleID = withIsForce(true)
+
+  private[sbt] def validateProtocol(logger: Logger): Unit = {
+    explicitArtifacts foreach { _.validateProtocol(logger) }
+  }
 
   /**
    * Specifies a URL from which the main artifact for this dependency can be downloaded.
    * This value is only consulted if the module is not found in a repository.
    * It is not included in published metadata.
    */
-  def from(url: String) = artifacts(Artifact(name, new URL(url)))
+  def from(url: String): ModuleID = from(url, false)
+
+  /**
+   * Specifies a URL from which the main artifact for this dependency can be downloaded.
+   * This value is only consulted if the module is not found in a repository.
+   * It is not included in published metadata.
+   */
+  def from(url: String, allowInsecureProtocol: Boolean): ModuleID =
+    artifacts(Artifact(name, new URL(url), allowInsecureProtocol))
 
   /** Adds a dependency on the artifact for this module with classifier `c`. */
-  def classifier(c: String) = artifacts(Artifact(name, c))
+  def classifier(c: String): ModuleID = artifacts(Artifact(name, c))
 
   /**
    * Declares the explicit artifacts for this module.  If this ModuleID represents a dependency,
    * these artifact definitions override the information in the dependency's published metadata.
    */
-  def artifacts(newArtifacts: Artifact*) =
+  def artifacts(newArtifacts: Artifact*): ModuleID =
     withExplicitArtifacts(newArtifacts.toVector ++ explicitArtifacts)
 
   /**
    * Applies the provided exclusions to dependencies of this module.  Note that only exclusions that specify
    * both the exact organization and name and nothing else will be included in a pom.xml.
    */
-  def excludeAll(rules: ExclusionRule*) = withExclusions(exclusions ++ rules)
+  def excludeAll(rules: ExclusionRule*): ModuleID = withExclusions(exclusions ++ rules)
 
   /** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
-  def exclude(org: String, name: String) =
+  def exclude(org: String, name: String): ModuleID =
     excludeAll(ExclusionRule().withOrganization(org).withName(name))
 
   /**
    * Adds extra attributes for this module.  All keys are prefixed with `e:` if they are not already so prefixed.
    * This information will only be published in an ivy.xml and not in a pom.xml.
    */
-  def extra(attributes: (String, String)*) =
+  def extra(attributes: (String, String)*): ModuleID =
     withExtraAttributes(extraAttributes ++ ModuleID.checkE(attributes))
 
   /**
@@ -133,30 +146,30 @@ private[librarymanagement] abstract class ModuleIDExtra {
    * for performance and correctness.  This method adds a dependency on this module's artifact with the "sources"
    * classifier.  If you want to also depend on the main artifact, be sure to also call `jar()` or use `withSources()` instead.
    */
-  def sources() = artifacts(Artifact.sources(name))
+  def sources(): ModuleID = artifacts(Artifact.sources(name))
 
   /**
    * Not recommended for new use.  This method is not deprecated, but the `update-classifiers` task is preferred
    * for performance and correctness.  This method adds a dependency on this module's artifact with the "javadoc"
    * classifier.  If you want to also depend on the main artifact, be sure to also call `jar()` or use `withJavadoc()` instead.
    */
-  def javadoc() = artifacts(Artifact.javadoc(name))
+  def javadoc(): ModuleID = artifacts(Artifact.javadoc(name))
 
-  def pomOnly() = artifacts(Artifact.pom(name))
+  def pomOnly(): ModuleID = artifacts(Artifact.pom(name))
 
   /**
    * Not recommended for new use.  This method is not deprecated, but the `update-classifiers` task is preferred
    * for performance and correctness.  This method adds a dependency on this module's artifact with the "sources"
    * classifier.  If there is not already an explicit dependency on the main artifact, this adds one.
    */
-  def withSources() = jarIfEmpty.sources()
+  def withSources(): ModuleID = jarIfEmpty.sources()
 
   /**
    * Not recommended for new use.  This method is not deprecated, but the `update-classifiers` task is preferred
    * for performance and correctness.  This method adds a dependency on this module's artifact with the "javadoc"
    * classifier.  If there is not already an explicit dependency on the main artifact, this adds one.
    */
-  def withJavadoc() = jarIfEmpty.javadoc()
+  def withJavadoc(): ModuleID = jarIfEmpty.javadoc()
 
   private def jarIfEmpty = if (explicitArtifacts.isEmpty) jar() else this
 
@@ -164,14 +177,14 @@ private[librarymanagement] abstract class ModuleIDExtra {
    * Declares a dependency on the main artifact.  This is implied by default unless artifacts are explicitly declared, such
    * as when adding a dependency on an artifact with a classifier.
    */
-  def jar() = artifacts(Artifact(name))
+  def jar(): ModuleID = artifacts(Artifact(name))
 
   /**
    * Sets the Ivy branch of this module.
    */
-  def branch(branchName: String) = withBranchName(Some(branchName))
+  def branch(branchName: String): ModuleID = withBranchName(Some(branchName))
 
-  def branch(branchName: Option[String]) = withBranchName(branchName)
+  def branch(branchName: Option[String]): ModuleID = withBranchName(branchName)
 }
 
 private[librarymanagement] abstract class ModuleIDFunctions {

@@ -14,7 +14,8 @@ final class MavenCache private (
   localIfFile: Boolean,
   val rootFile: java.io.File) extends sbt.librarymanagement.MavenRepository(name, root, localIfFile) with Serializable {
   def this(name: String, rootFile: java.io.File) = this(name, rootFile.toURI.toURL.toString, true, rootFile)
-  def isCache: Boolean = true
+  override def isCache: Boolean = true
+  override def allowInsecureProtocol: Boolean = false
   private def this(name: String, root: String, rootFile: java.io.File) = this(name, root, true, rootFile)
   
   override def equals(o: Any): Boolean = o match {

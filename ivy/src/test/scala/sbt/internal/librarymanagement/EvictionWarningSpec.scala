@@ -4,52 +4,269 @@ import sbt.librarymanagement._
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.librarymanagement.syntax._
 
-class EvictionWarningSpec extends BaseIvySpecification {
+object EvictionWarningSpec extends BaseIvySpecification {
   // This is a specification to check the eviction warnings
 
-  """Eviction of non-overridden scala-library whose scalaVersion
-  """ should "be detected" in scalaVersionWarn1()
-  it should "not be detected if it's disabled" in scalaVersionWarn2()
-  it should "print out message about the eviction" in scalaVersionWarn3()
-  it should "print out message about the eviction with callers" in scalaVersionWarn4()
-  it should "print out summary about the eviction if warn eviction summary enabled" in scalaVersionWarn5()
+  import sbt.util.ShowLines._
+  def scalaVersionDeps = Vector(scala2102, akkaActor230)
 
-  """Non-eviction of overridden scala-library whose scalaVersion
-  """ should "not be detected if it's enabled" in scalaVersionNoWarn1()
-  it should "not be detected if it's disabled" in scalaVersionNoWarn2()
+  test("Eviction of non-overridden scala-library whose scalaVersion should be detected") {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).scalaEvictions.size == 1)
+  }
 
-  """Including two (suspect) binary incompatible Java libraries to direct dependencies
-  """ should "be detected as eviction" in javaLibWarn1()
-  it should "not be detected if it's disabled" in javaLibWarn2()
-  it should "print out message about the eviction" in javaLibWarn3()
-  it should "print out message about the eviction with callers" in javaLibWarn4()
-  it should "print out summary about the eviction if warn eviction summary enabled" in javaLibWarn5()
+  test("it should not be detected if it's disabled") {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions.withWarnScalaVersionEviction(false), report).scalaEvictions.size == 0
+    )
+  }
 
-  """Including two (suspect) binary compatible Java libraries to direct dependencies
-  """ should "not be detected as eviction" in javaLibNoWarn1()
-  it should "not print out message about the eviction" in javaLibNoWarn2()
+  test("it should print out message about the eviction") {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions.withShowCallers(false), report).lines ==
+        List(
+          "Scala version was updated by one of library dependencies:",
+          "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
+          "",
+          "To force scalaVersion, add the following:",
+          "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
+        )
+    )
+  }
 
-  """Including two (suspect) transitively binary incompatible Java libraries to direct dependencies
-  """ should "be detected as eviction" in javaLibTransitiveWarn2()
+  test("it should print out message about the eviction with callers") {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions, report).lines ==
+        List(
+          "Scala version was updated by one of library dependencies:",
+          "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
+          "\t    +- com.typesafe.akka:akka-actor_2.10:2.3.0            (depends on 2.10.3)",
+          "\t    +- com.example:foo:0.1.0                              (depends on 2.10.2)",
+          "",
+          "To force scalaVersion, add the following:",
+          "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
+        )
+    )
+  }
 
-  //it should "print out message about the eviction if it's enabled" in javaLibTransitiveWarn3()
+  test("it should print out summary about the eviction if warn eviction summary enabled") {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, EvictionWarningOptions.summary, report).lines ==
+        List(
+          "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
+        )
+    )
+  }
 
-  """Including two (suspect) binary incompatible Scala libraries to direct dependencies
-  """ should "be detected as eviction" in scalaLibWarn1()
-  it should "print out message about the eviction" in scalaLibWarn2()
-  it should "print out summary about the eviction if warn eviction summary enabled" in scalaLibWarn3()
+  test(
+    """Non-eviction of overridden scala-library whose scalaVersion  should "not be detected if it's enabled""""
+  ) {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).scalaEvictions.size == 0)
+  }
 
-  """Including two (suspect) binary compatible Scala libraries to direct dependencies
-  """ should "not be detected as eviction" in scalaLibNoWarn1()
-  it should "not print out message about the eviction" in scalaLibNoWarn2()
-  it should "not print out summary about the eviction even if warn eviction summary enabled" in scalaLibNoWarn3()
+  test("it should not be detected if it's disabled") {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions.withWarnScalaVersionEviction(false), report).scalaEvictions.size == 0
+    )
+  }
 
-  """Including two (suspect) transitively binary incompatible Scala libraries to direct dependencies
-  """ should "be detected as eviction" in scalaLibTransitiveWarn2()
-  it should "print out message about the eviction if it's enabled" in scalaLibTransitiveWarn3()
-  it should "print out summary about the eviction if warn eviction summary enabled" in scalaLibTransitiveWarn4()
+  test(
+    """Including two (suspect) binary incompatible Java libraries to direct dependencies should be detected as eviction"""
+  ) {
+    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).reportedEvictions.size == 1)
+  }
 
-  "Comparing sbt 0.x" should "use Second Segment Variation semantics" in {
+  test("it should not be detected if it's disabled") {
+    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(
+        m,
+        fullOptions
+          .withWarnDirectEvictions(false)
+          .withWarnTransitiveEvictions(false),
+        report
+      ).reportedEvictions.size == 0
+    )
+  }
+
+  test("it should print out message about the eviction") {
+    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions, report).lines ==
+        List(
+          "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+          "",
+          "\t* commons-io:commons-io:2.4 is selected over 1.4",
+          "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
+          ""
+        )
+    )
+  }
+
+  test("it should print out message about the eviction with callers") {
+    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions.withShowCallers(true), report).lines ==
+        List(
+          "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+          "",
+          "\t* commons-io:commons-io:2.4 is selected over 1.4",
+          "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
+          ""
+        )
+    )
+  }
+
+  test("it should print out summary about the eviction if warn eviction summary enabled") {
+    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, EvictionWarningOptions.summary, report).lines ==
+        List(
+          "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
+        )
+    )
+  }
+
+  test(
+    """Including two (suspect) binary compatible Java libraries to direct dependencies should not be detected as eviction"""
+  ) {
+    val deps = Vector(commonsIo14, commonsIo13)
+    val m = module(defaultModuleId, deps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).reportedEvictions.size == 0)
+  }
+
+  test("it should not print out message about the eviction") {
+    val deps = Vector(commonsIo14, commonsIo13)
+    val m = module(defaultModuleId, deps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).lines == Nil)
+  }
+
+  test(
+    """Including two (suspect) transitively binary incompatible Java libraries to direct dependencies should be detected as eviction"""
+  ) {
+    val m = module(defaultModuleId, javaLibTransitiveDeps, Some("2.10.3"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).reportedEvictions.size == 1)
+  }
+
+  test(
+    """Including two (suspect) binary incompatible Scala libraries to direct dependencies should be detected as eviction"""
+  ) {
+    val deps = Vector(scala2104, akkaActor214, akkaActor234)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).reportedEvictions.size == 1)
+  }
+
+  test("it should print out message about the eviction") {
+    val deps = Vector(scala2104, akkaActor214, akkaActor234)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions, report).lines ==
+        List(
+          "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+          "",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 is selected over 2.1.4",
+          "\t    +- com.example:foo:0.1.0                              (depends on 2.1.4)",
+          ""
+        )
+    )
+  }
+
+  test("it should print out summary about the eviction if warn eviction summary enabled") {
+    val deps = Vector(scala2104, akkaActor214, akkaActor234)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, EvictionWarningOptions.summary, report).lines ==
+        List(
+          "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
+        )
+    )
+  }
+
+  test(
+    """Including two (suspect) binary compatible Scala libraries to direct dependencies should not be detected as eviction"""
+  ) {
+    val deps = Vector(scala2104, akkaActor230, akkaActor234)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).reportedEvictions.size == 0)
+  }
+
+  test("it should not print out message about the eviction") {
+    val deps = Vector(scala2104, akkaActor230, akkaActor234)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).lines == Nil)
+  }
+
+  test("it should not print out summary about the eviction even if warn eviction summary enabled") {
+    val deps = Vector(scala2104, akkaActor230, akkaActor234)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, EvictionWarningOptions.summary, report).lines == Nil)
+  }
+
+  test(
+    """Including two (suspect) transitively binary incompatible Scala libraries to direct dependencies should be detected as eviction"""
+  ) {
+    val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(EvictionWarning(m, fullOptions, report).reportedEvictions.size == 1)
+  }
+
+  test("it should print out message about the eviction if it's enabled") {
+    val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, fullOptions, report).lines ==
+        List(
+          "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+          "",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 is selected over 2.1.4",
+          "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
+          "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
+          "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
+          ""
+        )
+    )
+  }
+
+  test("it should print out summary about the eviction if warn eviction summary enabled") {
+    val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionWarning(m, EvictionWarningOptions.summary, report).lines ==
+        List(
+          "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
+        )
+    )
+  }
+
+  test("Comparing sbt 0.x should use Second Segment Variation semantics") {
     val m1 = "org.scala-sbt" % "util-logging" % "0.13.16"
     val m2 = "org.scala-sbt" % "util-logging" % "0.13.1"
     assert(
@@ -57,7 +274,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
     )
   }
 
-  "Comparing sbt 1.x" should "use Semantic Versioning semantics" in {
+  test("Comparing sbt 1.x should use Semantic Versioning semantics") {
     val m1 = "org.scala-sbt" % "util-logging_2.12" % "1.0.0"
     val m2 = "org.scala-sbt" % "util-logging_2.12" % "1.1.0"
     assert(
@@ -91,244 +308,9 @@ class EvictionWarningSpec extends BaseIvySpecification {
     ModuleID("com.typesafe.akka", "akka-remote", "2.3.4").withConfigurations(Some("compile")) cross CrossVersion.binary // uses akka-actor 2.3.4
 
   def fullOptions = EvictionWarningOptions.full
-
-  import sbt.util.ShowLines._
-
-  def scalaVersionDeps = Vector(scala2102, akkaActor230)
-
-  def scalaVersionWarn1() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).scalaEvictions should have size (1)
-  }
-
-  def scalaVersionWarn2() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions.withWarnScalaVersionEviction(false), report).scalaEvictions should have size (0)
-  }
-
-  def scalaVersionWarn3() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions.withShowCallers(false), report).lines shouldBe
-      List(
-        "Scala version was updated by one of library dependencies:",
-        "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
-        "",
-        "To force scalaVersion, add the following:",
-        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
-      )
-  }
-
-  def scalaVersionWarn4() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).lines shouldBe
-      List(
-        "Scala version was updated by one of library dependencies:",
-        "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
-        "\t    +- com.typesafe.akka:akka-actor_2.10:2.3.0            (depends on 2.10.3)",
-        "\t    +- com.example:foo:0.1.0                              (depends on 2.10.2)",
-        "",
-        "To force scalaVersion, add the following:",
-        "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
-      )
-  }
-
-  def scalaVersionWarn5() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
-    val report = ivyUpdate(m)
-    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
-      List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
-      )
-  }
-
-  def scalaVersionNoWarn1() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).scalaEvictions should have size (0)
-  }
-
-  def scalaVersionNoWarn2() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions.withWarnScalaVersionEviction(false), report).scalaEvictions should have size (0)
-  }
-
   def javaLibDirectDeps = Vector(commonsIo14, commonsIo24)
-
-  def javaLibWarn1() = {
-    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).reportedEvictions should have size (1)
-  }
-
-  def javaLibWarn2() = {
-    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(
-      m,
-      fullOptions
-        .withWarnDirectEvictions(false)
-        .withWarnTransitiveEvictions(false),
-      report
-    ).reportedEvictions should have size (0)
-  }
-
-  def javaLibWarn3() = {
-    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).lines shouldBe
-      List(
-        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
-        "",
-        "\t* commons-io:commons-io:2.4 is selected over 1.4",
-        "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
-        ""
-      )
-  }
-
-  def javaLibWarn4() = {
-    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions.withShowCallers(true), report).lines shouldBe
-      List(
-        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
-        "",
-        "\t* commons-io:commons-io:2.4 is selected over 1.4",
-        "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
-        ""
-      )
-  }
-
-  def javaLibWarn5() = {
-    val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
-      List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
-      )
-  }
-
-  def javaLibNoWarn1() = {
-    val deps = Vector(commonsIo14, commonsIo13)
-    val m = module(defaultModuleId, deps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).reportedEvictions should have size (0)
-  }
-
-  def javaLibNoWarn2() = {
-    val deps = Vector(commonsIo14, commonsIo13)
-    val m = module(defaultModuleId, deps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).lines shouldBe Nil
-  }
-
   def javaLibTransitiveDeps = Vector(unfilteredUploads080, bnfparser10)
-
-  def javaLibTransitiveWarn2() = {
-    val m = module(defaultModuleId, javaLibTransitiveDeps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).reportedEvictions should have size (1)
-  }
-
-  def javaLibTransitiveWarn3() = {
-    val m = module(defaultModuleId, javaLibTransitiveDeps, Some("2.10.3"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).lines shouldBe
-      List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.",
-        "Here are some of the libraries that were evicted:",
-        "\t* commons-io:commons-io:1.4 -> 2.4 (caller: ca.gobits.bnf:bnfparser:1.0, net.databinder:unfiltered-uploads_2.10:0.8.0)"
-      )
-  }
-
-  def scalaLibWarn1() = {
-    val deps = Vector(scala2104, akkaActor214, akkaActor234)
-    val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).reportedEvictions should have size (1)
-  }
-
-  def scalaLibWarn2() = {
-    val deps = Vector(scala2104, akkaActor214, akkaActor234)
-    val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).lines shouldBe
-      List(
-        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
-        "",
-        "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 is selected over 2.1.4",
-        "\t    +- com.example:foo:0.1.0                              (depends on 2.1.4)",
-        ""
-      )
-  }
-
-  def scalaLibWarn3() = {
-    val deps = Vector(scala2104, akkaActor214, akkaActor234)
-    val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
-      List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
-      )
-  }
-
-  def scalaLibNoWarn1() = {
-    val deps = Vector(scala2104, akkaActor230, akkaActor234)
-    val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).reportedEvictions should have size (0)
-  }
-
-  def scalaLibNoWarn2() = {
-    val deps = Vector(scala2104, akkaActor230, akkaActor234)
-    val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).lines shouldBe Nil
-  }
-
-  def scalaLibNoWarn3() = {
-    val deps = Vector(scala2104, akkaActor230, akkaActor234)
-    val m = module(defaultModuleId, deps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe Nil
-  }
-
   def scalaLibTransitiveDeps = Vector(scala2104, bananaSesame04, akkaRemote234)
-
-  def scalaLibTransitiveWarn2() = {
-    val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).reportedEvictions should have size (1)
-  }
-
-  def scalaLibTransitiveWarn3() = {
-    val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, fullOptions, report).lines shouldBe
-      List(
-        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
-        "",
-        "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 is selected over 2.1.4",
-        "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
-        "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
-        "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
-        ""
-      )
-  }
-
-  def scalaLibTransitiveWarn4() = {
-    val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
-    val report = ivyUpdate(m)
-    EvictionWarning(m, EvictionWarningOptions.summary, report).lines shouldBe
-      List(
-        "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
-      )
-  }
-
   def dummyScalaModuleInfo(v: String): ScalaModuleInfo =
     ScalaModuleInfo(
       scalaFullVersion = v,

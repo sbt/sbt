@@ -143,7 +143,11 @@
         { "name": "configurations",  "type": "sbt.librarymanagement.ConfigRef*",     "default": "Vector.empty",              "since": "0.0.1" },
         { "name": "url",             "type": "Option[java.net.URL]",                 "default": "None",                      "since": "0.0.1" },
         { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" },
-        { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" }
+        { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" },
+        { "name": "allowInsecureProtocol", "type": "Boolean",                        "default": "false",                     "since": "1.3.0" }
+      ],
+      "extra": [
+        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateArtifact(this, logger)"
       ],
       "parentsCompanion": "sbt.librarymanagement.ArtifactFunctions"
     },
@@ -557,6 +561,10 @@
       "fields": [
         { "name": "name", "type": "String" }
       ],
+      "extra": [
+        "/** check for HTTP */",
+        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Unit = ()"
+      ],
       "types": [
         {
           "name": "ChainedResolver",
@@ -565,6 +573,9 @@
           "type": "record",
           "fields": [
             { "name": "resolvers", "type": "sbt.librarymanagement.Resolver*" }
+          ],
+          "extra": [
+            "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = resolvers.foreach(_.validateProtocol(logger))"
           ]
         },
         {
@@ -583,7 +594,17 @@
               "namespace": "sbt.librarymanagement",
               "target": "Scala",
               "type": "record",
-              "extra": "def isCache: Boolean = false",
+              "doc": [
+                "This is the internal implementation of actual Maven Repository (as opposed to a file cache)."
+              ],
+              "fields": [
+                { "name": "_allowInsecureProtocol", "type": "Boolean", "default": "false", "since": "1.3.0" }
+              ],
+              "extra": [
+                "override def isCache: Boolean = false",
+                "override def allowInsecureProtocol: Boolean = _allowInsecureProtocol",
+                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateMavenRepo(this, logger)"
+              ],
               "toString": "s\"$name: $root\""
             },
             {
@@ -600,13 +621,22 @@
               ],
               "extra": [
                 "def this(name: String, rootFile: java.io.File) = this(name, rootFile.toURI.toURL.toString, true, rootFile)",
-                "def isCache: Boolean = true"
+                "override def isCache: Boolean = true",
+                "override def allowInsecureProtocol: Boolean = false"
               ],
               "toString": "s\"cache:$name: ${rootFile.getAbsolutePath}\"",
               "extraCompanion": "def apply(name: String, rootFile: java.io.File): MavenCache = new MavenCache(name, rootFile)"
             }
           ],
-          "extra": "def isCache: Boolean",
+          "extra": [
+            "def isCache: Boolean",
+            "def allowInsecureProtocol: Boolean",
+            "def withAllowInsecureProtocol(allowInsecureProtocol: Boolean): MavenRepository =",
+            "  this match {",
+            "    case x: MavenRepo  => x.with_allowInsecureProtocol(allowInsecureProtocol)",
+            "    case x: MavenCache => x",
+            "  }"
+          ],
           "parentsCompanion": "sbt.librarymanagement.MavenRepositoryFunctions"
         },
         {
@@ -641,7 +671,13 @@
               "name": "URLRepository",
               "namespace": "sbt.librarymanagement",
               "target": "Scala",
-              "type": "record"
+              "type": "record",
+              "fields": [
+                { "name": "allowInsecureProtocol", "type": "boolean", "default": "false", "since": "1.3.0" }
+              ],
+              "extra": [
+                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateURLRepository(this, logger)"
+              ]
             },
             {
               "name": "SshBasedRepository",

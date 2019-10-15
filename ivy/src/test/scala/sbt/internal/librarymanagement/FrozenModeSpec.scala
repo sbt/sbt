@@ -4,7 +4,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.UpdateOptions
 import sbt.librarymanagement.syntax._
 
-class FrozenModeSpec extends BaseIvySpecification {
+object FrozenModeSpec extends BaseIvySpecification {
   private final val targetDir = Some(currentDependency)
   private final val onlineConf = makeUpdateConfiguration(false, targetDir)
   private final val frozenConf = makeUpdateConfiguration(false, targetDir).withFrozen(true)
@@ -26,7 +26,7 @@ class FrozenModeSpec extends BaseIvySpecification {
     "com.lihaoyi" % "sourcecode_2.12" % "0.1.3" % "compile"
   )
 
-  it should "fail when artifacts are missing in the cache" in {
+  test("fail when artifacts are missing in the cache") {
     cleanIvyCache()
     def update(module: IvySbt#Module, conf: UpdateConfiguration) =
       IvyActions.updateEither(module, conf, warningConf, log)

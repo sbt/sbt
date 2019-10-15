@@ -1,5 +1,4 @@
-sudo: false
-dist: trusty
+dist: xenial
 group: stable
 
 language: scala
@@ -14,21 +13,21 @@ env:
 matrix:
   include:
   - env:
-      - TRAVIS_JDK=11.0.3.hs-adpt
+      - ADOPTOPENJDK=11
   - env:
-      - TRAVIS_JDK=8.0.212.hs-adpt
+      - ADOPTOPENJDK=8
 
 before_install:
   # adding $HOME/.sdkman to cache would create an empty directory, which interferes with the initial installation
-  - "[[ -d /home/travis/.sdkman/ ]] && [[ -d /home/travis/.sdkman/bin/ ]] || rm -rf /home/travis/.sdkman/"
+  - "[[ -d $HOME/.sdkman/bin/ ]] || rm -rf $HOME/.sdkman/"
   - curl -sL https://get.sdkman.io | bash
-  - echo sdkman_auto_answer=true > /home/travis/.sdkman/etc/config
-  - source "/home/travis/.sdkman/bin/sdkman-init.sh"
+  - echo sdkman_auto_answer=true > $HOME/.sdkman/etc/config
+  - source "$HOME/.sdkman/bin/sdkman-init.sh"
 
 install:
-  - sdk install java $TRAVIS_JDK
+  - sdk install java $(sdk list java | grep -o "$ADOPTOPENJDK\.[0-9\.]*hs-adpt" | head -1)
   - bin/fixpreloaded.sh
-  - unset _JAVA_OPTIONS
+  - unset JAVA_HOME
   - java -Xmx32m -version
   # detect sbt version from project/build.properties
   # - export TRAVIS_SBT=$(grep sbt.version= project/build.properties | sed -e 's/sbt.version=//g' ) && echo "sbt $TRAVIS_SBT"

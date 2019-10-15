@@ -15,7 +15,8 @@ object ErrorMessageAuthenticator {
   private var securityWarningLogged = false
 
   private def originalAuthenticator: Option[Authenticator] = {
-    if (isJavaVersion9Plus) getDefaultAuthenticator else getTheAuthenticator
+    if (LMSysProp.isJavaVersion9Plus) getDefaultAuthenticator
+    else getTheAuthenticator
   }
 
   private[this] def getTheAuthenticator: Option[Authenticator] = {
@@ -100,15 +101,6 @@ object ErrorMessageAuthenticator {
       }
     doInstallIfIvy(originalAuthenticator)
   }
-
-  private[this] def isJavaVersion9Plus = javaVersion > 8
-  private[this] def javaVersion = {
-    // See Oracle section 1.5.3 at:
-    // https://docs.oracle.com/javase/8/docs/technotes/guides/versioning/spec/versioning2.html
-    val version = sys.props("java.specification.version").split("\\.").map(_.toInt)
-    if (version(0) == 1) version(1) else version(0)
-  }
-
 }
 
 /**

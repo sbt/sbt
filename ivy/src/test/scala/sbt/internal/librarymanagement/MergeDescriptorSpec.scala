@@ -5,8 +5,8 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.UpdateOptions
 import sbt.internal.librarymanagement.ivyint._
 
-class MergeDescriptorSpec extends BaseIvySpecification {
-  "Merging duplicate dependencies" should "work" in {
+object MergeDescriptorSpec extends BaseIvySpecification {
+  test("Merging duplicate dependencies should work") {
     cleanIvyCache()
     val m = module(
       ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
@@ -25,8 +25,8 @@ class MergeDescriptorSpec extends BaseIvySpecification {
             val a1: DependencyArtifactDescriptor = arts.toList(1)
             val configs0 = a0.getConfigurations.toList
             val configs1 = a1.getConfigurations.toList
-            configs0 shouldEqual List("compile")
-            configs1 shouldEqual List("test")
+            assert(configs0 == List("compile"))
+            assert(configs1 == List("test"))
         }
     }
   }

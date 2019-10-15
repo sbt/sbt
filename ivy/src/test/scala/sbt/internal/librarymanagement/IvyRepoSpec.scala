@@ -5,7 +5,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import InternalDefaults._
 
-class IvyRepoSpec extends BaseIvySpecification {
+object IvyRepoSpec extends BaseIvySpecification {
 
   val ourModuleID = ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile"))
 
@@ -21,7 +21,9 @@ class IvyRepoSpec extends BaseIvySpecification {
     )
   }
 
-  "ivyUpdate from ivy repository" should "resolve only binary artifact from module which also contains a sources artifact under the same configuration." in {
+  test(
+    "ivyUpdate from ivy repository should resolve only binary artifact from module which also contains a sources artifact under the same configuration."
+  ) {
     cleanIvyCache()
 
     val m = makeModuleForDepWithSources
@@ -33,13 +35,15 @@ class IvyRepoSpec extends BaseIvySpecification {
       case Some(Seq(mr)) =>
         inside(mr.artifacts) {
           case Seq((ar, _)) =>
-            ar.`type` shouldBe "jar"
-            ar.extension shouldBe "jar"
+            assert(ar.`type` == "jar")
+            assert(ar.extension == "jar")
         }
     }
   }
 
-  it should "resolve only sources artifact of an acceptable artifact type, \"src\", when calling updateClassifiers." in {
+  test(
+    "it should resolve only sources artifact of an acceptable artifact type, \"src\", when calling updateClassifiers."
+  ) {
     cleanIvyCache()
 
     val m = makeModuleForDepWithSources
@@ -90,9 +94,9 @@ class IvyRepoSpec extends BaseIvySpecification {
       case Some(Seq(mr)) =>
         inside(mr.artifacts) {
           case Seq((ar, _)) =>
-            ar.name shouldBe "libmodule-source"
-            ar.`type` shouldBe "src"
-            ar.extension shouldBe "jar"
+            assert(ar.name == "libmodule-source")
+            assert(ar.`type` == "src")
+            assert(ar.extension == "jar")
         }
     }
   }

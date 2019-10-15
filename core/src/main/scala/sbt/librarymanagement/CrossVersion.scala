@@ -39,7 +39,7 @@ sealed class Disabled private () extends sbt.librarymanagement.CrossVersion() wi
 
 }
 object Disabled extends sbt.librarymanagement.Disabled {
-  def apply(): Disabled = new Disabled()
+  def apply(): Disabled = Disabled
 }
 
 /**
@@ -331,14 +331,30 @@ trait CrossVersionFormats {
     with sbt.librarymanagement.ConstantFormats
     with sbt.librarymanagement.PatchFormats
     with sbt.librarymanagement.FullFormats =>
-  implicit lazy val CrossVersionFormat: JsonFormat[sbt.librarymanagement.CrossVersion] =
-    flatUnionFormat6[
-      sbt.librarymanagement.CrossVersion,
-      sbt.librarymanagement.Disabled,
-      sbt.librarymanagement.Disabled.type,
-      sbt.librarymanagement.Binary,
-      sbt.librarymanagement.Constant,
-      sbt.librarymanagement.Patch,
-      sbt.librarymanagement.Full
+  implicit lazy val CrossVersionFormat: JsonFormat[CrossVersion] = {
+    val format = flatUnionFormat6[
+      CrossVersion,
+      Disabled,
+      Disabled.type,
+      Binary,
+      Constant,
+      Patch,
+      Full
     ]("type")
+    // This is a hand-crafted formatter to avoid Disabled$ showing up in JSON
+    new JsonFormat[CrossVersion] {
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): CrossVersion =
+        format.read(jsOpt, unbuilder)
+      override def write[J](obj: CrossVersion, builder: Builder[J]): Unit = {
+        if (obj == Disabled) {
+          builder.beginPreObject()
+          builder.addFieldName("type")
+          builder.writeString("Disabled")
+          builder.endPreObject()
+          builder.beginObject()
+          builder.endObject()
+        } else format.write(obj, builder)
+      }
+    }
+  }
 }

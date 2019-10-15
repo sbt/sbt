@@ -2,10 +2,9 @@ package sbt.internal.librarymanagement
 
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.UpdateOptions
-import org.scalatest.{ Assertion, DiagrammedAssertions }
 import sbt.io.IO
 
-class OfflineModeSpec extends BaseIvySpecification with DiagrammedAssertions {
+object OfflineModeSpec extends BaseIvySpecification {
   private final def targetDir = Some(currentDependency)
   private final def onlineConf = makeUpdateConfiguration(false, targetDir)
   private final def offlineConf = makeUpdateConfiguration(true, targetDir)
@@ -26,7 +25,7 @@ class OfflineModeSpec extends BaseIvySpecification with DiagrammedAssertions {
     IO.delete(currentDependency)
   }
 
-  def checkOnlineAndOfflineResolution(updateOptions: UpdateOptions): Assertion = {
+  def checkOnlineAndOfflineResolution(updateOptions: UpdateOptions): Unit = {
     cleanAll()
     val toResolve = module(defaultModuleId, dependencies, None, updateOptions)
     if (updateOptions.cachedResolution)
@@ -46,15 +45,15 @@ class OfflineModeSpec extends BaseIvySpecification with DiagrammedAssertions {
     assert(originalResolveTime > resolveTime)
   }
 
-  "Offline update configuration" should "reuse the caches when offline is enabled" in {
+  test("Offline update configuration should reuse the caches when offline is enabled") {
     checkOnlineAndOfflineResolution(normalOptions)
   }
 
-  it should "reuse the caches when offline and cached resolution are enabled" in {
+  test("it should reuse the caches when offline and cached resolution are enabled") {
     checkOnlineAndOfflineResolution(cachedOptions)
   }
 
-  def checkFailingResolution(updateOptions: UpdateOptions): Assertion = {
+  def checkFailingResolution(updateOptions: UpdateOptions): Unit = {
     cleanAll()
     val toResolve = module(defaultModuleId, dependencies, None, updateOptions)
     if (updateOptions.cachedResolution) cleanCachedResolutionCache(toResolve)
@@ -63,11 +62,11 @@ class OfflineModeSpec extends BaseIvySpecification with DiagrammedAssertions {
     assert(failedOfflineResolution.isLeft)
   }
 
-  it should "fail when artifacts are missing in the cache" in {
+  test("it should fail when artifacts are missing in the cache") {
     checkFailingResolution(normalOptions)
   }
 
-  it should "fail when artifacts are missing in the cache for cached resolution" in {
+  test("it should fail when artifacts are missing in the cache for cached resolution") {
     checkFailingResolution(cachedOptions)
   }
 }

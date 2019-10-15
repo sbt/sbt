@@ -13,8 +13,9 @@ implicit lazy val URLRepositoryFormat: JsonFormat[sbt.librarymanagement.URLRepos
       unbuilder.beginObject(js)
       val name = unbuilder.readField[String]("name")
       val patterns = unbuilder.readField[sbt.librarymanagement.Patterns]("patterns")
+      val allowInsecureProtocol = unbuilder.readField[Boolean]("allowInsecureProtocol")
       unbuilder.endObject()
-      sbt.librarymanagement.URLRepository(name, patterns)
+      sbt.librarymanagement.URLRepository(name, patterns, allowInsecureProtocol)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -23,6 +24,7 @@ implicit lazy val URLRepositoryFormat: JsonFormat[sbt.librarymanagement.URLRepos
     builder.beginObject()
     builder.addField("name", obj.name)
     builder.addField("patterns", obj.patterns)
+    builder.addField("allowInsecureProtocol", obj.allowInsecureProtocol)
     builder.endObject()
   }
 }

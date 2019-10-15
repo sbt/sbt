@@ -4,6 +4,7 @@ package ivy
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.apache.ivy.core.settings.IvySettings
 import sbt.util.Logger
+import sbt.internal.librarymanagement.LMSysProp
 
 /**
  * Represents configurable options for update task.
@@ -36,8 +37,8 @@ final class UpdateOptions private[sbt] (
     copy(interProjectFirst = interProjectFirst)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
     copy(latestSnapshots = latestSnapshots)
-  def withCachedResolution(cachedResoluton: Boolean): UpdateOptions =
-    copy(cachedResolution = cachedResoluton)
+  def withCachedResolution(cachedResolution: Boolean): UpdateOptions =
+    copy(cachedResolution = cachedResolution)
 
   def withGigahorse(gigahorse: Boolean): UpdateOptions =
     copy(gigahorse = gigahorse)
@@ -109,7 +110,7 @@ object UpdateOptions {
       interProjectFirst = true,
       latestSnapshots = true,
       cachedResolution = false,
-      gigahorse = sys.props.get("sbt.gigahorse") map { _.toLowerCase == "true" } getOrElse true,
+      gigahorse = LMSysProp.useGigahorse,
       resolverConverter = PartialFunction.empty,
       moduleResolvers = Map.empty
     )
