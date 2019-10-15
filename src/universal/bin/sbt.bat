@@ -414,7 +414,7 @@ if not defined sbt_args_sbt_create if not defined sbt_args_print_version if not 
       echo c^) continue
       echo q^) quit
 
-      set /P reply=?^
+      set /P reply=^?
       if /I "!reply!" == "c" (
         goto confirm_end
       ) else if /I "!reply!" == "q" (
