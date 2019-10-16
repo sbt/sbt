@@ -374,7 +374,7 @@ if defined _java_home_arg (
   )
 )
 
-if /I "%~0" == "new" (
+if "%~0" == "new" (
   if not defined SBT_ARGS (
     set sbt_new=true
   )
@@ -554,7 +554,7 @@ if [%0] EQU [] goto echolist_end
 set "p=%0"
 
 rem special handling for -D since '=' gets parsed away
-if /I "%p:~0,2%" == "-D" (
+if "%p:~0,2%" == "-D" (
  rem if "-Dscala.ext.dirs" (replace all = with nothing) == "-Dscala.ext.dirs"
  rem (e.g. verify it doesn't have the = already)
 
