@@ -385,7 +385,8 @@ if /I "%g:~0,2%" == "-D" (
   echo "%g%" | find "=" > null
   if ERRORLEVEL 1 (
     if not "%~1" == "" (
-      set SBT_ARGS=!SBT_ARGS! %0=%1
+      call :dlog [args_loop] -D argument %~0=%~1
+      set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
       shift
       goto args_loop
     ) else (
@@ -393,7 +394,8 @@ if /I "%g:~0,2%" == "-D" (
       goto error
     )
   ) else (
-    set SBT_ARGS=!SBT_ARGS! %~0
+    call :dlog [args_loop] -D argument %~0
+    set "SBT_ARGS=!SBT_ARGS! %~0"
     echo found !SBT_ARGS!
     goto args_loop
   )
