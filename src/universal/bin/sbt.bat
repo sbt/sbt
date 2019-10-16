@@ -529,7 +529,7 @@ if defined sbt_args_verbose (
   if defined _JAVA_OPTS ( call :echolist !_JAVA_OPTS! )
   if defined _SBT_OPTS ( call :echolist !_SBT_OPTS! )
   echo -cp "!SBT_HOME!\bin\sbt-launch.jar" xsbt.boot.Boot
-  if defined %* ( call :echolist %* )
+  if not "%*" == "" ( call :echolist %* )
   echo.
 )
 
