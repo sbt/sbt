@@ -396,7 +396,6 @@ if "%g:~0,2%" == "-D" (
   ) else (
     call :dlog [args_loop] -D argument %~0
     set "SBT_ARGS=!SBT_ARGS! %~0"
-    echo found !SBT_ARGS!
     goto args_loop
   )
 )
