@@ -381,17 +381,22 @@ if /I "%~0" == "new" (
 )
 
 if /I "%g:~0,2%" == "-D" (
- rem special handling for -D since '=' gets parsed away
- if x%g:^==% == x%g% (
-   if not "%~1" == "" (
-     set SBT_ARGS=!SBT_ARGS! %0=%1
-     shift
-     goto args_loop
-   ) else (
-     echo %g is missing a value
-     goto error
-   )
- )
+  rem special handling for -D since '=' gets parsed away
+  echo "%g%" | find "=" > null
+  if ERRORLEVEL 1 (
+    if not "%~1" == "" (
+      set SBT_ARGS=!SBT_ARGS! %0=%1
+      shift
+      goto args_loop
+    ) else (
+      echo %g% is missing a value
+      goto error
+    )
+  ) else (
+    set SBT_ARGS=!SBT_ARGS! %~0
+    echo found !SBT_ARGS!
+    goto args_loop
+  )
 )
 
 rem the %0 (instead of %~0) preserves original argument quoting
@@ -550,7 +555,8 @@ rem special handling for -D since '=' gets parsed away
 if /I "%p:~0,2%" == "-D" (
  rem if "-Dscala.ext.dirs" (replace all = with nothing) == "-Dscala.ext.dirs"
  rem (e.g. verify it doesn't have the = already)
- if x%p:^==% == x%p% if not "%~1" == "" (
+
+ if "x%p:^==%" == "x%p%" if not "%~1" == "" (
      echo %0=%1
      shift
      goto echolist
