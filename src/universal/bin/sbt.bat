@@ -380,7 +380,7 @@ if /I "%~0" == "new" (
   )
 )
 
-if /I "%g:~0,2%" == "-D" (
+if "%g:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
   echo "%g%" | find "=" > null
   if ERRORLEVEL 1 (
