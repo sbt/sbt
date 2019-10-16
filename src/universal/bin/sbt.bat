@@ -374,24 +374,30 @@ if defined _java_home_arg (
   )
 )
 
-if /I "%~0" == "new" (
+if "%~0" == "new" (
   if not defined SBT_ARGS (
     set sbt_new=true
   )
 )
 
-if /I "%g:~0,2%" == "-D" (
- rem special handling for -D since '=' gets parsed away
- if x%g:^==% == x%g% (
-   if not "%~1" == "" (
-     set SBT_ARGS=!SBT_ARGS! %0=%1
-     shift
-     goto args_loop
-   ) else (
-     echo %g is missing a value
-     goto error
-   )
- )
+if "%g:~0,2%" == "-D" (
+  rem special handling for -D since '=' gets parsed away
+  echo "%g%" | find "=" > null
+  if ERRORLEVEL 1 (
+    if not "%~1" == "" (
+      call :dlog [args_loop] -D argument %~0=%~1
+      set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+      shift
+      goto args_loop
+    ) else (
+      echo %g% is missing a value
+      goto error
+    )
+  ) else (
+    call :dlog [args_loop] -D argument %~0
+    set "SBT_ARGS=!SBT_ARGS! %~0"
+    goto args_loop
+  )
 )
 
 rem the %0 (instead of %~0) preserves original argument quoting
@@ -529,7 +535,7 @@ if defined sbt_args_verbose (
   if defined _JAVA_OPTS ( call :echolist !_JAVA_OPTS! )
   if defined _SBT_OPTS ( call :echolist !_SBT_OPTS! )
   echo -cp "!SBT_HOME!\bin\sbt-launch.jar" xsbt.boot.Boot
-  if defined %* ( call :echolist %* )
+  if not [%~1] == [] ( call :echolist %* )
   echo.
 )
 
@@ -547,10 +553,11 @@ if [%0] EQU [] goto echolist_end
 set "p=%0"
 
 rem special handling for -D since '=' gets parsed away
-if /I "%p:~0,2%" == "-D" (
+if "%p:~0,2%" == "-D" (
  rem if "-Dscala.ext.dirs" (replace all = with nothing) == "-Dscala.ext.dirs"
  rem (e.g. verify it doesn't have the = already)
- if x%p:^==% == x%p% if not "%~1" == "" (
+
+ if "x%p:^==%" == "x%p%" if not "%~1" == "" (
      echo %0=%1
      shift
      goto echolist
