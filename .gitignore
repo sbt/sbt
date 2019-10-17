@@ -7,4 +7,11 @@ npm-debug.log
 *.vsix
 !sbt/src/server-test/completions/target
 .big
+
+# eclipse, intellij, bloop, metals
+.classpath
+.project
 .idea
+.settings
+.bloop
+.metals
