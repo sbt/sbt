@@ -98,7 +98,7 @@ private[sbt] object LibraryManagement {
         val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
           case (_, Some(out)) if upToDate(inChanged, out) => markAsCached(out)
           case pair =>
-            log.debug(s""""not up to date. inChanged = $inChanged, force = $force""")
+            log.debug(s"""not up to date. inChanged = $inChanged, force = $force""")
             resolve
         }
         import scala.util.control.Exception.catching
