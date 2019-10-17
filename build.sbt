@@ -190,6 +190,8 @@ lazy val sbtRoot: Project = (project in file("."))
     skip in publish := true,
     commands in Global += Command
       .single("sbtOn")((state, dir) => s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
+    mimaSettings,
+    mimaPreviousArtifacts := Set()
   )
 
 // This is used to configure an sbt-launcher for this version of sbt.
@@ -210,7 +212,9 @@ lazy val bundledLauncherProj =
       // mimaSettings, // TODO: Configure MiMa, deal with Proguard
       publish := Release.deployLauncher.value,
       publishLauncher := Release.deployLauncher.value,
-      packageBin in Compile := sbtLaunchJar.value
+      packageBin in Compile := sbtLaunchJar.value,
+      mimaSettings,
+      mimaPreviousArtifacts := Set()
     )
 
 /* ** subproject declarations ** */
@@ -238,6 +242,17 @@ val collectionProj = (project in file("internal") / "util-collection")
       // it's now abstract in KList and defined in both KCons & KNil.
       exclude[FinalMethodProblem]("sbt.internal.util.KNil.foldr"),
       exclude[DirectAbstractMethodProblem]("sbt.internal.util.KList.foldr"),
+
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Init*.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Settings0.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#INode.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.TypeFunctions.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Settings.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#MixedNode.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#BindNode.this"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#BindNode.dependsOn"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Types.some")
     ),
   )
   .configure(addSbtUtilPosition)
@@ -252,7 +267,14 @@ val completeProj = (project in file("internal") / "util-complete")
     mimaSettings,
     // Parser is used publicly, so we can't break bincompat.
     mimaBinaryIssueFilters := Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.SoftInvalid.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.Invalid.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.Finite.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.Infinite.decrement"),
       exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.History.this"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.complete.Completion.suggestion"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.complete.Completion.token"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.complete.Completion.displayOnly")
     ),
   )
   .configure(addSbtIO, addSbtUtilControl, addSbtUtilLogging)
@@ -337,10 +359,20 @@ lazy val taskProj = (project in file("tasks"))
     name := "Tasks",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[IncompatibleSignatureProblem]("sbt.Triggers.this"),
+      exclude[IncompatibleSignatureProblem]("sbt.Triggers.runBefore"),
+      exclude[IncompatibleSignatureProblem]("sbt.Triggers.injectFor"),
+      exclude[IncompatibleSignatureProblem]("sbt.Triggers.onComplete"),
+      exclude[DirectMissingMethodProblem]("sbt.Inc.apply"),
       // ok because sbt.ExecuteProgress has been under private[sbt]
       exclude[IncompatibleResultTypeProblem]("sbt.ExecuteProgress.initial"),
       exclude[DirectMissingMethodProblem]("sbt.ExecuteProgress.*"),
       exclude[ReversedMissingMethodProblem]("sbt.ExecuteProgress.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.ExecuteProgress.*"),
+      // ok because sbt.Execute has been under private[sbt]
+      exclude[IncompatibleSignatureProblem]("sbt.Execute.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.Execute#CyclicException.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.NodeView.*"),
     )
   )
   .configure(addSbtUtilControl)
@@ -427,6 +459,7 @@ lazy val scriptedSbtOldProj = (project in file("scripted-sbt-old"))
       exclude[MissingClassProblem]("sbt.test.*"),
       exclude[DirectMissingMethodProblem]("sbt.test.*"),
       exclude[IncompatibleMethTypeProblem]("sbt.test.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.test.*"),
     ),
   )
 
@@ -527,6 +560,9 @@ lazy val commandProj = (project in file("main-command"))
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      exclude[DirectMissingMethodProblem]("sbt.Exit.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.Reboot.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.TemplateResolverInfo.apply"),
       // dropped private[sbt] method
       exclude[DirectMissingMethodProblem]("sbt.BasicCommands.compatCommands"),
       // dropped mainly internal command strings holder
@@ -599,6 +635,31 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     ),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[IncompatibleSignatureProblem]("sbt.Previous#References.getReferences"),
+      exclude[IncompatibleSignatureProblem]("sbt.Def.delegate"),
+      exclude[IncompatibleSignatureProblem]("sbt.Def.add"),
+      exclude[IncompatibleSignatureProblem]("sbt.Def.grouped"),
+      exclude[IncompatibleSignatureProblem]("sbt.Def.compile"),
+      exclude[IncompatibleSignatureProblem]("sbt.Def.asTransform"),
+      exclude[DirectMissingMethodProblem]("sbt.Def.StaticScopes"),
+      exclude[IncompatibleSignatureProblem]("sbt.Previous.this"),
+      exclude[DirectMissingMethodProblem]("sbt.BuildRef.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.ScopeMask.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.Def.intersect"),
+      exclude[DirectMissingMethodProblem]("sbt.LocalProject.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.std.InitializeInstance.pure"),
+      exclude[DirectMissingMethodProblem]("sbt.std.InitializeInstance.flatten"),
+      exclude[DirectMissingMethodProblem]("sbt.std.InitializeInstance.map"),
+      exclude[DirectMissingMethodProblem]("sbt.std.InitializeInstance.app"),
+      exclude[DirectMissingMethodProblem]("sbt.std.ParserInstance.pure"),
+      exclude[DirectMissingMethodProblem]("sbt.std.ParserInstance.map"),
+      exclude[DirectMissingMethodProblem]("sbt.std.ParserInstance.app"),
+      exclude[DirectMissingMethodProblem]("sbt.std.ParserInstance.pure"),
+      exclude[DirectMissingMethodProblem]("sbt.std.TaskInstance.pure"),
+      exclude[DirectMissingMethodProblem]("sbt.std.TaskInstance.flatten"),
+      exclude[DirectMissingMethodProblem]("sbt.std.TaskInstance.map"),
+      exclude[DirectMissingMethodProblem]("sbt.std.TaskInstance.app"),
+      exclude[DirectMissingMethodProblem]("sbt.std.FullInstance.flatten"),
       exclude[DirectMissingMethodProblem]("sbt.Scope.display012StyleMasked"),
       // added a method to a sealed trait
       exclude[InheritedNewAbstractMethodProblem]("sbt.Scoped.canEqual"),
@@ -682,12 +743,49 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
       exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook"),
       exclude[MissingClassProblem]("sbt.internal.ResourceLoaderImpl"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.ConfigIndex.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Inspect.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.ProjectIndex.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.BuildIndex.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.server.LanguageServerReporter.*"),
+      exclude[VirtualStaticMemberProblem]("sbt.internal.server.LanguageServerProtocol.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.librarymanagement.IvyXml.*"),
       // Removed private internal classes
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$BottomClassLoader"),
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader$ResourceLoader"),
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ClassLoadingLock"),
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader"),
       exclude[MissingClassProblem]("sbt.internal.LayeredClassLoaderImpl"),
+
+      // false positives
+      exclude[DirectMissingMethodProblem]("sbt.plugins.IvyPlugin.requires"),
+      exclude[DirectMissingMethodProblem]("sbt.plugins.JUnitXmlReportPlugin.requires"),
+      exclude[DirectMissingMethodProblem]("sbt.plugins.Giter8TemplatePlugin.requires"),
+      exclude[DirectMissingMethodProblem]("sbt.plugins.JvmPlugin.requires"),
+      exclude[DirectMissingMethodProblem]("sbt.plugins.SbtPlugin.requires"),
+      exclude[DirectMissingMethodProblem]("sbt.ResolvedClasspathDependency.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.ClasspathDependency.apply"),
+
+      // File -> Source
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.cleanFilesTask"),
+      exclude[IncompatibleSignatureProblem]("sbt.Defaults.resourceConfigPaths"),
+      exclude[IncompatibleSignatureProblem]("sbt.Defaults.sourceConfigPaths"),
+      exclude[IncompatibleSignatureProblem]("sbt.Defaults.configPaths"),
+      exclude[IncompatibleSignatureProblem]("sbt.Defaults.paths"),
+
+      exclude[IncompatibleSignatureProblem]("sbt.Keys.csrPublications"),
+      exclude[IncompatibleSignatureProblem]("sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"),
+      exclude[IncompatibleSignatureProblem]("sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"),
+      exclude[IncompatibleSignatureProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
+      exclude[IncompatibleSignatureProblem]("sbt.coursierint.LMCoursier.publicationsSetting"),
+      exclude[IncompatibleSignatureProblem]("sbt.Project.inThisBuild"),
+      exclude[IncompatibleSignatureProblem]("sbt.Project.inConfig"),
+      exclude[IncompatibleSignatureProblem]("sbt.Project.inTask"),
+      exclude[IncompatibleSignatureProblem]("sbt.Project.inScope"),
+      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inThisBuild"),
+      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inConfig"),
+      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inTask"),
+      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inScope"),
     )
   )
   .configure(
@@ -775,6 +873,11 @@ lazy val sbtBig = (project in file(".big"))
 
 lazy val sbtIgnoredProblems = {
   Vector(
+    exclude[IncompatibleSignatureProblem]("sbt.package.some"),
+    exclude[IncompatibleSignatureProblem]("sbt.package.inThisBuild"),
+    exclude[IncompatibleSignatureProblem]("sbt.package.inConfig"),
+    exclude[IncompatibleSignatureProblem]("sbt.package.inTask"),
+    exclude[IncompatibleSignatureProblem]("sbt.package.inScope"),
     exclude[MissingClassProblem]("buildinfo.BuildInfo"),
     exclude[MissingClassProblem]("buildinfo.BuildInfo$"),
     // Added more items to Import trait.
