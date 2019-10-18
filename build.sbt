@@ -18,7 +18,6 @@ inThisBuild(List(
 val coursierVersion0 = "2.0.0-RC4-1"
 
 lazy val `lm-coursier` = project
-  .enablePlugins(ContrabandPlugin)
   .in(file("modules/lm-coursier"))
   .settings(
     shared,
@@ -26,6 +25,7 @@ lazy val `lm-coursier` = project
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
+      "io.github.alexarchambault" %% "data-class" % "0.2.0" % Provided,
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an
@@ -33,8 +33,7 @@ lazy val `lm-coursier` = project
       // is ignored).
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test
-    ),
-    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "scala",
+    )
   )
 
 lazy val `lm-coursier-shaded` = project
@@ -57,6 +56,7 @@ lazy val `lm-coursier-shaded` = project
     ),
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0 % "shaded",
+      "io.github.alexarchambault" %% "data-class" % "0.2.0" % Provided,
       "org.scala-lang.modules" %% "scala-xml" % "1.2.0", // depending on that one so that it doesn't get shaded
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.2.4",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test

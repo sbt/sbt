@@ -1,553 +1,100 @@
-/**
- * This code USED TO BE generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
- */
-
-// DO EDIT MANUALLY from now on
 package lmcoursier
 
 import java.io.File
 
+import dataclass.data
 import lmcoursier.credentials.Credentials
 import lmcoursier.definitions.{Authentication, CacheLogger, Module, ModuleMatchers, Project, Reconciliation, Strict}
 import sbt.librarymanagement.Resolver
 import xsbti.Logger
 
-final class CoursierConfiguration private (
-  val log: Option[Logger],
-  val resolvers: Vector[Resolver],
-  val parallelDownloads: Int,
-  val maxIterations: Int,
-  val sbtScalaOrganization: Option[String],
-  val sbtScalaVersion: Option[String],
-  val sbtScalaJars: Vector[File],
-  val interProjectDependencies: Vector[Project],
-  val excludeDependencies: Vector[(String, String)],
-  val fallbackDependencies: Vector[FallbackDependency],
-  val autoScalaLibrary: Boolean,
-  val hasClassifiers: Boolean,
-  val classifiers: Vector[String],
-  val mavenProfiles: Vector[String],
-  val scalaOrganization: Option[String],
-  val scalaVersion: Option[String],
-  val authenticationByRepositoryId: Vector[(String, Authentication)],
-  val credentials: Seq[Credentials],
-  val logger: Option[CacheLogger],
-  val cache: Option[File],
-  val ivyHome: Option[File],
-  val followHttpToHttpsRedirections: Option[Boolean],
-  val strict: Option[Strict],
-  val extraProjects: Vector[Project],
-  val forceVersions: Vector[(Module, String)],
-  val reconciliation: Vector[(ModuleMatchers, Reconciliation)]
-) extends Serializable {
-  
-  private def this() =
-    this(
-      None,
-      Resolver.defaults,
-      6,
-      100,
-      None,
-      None,
-      Vector.empty,
-      Vector.empty,
-      Vector.empty,
-      Vector.empty,
-      true,
-      false,
-      Vector.empty,
-      Vector.empty,
-      None,
-      None,
-      Vector.empty,
-      Vector.empty,
-      None,
-      None,
-      None,
-      None,
-      None,
-      Vector.empty,
-      Vector.empty,
-      Vector.empty
-    )
-
-  def this(
-    log: Option[Logger],
-    resolvers: Vector[Resolver],
-    parallelDownloads: Int,
-    maxIterations: Int,
-    sbtScalaOrganization: Option[String],
-    sbtScalaVersion: Option[String],
-    sbtScalaJars: Vector[File],
-    interProjectDependencies: Vector[Project],
-    excludeDependencies: Vector[(String, String)],
-    fallbackDependencies: Vector[FallbackDependency],
-    autoScalaLibrary: Boolean,
-    hasClassifiers: Boolean,
-    classifiers: Vector[String],
-    mavenProfiles: Vector[String],
-    scalaOrganization: Option[String],
-    scalaVersion: Option[String],
-    authenticationByRepositoryId: Vector[(String, Authentication)],
-    credentials: Seq[Credentials],
-    logger: Option[CacheLogger],
-    cache: Option[File],
-    ivyHome: Option[File],
-    followHttpToHttpsRedirections: Option[Boolean]
-  ) =
-    this(
-      log,
-      resolvers,
-      parallelDownloads,
-      maxIterations,
-      sbtScalaOrganization,
-      sbtScalaVersion,
-      sbtScalaJars,
-      interProjectDependencies,
-      excludeDependencies,
-      fallbackDependencies,
-      autoScalaLibrary,
-      hasClassifiers,
-      classifiers,
-      mavenProfiles,
-      scalaOrganization,
-      scalaVersion,
-      authenticationByRepositoryId,
-      credentials,
-      logger,
-      cache,
-      ivyHome,
-      followHttpToHttpsRedirections,
-      None,
-      Vector.empty,
-      Vector.empty,
-      Vector.empty
-    )
-
-  def this(
-    log: Option[Logger],
-    resolvers: Vector[Resolver],
-    parallelDownloads: Int,
-    maxIterations: Int,
-    sbtScalaOrganization: Option[String],
-    sbtScalaVersion: Option[String],
-    sbtScalaJars: Vector[File],
-    interProjectDependencies: Vector[Project],
-    excludeDependencies: Vector[(String, String)],
-    fallbackDependencies: Vector[FallbackDependency],
-    autoScalaLibrary: Boolean,
-    hasClassifiers: Boolean,
-    classifiers: Vector[String],
-    mavenProfiles: Vector[String],
-    scalaOrganization: Option[String],
-    scalaVersion: Option[String],
-    authenticationByRepositoryId: Vector[(String, Authentication)],
-    credentials: Seq[Credentials],
-    logger: Option[CacheLogger],
-    cache: Option[File],
-    ivyHome: Option[File],
-    followHttpToHttpsRedirections: Option[Boolean],
-    strict: Option[Strict],
-    extraProjects: Vector[Project],
-    forceVersions: Vector[(Module, String)],
-  ) =
-    this(
-      log,
-      resolvers,
-      parallelDownloads,
-      maxIterations,
-      sbtScalaOrganization,
-      sbtScalaVersion,
-      sbtScalaJars,
-      interProjectDependencies,
-      excludeDependencies,
-      fallbackDependencies,
-      autoScalaLibrary,
-      hasClassifiers,
-      classifiers,
-      mavenProfiles,
-      scalaOrganization,
-      scalaVersion,
-      authenticationByRepositoryId,
-      credentials,
-      logger,
-      cache,
-      ivyHome,
-      followHttpToHttpsRedirections,
-      strict,
-      extraProjects,
-      forceVersions,
-      Vector.empty
-    )
-
-  override def equals(o: Any): Boolean =
-    o match {
-      case other: CoursierConfiguration =>
-        log == other.log &&
-          resolvers == other.resolvers &&
-          parallelDownloads == other.parallelDownloads &&
-          maxIterations == other.maxIterations &&
-          sbtScalaOrganization == other.sbtScalaOrganization &&
-          sbtScalaVersion == other.sbtScalaVersion &&
-          sbtScalaJars == other.sbtScalaJars &&
-          interProjectDependencies == other.interProjectDependencies &&
-          excludeDependencies == other.excludeDependencies &&
-          fallbackDependencies == other.fallbackDependencies &&
-          autoScalaLibrary == other.autoScalaLibrary &&
-          hasClassifiers == other.hasClassifiers &&
-          classifiers == other.classifiers &&
-          mavenProfiles == other.mavenProfiles &&
-          scalaOrganization == other.scalaOrganization &&
-          scalaVersion == other.scalaVersion &&
-          authenticationByRepositoryId == other.authenticationByRepositoryId &&
-          credentials == other.credentials &&
-          logger == other.logger &&
-          cache == other.cache &&
-          ivyHome == other.ivyHome &&
-          followHttpToHttpsRedirections == other.followHttpToHttpsRedirections &&
-          strict == other.strict &&
-          extraProjects == other.extraProjects &&
-          forceVersions == other.forceVersions &&
-          reconciliation == other.reconciliation
-      case _ => false
-    }
-
-  override def hashCode: Int = {
-    var code = 37 * (17 + "lmcoursier.CoursierConfiguration".##)
-    code = 37 * (code + log.##)
-    code = 37 * (code + resolvers.##)
-    code = 37 * (code + parallelDownloads.##)
-    code = 37 * (code + maxIterations.##)
-    code = 37 * (code + sbtScalaOrganization.##)
-    code = 37 * (code + sbtScalaVersion.##)
-    code = 37 * (code + sbtScalaJars.##)
-    code = 37 * (code + interProjectDependencies.##)
-    code = 37 * (code + excludeDependencies.##)
-    code = 37 * (code + fallbackDependencies.##)
-    code = 37 * (code + autoScalaLibrary.##)
-    code = 37 * (code + hasClassifiers.##)
-    code = 37 * (code + classifiers.##)
-    code = 37 * (code + mavenProfiles.##)
-    code = 37 * (code + scalaOrganization.##)
-    code = 37 * (code + scalaVersion.##)
-    code = 37 * (code + authenticationByRepositoryId.##)
-    code = 37 * (code + credentials.##)
-    code = 37 * (code + logger.##)
-    code = 37 * (code + cache.##)
-    code = 37 * (code + ivyHome.##)
-    code = 37 * (code + followHttpToHttpsRedirections.##)
-    code = 37 * (code + strict.##)
-    code = 37 * (code + extraProjects.##)
-    code = 37 * (code + forceVersions.##)
-    code = 37 * (code + reconciliation.##)
-    code
-  }
-
-  override def toString: String =
-    s"CoursierConfiguration($log, $resolvers, $parallelDownloads, $maxIterations, $sbtScalaOrganization, $sbtScalaVersion, $sbtScalaJars, $interProjectDependencies, $excludeDependencies, $fallbackDependencies, $autoScalaLibrary, $hasClassifiers, $classifiers, $mavenProfiles, $scalaOrganization, $scalaVersion, $authenticationByRepositoryId, $credentials, $logger, $cache, $ivyHome, $followHttpToHttpsRedirections, $strict, $extraProjects, $forceVersions)"
-
-  private[this] def copy(
-    log: Option[Logger] = log,
-    resolvers: Vector[Resolver] = resolvers,
-    parallelDownloads: Int = parallelDownloads,
-    maxIterations: Int = maxIterations,
-    sbtScalaOrganization: Option[String] = sbtScalaOrganization,
-    sbtScalaVersion: Option[String] = sbtScalaVersion,
-    sbtScalaJars: Vector[File] = sbtScalaJars,
-    interProjectDependencies: Vector[Project] = interProjectDependencies,
-    excludeDependencies: Vector[(String, String)] = excludeDependencies,
-    fallbackDependencies: Vector[FallbackDependency] = fallbackDependencies,
-    autoScalaLibrary: Boolean = autoScalaLibrary,
-    hasClassifiers: Boolean = hasClassifiers,
-    classifiers: Vector[String] = classifiers,
-    mavenProfiles: Vector[String] = mavenProfiles,
-    scalaOrganization: Option[String] = scalaOrganization,
-    scalaVersion: Option[String] = scalaVersion,
-    authenticationByRepositoryId: Vector[(String, Authentication)] = authenticationByRepositoryId,
-    credentials: Seq[Credentials] = credentials,
-    logger: Option[CacheLogger] = logger,
-    cache: Option[File] = cache,
-    ivyHome: Option[File] = ivyHome,
-    followHttpToHttpsRedirections: Option[Boolean] = followHttpToHttpsRedirections,
-    strict: Option[Strict] = strict,
-    extraProjects: Vector[Project] = extraProjects,
-    forceVersions: Vector[(Module, String)] = forceVersions,
-    reconciliation: Vector[(ModuleMatchers, Reconciliation)] = reconciliation
-  ): CoursierConfiguration =
-    new CoursierConfiguration(
-      log,
-      resolvers,
-      parallelDownloads,
-      maxIterations,
-      sbtScalaOrganization,
-      sbtScalaVersion,
-      sbtScalaJars,
-      interProjectDependencies,
-      excludeDependencies,
-      fallbackDependencies,
-      autoScalaLibrary,
-      hasClassifiers,
-      classifiers,
-      mavenProfiles,
-      scalaOrganization,
-      scalaVersion,
-      authenticationByRepositoryId,
-      credentials,
-      logger,
-      cache,
-      ivyHome,
-      followHttpToHttpsRedirections,
-      strict,
-      extraProjects,
-      forceVersions,
-      reconciliation
-    )
-
-  def withLog(log: Option[Logger]): CoursierConfiguration =
-    copy(log = log)
+@data class CoursierConfiguration(
+  log: Option[Logger] = None,
+  resolvers: Vector[Resolver] = Resolver.defaults,
+  parallelDownloads: Int = 6,
+  maxIterations: Int = 100,
+  sbtScalaOrganization: Option[String] = None,
+  sbtScalaVersion: Option[String] = None,
+  sbtScalaJars: Vector[File] = Vector.empty,
+  interProjectDependencies: Vector[Project] = Vector.empty,
+  excludeDependencies: Vector[(String, String)] = Vector.empty,
+  fallbackDependencies: Vector[FallbackDependency] = Vector.empty,
+  autoScalaLibrary: Boolean = true,
+  hasClassifiers: Boolean = false,
+  classifiers: Vector[String] = Vector.empty,
+  mavenProfiles: Vector[String] = Vector.empty,
+  scalaOrganization: Option[String] = None,
+  scalaVersion: Option[String] = None,
+  authenticationByRepositoryId: Vector[(String, Authentication)] = Vector.empty,
+  credentials: Seq[Credentials] = Vector.empty,
+  logger: Option[CacheLogger] = None,
+  cache: Option[File] = None,
+  @since
+  ivyHome: Option[File] = None,
+  @since
+  followHttpToHttpsRedirections: Option[Boolean] = None,
+  @since
+  strict: Option[Strict] = None,
+  extraProjects: Vector[Project] = Vector.empty,
+  forceVersions: Vector[(Module, String)] = Vector.empty,
+  @since
+  reconciliation: Vector[(ModuleMatchers, Reconciliation)] = Vector.empty
+) {
 
   def withLog(log: Logger): CoursierConfiguration =
-    copy(log = Option(log))
-
-  def withResolvers(resolvers: Vector[Resolver]): CoursierConfiguration =
-    copy(resolvers = resolvers)
-
-  def withParallelDownloads(parallelDownloads: Int): CoursierConfiguration =
-    copy(parallelDownloads = parallelDownloads)
-
-  def withMaxIterations(maxIterations: Int): CoursierConfiguration =
-    copy(maxIterations = maxIterations)
-
-  def withSbtScalaOrganization(sbtScalaOrganization: Option[String]): CoursierConfiguration =
-    copy(sbtScalaOrganization = sbtScalaOrganization)
-
+    withLog(Option(log))
   def withSbtScalaOrganization(sbtScalaOrganization: String): CoursierConfiguration =
-    copy(sbtScalaOrganization = Option(sbtScalaOrganization))
-
-  def withSbtScalaVersion(sbtScalaVersion: Option[String]): CoursierConfiguration =
-    copy(sbtScalaVersion = sbtScalaVersion)
-
+    withSbtScalaOrganization(Option(sbtScalaOrganization))
   def withSbtScalaVersion(sbtScalaVersion: String): CoursierConfiguration =
-    copy(sbtScalaVersion = Option(sbtScalaVersion))
-
-  def withSbtScalaJars(sbtScalaJars: Vector[File]): CoursierConfiguration =
-    copy(sbtScalaJars = sbtScalaJars)
-
-  def withInterProjectDependencies(interProjectDependencies: Vector[Project]): CoursierConfiguration =
-    copy(interProjectDependencies = interProjectDependencies)
-
-  def withExcludeDependencies(excludeDependencies: Vector[(String, String)]): CoursierConfiguration =
-    copy(excludeDependencies = excludeDependencies)
-
-  def withFallbackDependencies(fallbackDependencies: Vector[FallbackDependency]): CoursierConfiguration =
-    copy(fallbackDependencies = fallbackDependencies)
-
-  def withAutoScalaLibrary(autoScalaLibrary: Boolean): CoursierConfiguration =
-    copy(autoScalaLibrary = autoScalaLibrary)
-
-  def withHasClassifiers(hasClassifiers: Boolean): CoursierConfiguration =
-    copy(hasClassifiers = hasClassifiers)
-
-  def withClassifiers(classifiers: Vector[String]): CoursierConfiguration =
-    copy(classifiers = classifiers)
-
-  def withMavenProfiles(mavenProfiles: Vector[String]): CoursierConfiguration =
-    copy(mavenProfiles = mavenProfiles)
-
-  def withScalaOrganization(scalaOrganization: Option[String]): CoursierConfiguration =
-    copy(scalaOrganization = scalaOrganization)
-
+    withSbtScalaVersion(Option(sbtScalaVersion))
   def withScalaOrganization(scalaOrganization: String): CoursierConfiguration =
-    copy(scalaOrganization = Option(scalaOrganization))
-
-  def withScalaVersion(scalaVersion: Option[String]): CoursierConfiguration =
-    copy(scalaVersion = scalaVersion)
-
+    withScalaOrganization(Option(scalaOrganization))
   def withScalaVersion(scalaVersion: String): CoursierConfiguration =
-    copy(scalaVersion = Option(scalaVersion))
-
-  def withAuthenticationByRepositoryId(authenticationByRepositoryId: Vector[(String, Authentication)]): CoursierConfiguration =
-    copy(authenticationByRepositoryId = authenticationByRepositoryId)
-
-  def withCredentials(credentials: Seq[Credentials]): CoursierConfiguration =
-    copy(credentials = credentials)
-
-  def withLogger(logger: Option[CacheLogger]): CoursierConfiguration =
-    copy(logger = logger)
-
+    withScalaVersion(Option(scalaVersion))
   def withLogger(logger: CacheLogger): CoursierConfiguration =
-    copy(logger = Option(logger))
-
-  def withCache(cache: Option[File]): CoursierConfiguration =
-    copy(cache = cache)
-
+    withLogger(Option(logger))
   def withCache(cache: File): CoursierConfiguration =
-    copy(cache = Option(cache))
-
-  def withIvyHome(ivyHomeOpt: Option[File]): CoursierConfiguration =
-    copy(ivyHome = ivyHomeOpt)
+    withCache(Option(cache))
   def withIvyHome(ivyHome: File): CoursierConfiguration =
-    copy(ivyHome = Option(ivyHome))
-
-  def withFollowHttpToHttpsRedirections(followHttpToHttpsRedirectionsOpt: Option[Boolean]): CoursierConfiguration =
-    copy(followHttpToHttpsRedirections = followHttpToHttpsRedirectionsOpt)
+    withIvyHome(Option(ivyHome))
   def withFollowHttpToHttpsRedirections(followHttpToHttpsRedirections: Boolean): CoursierConfiguration =
-    copy(followHttpToHttpsRedirections = Some(followHttpToHttpsRedirections))
+    withFollowHttpToHttpsRedirections(Some(followHttpToHttpsRedirections))
   def withFollowHttpToHttpsRedirections(): CoursierConfiguration =
-    copy(followHttpToHttpsRedirections = Some(true))
-
+    withFollowHttpToHttpsRedirections(Some(true))
   def withStrict(strict: Strict): CoursierConfiguration =
-    copy(strict = Some(strict))
-  def withStrict(strictOpt: Option[Strict]): CoursierConfiguration =
-    copy(strict = strictOpt)
-
-  def withExtraProjects(extraProjects: Vector[Project]): CoursierConfiguration =
-    copy(extraProjects = extraProjects)
-
-  def withForceVersions(forceVersions: Vector[(Module, String)]): CoursierConfiguration =
-    copy(forceVersions = forceVersions)
-
-  def withReconciliation(reconciliation: Vector[(ModuleMatchers, Reconciliation)]): CoursierConfiguration =
-    copy(reconciliation = reconciliation)
+    withStrict(Some(strict))
 }
 
 object CoursierConfiguration {
-
-  def apply(): CoursierConfiguration =
-    new CoursierConfiguration()
-
-  def apply(
-    log: Option[Logger],
-    resolvers: Vector[Resolver],
-    parallelDownloads: Int, 
-    maxIterations: Int, 
-    sbtScalaOrganization: Option[String], 
-    sbtScalaVersion: Option[String], 
-    sbtScalaJars: Vector[File],
-    interProjectDependencies: Vector[Project],
-    excludeDependencies: Vector[(String, String)], 
-    fallbackDependencies: Vector[FallbackDependency],
-    autoScalaLibrary: Boolean, 
-    hasClassifiers: Boolean, 
-    classifiers: Vector[String], 
-    mavenProfiles: Vector[String], 
-    scalaOrganization: Option[String], 
-    scalaVersion: Option[String], 
-    authenticationByRepositoryId: Vector[(String, Authentication)],
-    credentials: Seq[Credentials],
-    logger: Option[CacheLogger],
-    cache: Option[File]
-  ): CoursierConfiguration =
-    new CoursierConfiguration(
-      log, 
-      resolvers, 
-      parallelDownloads, 
-      maxIterations, 
-      sbtScalaOrganization, 
-      sbtScalaVersion, 
-      sbtScalaJars, 
-      interProjectDependencies, 
-      excludeDependencies, 
-      fallbackDependencies, 
-      autoScalaLibrary, 
-      hasClassifiers, 
-      classifiers, 
-      mavenProfiles, 
-      scalaOrganization, 
-      scalaVersion, 
-      authenticationByRepositoryId, 
-      credentials, 
-      logger, 
-      cache,
-      None,
-      None,
-      None,
-      Vector.empty,
-      Vector.empty,
-      Vector.empty
-    )
-  
   def apply(
     log: Logger,
     resolvers: Vector[Resolver],
-    parallelDownloads: Int, 
-    maxIterations: Int, 
-    sbtScalaOrganization: String, 
-    sbtScalaVersion: String, 
+    parallelDownloads: Int,
+    maxIterations: Int,
+    sbtScalaOrganization: String,
+    sbtScalaVersion: String,
     sbtScalaJars: Vector[File],
     interProjectDependencies: Vector[Project],
-    excludeDependencies: Vector[(String, String)], 
+    excludeDependencies: Vector[(String, String)],
     fallbackDependencies: Vector[FallbackDependency],
-    autoScalaLibrary: Boolean, 
-    hasClassifiers: Boolean, 
-    classifiers: Vector[String], 
-    mavenProfiles: Vector[String], 
-    scalaOrganization: String, 
-    scalaVersion: String, 
+    autoScalaLibrary: Boolean,
+    hasClassifiers: Boolean,
+    classifiers: Vector[String],
+    mavenProfiles: Vector[String],
+    scalaOrganization: String,
+    scalaVersion: String,
     authenticationByRepositoryId: Vector[(String, Authentication)],
     credentials: Seq[Credentials],
     logger: CacheLogger,
     cache: File
   ): CoursierConfiguration =
-    new CoursierConfiguration(
-      Option(log), 
-      resolvers, 
-      parallelDownloads, 
-      maxIterations, 
-      Option(sbtScalaOrganization), 
-      Option(sbtScalaVersion), 
-      sbtScalaJars, 
-      interProjectDependencies, 
-      excludeDependencies, 
-      fallbackDependencies, 
-      autoScalaLibrary, 
-      hasClassifiers, 
-      classifiers, 
-      mavenProfiles, 
-      Option(scalaOrganization), 
-      Option(scalaVersion), 
-      authenticationByRepositoryId, 
-      credentials, 
-      Option(logger), 
-      Option(cache),
-      None,
-      None,
-      None,
-      Vector.empty,
-      Vector.empty,
-      Vector.empty
-    )
-
-  def apply(
-    log: Option[Logger],
-    resolvers: Vector[Resolver],
-    parallelDownloads: Int,
-    maxIterations: Int,
-    sbtScalaOrganization: Option[String],
-    sbtScalaVersion: Option[String],
-    sbtScalaJars: Vector[File],
-    interProjectDependencies: Vector[Project],
-    excludeDependencies: Vector[(String, String)],
-    fallbackDependencies: Vector[FallbackDependency],
-    autoScalaLibrary: Boolean,
-    hasClassifiers: Boolean,
-    classifiers: Vector[String],
-    mavenProfiles: Vector[String],
-    scalaOrganization: Option[String],
-    scalaVersion: Option[String],
-    authenticationByRepositoryId: Vector[(String, Authentication)],
-    credentials: Seq[Credentials],
-    logger: Option[CacheLogger],
-    cache: Option[File],
-    ivyHome: Option[File]
-  ): CoursierConfiguration =
-    new CoursierConfiguration(
-      log,
+    CoursierConfiguration(
+      Option(log),
       resolvers,
       parallelDownloads,
       maxIterations,
-      sbtScalaOrganization,
-      sbtScalaVersion,
+      Option(sbtScalaOrganization),
+      Option(sbtScalaVersion),
       sbtScalaJars,
       interProjectDependencies,
       excludeDependencies,
@@ -556,17 +103,11 @@ object CoursierConfiguration {
       hasClassifiers,
       classifiers,
       mavenProfiles,
-      scalaOrganization,
-      scalaVersion,
+      Option(scalaOrganization),
+      Option(scalaVersion),
       authenticationByRepositoryId,
       credentials,
-      logger,
-      cache,
-      ivyHome,
-      None,
-      None,
-      Vector.empty,
-      Vector.empty,
-      Vector.empty
+      Option(logger),
+      Option(cache),
     )
 }

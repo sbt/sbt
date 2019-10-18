@@ -1,5 +1,7 @@
 package lmcoursier.definitions
+
 sealed abstract class Reconciliation extends Serializable
+
 object Reconciliation {
   case object Default extends Reconciliation
   case object Relaxed extends Reconciliation

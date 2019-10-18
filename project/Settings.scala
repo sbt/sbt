@@ -14,6 +14,11 @@ object Settings {
 
   def sbt10Version = "1.0.2"
 
+  private lazy val isAtLeastScala213 = Def.setting {
+    import Ordering.Implicits._
+    CrossVersion.partialVersion(scalaVersion.value).exists(_ >= (2, 13))
+  }
+
   lazy val shared = Seq(
     resolvers += Resolver.sonatypeRepo("releases"),
     crossScalaVersions := Seq(scala212),
@@ -23,7 +28,15 @@ object Settings {
       "-deprecation",
       "-language:higherKinds",
       "-language:implicitConversions"
-    )
+    ),
+    libraryDependencies ++= {
+      if (isAtLeastScala213.value) Nil
+      else Seq(compilerPlugin("org.scalamacros" % s"paradise" % "2.1.1" cross CrossVersion.full))
+    },
+    scalacOptions ++= {
+      if (isAtLeastScala213.value) Seq("-Ymacro-annotations")
+      else Nil
+    }
   ) ++ {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(Locale.ROOT)
     if (prop == "0" || prop == "false")
