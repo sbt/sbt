@@ -17,14 +17,14 @@ object SemanticdbPlugin extends AutoPlugin {
   override def requires = JvmPlugin
   override def trigger = allRequirements
 
-  override lazy val globalSettings = Seq(
+  override lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     semanticdbEnabled := false,
     semanticdbIncludeInJar := false,
     semanticdbOptions := List("-Yrangepos"),
     semanticdbVersion := "4.1.0"
   )
 
-  override lazy val projectSettings = Seq(
+  override lazy val projectSettings: Seq[Def.Setting[_]] = Seq(
     semanticdbCompilerPlugin := {
       val v = semanticdbVersion.value
       ("org.scalameta" % "semanticdb-scalac" % v).cross(CrossVersion.full)
