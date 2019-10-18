@@ -763,6 +763,7 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.plugins.SbtPlugin.requires"),
       exclude[DirectMissingMethodProblem]("sbt.ResolvedClasspathDependency.apply"),
       exclude[DirectMissingMethodProblem]("sbt.ClasspathDependency.apply"),
+      exclude[IncompatibleSignatureProblem]("sbt.plugins.SemanticdbPlugin.globalSettings"),
 
       // File -> Source
       exclude[DirectMissingMethodProblem]("sbt.Defaults.cleanFilesTask"),
