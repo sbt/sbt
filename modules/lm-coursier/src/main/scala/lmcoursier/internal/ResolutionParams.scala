@@ -48,7 +48,7 @@ final case class ResolutionParams(
     val cleanCache = cache
       .withPool(null)
       .withLogger(null)
-      .withS(null)
+      .withSync(null)
     SbtCoursierCache.ResolutionKey(
       dependencies,
       internalRepositories,
