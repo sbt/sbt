@@ -21,14 +21,14 @@ object SemanticdbPlugin extends AutoPlugin {
     semanticdbEnabled := false,
     semanticdbIncludeInJar := false,
     semanticdbOptions := List("-Yrangepos"),
-    semanticdbVersion := "4.1.0",
-    semanticdbCompilerPlugin := {
-      val v = semanticdbVersion.value
-      ("org.scalameta" % "semanticdb-scalac" % v).cross(CrossVersion.full)
-    }
+    semanticdbVersion := "4.1.0"
   )
 
   override lazy val projectSettings = Seq(
+    semanticdbCompilerPlugin := {
+      val v = semanticdbVersion.value
+      ("org.scalameta" % "semanticdb-scalac" % v).cross(CrossVersion.full)
+    },
     allDependencies ++= {
       val sdb = semanticdbEnabled.value
       val m = semanticdbCompilerPlugin.value
