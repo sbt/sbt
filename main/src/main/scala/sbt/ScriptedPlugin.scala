@@ -51,12 +51,12 @@ object ScriptedPlugin extends AutoPlugin {
   }
   import autoImport._
 
-  override lazy val globalSettings = Seq(
+  override lazy val globalSettings: Seq[Setting[_]] = Seq(
     scriptedBufferLog := true,
     scriptedLaunchOpts := Seq(),
   )
 
-  override lazy val projectSettings = Seq(
+  override lazy val projectSettings: Seq[Setting[_]] = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
     scriptedSbt := (sbtVersion in pluginCrossBuild).value,
     sbtLauncher := getJars(ScriptedLaunchConf).map(_.get.head).value,

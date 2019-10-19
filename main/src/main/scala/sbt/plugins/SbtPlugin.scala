@@ -9,11 +9,12 @@ package sbt
 package plugins
 
 import Keys._
+import Def.Setting
 
 object SbtPlugin extends AutoPlugin {
   override def requires = ScriptedPlugin
 
-  override lazy val projectSettings = Seq(
+  override lazy val projectSettings: Seq[Setting[_]] = Seq(
     sbtPlugin := true
   )
 }
