@@ -163,7 +163,7 @@ val root = (project in file(".")).
     packageDescription in Windows := "The interactive build tool.",
     wixProductId := "ce07be71-510d-414a-92d4-dff47631848a",
     wixProductUpgradeId := Hash.toHex(Hash((version in Windows).value)).take(32),
-    javacOptions := Seq("-source", "1.5", "-target", "1.5"),
+    javacOptions := Seq("-source", "1.8", "-target", "1.8"),
 
     // Universal ZIP download install.
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
