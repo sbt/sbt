@@ -750,6 +750,8 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.internal.server.LanguageServerReporter.*"),
       exclude[VirtualStaticMemberProblem]("sbt.internal.server.LanguageServerProtocol.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.librarymanagement.IvyXml.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.ScriptedPlugin.*Settings"),
+      exclude[IncompatibleSignatureProblem]("sbt.plugins.SbtPlugin.*Settings"),
       // Removed private internal classes
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$BottomClassLoader"),
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader$ResourceLoader"),
