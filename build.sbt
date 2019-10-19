@@ -2,16 +2,25 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-ThisBuild / git.baseVersion := "1.3.0"
 ThisBuild / version := {
   val old = (ThisBuild / version).value
   nightlyVersion match {
     case Some(v) => v
-    case _ =>
-      if (old contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
-      else old
+    case _ => old
   }
 }
+ThisBuild / organization := "org.scala-sbt"
+ThisBuild / bintrayPackage := "util"
+ThisBuild / homepage := Some(url("https://github.com/sbt/util"))
+ThisBuild / description := "Util modules for sbt"
+ThisBuild / scmInfo := Some(ScmInfo(url("https://github.com/sbt/util"), "git@github.com:sbt/util.git"))
+ThisBuild / licenses := List(("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0")))
+ThisBuild / scalafmtOnCompile := true
+ThisBuild / developers := List(
+  Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
+  Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("http://eed3si9n.com/")),
+  Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
+)
 
 def internalPath = file("internal")
 
@@ -54,16 +63,10 @@ lazy val utilRoot: Project = (project in file("."))
     utilScripted
   )
   .settings(
-    inThisBuild(
-      Seq(
-        bintrayPackage := "util",
-        homepage := Some(url("https://github.com/sbt/util")),
-        description := "Util module for sbt",
-        scmInfo := Some(ScmInfo(url("https://github.com/sbt/util"), "git@github.com:sbt/util.git")),
-      )),
     commonSettings,
     name := "Util Root",
     publish / skip := true,
+    mimaPreviousArtifacts := Set.empty,
     customCommands
   )
 
