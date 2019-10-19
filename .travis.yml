@@ -45,7 +45,7 @@ matrix:
         - java -Xmx32m -version
         - unset SBT_OPTS
       script:
-        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin
+        - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - cd citest && ./test.sh
 
     - name: "build using JDK 8 test using JDK 8"
