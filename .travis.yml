@@ -30,9 +30,8 @@ install:
   - unset JAVA_HOME
   - java -Xmx32m -version
   # detect sbt version from project/build.properties
-  # - export TRAVIS_SBT=$(grep sbt.version= project/build.properties | sed -e 's/sbt.version=//g' ) && echo "sbt $TRAVIS_SBT"
-  # use 1.2.8 until 1.3.0 installer is out
-  - export TRAVIS_SBT=1.2.8
+  - export TRAVIS_SBT=$(grep sbt.version= project/build.properties | sed -e 's/sbt.version=//g' ) && echo "sbt $TRAVIS_SBT"
+  # - export TRAVIS_SBT=1.3.3
   - sdk install sbt $TRAVIS_SBT
   # override Travis CI's SBT_OPTS
   - unset SBT_OPTS
