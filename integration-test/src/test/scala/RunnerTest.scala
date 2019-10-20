@@ -111,7 +111,7 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   test("sbt -V|-version|--version should print sbtVersion") {
     val out = sbtProcessWithOpts("-version", "", "").!!.trim
     val expectedVersion =
-      s"""|(?m)^sbt version in this project: $versionRegEx
+      s"""|(?m)^sbt version in this project: $versionRegEx(\\r)?
           |sbt script version: $versionRegEx$$
           |""".stripMargin.trim.replace("\n", "\\n")
     assert(out.matches(expectedVersion))
