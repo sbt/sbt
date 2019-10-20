@@ -7,16 +7,28 @@ val _ = {
   sys.props += ("line.separator" -> "\n")
 }
 
-ThisBuild / git.baseVersion := "1.3.0"
 ThisBuild / version := {
   val old = (ThisBuild / version).value
   nightlyVersion match {
     case Some(v) => v
-    case _ =>
-      if (old contains "SNAPSHOT") git.baseVersion.value + "-SNAPSHOT"
-      else old
+    case _       => old
   }
 }
+ThisBuild / organization := "org.scala-sbt"
+ThisBuild / bintrayPackage := "librarymanagement"
+ThisBuild / homepage := Some(url("https://github.com/sbt/librarymanagement"))
+ThisBuild / description := "Library management module for sbt"
+ThisBuild / scmInfo := {
+  val slug = "sbt/librarymanagement"
+  Some(ScmInfo(url(s"https://github.com/$slug"), s"git@github.com:$slug.git"))
+}
+ThisBuild / licenses := List(("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0")))
+ThisBuild / scalafmtOnCompile := true
+ThisBuild / developers := List(
+  Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
+  Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("http://eed3si9n.com/")),
+  Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
+)
 
 ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 
@@ -65,6 +77,7 @@ val mimaSettings = Def settings (
     "1.1.3",
     "1.1.4",
     "1.2.0",
+    "1.3.0",
   ) map (
       version =>
         organization.value %% moduleName.value % version
@@ -75,24 +88,14 @@ val mimaSettings = Def settings (
 lazy val lmRoot = (project in file("."))
   .aggregate(lmCore, lmIvy)
   .settings(
-    inThisBuild(
-      Seq(
-        homepage := Some(url("https://github.com/sbt/librarymanagement")),
-        description := "Library management module for sbt",
-        scmInfo := {
-          val slug = "sbt/librarymanagement"
-          Some(ScmInfo(url(s"https://github.com/$slug"), s"git@github.com:$slug.git"))
-        },
-        bintrayPackage := "librarymanagement",
-      )
-    ),
     commonSettings,
     name := "LM Root",
     publish := {},
     publishLocal := {},
     publishArtifact in Compile := false,
     publishArtifact := false,
-    customCommands
+    mimaPreviousArtifacts := Set.empty,
+    customCommands,
   )
 
 lazy val lmCore = (project in file("core"))
@@ -330,19 +333,19 @@ lazy val lmIvy = (project in file("ivy"))
     ),
   )
 
-lazy val lmScriptedTest = (project in file("scripted-test"))
-  .enablePlugins(SbtPlugin)
-  .settings(
-    commonSettings,
-    skip in publish := true,
-    name := "scripted-test",
-    scriptedLaunchOpts := {
-      scriptedLaunchOpts.value ++
-        Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
-    },
-    scriptedBufferLog := false
-  )
-  .enablePlugins(SbtScriptedIT)
+// lazy val lmScriptedTest = (project in file("scripted-test"))
+//   .enablePlugins(SbtPlugin)
+//   .settings(
+//     commonSettings,
+//     skip in publish := true,
+//     name := "scripted-test",
+//     scriptedLaunchOpts := {
+//       scriptedLaunchOpts.value ++
+//         Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+//     },
+//     scriptedBufferLog := false
+//   )
+//   .enablePlugins(SbtScriptedIT)
 
 // we are updating the nightly process, so we are commenting this out for now
 // addCommandAlias("scriptedIvy", Seq(
