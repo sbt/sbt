@@ -22,6 +22,7 @@ set init_sbt_version=_to_be_replaced
 set sbt_default_mem=1024
 set default_sbt_opts=
 set default_java_opts=-Dfile.encoding=UTF-8
+set sbt_jar=
 
 set sbt_args_print_version=
 set sbt_args_print_sbt_version=
@@ -34,6 +35,7 @@ set sbt_args_color=
 set sbt_args_no_colors=
 set sbt_args_no_global=
 set sbt_args_no_share=
+set sbt_args_sbt_jar=
 set sbt_args_ivy=
 set sbt_args_supershell=
 set sbt_args_timings=
@@ -208,6 +210,26 @@ if defined _sbt_boot_arg (
    set sbt_args_sbt_boot=%1
    shift
    goto args_loop
+ ) else (
+   echo "%~0" is missing a value
+   goto error
+ )
+)
+
+if "%~0" == "-sbt-jar" set _sbt_jar=true
+if "%~0" == "--sbt-jar" set _sbt_jar=true
+
+if defined _sbt_jar (
+ set _sbt_jar=
+ if not "%~1" == "" (
+   if exist "%~1" (
+     set sbt_args_sbt_jar=%1
+     shift
+     goto args_loop
+   ) else (
+      echo %~1 does not exist
+      goto error
+   )
  ) else (
    echo "%~0" is missing a value
    goto error
@@ -509,6 +531,14 @@ if defined sbt_args_traces (
   set _SBT_OPTS=-Dsbt.traces=true !_SBT_OPTS!
 )
 
+if defined sbt_args_sbt_jar (
+  set "sbt_jar=!sbt_args_sbt_jar!"
+) else (
+  set "sbt_jar=!SBT_HOME!\bin\sbt-launch.jar"
+)
+
+set sbt_jar=!sbt_jar:"=!
+
 rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
 
 if !sbt_args_print_sbt_script_version! equ 1 (
@@ -534,12 +564,14 @@ if defined sbt_args_verbose (
   echo "!_JAVACMD!"
   if defined _JAVA_OPTS ( call :echolist !_JAVA_OPTS! )
   if defined _SBT_OPTS ( call :echolist !_SBT_OPTS! )
-  echo -cp "!SBT_HOME!\bin\sbt-launch.jar" xsbt.boot.Boot
+  echo -cp
+  echo "!sbt_jar!"
+  echo xsbt.boot.Boot
   if not [%~1] == [] ( call :echolist %* )
   echo.
 )
 
-"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -cp "!SBT_HOME!\bin\sbt-launch.jar" xsbt.boot.Boot %*
+"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -cp "!sbt_jar!" xsbt.boot.Boot %*
 
 goto :eof
 
@@ -694,11 +726,11 @@ exit /B 1
 
 :copyrt
 if /I !JAVA_VERSION! GEQ 9 (
-  set rtexport=!SBT_BIN_DIR!java9-rt-export.jar
+  set "rtexport=!SBT_BIN_DIR!java9-rt-export.jar"
 
   "!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -jar "!rtexport!" --rt-ext-dir > "%TEMP%.\rtext.txt"
   set /p java9_ext= < "%TEMP%.\rtext.txt"
-  set java9_rt=!java9_ext!\rt.jar
+  set "java9_rt=!java9_ext!\rt.jar"
 
   if not exist "!java9_rt!" (
     mkdir "!java9_ext!"
@@ -765,7 +797,7 @@ rem echo   --batch             disable interactive mode
 echo.
 echo   # sbt version ^(default: from project/build.properties if present, else latest release^)
 echo   --sbt-version  ^<version^>   use the specified version of sbt
-rem echo   --sbt-jar      ^<path^>      use the specified jar as the sbt launcher
+echo   --sbt-jar      ^<path^>      use the specified jar as the sbt launcher
 echo.
 echo   # java version ^(default: java from PATH, currently !FULL_JAVA_VERSION!^)
 echo   --java-home ^<path^>         alternate JAVA_HOME
@@ -792,8 +824,8 @@ echo.
 exit /B 1
 
 :set_sbt_version
-rem print sbtVersion
-for /F "usebackq tokens=2" %%G in (`CALL "!_JAVACMD!" -jar "!SBT_HOME!\bin\sbt-launch.jar" "sbtVersion" 2^>^&1`) do set "sbt_version=%%G"
+rem set project sbtVersion
+for /F "usebackq tokens=2" %%G in (`CALL "!_JAVACMD!" -jar "!sbt_jar!" "sbtVersion" 2^>^&1`) do set "sbt_version=%%G"
 exit /B 0
 
 :error
