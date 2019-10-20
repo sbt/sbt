@@ -188,7 +188,7 @@ lazy val sbtRoot: Project = (project in file("."))
     commands in Global += Command
       .single("sbtOn")((state, dir) => s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
     mimaSettings,
-    mimaPreviousArtifacts := Set()
+    mimaPreviousArtifacts := Set.empty,
   )
 
 // This is used to configure an sbt-launcher for this version of sbt.
@@ -1144,7 +1144,7 @@ def customCommands: Seq[Setting[_]] = Seq(
 ThisBuild / whitesourceProduct := "Lightbend Reactive Platform"
 ThisBuild / whitesourceAggregateProjectName := {
   // note this can get detached on tag build etc
-  val b = (ThisBuild / git.gitCurrentBranch).value
+  val b = sys.process.Process("git rev-parse --abbrev-ref HEAD").!!
   val Stable = """1\.([0-9]+)\.x""".r
   b match {
     case Stable(y) => "sbt-1." + y.toString + "-stable"
