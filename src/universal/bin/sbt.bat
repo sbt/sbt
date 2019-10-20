@@ -766,8 +766,6 @@ echo.
 echo   # sbt version ^(default: from project/build.properties if present, else latest release^)
 echo   --sbt-version  ^<version^>   use the specified version of sbt
 rem echo   --sbt-jar      ^<path^>      use the specified jar as the sbt launcher
-rem echo   --sbt-rc                   use an RC version of sbt
-rem echo   --sbt-snapshot             use a snapshot version of sbt
 echo.
 echo   # java version ^(default: java from PATH, currently !FULL_JAVA_VERSION!^)
 echo   --java-home ^<path^>         alternate JAVA_HOME

@@ -26,8 +26,6 @@ Usage: sbt [options]
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
   -sbt-jar      <path>      use the specified jar as the sbt launcher
-  -sbt-rc                   use an RC version of sbt
-  -sbt-snapshot             use a snapshot version of sbt
 
   # java version (default: java from PATH, currently openjdk version "1.8.0_172")
   -java-home <path>         alternate JAVA_HOME
