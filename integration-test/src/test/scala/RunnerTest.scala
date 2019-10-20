@@ -137,4 +137,12 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     assert(out.matches(expectedVersion))
     ()
   }
+
+  test("sbt --sbt-jar should run") {
+    val out = sbtProcess("compile -v --sbt-jar ../target/universal/stage/bin/sbt-launch.jar").!!.linesIterator.toList
+    assert(out.contains[String]("../target/universal/stage/bin/sbt-launch.jar") ||
+      out.contains[String]("\"../target/universal/stage/bin/sbt-launch.jar\"")
+    )
+    ()
+  }
 }
