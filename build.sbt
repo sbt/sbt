@@ -675,6 +675,7 @@ lazy val protocolProj = (project in file("protocol"))
       exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQuerySuccess.copy$default$*"),
       // ignore missing methods in sbt.internal
       exclude[DirectMissingMethodProblem]("sbt.internal.*"),
+      exclude[MissingTypesProblem]("sbt.internal.protocol.JsonRpcResponseError"),
     )
   )
 

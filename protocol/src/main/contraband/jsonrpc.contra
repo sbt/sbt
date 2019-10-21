@@ -56,7 +56,12 @@ type JsonRpcResponseError
   ## information about the error. Can be omitted.
   data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
+  #xinterface RuntimeException(message)
+
   #xtostring s"""JsonRpcResponseError($code, $message, ${sbt.protocol.Serialization.compactPrintJsonOpt(data)})"""
+
+  #xcompanion def apply(code: Long, message: String): JsonRpcResponseError = new JsonRpcResponseError(code, message, None)
+
 }
 
 type JsonRpcNotificationMessage implements JsonRpcMessage

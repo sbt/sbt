@@ -181,6 +181,15 @@ private[sbt] trait LanguageServerProtocol extends CommandChannel { self =>
   ): Unit =
     jsonRpcRespondErrorImpl(execId, code, message, Option(Converter.toJson[A](data).get))
 
+  private[sbt] def jsonRpcRespondError(
+      execId: Option[String],
+      err: JsonRpcResponseError
+  ): Unit = {
+    val m = JsonRpcResponseMessage("2.0", execId, None, Option(err))
+    val bytes = Serialization.serializeResponseMessage(m)
+    publishBytes(bytes)
+  }
+
   private[this] def jsonRpcRespondErrorImpl(
       execId: Option[String],
       code: Long,
