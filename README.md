@@ -4,7 +4,7 @@
 
 Visualize your project's dependencies.
 
-**Note: sbt 1.3.x is currently not supported (but hopefully fixed soon), see [#178](https://github.com/jrudolph/sbt-dependency-graph/issues/178)).**
+**Note: sbt >= 1.3.x is currently not supported (but hopefully fixed soon), see [#178](https://github.com/jrudolph/sbt-dependency-graph/issues/178)). Unfortunately, this problem cannot be fixed in sbt-dependency-graph itself but is a regression in sbt. If you'd like to continue using sbt-dependency-graph, please add your support to [sbt/sbt#4706](https://github.com/sbt/sbt/issues/4706) and [sbt/sbt#4707](https://github.com/sbt/sbt/issues/4707).** 
 
 ## Usage Instructions
 
