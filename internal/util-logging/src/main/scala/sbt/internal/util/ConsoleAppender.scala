@@ -2,6 +2,7 @@ package sbt.internal.util
 
 import sbt.util._
 import java.io.{ PrintStream, PrintWriter }
+import java.lang.StringBuilder
 import java.util.Locale
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
 import org.apache.logging.log4j.{ Level => XLevel }
@@ -507,10 +508,10 @@ class ConsoleAppender private[ConsoleAppender] (
       message: String
   ): Unit =
     out.lockObject.synchronized {
+      val builder: StringBuilder = new StringBuilder(labelColor.length + label.length + messageColor.length + reset.length * 3)
       message.linesIterator.foreach { line =>
-        val builder = new java.lang.StringBuilder(
-          labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3
-        )
+        builder.ensureCapacity(labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3)
+        builder.setLength(0)
         def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
         builder.append(reset).append('[')
         fmted(labelColor, label)
