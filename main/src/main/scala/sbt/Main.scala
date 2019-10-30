@@ -833,10 +833,10 @@ object BuiltinCommands {
     checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
-    val s = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
+    val s2 = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
 
     val (eval, structure) =
-      try Load.defaultLoad(s, base, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
+      try Load.defaultLoad(s2, base, s2.log, Project.inPluginProject(s2), Project.extraBuilds(s2))
       catch {
         case ex: compiler.EvalException =>
           s0.log.debug(ex.getMessage)
@@ -846,12 +846,13 @@ object BuiltinCommands {
       }
 
     val session = Load.initialSession(structure, eval, s0)
-    SessionSettings.checkSession(session, s)
-    addCacheStoreFactoryFactory(
+    SessionSettings.checkSession(session, s2)
+    val s3 = addCacheStoreFactoryFactory(
       Project
-        .setProject(session, structure, s)
+        .setProject(session, structure, s2)
         .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
     )
+    LintUnused.lintUnusedFunc(s3)
   }
 
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
