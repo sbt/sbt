@@ -107,31 +107,50 @@ This will create subproject `coreNative2_11`.
 The rows can also be used for parallel cross-library building.
 For example, if you want to build against Config 1.2 and Config 1.3, you can do something like this:
 
+In `project/ConfigAxis.scala`:
+
+```scala
+import sbt._
+
+case class ConfigAxis(idSuffix: String, directorySuffix: String) extends VirtualAxis.WeakAxis {
+}
+```
+
+In `build.sbt`:
+
 ```scala
 ThisBuild / organization := "com.example"
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
-lazy val core = (projectMatrix in file("core"))
+lazy val config12 = ConfigAxis("Config1_2", "config1.2")
+lazy val config13 = ConfigAxis("Config1_3", "config1.3")
+
+lazy val scala212 = "2.12.10"
+lazy val scala211 = "2.11.12"
+
+lazy val app = (projectMatrix in file("app"))
   .settings(
-    name := "core"
+    name := "app"
   )
-  .crossLibrary(
-    scalaVersions = Seq("2.12.8", "2.11.12"),
-    suffix = "Config1.2",
-    settings = Seq(
+  .customRow(
+    scalaVersions = Seq(scala212, scala211),
+    axisValues = Seq(config12, VirtualAxis.jvm),
+    _.settings(
+      moduleName := name.value + "_config1.2",
       libraryDependencies += "com.typesafe" % "config" % "1.2.1"
     )
   )
-  .crossLibrary(
-    scalaVersions = Seq("2.12.8"),
-    suffix = "Config1.3",
-    settings = Seq(
+  .customRow(
+    scalaVersions = Seq(scala212, scala211),
+    axisValues = Seq(config13, VirtualAxis.jvm),
+    _.settings(
+      moduleName := name.value + "_config1.3",
       libraryDependencies += "com.typesafe" % "config" % "1.3.3"
     )
   )
 ```
 
-This will create `coreConfig1_22_11`, `coreConfig1_22_12`, and `coreConfig1_32_12` respectively producing `core_config1.3_2.12`, `core_config1.2_2.11`, and `core_config1.2_2.12` artifacts.
+This will create `appConfig1_22_11`, `appConfig1_22_12`, and `appConfig1_32_12` respectively producing `app_config1.3_2.12`, `app_config1.2_2.11`, and `app_config1.2_2.12` artifacts.
 
 ### referncing the generated subprojects
 
@@ -140,7 +159,7 @@ You might want to reference to one of the projects within `build.sbt`.
 ```scala
 lazy val core12 = core.jvm("2.12.8")
 
-// lazy val core12 = core.crossLib("Config1.2")("2.12.8")
+lazy val appConfig12_212 = app.finder(config13, VirtualAxis.jvm)("2.12.8")
 ```
 
 In the above `core12` returns `Project` type.
