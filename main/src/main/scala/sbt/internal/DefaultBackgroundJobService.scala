@@ -421,6 +421,13 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
             status = Stopped(Some(thread))
             thread.interrupt()
           case Stopped(threadOption) =>
+            // sleep to avoid consuming a lot of CPU
+            try {
+              Thread.sleep(10)
+            } catch {
+              case e: InterruptedException =>
+                Thread.currentThread().interrupt();
+            }
             // try to interrupt again! woot!
             threadOption.foreach(_.interrupt())
         }
