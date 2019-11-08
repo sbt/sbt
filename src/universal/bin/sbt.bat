@@ -49,7 +49,11 @@ rem users can set SBT_OPTS via .sbtopts
 if exist .sbtopts for /F %%A in (.sbtopts) do (
   set _sbtopts_line=%%A
   if not "!_sbtopts_line:~0,1!" == "#" (
-    set _SBT_OPTS=%%A %SBT_OPTS%
+    if defined _SBT_OPTS (
+      set _SBT_OPTS=!_SBT_OPTS! %%A
+    ) else (
+      set _SBT_OPTS=%%A
+    )
   )
 )
 
@@ -404,7 +408,7 @@ if "%~0" == "new" (
 
 if "%g:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
-  echo "%g%" | find "=" > null
+  echo "%g%" | find "=" > nul
   if ERRORLEVEL 1 (
     if not "%~1" == "" (
       call :dlog [args_loop] -D argument %~0=%~1
@@ -417,6 +421,26 @@ if "%g:~0,2%" == "-D" (
     )
   ) else (
     call :dlog [args_loop] -D argument %~0
+    set "SBT_ARGS=!SBT_ARGS! %~0"
+    goto args_loop
+  )
+)
+
+if "%g:~0,3%" == "-XX" (
+  rem special handling for -XX since '=' gets parsed away
+  echo "%g%" | find "=" > nul
+  if ERRORLEVEL 1 (
+    if not "%~1" == "" (
+      call :dlog [args_loop] -XX argument %~0=%~1
+      set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+      shift
+      goto args_loop
+    ) else (
+      echo %g% is missing a value
+      goto error
+    )
+  ) else (
+    call :dlog [args_loop] -XX argument %~0
     set "SBT_ARGS=!SBT_ARGS! %~0"
     goto args_loop
   )
@@ -584,16 +608,24 @@ shift
 if [%0] EQU [] goto echolist_end
 set "p=%0"
 
-rem special handling for -D since '=' gets parsed away
 if "%p:~0,2%" == "-D" (
- rem if "-Dscala.ext.dirs" (replace all = with nothing) == "-Dscala.ext.dirs"
- rem (e.g. verify it doesn't have the = already)
-
- if "x%p:^==%" == "x%p%" if not "%~1" == "" (
+  rem special handling for -D since '=' gets parsed away
+  echo "%p%" | find "=" > nul
+  if ERRORLEVEL 1 if not "%~1" == "" (
      echo %0=%1
      shift
      goto echolist
- )
+  )
+)
+
+if "%p:~0,3%" == "-XX" (
+  rem special handling for -D since '=' gets parsed away
+  echo "%p%" | find "=" > nul
+  if ERRORLEVEL 1 if not "%~1" == "" (
+     echo %0=%1
+     shift
+     goto echolist
+  )
 )
 
 echo %0
@@ -613,24 +645,33 @@ exit /B 0
 
   rem evict memory related options
   set _new_java_opts=
-
-  for /F %%g in ("!_JAVA_OPTS!") do (
+  set _old_java_opts=!_JAVA_OPTS!
+:next_java_opt
+  if "!_old_java_opts!" == "" goto :done_java_opt
+  for /F "tokens=1,*" %%g in ("!_old_java_opts!") do (
     set "p=%%g"
     if not "!p:~0,4!" == "-Xmx" if not "!p:~0,4!" == "-Xms" if not "!p:~0,15!" == "-XX:MaxPermSize" if not "!p:~0,20!" == "-XX:MaxMetaspaceSize" if not "!p:~0,25!" == "-XX:ReservedCodeCacheSize" (
       set _new_java_opts=!_new_java_opts! %%g
     )
+    set "_old_java_opts=%%h"
   )
+  goto :next_java_opt
+:done_java_opt
   set _JAVA_OPTS=!_new_java_opts!
 
   set _new_sbt_opts=
-
-  for /F %%g in ("!_SBT_OPTS!") do (
+  set _old_sbt_opts=!_SBT_OPTS!
+:next_sbt_opt
+  if "!_old_sbt_opts!" == "" goto :done_sbt_opt
+  for /F "tokens=1,*" %%g in ("!_old_sbt_opts!") do (
     set "p=%%g"
     if not "!p:~0,4!" == "-Xmx" if not "!p:~0,4!" == "-Xms" if not "!p:~0,15!" == "-XX:MaxPermSize" if not "!p:~0,20!" == "-XX:MaxMetaspaceSize" if not "!p:~0,25!" == "-XX:ReservedCodeCacheSize" (
       set _new_sbt_opts=!_new_sbt_opts! %%g
     )
+    set "_old_sbt_opts=%%h"
   )
-
+  goto :next_sbt_opt
+:done_sbt_opt
   set _SBT_OPTS=!_new_sbt_opts!
 
   rem a ham-fisted attempt to move some memory settings in concert
