@@ -95,9 +95,22 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   }
 
   test("sbt with -Xms2048M -Xmx2048M -Xss6M in SBT_OPTS") {
-    if (isWindows) cancel("Test not supported on windows")
     val out = sbtProcessWithOpts("compile -v", "", "-Xms2048M -Xmx2048M -Xss6M").!!.linesIterator.toList
     assert(out.contains[String]("-Xss6M"))
+    ()
+  }
+
+  test("sbt with -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 in SBT_OPTS") {
+    val out = sbtProcessWithOpts("compile -v", "", "-Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080").!!.linesIterator.toList
+    assert(out.contains[String]("-Dhttp.proxyHost=proxy"))
+    assert(out.contains[String]("-Dhttp.proxyPort=8080"))
+    ()
+  }
+
+  test("sbt with -XX:ParallelGCThreads=16 -XX:PermSize=128M in SBT_OPTS") {
+    val out = sbtProcessWithOpts("compile -v", "", "-XX:ReservedCodeCacheSize=256m -XX:MaxPermSize=256m").!!.linesIterator.toList
+    assert(out.contains[String]("-XX:ParallelGCThreads=16"))
+    assert(out.contains[String]("-XX:PermSize=128M"))
     ()
   }
 
