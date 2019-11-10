@@ -408,41 +408,45 @@ if "%~0" == "new" (
 
 if "%g:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
-  echo "%g%" | find "=" > nul
-  if ERRORLEVEL 1 (
-    if not "%~1" == "" (
-      call :dlog [args_loop] -D argument %~0=%~1
-      set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-      shift
-      goto args_loop
+  for /F "tokens=1 delims==" %%a in ("%g%") do (
+    rem make sure it doesn't have the '=' already
+    if "%g%" == "%%a" (
+      if not "%~1" == "" (
+        call :dlog [args_loop] -D argument %~0=%~1
+        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+        shift
+        goto args_loop
+      ) else (
+        echo %g% is missing a value
+        goto error
+      )
     ) else (
-      echo %g% is missing a value
-      goto error
+      call :dlog [args_loop] -D argument %~0
+      set "SBT_ARGS=!SBT_ARGS! %~0"
+      goto args_loop
     )
-  ) else (
-    call :dlog [args_loop] -D argument %~0
-    set "SBT_ARGS=!SBT_ARGS! %~0"
-    goto args_loop
   )
 )
 
 if "%g:~0,3%" == "-XX" (
-  rem special handling for -XX since '=' gets parsed away
-  echo "%g%" | find "=" > nul
-  if ERRORLEVEL 1 (
-    if not "%~1" == "" (
-      call :dlog [args_loop] -XX argument %~0=%~1
-      set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-      shift
-      goto args_loop
+  rem special handling for -D since '=' gets parsed away
+  for /F "tokens=1 delims==" %%a in ("%g%") do (
+    rem make sure it doesn't have the '=' already
+    if "%g%" == "%%a" (
+      if not "%~1" == "" (
+        call :dlog [args_loop] -XX argument %~0=%~1
+        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+        shift
+        goto args_loop
+      ) else (
+        echo %g% is missing a value
+        goto error
+      )
     ) else (
-      echo %g% is missing a value
-      goto error
+      call :dlog [args_loop] -XX argument %~0
+      set "SBT_ARGS=!SBT_ARGS! %~0"
+      goto args_loop
     )
-  ) else (
-    call :dlog [args_loop] -XX argument %~0
-    set "SBT_ARGS=!SBT_ARGS! %~0"
-    goto args_loop
   )
 )
 
