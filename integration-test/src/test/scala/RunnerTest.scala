@@ -108,9 +108,25 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   }
 
   test("sbt with -XX:ParallelGCThreads=16 -XX:PermSize=128M in SBT_OPTS") {
-    val out = sbtProcessWithOpts("compile -v", "", "-XX:ReservedCodeCacheSize=256m -XX:MaxPermSize=256m").!!.linesIterator.toList
+    val out = sbtProcessWithOpts("compile -v", "", "-XX:ParallelGCThreads=16 -XX:PermSize=128M").!!.linesIterator.toList
     assert(out.contains[String]("-XX:ParallelGCThreads=16"))
     assert(out.contains[String]("-XX:PermSize=128M"))
+    ()
+  }
+
+  test("sbt with -XX:+UseG1GC -XX:+PrintGC in SBT_OPTS") {
+    val out = sbtProcessWithOpts("compile -v", "", "-XX:+UseG1GC -XX:+PrintGC").!!.linesIterator.toList
+    assert(out.contains[String]("-XX:+UseG1GC"))
+    assert(out.contains[String]("-XX:+PrintGC"))
+    assert(!out.contains[String]("-XX:+UseG1GC=-XX:+PrintGC"))
+    ()
+  }
+
+  test("sbt with -XX:-UseG1GC -XX:-PrintGC in SBT_OPTS") {
+    val out = sbtProcessWithOpts("compile -v", "", "-XX:-UseG1GC -XX:-PrintGC").!!.linesIterator.toList
+    assert(out.contains[String]("-XX:-UseG1GC"))
+    assert(out.contains[String]("-XX:-PrintGC"))
+    assert(!out.contains[String]("-XX:-UseG1GC=-XX:-PrintGC"))
     ()
   }
 
