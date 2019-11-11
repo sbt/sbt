@@ -428,8 +428,8 @@ if "%g:~0,2%" == "-D" (
   )
 )
 
-if "%g:~0,3%" == "-XX" (
-  rem special handling for -D since '=' gets parsed away
+if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX" (
+  rem special handling for -XX since '=' gets parsed away
   for /F "tokens=1 delims==" %%a in ("%g%") do (
     rem make sure it doesn't have the '=' already
     if "%g%" == "%%a" (
@@ -614,21 +614,25 @@ set "p=%0"
 
 if "%p:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
-  echo "%p%" | find "=" > nul
-  if ERRORLEVEL 1 if not "%~1" == "" (
-     echo %0=%1
-     shift
-     goto echolist
+  for /F "tokens=1 delims==" %%a in ("%p%") do (
+    rem make sure it doesn't have the '=' already
+    if "%p%" == "%%a" if not "%~1" == "" (
+      echo %0=%1
+      shift
+      goto echolist
+    )
   )
 )
 
-if "%p:~0,3%" == "-XX" (
-  rem special handling for -D since '=' gets parsed away
-  echo "%p%" | find "=" > nul
-  if ERRORLEVEL 1 if not "%~1" == "" (
-     echo %0=%1
-     shift
-     goto echolist
+if not "%p:~0,5%" == "-XX:+" if not "%p:~0,5%" == "-XX:-" if "%p:~0,3%" == "-XX" (
+  rem special handling for -XX since '=' gets parsed away
+  for /F "tokens=1 delims==" %%a in ("%p%") do (
+    rem make sure it doesn't have the '=' already
+    if "%p%" == "%%a" if not "%~1" == "" (
+      echo %0=%1
+      shift
+      goto echolist
+    )
   )
 )
 
