@@ -70,13 +70,23 @@ object Package {
       val options: Seq[PackageOption]
   )
 
+  @deprecated("Please specify whether to use a static timestamp", "1.3.4")
+  def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit =
+    apply(conf, cacheStoreFactory, log, None)
+
   /**
    *
    * @param conf the package configuration that should be build
    * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
    * @param log feedback for the user
+   * @param time static timestamp to use for all entries, if any.
    */
-  def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit = {
+  def apply(
+      conf: Configuration,
+      cacheStoreFactory: CacheStoreFactory,
+      log: Logger,
+      time: Option[Long]
+  ): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
     for (option <- conf.options) {
@@ -96,7 +106,7 @@ object Package {
         val sources :+: _ :+: manifest :+: HNil = inputs
         outputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
           if (inChanged || outChanged) {
-            makeJar(sources, jar.file, manifest, log)
+            makeJar(sources, jar.file, manifest, log, time)
             jar.file
             ()
           } else
@@ -153,7 +163,17 @@ object Package {
       homepage map (h => (IMPLEMENTATION_URL, h.toString))
     }: _*)
   }
-  def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit = {
+  @deprecated("Please specify whether to use a static timestamp", "1.3.4")
+  def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit =
+    makeJar(sources, jar, manifest, log, None)
+
+  def makeJar(
+      sources: Seq[(File, String)],
+      jar: File,
+      manifest: Manifest,
+      log: Logger,
+      time: Option[Long]
+  ): Unit = {
     val path = jar.getAbsolutePath
     log.debug("Packaging " + path + " ...")
     if (jar.exists)
@@ -162,7 +182,7 @@ object Package {
       else
         sys.error(path + " exists, but is not a regular file")
     log.debug(sourcesDebugString(sources))
-    IO.jar(sources, jar, manifest)
+    IO.jar(sources, jar, manifest, time)
     log.debug("Done packaging.")
   }
   def sourcesDebugString(sources: Seq[(File, String)]): String =

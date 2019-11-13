@@ -1409,7 +1409,7 @@ object Defaults extends BuildCommon {
     Def.task {
       val config = packageConfiguration.value
       val s = streams.value
-      Package(config, s.cacheStoreFactory, s.log)
+      Package(config, s.cacheStoreFactory, s.log, Some(0))
       config.jar
     }
 
