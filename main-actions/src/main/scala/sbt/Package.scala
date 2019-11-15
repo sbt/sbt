@@ -70,7 +70,7 @@ object Package {
       val options: Seq[PackageOption]
   )
 
-  @deprecated("Please specify whether to use a static timestamp", "1.3.4")
+  @deprecated("Please specify whether to use a static timestamp", "1.4.0")
   def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit =
     apply(conf, cacheStoreFactory, log, None)
 
