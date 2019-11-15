@@ -163,7 +163,7 @@ object Package {
       homepage map (h => (IMPLEMENTATION_URL, h.toString))
     }: _*)
   }
-  @deprecated("Please specify whether to use a static timestamp", "1.3.4")
+  @deprecated("Please specify whether to use a static timestamp", "1.4.0")
   def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit =
     makeJar(sources, jar, manifest, log, None)
 
