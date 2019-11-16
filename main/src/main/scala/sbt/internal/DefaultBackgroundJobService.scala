@@ -161,7 +161,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       jobSet.headOption.foreach {
         case handle: ThreadJobHandle @unchecked =>
           handle.job.shutdown()
-          handle.job.awaitTermination()
+          handle.job.awaitTerminationTry()
         case _ => //
       }
     }
@@ -178,23 +178,8 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       )
   }
 
-  private def withHandleTry(job: JobHandle)(f: ThreadJobHandle => Try[Unit]): Try[Unit] =
-    job match {
-      case handle: ThreadJobHandle @unchecked => f(handle)
-      case _: DeadHandle @unchecked           => Try(()) // nothing to stop or wait for
-      case other =>
-        Try(
-          sys.error(
-            s"BackgroundJobHandle does not originate with the current BackgroundJobService: $other"
-          )
-        )
-    }
-
   override def stop(job: JobHandle): Unit =
     withHandle(job)(_.job.shutdown())
-
-  override def waitForTry(job: JobHandle): Try[Unit] =
-    withHandleTry(job)(_.job.awaitTerminationTry())
 
   override def waitFor(job: JobHandle): Unit =
     withHandle(job)(_.job.awaitTermination())
@@ -398,11 +383,9 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
         stopListeners += result
         result
       }
-    override def awaitTermination(): Unit = finishedLatch.await()
-
-    override def awaitTerminationTry(): Try[Unit] = {
-      awaitTermination()
-      exitTry.getOrElse(Try(()))
+    override def awaitTermination(): Unit = {
+      finishedLatch.await()
+      exitTry.foreach(_.fold(e => throw e, identity))
     }
 
     override def humanReadableName: String = taskName

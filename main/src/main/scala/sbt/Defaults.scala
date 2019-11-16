@@ -1599,7 +1599,8 @@ object Defaults extends BuildCommon {
   }
 
   def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
-    manager.waitFor(handle)
+    manager.waitForTry(handle)
+    ()
   }
 
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] =

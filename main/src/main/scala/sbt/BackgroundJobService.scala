@@ -8,11 +8,14 @@
 package sbt
 
 import java.io.Closeable
+
 import sbt.util.Logger
-import Def.{ ScopedKey, Classpath }
+import Def.{ Classpath, ScopedKey }
 import sbt.internal.util.complete._
 import java.io.File
-import scala.util.Try
+
+import scala.util.control.NonFatal
+import scala.util.{ Failure, Success, Try }
 
 abstract class BackgroundJobService extends Closeable {
 
@@ -49,9 +52,19 @@ abstract class BackgroundJobService extends Closeable {
   def jobs: Vector[JobHandle]
   def stop(job: JobHandle): Unit
 
+  /**
+   * Delegate to waitFor but catches any exceptions and returns the result in an instance of `Try`.
+   * @param job the job to wait for
+   * @return the result of waiting for the job to complete.
+   */
   def waitForTry(job: JobHandle): Try[Unit] = {
-    // This implementation is provided only for backward compatibility.
-    Try(waitFor(job))
+    try Success(waitFor(job))
+    catch {
+      case NonFatal(e) =>
+        try stop(job)
+        catch { case NonFatal(_) => }
+        Failure(e)
+    }
   }
 
   def waitFor(job: JobHandle): Unit
