@@ -1115,7 +1115,8 @@ def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
-    scriptedLaunchOpts.value
+    scriptedLaunchOpts.value,
+    streams.value.log
   )
 }
 
@@ -1128,7 +1129,8 @@ def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
-    scriptedLaunchOpts.value
+    scriptedLaunchOpts.value,
+    streams.value.log
   )
 }
 

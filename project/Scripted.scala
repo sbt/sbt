@@ -5,6 +5,8 @@ import java.lang.reflect.InvocationTargetException
 import sbt._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
+import sbt.ScriptedPlugin.autoImport._
+import sbt.util.Level
 
 object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -99,8 +101,10 @@ object Scripted {
       args: Seq[String],
       prescripted: File => Unit,
       launchOpts: Seq[String],
+      logger: Logger
   ): Unit = {
-    System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
+    logger.info(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
+    logger.info("")
 
     // Force Log4J to not use a thread context classloader otherwise it throws a CCE
     sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"

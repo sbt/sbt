@@ -64,7 +64,7 @@ final class ScriptedTests(
       val n = nme.getName
       val label = s"$g / $n"
       () => {
-        println(s"Running $label")
+        log.info(s"Running $label")
         val result = testResources.readWriteResourceDirectory(g, n) { testDirectory =>
           val buffer = new BufferedLogger(new FullLogger(log))
           val singleTestRunner = () => {
@@ -326,7 +326,7 @@ final class ScriptedTests(
       groupedTests.map {
         case ((group, name), originalDir) =>
           val label = s"$group/$name"
-          println(s"Running $label")
+          log.info(s"Running $label")
           // Copy test's contents and reload the sbt instance to pick them up
           IO.copyDirectory(originalDir, tempTestDir)
 
