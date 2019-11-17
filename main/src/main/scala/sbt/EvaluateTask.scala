@@ -515,17 +515,14 @@ object EvaluateTask {
       state: State,
       root: Task[T]
   ): (State, Result[T]) = {
-    val newState = results(root) match {
-      case Value(KeyValue(_, st: StateTransform) :: Nil) => st.state
-      case _                                             => stateTransform(results)(state)
-    }
-    (newState, results(root))
+    (stateTransform(results)(state), results(root))
   }
   def stateTransform(results: RMap[Task, Result]): State => State =
     Function.chain(
       results.toTypedSeq flatMap {
-        case results.TPair(Task(info, _), Value(v)) => info.post(v) get transformState
-        case _                                      => Nil
+        case results.TPair(_, Value(KeyValue(_, st: StateTransform))) => Some(st.transform)
+        case results.TPair(Task(info, _), Value(v))                   => info.post(v) get transformState
+        case _                                                        => Nil
       }
     )
 

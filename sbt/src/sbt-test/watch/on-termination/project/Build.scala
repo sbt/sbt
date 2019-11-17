@@ -25,7 +25,7 @@ object Build {
     watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },
     watchTasks := Def.inputTask {
       val prev = watchTasks.evaluated
-      new StateTransform(prev.state.fail)
+      StateTransform(_.fail)
     }.evaluated
   )
 }
