@@ -459,8 +459,6 @@ goto args_loop
 rem Confirm a user's intent if the current directory does not look like an sbt
 rem top-level directory and the "new" command was not given.
 
-rem TODO: if not -sbt-create
-
 if not defined sbt_args_sbt_create if not defined sbt_args_print_version if not defined sbt_args_print_sbt_version if not defined sbt_args_print_sbt_script_version if not exist build.sbt (
   if not exist project\ (
     if not defined sbt_new (
@@ -485,6 +483,13 @@ if not defined sbt_args_sbt_create if not defined sbt_args_print_version if not 
 )
 
 call :process
+
+rem avoid bootstrapping/java version check for script version
+
+if !sbt_args_print_sbt_script_version! equ 1 (
+  echo !init_sbt_version!
+  goto :eof
+)
 
 call :checkjava
 
@@ -568,11 +573,6 @@ if defined sbt_args_sbt_jar (
 set sbt_jar=!sbt_jar:"=!
 
 rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
-
-if !sbt_args_print_sbt_script_version! equ 1 (
-  echo !init_sbt_version!
-  goto :eof
-)
 
 if !sbt_args_print_sbt_version! equ 1 (
   call :set_sbt_version
