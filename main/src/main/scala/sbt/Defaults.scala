@@ -351,7 +351,7 @@ object Defaults extends BuildCommon {
         sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
-    ) ++ LintUnused.lintSettings
+    ) ++ LintUnused.lintSettings ++ DefaultBackgroundJobService.backgroundJobServiceSettings
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =

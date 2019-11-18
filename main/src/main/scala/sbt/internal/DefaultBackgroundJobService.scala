@@ -12,7 +12,8 @@ import java.io.{ Closeable, File, FileInputStream, IOException }
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
 import java.security.{ DigestInputStream, MessageDigest }
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 
 import sbt.Def.{ Classpath, ScopedKey, Setting }
 import sbt.Scope.GlobalScope
@@ -61,13 +62,16 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   private val nextId = new AtomicLong(1)
   private val pool = new BackgroundThreadPool()
 
-  private var serviceTempDirOpt: Option[File] = None
-  private def serviceTempDir = serviceTempDirOpt match {
-    case Some(dir) => dir
-    case _ =>
-      val dir = IO.createTemporaryDirectory
-      serviceTempDirOpt = Some(dir)
-      dir
+  private[sbt] def serviceTempDirBase: File
+  private val serviceTempDirRef = new AtomicReference[File]
+  private def serviceTempDir: File = serviceTempDirRef.synchronized {
+    serviceTempDirRef.get match {
+      case null =>
+        val dir = IO.createUniqueDirectory(serviceTempDirBase)
+        serviceTempDirRef.set(dir)
+        dir
+      case s => s
+    }
   }
   // hooks for sending start/stop events
   protected def onAddJob(@deprecated("unused", "") job: JobHandle): Unit = ()
@@ -166,7 +170,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       }
     }
     pool.close()
-    serviceTempDirOpt foreach IO.delete
+    Option(serviceTempDirRef.get).foreach(IO.delete)
   }
 
   private def withHandle(job: JobHandle)(f: ThreadJobHandle => Unit): Unit = job match {
@@ -465,14 +469,37 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
   }
 }
 
-private[sbt] class DefaultBackgroundJobService extends AbstractBackgroundJobService {
+private[sbt] class DefaultBackgroundJobService(private[sbt] val serviceTempDirBase: File)
+    extends AbstractBackgroundJobService {
+  @deprecated("Use the constructor that specifies the background job temporary directory", "1.4.0")
+  def this() = this(IO.createTemporaryDirectory)
   override def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): ManagedLogger = {
     val extracted = Project.extract(state)
     LogManager.constructBackgroundLog(extracted.structure.data, state)(spawningTask)
   }
 }
 private[sbt] object DefaultBackgroundJobService {
-  lazy val backgroundJobService: DefaultBackgroundJobService = new DefaultBackgroundJobService
-  lazy val backgroundJobServiceSetting: Setting[_] =
-    ((Keys.bgJobService in GlobalScope) :== backgroundJobService)
+
+  private[this] val backgroundJobServices = new ConcurrentHashMap[File, DefaultBackgroundJobService]
+  private[sbt] def shutdown(): Unit = {
+    backgroundJobServices.values.forEach(_.shutdown())
+    backgroundJobServices.clear()
+  }
+  private[sbt] lazy val backgroundJobServiceSetting: Setting[_] =
+    (Keys.bgJobService in GlobalScope) := {
+      val path = (sbt.Keys.bgJobServiceDirectory in GlobalScope).value
+      val newService = new DefaultBackgroundJobService(path)
+      backgroundJobServices.putIfAbsent(path, newService) match {
+        case null => newService
+        case s =>
+          newService.shutdown()
+          s
+      }
+    }
+  private[sbt] lazy val backgroundJobServiceSettings: Seq[Def.Setting[_]] = Def.settings(
+    Keys.bgJobServiceDirectory in GlobalScope := {
+      sbt.Keys.appConfiguration.value.baseDirectory / "target" / "bg-jobs"
+    },
+    backgroundJobServiceSetting
+  )
 }

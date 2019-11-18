@@ -251,6 +251,7 @@ object Keys {
   val javaOptions = taskKey[Seq[String]]("Options passed to a new JVM when forking.").withRank(BPlusTask)
   val envVars = taskKey[Map[String, String]]("Environment variables used when forking a new JVM").withRank(BTask)
 
+  val bgJobServiceDirectory = settingKey[File]("The directory for temporary files used by background jobs.")
   val bgJobService = settingKey[BackgroundJobService]("Job manager used to run background jobs.")
   val bgList = taskKey[Seq[JobHandle]]("List running background jobs.")
   val ps = taskKey[Seq[JobHandle]]("bgList variant that displays on the log.")

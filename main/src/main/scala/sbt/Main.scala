@@ -130,7 +130,7 @@ object StandardMain {
       try {
         MainLoop.runLogged(s)
       } finally {
-        try DefaultBackgroundJobService.backgroundJobService.shutdown()
+        try DefaultBackgroundJobService.shutdown()
         finally hook.close()
         ()
       }
