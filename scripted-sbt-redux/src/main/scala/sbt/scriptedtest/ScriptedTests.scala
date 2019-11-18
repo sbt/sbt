@@ -8,24 +8,26 @@
 package sbt
 package scriptedtest
 
-import java.io.{ File, FileNotFoundException }
+import java.io.{ File, FileNotFoundException, IOException }
 import java.net.SocketException
+import java.nio.file.Files
 import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 
-import scala.collection.GenSeq
-import scala.collection.mutable
-import scala.collection.parallel.ForkJoinTaskSupport
-import scala.util.control.NonFatal
-import sbt.internal.scripted._
 import sbt.internal.io.Resources
+import sbt.internal.scripted._
 import sbt.internal.util.{ BufferedLogger, ConsoleOut, FullLogger, Util }
+import sbt.io.FileFilter._
 import sbt.io.syntax._
 import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
-import sbt.io.FileFilter._
+import sbt.nio.file._
+import sbt.nio.file.syntax._
 import sbt.util.{ AbstractLogger, Level, Logger }
 
+import scala.collection.{ GenSeq, mutable }
+import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.Try
+import scala.util.control.NonFatal
 
 final class ScriptedTests(
     resourceBaseDirectory: File,
@@ -359,7 +361,17 @@ final class ScriptedTests(
 
           // Run the test and delete files (except global that holds local scala jars)
           val result = runOrHandleDisabled(label, tempTestDir, runTest, buffer)
-          IO.delete(tempTestDir.*("*" -- "global").get)
+          val view = FileTreeView.default
+          val base = tempTestDir.getCanonicalFile.toGlob
+          val global = base / "global"
+          val globalLogging = base / ** / "global-logging"
+          def recursiveFilter(glob: Glob): PathFilter = (glob: PathFilter) || glob / **
+          val keep: PathFilter = recursiveFilter(global) || recursiveFilter(globalLogging)
+          val toDelete = view.list(base / **, !keep).map(_._1).sorted.reverse
+          toDelete.foreach { p =>
+            try Files.deleteIfExists(p)
+            catch { case _: IOException => }
+          }
           result
       }
     }
