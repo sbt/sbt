@@ -39,6 +39,7 @@ object LintUnused {
       ivyConfiguration,
     ),
     Keys.lintUnused := lintUnusedTask.evaluated,
+    Keys.lintUnusedKeysOnLoad := true,
   )
 
   // input task version of the lintUnused
@@ -59,8 +60,10 @@ object LintUnused {
     val extracted = Project.extract(s)
     val includeKeys = extracted.get(includeLintKeys in Global) map { _.scopedKey.key.label }
     val excludeKeys = extracted.get(excludeLintKeys in Global) map { _.scopedKey.key.label }
-    val result = lintUnused(s, includeKeys, excludeKeys)
-    lintResultLines(result) foreach { log.warn(_) }
+    if (extracted.get(lintUnusedKeysOnLoad in Global)) {
+      val result = lintUnused(s, includeKeys, excludeKeys)
+      lintResultLines(result) foreach { log.warn(_) }
+    }
     s
   }
 
