@@ -70,26 +70,29 @@ object LintUnused {
     import scala.collection.mutable.ListBuffer
     val buffer = ListBuffer.empty[String]
 
-    val size = result.size
-    if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
-    else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
-    buffer.append(" ")
-    result foreach {
-      case (_, str, positions) =>
-        buffer.append(s"* $str")
-        positions foreach {
-          case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
-          case _                 => ()
-        }
+    if (result.isEmpty) Vector.empty
+    else {
+      val size = result.size
+      if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
+      else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
+      buffer.append(" ")
+      result foreach {
+        case (_, str, positions) =>
+          buffer.append(s"* $str")
+          positions foreach {
+            case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
+            case _                 => ()
+          }
+      }
+      buffer.append(" ")
+      buffer.append(
+        "note: a setting might still be used by a command; to exclude a key from this `lintUnused` check"
+      )
+      buffer.append(
+        "either append it to `Global / excludeLintKeys` or call .withRank(KeyRanks.Invisible) on the key"
+      )
+      buffer.toVector
     }
-    buffer.append(" ")
-    buffer.append(
-      "note: a setting might still be used by a command; to exclude a key from this `lintUnused` check"
-    )
-    buffer.append(
-      "either append it to `Global / excludeLintKeys` or call .withRank(KeyRanks.Invisible) on the key"
-    )
-    buffer.toVector
   }
 
   def lintUnused(
