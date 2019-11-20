@@ -45,6 +45,8 @@ object CoursierInputsTasks {
       sv: String,
       sbv: String,
       auOpt: Option[URL],
+      description: String,
+      homepage: Option[URL],
       log: Logger
   ): CProject = {
 
@@ -63,12 +65,15 @@ object CoursierInputsTasks {
       case (config, dep) =>
         (config, dep.withExclusions(dep.exclusions ++ exclusions0))
     })
-    auOpt match {
+    val proj2 = auOpt match {
       case Some(au) =>
         val props = proj1.properties :+ ("info.apiURL" -> au.toString)
         proj1.withProperties(props)
       case _ => proj1
     }
+    proj2.withInfo(
+      proj2.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
+    )
   }
 
   def coursierProjectTask: Def.Initialize[sbt.Task[CProject]] =
@@ -81,6 +86,8 @@ object CoursierInputsTasks {
         scalaVersion.value,
         scalaBinaryVersion.value,
         apiURL.value,
+        description.value,
+        homepage.value,
         streams.value.log
       )
     }
