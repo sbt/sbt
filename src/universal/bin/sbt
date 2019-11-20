@@ -118,9 +118,13 @@ execRunner () {
     echo ""
   }
 
-  # This used to be exec, but we loose the ability to re-hook stty then
-  # for cygwin...  Maybe we should flag the feature here...
-  "$@"
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
+    # In cygwin we loose the ability to re-hook stty if exec is used
+    # https://github.com/sbt/sbt-launcher-package/issues/53
+    "$@"
+  else
+    exec "$@"
+  fi
 }
 
 addJava () {
