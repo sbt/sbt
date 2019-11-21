@@ -789,6 +789,9 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inConfig"),
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inTask"),
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inScope"),
+
+      exclude[MissingTypesProblem]("sbt.internal.Load*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Load*"),
     )
   )
   .configure(
