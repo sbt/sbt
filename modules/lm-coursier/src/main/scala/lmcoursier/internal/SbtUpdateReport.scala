@@ -74,7 +74,7 @@ private[internal] object SbtUpdateReport {
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
-  private val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Publication, Artifact, Option[File])]), ModuleReport] {
+  private val moduleReport = caching[(Dependency, Seq[(Dependency, ProjectInfo)], Project, Seq[(Publication, Artifact, Option[File])]), ModuleReport] {
     case (dependency, dependees, project, artifacts) =>
 
     val sbtArtifacts = artifacts.collect {
@@ -95,7 +95,7 @@ private[internal] object SbtUpdateReport {
         Caller(
           moduleId((dependee, dependeeProj.version, Map.empty)),
           // FIXME Shouldn't we only keep the configurations pulling dependency?
-          dependeeProj.configurations.keys.toVector.map(c => ConfigRef(c.value)),
+          dependeeProj.configs,
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
           isForceDependency = false,
@@ -131,7 +131,10 @@ private[internal] object SbtUpdateReport {
   }
 
   private def moduleReports(
+    thisModule: (Module, String),
+    config: Configuration,
     res: Resolution,
+    interProjectDependencies: Seq[Project],
     classifiersOpt: Option[Seq[Classifier]],
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     log: Logger,
@@ -175,17 +178,37 @@ private[internal] object SbtUpdateReport {
       .groupBy(_._1)
       .mapValues(_.map { case (_, attr, a) => (attr, a) })
       .iterator
-      .toMap
+      .toMap ++
+      Map(interProjectDependencies
+        .filter(p => p.module != thisModule._1)
+        .map(p => Dependency(p.module, p.version) -> Nil): _*)
 
-    val versions = res.dependencies.toVector.map { dep =>
-      dep.module -> dep.version
-    }.toMap
+    val versions = (Vector(Dependency(thisModule._1, thisModule._2)) ++ res.dependencies.toVector ++ res.rootDependencies.toVector)
+      .map { dep =>
+        dep.module -> dep.version
+      }.toMap
 
     def clean(dep: Dependency): Dependency =
       dep
         .withConfiguration(Configuration.empty)
         .withExclusions(Set.empty)
         .withOptional(false)
+
+    def lookupProject(mv: coursier.core.Resolution.ModuleVersion): Option[Project] =
+      res.projectCache.get(mv) match {
+        case Some((_, p)) => Some(p)
+        case _ =>
+          interProjectDependencies.find( p =>
+            mv == (p.module, p.version)
+          )
+      }
+    
+    val m = Dependency(thisModule._1, "")
+    val directReverseDependencies = res.rootDependencies.toSet.map(clean).map(_.withVersion(""))
+      .map(
+        dep => dep -> Vector(m)
+      )
+      .toMap
 
     val reverseDependencies = res.reverseDependencies
       .toVector
@@ -195,22 +218,28 @@ private[internal] object SbtUpdateReport {
       .groupBy(_._1)
       .mapValues(_.flatMap(_._2))
       .toVector
-      .toMap
+      .toMap ++ directReverseDependencies
 
     groupedDepArtifacts.map {
       case (dep, artifacts) =>
-        val (_, proj) = res.projectCache(dep.moduleVersion)
+        val proj = lookupProject(dep.moduleVersion).get
 
         // FIXME Likely flaky...
         val dependees = reverseDependencies
           .getOrElse(clean(dep.withVersion("")), Vector.empty)
-          .map { dependee0 =>
+          .flatMap { dependee0 =>
             val version = versions(dependee0.module)
             val dependee = dependee0.withVersion(version)
-            val (_, dependeeProj) = res.projectCache(dependee.moduleVersion)
-            (dependee, dependeeProj)
+            lookupProject(dependee.moduleVersion) match {
+              case Some(dependeeProj) =>
+                Vector((dependee, ProjectInfo(
+                  dependeeProj.version,
+                  dependeeProj.configurations.keys.toVector.map(c => ConfigRef(c.value)),
+                  dependeeProj.properties)))
+              case _ =>
+                Vector.empty
+            }
           }
-
         moduleReport((
           dep,
           dependees,
@@ -221,8 +250,10 @@ private[internal] object SbtUpdateReport {
   }
 
   def apply(
+    thisModule: (Module, String),
     configDependencies: Map[Configuration, Seq[Dependency]],
     resolutions: Map[Configuration, Resolution],
+    interProjectDependencies: Vector[Project],
     configs: Map[Configuration, Set[Configuration]],
     classifiersOpt: Option[Seq[Classifier]],
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
@@ -241,7 +272,10 @@ private[internal] object SbtUpdateReport {
         val subRes = resolutions(config).subset(configDeps)
 
         val reports = moduleReports(
+          thisModule,
+          config,
           subRes,
+          interProjectDependencies,
           classifiersOpt,
           artifactFileOpt,
           log,
@@ -279,11 +313,12 @@ private[internal] object SbtUpdateReport {
               val dep = Dependency(c.module, c.wantedVersion)
               val dependee = Dependency(c.dependeeModule, c.dependeeVersion)
               val dependeeProj = subRes.projectCache
-                .get((c.dependeeModule, c.dependeeVersion))
-                .map(_._2)
-                .getOrElse {
-                  // should not happen
-                  Project(c.dependeeModule, c.dependeeVersion, Nil, Map(), None, Nil, Nil, Nil, None, None, None, false, None, Nil, coursier.core.Info.empty)
+                .get((c.dependeeModule, c.dependeeVersion)) match {
+                  case Some((_, p)) =>
+                    ProjectInfo(p.version, p.configurations.keys.toVector.map(c => ConfigRef(c.value)), p.properties)
+                  case _ =>
+                    // should not happen
+                    ProjectInfo(c.dependeeVersion, Vector.empty, Vector.empty)
                 }
               val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.withVersion(c.wantedVersion), Nil))
                 .withEvicted(true)
@@ -316,4 +351,5 @@ private[internal] object SbtUpdateReport {
     )
   }
 
+  private case class ProjectInfo(version: String, configs: Vector[ConfigRef], properties: Seq[(String, String)])
 }

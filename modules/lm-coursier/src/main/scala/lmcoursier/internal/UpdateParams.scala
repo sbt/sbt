@@ -7,11 +7,13 @@ import coursier.util.Artifact
 
 // private[coursier]
 final case class UpdateParams(
+  thisModule: (Module, String),
   shadedConfigOpt: Option[(String, Configuration)],
   artifacts: Map[Artifact, File],
   classifiers: Option[Seq[Classifier]],
   configs: Map[Configuration, Set[Configuration]],
   dependencies: Seq[(Configuration, Dependency)],
+  interProjectDependencies: Seq[Project],
   res: Map[Set[Configuration], Resolution],
   includeSignatures: Boolean,
   sbtBootJarOverrides: Map[(Module, String), File]

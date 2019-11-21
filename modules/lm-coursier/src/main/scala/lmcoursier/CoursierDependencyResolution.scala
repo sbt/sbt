@@ -65,10 +65,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val sbv = module0.scalaModuleInfo.map(_.scalaBinaryVersion).getOrElse {
       sv.split('.').take(2).mkString(".")
     }
-
+    val (mod, ver) = FromSbt.moduleVersion(module0.module, sv, sbv, optionalCrossVer = true)
     val interProjectDependencies = {
-      val (mod, ver) = FromSbt.moduleVersion(module0.module, sv, sbv, optionalCrossVer = true)
-
       val needed = conf.interProjectDependencies.exists { p =>
         p.module == mod && p.version == ver
       }
@@ -192,11 +190,13 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       artifacts: Map[Artifact, File]
     ) =
       UpdateParams(
+        thisModule = (ToCoursier.module(mod), ver),
         shadedConfigOpt = None,
         artifacts = artifacts,
         classifiers = classifiers,
         configs = configs,
         dependencies = dependencies,
+        interProjectDependencies = interProjectDependencies,
         res = resolutions,
         includeSignatures = false,
         sbtBootJarOverrides = sbtBootJarOverrides

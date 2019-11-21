@@ -85,8 +85,10 @@ object UpdateRun {
     }
 
     SbtUpdateReport(
+      params.thisModule,
       depsByConfig,
       configResolutions,
+      params.interProjectDependencies.toVector,
       params.configs,
       params.classifiers,
       params.artifactFileOpt,

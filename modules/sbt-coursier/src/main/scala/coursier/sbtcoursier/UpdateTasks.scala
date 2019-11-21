@@ -102,8 +102,8 @@ object UpdateTasks {
       val log = streams.value.log
 
       val verbosityLevel = coursierVerbosity.value
-
-      val dependencies = ToCoursier.project(currentProjectTask.value).dependencies
+      val p = ToCoursier.project(currentProjectTask.value)
+      val dependencies = p.dependencies
       val res = resTask.value
 
       val key = SbtCoursierCache.ReportKey(
@@ -113,6 +113,8 @@ object UpdateTasks {
         sbtClassifiers,
         includeSignatures
       )
+
+      val interProjectDependencies = coursierInterProjectDependencies.value.map(ToCoursier.project)
 
       SbtCoursierCache.default.reportOpt(key) match {
         case Some(report) =>
@@ -125,11 +127,13 @@ object UpdateTasks {
             val configs = configsTask.value
 
             val params = UpdateParams(
+              (p.module, p.version),
               shadedConfigOpt,
               artifactFilesOrErrors0,
               classifiers,
               configs,
               dependencies,
+              interProjectDependencies,
               res,
               includeSignatures,
               sbtBootJarOverrides
