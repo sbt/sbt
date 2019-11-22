@@ -30,3 +30,12 @@ lazy val b = project
     version := "0.0.1",
     libraryDependencies += "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11"
   )
+
+lazy val c = project
+  .dependsOn(b % Configurations.CompilerPlugin)
+  .settings(sharedSettings)
+  .settings(
+    organization := "com.pany",
+    name := "c",
+    version := "0.0.1"
+  )

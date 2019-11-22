@@ -19,13 +19,16 @@ object ResolutionRun {
     configs: Set[Configuration]
   ): Either[coursier.error.ResolutionError, Resolution] = {
 
-    val isCompileConfig =
-      configs(Configuration.compile)
-    val isCompileOrScalaToolConfig =
-      configs(Configuration.compile) || configs(Configuration("scala-tool"))
+    val isScalaToolConfig = configs(Configuration("scala-tool"))
+    // Ref coursier/coursier#1340 coursier/coursier#1442
+    // This treats ScalaTool as a sandbox configuration isolated from other subprojects.
+    // Likely this behavior is needed only for ScalaTool configuration where the scala-xml
+    // build's ScalaTool configuration transitively loops back to scala-xml's Compile artifacts.
+    // In most other cases, it's desirable to allow "x->compile" relationship.
+    def isSandboxConfig: Boolean = isScalaToolConfig
 
     val repositories =
-      params.internalRepositories.drop(if (isCompileConfig) 0 else 1) ++
+      params.internalRepositories.drop(if (isSandboxConfig) 1 else 0) ++
         params.mainRepositories ++
         params.fallbackDependenciesRepositories
 
@@ -87,10 +90,10 @@ object ResolutionRun {
         .withResolutionParams(
           params
             .params
-            .addForceVersion((if (isCompileConfig) params.interProjectDependencies.map(_.moduleVersion) else Nil): _*)
-            .withForceScalaVersion(isCompileOrScalaToolConfig && params.autoScalaLibOpt.nonEmpty)
+            .addForceVersion((if (isSandboxConfig) Nil else params.interProjectDependencies.map(_.moduleVersion)): _*)
+            .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
             .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
-            .withTypelevel(params.params.typelevel && isCompileOrScalaToolConfig)
+            .withTypelevel(params.params.typelevel)
             .withRules(rules)
         )
         .withCache(
