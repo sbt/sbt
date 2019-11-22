@@ -77,7 +77,7 @@ object Previous {
     }
     override def hashCode(): Int = (task.## * 31) ^ enclosing.##
     def cacheKey: AnyTaskKey = {
-      if (task == enclosing) task
+      if (task == enclosing) task.asInstanceOf[ScopedKey[Task[Any]]]
       else {
         val am = enclosing.scope.extra match {
           case Select(a) => a.put(scopedKeyAttribute, task.asInstanceOf[AnyTaskKey])

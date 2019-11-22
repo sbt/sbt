@@ -108,8 +108,10 @@ private[sbt] object JLine {
       case "jline.UnsupportedTerminal"                      => "none"
       case x                                                => x
     }
-    if (newValue != null) System.setProperty(TerminalProperty, newValue)
-    ()
+    if (newValue != null) {
+      System.setProperty(TerminalProperty, newValue)
+      ()
+    }
   }
 
   protected[this] val originalIn = new FileInputStream(FileDescriptor.in)
@@ -149,7 +151,7 @@ private[sbt] object JLine {
       cr.setBellEnabled(false)
       val h = historyPath match {
         case None       => new MemoryHistory
-        case Some(file) => new FileHistory(file)
+        case Some(file) => (new FileHistory(file): MemoryHistory)
       }
       h.setMaxSize(MaxHistorySize)
       cr.setHistory(h)

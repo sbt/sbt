@@ -118,9 +118,9 @@ object Logic {
     val (pos, neg) = (posSeq.toSet, negSeq.toSet)
 
     val problem =
-      checkContradictions(pos, neg) orElse
-        checkOverlap(clauses, pos) orElse
-        checkAcyclic(clauses)
+      (checkContradictions(pos, neg): Option[LogicException]) orElse
+        (checkOverlap(clauses, pos): Option[LogicException]) orElse
+        (checkAcyclic(clauses): Option[LogicException])
 
     problem.toLeft(
       reduce0(clauses, initialFacts, Matched.empty)
@@ -249,7 +249,8 @@ object Logic {
         else {
           val unproven = Clauses(unprovenClauses)
           val nextFacts: Set[Literal] =
-            if (newlyProven.nonEmpty) newlyProven.toSet else inferFailure(unproven)
+            if (newlyProven.nonEmpty) newlyProven.toSet[Literal]
+            else inferFailure(unproven)
           reduce0(unproven, nextFacts, newState)
         }
     }
@@ -283,7 +284,7 @@ object Logic {
     }
   }
 
-  private[this] def negated(atoms: Set[Atom]): Set[Literal] = atoms.map(a => Negated(a))
+  private[this] def negated(atoms: Set[Atom]): Set[Literal] = atoms.map(a => (Negated(a): Literal))
 
   /**
    * Computes the set of atoms in `clauses` that directly or transitively take a negated atom as input.
@@ -386,7 +387,9 @@ object Logic {
         None
       else {
         val newLits = lits -- facts
-        val newF = if (newLits.isEmpty) True else And(newLits)
+        val newF =
+          if (newLits.isEmpty) (True: Formula)
+          else (And(newLits): Formula)
         Some(newF) // 1.
       }
     case True => Some(True)

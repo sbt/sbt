@@ -13,7 +13,7 @@ import sjsonnew._
 import Types.:+:
 
 trait HListFormats {
-  implicit val lnilFormat1: JsonFormat[HNil] = forHNil(HNil)
+  implicit val lnilFormat1: JsonFormat[HNil] = forHNil(HNil: HNil)
   implicit val lnilFormat2: JsonFormat[HNil.type] = forHNil(HNil)
 
   private def forHNil[A <: HNil](hnil: A): JsonFormat[A] = new JsonFormat[A] {
@@ -73,7 +73,7 @@ trait HListFormats {
       }
     }
 
-  implicit val lnilHListJF1: HListJF[HNil] = hnilHListJF(HNil)
+  implicit val lnilHListJF1: HListJF[HNil] = hnilHListJF(HNil: HNil)
   implicit val lnilHListJF2: HListJF[HNil.type] = hnilHListJF(HNil)
 
   implicit def hnilHListJF[A <: HNil](hnil: A): HListJF[A] = new HListJF[A] {

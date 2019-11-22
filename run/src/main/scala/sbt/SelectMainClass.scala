@@ -7,6 +7,8 @@
 
 package sbt
 
+import sbt.internal.util.Util.{ AnyOps, none }
+
 object SelectMainClass {
   // Some(SimpleReader.readLine _)
   def apply(
@@ -28,18 +30,18 @@ object SelectMainClass {
     }
   }
   private def trim(s: Option[String]) = s.getOrElse("")
-  private def toInt(s: String, size: Int) =
+  private def toInt(s: String, size: Int): Option[Int] =
     try {
       val i = s.toInt
       if (i > 0 && i <= size)
-        Some(i - 1)
+        (i - 1).some
       else {
         println("Number out of range: was " + i + ", expected number between 1 and " + size)
-        None
+        none
       }
     } catch {
       case nfe: NumberFormatException =>
         println("Invalid number: " + nfe.toString)
-        None
+        none
     }
 }

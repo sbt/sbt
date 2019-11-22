@@ -93,16 +93,19 @@ object TestLogger {
     }
 
   private[sbt] def toTestItemEvent(event: TestEvent): TestItemEvent =
-    TestItemEvent(event.result, event.detail.toVector map { d =>
-      TestItemDetail(
-        d.fullyQualifiedName,
-        d.status,
-        d.duration match {
-          case -1 => None
-          case x  => Some(x)
-        }
-      )
-    })
+    TestItemEvent(
+      event.result,
+      event.detail.toVector map { d =>
+        TestItemDetail(
+          d.fullyQualifiedName,
+          d.status,
+          d.duration match {
+            case -1 => (None: Option[Long]) // util.Util is not in classpath
+            case x  => (Some(x): Option[Long])
+          }
+        )
+      }
+    )
 }
 final class TestLogging(
     val global: TLogger,
@@ -129,8 +132,9 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
     log.error(s"Could not run test $name: $t")
     managed.logEvent(
       Level.Info,
-      EndTestGroupErrorEvent(name, (t.getMessage +: t.getStackTrace).mkString("\n"))
+      EndTestGroupErrorEvent(name, (t.getMessage + t.getStackTrace.toString).mkString("\n"))
     )
+    ()
   }
 
   def doComplete(finalResult: TestResult): Unit =

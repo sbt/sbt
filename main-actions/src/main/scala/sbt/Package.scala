@@ -51,8 +51,8 @@ object Package {
     val entryMap = manifest.getEntries.asScala
     for ((key, value) <- mergeManifest.getEntries.asScala) {
       entryMap.get(key) match {
-        case Some(attributes) => mergeAttributes(attributes, value)
-        case None             => entryMap put (key, value)
+        case Some(attributes) => mergeAttributes(attributes, value); ()
+        case None             => entryMap put (key, value); ()
       }
     }
   }
@@ -81,9 +81,9 @@ object Package {
     val main = manifest.getMainAttributes
     for (option <- conf.options) {
       option match {
-        case JarManifest(mergeManifest)          => mergeManifests(manifest, mergeManifest)
-        case MainClass(mainClassName)            => main.put(Attributes.Name.MAIN_CLASS, mainClassName)
-        case ManifestAttributes(attributes @ _*) => main.asScala ++= attributes
+        case JarManifest(mergeManifest)          => mergeManifests(manifest, mergeManifest); ()
+        case MainClass(mainClassName)            => main.put(Attributes.Name.MAIN_CLASS, mainClassName); ()
+        case ManifestAttributes(attributes @ _*) => main.asScala ++= attributes; ()
         case _                                   => log.warn("Ignored unknown package option " + option)
       }
     }
@@ -98,6 +98,7 @@ object Package {
           if (inChanged || outChanged) {
             makeJar(sources, jar.file, manifest, log)
             jar.file
+            ()
           } else
             log.debug("Jar uptodate: " + jar.file)
         }

@@ -158,7 +158,7 @@ object Instance {
       val param =
         treeCopy.ValDef(variable, util.parameterModifiers, variable.name, variable.tpt, EmptyTree)
       val typeApplied =
-        TypeApply(util.select(instance, MapName), variable.tpt :: TypeTree(treeType) :: Nil)
+        TypeApply(util.select(instance, MapName), variable.tpt :: (TypeTree(treeType): Tree) :: Nil)
       val f = util.createFunction(param :: Nil, body, functionSym)
       val mapped = ApplyTree(typeApplied, input.expr :: f :: Nil)
       if (t.isLeft) mapped else flatten(mapped)

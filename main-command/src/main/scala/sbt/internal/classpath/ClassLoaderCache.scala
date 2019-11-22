@@ -103,6 +103,7 @@ private[sbt] class ClassLoaderCache(
           case ClassLoaderReference(key, classLoader) =>
             close(classLoader)
             delegate.remove(key)
+            ()
           case _ =>
         }
         clearExpiredLoaders()
@@ -145,8 +146,9 @@ private[sbt] class ClassLoaderCache(
     ManagementFactory.getMemoryPoolMXBeans.asScala
       .exists(b => (b.getName == "Metaspace") && (b.getUsage.getMax > 0))
   private[this] val mkReference: (Key, ClassLoader) => Reference[ClassLoader] =
-    if (metaspaceIsLimited)(_, cl) => new SoftReference(cl, referenceQueue)
-    else ClassLoaderReference.apply
+    if (metaspaceIsLimited) { (_, cl) =>
+      (new SoftReference[ClassLoader](cl, referenceQueue): Reference[ClassLoader])
+    } else ClassLoaderReference.apply
   private[this] val cleanupThread = new CleanupThread(ClassLoaderCache.threadID.getAndIncrement())
   private[this] val lock = new Object
 

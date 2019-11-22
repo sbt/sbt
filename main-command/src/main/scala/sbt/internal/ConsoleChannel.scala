@@ -13,11 +13,12 @@ import BasicKeys._
 import java.io.File
 import sbt.protocol.EventMessage
 import sjsonnew.JsonFormat
+import Util.AnyOps
 
 private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {
   private var askUserThread: Option[Thread] = None
   def makeAskUserThread(s: State): Thread = new Thread("ask-user-thread") {
-    val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
+    val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
     val prompt = (s get shellPrompt) match {
       case Some(pf) => pf(s)
       case None     => "> "

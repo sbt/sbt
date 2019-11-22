@@ -29,7 +29,7 @@ abstract class ServerConnection(connection: Socket) {
         val in = connection.getInputStream
         connection.setSoTimeout(5000)
         var buffer: Vector[Byte] = Vector.empty
-        def readFrame: Array[Byte] = {
+        def readFrame: Vector[Byte] = {
           def getContentLength: Int = {
             readLine.drop(16).toInt
           }
@@ -56,17 +56,17 @@ abstract class ServerConnection(connection: Socket) {
           } else readLine
         }
 
-        def readContentLength(length: Int): Array[Byte] = {
+        def readContentLength(length: Int): Vector[Byte] = {
           if (buffer.size < length) {
             val bytesRead = in.read(readBuffer)
             if (bytesRead > 0) {
               buffer = buffer ++ readBuffer.toVector.take(bytesRead)
-            }
-          }
+            } else ()
+          } else ()
           if (length <= buffer.size) {
             val chunk = buffer.take(length)
             buffer = buffer.drop(length)
-            chunk.toArray
+            chunk
           } else readContentLength(length)
         }
 
@@ -77,7 +77,7 @@ abstract class ServerConnection(connection: Socket) {
               .deserializeJsonMessage(frame)
               .fold(
                 { errorDesc =>
-                  val s = new String(frame.toArray, "UTF-8")
+                  val s = frame.mkString("") // new String(: Array[Byte], "UTF-8")
                   println(s"Got invalid chunk from server: $s \n" + errorDesc)
                 },
                 _ match {

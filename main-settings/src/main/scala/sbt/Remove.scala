@@ -27,7 +27,7 @@ object Remove {
   implicit def removeSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] =
     new Sequence[Seq[T], Seq[V], V] {
       def removeValue(a: Seq[T], b: V): Seq[T] = a filterNot b.==
-      def removeValues(a: Seq[T], b: Seq[V]): Seq[T] = a diff b
+      def removeValues(a: Seq[T], b: Seq[V]): Seq[T] = a diff (b: Seq[T])
     }
   implicit def removeOption[T]: Sequence[Seq[T], Option[T], Option[T]] =
     new Sequence[Seq[T], Option[T], Option[T]] {

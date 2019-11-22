@@ -9,6 +9,7 @@ package sbt.internal.util
 package complete
 
 import sbt.io.IO
+import Util.{ AnyOps, nil }
 
 object HistoryCommands {
   val Start = "!"
@@ -57,7 +58,7 @@ object HistoryCommands {
   lazy val last = Last ^^^ { execute(_.!!) }
 
   lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show => (h: History) =>
-    { printHistory(h, MaxLines, show); Some(Nil) }
+    { printHistory(h, MaxLines, show); nil[String].some }
   }
 
   lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map {
@@ -70,7 +71,7 @@ object HistoryCommands {
       execute(h => if (neg) h !- value else h ! value)
   }
 
-  lazy val help = success((h: History) => { printHelp(); Some(Nil) })
+  lazy val help = success((h: History) => { printHelp(); nil[String].some })
 
   def execute(f: History => Option[String]): History => Option[List[String]] = (h: History) => {
     val command = f(h).filterNot(_.startsWith(Start))
@@ -79,7 +80,7 @@ object HistoryCommands {
     h.path foreach { h =>
       IO.writeLines(h, lines)
     }
-    Some(command.toList)
+    command.toList.some
   }
 
   val actionParser: Parser[complete.History => Option[List[String]]] =
