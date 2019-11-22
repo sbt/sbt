@@ -274,7 +274,8 @@ val completeProj = (project in file("internal") / "util-complete")
       exclude[DirectMissingMethodProblem]("sbt.internal.util.complete.History.this"),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.util.complete.Completion.suggestion"),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.util.complete.Completion.token"),
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.complete.Completion.displayOnly")
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.complete.Completion.displayOnly"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.complete.*"),
     ),
   )
   .configure(addSbtIO, addSbtUtilControl, addSbtUtilLogging)
