@@ -29,7 +29,7 @@ def buildLevelSettings: Seq[Setting[_]] =
       },
       bintrayPackage := "sbt",
       bintrayReleaseOnPublish := false,
-      licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
+      licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/develop/LICENSE")),
       javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
       Compile / doc / javacOptions := Nil,
       developers := List(
