@@ -1413,7 +1413,7 @@ object Defaults extends BuildCommon {
         config,
         s.cacheStoreFactory,
         s.log,
-        sys.env.get("SOURCE_DATE_EPOCH").map(_.toLong).orElse(Some(0L))
+        sys.env.get("SOURCE_DATE_EPOCH").map(_.toLong * 1000).orElse(Some(0L))
       )
       config.jar
     }
