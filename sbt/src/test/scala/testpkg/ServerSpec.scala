@@ -166,7 +166,7 @@ object TestServer {
     val init =
       Try {
         testServer.waitForString(30.seconds) { s =>
-          println(s)
+          if (s.nonEmpty) println(s)
           s contains """"message":"Done""""
         }
       }
@@ -292,7 +292,7 @@ case class TestServer(baseDirectory: File) {
     val deadline = duration.fromNow
     @tailrec
     def impl(): Boolean = {
-      if (deadline.isOverdue) false
+      if (deadline.isOverdue || !process.isAlive) false
       else readFrame.fold(false)(f) || impl
     }
     impl()
