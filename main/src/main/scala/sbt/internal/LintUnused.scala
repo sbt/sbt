@@ -22,7 +22,9 @@ object LintUnused {
       concurrentRestrictions,
       commands,
       crossScalaVersions,
+      onLoad,
       onLoadMessage,
+      onUnload,
       sbt.nio.Keys.watchTriggers,
     ),
     includeLintKeys := Set(
