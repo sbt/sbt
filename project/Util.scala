@@ -105,10 +105,10 @@ object Util {
   def cleanPom(pomNode: scala.xml.Node) = {
     import scala.xml._
     def cleanNodes(nodes: Seq[Node]): Seq[Node] = nodes flatMap {
-      case elem @ Elem(prefix, "dependency", attributes, scope, children @ _*)
+      case elem @ Elem(_, "dependency", _, _, _*)
           if excludePomDependency(elem) =>
         NodeSeq.Empty
-      case Elem(prefix, "classifier", attributes, scope, children @ _*) =>
+      case Elem(_, "classifier", _, _, _*) =>
         NodeSeq.Empty
       case Elem(prefix, label, attributes, scope, children @ _*) =>
         val cleanedNodes = cleanNodes(children)
@@ -186,6 +186,6 @@ object Licensed {
     if (!note.exists) Nil
     else
       try { seePaths(base, IO.read(note)) } catch {
-        case NonFatal(e) => s.log.warn("Could not read NOTICE"); Nil
+        case NonFatal(_) => s.log.warn("Could not read NOTICE"); Nil
       }
 }

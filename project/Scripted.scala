@@ -5,13 +5,11 @@ import java.lang.reflect.InvocationTargetException
 import sbt._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
-import sbt.ScriptedPlugin.autoImport._
 
 object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
 
   object autoImport extends ScriptedKeys
-  import autoImport._
 }
 
 trait ScriptedKeys {

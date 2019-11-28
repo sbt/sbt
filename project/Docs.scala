@@ -1,4 +1,4 @@
-import sbt._, Keys._
+import sbt._
 /*
 import StatusPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
