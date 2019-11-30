@@ -488,6 +488,9 @@ object Defaults extends BuildCommon {
     clean := clean.dependsOn(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := None,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(scalaVersion.value),
+    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(
+      appConfiguration.value.provider.scalaProvider.version
+    ),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
