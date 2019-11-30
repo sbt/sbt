@@ -179,7 +179,8 @@ final class ScriptedTests(
           case ("nio", "make-clone") => true // uses gcc which isn't set up on all systems
           case _                     => false
         }
-    } else _ => false
+    }
+    else _ => false
   private def determineRemoteSbtCreatorKind(testName: (String, String)): RemoteSbtCreatorKind = {
     import RemoteSbtCreatorKind._
     val (group, name) = testName
