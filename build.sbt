@@ -930,7 +930,7 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
     crossScalaVersions := Seq(baseScalaVersion),
     skip in publish := true,
     compile in Compile := {
-      val u = update.value
+      update.value: Unit
       runNpm("run compile", baseDirectory.value, streams.value.log)
       sbt.internal.inc.Analysis.empty
     },
