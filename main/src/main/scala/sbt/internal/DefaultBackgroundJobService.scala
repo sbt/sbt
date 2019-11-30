@@ -372,7 +372,7 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
           list
         }
         listeners.foreach { l =>
-          l.executionContext.execute(new Runnable { override def run = l.callback() })
+          l.executionContext.execute(() => l.callback())
         }
       }
     }
