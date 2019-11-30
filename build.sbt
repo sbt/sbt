@@ -67,7 +67,10 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
-  resolvers += Resolver.url("bintray-scala-hedgehog", url("https://dl.bintray.com/hedgehogqa/scala-hedgehog"))(Resolver.ivyStylePatterns),
+  resolvers += Resolver.url(
+    "bintray-scala-hedgehog",
+    url("https://dl.bintray.com/hedgehogqa/scala-hedgehog")
+  )(Resolver.ivyStylePatterns),
   addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   concurrentRestrictions in Global += Util.testExclusiveRestriction,
@@ -242,7 +245,6 @@ val collectionProj = (project in file("internal") / "util-collection")
       // it's now abstract in KList and defined in both KCons & KNil.
       exclude[FinalMethodProblem]("sbt.internal.util.KNil.foldr"),
       exclude[DirectAbstractMethodProblem]("sbt.internal.util.KList.foldr"),
-
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.Init*.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.Settings0.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#INode.*"),
@@ -251,7 +253,9 @@ val collectionProj = (project in file("internal") / "util-collection")
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.Settings.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#MixedNode.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#BindNode.this"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#BindNode.dependsOn"),
+      exclude[IncompatibleSignatureProblem](
+        "sbt.internal.util.EvaluateSettings#BindNode.dependsOn"
+      ),
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.Types.some")
     ),
   )
@@ -736,7 +740,6 @@ lazy val mainProj = (project in file("main"))
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       // internal
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.LanguageServerReporter.*"),
-
       // Changed signature or removed private[sbt] methods
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
       exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
@@ -755,11 +758,14 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.plugins.SbtPlugin.*Settings"),
       // Removed private internal classes
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$BottomClassLoader"),
-      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader$ResourceLoader"),
+      exclude[MissingClassProblem](
+        "sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader$ResourceLoader"
+      ),
       exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ClassLoadingLock"),
-      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader"),
+      exclude[MissingClassProblem](
+        "sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader"
+      ),
       exclude[MissingClassProblem]("sbt.internal.LayeredClassLoaderImpl"),
-
       // false positives
       exclude[DirectMissingMethodProblem]("sbt.plugins.IvyPlugin.requires"),
       exclude[DirectMissingMethodProblem]("sbt.plugins.JUnitXmlReportPlugin.requires"),
@@ -769,17 +775,19 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.ResolvedClasspathDependency.apply"),
       exclude[DirectMissingMethodProblem]("sbt.ClasspathDependency.apply"),
       exclude[IncompatibleSignatureProblem]("sbt.plugins.SemanticdbPlugin.globalSettings"),
-
       // File -> Source
       exclude[DirectMissingMethodProblem]("sbt.Defaults.cleanFilesTask"),
       exclude[IncompatibleSignatureProblem]("sbt.Defaults.resourceConfigPaths"),
       exclude[IncompatibleSignatureProblem]("sbt.Defaults.sourceConfigPaths"),
       exclude[IncompatibleSignatureProblem]("sbt.Defaults.configPaths"),
       exclude[IncompatibleSignatureProblem]("sbt.Defaults.paths"),
-
       exclude[IncompatibleSignatureProblem]("sbt.Keys.csrPublications"),
-      exclude[IncompatibleSignatureProblem]("sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"),
-      exclude[IncompatibleSignatureProblem]("sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"),
+      exclude[IncompatibleSignatureProblem](
+        "sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"
+      ),
+      exclude[IncompatibleSignatureProblem](
+        "sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"
+      ),
       exclude[IncompatibleSignatureProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
       exclude[IncompatibleSignatureProblem]("sbt.coursierint.LMCoursier.publicationsSetting"),
       exclude[IncompatibleSignatureProblem]("sbt.Project.inThisBuild"),
@@ -790,7 +798,6 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inConfig"),
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inTask"),
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inScope"),
-
       exclude[MissingTypesProblem]("sbt.internal.Load*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.Load*"),
     )
