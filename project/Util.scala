@@ -44,24 +44,28 @@ object Util {
 
   lazy val apiDefinitions = TaskKey[Seq[File]]("api-definitions")
 
-  def generateAPICached(defs: Seq[File],
-                        cp: Classpath,
-                        out: File,
-                        main: Option[String],
-                        run: ScalaRun,
-                        s: TaskStreams): Seq[File] = {
+  def generateAPICached(
+      defs: Seq[File],
+      cp: Classpath,
+      out: File,
+      main: Option[String],
+      run: ScalaRun,
+      s: TaskStreams
+  ): Seq[File] = {
     def gen() = generateAPI(defs, cp, out, main, run, s)
     val f = FileFunction.cached(s.cacheDirectory / "gen-api", FilesInfo.hash) { _ =>
       gen().toSet
     } // TODO: check if output directory changed
     f(defs.toSet).toSeq
   }
-  def generateAPI(defs: Seq[File],
-                  cp: Classpath,
-                  out: File,
-                  main: Option[String],
-                  run: ScalaRun,
-                  s: TaskStreams): Seq[File] = {
+  def generateAPI(
+      defs: Seq[File],
+      cp: Classpath,
+      out: File,
+      main: Option[String],
+      run: ScalaRun,
+      s: TaskStreams
+  ): Seq[File] = {
     IO.delete(out)
     IO.createDirectory(out)
     val args = "xsbti.api" :: out.getAbsolutePath :: defs.map(_.getAbsolutePath).toList
@@ -73,10 +77,12 @@ object Util {
     val lastCompilation = analysis.compilations.allCompilations.lastOption
     lastCompilation.map(_.getStartTime) getOrElse 0L
   }
-  def generateVersionFile(version: String,
-                          dir: File,
-                          s: TaskStreams,
-                          analysis: Analysis): Seq[File] = {
+  def generateVersionFile(
+      version: String,
+      dir: File,
+      s: TaskStreams,
+      analysis: Analysis
+  ): Seq[File] = {
     import java.util.{ Date, TimeZone }
     val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
     formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
@@ -105,8 +111,7 @@ object Util {
   def cleanPom(pomNode: scala.xml.Node) = {
     import scala.xml._
     def cleanNodes(nodes: Seq[Node]): Seq[Node] = nodes flatMap {
-      case elem @ Elem(_, "dependency", _, _, _*)
-          if excludePomDependency(elem) =>
+      case elem @ Elem(_, "dependency", _, _, _*) if excludePomDependency(elem) =>
         NodeSeq.Empty
       case Elem(_, "classifier", _, _, _*) =>
         NodeSeq.Empty
@@ -178,14 +183,18 @@ object Licensed {
   def settings: Seq[Setting[_]] = Seq(
     notice := (baseDirectory.value / "NOTICE"),
     unmanagedResources in Compile ++= notice.value +: extractLicenses.value,
-    extractLicenses := extractLicenses0((baseDirectory in ThisBuild).value,
-                                        notice.value,
-                                        streams.value)
+    extractLicenses := extractLicenses0(
+      (baseDirectory in ThisBuild).value,
+      notice.value,
+      streams.value
+    )
   )
   def extractLicenses0(base: File, note: File, s: TaskStreams): Seq[File] =
     if (!note.exists) Nil
     else
-      try { seePaths(base, IO.read(note)) } catch {
+      try {
+        seePaths(base, IO.read(note))
+      } catch {
         case NonFatal(_) => s.log.warn("Could not read NOTICE"); Nil
       }
 }
