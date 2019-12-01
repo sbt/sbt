@@ -417,7 +417,7 @@ final class ScriptedTests(
       if (t.isInstanceOf[TestException]) {
         t.getCause match {
           case null | _: SocketException => log.error(s" Cause of test exception: ${t.getMessage}")
-          case _                         => t.printStackTrace()
+          case _                         => if (!pending) t.printStackTrace()
         }
         log.play()
       }
