@@ -39,6 +39,7 @@ object LintUnused {
       ivyConfiguration,
     ),
     Keys.lintUnused := lintUnusedTask.evaluated,
+    Keys.lintUnusedKeysOnLoad := true,
   )
 
   // input task version of the lintUnused
@@ -59,8 +60,10 @@ object LintUnused {
     val extracted = Project.extract(s)
     val includeKeys = extracted.get(includeLintKeys in Global) map { _.scopedKey.key.label }
     val excludeKeys = extracted.get(excludeLintKeys in Global) map { _.scopedKey.key.label }
-    val result = lintUnused(s, includeKeys, excludeKeys)
-    lintResultLines(result) foreach { log.warn(_) }
+    if (extracted.get(lintUnusedKeysOnLoad in Global)) {
+      val result = lintUnused(s, includeKeys, excludeKeys)
+      lintResultLines(result) foreach { log.warn(_) }
+    }
     s
   }
 
@@ -70,26 +73,29 @@ object LintUnused {
     import scala.collection.mutable.ListBuffer
     val buffer = ListBuffer.empty[String]
 
-    val size = result.size
-    if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
-    else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
-    buffer.append(" ")
-    result foreach {
-      case (_, str, positions) =>
-        buffer.append(s"* $str")
-        positions foreach {
-          case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
-          case _                 => ()
-        }
+    if (result.isEmpty) Vector.empty
+    else {
+      val size = result.size
+      if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
+      else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
+      buffer.append(" ")
+      result foreach {
+        case (_, str, positions) =>
+          buffer.append(s"* $str")
+          positions foreach {
+            case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
+            case _                 => ()
+          }
+      }
+      buffer.append(" ")
+      buffer.append(
+        "note: a setting might still be used by a command; to exclude a key from this `lintUnused` check"
+      )
+      buffer.append(
+        "either append it to `Global / excludeLintKeys` or call .withRank(KeyRanks.Invisible) on the key"
+      )
+      buffer.toVector
     }
-    buffer.append(" ")
-    buffer.append(
-      "note: a setting might still be used by a command; to exclude a key from this `lintUnused` check"
-    )
-    buffer.append(
-      "either append it to `Global / excludeLintKeys` or call .withRank(KeyRanks.Invisible) on the key"
-    )
-    buffer.toVector
   }
 
   def lintUnused(
