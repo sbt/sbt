@@ -351,7 +351,7 @@ object Defaults extends BuildCommon {
         sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
-    ) ++ LintUnused.lintSettings
+    ) ++ LintUnused.lintSettings ++ DefaultBackgroundJobService.backgroundJobServiceSettings
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -1599,7 +1599,8 @@ object Defaults extends BuildCommon {
   }
 
   def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
-    manager.waitFor(handle)
+    manager.waitForTry(handle)
+    ()
   }
 
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] =

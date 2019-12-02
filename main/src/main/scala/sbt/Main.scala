@@ -126,15 +126,14 @@ object StandardMain {
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
     try {
+      val hook = ShutdownHooks.add(closeRunnable)
       try {
-        val hook = ShutdownHooks.add(closeRunnable)
-        try {
-          MainLoop.runLogged(s)
-        } finally {
-          hook.close()
-          ()
-        }
-      } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
+        MainLoop.runLogged(s)
+      } finally {
+        try DefaultBackgroundJobService.shutdown()
+        finally hook.close()
+        ()
+      }
     } finally TrapExit.uninstallManager(previous)
   }
 
