@@ -111,7 +111,8 @@ private[sbt] object Definition {
                 case h :: _ if h.length < fragment.length  => fragment :: Nil
                 case h :: _ if h.length == fragment.length => fragment :: z
                 case _                                     => z
-              } else z
+              }
+            else z
         }
         .headOption
     }

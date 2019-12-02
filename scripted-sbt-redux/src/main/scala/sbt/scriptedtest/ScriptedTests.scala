@@ -179,7 +179,8 @@ final class ScriptedTests(
           case ("nio", "make-clone") => true // uses gcc which isn't set up on all systems
           case _                     => false
         }
-    } else _ => false
+    }
+    else _ => false
   private def determineRemoteSbtCreatorKind(testName: (String, String)): RemoteSbtCreatorKind = {
     import RemoteSbtCreatorKind._
     val (group, name) = testName
@@ -417,7 +418,7 @@ final class ScriptedTests(
       if (t.isInstanceOf[TestException]) {
         t.getCause match {
           case null | _: SocketException => log.error(s" Cause of test exception: ${t.getMessage}")
-          case _                         => t.printStackTrace()
+          case _                         => if (!pending) t.printStackTrace()
         }
         log.play()
       }
