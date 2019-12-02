@@ -45,8 +45,7 @@ object SbtLauncherPlugin extends AutoPlugin {
       // TODO - is the ok for creating a jar?
       val rebase: File => Seq[(File, String)] = {
         val path = dir.toPath
-        f =>
-          if (f != dir) f -> path.relativize(f.toPath).toString :: Nil else Nil
+        f => if (f != dir) f -> path.relativize(f.toPath).toString :: Nil else Nil
       }
       IO.zip(dir.allPaths.get().flatMap(rebase), target)
     }

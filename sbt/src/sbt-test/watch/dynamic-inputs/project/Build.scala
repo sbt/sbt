@@ -38,8 +38,8 @@ object Build {
     checkStringValue := checkStringValueImpl.evaluated,
     watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },
     watchTasks := Def.inputTask {
-      val prev = watchTasks.evaluated
-      new StateTransform(prev.state.fail)
+      watchTasks.evaluated
+      StateTransform(_.fail)
     }.evaluated
   )
 }

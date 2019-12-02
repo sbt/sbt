@@ -496,6 +496,7 @@ object Keys {
   val lintUnused = inputKey[Unit]("Check for keys unused by other settings and tasks.")
   val excludeLintKeys = settingKey[Set[Def.KeyedInitialize[_]]]("Keys excluded from lintUnused task")
   val includeLintKeys = settingKey[Set[Def.KeyedInitialize[_]]]("Task keys that are included into lintUnused task")
+  val lintUnusedKeysOnLoad = settingKey[Boolean]("Toggles whether or not to check for unused keys during startup")
 
   val stateStreams = AttributeKey[Streams]("stateStreams", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped

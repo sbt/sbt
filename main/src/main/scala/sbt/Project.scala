@@ -354,8 +354,9 @@ object Project extends ProjectExtra {
     validProjectID(id).foreach(errMsg => sys.error(s"Invalid project ID: $errMsg"))
     val plugins = Plugins.empty
     val origin = ProjectOrigin.GenericRoot
-    new ProjectDef(id, base, aggregate, Nil, Nil, Nil, plugins, Nil, origin) with Project
-    with GeneratedRootProject
+    new ProjectDef(id, base, aggregate, Nil, Nil, Nil, plugins, Nil, origin)
+      with Project
+      with GeneratedRootProject
   }
 
   /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
