@@ -129,74 +129,75 @@ object Cross {
 
   private def crossBuildCommandImpl(state: State, args: CrossArgs): State = {
     val extracted = Project.extract(state)
-    val (aggs, aggCommand) = parseSlashCommand(extracted)(args.command)
-
-    val projCrossVersions = aggs map { proj =>
-      proj -> crossVersions(extracted, proj)
-    }
-    // if we support scalaVersion, projVersions should be cached somewhere since
-    // running ++2.11.1 is at the root level is going to mess with the scalaVersion for the aggregated subproj
-    val projVersions = (projCrossVersions flatMap {
-      case (proj, versions) => versions map { proj.project -> _ }
-    }).toList
-
+    val parser = Act.aggregatedKeyParser(extracted) ~ matched(any.*)
     val verbose = if (args.verbose) "-v" else ""
+    val allCommands = Parser.parse(args.command, parser) match {
+      case Left(_) =>
+        val (aggs, aggCommand) = parseSlashCommand(extracted)(args.command)
+        val projCrossVersions = aggs map { proj =>
+          proj -> crossVersions(extracted, proj)
+        }
+        // It's definitely not a task, check if it's a valid command, because we don't want to emit the warning
+        // message below for typos.
+        val validCommand = Parser.parse(aggCommand, state.combinedParser).isRight
 
-    if (projVersions.isEmpty) {
-      state
-    } else {
-      // Detect whether a task or command has been issued
-      val allCommands = Parser.parse(aggCommand, Act.aggregatedKeyParser(extracted)) match {
-        case Left(_) =>
-          // It's definitely not a task, check if it's a valid command, because we don't want to emit the warning
-          // message below for typos.
-          val validCommand = Parser.parse(aggCommand, state.combinedParser).isRight
-
-          val distinctCrossConfigs = projCrossVersions.map(_._2.toSet).distinct
-          if (validCommand && distinctCrossConfigs.size > 1) {
-            state.log.warn(
-              "Issuing a cross building command, but not all sub projects have the same cross build " +
-                "configuration. This could result in subprojects cross building against Scala versions that they are " +
-                "not compatible with. Try issuing cross building command with tasks instead, since sbt will be able " +
-                "to ensure that cross building is only done using configured project and Scala version combinations " +
-                "that are configured."
-            )
-            state.log.debug("Scala versions configuration is:")
-            projCrossVersions.foreach {
-              case (project, versions) => state.log.debug(s"$project: $versions")
-            }
+        val distinctCrossConfigs = projCrossVersions.map(_._2.toSet).distinct
+        if (validCommand && distinctCrossConfigs.size > 1) {
+          state.log.warn(
+            "Issuing a cross building command, but not all sub projects have the same cross build " +
+              "configuration. This could result in subprojects cross building against Scala versions that they are " +
+              "not compatible with. Try issuing cross building command with tasks instead, since sbt will be able " +
+              "to ensure that cross building is only done using configured project and Scala version combinations " +
+              "that are configured."
+          )
+          state.log.debug("Scala versions configuration is:")
+          projCrossVersions.foreach {
+            case (project, versions) => state.log.debug(s"$project: $versions")
           }
+        }
 
-          // Execute using a blanket switch
-          projCrossVersions.toMap.apply(extracted.currentRef).flatMap { version =>
-            // Force scala version
-            Seq(s"$SwitchCommand $verbose $version!", aggCommand)
+        // Execute using a blanket switch
+        projCrossVersions.toMap.apply(extracted.currentRef).flatMap { version =>
+          // Force scala version
+          Seq(s"$SwitchCommand $verbose $version!", aggCommand)
+        }
+      case Right((keys, taskArgs)) =>
+        def project(key: ScopedKey[_]): Option[ProjectRef] = key.scope.project.toOption match {
+          case Some(p: ProjectRef) => Some(p)
+          case _                   => None
+        }
+        val fullArgs = if (taskArgs.trim.isEmpty) "" else s" ${taskArgs.trim}"
+        val keysByVersion = keys
+          .flatMap { k =>
+            project(k).toSeq.flatMap(crossVersions(extracted, _).map(v => v -> k))
           }
-
-        case Right(_) =>
-          // We have a key, we're likely to be able to cross build this using the per project behaviour.
-
-          // Group all the projects by scala version
-          projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
-            case (version, Seq(project)) =>
-              // If only one project for a version, issue it directly
-              Seq(s"$SwitchCommand $verbose $version $project/$aggCommand")
-            case (version, projects) if aggCommand.contains(" ") =>
-              // If the command contains a space, then the `all` command won't work because it doesn't support issuing
-              // commands with spaces, so revert to running the command on each project one at a time
-              s"$SwitchCommand $verbose $version" :: projects
-                .map(project => s"$project/$aggCommand")
-            case (version, projects) =>
-              // First switch scala version, then use the all command to run the command on each project concurrently
-              Seq(
-                s"$SwitchCommand $verbose $version",
-                projects.map(_ + "/" + aggCommand).mkString("all ", " ", "")
-              )
+          .groupBy(_._1)
+          .mapValues(_.map(_._2).toSet)
+        val commandsByVersion = keysByVersion.toSeq
+          .flatMap {
+            case (v, keys) =>
+              val projects = keys.flatMap(project)
+              keys.toSeq.flatMap { k =>
+                project(k).filter(projects.contains).flatMap { p =>
+                  if (p == extracted.currentRef || !projects.contains(extracted.currentRef)) {
+                    val parts = project(k).map(_.project) ++ k.scope.config.toOption.map {
+                      case ConfigKey(n) => n.head.toUpper + n.tail
+                    } ++ k.scope.task.toOption.map(_.label) ++ Some(k.key.label)
+                    Some(v -> parts.mkString("", " / ", fullArgs))
+                  } else None
+                }
+              }
           }
-      }
-
-      allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, extracted)
+          .groupBy(_._1)
+          .mapValues(_.map(_._2))
+          .toSeq
+          .sortBy(_._1)
+        commandsByVersion.flatMap {
+          case (v, commands) =>
+            Seq(s"$SwitchCommand $verbose $v!") ++ commands
+        }
     }
+    allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, extracted)
   }
 
   def crossRestoreSession: Command =
