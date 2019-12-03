@@ -82,16 +82,17 @@ object Cross {
     s => if (s get sessionSettings isEmpty) failure("No project loaded") else p(s)
 
   private def resolveAggregates(extracted: Extracted): Seq[ProjectRef] = {
-    import extracted._
 
-    def findAggregates(project: ProjectRef): List[ProjectRef] = {
-      project :: (structure.allProjects(project.build).find(_.id == project.project) match {
+    def findAggregates(project: ProjectRef): Seq[ProjectRef] = {
+      project :: (extracted.structure
+        .allProjects(project.build)
+        .find(_.id == project.project) match {
         case Some(resolved) => resolved.aggregate.toList.flatMap(findAggregates)
         case None           => Nil
       })
     }
 
-    (currentRef :: currentProject.aggregate.toList.flatMap(findAggregates)).distinct
+    (extracted.currentRef +: extracted.currentProject.aggregate.flatMap(findAggregates)).distinct
   }
 
   private def crossVersions(extracted: Extracted, proj: ResolvedReference): Seq[String] = {
@@ -127,12 +128,11 @@ object Cross {
     Command.arb(requireSession(crossParser), crossHelp)(crossBuildCommandImpl)
 
   private def crossBuildCommandImpl(state: State, args: CrossArgs): State = {
-    val x = Project.extract(state)
-    import x._
-    val (aggs, aggCommand) = parseSlashCommand(x)(args.command)
+    val extracted = Project.extract(state)
+    val (aggs, aggCommand) = parseSlashCommand(extracted)(args.command)
 
     val projCrossVersions = aggs map { proj =>
-      proj -> crossVersions(x, proj)
+      proj -> crossVersions(extracted, proj)
     }
     // if we support scalaVersion, projVersions should be cached somewhere since
     // running ++2.11.1 is at the root level is going to mess with the scalaVersion for the aggregated subproj
@@ -146,7 +146,7 @@ object Cross {
       state
     } else {
       // Detect whether a task or command has been issued
-      val allCommands = Parser.parse(aggCommand, Act.aggregatedKeyParser(x)) match {
+      val allCommands = Parser.parse(aggCommand, Act.aggregatedKeyParser(extracted)) match {
         case Left(_) =>
           // It's definitely not a task, check if it's a valid command, because we don't want to emit the warning
           // message below for typos.
@@ -168,7 +168,7 @@ object Cross {
           }
 
           // Execute using a blanket switch
-          projCrossVersions.toMap.apply(currentRef).flatMap { version =>
+          projCrossVersions.toMap.apply(extracted.currentRef).flatMap { version =>
             // Force scala version
             Seq(s"$SwitchCommand $verbose $version!", aggCommand)
           }
@@ -195,7 +195,7 @@ object Cross {
           }
       }
 
-      allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, x)
+      allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, extracted)
     }
   }
 
@@ -229,7 +229,6 @@ object Cross {
     Command.arb(requireSession(switchParser), switchHelp)(switchCommandImpl)
 
   private def switchCommandImpl(state: State, args: Switch): State = {
-    val x = Project.extract(state)
     val (switchedState, affectedRefs) = switchScalaVersion(args, state)
 
     val strictCmd =
@@ -238,7 +237,7 @@ object Cross {
         args.command
       } else {
         args.command.map { rawCmd =>
-          val (aggs, aggCommand) = parseSlashCommand(x)(rawCmd)
+          val (aggs, aggCommand) = parseSlashCommand(Project.extract(state))(rawCmd)
           aggs
             .intersect(affectedRefs)
             .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
