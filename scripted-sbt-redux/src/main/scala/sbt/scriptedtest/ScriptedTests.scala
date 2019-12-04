@@ -192,9 +192,10 @@ final class ScriptedTests(
         LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
       case "actions/multi-command" =>
         LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
-      case "actions/external-doc"   => LauncherBased // sbt/Package$
-      case "actions/input-task"     => LauncherBased // sbt/Package$
-      case "actions/input-task-dyn" => LauncherBased // sbt/Package$
+      case "actions/cross-test-only" => LauncherBased // tbd
+      case "actions/external-doc"    => LauncherBased // sbt/Package$
+      case "actions/input-task"      => LauncherBased // sbt/Package$
+      case "actions/input-task-dyn"  => LauncherBased // sbt/Package$
       case gn if gn.startsWith("classloader-cache/") =>
         LauncherBased // This should be tested using launcher
       case "compiler-project/dotty-compiler-plugin"      => LauncherBased // sbt/Package$
