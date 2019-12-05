@@ -800,6 +800,11 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inScope"),
       exclude[MissingTypesProblem]("sbt.internal.Load*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.Load*"),
+      // IvyConfiguration was replaced by InlineIvyConfiguration in the generic
+      // signature, this does not break compatibility regardless of what
+      // cast a compiler might have inserted based on the old signature
+      // since we're returning the same values as before.
+      exclude[IncompatibleSignatureProblem]("sbt.Classpaths.mkIvyConfiguration")
     )
   )
   .configure(
