@@ -3252,7 +3252,7 @@ object Classpaths {
         buildDependencies.value
       )
     }
-  def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
+  def mkIvyConfiguration: Initialize[Task[InlineIvyConfiguration]] =
     Def.task {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
       val s = streams.value
