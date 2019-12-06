@@ -55,7 +55,7 @@ private[internal] final class ReverseLookupClassLoaderHolder(
    *
    * @return a ClassLoader
    */
-  def checkout(fullClasspath: Seq[File], tempDir: File): ClassLoader = {
+  def checkout(dynamicClasspath: Seq[File], tempDir: File): ClassLoader = {
     if (closed.get()) {
       val msg = "Tried to extract class loader from closed ReverseLookupClassLoaderHolder. " +
         "Try running the `clearCaches` command and re-trying."
@@ -65,10 +65,10 @@ private[internal] final class ReverseLookupClassLoaderHolder(
       case null => new ReverseLookupClassLoader(urls, parent, allowZombies, logger)
       case c    => c
     }
-    reverseLookupClassLoader.setup(tempDir, fullClasspath.map(_.toURI.toURL).toArray)
+    reverseLookupClassLoader.setup(tempDir)
     new BottomClassLoader(
       ReverseLookupClassLoaderHolder.this,
-      fullClasspath.map(_.toURI.toURL).toArray,
+      dynamicClasspath.map(_.toURI.toURL).toArray,
       reverseLookupClassLoader,
       tempDir,
       allowZombies,
