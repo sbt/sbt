@@ -1,10 +1,10 @@
-import Util._
 import Dependencies._
 import Sxr.sxr
-import com.typesafe.tools.mima.core._, ProblemFilters._
+import Util._
+import com.typesafe.tools.mima.core.ProblemFilters._
+import com.typesafe.tools.mima.core._
 import local.Scripted
-import scala.xml.{ Node => XmlNode, NodeSeq => XmlNodeSeq, _ }
-import scala.xml.transform.{ RewriteRule, RuleTransformer }
+
 import scala.util.Try
 
 ThisBuild / version := {
