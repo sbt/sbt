@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt.internal.util
 
 import sbt.util._
@@ -508,9 +515,12 @@ class ConsoleAppender private[ConsoleAppender] (
       message: String
   ): Unit =
     out.lockObject.synchronized {
-      val builder: StringBuilder = new StringBuilder(labelColor.length + label.length + messageColor.length + reset.length * 3)
+      val builder: StringBuilder =
+        new StringBuilder(labelColor.length + label.length + messageColor.length + reset.length * 3)
       message.linesIterator.foreach { line =>
-        builder.ensureCapacity(labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3)
+        builder.ensureCapacity(
+          labelColor.length + label.length + messageColor.length + line.length + reset.length * 3 + 3
+        )
         builder.setLength(0)
         def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
         builder.append(reset).append('[')
