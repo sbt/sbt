@@ -146,7 +146,7 @@ lazy val `sbt-shading` = project
   .dependsOn(`sbt-coursier`)
   .settings(
     plugin,
-    libraryDependencies += ("org.pantsbuild" % "jarjar" % "1.7.2")
+    libraryDependencies += ("ch.epfl.scala" % "jarjar" % "1.7.2-patched")
       .exclude("org.apache.maven", "maven-plugin-api")
       .exclude("org.apache.ant", "ant"),
     scriptedDependencies := {
