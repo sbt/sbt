@@ -8,16 +8,17 @@
 package sbt.internal.util
 
 import sbt.util._
-import java.io.{ PrintStream, PrintWriter }
+import java.io.{PrintStream, PrintWriter}
 import java.lang.StringBuilder
 import java.util.Locale
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
-import org.apache.logging.log4j.{ Level => XLevel }
-import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
-import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
-import org.apache.logging.log4j.core.appender.AbstractAppender
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
 
+import org.apache.logging.log4j.{Level => XLevel}
+import org.apache.logging.log4j.message.{Message, ObjectMessage, ReusableObjectMessage}
+import org.apache.logging.log4j.core.{LogEvent => XLogEvent}
+import org.apache.logging.log4j.core.appender.AbstractAppender
 import ConsoleAppender._
+import sbt.internal.SysProp
 
 object ConsoleLogger {
   // These are provided so other modules do not break immediately.
@@ -132,7 +133,9 @@ object ConsoleAppender {
       // This approximates that both stdin and stdio are connected,
       // so by default color will be turned off for pipes and redirects.
       val hasConsole = Option(java.lang.System.console).isDefined
-      ansiSupported && hasConsole
+      val insideCi = sys.env.contains("BUILD_NUMBER") ||
+        sys.env.contains("CI") || SysProp.ci
+      ansiSupported && (hasConsole || insideCi )
     }
     sys.props.get("sbt.log.noformat") match {
       case Some(_) => !java.lang.Boolean.getBoolean("sbt.log.noformat")
