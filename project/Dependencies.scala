@@ -5,13 +5,13 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.10"
+  val scala213 = "2.13.1"
   lazy val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.3.1")
-  private val utilVersion = nightlyVersion.getOrElse("1.3.2")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
@@ -20,14 +20,6 @@ object Dependencies {
   val zincVersion = nightlyVersion.getOrElse("1.3.1")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
-
-  private val utilPosition = "org.scala-sbt" %% "util-position" % utilVersion
-  private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
-  private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
-  private val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
-  private val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
-  private val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
-  private val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
@@ -76,21 +68,6 @@ object Dependencies {
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
-  def addSbtUtilPosition(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilPosition", utilPosition)
-  def addSbtUtilLogging(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
-  def addSbtUtilCache(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
-  def addSbtUtilControl(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilControl", utilControl)
-  def addSbtUtilRelation(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilRelation", utilRelation)
-  def addSbtUtilTracking(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilTracking", utilTracking)
-  def addSbtUtilScripted(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilScripted", utilScripted)
-
   def addSbtLmCore(p: Project): Project =
     addSbtModule(p, sbtLmPath, "lmCore", libraryManagementCore)
   def addSbtLmIvy(p: Project): Project =
@@ -119,6 +96,10 @@ object Dependencies {
     "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value
   }
 
+  val sjsonNewMurmurhash = Def.setting {
+    "com.eed3si9n" %% "sjson-new-murmurhash" % contrabandSjsonNewVersion.value
+  }
+
   val jline = "jline" % "jline" % "2.14.6"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
@@ -126,12 +107,13 @@ object Dependencies {
   val junit = "junit" % "junit" % "4.11"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
-  private def scala211Module(name: String, moduleVersion: String) = Def setting (
+  private def scala212Module(name: String, moduleVersion: String) = Def setting (
     ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
   )
 
-  val scalaXml = scala211Module("scala-xml", "1.2.0")
-  val scalaParsers = scala211Module("scala-parser-combinators", "1.1.2")
+  val scalaXml = scala212Module("scala-xml", "1.2.0")
+  val scalaParsers = scala212Module("scala-parser-combinators", "1.1.2")
+  val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
 
   def log4jVersion = "2.11.2"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
@@ -143,4 +125,7 @@ object Dependencies {
   val scalaCacheCaffeine = "com.github.cb372" %% "scalacache-caffeine" % "0.20.0"
 
   val hedgehog = "hedgehog" %% "hedgehog-sbt" % "0.1.0"
+  val disruptor = "com.lmax" % "disruptor" % "3.4.2"
+  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.2"
+  val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.4.2" % Provided
 }
