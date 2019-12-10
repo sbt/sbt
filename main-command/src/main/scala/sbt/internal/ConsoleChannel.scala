@@ -23,7 +23,9 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
     val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
     val prompt = (s get shellPrompt) match {
       case Some(pf) => pf(s)
-      case None     => "> "
+      case None =>
+        def ansi(s: String): String = if (ConsoleAppender.formatEnabledInEnv) s"$s" else ""
+        s"${ansi(ConsoleAppender.DeleteLine)}> ${ansi(ConsoleAppender.clearScreen(0))}"
     }
     val reader =
       new FullReader(history, s.combinedParser, JLine.HandleCONT, Terminal.throwOnClosedSystemIn)

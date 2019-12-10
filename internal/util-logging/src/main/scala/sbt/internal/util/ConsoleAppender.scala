@@ -106,6 +106,7 @@ object ConsoleAppender {
   private[sbt] def cursorUp(n: Int): String = s"\u001B[${n}A"
   private[sbt] def cursorDown(n: Int): String = s"\u001B[${n}B"
   private[sbt] def scrollUp(n: Int): String = s"\u001B[${n}S"
+  private[sbt] def clearScreen(n: Int): String = s"\u001B[${n}J"
   private[sbt] final val DeleteLine = "\u001B[2K"
   private[sbt] final val CursorLeft1000 = "\u001B[1000D"
   private[sbt] final val CursorDown1 = cursorDown(1)
