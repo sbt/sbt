@@ -49,7 +49,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     }
   }
 
-  override def initial(): Unit = ConsoleAppender.setTerminalWidth(JLine.terminal.getWidth)
+  override def initial(): Unit = ()
 
   override def beforeWork(task: Task[_]): Unit = {
     super.beforeWork(task)
