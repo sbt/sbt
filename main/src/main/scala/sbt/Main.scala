@@ -141,12 +141,17 @@ object StandardMain {
   val console: ConsoleOut =
     ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
-  def initialGlobalLogging: GlobalLogging =
+  private[this] def initialGlobalLogging(file: Option[File]): GlobalLogging = {
+    file.foreach(f => if (!f.exists()) IO.createDirectory(f))
     GlobalLogging.initial(
       MainAppender.globalDefault(console),
-      File.createTempFile("sbt", ".log"),
+      File.createTempFile("sbt-global-log", ".log", file.orNull),
       console
     )
+  }
+  def initialGlobalLogging(file: File): GlobalLogging = initialGlobalLogging(Option(file))
+  @deprecated("use version that takes file argument", "1.4.0")
+  def initialGlobalLogging: GlobalLogging = initialGlobalLogging(None)
 
   def initialState(
       configuration: xsbti.AppConfiguration,
@@ -171,7 +176,7 @@ object StandardMain {
       commands,
       State.newHistory,
       initAttrs,
-      initialGlobalLogging,
+      initialGlobalLogging(BuildPaths.globalLoggingStandard(configuration.baseDirectory)),
       None,
       State.Continue
     )

@@ -291,7 +291,12 @@ object Defaults extends BuildCommon {
       },
       watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
-      taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
+      taskTemporaryDirectory := {
+        val base = BuildPaths.globalTaskDirectoryStandard(appConfiguration.value.baseDirectory)
+        val dir = IO.createUniqueDirectory(base)
+        ShutdownHooks.add(() => IO.delete(dir))
+        dir
+      },
       onComplete := {
         val tempDirectory = taskTemporaryDirectory.value
         () => Clean.deleteContents(tempDirectory, _ => false)
@@ -697,7 +702,7 @@ object Defaults extends BuildCommon {
   lazy val projectTasks: Seq[Setting[_]] = Seq(
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := Vector.empty,
-    cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
+    cleanKeepGlobs ++= historyPath.value.map(_.toGlob).toVector,
     clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     consoleProject := consoleProjectTask.value,
     transitiveDynamicInputs := SettingsGraph.task.value,
@@ -2190,7 +2195,12 @@ object Classpaths {
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
         docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
         cleanKeepFiles :== Nil,
-        cleanKeepGlobs :== Nil,
+        cleanKeepGlobs := {
+          val base = appConfiguration.value.baseDirectory.getCanonicalFile
+          val dirs = BuildPaths
+            .globalLoggingStandard(base) :: BuildPaths.globalTaskDirectoryStandard(base) :: Nil
+          dirs.flatMap(d => Glob(d) :: Glob(d, RecursiveGlob) :: Nil)
+        },
         fileOutputs :== Nil,
         sbtDependency := {
           val app = appConfiguration.value
