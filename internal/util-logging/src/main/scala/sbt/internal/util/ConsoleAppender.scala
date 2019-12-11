@@ -16,7 +16,7 @@ import org.apache.logging.log4j.{ Level => XLevel }
 import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
-
+import scala.util.control.NonFatal
 import ConsoleAppender._
 
 object ConsoleLogger {
@@ -110,9 +110,9 @@ object ConsoleAppender {
   private[sbt] final val DeleteLine = "\u001B[2K"
   private[sbt] final val CursorLeft1000 = "\u001B[1000D"
   private[sbt] final val CursorDown1 = cursorDown(1)
-  private[this] val widthHolder: AtomicInteger = new AtomicInteger
-  private[sbt] def terminalWidth = widthHolder.get
-  private[sbt] def setTerminalWidth(n: Int): Unit = widthHolder.set(n)
+  private[sbt] lazy val terminalWidth = usingTerminal { t =>
+    t.getWidth
+  }
   private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
   def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
   def showProgress: Boolean = showProgressHolder.get
@@ -297,22 +297,24 @@ object ConsoleAppender {
 
   private[this] def ansiSupported =
     try {
-      val terminal = jline.TerminalFactory.get
-      terminal.restore // #460
-      terminal.isAnsiSupported
+      usingTerminal { t =>
+        t.isAnsiSupported
+      }
     } catch {
-      case _: Exception => !isWindows
-
-      // sbt 0.13 drops JLine 1.0 from the launcher and uses 2.x as a normal dependency
-      // when 0.13 is used with a 0.12 launcher or earlier, the JLine classes from the launcher get loaded
-      // this results in a linkage error as detected below.  The detection is likely jvm specific, but the priority
-      // is avoiding mistakenly identifying something as a launcher incompatibility when it is not
-      case e: IncompatibleClassChangeError if e.getMessage == jline1to2CompatMsg =>
-        throw new IncompatibleClassChangeError(
-          "JLine incompatibility detected.  Check that the sbt launcher is version 0.13.x or later."
-        )
+      case NonFatal(_) => !isWindows
     }
 
+  /**
+   * For accessing the JLine Terminal object.
+   * This ensures re-enabling echo after getting the Terminal.
+   */
+  private[this] def usingTerminal[T](f: jline.Terminal => T): T = {
+    val t = jline.TerminalFactory.get
+    t.restore
+    val result = f(t)
+    t.restore
+    result
+  }
   private[this] def os = System.getProperty("os.name")
   private[this] def isWindows = os.toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
 
