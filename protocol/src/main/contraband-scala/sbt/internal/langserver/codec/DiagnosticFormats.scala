@@ -7,10 +7,10 @@ package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait DiagnosticFormats { self: sbt.internal.langserver.codec.RangeFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val DiagnosticFormat: JsonFormat[sbt.internal.langserver.Diagnostic] = new JsonFormat[sbt.internal.langserver.Diagnostic] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.Diagnostic = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.Diagnostic = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val range = unbuilder.readField[sbt.internal.langserver.Range]("range")
       val severity = unbuilder.readField[Option[Long]]("severity")
       val code = unbuilder.readField[Option[String]]("code")

@@ -6,10 +6,10 @@
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ConnectionTypeFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val ConnectionTypeFormat: JsonFormat[sbt.ConnectionType] = new JsonFormat[sbt.ConnectionType] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.ConnectionType = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.readString(js) match {
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.ConnectionType = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.readString(__js) match {
         case "Local" => sbt.ConnectionType.Local
         case "Tcp" => sbt.ConnectionType.Tcp
       }

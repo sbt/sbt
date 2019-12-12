@@ -7,10 +7,10 @@ package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait CancelRequestParamsFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val CancelRequestParamsFormat: JsonFormat[sbt.internal.langserver.CancelRequestParams] = new JsonFormat[sbt.internal.langserver.CancelRequestParams] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.CancelRequestParams = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.CancelRequestParams = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val id = unbuilder.readField[String]("id")
       unbuilder.endObject()
       sbt.internal.langserver.CancelRequestParams(id)
