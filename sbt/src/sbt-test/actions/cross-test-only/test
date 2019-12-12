@@ -1,0 +1,3 @@
+> + foo / testOnly foo.FooSpec
+
+> + testOnly foo.FooSpec

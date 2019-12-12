@@ -39,13 +39,16 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
     private final URL[] urls;
 
     ZombieClassLoader(URL[] urls) {
-      super(urls, ManagedClassLoader.this);
+      super(urls, ManagedClassLoader.this.getParent());
       this.urls = urls;
     }
 
     Class<?> lookupClass(final String name) throws ClassNotFoundException {
       try {
-        return findClass(name);
+        synchronized (getClassLoadingLock(name)) {
+          final Class<?> previous = findLoadedClass(name);
+          return previous != null ? previous : findClass(name);
+        }
       } catch (final ClassNotFoundException e) {
         final StringBuilder builder = new StringBuilder();
         for (final URL u : urls) {
@@ -89,7 +92,12 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
 
   @Override
   protected Class<?> findClass(String name) throws ClassNotFoundException {
-    return closed.get() ? getZombieLoader(name).lookupClass(name) : super.findClass(name);
+    try {
+      return super.findClass(name);
+    } catch (final NoClassDefFoundError | ClassNotFoundException e) {
+      if (closed.get()) return getZombieLoader(name).lookupClass(name);
+      else throw e;
+    }
   }
 
   @Override

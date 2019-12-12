@@ -8,9 +8,7 @@
 package sbt.internal;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import sbt.util.Logger;
@@ -46,7 +44,6 @@ final class ReverseLookupClassLoader extends ManagedClassLoader {
   private final AtomicReference<BottomClassLoader> directDescendant = new AtomicReference<>();
   private final AtomicBoolean dirty = new AtomicBoolean(false);
   private final ClassLoadingLock classLoadingLock = new ClassLoadingLock();
-  private final AtomicReference<ResourceLoader> resourceLoader = new AtomicReference<>();
   private final ClassLoader parent;
 
   boolean isDirty() {
@@ -57,26 +54,14 @@ final class ReverseLookupClassLoader extends ManagedClassLoader {
     directDescendant.set(bottomClassLoader);
   }
 
-  private class ResourceLoader extends URLClassLoader {
-    ResourceLoader(final URL[] urls) {
-      super(urls, parent);
-    }
-
-    final URL lookup(final String name) {
-      return findResource(name);
-    }
-  }
-
   @Override
   public URL findResource(String name) {
-    final ResourceLoader loader = resourceLoader.get();
-    return loader == null ? null : loader.lookup(name);
+    final URL url = super.findResource(name);
+    return url != null ? url : directDescendant.get().findResource(name);
   }
 
-  void setup(final File tmpDir, final URL[] urls) throws IOException {
+  void setup(final File tmpDir) {
     setTempDir(tmpDir);
-    final ResourceLoader previous = resourceLoader.getAndSet(new ResourceLoader(urls));
-    if (previous != null) previous.close();
   }
 
   @Override
