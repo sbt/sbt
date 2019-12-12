@@ -44,7 +44,11 @@ final case class State(
   private[sbt] lazy val (multiCommands, nonMultiCommands) =
     definedCommands.partition(_.nameOption.contains(BasicCommandStrings.Multi))
   private[sbt] lazy val nonMultiParser = Command.combine(nonMultiCommands)(this)
-  lazy val combinedParser = multiCommands.foldRight(nonMultiParser)(_.parser(this) | _)
+  lazy val combinedParser: Parser[() => State] =
+    multiCommands.headOption match {
+      case Some(multi) => multi.parser(this) | nonMultiParser
+      case _           => nonMultiParser
+    }
 
   def source: Option[CommandSource] =
     currentCommand match {
