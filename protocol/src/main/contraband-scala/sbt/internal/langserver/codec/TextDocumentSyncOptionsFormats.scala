@@ -7,10 +7,10 @@ package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait TextDocumentSyncOptionsFormats { self: sbt.internal.langserver.codec.SaveOptionsFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val TextDocumentSyncOptionsFormat: JsonFormat[sbt.internal.langserver.TextDocumentSyncOptions] = new JsonFormat[sbt.internal.langserver.TextDocumentSyncOptions] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.TextDocumentSyncOptions = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.TextDocumentSyncOptions = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val openClose = unbuilder.readField[Option[Boolean]]("openClose")
       val change = unbuilder.readField[Option[Long]]("change")
       val willSave = unbuilder.readField[Option[Boolean]]("willSave")

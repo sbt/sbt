@@ -7,10 +7,10 @@ package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait InitializeParamsFormats { self: sbt.internal.util.codec.JValueFormats with sbt.internal.langserver.codec.ClientCapabilitiesFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val InitializeParamsFormat: JsonFormat[sbt.internal.langserver.InitializeParams] = new JsonFormat[sbt.internal.langserver.InitializeParams] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.InitializeParams = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.InitializeParams = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val processId = unbuilder.readField[Option[Long]]("processId")
       val rootPath = unbuilder.readField[Option[String]]("rootPath")
       val rootUri = unbuilder.readField[Option[String]]("rootUri")

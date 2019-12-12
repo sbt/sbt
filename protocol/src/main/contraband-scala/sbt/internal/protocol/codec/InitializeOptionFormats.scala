@@ -7,10 +7,10 @@ package sbt.internal.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait InitializeOptionFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val InitializeOptionFormat: JsonFormat[sbt.internal.protocol.InitializeOption] = new JsonFormat[sbt.internal.protocol.InitializeOption] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.protocol.InitializeOption = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.protocol.InitializeOption = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val token = unbuilder.readField[Option[String]]("token")
       unbuilder.endObject()
       sbt.internal.protocol.InitializeOption(token)

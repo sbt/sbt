@@ -7,10 +7,10 @@ package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ServerCapabilitiesFormats { self: sbt.internal.langserver.codec.TextDocumentSyncOptionsFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.ServerCapabilities] = new JsonFormat[sbt.internal.langserver.ServerCapabilities] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.ServerCapabilities = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.ServerCapabilities = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val textDocumentSync = unbuilder.readField[Option[sbt.internal.langserver.TextDocumentSyncOptions]]("textDocumentSync")
       val hoverProvider = unbuilder.readField[Option[Boolean]]("hoverProvider")
       val definitionProvider = unbuilder.readField[Option[Boolean]]("definitionProvider")

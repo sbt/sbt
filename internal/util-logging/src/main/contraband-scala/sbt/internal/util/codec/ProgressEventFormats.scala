@@ -7,10 +7,10 @@ package sbt.internal.util.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ProgressEventFormats { self: sbt.internal.util.codec.ProgressItemFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ProgressEventFormat: JsonFormat[sbt.internal.util.ProgressEvent] = new JsonFormat[sbt.internal.util.ProgressEvent] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.util.ProgressEvent = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.util.ProgressEvent = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val level = unbuilder.readField[String]("level")
       val items = unbuilder.readField[Vector[sbt.internal.util.ProgressItem]]("items")
       val lastTaskCount = unbuilder.readField[Option[Int]]("lastTaskCount")

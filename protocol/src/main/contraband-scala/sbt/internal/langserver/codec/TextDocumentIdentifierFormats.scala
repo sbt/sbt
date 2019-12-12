@@ -7,10 +7,10 @@ package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait TextDocumentIdentifierFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val TextDocumentIdentifierFormat: JsonFormat[sbt.internal.langserver.TextDocumentIdentifier] = new JsonFormat[sbt.internal.langserver.TextDocumentIdentifier] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.TextDocumentIdentifier = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.TextDocumentIdentifier = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val uri = unbuilder.readField[String]("uri")
       unbuilder.endObject()
       sbt.internal.langserver.TextDocumentIdentifier(uri)
