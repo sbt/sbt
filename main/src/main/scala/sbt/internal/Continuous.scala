@@ -26,7 +26,7 @@ import sbt.internal.io.WatchState
 import sbt.internal.nio._
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
-import sbt.internal.util.{ AttributeKey, JLine, Util }
+import sbt.internal.util.{ AttributeKey, Terminal, Util }
 import sbt.nio.Keys.{ fileInputs, _ }
 import sbt.nio.Watch.{ Creation, Deletion, ShowOptions, Update }
 import sbt.nio.file.{ FileAttributes, Glob }
@@ -272,11 +272,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     f(s, valid, invalid)
   }
 
-  private[this] def withCharBufferedStdIn[R](f: InputStream => R): R = {
-    val terminal = JLine.terminal
-    terminal.init()
-    terminal.setEchoEnabled(true)
-    val wrapped = terminal.wrapInIfNeeded(System.in)
+  private[this] def withCharBufferedStdIn[R](f: InputStream => R): R = Terminal.withRawSystemIn {
+    val wrapped = Terminal.wrappedSystemIn
     if (Util.isNonCygwinWindows) {
       val inputStream: InputStream with AutoCloseable = new InputStream with AutoCloseable {
         private[this] val buffer = new java.util.LinkedList[Int]

@@ -10,12 +10,11 @@ package sbt
 import java.io.PrintWriter
 import java.util.Properties
 
-import jline.TerminalFactory
 import sbt.internal.{ Aggregation, ShutdownHooks }
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Terminal }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.Logger
@@ -31,7 +30,7 @@ object MainLoop {
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
     // the jline terminal in finally blocks, but hitting ctrl+c prevents finally blocks from being executed, in that
     // case the only way to restore the terminal is in a shutdown hook.
-    val shutdownHook = ShutdownHooks.add(() => TerminalFactory.get().restore())
+    val shutdownHook = ShutdownHooks.add(Terminal.restore)
 
     try {
       runLoggedLoop(state, state.globalLogging.backing)

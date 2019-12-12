@@ -8,13 +8,13 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ JLine }
 import sbt.util.Show
-
 import java.io.File
-import Def.{ compiled, flattenLocals, ScopedKey }
-import Predef.{ any2stringadd => _, _ }
 
+import Def.{ ScopedKey, compiled, flattenLocals }
+import sbt.internal.util.Terminal
+
+import Predef.{ any2stringadd => _, _ }
 import sbt.io.IO
 
 object SettingGraph {
@@ -82,7 +82,7 @@ object Graph {
   // [info]   |
   // [info]   +-quux
   def toAscii[A](top: A, children: A => Seq[A], display: A => String, defaultWidth: Int): String = {
-    val maxColumn = math.max(JLine.terminal.getWidth, defaultWidth) - 8
+    val maxColumn = math.max(Terminal.getWidth, defaultWidth) - 8
     val twoSpaces = " " + " " // prevent accidentally being converted into a tab
     def limitLine(s: String): String =
       if (s.length > maxColumn) s.slice(0, maxColumn - 2) + ".."

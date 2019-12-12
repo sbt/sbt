@@ -7,17 +7,16 @@
 
 package sbt.internal.util
 
-import sbt.util._
 import java.io.{ PrintStream, PrintWriter }
 import java.lang.StringBuilder
-import java.util.Locale
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
-import org.apache.logging.log4j.{ Level => XLevel }
-import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
-import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
+
 import org.apache.logging.log4j.core.appender.AbstractAppender
-import scala.util.control.NonFatal
-import ConsoleAppender._
+import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
+import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
+import org.apache.logging.log4j.{ Level => XLevel }
+import sbt.internal.util.ConsoleAppender._
+import sbt.util._
 
 object ConsoleLogger {
   // These are provided so other modules do not break immediately.
@@ -110,9 +109,6 @@ object ConsoleAppender {
   private[sbt] final val DeleteLine = "\u001B[2K"
   private[sbt] final val CursorLeft1000 = "\u001B[1000D"
   private[sbt] final val CursorDown1 = cursorDown(1)
-  private[sbt] lazy val terminalWidth = usingTerminal { t =>
-    t.getWidth
-  }
   private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
   def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
   def showProgress: Boolean = showProgressHolder.get
@@ -293,31 +289,7 @@ object ConsoleAppender {
 
   private[sbt] def generateName(): String = "out-" + generateId.incrementAndGet
 
-  private[this] def jline1to2CompatMsg = "Found class jline.Terminal, but interface was expected"
-
-  private[this] def ansiSupported =
-    try {
-      usingTerminal { t =>
-        t.isAnsiSupported
-      }
-    } catch {
-      case NonFatal(_) => !isWindows
-    }
-
-  /**
-   * For accessing the JLine Terminal object.
-   * This ensures re-enabling echo after getting the Terminal.
-   */
-  private[this] def usingTerminal[T](f: jline.Terminal => T): T = {
-    val t = jline.TerminalFactory.get
-    t.restore
-    val result = f(t)
-    t.restore
-    result
-  }
-  private[this] def os = System.getProperty("os.name")
-  private[this] def isWindows = os.toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
-
+  private[this] def ansiSupported: Boolean = Terminal.isAnsiSupported
 }
 
 // See http://stackoverflow.com/questions/24205093/how-to-create-a-custom-appender-in-log4j2
@@ -356,7 +328,7 @@ class ConsoleAppender private[ConsoleAppender] (
       out.println(s"$DeleteLine$l")
       if (progress.length > 0) {
         val pad = if (padding.get > 0) padding.decrementAndGet() else 0
-        val width = ConsoleAppender.terminalWidth
+        val width = Terminal.getWidth
         val len: Int = progress.foldLeft(progress.length)(_ + terminalLines(width)(_))
         deleteConsoleLines(blankZone + pad)
         progress.foreach(printProgressLine)
@@ -387,7 +359,7 @@ class ConsoleAppender private[ConsoleAppender] (
       s"  | => ${item.name} ${elapsed}s"
     }
 
-    val width = ConsoleAppender.terminalWidth
+    val width = Terminal.getWidth
     val currentLength = info.foldLeft(info.length)(_ + terminalLines(width)(_))
     val previousLines = progressLines.getAndSet(info)
     val prevLength = previousLines.foldLeft(previousLines.length)(_ + terminalLines(width)(_))

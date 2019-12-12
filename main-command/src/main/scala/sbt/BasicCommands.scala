@@ -9,15 +9,15 @@ package sbt
 
 import java.nio.file.Paths
 import sbt.util.Level
-import sbt.internal.util.{ AttributeKey, FullReader }
+import sbt.internal.util.{ AttributeKey, FullReader, JLine, Terminal }
 import sbt.internal.util.complete.{
   Completion,
   Completions,
   DefaultParsers,
-  History => CHistory,
   HistoryCommands,
   Parser,
-  TokenCompletions
+  TokenCompletions,
+  History => CHistory
 }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.Util.{ AnyOps, nil, nilSeq, none }
@@ -25,13 +25,14 @@ import sbt.internal.inc.classpath.ClasspathUtil.toLoader
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.client.NetworkClient
 import DefaultParsers._
+
 import Function.tupled
 import Command.applyEffect
 import BasicCommandStrings._
 import CommandUtil._
 import BasicKeys._
-
 import java.io.File
+
 import sbt.io.IO
 
 import scala.collection.mutable.ListBuffer
@@ -372,7 +373,8 @@ object BasicCommands {
   def oldshell: Command = Command.command(OldShell, Help.more(Shell, OldShellDetailed)) { s =>
     val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
-    val reader = new FullReader(history, s.combinedParser)
+    val reader =
+      new FullReader(history, s.combinedParser, JLine.HandleCONT, Terminal.wrappedSystemIn)
     val line = reader.readLine(prompt)
     line match {
       case Some(line) =>

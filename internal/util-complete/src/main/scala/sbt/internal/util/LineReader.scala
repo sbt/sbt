@@ -7,30 +7,26 @@
 
 package sbt.internal.util
 
+import java.io._
+
 import jline.console.ConsoleReader
 import jline.console.history.{ FileHistory, MemoryHistory }
-import java.io.{ File, FileDescriptor, FileInputStream, FilterInputStream, InputStream }
+import sbt.internal.util.complete.Parser
 
-import complete.Parser
-import jline.Terminal
-
-import scala.concurrent.duration._
 import scala.annotation.tailrec
+import scala.concurrent.duration._
 
 abstract class JLine extends LineReader {
   protected[this] def handleCONT: Boolean
   protected[this] def reader: ConsoleReader
-  protected[this] def injectThreadSleep: Boolean
-  protected[this] lazy val in: InputStream = {
-    // On Windows InputStream#available doesn't seem to return positive number.
-    JLine.makeInputStream(injectThreadSleep && !Util.isNonCygwinWindows)
-  }
+  @deprecated("For binary compatibility only", "1.4.0")
+  protected[this] def injectThreadSleep: Boolean = false
+  @deprecated("For binary compatibility only", "1.4.0")
+  protected[this] lazy val in: InputStream = Terminal.wrappedSystemIn
 
-  def readLine(prompt: String, mask: Option[Char] = None) =
+  override def readLine(prompt: String, mask: Option[Char] = None): Option[String] =
     try {
-      JLine.withJLine {
-        unsynchronizedReadLine(prompt, mask)
-      }
+      Terminal.withRawSystemIn(unsynchronizedReadLine(prompt, mask))
     } catch {
       case _: InterruptedException =>
         // println("readLine: InterruptedException")
@@ -85,36 +81,18 @@ abstract class JLine extends LineReader {
   }
 
   private[this] def resume(): Unit = {
-    jline.TerminalFactory.reset
-    JLine.terminal.init
+    Terminal.reset()
     reader.drawLine()
     reader.flush()
   }
 }
 
 private[sbt] object JLine {
-  private[this] val TerminalProperty = "jline.terminal"
-
-  fixTerminalProperty()
-
-  // translate explicit class names to type in order to support
-  //  older Scala, since it shaded classes but not the system property
-  private[sbt] def fixTerminalProperty(): Unit = {
-    val newValue = System.getProperty(TerminalProperty) match {
-      case "jline.UnixTerminal"                             => "unix"
-      case null if System.getProperty("sbt.cygwin") != null => "unix"
-      case "jline.WindowsTerminal"                          => "windows"
-      case "jline.AnsiWindowsTerminal"                      => "windows"
-      case "jline.UnsupportedTerminal"                      => "none"
-      case x                                                => x
-    }
-    if (newValue != null) {
-      System.setProperty(TerminalProperty, newValue)
-      ()
-    }
-  }
-
+  @deprecated("For binary compatibility only", "1.4.0")
   protected[this] val originalIn = new FileInputStream(FileDescriptor.in)
+
+  @deprecated("Handled by Terminal.fixTerminalProperty", "1.4.0")
+  private[sbt] def fixTerminalProperty(): Unit = ()
 
   private[sbt] def makeInputStream(injectThreadSleep: Boolean): InputStream =
     if (injectThreadSleep) new InputStreamWrapper(originalIn, 2.milliseconds)
@@ -122,51 +100,34 @@ private[sbt] object JLine {
 
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
-  private[sbt] def terminal: Terminal = jline.TerminalFactory.get
-
-  private def withTerminal[T](f: jline.Terminal => T): T =
-    synchronized {
-      val t = terminal
-      t.synchronized { f(t) }
-    }
+  @deprecated("Don't use jline.Terminal directly", "1.4.0")
+  private[sbt] def terminal: jline.Terminal = Terminal.deprecatedTeminal
 
   /**
    * For accessing the JLine Terminal object.
    * This ensures synchronized access as well as re-enabling echo after getting the Terminal.
    */
+  @deprecated("Don't use jline.Terminal directly. Use Terminal.withCanonicalIn instead.", "1.4.0")
   def usingTerminal[T](f: jline.Terminal => T): T =
-    withTerminal { t =>
-      t.restore
-      val result = f(t)
-      t.restore
-      result
-    }
+    Terminal.withCanonicalIn(f(Terminal.deprecatedTeminal))
 
-  def createReader(): ConsoleReader = createReader(None, JLine.makeInputStream(true))
+  def createReader(): ConsoleReader = createReader(None, Terminal.wrappedSystemIn)
 
-  def createReader(historyPath: Option[File], in: InputStream): ConsoleReader =
-    usingTerminal { _ =>
-      val cr = new ConsoleReader(in, System.out)
-      cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
-      cr.setBellEnabled(false)
-      val h = historyPath match {
-        case None       => new MemoryHistory
-        case Some(file) => (new FileHistory(file): MemoryHistory)
-      }
-      h.setMaxSize(MaxHistorySize)
-      cr.setHistory(h)
-      cr
+  def createReader(historyPath: Option[File], in: InputStream): ConsoleReader = {
+    val cr = Terminal.createReader(in)
+    cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
+    cr.setBellEnabled(false)
+    val h = historyPath match {
+      case None       => new MemoryHistory
+      case Some(file) => new FileHistory(file): MemoryHistory
     }
+    h.setMaxSize(MaxHistorySize)
+    cr.setHistory(h)
+    cr
+  }
 
-  def withJLine[T](action: => T): T =
-    withTerminal { t =>
-      t.init
-      try {
-        action
-      } finally {
-        t.restore
-      }
-    }
+  @deprecated("Avoid referencing JLine directly. Use Terminal.withRawSystemIn instead.", "1.4.0")
+  def withJLine[T](action: => T): T = Terminal.withRawSystemIn(action)
 
   def simple(
       historyPath: Option[File],
@@ -180,6 +141,7 @@ private[sbt] object JLine {
     !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
 }
 
+@deprecated("For binary compatibility only", "1.4.0")
 private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration)
     extends FilterInputStream(is) {
   @tailrec final override def read(): Int =
@@ -211,11 +173,17 @@ trait LineReader {
 final class FullReader(
     historyPath: Option[File],
     complete: Parser[_],
-    val handleCONT: Boolean = JLine.HandleCONT,
-    val injectThreadSleep: Boolean = false
+    val handleCONT: Boolean,
+    inputStream: InputStream,
 ) extends JLine {
-  protected[this] val reader = {
-    val cr = JLine.createReader(historyPath, in)
+  def this(
+      historyPath: Option[File],
+      complete: Parser[_],
+      handleCONT: Boolean = JLine.HandleCONT,
+      injectThreadSleep: Boolean = false
+  ) = this(historyPath, complete, handleCONT, JLine.makeInputStream(injectThreadSleep))
+  protected[this] val reader: ConsoleReader = {
+    val cr = JLine.createReader(historyPath, inputStream)
     sbt.internal.util.complete.JLineCompletion.installCustomCompletor(cr, complete)
     cr
   }
@@ -224,9 +192,12 @@ final class FullReader(
 class SimpleReader private[sbt] (
     historyPath: Option[File],
     val handleCONT: Boolean,
-    val injectThreadSleep: Boolean
+    inputStream: InputStream
 ) extends JLine {
-  protected[this] val reader = JLine.createReader(historyPath, in)
+  def this(historyPath: Option[File], handleCONT: Boolean, injectThreadSleep: Boolean) =
+    this(historyPath, handleCONT, Terminal.wrappedSystemIn)
+  protected[this] val reader: ConsoleReader =
+    JLine.createReader(historyPath, inputStream)
 }
 
 object SimpleReader extends SimpleReader(None, JLine.HandleCONT, false)

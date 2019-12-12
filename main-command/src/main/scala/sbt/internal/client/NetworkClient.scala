@@ -12,18 +12,20 @@ package client
 import java.io.{ File, IOException }
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import scala.collection.mutable.ListBuffer
-import scala.util.control.NonFatal
-import scala.util.{ Success, Failure }
-import scala.sys.process.{ BasicIO, Process, ProcessLogger }
-import sbt.protocol._
-import sbt.internal.protocol._
+
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
-import sbt.internal.util.{ JLine, ConsoleAppender }
-import sbt.util.Level
-import sbt.io.syntax._
+import sbt.internal.protocol._
+import sbt.internal.util.{ ConsoleAppender, JLine }
 import sbt.io.IO
+import sbt.io.syntax._
+import sbt.protocol._
+import sbt.util.Level
 import sjsonnew.support.scalajson.unsafe.Converter
+
+import scala.collection.mutable.ListBuffer
+import scala.sys.process.{ BasicIO, Process, ProcessLogger }
+import scala.util.control.NonFatal
+import scala.util.{ Failure, Success }
 
 class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[String]) { self =>
   private val channelName = new AtomicReference("_")
