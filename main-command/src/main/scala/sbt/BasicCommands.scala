@@ -208,10 +208,11 @@ object BasicCommands {
       else Parser.success(result.toList)
     }
 
-    (cmdParser ~ multiCmdParser.+).flatMap {
-      case ("", rest) => validateCommands(rest)
-      case (p, rest)  => validateCommands(rest).map(p :: _)
-    }
+    (cmdParser ~ multiCmdParser.+)
+      .flatMap {
+        case ("", rest) => validateCommands(rest)
+        case (p, rest)  => validateCommands(rest).map(p :: _)
+      }
   }
 
   def multiParser(s: State): Parser[List[String]] = multiParserImpl(Some(s))
