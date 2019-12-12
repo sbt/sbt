@@ -364,10 +364,6 @@ private[sbt] final class CommandExchange {
         channels collect {
           case c: ConsoleChannel => c.publishEventMessage(entry)
         }
-      case entry: ConsoleUnpromptEvent =>
-        channels collect {
-          case c: ConsoleChannel => c.publishEventMessage(entry)
-        }
       case entry: ExecStatusEvent =>
         channels collect {
           case c: ConsoleChannel =>
