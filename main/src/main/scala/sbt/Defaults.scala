@@ -1486,7 +1486,24 @@ object Defaults extends BuildCommon {
     }
 
   def askForMainClass(classes: Seq[String]): Option[String] =
-    sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
+    sbt.SelectMainClass(
+      if (classes.length >= 10) Some(SimpleReader.readLine(_))
+      else
+        Some(s => {
+          def print(st: String) = { scala.Console.out.print(st); scala.Console.out.flush() }
+          print(s)
+          Terminal.withRawSystemIn {
+            Terminal.wrappedSystemIn.read match {
+              case -1 => None
+              case b =>
+                val res = b.toChar.toString
+                println(res)
+                Some(res)
+            }
+          }
+        }),
+      classes
+    )
 
   def pickMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(None, classes)
