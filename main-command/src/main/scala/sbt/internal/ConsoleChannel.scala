@@ -29,7 +29,12 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
     private val history = s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
     private val prompt = getPrompt(s)
     private val reader =
-      new FullReader(history, s.combinedParser, JLine.HandleCONT, Terminal.throwOnClosedSystemIn)
+      new FullReader(
+        history,
+        s.combinedParser,
+        LineReader.HandleCONT,
+        Terminal.throwOnClosedSystemIn
+      )
     setDaemon(true)
     start()
     override def run(): Unit =

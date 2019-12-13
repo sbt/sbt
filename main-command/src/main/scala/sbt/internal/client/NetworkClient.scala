@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
 import sbt.internal.protocol._
-import sbt.internal.util.{ ConsoleAppender, JLine }
+import sbt.internal.util.{ ConsoleAppender, LineReader }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol._
@@ -216,7 +216,7 @@ class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[Strin
   }
 
   def shell(): Unit = {
-    val reader = JLine.simple(None, JLine.HandleCONT, injectThreadSleep = true)
+    val reader = LineReader.simple(None, LineReader.HandleCONT, injectThreadSleep = true)
     while (running.get) {
       reader.readLine("> ", None) match {
         case Some("shutdown") =>

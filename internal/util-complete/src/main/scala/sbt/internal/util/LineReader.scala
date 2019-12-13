@@ -16,6 +16,36 @@ import sbt.internal.util.complete.Parser
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 
+trait LineReader {
+  def readLine(prompt: String, mask: Option[Char] = None): Option[String]
+  def redraw(): Unit = ()
+}
+
+object LineReader {
+  val HandleCONT =
+    !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
+  val MaxHistorySize = 500
+
+  def createReader(historyPath: Option[File], in: InputStream): ConsoleReader = {
+    val cr = Terminal.createReader(in)
+    cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
+    cr.setBellEnabled(false)
+    val h = historyPath match {
+      case None       => new MemoryHistory
+      case Some(file) => new FileHistory(file): MemoryHistory
+    }
+    h.setMaxSize(MaxHistorySize)
+    cr.setHistory(h)
+    cr
+  }
+
+  def simple(
+      historyPath: Option[File],
+      handleCONT: Boolean = HandleCONT,
+      injectThreadSleep: Boolean = false
+  ): LineReader = new SimpleReader(historyPath, handleCONT, injectThreadSleep)
+}
+
 abstract class JLine extends LineReader {
   protected[this] def handleCONT: Boolean
   protected[this] def reader: ConsoleReader
@@ -92,6 +122,7 @@ abstract class JLine extends LineReader {
   }
 }
 
+@deprecated("Use LineReader apis", "1.4.0")
 private[sbt] object JLine {
   @deprecated("For binary compatibility only", "1.4.0")
   protected[this] val originalIn = new FileInputStream(FileDescriptor.in)
@@ -117,8 +148,10 @@ private[sbt] object JLine {
   def usingTerminal[T](f: jline.Terminal => T): T =
     Terminal.withCanonicalIn(f(Terminal.deprecatedTeminal))
 
+  @deprecated("unused", "1.4.0")
   def createReader(): ConsoleReader = createReader(None, Terminal.wrappedSystemIn)
 
+  @deprecated("Use LineReader.createReader", "1.4.0")
   def createReader(historyPath: Option[File], in: InputStream): ConsoleReader = {
     val cr = Terminal.createReader(in)
     cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
@@ -135,16 +168,18 @@ private[sbt] object JLine {
   @deprecated("Avoid referencing JLine directly. Use Terminal.withRawSystemIn instead.", "1.4.0")
   def withJLine[T](action: => T): T = Terminal.withRawSystemIn(action)
 
+  @deprecated("Use LineReader.simple instead", "1.4.0")
   def simple(
       historyPath: Option[File],
-      handleCONT: Boolean = HandleCONT,
+      handleCONT: Boolean = LineReader.HandleCONT,
       injectThreadSleep: Boolean = false
   ): SimpleReader = new SimpleReader(historyPath, handleCONT, injectThreadSleep)
 
-  val MaxHistorySize = 500
+  @deprecated("Use LineReader.MaxHistorySize", "1.4.0")
+  val MaxHistorySize = LineReader.MaxHistorySize
 
-  val HandleCONT =
-    !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
+  @deprecated("Use LineReader.HandleCONT", "1.4.0")
+  val HandleCONT = LineReader.HandleCONT
 }
 
 @deprecated("For binary compatibility only", "1.4.0")
@@ -172,11 +207,6 @@ private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration)
     }
 }
 
-trait LineReader {
-  def readLine(prompt: String, mask: Option[Char] = None): Option[String]
-  def redraw(): Unit = ()
-}
-
 final class FullReader(
     historyPath: Option[File],
     complete: Parser[_],
@@ -187,11 +217,11 @@ final class FullReader(
   def this(
       historyPath: Option[File],
       complete: Parser[_],
-      handleCONT: Boolean = JLine.HandleCONT,
+      handleCONT: Boolean = LineReader.HandleCONT,
       injectThreadSleep: Boolean = false
   ) = this(historyPath, complete, handleCONT, JLine.makeInputStream(injectThreadSleep))
   protected[this] val reader: ConsoleReader = {
-    val cr = JLine.createReader(historyPath, inputStream)
+    val cr = LineReader.createReader(historyPath, inputStream)
     sbt.internal.util.complete.JLineCompletion.installCustomCompletor(cr, complete)
     cr
   }
@@ -205,7 +235,7 @@ class SimpleReader private[sbt] (
   def this(historyPath: Option[File], handleCONT: Boolean, injectThreadSleep: Boolean) =
     this(historyPath, handleCONT, Terminal.wrappedSystemIn)
   protected[this] val reader: ConsoleReader =
-    JLine.createReader(historyPath, inputStream)
+    LineReader.createReader(historyPath, inputStream)
 }
 
-object SimpleReader extends SimpleReader(None, JLine.HandleCONT, false)
+object SimpleReader extends SimpleReader(None, LineReader.HandleCONT, false)
