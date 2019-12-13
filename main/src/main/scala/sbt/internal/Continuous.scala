@@ -288,10 +288,13 @@ private[sbt] object Continuous extends DeprecatedContinuous {
           override def run(): Unit = {
             try {
               if (!closed.get()) {
-                buffer.add(wrapped.read())
+                wrapped.read() match {
+                  case -1 => closed.set(true)
+                  case b  => buffer.add(b)
+                }
               }
             } catch {
-              case _: InterruptedException =>
+              case _: InterruptedException => closed.set(true)
             }
             if (!closed.get()) run()
           }
