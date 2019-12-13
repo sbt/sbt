@@ -22,9 +22,10 @@ lazy val jansi = {
   if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.12"
   else "org.fusesource.jansi" % "jansi" % "1.4"
 }
-lazy val scala212Jline = "jline" % "jline" % "2.14.6"
-lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.2.0"
 lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
+lazy val scala212Jline = "jline" % "jline" % "2.14.6"
+// use the scala-xml version used by the compiler not the latest: https://github.com/scala/scala/blob/v2.12.10/versions.properties#L22
+lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
 lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
 
 lazy val sbt013ExtraDeps = {
@@ -177,7 +178,6 @@ val root = (project in file(".")).
       prev.toList map {
         case (k, BinSbt) =>
           import java.nio.file.{Files, FileSystems}
-          
           val x = IO.read(k)
           IO.write(t / "sbt", x.replaceAllLiterally(
             "declare init_sbt_version=_to_be_replaced",
@@ -341,6 +341,8 @@ def downloadUrl(uri: URI, out: File): Unit =
     }
   }
 
+def colonName(m: ModuleID): String = s"${m.organization}:${m.name}:${m.revision}"
+
 lazy val dist = (project in file("dist"))
   .enablePlugins(ExportRepoPlugin)
   .settings(
@@ -376,6 +378,9 @@ lazy val dist = (project in file("dist"))
       IO.delete(cache)
       val v = sbtVersionToRelease
       s"$csr fetch --cache $cache org.scala-sbt:sbt:$v".!
+      s"$csr fetch --cache $cache ${colonName(jansi)}".!
+      s"$csr fetch --cache $cache ${colonName(scala212Compiler)}".!
+      s"$csr fetch --cache $cache ${colonName(scala212Xml)}".!
       val mavenCache = cache / "https" / "repo1.maven.org" / "maven2"
       val compilerBridgeVer = IO.listFiles(mavenCache / "org" / "scala-sbt" / "compiler-bridge_2.12", DirectoryFilter).toList.headOption
       compilerBridgeVer match {
