@@ -20,9 +20,10 @@ final class FlatLoader extends ManagedClassLoader {
       final URL[] urls,
       final ClassLoader parent,
       final File file,
+      final boolean close,
       final boolean allowZombies,
       final Logger logger) {
-    super(urls, parent, allowZombies, logger);
+    super(urls, parent, close, allowZombies, logger);
     setTempDir(file);
   }
 
