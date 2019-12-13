@@ -345,6 +345,8 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
       case _                          => List()
     }),
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := { tpe =>
       val old = (contrabandFormatsForType in generateContrabands in Compile).value
       val name = tpe.removeTypeParameters.name
