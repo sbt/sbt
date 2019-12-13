@@ -10,9 +10,9 @@ package sbt
 import java.io.{ File, IOException }
 import java.net.URI
 import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files }
+import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.{ Locale, Properties }
 
 import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
 import sbt.Project.LoadAction
@@ -764,22 +764,24 @@ object BuiltinCommands {
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
-    val result = (SimpleReader.readLine(
-      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)"
-    ) getOrElse Quit)
-      .toLowerCase(Locale.ENGLISH)
-    def matches(s: String) = !result.isEmpty && (s startsWith result)
-    def retry = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
-    def ignoreMsg =
+    s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
+    val result = Terminal.withRawSystemIn {
+      Terminal.withEcho(toggle = true)(Terminal.wrappedSystemIn.read() match {
+        case -1 => 'q'.toInt
+        case b  => b
+      })
+    }
+    def retry: State = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
+    def ignoreMsg: String =
       if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
-    result match {
-      case ""                     => retry
-      case _ if matches("retry")  => retry
-      case _ if matches(Quit)     => s.exit(ok = false)
-      case _ if matches("ignore") => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
-      case _ if matches("last")   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-      case _                      => println("Invalid response."); doLoadFailed(s, loadArg)
+    result.toChar match {
+      case '\n' | '\r' => retry
+      case 'r'         => retry
+      case 'q'         => s.exit(ok = false)
+      case 'i'         => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+      case 'l'         => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+      case _           => println("Invalid response."); doLoadFailed(s, loadArg)
     }
   }
 
