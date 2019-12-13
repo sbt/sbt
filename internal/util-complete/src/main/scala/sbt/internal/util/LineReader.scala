@@ -33,6 +33,11 @@ abstract class JLine extends LineReader {
         Option("")
     }
 
+  override def redraw(): Unit = {
+    reader.drawLine()
+    reader.flush()
+  }
+
   private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
     readLineWithHistory(prompt, mask) map { x =>
       x.trim
@@ -169,6 +174,7 @@ private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration)
 
 trait LineReader {
   def readLine(prompt: String, mask: Option[Char] = None): Option[String]
+  def redraw(): Unit = ()
 }
 
 final class FullReader(
