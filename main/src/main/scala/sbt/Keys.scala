@@ -327,6 +327,7 @@ object Keys {
   val dependencyClasspathAsJars = taskKey[Classpath]("The classpath consisting of internal and external, managed and unmanaged dependencies, all as JARs.")
   val fullClasspathAsJars = taskKey[Classpath]("The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies, all as JARs.")
   val internalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on")
+  val closeClassLoaders = settingKey[Boolean]("Close classloaders in run and test when the task completes.").withRank(DSetting)
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)

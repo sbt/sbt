@@ -36,8 +36,12 @@ import sbt.util.Logger;
  */
 final class ReverseLookupClassLoader extends ManagedClassLoader {
   ReverseLookupClassLoader(
-      final URL[] urls, final ClassLoader parent, final boolean allowZombies, final Logger logger) {
-    super(urls, parent, allowZombies, logger);
+      final URL[] urls,
+      final ClassLoader parent,
+      final boolean close,
+      final boolean allowZombies,
+      final Logger logger) {
+    super(urls, parent, close, allowZombies, logger);
     this.parent = parent;
   }
 
