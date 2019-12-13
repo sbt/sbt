@@ -32,9 +32,10 @@ final class BottomClassLoader extends ManagedClassLoader {
       final URL[] dynamicClasspath,
       final ReverseLookupClassLoader reverseLookupClassLoader,
       final File tempDir,
+      final boolean close,
       final boolean allowZombies,
       final Logger logger) {
-    super(dynamicClasspath, reverseLookupClassLoader, allowZombies, logger);
+    super(dynamicClasspath, reverseLookupClassLoader, close, allowZombies, logger);
     setTempDir(tempDir);
     this.holder = holder;
     this.parent = reverseLookupClassLoader;

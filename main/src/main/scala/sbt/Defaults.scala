@@ -205,7 +205,8 @@ object Defaults extends BuildCommon {
       bgStop := bgStopTask.evaluated,
       bgWaitFor := bgWaitForTask.evaluated,
       bgCopyClasspath :== true,
-      allowZombieClassLoaders :== !SysProp.closeClassLoaders,
+      closeClassLoaders :== SysProp.closeClassLoaders,
+      allowZombieClassLoaders :== true,
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =

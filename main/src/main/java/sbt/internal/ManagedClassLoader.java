@@ -20,6 +20,7 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
   private final AtomicBoolean closed = new AtomicBoolean(false);
   private final AtomicBoolean printedWarning = new AtomicBoolean(false);
   private final AtomicReference<ZombieClassLoader> zombieLoader = new AtomicReference<>();
+  private final boolean close;
   private final boolean allowZombies;
   private final Logger logger;
   private final NativeLookup nativeLookup = new NativeLookup();
@@ -29,8 +30,9 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
   }
 
   ManagedClassLoader(
-      final URL[] urls, final ClassLoader parent, final boolean allowZombies, final Logger logger) {
+      final URL[] urls, final ClassLoader parent, final boolean close, final boolean allowZombies, final Logger logger) {
     super(urls, parent);
+    this.close = close;
     this.allowZombies = allowZombies;
     this.logger = logger;
   }
@@ -103,8 +105,8 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
   @Override
   public void close() throws IOException {
     final ZombieClassLoader zb = zombieLoader.getAndSet(null);
-    if (zb != null) zb.close();
-    if (closed.compareAndSet(false, true)) super.close();
+    if (zb != null && close) zb.close();
+    if (close && closed.compareAndSet(false, true)) super.close();
   }
 
   @Override
