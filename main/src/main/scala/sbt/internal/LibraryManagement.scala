@@ -73,8 +73,8 @@ private[sbt] object LibraryManagement {
       !force &&
       !depsUpdated &&
       !inChanged &&
-      out.allFiles.forall(f => fileUptodate(f, out.stamps)) &&
-      fileUptodate(out.cachedDescriptor, out.stamps)
+      out.allFiles.forall(f => fileUptodate(f, out.stamps, log)) &&
+      fileUptodate(out.cachedDescriptor, out.stamps, log)
     }
 
     /* Skip resolve if last output exists, otherwise error. */
@@ -129,8 +129,19 @@ private[sbt] object LibraryManagement {
     handler((extraInputHash, settings, withoutClock))
   }
 
-  private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
-    stamps.get(file).forall(_ == IO.getModifiedTimeOrZero(file))
+  private[this] def fileUptodate(file: File, stamps: Map[File, Long], log: Logger): Boolean = {
+    val exists = file.exists
+    // https://github.com/sbt/sbt/issues/5292 warn the user that the file is missing since this indicates
+    // that UpdateReport was persisted but Coursier cache was not.
+    if (!exists) {
+      log.warn(s"${file.getName} no longer exists at $file")
+    }
+    // coursier doesn't populate stamps
+    val timeStampIsSame = stamps
+      .get(file)
+      .forall(_ == IO.getModifiedTimeOrZero(file))
+    exists && timeStampIsSame
+  }
 
   private[sbt] def transitiveScratch(
       lm: DependencyResolution,
