@@ -900,6 +900,9 @@ object BuiltinCommands {
       .getOpt(Keys.minForcegcInterval)
       .getOrElse(GCUtil.defaultMinForcegcInterval)
     val exec: Exec = exchange.blockUntilNextExec(minGCInterval, s1.globalLogging.full)
+    if (exec.source.fold(true)(_.channelName != "console0")) {
+      s1.log.info(s"Running remote command: ${exec.commandLine}")
+    }
     val newState = s1
       .copy(
         onFailure = Some(Exec(Shell, None)),
