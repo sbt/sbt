@@ -7,19 +7,18 @@
 
 package sbt
 
-import scala.reflect.Manifest
-import scala.collection.concurrent.TrieMap
+import java.lang.Integer.{ toHexString => hex }
+import java.lang.Thread.currentThread
 import java.lang.ref.WeakReference
-import Thread.currentThread
 import java.security.Permission
 import java.util.concurrent.{ ConcurrentHashMap => CMap }
-import java.lang.Integer.{ toHexString => hex }
 import java.util.function.Supplier
 
-import sbt.util.Logger
-import sbt.util.InterfaceUtil
-import sbt.internal.util.Util.{ AnyOps, none }
-import TrapExit._
+import sbt.TrapExit._
+import sbt.util.{ InterfaceUtil, Logger }
+
+import scala.collection.concurrent.TrieMap
+import scala.reflect.Manifest
 
 /**
  * Provides an approximation to isolated execution within a single JVM.
@@ -295,8 +294,8 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     private[this] def setExceptionHandler(t: Thread): Unit = {
       val group = t.getThreadGroup
       val previousHandler = t.getUncaughtExceptionHandler match {
-        case null | `group` | (_: LoggingExceptionHandler) => none[Thread.UncaughtExceptionHandler]
-        case x                                             => x.some // delegate to a custom handler only
+        case null | `group` | (_: LoggingExceptionHandler) => None
+        case x                                             => Some(x) // delegate to a custom handler only
       }
       t.setUncaughtExceptionHandler(new LoggingExceptionHandler(log, previousHandler))
     }

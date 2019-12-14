@@ -9,13 +9,12 @@ package sbt
 
 import java.io.File
 import java.lang.ProcessBuilder.Redirect
+import java.lang.{ ProcessBuilder => JProcessBuilder }
+
+import sbt.OutputStrategy._
+import sbt.internal.util.Util
 
 import scala.sys.process.Process
-import OutputStrategy._
-import sbt.internal.util.Util
-import Util.{ AnyOps, none }
-
-import java.lang.{ ProcessBuilder => JProcessBuilder }
 
 /**
  * Represents a command that can be forked.
@@ -73,9 +72,8 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       arguments: Seq[String]
   ): Seq[String] = {
     val boot =
-      if (bootJars.isEmpty) none[String]
-      else
-        ("-Xbootclasspath/a:" + bootJars.map(_.getAbsolutePath).mkString(File.pathSeparator)).some
+      if (bootJars.isEmpty) None
+      else Some("-Xbootclasspath/a:" + bootJars.map(_.getAbsolutePath).mkString(File.pathSeparator))
     jvmOptions ++ boot.toList ++ runnerClass.toList ++ arguments
   }
 }

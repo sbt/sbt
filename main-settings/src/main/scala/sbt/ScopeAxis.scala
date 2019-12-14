@@ -7,8 +7,6 @@
 
 package sbt
 
-import sbt.internal.util.Util._
-
 sealed trait ScopeAxis[+S] {
   def foldStrict[T](f: S => T, ifZero: T, ifThis: T): T = fold(f, ifZero, ifThis)
   def fold[T](f: S => T, ifZero: => T, ifThis: => T): T = this match {
@@ -16,7 +14,7 @@ sealed trait ScopeAxis[+S] {
     case Zero      => ifZero
     case Select(s) => f(s)
   }
-  def toOption: Option[S] = foldStrict(Option(_), none, none)
+  def toOption: Option[S] = foldStrict(Option(_), None, None)
   def map[T](f: S => T): ScopeAxis[T] =
     foldStrict(s => Select(f(s)): ScopeAxis[T], Zero: ScopeAxis[T], This: ScopeAxis[T])
   def isSelect: Boolean = false

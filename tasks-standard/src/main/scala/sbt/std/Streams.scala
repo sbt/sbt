@@ -13,7 +13,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.io.DeferredWriter
 import sbt.internal.util.ManagedLogger
-import sbt.internal.util.Util.{ nil }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.util._
@@ -142,7 +141,7 @@ object Streams {
   ): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
-      private[this] var opened: List[Closeable] = nil
+      private[this] var opened: List[Closeable] = Nil
       private[this] var closed = false
 
       def getInput(a: Key, sid: String = default): Input =

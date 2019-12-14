@@ -12,7 +12,6 @@ import java.util.concurrent.ExecutionException
 import sbt.internal.util.ErrorHandling.wideConvert
 import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
 import sbt.internal.util.Types._
-import sbt.internal.util.Util.nilSeq
 import Execute._
 
 import scala.annotation.tailrec
@@ -324,7 +323,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def runBefore(node: F[_]): Seq[F[_]] = getSeq(triggers.runBefore, node)
   def triggeredBy(node: F[_]): Seq[F[_]] = getSeq(triggers.injectFor, node)
   def getSeq(map: collection.Map[F[_], Seq[F[_]]], node: F[_]): Seq[F[_]] =
-    map.getOrElse(node, nilSeq[F[_]])
+    map.getOrElse(node, Seq.empty[F[_]])
 
   // Contracts
 

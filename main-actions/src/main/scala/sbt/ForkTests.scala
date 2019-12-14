@@ -18,7 +18,6 @@ import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
 import sbt.protocol.testing._
 import sbt.internal.util.ConsoleAppender
-import sbt.internal.util.Util.{ AnyOps, none }
 
 private[sbt] object ForkTests {
   def apply(
@@ -57,8 +56,8 @@ private[sbt] object ForkTests {
     std.TaskExtra.task {
       val server = new ServerSocket(0)
       val testListeners = opts.testListeners flatMap {
-        case tl: TestsListener => tl.some
-        case _                 => none[TestsListener]
+        case tl: TestsListener => Some(tl)
+        case _                 => None
       }
 
       object Acceptor extends Runnable {

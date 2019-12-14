@@ -15,7 +15,6 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util._
-import Util._
 import sbt.util.Show
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
@@ -173,9 +172,8 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   override def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] =
     super.deriveAllowed(s, allowDynamic) orElse
-      (if (s.key.scope != ThisScope)
-         s"Scope cannot be defined for ${definedSettingString(s)}".some
-       else none) orElse
+      (if (s.key.scope != ThisScope) Some(s"Scope cannot be defined for ${definedSettingString(s)}")
+       else None) orElse
       s.dependencies
         .find(k => k.scope != ThisScope)
         .map(

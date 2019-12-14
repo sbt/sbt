@@ -8,10 +8,9 @@
 package sbt
 
 import sbt.internal.inc.ReflectUtilities
-import sbt.internal.util.complete.{ DefaultParsers, EditDistance, Parser }
 import sbt.internal.util.Types.const
+import sbt.internal.util.complete.{ DefaultParsers, EditDistance, Parser }
 import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
-import sbt.internal.util.Util.{ nilSeq }
 
 /**
  * An operation that can be executed from the sbt console.
@@ -196,7 +195,7 @@ object Command {
     s"Not a valid $label: $value" + similar(value, allowed)
 
   def similar(value: String, allowed: Iterable[String]): String = {
-    val suggested = if (value.length > 2) suggestions(value, allowed.toSeq) else nilSeq
+    val suggested = if (value.length > 2) suggestions(value, allowed.toSeq) else Nil
     if (suggested.isEmpty) "" else suggested.mkString(" (similar: ", ", ", ")")
   }
 

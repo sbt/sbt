@@ -10,7 +10,6 @@ package sbt
 import java.net.URI
 
 import sbt.internal.util.{ AttributeKey, AttributeMap, Dag }
-import sbt.internal.util.Util._
 
 import sbt.io.IO
 
@@ -214,7 +213,7 @@ object Scope {
       val zeroConfig = if (showZeroConfig) "Zero /" else ""
       val configPrefix = config.foldStrict(display, zeroConfig, "./")
       val taskPrefix = task.foldStrict(_.label + " /", "", "./")
-      val extras = extra.foldStrict(_.entries.map(_.toString).toList, nil, nil)
+      val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
       val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
       if (scope == GlobalScope) "Global / " + sep + postfix
       else

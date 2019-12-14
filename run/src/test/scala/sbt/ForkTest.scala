@@ -7,15 +7,14 @@
 
 package sbt
 
-import org.scalacheck._
-import Prop.{ Exception => _, _ }
-import Gen.{ alphaNumChar, frequency, nonEmptyListOf }
 import java.io.File
 
+import org.scalacheck.Gen.{ alphaNumChar, frequency, nonEmptyListOf }
+import org.scalacheck.Prop.{ Exception => _, _ }
+import org.scalacheck._
+import sbt.OutputStrategy._
 import sbt.internal.TestLogger
 import sbt.io.{ IO, Path }
-import OutputStrategy._
-import sbt.internal.util.Util._
 
 object ForkTest extends Properties("Fork") {
 
@@ -26,7 +25,7 @@ object ForkTest extends Properties("Fork") {
    */
   final val MaximumClasspathLength = 100000
 
-  lazy val genOptionName = frequency((9, "-cp".some), (9, "-classpath".some), (1, none))
+  lazy val genOptionName = frequency((9, Some("-cp")), (9, Some("-classpath")), (1, None))
   lazy val pathElement = nonEmptyListOf(alphaNumChar).map(_.mkString)
   lazy val path = nonEmptyListOf(pathElement).map(_.mkString(File.separator))
   lazy val genRelClasspath = nonEmptyListOf(path)

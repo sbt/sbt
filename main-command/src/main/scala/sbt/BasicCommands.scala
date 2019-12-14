@@ -7,32 +7,31 @@
 
 package sbt
 
-import sbt.util.Level
-import sbt.internal.util.{ AttributeKey, FullReader }
+import java.io.File
+
+import sbt.BasicCommandStrings._
+import sbt.BasicKeys._
+import sbt.Command.applyEffect
+import sbt.CommandUtil._
+import sbt.internal.client.NetworkClient
+import sbt.internal.inc.ModuleUtilities
+import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
+import sbt.internal.util.Types.{ const, idFun }
+import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{
   Completion,
   Completions,
   DefaultParsers,
-  History => CHistory,
   HistoryCommands,
   Parser,
-  TokenCompletions
+  TokenCompletions,
+  History => CHistory
 }
-import sbt.internal.util.Types.{ const, idFun }
-import sbt.internal.util.Util.{ AnyOps, nil, nilSeq, none }
-import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
-import sbt.internal.inc.ModuleUtilities
-import sbt.internal.client.NetworkClient
-import DefaultParsers._
-import Function.tupled
-import Command.applyEffect
-import BasicCommandStrings._
-import CommandUtil._
-import BasicKeys._
-
-import java.io.File
+import sbt.internal.util.{ AttributeKey, FullReader }
 import sbt.io.IO
+import sbt.util.Level
 
+import scala.Function.tupled
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 
@@ -120,12 +119,12 @@ object BasicCommands {
 
     val (extraArgs, remainingCommands) = s.remainingCommands match {
       case xs :+ exec if exec.commandLine == "shell" => (xs, exec :: Nil)
-      case xs                                        => (xs, nil[Exec])
+      case xs                                        => (xs, Nil)
     }
 
-    val topic = (arg.toList ++ extraArgs.map(_.commandLine)) match {
-      case Nil => none[String]
-      case xs  => xs.mkString(" ").some
+    val topic = arg.toList ++ extraArgs.map(_.commandLine) match {
+      case Nil => None
+      case xs  => Some(xs.mkString(" "))
     }
     val message = try Help.message(h, topic)
     catch { case NonFatal(ex) => ex.toString }
@@ -246,7 +245,7 @@ object BasicCommands {
               val commandArgs =
                 (first.drop(commandName.length).trim :: Nil ::: tail).mkString(";")
               parse(commandArgs, command.parser(state)).toOption
-            case _ => none[() => State]
+            case _ => None
           }
         }.headOption match {
           case Some(s) => s()
@@ -288,7 +287,7 @@ object BasicCommands {
     )
 
   def popOnFailure: Command = Command.command(PopOnFailure) { s =>
-    val stack = s.get(OnFailureStack).getOrElse(nil)
+    val stack = s.get(OnFailureStack).getOrElse(Nil)
     val updated =
       if (stack.isEmpty) s.remove(OnFailureStack) else s.put(OnFailureStack, stack.tail)
     updated.copy(onFailure = stack.headOption.flatten)
@@ -325,7 +324,7 @@ object BasicCommands {
     }
 
   def callParser: Parser[(Seq[String], Seq[String])] =
-    token(Space) ~> ((classpathOptionParser ?? nilSeq) ~ rep1sep(className, token(Space)))
+    token(Space) ~> ((classpathOptionParser ?? Nil) ~ rep1sep(className, token(Space)))
 
   private[this] def className: Parser[String] = {
     val base = StringBasic & not('-' ~> any.*, "Class name cannot start with '-'.")
@@ -369,8 +368,8 @@ object BasicCommands {
     }
 
   def oldshell: Command = Command.command(OldShell, Help.more(Shell, OldShellDetailed)) { s =>
-    val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
-    val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
+    val history = s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
+    val prompt = s.get(shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
     val reader = new FullReader(history, s.combinedParser)
     val line = reader.readLine(prompt)
     line match {
@@ -390,12 +389,12 @@ object BasicCommands {
     Command(Client, Help.more(Client, ClientDetailed))(_ => clientParser)(runClient)
 
   def clientParser: Parser[Seq[String]] =
-    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => nilSeq))
+    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
 
   def runClient(s0: State, inputArg: Seq[String]): State = {
     val arguments = inputArg.toList ++
       (s0.remainingCommands match {
-        case e :: Nil if e.commandLine == "shell" => nil
+        case e :: Nil if e.commandLine == "shell" => Nil
         case xs                                   => xs map (_.commandLine)
       })
     NetworkClient.run(s0.configuration, arguments)

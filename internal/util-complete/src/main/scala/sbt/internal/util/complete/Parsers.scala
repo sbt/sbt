@@ -8,21 +8,13 @@
 package sbt.internal.util
 package complete
 
-import Parser._
 import java.io.File
+import java.lang.Character._
 import java.net.URI
-import java.lang.Character.{
-  CURRENCY_SYMBOL,
-  DASH_PUNCTUATION,
-  MATH_SYMBOL,
-  MODIFIER_SYMBOL,
-  OTHER_PUNCTUATION,
-  OTHER_SYMBOL,
-  getType
-}
+
+import sbt.internal.util.complete.Parser._
 
 import scala.annotation.tailrec
-import sbt.internal.util.Util.nilSeq
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers {
@@ -275,7 +267,7 @@ trait Parsers {
    * The result is the (possibly empty) sequence of results from the multiple `rep` applications.  The `sep` results are discarded.
    */
   def repsep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
-    rep1sep(rep, sep) ?? nilSeq[T]
+    rep1sep(rep, sep) ?? Seq.empty[T]
 
   /**
    * Applies `rep` one or more times, separated by `sep`.

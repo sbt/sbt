@@ -7,11 +7,10 @@
 
 package sbt.internal.util
 
-import scala.language.existentials
-
-import Types._
+import sbt.internal.util.Types._
 import sbt.util.Show
-import Util.{ nil, nilSeq }
+
+import scala.language.existentials
 
 sealed trait Settings[ScopeType] {
   def data: Map[ScopeType, AttributeMap]
@@ -385,13 +384,13 @@ trait Init[ScopeType] {
     val locals = compiled flatMap {
       case (key, comp) =>
         if (key.key.isLocal) Seq(comp)
-        else nilSeq[Compiled[_]]
+        else Seq.empty[Compiled[_]]
     }
     val ordered = Dag.topologicalSort(locals)(
       _.dependencies.flatMap(
         dep =>
           if (dep.key.isLocal) Seq[Compiled[_]](compiled(dep))
-          else nilSeq[Compiled[_]]
+          else Seq.empty[Compiled[_]]
       )
     )
     def flatten(
@@ -414,7 +413,7 @@ trait Init[ScopeType] {
 
     compiled flatMap {
       case (key, comp) =>
-        if (key.key.isLocal) nilSeq[(ScopedKey[_], Flattened)]
+        if (key.key.isLocal) Seq.empty[(ScopedKey[_], Flattened)]
         else
           Seq[(ScopedKey[_], Flattened)]((key, flatten(flattenedLocals, key, comp.dependencies)))
     }
@@ -522,9 +521,8 @@ trait Init[ScopeType] {
               val out = local :+ d.setting.setScope(s)
               d.outputs ++= out
               out
-            } else
-              nilSeq
-        } getOrElse nilSeq
+            } else Nil
+        } getOrElse Nil
       }
       derivedForKey.flatMap(localAndDerived)
     }
@@ -535,7 +533,7 @@ trait Init[ScopeType] {
     def process(rem: List[Setting[_]]): Unit = rem match {
       case s :: ss =>
         val sk = s.key
-        val ds = if (processed.add(sk)) deriveFor(sk) else nil
+        val ds = if (processed.add(sk)) deriveFor(sk) else Nil
         addDefs(ds)
         process(ds ::: ss)
       case Nil =>
@@ -547,7 +545,7 @@ trait Init[ScopeType] {
     val allDefs = addLocal(init)(scopeLocal)
     allDefs.flatMap {
       case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toSeq.flatten
-      case s                    => s :: nil
+      case s                    => s :: Nil
     }
   }
 
