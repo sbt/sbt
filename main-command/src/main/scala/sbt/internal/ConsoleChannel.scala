@@ -8,12 +8,14 @@
 package sbt
 package internal
 
-import sbt.internal.util._
-import BasicKeys._
 import java.io.File
+import java.nio.channels.ClosedChannelException
+
+import sbt.BasicKeys._
+import sbt.internal.util.Util.AnyOps
+import sbt.internal.util._
 import sbt.protocol.EventMessage
 import sjsonnew.JsonFormat
-import Util.AnyOps
 
 private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {
   private var askUserThread: Option[Thread] = None
@@ -23,13 +25,19 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
       case Some(pf) => pf(s)
       case None     => "> "
     }
-    val reader = new FullReader(history, s.combinedParser, JLine.HandleCONT, true)
+    val reader =
+      new FullReader(history, s.combinedParser, JLine.HandleCONT, Terminal.throwOnClosedSystemIn)
     override def run(): Unit = {
       // This internally handles thread interruption and returns Some("")
-      val line = reader.readLine(prompt)
-      line match {
-        case Some(cmd) => append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
-        case None      => append(Exec("exit", Some(Exec.newExecId), Some(CommandSource(name))))
+      try {
+        reader.readLine(prompt) match {
+          case Some(cmd) => append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
+          case None =>
+            println("") // Prevents server shutdown log lines from appearing on the prompt line
+            append(Exec("exit", Some(Exec.newExecId), Some(CommandSource(name))))
+        }
+      } catch {
+        case _: ClosedChannelException =>
       }
       askUserThread = None
     }

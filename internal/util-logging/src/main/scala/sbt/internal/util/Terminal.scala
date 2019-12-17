@@ -8,6 +8,7 @@
 package sbt.internal.util
 
 import java.io.{ InputStream, OutputStream }
+import java.nio.channels.ClosedChannelException
 import java.util.Locale
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.locks.ReentrantLock
@@ -53,6 +54,18 @@ object Terminal {
    * @return true if System.in is attached.
    */
   def systemInIsAttached: Boolean = attached.get
+
+  /**
+   * Returns an InputStream that will throw a [[ClosedChannelException]] if read returns -1.
+   * @return the wrapped InputStream.
+   */
+  private[sbt] def throwOnClosedSystemIn: InputStream = new InputStream {
+    override def available(): Int = WrappedSystemIn.available()
+    override def read(): Int = WrappedSystemIn.read() match {
+      case -1 => throw new ClosedChannelException
+      case r  => r
+    }
+  }
 
   /**
    * Provides a wrapper around System.in. The wrapped stream in will check if the terminal is attached

@@ -94,6 +94,7 @@ private[sbt] object JLine {
   @deprecated("Handled by Terminal.fixTerminalProperty", "1.4.0")
   private[sbt] def fixTerminalProperty(): Unit = ()
 
+  @deprecated("For binary compatibility only", "1.4.0")
   private[sbt] def makeInputStream(injectThreadSleep: Boolean): InputStream =
     if (injectThreadSleep) new InputStreamWrapper(originalIn, 2.milliseconds)
     else originalIn
@@ -176,6 +177,7 @@ final class FullReader(
     val handleCONT: Boolean,
     inputStream: InputStream,
 ) extends JLine {
+  @deprecated("Use the constructor with no injectThreadSleep parameter", "1.4.0")
   def this(
       historyPath: Option[File],
       complete: Parser[_],
