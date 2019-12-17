@@ -7,6 +7,7 @@
 
 package sbt
 
+import sbt.internal.util.ConsoleAppender
 import sbt.internal.util.Util.{ AnyOps, none }
 
 object SelectMainClass {
@@ -19,12 +20,14 @@ object SelectMainClass {
       case Nil         => None
       case head :: Nil => Some(head)
       case multiple =>
-        promptIfMultipleChoices flatMap { prompt =>
-          println("\nMultiple main classes detected, select one to run:\n")
-          for ((className, index) <- multiple.zipWithIndex)
-            println(" [" + (index + 1) + "] " + className)
+        promptIfMultipleChoices.flatMap { prompt =>
+          val header = "\nMultiple main classes detected. Select one to run:\n"
+          val classes = multiple.zipWithIndex
+            .map { case (className, index) => s" [${index + 1}] $className" }
+            .mkString("\n")
+          println(ConsoleAppender.clearScreen(0) + header + classes)
+
           val line = trim(prompt("\nEnter number: "))
-          println("")
           toInt(line, multiple.length) map multiple.apply
         }
     }

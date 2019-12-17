@@ -716,7 +716,15 @@ object Defaults extends BuildCommon {
     forkOptions := forkOptionsTask.value,
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
-    mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
+    mainClass := {
+      val logWarning = state.value.currentCommand
+        .flatMap(_.commandLine.split(" ").headOption.map(_.trim))
+        .fold(true) {
+          case "run" | "runMain" => false
+          case _                 => true
+        }
+      pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log, logWarning)
+    },
     runMain := foregroundRunMainTask.evaluated,
     run := foregroundRunTask.evaluated,
     fgRun := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
@@ -1483,12 +1491,16 @@ object Defaults extends BuildCommon {
   def pickMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(None, classes)
 
-  private def pickMainClassOrWarn(classes: Seq[String], logger: Logger): Option[String] = {
+  private def pickMainClassOrWarn(
+      classes: Seq[String],
+      logger: Logger,
+      logWarning: Boolean
+  ): Option[String] = {
     classes match {
-      case multiple if multiple.size > 1 =>
-        logger.warn(
-          "Multiple main classes detected.  Run 'show discoveredMainClasses' to see the list"
-        )
+      case multiple if multiple.size > 1 && logWarning =>
+        val msg =
+          "Multiple main classes detected. Run 'show discoveredMainClasses' to see the list."
+        logger.warn(msg)
       case _ =>
     }
     pickMainClass(classes)
