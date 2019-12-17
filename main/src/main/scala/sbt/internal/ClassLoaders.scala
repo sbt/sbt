@@ -161,25 +161,10 @@ private[sbt] object ClassLoaders {
         val cpFiles = fullCP.map(_._1)
 
         val allDependencies = cpFiles.filter(allDependenciesSet)
-        /*
-         * We need to put scalatest and its dependencies (scala-xml) in its own layer so that the
-         * classloader for scalatest is generally not ever closed. This is because one project
-         * closing its scalatest loader can cause a crash in another project if that project
-         * is reading the scalatest bundle properties because the underlying JarFile instance is
-         * shared across URLClassLoaders if it points to the same jar.
-         *
-         * TODO: Make this configurable and/or add other frameworks in this layer.
-         */
-        val (frameworkDependencies, otherDependencies) = allDependencies.partition { d =>
-          val name = d.getName
-          name.startsWith("scalatest_") || name.startsWith("scalactic_") ||
-          name.startsWith("scala-xml_")
-        }
-        def isReflectJar(f: File) =
-          f.getName == "scala-reflect.jar" || f.getName.startsWith("scala-reflect-")
-        val scalaReflectJar = otherDependencies.collectFirst {
-          case f if isReflectJar(f) => si.allJars.find(isReflectJar).getOrElse(f)
-        }
+        val scalaReflectJar = allDependencies.collectFirst {
+          case f if f.getName == "scala-reflect.jar" =>
+            si.allJars.find(_.getName == "scala-reflect.jar")
+        }.flatten
         val scalaReflectLayer = scalaReflectJar
           .map { file =>
             cache.apply(
@@ -190,46 +175,35 @@ private[sbt] object ClassLoaders {
           }
           .getOrElse(scalaLibraryLayer)
 
-        // layer 2 framework jars
-        val frameworkLayer =
-          if (frameworkDependencies.isEmpty) scalaReflectLayer
-          else {
-            cache.apply(
-              frameworkDependencies.map(file => file -> IO.getModifiedTimeOrZero(file)).toList,
-              scalaLibraryLayer,
-              () => new ScalaTestFrameworkClassLoader(frameworkDependencies.urls, scalaReflectLayer)
-            )
-          }
-
-        // layer 3 (optional if in the test config and the runtime layer is not shared)
+        // layer 2 (optional if in the test config and the runtime layer is not shared)
         val dependencyLayer: ClassLoader =
-          if (layerDependencies && otherDependencies.nonEmpty) {
+          if (layerDependencies && allDependencies.nonEmpty) {
             cache(
-              otherDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
-              frameworkLayer,
+              allDependencies.toList.map(f => f -> IO.getModifiedTimeOrZero(f)),
+              scalaReflectLayer,
               () =>
                 new ReverseLookupClassLoaderHolder(
-                  otherDependencies,
-                  frameworkLayer,
+                  allDependencies,
+                  scalaReflectLayer,
                   close,
                   allowZombies,
                   logger
                 )
             )
-          } else frameworkLayer
+          } else scalaReflectLayer
 
         val scalaJarNames = (si.libraryJars ++ scalaReflectJar).map(_.getName).toSet
         // layer 3
         val filteredSet =
           if (layerDependencies) allDependencies.toSet ++ si.libraryJars ++ scalaReflectJar
-          else Set(frameworkDependencies ++ si.libraryJars ++ scalaReflectJar: _*)
+          else Set(si.libraryJars ++ scalaReflectJar: _*)
         val dynamicClasspath = cpFiles.filterNot(f => filteredSet(f) || scalaJarNames(f.getName))
         dependencyLayer match {
           case dl: ReverseLookupClassLoaderHolder =>
-            dl.checkout(dynamicClasspath, tmp)
+            dl.checkout(cpFiles, tmp)
           case cl =>
             cl.getParent match {
-              case dl: ReverseLookupClassLoaderHolder => dl.checkout(dynamicClasspath, tmp)
+              case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
               case _ =>
                 new LayeredClassLoader(dynamicClasspath.urls, cl, tmp, close, allowZombies, logger)
             }
