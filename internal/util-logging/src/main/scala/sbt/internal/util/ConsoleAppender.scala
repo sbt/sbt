@@ -18,6 +18,8 @@ import org.apache.logging.log4j.{ Level => XLevel }
 import sbt.internal.util.ConsoleAppender._
 import sbt.util._
 
+import scala.collection.mutable.ArrayBuffer
+
 object ConsoleLogger {
   // These are provided so other modules do not break immediately.
   @deprecated("Use EscHelpers.ESC instead", "0.13.x")
@@ -103,12 +105,15 @@ class ConsoleLogger private[ConsoleLogger] (
 }
 
 object ConsoleAppender {
+  private[sbt] def cursorLeft(n: Int): String = s"\u001B[${n}D"
+  private[sbt] def cursorRight(n: Int): String = s"\u001B[${n}C"
   private[sbt] def cursorUp(n: Int): String = s"\u001B[${n}A"
   private[sbt] def cursorDown(n: Int): String = s"\u001B[${n}B"
   private[sbt] def scrollUp(n: Int): String = s"\u001B[${n}S"
   private[sbt] def clearScreen(n: Int): String = s"\u001B[${n}J"
+  private[sbt] def clearLine(n: Int): String = s"\u001B[${n}K"
   private[sbt] final val DeleteLine = "\u001B[2K"
-  private[sbt] final val CursorLeft1000 = "\u001B[1000D"
+  private[sbt] final val CursorLeft1000 = cursorLeft(1000)
   private[sbt] final val CursorDown1 = cursorDown(1)
   private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
   def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
@@ -313,77 +318,6 @@ class ConsoleAppender private[ConsoleAppender] (
 ) extends AbstractAppender(name, null, LogExchange.dummyLayout, true, Array.empty) {
   import scala.Console.{ BLUE, GREEN, RED, YELLOW }
 
-  private val progressState: AtomicReference[ProgressState] = new AtomicReference(null)
-  private[sbt] def setProgressState(state: ProgressState) = progressState.set(state)
-
-  /**
-   * Splits a log message into individual lines and interlaces each line with
-   * the task progress report to reduce the appearance of flickering. It is assumed
-   * that this method is only called while holding the out.lockObject.
-   */
-  private def supershellInterlaceMsg(msg: String): Unit = {
-    val state = progressState.get
-    import state._
-    val progress = progressLines.get
-    msg.linesIterator.foreach { l =>
-      out.println(s"$DeleteLine$l")
-      if (progress.length > 0) {
-        val pad = if (padding.get > 0) padding.decrementAndGet() else 0
-        val width = Terminal.getWidth
-        val len: Int = progress.foldLeft(progress.length)(_ + terminalLines(width)(_))
-        deleteConsoleLines(blankZone + pad)
-        progress.foreach(printProgressLine)
-        out.print(cursorUp(blankZone + len + padding.get))
-      }
-    }
-    out.flush()
-  }
-
-  private def printProgressLine(line: String): Unit = {
-    out.print(DeleteLine)
-    out.println(line)
-  }
-
-  /**
-   * Receives a new task report and replaces the old one. In the event that the new
-   * report has fewer lines than the previous report, padding lines are added on top
-   * so that the console log lines remain contiguous. When a console line is printed
-   * at the info or greater level, we can decrement the padding because the console
-   * line will have filled in the blank line.
-   */
-  private def updateProgressState(pe: ProgressEvent): Unit = {
-    val state = progressState.get
-    import state._
-    val sorted = pe.items.sortBy(x => x.elapsedMicros)
-    val info = sorted map { item =>
-      val elapsed = item.elapsedMicros / 1000000L
-      s"  | => ${item.name} ${elapsed}s"
-    }
-
-    val width = Terminal.getWidth
-    val currentLength = info.foldLeft(info.length)(_ + terminalLines(width)(_))
-    val previousLines = progressLines.getAndSet(info)
-    val prevLength = previousLines.foldLeft(previousLines.length)(_ + terminalLines(width)(_))
-
-    val prevPadding = padding.get
-    val newPadding = math.max(0, prevLength + prevPadding - currentLength)
-    padding.set(newPadding)
-
-    deleteConsoleLines(newPadding)
-    deleteConsoleLines(blankZone)
-    info.foreach(printProgressLine)
-
-    out.print(cursorUp(blankZone + currentLength + newPadding))
-    out.flush()
-  }
-  private def terminalLines(width: Int): String => Int =
-    (progressLine: String) => if (width > 0) (progressLine.length - 1) / width else 0
-  private def deleteConsoleLines(n: Int): Unit = {
-    (1 to n) foreach { _ =>
-      out.println(DeleteLine)
-    }
-  }
-
   private val reset: String = {
     if (ansiCodesSupported && useFormat) scala.Console.RESET
     else ""
@@ -514,11 +448,7 @@ class ConsoleAppender private[ConsoleAppender] (
   private def write(msg: String): Unit = {
     val toWrite =
       if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg) else msg
-    if (progressState.get != null) {
-      supershellInterlaceMsg(toWrite)
-    } else {
-      out.println(toWrite)
-    }
+    out.println(toWrite)
   }
 
   private def appendMessage(level: Level.Value, msg: Message): Unit =
@@ -548,18 +478,16 @@ class ConsoleAppender private[ConsoleAppender] (
     }
   }
 
-  private def appendProgressEvent(pe: ProgressEvent): Unit =
-    if (progressState.get != null) {
-      out.lockObject.synchronized(updateProgressState(pe))
-    }
-
   private def appendMessageContent(level: Level.Value, o: AnyRef): Unit = {
     def appendEvent(oe: ObjectEvent[_]): Unit = {
       val contentType = oe.contentType
       contentType match {
         case "sbt.internal.util.TraceEvent" => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
         case "sbt.internal.util.ProgressEvent" =>
-          appendProgressEvent(oe.message.asInstanceOf[ProgressEvent])
+          oe.message match {
+            case pe: ProgressEvent => ProgressState.updateProgressState(pe)
+            case _                 =>
+          }
         case _ =>
           LogExchange.stringCodec[AnyRef](contentType) match {
             case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
@@ -586,11 +514,106 @@ final class SuppressedTraceContext(val traceLevel: Int, val useFormat: Boolean)
 private[sbt] final class ProgressState(
     val progressLines: AtomicReference[Seq[String]],
     val padding: AtomicInteger,
-    val blankZone: Int
+    val blankZone: Int,
+    val currentLineBytes: AtomicReference[ArrayBuffer[Byte]],
 ) {
-  def this(blankZone: Int) = this(new AtomicReference(Nil), new AtomicInteger(0), blankZone)
+  def this(blankZone: Int) =
+    this(
+      new AtomicReference(Nil),
+      new AtomicInteger(0),
+      blankZone,
+      new AtomicReference(new ArrayBuffer[Byte])
+    )
   def reset(): Unit = {
     progressLines.set(Nil)
     padding.set(0)
   }
+}
+private[sbt] object ProgressState {
+  private val progressState: AtomicReference[ProgressState] = new AtomicReference(null)
+  private[util] def clearBytes(): Unit = progressState.get match {
+    case null =>
+    case state =>
+      val pad = state.padding.get
+      if (state.currentLineBytes.get.isEmpty && pad > 0) state.padding.decrementAndGet()
+      state.currentLineBytes.set(new ArrayBuffer[Byte])
+  }
+
+  private[util] def addBytes(bytes: ArrayBuffer[Byte]): Unit = progressState.get match {
+    case null =>
+    case state =>
+      val previous = state.currentLineBytes.get
+      val padding = state.padding.get
+      val prevLineCount = if (padding > 0) Terminal.lineCount(new String(previous.toArray)) else 0
+      previous ++= bytes
+      if (padding > 0) {
+        val newLineCount = Terminal.lineCount(new String(previous.toArray))
+        val diff = newLineCount - prevLineCount
+        state.padding.set(math.max(padding - diff, 0))
+      }
+  }
+
+  private[util] def reprint(printStream: PrintStream): Unit = progressState.get match {
+    case null => printStream.write('\n')
+    case state =>
+      if (state.progressLines.get.nonEmpty) {
+        val lines = printProgress(0, 0)
+        printStream.print(ConsoleAppender.clearScreen(0) + "\n" + lines)
+      } else printStream.write('\n')
+  }
+
+  /**
+   * Receives a new task report and replaces the old one. In the event that the new
+   * report has fewer lines than the previous report, padding lines are added on top
+   * so that the console log lines remain contiguous. When a console line is printed
+   * at the info or greater level, we can decrement the padding because the console
+   * line will have filled in the blank line.
+   */
+  private[util] def updateProgressState(pe: ProgressEvent): Unit = Terminal.withPrintStream { ps =>
+    progressState.get match {
+      case null =>
+      case state =>
+        val info = pe.items.map { item =>
+          val elapsed = item.elapsedMicros / 1000000L
+          s"  | => ${item.name} ${elapsed}s"
+        }
+
+        val currentLength = info.foldLeft(0)(_ + Terminal.lineCount(_))
+        val previousLines = state.progressLines.getAndSet(info)
+        val prevLength = previousLines.foldLeft(0)(_ + Terminal.lineCount(_))
+
+        val (height, width) = Terminal.getLineHeightAndWidth
+        val prevSize = prevLength + state.padding.get
+
+        val newPadding = math.max(0, prevSize - currentLength)
+        state.padding.set(newPadding)
+        ps.print(printProgress(height, width))
+        ps.flush()
+    }
+  }
+
+  private[sbt] def set(state: ProgressState): Unit = progressState.set(state)
+
+  private[util] def printProgress(height: Int, width: Int): String = progressState.get match {
+    case null => ""
+    case state =>
+      val previousLines = state.progressLines.get
+      if (previousLines.nonEmpty) {
+        val currentLength = previousLines.foldLeft(0)(_ + Terminal.lineCount(_))
+        val left = cursorLeft(1000) // resets the position to the left
+        val offset = width > 0
+        val pad = math.max(state.padding.get - height, 0)
+        val start = clearScreen(0) + (if (offset) "\n" else "")
+        val totalSize = currentLength + state.blankZone + pad
+        val blank = left + s"\n$DeleteLine" * (totalSize - currentLength)
+        val lines = previousLines.mkString(DeleteLine, s"\n$DeleteLine", s"\n$DeleteLine")
+        val resetCursorUp = cursorUp(totalSize + (if (offset) 1 else 0))
+        val resetCursorRight = left + (if (offset) cursorRight(width) else "")
+        val resetCursor = resetCursorUp + resetCursorRight
+        start + blank + lines + resetCursor
+      } else {
+        clearScreen(0)
+      }
+  }
+
 }

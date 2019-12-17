@@ -50,21 +50,20 @@ private[sbt] object xMain {
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments.map(_.trim)
-      if (clientModByEnv || (userCommands.exists { cmd =>
-            (cmd == DashClient) || (cmd == DashDashClient)
-          })) {
-        val args = userCommands.toList filterNot { cmd =>
-          (cmd == DashClient) || (cmd == DashDashClient)
+      val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
+      Terminal.withStreams {
+        if (clientModByEnv || userCommands.exists(isClient)) {
+          val args = userCommands.toList.filterNot(isClient)
+          NetworkClient.run(configuration, args)
+          Exit(0)
+        } else {
+          val state = StandardMain.initialState(
+            configuration,
+            Seq(defaults, early),
+            runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+          )
+          StandardMain.runManaged(state)
         }
-        NetworkClient.run(configuration, args)
-        Exit(0)
-      } else {
-        val state = StandardMain.initialState(
-          configuration,
-          Seq(defaults, early),
-          runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-        )
-        StandardMain.runManaged(state)
       }
     } finally {
       ShutdownHooks.close()
