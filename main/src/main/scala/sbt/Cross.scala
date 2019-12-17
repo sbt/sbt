@@ -183,7 +183,7 @@ object Cross {
                     val parts = project(k).map(_.project) ++ k.scope.config.toOption.map {
                       case ConfigKey(n) => n.head.toUpper + n.tail
                     } ++ k.scope.task.toOption.map(_.label) ++ Some(k.key.label)
-                    Some(v -> parts.mkString("", " / ", fullArgs))
+                    Some(v -> parts.mkString("", "/", fullArgs))
                   } else None
                 }
               }
