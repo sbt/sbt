@@ -244,7 +244,8 @@ final class ScriptedTests(
         LauncherBased // there is an issue with jansi and coursier
       case "watch/commands" =>
         LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
-      case "watch/managed" => LauncherBased // sbt/Package$
+      case "watch/managed"   => LauncherBased // sbt/Package$
+      case "tests/scalatest" => LauncherBased
       case "tests/test-cross" =>
         LauncherBased // the sbt metabuild classpath leaks into the test interface classloader in older versions of sbt
       case _ => RunFromSourceBased
