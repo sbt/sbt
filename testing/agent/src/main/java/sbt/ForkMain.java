@@ -117,20 +117,25 @@ final public class ForkMain {
 	// ----------------------------------------------------------------------------------------------------------------
 
 	public static void main(final String[] args) throws Exception {
+		ClassLoader classLoader = new Run().getClass().getClassLoader();
+		try {
+			main(args, classLoader);
+		} finally {
+			System.exit(0);
+		}
+  }
+
+	public static void main(final String[] args, ClassLoader classLoader) throws Exception {
 		final Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
 		final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
 		final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
 		// Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
 		os.flush();
 		try {
-			new Run().run(is, os);
+			new Run().run(is, os, classLoader);
 		} finally {
-			try {
-				is.close();
-				os.close();
-			} finally {
-				System.exit(0);
-			}
+			is.close();
+			os.close();
 		}
 	}
 
@@ -139,9 +144,9 @@ final public class ForkMain {
 
 	final private static class Run {
 
-		private void run(final ObjectInputStream is, final ObjectOutputStream os) {
+		private void run(final ObjectInputStream is, final ObjectOutputStream os, ClassLoader classLoader) {
 			try {
-				runTests(is, os);
+				runTests(is, os, classLoader);
 			} catch (final RunAborted e) {
 				internalError(e);
 			} catch (final Throwable t) {
@@ -217,7 +222,7 @@ final public class ForkMain {
 			}
 		}
 
-		private void runTests(final ObjectInputStream is, final ObjectOutputStream os) throws Exception {
+		private void runTests(final ObjectInputStream is, final ObjectOutputStream os, ClassLoader classLoader) throws Exception {
 			final ForkConfiguration config = (ForkConfiguration) is.readObject();
 			final ExecutorService executor = executorService(config, os);
 			final TaskDef[] tests = (TaskDef[]) is.readObject();
@@ -254,7 +259,7 @@ final public class ForkMain {
 							filteredTests.add(new TaskDef(test.fullyQualifiedName(), test.fingerprint(), test.explicitlySpecified(), test.selectors()));
 					}
 				}
-				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
+				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, classLoader);
 				final Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
 				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 
