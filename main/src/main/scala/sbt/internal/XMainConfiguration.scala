@@ -9,7 +9,7 @@ package sbt.internal
 
 import java.io.File
 import java.lang.reflect.InvocationTargetException
-import java.net.URL
+import java.net.{ URL, URLClassLoader }
 import java.util.concurrent.{ ExecutorService, Executors }
 import ClassLoaderClose.close
 
@@ -58,10 +58,21 @@ private[internal] object ClassLoaderWarmup {
  */
 private[sbt] class XMainConfiguration {
   def run(moduleName: String, configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     val updatedConfiguration =
-      if (configuration.provider.scalaProvider.launcher.topLoader.getClass.getCanonicalName
-            .contains("TestInterfaceLoader")) {
-        configuration
+      if (topLoader.getClass.getCanonicalName.contains("TestInterfaceLoader")) {
+        topLoader match {
+          case u: URLClassLoader =>
+            val urls = u.getURLs
+            var i = 0
+            while (i < urls.length && i >= 0) {
+              if (urls(i).toString.contains("jline")) i = -2
+              else i += 1
+            }
+            if (i < 0) configuration
+            else makeConfiguration(configuration)
+          case _ => configuration
+        }
       } else {
         makeConfiguration(configuration)
       }

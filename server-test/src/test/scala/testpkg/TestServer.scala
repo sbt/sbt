@@ -8,6 +8,7 @@
 package testpkg
 
 import java.io.{ File, IOException }
+import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 
 import verify._
@@ -26,6 +27,7 @@ trait AbstractServerTest extends TestSuite[Unit] {
   private var temp: File = _
   var svr: TestServer = _
   def testDirectory: String
+  def testPath: Path = temp.toPath.resolve(testDirectory)
 
   private val targetDir: File = {
     val p0 = new File("..").getAbsoluteFile.getCanonicalFile / "target"
@@ -224,7 +226,7 @@ case class TestServer(
   def bye(): Unit = {
     hostLog("sending exit")
     sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }"""
+      """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "shutdown" } }"""
     )
     val deadline = 10.seconds.fromNow
     while (!deadline.isOverdue && process.isAlive) {

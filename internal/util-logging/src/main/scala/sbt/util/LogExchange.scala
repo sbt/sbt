@@ -49,7 +49,7 @@ sealed abstract class LogExchange {
     config.addLogger(name, loggerConfig)
     ctx.updateLoggers
     val logger = ctx.getLogger(name)
-    new ManagedLogger(name, channelName, execId, logger)
+    new ManagedLogger(name, channelName, execId, logger, Some(Terminal.get))
   }
   def unbindLoggerAppenders(loggerName: String): Unit = {
     val lc = loggerConfig(loggerName)

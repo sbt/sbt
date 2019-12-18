@@ -19,6 +19,7 @@ import Keys.{
   historyPath,
   projectCommand,
   sessionSettings,
+  terminalShellPrompt,
   shellPrompt,
   templateResolverInfos,
   autoStartServer,
@@ -508,6 +509,7 @@ object Project extends ProjectExtra {
     val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
     val history = get(historyPath) flatMap idFun
     val prompt = get(shellPrompt)
+    val newPrompt = get(terminalShellPrompt)
     val trs = (templateResolverInfos in Global get structure.data).toList.flatten
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
@@ -532,6 +534,7 @@ object Project extends ProjectExtra {
         .put(historyPath.key, history)
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)
+        .setCond(terminalShellPrompt.key, newPrompt)
         .setCond(serverLogLevel, srvLogLevel)
         .setCond(fullServerHandlers.key, hs)
     s.copy(

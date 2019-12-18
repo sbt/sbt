@@ -10,11 +10,13 @@ package sbt
 import java.io.PrintWriter
 import java.util.Properties
 
+import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
 import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Terminal }
+import sbt.internal.{ ConsoleUnpromptEvent, ShutdownHooks }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.Logger
@@ -195,16 +197,21 @@ object MainLoop {
               state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
             } else state
         }
+        StandardMain.exchange.setState(progressState)
         StandardMain.exchange.setExec(Some(exec))
+        StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
         val newState = Command.process(exec.commandLine, progressState)
-        val doneEvent = ExecStatusEvent(
-          "Done",
-          channelName,
-          exec.execId,
-          newState.remainingCommands.toVector map (_.commandLine),
-          exitCode(newState, state),
-        )
-        StandardMain.exchange.respondStatus(doneEvent)
+        if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
+            !exec.commandLine.startsWith(networkExecPrefix)) {
+          val doneEvent = ExecStatusEvent(
+            "Done",
+            channelName,
+            exec.execId,
+            newState.remainingCommands.toVector map (_.commandLine),
+            exitCode(newState, state),
+          )
+          StandardMain.exchange.respondStatus(doneEvent)
+        }
         StandardMain.exchange.setExec(None)
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
         newState.remove(sbt.Keys.currentTaskProgress)
@@ -273,7 +280,8 @@ object MainLoop {
   // it's handled by executing the shell again, instead of the state failing
   // so we also use that to indicate that the execution failed
   private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
-    if (prevState.onFailure.isDefined && state.onFailure.isEmpty) ExitCode(ErrorCodes.UnknownError)
+    if (prevState.onFailure.isDefined && state.onFailure.isEmpty &&
+        state.currentCommand.fold(true)(_ != StashOnFailure)) ExitCode(ErrorCodes.UnknownError)
     else ExitCode.Success
 
 }

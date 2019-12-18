@@ -235,4 +235,7 @@ $AliasCommand name=
     (ContinuousExecutePrefix + " <command>", continuousDetail)
   def ClearCaches: String = "clearCaches"
   def ClearCachesDetailed: String = "Clears all of sbt's internal caches."
+
+  private[sbt] val networkExecPrefix = "__"
+  private[sbt] val DisconnectNetworkChannel = s"${networkExecPrefix}disconnectNetworkChannel"
 }

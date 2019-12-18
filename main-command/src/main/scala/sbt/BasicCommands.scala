@@ -346,7 +346,13 @@ object BasicCommands {
   private[this] def classpathStrings: Parser[Seq[String]] =
     token(StringBasic.map(s => IO.pathSplit(s).toSeq), "<classpath>")
 
-  def exit: Command = Command.command(TerminateAction, exitBrief, exitBrief)(_ exit true)
+  def exit: Command = Command.command(TerminateAction, exitBrief, exitBrief) { s =>
+    s.source match {
+      case Some(c) if c.channelName.startsWith("network") =>
+        s"${DisconnectNetworkChannel} ${c.channelName}" :: s
+      case _ => s exit true
+    }
+  }
 
   @deprecated("Replaced by BuiltInCommands.continuous", "1.3.0")
   def continuous: Command =

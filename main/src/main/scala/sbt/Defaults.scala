@@ -407,7 +407,7 @@ object Defaults extends BuildCommon {
   // TODO: This should be on the new default settings for a project.
   def projectCore: Seq[Setting[_]] = Seq(
     name := thisProject.value.id,
-    logManager := LogManager.defaults(extraLoggers.value, StandardMain.console),
+    logManager := LogManager.defaults(extraLoggers.value, ConsoleOut.terminalOut),
     onLoadMessage := (onLoadMessage or
       Def.setting {
         s"set current project to ${name.value} (in build ${thisProjectRef.value.build})"
@@ -1495,13 +1495,13 @@ object Defaults extends BuildCommon {
 
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(
-      if (classes.length >= 10) Some(SimpleReader.readLine(_))
+      if (classes.length >= 10) Some(SimpleReader(Terminal.get).readLine(_))
       else
         Some(s => {
           def print(st: String) = { scala.Console.out.print(st); scala.Console.out.flush() }
           print(s)
           Terminal.get.withRawSystemIn {
-            Terminal.read match {
+            Terminal.get.inputStream.read match {
               case -1 => None
               case b =>
                 val res = b.toChar.toString
@@ -2343,6 +2343,9 @@ object Classpaths {
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
         },
         shellPrompt := shellPromptFromState,
+        terminalShellPrompt := { (t, s) =>
+          shellPromptFromState(t)(s)
+        },
         dynamicDependency := { (): Unit },
         transitiveClasspathDependency := { (): Unit },
         transitiveDynamicInputs :== Nil,
@@ -3826,11 +3829,13 @@ object Classpaths {
     }
   }
 
-  def shellPromptFromState: State => String = { s: State =>
+  def shellPromptFromState: State => String = shellPromptFromState(Terminal.console)
+  def shellPromptFromState(terminal: Terminal): State => String = { s: State =>
     val extracted = Project.extract(s)
     (name in extracted.currentRef).get(extracted.structure.data) match {
-      case Some(name) => s"sbt:$name" + Def.withColor("> ", Option(scala.Console.CYAN))
-      case _          => "> "
+      case Some(name) =>
+        s"sbt:$name" + Def.withColor(s"> ", Option(scala.Console.CYAN), terminal.isColorEnabled)
+      case _ => "> "
     }
   }
 }

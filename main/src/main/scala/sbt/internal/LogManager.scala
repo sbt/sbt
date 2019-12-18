@@ -152,8 +152,9 @@ object LogManager {
       case Some(x: Exec) =>
         x.source match {
           // TODO: Fix this stringliness
-          case Some(x: CommandSource) if x.channelName == "console0" => Option(console)
-          case _                                                     => Option(console)
+          case Some(x: CommandSource) if x.channelName == ConsoleChannel.defaultName =>
+            Option(console)
+          case _ => Option(console)
         }
       case _ => Option(console)
     }

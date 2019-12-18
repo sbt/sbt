@@ -20,12 +20,14 @@ import sbt.internal.util.ReadJsonFromInputStream
 abstract class ServerConnection(connection: Socket) {
 
   private val running = new AtomicBoolean(true)
+  private val closed = new AtomicBoolean(false)
   private val retByte: Byte = '\r'.toByte
   private val delimiter: Byte = '\n'.toByte
 
   private val out = connection.getOutputStream
 
   val thread = new Thread(s"sbt-serverconnection-${connection.getPort}") {
+    setDaemon(true)
     override def run(): Unit = {
       try {
         val in = connection.getInputStream
@@ -67,17 +69,22 @@ abstract class ServerConnection(connection: Socket) {
     writeLine(a)
   }
 
-  def writeLine(a: Array[Byte]): Unit = {
-    def writeEndLine(): Unit = {
-      out.write(retByte.toInt)
-      out.write(delimiter.toInt)
-      out.flush
+  def writeLine(a: Array[Byte]): Unit =
+    try {
+      def writeEndLine(): Unit = {
+        out.write(retByte.toInt)
+        out.write(delimiter.toInt)
+        out.flush
+      }
+      if (a.nonEmpty) {
+        out.write(a)
+      }
+      writeEndLine
+    } catch {
+      case e: IOException =>
+        shutdown()
+        throw e
     }
-    if (a.nonEmpty) {
-      out.write(a)
-    }
-    writeEndLine
-  }
 
   def onRequest(msg: JsonRpcRequestMessage): Unit
   def onResponse(msg: JsonRpcResponseMessage): Unit
@@ -85,10 +92,14 @@ abstract class ServerConnection(connection: Socket) {
 
   def onShutdown(): Unit
 
-  def shutdown(): Unit = {
-    println("Shutting down client connection")
-    running.set(false)
-    out.close()
+  def shutdown(): Unit = if (closed.compareAndSet(false, true)) {
+    if (!running.compareAndSet(true, false)) {
+      System.err.println("\nsbt server connection closed.")
+    }
+    try {
+      out.close()
+      connection.close()
+    } catch { case e: IOException => e.printStackTrace() }
     onShutdown
   }
 

@@ -227,7 +227,7 @@ private[sbt] case class ServerConnection(
     socketfile: File,
     pipeName: String,
     bspConnectionFile: File,
-    appConfiguration: AppConfiguration
+    appConfiguration: AppConfiguration,
 ) {
   def shortName: String = {
     connectionType match {

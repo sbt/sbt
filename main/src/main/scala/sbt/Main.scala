@@ -13,8 +13,9 @@ import java.nio.channels.ClosedChannelException
 import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files }
 import java.util.Properties
 import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
+import sbt.BasicCommandStrings.{ Shell, TemplateCommand, networkExecPrefix }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
@@ -24,6 +25,7 @@ import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.Retry
 import sbt.internal.nio.CheckBuildSources
+import sbt.internal.server.NetworkChannel
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
 import sbt.internal.util.complete.{ Parser, SizeParser }
@@ -34,7 +36,9 @@ import xsbti.compile.CompilerCache
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
+import sbt.internal.io.Retry
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
@@ -130,18 +134,24 @@ object StandardMain {
     pool.foreach(_.shutdownNow())
   }
 
+  private[this] val isShutdown = new AtomicBoolean(false)
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
     try {
       val hook = ShutdownHooks.add(closeRunnable)
       try {
         MainLoop.runLogged(s)
+      } catch {
+        case _: InterruptedException if isShutdown.get =>
+          new xsbti.Exit { override def code(): Int = 0 }
       } finally {
         try DefaultBackgroundJobService.shutdown()
         finally hook.close()
         ()
       }
-    } finally TrapExit.uninstallManager(previous)
+    } finally {
+      TrapExit.uninstallManager(previous)
+    }
   }
 
   /** The common interface to standard output, used for all built-in ConsoleLoggers. */
@@ -254,6 +264,7 @@ object BuiltinCommands {
       act,
       continuous,
       clearCaches,
+      NetworkChannel.disconnect,
     ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
@@ -904,6 +915,16 @@ object BuiltinCommands {
     Command.command(ClearCaches, help)(f)
   }
 
+  private def getExec(state: State, interval: Duration): Exec = {
+    val exec: Exec =
+      StandardMain.exchange.blockUntilNextExec(interval, Some(state), state.globalLogging.full)
+    if (exec.source.fold(true)(_.channelName != ConsoleChannel.defaultName) &&
+        !exec.commandLine.startsWith(networkExecPrefix)) {
+      Terminal.consoleLog(s"received remote command: ${exec.commandLine}")
+    }
+    exec
+  }
+
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
     import sbt.internal.ConsolePromptEvent
     val exchange = StandardMain.exchange
@@ -914,18 +935,17 @@ object BuiltinCommands {
       .extract(s1)
       .getOpt(Keys.minForcegcInterval)
       .getOrElse(GCUtil.defaultMinForcegcInterval)
-    val exec: Exec = exchange.blockUntilNextExec(minGCInterval, s1.globalLogging.full)
-    if (exec.source.fold(true)(_.channelName != "console0")) {
-      s1.log.info(s"received remote command: ${exec.commandLine}")
-    }
+    val exec: Exec = getExec(s1, minGCInterval)
     val newState = s1
       .copy(
         onFailure = Some(Exec(Shell, None)),
         remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
       )
       .setInteractive(true)
-    if (exec.commandLine.trim.isEmpty) newState
-    else newState.clearGlobalLog
+    val res =
+      if (exec.commandLine.trim.isEmpty) newState
+      else newState.clearGlobalLog
+    res
   }
 
   def startServer: Command =

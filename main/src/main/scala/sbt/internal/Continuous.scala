@@ -274,7 +274,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
   private[this] def withCharBufferedStdIn[R](f: InputStream => R): R =
     Terminal.get.withRawSystemIn {
-      val wrapped = Terminal.get.inputStream
+      val wrapped = Terminal.wrappedSystemIn
       if (Util.isNonCygwinWindows) {
         val inputStream: InputStream with AutoCloseable = new InputStream with AutoCloseable {
           private[this] val buffer = new java.util.LinkedList[Int]

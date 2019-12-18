@@ -955,6 +955,10 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocol"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocolInModules"),
       exclude[MissingClassProblem]("sbt.internal.ExternalHooks*"),
+      // This seems to be a mima problem. The older constructor still exists but
+      // mima seems to incorrectly miss the secondary constructor that provides
+      // the binary compatible version.
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.server.NetworkChannel.this"),
     )
   )
   .configure(

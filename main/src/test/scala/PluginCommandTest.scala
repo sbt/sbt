@@ -17,7 +17,8 @@ import sbt.internal.util.{
   ConsoleOut,
   GlobalLogging,
   MainAppender,
-  Settings
+  Settings,
+  Terminal
 }
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
@@ -72,19 +73,21 @@ object PluginCommandTest extends Specification {
 object FakeState {
 
   def processCommand(input: String, enabledPlugins: AutoPlugin*): String = {
-    val previousOut = System.out
     val outBuffer = new ByteArrayOutputStream
+    val logFile = File.createTempFile("sbt", ".log")
     try {
-      System.setOut(new PrintStream(outBuffer, true))
-      val state = FakeState(enabledPlugins: _*)
-      MainLoop.processCommand(Exec(input, None), state)
+      val state = FakeState(logFile, enabledPlugins: _*)
+      Terminal.withOut(new PrintStream(outBuffer, true)) {
+        MainLoop.processCommand(Exec(input, None), state)
+      }
       new String(outBuffer.toByteArray)
     } finally {
-      System.setOut(previousOut)
+      logFile.delete()
+      ()
     }
   }
 
-  def apply(plugins: AutoPlugin*) = {
+  def apply(logFile: File, plugins: AutoPlugin*) = {
 
     val base = new File("").getAbsoluteFile
     val testProject = Project("test-project", base).setAutoPlugins(plugins)
@@ -154,9 +157,9 @@ object FakeState {
       State.newHistory,
       attributes,
       GlobalLogging.initial(
-        MainAppender.globalDefault(ConsoleOut.systemOut),
-        File.createTempFile("sbt", ".log"),
-        ConsoleOut.systemOut
+        MainAppender.globalDefault(ConsoleOut.globalProxy),
+        logFile,
+        ConsoleOut.globalProxy
       ),
       None,
       State.Continue

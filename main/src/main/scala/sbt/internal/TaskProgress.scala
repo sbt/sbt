@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 private[sbt] final class TaskProgress
     extends AbstractTaskExecuteProgress
     with ExecuteProgress[Task] {
-  @deprecated("Use the constructor taking an ExecID.", "1.4.0")
+  @deprecated("Use the no argument constructor.", "1.4.0")
   def this(log: ManagedLogger) = this()
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val currentProgressThread = new AtomicReference[Option[ProgressThread]](None)

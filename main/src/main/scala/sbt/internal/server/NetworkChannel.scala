@@ -16,25 +16,30 @@ import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes, LogMessageParams, MessageType }
+import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes }
 import sbt.internal.protocol.{
   JsonRpcNotificationMessage,
   JsonRpcRequestMessage,
   JsonRpcResponseError,
   JsonRpcResponseMessage
 }
-import sbt.internal.util.{ ReadJsonFromInputStream, Prompt, Terminal, Util }
+import sbt.internal.ui.{ UITask, UserThread }
+import sbt.internal.util.{ Prompt, ReadJsonFromInputStream, Terminal, Util }
 import sbt.internal.util.Terminal.TerminalImpl
-import sbt.internal.util.complete.Parser
+import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.protocol._
 import sbt.util.Logger
-import sjsonnew._
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
 import scala.util.control.NonFatal
+import Serialization.attach
+
+import sjsonnew._
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+
 import Serialization.attach
 
 final class NetworkChannel(
@@ -44,8 +49,28 @@ final class NetworkChannel(
     auth: Set[ServerAuthentication],
     instance: ServerInstance,
     handlers: Seq[ServerHandler],
-    val log: Logger
+    val log: Logger,
+    mkUIThreadImpl: (State, CommandChannel) => UITask
 ) extends CommandChannel { self =>
+  def this(
+      name: String,
+      connection: Socket,
+      structure: BuildStructure,
+      auth: Set[ServerAuthentication],
+      instance: ServerInstance,
+      handlers: Seq[ServerHandler],
+      log: Logger
+  ) =
+    this(
+      name,
+      connection,
+      structure,
+      auth,
+      instance,
+      handlers,
+      log,
+      new UITask.AskUserTask(_, _)
+    )
 
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
@@ -76,6 +101,7 @@ final class NetworkChannel(
 
   private[this] val terminalHolder = new AtomicReference(Terminal.NullTerminal)
   override private[sbt] def terminal: Terminal = terminalHolder.get
+  override val userThread: UserThread = new UserThread(this)
 
   private lazy val callback: ServerCallback = new ServerCallback {
     def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
@@ -111,6 +137,22 @@ final class NetworkChannel(
 
   protected def authOptions: Set[ServerAuthentication] = auth
 
+  override def mkUIThread: (State, CommandChannel) => UITask = (state, command) => {
+    if (interactive.get) mkUIThreadImpl(state, command)
+    else
+      new UITask {
+        override private[sbt] def channel = NetworkChannel.this
+        override def reader: UITask.Reader = () => {
+          try {
+            this.synchronized(this.wait)
+            Left("exit")
+          } catch {
+            case _: InterruptedException => Right("")
+          }
+        }
+      }
+  }
+
   val thread = new Thread(s"sbt-networkchannel-${connection.getPort}") {
     private val ct = "Content-Type: "
     private val x1 = "application/sbt-x1"
@@ -135,7 +177,7 @@ final class NetworkChannel(
           }
         } // while
       } finally {
-        shutdown()
+        shutdown(false)
       }
     }
 
@@ -242,7 +284,7 @@ final class NetworkChannel(
 
   def respond[A: JsonFormat](event: A): Unit = respond(event, None)
 
-  def respond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
+  def respond[A: JsonFormat](event: A, execId: Option[String]): Unit = if (alive.get) {
     respondResult(event, execId)
   }
 
@@ -278,7 +320,7 @@ final class NetworkChannel(
         } catch {
           case _: IOException =>
             alive.set(false)
-            shutdown()
+            shutdown(true)
           case _: InterruptedException =>
             alive.set(false)
         }
@@ -431,7 +473,7 @@ final class NetworkChannel(
             errorRespond("No tasks under execution")
         }
       } catch {
-        case NonFatal(e) =>
+        case NonFatal(_) =>
           errorRespond("Cancel request failed")
       }
     } else {
@@ -439,10 +481,23 @@ final class NetworkChannel(
     }
   }
 
-  def shutdown(): Unit = {
-    log.info("Shutting down client connection")
+  @deprecated("Use variant that takes logShutdown parameter", "1.4.0")
+  override def shutdown(): Unit = {
+    shutdown(true)
+  }
+  import sjsonnew.BasicJsonProtocol.BooleanJsonFormat
+  override def shutdown(logShutdown: Boolean): Unit = {
+    terminal.close()
+    StandardMain.exchange.removeChannel(this)
+    super.shutdown(logShutdown)
+    if (logShutdown) Terminal.consoleLog(s"shutting down client connection $name")
+    VirtualTerminal.cancelRequests(name)
+    try jsonRpcNotify("shutdown", logShutdown)
+    catch { case _: IOException => }
     running.set(false)
     out.close()
+    thread.interrupt()
+    writeThread.interrupt()
   }
 
   /** Respond back to Language Server's client. */
@@ -643,4 +698,13 @@ object NetworkChannel {
   case object SingleLine extends ChannelState
   case object InHeader extends ChannelState
   case object InBody extends ChannelState
+
+  private[sbt] val disconnect: Command =
+    Command.arb { s =>
+      val dncParser: Parser[String] = BasicCommandStrings.DisconnectNetworkChannel
+      dncParser.examples() ~> Parsers.Space.examples() ~> Parsers.any.*.examples()
+    } { (st, channel) =>
+      StandardMain.exchange.killChannel(channel.mkString)
+      st
+    }
 }

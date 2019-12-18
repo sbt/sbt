@@ -9,9 +9,13 @@ package sbt
 package internal
 
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicReference
 
+import sbt.internal.ui.{ UITask, UserThread }
 import sbt.internal.util.Terminal
 import sbt.protocol.EventMessage
+import sbt.util.Level
+
 import scala.collection.JavaConverters._
 
 /**
@@ -48,6 +52,8 @@ abstract class CommandChannel {
   private[sbt] final def initiateMaintenance(task: String): Unit = {
     maintenance.forEach(q => q.synchronized { q.add(new MaintenanceTask(this, task)); () })
   }
+  private[sbt] def mkUIThread: (State, CommandChannel) => UITask
+  private[sbt] def makeUIThread(state: State): UITask = mkUIThread(state, this)
   final def append(exec: Exec): Boolean = {
     registered.synchronized {
       exec.commandLine.nonEmpty && {
@@ -58,10 +64,29 @@ abstract class CommandChannel {
   }
   def poll: Option[Exec] = Option(commandQueue.poll)
 
+  def prompt(e: ConsolePromptEvent): Unit = userThread.onConsolePromptEvent(e)
+  def unprompt(e: ConsoleUnpromptEvent): Unit = userThread.onConsoleUnpromptEvent(e)
   def publishBytes(bytes: Array[Byte]): Unit
-  def shutdown(): Unit
+  private[sbt] def userThread: UserThread
+  def shutdown(logShutdown: Boolean): Unit = {
+    userThread.stopThread()
+    userThread.close()
+  }
+  @deprecated("Use the variant that takes the logShutdown parameter", "1.4.0")
+  def shutdown(): Unit = shutdown(true)
   def name: String
+  private[this] val level = new AtomicReference[Level.Value](Level.Info)
+  private[sbt] final def setLevel(l: Level.Value): Unit = level.set(l)
+  private[sbt] final def logLevel: Level.Value = level.get
+  private[this] def setLevel(value: Level.Value, cmd: String): Boolean = {
+    level.set(value)
+    append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
+  }
   private[sbt] def onCommand: String => Boolean = {
+    case "error" => setLevel(Level.Error, "error")
+    case "debug" => setLevel(Level.Debug, "debug")
+    case "info"  => setLevel(Level.Info, "info")
+    case "warn"  => setLevel(Level.Warn, "warn")
     case cmd =>
       if (cmd.nonEmpty) append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
       else false
@@ -89,7 +114,6 @@ case class ConsolePromptEvent(state: State) extends EventMessage
 /*
  * This is a data passed specifically for unprompting local console.
  */
-@deprecated("No longer used", "1.4.0")
 case class ConsoleUnpromptEvent(lastSource: Option[CommandSource]) extends EventMessage
 
 private[internal] class MaintenanceTask(val channel: CommandChannel, val task: String)
