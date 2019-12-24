@@ -76,6 +76,11 @@ object KeyIndex {
         case Some(idx) => idx.fromConfigIdent(proj)(configIdent)
         case _         => Scope.unguessConfigIdent(configIdent)
       }
+    private[sbt] def toConfigIdent(proj: Option[ResolvedReference])(configName: String): String =
+      indices.find(idx => idx.exists(proj)) match {
+        case Some(idx) => idx.toConfigIdent(proj)(configName)
+        case _         => Scope.guessConfigIdent(configName)
+      }
     def tasks(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.tasks(proj, conf))
     def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String) =
       concat(_.tasks(proj, conf, key))
@@ -124,6 +129,7 @@ trait KeyIndex {
   ): Set[String]
   private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String]
   private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String
+  private[sbt] def toConfigIdent(proj: Option[ResolvedReference])(configName: String): String
 }
 trait ExtendableKeyIndex extends KeyIndex {
   def add(scoped: ScopedKey[_]): ExtendableKeyIndex
@@ -193,6 +199,10 @@ private[sbt] final class ConfigIndex(
   // There's a guessing involved because we could have scoped key that Project is not aware of.
   private[sbt] def fromConfigIdent(ident: String): String =
     configIdentToName.getOrElse(ident, Scope.unguessConfigIdent(ident))
+  private[sbt] def toConfigIdent(name: String): String =
+    configIdentToName
+      .collectFirst { case (i, n) if n == name => i }
+      .getOrElse(Scope.guessConfigIdent(name))
 }
 private[sbt] object ConfigIndex
 private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
@@ -232,6 +242,8 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
 
   private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String =
     confIndex(proj).fromConfigIdent(configIdent)
+  private[sbt] def toConfigIdent(proj: Option[ResolvedReference])(configName: String): String =
+    confIndex(proj).toConfigIdent(configName)
 
   def tasks(proj: Option[ResolvedReference], conf: Option[String]): Set[AttributeKey[_]] =
     keyIndex(proj, conf).tasks

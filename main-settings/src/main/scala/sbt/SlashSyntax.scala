@@ -87,6 +87,22 @@ object SlashSyntax {
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
   final class RichScope(protected val scope: Scope) extends HasSlashKey
 
+  private[sbt] def unparse[K](
+      configIdentForName: String => String,
+      key: Def.ScopedKey[K]
+  ): String = {
+    val project = key.scope.project.toOption match {
+      case Some(p: ProjectRef) => Some(p.project)
+      case _                   => None
+    }
+    val config = key.scope.config.toOption match {
+      case Some(ConfigKey(name)) => Some(configIdentForName(name))
+      case _                     => None
+    }
+    val task = key.scope.task.toOption.map(_.label)
+    (project ++ config ++ task ++ Some(key.key.label)).mkString("/")
+  }
+
 }
 
 private[sbt] object SlashSyntax0 extends SlashSyntax

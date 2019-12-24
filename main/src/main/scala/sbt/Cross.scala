@@ -180,10 +180,9 @@ object Cross {
               keys.toSeq.flatMap { k =>
                 project(k).filter(projects.contains).flatMap { p =>
                   if (p == extracted.currentRef || !projects.contains(extracted.currentRef)) {
-                    val parts = project(k).map(_.project) ++ k.scope.config.toOption.map {
-                      case ConfigKey(n) => n.head.toUpper + n.tail
-                    } ++ k.scope.task.toOption.map(_.label) ++ Some(k.key.label)
-                    Some(v -> parts.mkString("", "/", fullArgs))
+                    val index = extracted.structure.index.keyIndex
+                    val cmd = SlashSyntax.unparse(index.toConfigIdent(Some(p)), k) + fullArgs
+                    Some(v -> cmd)
                   } else None
                 }
               }
