@@ -292,12 +292,12 @@ syncPreloaded() {
     # FIXME: better $init_sbt_version detection
     init_sbt_version="$(ls -1 "$source_preloaded/org/scala-sbt/sbt/")"
   fi
-  [[ -f "$target_preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
+  [[ -f "$target_preloaded/org/scala-sbt/sbt/$init_sbt_version/" ]] || {
     # lib/local-preloaded exists (This is optional)
     [[ -d "$source_preloaded" ]] && {
       command -v rsync >/dev/null 2>&1 && {
         mkdir -p "$target_preloaded"
-        rsync -a --ignore-existing "$source_preloaded" "$target_preloaded"
+        rsync -a --ignore-existing "$source_preloaded" "$target_preloaded" || true
       }
     }
   }
