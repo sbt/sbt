@@ -132,5 +132,5 @@ object SysProp {
         }
     }
   
-  def legacyTestingReport: Booelan = getOrFalse("sbt.testing.legacyreport")
+  def legacyTestingReport: Boolean = getOrTrue("sbt.testing.legacyreport")
 }
