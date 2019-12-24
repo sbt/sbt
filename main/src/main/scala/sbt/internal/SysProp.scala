@@ -131,4 +131,6 @@ object SysProp {
           case None       => true
         }
     }
+  
+  def legacyTestingReport: Booelan = getOrFalse("sbt.testing.legacyreport")
 }
