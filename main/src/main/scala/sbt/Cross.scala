@@ -194,7 +194,13 @@ object Cross {
           .sortBy(_._1)
         commandsByVersion.flatMap {
           case (v, commands) =>
-            Seq(s"$SwitchCommand $verbose $v!") ++ commands
+            commands match {
+              case Seq(c) => Seq(s"$SwitchCommand $verbose $v! $c")
+              case Seq()  => Nil // should be unreachable
+              case multi if fullArgs.isEmpty =>
+                Seq(s"$SwitchCommand $verbose $v! all ${multi.mkString(" ")}")
+              case multi => Seq(s"$SwitchCommand $verbose $v!") ++ multi
+            }
         }
     }
     allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, extracted)
