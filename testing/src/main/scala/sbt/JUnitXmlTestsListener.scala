@@ -27,6 +27,7 @@ import testing.{
 }
 import util.Logger
 import sbt.protocol.testing.TestResult
+import sbt.internal.SysProp
 
 /**
  * A tests listener that outputs the results it receives in junit xml
@@ -248,15 +249,16 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
   private def writeSuite(): Unit = {
-    val legacyFile =
-      new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
-    val file =
-      new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
+    val testSuiteResult = withTestSuite(_.stop())
     // TODO would be nice to have a logger and log this with level debug
     // System.err.println("Writing JUnit XML test report: " + file)
-    val testSuiteResult = withTestSuite(_.stop())
-    XML.save(legacyFile, testSuiteResult, "UTF-8", xmlDecl = true, null)
+    val name = normalizeName(withTestSuite(_.name))
+    val file = new File(targetDir, s"TEST-$name.xml").getAbsolutePath
     XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
+    if (SysProp.legacyTestingReport) {
+      val legacyFile = new File(targetDir, s"$name.xml").getAbsolutePath
+      XML.save(legacyFile, testSuiteResult, "UTF-8", xmlDecl = true, null)
+    }
     testSuite.remove()
   }
 
