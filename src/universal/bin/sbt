@@ -297,7 +297,7 @@ syncPreloaded() {
     [[ -d "$source_preloaded" ]] && {
       command -v rsync >/dev/null 2>&1 && {
         mkdir -p "$target_preloaded"
-        rsync -a --ignore-existing "$source_preloaded" "$target_preloaded" || true
+        rsync --recursive --links --perms --times --ignore-existing "$source_preloaded" "$target_preloaded" || true
       }
     }
   }
