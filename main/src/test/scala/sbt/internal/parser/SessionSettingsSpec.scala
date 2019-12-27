@@ -18,7 +18,7 @@ import scala.io.Source
 import SessionSettings.SessionSetting
 
 abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec {
-  protected val rootPath = getClass.getClassLoader.getResource("").getPath + folder
+  protected val rootPath = getClass.getResource("/" + folder).getPath
   println(s"Reading files from: $rootPath")
   protected val rootDir = new File(rootPath)
 

@@ -19,7 +19,7 @@ class ErrorSpec extends AbstractSpec {
   "Parser " should {
 
     "contains file name and line number" in {
-      val rootPath = getClass.getClassLoader.getResource("").getPath + "/error-format/"
+      val rootPath = getClass.getResource("/error-format/").getPath
       println(s"Reading files from: $rootPath")
       foreach(new File(rootPath).listFiles) { file =>
         print(s"Processing ${file.getName}: ")
