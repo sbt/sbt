@@ -1024,6 +1024,21 @@ lazy val sbtBig = (project in file(".big"))
   )
  */
 
+// util projects used by Zinc and Lm
+lazy val lowerUtils = (project in (file("internal") / "lower"))
+  .aggregate(lowerUtilProjects.map(p => LocalProject(p.id)): _*)
+  .settings(
+    publish / skip := true,
+    crossScalaVersions := Nil,
+  )
+
+lazy val upperModules = (project in (file("internal") / "upper"))
+  .aggregate((allProjects diff lowerUtilProjects).map(p => LocalProject(p.id)): _*)
+  .settings(
+    publish / skip := true,
+    crossScalaVersions := Nil,
+  )
+
 lazy val sbtIgnoredProblems = {
   Vector(
     exclude[IncompatibleSignatureProblem]("sbt.package.some"),
@@ -1159,7 +1174,11 @@ def allProjects =
     mainProj,
     sbtProj,
     bundledLauncherProj,
-    coreMacrosProj,
+    coreMacrosProj
+  ) ++ lowerUtilProjects
+
+lazy val lowerUtilProjects =
+  Seq(
     utilCache,
     utilControl,
     utilInterface,
@@ -1167,7 +1186,7 @@ def allProjects =
     utilPosition,
     utilRelation,
     utilScripted,
-    utilTracking,
+    utilTracking
   )
 
 lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
@@ -1207,7 +1226,9 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
     sbtProj,
     scriptedSbtReduxProj,
     scriptedSbtOldProj,
-    scriptedPluginProj
+    scriptedPluginProj,
+    upperModules,
+    lowerUtils,
   ),
   inConfigurations(Compile)
 )
