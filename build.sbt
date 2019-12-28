@@ -366,6 +366,14 @@ def customCommands: Seq[Setting[_]] = Seq(
   }
 )
 
+ThisBuild / publishTo := {
+  val old = (ThisBuild / publishTo).value
+  sys.props.get("sbt.build.localmaven") match {
+    case Some(path) => Some(MavenCache("local-maven", file(path)))
+    case _          => old
+  }
+}
+
 inThisBuild(
   Seq(
     whitesourceProduct := "Lightbend Reactive Platform",
