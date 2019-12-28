@@ -118,7 +118,7 @@ if not defined _SBT_OPTS if defined default_sbt_opts set _SBT_OPTS=!default_sbt_
 :args_loop
 shift
 
-if [%0] EQU [] goto args_end
+if "%~0" == "" goto args_end
 set g=%~0
 
 rem make sure the sbt_args_debug gets set first incase any argument parsing uses :dlog
@@ -369,7 +369,7 @@ if "%~0" == "--jvm-debug" set _jvm_debug_arg=true
 
 if defined _jvm_debug_arg (
   set _jvm_debug_arg=
-  if [%1] NEQ [] (
+  if not "%~1" == "" (
     set /a JVM_DEBUG_PORT=%~1 2>nul >nul
     if !JVM_DEBUG_PORT! EQU 0 (
       rem next argument wasn't a port, set a default and process next arg
@@ -384,7 +384,7 @@ if "%~0" == "--java-home" set _java_home_arg=true
 
 if defined _java_home_arg (
   set _java_home_arg=
-  if [%1] NEQ [] (
+  if not "%~1" == "" (
     if exist "%~1\bin\java.exe" (
       set "_JAVACMD=%~1\bin\java.exe"
       set "JAVA_HOME=%~1"
@@ -596,7 +596,7 @@ if defined sbt_args_verbose (
   echo -cp
   echo "!sbt_jar!"
   echo xsbt.boot.Boot
-  if not [%~1] == [] ( call :echolist %* )
+  if not "%~1" == "" ( call :echolist %* )
   echo.
 )
 
@@ -610,8 +610,8 @@ rem fixes dealing with quotes after = args: -Dscala.ext.dirs="C:\Users\First Las
 rem call method is in first call of %0
 shift
 
-if [%0] EQU [] goto echolist_end
-set "p=%0"
+if "%~0" == "" goto echolist_end
+set "p=%~0"
 
 if "%p:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
@@ -791,7 +791,7 @@ if /I !JAVA_VERSION! GEQ 9 (
 exit /B 0
 
 :sync_preloaded
-if [!init_sbt_version] == [] (
+if not defined init_sbt_version (
   rem FIXME: better !init_sbt_version! detection
   FOR /F "tokens=* usebackq" %%F IN (`dir /b "!SBT_HOME!\lib\local-preloaded\org\scala-sbt\sbt" /B`) DO (
     SET init_sbt_version=%%F

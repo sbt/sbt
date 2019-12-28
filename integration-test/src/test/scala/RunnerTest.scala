@@ -174,4 +174,10 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     )
     ()
   }
+
+  test("sbt \"testOnly *\"") {
+    val out = sbtProcess("testOnly *", "--no-colors", "-v").!!.linesIterator.toList
+    assert(out.contains[String]("[info] HelloTest"))
+    ()
+  }
 }
