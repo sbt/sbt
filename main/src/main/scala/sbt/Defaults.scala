@@ -1409,7 +1409,12 @@ object Defaults extends BuildCommon {
     Def.task {
       val config = packageConfiguration.value
       val s = streams.value
-      Package(config, s.cacheStoreFactory, s.log)
+      Package(
+        config,
+        s.cacheStoreFactory,
+        s.log,
+        sys.env.get("SOURCE_DATE_EPOCH").map(_.toLong * 1000).orElse(Some(0L))
+      )
       config.jar
     }
 
