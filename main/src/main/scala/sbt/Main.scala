@@ -823,14 +823,15 @@ object BuiltinCommands {
 
     val sbtVersionOpt = sbtVersionSystemOpt.orElse(sbtVersionBuildOpt)
 
-    val app = state.configuration.provider
-    sbtVersionOpt.foreach(
-      version =>
-        if (version != app.id.version()) {
-          state.log.warn(s"""sbt version mismatch, using: ${app.id
-            .version()}, in build.properties: "$version".""")
-        }
-    )
+    sbtVersionOpt.foreach { version =>
+      val appVersion = state.configuration.provider.id.version()
+      if (version != appVersion) {
+        state.log.warn(
+          s"sbt version mismatch, using: $appVersion, " +
+            s"""in build.properties: "$version", use 'reboot' to use the new value.""".stripMargin
+        )
+      }
+    }
   }
 
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
