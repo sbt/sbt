@@ -1201,7 +1201,11 @@ def otherRootSettings =
     scriptedUnpublished := scriptedUnpublishedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     watchTriggers in scripted += scriptedSource.value.toGlob / **,
-    scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server"),
+    scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server") :::
+      (sys.props.get("sbt.ivy.home") match {
+        case Some(home) => List(s"-Dsbt.ivy.home=$home")
+        case _          => Nil
+      }),
     publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
     publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
     aggregate in bintrayRelease := false
@@ -1213,7 +1217,11 @@ def otherRootSettings =
         "-server",
         "-Dsbt.override.build.repos=true",
         s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}"""
-      ),
+      ) :::
+        (sys.props.get("sbt.ivy.home") match {
+          case Some(home) => List(s"-Dsbt.ivy.home=$home")
+          case _          => Nil
+        }),
       scripted := scriptedTask.evaluated,
       scriptedUnpublished := scriptedUnpublishedTask.evaluated,
       scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"

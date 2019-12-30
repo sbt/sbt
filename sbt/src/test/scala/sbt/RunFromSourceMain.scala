@@ -26,6 +26,10 @@ object RunFromSourceMain {
   def fork(fo0: ForkOptions, workingDirectory: File): Process = {
     val fo = fo0
       .withWorkingDirectory(workingDirectory)
+      .withRunJVMOptions(sys.props.get("sbt.ivy.home") match {
+        case Some(home) => Vector(s"-Dsbt.ivy.home=$home")
+        case _          => Vector()
+      })
     implicit val runner = new ForkRun(fo)
     val cp = {
       TestBuildInfo.test_classDirectory +: TestBuildInfo.fullClasspath
@@ -117,7 +121,10 @@ object RunFromSourceMain {
           def topLoader = new java.net.URLClassLoader(Array(), null)
           def globalLock = noGlobalLock
           def bootDirectory = RunFromSourceMain.bootDirectory
-          def ivyHome = file(sys.props("user.home")) / ".ivy2"
+          def ivyHome: File = sys.props.get("sbt.ivy.home") match {
+            case Some(home) => file(home)
+            case _          => file(sys.props("user.home")) / ".ivy2"
+          }
           case class PredefRepo(id: Predefined) extends PredefinedRepository
           import Predefined._
           def ivyRepositories = Array(PredefRepo(Local), PredefRepo(MavenCentral))
