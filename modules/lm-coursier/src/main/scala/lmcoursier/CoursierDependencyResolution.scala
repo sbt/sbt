@@ -171,7 +171,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         projectName = projectName,
         sbtClassifiers = false,
         cache = cache0,
-        parallel = conf.parallelDownloads
+        parallel = conf.parallelDownloads,
+        classpathOrder = conf.classpathOrder,
       )
 
     val sbtBootJarOverrides = SbtBootJars(

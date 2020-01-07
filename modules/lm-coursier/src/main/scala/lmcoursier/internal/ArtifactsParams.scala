@@ -13,5 +13,6 @@ final case class ArtifactsParams(
   projectName: String,
   sbtClassifiers: Boolean,
   cache: FileCache[Task],
-  parallel: Int
+  parallel: Int,
+  classpathOrder: Boolean,
 )

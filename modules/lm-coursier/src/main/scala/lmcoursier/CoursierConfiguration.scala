@@ -38,7 +38,9 @@ import xsbti.Logger
   extraProjects: Vector[Project] = Vector.empty,
   forceVersions: Vector[(Module, String)] = Vector.empty,
   @since
-  reconciliation: Vector[(ModuleMatchers, Reconciliation)] = Vector.empty
+  reconciliation: Vector[(ModuleMatchers, Reconciliation)] = Vector.empty,
+  @since
+  classpathOrder: Boolean = true,
 ) {
 
   def withLog(log: Logger): CoursierConfiguration =

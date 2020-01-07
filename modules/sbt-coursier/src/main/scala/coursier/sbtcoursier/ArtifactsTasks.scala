@@ -70,7 +70,8 @@ object ArtifactsTasks {
           .withCachePolicies(cachePolicies)
           .withCredentials(credentials)
           .withFollowHttpToHttpsRedirections(true),
-        parallel = parallelDownloads
+        parallel = parallelDownloads,
+        classpathOrder = true,
       )
 
       val resOrError = ArtifactsRun.artifacts(
