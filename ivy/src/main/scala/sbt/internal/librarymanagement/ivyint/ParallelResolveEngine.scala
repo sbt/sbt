@@ -8,7 +8,6 @@ import org.apache.ivy.core.module.descriptor.Artifact
 import org.apache.ivy.core.report._
 import org.apache.ivy.core.resolve._
 import org.apache.ivy.core.sort.SortEngine
-import org.apache.ivy.util.Message
 import org.apache.ivy.util.filter.Filter
 
 import scala.concurrent.duration.Duration
@@ -103,16 +102,6 @@ private[sbt] class ParallelResolveEngine(
       artifactReport.getDownloadStatus match {
         case DownloadStatus.SUCCESSFUL =>
           size + artifactReport.getSize
-        case DownloadStatus.FAILED =>
-          val artifact = artifactReport.getArtifact
-          val mergedAttribute = artifact.getExtraAttribute("ivy:merged")
-          if (mergedAttribute != null) {
-            Message.warn(s"\tMissing merged artifact: $artifact, required by $mergedAttribute.")
-          } else {
-            Message.warn(s"\tDetected merged artifact: $artifactReport.")
-            resolver.reportFailure(artifactReport.getArtifact)
-          }
-          size
         case _ => size
       }
     }
