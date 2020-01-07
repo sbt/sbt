@@ -180,4 +180,14 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("[info] HelloTest"))
     ()
   }
+
+  test("quoted * should not glob expand to local files") {
+    val out = sbtProcess("testOnly * ", "--no-colors", "-v", "-debug").!!.linesIterator.toList
+
+    // Ensure the "*" doesn't get glob expanded to individual files or directories
+    //   (e.g. Hello.scala gets added to the testOnly arguments) https://github.com/sbt/sbt/issues/5343
+    assert(!out.exists(x => x.contains("testOnly") && x.contains("Hello.scala")))
+    assert(out.contains[String]("[info] HelloTest"))
+    ()
+  }
 }
