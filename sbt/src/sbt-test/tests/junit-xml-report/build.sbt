@@ -5,11 +5,11 @@ import Defaults._
 val checkReport = taskKey[Unit]("Check the test reports")
 val checkNoReport = taskKey[Unit]("Check that no reports are present")
 
-val oneSecondReportFile = "target/test-reports/a.pkg.OneSecondTest.xml"
-val failingReportFile = "target/test-reports/another.pkg.FailingTest.xml"
+val oneSecondReportFile = "target/test-reports/TEST-a.pkg.OneSecondTest.xml"
+val failingReportFile = "target/test-reports/TEST-another.pkg.FailingTest.xml"
 
-val flatSuiteReportFile = "target/test-reports/my.scalatest.MyFlatSuite.xml"
-val nestedSuitesReportFile = "target/test-reports/my.scalatest.MyNestedSuites.xml"
+val flatSuiteReportFile = "target/test-reports/TEST-my.scalatest.MyFlatSuite.xml"
+val nestedSuitesReportFile = "target/test-reports/TEST-my.scalatest.MyNestedSuites.xml"
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 val junitinterface = "com.novocode" % "junit-interface" % "0.11"
