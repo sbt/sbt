@@ -33,10 +33,11 @@ import sbt.protocol.testing.TestResult
  * report format.
  * @param outputDir path to the dir in which a folder with results is generated
  */
-class JUnitXmlTestsListener(val outputDir: String, logger: Logger, legacyTestReport: Boolean)
+class JUnitXmlTestsListener(val outputDir: String, legacyTestReport: Boolean, logger: Logger)
     extends TestsListener {
-  // This constructor is for binary compatibility with older versions of sbt.
-  def this(outputDir: String) = this(outputDir, null, false)
+  // These constructors are for binary compatibility with older versions of sbt.
+  def this(outputDir: String, logger: Logger) = this(outputDir, false, logger)
+  def this(outputDir: String) = this(outputDir, false, null)
 
   /**Current hostname so we know which machine executed the tests*/
   val hostname: String = {

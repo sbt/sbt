@@ -33,8 +33,8 @@ object JUnitXmlReportPlugin extends AutoPlugin {
     Seq(
       testListeners += new JUnitXmlTestsListener(
         target.value.getAbsolutePath,
-        streams.value.log,
-        SysProp.legacyTestReport
+        SysProp.legacyTestReport,
+        streams.value.log
       )
     )
 }
