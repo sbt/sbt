@@ -70,7 +70,17 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     log.logEvent(Level.Info, event)
   }
   private[this] val skipReportTasks =
-    Set("run", "bgRun", "fgRun", "scala", "console", "consoleProject", "consoleQuick", "state")
+    Set(
+      "run",
+      "runMain",
+      "bgRun",
+      "fgRun",
+      "scala",
+      "console",
+      "consoleProject",
+      "consoleQuick",
+      "state"
+    )
   private[this] def maybeStartThread(): Unit = {
     currentProgressThread.get() match {
       case None =>
