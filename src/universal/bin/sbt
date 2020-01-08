@@ -353,8 +353,8 @@ run() {
   local retarr=()
   java_args=($JAVA_OPTS)
   sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
-  miniscript=$(map_args "${sbt_options0[@]}") && eval ${miniscript/retarr/sbt_options}
-  miniscript=$(map_args "$@") && eval ${miniscript/retarr/args1}
+  miniscript=$(map_args "${sbt_options0[@]}") && eval "${miniscript/retarr/sbt_options}"
+  miniscript=$(map_args "$@") && eval "${miniscript/retarr/args1}"
   # process the combined args, then reset "$@" to the residuals
   process_args "${args1[@]}"
   vlog "[sbt_options] $(declare -p sbt_options)"
