@@ -3641,6 +3641,7 @@ object Classpaths {
       ivyRepo.descriptorOptional
     } catch { case _: NoSuchMethodError => false }
 
+  @com.github.ghik.silencer.silent
   private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
     repo match {
@@ -3878,6 +3879,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     // I tried "Def.spaceDelimited().parsed" (after importing Def.parserToInput)
     // but it broke actions/run-task
     // Maybe it needs to be defined inside a Def.inputTask?
+    @com.github.ghik.silencer.silent
     def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
       InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 
@@ -3947,7 +3949,7 @@ trait BuildCommon {
   /**
    * Allows a String to be used where a `NameFilter` is expected.
    * Asterisks (`*`) in the string are interpreted as wildcards.
-   * All other characters must match exactly.  See [[sbt.io.GlobFilter]].
+   * All other characters must match exactly.  See GlobFilter.
    */
   implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
 

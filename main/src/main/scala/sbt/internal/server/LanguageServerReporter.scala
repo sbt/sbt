@@ -27,7 +27,7 @@ import scala.collection.JavaConverters._
 import sbt.io.IO
 
 /**
- * Defines a compiler reporter that uses event logging provided by a [[ManagedLogger]].
+ * Defines a compiler reporter that uses event logging provided by a `ManagedLogger`.
  *
  * @param maximumErrors The maximum errors.
  * @param logger The event managed logger.

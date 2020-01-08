@@ -200,6 +200,7 @@ object BuiltinCommands {
   def ScriptCommands: Seq[Command] =
     Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 
+  @com.github.ghik.silencer.silent
   def DefaultCommands: Seq[Command] =
     Seq(
       multi,

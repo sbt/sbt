@@ -154,6 +154,7 @@ object EvaluateTask {
   import Keys.state
   import std.Transform
 
+  @com.github.ghik.silencer.silent
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
     if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)

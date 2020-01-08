@@ -17,8 +17,9 @@ import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked, Level }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.Project.richInitializeTask
-import sbt.dsl.LinterLevel.Ignore
 import sjsonnew.JsonFormat
+// This is to turn off "`state` is inside the if expression of a regular task." etc
+import sbt.dsl.LinterLevel.Ignore
 
 private[sbt] object LibraryManagement {
 

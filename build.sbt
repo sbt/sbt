@@ -686,9 +686,11 @@ lazy val commandProj = (project in file("main-command"))
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
-    // Removing -Xfatal-warnings is necessary because BasicKeys contains a Key for a deprecated class.
-    Compile / scalacOptions -= "-Xfatal-warnings",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -863,7 +865,10 @@ lazy val mainProj = (project in file("main"))
         log4jDependencies ++
         Seq(scalaCacheCaffeine, lmCoursierShaded)
     },
-    Compile / scalacOptions -= "-Xfatal-warnings",
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
