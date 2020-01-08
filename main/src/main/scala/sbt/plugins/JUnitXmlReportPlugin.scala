@@ -10,6 +10,7 @@ package plugins
 
 import Def.Setting
 import Keys._
+import sbt.internal.SysProp
 
 /**
  * An experimental plugin that adds the ability for junit-xml to be generated.
@@ -30,6 +31,10 @@ object JUnitXmlReportPlugin extends AutoPlugin {
   // It might be a good idea to derive this setting into specific test scopes.
   override lazy val projectSettings: Seq[Setting[_]] =
     Seq(
-      testListeners += new JUnitXmlTestsListener(target.value.getAbsolutePath, streams.value.log)
+      testListeners += new JUnitXmlTestsListener(
+        target.value.getAbsolutePath,
+        streams.value.log,
+        SysProp.legacyTestReport
+      )
     )
 }

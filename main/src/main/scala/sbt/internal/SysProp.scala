@@ -70,6 +70,7 @@ object SysProp {
   def client: Boolean = getOrFalse("sbt.client")
   def ci: Boolean = getOrFalse("sbt.ci")
   def allowRootDir: Boolean = getOrFalse("sbt.rootdir")
+  def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
