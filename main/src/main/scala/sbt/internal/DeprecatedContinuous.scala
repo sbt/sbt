@@ -10,11 +10,13 @@ package sbt.internal
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
+import com.github.ghik.silencer.silent
 import sbt.{ ProjectRef, State, Watched }
 import sbt.internal.io.{ EventMonitor, Source, WatchState => WS }
 import sbt.internal.util.AttributeKey
 import sbt.nio.file.Glob
 
+@silent
 private[internal] trait DeprecatedContinuous {
   protected type StartMessage =
     Option[Either[WS => String, (Int, ProjectRef, Seq[String]) => Option[String]]]
@@ -55,6 +57,8 @@ private[internal] trait DeprecatedContinuous {
     }
   }
 }
+
+@silent
 private[sbt] object DeprecatedContinuous {
   private[sbt] val taskDefinitions = Seq(
     sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,

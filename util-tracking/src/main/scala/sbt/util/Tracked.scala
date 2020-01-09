@@ -7,7 +7,7 @@
 
 package sbt.util
 
-import scala.util.{ Failure, Try, Success }
+import scala.util.{ Failure, Try, Success => USuccess }
 
 import java.io.File
 import sbt.io.IO
@@ -182,7 +182,7 @@ object Tracked {
     import CacheImplicits.LongJsonFormat
     def save(store: CacheStore, value: I): Unit = {
       Hasher.hash(value) match {
-        case Success(keyHash) => store.write[Long](keyHash.toLong)
+        case USuccess(keyHash) => store.write[Long](keyHash.toLong)
         case Failure(e) =>
           if (isStrictMode) throw e
           else ()
@@ -191,9 +191,9 @@ object Tracked {
 
     def changed(store: CacheStore, value: I): Boolean =
       Try { store.read[Long] } match {
-        case Success(prev: Long) =>
+        case USuccess(prev: Long) =>
           Hasher.hash(value) match {
-            case Success(keyHash: Int) => keyHash.toLong != prev
+            case USuccess(keyHash: Int) => keyHash.toLong != prev
             case Failure(e) =>
               if (isStrictMode) throw e
               else true
