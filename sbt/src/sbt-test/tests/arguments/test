@@ -26,3 +26,7 @@ $ touch failure3
 $ delete failure3
 
 > set Compile / scalacOptions += "-Xfatal-warnings"
+
+> set foo += "an argument with spaces"
+
+> checkFoo an argument with spaces
