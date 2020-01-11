@@ -24,3 +24,5 @@ $ delete success3
 $ touch failure3
 -> test:test
 $ delete failure3
+
+> set Compile / scalacOptions += "-Xfatal-warnings"

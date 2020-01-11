@@ -443,7 +443,7 @@ final class ScriptedTests(
     catching(classOf[TestException]).withApply(testFailed).andFinally(log.clear).apply {
       preScriptedHook(testDirectory)
       val parser = new TestScriptParser(handlers)
-      val handlersAndStatements = parser.parse(file)
+      val handlersAndStatements = parser.parse(file, stripQuotes = false)
       runner.apply(handlersAndStatements, states)
 
       // Handle successful tests

@@ -1,33 +1,33 @@
 -> doc
 
-> 'set sources in (Compile, doc) := { val src = (sources in Compile).value; src.filterNot(_.getName contains "B") }'
+> set sources in (Compile, doc) := { val src = (sources in Compile).value; src.filterNot(_.getName contains "B") }
 
 # hybrid project, only scaladoc run
 > doc
-$ exists "target/api/index.js"
-$ absent "target/api/scala"
-$ absent "target/api/java"
+$ exists target/api/index.js
+$ absent target/api/scala
+$ absent target/api/java
 
-> 'set sources in (Compile, doc) := { val src = (sources in (Compile, doc)).value; src.filterNot(_.getName endsWith ".java") }'
+> set sources in (Compile, doc) := { val src = (sources in (Compile, doc)).value; src.filterNot(_.getName endsWith ".java") }
 
 # compile task is superfluous. Since doc task preceded by compile task has been problematic due to scala
 # compiler's way of handling empty classpath. We have it here to test that our workaround works.
-> ; clean ; compile ; doc
+> clean ; compile ; doc
 
 # pure scala project, only scaladoc at top level
-$ exists "target/api/index.js"
-$ absent "target/api/package-list"
-$ absent "target/api/scala"
-$ absent "target/api/java"
+$ exists target/api/index.js
+$ absent target/api/package-list
+$ absent target/api/scala
+$ absent target/api/java
 
-> 'set sources in (Compile, doc) := { val src = (sources in Compile).value; src.filter(_.getName endsWith ".java") }'
+> set sources in (Compile, doc) := { val src = (sources in Compile).value; src.filter(_.getName endsWith ".java") }
 
-> ; clean ; doc
+> clean ; doc
 
 # pure java project, only javadoc at top level
-$ exists "target/api/index.html"
-$ absent "target/api/index.js"
+$ exists target/api/index.html
+$ absent target/api/index.js
 
 # pending
-# $ absent "target/api/scala"
-# $ absent "target/api/java"
+# $ absent target/api/scala
+# $ absent target/api/java
