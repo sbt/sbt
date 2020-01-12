@@ -16,7 +16,7 @@ import java.util.concurrent.ForkJoinPool
 
 import sbt.internal.io.Resources
 import sbt.internal.scripted._
-import sbt.internal.util.{ BufferedLogger, ConsoleOut, FullLogger, Util }
+import sbt.internal.util.{ BufferedLogger, ConsoleOut, FullLogger }
 import sbt.io.FileFilter._
 import sbt.io.syntax._
 import sbt.io.{ DirectoryFilter, HiddenFileFilter, IO }
@@ -24,8 +24,8 @@ import sbt.nio.file._
 import sbt.nio.file.syntax._
 import sbt.util.{ AbstractLogger, Level, Logger }
 
-import scala.collection.{ GenSeq, mutable }
 import scala.collection.parallel.ForkJoinTaskSupport
+import scala.collection.{ GenSeq, mutable }
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -70,8 +70,7 @@ final class ScriptedTests(
         val result = testResources.readWriteResourceDirectory(g, n) { testDirectory =>
           val buffer = new BufferedLogger(new FullLogger(log))
           val singleTestRunner = () => {
-            val handlers =
-              createScriptedHandlers(testDirectory, buffer, RemoteSbtCreatorKind.LauncherBased)
+            val handlers = createScriptedHandlers(testDirectory, buffer)
             val runner = new BatchScriptRunner
             val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
             try commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
@@ -87,15 +86,9 @@ final class ScriptedTests(
   private def createScriptedHandlers(
       testDir: File,
       buffered: Logger,
-      remoteSbtCreatorKind: RemoteSbtCreatorKind,
   ): Map[Char, StatementHandler] = {
     val fileHandler = new FileCommands(testDir)
-    val remoteSbtCreator = remoteSbtCreatorKind match {
-      case RemoteSbtCreatorKind.LauncherBased =>
-        new LauncherBasedRemoteSbtCreator(testDir, launcher, buffered, launchOpts)
-      case RemoteSbtCreatorKind.RunFromSourceBased =>
-        new RunFromSourceBasedRemoteSbtCreator(testDir, buffered, launchOpts)
-    }
+    val remoteSbtCreator = new RunFromSourceBasedRemoteSbtCreator(testDir, buffered, launchOpts)
     val sbtHandler = new SbtHandler(remoteSbtCreator)
     Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler)
   }
@@ -134,15 +127,7 @@ final class ScriptedTests(
         case s => s
       }
 
-      val (launcherBasedTestsUnfiltered, runFromSourceBasedTestsUnfiltered) =
-        labelsAndDirs.partition {
-          case (testName, _) =>
-            determineRemoteSbtCreatorKind(testName) match {
-              case RemoteSbtCreatorKind.LauncherBased      => true
-              case RemoteSbtCreatorKind.RunFromSourceBased => false
-            }
-        }
-      val launcherBasedTests = launcherBasedTestsUnfiltered.filterNot(windowsExclude)
+      val runFromSourceBasedTestsUnfiltered = labelsAndDirs
       val runFromSourceBasedTests = runFromSourceBasedTestsUnfiltered.filterNot(windowsExclude)
 
       def logTests(size: Int, how: String) =
@@ -150,24 +135,19 @@ final class ScriptedTests(
           f"Running $size / $totalSize (${size * 100d / totalSize}%3.2f%%) scripted tests with $how"
         )
       logTests(runFromSourceBasedTests.size, "RunFromSourceMain")
-      logTests(launcherBasedTests.size, "sbt/launcher")
 
-      def createTestRunners(
-          tests: Seq[TestInfo],
-          remoteSbtCreatorKind: RemoteSbtCreatorKind,
-      ): Seq[TestRunner] = {
+      def createTestRunners(tests: Seq[TestInfo]): Seq[TestRunner] = {
         tests
           .grouped(batchSize)
           .map { batch => () =>
             IO.withTemporaryDirectory {
-              runBatchedTests(batch, _, prescripted, remoteSbtCreatorKind, log)
+              runBatchedTests(batch, _, prescripted, log)
             }
           }
           .toList
       }
 
-      createTestRunners(runFromSourceBasedTests, RemoteSbtCreatorKind.RunFromSourceBased) ++
-        createTestRunners(launcherBasedTests, RemoteSbtCreatorKind.LauncherBased)
+      createTestRunners(runFromSourceBasedTests)
     }
   }
 
@@ -183,81 +163,6 @@ final class ScriptedTests(
         }
     }
     else _ => false
-  private def determineRemoteSbtCreatorKind(testName: (String, String)): RemoteSbtCreatorKind = {
-    import RemoteSbtCreatorKind._
-    val (group, name) = testName
-    s"$group/$name" match {
-      case "actions/add-alias"          => LauncherBased // sbt/Package$
-      case "actions/cross-incremental"  => LauncherBased // tbd
-      case "actions/cross-multiproject" => LauncherBased // tbd
-      case "actions/cross-multi-parser" =>
-        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
-      case "actions/multi-command" =>
-        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
-      case "actions/cross-test-only" => LauncherBased // tbd
-      case "actions/external-doc"    => LauncherBased // sbt/Package$
-      case "actions/input-task"      => LauncherBased // sbt/Package$
-      case "actions/input-task-dyn"  => LauncherBased // sbt/Package$
-      case gn if gn.startsWith("classloader-cache/") =>
-        LauncherBased // This should be tested using launcher
-      case "compiler-project/dotty-compiler-plugin"      => LauncherBased // sbt/Package$
-      case "compiler-project/run-test"                   => LauncherBased // sbt/Package$
-      case "compiler-project/src-dep-plugin"             => LauncherBased // sbt/Package$
-      case gn if gn.startsWith("dependency-management/") => LauncherBased // sbt/Package$
-      case gn if gn.startsWith("plugins/")               => LauncherBased // sbt/Package$
-      case "java/argfile"                                => LauncherBased // sbt/Package$
-      case "java/cross"                                  => LauncherBased // sbt/Package$
-      case "java/basic"                                  => LauncherBased // sbt/Package$
-      case "java/varargs-main"                           => LauncherBased // sbt/Package$
-      case "package/lazy-name"                           => LauncherBased // sbt/Package$
-      case "package/manifest"                            => LauncherBased // sbt/Package$
-      case "package/mappings"                            => LauncherBased // sbt/Package$
-      case "package/resources"                           => LauncherBased // sbt/Package$
-      case "project/Class.forName"                       => LauncherBased // sbt/Package$
-      case "project/binary-plugin"                       => LauncherBased // sbt/Package$
-      case "project/default-settings"                    => LauncherBased // sbt/Package$
-      case "project/extra"                               => LauncherBased // tbd
-      case "project/flatten"                             => LauncherBased // sbt/Package$
-      case "project/generated-root-no-publish"           => LauncherBased // tbd
-      case "project/giter8-plugin"                       => LauncherBased // tbd
-      case "project/lib"                                 => LauncherBased // sbt/Package$
-      case "project/scripted-plugin"                     => LauncherBased // tbd
-      case "project/scripted-skip-incompatible"          => LauncherBased // sbt/Package$
-      case "project/session-update-from-cmd"             => LauncherBased // tbd
-      case "project/transitive-plugins"                  => LauncherBased // tbd
-      case "run/awt"                                     => LauncherBased // sbt/Package$
-      case "run/classpath"                               => LauncherBased // sbt/Package$
-      case "run/daemon"                                  => LauncherBased // sbt/Package$
-      case "run/daemon-exit"                             => LauncherBased // sbt/Package$
-      case "run/error"                                   => LauncherBased // sbt/Package$
-      case "run/fork"                                    => LauncherBased // sbt/Package$
-      case "run/fork-loader"                             => LauncherBased // sbt/Package$
-      case "run/non-local-main"                          => LauncherBased // sbt/Package$
-      case "run/spawn"                                   => LauncherBased // sbt/Package$
-      case "run/spawn-exit"                              => LauncherBased // sbt/Package$
-      case "source-dependencies/binary"                  => LauncherBased // sbt/Package$
-      case "source-dependencies/export-jars"             => LauncherBased // sbt/Package$
-      case "source-dependencies/implicit-search"         => LauncherBased // sbt/Package$
-      case "source-dependencies/java-basic"              => LauncherBased // sbt/Package$
-      case "source-dependencies/less-inter-inv"          => LauncherBased // sbt/Package$
-      case "source-dependencies/less-inter-inv-java"     => LauncherBased // sbt/Package$
-      case "source-dependencies/linearization"           => LauncherBased // sbt/Package$
-      case "source-dependencies/named"                   => LauncherBased // sbt/Package$
-      case "source-dependencies/specialized"             => LauncherBased // sbt/Package$
-      case gn if gn.startsWith("watch/") && Util.isWindows =>
-        LauncherBased // there is an issue with jansi and coursier
-      case "watch/commands" =>
-        LauncherBased // java.lang.ClassNotFoundException: javax.tools.DiagnosticListener when run with java 11 and an old sbt launcher
-      case "watch/managed"   => LauncherBased // sbt/Package$
-      case "tests/scalatest" => LauncherBased
-      case "tests/test-cross" =>
-        LauncherBased // the sbt metabuild classpath leaks into the test interface classloader in older versions of sbt
-      case _ => RunFromSourceBased
-    }
-    // sbt/Package$ means:
-    //   java.lang.NoClassDefFoundError: sbt/Package$ (wrong name: sbt/package$)
-    // Typically from Compile / packageBin / packageOptions
-  }
 
   /** Defines an auto plugin that is injected to sbt between every scripted session.
    *
@@ -314,13 +219,12 @@ final class ScriptedTests(
       groupedTests: Seq[((String, String), File)],
       tempTestDir: File,
       preHook: File => Unit,
-      remoteSbtCreatorKind: RemoteSbtCreatorKind,
       log: Logger,
   ): Seq[Option[String]] = {
 
     val runner = new BatchScriptRunner
     val buffer = new BufferedLogger(new FullLogger(log))
-    val handlers = createScriptedHandlers(tempTestDir, buffer, remoteSbtCreatorKind)
+    val handlers = createScriptedHandlers(tempTestDir, buffer)
     val states = new BatchScriptRunner.States
     val seqHandlers = handlers.values.toList
     runner.initStates(states, seqHandlers)
