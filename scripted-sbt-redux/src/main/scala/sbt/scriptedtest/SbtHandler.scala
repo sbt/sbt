@@ -27,7 +27,7 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
 
   def apply(command: String, arguments: List[String], i: Option[SbtInstance]): Option[SbtInstance] =
     onSbtInstance(i) { (_, server) =>
-      send((command :: arguments.map(escape)).mkString(" "), server)
+      send((command :: arguments).mkString(" "), server)
       receive(s"$command failed", server)
     }
 
@@ -79,13 +79,5 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
     try receive("Remote sbt initialization failed", server)
     catch { case _: SocketException => throw new TestFailed("Remote sbt initialization failed") }
     p
-  }
-
-  // if the argument contains spaces, enclose it in quotes, quoting backslashes and quotes
-  def escape(argument: String) = {
-    import java.util.regex.Pattern.{ quote => q }
-    if (argument.contains(" "))
-      "\"" + argument.replaceAll(q("""\"""), """\\""").replaceAll(q("\""), "\\\"") + "\""
-    else argument
   }
 }

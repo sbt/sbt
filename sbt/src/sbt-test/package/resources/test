@@ -10,7 +10,7 @@
 
 # This should fail because sbt should include the resource in the jar but it won't have the right
 # directory structure
--$ exec java -jar "./target/main-resources-test-0.1.jar"
+-$ exec java -jar ./target/main-resources-test-0.1.jar
 
 # Give the resource the right directory structure
 $ mkdir src/main/resources/jartest
@@ -27,4 +27,4 @@ $ delete src/main/resources/main_resource_test
 > package
 
 # This should succeed because sbt should include the resource in the jar with the right directory structure
-$ exec java -jar "./target/main-resources-test-0.1.jar"
+$ exec java -jar ./target/main-resources-test-0.1.jar

@@ -58,8 +58,11 @@ object ScriptedRunnerImpl {
 final class ScriptedTests(
     resourceBaseDirectory: File,
     bufferLog: Boolean,
-    handlersProvider: HandlersProvider
+    handlersProvider: HandlersProvider,
+    stripQuotes: Boolean
 ) {
+  def this(resourceBaseDirectory: File, bufferLog: Boolean, handlersProvider: HandlersProvider) =
+    this(resourceBaseDirectory, bufferLog, handlersProvider, true)
   private val testResources = new Resources(resourceBaseDirectory)
   private val consoleAppender: ConsoleAppender = ConsoleAppender()
 
@@ -127,10 +130,10 @@ final class ScriptedTests(
     }
     val pendingString = if (pending) " [PENDING]" else ""
 
-    def runTest() = {
+    def runTest(): Unit = {
       val run = new ScriptRunner
       val parser = createParser()
-      run(parser.parse(file))
+      run(parser.parse(file, stripQuotes))
     }
     def testFailed(): Unit = {
       if (pending) buffered.clearBuffer() else buffered.stopBuffer()
