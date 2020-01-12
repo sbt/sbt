@@ -10,18 +10,18 @@ package internal
 
 import java.io.File
 import java.util.concurrent.Callable
+
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
-import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked, Level }
+import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.Project.richInitializeTask
 import sjsonnew.JsonFormat
-// This is to turn off "`state` is inside the if expression of a regular task." etc
-import sbt.dsl.LinterLevel.Ignore
 
 private[sbt] object LibraryManagement {
+  implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
 
   private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
 
