@@ -1210,6 +1210,7 @@ def otherRootSettings =
     scriptedUnpublished := scriptedUnpublishedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     watchTriggers in scripted += scriptedSource.value.toGlob / **,
+    watchTriggers in scriptedUnpublished += scriptedSource.value.toGlob / **,
     scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server") :::
       (sys.props.get("sbt.ivy.home") match {
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
