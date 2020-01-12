@@ -7,24 +7,32 @@
 
 package sbt
 
-import buildinfo.TestBuildInfo
 import sbt.internal.scriptedtest.ScriptedLauncher
 import sbt.util.LogExchange
 
 import scala.annotation.tailrec
 import scala.sys.process.Process
+import java.io.File.pathSeparator
 
 object RunFromSourceMain {
-  private val sbtVersion = TestBuildInfo.version
-  private val scalaVersion = "2.12.10"
-
-  def fork(workingDirectory: File): Process = {
+  def fork(
+      workingDirectory: File,
+      scalaVersion: String,
+      sbtVersion: String,
+      classpath: Seq[File]
+  ): Process = {
     val fo = ForkOptions()
       .withOutputStrategy(OutputStrategy.StdoutOutput)
-    fork(fo, workingDirectory)
+    fork(fo, workingDirectory, scalaVersion, sbtVersion, classpath)
   }
 
-  def fork(fo0: ForkOptions, workingDirectory: File): Process = {
+  def fork(
+      fo0: ForkOptions,
+      workingDirectory: File,
+      scalaVersion: String,
+      sbtVersion: String,
+      cp: Seq[File]
+  ): Process = {
     val fo = fo0
       .withWorkingDirectory(workingDirectory)
       .withRunJVMOptions(sys.props.get("sbt.ivy.home") match {
@@ -32,43 +40,63 @@ object RunFromSourceMain {
         case _          => Vector()
       })
     implicit val runner = new ForkRun(fo)
-    val cp = {
-      TestBuildInfo.test_classDirectory +: TestBuildInfo.fullClasspath
-    }
-    val options = Vector(workingDirectory.toString)
+    val options =
+      Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
     val log = LogExchange.logger("RunFromSourceMain.fork", None, None)
     runner.fork("sbt.RunFromSourceMain", cp, options, log)
   }
 
   def main(args: Array[String]): Unit = args match {
-    case Array()              => sys.error(s"Must specify working directory as the first argument")
-    case Array(wd, args @ _*) => run(file(wd), args)
+    case Array() =>
+      sys.error(
+        s"Must specify working directory, scala version and sbt version and classpath as the first three arguments"
+      )
+    case Array(wd, scalaVersion, sbtVersion, classpath, args @ _*) =>
+      run(file(wd), scalaVersion, sbtVersion, classpath, args)
   }
 
   // this arrangement is because Scala does not always properly optimize away
   // the tail recursion in a catch statement
-  @tailrec private[sbt] def run(baseDir: File, args: Seq[String]): Unit =
-    runImpl(baseDir, args) match {
-      case Some((baseDir, args)) => run(baseDir, args)
+  @tailrec private[sbt] def run(
+      baseDir: File,
+      scalaVersion: String,
+      sbtVersion: String,
+      classpath: String,
+      args: Seq[String],
+  ): Unit =
+    runImpl(baseDir, scalaVersion, sbtVersion, classpath, args) match {
+      case Some((baseDir, args)) => run(baseDir, scalaVersion, sbtVersion, classpath, args)
       case None                  => ()
     }
 
-  private def runImpl(baseDir: File, args: Seq[String]): Option[(File, Seq[String])] =
-    try launch(baseDir, args) map exit
+  private def runImpl(
+      baseDir: File,
+      scalaVersion: String,
+      sbtVersion: String,
+      classpath: String,
+      args: Seq[String],
+  ): Option[(File, Seq[String])] =
+    try launch(baseDir, scalaVersion, sbtVersion, classpath, args) map exit
     catch {
       case r: xsbti.FullReload            => Some((baseDir, r.arguments()))
       case scala.util.control.NonFatal(e) => e.printStackTrace(); errorAndExit(e.toString)
     }
 
-  private def launch(baseDirectory: File, arguments: Seq[String]): Option[Int] = {
+  private def launch(
+      baseDirectory: File,
+      scalaVersion: String,
+      sbtVersion: String,
+      classpath: String,
+      arguments: Seq[String],
+  ): Option[Int] = {
     ScriptedLauncher
       .launch(
-        scalaHome,
+        scalaHome(scalaVersion),
         sbtVersion,
         scalaVersion,
         bootDirectory,
         baseDirectory,
-        buildinfo.TestBuildInfo.fullClasspath.toArray,
+        classpath.split(java.io.File.pathSeparator).map(file),
         arguments.toArray
       )
       .orElse(null) match {
@@ -79,7 +107,7 @@ object RunFromSourceMain {
   }
 
   private lazy val bootDirectory: File = file(sys.props("user.home")) / ".sbt" / "boot"
-  private lazy val scalaHome: File = {
+  private def scalaHome(scalaVersion: String): File = {
     val log = sbt.util.LogExchange.logger("run-from-source")
     val scalaHome0 = bootDirectory / s"scala-$scalaVersion"
     if ((scalaHome0 / "lib").exists) scalaHome0

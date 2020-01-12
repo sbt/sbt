@@ -53,7 +53,7 @@ public class ScriptedLauncher {
       final File[] classpath,
       String[] args)
       throws MalformedURLException, InvocationTargetException, ClassNotFoundException,
-          IllegalAccessException {
+          NoSuchMethodException, IllegalAccessException {
     while (true) {
       final URL configURL = URLForClass(xsbti.AppConfiguration.class);
       final URL mainURL = URLForClass(sbt.xMain.class);
@@ -67,10 +67,20 @@ public class ScriptedLauncher {
         final AtomicInteger result = new AtomicInteger(-1);
         final AtomicReference<String[]> newArguments = new AtomicReference<>();
         final Class<?> clazz = loader.loadClass("sbt.internal.scriptedtest.ScriptedLauncher");
-        Method method = null;
-        for (final Method m : clazz.getDeclaredMethods()) {
-          if (m.getName().equals("launchImpl")) method = m;
-        }
+        Method method =
+            clazz.getDeclaredMethod(
+                "launchImpl",
+                ClassLoader.class,
+                ClassLoader.class,
+                File.class,
+                String.class,
+                String.class,
+                File.class,
+                File.class,
+                File[].class,
+                String[].class,
+                AtomicInteger.class,
+                AtomicReference.class);
         method.invoke(
             null,
             topLoader,
@@ -122,7 +132,7 @@ public class ScriptedLauncher {
       final AtomicInteger result,
       final AtomicReference<String[]> newArguments)
       throws ClassNotFoundException, InvocationTargetException, IllegalAccessException,
-          InstantiationException {
+          NoSuchMethodException, InstantiationException {
     final AppConfiguration conf =
         getConf(
             topLoader,
@@ -134,11 +144,8 @@ public class ScriptedLauncher {
             classpath,
             args);
     final Class<?> clazz = loader.loadClass("sbt.xMain");
-    final Object instance = clazz.newInstance();
-    Method run = null;
-    for (final Method m : clazz.getDeclaredMethods()) {
-      if (m.getName().equals("run")) run = m;
-    }
+    final Object instance = clazz.getConstructor().newInstance();
+    final Method run = clazz.getDeclaredMethod("run", loader.loadClass("xsbti.AppConfiguration"));
     final Object runResult = run.invoke(instance, conf);
     if (runResult instanceof xsbti.Reboot) newArguments.set(((Reboot) runResult).arguments());
     else {
@@ -401,7 +408,7 @@ public class ScriptedLauncher {
           @Override
           public AppMain newMain() {
             try {
-              return (AppMain) loader().loadClass("sbt.xMain").newInstance();
+              return (AppMain) loader().loadClass("sbt.xMain").getConstructor().newInstance();
             } catch (final Exception e) {
               throw new RuntimeException(e);
             }

@@ -567,23 +567,11 @@ val sbtProjDepsCompileScopeFilter =
   )
 
 lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
-  .dependsOn(commandProj, utilLogging, utilScripted)
+  .dependsOn(sbtProj % "compile;test->test", commandProj, utilLogging, utilScripted)
   .settings(
     baseSettings,
     name := "Scripted sbt Redux",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
-    resourceGenerators in Compile += Def task {
-      val mainClassDir = (classDirectory in Compile in LocalProject("sbtProj")).value
-      val testClassDir = (classDirectory in Test in LocalProject("sbtProj")).value
-      val classDirs = (classDirectory all sbtProjDepsCompileScopeFilter).value
-      val extDepsCp = (externalDependencyClasspath in Compile in LocalProject("sbtProj")).value
-      val cpStrings = (mainClassDir +: testClassDir +: classDirs) ++ extDepsCp.files map (_.toString)
-      val file = (resourceManaged in Compile).value / "RunFromSource.classpath"
-      if (!file.exists || Try(IO.readLines(file)).getOrElse(Nil).toSet != cpStrings.toSet) {
-        IO.writeLines(file, cpStrings)
-      }
-      List(file)
-    },
     mimaSettings,
     scriptedSbtReduxMimaSettings,
   )
@@ -777,17 +765,13 @@ lazy val mainSettingsProj = (project in file("main-settings"))
   .settings(
     testedBaseSettings,
     name := "Main Settings",
-    BuildInfoPlugin.buildInfoDefaultSettings,
-    addBuildInfoToConfig(Test),
-    buildInfoObject in Test := "TestBuildInfo",
-    buildInfoKeys in Test := Seq[BuildInfoKey](
-      classDirectory in Compile,
-      classDirectory in Test,
-      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
-      BuildInfoKey.map((dependencyClasspath in Compile).taskValue) {
-        case (ident, cp) => ident -> cp.files
-      },
-    ),
+    testOptions in Test ++= {
+      val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
+      val framework = TestFrameworks.ScalaTest
+      Tests.Argument(framework, s"-Dsbt.server.classpath=$cp") ::
+        Tests.Argument(framework, s"-Dsbt.server.version=${version.value}") ::
+        Tests.Argument(framework, s"-Dsbt.server.scala.version=${scalaVersion.value}") :: Nil
+    },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       exclude[IncompatibleSignatureProblem]("sbt.Previous#References.getReferences"),
@@ -829,15 +813,11 @@ lazy val mainSettingsProj = (project in file("main-settings"))
   )
 
 lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
-  .enablePlugins(BuildInfoPlugin)
   .settings(
     name := "Zinc LM Integration",
     testedBaseSettings,
-    buildInfo in Compile := Nil, // Only generate build info for tests
-    BuildInfoPlugin.buildInfoScopedSettings(Test),
-    buildInfoPackage in Test := "sbt.internal.inc",
-    buildInfoObject in Test := "ZincLmIntegrationBuildInfo",
-    buildInfoKeys in Test := List[BuildInfoKey]("zincVersion" -> zincVersion),
+    testOptions in Test +=
+      Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
     mimaSettingsSince(sbt13Plus),
     libraryDependencies += launcherInterface,
   )
@@ -853,7 +833,6 @@ lazy val mainProj = (project in file("main"))
     runProj,
     commandProj,
     collectionProj,
-    scriptedSbtReduxProj,
     scriptedPluginProj,
     zincLmIntegrationProj,
     utilLogging,
@@ -963,7 +942,7 @@ lazy val mainProj = (project in file("main"))
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt"))
-  .dependsOn(mainProj, scriptedSbtReduxProj % "test->test")
+  .dependsOn(mainProj)
   .settings(
     testedBaseSettings,
     name := "sbt",
@@ -973,25 +952,16 @@ lazy val sbtProj = (project in file("sbt"))
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
-    BuildInfoPlugin.buildInfoDefaultSettings,
-    addBuildInfoToConfig(Test),
-    BuildInfoPlugin.buildInfoDefaultSettings,
-    buildInfoObject in Test := "TestBuildInfo",
-    buildInfoKeys in Test := Seq[BuildInfoKey](
-      version,
-      // WORKAROUND https://github.com/sbt/sbt-buildinfo/issues/117
-      BuildInfoKey.map((fullClasspath in Compile).taskValue) {
-        case (ident, cp) => ident -> cp.files
-      },
-      BuildInfoKey.map((dependencyClasspath in Compile).taskValue) {
-        case (ident, cp) => ident -> cp.files
-      },
-      classDirectory in Compile,
-      classDirectory in Test,
-    ),
     Test / run / connectInput := true,
     Test / run / outputStrategy := Some(StdoutOutput),
     Test / run / fork := true,
+    testOptions in Test ++= {
+      val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
+      val framework = TestFrameworks.ScalaTest
+      Tests.Argument(framework, s"-Dsbt.server.classpath=$cp") ::
+        Tests.Argument(framework, s"-Dsbt.server.version=${version.value}") ::
+        Tests.Argument(framework, s"-Dsbt.server.scala.version=${scalaVersion.value}") :: Nil
+    },
   )
   .configure(addSbtIO, addSbtCompilerBridge)
 
@@ -1130,32 +1100,17 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   )
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  // publishLocalBinAll.value // TODO: Restore scripted needing only binary jars.
-  publishAll.value
-  (sbtProj / Test / compile).value // make sure sbt.RunFromSourceMain is compiled
+  publishLocalBinAll.value
   Scripted.doScripted(
-    (sbtLaunchJar in bundledLauncherProj).value,
-    (fullClasspath in scriptedSbtReduxProj in Test).value,
     (scalaInstance in scriptedSbtReduxProj).value,
     scriptedSource.value,
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
     scriptedLaunchOpts.value,
-    streams.value.log
-  )
-}
-
-def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  Scripted.doScripted(
-    (sbtLaunchJar in bundledLauncherProj).value,
-    (fullClasspath in scriptedSbtReduxProj in Test).value,
-    (scalaInstance in scriptedSbtReduxProj).value,
-    scriptedSource.value,
-    scriptedBufferLog.value,
-    Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
-    scriptedPrescripted.value,
-    scriptedLaunchOpts.value,
+    scalaVersion.value,
+    version.value,
+    (scriptedSbtReduxProj / Test / fullClasspathAsJars).value.map(_.data),
     streams.value.log
   )
 }
@@ -1207,18 +1162,17 @@ ThisBuild / scriptedPrescripted := { _ =>
 def otherRootSettings =
   Seq(
     scripted := scriptedTask.evaluated,
-    scriptedUnpublished := scriptedUnpublishedTask.evaluated,
+    scriptedUnpublished := scriptedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     watchTriggers in scripted += scriptedSource.value.toGlob / **,
-    watchTriggers in scriptedUnpublished += scriptedSource.value.toGlob / **,
+    watchTriggers in scriptedUnpublished := (watchTriggers in scripted).value,
     scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server") :::
       (sys.props.get("sbt.ivy.home") match {
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
         case _          => Nil
       }),
-    publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
-    publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
-    aggregate in bintrayRelease := false
+    publishLocalBinAll := (Compile / publishLocalBin).all(scriptedProjects).value,
+    aggregate in bintrayRelease := false,
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(
       scriptedLaunchOpts := List(
@@ -1233,7 +1187,7 @@ def otherRootSettings =
           case _          => Nil
         }),
       scripted := scriptedTask.evaluated,
-      scriptedUnpublished := scriptedUnpublishedTask.evaluated,
+      scriptedUnpublished := scriptedTask.evaluated,
       scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
     )
   )
@@ -1263,6 +1217,7 @@ lazy val otherProjects: ScopeFilter = ScopeFilter(
   inConfigurations(Test)
 )
 lazy val javafmtOnCompile = taskKey[Unit]("Formats java sources before compile")
+lazy val scriptedProjects = ScopeFilter(inAnyProject -- inProjects(vscodePlugin))
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("setupBuildScala212") { state =>

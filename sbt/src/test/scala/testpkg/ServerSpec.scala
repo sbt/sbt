@@ -159,8 +159,20 @@ object TestServer {
   def withTestServer(testBuild: String, baseDirectory: File)(
       f: TestServer => Future[Assertion]
   )(implicit td: TestData): Future[Assertion] = {
+    val classpath = td.configMap.get("sbt.server.classpath") match {
+      case Some(s: String) => s.split(java.io.File.pathSeparator).map(file)
+      case _               => throw new IllegalStateException("No server classpath was specified.")
+    }
+    val sbtVersion = td.configMap.get("sbt.server.version") match {
+      case Some(v: String) => v
+      case _               => throw new IllegalStateException("No server version was specified.")
+    }
+    val scalaVersion = td.configMap.get("sbt.server.scala.version") match {
+      case Some(v: String) => v
+      case _               => throw new IllegalStateException("No server scala version was specified.")
+    }
     // Each test server instance will be executed in a Thread pool separated from the tests
-    val testServer = TestServer(baseDirectory)
+    val testServer = TestServer(baseDirectory, scalaVersion, sbtVersion, classpath)
     // checking last log message after initialization
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
@@ -194,7 +206,12 @@ object TestServer {
   }
 }
 
-case class TestServer(baseDirectory: File) {
+case class TestServer(
+    baseDirectory: File,
+    scalaVersion: String,
+    sbtVersion: String,
+    classpath: Seq[File]
+) {
   import TestServer.hostLog
 
   val readBuffer = new Array[Byte](40960)
@@ -204,7 +221,7 @@ case class TestServer(baseDirectory: File) {
   private val RetByte = '\r'.toByte
 
   hostLog("fork to a new sbt instance")
-  val process = RunFromSourceMain.fork(baseDirectory)
+  val process = RunFromSourceMain.fork(baseDirectory, scalaVersion, sbtVersion, classpath)
 
   lazy val portfile = baseDirectory / "project" / "target" / "active.json"
 
