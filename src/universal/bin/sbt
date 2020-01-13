@@ -332,7 +332,7 @@ copyRt() {
   if [[ "$at_least_9" == "1" ]]; then
     rtexport=$(rt_export_file)
     # The grep for java9-rt-ext- matches the filename prefix printed in Export.java
-    java9_ext=$("$java_cmd" ${sbt_options[@]} ${java_args[@]} \
+    java9_ext=$("$java_cmd" "${sbt_options[@]}" "${java_args[@]}" \
       -jar "$rtexport" --rt-ext-dir | grep java9-rt-ext-)
     java9_rt=$(echo "$java9_ext/rt.jar")
     vlog "[copyRt] java9_rt = '$java9_rt'"
