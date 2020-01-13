@@ -9,6 +9,7 @@ package sbt.internal.scriptedtest;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -24,8 +25,10 @@ import xsbti.AppMain;
 import xsbti.AppProvider;
 import xsbti.ApplicationID;
 import xsbti.ComponentProvider;
+import xsbti.Continue;
 import xsbti.CrossValue;
 import xsbti.Exit;
+import xsbti.FullReload;
 import xsbti.GlobalLock;
 import xsbti.Launcher;
 import xsbti.MainResult;
@@ -54,57 +57,88 @@ public class ScriptedLauncher {
       String[] args)
       throws MalformedURLException, InvocationTargetException, ClassNotFoundException,
           NoSuchMethodException, IllegalAccessException {
-    while (true) {
-      final URL configURL = URLForClass(xsbti.AppConfiguration.class);
-      final URL mainURL = URLForClass(sbt.xMain.class);
-      final URL scriptedURL = URLForClass(ScriptedLauncher.class);
-      final ClassLoader topLoader =
-          new URLClassLoader(new URL[] {configURL}, ClassLoader.getSystemClassLoader().getParent());
-      final URLClassLoader loader = new URLClassLoader(new URL[] {mainURL, scriptedURL}, topLoader);
+    if (System.getProperty("sbt.launch.jar") == null) {
+      while (true) {
+        final URL configURL = URLForClass(xsbti.AppConfiguration.class);
+        final URL mainURL = URLForClass(sbt.xMain.class);
+        final URL scriptedURL = URLForClass(ScriptedLauncher.class);
+        final ClassLoader topLoader = new URLClassLoader(new URL[] {configURL}, top());
+        final URLClassLoader loader =
+            new URLClassLoader(new URL[] {mainURL, scriptedURL}, topLoader);
+        final ClassLoader previous = Thread.currentThread().getContextClassLoader();
+        try {
+          final AtomicInteger result = new AtomicInteger(-1);
+          final AtomicReference<String[]> newArguments = new AtomicReference<>();
+          final Class<?> clazz = loader.loadClass("sbt.internal.scriptedtest.ScriptedLauncher");
+          Method method =
+              clazz.getDeclaredMethod(
+                  "launchImpl",
+                  ClassLoader.class,
+                  ClassLoader.class,
+                  File.class,
+                  String.class,
+                  String.class,
+                  File.class,
+                  File.class,
+                  File[].class,
+                  String[].class,
+                  AtomicInteger.class,
+                  AtomicReference.class);
+          method.invoke(
+              null,
+              topLoader,
+              loader,
+              scalaHome,
+              sbtVersion,
+              scalaVersion,
+              bootDirectory,
+              baseDir,
+              classpath,
+              args,
+              result,
+              newArguments);
+          final int res = result.get();
+          if (res >= 0) return res == Integer.MAX_VALUE ? Optional.empty() : Optional.of(res);
+          else args = newArguments.get();
+        } catch (final InvocationTargetException e) {
+          if (e.getCause() instanceof RuntimeException) throw (RuntimeException) e.getCause();
+          else throw e;
+        } finally {
+          swap(loader, previous);
+        }
+      }
+    } else {
+      final URL url = new URL("file:" + System.getProperty("sbt.launch.jar"));
+      final URLClassLoader loader = new URLClassLoader(new URL[] {url}, top());
+      final Class<?> boot = loader.loadClass("xsbt.boot.Boot");
+      // If we don't initialize the arguments this way, then the call to invoke on
+      // xsbt.boot.Boot.main fails with an IllegalArgumentException
+      final Object newArgs = Array.newInstance(loader.loadClass("java.lang.String"), args.length);
+      for (int i = 0; i < args.length; ++i) ((String[]) newArgs)[i] = args[i];
       final ClassLoader previous = Thread.currentThread().getContextClassLoader();
+
       try {
         Thread.currentThread().setContextClassLoader(loader);
-        final AtomicInteger result = new AtomicInteger(-1);
-        final AtomicReference<String[]> newArguments = new AtomicReference<>();
-        final Class<?> clazz = loader.loadClass("sbt.internal.scriptedtest.ScriptedLauncher");
-        Method method =
-            clazz.getDeclaredMethod(
-                "launchImpl",
-                ClassLoader.class,
-                ClassLoader.class,
-                File.class,
-                String.class,
-                String.class,
-                File.class,
-                File.class,
-                File[].class,
-                String[].class,
-                AtomicInteger.class,
-                AtomicReference.class);
-        method.invoke(
-            null,
-            topLoader,
-            loader,
-            scalaHome,
-            sbtVersion,
-            scalaVersion,
-            bootDirectory,
-            baseDir,
-            classpath,
-            args,
-            result,
-            newArguments);
-        final int res = result.get();
-        if (res >= 0) return res == Integer.MAX_VALUE ? Optional.empty() : Optional.of(res);
-        else args = newArguments.get();
+        boot.getDeclaredMethod("main", newArgs.getClass()).invoke(null, newArgs);
+        return Optional.empty();
       } finally {
-        try {
-          loader.close();
-        } catch (final Exception e) {
-        }
-        Thread.currentThread().setContextClassLoader(previous);
+        swap(loader, previous);
       }
     }
+  }
+
+  private static ClassLoader top() {
+    ClassLoader result = ClassLoader.getSystemClassLoader();
+    while (result.getParent() != null) result = result.getParent();
+    return result;
+  }
+
+  private static void swap(final URLClassLoader old, final ClassLoader stashed) {
+    try {
+      old.close();
+    } catch (final Exception e) {
+    }
+    Thread.currentThread().setContextClassLoader(stashed);
   }
 
   private static void copy(final File[] files, final File toDirectory) {
@@ -146,16 +180,24 @@ public class ScriptedLauncher {
     final Class<?> clazz = loader.loadClass("sbt.xMain");
     final Object instance = clazz.getConstructor().newInstance();
     final Method run = clazz.getDeclaredMethod("run", loader.loadClass("xsbti.AppConfiguration"));
-    final Object runResult = run.invoke(instance, conf);
-    if (runResult instanceof xsbti.Reboot) newArguments.set(((Reboot) runResult).arguments());
-    else {
-      if (runResult instanceof xsbti.Exit) {
-        result.set(((Exit) runResult).code());
-      } else if (runResult instanceof xsbti.Continue) {
-        result.set(Integer.MAX_VALUE);
-      } else {
-        handleUnknownMainResult((MainResult) runResult);
-      }
+    Object runResult;
+    try {
+      runResult = run.invoke(instance, conf);
+    } catch (final InvocationTargetException e) {
+      runResult = e.getCause();
+    }
+    if (runResult instanceof Reboot) newArguments.set(((Reboot) runResult).arguments());
+    else if (runResult instanceof FullReload)
+      newArguments.set(((FullReload) runResult).arguments());
+    else if (runResult instanceof Exit) {
+      result.set(((Exit) runResult).code());
+    } else if (runResult instanceof Continue) {
+      result.set(Integer.MAX_VALUE);
+    } else if (runResult instanceof Throwable) {
+      ((Throwable) runResult).printStackTrace(System.err);
+      result.set(1);
+    } else {
+      handleUnknownMainResult((MainResult) runResult);
     }
   }
 

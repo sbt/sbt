@@ -1099,15 +1099,16 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
     }
   )
 
-def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
+def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTask {
   publishLocalBinAll.value
+  val launchJar = s"-Dsbt.launch.jar=${(bundledLauncherProj / Compile / packageBin).value}"
   Scripted.doScripted(
     (scalaInstance in scriptedSbtReduxProj).value,
     scriptedSource.value,
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
     scriptedPrescripted.value,
-    scriptedLaunchOpts.value,
+    scriptedLaunchOpts.value ++ (if (launch) Some(launchJar) else None),
     scalaVersion.value,
     version.value,
     (scriptedSbtReduxProj / Test / fullClasspathAsJars).value.map(_.data),
@@ -1161,8 +1162,8 @@ ThisBuild / scriptedPrescripted := { _ =>
 
 def otherRootSettings =
   Seq(
-    scripted := scriptedTask.evaluated,
-    scriptedUnpublished := scriptedTask.evaluated,
+    scripted := scriptedTask(false).evaluated,
+    scriptedUnpublished := scriptedTask(false).evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     watchTriggers in scripted += scriptedSource.value.toGlob / **,
     watchTriggers in scriptedUnpublished := (watchTriggers in scripted).value,
@@ -1186,8 +1187,8 @@ def otherRootSettings =
           case Some(home) => List(s"-Dsbt.ivy.home=$home")
           case _          => Nil
         }),
-      scripted := scriptedTask.evaluated,
-      scriptedUnpublished := scriptedTask.evaluated,
+      scripted := scriptedTask(true).evaluated,
+      scriptedUnpublished := scriptedTask(true).evaluated,
       scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
     )
   )
