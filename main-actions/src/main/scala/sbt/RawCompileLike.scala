@@ -56,10 +56,9 @@ object RawCompileLike {
       type Inputs =
         FilesInfo[HashFileInfo] :+: FilesInfo[ModifiedFileInfo] :+: Seq[File] :+: File :+:
           Seq[String] :+: Int :+: HNil
-      val inputs
-          : Inputs = hash(sources.toSet ++ optionFiles(options, fileInputOpts)) :+: lastModified(
-        classpath.toSet
-      ) :+: classpath :+: outputDirectory :+: options :+: maxErrors :+: HNil
+      val inputs: Inputs = hash(sources.toSet ++ optionFiles(options, fileInputOpts)) :+:
+        FilesInfo(classpath.toSet.map(lastModified.fileOrDirectoryMax)) :+: classpath :+:
+        outputDirectory :+: options :+: maxErrors :+: HNil
       val cachedComp = inputChanged(cacheStoreFactory make "inputs") { (inChanged, in: Inputs) =>
         inputChanged(cacheStoreFactory make "output") {
           (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
