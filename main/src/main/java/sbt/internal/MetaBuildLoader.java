@@ -20,6 +20,7 @@ public final class MetaBuildLoader extends URLClassLoader {
   private final URLClassLoader fullScalaLoader;
   private final URLClassLoader libraryLoader;
   private final URLClassLoader interfaceLoader;
+
   MetaBuildLoader(
       final URL[] urls,
       final URLClassLoader fullScalaLoader,
@@ -49,12 +50,12 @@ public final class MetaBuildLoader extends URLClassLoader {
   }
 
   /**
-   *  Rearrange the classloaders so that test-interface is above the scala library. Implemented
-   *  without using the scala standard library to minimize classloading.
+   * Rearrange the classloaders so that test-interface is above the scala library. Implemented
+   * without using the scala standard library to minimize classloading.
    *
    * @param appProvider the appProvider that needs to be modified
-   * @return a ClassLoader with a URLClassLoader for the test-interface-1.0.jar above the
-   *         scala library.
+   * @return a ClassLoader with a URLClassLoader for the test-interface-1.0.jar above the scala
+   *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
     final Pattern pattern = Pattern.compile("test-interface-[0-9.]+\\.jar");
