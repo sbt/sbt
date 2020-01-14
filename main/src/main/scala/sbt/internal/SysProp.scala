@@ -69,6 +69,7 @@ object SysProp {
   def traces: Boolean = getOrFalse("sbt.traces")
   def client: Boolean = getOrFalse("sbt.client")
   def ci: Boolean = getOrFalse("sbt.ci")
+  def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")

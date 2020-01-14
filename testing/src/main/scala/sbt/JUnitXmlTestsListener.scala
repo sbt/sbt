@@ -33,9 +33,11 @@ import sbt.protocol.testing.TestResult
  * report format.
  * @param outputDir path to the dir in which a folder with results is generated
  */
-class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends TestsListener {
-  // This constructor is for binary compatibility with older versions of sbt.
-  def this(outputDir: String) = this(outputDir, null)
+class JUnitXmlTestsListener(val outputDir: String, legacyTestReport: Boolean, logger: Logger)
+    extends TestsListener {
+  // These constructors are for binary compatibility with older versions of sbt.
+  def this(outputDir: String, logger: Logger) = this(outputDir, false, logger)
+  def this(outputDir: String) = this(outputDir, false, null)
 
   /**Current hostname so we know which machine executed the tests*/
   val hostname = {
@@ -237,16 +239,16 @@ class JUnitXmlTestsListener(val outputDir: String, logger: Logger) extends Tests
   private[this] def formatISO8601DateTime(d: LocalDateTime): String =
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-  private def writeSuite() = {
-    val legacyFile =
+  private def writeSuite(): Unit = {
+    val file = if (legacyTestReport) {
       new File(targetDir, s"${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
-    val file =
+    } else {
       new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
+    }
     // TODO would be nice to have a logger and log this with level debug
     // System.err.println("Writing JUnit XML test report: " + file)
     val testSuiteResult = withTestSuite(_.stop())
-    XML.save(legacyFile, testSuiteResult, "UTF-8", true, null)
-    XML.save(file, testSuiteResult, "UTF-8", true, null)
+    XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
     testSuite.remove()
   }
 
