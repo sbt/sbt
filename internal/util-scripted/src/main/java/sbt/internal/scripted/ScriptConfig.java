@@ -13,26 +13,25 @@ import xsbti.Logger;
 
 public class ScriptConfig {
 
-	private String label;
-	private File testDirectory;
-	private Logger logger;
+  private String label;
+  private File testDirectory;
+  private Logger logger;
 
-	public ScriptConfig(String label, File testDirectory, Logger logger) {
-		this.label = label;
-		this.testDirectory = testDirectory;
-		this.logger = logger;
-	}
+  public ScriptConfig(String label, File testDirectory, Logger logger) {
+    this.label = label;
+    this.testDirectory = testDirectory;
+    this.logger = logger;
+  }
 
-	public String label() {
-		return this.label;
-	}
+  public String label() {
+    return this.label;
+  }
 
-	public File testDirectory() {
-		return this.testDirectory;
-	}
+  public File testDirectory() {
+    return this.testDirectory;
+  }
 
-	public Logger logger() {
-		return this.logger;
-	}
-
+  public Logger logger() {
+    return this.logger;
+  }
 }

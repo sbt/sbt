@@ -25,7 +25,7 @@ final class ScalaLibraryClassLoader extends URLClassLoader {
   @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < jars.length; ++ i) {
+    for (int i = 0; i < jars.length; ++i) {
       builder.append(jars[i].toString());
       if (i < jars.length - 2) builder.append(", ");
     }
