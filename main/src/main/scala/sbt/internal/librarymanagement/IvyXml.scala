@@ -47,7 +47,7 @@ object IvyXml {
   }
 
   // These are required for publish to be fine, later on.
-  private def writeFiles(
+  private[sbt] def writeFiles(
       currentProject: Project,
       shadedConfigOpt: Option[Configuration],
       ivySbt: IvySbt,
@@ -180,7 +180,7 @@ object IvyXml {
     </ivy-module>
   }
 
-  private[sbt] def makeIvyXmlBefore[T](
+  private def makeIvyXmlBefore[T](
       task: TaskKey[T],
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =
