@@ -426,7 +426,7 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
   .settings(
     utilCommonSettings,
     name := "Util Scripted",
-    libraryDependencies ++= scalaParsers.value,
+    libraryDependencies += scalaParsers,
     utilMimaSettings,
   )
   .configure(addSbtIO)
@@ -439,7 +439,8 @@ lazy val testingProj = (project in file("testing"))
   .settings(
     baseSettings,
     name := "Testing",
-    libraryDependencies ++= scalaXml.value ++ Seq(
+    libraryDependencies ++= Seq(
+      scalaXml,
       testInterface,
       launcherInterface,
       sjsonNewScalaJson.value
@@ -862,19 +863,12 @@ lazy val mainProj = (project in file("main"))
     name := "Main",
     checkPluginCross := {
       val sv = scalaVersion.value
-      val xs =
-        IO.readLines(baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala")
-      if (xs exists { s =>
-            s.contains(s""""$sv"""")
-          }) ()
-      else sys.error("PluginCross.scala does not match up with the scalaVersion " + sv)
+      val f = baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala"
+      if (!IO.readLines(f).exists(_.contains(s""""$sv"""")))
+        sys.error(s"PluginCross.scala does not match up with the scalaVersion $sv")
     },
-    libraryDependencies ++= {
-      scalaXml.value ++
-        Seq(launcherInterface) ++
-        log4jDependencies ++
-        Seq(scalaCacheCaffeine, lmCoursierShaded)
-    },
+    libraryDependencies ++=
+      (Seq(scalaXml, launcherInterface, scalaCacheCaffeine, lmCoursierShaded) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
       case _                          => List()
