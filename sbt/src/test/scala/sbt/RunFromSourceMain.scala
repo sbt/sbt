@@ -7,12 +7,13 @@
 
 package sbt
 
+import java.io.File.pathSeparator
+
 import sbt.internal.scriptedtest.ScriptedLauncher
 import sbt.util.LogExchange
 
 import scala.annotation.tailrec
 import scala.sys.process.Process
-import java.io.File.pathSeparator
 
 object RunFromSourceMain {
   def fork(
@@ -76,14 +77,16 @@ object RunFromSourceMain {
       sbtVersion: String,
       classpath: String,
       args: Seq[String],
-  ): Option[(File, Seq[String])] =
-    try launch(baseDir, scalaVersion, sbtVersion, classpath, args) map exit
+  ): Option[(File, Seq[String])] = {
+    try launch(defaultBootDirectory, baseDir, scalaVersion, sbtVersion, classpath, args) map exit
     catch {
       case r: xsbti.FullReload            => Some((baseDir, r.arguments()))
       case scala.util.control.NonFatal(e) => e.printStackTrace(); errorAndExit(e.toString)
     }
+  }
 
   private def launch(
+      bootDirectory: File,
       baseDirectory: File,
       scalaVersion: String,
       sbtVersion: String,
@@ -92,7 +95,7 @@ object RunFromSourceMain {
   ): Option[Int] = {
     ScriptedLauncher
       .launch(
-        scalaHome(scalaVersion),
+        scalaHome(bootDirectory, scalaVersion),
         sbtVersion,
         scalaVersion,
         bootDirectory,
@@ -107,14 +110,15 @@ object RunFromSourceMain {
     }
   }
 
-  private lazy val bootDirectory: File = file(sys.props("user.home")) / ".sbt" / "boot"
-  private def scalaHome(scalaVersion: String): File = {
+  private lazy val defaultBootDirectory: File =
+    file(sys.props("user.home")) / ".sbt" / "scripted" / "boot"
+  private def scalaHome(bootDirectory: File, scalaVersion: String): File = {
     val log = sbt.util.LogExchange.logger("run-from-source")
     val scalaHome0 = bootDirectory / s"scala-$scalaVersion"
     if ((scalaHome0 / "lib").exists) scalaHome0
     else {
       log.info(s"""scalaHome ($scalaHome0) wasn't found""")
-      val fakeboot = file(sys.props("user.home")) / ".sbt" / "fakeboot"
+      val fakeboot = bootDirectory / "fakeboot"
       val scalaHome1 = fakeboot / s"scala-$scalaVersion"
       val scalaHome1Lib = scalaHome1 / "lib"
       val scalaHome1Temp = scalaHome1 / "temp"
