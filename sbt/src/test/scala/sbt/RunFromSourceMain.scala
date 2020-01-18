@@ -52,6 +52,7 @@ object RunFromSourceMain {
         s"Must specify working directory, scala version and sbt version and classpath as the first three arguments"
       )
     case Array(wd, scalaVersion, sbtVersion, classpath, args @ _*) =>
+      System.setProperty("jna.nosys", "true")
       run(file(wd), scalaVersion, sbtVersion, classpath, args)
   }
 
