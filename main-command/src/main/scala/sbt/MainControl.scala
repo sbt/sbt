@@ -18,7 +18,6 @@ final case class Reboot(
     app: xsbti.ApplicationID,
     baseDirectory: File
 ) extends xsbti.Reboot {
-  System.err.println("AARGH " + app.classpathExtra.toSeq)
   def arguments = argsList.toArray
 }
 
@@ -31,7 +30,6 @@ final case class ApplicationID(
     crossVersionedValue: xsbti.CrossValue,
     extra: Seq[File]
 ) extends xsbti.ApplicationID {
-  new Exception("make app id").printStackTrace(System.err)
   def mainComponents = components.toArray
   def classpathExtra = extra.toArray
   def crossVersioned = crossVersionedValue != xsbti.CrossValue.Disabled
