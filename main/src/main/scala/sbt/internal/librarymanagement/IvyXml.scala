@@ -180,7 +180,7 @@ object IvyXml {
     </ivy-module>
   }
 
-  private def makeIvyXmlBefore[T](
+  private[sbt] def makeIvyXmlBefore[T](
       task: TaskKey[T],
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =
