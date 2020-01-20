@@ -11,6 +11,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 import xsbti.AppProvider;
 import xsbti.ScalaProvider;
@@ -61,19 +63,27 @@ public final class MetaBuildLoader extends URLClassLoader {
     final Pattern pattern = Pattern.compile("test-interface-[0-9.]+\\.jar");
     final File[] cp = appProvider.mainClasspath();
     final URL[] interfaceURL = new URL[1];
-    final URL[] rest = new URL[cp.length - 1];
+    final File[] extra =
+        appProvider.id().classpathExtra() == null ? new File[0] : appProvider.id().classpathExtra();
+    final Set<File> bottomClasspath = new LinkedHashSet<>();
 
     {
-      int i = 0;
-      int j = 0; // index into rest
-      while (i < cp.length) {
-        final File file = cp[i];
+      for (final File file : cp) {
         if (pattern.matcher(file.getName()).find()) {
           interfaceURL[0] = file.toURI().toURL();
         } else {
-          rest[j] = file.toURI().toURL();
-          j += 1;
+          bottomClasspath.add(file);
         }
+      }
+      for (final File file : extra) {
+        bottomClasspath.add(file);
+      }
+    }
+    final URL[] rest = new URL[bottomClasspath.size()];
+    {
+      int i = 0;
+      for (final File file : bottomClasspath) {
+        rest[i] = file.toURI().toURL();
         i += 1;
       }
     }

@@ -5,8 +5,6 @@ import java.lang.reflect.InvocationTargetException
 import sbt._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
-import sbt.ScriptedPlugin.autoImport._
-import sbt.util.Level
 
 object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -15,7 +13,6 @@ object LocalScriptedPlugin extends AutoPlugin {
 }
 
 trait ScriptedKeys {
-  val publishAll = taskKey[Unit]("")
   val publishLocalBinAll = taskKey[Unit]("")
   val scriptedUnpublished = inputKey[Unit](
     "Execute scripted without publishing sbt first. " +
@@ -93,14 +90,15 @@ object Scripted {
   }
 
   def doScripted(
-      launcher: File,
-      scriptedSbtClasspath: Seq[Attributed[File]],
       scriptedSbtInstance: ScalaInstance,
       sourcePath: File,
       bufferLog: Boolean,
       args: Seq[String],
       prescripted: File => Unit,
       launchOpts: Seq[String],
+      scalaVersion: String,
+      sbtVersion: String,
+      classpath: Seq[File],
       logger: Logger
   ): Unit = {
     logger.info(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
@@ -110,7 +108,7 @@ object Scripted {
     sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
 
     val noJLine = new FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
-    val loader = ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
+    val loader = ClasspathUtilities.toLoader(classpath, noJLine)
     val bridgeClass = Class.forName("sbt.scriptedtest.ScriptedRunner", true, loader)
 
     // Interface to cross class loader
@@ -119,9 +117,11 @@ object Scripted {
           resourceBaseDirectory: File,
           bufferLog: Boolean,
           tests: Array[String],
-          bootProperties: File,
           launchOpts: Array[String],
           prescripted: java.util.List[File],
+          scalaVersion: String,
+          sbtVersion: String,
+          classpath: Seq[File],
           instances: Int
       ): Unit
     }
@@ -150,9 +150,11 @@ object Scripted {
           sourcePath,
           bufferLog,
           args.toArray,
-          launcher,
           launchOpts.toArray,
           callback,
+          scalaVersion,
+          sbtVersion,
+          classpath,
           instances
         )
       } catch { case ite: InvocationTargetException => throw ite.getCause }

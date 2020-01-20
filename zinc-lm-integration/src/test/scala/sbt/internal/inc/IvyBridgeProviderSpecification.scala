@@ -23,7 +23,10 @@ import org.scalatest._
  *
  * This is a very good example on how to instantiate the compiler bridge provider.
  */
-abstract class IvyBridgeProviderSpecification extends FlatSpec with Matchers {
+abstract class IvyBridgeProviderSpecification
+    extends fixture.FlatSpec
+    with fixture.TestDataFixture
+    with Matchers {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
@@ -50,13 +53,21 @@ abstract class IvyBridgeProviderSpecification extends FlatSpec with Matchers {
     ZincComponentCompiler.interfaceProvider(bridge, manager, dependencyResolution, currentManaged)
   }
 
-  def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
+  def getCompilerBridge(
+      targetDir: File,
+      log: Logger,
+      scalaVersion: String,
+  )(implicit td: TestData): File = {
+    val zincVersion = td.configMap.get("sbt.zinc.version") match {
+      case Some(v: String) => v
+      case _               => throw new IllegalStateException("No zinc version specified")
+    }
     val bridge0 = ZincComponentCompiler.getDefaultBridgeModule(scalaVersion)
     // redefine the compiler bridge version
     // using the version of zinc used during testing
     // this way when building with zinc as a source dependency
     // these specs don't go looking for some SHA-suffixed compiler bridge
-    val bridge1 = bridge0.withRevision(ZincLmIntegrationBuildInfo.zincVersion)
+    val bridge1 = bridge0.withRevision(zincVersion)
     val provider = getZincProvider(bridge1, targetDir, log)
     val scalaInstance = provider.fetchScalaInstance(scalaVersion, log)
     val bridge = provider.fetchCompiledBridge(scalaInstance, log)

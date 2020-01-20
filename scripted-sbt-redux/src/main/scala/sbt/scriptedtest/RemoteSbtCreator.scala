@@ -8,55 +8,28 @@
 package sbt
 package scriptedtest
 
-import java.io.File
+import xsbt.IPC
 
 import scala.sys.process.{ BasicIO, Process }
 
-import sbt.io.IO
-import sbt.util.Logger
-
-import xsbt.IPC
-
-private[sbt] sealed trait RemoteSbtCreatorKind
-private[sbt] object RemoteSbtCreatorKind {
-  case object LauncherBased extends RemoteSbtCreatorKind
-  case object RunFromSourceBased extends RemoteSbtCreatorKind
-}
-
 abstract class RemoteSbtCreator private[sbt] {
   def newRemote(server: IPC.Server): Process
-}
-
-final class LauncherBasedRemoteSbtCreator(
-    directory: File,
-    launcher: File,
-    log: Logger,
-    launchOpts: Seq[String] = Nil,
-) extends RemoteSbtCreator {
-  def newRemote(server: IPC.Server) = {
-    val launcherJar = launcher.getAbsolutePath
-    val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
-    val args = List("<" + server.port)
-    val cmd = "java" :: launchOpts.toList ::: globalBase :: "-jar" :: launcherJar :: args ::: Nil
-    val io = BasicIO(false, log).withInput(_.close())
-    val p = Process(cmd, directory) run (io)
-    val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }
-    thread.start()
-    p
-  }
 }
 
 final class RunFromSourceBasedRemoteSbtCreator(
     directory: File,
     log: Logger,
     launchOpts: Seq[String] = Nil,
+    scalaVersion: String,
+    sbtVersion: String,
+    classpath: Seq[File],
 ) extends RemoteSbtCreator {
-  def newRemote(server: IPC.Server) = {
-    val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
-    val cp = IO readLinesURL (getClass getResource "/RunFromSource.classpath")
-    val cpString = cp mkString File.pathSeparator
+  def newRemote(server: IPC.Server): Process = {
+    val globalBase = "-Dsbt.global.base=" + new File(directory, "global").getAbsolutePath
     val mainClassName = "sbt.RunFromSourceMain"
-    val args = List(mainClassName, directory.toString, "<" + server.port)
+    val cpString = classpath.mkString(java.io.File.pathSeparator)
+    val args =
+      List(mainClassName, directory.toString, scalaVersion, sbtVersion, cpString, "<" + server.port)
     val cmd = "java" :: launchOpts.toList ::: globalBase :: "-cp" :: cpString :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
     val p = Process(cmd, directory) run (io)
