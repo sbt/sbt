@@ -11,7 +11,7 @@ env:
     # WHITESOURCE_PASSWORD=
     - secure: d3bu2KNwsVHwfhbGgO+gmRfDKBJhfICdCJFGWKf2w3Gv86AJZX9nuTYRxz0KtdvEHO5Xw8WTBZLPb2thSJqhw9OCm4J8TBAVqCP0ruUj4+aqBUFy4bVexQ6WKE6nWHs4JPzPk8c6uC1LG3hMuzlC8RGETXtL/n81Ef1u7NjyXjs=
   matrix:
-    - SBT_CMD="mimaReportBinaryIssues ; javafmtCheck ; Test / javafmtCheck; scalafmtCheckAll ; scalafmtSbtCheck; headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests; doc; $UTIL_TESTS; ++$SCALA_213; $UTIL_TESTS"
+    - SBT_CMD="mimaReportBinaryIssues ; jvmfmtCheckAll;  headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal ;mainSettingsProj/test ;safeUnitTests ;otherUnitTests; doc; $UTIL_TESTS; ++$SCALA_213; $UTIL_TESTS"
     - SBT_CMD="scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
     - SBT_CMD="scripted dependency-management/* plugins/* project-load/* java/* run/* nio/*"
     - SBT_CMD="repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"

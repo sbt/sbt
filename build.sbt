@@ -87,16 +87,6 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
       s"https://github.com/sbt/sbt/tree/$tagOrSha€{FILE_PATH}.scala"
     )
   },
-  Compile / javafmtOnCompile := Def
-    .taskDyn(if ((scalafmtOnCompile).value) Compile / javafmt else Def.task(()))
-    .value,
-  Test / javafmtOnCompile := Def
-    .taskDyn(if ((Test / scalafmtOnCompile).value) Test / javafmt else Def.task(()))
-    .value,
-  Compile / unmanagedSources / inputFileStamps :=
-    (Compile / unmanagedSources / inputFileStamps).dependsOn(Compile / javafmtOnCompile).value,
-  Test / unmanagedSources / inputFileStamps :=
-    (Test / unmanagedSources / inputFileStamps).dependsOn(Test / javafmtOnCompile).value,
   crossScalaVersions := Seq(baseScalaVersion),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
