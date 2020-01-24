@@ -70,6 +70,12 @@ val root = (project in file(".")).
       val _ = (clean in dist).value
       clean.value
     },
+    credentials ++= {
+      (sys.env.get("BINTRAY_USER"), sys.env.get("BINTRAY_PASS")) match {
+        case (Some(u), Some(p)) => Seq(Credentials("Bintray API Realm", "api.bintray.com", u, p))
+        case _ => Nil
+      }
+    },
     useGpg := true,
     usePgpKeyHex("642AC823"),
     pgpSecretRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.key",
