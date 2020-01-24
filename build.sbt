@@ -107,7 +107,7 @@ val root = (project in file(".")).
     },
 
     // DEBIAN SPECIFIC
-    debianBuildId := 0,
+    debianBuildId := sys.props.getOrElse("sbt.build.patch", sys.env.getOrElse("DIST_PATCHVER", "0")).toInt,
     version in Debian := {
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
@@ -127,7 +127,7 @@ val root = (project in file(".")).
     debianNativeBuildOptions in Debian := Seq("-Zgzip", "-z3"),
 
     // RPM SPECIFIC
-    rpmRelease := "0",
+    rpmRelease := debianBuildId.value.toString,
     version in Rpm := {
       val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
       val stable = if (rpmRelease.value == "0") stable0
