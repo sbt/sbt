@@ -1375,10 +1375,14 @@ object Defaults extends BuildCommon {
       val configurations = cOpt.map(c => ConfigRef(c.name)).toVector
       if (combined.isEmpty) a.withClassifier(None).withConfigurations(configurations)
       else {
-        val classifierString = combined mkString "-"
-        a.withClassifier(Some(classifierString))
-          .withType(Artifact.classifierType(classifierString))
+        val a1 = a
+          .withClassifier(Some(combined.mkString("-")))
           .withConfigurations(configurations)
+        // use "source" as opposed to "foo-source" to retrieve the type
+        classifier match {
+          case Some(c) => a1.withType(Artifact.classifierType(c))
+          case None    => a1
+        }
       }
     }
 
