@@ -18,7 +18,7 @@ import sbt.Project.inScope
 import sbt.Scope.GlobalScope
 import sbt.compiler.Eval
 import sbt.internal.BuildStreams._
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil, ZincUtil }
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
@@ -1285,7 +1285,7 @@ private[sbt] object Load {
 
     // Load the definition classpath separately to avoid conflicts, see #511.
     if (definitionClasspath.isEmpty) parentLoader
-    else ClasspathUtilities.toLoader(data(definitionClasspath), parentLoader)
+    else ClasspathUtil.toLoader(data(definitionClasspath).map(_.toPath), parentLoader)
   }
 
   def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): PluginData = {

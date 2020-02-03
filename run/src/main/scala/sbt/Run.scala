@@ -12,7 +12,7 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{ isPublic, isStatic }
 
 import sbt.internal.inc.ScalaInstance
-import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtilities }
+import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
 import sbt.internal.util.MessageOnlyException
 import sbt.io.Path
 import sbt.util.Logger
@@ -61,7 +61,10 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
 class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolean)
     extends ScalaRun {
   def this(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) =
-    this((cp: Seq[File]) => ClasspathUtilities.makeLoader(cp, instance, nativeTmp), trapExit)
+    this(
+      (cp: Seq[File]) => ClasspathUtil.makeLoader(cp.map(_.toPath), instance, nativeTmp.toPath),
+      trapExit
+    )
 
   private[sbt] def runWithLoader(
       loader: ClassLoader,

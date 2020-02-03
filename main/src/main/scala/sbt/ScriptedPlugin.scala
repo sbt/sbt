@@ -15,7 +15,7 @@ import sbt.Keys._
 import sbt.nio.Keys._
 import sbt.Project._
 import sbt.internal.inc.ModuleUtilities
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io._
 import sbt.io.syntax._
@@ -92,7 +92,8 @@ object ScriptedPlugin extends AutoPlugin {
 
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =
     Def.task {
-      val loader = ClasspathUtilities.toLoader(scriptedClasspath.value, scalaInstance.value.loader)
+      val cp = scriptedClasspath.value.get.map(_.toPath)
+      val loader = ClasspathUtil.toLoader(cp, scalaInstance.value.loader)
       try {
         ModuleUtilities.getObject("sbt.scriptedtest.ScriptedTests", loader)
       } catch {
