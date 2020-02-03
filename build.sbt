@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion0 = "2.0.0-RC5-6"
+val coursierVersion0 = "2.0.0-RC6"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
@@ -52,7 +52,8 @@ lazy val `lm-coursier-shaded` = project
       "shapeless",
       "argonaut",
       "org.fusesource",
-      "org.jline"
+      "macrocompat",
+      "io.github.alexarchambault.windowsansi"
     ),
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0 % "shaded",
@@ -63,8 +64,7 @@ lazy val `lm-coursier-shaded` = project
     ),
     packageBin.in(Shading) := {
       val jar = packageBin.in(Shading).value
-      // ignoreFiles is there temporarily, until https://github.com/coursier/coursier/pull/1317 is merged
-      Check.onlyNamespace("lmcoursier", jar, ignoreFiles = Set("coursier.properties"))
+      Check.onlyNamespace("lmcoursier", jar)
       jar
     }
   )
