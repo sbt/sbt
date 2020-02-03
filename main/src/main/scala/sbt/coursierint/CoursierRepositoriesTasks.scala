@@ -135,9 +135,11 @@ object CoursierRepositoriesTasks {
     Def.taskDyn {
       val s = state.value
       val projectRef = thisProjectRef.value
-      val projects = Project.transitiveInterDependencies(s, projectRef)
+      val dependencyRefs = Project.transitiveInterDependencies(s, projectRef)
       Def.task {
-        csrResolvers.all(ScopeFilter(inProjects(projectRef +: projects: _*))).value.flatten
+        val resolvers = csrResolvers.all(ScopeFilter(inProjects(projectRef))).value ++
+          csrResolvers.all(ScopeFilter(inProjects(dependencyRefs: _*))).value
+        resolvers.flatten
       }
     }
 }
