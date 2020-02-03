@@ -52,7 +52,8 @@ lazy val `lm-coursier-shaded` = project
       "shapeless",
       "argonaut",
       "org.fusesource",
-      "org.jline"
+      "macrocompat",
+      "io.github.alexarchambault.windowsansi"
     ),
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0 % "shaded",
