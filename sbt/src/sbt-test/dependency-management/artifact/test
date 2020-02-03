@@ -17,3 +17,5 @@ $ touch retrieve
 
 # verify that artifact with extension, type, and classifier can be retrieved
 > check
+
+> checkArtifact
