@@ -63,8 +63,7 @@ lazy val `lm-coursier-shaded` = project
     ),
     packageBin.in(Shading) := {
       val jar = packageBin.in(Shading).value
-      // ignoreFiles is there temporarily, until https://github.com/coursier/coursier/pull/1317 is merged
-      Check.onlyNamespace("lmcoursier", jar, ignoreFiles = Set("coursier.properties"))
+      Check.onlyNamespace("lmcoursier", jar)
       jar
     }
   )
