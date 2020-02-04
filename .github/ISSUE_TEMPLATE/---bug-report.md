@@ -8,15 +8,15 @@ assignees: ''
 ---
 
 ## steps
-sbt version: *insert sbt version*
 
+<!-- Describe exact steps to reproduce your problems on our computer, including sbt version and build.sbt  -->
 
 ## problem
 
-
+<!-- Next, describe the problem, or what you think is the problem. -->
 
 ## expectation
 
-
+<!-- Describe what you think should've happened. -->
 
 ## notes
