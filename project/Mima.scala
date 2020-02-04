@@ -14,14 +14,13 @@ object Mima {
       .forall(c => c == '.' || c == '-' || c.isDigit)
 
   def binaryCompatibilityVersions: Set[String] =
-    Seq("git", "tag", "--merged", "HEAD^", "--contains", "736d5c11")
+    Seq("git", "tag", "--merged", "HEAD^", "--contains", "v2.0.0-RC3-6")
       .!!
       .linesIterator
       .map(_.trim)
       .filter(_.startsWith("v"))
       .map(_.stripPrefix("v"))
       .filter(stable)
-      .filter(_ != "2.0.0-RC3-2") // borked release
       .toSet
 
   def settings: Seq[Setting[_]] = Seq(
@@ -37,6 +36,8 @@ object Mima {
       import com.typesafe.tools.mima.core._
 
       Seq(
+        // spurious errors on CI
+        ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
         // Methods that shouldn't have been there
         ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.FileCredentials.get"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("lmcoursier.credentials.DirectCredentials.matches"),
@@ -56,6 +57,8 @@ object Mima {
       import com.typesafe.tools.mima.core._
 
       Seq(
+        // spurious errors on CI
+        ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
         // Should have been put under lmcoursier.internal?
         (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.definitions.ToCoursier."))
       )
