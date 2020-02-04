@@ -71,6 +71,7 @@ lazy val `lm-coursier-shaded` = project
 
 lazy val `sbt-coursier-shared` = project
   .in(file("modules/sbt-coursier-shared"))
+  .disablePlugins(MimaPlugin)
   .dependsOn(`lm-coursier`)
   .settings(
     plugin,
@@ -81,6 +82,7 @@ lazy val `sbt-coursier-shared` = project
 
 lazy val `sbt-coursier-shared-shaded` = project
   .in(file("modules/sbt-coursier-shared/target/shaded-module"))
+  .disablePlugins(MimaPlugin)
   .dependsOn(`lm-coursier-shaded`)
   .settings(
     plugin,
@@ -91,6 +93,7 @@ lazy val `sbt-coursier-shared-shaded` = project
 lazy val `sbt-lm-coursier` = project
   .in(file("modules/sbt-lm-coursier"))
   .enablePlugins(ScriptedPlugin)
+  .disablePlugins(MimaPlugin)
   .dependsOn(`sbt-coursier-shared-shaded`)
   .settings(
     plugin,
@@ -108,6 +111,7 @@ lazy val `sbt-lm-coursier` = project
 lazy val `sbt-coursier` = project
   .in(file("modules/sbt-coursier"))
   .enablePlugins(ScriptedPlugin)
+  .disablePlugins(MimaPlugin)
   .dependsOn(`sbt-coursier-shared`)
   .settings(
     plugin,
@@ -124,6 +128,7 @@ lazy val `sbt-coursier` = project
 lazy val `sbt-pgp-coursier` = project
   .in(file("modules/sbt-pgp-coursier"))
   .enablePlugins(ScriptedPlugin)
+  .disablePlugins(MimaPlugin)
   .dependsOn(`sbt-coursier`)
   .settings(
     plugin,
@@ -143,6 +148,7 @@ lazy val `sbt-pgp-coursier` = project
 lazy val `sbt-shading` = project
   .in(file("modules/sbt-shading"))
   .enablePlugins(ScriptedPlugin)
+  .disablePlugins(MimaPlugin)
   .dependsOn(`sbt-coursier`)
   .settings(
     plugin,
@@ -158,6 +164,7 @@ lazy val `sbt-shading` = project
 
 lazy val `sbt-coursier-root` = project
   .in(file("."))
+  .disablePlugins(MimaPlugin)
   .aggregate(
     `lm-coursier`,
     `lm-coursier-shaded`,
