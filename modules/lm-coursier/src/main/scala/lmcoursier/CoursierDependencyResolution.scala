@@ -200,7 +200,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         interProjectDependencies = interProjectDependencies,
         res = resolutions,
         includeSignatures = false,
-        sbtBootJarOverrides = sbtBootJarOverrides
+        sbtBootJarOverrides = sbtBootJarOverrides,
+        classpathOrder = conf.classpathOrder,
       )
 
     val e = for {

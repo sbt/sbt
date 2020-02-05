@@ -12,7 +12,7 @@ object Settings {
 
   def scala212 = "2.12.10"
 
-  def sbt10Version = "1.0.2"
+  def targetSbtVersion = "1.2.8"
 
   private lazy val isAtLeastScala213 = Def.setting {
     import Ordering.Implicits._
@@ -52,7 +52,7 @@ object Settings {
     shared ++
     Seq(
       // https://github.com/sbt/sbt/issues/5049#issuecomment-528960415
-      dependencyOverrides := "org.scala-sbt" % "sbt" % "1.2.8" :: Nil,
+      dependencyOverrides := "org.scala-sbt" % "sbt" % targetSbtVersion :: Nil,
       scriptedLaunchOpts ++= Seq(
         "-Xmx1024M",
         "-Dplugin.name=" + name.value,
@@ -62,7 +62,7 @@ object Settings {
       ),
       scriptedBufferLog := false,
       sbtPlugin := true,
-      sbtVersion.in(pluginCrossBuild) := sbt10Version
+      sbtVersion.in(pluginCrossBuild) := targetSbtVersion
     )
 
   lazy val shading =

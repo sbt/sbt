@@ -22,22 +22,32 @@ object Main extends App {
 
   buildCp(Thread.currentThread().getContextClassLoader)
 
+  System.err.println("Classpath:")
+  for (f <- cp)
+    System.err.println(s"  $f")
+  System.err.println()
+
   val sbtBase = new File(sys.props.getOrElse(
     "sbt.global.base",
     sys.props("user.home") + "/.sbt"
   ))
   val prefixes = Seq(new File(sbtBase, "boot").getAbsolutePath) ++
-    Seq("coursier.sbt-launcher.dirs.scala-jars", "coursier.sbt-launcher.dirs.base")
+    Seq("coursier.sbt-launcher.dirs.scala-jars", "coursier.sbt-launcher.dirs.base", "user.dir")
       .flatMap(sys.props.get(_))
       .map(new File(_).getAbsolutePath)
+  val home = new File(sys.props("user.home")).getAbsolutePath
 
-  def fromBootAndUnique(name: String): Unit = {
+  def notFromCoursierCache(name: String): Unit = {
     val jars = cp.filter(_.getName.startsWith(name)).distinct
-    assert(jars.length == 1, s"Found 0 or multiple JARs for $name: $jars")
+    assert(jars.nonEmpty, s"Found no JARs for $name")
 
-    val Seq(jar) = jars
-
-    assert(prefixes.exists(jar.getAbsolutePath.startsWith), s"JAR for $name ($jar) not under any of ${prefixes.mkString(", ")}")
+    for (jar <- jars)
+      assert(
+        !jar.getAbsolutePath.startsWith(home) ||
+          !jar.getAbsolutePath.toLowerCase(java.util.Locale.ROOT).contains("coursier") ||
+          prefixes.exists(jar.getAbsolutePath.startsWith),
+        s"JAR for $name ($jar) under $home and not under any of ${prefixes.mkString(", ")}"
+      )
   }
 
   val props = Thread.currentThread()
@@ -48,12 +58,8 @@ object Main extends App {
     .map(_.toString)
     .sorted
 
-  // That one doesn't pass with sbt 1.x, maybe because of classloader filtering?
-  // fromBootAndUnique("scala-library")
+  notFromCoursierCache("scala-library")
   assert(props.lengthCompare(1) == 0, s"Found several library.properties files in classpath: $props")
-
-  fromBootAndUnique("scala-reflect")
-  fromBootAndUnique("scala-compiler")
 
   Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
 }

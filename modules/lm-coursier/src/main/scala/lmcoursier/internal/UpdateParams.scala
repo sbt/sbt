@@ -16,7 +16,8 @@ final case class UpdateParams(
   interProjectDependencies: Seq[Project],
   res: Map[Set[Configuration], Resolution],
   includeSignatures: Boolean,
-  sbtBootJarOverrides: Map[(Module, String), File]
+  sbtBootJarOverrides: Map[(Module, String), File],
+  classpathOrder: Boolean,
 ) {
 
   def artifactFileOpt(

@@ -136,7 +136,8 @@ object UpdateTasks {
               interProjectDependencies,
               res,
               includeSignatures,
-              sbtBootJarOverrides
+              sbtBootJarOverrides,
+              classpathOrder = true,
             )
 
             val rep = UpdateRun.update(params, verbosityLevel, log)

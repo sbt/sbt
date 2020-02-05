@@ -93,7 +93,8 @@ object UpdateRun {
       params.classifiers,
       params.artifactFileOpt,
       log,
-      includeSignatures = params.includeSignatures
+      includeSignatures = params.includeSignatures,
+      classpathOrder = params.classpathOrder,
     )
   }
 

@@ -139,9 +139,10 @@ private[internal] object SbtUpdateReport {
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     log: Logger,
     keepPomArtifact: Boolean = false,
-    includeSignatures: Boolean = false
-  ) = {
-    val depArtifacts1 = res.dependencyArtifacts(classifiersOpt)
+    includeSignatures: Boolean = false,
+    classpathOrder: Boolean,
+  ): Vector[ModuleReport] = {
+    val depArtifacts1 = res.dependencyArtifacts(classifiersOpt, classpathOrder)
 
     val depArtifacts0 =
       if (keepPomArtifact)
@@ -174,14 +175,16 @@ private[internal] object SbtUpdateReport {
       } else
         depArtifacts0
 
-    val groupedDepArtifacts = depArtifacts
-      .groupBy(_._1)
-      .mapValues(_.map { case (_, attr, a) => (attr, a) })
-      .iterator
-      .toMap ++
-      Map(interProjectDependencies
+    val groupedDepArtifacts = {
+      val m = depArtifacts.groupBy(_._1)
+      val fromLib = depArtifacts.map(_._1).distinct.map { dep =>
+        dep -> m.getOrElse(dep, Nil).map { case (_, pub, a) => (pub, a) }
+      }
+      val fromInterProj = interProjectDependencies
         .filter(p => p.module != thisModule._1)
-        .map(p => Dependency(p.module, p.version) -> Nil): _*)
+        .map(p => Dependency(p.module, p.version) -> Nil)
+      fromLib ++ fromInterProj
+    }
 
     val versions = (Vector(Dependency(thisModule._1, thisModule._2)) ++ res.dependencies.toVector ++ res.rootDependencies.toVector)
       .map { dep =>
@@ -202,7 +205,7 @@ private[internal] object SbtUpdateReport {
             mv == (p.module, p.version)
           )
       }
-    
+
     val m = Dependency(thisModule._1, "")
     val directReverseDependencies = res.rootDependencies.toSet.map(clean).map(_.withVersion(""))
       .map(
@@ -220,7 +223,7 @@ private[internal] object SbtUpdateReport {
       .toVector
       .toMap ++ directReverseDependencies
 
-    groupedDepArtifacts.map {
+    groupedDepArtifacts.toVector.map {
       case (dep, artifacts) =>
         val proj = lookupProject(dep.moduleVersion).get
 
@@ -259,7 +262,8 @@ private[internal] object SbtUpdateReport {
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     log: Logger,
     keepPomArtifact: Boolean = false,
-    includeSignatures: Boolean = false
+    includeSignatures: Boolean = false,
+    classpathOrder: Boolean,
   ): UpdateReport = {
 
     val configReports = configs.map {
@@ -280,7 +284,8 @@ private[internal] object SbtUpdateReport {
           artifactFileOpt,
           log,
           keepPomArtifact = keepPomArtifact,
-          includeSignatures = includeSignatures
+          includeSignatures = includeSignatures,
+          classpathOrder = classpathOrder,
         )
 
         val reports0 =

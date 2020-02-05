@@ -1,0 +1,6 @@
+# https://github.com/coursier/coursier/issues/1466
+> test
+# ideally we can flip & assert the test fails
+# but need to run this scripted test on sbt 1.3 in order to have a csrConfiguration
+# > set csrConfiguration ~= (_.withClasspathOrder(false))
+# -> test
