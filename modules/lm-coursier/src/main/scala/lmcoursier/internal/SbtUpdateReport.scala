@@ -288,21 +288,20 @@ private[internal] object SbtUpdateReport {
           classpathOrder = classpathOrder,
         )
 
-        val reports0 =
-          if (subRes.rootDependencies.size == 1) {
+        val reports0 = subRes.rootDependencies match {
+          case Seq(dep) =>
             // quick hack ensuring the module for the only root dependency
             // appears first in the update report, see https://github.com/coursier/coursier/issues/650
-            val dep = subRes.rootDependencies.head
             val (_, proj) = subRes.projectCache(dep.moduleVersion)
             val mod = moduleId((dep, proj.version, infoProperties(proj).toMap))
             val (main, other) = reports.partition { r =>
               r.module.organization == mod.organization &&
-                r.module.name == mod.name &&
-                r.module.crossVersion == mod.crossVersion
+                  r.module.name == mod.name &&
+                  r.module.crossVersion == mod.crossVersion
             }
-            main.toVector ++ other.toVector
-          } else
-            reports.toVector
+            main ++ other
+          case _ => reports
+        }
 
         val mainReportDetails = reports0.map { rep =>
           OrganizationArtifactReport(rep.module.organization, rep.module.name, Vector(rep))
