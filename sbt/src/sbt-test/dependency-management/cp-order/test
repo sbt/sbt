@@ -1,0 +1,5 @@
+# https://github.com/coursier/coursier/issues/1466
+# aka https://github.com/sbt/sbt/issues/5282
+> test
+> set csrConfiguration ~= (_.withClasspathOrder(false))
+-> test
