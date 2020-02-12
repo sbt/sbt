@@ -1,3 +1,7 @@
-scalaVersion := "2.12.3"
-enablePlugins(ScalaJSPlugin)
-libraryDependencies += "org.scala-js" %%% "scalajs-java-time" % "0.2.2"
+ThisBuild / scalaVersion := "2.13.1"
+
+lazy val root = (project in file("."))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    libraryDependencies += "org.scala-js" %%% "scalajs-java-time" % "1.0.0"
+  )
