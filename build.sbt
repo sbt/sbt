@@ -72,6 +72,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
     url("https://dl.bintray.com/hedgehogqa/scala-hedgehog")
   )(Resolver.ivyStylePatterns),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
+  testFrameworks += TestFramework("verify.runner.Framework"),
   concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
@@ -952,6 +953,8 @@ lazy val sbtProj = (project in file("sbt"))
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
+  )
+  .settings(
     Test / run / connectInput := true,
     Test / run / outputStrategy := Some(StdoutOutput),
     Test / run / fork := true,
@@ -964,6 +967,28 @@ lazy val sbtProj = (project in file("sbt"))
     },
   )
   .configure(addSbtIO, addSbtCompilerBridge)
+
+lazy val serverTestProj = (project in file("server-test"))
+  .dependsOn(sbtProj % "test->test", scriptedSbtReduxProj % "test->test")
+  .settings(
+    testedBaseSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
+    publish / skip := true,
+    // make server tests serial
+    Test / parallelExecution := false,
+    Test / run / connectInput := true,
+    Test / run / outputStrategy := Some(StdoutOutput),
+    Test / run / fork := true,
+    Test / fork := true,
+    Test / javaOptions ++= {
+      val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
+      List(
+        s"-Dsbt.server.classpath=$cp",
+        s"-Dsbt.server.version=${version.value}",
+        s"-Dsbt.server.scala.version=${scalaVersion.value}"
+      )
+    },
+  )
 
 /*
 lazy val sbtBig = (project in file(".big"))
@@ -1205,18 +1230,6 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   ),
   inConfigurations(Compile)
 )
-lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
-lazy val safeProjects: ScopeFilter = ScopeFilter(
-  inAnyProject -- inProjects(sbtRoot, sbtProj),
-  inConfigurations(Test)
-)
-lazy val otherUnitTests = taskKey[Unit]("Unit test other projects")
-lazy val otherProjects: ScopeFilter = ScopeFilter(
-  inProjects(
-    sbtProj
-  ),
-  inConfigurations(Test)
-)
 lazy val javafmtOnCompile = taskKey[Unit]("Formats java sources before compile")
 lazy val scriptedProjects = ScopeFilter(inAnyProject -- inProjects(vscodePlugin))
 
@@ -1224,12 +1237,6 @@ def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("setupBuildScala212") { state =>
     s"""set scalaVersion in ThisBuild := "$scala212" """ ::
       state
-  },
-  safeUnitTests := {
-    test.all(safeProjects).value
-  },
-  otherUnitTests := {
-    test.all(otherProjects).value
   },
   commands += Command.command("whitesourceOnPush") { state =>
     sys.env.get("TRAVIS_EVENT_TYPE") match {

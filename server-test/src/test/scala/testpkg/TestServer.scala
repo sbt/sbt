@@ -9,147 +9,85 @@ package testpkg
 
 import java.io.{ File, IOException }
 
-import org.scalatest._
+import verify._
 import sbt.RunFromSourceMain
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol.ClientSocket
-import testpkg.TestServer.withTestServer
-
 import scala.annotation.tailrec
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
 
-class ServerSpec extends fixture.AsyncFreeSpec with fixture.AsyncTestDataFixture with Matchers {
-  "server" - {
-    "should start" in { implicit td =>
-      withTestServer("handshake") { p =>
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id": "3", "method": "sbt/setting", "params": { "setting": "root/name" } }"""
-        )
-        assert(p.waitForString(10.seconds) { s =>
-          s contains """"id":"3""""
-        })
-      }
+trait AbstractServerTest extends TestSuite[Unit] {
+  implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
+  private var temp: File = _
+  var svr: TestServer = _
+  def testDirectory: String
+
+  override def setupSuite(): Unit = {
+    temp = IO.createTemporaryDirectory
+    val classpath = sys.props.get("sbt.server.classpath") match {
+      case Some(s: String) => s.split(java.io.File.pathSeparator).map(file)
+      case _               => throw new IllegalStateException("No server classpath was specified.")
     }
-
-    "return number id when number id is sent" in { implicit td =>
-      withTestServer("handshake") { p =>
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "root/name" } }"""
-        )
-        assert(p.waitForString(10.seconds) { s =>
-          s contains """"id":3"""
-        })
-      }
+    val sbtVersion = sys.props.get("sbt.server.version") match {
+      case Some(v: String) => v
+      case _               => throw new IllegalStateException("No server version was specified.")
     }
-
-    "report task failures in case of exceptions" in { implicit td =>
-      withTestServer("events") { p =>
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id": 11, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
-        )
-        assert(p.waitForString(10.seconds) { s =>
-          (s contains """"id":11""") && (s contains """"error":""")
-        })
-      }
+    val scalaVersion = sys.props.get("sbt.server.scala.version") match {
+      case Some(v: String) => v
+      case _               => throw new IllegalStateException("No server scala version was specified.")
     }
-
-    "return error if cancelling non-matched task id" in { implicit td =>
-      withTestServer("events") { p =>
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
-        )
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "55" } }"""
-        )
-
-        assert(p.waitForString(20.seconds) { s =>
-          (s contains """"error":{"code":-32800""")
-        })
-      }
-    }
-
-    "cancel on-going task with numeric id" in { implicit td =>
-      withTestServer("events") { p =>
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
-        )
-
-        assert(p.waitForString(1.minute) { s =>
-          p.sendJsonRpc(
-            """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "12" } }"""
-          )
-          s contains """"result":{"status":"Task cancelled""""
-        })
-      }
-    }
-
-    "cancel on-going task with string id" in { implicit td =>
-      withTestServer("events") { p =>
-        p.sendJsonRpc(
-          """{ "jsonrpc": "2.0", "id": "foo", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
-        )
-
-        assert(p.waitForString(1.minute) { s =>
-          p.sendJsonRpc(
-            """{ "jsonrpc": "2.0", "id": "bar", "method": "sbt/cancelRequest", "params": { "id": "foo" } }"""
-          )
-          s contains """"result":{"status":"Task cancelled""""
-        })
-      }
-    }
-
-    "return basic completions on request" in { implicit td =>
-      withTestServer("completions") { p =>
-        val completionStr = """{ "query": "" }"""
-        p.sendJsonRpc(
-          s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
-        )
-
-        assert(p.waitForString(10.seconds) { s =>
-          s contains """"result":{"items":["""
-        })
-      }
-    }
-
-    "return completion for custom tasks" in { implicit td =>
-      withTestServer("completions") { p =>
-        val completionStr = """{ "query": "hell" }"""
-        p.sendJsonRpc(
-          s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
-        )
-
-        assert(p.waitForString(10.seconds) { s =>
-          s contains """"result":{"items":["hello"]}"""
-        })
-      }
-    }
-
-    "return completions for user classes" in { implicit td =>
-      withTestServer("completions") { p =>
-        val completionStr = """{ "query": "testOnly org." }"""
-        p.sendJsonRpc(
-          s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
-        )
-
-        assert(p.waitForString(10.seconds) { s =>
-          s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]}"""
-        })
-      }
-    }
+    svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath, temp)
   }
+  override def tearDownSuite(): Unit = {
+    svr.bye()
+    svr = null
+    IO.delete(temp)
+  }
+  override def setup(): Unit = ()
+  override def tearDown(env: Unit): Unit = ()
 }
 
 object TestServer {
+  // forking affects this
+  private val serverTestBase: File = {
+    val p0 = new File(".").getAbsoluteFile / "server-test" / "src" / "server-test"
+    val p1 = new File(".").getAbsoluteFile / "src" / "server-test"
+    if (p0.exists) p0
+    else p1
+  }
 
-  private val serverTestBase: File = new File(".").getAbsoluteFile / "sbt" / "src" / "server-test"
+  def get(
+      testBuild: String,
+      scalaVersion: String,
+      sbtVersion: String,
+      classpath: Seq[File],
+      temp: File
+  ): TestServer = {
+    println(s"Starting test server $testBuild")
+    IO.copyDirectory(serverTestBase / testBuild, temp / testBuild)
+
+    // Each test server instance will be executed in a Thread pool separated from the tests
+    val testServer = TestServer(temp / testBuild, scalaVersion, sbtVersion, classpath)
+    // checking last log message after initialization
+    // if something goes wrong here the communication streams are corrupted, restarting
+    val init =
+      Try {
+        testServer.waitForString(30.seconds) { s =>
+          println(s)
+          s contains """"message":"Done""""
+        }
+      }
+    init.get
+    testServer
+  }
 
   def withTestServer(
       testBuild: String
-  )(f: TestServer => Future[Assertion])(implicit td: TestData): Future[Assertion] = {
-    println(s"Starting test: ${td.name}")
+  )(f: TestServer => Future[Unit]): Future[Unit] = {
+    println(s"Starting test")
     IO.withTemporaryDirectory { temp =>
       IO.copyDirectory(serverTestBase / testBuild, temp / testBuild)
       withTestServer(testBuild, temp / testBuild)(f)
@@ -157,17 +95,17 @@ object TestServer {
   }
 
   def withTestServer(testBuild: String, baseDirectory: File)(
-      f: TestServer => Future[Assertion]
-  )(implicit td: TestData): Future[Assertion] = {
-    val classpath = td.configMap.get("sbt.server.classpath") match {
+      f: TestServer => Future[Unit]
+  ): Future[Unit] = {
+    val classpath = sys.props.get("sbt.server.classpath") match {
       case Some(s: String) => s.split(java.io.File.pathSeparator).map(file)
       case _               => throw new IllegalStateException("No server classpath was specified.")
     }
-    val sbtVersion = td.configMap.get("sbt.server.version") match {
+    val sbtVersion = sys.props.get("sbt.server.version") match {
       case Some(v: String) => v
       case _               => throw new IllegalStateException("No server version was specified.")
     }
-    val scalaVersion = td.configMap.get("sbt.server.scala.version") match {
+    val scalaVersion = sys.props.get("sbt.server.scala.version") match {
       case Some(v: String) => v
       case _               => throw new IllegalStateException("No server scala version was specified.")
     }
@@ -298,7 +236,6 @@ case class TestServer(
         line.drop(16).toInt
       } getOrElse (0)
     }
-
     val l = getContentLength
     readLine
     readLine
@@ -310,7 +247,11 @@ case class TestServer(
     @tailrec
     def impl(): Boolean = {
       if (deadline.isOverdue || !process.isAlive) false
-      else readFrame.fold(false)(f) || impl
+      else
+        readFrame.fold(false)(f) || {
+          Thread.sleep(100)
+          impl
+        }
     }
     impl()
   }
