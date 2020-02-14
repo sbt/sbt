@@ -970,9 +970,11 @@ lazy val serverTestProj = (project in file("server-test"))
     Test / fork := true,
     Test / javaOptions ++= {
       val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
-      List(s"-Dsbt.server.classpath=$cp",
+      List(
+        s"-Dsbt.server.classpath=$cp",
         s"-Dsbt.server.version=${version.value}",
-        s"-Dsbt.server.scala.version=${scalaVersion.value}")
+        s"-Dsbt.server.scala.version=${scalaVersion.value}"
+      )
     },
   )
 
