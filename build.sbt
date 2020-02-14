@@ -954,6 +954,18 @@ lazy val sbtProj = (project in file("sbt"))
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
   )
+  .settings(
+    Test / run / connectInput := true,
+    Test / run / outputStrategy := Some(StdoutOutput),
+    Test / run / fork := true,
+    testOptions in Test ++= {
+      val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
+      val framework = TestFrameworks.ScalaTest
+      Tests.Argument(framework, s"-Dsbt.server.classpath=$cp") ::
+        Tests.Argument(framework, s"-Dsbt.server.version=${version.value}") ::
+        Tests.Argument(framework, s"-Dsbt.server.scala.version=${scalaVersion.value}") :: Nil
+    },
+  )
   .configure(addSbtIO, addSbtCompilerBridge)
 
 lazy val serverTestProj = (project in file("server-test"))
