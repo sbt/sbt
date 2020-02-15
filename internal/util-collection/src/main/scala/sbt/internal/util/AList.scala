@@ -91,9 +91,12 @@ object AList {
     ): N[P[A]] = f(a)
   }
 
-  type ASplit[K[L[x]], B[x]] = AList[λ[L[x] => K[(L ∙ B)#l]]]
+  /** Example: calling `AList.SplitK[K, Task]#l` returns the type lambda `A[x] => K[A[Task[x]]`. */
+  sealed trait SplitK[K[L[x]], B[x]] { type l[A[x]] = K[(A ∙ B)#l] }
 
-  /** AList that operates on the outer type constructor `A` of a composition `[x] A[B[x]]` for type constructors `A` and `B`*/
+  type ASplit[K[L[x]], B[x]] = AList[SplitK[K, B]#l]
+
+  /** AList that operates on the outer type constructor `A` of a composition `[x] A[B[x]]` for type constructors `A` and `B`. */
   def asplit[K[L[x]], B[x]](base: AList[K]): ASplit[K, B] = new ASplit[K, B] {
     type Split[L[x]] = K[(L ∙ B)#l]
 
