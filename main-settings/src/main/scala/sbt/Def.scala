@@ -10,6 +10,7 @@ package sbt
 import java.io.File
 import java.net.URI
 
+import scala.annotation.tailrec
 import sbt.KeyRanks.{ DTask, Invisible }
 import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
@@ -132,13 +133,19 @@ object Def extends Init[Scope] with TaskMacroExtra {
       project: Reference,
       trailingSlash: Boolean
   ): String = {
-    val trailing = if (trailingSlash) " /" else ""
-    project match {
-      case BuildRef(current.build)      => "ThisBuild" + trailing
-      case `current`                    => ""
-      case ProjectRef(current.build, x) => x + trailing
-      case _                            => Reference.display(project) + trailing
+    import Reference.{ display => displayRef }
+    @tailrec def loop(ref: Reference): String = ref match {
+      case ProjectRef(b, p) => if (b == current.build) loop(LocalProject(p)) else displayRef(ref)
+      case BuildRef(b)      => if (b == current.build) loop(ThisBuild) else displayRef(ref)
+      case RootProject(b)   => if (b == current.build) loop(LocalRootProject) else displayRef(ref)
+      case LocalProject(p)  => if (p == current.project) "" else p
+      case ThisBuild        => "ThisBuild"
+      case LocalRootProject => "<root>"
+      case ThisProject      => "<this>"
     }
+    val str = loop(project)
+    if (trailingSlash && !str.isEmpty) s"$str /"
+    else str
   }
 
   @deprecated("Use variant without multi", "1.1.1")
