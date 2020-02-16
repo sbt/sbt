@@ -34,13 +34,14 @@ import scala.util.control.NonFatal
 final class NetworkChannel(
     val name: String,
     connection: Socket,
-    structure: BuildStructure,
+    protected val structure: BuildStructure,
     auth: Set[ServerAuthentication],
     instance: ServerInstance,
     handlers: Seq[ServerHandler],
     val log: Logger
 ) extends CommandChannel
-    with LanguageServerProtocol {
+    with LanguageServerProtocol
+    with BuildServerImpl {
   import NetworkChannel._
 
   private val running = new AtomicBoolean(true)
@@ -394,6 +395,18 @@ final class NetworkChannel(
       initialized = true
     }
   }
+
+  protected def getSetting[A](key: SettingKey[A]): Option[A] =
+    structure.data.get(key.scope, key.key)
+
+  protected def getTaskValue[A](key: TaskKey[A]): Option[Task[A]] =
+    structure.data.get(key.scope, key.key)
+
+  protected def setting[A](key: SettingKey[A]): A =
+    getSetting(key).getOrElse(sys.error(s"key ${Def.displayFull(key.scopedKey)} is not defined"))
+
+  protected def taskValue[A](key: TaskKey[A]): Task[A] =
+    getTaskValue(key).getOrElse(sys.error(s"key ${Def.displayFull(key.scopedKey)} is not defined"))
 
   private def onExecCommand(cmd: ExecCommand) = {
     if (initialized) {

@@ -14,6 +14,7 @@ import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.Serialization
 import sbt.protocol.{ CompletionParams => CP, SettingQuery => Q }
 import sbt.internal.langserver.{ CancelRequestParams => CRP }
+import sbt.internal.bsp._
 import sbt.internal.protocol._
 import sbt.internal.protocol.codec._
 import sbt.internal.langserver._
@@ -44,6 +45,7 @@ private[sbt] object LanguageServerProtocol {
           {
             import sbt.internal.langserver.codec.JsonProtocol._
             import internalJsonProtocol._
+            import sbt.internal.bsp.codec.JsonProtocol._
             def json(r: JsonRpcRequestMessage) =
               r.params.getOrElse(
                 throw LangServerError(
@@ -91,6 +93,36 @@ private[sbt] object LanguageServerProtocol {
                 import sbt.protocol.codec.JsonProtocol._
                 val param = Converter.fromJson[CP](json(r)).get
                 onCompletionRequest(Option(r.id), param)
+              case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
+                import sbt.protocol.codec.JsonProtocol._
+                val param = Converter.fromJson[InitializeBuildParams](json(r)).get
+                onBspInitialize(Option(r.id), param)
+              case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
+                onBspBuildTargets(Option(r.id))
+              case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
+                import sbt.internal.bsp.codec.JsonProtocol._
+                val param = Converter.fromJson[SourcesParams](json(r)).get
+                appendExec(
+                  Exec(
+                    s"""${BuildServerProtocol.BspBuildTargetSource} ${param.targets
+                      .map(_.uri)
+                      .mkString(" ")}""",
+                    Option(r.id),
+                    Some(CommandSource(name))
+                  )
+                )
+                ()
+              case r: JsonRpcRequestMessage if r.method == "sbt/setting" =>
+                import sbt.protocol.codec.JsonProtocol._
+                val param = Converter.fromJson[Q](json(r)).get
+                onSettingQuery(Option(r.id), param)
+              case r: JsonRpcRequestMessage if r.method == "sbt/cancelRequest" =>
+                val param = Converter.fromJson[CRP](json(r)).get
+                onCancellationRequest(Option(r.id), param)
+              case r: JsonRpcRequestMessage if r.method == "sbt/completion" =>
+                import sbt.protocol.codec.JsonProtocol._
+                val param = Converter.fromJson[CP](json(r)).get
+                onCompletionRequest(Option(r.id), param)
             }
           }, {
             case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
@@ -113,6 +145,8 @@ private[sbt] trait LanguageServerProtocol { self: NetworkChannel =>
   protected def onSettingQuery(execId: Option[String], req: Q): Unit
   protected def onCompletionRequest(execId: Option[String], cp: CP): Unit
   protected def onCancellationRequest(execId: Option[String], crp: CRP): Unit
+  protected def onBspInitialize(execId: Option[String], param: InitializeBuildParams): Unit
+  protected def onBspBuildTargets(execId: Option[String]): Unit
 
   protected lazy val callbackImpl: ServerCallback = new ServerCallback {
     def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
@@ -136,6 +170,10 @@ private[sbt] trait LanguageServerProtocol { self: NetworkChannel =>
       self.onCompletionRequest(execId, cp)
     private[sbt] def onCancellationRequest(execId: Option[String], crp: CancelRequestParams): Unit =
       self.onCancellationRequest(execId, crp)
+    private[sbt] def onBspInitialize(execId: Option[String], param: InitializeBuildParams): Unit =
+      self.onBspInitialize(execId, param)
+    private[sbt] def onBspBuildTargets(execId: Option[String]): Unit =
+      self.onBspBuildTargets(execId)
   }
 
   /**
