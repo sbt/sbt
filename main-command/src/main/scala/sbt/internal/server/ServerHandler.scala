@@ -14,6 +14,7 @@ import sbt.internal.protocol._
 import sbt.util.Logger
 import sbt.protocol.{ SettingQuery => Q, CompletionParams => CP }
 import sbt.internal.langserver.{ CancelRequestParams => CRP }
+import sbt.internal.bsp._
 
 /**
  * ServerHandler allows plugins to extend sbt server.
@@ -73,4 +74,6 @@ trait ServerCallback {
   private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit
   private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit
   private[sbt] def onCancellationRequest(execId: Option[String], crp: CRP): Unit
+  private[sbt] def onBspInitialize(execId: Option[String], param: InitializeBuildParams): Unit
+  private[sbt] def onBspBuildTargets(execId: Option[String]): Unit
 }
