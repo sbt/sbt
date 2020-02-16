@@ -35,6 +35,16 @@ sealed trait Taskable[T] {
   def toTask: Initialize[Task[T]]
 }
 
+sealed trait TaskableImplicits { self: Taskable.type =>
+  implicit def fromInit[T](x: Initialize[T]): Taskable[T] =
+    new Taskable[T] { def toTask = Def.toITask(x) }
+}
+
+object Taskable extends TaskableImplicits {
+  implicit def fromITask[T](x: Initialize[Task[T]]): Taskable[T] =
+    new Taskable[T] { def toTask = x }
+}
+
 /** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks.*/
 sealed trait ScopedTaskable[T] extends Scoped with Taskable[T]
 
