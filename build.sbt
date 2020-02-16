@@ -805,6 +805,9 @@ lazy val mainSettingsProj = (project in file("main-settings"))
       // added a method to a sealed trait
       exclude[InheritedNewAbstractMethodProblem]("sbt.Scoped.canEqual"),
       exclude[InheritedNewAbstractMethodProblem]("sbt.ScopedTaskable.canEqual"),
+      // widened ScopedTaskable parameter to (new) supertype Taskable
+      exclude[IncompatibleSignatureProblem]("sbt.Scoped#RichTaskable*.this"),
+      exclude[IncompatibleSignatureProblem]("sbt.TupleSyntax.t*ToTable*"),
     ),
   )
   .configure(

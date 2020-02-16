@@ -1327,10 +1327,12 @@ object Defaults extends BuildCommon {
         case _                => None
       }
     }
+
   def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
+
   def relativeMappings(
-      files: ScopedTaskable[Seq[File]],
-      dirs: ScopedTaskable[Seq[File]]
+      files: Taskable[Seq[File]],
+      dirs: Taskable[Seq[File]]
   ): Initialize[Task[Seq[(File, String)]]] =
     Def.task {
       val rdirs = dirs.toTask.value.toSet
@@ -1340,14 +1342,27 @@ object Defaults extends BuildCommon {
         case _              => None
       }
     }
+
   def collectFiles(
-      dirs: ScopedTaskable[Seq[File]],
-      filter: ScopedTaskable[FileFilter],
-      excludes: ScopedTaskable[FileFilter]
+      dirs: Taskable[Seq[File]],
+      filter: Taskable[FileFilter],
+      excludes: Taskable[FileFilter]
   ): Initialize[Task[Seq[File]]] =
     Def.task {
       dirs.toTask.value.descendantsExcept(filter.toTask.value, excludes.toTask.value).get
     }
+
+  def relativeMappings( // forward to widened variant
+      files: ScopedTaskable[Seq[File]],
+      dirs: ScopedTaskable[Seq[File]]
+  ): Initialize[Task[Seq[(File, String)]]] = relativeMappings(files: Taskable[Seq[File]], dirs)
+
+  def collectFiles( // forward to widened variant
+      dirs: ScopedTaskable[Seq[File]],
+      filter: ScopedTaskable[FileFilter],
+      excludes: ScopedTaskable[FileFilter]
+  ): Initialize[Task[Seq[File]]] = collectFiles(dirs: Taskable[Seq[File]], filter, excludes)
+
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
@@ -2021,20 +2036,30 @@ object Defaults extends BuildCommon {
         }
     }
 }
+
 object Classpaths {
   import Defaults._
   import Keys._
 
-  def concatDistinct[T](
+  def concatDistinct[T](a: Taskable[Seq[T]], b: Taskable[Seq[T]]): Initialize[Task[Seq[T]]] =
+    Def.task((a.toTask.value ++ b.toTask.value).distinct)
+
+  def concat[T](a: Taskable[Seq[T]], b: Taskable[Seq[T]]): Initialize[Task[Seq[T]]] =
+    Def.task(a.toTask.value ++ b.toTask.value)
+
+  def concatSettings[T](a: Initialize[Seq[T]], b: Initialize[Seq[T]]): Initialize[Seq[T]] =
+    Def.setting { a.value ++ b.value }
+
+  def concatDistinct[T]( // forward to widened variant
       a: ScopedTaskable[Seq[T]],
       b: ScopedTaskable[Seq[T]]
-  ): Initialize[Task[Seq[T]]] = Def.task {
-    (a.toTask.value ++ b.toTask.value).distinct
-  }
+  ): Initialize[Task[Seq[T]]] = concatDistinct(a: Taskable[Seq[T]], b)
+
   def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] =
-    Def.task { a.toTask.value ++ b.toTask.value }
+    concat(a: Taskable[Seq[T]], b) // forward to widened variant
+
   def concatSettings[T](a: SettingKey[Seq[T]], b: SettingKey[Seq[T]]): Initialize[Seq[T]] =
-    Def.setting { a.value ++ b.value }
+    concatSettings(a: Initialize[Seq[T]], b) // forward to widened variant
 
   lazy val configSettings: Seq[Setting[_]] = classpaths ++ Seq(
     products := makeProducts.value,
