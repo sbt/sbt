@@ -55,6 +55,7 @@ object EventsTest extends AbstractServerTest {
     })
   }
 
+  /*
   test("cancel on-going task with string id") { _ =>
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "foo", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
@@ -65,5 +66,5 @@ object EventsTest extends AbstractServerTest {
       )
       s contains """"result":{"status":"Task cancelled""""
     })
-  }
+  }*/
 }
