@@ -13,7 +13,7 @@ package sbt.internal.protocol
 final class JsonRpcResponseError private (
   val code: Long,
   val message: String,
-  val data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]) extends Serializable {
+  val data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]) extends RuntimeException(message) with Serializable {
   
   
   
@@ -44,7 +44,7 @@ final class JsonRpcResponseError private (
   }
 }
 object JsonRpcResponseError {
-  
+  def apply(code: Long, message: String): JsonRpcResponseError = new JsonRpcResponseError(code, message, None)
   def apply(code: Long, message: String, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]): JsonRpcResponseError = new JsonRpcResponseError(code, message, data)
   def apply(code: Long, message: String, data: sjsonnew.shaded.scalajson.ast.unsafe.JValue): JsonRpcResponseError = new JsonRpcResponseError(code, message, Option(data))
 }
