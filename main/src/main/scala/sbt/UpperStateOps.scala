@@ -38,6 +38,20 @@ trait UpperStateOps extends Any {
    * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
    * Other axes are resolved to be `Zero` if they are not specified.
    */
+  def getSetting[A](key: SettingKey[A]): Option[A]
+
+  /**
+   * Gets the value assigned to `key` in the computed settings map.
+   * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
+   * Other axes are resolved to be `Zero` if they are not specified.
+   */
+  def getTaskValue[A](key: TaskKey[A]): Option[Task[A]]
+
+  /**
+   * Gets the value assigned to `key` in the computed settings map.
+   * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
+   * Other axes are resolved to be `Zero` if they are not specified.
+   */
   def setting[A](key: SettingKey[A]): A
 
   /**
@@ -110,6 +124,10 @@ object UpperStateOps {
     private[sbt] def currentUnit: LoadedBuildUnit = extract.currentUnit
 
     private[sbt] def session: SessionSettings = Project.session(s)
+
+    def getSetting[A](key: SettingKey[A]): Option[A] = extract.getOpt(key)
+
+    def getTaskValue[A](key: TaskKey[A]): Option[Task[A]] = extract.getOpt(key)
 
     def setting[A](key: SettingKey[A]): A = extract.get(key)
 
