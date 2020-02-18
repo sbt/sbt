@@ -462,14 +462,17 @@ object Scoped {
   ) {
 
     type App[T] = Initialize[Task[T]]
+
+    /** A higher-kinded function, where each parameter shares the same type constructor `M[_]`. */
     type Fun[M[_], Ret]
 
+    /** Convert the higher-kinded function to a Function1.  For tuples that means call `.tupled`. */
     protected def convert[M[_], Ret](f: Fun[M, Ret]): K[M] => Ret
 
     private[this] val inputs: K[App] = a.transform(keys, λ[ScopedTaskable ~> App](_.toTask))
 
     private[this] def onTasks[T](f: K[Task] => Task[T]): App[T] =
-      Def.app[λ[L[x] => K[(L ∙ Task)#l]], Task[T]](inputs)(f)(AList.asplit[K, Task](a))
+      Def.app[AList.SplitK[K, Task]#l, Task[T]](inputs)(f)(AList.asplit[K, Task](a))
 
     def flatMap[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMap(convert(f)))
     def flatMapR[T](f: Fun[Result, Task[T]]): App[T] = onTasks(_.flatMapR(convert(f)))
