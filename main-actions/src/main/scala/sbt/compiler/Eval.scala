@@ -161,8 +161,8 @@ final class Eval(
         case None    => ""
       }
     }
-    val i = evalCommon(definitions.map(_._1), imports, Some(""), ev)
-    new EvalDefinitions(i.loader, i.generated, i.enclosingModule, i.extra)
+    val i: EvalIntermediate[Seq[String]] = evalCommon(definitions.map(_._1), imports, Some(""), ev)
+    new EvalDefinitions(i.loader, i.generated, i.enclosingModule, i.extra.reverse)
   }
 
   private[this] def evalCommon[T](
