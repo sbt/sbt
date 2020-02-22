@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.File
+import java.util.Locale
 import KeyRanks.DSetting
 
 import sbt.io.{ GlobFilter, Path }
@@ -114,7 +115,9 @@ object BuildPaths {
   private[this] def defaultDependencyBase(globalBase: File) = globalBase / "dependency"
   private[this] def defaultGlobalZinc(globalBase: File) = globalBase / "zinc"
 
-  def configurationSources(base: File): Seq[File] = (base * (GlobFilter("*.sbt") - ".sbt")).get
+  def configurationSources(base: File): Seq[File] =
+    (base * (GlobFilter("*.sbt") - ".sbt")).get
+      .sortBy(_.getName.toLowerCase(Locale.ENGLISH))
   def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
 
   def evalOutputDirectory(base: File) = outputDirectory(base) / "config-classes"
