@@ -100,9 +100,12 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       val workingDirectory: File,
       val job: BackgroundJob
   ) extends AbstractJobHandle {
-    implicit val executionContext: ExecutionContext = StandardMain.executionContext
-    def humanReadableName: String = job.humanReadableName
     // EC for onStop handler below
+    implicit val executionContext: ExecutionContext =
+      ExecutionContext.fromExecutor(pool.executor)
+
+    def humanReadableName: String = job.humanReadableName
+
     job.onStop { () =>
       // TODO: Fix this
       // logger.close()
@@ -305,7 +308,7 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
     }
   }
 
-  private val executor = new java.util.concurrent.ThreadPoolExecutor(
+  private[internal] val executor = new java.util.concurrent.ThreadPoolExecutor(
     0, /* corePoolSize */
     32, /* maxPoolSize, max # of bg tasks */
     2,
