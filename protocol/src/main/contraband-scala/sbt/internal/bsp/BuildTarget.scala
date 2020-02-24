@@ -24,6 +24,8 @@ package sbt.internal.bsp
  * @param languageIds The set of languages that this target contains.
                       The ID string for each language is defined in the LSP.
  * @param dataKind Kind of data to expect in the `data` field. If this field is not set, the kind of data is not specified.
+ * @param data Language-specific metadata about this target.
+               See ScalaBuildTarget as an example.
  */
 final class BuildTarget private (
   val id: sbt.internal.bsp.BuildTargetIdentifier,
@@ -32,22 +34,23 @@ final class BuildTarget private (
   val tags: Vector[String],
   val languageIds: Vector[String],
   val dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier],
-  val dataKind: Option[String]) extends Serializable {
+  val dataKind: Option[String],
+  val data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]) extends Serializable {
   
   
   
   override def equals(o: Any): Boolean = o match {
-    case x: BuildTarget => (this.id == x.id) && (this.displayName == x.displayName) && (this.baseDirectory == x.baseDirectory) && (this.tags == x.tags) && (this.languageIds == x.languageIds) && (this.dependencies == x.dependencies) && (this.dataKind == x.dataKind)
+    case x: BuildTarget => (this.id == x.id) && (this.displayName == x.displayName) && (this.baseDirectory == x.baseDirectory) && (this.tags == x.tags) && (this.languageIds == x.languageIds) && (this.dependencies == x.dependencies) && (this.dataKind == x.dataKind) && (this.data == x.data)
     case _ => false
   }
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildTarget".##) + id.##) + displayName.##) + baseDirectory.##) + tags.##) + languageIds.##) + dependencies.##) + dataKind.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildTarget".##) + id.##) + displayName.##) + baseDirectory.##) + tags.##) + languageIds.##) + dependencies.##) + dataKind.##) + data.##)
   }
   override def toString: String = {
-    "BuildTarget(" + id + ", " + displayName + ", " + baseDirectory + ", " + tags + ", " + languageIds + ", " + dependencies + ", " + dataKind + ")"
+    "BuildTarget(" + id + ", " + displayName + ", " + baseDirectory + ", " + tags + ", " + languageIds + ", " + dependencies + ", " + dataKind + ", " + data + ")"
   }
-  private[this] def copy(id: sbt.internal.bsp.BuildTargetIdentifier = id, displayName: Option[String] = displayName, baseDirectory: Option[java.net.URI] = baseDirectory, tags: Vector[String] = tags, languageIds: Vector[String] = languageIds, dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier] = dependencies, dataKind: Option[String] = dataKind): BuildTarget = {
-    new BuildTarget(id, displayName, baseDirectory, tags, languageIds, dependencies, dataKind)
+  private[this] def copy(id: sbt.internal.bsp.BuildTargetIdentifier = id, displayName: Option[String] = displayName, baseDirectory: Option[java.net.URI] = baseDirectory, tags: Vector[String] = tags, languageIds: Vector[String] = languageIds, dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier] = dependencies, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): BuildTarget = {
+    new BuildTarget(id, displayName, baseDirectory, tags, languageIds, dependencies, dataKind, data)
   }
   def withId(id: sbt.internal.bsp.BuildTargetIdentifier): BuildTarget = {
     copy(id = id)
@@ -79,9 +82,15 @@ final class BuildTarget private (
   def withDataKind(dataKind: String): BuildTarget = {
     copy(dataKind = Option(dataKind))
   }
+  def withData(data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]): BuildTarget = {
+    copy(data = data)
+  }
+  def withData(data: sjsonnew.shaded.scalajson.ast.unsafe.JValue): BuildTarget = {
+    copy(data = Option(data))
+  }
 }
 object BuildTarget {
   
-  def apply(id: sbt.internal.bsp.BuildTargetIdentifier, displayName: Option[String], baseDirectory: Option[java.net.URI], tags: Vector[String], languageIds: Vector[String], dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier], dataKind: Option[String]): BuildTarget = new BuildTarget(id, displayName, baseDirectory, tags, languageIds, dependencies, dataKind)
-  def apply(id: sbt.internal.bsp.BuildTargetIdentifier, displayName: String, baseDirectory: java.net.URI, tags: Vector[String], languageIds: Vector[String], dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier], dataKind: String): BuildTarget = new BuildTarget(id, Option(displayName), Option(baseDirectory), tags, languageIds, dependencies, Option(dataKind))
+  def apply(id: sbt.internal.bsp.BuildTargetIdentifier, displayName: Option[String], baseDirectory: Option[java.net.URI], tags: Vector[String], languageIds: Vector[String], dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier], dataKind: Option[String], data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]): BuildTarget = new BuildTarget(id, displayName, baseDirectory, tags, languageIds, dependencies, dataKind, data)
+  def apply(id: sbt.internal.bsp.BuildTargetIdentifier, displayName: String, baseDirectory: java.net.URI, tags: Vector[String], languageIds: Vector[String], dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier], dataKind: String, data: sjsonnew.shaded.scalajson.ast.unsafe.JValue): BuildTarget = new BuildTarget(id, Option(displayName), Option(baseDirectory), tags, languageIds, dependencies, Option(dataKind), Option(data))
 }
