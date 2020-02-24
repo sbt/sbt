@@ -99,6 +99,11 @@ private[sbt] object LanguageServerProtocol {
                 onBspInitialize(Option(r.id), param)
               case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
                 onBspBuildTargets(Option(r.id))
+              case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
+                ()
+              case r: JsonRpcRequestMessage if r.method == "build/exit" =>
+                appendExec(Exec("shutdown", Some(r.id), Some(CommandSource(name))))
+                ()
               case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
                 import sbt.internal.bsp.codec.JsonProtocol._
                 val param = Converter.fromJson[SourcesParams](json(r)).get
@@ -112,17 +117,6 @@ private[sbt] object LanguageServerProtocol {
                   )
                 )
                 ()
-              case r: JsonRpcRequestMessage if r.method == "sbt/setting" =>
-                import sbt.protocol.codec.JsonProtocol._
-                val param = Converter.fromJson[Q](json(r)).get
-                onSettingQuery(Option(r.id), param)
-              case r: JsonRpcRequestMessage if r.method == "sbt/cancelRequest" =>
-                val param = Converter.fromJson[CRP](json(r)).get
-                onCancellationRequest(Option(r.id), param)
-              case r: JsonRpcRequestMessage if r.method == "sbt/completion" =>
-                import sbt.protocol.codec.JsonProtocol._
-                val param = Converter.fromJson[CP](json(r)).get
-                onCompletionRequest(Option(r.id), param)
             }
           }, {
             case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
