@@ -43,6 +43,7 @@ import sbt.internal.librarymanagement.mavenint.{
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
+  BuildServerProtocol,
   Definition,
   LanguageServerProtocol,
   LanguageServerReporter,
@@ -383,7 +384,9 @@ object Defaults extends BuildCommon {
         sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
-    ) ++ LintUnused.lintSettings ++ DefaultBackgroundJobService.backgroundJobServiceSettings
+    ) ++ BuildServerProtocol.globalSettings
+      ++ LintUnused.lintSettings
+      ++ DefaultBackgroundJobService.backgroundJobServiceSettings
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -2219,7 +2222,7 @@ object Classpaths {
         val stamper = (managedSourcePaths / outputFileStamper).value
         dependencyClasspathFiles.value.flatMap(p => cache.getOrElseUpdate(p, stamper).map(p -> _))
       }
-    )
+    ) ++ BuildServerProtocol.configSettings
 
   private[this] def exportClasspath(s: Setting[Task[Classpath]]): Setting[Task[Classpath]] =
     s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })

@@ -21,6 +21,7 @@ import sbt.Def.ScopedKey
 import sbt.KeyRanks._
 import sbt.internal.InMemoryCacheStore.CacheStoreFactoryFactory
 import sbt.internal._
+import sbt.internal.bsp._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
@@ -337,6 +338,9 @@ object Keys {
   val internalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on")
   val closeClassLoaders = settingKey[Boolean]("Close classloaders in run and test when the task completes.").withRank(DSetting)
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
+  val buildTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
+  val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetSourceItem = taskKey[SourcesItem]("").withRank(DTask)
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)
   val csrCacheDirectory = settingKey[File]("Coursier cache directory. Uses -Dsbt.coursier.home or Coursier's default.").withRank(CSetting)
