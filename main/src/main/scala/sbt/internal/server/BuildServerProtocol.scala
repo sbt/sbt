@@ -16,6 +16,7 @@ import Configurations.{ Compile, Test }
 import sbt.SlashSyntax0._
 import sbt.BuildSyntax._
 import scala.collection.mutable
+import sjsonnew.support.scalajson.unsafe.Converter
 
 object BuildServerProtocol {
   private[sbt] val idMap: mutable.Map[BuildTargetIdentifier, (ProjectRef, Configuration)] =
@@ -96,7 +97,7 @@ trait BuildServerImpl { self: LanguageServerProtocol with CommandChannel =>
     val languageIds = Vector("scala")
     val sbtV = setting(Keys.sbtVersion)
     val response =
-      InitializeBuildResult("sbt", sbtV, bspVersion, BuildClientCapabilities(languageIds))
+      InitializeBuildResult("sbt", sbtV, bspVersion, BuildClientCapabilities(languageIds), None)
     jsonRpcRespond(response, execId)
   }
 
@@ -110,6 +111,7 @@ trait BuildServerImpl { self: LanguageServerProtocol with CommandChannel =>
   }
 
   def buildTargets: WorkspaceBuildTargetsResult = {
+    import sbt.internal.bsp.codec.JsonProtocol._
     val allProjectPairs = structure.allProjectPairs
     val ts = allProjectPairs flatMap {
       case (p, ref) =>
@@ -117,6 +119,13 @@ trait BuildServerImpl { self: LanguageServerProtocol with CommandChannel =>
         val internalCompileDeps = p.dependencies.flatMap(idForConfig(_, Compile)).toVector
         val compileId = toId(ref, Compile)
         idMap(compileId) = (ref, Compile)
+        val compileData = ScalaBuildTarget(
+          scalaOrganization = getSetting(ref / Compile / Keys.scalaOrganization).get,
+          scalaVersion = getSetting(ref / Compile / Keys.scalaVersion).get,
+          scalaBinaryVersion = getSetting(ref / Compile / Keys.scalaBinaryVersion).get,
+          platform = ScalaPlatform.JVM,
+          jars = Vector("scala-library")
+        )
         val t0 = BuildTarget(
           compileId,
           displayName = Some(p.id),
@@ -124,7 +133,8 @@ trait BuildServerImpl { self: LanguageServerProtocol with CommandChannel =>
           tags = Vector.empty,
           languageIds = Vector("scala"),
           dependencies = internalCompileDeps,
-          dataKind = None
+          dataKind = Some("scala"),
+          data = Some(Converter.toJsonUnsafe(compileData)),
         )
         val testId = toId(ref, Test)
         idMap(testId) = (ref, Test)
@@ -133,6 +143,13 @@ trait BuildServerImpl { self: LanguageServerProtocol with CommandChannel =>
           (p.dependencies ++ Seq(ResolvedClasspathDependency(ref, Some("test->compile"))))
             .flatMap(idForConfig(_, Test))
             .toVector
+        val testData = ScalaBuildTarget(
+          scalaOrganization = getSetting(ref / Test / Keys.scalaOrganization).get,
+          scalaVersion = getSetting(ref / Test / Keys.scalaVersion).get,
+          scalaBinaryVersion = getSetting(ref / Test / Keys.scalaBinaryVersion).get,
+          platform = ScalaPlatform.JVM,
+          jars = Vector("scala-library")
+        )
         val t1 = BuildTarget(
           testId,
           displayName = Some(p.id + " test"),
@@ -140,7 +157,8 @@ trait BuildServerImpl { self: LanguageServerProtocol with CommandChannel =>
           tags = Vector.empty,
           languageIds = Vector("scala"),
           dependencies = internalTestDeps,
-          dataKind = None
+          dataKind = Some("scala"),
+          data = Some(Converter.toJsonUnsafe(testData)),
         )
         Seq(t0, t1)
     }
