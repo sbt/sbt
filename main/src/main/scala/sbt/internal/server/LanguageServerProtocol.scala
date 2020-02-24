@@ -99,6 +99,11 @@ private[sbt] object LanguageServerProtocol {
               onBspInitialize(Option(r.id), param)
             case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
               onBspBuildTargets(Option(r.id))
+            case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
+              ()
+            case r: JsonRpcRequestMessage if r.method == "build/exit" =>
+              appendExec(Exec("shutdown", Some(r.id), Some(CommandSource(name))))
+              ()
             case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
               import sbt.internal.bsp.codec.JsonProtocol._
               val param = Converter.fromJson[SourcesParams](json(r)).get
