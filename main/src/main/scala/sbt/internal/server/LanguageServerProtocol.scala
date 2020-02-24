@@ -117,6 +117,12 @@ private[sbt] object LanguageServerProtocol {
                 )
               )
               ()
+            case r: JsonRpcRequestMessage if r.method == "buildTarget/scalacOptions" =>
+              import sbt.internal.bsp.codec.JsonProtocol._
+              val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
+              appendExec(
+                Exec(
+                  s"""${Keys.bspBuildTargetScalacOptions.key} ${param.targets
                     .map(_.uri)
                     .mkString(" ")}""",
                   Option(r.id),

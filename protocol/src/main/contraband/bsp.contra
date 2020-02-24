@@ -183,3 +183,31 @@ type SbtBuildTarget {
   ## sbt build targets if this target represents an sbt meta-meta build.
   children: [sbt.internal.bsp.BuildTargetIdentifier]!
 }
+
+## Scalac options
+## The build target scalac options request is sent from the client to the server
+## to query for the list of compiler options necessary to compile in a given list of targets.
+type ScalacOptionsParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+}
+
+type ScalacOptionsResult {
+  items: [sbt.internal.bsp.ScalacOptionsItem]
+}
+
+type ScalacOptionsItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## Additional arguments to the compiler.
+  ## For example, -deprecation.
+  options: [String]
+
+  ## The dependency classpath for this target, must be
+  ## identical to what is passed as arguments to
+  ## the -classpath flag in the command line interface
+  ## of scalac.
+  classpath: [java.net.URI]
+
+  ## The output directory for classfiles produced by this target
+  classDirectory: java.net.URI
+}

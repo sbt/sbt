@@ -35,14 +35,27 @@ object BuildServerProtocol {
       val s = state.value
       val args: Seq[String] = spaceDelimited("<arg>").parsed
       val filter = toScopeFilter(args)
-      // run bspBuildTargetSourceItem concurrently
+      // run the worker task concurrently
       Def.task {
         import sbt.internal.bsp.codec.JsonProtocol._
-        val items = bspBuildTargetSourceItem.all(filter).value
+        val items = bspBuildTargetSourcesItem.all(filter).value
         val result = SourcesResult(items.toVector)
         s.respondEvent(result)
       }
-    }).evaluated
+    }).evaluated,
+    bspBuildTargetScalacOptions := (Def.inputTaskDyn {
+      import DefaultParsers._
+      val s = state.value
+      val args: Seq[String] = spaceDelimited("<arg>").parsed
+      val filter = toScopeFilter(args)
+      // run the worker task concurrently
+      Def.task {
+        import sbt.internal.bsp.codec.JsonProtocol._
+        val items = bspBuildTargetScalacOptionsItem.all(filter).value
+        val result = ScalacOptionsResult(items.toVector)
+        s.respondEvent(result)
+      }
+    }).evaluated,
   )
 
   // This will be coped to Compile, Test, etc
@@ -52,7 +65,7 @@ object BuildServerProtocol {
       val c = configuration.value
       toId(ref, c)
     },
-    bspBuildTargetSourceItem := {
+    bspBuildTargetSourcesItem := {
       val id = buildTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
       val managed = managedSources.value
@@ -63,7 +76,14 @@ object BuildServerProtocol {
           SourceItem(x.toURI, SourceItemKind.File, true)
         })
       SourcesItem(id, items)
-    }
+    },
+    bspBuildTargetScalacOptionsItem :=
+      ScalacOptionsItem(
+        target = buildTargetIdentifier.value,
+        options = scalacOptions.value.toVector,
+        classpath = fullClasspath.value.toVector.map(_.data.toURI),
+        classDirectory = classDirectory.value.toURI
+      ),
   )
 
   def toScopeFilter(args: Seq[String]): ScopeFilter = {

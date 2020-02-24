@@ -18,4 +18,7 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.SourcesResultFormats
   with sbt.internal.bsp.codec.ScalaBuildTargetFormats
   with sbt.internal.bsp.codec.SbtBuildTargetFormats
+  with sbt.internal.bsp.codec.ScalacOptionsParamsFormats
+  with sbt.internal.bsp.codec.ScalacOptionsItemFormats
+  with sbt.internal.bsp.codec.ScalacOptionsResultFormats
 object JsonProtocol extends JsonProtocol
