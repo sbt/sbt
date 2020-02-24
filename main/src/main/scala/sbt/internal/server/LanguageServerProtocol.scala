@@ -109,7 +109,14 @@ private[sbt] object LanguageServerProtocol {
               val param = Converter.fromJson[SourcesParams](json(r)).get
               appendExec(
                 Exec(
-                  s"""${BuildServerProtocol.BspBuildTargetSource} ${param.targets
+                  s"""${Keys.bspBuildTargetSources.key} ${param.targets
+                    .map(_.uri)
+                    .mkString(" ")}""",
+                  Option(r.id),
+                  Some(CommandSource(name))
+                )
+              )
+              ()
                     .map(_.uri)
                     .mkString(" ")}""",
                   Option(r.id),
