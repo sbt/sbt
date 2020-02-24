@@ -340,7 +340,9 @@ object Keys {
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
   val buildTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
   val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
-  val bspBuildTargetSourceItem = taskKey[SourcesItem]("").withRank(DTask)
+  val bspBuildTargetSourcesItem = taskKey[SourcesItem]("").withRank(DTask)
+  val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)
   val csrCacheDirectory = settingKey[File]("Coursier cache directory. Uses -Dsbt.coursier.home or Coursier's default.").withRank(CSetting)
