@@ -43,6 +43,7 @@ object BuildServerProtocol {
         s.respondEvent(result)
       }
     }).evaluated,
+    bspBuildTargetSources / aggregate := false,
     bspBuildTargetScalacOptions := (Def.inputTaskDyn {
       import DefaultParsers._
       val s = state.value
@@ -56,6 +57,7 @@ object BuildServerProtocol {
         s.respondEvent(result)
       }
     }).evaluated,
+    bspBuildTargetScalacOptions / aggregate := false,
   )
 
   // This will be coped to Compile, Test, etc
