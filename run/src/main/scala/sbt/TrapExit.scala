@@ -18,6 +18,7 @@ import java.util.function.Supplier
 
 import sbt.util.Logger
 import sbt.util.InterfaceUtil
+import sbt.internal.util.Util.{ AnyOps, none }
 import TrapExit._
 
 /**
@@ -294,8 +295,8 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     private[this] def setExceptionHandler(t: Thread): Unit = {
       val group = t.getThreadGroup
       val previousHandler = t.getUncaughtExceptionHandler match {
-        case null | `group` | (_: LoggingExceptionHandler) => None
-        case x                                             => Some(x) // delegate to a custom handler only
+        case null | `group` | (_: LoggingExceptionHandler) => none[Thread.UncaughtExceptionHandler]
+        case x                                             => x.some // delegate to a custom handler only
       }
       t.setUncaughtExceptionHandler(new LoggingExceptionHandler(log, previousHandler))
     }

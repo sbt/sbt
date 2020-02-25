@@ -148,7 +148,8 @@ private[sbt] object SettingsGraph {
                   case _          => Some(Left(s))
                 }
               case _ => None
-            } else {
+            }
+          else {
             None
           }
       }.toSeq

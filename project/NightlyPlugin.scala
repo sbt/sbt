@@ -11,7 +11,14 @@ object NightlyPlugin extends AutoPlugin {
 
     def testDependencies = libraryDependencies ++= (
       if (includeTestDependencies.value)
-        Seq(scalacheck % Test, specs2 % Test, junit % Test, scalatest % Test)
+        Seq(
+          scalacheck % Test,
+          specs2 % Test,
+          junit % Test,
+          scalatest % Test,
+          scalaVerify % Test,
+          hedgehog % Test
+        )
       else Seq()
     )
   }

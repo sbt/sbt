@@ -22,6 +22,7 @@ import java.lang.Character.{
 }
 
 import scala.annotation.tailrec
+import sbt.internal.util.Util.nilSeq
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers {
@@ -130,7 +131,7 @@ trait Parsers {
    * Matches a non-empty String consisting of whitespace characters.
    * The suggested tab completion is a single, constant space character.
    */
-  lazy val Space = SpaceClass.+.examples(" ")
+  lazy val Space: Parser[Seq[Char]] = SpaceClass.+.examples(" ")
 
   /**
    * Matches a possibly empty String consisting of whitespace characters.
@@ -274,7 +275,7 @@ trait Parsers {
    * The result is the (possibly empty) sequence of results from the multiple `rep` applications.  The `sep` results are discarded.
    */
   def repsep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
-    rep1sep(rep, sep) ?? Nil
+    rep1sep(rep, sep) ?? nilSeq[T]
 
   /**
    * Applies `rep` one or more times, separated by `sep`.

@@ -121,6 +121,10 @@ object BuildPaths {
   def outputDirectory(base: File) = base / DefaultTargetName
 
   def projectStandard(base: File) = base / "project"
+  def globalLoggingStandard(base: File): File =
+    base.getCanonicalFile / DefaultTargetName / GlobalLogging
+  def globalTaskDirectoryStandard(base: File): File =
+    base.getCanonicalFile / DefaultTargetName / TaskTempDirectory
 
   final val PluginsDirectoryName = "plugins"
   final val DefaultTargetName = "target"
@@ -131,6 +135,8 @@ object BuildPaths {
   final val GlobalSettingsProperty = "sbt.global.settings"
   final val DependencyBaseProperty = "sbt.dependency.base"
   final val GlobalZincProperty = "sbt.global.zinc"
+  final val GlobalLogging = "global-logging"
+  final val TaskTempDirectory = "task-temp-directory"
 
   def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File =
     base / ("scala_" + instance.version)

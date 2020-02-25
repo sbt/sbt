@@ -10,17 +10,18 @@ package internal
 
 import java.io.File
 import java.util.concurrent.Callable
+
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
-import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked, Level }
+import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.Project.richInitializeTask
-import sbt.dsl.LinterLevel.Ignore
 import sjsonnew.JsonFormat
 
 private[sbt] object LibraryManagement {
+  implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
 
   private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
 
@@ -73,8 +74,8 @@ private[sbt] object LibraryManagement {
       !force &&
       !depsUpdated &&
       !inChanged &&
-      out.allFiles.forall(f => fileUptodate(f, out.stamps)) &&
-      fileUptodate(out.cachedDescriptor, out.stamps)
+      out.allFiles.forall(f => fileUptodate(f, out.stamps, log)) &&
+      fileUptodate(out.cachedDescriptor, out.stamps, log)
     }
 
     /* Skip resolve if last output exists, otherwise error. */
@@ -98,7 +99,7 @@ private[sbt] object LibraryManagement {
         val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
           case (_, Some(out)) if upToDate(inChanged, out) => markAsCached(out)
           case pair =>
-            log.debug(s""""not up to date. inChanged = $inChanged, force = $force""")
+            log.debug(s"""not up to date. inChanged = $inChanged, force = $force""")
             resolve
         }
         import scala.util.control.Exception.catching
@@ -129,8 +130,19 @@ private[sbt] object LibraryManagement {
     handler((extraInputHash, settings, withoutClock))
   }
 
-  private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
-    stamps.get(file).forall(_ == IO.getModifiedTimeOrZero(file))
+  private[this] def fileUptodate(file: File, stamps: Map[File, Long], log: Logger): Boolean = {
+    val exists = file.exists
+    // https://github.com/sbt/sbt/issues/5292 warn the user that the file is missing since this indicates
+    // that UpdateReport was persisted but Coursier cache was not.
+    if (!exists) {
+      log.warn(s"${file.getName} no longer exists at $file")
+    }
+    // coursier doesn't populate stamps
+    val timeStampIsSame = stamps
+      .get(file)
+      .forall(_ == IO.getModifiedTimeOrZero(file))
+    exists && timeStampIsSame
+  }
 
   private[sbt] def transitiveScratch(
       lm: DependencyResolution,

@@ -205,7 +205,8 @@ object Defaults extends BuildCommon {
       bgStop := bgStopTask.evaluated,
       bgWaitFor := bgWaitForTask.evaluated,
       bgCopyClasspath :== true,
-      allowZombieClassLoaders :== !SysProp.closeClassLoaders,
+      closeClassLoaders :== SysProp.closeClassLoaders,
+      allowZombieClassLoaders :== true,
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -291,7 +292,12 @@ object Defaults extends BuildCommon {
       },
       watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
-      taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
+      taskTemporaryDirectory := {
+        val base = BuildPaths.globalTaskDirectoryStandard(appConfiguration.value.baseDirectory)
+        val dir = IO.createUniqueDirectory(base)
+        ShutdownHooks.add(() => IO.delete(dir))
+        dir
+      },
       onComplete := {
         val tempDirectory = taskTemporaryDirectory.value
         () => Clean.deleteContents(tempDirectory, _ => false)
@@ -351,7 +357,7 @@ object Defaults extends BuildCommon {
         sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
-    )
+    ) ++ LintUnused.lintSettings ++ DefaultBackgroundJobService.backgroundJobServiceSettings
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -471,13 +477,6 @@ object Defaults extends BuildCommon {
 
   // This is included into JvmPlugin.projectSettings
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
-    incOptions := incOptions.value
-      .withClassfileManagerType(
-        Option(
-          TransactionalManagerType
-            .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType
-        ).toOptional
-      ),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
@@ -491,12 +490,13 @@ object Defaults extends BuildCommon {
       sbtPlugin.value,
       crossPaths.value
     ),
-    clean := {
-      val _ = clean.value
-      IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
-    },
+    cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
+    clean := clean.dependsOn(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := None,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(scalaVersion.value),
+    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(
+      appConfiguration.value.provider.scalaProvider.version
+    ),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
@@ -657,7 +657,20 @@ object Defaults extends BuildCommon {
       prev + (version -> (dependencyClasspathFiles / outputFileStamps).value)
     },
     compileBinaryFileInputs := compileBinaryFileInputs.triggeredBy(compile).value,
-    incOptions := { incOptions.value.withExternalHooks(externalHooks.value) },
+    incOptions := {
+      val old = incOptions.value
+      old
+        .withExternalHooks(externalHooks.value)
+        .withClassfileManagerType(
+          Option(
+            TransactionalManagerType
+              .of( // https://github.com/sbt/sbt/issues/1673
+                crossTarget.value / s"${prefix(configuration.value.name)}classes.bak",
+                sbt.util.Logger.Null
+              ): ClassFileManagerType
+          ).toOptional
+        )
+    },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
     collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
@@ -690,7 +703,7 @@ object Defaults extends BuildCommon {
   lazy val projectTasks: Seq[Setting[_]] = Seq(
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := Vector.empty,
-    cleanKeepGlobs := historyPath.value.map(_.toGlob).toSeq,
+    cleanKeepGlobs ++= historyPath.value.map(_.toGlob).toVector,
     clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     consoleProject := consoleProjectTask.value,
     transitiveDynamicInputs := SettingsGraph.task.value,
@@ -1362,10 +1375,14 @@ object Defaults extends BuildCommon {
       val configurations = cOpt.map(c => ConfigRef(c.name)).toVector
       if (combined.isEmpty) a.withClassifier(None).withConfigurations(configurations)
       else {
-        val classifierString = combined mkString "-"
-        a.withClassifier(Some(classifierString))
-          .withType(Artifact.classifierType(classifierString))
+        val a1 = a
+          .withClassifier(Some(combined.mkString("-")))
           .withConfigurations(configurations)
+        // use "source" as opposed to "foo-source" to retrieve the type
+        classifier match {
+          case Some(c) => a1.withType(Artifact.classifierType(c))
+          case None    => a1
+        }
       }
     }
 
@@ -1396,7 +1413,12 @@ object Defaults extends BuildCommon {
     Def.task {
       val config = packageConfiguration.value
       val s = streams.value
-      Package(config, s.cacheStoreFactory, s.log)
+      Package(
+        config,
+        s.cacheStoreFactory,
+        s.log,
+        sys.env.get("SOURCE_DATE_EPOCH").map(_.toLong * 1000).orElse(Some(0L))
+      )
       config.jar
     }
 
@@ -1592,7 +1614,8 @@ object Defaults extends BuildCommon {
   }
 
   def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
-    manager.waitFor(handle)
+    manager.waitForTry(handle)
+    ()
   }
 
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] =
@@ -2182,7 +2205,12 @@ object Classpaths {
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
         docArtifactTypes :== Artifact.DefaultDocTypes.toVector,
         cleanKeepFiles :== Nil,
-        cleanKeepGlobs :== Nil,
+        cleanKeepGlobs := {
+          val base = appConfiguration.value.baseDirectory.getCanonicalFile
+          val dirs = BuildPaths
+            .globalLoggingStandard(base) :: BuildPaths.globalTaskDirectoryStandard(base) :: Nil
+          dirs.flatMap(d => Glob(d) :: Glob(d, RecursiveGlob) :: Nil)
+        },
         fileOutputs :== Nil,
         sbtDependency := {
           val app = appConfiguration.value
@@ -3244,7 +3272,7 @@ object Classpaths {
         buildDependencies.value
       )
     }
-  def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
+  def mkIvyConfiguration: Initialize[Task[InlineIvyConfiguration]] =
     Def.task {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
       val s = streams.value
@@ -3617,6 +3645,7 @@ object Classpaths {
       ivyRepo.descriptorOptional
     } catch { case _: NoSuchMethodError => false }
 
+  @com.github.ghik.silencer.silent
   private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
     repo match {
@@ -3854,6 +3883,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     // I tried "Def.spaceDelimited().parsed" (after importing Def.parserToInput)
     // but it broke actions/run-task
     // Maybe it needs to be defined inside a Def.inputTask?
+    @com.github.ghik.silencer.silent
     def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
       InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 
@@ -3923,7 +3953,7 @@ trait BuildCommon {
   /**
    * Allows a String to be used where a `NameFilter` is expected.
    * Asterisks (`*`) in the string are interpreted as wildcards.
-   * All other characters must match exactly.  See [[sbt.io.GlobFilter]].
+   * All other characters must match exactly.  See GlobFilter.
    */
   implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
 

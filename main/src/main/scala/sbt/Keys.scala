@@ -195,6 +195,7 @@ object Keys {
   val semanticdbOptions = settingKey[Seq[String]]("The Scalac options introduced for SemanticDB").withRank(CSetting)
 
   val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.").withRank(APlusTask)
+  private[sbt] val cleanIvy = taskKey[Unit]("Deletes the ivy cached resolution")
   val console = taskKey[Unit]("Starts the Scala interpreter with the project classes on the classpath.").withRank(APlusTask)
   val consoleQuick = TaskKey[Unit]("consoleQuick", "Starts the Scala interpreter with the project dependencies on the classpath.", ATask, console)
   val consoleProject = taskKey[Unit]("Starts the Scala interpreter with the sbt and the build definition on the classpath and useful imports.").withRank(AMinusTask)
@@ -250,6 +251,7 @@ object Keys {
   val javaOptions = taskKey[Seq[String]]("Options passed to a new JVM when forking.").withRank(BPlusTask)
   val envVars = taskKey[Map[String, String]]("Environment variables used when forking a new JVM").withRank(BTask)
 
+  val bgJobServiceDirectory = settingKey[File]("The directory for temporary files used by background jobs.")
   val bgJobService = settingKey[BackgroundJobService]("Job manager used to run background jobs.")
   val bgList = taskKey[Seq[JobHandle]]("List running background jobs.")
   val ps = taskKey[Seq[JobHandle]]("bgList variant that displays on the log.")
@@ -325,6 +327,7 @@ object Keys {
   val dependencyClasspathAsJars = taskKey[Classpath]("The classpath consisting of internal and external, managed and unmanaged dependencies, all as JARs.")
   val fullClasspathAsJars = taskKey[Classpath]("The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies, all as JARs.")
   val internalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on")
+  val closeClassLoaders = settingKey[Boolean]("Close classloaders in run and test when the task completes.").withRank(DSetting)
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)
@@ -491,6 +494,10 @@ object Keys {
   private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
+  val lintUnused = inputKey[Unit]("Check for keys unused by other settings and tasks.")
+  val excludeLintKeys = settingKey[Set[Def.KeyedInitialize[_]]]("Keys excluded from lintUnused task")
+  val includeLintKeys = settingKey[Set[Def.KeyedInitialize[_]]]("Task keys that are included into lintUnused task")
+  val lintUnusedKeysOnLoad = settingKey[Boolean]("Toggles whether or not to check for unused keys during startup")
 
   val stateStreams = AttributeKey[Streams]("stateStreams", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped

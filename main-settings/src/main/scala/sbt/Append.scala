@@ -31,8 +31,8 @@ object Append {
 
   implicit def appendSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] =
     new Sequence[Seq[T], Seq[V], V] {
-      def appendValues(a: Seq[T], b: Seq[V]): Seq[T] = a ++ b
-      def appendValue(a: Seq[T], b: V): Seq[T] = a :+ b
+      def appendValues(a: Seq[T], b: Seq[V]): Seq[T] = a ++ (b: Seq[T])
+      def appendValue(a: Seq[T], b: V): Seq[T] = a :+ (b: T)
     }
 
   implicit def appendSeqImplicit[T, V](implicit ev: V => T): Sequence[Seq[T], Seq[V], V] =
@@ -50,8 +50,8 @@ object Append {
 
   implicit def appendList[T, V <: T]: Sequence[List[T], List[V], V] =
     new Sequence[List[T], List[V], V] {
-      def appendValues(a: List[T], b: List[V]): List[T] = a ::: b
-      def appendValue(a: List[T], b: V): List[T] = a :+ b
+      def appendValues(a: List[T], b: List[V]): List[T] = a ::: (b: List[T])
+      def appendValue(a: List[T], b: V): List[T] = a :+ (b: T)
     }
 
   implicit def appendListImplicit[T, V](implicit ev: V => T): Sequence[List[T], List[V], V] =
@@ -80,14 +80,15 @@ object Append {
 
   implicit def appendSet[T, V <: T]: Sequence[Set[T], Set[V], V] =
     new Sequence[Set[T], Set[V], V] {
-      def appendValues(a: Set[T], b: Set[V]): Set[T] = a ++ b
-      def appendValue(a: Set[T], b: V): Set[T] = a + b
+      def appendValues(a: Set[T], b: Set[V]): Set[T] = a ++ (b.toSeq: Seq[T]).toSet
+      def appendValue(a: Set[T], b: V): Set[T] = a + (b: T)
     }
 
   implicit def appendMap[A, B, X <: A, Y <: B]: Sequence[Map[A, B], Map[X, Y], (X, Y)] =
     new Sequence[Map[A, B], Map[X, Y], (X, Y)] {
-      def appendValues(a: Map[A, B], b: Map[X, Y]): Map[A, B] = a ++ b
-      def appendValue(a: Map[A, B], b: (X, Y)): Map[A, B] = a + b
+      def appendValues(a: Map[A, B], b: Map[X, Y]): Map[A, B] =
+        (a.toSeq ++ (b.toSeq: Seq[(A, B)])).toMap
+      def appendValue(a: Map[A, B], b: (X, Y)): Map[A, B] = a + (b: (A, B))
     }
 
   implicit def appendOption[T]: Sequence[Seq[T], Option[T], Option[T]] =

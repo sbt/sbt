@@ -9,6 +9,7 @@ package sbt
 
 import java.io.File
 
+import com.github.ghik.silencer.silent
 import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
@@ -34,7 +35,7 @@ object BasicKeys {
     "The function that constructs the command prompt from the current build state.",
     10000
   )
-  val watch =
+  @silent val watch =
     AttributeKey[Watched]("watched", "Continuous execution configuration.", 1000)
   val serverPort =
     AttributeKey[Int]("server-port", "The port number used by server command.", 10000)

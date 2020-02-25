@@ -7,10 +7,10 @@ package sbt.internal.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait PortFileFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val PortFileFormat: JsonFormat[sbt.internal.protocol.PortFile] = new JsonFormat[sbt.internal.protocol.PortFile] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.protocol.PortFile = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.protocol.PortFile = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val uri = unbuilder.readField[String]("uri")
       val tokenfilePath = unbuilder.readField[Option[String]]("tokenfilePath")
       val tokenfileUri = unbuilder.readField[Option[String]]("tokenfileUri")

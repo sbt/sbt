@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutionException
 import sbt.internal.util.ErrorHandling.wideConvert
 import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
 import sbt.internal.util.Types._
+import sbt.internal.util.Util.nilSeq
 import Execute._
 
 import scala.annotation.tailrec
@@ -95,6 +96,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     assert(results contains root, "No result for root node.")
     val finalResults = triggers.onComplete(results)
     progress.afterAllCompleted(finalResults)
+    progress.stop()
     finalResults
   }
 
@@ -166,7 +168,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     results(node) = result
     state(node) = Done
     progress.afterCompleted(node, result)
-    remove(reverse, node) foreach { dep =>
+    remove(reverse.asInstanceOf[Map[F[A], Iterable[F[_]]]], node) foreach { dep =>
       notifyDone(node, dep)
     }
     callers.remove(node).toList.flatten.foreach { c =>
@@ -195,7 +197,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     val f = forward(dependent)
     f -= node
     if (f.isEmpty) {
-      remove(forward, dependent)
+      remove[F[_], IDSet[F[_]]](forward, dependent)
       ready(dependent)
     }
   }
@@ -322,7 +324,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def runBefore(node: F[_]): Seq[F[_]] = getSeq(triggers.runBefore, node)
   def triggeredBy(node: F[_]): Seq[F[_]] = getSeq(triggers.injectFor, node)
   def getSeq(map: collection.Map[F[_], Seq[F[_]]], node: F[_]): Seq[F[_]] =
-    map.getOrElse(node, Nil)
+    map.getOrElse(node, nilSeq[F[_]])
 
   // Contracts
 

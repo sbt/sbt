@@ -1,43 +1,43 @@
 > + compile
 $ exists lib/target/scala-2.12
-$ exists lib/target/scala-2.13.0-M5
+$ exists lib/target/scala-2.13
 $ exists sbt-foo/target/scala-2.12
--$ exists sbt-foo/target/scala-2.13.0-M5
+-$ exists sbt-foo/target/scala-2.13
 
 > clean
 > + libProj/compile
 $ exists lib/target/scala-2.12
-$ exists lib/target/scala-2.13.0-M5
+$ exists lib/target/scala-2.13
 -$ exists sbt-foo/target/scala-2.12
--$ exists sbt-foo/target/scala-2.13.0-M5
+-$ exists sbt-foo/target/scala-2.13
 
 # test safe switching
 > clean
 > ++ 2.12.10 -v compile
 $ exists lib/target/scala-2.12
--$ exists lib/target/scala-2.13.0-M5
+-$ exists lib/target/scala-2.13
 $ exists sbt-foo/target/scala-2.12
--$ exists sbt-foo/target/scala-2.13.0-M5
+-$ exists sbt-foo/target/scala-2.13
 
 # Test legacy cross build with command support
 # > clean
 # > + build
 # $ exists lib/target/scala-2.12
-# $ exists lib/target/scala-2.13.0-M5
+# $ exists lib/target/scala-2.13
 # $ exists sbt-foo/target/scala-2.12
-# -$ exists sbt-foo/target/scala-2.13.0-M5
+# -$ exists sbt-foo/target/scala-2.13
 
 # Test ++ leaves crossScalaVersions unchanged
 > clean
 > ++2.12.10
 > +extrasProj/compile
-$ exists extras/target/scala-2.13.0-M5
+$ exists extras/target/scala-2.13
 $ exists extras/target/scala-2.12
 
 # test safe switching
 > clean
-> ++ 2.13.0-M5 -v compile
-$ exists lib/target/scala-2.13.0-M5
+> ++ 2.13.1 -v compile
+$ exists lib/target/scala-2.13
 -$ exists lib/target/scala-2.12
 # -$ exists sbt-foo/target/scala-2.12
--$ exists sbt-foo/target/scala-2.13.0-M5
+-$ exists sbt-foo/target/scala-2.13

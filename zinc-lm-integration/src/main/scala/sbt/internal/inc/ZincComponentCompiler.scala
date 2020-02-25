@@ -159,7 +159,13 @@ private[sbt] object ZincComponentCompiler {
   ): CompilerBridgeProvider =
     new ZincCompilerBridgeProvider(None, manager, dependencyResolution, scalaJarsTarget)
 
-  private final val LocalIvy = s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}"
+  private final val LocalIvy =
+    (sys.props.get("sbt.ivy.home") match {
+      case Some(home) =>
+        if (home.endsWith("/")) home
+        else home + "/"
+      case _ => s"$${user.home}/.ivy2/"
+    }) + "local/" + Resolver.localBasePattern
 
   final val LocalResolver: Resolver = {
     val toUse = Vector(LocalIvy)

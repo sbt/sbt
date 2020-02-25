@@ -12,9 +12,14 @@ import java.net.URL;
 import sbt.util.Logger;
 
 final class LayeredClassLoader extends ManagedClassLoader {
-  LayeredClassLoader(final URL[] classpath, final ClassLoader parent, final File tempDir, final
-      boolean allowZombies, final Logger logger) {
-    super(classpath, parent, allowZombies, logger);
+  LayeredClassLoader(
+      final URL[] classpath,
+      final ClassLoader parent,
+      final File tempDir,
+      final boolean close,
+      final boolean allowZombies,
+      final Logger logger) {
+    super(classpath, parent, close, allowZombies, logger);
     setTempDir(tempDir);
   }
 

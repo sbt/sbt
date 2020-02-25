@@ -14,7 +14,7 @@ val compileAndCheckNoClassFileUpdates = taskKey[Unit]("Checks that there are no 
 compileAndCheckNoClassFileUpdates := {
   val current = (classFiles / outputFileStamps).value.toSet
   val previous = (classFiles / outputFileStamps).previous.getOrElse(Nil).toSet
-  assert(current == previous)
+  assert(current == previous, s"$current did not equal $previous")
 }
 
 val checkLastModified = inputKey[Unit]("Check the last modified time for a file")
@@ -25,6 +25,7 @@ checkLastModified := {
     case (file, (negate, expectedLastModified)) =>
       val sourceFile = baseDirectory.value / "src" / "main" / "scala" / file
       val lastModified = IO.getModifiedTimeOrZero(sourceFile)
+      println(s"$lastModified $expectedLastModified")
       negate match {
         case Some(_) => assert(lastModified != expectedLastModified)
         case None    => assert(lastModified == expectedLastModified)

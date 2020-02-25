@@ -44,6 +44,7 @@ private[sbt] object ClassLoaders {
       else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
     val exclude = dependencyJars(exportedProducts).value.toSet ++ si.libraryJars
     val logger = state.value.globalLogging.full
+    val close = closeClassLoaders.value
     val allowZombies = allowZombieClassLoaders.value
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
@@ -55,6 +56,7 @@ private[sbt] object ClassLoaders {
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
       scope = resolvedScoped.value.scope,
       logger = logger,
+      close = close,
       allowZombies = allowZombies,
     )
   }
@@ -88,6 +90,7 @@ private[sbt] object ClassLoaders {
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
         val logger = state.value.globalLogging.full
         val allowZombies = allowZombieClassLoaders.value
+        val close = closeClassLoaders.value
         val newLoader =
           (classpath: Seq[File]) => {
             val mappings = classpath.map(f => f.getName -> f).toMap
@@ -102,6 +105,7 @@ private[sbt] object ClassLoaders {
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
               scope = resolvedScope,
               logger = logger,
+              close = close,
               allowZombies = allowZombies,
             )
           }
@@ -136,11 +140,12 @@ private[sbt] object ClassLoaders {
       tmp: File,
       scope: Scope,
       logger: Logger,
+      close: Boolean,
       allowZombies: Boolean
   ): ClassLoader = {
     val cpFiles = fullCP.map(_._1)
     strategy match {
-      case Flat => new FlatLoader(cpFiles.urls, interfaceLoader, tmp, allowZombies, logger)
+      case Flat => new FlatLoader(cpFiles.urls, interfaceLoader, tmp, close, allowZombies, logger)
       case _ =>
         val layerDependencies = strategy match {
           case _: AllLibraryJars => true
@@ -156,9 +161,10 @@ private[sbt] object ClassLoaders {
         val cpFiles = fullCP.map(_._1)
 
         val allDependencies = cpFiles.filter(allDependenciesSet)
+        def isReflectJar(f: File): Boolean =
+          f.getName == "scala-reflect.jar" || f.getName.startsWith("scala-reflect-")
         val scalaReflectJar = allDependencies.collectFirst {
-          case f if f.getName == "scala-reflect.jar" =>
-            si.allJars.find(_.getName == "scala-reflect.jar")
+          case f if isReflectJar(f) => si.allJars.find(isReflectJar)
         }.flatten
         val scalaReflectLayer = scalaReflectJar
           .map { file =>
@@ -180,6 +186,7 @@ private[sbt] object ClassLoaders {
                 new ReverseLookupClassLoaderHolder(
                   allDependencies,
                   scalaReflectLayer,
+                  close,
                   allowZombies,
                   logger
                 )
@@ -199,7 +206,7 @@ private[sbt] object ClassLoaders {
             cl.getParent match {
               case dl: ReverseLookupClassLoaderHolder => dl.checkout(cpFiles, tmp)
               case _ =>
-                new LayeredClassLoader(dynamicClasspath.urls, cl, tmp, allowZombies, logger)
+                new LayeredClassLoader(dynamicClasspath.urls, cl, tmp, close, allowZombies, logger)
             }
         }
     }

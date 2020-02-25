@@ -319,7 +319,7 @@ trait ParserMain {
   implicit def richParser[A](a: Parser[A]): RichParser[A] = new RichParser[A] {
     def ~[B](b: Parser[B]) = seqParser(a, b)
     def ||[B](b: Parser[B]) = choiceParser(a, b)
-    def |[B >: A](b: Parser[B]) = homParser(a, b)
+    def |[B >: A](b: Parser[B]) = homParser[B](a, b)
     def ? = opt(a)
     def * = zeroOrMore(a)
     def + = oneOrMore(a)
@@ -327,7 +327,9 @@ trait ParserMain {
     def id = a
 
     def ^^^[B](value: B): Parser[B] = a map (_ => value)
-    def ??[B >: A](alt: B): Parser[B] = a.? map { _ getOrElse alt }
+    def ??[B >: A](alt: B): Parser[B] = a.? map { x =>
+      x.getOrElse[B](alt)
+    }
     def <~[B](b: Parser[B]): Parser[A] = (a ~ b) map { case av ~ _ => av }
     def ~>[B](b: Parser[B]): Parser[B] = (a ~ b) map { case _ ~ bv => bv }
     def !!!(msg: String): Parser[A] = onFailure(a, msg)
@@ -477,7 +479,7 @@ trait ParserMain {
           if (ci >= s.length)
             a.resultEmpty.toEither.left.map { msgs0 => () =>
               val msgs = msgs0()
-              val nonEmpty = if (msgs.isEmpty) "Unexpected end of input" :: Nil else msgs
+              val nonEmpty = if (msgs.isEmpty) Seq("Unexpected end of input") else msgs
               (nonEmpty, ci)
             } else
             loop(ci, a derive s(ci))
@@ -601,7 +603,8 @@ trait ParserMain {
 
   def seq0[T](p: Seq[Parser[T]], errors: => Seq[String]): Parser[Seq[T]] = {
     val (newErrors, valid) = separate(p) {
-      case Invalid(f) => Left(f.errors _); case ok => Right(ok)
+      case Invalid(f) => Left(f.errors _): Either[() => Seq[String], Parser[T]]
+      case ok         => Right(ok): Either[() => Seq[String], Parser[T]]
     }
     def combinedErrors = errors ++ newErrors.flatMap(_())
     if (valid.isEmpty) invalid(combinedErrors) else new ParserSeq(valid, combinedErrors)
@@ -966,10 +969,11 @@ private final class Repeat[T](
   lazy val resultEmpty: Result[Seq[T]] = {
     val partialAccumulatedOption =
       partial match {
-        case None                 => Value(accumulatedReverse)
-        case Some(partialPattern) => partialPattern.resultEmpty.map(_ :: accumulatedReverse)
+        case None => (Value(accumulatedReverse): Result[List[T]])
+        case Some(partialPattern) =>
+          partialPattern.resultEmpty.map(_ :: accumulatedReverse)
       }
-    (partialAccumulatedOption app repeatedParseEmpty)(_ reverse_::: _)
+    (partialAccumulatedOption app repeatedParseEmpty)((x, y) => (x reverse_::: y): Seq[T])
   }
 
   private def repeatedParseEmpty: Result[List[T]] = {

@@ -16,7 +16,7 @@ object Signals {
       try {
         val signals = new Signals0
         signals.withHandler(signal, handler, action)
-      } catch { case _: LinkageError => Right(action()) }
+      } catch { case _: LinkageError => Right(action()): Either[Throwable, T] }
 
     result match {
       case Left(e)  => throw e

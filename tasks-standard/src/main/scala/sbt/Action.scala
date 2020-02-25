@@ -63,9 +63,14 @@ final case class Task[T](info: Info[T], work: Action[T]) {
   override def hashCode = info.hashCode
 
   def tag(tags: Tag*): Task[T] = tagw(tags.map(t => (t, 1)): _*)
-  def tagw(tags: (Tag, Int)*): Task[T] =
-    copy(info = info.set(tagsKey, info.get(tagsKey).getOrElse(Map.empty) ++ tags))
-  def tags: TagMap = info get tagsKey getOrElse Map.empty
+  def tagw(tags: (Tag, Int)*): Task[T] = {
+    val tgs: TagMap = info.get(tagsKey).getOrElse(TagMap.empty)
+    val value = tags.foldLeft(tgs)((acc, tag) => acc + tag)
+    val nextInfo = info.set(tagsKey, value)
+    copy(info = nextInfo)
+  }
+
+  def tags: TagMap = info get tagsKey getOrElse TagMap.empty
 }
 
 /**
@@ -83,7 +88,7 @@ final case class Info[T](
   def setName(n: String) = set(Name, n)
   def setDescription(d: String) = set(Description, d)
   def set[A](key: AttributeKey[A], value: A) = copy(attributes = this.attributes.put(key, value))
-  def get[A](key: AttributeKey[A]) = attributes.get(key)
+  def get[A](key: AttributeKey[A]): Option[A] = attributes.get(key)
   def postTransform(f: (T, AttributeMap) => AttributeMap) = copy(post = (t: T) => f(t, post(t)))
 
   override def toString = if (attributes.isEmpty) "_" else attributes.toString

@@ -22,5 +22,8 @@ private[sbt] trait BuildSyntax {
   def dependsOn(deps: ClasspathDep[ProjectReference]*): DslEntry = DslEntry.DslDependsOn(deps)
   // avoid conflict with `sbt.Keys.aggregate`
   def aggregateProjects(refs: ProjectReference*): DslEntry = DslEntry.DslAggregate(refs)
+
+  implicit def sbtStateToUpperStateOps(s: State): UpperStateOps =
+    new UpperStateOps.UpperStateOpsImpl(s)
 }
 private[sbt] object BuildSyntax extends BuildSyntax

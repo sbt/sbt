@@ -10,6 +10,7 @@ package sbt
 import java.net.URI
 
 import sbt.internal.util.{ AttributeKey, AttributeMap, Dag }
+import sbt.internal.util.Util._
 
 import sbt.io.IO
 
@@ -213,7 +214,7 @@ object Scope {
       val zeroConfig = if (showZeroConfig) "Zero /" else ""
       val configPrefix = config.foldStrict(display, zeroConfig, "./")
       val taskPrefix = task.foldStrict(_.label + " /", "", "./")
-      val extras = extra.foldStrict(_.entries.map(_.toString).toList, Nil, Nil)
+      val extras = extra.foldStrict(_.entries.map(_.toString).toList, nil, nil)
       val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
       if (scope == GlobalScope) "Global / " + sep + postfix
       else
@@ -346,6 +347,7 @@ object Scope {
             val t = tLinIt.next()
             if (scope.extra.isSelect) {
               res += Scope(px, c, t, scope.extra)
+              ()
             }
             res += Scope(px, c, t, Zero)
           }
@@ -361,7 +363,8 @@ object Scope {
         val projAxes: Seq[ScopeAxis[ResolvedReference]] =
           resolvedProj match {
             case pr: ProjectRef => index.project(pr)
-            case br: BuildRef   => List(Select(br), Zero)
+            case br: BuildRef =>
+              List(Select(br): ScopeAxis[ResolvedReference], Zero: ScopeAxis[ResolvedReference])
           }
         expandDelegateScopes(resolvedProj)(projAxes)
     }
@@ -369,13 +372,15 @@ object Scope {
 
   private val zeroL = List(Zero)
   def withZeroAxis[T](base: ScopeAxis[T]): Seq[ScopeAxis[T]] =
-    if (base.isSelect) List(base, Zero)
+    if (base.isSelect) List(base, Zero: ScopeAxis[T])
     else zeroL
 
   def withGlobalScope(base: Scope): Seq[Scope] =
     if (base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
   def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ResolvedReference]] =
-    ps ++ (ps flatMap rawBuild).distinct :+ Zero
+    (ps: Seq[ScopeAxis[ResolvedReference]]) ++
+      ((ps flatMap rawBuild).distinct: Seq[ScopeAxis[ResolvedReference]]) :+
+      (Zero: ScopeAxis[ResolvedReference])
 
   def rawBuild(ps: ScopeAxis[ProjectRef]): Seq[ScopeAxis[BuildRef]] = ps match {
     case Select(ref) => Select(BuildRef(ref.build)) :: Nil; case _ => Nil
@@ -421,8 +426,8 @@ object Scope {
   def topologicalSort[T](node: T, appendZero: Boolean)(
       dependencies: T => Seq[T]
   ): Seq[ScopeAxis[T]] = {
-    val o = Dag.topologicalSortUnchecked(node)(dependencies).map(Select.apply)
-    if (appendZero) o ::: Zero :: Nil
+    val o = Dag.topologicalSortUnchecked(node)(dependencies).map(x => Select(x): ScopeAxis[T])
+    if (appendZero) o ::: (Zero: ScopeAxis[T]) :: Nil
     else o
   }
   def globalProjectDelegates(scope: Scope): Seq[Scope] =

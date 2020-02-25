@@ -47,6 +47,7 @@ type ExecStatusEvent implements EventMessage {
   execId: String
   commandQueue: [String]
   exitCode: Long @since("1.1.2")
+  message: String @since("1.4.0")
 }
 
 interface SettingQueryResponse implements EventMessage {}

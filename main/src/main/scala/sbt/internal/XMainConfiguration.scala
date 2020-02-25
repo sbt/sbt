@@ -11,6 +11,7 @@ import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.net.URL
 import java.util.concurrent.{ ExecutorService, Executors }
+import ClassLoaderClose.close
 
 import sbt.plugins.{ CorePlugin, IvyPlugin, JvmPlugin }
 import sbt.util.LogExchange
@@ -56,10 +57,6 @@ private[internal] object ClassLoaderWarmup {
  * in this file.
  */
 private[sbt] class XMainConfiguration {
-  private def close(classLoader: ClassLoader): Unit = classLoader match {
-    case a: AutoCloseable => a.close()
-    case _                =>
-  }
   def run(moduleName: String, configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val updatedConfiguration =
       if (configuration.provider.scalaProvider.launcher.topLoader.getClass.getCanonicalName
@@ -86,9 +83,11 @@ private[sbt] class XMainConfiguration {
 
   private def makeConfiguration(configuration: xsbti.AppConfiguration): xsbti.AppConfiguration = {
     val baseLoader = classOf[XMainConfiguration].getClassLoader
-    val url = baseLoader.getResource("sbt/internal/XMainConfiguration.class")
+    val className = "sbt/internal/XMainConfiguration.class"
+    val url = baseLoader.getResource(className)
+    val path = url.toString.replaceAll(s"$className$$", "")
     val urlArray = new Array[URL](1)
-    urlArray(0) = new URL(url.getPath.replaceAll("[!][^!]*class", ""))
+    urlArray(0) = new URL(path)
     val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     // This loader doesn't have the scala library in it so it's critical that none of the code
     // in this file use the scala library.

@@ -69,6 +69,8 @@ object SysProp {
   def traces: Boolean = getOrFalse("sbt.traces")
   def client: Boolean = getOrFalse("sbt.client")
   def ci: Boolean = getOrFalse("sbt.ci")
+  def allowRootDir: Boolean = getOrFalse("sbt.rootdir")
+  def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
@@ -84,11 +86,12 @@ object SysProp {
    */
   lazy val color: Boolean = ConsoleAppender.formatEnabledInEnv
 
-  def closeClassLoaders: Boolean = getOrTrue("sbt.classloader.close")
+  def closeClassLoaders: Boolean = getOrFalse("sbt.classloader.close")
 
   def fileCacheSize: Long =
     SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128L * 1024 * 1024)
-  def supershell: Boolean = booleanOpt("sbt.supershell").getOrElse(color)
+  def dumbTerm: Boolean = sys.env.get("TERM").filter(_ == "dumb").isDefined
+  def supershell: Boolean = booleanOpt("sbt.supershell").getOrElse(!dumbTerm && color)
 
   def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
   def supershellBlankZone: Int = int("sbt.supershell.blankzone", 5)

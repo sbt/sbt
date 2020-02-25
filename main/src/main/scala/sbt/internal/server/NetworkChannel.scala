@@ -19,7 +19,11 @@ import sbt.internal.langserver.{ ErrorCodes, CancelRequestParams }
 import sbt.internal.util.{ ObjectEvent, StringEvent }
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.codec.JValueFormats
-import sbt.internal.protocol.{ JsonRpcRequestMessage, JsonRpcNotificationMessage }
+import sbt.internal.protocol.{
+  JsonRpcResponseError,
+  JsonRpcRequestMessage,
+  JsonRpcNotificationMessage
+}
 import sbt.util.Logger
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -241,6 +245,25 @@ final class NetworkChannel(
     }
   }
 
+  private[sbt] def respondError(
+      err: JsonRpcResponseError,
+      execId: Option[String],
+      source: Option[CommandSource]
+  ): Unit = jsonRpcRespondError(execId, err)
+
+  private[sbt] def respondError(
+      code: Long,
+      message: String,
+      execId: Option[String],
+      source: Option[CommandSource]
+  ): Unit = jsonRpcRespondError(execId, code, message)
+
+  private[sbt] def respondEvent[A: JsonFormat](
+      event: A,
+      execId: Option[String],
+      source: Option[CommandSource]
+  ): Unit = jsonRpcRespond(event, execId)
+
   private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
     if (isLanguageServerProtocol) {
       jsonRpcNotify(method, params)
@@ -255,9 +278,10 @@ final class NetworkChannel(
         case entry: StringEvent => logMessage(entry.level, entry.message)
         case entry: ExecStatusEvent =>
           entry.exitCode match {
-            case None           => jsonRpcRespond(event, entry.execId)
-            case Some(0)        => jsonRpcRespond(event, entry.execId)
-            case Some(exitCode) => jsonRpcRespondError(entry.execId, exitCode, "")
+            case None    => jsonRpcRespond(event, entry.execId)
+            case Some(0) => jsonRpcRespond(event, entry.execId)
+            case Some(exitCode) =>
+              jsonRpcRespondError(entry.execId, exitCode, entry.message.getOrElse(""))
           }
         case _ => jsonRpcRespond(event, execId)
       }

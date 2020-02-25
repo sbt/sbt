@@ -9,7 +9,7 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
-import java.nio.file.{ FileAlreadyExistsException, Files }
+import java.nio.file.{ FileAlreadyExistsException, Files, FileSystems }
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.{ Locale, Properties }
@@ -126,15 +126,14 @@ object StandardMain {
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
     try {
+      val hook = ShutdownHooks.add(closeRunnable)
       try {
-        val hook = ShutdownHooks.add(closeRunnable)
-        try {
-          MainLoop.runLogged(s)
-        } finally {
-          hook.close()
-          ()
-        }
-      } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
+        MainLoop.runLogged(s)
+      } finally {
+        try DefaultBackgroundJobService.shutdown()
+        finally hook.close()
+        ()
+      }
     } finally TrapExit.uninstallManager(previous)
   }
 
@@ -142,12 +141,17 @@ object StandardMain {
   val console: ConsoleOut =
     ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
-  def initialGlobalLogging: GlobalLogging =
+  private[this] def initialGlobalLogging(file: Option[File]): GlobalLogging = {
+    file.foreach(f => if (!f.exists()) IO.createDirectory(f))
     GlobalLogging.initial(
       MainAppender.globalDefault(console),
-      File.createTempFile("sbt", ".log"),
+      File.createTempFile("sbt-global-log", ".log", file.orNull),
       console
     )
+  }
+  def initialGlobalLogging(file: File): GlobalLogging = initialGlobalLogging(Option(file))
+  @deprecated("use version that takes file argument", "1.4.0")
+  def initialGlobalLogging: GlobalLogging = initialGlobalLogging(None)
 
   def initialState(
       configuration: xsbti.AppConfiguration,
@@ -172,7 +176,7 @@ object StandardMain {
       commands,
       State.newHistory,
       initAttrs,
-      initialGlobalLogging,
+      initialGlobalLogging(BuildPaths.globalLoggingStandard(configuration.baseDirectory)),
       None,
       State.Continue
     )
@@ -196,6 +200,7 @@ object BuiltinCommands {
   def ScriptCommands: Seq[Command] =
     Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 
+  @com.github.ghik.silencer.silent
   def DefaultCommands: Seq[Command] =
     Seq(
       multi,
@@ -819,24 +824,25 @@ object BuiltinCommands {
 
     val sbtVersionOpt = sbtVersionSystemOpt.orElse(sbtVersionBuildOpt)
 
-    val app = state.configuration.provider
-    sbtVersionOpt.foreach(
-      version =>
-        if (version != app.id.version()) {
-          state.log.warn(s"""sbt version mismatch, current: ${app.id
-            .version()}, in build.properties: "$version", use 'reboot' to use the new value.""")
-        }
-    )
+    sbtVersionOpt.foreach { version =>
+      val appVersion = state.configuration.provider.id.version()
+      if (version != appVersion) {
+        state.log.warn(
+          s"sbt version mismatch, using: $appVersion, " +
+            s"""in build.properties: "$version", use 'reboot' to use the new value.""".stripMargin
+        )
+      }
+    }
   }
 
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
     checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
-    val s = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
+    val s2 = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
 
     val (eval, structure) =
-      try Load.defaultLoad(s, base, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
+      try Load.defaultLoad(s2, base, s2.log, Project.inPluginProject(s2), Project.extraBuilds(s2))
       catch {
         case ex: compiler.EvalException =>
           s0.log.debug(ex.getMessage)
@@ -846,12 +852,13 @@ object BuiltinCommands {
       }
 
     val session = Load.initialSession(structure, eval, s0)
-    SessionSettings.checkSession(session, s)
-    addCacheStoreFactoryFactory(
+    SessionSettings.checkSession(session, s2)
+    val s3 = addCacheStoreFactoryFactory(
       Project
-        .setProject(session, structure, s)
+        .setProject(session, structure, s2)
         .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
     )
+    LintUnused.lintUnusedFunc(s3)
   }
 
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
@@ -940,14 +947,33 @@ object BuiltinCommands {
     state.remainingCommands exists (_.commandLine == TemplateCommand)
 
   private def writeSbtVersion(state: State) =
-    if (SysProp.genBuildProps && !intendsToInvokeNew(state))
+    if (SysProp.genBuildProps && !intendsToInvokeNew(state)) {
       writeSbtVersionUnconditionally(state)
+    }
+
+  private def checkRoot(state: State): Unit =
+    if (SysProp.allowRootDir) ()
+    else {
+      val baseDir = state.baseDir
+      import scala.collection.JavaConverters._
+      // this should return / on Unix and C:\ for Windows.
+      val rootOpt = FileSystems.getDefault.getRootDirectories.asScala.toList.headOption
+      rootOpt foreach { root =>
+        if (baseDir.getAbsolutePath == root.toString) {
+          throw new IllegalStateException(
+            "cannot run sbt from root directory without -Dsbt.rootdir=true; see sbt/sbt#1458"
+          )
+        }
+      }
+    }
 
   private def WriteSbtVersion = "writeSbtVersion"
 
   private def writeSbtVersion: Command =
     Command.command(WriteSbtVersion) { state =>
-      writeSbtVersion(state); state
+      checkRoot(state)
+      writeSbtVersion(state)
+      state
     }
 
   private def intendsToInvokeCompile(state: State) =
@@ -977,7 +1003,9 @@ object BuiltinCommands {
         val skipFile = skipWelcomeFile(state, version)
         Files.createDirectories(skipFile.getParent)
         val suppress = !SysProp.banner || Files.exists(skipFile)
-        if (!suppress) state.log.info(Banner(version))
+        if (!suppress) {
+          Banner(version).foreach(banner => state.log.info(banner))
+        }
       } catch { case _: IOException => /* Don't let errors in this command prevent startup */ }
       state.put(bannerHasBeenShown, true)
     } else state

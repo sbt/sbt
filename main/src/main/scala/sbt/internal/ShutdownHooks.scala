@@ -38,7 +38,7 @@ private[sbt] object ShutdownHooks extends AutoCloseable {
     () => Option(hooks.remove(id)).foreach(_.apply())
   }
   private def runAll(): Unit = if (ranHooks.compareAndSet(false, true)) {
-    hooks.forEachValue(runtime.availableProcessors.toLong, _.apply())
+    hooks.forEachValue(runtime.availableProcessors.toLong, (_: () => Unit).apply())
   }
   override def close(): Unit = {
     runtime.removeShutdownHook(thread)

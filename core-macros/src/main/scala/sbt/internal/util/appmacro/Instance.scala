@@ -158,7 +158,7 @@ object Instance {
       val param =
         treeCopy.ValDef(variable, util.parameterModifiers, variable.name, variable.tpt, EmptyTree)
       val typeApplied =
-        TypeApply(util.select(instance, MapName), variable.tpt :: TypeTree(treeType) :: Nil)
+        TypeApply(util.select(instance, MapName), variable.tpt :: (TypeTree(treeType): Tree) :: Nil)
       val f = util.createFunction(param :: Nil, body, functionSym)
       val mapped = ApplyTree(typeApplied, input.expr :: f :: Nil)
       if (t.isLeft) mapped else flatten(mapped)
@@ -223,8 +223,7 @@ object Instance {
     def map[S, T](in: M[S], f: S => T): M[T] = a.map(in, (bv: B[S]) => b.map(bv, f))
     def app[K[L[x]], Z](in: K[M], f: K[Id] => Z)(implicit alist: AList[K]): A[B[Z]] = {
       val g: K[B] => B[Z] = in => b.app[K, Z](in, f)
-      type Split[L[x]] = K[(L ∙ B)#l]
-      a.app[Split, B[Z]](in, g)(AList.asplit(alist))
+      a.app[AList.SplitK[K, B]#l, B[Z]](in, g)(AList.asplit(alist))
     }
   }
 }

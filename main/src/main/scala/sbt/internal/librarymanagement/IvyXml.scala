@@ -104,6 +104,14 @@ object IvyXml {
         }
     }
 
+    val descriptionElem = {
+      val n = <description>{project.info.description}</description>
+      if (project.info.homePage.nonEmpty)
+        n % <x homepage={project.info.homePage} />.attributes
+      else
+        n
+    }
+
     val infoElem = {
       <info
         organisation={project.module.organization.value}
@@ -111,7 +119,7 @@ object IvyXml {
         revision={project.version}
       >
         {licenseElems}
-        <description>{project.info.description}</description>
+        {descriptionElem}
       </info>
     } % infoAttrs
 
@@ -172,7 +180,7 @@ object IvyXml {
     </ivy-module>
   }
 
-  private def makeIvyXmlBefore[T](
+  private[sbt] def makeIvyXmlBefore[T](
       task: TaskKey[T],
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =

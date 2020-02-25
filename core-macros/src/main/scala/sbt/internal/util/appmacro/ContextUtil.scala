@@ -20,7 +20,7 @@ object ContextUtil {
    * Constructs an object with utility methods for operating in the provided macro context `c`.
    * Callers should explicitly specify the type parameter as `c.type` in order to preserve the path dependent types.
    */
-  def apply[C <: blackbox.Context with Singleton](c: C): ContextUtil[C] = new ContextUtil(c)
+  def apply[C <: blackbox.Context with Singleton](c: C): ContextUtil[C] = new ContextUtil(c: C)
 
   /**
    * Helper for implementing a no-argument macro that is introduced via an implicit.
@@ -33,6 +33,7 @@ object ContextUtil {
       c: blackbox.Context
   )(f: (c.Expr[Any], c.Position) => c.Expr[T]): c.Expr[T] = {
     import c.universe._
+
     c.macroApplication match {
       case s @ Select(Apply(_, t :: Nil), _) => f(c.Expr[Any](t), s.pos)
       case a @ Apply(_, t :: Nil)            => f(c.Expr[Any](t), a.pos)
@@ -106,7 +107,10 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
             if isWrapper(nme.decodedName.toString, tpe.tpe, qual) =>
           ()
         case tree =>
-          if (tree.symbol ne null) defs += tree.symbol;
+          if (tree.symbol ne null) {
+            defs += tree.symbol
+            ()
+          }
           super.traverse(tree)
       }
     }

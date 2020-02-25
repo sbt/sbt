@@ -130,7 +130,6 @@ private[sbt] object Load {
   def injectGlobal(state: State): Seq[Setting[_]] =
     (appConfiguration in GlobalScope :== state.configuration) +:
       LogManager.settingsLogger(state) +:
-      DefaultBackgroundJobService.backgroundJobServiceSetting +:
       EvaluateTask.injectSettings
 
   def defaultWithGlobal(
@@ -875,10 +874,12 @@ private[sbt] object Load {
       def discover(base: File): DiscoveredProjects = {
         val auto =
           if (base == buildBase) AddSettings.allDefaults
-          else if (context.globalPluginProject)
-            AddSettings.seq(AddSettings.defaultSbtFiles, AddSettings.sbtFiles(extraSbtFiles: _*))
           else AddSettings.defaultSbtFiles
-        discoverProjects(auto, base, plugins, eval, memoSettings)
+
+        val extraFiles =
+          if (base == buildBase && isMetaBuildContext(context)) extraSbtFiles
+          else Nil
+        discoverProjects(auto, base, extraFiles, plugins, eval, memoSettings)
       }
 
       // Step two:
@@ -888,6 +889,7 @@ private[sbt] object Load {
       def finalizeProject(
           p: Project,
           files: Seq[File],
+          extraFiles: Seq[File],
           expand: Boolean
       ): (Project, Seq[Project]) = {
         val configFiles = files.flatMap(f => memoSettings.get(f))
@@ -895,8 +897,8 @@ private[sbt] object Load {
         val autoPlugins: Seq[AutoPlugin] =
           try plugins.detected.deducePluginsFromProject(p1, log)
           catch { case e: AutoPluginException => throw translateAutoPluginException(e, p) }
-        val extra = if (context.globalPluginProject) extraSbtFiles else Nil
-        val p2 = resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, extra, log)
+        val p2 =
+          resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, extraFiles, log)
         val projectLevelExtra =
           if (expand) {
             autoPlugins.flatMap(
@@ -908,12 +910,15 @@ private[sbt] object Load {
 
       // Discover any new project definition for the base directory of this project, and load all settings.
       def discoverAndLoad(p: Project, rest: Seq[Project]): LoadedProjects = {
-        val DiscoveredProjects(rootOpt, discovered, files, generated) = discover(p.base)
+        val DiscoveredProjects(rootOpt, discovered, files, extraFiles, generated) = discover(
+          p.base
+        )
+
         // TODO: We assume here the project defined in a build.sbt WINS because the original was a
         // phony.  However, we may want to 'merge' the two, or only do this if the original was a
         // default generated project.
         val root = rootOpt.getOrElse(p)
-        val (finalRoot, projectLevelExtra) = finalizeProject(root, files, true)
+        val (finalRoot, projectLevelExtra) = finalizeProject(root, files, extraFiles, true)
         val newProjects = rest ++ discovered ++ projectLevelExtra
         val newAcc = acc :+ finalRoot
         val newGenerated = generated ++ generatedConfigClassFiles
@@ -928,7 +933,9 @@ private[sbt] object Load {
           discoverAndLoad(next, rest)
         case Nil if makeOrDiscoverRoot =>
           log.debug(s"[Loading] Scanning directory $buildBase")
-          val DiscoveredProjects(rootOpt, discovered, files, generated) = discover(buildBase)
+          val DiscoveredProjects(rootOpt, discovered, files, extraFiles, generated) = discover(
+            buildBase
+          )
           val discoveredIdsStr = discovered.map(_.id).mkString(",")
           val (root, expand, moreProjects, otherProjects) = rootOpt match {
             case Some(root) =>
@@ -950,7 +957,7 @@ private[sbt] object Load {
           }
           val (finalRoot, projectLevelExtra) =
             timed(s"Load.loadTransitive: finalizeProject($root)", log) {
-              finalizeProject(root, files, expand)
+              finalizeProject(root, files, extraFiles, expand)
             }
           val newProjects = moreProjects ++ projectLevelExtra
           val newAcc = finalRoot +: (acc ++ otherProjects.projects)
@@ -983,6 +990,7 @@ private[sbt] object Load {
       root: Option[Project],
       nonRoot: Seq[Project],
       sbtFiles: Seq[File],
+      extraSbtFiles: Seq[File],
       generatedFiles: Seq[File]
   )
 
@@ -1017,6 +1025,7 @@ private[sbt] object Load {
       val allSettings = {
         // TODO - This mechanism of applying settings could be off... It's in two places now...
         lazy val defaultSbtFiles = configurationSources(p.base)
+        lazy val sbtFiles = defaultSbtFiles ++ extraSbtFiles
         // Filter the AutoPlugin settings we included based on which ones are
         // intended in the AddSettings.AutoPlugins filter.
         def autoPluginSettings(f: AutoPlugins) =
@@ -1038,23 +1047,14 @@ private[sbt] object Load {
           case BuildScalaFiles     => p.settings
           case User                => globalUserSettings.cachedProjectLoaded(loadedPlugins.loader)
           case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(p.base, f)))
-          case sf: DefaultSbtFiles => settings(defaultSbtFiles.filter(sf.include))
+          case sf: DefaultSbtFiles => settings(sbtFiles.filter(sf.include))
           case p: AutoPlugins      => autoPluginSettings(p)
           case q: Sequence =>
             q.sequence.foldLeft(Seq.empty[Setting[_]]) { (b, add) =>
               b ++ expandSettings(add)
             }
         }
-        val auto =
-          if (extraSbtFiles.nonEmpty)
-            AddSettings.seq(
-              AddSettings.autoPlugins,
-              AddSettings.buildScalaFiles,
-              AddSettings.userSettings,
-              AddSettings.defaultSbtFiles,
-              AddSettings.sbtFiles(extraSbtFiles: _*),
-            )
-          else AddSettings.allDefaults
+        val auto = AddSettings.allDefaults
         expandSettings(auto)
       }
       // Finally, a project we can use in buildStructure.
@@ -1074,6 +1074,7 @@ private[sbt] object Load {
   private[this] def discoverProjects(
       auto: AddSettings,
       projectBase: File,
+      extraSbtFiles: Seq[File],
       loadedPlugins: LoadedPlugins,
       eval: () => Eval,
       memoSettings: mutable.Map[File, LoadedSbtFile]
@@ -1081,6 +1082,7 @@ private[sbt] object Load {
 
     // Default sbt files to read, if needed
     lazy val defaultSbtFiles = configurationSources(projectBase)
+    lazy val sbtFiles = defaultSbtFiles ++ extraSbtFiles
 
     // Classloader of the build
     val loader = loadedPlugins.loader
@@ -1117,7 +1119,7 @@ private[sbt] object Load {
     import AddSettings.{ DefaultSbtFiles, SbtFiles, Sequence }
     def associatedFiles(auto: AddSettings): Seq[File] = auto match {
       case sf: SbtFiles        => sf.files.map(f => IO.resolve(projectBase, f)).filterNot(_.isHidden)
-      case sf: DefaultSbtFiles => defaultSbtFiles.filter(sf.include).filterNot(_.isHidden)
+      case sf: DefaultSbtFiles => sbtFiles.filter(sf.include).filterNot(_.isHidden)
       case q: Sequence =>
         q.sequence.foldLeft(Seq.empty[File]) { (b, add) =>
           b ++ associatedFiles(add)
@@ -1129,7 +1131,13 @@ private[sbt] object Load {
     val rawProjects = loadedFiles.projects
     val (root, nonRoot) = rawProjects.partition(_.base == projectBase)
     // TODO - good error message if more than one root project
-    DiscoveredProjects(root.headOption, nonRoot, rawFiles, loadedFiles.generatedFiles)
+    DiscoveredProjects(
+      root.headOption,
+      nonRoot,
+      rawFiles,
+      extraSbtFiles,
+      loadedFiles.generatedFiles
+    )
   }
 
   def globalPluginClasspath(globalPlugin: Option[GlobalPlugin]): Seq[Attributed[File]] =
@@ -1184,11 +1192,19 @@ private[sbt] object Load {
       case None => config
     }
 
-  def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
-    if (hasDefinition(dir))
+  def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins = {
+    val context = config.pluginManagement.context
+    val extraSbtFiles: Seq[File] =
+      if (isMetaBuildContext(context)) s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil)
+      else Nil
+    if (hasDefinition(dir) || extraSbtFiles.nonEmpty)
       buildPlugins(dir, s, enableSbtPlugin(activateGlobalPlugin(config)))
     else
       noPlugins(dir, config)
+  }
+
+  private def isMetaBuildContext(context: PluginManagement.Context): Boolean =
+    !context.globalPluginProject && context.pluginProjectDepth == 1
 
   def hasDefinition(dir: File): Boolean = {
     import sbt.io.syntax._

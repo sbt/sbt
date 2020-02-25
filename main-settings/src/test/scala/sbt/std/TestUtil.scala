@@ -7,6 +7,8 @@
 
 package sbt.std
 
+import org.scalatest.TestData
+
 import scala.tools.reflect.ToolBox
 
 object TestUtil {
@@ -21,10 +23,9 @@ object TestUtil {
     m.mkToolBox(options = compileOptions)
   }
 
-  lazy val toolboxClasspath: String = {
-    val mainClassesDir = buildinfo.TestBuildInfo.classDirectory
-    val testClassesDir = buildinfo.TestBuildInfo.test_classDirectory
-    val depsClasspath = buildinfo.TestBuildInfo.dependencyClasspath
-    mainClassesDir +: testClassesDir +: depsClasspath mkString java.io.File.pathSeparator
-  }
+  def toolboxClasspath(td: TestData): String =
+    td.configMap.get("sbt.server.classpath") match {
+      case Some(s: String) => s
+      case _               => throw new IllegalStateException("No classpath specified.")
+    }
 }

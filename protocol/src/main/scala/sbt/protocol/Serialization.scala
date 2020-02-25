@@ -176,7 +176,8 @@ object Serialization {
             Converter.fromJson[JsonRpcRequestMessage](json) match {
               case Success(request) => Right(request)
               case Failure(e)       => Left(s"Conversion error: ${e.getMessage}")
-            } else
+            }
+          else
             Converter.fromJson[JsonRpcNotificationMessage](json) match {
               case Success(notification) => Right(notification)
               case Failure(e)            => Left(s"Conversion error: ${e.getMessage}")

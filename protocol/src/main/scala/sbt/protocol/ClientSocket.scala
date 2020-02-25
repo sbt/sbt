@@ -35,8 +35,8 @@ object ClientSocket {
     }
     val sk = uri.getScheme match {
       case "local" if isWindows =>
-        new Win32NamedPipeSocket("""\\.\pipe\""" + uri.getSchemeSpecificPart)
-      case "local" => new UnixDomainSocket(uri.getSchemeSpecificPart)
+        (new Win32NamedPipeSocket("""\\.\pipe\""" + uri.getSchemeSpecificPart): Socket)
+      case "local" => (new UnixDomainSocket(uri.getSchemeSpecificPart): Socket)
       case "tcp"   => new Socket(InetAddress.getByName(uri.getHost), uri.getPort)
       case _       => sys.error(s"Unsupported uri: $uri")
     }

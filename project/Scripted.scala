@@ -5,17 +5,14 @@ import java.lang.reflect.InvocationTargetException
 import sbt._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
-import sbt.ScriptedPlugin.autoImport._
 
 object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
 
   object autoImport extends ScriptedKeys
-  import autoImport._
 }
 
 trait ScriptedKeys {
-  val publishAll = taskKey[Unit]("")
   val publishLocalBinAll = taskKey[Unit]("")
   val scriptedUnpublished = inputKey[Unit](
     "Execute scripted without publishing sbt first. " +
@@ -53,7 +50,10 @@ object Scripted {
     val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
 
     // A parser for page definitions
-    val pageNumber = NatBasic & not('0', "zero page number")
+    val pageNumber = (NatBasic & not('0', "zero page number")).flatMap { i =>
+      if (i <= pairs.size) Parser.success(i)
+      else Parser.failure(s"$i exceeds the number of tests (${pairs.size})")
+    }
     val pageP: Parser[ScriptedTestPage] = ("*" ~> pageNumber ~ ("of" ~> pageNumber)) flatMap {
       case (page, total) if page <= total => success(ScriptedTestPage(page, total))
       case (page, total)                  => failure(s"Page $page was greater than $total")
@@ -61,7 +61,7 @@ object Scripted {
 
     // Grabs the filenames from a given test group in the current page definition.
     def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
-      val files = pairMap(group).toSeq.sortBy(_.toLowerCase)
+      val files = pairMap.get(group).toSeq.flatten.sortBy(_.toLowerCase)
       val pageSize = if (page.total == 0) files.size else files.size / page.total
       // The last page may loose some values, so we explicitly keep them
       val dropped = files.drop(pageSize * (page.page - 1))
@@ -90,22 +90,25 @@ object Scripted {
   }
 
   def doScripted(
-      launcher: File,
-      scriptedSbtClasspath: Seq[Attributed[File]],
       scriptedSbtInstance: ScalaInstance,
       sourcePath: File,
       bufferLog: Boolean,
       args: Seq[String],
       prescripted: File => Unit,
       launchOpts: Seq[String],
+      scalaVersion: String,
+      sbtVersion: String,
+      classpath: Seq[File],
+      logger: Logger
   ): Unit = {
-    System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
+    logger.info(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
+    logger.info("")
 
     // Force Log4J to not use a thread context classloader otherwise it throws a CCE
     sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
 
     val noJLine = new FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
-    val loader = ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
+    val loader = ClasspathUtilities.toLoader(classpath, noJLine)
     val bridgeClass = Class.forName("sbt.scriptedtest.ScriptedRunner", true, loader)
 
     // Interface to cross class loader
@@ -114,9 +117,11 @@ object Scripted {
           resourceBaseDirectory: File,
           bufferLog: Boolean,
           tests: Array[String],
-          bootProperties: File,
           launchOpts: Array[String],
           prescripted: java.util.List[File],
+          scalaVersion: String,
+          sbtVersion: String,
+          classpath: Seq[File],
           instances: Int
       ): Unit
     }
@@ -145,9 +150,11 @@ object Scripted {
           sourcePath,
           bufferLog,
           args.toArray,
-          launcher,
           launchOpts.toArray,
           callback,
+          scalaVersion,
+          sbtVersion,
+          classpath,
           instances
         )
       } catch { case ite: InvocationTargetException => throw ite.getCause }

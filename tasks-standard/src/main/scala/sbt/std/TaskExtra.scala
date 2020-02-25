@@ -171,7 +171,8 @@ trait TaskExtra {
           }
       )
     def ||[T >: S](alt: Task[T]): Task[T] = flatMapR {
-      case Value(v) => task(v); case Inc(_) => alt
+      case Value(v) => task(v: T)
+      case Inc(_)   => alt
     }
     def &&[T](alt: Task[T]): Task[T] = flatMap(_ => alt)
   }

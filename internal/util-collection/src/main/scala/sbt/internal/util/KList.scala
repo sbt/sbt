@@ -62,7 +62,7 @@ sealed abstract class KNil extends KList[NothingK] {
   final def apply[N[x], Z](f: KNil => Z)(implicit ap: Applicative[N]): N[Z] = ap.pure(f(KNil))
 
   final def traverse[N[_], P[_]](f: NothingK ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[KNil] =
-    np.pure(KNil)
+    np.pure(KNil: KNil)
 }
 
 case object KNil extends KNil {

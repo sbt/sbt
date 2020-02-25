@@ -365,6 +365,7 @@ object State {
                         jars.toList,
                         () => new UncloseableURLLoader(jars, fullScalaLoader)
                       )
+                      ()
                     case _ =>
                   }
               }

@@ -10,16 +10,15 @@ package internal
 
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }
-import sbt.internal.util.Types.const
+import sbt.internal.util.Types.{ const, some }
 import sbt.internal.util.complete.Parser
 import sbt.librarymanagement.Configuration
 
 import java.net.URI
-import org.scalacheck._
-import Gen._
 
-// Notes:
-//  Generator doesn't produce cross-build project dependencies or do anything with the 'extra' axis
+import hedgehog._
+import hedgehog.predef.sequence
+
 object TestBuild extends TestBuild
 abstract class TestBuild {
   val MaxTasks = 6
@@ -30,25 +29,26 @@ abstract class TestBuild {
   val MaxDeps = 8
   val KeysPerEnv = 10
 
-  val MaxTasksGen = chooseShrinkable(1, MaxTasks)
-  val MaxProjectsGen = chooseShrinkable(1, MaxProjects)
-  val MaxConfigsGen = chooseShrinkable(1, MaxConfigs)
-  val MaxBuildsGen = chooseShrinkable(1, MaxBuilds)
-  val MaxDepsGen = chooseShrinkable(0, MaxDeps)
+  val MaxTasksGen = Range.linear(1, MaxTasks)
+  val MaxProjectsGen = Range.linear(1, MaxProjects)
+  val MaxConfigsGen = Range.linear(1, MaxConfigs)
+  val MaxBuildsGen = Range.linear(1, MaxBuilds)
+  val MaxDepsGen = Range.linear(0, MaxDeps)
+  val MaxIDSizeGen = Range.linear(0, MaxIDSize)
 
-  def chooseShrinkable(min: Int, max: Int): Gen[Int] =
-    sized(sz => choose(min, (max min sz) max 1))
+  def alphaLowerChar: Gen[Char] = Gen.char('a', 'z')
+  def alphaUpperChar: Gen[Char] = Gen.char('A', 'Z')
+  def numChar: Gen[Char] = Gen.char('0', '9')
+  def alphaNumChar: Gen[Char] =
+    Gen.frequency1(8 -> alphaLowerChar, 1 -> alphaUpperChar, 1 -> numChar)
 
   val nonEmptyId = for {
     c <- alphaLowerChar
-    cs <- listOfN(MaxIDSize, alphaNumChar)
+    cs <- Gen.list(alphaNumChar, MaxIDSizeGen)
   } yield (c :: cs).mkString
 
-  implicit val cGen = Arbitrary {
-    genConfigs(nonEmptyId.map(_.capitalize), MaxDepsGen, MaxConfigsGen)
-  }
-  implicit val tGen = Arbitrary { genTasks(kebabIdGen, MaxDepsGen, MaxTasksGen) }
-  val seed = rng.Seed.random
+  def cGen = genConfigs(nonEmptyId map { _.capitalize }, MaxDepsGen, MaxConfigsGen)
+  def tGen = genTasks(kebabIdGen, MaxDepsGen, MaxTasksGen)
 
   class TestKeys(val env: Env, val scopes: Seq[Scope]) {
     override def toString = env + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
@@ -194,12 +194,11 @@ abstract class TestBuild {
       (f(t), t)
     } toMap;
 
-  implicit lazy val arbKeys: Arbitrary[TestKeys] = Arbitrary(keysGen)
-  lazy val keysGen: Gen[TestKeys] = for {
-    env <- mkEnv
-    keyCount <- chooseShrinkable(1, KeysPerEnv)
-    keys <- listOfN(keyCount, scope(env))
-  } yield new TestKeys(env, keys)
+  lazy val keysGen: Gen[TestKeys] =
+    for {
+      env <- mkEnv
+      keys <- scope(env).list(Range.linear(1, KeysPerEnv))
+    } yield new TestKeys(env, keys)
 
   def scope(env: Env): Gen[Scope] =
     for {
@@ -207,11 +206,16 @@ abstract class TestBuild {
       project <- oneOf(build.projects)
       cAxis <- oneOrGlobal(project.configurations map toConfigKey)
       tAxis <- oneOrGlobal(env.tasks map getKey)
-      pAxis <- orGlobal(frequency((1, BuildRef(build.uri)), (3, ProjectRef(build.uri, project.id))))
+      pAxis <- orGlobal(
+        Gen.frequency1(
+          (1, Gen.constant[Reference](BuildRef(build.uri))),
+          (3, Gen.constant[Reference](ProjectRef(build.uri, project.id)))
+        )
+      )
     } yield Scope(pAxis, cAxis, tAxis, Zero)
 
   def orGlobal[T](gen: Gen[T]): Gen[ScopeAxis[T]] =
-    frequency((1, gen map Select.apply), (1, Zero))
+    Gen.frequency1((1, gen map Select.apply), (1, Gen.constant(Zero)))
   def oneOrGlobal[T](gen: Seq[T]): Gen[ScopeAxis[T]] = orGlobal(oneOf(gen))
 
   def makeParser(structure: Structure): Parser[ScopedKey[_]] = {
@@ -227,7 +231,7 @@ abstract class TestBuild {
   }
 
   def structure(env: Env, settings: Seq[Setting[_]], current: ProjectRef): Structure = {
-    implicit val display = Def.showRelativeKey2(current)
+    val display = Def.showRelativeKey2(current)
     if (settings.isEmpty) {
       try {
         sys.error("settings is empty")
@@ -249,54 +253,56 @@ abstract class TestBuild {
     Structure(env, current, data, KeyIndex(keys, projectsMap, confMap), keyMap)
   }
 
-  implicit lazy val mkEnv: Gen[Env] = {
-    implicit val pGen = (uri: URI) =>
-      genProjects(uri)(nonEmptyId, MaxDepsGen, MaxProjectsGen, cGen.arbitrary)
-    envGen(buildGen(uriGen, pGen), tGen.arbitrary)
+  lazy val mkEnv: Gen[Env] = {
+    val pGen = (uri: URI) => genProjects(uri)(nonEmptyId, MaxDepsGen, MaxProjectsGen, cGen)
+    envGen(buildGen(uriGen, pGen), tGen)
   }
 
-  implicit def maskGen(implicit arbBoolean: Arbitrary[Boolean]): Gen[ScopeMask] = {
-    val b = arbBoolean.arbitrary
+  def maskGen: Gen[ScopeMask] = {
+    val b = Gen.boolean
     for (p <- b; c <- b; t <- b; x <- b)
       yield ScopeMask(project = p, config = c, task = t, extra = x)
   }
 
   val kebabIdGen: Gen[String] = for {
     c <- alphaLowerChar
-    cs <- listOfN(MaxIDSize - 2, frequency(MaxIDSize -> alphaNumChar, 1 -> Gen.const('-')))
+    cs <- Gen.list(
+      Gen.frequency(MaxIDSize -> alphaNumChar, List(1 -> Gen.constant('-'))),
+      Range.linear(0, MaxIDSize - 2)
+    )
     end <- alphaNumChar
   } yield (List(c) ++ cs ++ List(end)).mkString
 
-  val uriChar: Gen[Char] = {
-    frequency(9 -> alphaNumChar, 1 -> oneOf("/?-".toSeq))
-  }
+  val optIDGen: Gen[Option[String]] = Gen.choice1(nonEmptyId.map(some.fn), Gen.constant(None))
 
-  val optIDGen: Gen[Option[String]] =
-    Gen.oneOf(nonEmptyId.map(x => Some(x)), Gen.const(None))
+  val pathGen = for {
+    c <- alphaLowerChar
+    cs <- Gen.list(alphaNumChar, Range.linear(6, MaxIDSize))
+  } yield (c :: cs).mkString
 
   val uriGen: Gen[URI] = {
     for {
-      ssp <- nonEmptyId
+      ssp <- pathGen
       frag <- optIDGen
     } yield new URI("file", "///" + ssp + "/", frag.orNull)
   }
 
-  implicit def envGen(implicit bGen: Gen[Build], tasks: Gen[Vector[Taskk]]): Gen[Env] =
-    for (i <- MaxBuildsGen; bs <- containerOfN[Vector, Build](i, bGen); ts <- tasks)
+  def envGen(bGen: Gen[Build], tasks: Gen[Vector[Taskk]]): Gen[Env] =
+    for (bs <- bGen.list(MaxBuildsGen).map(_.toVector); ts <- tasks)
       yield new Env(bs, ts)
-  implicit def buildGen(implicit uGen: Gen[URI], pGen: URI => Gen[Seq[Proj]]): Gen[Build] =
+  def buildGen(uGen: Gen[URI], pGen: URI => Gen[Vector[Proj]]): Gen[Build] =
     for (u <- uGen; ps <- pGen(u)) yield new Build(u, ps)
 
-  def nGen[T](igen: Gen[Int])(implicit g: Gen[T]): Gen[Vector[T]] = igen flatMap { ig =>
-    containerOfN[Vector, T](ig, g)
+  def nGen[T](igen: Gen[Int])(g: Gen[T]): Gen[Vector[T]] = igen flatMap { ig =>
+    g.list(Range.linear(ig, ig)).map(_.toVector)
   }
 
-  implicit def genProjects(build: URI)(
-      implicit genID: Gen[String],
-      maxDeps: Gen[Int],
-      count: Gen[Int],
-      confs: Gen[Seq[Configuration]]
-  ): Gen[Seq[Proj]] =
+  def genProjects(build: URI)(
+      genID: Gen[String],
+      maxDeps: Range[Int],
+      count: Range[Int],
+      confs: Gen[Vector[Configuration]]
+  ): Gen[Vector[Proj]] =
     genAcyclic(maxDeps, genID, count) { (id: String) =>
       for (cs <- confs) yield { (deps: Seq[Proj]) =>
         new Proj(id, deps.map { dep =>
@@ -307,8 +313,8 @@ abstract class TestBuild {
 
   def genConfigs(
       implicit genName: Gen[String],
-      maxDeps: Gen[Int],
-      count: Gen[Int]
+      maxDeps: Range[Int],
+      count: Range[Int]
   ): Gen[Vector[Configuration]] =
     genAcyclicDirect[Configuration, String](maxDeps, genName, count)(
       (key, deps) =>
@@ -319,35 +325,34 @@ abstract class TestBuild {
 
   def genTasks(
       implicit genName: Gen[String],
-      maxDeps: Gen[Int],
-      count: Gen[Int]
+      maxDeps: Range[Int],
+      count: Range[Int]
   ): Gen[Vector[Taskk]] =
     genAcyclicDirect[Taskk, String](maxDeps, genName, count)(
       (key, deps) => new Taskk(AttributeKey[String](key), deps)
     )
 
-  def genAcyclicDirect[A, T](maxDeps: Gen[Int], keyGen: Gen[T], max: Gen[Int])(
+  def genAcyclicDirect[A, T](maxDeps: Range[Int], keyGen: Gen[T], max: Range[Int])(
       make: (T, Vector[A]) => A
   ): Gen[Vector[A]] =
     genAcyclic[A, T](maxDeps, keyGen, max) { t =>
-      Gen.const { deps =>
+      Gen.constant { deps =>
         make(t, deps.toVector)
       }
     }
 
-  def genAcyclic[A, T](maxDeps: Gen[Int], keyGen: Gen[T], max: Gen[Int])(
+  def genAcyclic[A, T](maxDeps: Range[Int], keyGen: Gen[T], max: Range[Int])(
       make: T => Gen[Vector[A] => A]
-  ): Gen[Vector[A]] =
-    max flatMap { count =>
-      containerOfN[Vector, T](count, keyGen) flatMap { keys =>
-        genAcyclic(maxDeps, keys.distinct)(make)
-      }
+  ): Gen[Vector[A]] = {
+    keyGen.list(max) flatMap { keys =>
+      genAcyclic(maxDeps, keys.distinct.toVector)(make)
     }
-  def genAcyclic[A, T](maxDeps: Gen[Int], keys: Vector[T])(
+  }
+  def genAcyclic[A, T](maxDeps: Range[Int], keys: Vector[T])(
       make: T => Gen[Vector[A] => A]
   ): Gen[Vector[A]] =
     genAcyclic(maxDeps, keys, Vector()) flatMap { pairs =>
-      sequence(pairs.map { case (key, deps) => mapMake(key, deps, make) }) flatMap { inputs =>
+      sequence(pairs.map { case (key, deps) => mapMake(key, deps, make) }.toList) map { inputs =>
         val made = new collection.mutable.HashMap[T, A]
         for ((key, deps, mk) <- inputs)
           made(key) = mk(deps map made)
@@ -361,22 +366,36 @@ abstract class TestBuild {
     }
 
   def genAcyclic[T](
-      maxDeps: Gen[Int],
+      maxDeps: Range[Int],
       names: Vector[T],
       acc: Vector[Gen[(T, Vector[T])]]
   ): Gen[Vector[(T, Vector[T])]] =
     names match {
-      case Vector() => sequence(acc)
+      case Vector() => sequence(acc.toList).map(_.toVector)
       case Vector(x, xs @ _*) =>
         val next =
-          for (depCount <- maxDeps; d <- pick(depCount min xs.size, xs))
+          for (depCount <- Gen.int(maxDeps); d <- pick(depCount, xs))
             yield (x, d.toVector)
         genAcyclic(maxDeps, xs.toVector, next +: acc)
     }
-  def sequence[T](gs: Vector[Gen[T]]): Gen[Vector[T]] = Gen.parameterized { prms =>
-    delay(gs map { g =>
-      g(prms, seed) getOrElse sys.error("failed generator")
-    })
-  }
+
   type Inputs[A, T] = (T, Vector[T], Vector[A] => A)
+
+  def oneOf[A](a: Seq[A]): Gen[A] =
+    Gen.element(a.head, a.tail.toList)
+
+  // TODO Should move to hedgehog possible?
+  def pick[A](n: Int, as: Seq[A]): Gen[Seq[A]] = {
+    if (n >= as.length) {
+      Gen.constant(as)
+    } else {
+      def go(m: Int, bs: Set[Int], cs: Set[Int]): Gen[Set[Int]] =
+        if (m == 0)
+          Gen.constant(cs)
+        else
+          Gen.element(bs.head, bs.tail.toList).flatMap(a => go(m - 1, bs - a, cs + a))
+      go(n, as.indices.toSet, Set())
+        .map(is => as.zipWithIndex.flatMap(a => if (is(a._2)) Seq(a._1) else Seq()))
+    }
+  }
 }

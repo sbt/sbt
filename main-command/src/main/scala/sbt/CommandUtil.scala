@@ -13,6 +13,7 @@ import java.util.regex.{ Pattern, PatternSyntaxException }
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.DefaultParsers._
+import sbt.internal.util.Util.nilSeq
 
 import sbt.io.IO
 import sbt.io.syntax._
@@ -35,7 +36,7 @@ object CommandUtil {
     catch { case _: NoSuchMethodError => new File(".").getAbsoluteFile }
 
   def aligned(pre: String, sep: String, in: Seq[(String, String)]): Seq[String] =
-    if (in.isEmpty) Nil
+    if (in.isEmpty) nilSeq
     else {
       val width = in.iterator.map(_._1.length).max
       for ((a, b) <- in) yield pre + fill(a, width) + sep + b
@@ -80,9 +81,9 @@ object CommandUtil {
         val keyString = Highlight.bold(keyMatches getOrElse k)
         val contentString = contentMatches getOrElse v
         if (keyMatches.isDefined || contentMatches.isDefined)
-          (keyString, contentString) :: Nil
+          Seq((keyString, contentString))
         else
-          Nil
+          nilSeq
     }
   }
 

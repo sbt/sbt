@@ -7,10 +7,10 @@ package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val PositionFormat: JsonFormat[sbt.internal.langserver.Position] = new JsonFormat[sbt.internal.langserver.Position] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.Position = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.Position = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val line = unbuilder.readField[Long]("line")
       val character = unbuilder.readField[Long]("character")
       unbuilder.endObject()

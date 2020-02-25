@@ -123,6 +123,7 @@ class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[Strin
         lock.synchronized {
           pendingExecIds -= execId
         }
+        ()
       case _ =>
     }
   }

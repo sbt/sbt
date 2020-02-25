@@ -42,6 +42,7 @@ import scala.collection.JavaConverters._
 private[internal] final class ReverseLookupClassLoaderHolder(
     val classpath: Seq[File],
     val parent: ClassLoader,
+    val closeThis: Boolean,
     val allowZombies: Boolean,
     val logger: Logger
 ) extends URLClassLoader(Array.empty, null) {
@@ -62,15 +63,16 @@ private[internal] final class ReverseLookupClassLoaderHolder(
       throw new IllegalStateException(msg)
     }
     val reverseLookupClassLoader = cached.getAndSet(null) match {
-      case null => new ReverseLookupClassLoader(urls, parent, allowZombies, logger)
+      case null => new ReverseLookupClassLoader(urls, parent, closeThis, allowZombies, logger)
       case c    => c
     }
-    reverseLookupClassLoader.setup(tempDir, fullClasspath.map(_.toURI.toURL).toArray)
+    reverseLookupClassLoader.setup(tempDir)
     new BottomClassLoader(
       ReverseLookupClassLoaderHolder.this,
       fullClasspath.map(_.toURI.toURL).toArray,
       reverseLookupClassLoader,
       tempDir,
+      closeThis,
       allowZombies,
       logger
     )

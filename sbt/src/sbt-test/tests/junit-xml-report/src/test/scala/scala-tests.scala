@@ -6,11 +6,16 @@ package my.scalatest {
 
     }
 
+    it should "also pass with file.extension" in {
+
+    }
+
     "Failing test" should "fail" in {
       sys.error("wah wah")
     }
   }
 
+  @DoNotDiscover
   class MyInnerSuite(arg: String) extends FlatSpec {
     "Inner passing test" should "pass" in {
 

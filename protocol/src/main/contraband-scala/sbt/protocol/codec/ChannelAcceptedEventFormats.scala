@@ -7,10 +7,10 @@ package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ChannelAcceptedEventFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val ChannelAcceptedEventFormat: JsonFormat[sbt.protocol.ChannelAcceptedEvent] = new JsonFormat[sbt.protocol.ChannelAcceptedEvent] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.ChannelAcceptedEvent = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.ChannelAcceptedEvent = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val channelName = unbuilder.readField[String]("channelName")
       unbuilder.endObject()
       sbt.protocol.ChannelAcceptedEvent(channelName)

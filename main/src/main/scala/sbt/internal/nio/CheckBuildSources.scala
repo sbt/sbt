@@ -24,7 +24,7 @@ private[sbt] object CheckBuildSources {
     val st: State = state.value
     val firstTime = st.get(hasCheckedMetaBuild).fold(true)(_.compareAndSet(false, true))
     (onChangedBuildSource in Scope.Global).value match {
-      case IgnoreSourceChanges => new StateTransform(st)
+      case IgnoreSourceChanges => StateTransform(identity)
       case o =>
         import sbt.nio.FileStamp.Formats._
         logger.debug("Checking for meta build source updates")
@@ -47,16 +47,16 @@ private[sbt] object CheckBuildSources {
               logger.info(s"$prefix\nReloading sbt...")
               val remaining =
                 Exec("reload", None, None) :: st.currentCommand.toList ::: st.remainingCommands
-              new StateTransform(st.copy(currentCommand = None, remainingCommands = remaining))
+              StateTransform(_.copy(currentCommand = None, remainingCommands = remaining))
             } else {
               val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
                 "build when source changes are detected by setting " +
                 "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
                 "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
               logger.warn(s"$prefix\n$tail")
-              new StateTransform(st)
+              StateTransform(identity)
             }
-          case _ => new StateTransform(st)
+          case _ => StateTransform(identity)
         }
     }
   }

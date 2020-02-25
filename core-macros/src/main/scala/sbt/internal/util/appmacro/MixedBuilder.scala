@@ -19,7 +19,9 @@ object MixedBuilder extends TupleBuilder {
   def make(
       c: blackbox.Context
   )(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = {
-    val delegate = if (inputs.size > TupleNBuilder.MaxInputs) KListBuilder else TupleNBuilder
+    val delegate =
+      if (inputs.size > TupleNBuilder.MaxInputs) (KListBuilder: TupleBuilder)
+      else (TupleNBuilder: TupleBuilder)
     delegate.make(c)(mt, inputs)
   }
 }

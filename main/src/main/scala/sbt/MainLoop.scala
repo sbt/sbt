@@ -13,6 +13,7 @@ import java.util.Properties
 import jline.TerminalFactory
 import sbt.internal.{ Aggregation, ShutdownHooks }
 import sbt.internal.langserver.ErrorCodes
+import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.io.{ IO, Using }
@@ -230,6 +231,9 @@ object MainLoop {
           }
       }
     } catch {
+      case err: JsonRpcResponseError =>
+        StandardMain.exchange.respondError(err, exec.execId, channelName.map(CommandSource(_)))
+        throw err
       case err: Throwable =>
         val errorEvent = ExecStatusEvent(
           "Error",
@@ -237,9 +241,10 @@ object MainLoop {
           exec.execId,
           Vector(),
           ExitCode(ErrorCodes.UnknownError),
+          Option(err.getMessage),
         )
         import sbt.protocol.codec.JsonProtocol._
-        StandardMain.exchange publishEvent errorEvent
+        StandardMain.exchange.publishEvent(errorEvent)
         throw err
     }
   }
