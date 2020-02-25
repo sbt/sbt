@@ -34,8 +34,19 @@ object CompletionService {
       def take() = completion.take().get()
     }
   def submit[T](work: () => T, completion: JCompletionService[T]): () => T = {
-    val future = try completion.submit { new Callable[T] { def call = work() } } catch {
-      case _: RejectedExecutionException => throw Incomplete(None, message = Some("cancelled"))
+    val future = try completion.submit {
+      new Callable[T] {
+        def call =
+          try {
+            work()
+          } catch {
+            case _: InterruptedException =>
+              throw Incomplete(None, message = Some("cancelled"))
+          }
+      }
+    } catch {
+      case _: RejectedExecutionException =>
+        throw Incomplete(None, message = Some("cancelled"))
     }
     () => future.get()
   }
