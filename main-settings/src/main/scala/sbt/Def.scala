@@ -20,7 +20,7 @@ import Util._
 import sbt.util.Show
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
-object Def extends Init[Scope] with TaskMacroExtra {
+object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   type Classpath = Seq[Attributed[File]]
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
@@ -268,6 +268,14 @@ object Def extends Init[Scope] with TaskMacroExtra {
   def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
   def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
 
+  class InitOps[T](private val x: Initialize[T]) extends AnyVal {
+    def toTaskable: Taskable[T] = x
+  }
+
+  class InitTaskOps[T](private val x: Initialize[Task[T]]) extends AnyVal {
+    def toTaskable: Taskable[T] = x
+  }
+
   private[sbt] def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) =
     (TaskKey[T](name, description, DTask), dummyTask(name))
 
@@ -309,4 +317,13 @@ trait TaskMacroExtra {
   implicit def stateParserToInput[T](
       @deprecated("unused", "") in: State => Parser[T]
   ): std.ParserInput[T] = ???
+}
+
+sealed trait InitializeImplicits0 { self: Def.type =>
+  implicit def initOps[T](x: Def.Initialize[T]): Def.InitOps[T] = new Def.InitOps(x)
+}
+
+sealed trait InitializeImplicits extends InitializeImplicits0 { self: Def.type =>
+  implicit def initTaskOps[T](x: Def.Initialize[Task[T]]): Def.InitTaskOps[T] =
+    new Def.InitTaskOps(x)
 }
