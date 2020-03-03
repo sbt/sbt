@@ -375,6 +375,9 @@ if defined _jvm_debug_arg (
       rem next argument wasn't a port, set a default and process next arg
       set /A JVM_DEBUG_PORT=5005
       goto args_loop
+    ) else (
+      shift
+      goto args_loop
     )
   )
 )
