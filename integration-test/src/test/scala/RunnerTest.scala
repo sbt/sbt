@@ -190,4 +190,10 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("[info] HelloTest"))
     ()
   }
+
+  test("sbt --jvm-debug <port>") {
+    val out = sbtProcess("--jvm-debug", "12345", "compile", "-v").!!.linesIterator.toList
+    assert(out.contains[String]("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=12345"))
+    ()
+  }
 }
