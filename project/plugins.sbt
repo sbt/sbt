@@ -1,3 +1,5 @@
+scalaVersion := "2.12.11-bin-e1e2bfe"
+resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/"
 scalacOptions ++= Seq("-feature", "-language:postfixOps", "-Ywarn-unused:_,-imports")
 
 addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.0.0")

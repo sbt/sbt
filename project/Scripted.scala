@@ -121,7 +121,7 @@ object Scripted {
           prescripted: java.util.List[File],
           scalaVersion: String,
           sbtVersion: String,
-          classpath: Seq[File],
+          classpath: Array[File],
           instances: Int
       ): Unit
     }
@@ -154,7 +154,7 @@ object Scripted {
           callback,
           scalaVersion,
           sbtVersion,
-          classpath,
+          classpath.toArray,
           instances
         )
       } catch { case ite: InvocationTargetException => throw ite.getCause }

@@ -64,6 +64,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   ),
   scalaVersion := baseScalaVersion,
   componentID := None,
+  resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
@@ -1191,8 +1192,8 @@ ThisBuild / scriptedPrescripted := { _ =>
 
 def otherRootSettings =
   Seq(
-    scripted := scriptedTask(false).evaluated,
-    scriptedUnpublished := scriptedTask(false).evaluated,
+    scripted := scriptedTask(true).evaluated,
+    scriptedUnpublished := scriptedTask(true).evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     watchTriggers in scripted += scriptedSource.value.toGlob / **,
     watchTriggers in scriptedUnpublished := (watchTriggers in scripted).value,
