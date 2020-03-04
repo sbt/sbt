@@ -64,6 +64,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   ),
   scalaVersion := baseScalaVersion,
   componentID := None,
+  resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",

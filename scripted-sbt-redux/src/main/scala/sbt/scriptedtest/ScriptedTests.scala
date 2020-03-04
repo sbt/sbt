@@ -131,7 +131,7 @@ final class ScriptedTests(
         case s => s
       }
 
-      val runFromSourceBasedTestsUnfiltered = labelsAndDirs
+      val runFromSourceBasedTestsUnfiltered: Seq[TestInfo] = labelsAndDirs
       val runFromSourceBasedTests = runFromSourceBasedTestsUnfiltered.filterNot(windowsExclude)
 
       def logTests(size: Int, how: String) =
@@ -444,7 +444,7 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
       sbtVersion: String,
       scalaVersion: String,
-      classpath: Seq[File],
+      classpath: Array[File],
       instances: Int
   ): Unit =
     runInParallel(
