@@ -640,6 +640,18 @@ if not "%p:~0,5%" == "-XX:+" if not "%p:~0,5%" == "-XX:-" if "%p:~0,3%" == "-XX"
   )
 )
 
+if "%p:~0,14%" == "-agentlib:jdwp" (
+  rem special handling for --jvm-debug since '=' and ',' gets parsed away
+  for /F "tokens=1 delims==" %%a in ("%p%") do (
+    rem make sure it doesn't have the '=' already
+    if "%p%" == "%%a" if not "%~1" == "" if not "%~2" == "" if not "%~3" == "" if not "%~4" == "" if not "%~5" == "" if not "%~6" == "" if not "%~7" == "" if not "%~8" == "" (
+      echo %0=%1=%2,%3=%4,%5=%6,%7=%8
+      shift & shift & shift & shift & shift & shift & shift & shift
+      goto echolist
+    )
+  )
+)
+
 echo %0
 goto echolist
 
