@@ -32,6 +32,7 @@ import xsbti.ComponentProvider;
 import xsbti.CrossValue;
 import xsbti.GlobalLock;
 import xsbti.Launcher;
+import xsbti.MavenRepository;
 import xsbti.Predefined;
 import xsbti.PredefinedRepository;
 import xsbti.Repository;
@@ -335,8 +336,15 @@ public class ScriptedLauncher {
                 private final ScalaProvider sp = this;
                 private final String scalaOrg = "org.scala-lang";
                 private final Repository[] repos =
-                    new PredefinedRepository[] {
-                      () -> Predefined.Local, () -> Predefined.MavenCentral
+                    new Repository[] {
+                      (PredefinedRepository) () -> Predefined.Local,
+                      (PredefinedRepository) () -> Predefined.MavenCentral,
+                      newMavenRepo(
+                          "scala-ea",
+                          "https://scala-ci.typesafe.com/artifactory/scala-integration/"),
+                      newMavenRepo(
+                          "scala-pr",
+                          "https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/")
                     };
                 private final Launcher launcher =
                     new Launcher() {
@@ -543,5 +551,23 @@ public class ScriptedLauncher {
           });
     } catch (final IOException e) {
     }
+  }
+
+  private static MavenRepository newMavenRepo(final String id, final String url) {
+    return new MavenRepository() {
+      @Override
+      public String id() {
+        return id;
+      }
+
+      @Override
+      public URL url() {
+        try {
+          return new URL(url);
+        } catch (MalformedURLException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    };
   }
 }

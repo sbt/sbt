@@ -115,7 +115,7 @@ object RunFromSourceMain {
   private def scalaHome(bootDirectory: File, scalaVersion: String): File = {
     val log = sbt.util.LogExchange.logger("run-from-source")
     val scalaHome0 = bootDirectory / s"scala-$scalaVersion"
-    if ((scalaHome0 / "lib").exists) scalaHome0
+    if ((scalaHome0 / "lib" / "scala-library.jar").exists) scalaHome0
     else {
       log.info(s"""scalaHome ($scalaHome0) wasn't found""")
       val fakeboot = bootDirectory / "fakeboot"
@@ -129,17 +129,30 @@ object RunFromSourceMain {
         val lm = {
           import sbt.librarymanagement.ivy.IvyDependencyResolution
           val ivyConfig = InlineIvyConfiguration().withLog(log)
-          IvyDependencyResolution(ivyConfig)
+          IvyDependencyResolution(
+            ivyConfig.withResolvers(
+              ivyConfig.resolvers ++ Seq(
+                "scala-ea" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
+                "scala-pr" at "https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/",
+              )
+            )
+          )
         }
-        val Name = """(.*)(\-[\d|\.]+)\.jar""".r
+        val Name = """(.*)(?:\-[\d.]+)\.jar""".r
+        val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
         val module = "org.scala-lang" % "scala-compiler" % scalaVersion
         lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
+          case Left(w) => throw w.resolveException
           case Right(_) =>
-            (scalaHome1Temp ** "*.jar").get foreach { x =>
-              val Name(head, _) = x.getName
-              IO.copyFile(x, scalaHome1Lib / (head + ".jar"))
+            val jars = (scalaHome1Temp ** "*.jar").get
+            assert(jars.nonEmpty, s"no jars for scala $scalaVersion")
+            jars.foreach { f =>
+              val name = f.getName match {
+                case Name(name)   => name
+                case BinPre(name) => name
+              }
+              IO.copyFile(f, scalaHome1Lib / s"$name.jar")
             }
-          case Left(w) => sys.error(w.toString)
         }
       }
       scalaHome1
