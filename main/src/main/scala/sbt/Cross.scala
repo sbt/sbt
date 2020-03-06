@@ -32,6 +32,9 @@ object Cross {
   private trait ScalaVersion {
     def force: Boolean
   }
+  private case class NightlyScalaVersion(major: String) extends ScalaVersion {
+    def force = true
+  }
   private case class NamedScalaVersion(name: String, force: Boolean) extends ScalaVersion
   private case class ScalaHomeVersion(home: File, resolveVersion: Option[String], force: Boolean)
       extends ScalaVersion
@@ -48,6 +51,8 @@ object Cross {
         versionArg.split("=", 2) match {
           case Array(home) if new File(home).exists() =>
             ScalaHomeVersion(new File(home), None, force)
+          case Array(nightly) if nightly.endsWith("-nightly") =>
+            NightlyScalaVersion(nightly.dropRight("-nightly".length()))
           case Array(v) => NamedScalaVersion(v, force)
           case Array(v, home) =>
             ScalaHomeVersion(new File(home), Some(v).filterNot(_.isEmpty), force)
@@ -261,6 +266,14 @@ object Cross {
 
     type ScalaVersion = String
 
+    def resolveNightly(major: String): String = {
+      val url =
+        s"https://raw.githubusercontent.com/scala/community-builds/$major.x/nightly.properties"
+      val props = new java.util.Properties
+      props.load(new java.net.URL(url).openStream)
+      props.getProperty("nightly").ensuring(_ != null)
+    }
+
     val (version, instance) = switch.version match {
       case ScalaHomeVersion(homePath, resolveVersion, _) =>
         val home = IO.resolve(extracted.currentProject.base, homePath)
@@ -271,7 +284,8 @@ object Cross {
         } else {
           sys.error(s"Scala home directory did not exist: $home")
         }
-      case NamedScalaVersion(v, _) => (v, None)
+      case NamedScalaVersion(v, _)    => (v, None)
+      case NightlyScalaVersion(major) => (resolveNightly(major), None)
     }
 
     def logSwitchInfo(

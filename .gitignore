@@ -8,3 +8,4 @@ npm-debug.log
 !sbt/src/server-test/completions/target
 .big
 .idea
+**/Coursier/cache
