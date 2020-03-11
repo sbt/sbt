@@ -1,6 +1,9 @@
-> ++ 2.12-nightly!
+> ++ 2.12.unstable!
 > check 2.12
 > compile
-> ++ 2.13-nightly!
+> ++ 2.13.unstable!
 > check 2.13
+> ++ 2.12.next!
+> check 2.12
+> ++ 2.13.current!
 > compile

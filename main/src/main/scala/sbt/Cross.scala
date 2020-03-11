@@ -31,13 +31,68 @@ object Cross {
   private case class Switch(version: ScalaVersion, verbose: Boolean, command: Option[String])
   private trait ScalaVersion {
     def force: Boolean
+    def dynamic: Boolean = false
   }
-  private case class NightlyScalaVersion(major: String) extends ScalaVersion {
-    def force = true
+
+  private trait DynamicScalaVersion extends ScalaVersion {
+    override def force = true
+    override def dynamic = true
   }
+
+  /**
+   * Latest minor release for some major version
+   *
+   * Parsed from "epoch.major.current"
+   *
+   * @param major the major scala version "2.major" in 2.major.x
+   */
+  private case class LatestScalaVersion(major: String) extends DynamicScalaVersion
+
+  /**
+   * Latest published build for major version.
+   *
+   * Parsed from "epoch.major.unstable"
+   *
+   * @param major the major scala version "2.major" in 2.major.x
+   */
+  private case class MergelyScalaVersion(major: String) extends DynamicScalaVersion
+
+  /**
+   * Latest build with a green community build for major version.
+   *
+   * Parsed from "epoch.major.next"
+   *
+   * @param major the major scala version "2.major" in 2.major.x
+   */
+  private case class CommunityBuiltScalaVersion(major: String) extends DynamicScalaVersion
   private case class NamedScalaVersion(name: String, force: Boolean) extends ScalaVersion
+
+  private object ScalaVersion {
+    def unapply(versionString: String): Some[ScalaVersion] = {
+      val shouldForce = versionString.endsWith("!")
+      val unforced = if (shouldForce) versionString.dropRight(1) else versionString
+      val dynamic = """(\d\.\d+)\.(\w+)""".r
+      val version = unforced match {
+        case dynamic(major, "unstable") => MergelyScalaVersion(major)
+        case dynamic(major, "next")     => CommunityBuiltScalaVersion(major)
+        case dynamic(major, "current")  => LatestScalaVersion(major)
+        case ScalaHome(homeversion)     => homeversion.copy(force = shouldForce)
+        case name                       => NamedScalaVersion(name, shouldForce)
+      }
+      Some(version)
+    }
+  }
+
   private case class ScalaHomeVersion(home: File, resolveVersion: Option[String], force: Boolean)
       extends ScalaVersion
+  private object ScalaHome {
+    def unapply(versionstring: String): Option[ScalaHomeVersion] = {
+      val parts = versionstring.split('=')
+      val v = parts.init.headOption.filterNot(_.isEmpty)
+      val homefile = new File(parts.last)
+      Some(ScalaHomeVersion(homefile, v, false)).filter(_ => parts.length == 2 || homefile.exists())
+    }
+  }
 
   private def switchParser(state: State): Parser[Switch] = {
     import DefaultParsers._
@@ -45,19 +100,10 @@ object Cross {
       val x = Project.extract(state)
       import x._
       val knownVersions = crossVersions(x, currentRef)
-      val version = token(StringBasic.examples(knownVersions: _*)).map { arg =>
-        val force = arg.endsWith("!")
-        val versionArg = if (force) arg.dropRight(1) else arg
-        versionArg.split("=", 2) match {
-          case Array(home) if new File(home).exists() =>
-            ScalaHomeVersion(new File(home), None, force)
-          case Array(nightly) if nightly.endsWith("-nightly") =>
-            NightlyScalaVersion(nightly.dropRight("-nightly".length()))
-          case Array(v) => NamedScalaVersion(v, force)
-          case Array(v, home) =>
-            ScalaHomeVersion(new File(home), Some(v).filterNot(_.isEmpty), force)
-        }
-      }
+      val version = token(StringBasic.examples(knownVersions: _*)).map(str => {
+        val ScalaVersion(v) = str
+        v
+      })
       val spacedVersion = if (spacePresent) version else version & spacedFirst(SwitchCommand)
       val verbose = Parser.opt(token(Space ~> "-v"))
       val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
@@ -263,15 +309,67 @@ object Cross {
   private def switchScalaVersion(switch: Switch, state: State): (State, Seq[ResolvedReference]) = {
     val extracted = Project.extract(state)
     import extracted._
+    import java.time.Instant
 
     type ScalaVersion = String
 
-    def resolveNightly(major: String): String = {
+    def resolveNightlyCB(major: String): String = {
       val url =
         s"https://raw.githubusercontent.com/scala/community-builds/$major.x/nightly.properties"
       val props = new java.util.Properties
-      props.load(new java.net.URL(url).openStream)
-      props.getProperty("nightly").ensuring(_ != null)
+      warnDynamic(
+        major,
+        "community build validated pre-release build", {
+          props.load(new java.net.URL(url).openStream)
+          props.getProperty("nightly").ensuring(_ != null)
+        }
+      )
+    }
+
+    def ciBuilds(major: String): List[(String, Instant)] = {
+      import java.time._
+      import java.time.format.DateTimeFormatter
+      val pattern = """a href="[^"]+">((\d\.\d+)\.(\d+(-bin-[^/]+)?))\/<\/a>\s+(.{17})""".r
+      val url =
+        """https://scala-ci.typesafe.com/artifactory/scala-integration/org/scala-lang/scala-library/"""
+      val source = scala.io.Source.fromInputStream(new java.net.URL(url).openStream)
+      val content = source.getLines().mkString
+      val matches = pattern.findAllMatchIn(content)
+      val format = DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm")
+      matches.collect {
+        case m if m.group(2) == major => {
+          val v = m.group(1)
+          val dt = LocalDateTime.parse(m.group(5), format)
+          (v, dt.atOffset(ZoneOffset.UTC).toInstant)
+        }
+      }.toList
+    }
+
+    def resolveNightly(major: String): String = {
+      warnDynamic(
+        major,
+        "latest unreleased build",
+        ciBuilds(major).sortBy { case (_, dt) => -dt.getEpochSecond }.head._1
+      )
+    }
+
+    def resolveLatestStable(major: String): String = {
+      warnDynamic(
+        major,
+        "latest release", {
+          val latest = ciBuilds(major).sortBy { case (_, dt) => -dt.getEpochSecond }.head._1
+          val Array(epoch, vmajor, vminor) = latest.takeWhile(_ != '-').split('.')
+          s"$epoch.$vmajor.${vminor.toInt - 1}"
+        }
+      )
+    }
+
+    def warnDynamic(major: String, dynamicType: String, version: => String) = {
+      state.log.warn("*Exprimental* dynamic scala version set - BEEP WHIRR")
+      state.log.info(s"resolving $dynamicType of major version $major")
+      val got = version
+      state.log.info(s"found version $got")
+      got
     }
 
     val (version, instance) = switch.version match {
@@ -284,8 +382,10 @@ object Cross {
         } else {
           sys.error(s"Scala home directory did not exist: $home")
         }
-      case NamedScalaVersion(v, _)    => (v, None)
-      case NightlyScalaVersion(major) => (resolveNightly(major), None)
+      case NamedScalaVersion(v, _)           => (v, None)
+      case MergelyScalaVersion(major)        => (resolveNightly(major), None)
+      case LatestScalaVersion(major)         => (resolveLatestStable(major), None)
+      case CommunityBuiltScalaVersion(major) => (resolveNightlyCB(major), None)
     }
 
     def logSwitchInfo(
