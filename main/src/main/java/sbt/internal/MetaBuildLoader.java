@@ -92,7 +92,7 @@ public final class MetaBuildLoader extends URLClassLoader {
     final TestInterfaceLoader interfaceLoader = new TestInterfaceLoader(interfaceURL, topLoader);
     final File[] siJars = scalaProvider.jars();
     final URL[] lib = new URL[1];
-    final URL[] scalaRest = new URL[siJars.length - 1];
+    final URL[] scalaRest = new URL[Math.max(0, siJars.length - 1)];
 
     {
       int i = 0;
@@ -108,6 +108,7 @@ public final class MetaBuildLoader extends URLClassLoader {
         i += 1;
       }
     }
+    assert lib[0] != null : "no scala-library.jar";
     final ScalaLibraryClassLoader libraryLoader = new ScalaLibraryClassLoader(lib, interfaceLoader);
     final FullScalaLoader fullScalaLoader = new FullScalaLoader(scalaRest, libraryLoader);
     return new MetaBuildLoader(rest, fullScalaLoader, libraryLoader, interfaceLoader);
