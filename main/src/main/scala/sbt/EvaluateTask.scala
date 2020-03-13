@@ -444,10 +444,16 @@ object EvaluateTask {
     log.debug(
       s"Running task... Cancel: ${config.cancelStrategy}, check cycles: ${config.checkCycles}, forcegc: ${config.forceGarbageCollection}"
     )
+    def tagMap(t: Task[_]): Tags.TagMap =
+      t.info.get(tagsKey).getOrElse(Map.empty)
     val tags =
-      tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
+      tagged[Task[_]](tagMap, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
-      completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
+      completionService[Task[_], Completed](
+        tags,
+        (s: String) => log.warn(s),
+        (t: Task[_]) => tagMap(t).contains(Tags.Sentinel)
+      )
 
     def shutdown(): Unit = {
       // First ensure that all threads are stopped for task execution.

@@ -865,6 +865,19 @@ object Project extends ProjectExtra {
     }
   }
 
+  final class RichTaskPromise[A](i: Def.Initialize[Task[PromiseWrap[A]]]) {
+    import scala.concurrent.Await
+    import scala.concurrent.duration._
+    def await: Def.Initialize[Task[A]] =
+      (Def
+        .task {
+          val p = i.value
+          val result: A = Await.result(p.underlying.future, Duration.Inf)
+          result
+        })
+        .tag(Tags.Sentinel)
+  }
+
   import scala.reflect.macros._
 
   def projectMacroImpl(c: blackbox.Context): c.Expr[Project] = {
@@ -906,6 +919,11 @@ trait ProjectExtra {
 
   implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] =
     new Project.RichTaskSessionVar(init)
+
+  implicit def sbtRichTaskPromise[A](
+      i: Initialize[Task[PromiseWrap[A]]]
+  ): Project.RichTaskPromise[A] =
+    new Project.RichTaskPromise(i)
 
   def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)

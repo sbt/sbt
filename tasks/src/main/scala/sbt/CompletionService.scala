@@ -8,7 +8,18 @@
 package sbt
 
 trait CompletionService[A, R] {
+
+  /**
+   * Submits a work node A with work that returns R.
+   * In Execute this is used for tasks returning sbt.Completed.
+   */
   def submit(node: A, work: () => R): Unit
+
+  /**
+   * Retrieves and removes the result from the next completed task,
+   * waiting if none are yet present.
+   * In Execute this is used for tasks returning sbt.Completed.
+   */
   def take(): R
 }
 

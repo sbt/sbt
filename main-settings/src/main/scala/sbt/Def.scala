@@ -235,6 +235,12 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] =
     macro inputTaskDynMacroImpl[T]
 
+  /** Returns `PromiseWrap[A]`, which is a wrapper around `scala.concurrent.Promise`.
+   * When a task is typed promise (e.g. `Def.Initialize[Task[PromiseWrap[A]]]`),an implicit
+   * method called `await` is injected which will run in a thread outside of concurrent restriction budget.
+   */
+  def promise[A]: PromiseWrap[A] = new PromiseWrap[A]()
+
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T
 
