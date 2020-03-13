@@ -347,7 +347,7 @@ trait Init[ScopeType] {
       extends RuntimeException("References to undefined settings at runtime.") {
     override def getMessage =
       super.getMessage + undefined.map { u =>
-        "\n" + u.defining + " referenced from " + u.referencedKey
+        "\n" + u.referencedKey + " referenced from " + u.defining
       }.mkString
   }
 
