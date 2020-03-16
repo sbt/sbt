@@ -3,10 +3,13 @@ package lmcoursier
 import java.io.File
 
 import dataclass.data
+import coursier.cache.CacheDefaults
 import lmcoursier.credentials.Credentials
-import lmcoursier.definitions.{Authentication, CacheLogger, Module, ModuleMatchers, Project, Reconciliation, Strict}
+import lmcoursier.definitions.{Authentication, CacheLogger, CachePolicy, FromCoursier, Module, ModuleMatchers, Project, Reconciliation, Strict}
 import sbt.librarymanagement.Resolver
 import xsbti.Logger
+
+import scala.concurrent.duration.Duration
 
 @data class CoursierConfiguration(
   log: Option[Logger] = None,
@@ -41,6 +44,11 @@ import xsbti.Logger
   reconciliation: Vector[(ModuleMatchers, Reconciliation)] = Vector.empty,
   @since
   classpathOrder: Boolean = true,
+  @since
+  verbosityLevel: Int = 0,
+  ttl: Option[Duration] = CacheDefaults.ttl,
+  checksums: Vector[Option[String]] = CacheDefaults.checksums.to[Vector],
+  cachePolicies: Vector[CachePolicy] = CacheDefaults.cachePolicies.to[Vector].map(FromCoursier.cachePolicy),
 ) {
 
   def withLog(log: Logger): CoursierConfiguration =
@@ -65,6 +73,8 @@ import xsbti.Logger
     withFollowHttpToHttpsRedirections(Some(true))
   def withStrict(strict: Strict): CoursierConfiguration =
     withStrict(Some(strict))
+  def withTtl(ttl: Duration): CoursierConfiguration =
+    withTtl(Some(ttl))
 }
 
 object CoursierConfiguration {
@@ -110,6 +120,6 @@ object CoursierConfiguration {
       authenticationByRepositoryId,
       credentials,
       Option(logger),
-      Option(cache),
-    )
+      Option(cache)
+    ) /* no need to touch this 'apply'; @data above is doing the hard work */
 }

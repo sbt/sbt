@@ -175,4 +175,16 @@ object ToCoursier {
       },
       // ignoreIfForcedVersion = strict.ignoreIfForcedVersion // should be around once the coursier version is bumped
     )
+
+  def cachePolicy(r: CachePolicy): coursier.cache.CachePolicy =
+    r match {
+      case CachePolicy.LocalOnly => coursier.cache.CachePolicy.LocalOnly
+      case CachePolicy.LocalOnlyIfValid => coursier.cache.CachePolicy.LocalOnlyIfValid
+      case CachePolicy.LocalUpdateChanging => coursier.cache.CachePolicy.LocalUpdateChanging
+      case CachePolicy.LocalUpdate => coursier.cache.CachePolicy.LocalUpdate
+      case CachePolicy.UpdateChanging => coursier.cache.CachePolicy.UpdateChanging
+      case CachePolicy.Update => coursier.cache.CachePolicy.Update
+      case CachePolicy.FetchMissing => coursier.cache.CachePolicy.FetchMissing
+      case CachePolicy.ForceDownload => coursier.cache.CachePolicy.ForceDownload
+    }
 }

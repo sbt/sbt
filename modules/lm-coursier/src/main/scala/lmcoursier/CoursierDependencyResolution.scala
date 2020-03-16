@@ -4,7 +4,7 @@ import java.io.File
 
 import coursier.{Organization, Resolution, organizationString}
 import coursier.core.{Classifier, Configuration}
-import coursier.cache.CacheDefaults
+import coursier.cache.{CacheDefaults, CachePolicy}
 import coursier.util.Artifact
 import coursier.internal.Typelevel
 import lmcoursier.definitions.ToCoursier
@@ -79,13 +79,13 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     val extraProjects = conf.extraProjects.map(ToCoursier.project)
 
-    val verbosityLevel = 0
+    val verbosityLevel = conf.verbosityLevel
 
-    val ttl = CacheDefaults.ttl
+    val ttl = conf.ttl
     val loggerOpt = conf.logger.map(ToCoursier.cacheLogger)
     val cache = conf.cache.getOrElse(CacheDefaults.location)
-    val cachePolicies = CacheDefaults.cachePolicies
-    val checksums = CacheDefaults.checksums
+    val cachePolicies = conf.cachePolicies.map(ToCoursier.cachePolicy)
+    val checksums = conf.checksums
     val projectName = "" // used for logging only…
 
     val ivyProperties = ResolutionParams.defaultIvyProperties(conf.ivyHome)
