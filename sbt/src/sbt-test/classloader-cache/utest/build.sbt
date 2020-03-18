@@ -2,7 +2,7 @@ ThisBuild / turbo := true
 
 val utestTest = (project in file(".")).settings(
   name := "utest-test",
-  scalaVersion := "2.12.10",
+  scalaVersion := "2.12.11",
   libraryDependencies ++= Seq(
     "com.lihaoyi" %% "utest" % "0.6.6" % "test"
   ),
