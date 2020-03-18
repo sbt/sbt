@@ -392,7 +392,7 @@ object ScriptedTests extends ScriptedRunner {
       new java.util.ArrayList[File],
       defScalaVersion,
       sbtVersion,
-      cp.toSeq,
+      cp,
       1
     )
   }
@@ -413,7 +413,7 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
       scalaVersion: String,
       sbtVersion: String,
-      classpath: Seq[File],
+      classpath: Array[File],
       instances: Int
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
@@ -444,7 +444,7 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
       sbtVersion: String,
       scalaVersion: String,
-      classpath: Seq[File],
+      classpath: Array[File],
       instances: Int
   ): Unit =
     runInParallel(
