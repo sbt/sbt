@@ -1,5 +1,4 @@
-// TODO: bump to 2.12.11 once macro paradise is available
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.12.11"
 
 val paradiseVersion = "2.1.1"
 val commonSettings = Seq(
