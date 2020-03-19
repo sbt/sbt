@@ -13,10 +13,10 @@ import sbt.util.{ Level, Logger }
 
 /**
  * Measure the time elapsed for running tasks.
- * This class is activated by adding -Dsbt.task.timing=true to the JVM options.
+ * This class is activated by adding -Dsbt.task.timings=true to the JVM options.
  * Formatting options:
  * - -Dsbt.task.timings.on.shutdown=true|false
- * - -Dsbt.task.timings.unit=number
+ * - -Dsbt.task.timings.unit=ns|us|ms|s
  * - -Dsbt.task.timings.threshold=number
  * @param reportOnShutdown    Should the report be given when exiting the JVM (true) or immediately (false)?
  */
