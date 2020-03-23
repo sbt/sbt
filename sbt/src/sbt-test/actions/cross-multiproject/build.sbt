@@ -1,4 +1,4 @@
-lazy val scala212 = "2.12.10"
+lazy val scala212 = "2.12.11"
 // keep this at M5 to test full version
 lazy val scala213 = "2.13.1"
 

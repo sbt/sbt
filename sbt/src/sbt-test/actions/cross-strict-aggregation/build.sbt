@@ -1,4 +1,4 @@
-lazy val scala212 = "2.12.10"
+lazy val scala212 = "2.12.11"
 lazy val scala213 = "2.13.1"
 
 ThisBuild / scalaVersion := scala212

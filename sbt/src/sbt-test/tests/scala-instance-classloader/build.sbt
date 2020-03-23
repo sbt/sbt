@@ -3,7 +3,7 @@ import sbt.internal.inc.ScalaInstance
 lazy val OtherScala = config("other-scala").hide
 lazy val junitinterface = "com.novocode" % "junit-interface" % "0.11"
 lazy val akkaActor = "com.typesafe.akka" %% "akka-actor" % "2.5.17"
-ThisBuild / scalaVersion := "2.12.10"
+ThisBuild / scalaVersion := "2.12.11"
 
 lazy val root = (project in file("."))
   .configs(OtherScala)
@@ -18,7 +18,7 @@ lazy val root = (project in file("."))
       val rawJars = (managedClasspath in OtherScala).value.map(_.data)
       val scalaHome = (target.value / "scala-home")
       def removeVersion(name: String): String =
-        name.replaceAll("\\-2.12.10", "")
+        name.replaceAll("\\-2.12.11", "")
       for(jar <- rawJars) {
         val tjar = scalaHome / s"lib/${removeVersion(jar.getName)}"
         IO.copyFile(jar, tjar)
