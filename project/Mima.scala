@@ -60,7 +60,8 @@ object Mima {
         // spurious errors on CI
         ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
         // Should have been put under lmcoursier.internal?
-        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.definitions.ToCoursier."))
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.definitions.ToCoursier.")),
+        (pb: Problem) => pb.matchName.forall(!_.startsWith("lmcoursier.definitions.FromCoursier."))
       )
     }
   }
