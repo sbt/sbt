@@ -10,14 +10,14 @@ object Dependencies {
   def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.3.3")
+  private val ioVersion = nightlyVersion.getOrElse("1.3.4")
   private val utilVersion = nightlyVersion.getOrElse("1.3.3")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
       case _             => nightlyVersion.getOrElse("1.3.1")
     }
-  val zincVersion = nightlyVersion.getOrElse("1.3.4")
+  val zincVersion = nightlyVersion.getOrElse("1.3.5")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -36,7 +36,7 @@ object Dependencies {
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.0.0"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.0.1"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
@@ -112,7 +112,7 @@ object Dependencies {
   def addSbtZincCompileCore(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierVersion = "2.0.0-RC6-1"
+  val lmCoursierVersion = "2.0.0-RC6-2"
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
 
   val sjsonNewScalaJson = Def.setting {
