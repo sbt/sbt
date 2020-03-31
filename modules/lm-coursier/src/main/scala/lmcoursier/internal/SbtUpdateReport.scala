@@ -213,15 +213,21 @@ private[internal] object SbtUpdateReport {
       )
       .toMap
 
-    val reverseDependencies = res.reverseDependencies
-      .toVector
-      .map { case (k, v) =>
-        clean(k) -> v.map(clean)
-      }
-      .groupBy(_._1)
-      .mapValues(_.flatMap(_._2))
-      .toVector
-      .toMap ++ directReverseDependencies
+    val reverseDependencies = {
+      val transitiveReverseDependencies = res.reverseDependencies
+        .toVector
+        .map { case (k, v) =>
+          clean(k) -> v.map(clean)
+        }
+        .groupBy(_._1)
+        .mapValues(_.flatMap(_._2))
+
+      (transitiveReverseDependencies.toVector ++ directReverseDependencies.toVector)
+        .groupBy(_._1)
+        .mapValues(_.flatMap(_._2).toVector)
+        .toVector
+        .toMap
+    }
 
     groupedDepArtifacts.toVector.map {
       case (dep, artifacts) =>
