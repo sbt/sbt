@@ -6,10 +6,10 @@
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ExecFormats { self: CommandSourceFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ExecFormat: JsonFormat[sbt.Exec] = new JsonFormat[sbt.Exec] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.Exec = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.Exec = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val commandLine = unbuilder.readField[String]("commandLine")
       val execId = unbuilder.readField[Option[String]]("execId")
       val source = unbuilder.readField[Option[sbt.CommandSource]]("source")

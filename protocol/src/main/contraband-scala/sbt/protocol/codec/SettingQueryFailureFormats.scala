@@ -7,10 +7,10 @@ package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait SettingQueryFailureFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val SettingQueryFailureFormat: JsonFormat[sbt.protocol.SettingQueryFailure] = new JsonFormat[sbt.protocol.SettingQueryFailure] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.SettingQueryFailure = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.SettingQueryFailure = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val message = unbuilder.readField[String]("message")
       unbuilder.endObject()
       sbt.protocol.SettingQueryFailure(message)

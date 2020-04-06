@@ -7,10 +7,10 @@ package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait LogEventFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val LogEventFormat: JsonFormat[sbt.protocol.LogEvent] = new JsonFormat[sbt.protocol.LogEvent] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.LogEvent = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.LogEvent = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val level = unbuilder.readField[String]("level")
       val message = unbuilder.readField[String]("message")
       unbuilder.endObject()
