@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait CallerFormats { self: sbt.librarymanagement.ModuleIDFormats with sbt.librarymanagement.ConfigRefFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val CallerFormat: JsonFormat[sbt.librarymanagement.Caller] = new JsonFormat[sbt.librarymanagement.Caller] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.Caller = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.Caller = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val caller = unbuilder.readField[sbt.librarymanagement.ModuleID]("caller")
       val callerConfigurations = unbuilder.readField[Vector[sbt.librarymanagement.ConfigRef]]("callerConfigurations")
       val callerExtraAttributes = unbuilder.readField[Map[String, String]]("callerExtraAttributes")

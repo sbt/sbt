@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait SshRepositoryFormats { self: sbt.librarymanagement.PatternsFormats with sbt.librarymanagement.SshConnectionFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val SshRepositoryFormat: JsonFormat[sbt.librarymanagement.SshRepository] = new JsonFormat[sbt.librarymanagement.SshRepository] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.SshRepository = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.SshRepository = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val name = unbuilder.readField[String]("name")
       val patterns = unbuilder.readField[sbt.librarymanagement.Patterns]("patterns")
       val connection = unbuilder.readField[sbt.librarymanagement.SshConnection]("connection")

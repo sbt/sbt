@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ConfigurationReportLiteFormats { self: sbt.librarymanagement.OrganizationArtifactReportFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ConfigurationReportLiteFormat: JsonFormat[sbt.internal.librarymanagement.ConfigurationReportLite] = new JsonFormat[sbt.internal.librarymanagement.ConfigurationReportLite] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.librarymanagement.ConfigurationReportLite = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.librarymanagement.ConfigurationReportLite = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val configuration = unbuilder.readField[String]("configuration")
       val details = unbuilder.readField[Vector[sbt.librarymanagement.OrganizationArtifactReport]]("details")
       unbuilder.endObject()

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ModuleDescriptorConfigurationFormats { self: sbt.librarymanagement.ScalaModuleInfoFormats with sbt.librarymanagement.ModuleIDFormats with sbt.librarymanagement.ModuleInfoFormats with sbt.librarymanagement.InclExclRuleFormats with sbt.internal.librarymanagement.formats.NodeSeqFormat with sbt.librarymanagement.ConfigurationFormats with sbt.librarymanagement.ConflictManagerFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ModuleDescriptorConfigurationFormat: JsonFormat[sbt.librarymanagement.ModuleDescriptorConfiguration] = new JsonFormat[sbt.librarymanagement.ModuleDescriptorConfiguration] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ModuleDescriptorConfiguration = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ModuleDescriptorConfiguration = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val validate = unbuilder.readField[Boolean]("validate")
       val scalaModuleInfo = unbuilder.readField[Option[sbt.librarymanagement.ScalaModuleInfo]]("scalaModuleInfo")
       val module = unbuilder.readField[sbt.librarymanagement.ModuleID]("module")

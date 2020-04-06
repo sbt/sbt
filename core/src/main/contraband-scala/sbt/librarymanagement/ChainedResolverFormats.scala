@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ChainedResolverFormats { self: sbt.librarymanagement.ResolverFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ChainedResolverFormat: JsonFormat[sbt.librarymanagement.ChainedResolver] = new JsonFormat[sbt.librarymanagement.ChainedResolver] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ChainedResolver = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ChainedResolver = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val name = unbuilder.readField[String]("name")
       val resolvers = unbuilder.readField[Vector[sbt.librarymanagement.Resolver]]("resolvers")
       unbuilder.endObject()

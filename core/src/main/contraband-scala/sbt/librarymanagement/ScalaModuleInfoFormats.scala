@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ScalaModuleInfoFormats { self: sbt.librarymanagement.ConfigurationFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ScalaModuleInfoFormat: JsonFormat[sbt.librarymanagement.ScalaModuleInfo] = new JsonFormat[sbt.librarymanagement.ScalaModuleInfo] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ScalaModuleInfo = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ScalaModuleInfo = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val scalaFullVersion = unbuilder.readField[String]("scalaFullVersion")
       val scalaBinaryVersion = unbuilder.readField[String]("scalaBinaryVersion")
       val configurations = unbuilder.readField[Vector[sbt.librarymanagement.Configuration]]("configurations")
