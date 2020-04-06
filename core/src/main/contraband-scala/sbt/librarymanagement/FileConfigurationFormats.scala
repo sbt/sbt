@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait FileConfigurationFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val FileConfigurationFormat: JsonFormat[sbt.librarymanagement.FileConfiguration] = new JsonFormat[sbt.librarymanagement.FileConfiguration] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.FileConfiguration = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.FileConfiguration = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val isLocal = unbuilder.readField[Boolean]("isLocal")
       val isTransactional = unbuilder.readField[Option[Boolean]]("isTransactional")
       unbuilder.endObject()

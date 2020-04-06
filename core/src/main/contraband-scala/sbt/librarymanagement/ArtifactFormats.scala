@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ArtifactFormats { self: sbt.librarymanagement.ConfigRefFormats with sbt.librarymanagement.ChecksumFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ArtifactFormat: JsonFormat[sbt.librarymanagement.Artifact] = new JsonFormat[sbt.librarymanagement.Artifact] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.Artifact = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.Artifact = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val name = unbuilder.readField[String]("name")
       val `type` = unbuilder.readField[String]("type")
       val extension = unbuilder.readField[String]("extension")

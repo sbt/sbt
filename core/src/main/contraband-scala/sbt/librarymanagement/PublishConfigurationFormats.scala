@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait PublishConfigurationFormats { self: sbt.librarymanagement.ConfigRefFormats with sbt.librarymanagement.ArtifactFormats with sbt.librarymanagement.UpdateLoggingFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val PublishConfigurationFormat: JsonFormat[sbt.librarymanagement.PublishConfiguration] = new JsonFormat[sbt.librarymanagement.PublishConfiguration] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.PublishConfiguration = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.PublishConfiguration = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val publishMavenStyle = unbuilder.readField[Boolean]("publishMavenStyle")
       val deliverIvyPattern = unbuilder.readField[Option[String]]("deliverIvyPattern")
       val status = unbuilder.readField[Option[String]]("status")

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement.ivy
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait IvyPathsFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val IvyPathsFormat: JsonFormat[sbt.librarymanagement.ivy.IvyPaths] = new JsonFormat[sbt.librarymanagement.ivy.IvyPaths] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ivy.IvyPaths = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ivy.IvyPaths = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val baseDirectory = unbuilder.readField[java.io.File]("baseDirectory")
       val ivyHome = unbuilder.readField[Option[java.io.File]]("ivyHome")
       unbuilder.endObject()

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,10 +7,10 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ModuleReportFormats { self: sbt.librarymanagement.ModuleIDFormats with sbt.librarymanagement.ArtifactFormats with sbt.librarymanagement.ConfigRefFormats with sbt.librarymanagement.CallerFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ModuleReportFormat: JsonFormat[sbt.librarymanagement.ModuleReport] = new JsonFormat[sbt.librarymanagement.ModuleReport] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ModuleReport = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ModuleReport = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val module = unbuilder.readField[sbt.librarymanagement.ModuleID]("module")
       val artifacts = unbuilder.readField[Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]]]("artifacts")
       val missingArtifacts = unbuilder.readField[Vector[sbt.librarymanagement.Artifact]]("missingArtifacts")
