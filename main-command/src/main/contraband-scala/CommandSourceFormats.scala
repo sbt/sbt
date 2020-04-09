@@ -6,10 +6,10 @@
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait CommandSourceFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val CommandSourceFormat: JsonFormat[sbt.CommandSource] = new JsonFormat[sbt.CommandSource] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.CommandSource = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.beginObject(js)
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.CommandSource = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.beginObject(__js)
       val channelName = unbuilder.readField[String]("channelName")
       unbuilder.endObject()
       sbt.CommandSource(channelName)

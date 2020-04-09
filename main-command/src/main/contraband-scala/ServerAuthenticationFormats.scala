@@ -6,10 +6,10 @@
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ServerAuthenticationFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val ServerAuthenticationFormat: JsonFormat[sbt.ServerAuthentication] = new JsonFormat[sbt.ServerAuthentication] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.ServerAuthentication = {
-    jsOpt match {
-      case Some(js) =>
-      unbuilder.readString(js) match {
+  override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.ServerAuthentication = {
+    __jsOpt match {
+      case Some(__js) =>
+      unbuilder.readString(__js) match {
         case "Token" => sbt.ServerAuthentication.Token
       }
       case None =>
