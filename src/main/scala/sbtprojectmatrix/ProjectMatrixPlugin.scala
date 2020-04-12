@@ -11,9 +11,14 @@ object ProjectMatrixPlugin extends AutoPlugin {
   object autoImport {
     def projectMatrix: ProjectMatrix = macro ProjectMatrix.projectMatrixMacroImpl
 
-   implicit def matrixClasspathDependency[T](
+    implicit def matrixClasspathDependency[T](
       m: T
-   )(implicit ev: T => ProjectMatrixReference): ProjectMatrix.MatrixClasspathDependency =
-     ProjectMatrix.MatrixClasspathDependency(m, None)
+    )(implicit ev: T => ProjectMatrixReference): ProjectMatrix.MatrixClasspathDependency =
+      ProjectMatrix.MatrixClasspathDependency(m, None)
+
+    implicit def matrixReferenceSyntax[T](
+      m: T
+    )(implicit ev: T => ProjectMatrixReference): ProjectMatrix.ProjectMatrixReferenceSyntax =
+      new ProjectMatrix.ProjectMatrixReferenceSyntax(m)
   }
 }

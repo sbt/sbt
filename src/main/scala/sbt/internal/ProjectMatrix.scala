@@ -160,6 +160,14 @@ object ProjectMatrix {
     override def toString: String = s"ProjectRow($autoScalaLibrary, $axisValues)"
   }
 
+  final class ProjectMatrixReferenceSyntax(m: ProjectMatrixReference) {
+    def %(conf: String): ProjectMatrix.MatrixClasspathDependency =
+      ProjectMatrix.MatrixClasspathDependency(m, Some(conf))
+
+    def %(conf: Configuration): ProjectMatrix.MatrixClasspathDependency =
+      ProjectMatrix.MatrixClasspathDependency(m, Some(conf.name))
+  }
+
   final case class MatrixClasspathDependency(
       matrix: ProjectMatrixReference,
       configuration: Option[String]
