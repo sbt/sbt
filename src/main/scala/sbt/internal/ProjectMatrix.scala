@@ -56,6 +56,12 @@ sealed trait ProjectMatrix extends CompositeProject {
   /** Disable the given plugins on this project. */
   def disablePlugins(ps: AutoPlugin*): ProjectMatrix
 
+  /**
+   * Applies the given functions to this Project.
+   * The second function is applied to the result of applying the first to this Project and so on.
+   * The intended use is a convenience for applying default configuration provided by a plugin.
+   */
+  def configure(transforms: (Project => Project)*): ProjectMatrix
 
   /**
    * If autoScalaLibrary is false, add non-Scala row.
@@ -160,6 +166,14 @@ object ProjectMatrix {
     override def toString: String = s"ProjectRow($autoScalaLibrary, $axisValues)"
   }
 
+  final class ProjectMatrixReferenceSyntax(m: ProjectMatrixReference) {
+    def %(conf: String): ProjectMatrix.MatrixClasspathDependency =
+      ProjectMatrix.MatrixClasspathDependency(m, Some(conf))
+
+    def %(conf: Configuration): ProjectMatrix.MatrixClasspathDependency =
+      ProjectMatrix.MatrixClasspathDependency(m, Some(conf.name))
+  }
+
   final case class MatrixClasspathDependency(
       matrix: ProjectMatrixReference,
       configuration: Option[String]
@@ -174,7 +188,8 @@ object ProjectMatrix {
       val dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]],
       val settings: Seq[Def.Setting[_]],
       val configurations: Seq[Configuration],
-      val plugins: Plugins
+      val plugins: Plugins,
+      val transforms: Seq[Project => Project],
   ) extends ProjectMatrix { self =>
     lazy val resolvedMappings: ListMap[ProjectRow, Project] = resolveMappings
     private def resolveProjectIds: Map[ProjectRow, String] = {
@@ -232,6 +247,7 @@ object ProjectMatrix {
             inConfig(Test)(makeSources(nonScalaDirSuffix, svDirSuffix))
           )
           .settings(self.settings)
+          .configure(transforms: _*)
 
         r -> r.process(p)
       }): _*)
@@ -291,6 +307,9 @@ object ProjectMatrix {
 
     override def disablePlugins(ps: AutoPlugin*): ProjectMatrix =
       setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
+
+    override def configure(ts: (Project => Project)*): ProjectMatrix =
+      copy(transforms = transforms ++ ts)
 
     def setPlugins(ns: Plugins): ProjectMatrix = copy(plugins = ns)
 
@@ -426,7 +445,8 @@ object ProjectMatrix {
         dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]] = dependencies,
         settings: Seq[Setting[_]] = settings,
         configurations: Seq[Configuration] = configurations,
-        plugins: Plugins = plugins
+        plugins: Plugins = plugins,
+        transforms: Seq[Project => Project] = transforms,
     ): ProjectMatrix = {
       val matrix = unresolved(
         id,
@@ -437,7 +457,8 @@ object ProjectMatrix {
         dependencies,
         settings,
         configurations,
-        plugins
+        plugins,
+        transforms
       )
       allMatrices(id) = matrix
       matrix
@@ -446,7 +467,7 @@ object ProjectMatrix {
 
   // called by macro
   def apply(id: String, base: sbt.File): ProjectMatrix = {
-    val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty)
+    val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty, Nil)
     allMatrices(id) = matrix
     matrix
   }
@@ -460,7 +481,8 @@ object ProjectMatrix {
       dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]],
       settings: Seq[Def.Setting[_]],
       configurations: Seq[Configuration],
-      plugins: Plugins
+      plugins: Plugins,
+      transforms: Seq[Project => Project]
   ): ProjectMatrix =
     new ProjectMatrixDef(
       id,
@@ -471,7 +493,8 @@ object ProjectMatrix {
       dependencies,
       settings,
       configurations,
-      plugins
+      plugins,
+      transforms
     )
 
   def lookupMatrix(local: LocalProjectMatrix): ProjectMatrix = {
