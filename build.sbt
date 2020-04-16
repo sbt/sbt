@@ -58,7 +58,7 @@ lazy val `lm-coursier-shaded` = project
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0 % "shaded",
       "io.github.alexarchambault" %% "data-class" % "0.2.1" % Provided,
-      "org.scala-lang.modules" %% "scala-xml" % "1.2.0", // depending on that one so that it doesn't get shaded
+      "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.3.2",
       "org.scalatest" %% "scalatest" % "3.1.1" % Test
     ),
