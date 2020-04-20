@@ -226,7 +226,7 @@ object ProjectMatrix {
             val other = lookupMatrix(ref)
             resolveMatrixAggregate(other, r)
         }
-        val p = Project(childId, new sbt.File(childId).getAbsoluteFile)
+        val p = Project(childId, base.getAbsoluteFile)
           .dependsOn(deps: _*)
           .aggregate(aggs: _*)
           .setPlugins(plugins)
