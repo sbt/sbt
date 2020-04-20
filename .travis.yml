@@ -1,18 +1,15 @@
-dist: trusty
-group: stable
-sudo: required
-
-env:
-  - SCALANATIVE_GC=boehm
+os: linux
 
 language: scala
+
 matrix:
   include:
     - jdk: openjdk8
 #    - jdk: openjdk11
 
 before_install:
-  - bash scripts/travis_setup.sh
+  - sudo apt-get update
+  - curl https://raw.githubusercontent.com/scala-native/scala-native/master/scripts/travis_setup.sh | bash -x
 
 before_script:
  - export JVM_OPTS="-Dfile.encoding=UTF-8 -Xmx1G -Xms1G -server -XX:ReservedCodeCacheSize=128M"
