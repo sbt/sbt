@@ -74,7 +74,7 @@ import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
-import sbt.nio.{ FileChanges, Watch }
+import sbt.nio.Watch
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
@@ -648,7 +648,11 @@ object Defaults extends BuildCommon {
         else ""
       s"inc_compile$extra.zip"
     },
+    /*
+    // Comment this out because Zinc now uses farm hash to invalidate the virtual paths.
+    // To use watch to detect initial changes, we need to revalidate using content hash.
     externalHooks := {
+      import sbt.nio.FileChanges
       import sjsonnew.BasicJsonProtocol.mapFormat
       val currentInputs =
         (unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value
@@ -664,6 +668,8 @@ object Defaults extends BuildCommon {
         .getOrElse(FileChanges.noPrevious(currentOutputs.map(_._1)))
       ExternalHooks.default.value(inputChanges, outputChanges, fileTreeView.value)
     },
+     */
+    externalHooks := IncOptions.defaultExternal,
     compileSourceFileInputs := {
       import sjsonnew.BasicJsonProtocol.mapFormat
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
