@@ -158,8 +158,8 @@ object Cross {
 
         // Execute using a blanket switch
         projCrossVersions.toMap.apply(extracted.currentRef).flatMap { version =>
-          // Force scala version
-          Seq(s"$SwitchCommand $verbose $version!", aggCommand)
+          // Set scala version
+          Seq(s"$SwitchCommand $verbose $version", aggCommand)
         }
       case Right((keys, taskArgs)) =>
         def project(key: ScopedKey[_]): Option[ProjectRef] = key.scope.project.toOption match {
@@ -195,11 +195,11 @@ object Cross {
         commandsByVersion.flatMap {
           case (v, commands) =>
             commands match {
-              case Seq(c) => Seq(s"$SwitchCommand $verbose $v! $c")
+              case Seq(c) => Seq(s"$SwitchCommand $verbose $v $c")
               case Seq()  => Nil // should be unreachable
               case multi if fullArgs.isEmpty =>
                 Seq(s"$SwitchCommand $verbose $v! all ${multi.mkString(" ")}")
-              case multi => Seq(s"$SwitchCommand $verbose $v!") ++ multi
+              case multi => Seq(s"$SwitchCommand $verbose $v") ++ multi
             }
         }
     }
