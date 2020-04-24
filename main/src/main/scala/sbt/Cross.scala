@@ -54,12 +54,17 @@ object Cross {
         }
       }
       val spacedVersion = if (spacePresent) version else version & spacedFirst(SwitchCommand)
-      val verbose = Parser.opt(token(Space ~> "-v"))
+      val verboseOpt = Parser.opt(token(Space ~> "-v"))
       val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
-      (spacedVersion ~ verbose ~ optionalCommand).map {
+      val switch1 = (token(Space ~> "-v") ~> (Space ~> version) ~ optionalCommand) map {
+        case v ~ command =>
+          Switch(v, true, command)
+      }
+      val switch2 = (spacedVersion ~ verboseOpt ~ optionalCommand) map {
         case v ~ verbose ~ command =>
           Switch(v, verbose.isDefined, command)
       }
+      switch1 | switch2
     }
 
     token(SwitchCommand ~> OptSpace) flatMap { sp =>
@@ -195,11 +200,11 @@ object Cross {
         commandsByVersion.flatMap {
           case (v, commands) =>
             commands match {
-              case Seq(c) => Seq(s"$SwitchCommand $verbose $v! $c")
+              case Seq(c) => Seq(s"$SwitchCommand $verbose $v $c")
               case Seq()  => Nil // should be unreachable
               case multi if fullArgs.isEmpty =>
-                Seq(s"$SwitchCommand $verbose $v! all ${multi.mkString(" ")}")
-              case multi => Seq(s"$SwitchCommand $verbose $v!") ++ multi
+                Seq(s"$SwitchCommand $verbose $v all ${multi.mkString(" ")}")
+              case multi => Seq(s"$SwitchCommand $verbose $v") ++ multi
             }
         }
     }
@@ -242,15 +247,18 @@ object Cross {
       if (args.version.force) {
         // The Scala version was forced on the whole build, run as is
         args.command
-      } else {
+      } else
         args.command.map { rawCmd =>
-          val (aggs, aggCommand) = parseSlashCommand(Project.extract(state))(rawCmd)
-          aggs
-            .intersect(affectedRefs)
-            .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
-            .mkString("all ", " ", "")
+          // for now, treat `all` command specially
+          if (rawCmd.startsWith("all ")) rawCmd
+          else {
+            val (aggs, aggCommand) = parseSlashCommand(Project.extract(state))(rawCmd)
+            aggs
+              .intersect(affectedRefs)
+              .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
+              .mkString("all ", " ", "")
+          }
         }
-      }
 
     strictCmd.toList ::: switchedState
   }
