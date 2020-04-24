@@ -54,12 +54,17 @@ object Cross {
         }
       }
       val spacedVersion = if (spacePresent) version else version & spacedFirst(SwitchCommand)
-      val verbose = Parser.opt(token(Space ~> "-v"))
+      val verboseOpt = Parser.opt(token(Space ~> "-v"))
       val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
-      (spacedVersion ~ verbose ~ optionalCommand).map {
+      val switch1 = (token(Space ~> "-v") ~> (Space ~> version) ~ optionalCommand) map {
+        case v ~ command =>
+          Switch(v, true, command)
+      }
+      val switch2 = (spacedVersion ~ verboseOpt ~ optionalCommand) map {
         case v ~ verbose ~ command =>
           Switch(v, verbose.isDefined, command)
       }
+      switch1 | switch2
     }
 
     token(SwitchCommand ~> OptSpace) flatMap { sp =>
