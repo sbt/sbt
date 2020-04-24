@@ -4,6 +4,9 @@
 > + foo / testOnly foo.FooSpec
 > + testOnly foo.FooSpec
 
+## test + with task in multi-project with different Scala versions
+> + check
+
 ## test + with command or alias
 > clean
 ## for command cross building you do need crossScalaVerions on root
