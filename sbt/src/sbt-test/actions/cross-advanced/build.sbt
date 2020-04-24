@@ -19,6 +19,12 @@ lazy val foo = project
       assert(x == "2.12.11", s"$x == 2.12.11")
       (Compile / compile).value
     },
+    (Test / testOnly) := {
+      // This tests that +testOnly will respect bar's crossScalaVersions and not switch
+      val x = (LocalProject("bar") / scalaVersion).value
+      assert(x == "2.12.11", s"$x == 2.12.11")
+      val _ = (Test / testOnly).evaluated
+    },
     compile2 := {
       // This tests that +build will ignore bar's crossScalaVersions and use root's like sbt 0.13
       val x = (LocalProject("bar") / scalaVersion).value
