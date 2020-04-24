@@ -419,6 +419,10 @@ lazy val utilTracking = (project in file("util-tracking"))
     name := "Util Tracking",
     libraryDependencies ++= Seq(scalatest % "test"),
     utilMimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      // Private final class constructors changed
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("sbt.util.Tracked#CacheHelp.this"),
+    )
   )
   .configure(addSbtIO)
 

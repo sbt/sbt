@@ -14,7 +14,7 @@ import sbt.io.IO
 import sbt.io.syntax._
 import sbt.internal.util.EmptyCacheError
 
-import sjsonnew.JsonFormat
+import sjsonnew.{ JsonFormat, JsonWriter }
 import sjsonnew.support.murmurhash.Hasher
 
 object Tracked {
@@ -95,6 +95,28 @@ object Tracked {
    */
   def outputChanged[A1: JsonFormat, A2](store: CacheStore)(
       f: (Boolean, A1) => A2
+  ): (() => A1) => A2 = {
+    outputChangedW(store)(f)
+  }
+
+  /**
+   * Creates a tracker that indicates whether the output returned from `p` has changed or not.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   *
+   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1: JsonFormat`.
+   */
+  def outputChangedW[A1: JsonWriter, A2](store: CacheStore)(
+      f: (Boolean, A1) => A2
   ): (() => A1) => A2 = p => {
     val cache: SingletonCache[Long] = {
       import CacheImplicits.LongJsonFormat
@@ -128,6 +150,27 @@ object Tracked {
     outputChanged[A1, A2](CacheStore(cacheFile))(f)
 
   /**
+   * Creates a tracker that indicates whether the output returned from `p` has changed or not.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   *
+   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1: JsonFormat`.
+   */
+  def outputChangedW[A1: JsonWriter, A2](
+      cacheFile: File
+  )(f: (Boolean, A1) => A2): (() => A1) => A2 =
+    outputChangedW[A1, A2](CacheStore(cacheFile))(f)
+
+  /**
    * Creates a tracker that indicates whether the arguments given to f have changed since the most
    * recent invocation.
    *
@@ -143,6 +186,28 @@ object Tracked {
    * }}}
    */
   def inputChanged[I: JsonFormat: SingletonCache, O](store: CacheStore)(
+      f: (Boolean, I) => O
+  ): I => O =
+    inputChangedW(store)(f)
+
+  /**
+   * Creates a tracker that indicates whether the arguments given to f have changed since the most
+   * recent invocation.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   *
+   * This is a variant of `inputChanged` that takes `I: JsonWriter` as opposed to `I: JsonFormat`.
+   */
+  def inputChangedW[I: JsonWriter, O](store: CacheStore)(
       f: (Boolean, I) => O
   ): I => O = { in =>
     val cache: SingletonCache[Long] = {
@@ -177,7 +242,29 @@ object Tracked {
   ): I => O =
     inputChanged(CacheStore(cacheFile))(f)
 
-  private final class CacheHelp[I: JsonFormat](val sc: SingletonCache[Long]) {
+  /**
+   * Creates a tracker that indicates whether the arguments given to f have changed since the most
+   * recent invocation.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   *
+   * This is a variant of `inputChanged` that takes `I: JsonWriter` as opposed to `I: JsonFormat`.
+   */
+  def inputChangedW[I: JsonWriter, O](cacheFile: File)(
+      f: (Boolean, I) => O
+  ): I => O =
+    inputChangedW(CacheStore(cacheFile))(f)
+
+  private final class CacheHelp[I: JsonWriter](val sc: SingletonCache[Long]) {
     import CacheImplicits.implicitHashWriter
     import CacheImplicits.LongJsonFormat
     def save(store: CacheStore, value: I): Unit = {
