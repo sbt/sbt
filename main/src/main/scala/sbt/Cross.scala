@@ -200,7 +200,7 @@ object Cross {
         commandsByVersion.flatMap {
           case (v, commands) =>
             commands match {
-              case Seq(c) => Seq(s"$SwitchCommand $verbose $v! $c")
+              case Seq(c) => Seq(s"$SwitchCommand $verbose $v $c")
               case Seq()  => Nil // should be unreachable
               case multi if fullArgs.isEmpty =>
                 Seq(s"$SwitchCommand $verbose $v! all ${multi.mkString(" ")}")
