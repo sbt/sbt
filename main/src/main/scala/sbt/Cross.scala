@@ -204,7 +204,7 @@ object Cross {
               case Seq()  => Nil // should be unreachable
               case multi if fullArgs.isEmpty =>
                 Seq(s"$SwitchCommand $verbose $v! all ${multi.mkString(" ")}")
-              case multi => Seq(s"$SwitchCommand $verbose $v!") ++ multi
+              case multi => Seq(s"$SwitchCommand $verbose $v") ++ multi
             }
         }
     }
