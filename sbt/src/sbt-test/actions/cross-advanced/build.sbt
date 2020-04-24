@@ -40,6 +40,17 @@ lazy val bar = project
     compile2 := (Compile / compile).value,
   )
 
+lazy val baz = project
+  .settings(
+    crossScalaVersions := Seq("2.13.1"),
+    check := {
+      // This tests that +baz/check will respect bar's crossScalaVersions and not switch
+      val x = (LocalProject("bar") / scalaVersion).value
+      assert(x == "2.12.11", s"$x == 2.12.11")
+      (Compile / compile).value
+    },
+  )
+
 lazy val client = project
   .settings(
     crossScalaVersions := Seq("2.12.11", "2.13.1"),

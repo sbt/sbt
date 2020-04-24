@@ -1,5 +1,9 @@
 > + clean
 
+## test scoped task
+## this should not force any Scala version changes to other subprojects
+> + baz/check
+
 ## test input task
 > + foo / testOnly foo.FooSpec
 > + testOnly foo.FooSpec
