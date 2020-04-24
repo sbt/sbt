@@ -83,8 +83,8 @@ object Tracked {
    * Creates a tracker that indicates whether the output returned from `p` has changed or not.
    *
    * {{{
-   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
-   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
    *     if (inChanged || outChanged) {
    *       doSomething(label, sources, classpath, outputDirectory, options, log)
    *     }
@@ -103,8 +103,8 @@ object Tracked {
    * Creates a tracker that indicates whether the output returned from `p` has changed or not.
    *
    * {{{
-   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
-   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
    *     if (inChanged || outChanged) {
    *       doSomething(label, sources, classpath, outputDirectory, options, log)
    *     }
@@ -175,8 +175,8 @@ object Tracked {
    * recent invocation.
    *
    * {{{
-   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
-   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
    *     if (inChanged || outChanged) {
    *       doSomething(label, sources, classpath, outputDirectory, options, log)
    *     }
@@ -195,8 +195,8 @@ object Tracked {
    * recent invocation.
    *
    * {{{
-   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
-   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
    *     if (inChanged || outChanged) {
    *       doSomething(label, sources, classpath, outputDirectory, options, log)
    *     }
