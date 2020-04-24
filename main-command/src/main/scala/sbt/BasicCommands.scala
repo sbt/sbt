@@ -7,6 +7,7 @@
 
 package sbt
 
+import java.nio.file.Paths
 import sbt.util.Level
 import sbt.internal.util.{ AttributeKey, FullReader }
 import sbt.internal.util.complete.{
@@ -20,7 +21,7 @@ import sbt.internal.util.complete.{
 }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.Util.{ AnyOps, nil, nilSeq, none }
-import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
+import sbt.internal.inc.classpath.ClasspathUtil.toLoader
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.client.NetworkClient
 import DefaultParsers._
@@ -318,7 +319,7 @@ object BasicCommands {
         def fromCpStr = if (cp.isEmpty) "" else s" from $cpStr"
         state.log info s"Applying State transformations $argsStr$fromCpStr"
         val loader =
-          if (cp.isEmpty) parentLoader else toLoader(cp.map(f => new File(f)), parentLoader)
+          if (cp.isEmpty) parentLoader else toLoader(cp.map(f => Paths.get(f)), parentLoader)
         val loaded =
           args.map(arg => ModuleUtilities.getObject(arg, loader).asInstanceOf[State => State])
         loaded.foldLeft(state)((s, obj) => obj(s))

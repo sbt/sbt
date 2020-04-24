@@ -9,50 +9,22 @@ package sbt
 
 import java.io.File
 import sbt.internal.inc.Relations
-
 import sbt.internal.util.Relation
 
 import sbt.io.IO
 
 object DotGraph {
-  private def fToString(roots: Iterable[File]): (File => String) =
-    (x: File) => sourceToString(roots, x)
-  def sources(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = {
-    val toString = fToString(sourceRoots)
-    apply(relations, outputDirectory, toString, toString)
-  }
-  def packages(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = {
-    val packageOnly = (path: String) => {
-      val last = path.lastIndexOf(File.separatorChar.toInt)
-      val packagePath = (if (last > 0) path.substring(0, last) else path).trim
-      if (packagePath.isEmpty) "" else packagePath.replace(File.separatorChar, '.')
-    }
-    val toString = packageOnly compose fToString(sourceRoots)
-    apply(relations, outputDirectory, toString, toString)
-  }
+  @deprecated("not used", "1.4.0")
+  def sources(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = ???
+  @deprecated("not used", "1.4.0")
+  def packages(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = ???
+  @deprecated("not used", "1.4.0")
   def apply(
       relations: Relations,
       outputDir: File,
       sourceToString: File => String,
       externalToString: File => String
-  ): Unit = {
-    def file(name: String) = new File(outputDir, name)
-    IO.createDirectory(outputDir)
-    generateGraph(
-      file("int-class-deps"),
-      "dependencies",
-      relations.internalClassDep,
-      identity[String],
-      identity[String]
-    )
-    generateGraph(
-      file("binary-dependencies"),
-      "externalDependencies",
-      relations.libraryDep,
-      externalToString,
-      sourceToString
-    )
-  }
+  ): Unit = ???
 
   def generateGraph[K, V](
       file: File,

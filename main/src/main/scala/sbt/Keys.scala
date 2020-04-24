@@ -7,6 +7,7 @@
 
 package sbt
 
+import java.nio.file.{ Path => NioPath }
 import java.io.File
 import java.net.URL
 
@@ -33,7 +34,9 @@ import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, Upda
 import sbt.nio.file.Glob
 import sbt.testing.Framework
 import sbt.util.{ Level, Logger }
+import xsbti.FileConverter
 import xsbti.compile._
+import xsbti.compile.analysis.ReadStamps
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 import scala.xml.{ NodeSeq, Node => XNode }
@@ -214,6 +217,11 @@ object Keys {
   val aggregate = settingKey[Boolean]("Configures task aggregation.").withRank(BMinusSetting)
   val sourcePositionMappers = taskKey[Seq[xsbti.Position => Option[xsbti.Position]]]("Maps positions in generated source files to the original source it was generated from").withRank(DTask)
   private[sbt] val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
+  val fileConverter = settingKey[FileConverter]("The file converter used to convert between Path and VirtualFile")
+  val allowMachinePath = settingKey[Boolean]("Allow machine-specific paths during conversion.")
+  val rootPaths = settingKey[Seq[NioPath]]("The root paths used to abstract machine-specific paths.")
+  private[sbt] val uncachedStamper = settingKey[ReadStamps]("The stamper to create timestamp or hash.")
+  private[sbt] val reusableStamper = settingKey[ReadStamps]("The stamper can be reused across subprojects and sessions.")
 
   // package keys
   val packageBin = taskKey[File]("Produces a main artifact, such as a binary jar.").withRank(ATask)

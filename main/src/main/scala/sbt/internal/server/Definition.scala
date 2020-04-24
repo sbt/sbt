@@ -9,7 +9,6 @@ package sbt
 package internal
 package server
 
-import java.io.File
 import java.net.URI
 import java.nio.file._
 
@@ -27,7 +26,6 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import scalacache._
 
-import sbt.io.IO
 import sbt.internal.inc.{ Analysis, MixedAnalyzingCompiler }
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.protocol.JsonRpcResponseError
@@ -36,6 +34,7 @@ import sbt.internal.langserver
 import sbt.internal.langserver.{ ErrorCodes, Location, Position, Range, TextDocumentPositionParams }
 import sbt.util.Logger
 import sbt.Keys._
+import xsbti.{ FileConverter, VirtualFileRef }
 
 private[sbt] object Definition {
   def send[A: JsonFormat](source: CommandSource, execId: String)(params: A): Unit = {
@@ -157,10 +156,10 @@ private[sbt] object Definition {
         }
     }
 
-    def markPosition(file: File, sym: String): Seq[(File, Long, Long, Long)] = {
+    def markPosition(file: Path, sym: String): Seq[(URI, Long, Long, Long)] = {
       val findInLine = classTraitObjectInLine(sym)(_)
       Files
-        .lines(file.toPath)
+        .lines(file)
         .iterator
         .asScala
         .zipWithIndex
@@ -169,7 +168,7 @@ private[sbt] object Definition {
             findInLine(line)
               .collect {
                 case (sym, from) =>
-                  (file, lineNumber.toLong, from.toLong, from.toLong + sym.length)
+                  (file.toUri, lineNumber.toLong, from.toLong, from.toLong + sym.length)
               }
         }
         .toSeq
@@ -200,7 +199,7 @@ private[sbt] object Definition {
       cache.put(AnalysesKey)(value, ttl)
   }
 
-  private def storeAnalysis(cacheFile: File, useBinary: Boolean): Option[Analysis] =
+  private def storeAnalysis(cacheFile: Path, useBinary: Boolean): Option[Analysis] =
     MixedAnalyzingCompiler
       .staticCachedStore(cacheFile, !useBinary)
       .get
@@ -225,7 +224,7 @@ private[sbt] object Definition {
   }
 
   def collectAnalysesTask = Def.task {
-    val cacheFile = compileIncSetup.value.cacheFile.getAbsolutePath
+    val cacheFile: String = compileIncSetup.value.cacheFile.getAbsolutePath
     val useBinary = enableBinaryCompileAnalysis.value
     val s = state.value
     s.log.debug(s"analysis location ${cacheFile -> useBinary}")
@@ -246,7 +245,7 @@ private[sbt] object Definition {
         }
         val addToCache = uninitialized.collect {
           case (title @ (file, useBinary), _) if Files.exists(Paths.get(file)) =>
-            (title, storeAnalysis(Paths.get(file).toFile, !useBinary))
+            (title, storeAnalysis(Paths.get(file), !useBinary))
         }
         val validCaches = working ++ addToCache
         if (addToCache.nonEmpty)
@@ -262,6 +261,7 @@ private[sbt] object Definition {
       jsonDefinition: JValue,
       requestId: String,
       commandSource: CommandSource,
+      converter: FileConverter,
       log: Logger,
   )(implicit ec: ExecutionContext): Future[Unit] = Future {
     val LspDefinitionLogHead = "lsp-definition"
@@ -297,11 +297,12 @@ private[sbt] object Definition {
                   analysis.relations.definesClass(className) ++
                     analysis.relations.libraryDefinesClass(className)
                 }
-                .flatMap { classFile =>
-                  textProcessor.markPosition(classFile, sym).collect {
-                    case (file, line, from, to) =>
+                .flatMap { classFile: VirtualFileRef =>
+                  val x = converter.toPath(classFile)
+                  textProcessor.markPosition(x, sym).collect {
+                    case (uri, line, from, to) =>
                       Location(
-                        IO.toURI(file).toString,
+                        uri.toString,
                         Range(Position(line, from), Position(line, to)),
                       )
                   }

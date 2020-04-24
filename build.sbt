@@ -828,6 +828,11 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
     testOptions in Test +=
       Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
     mimaSettingsSince(sbt13Plus),
+    mimaBinaryIssueFilters ++= Seq(
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.inc.ZincComponentCompiler*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.inc.ZincComponentCompiler*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.inc.ZincLMHelper.update"),
+    ),
     libraryDependencies += launcherInterface,
   )
   .configure(addSbtZincCompileCore, addSbtLmCore, addSbtLmIvyTest)
@@ -936,7 +941,8 @@ lazy val mainProj = (project in file("main"))
       // signature, this does not break compatibility regardless of what
       // cast a compiler might have inserted based on the old signature
       // since we're returning the same values as before.
-      exclude[IncompatibleSignatureProblem]("sbt.Classpaths.mkIvyConfiguration")
+      exclude[IncompatibleSignatureProblem]("sbt.Classpaths.mkIvyConfiguration"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.server.Definition*"),
     )
   )
   .configure(

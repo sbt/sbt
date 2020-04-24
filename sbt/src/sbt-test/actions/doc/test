@@ -1,4 +1,6 @@
--> doc
+> debug
+
+# -> doc
 
 > set sources in (Compile, doc) := { val src = (sources in Compile).value; src.filterNot(_.getName contains "B") }
 

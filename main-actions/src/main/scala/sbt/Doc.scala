@@ -8,14 +8,12 @@
 package sbt
 
 import java.io.File
-import sbt.internal.inc.AnalyzingCompiler
-
+import sbt.internal.inc.{ AnalyzingCompiler, PlainVirtualFile }
+import sbt.internal.util.ManagedLogger
 import sbt.util.CacheStoreFactory
+import sbt.util.Logger
 import xsbti.Reporter
 import xsbti.compile.JavaTools
-
-import sbt.util.Logger
-import sbt.internal.util.ManagedLogger
 
 object Doc {
   import RawCompileLike._
@@ -36,7 +34,23 @@ object Doc {
     cached(
       cacheStoreFactory,
       fileInputOptions,
-      prepare(label + " Scala API documentation", compiler.doc)
+      prepare(
+        label + " Scala API documentation",
+        (sources, classpath, outputDirectory, options, maxErrors, log) => {
+          compiler.doc(
+            sources map { x =>
+              PlainVirtualFile(x.toPath)
+            },
+            classpath map { x =>
+              PlainVirtualFile(x.toPath)
+            },
+            outputDirectory.toPath,
+            options,
+            maxErrors,
+            log
+          )
+        }
+      )
     )
 
   @deprecated("Going away", "1.1.1")

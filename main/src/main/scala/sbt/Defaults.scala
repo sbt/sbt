@@ -9,6 +9,7 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, URLClassLoader }
+import java.nio.file.{ Path => NioPath, Paths }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 
@@ -32,8 +33,8 @@ import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
-import sbt.internal.inc.classpath.{ ClassLoaderCache, ClasspathFilter }
-import sbt.internal.inc.{ ZincLmUtil, ZincUtil }
+import sbt.internal.inc.classpath.{ ClassLoaderCache, ClasspathFilter, ClasspathUtil }
+import sbt.internal.inc.{ MappedFileConverter, PlainVirtualFile, Stamps, ZincLmUtil, ZincUtil }
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
@@ -73,7 +74,7 @@ import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
-import sbt.nio.{ FileChanges, Watch }
+import sbt.nio.Watch
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
@@ -81,8 +82,6 @@ import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.Converter
-import xsbti.CrossValue
-import xsbti.compile.{ AnalysisContents, IncOptions, IncToolOptionsUtil }
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration.FiniteDuration
@@ -100,7 +99,9 @@ import sbt.internal.inc.{
   MixedAnalyzingCompiler,
   ScalaInstance
 }
+import xsbti.{ CrossValue, VirtualFile, VirtualFileRef }
 import xsbti.compile.{
+  AnalysisContents,
   ClassFileManagerType,
   ClasspathOptionsUtil,
   CompileAnalysis,
@@ -110,6 +111,8 @@ import xsbti.compile.{
   CompilerCache,
   Compilers,
   DefinesClass,
+  IncOptions,
+  IncToolOptionsUtil,
   Inputs,
   MiniSetup,
   PerClasspathEntryLookup,
@@ -173,7 +176,33 @@ object Defaults extends BuildCommon {
       apiMappings := Map.empty,
       autoScalaLibrary :== true,
       managedScalaInstance :== true,
-      classpathEntryDefinesClass :== FileValueCache(Locate.definesClass _).get,
+      classpathEntryDefinesClass := {
+        val converter = fileConverter.value
+        val f = FileValueCache({ x: NioPath =>
+          Locate.definesClass(converter.toVirtualFile(x))
+        }).get;
+        { (x: File) =>
+          f(x.toPath)
+        }
+      },
+      allowMachinePath :== true,
+      rootPaths := {
+        val app = appConfiguration.value
+        val base = app.baseDirectory
+        val boot = app.provider.scalaProvider.launcher.bootDirectory
+        val ih = app.provider.scalaProvider.launcher.ivyHome
+        val coursierCache = csrCacheDirectory.value
+        val javaHome = Paths.get(sys.props("java.home"))
+        Vector(base.toPath, boot.toPath, coursierCache.toPath, ih.toPath, javaHome)
+      },
+      fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
+      fullServerHandlers := {
+        (Vector(LanguageServerProtocol.handler(fileConverter.value))
+          ++ serverHandlers.value
+          ++ Vector(ServerHandler.fallback))
+      },
+      uncachedStamper := Stamps.uncachedStamps(fileConverter.value),
+      reusableStamper := Stamps.timeWrapLibraryStamps(uncachedStamper.value, fileConverter.value),
       traceLevel in run :== 0,
       traceLevel in runMain :== 0,
       traceLevel in bgRun :== 0,
@@ -348,11 +377,7 @@ object Defaults extends BuildCommon {
         else Set()
       },
       serverHandlers :== Nil,
-      fullServerHandlers := {
-        (Vector(LanguageServerProtocol.handler)
-          ++ serverHandlers.value
-          ++ Vector(ServerHandler.fallback))
-      },
+      fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || SysProp.ci,
       // watch related settings
@@ -576,7 +601,7 @@ object Defaults extends BuildCommon {
       val compilers = ZincUtil.compilers(
         instance = scalaInstance.value,
         classpathOptions = classpathOptions.value,
-        javaHome = javaHome.value,
+        javaHome = javaHome.value.map(_.toPath),
         scalac
       )
       val classLoaderCache = state.value.classLoaderCache
@@ -600,9 +625,12 @@ object Defaults extends BuildCommon {
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compileOutputs := {
       import scala.collection.JavaConverters._
+      val c = fileConverter.value
       val classFiles =
         manipulateBytecode.value.analysis.readStamps.getAllProductStamps.keySet.asScala
-      classFiles.toSeq.map(_.toPath) :+ compileAnalysisFileTask.value.toPath
+      (classFiles.toSeq map { x =>
+        c.toPath(x)
+      }) :+ compileAnalysisFileTask.value.toPath
     },
     compileOutputs := compileOutputs.triggeredBy(compile).value,
     clean := (compileOutputs / clean).value,
@@ -620,7 +648,11 @@ object Defaults extends BuildCommon {
         else ""
       s"inc_compile$extra.zip"
     },
+    /*
+    // Comment this out because Zinc now uses farm hash to invalidate the virtual paths.
+    // To use watch to detect initial changes, we need to revalidate using content hash.
     externalHooks := {
+      import sbt.nio.FileChanges
       import sjsonnew.BasicJsonProtocol.mapFormat
       val currentInputs =
         (unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value
@@ -636,6 +668,8 @@ object Defaults extends BuildCommon {
         .getOrElse(FileChanges.noPrevious(currentOutputs.map(_._1)))
       ExternalHooks.default.value(inputChanges, outputChanges, fileTreeView.value)
     },
+     */
+    externalHooks := IncOptions.defaultExternal,
     compileSourceFileInputs := {
       import sjsonnew.BasicJsonProtocol.mapFormat
       compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
@@ -1656,6 +1690,7 @@ object Defaults extends BuildCommon {
           val label = nameForSrc(configuration.value.name)
           val fiOpts = fileInputOptions.value
           val reporter = (compilerReporter in compile).value
+          val converter = fileConverter.value
           (hasScala, hasJava) match {
             case (true, _) =>
               val options = sOpts ++ Opts.doc.externalAPI(xapis)
@@ -1667,9 +1702,14 @@ object Defaults extends BuildCommon {
               val javadoc =
                 sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
               javadoc.run(
-                srcs.toList,
-                cp,
-                out,
+                srcs.toList map { x =>
+                  converter.toVirtualFile(x.toPath)
+                },
+                cp.toList map { x =>
+                  converter.toVirtualFile(x.toPath)
+                },
+                converter,
+                out.toPath,
                 javacOptions.value.toList,
                 IncToolOptionsUtil.defaultIncToolOptions(),
                 s.log,
@@ -1721,8 +1761,8 @@ object Defaults extends BuildCommon {
       val s = streams.value
       val cpFiles = data((classpath in task).value)
       val fullcp = (cpFiles ++ si.allJars).distinct
-      val loader = sbt.internal.inc.classpath.ClasspathUtilities
-        .makeLoader(fullcp, si, IO.createUniqueDirectory((taskTemporaryDirectory in task).value))
+      val tempDir = IO.createUniqueDirectory((taskTemporaryDirectory in task).value).toPath
+      val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
       val compiler =
         (compilers in task).value.scalac match {
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
@@ -1746,11 +1786,12 @@ object Defaults extends BuildCommon {
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
     val useBinary: Boolean = enableBinaryCompileAnalysis.value
+    val c = fileConverter.value
     // TODO - expose bytecode manipulation phase.
     val analysisResult: CompileResult = manipulateBytecode.value
     if (analysisResult.hasModified) {
       val store =
-        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
+        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
     }
@@ -1758,8 +1799,8 @@ object Defaults extends BuildCommon {
     val analysis = analysisResult.analysis
     import scala.collection.JavaConverters._
     analysis.readStamps.getAllProductStamps.asScala.foreach {
-      case (f, s) =>
-        map.put(f.toPath, sbt.nio.FileStamp.LastModified(s.getLastModified.orElse(-1L)))
+      case (f: VirtualFileRef, s) =>
+        map.put(c.toPath(f), sbt.nio.FileStamp.fromZincStamp(s))
     }
     analysis
   }
@@ -1798,45 +1839,63 @@ object Defaults extends BuildCommon {
   private def compileAnalysisFileTask: Def.Initialize[Task[File]] =
     Def.task(streams.value.cacheDirectory / compileAnalysisFilename.value)
   def compileIncSetupTask = Def.task {
+    val converter = fileConverter.value
     val lookup = new PerClasspathEntryLookup {
-      private val cachedAnalysisMap = analysisMap(dependencyClasspath.value)
-      private val cachedPerEntryDefinesClassLookup = Keys.classpathEntryDefinesClass.value
+      private val cachedAnalysisMap: File => Option[CompileAnalysis] =
+        analysisMap(dependencyClasspath.value)
+      private val cachedPerEntryDefinesClassLookup: File => DefinesClass =
+        Keys.classpathEntryDefinesClass.value
 
-      override def analysis(classpathEntry: File): Optional[CompileAnalysis] =
-        cachedAnalysisMap(classpathEntry).toOptional
-      override def definesClass(classpathEntry: File): DefinesClass =
-        cachedPerEntryDefinesClassLookup(classpathEntry)
+      override def analysis(classpathEntry: VirtualFile): Optional[CompileAnalysis] =
+        cachedAnalysisMap(converter.toPath(classpathEntry).toFile).toOptional
+      override def definesClass(classpathEntry: VirtualFile): DefinesClass =
+        cachedPerEntryDefinesClassLookup(converter.toPath(classpathEntry).toFile)
     }
     Setup.of(
       lookup,
       (skip in compile).value,
       // TODO - this is kind of a bad way to grab the cache directory for streams...
-      compileAnalysisFileTask.value,
+      compileAnalysisFileTask.value.toPath,
       compilerCache.value,
       incOptions.value,
       (compilerReporter in compile).value,
-      None.toOptional,
+      // TODO - task / setting for compile progress
+      None.toOptional: Optional[xsbti.compile.CompileProgress],
       // TODO - task / setting for extra,
-      Array.empty
+      Array.empty: Array[xsbti.T2[String, String]],
     )
   }
   def compileInputsSettings: Seq[Setting[_]] = {
     Seq(
-      compileOptions := CompileOptions.of(
-        (classDirectory.value +: data(dependencyClasspath.value)).toArray,
-        sources.value.toArray,
-        classDirectory.value,
-        scalacOptions.value.toArray,
-        javacOptions.value.toArray,
-        maxErrors.value,
-        f1(foldMappers(sourcePositionMappers.value)),
-        compileOrder.value
-      ),
+      compileOptions := {
+        val c = fileConverter.value
+        val cp0 = classDirectory.value +: data(dependencyClasspath.value)
+        val cp = cp0 map { x =>
+          PlainVirtualFile(x.toPath)
+        }
+        val vs = sources.value.toVector map { x =>
+          c.toVirtualFile(x.toPath)
+        }
+        CompileOptions.of(
+          cp.toArray: Array[VirtualFile],
+          vs.toArray,
+          classDirectory.value.toPath,
+          scalacOptions.value.toArray,
+          javacOptions.value.toArray,
+          maxErrors.value,
+          f1(foldMappers(sourcePositionMappers.value)),
+          compileOrder.value,
+          None.toOptional: Optional[NioPath],
+          Some(fileConverter.value).toOptional,
+          Some(reusableStamper.value).toOptional
+        )
+      },
       compilerReporter := {
         new LanguageServerReporter(
           maxErrors.value,
           streams.value.log,
-          foldMappers(sourcePositionMappers.value)
+          foldMappers(sourcePositionMappers.value),
+          fileConverter.value
         )
       },
       compileInputs := {
@@ -1867,7 +1926,7 @@ object Defaults extends BuildCommon {
     previousCompile := {
       val setup = compileIncSetup.value
       val useBinary: Boolean = enableBinaryCompileAnalysis.value
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile, !useBinary)
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
       store.get().toOption match {
         case Some(contents) =>
           val analysis = Option(contents.getAnalysis).toOptional
@@ -2112,7 +2171,7 @@ object Classpaths {
       dependencyClasspathFiles := data(dependencyClasspath.value).map(_.toPath),
       dependencyClasspathFiles / outputFileStamps := {
         val cache = managedFileStampCache.value
-        val stamper = outputFileStamper.value
+        val stamper = (managedSourcePaths / outputFileStamper).value
         dependencyClasspathFiles.value.flatMap(p => cache.getOrElseUpdate(p, stamper).map(p -> _))
       }
     )
@@ -3573,10 +3632,10 @@ object Classpaths {
       internalPluginClasspath: Seq[File],
       isDotty: Boolean
   ): Seq[String] = {
+    import sbt.internal.inc.classpath.ClasspathUtil.compilerPlugins
     val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
-    val plugins =
-      sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath, isDotty)
-    plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
+    val plugins = compilerPlugins(pluginClasspath.map(_.toPath), isDotty)
+    plugins.map("-Xplugin:" + _.toAbsolutePath.toString).toSeq
   }
 
   private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =

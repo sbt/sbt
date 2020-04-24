@@ -8,6 +8,7 @@
 package sbt
 
 import java.lang.reflect.InvocationTargetException
+import java.nio.file.Path
 import java.io.File
 
 import sbt.io._, syntax._
@@ -16,7 +17,7 @@ import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
 import xsbti.AppConfiguration
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ IvyConfiguration, IvyDependencyResolution }
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtil
 import BasicCommandStrings._, BasicKeys._
 
 private[sbt] object TemplateCommandUtil {
@@ -106,7 +107,7 @@ private[sbt] object TemplateCommandUtil {
       log: Logger
   ): ClassLoader = {
     val cp = classpathForInfo(info, ivyConf, globalBase, scalaModuleInfo, log)
-    ClasspathUtilities.toLoader(cp, config.provider.loader)
+    ClasspathUtil.toLoader(cp, config.provider.loader)
   }
 
   private def call(
@@ -134,13 +135,13 @@ private[sbt] object TemplateCommandUtil {
       globalBase: File,
       scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
-  ): List[File] = {
+  ): List[Path] = {
     val lm = IvyDependencyResolution(ivyConf)
     val templatesBaseDirectory = new File(globalBase, "templates")
     val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
     val templateDirectory = new File(templatesBaseDirectory, templateId)
     def jars = (templateDirectory ** -DirectoryFilter).get
-    if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList
+    if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList.map(_.toPath)
     else {
       IO.createDirectory(templateDirectory)
       val m = lm.wrapDependencyInModule(info.module, scalaModuleInfo)
@@ -148,7 +149,7 @@ private[sbt] object TemplateCommandUtil {
         case Left(_)      => sys.error(s"Retrieval of ${info.module} failed.")
         case Right(files) => files.toList
       }
-      xs
+      xs.map(_.toPath)
     }
   }
 }

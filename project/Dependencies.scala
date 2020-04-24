@@ -14,7 +14,7 @@ object Dependencies {
   private val ioVersion = nightlyVersion.getOrElse("1.4.0-M2")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.3.0")
-  val zincVersion = nightlyVersion.getOrElse("1.3.1")
+  val zincVersion = nightlyVersion.getOrElse("1.4.0-M3")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -68,13 +68,13 @@ object Dependencies {
   def addSbtLmIvy = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy)
   def addSbtLmIvyTest = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy, Some(Test))
 
-  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterface212", compilerInterface)
-  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspath212", compilerClasspath)
-  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfo212", compilerApiInfo)
-  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridge212", compilerBridge)
-  def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
-  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
-  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
+  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterfaceJVM", compilerInterface)
+  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspathJVM2_12", compilerClasspath)
+  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfoJVM2_12", compilerApiInfo)
+  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridgeJVM2_12", compilerBridge)
+  def addSbtZinc = addSbtModule(sbtZincPath, "zincJVM2_12", zinc)
+  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompileJVM2_12", zincCompile)
+  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCoreJVM2_12", zincCompileCore)
 
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.0-RC6-2"
 

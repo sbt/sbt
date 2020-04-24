@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.File
-import sbt.internal.inc.AnalyzingCompiler
+import sbt.internal.inc.{ AnalyzingCompiler, PlainVirtualFile }
 import sbt.internal.util.JLine
 import sbt.util.Logger
 import xsbti.compile.{ Inputs, Compilers }
@@ -45,7 +45,12 @@ final class Console(compiler: AnalyzingCompiler) {
       cleanupCommands: String
   )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
     def console0() =
-      compiler.console(classpath, options, initialCommands, cleanupCommands, log)(loader, bindings)
+      compiler.console(classpath map { x =>
+        PlainVirtualFile(x.toPath)
+      }, options, initialCommands, cleanupCommands, log)(
+        loader,
+        bindings
+      )
     JLine.usingTerminal { t =>
       t.init
       Run.executeTrapExit(console0, log)

@@ -12,7 +12,7 @@ package server
 import java.io.File
 import sbt.internal.inc.ManagedLoggedReporter
 import sbt.internal.util.ManagedLogger
-import xsbti.{ Problem, Position => XPosition, Severity }
+import xsbti.{ FileConverter, Problem, Position => XPosition, Severity }
 import xsbti.compile.CompileAnalysis
 import sbt.internal.langserver.{
   PublishDiagnosticsParams,
@@ -24,7 +24,6 @@ import sbt.internal.langserver.{
 import sbt.internal.inc.JavaInterfaceUtil._
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-import sbt.io.IO
 
 /**
  * Defines a compiler reporter that uses event logging provided by a `ManagedLogger`.
@@ -36,7 +35,8 @@ import sbt.io.IO
 class LanguageServerReporter(
     maximumErrors: Int,
     logger: ManagedLogger,
-    sourcePositionMapper: XPosition => XPosition = identity[XPosition]
+    sourcePositionMapper: XPosition => XPosition = identity[XPosition],
+    converter: FileConverter
 ) extends ManagedLoggedReporter(maximumErrors, logger, sourcePositionMapper) {
   lazy val exchange = StandardMain.exchange
 
@@ -83,7 +83,8 @@ class LanguageServerReporter(
     import sbt.internal.langserver.codec.JsonProtocol._
     val files = analysis.readSourceInfos.getAllSourceInfos.keySet.asScala
     files foreach { f =>
-      val params = PublishDiagnosticsParams(IO.toURI(f).toString, Vector())
+      val p = converter.toPath(f)
+      val params = PublishDiagnosticsParams(p.toUri.toString, Vector())
       exchange.notifyEvent("textDocument/publishDiagnostics", params)
     }
   }
@@ -95,7 +96,7 @@ class LanguageServerReporter(
       problemsByFile.get(sourceFile) match {
         case Some(xs: mutable.ListBuffer[Problem]) =>
           val ds = toDiagnostics(xs)
-          val params = PublishDiagnosticsParams(IO.toURI(sourceFile).toString, ds)
+          val params = PublishDiagnosticsParams(sbt.io.IO.toURI(sourceFile).toString, ds)
           exchange.notifyEvent("textDocument/publishDiagnostics", params)
         case _ =>
       }

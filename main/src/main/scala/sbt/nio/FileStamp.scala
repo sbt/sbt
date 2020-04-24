@@ -78,17 +78,22 @@ object FileStamp {
       case e: IOException => Some(Error(e))
     }
   private[sbt] def hash(string: String): Hash =
-    new FileHashImpl(sbt.internal.inc.Hash.unsafeFromString(string))
-  private[sbt] def hash(path: Path): Option[Hash] = Stamper.forHash(path.toFile) match {
+    new FileHashImpl(try {
+      sbt.internal.inc.Stamp.fromString(string)
+    } catch {
+      case _: Throwable => EmptyStamp
+    })
+  private[sbt] def hash(path: Path): Option[Hash] = Stamper.forFarmHashP(path) match {
     case EmptyStamp => None
     case s          => Some(new FileHashImpl(s))
   }
+  private[sbt] def fromZincStamp(stamp: XStamp): Hash = new FileHashImpl(stamp)
   private[sbt] def lastModified(path: Path): Option[LastModified] =
     IO.getModifiedTimeOrZero(path.toFile) match {
       case 0 => None
       case l => Some(LastModified(l))
     }
-  private[this] class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.getHash.orElse(""))
+  private[this] class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.toString)
   private[sbt] sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
   private[sbt] final case class LastModified private[sbt] (time: Long) extends FileStamp
   private[sbt] final case class Error(exception: IOException) extends FileStamp
