@@ -1,5 +1,8 @@
 > + clean
 
+## verbose
+> + -v compile
+
 ## test scoped task
 ## this should not force any Scala version changes to other subprojects
 > + baz/check
