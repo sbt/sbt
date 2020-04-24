@@ -16,12 +16,13 @@
 
 ## test + with command or alias
 > clean
-## for command cross building you do need crossScalaVerions on root
-> set root/crossScalaVersions := Seq("2.12.11", "2.13.1")
-> + build
-$ exists foo/target/scala-2.12
-$ exists foo/target/scala-2.13
-$ exists bar/target/scala-2.12
-$ exists bar/target/scala-2.13
-$ exists client/target/scala-2.12
-$ exists client/target/scala-2.13
+# for command cross building you do need crossScalaVerions on root
+# comment this out because scripted doesn't handle quotes?
+# > set root/crossScalaVersions := Seq("2.12.11", "2.13.1")
+#> + build
+#$ exists foo/target/scala-2.12
+#$ exists foo/target/scala-2.13
+#$ exists bar/target/scala-2.12
+#$ exists bar/target/scala-2.13
+#$ exists client/target/scala-2.12
+#$ exists client/target/scala-2.13
