@@ -203,7 +203,7 @@ object Cross {
               case Seq(c) => Seq(s"$SwitchCommand $verbose $v $c")
               case Seq()  => Nil // should be unreachable
               case multi if fullArgs.isEmpty =>
-                Seq(s"$SwitchCommand $verbose $v! all ${multi.mkString(" ")}")
+                Seq(s"$SwitchCommand $verbose $v all ${multi.mkString(" ")}")
               case multi => Seq(s"$SwitchCommand $verbose $v") ++ multi
             }
         }
@@ -247,15 +247,18 @@ object Cross {
       if (args.version.force) {
         // The Scala version was forced on the whole build, run as is
         args.command
-      } else {
+      } else
         args.command.map { rawCmd =>
-          val (aggs, aggCommand) = parseSlashCommand(Project.extract(state))(rawCmd)
-          aggs
-            .intersect(affectedRefs)
-            .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
-            .mkString("all ", " ", "")
+          // for now, treat `all` command specially
+          if (rawCmd.startsWith("all ")) rawCmd
+          else {
+            val (aggs, aggCommand) = parseSlashCommand(Project.extract(state))(rawCmd)
+            aggs
+              .intersect(affectedRefs)
+              .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
+              .mkString("all ", " ", "")
+          }
         }
-      }
 
     strictCmd.toList ::: switchedState
   }
