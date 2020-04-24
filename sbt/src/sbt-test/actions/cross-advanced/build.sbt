@@ -1,3 +1,4 @@
+lazy val check = taskKey[Unit]("")
 lazy val compile2 = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
@@ -11,6 +12,13 @@ lazy val foo = project
   .settings(
     crossScalaVersions := Seq("2.12.11", "2.13.1"),
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0",
+
+    check := {
+      // This tests that +check will respect bar's crossScalaVersions and not switch
+      val x = (LocalProject("bar") / scalaVersion).value
+      assert(x == "2.12.11", s"$x == 2.12.11")
+      (Compile / compile).value
+    },
     compile2 := {
       // This tests that +build will ignore bar's crossScalaVersions and use root's like sbt 0.13
       val x = (LocalProject("bar") / scalaVersion).value
@@ -22,11 +30,13 @@ lazy val foo = project
 lazy val bar = project
   .settings(
     crossScalaVersions := Seq("2.12.11"),
+    check := (Compile / compile).value,
     compile2 := (Compile / compile).value,
   )
 
 lazy val client = project
   .settings(
     crossScalaVersions := Seq("2.12.11", "2.13.1"),
+    check := (Compile / compile).value,
     compile2 := (Compile / compile).value,
   )
