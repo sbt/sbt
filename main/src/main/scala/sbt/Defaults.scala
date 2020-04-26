@@ -3410,11 +3410,10 @@ object Classpaths {
     val s = streams.value
     val cacheDirectory = crossTarget.value / cacheLabel / updateCacheName.value
 
-    import CacheStoreFactory.jvalueIsoString
     val cacheStoreFactory: CacheStoreFactory = {
       val factory =
         state.value.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
-      factory(cacheDirectory.toPath, Converter)
+      factory(cacheDirectory.toPath)
     }
 
     val isRoot = executionRoots.value contains resolvedScoped.value

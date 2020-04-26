@@ -12,10 +12,7 @@ import sbt.io.syntax._
 
 import CacheImplicits._
 
-import sjsonnew.{ Builder, deserializationError, IsoString, JsonFormat, Unbuilder }
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
-
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
+import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
 import org.scalatest.FlatSpec
 
 class SingletonCacheSpec extends FlatSpec {
@@ -48,9 +45,6 @@ class SingletonCacheSpec extends FlatSpec {
         }
       }
   }
-
-  implicit val isoString: IsoString[JValue] =
-    IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   "A singleton cache" should "throw an exception if read without being written previously" in {
     testCache[Int] {
@@ -95,7 +89,7 @@ class SingletonCacheSpec extends FlatSpec {
       implicit cache: SingletonCache[T]
   ): Unit =
     IO.withTemporaryDirectory { tmp =>
-      val store = new FileBasedStore(tmp / "cache-store", Converter)
+      val store = new FileBasedStore(tmp / "cache-store")
       f(cache, store)
     }
 
