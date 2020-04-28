@@ -10,12 +10,14 @@ package internal
 package server
 
 import java.net.URI
+
 import sbt.internal.bsp._
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.{ Configuration, Configurations }
 import Configurations.{ Compile, Test }
 import sbt.SlashSyntax0._
 import sbt.BuildSyntax._
+
 import scala.collection.mutable
 import sjsonnew.support.scalajson.unsafe.Converter
 import Def._
@@ -44,6 +46,17 @@ object BuildServerProtocol {
       }
     }).evaluated,
     bspBuildTargetSources / aggregate := false,
+    bspBuildTargetCompile := Def.inputTaskDyn {
+      val s: State = state.value
+      val args: Seq[String] = spaceDelimited().parsed
+      val filter = toScopeFilter(args)
+      Def.task {
+        import sbt.internal.bsp.codec.JsonProtocol._
+        val statusCode = Keys.bspBuildTargetCompileItem.all(filter).value.max
+        s.respondEvent(BspCompileResult(None, statusCode))
+      }
+    }.evaluated,
+    bspBuildTargetCompile / aggregate := false,
     bspBuildTargetScalacOptions := (Def.inputTaskDyn {
       import DefaultParsers._
       val s = state.value
@@ -57,16 +70,17 @@ object BuildServerProtocol {
         s.respondEvent(result)
       }
     }).evaluated,
-    bspBuildTargetScalacOptions / aggregate := false,
+    bspBuildTargetScalacOptions / aggregate := false
   )
 
-  // This will be coped to Compile, Test, etc
+  // This will be scoped to Compile, Test, etc
   lazy val configSettings: Seq[Def.Setting[_]] = Seq(
     buildTargetIdentifier := {
       val ref = thisProjectRef.value
       val c = configuration.value
       toId(ref, c)
     },
+    bspBuildTarget := bspBuildTargetSetting.value,
     bspBuildTargetSourcesItem := {
       val id = buildTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
@@ -79,14 +93,69 @@ object BuildServerProtocol {
         })
       SourcesItem(id, items)
     },
+    bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetScalacOptionsItem :=
       ScalacOptionsItem(
         target = buildTargetIdentifier.value,
         options = scalacOptions.value.toVector,
         classpath = fullClasspath.value.toVector.map(_.data.toURI),
         classDirectory = classDirectory.value.toURI
-      ),
+      )
   )
+
+  private def bspBuildTargetSetting: Def.Initialize[BuildTarget] = Def.settingDyn {
+    import sbt.internal.bsp.codec.JsonProtocol._
+    val buildTargetIdentifier = Keys.buildTargetIdentifier.value
+    val thisProject = Keys.thisProject.value
+    val thisProjectRef = Keys.thisProjectRef.value
+    val compileData = ScalaBuildTarget(
+      scalaOrganization = scalaOrganization.value,
+      scalaVersion = scalaVersion.value,
+      scalaBinaryVersion = scalaBinaryVersion.value,
+      platform = ScalaPlatform.JVM,
+      jars = Vector("scala-library")
+    )
+    val configuration = Keys.configuration.value
+    val displayName = configuration.name match {
+      case "compile"  => thisProject.id
+      case configName => s"${thisProject.id} $configName"
+    }
+    val baseDirectory = Keys.baseDirectory.value.toURI
+    val internalDependencies = configuration.name match {
+      case "test" =>
+        thisProject.dependencies :+
+          ResolvedClasspathDependency(thisProjectRef, Some("test->compile"))
+      case _ => thisProject.dependencies
+    }
+    val dependencies = Initialize.join {
+      for {
+        dependencyRef <- internalDependencies
+        dependencyId <- dependencyTargetKeys(dependencyRef, configuration)
+      } yield dependencyId
+    }
+    Def.setting {
+      BuildTarget(
+        buildTargetIdentifier,
+        Some(displayName),
+        Some(baseDirectory),
+        tags = Vector.empty,
+        languageIds = Vector("scala"),
+        dependencies = dependencies.value.toVector,
+        dataKind = Some("scala"),
+        data = Some(Converter.toJsonUnsafe(compileData)),
+      )
+    }
+  }
+
+  private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
+    import sbt.Project._
+    Keys.compile.result.value match {
+      case Value(_) => StatusCode.Success
+      case Inc(_)   =>
+        // Cancellation is not yet implemented
+        StatusCode.Error
+    }
+  }
 
   def toScopeFilter(args: Seq[String]): ScopeFilter = {
     val filters = args map { arg =>
@@ -103,12 +172,28 @@ object BuildServerProtocol {
         BuildTargetIdentifier(new URI(s"$build#$project/${config.id}"))
       case _ => sys.error(s"unexpected $ref")
     }
+
+  private def dependencyTargetKeys(
+      ref: ClasspathDep[ProjectRef],
+      fromConfig: Configuration
+  ): Seq[SettingKey[BuildTargetIdentifier]] = {
+    val from = fromConfig.name
+    val depConfig = ref.configuration.getOrElse("compile")
+    for {
+      configExpr <- depConfig.split(",").toSeq
+      depId <- configExpr.split("->").toList match {
+        case "compile" :: Nil | `from` :: "compile" :: Nil =>
+          Some(ref.project / Compile / Keys.buildTargetIdentifier)
+        case "test" :: Nil | `from` :: "test" :: Nil =>
+          Some(ref.project / Test / Keys.buildTargetIdentifier)
+        case _ => None
+      }
+    } yield depId
+  }
 }
 
 // This is mixed into NetworkChannel
 trait BuildServerImpl { self: LanguageServerProtocol with NetworkChannel =>
-  import BuildServerProtocol._
-
   protected def structure: BuildStructure
   protected def getSetting[A](key: SettingKey[A]): Option[A]
   protected def setting[A](key: SettingKey[A]): A
@@ -129,83 +214,18 @@ trait BuildServerImpl { self: LanguageServerProtocol with NetworkChannel =>
    */
   protected def onBspBuildTargets(execId: Option[String]): Unit = {
     import sbt.internal.bsp.codec.JsonProtocol._
-    val targets = buildTargets
-    respondResult(targets, execId)
-  }
-
-  def buildTargets: WorkspaceBuildTargetsResult = {
-    import sbt.internal.bsp.codec.JsonProtocol._
-    val allProjectPairs = structure.allProjectPairs
-    val ts = allProjectPairs flatMap {
-      case (p, ref) =>
-        val baseOpt = getSetting(ref / Keys.baseDirectory).map(_.toURI)
-        val internalCompileDeps = p.dependencies.flatMap(idForConfig(_, Compile)).toVector
-        val compileId = getSetting(ref / Compile / Keys.buildTargetIdentifier).get
-        idMap(compileId) = (ref, Compile)
-        val compileData = ScalaBuildTarget(
-          scalaOrganization = getSetting(ref / Compile / Keys.scalaOrganization).get,
-          scalaVersion = getSetting(ref / Compile / Keys.scalaVersion).get,
-          scalaBinaryVersion = getSetting(ref / Compile / Keys.scalaBinaryVersion).get,
-          platform = ScalaPlatform.JVM,
-          jars = Vector("scala-library")
-        )
-        val t0 = BuildTarget(
-          compileId,
-          displayName = Some(p.id),
-          baseDirectory = baseOpt,
-          tags = Vector.empty,
-          languageIds = Vector("scala"),
-          dependencies = internalCompileDeps,
-          dataKind = Some("scala"),
-          data = Some(Converter.toJsonUnsafe(compileData)),
-        )
-        val testId = getSetting(ref / Test / Keys.buildTargetIdentifier).get
-        idMap(testId) = (ref, Test)
-        // encode Test extending Compile
-        val internalTestDeps =
-          (p.dependencies ++ Seq(ResolvedClasspathDependency(ref, Some("test->compile"))))
-            .flatMap(idForConfig(_, Test))
-            .toVector
-        val testData = ScalaBuildTarget(
-          scalaOrganization = getSetting(ref / Test / Keys.scalaOrganization).get,
-          scalaVersion = getSetting(ref / Test / Keys.scalaVersion).get,
-          scalaBinaryVersion = getSetting(ref / Test / Keys.scalaBinaryVersion).get,
-          platform = ScalaPlatform.JVM,
-          jars = Vector("scala-library")
-        )
-        val t1 = BuildTarget(
-          testId,
-          displayName = Some(p.id + " test"),
-          baseDirectory = baseOpt,
-          tags = Vector.empty,
-          languageIds = Vector("scala"),
-          dependencies = internalTestDeps,
-          dataKind = Some("scala"),
-          data = Some(Converter.toJsonUnsafe(testData)),
-        )
-        Seq(t0, t1)
+    val buildTargets = structure.allProjectRefs.flatMap { ref =>
+      val compileTarget = getSetting(ref / Compile / Keys.bspBuildTarget).get
+      val testTarget = getSetting(ref / Test / Keys.bspBuildTarget).get
+      BuildServerProtocol.idMap ++= Seq(
+        compileTarget.id -> ((ref, Compile)),
+        testTarget.id -> ((ref, Test))
+      )
+      Seq(compileTarget, testTarget)
     }
-    WorkspaceBuildTargetsResult(ts.toVector)
-  }
-
-  def idForConfig(
-      ref: ClasspathDep[ProjectRef],
-      from: Configuration
-  ): Seq[BuildTargetIdentifier] = {
-    val configStr = ref.configuration.getOrElse("compile")
-    val configExprs0 = configStr.split(",").toList
-    val configExprs1 = configExprs0 map { expr =>
-      if (expr.contains("->")) {
-        val xs = expr.split("->")
-        (xs(0), xs(1))
-      } else ("compile", expr)
-    }
-    configExprs1 flatMap {
-      case (fr, "compile") if fr == from.name =>
-        Some(getSetting(ref.project / Compile / Keys.buildTargetIdentifier).get)
-      case (fr, "test") if fr == from.name =>
-        Some(getSetting(ref.project / Test / Keys.buildTargetIdentifier).get)
-      case _ => None
-    }
+    respondResult(
+      WorkspaceBuildTargetsResult(buildTargets.toVector),
+      execId
+    )
   }
 }

@@ -55,24 +55,6 @@ private[sbt] object LanguageServerProtocol {
               )
 
             {
-              case r: JsonRpcRequestMessage if r.method == "initialize" =>
-                if (authOptions(ServerAuthentication.Token)) {
-                  val param = Converter.fromJson[InitializeParams](json(r)).get
-                  val optionJson = param.initializationOptions.getOrElse(
-                    throw LangServerError(
-                      ErrorCodes.InvalidParams,
-                      "initializationOptions is expected on 'initialize' param."
-                    )
-                  )
-                  val opt = Converter.fromJson[InitializeOption](optionJson).get
-                  val token = opt.token.getOrElse(sys.error("'token' is missing."))
-                  if (authenticate(token)) ()
-                  else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
-                } else ()
-                setInitialized(true)
-                appendExec(Exec(s"collectAnalyses", None, Some(CommandSource(name))))
-                jsonRpcRespond(InitializeResult(serverCapabilities), Option(r.id))
-
               case r: JsonRpcRequestMessage if r.method == "textDocument/definition" =>
                 implicit val executionContext: ExecutionContext = StandardMain.executionContext
                 Definition.lspDefinition(json(r), r.id, CommandSource(name), converter, log)
@@ -94,7 +76,6 @@ private[sbt] object LanguageServerProtocol {
                 val param = Converter.fromJson[CP](json(r)).get
                 onCompletionRequest(Option(r.id), param)
               case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
-                import sbt.protocol.codec.JsonProtocol._
                 val param = Converter.fromJson[InitializeBuildParams](json(r)).get
                 onBspInitialize(Option(r.id), param)
               case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
@@ -112,6 +93,19 @@ private[sbt] object LanguageServerProtocol {
                     s"""${Keys.bspBuildTargetSources.key} ${param.targets
                       .map(_.uri)
                       .mkString(" ")}""",
+                    Option(r.id),
+                    Some(CommandSource(name))
+                  )
+                )
+                ()
+              case r if r.method == "buildTarget/compile" =>
+                val param = Converter.fromJson[CompileParams](json(r)).get
+                log.info(param.toString)
+                val targetsUris = param.targets.map(_.uri).mkString(" ")
+                val key = Keys.bspBuildTargetCompile.key.toString
+                appendExec(
+                  Exec(
+                    s"$key $targetsUris",
                     Option(r.id),
                     Some(CommandSource(name))
                   )

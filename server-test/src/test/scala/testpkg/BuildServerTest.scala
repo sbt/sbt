@@ -46,16 +46,30 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("buildTarget/compile") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "13", "method": "buildTarget/compile", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains """"id":"13"""") &&
+      (s contains """"statusCode":1""")
+    })
+  }
+
   test("buildTarget/scalacOptions") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "13", "method": "buildTarget/scalacOptions", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "14", "method": "buildTarget/scalacOptions", "params": {
         |  "targets": [{ "uri": "$x" }]
         |} }""".stripMargin
     )
     assert(svr.waitForString(10.seconds) { s =>
       println(s)
-      (s contains """"id":"13"""") &&
+      (s contains """"id":"14"""") &&
       (s contains "scala-library-2.13.1.jar")
     })
   }

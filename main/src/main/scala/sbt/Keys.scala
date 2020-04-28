@@ -339,8 +339,11 @@ object Keys {
   val closeClassLoaders = settingKey[Boolean]("Close classloaders in run and test when the task completes.").withRank(DSetting)
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
   val buildTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
+  val bspBuildTarget = settingKey[BuildTarget]("Description of the BSP build target").withRank(DSetting)
   val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetSourcesItem = taskKey[SourcesItem]("").withRank(DTask)
+  val bspBuildTargetCompile = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetCompileItem = taskKey[Int]("").withRank(DTask)
   val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
 

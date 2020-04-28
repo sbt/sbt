@@ -8,6 +8,7 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.BuildTargetIdentifierFormats
   with sbt.internal.util.codec.JValueFormats
   with sbt.internal.bsp.codec.BuildTargetFormats
+  with sbt.internal.bsp.codec.TaskIdFormats
   with sbt.internal.bsp.codec.BuildClientCapabilitiesFormats
   with sbt.internal.bsp.codec.InitializeBuildParamsFormats
   with sbt.internal.bsp.codec.InitializeBuildResultFormats
@@ -16,6 +17,10 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.SourceItemFormats
   with sbt.internal.bsp.codec.SourcesItemFormats
   with sbt.internal.bsp.codec.SourcesResultFormats
+  with sbt.internal.bsp.codec.TaskStartParamsFormats
+  with sbt.internal.bsp.codec.TaskFinishParamsFormats
+  with sbt.internal.bsp.codec.CompileParamsFormats
+  with sbt.internal.bsp.codec.BspCompileResultFormats
   with sbt.internal.bsp.codec.ScalaBuildTargetFormats
   with sbt.internal.bsp.codec.SbtBuildTargetFormats
   with sbt.internal.bsp.codec.ScalacOptionsParamsFormats
