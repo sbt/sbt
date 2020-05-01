@@ -776,11 +776,11 @@ object BuiltinCommands {
 
     result.toChar match {
       case '\n' | '\r' => retry
-      case 'r'         => retry
-      case 'q'         => s.exit(ok = false)
-      case 'i'         => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
-      case 'l'         => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-      case _           => println("Invalid response."); doLoadFailed(s, loadArg)
+      case 'r' | 'R'   => retry
+      case 'q' | 'Q'   => s.exit(ok = false)
+      case 'i' | 'I'   => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+      case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+      case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
     }
   }
 
