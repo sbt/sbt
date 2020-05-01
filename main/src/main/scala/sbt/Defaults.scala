@@ -179,7 +179,8 @@ object Defaults extends BuildCommon {
       classpathEntryDefinesClass := {
         val converter = fileConverter.value
         val f = FileValueCache({ x: NioPath =>
-          Locate.definesClass(converter.toVirtualFile(x))
+          if (x.getFileName.toString != "rt.jar") Locate.definesClass(converter.toVirtualFile(x))
+          else ((_: String) => false): DefinesClass
         }).get;
         { (x: File) =>
           f(x.toPath)
