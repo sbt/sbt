@@ -701,27 +701,6 @@ object Defaults extends BuildCommon {
     compileAnalysisFile := {
       compileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
-    /*
-    // Comment this out because Zinc now uses farm hash to invalidate the virtual paths.
-    // To use watch to detect initial changes, we need to revalidate using content hash.
-    externalHooks := {
-      import sbt.nio.FileChanges
-      import sjsonnew.BasicJsonProtocol.mapFormat
-      val currentInputs =
-        (unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value
-      val sv = scalaVersion.value
-      val previousInputs = compileSourceFileInputs.previous.flatMap(_.get(sv))
-      val inputChanges = previousInputs
-        .map(sbt.nio.Settings.changedFiles(_, currentInputs))
-        .getOrElse(FileChanges.noPrevious(currentInputs.map(_._1)))
-      val currentOutputs = (dependencyClasspathFiles / outputFileStamps).value
-      val previousOutputs = compileBinaryFileInputs.previous.flatMap(_.get(sv))
-      val outputChanges = previousOutputs
-        .map(sbt.nio.Settings.changedFiles(_, currentOutputs))
-        .getOrElse(FileChanges.noPrevious(currentOutputs.map(_._1)))
-      ExternalHooks.default.value(inputChanges, outputChanges, fileTreeView.value)
-    },
-     */
     externalHooks := IncOptions.defaultExternal,
     incOptions := {
       val old = incOptions.value
