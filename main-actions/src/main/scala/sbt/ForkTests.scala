@@ -28,7 +28,7 @@ private[sbt] object ForkTests {
       classpath: Seq[File],
       fork: ForkOptions,
       log: Logger,
-      tag: Tag
+      tags: (Tag, Int)*
   ): Task[TestOutput] = {
     val opts = processOptions(config, tests, log)
 
@@ -41,7 +41,7 @@ private[sbt] object ForkTests {
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
         mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
-    main.tag(tag).dependsOn(all(opts.setup): _*) flatMap { results =>
+    main.tagw(tags: _*).dependsOn(all(opts.setup): _*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
   }

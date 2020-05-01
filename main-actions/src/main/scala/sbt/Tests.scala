@@ -133,7 +133,12 @@ object Tests {
   final case class SubProcess(config: ForkOptions) extends TestRunPolicy
 
   /** A named group of tests configured to run in the same JVM or be forked. */
-  final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
+  final case class Group(
+      name: String,
+      tests: Seq[TestDefinition],
+      runPolicy: TestRunPolicy,
+      tags: Seq[(Tag, Int)] = Seq.empty
+  )
 
   private[sbt] final class ProcessedOptions(
       val tests: Vector[TestDefinition],

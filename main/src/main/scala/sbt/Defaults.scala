@@ -1208,7 +1208,7 @@ object Defaults extends BuildCommon {
   ): Initialize[Task[Tests.Output]] = {
     val runners = createTestRunners(frameworks, loader, config)
     val groupTasks = groups map {
-      case Tests.Group(_, tests, runPolicy) =>
+      case Tests.Group(_, tests, runPolicy, tags) =>
         runPolicy match {
           case Tests.SubProcess(opts) =>
             s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
@@ -1221,7 +1221,7 @@ object Defaults extends BuildCommon {
               cp.files,
               opts,
               s.log,
-              Tags.ForkedTestGroup
+              (Tags.ForkedTestGroup, 1) +: tags: _*
             )
           case Tests.InProcess =>
             if (javaOptions.nonEmpty) {
