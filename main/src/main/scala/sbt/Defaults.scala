@@ -1516,7 +1516,7 @@ object Defaults extends BuildCommon {
     classes match {
       case multiple if multiple.size > 1 && logWarning =>
         val msg =
-          "Multiple main classes detected. Run 'show discoveredMainClasses' to see the list."
+          "multiple main classes detected: run 'show discoveredMainClasses' to see the list"
         logger.warn(msg)
       case _ =>
     }
