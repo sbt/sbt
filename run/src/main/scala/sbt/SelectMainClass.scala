@@ -25,7 +25,7 @@ object SelectMainClass {
           val classes = multiple.zipWithIndex
             .map { case (className, index) => s" [${index + 1}] $className" }
             .mkString("\n")
-          println(ConsoleAppender.clearScreen(0) + header + classes)
+          println(ConsoleAppender.ClearScreenAfterCursor + header + classes)
 
           val line = trim(prompt("\nEnter number: "))
           toInt(line, multiple.length) map multiple.apply

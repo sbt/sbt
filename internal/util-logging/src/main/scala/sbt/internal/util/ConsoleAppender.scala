@@ -113,6 +113,7 @@ object ConsoleAppender {
   private[sbt] def clearScreen(n: Int): String = s"\u001B[${n}J"
   private[sbt] def clearLine(n: Int): String = s"\u001B[${n}K"
   private[sbt] final val DeleteLine = "\u001B[2K"
+  private[sbt] final val ClearScreenAfterCursor = clearScreen(0)
   private[sbt] final val CursorLeft1000 = cursorLeft(1000)
   private[sbt] final val CursorDown1 = cursorDown(1)
   private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
@@ -558,7 +559,7 @@ private[sbt] object ProgressState {
     case state =>
       if (state.progressLines.get.nonEmpty) {
         val lines = printProgress(0, 0)
-        printStream.print(ConsoleAppender.clearScreen(0) + "\n" + lines)
+        printStream.print(ClearScreenAfterCursor + "\n" + lines)
       } else printStream.write('\n')
   }
 
@@ -603,7 +604,7 @@ private[sbt] object ProgressState {
         val left = cursorLeft(1000) // resets the position to the left
         val offset = width > 0
         val pad = math.max(state.padding.get - height, 0)
-        val start = clearScreen(0) + (if (offset) "\n" else "")
+        val start = ClearScreenAfterCursor + (if (offset) "\n" else "")
         val totalSize = currentLength + state.blankZone + pad
         val blank = left + s"\n$DeleteLine" * (totalSize - currentLength)
         val lines = previousLines.mkString(DeleteLine, s"\n$DeleteLine", s"\n$DeleteLine")
@@ -612,7 +613,7 @@ private[sbt] object ProgressState {
         val resetCursor = resetCursorUp + resetCursorRight
         start + blank + lines + resetCursor
       } else {
-        clearScreen(0)
+        ClearScreenAfterCursor
       }
   }
 

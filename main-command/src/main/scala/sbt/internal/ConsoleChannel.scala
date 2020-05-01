@@ -23,7 +23,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
     case Some(pf) => pf(s)
     case None =>
       def ansi(s: String): String = if (ConsoleAppender.formatEnabledInEnv) s"$s" else ""
-      s"${ansi(ConsoleAppender.DeleteLine)}> ${ansi(ConsoleAppender.clearScreen(0))}"
+      s"${ansi(ConsoleAppender.DeleteLine)}> ${ansi(ConsoleAppender.ClearScreenAfterCursor)}"
   }
   private[this] class AskUserThread(s: State) extends Thread("ask-user-thread") {
     private val history = s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
@@ -52,7 +52,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
     def redraw(): Unit = {
       System.out.print(ConsoleAppender.clearLine(0))
       reader.redraw()
-      System.out.print(ConsoleAppender.clearScreen(0))
+      System.out.print(ConsoleAppender.ClearScreenAfterCursor)
       System.out.flush()
     }
   }
