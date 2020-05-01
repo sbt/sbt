@@ -889,7 +889,7 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.internal.Inspect.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.ProjectIndex.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.BuildIndex.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.server.LanguageServerReporter.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.server.BuildServerReporter.*"),
       exclude[VirtualStaticMemberProblem]("sbt.internal.server.LanguageServerProtocol.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.librarymanagement.IvyXml.*"),
       exclude[IncompatibleSignatureProblem]("sbt.ScriptedPlugin.*Settings"),

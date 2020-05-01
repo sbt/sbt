@@ -44,9 +44,9 @@ import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
   BuildServerProtocol,
+  BuildServerReporter,
   Definition,
   LanguageServerProtocol,
-  LanguageServerReporter,
   ServerHandler
 }
 import sbt.internal.testing.TestLogger
@@ -1876,7 +1876,7 @@ object Defaults extends BuildCommon {
       val prev = i.previousResult
       prev.analysis.toOption map { analysis =>
         i.setup.reporter match {
-          case r: LanguageServerReporter =>
+          case r: BuildServerReporter =>
             r.resetPrevious(analysis)
           case _ => ()
         }
@@ -1939,7 +1939,8 @@ object Defaults extends BuildCommon {
         )
       },
       compilerReporter := {
-        new LanguageServerReporter(
+        new BuildServerReporter(
+          buildTargetIdentifier.value,
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value),
@@ -2177,7 +2178,7 @@ object Classpaths {
       classpathConfiguration.?.value,
       update.value
     )
-  )
+  ) ++ BuildServerProtocol.configSettings
   private[this] def classpaths: Seq[Setting[_]] =
     Seq(
       externalDependencyClasspath := concat(unmanagedClasspath, managedClasspath).value,
@@ -2222,7 +2223,7 @@ object Classpaths {
         val stamper = (managedSourcePaths / outputFileStamper).value
         dependencyClasspathFiles.value.flatMap(p => cache.getOrElseUpdate(p, stamper).map(p -> _))
       }
-    ) ++ BuildServerProtocol.configSettings
+    )
 
   private[this] def exportClasspath(s: Setting[Task[Classpath]]): Setting[Task[Classpath]] =
     s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })

@@ -53,12 +53,58 @@ type BuildTargetIdentifier {
 }
 
 type TaskId {
-    ## A unique identifier
-    id: String!
+  ## A unique identifier
+  id: String!
 
-    ## The parent task ids, if any. A non-empty parents field means
-    ## this task is a sub-task of every parent task.
-    parents: [String]
+  ## The parent task ids, if any. A non-empty parents field means
+  ## this task is a sub-task of every parent task.
+  parents: [String]
+}
+
+type TextDocumentIdentifier {
+  ## The file's Uri
+  uri: java.net.URI!
+}
+
+## Position in a text document expressed as zero-based line and zero-based character offset.
+## A position is between two characters like an 'insert' cursor in a editor.
+type Position {
+  ## Line position in a document (zero-based).
+  line: Long!
+
+  ## Character offset on a line in a document (zero-based).
+  character: Long!
+}
+
+## A range in a text document expressed as (zero-based) start and end positions. A range is comparable to a selection in an editor.
+## Therefore the end position is exclusive.
+type Range {
+  ## The range's start position.
+  start: sbt.internal.bsp.Position!
+
+  ## The range's end position.
+  end: sbt.internal.bsp.Position!
+}
+
+## Represents a diagnostic, such as a compiler error or warning.
+## Diagnostic objects are only valid in the scope of a resource.
+type Diagnostic {
+  ## The range at which the message applies.
+  range: sbt.internal.bsp.Range!
+
+  ## The diagnostic's severity. Can be omitted. If omitted it is up to the
+  ## client to interpret diagnostics as error, warning, info or hint.
+  severity: Long
+
+  ## The diagnostic's code. Can be omitted.
+  code: String
+
+  ## A human-readable string describing the source of this
+  ## diagnostic, e.g. 'typescript' or 'super lint'.
+  source: String
+
+  ## The diagnostic's message.
+  message: String!
 }
 
 ## Initialize Build Request
@@ -105,6 +151,27 @@ type InitializeBuildResult {
 
   ## Additional metadata about the server
   data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+## Publish Diagnostics
+type PublishDiagnosticsParams {
+  ## The document where the diagnostics are published.
+  textDocument: sbt.internal.bsp.TextDocumentIdentifier!
+
+  ## The build target where the diagnostics origin.
+  ## It is valid for one text to belong to multiple build targets,
+  ## for example sources that are compiled against multiple platforms (JVM, JavaScript).
+  buildTarget: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## The request id that originated this notification
+  originId: String
+
+  ## The diagnostics to be published by the client
+  diagnostics: [sbt.internal.bsp.Diagnostic]
+
+  ## Whether the client should clear the previous diagnostics
+  ## mapped to the same `textDocument` and buildTarget
+  reset: Boolean!
 }
 
 ## Workspace Build Targets response
