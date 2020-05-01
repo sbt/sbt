@@ -214,8 +214,41 @@ object Defaults extends BuildCommon {
           VirtualTerminal.handler,
         ) ++ serverHandlers.value :+ ServerHandler.fallback
       },
-      uncachedStamper := Stamps.uncachedStamps(fileConverter.value),
-      reusableStamper := Stamps.timeWrapLibraryStamps(uncachedStamper.value, fileConverter.value),
+      timeWrappedStamper := Stamps
+        .timeWrapLibraryStamps(Stamps.uncachedStamps(fileConverter.value), fileConverter.value),
+      reusableStamper := {
+        val converter = fileConverter.value
+        val unmanagedCache = unmanagedFileStampCache.value
+        val managedCache = managedFileStampCache.value
+        val backing = timeWrappedStamper.value
+        new xsbti.compile.analysis.ReadStamps {
+          def getAllLibraryStamps()
+              : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+            backing.getAllLibraryStamps()
+          def getAllProductStamps()
+              : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+            backing.getAllProductStamps()
+          def getAllSourceStamps()
+              : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+            new java.util.HashMap[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp]
+          def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = {
+            val path = converter.toPath(fr)
+            managedCache
+              .getOrElseUpdate(path, sbt.nio.FileStamper.Hash)
+              .map(_.stamp)
+              .getOrElse(backing.library(fr))
+          }
+          def product(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.product(fr)
+          def source(fr: xsbti.VirtualFile): xsbti.compile.analysis.Stamp = {
+            val path = converter.toPath(fr)
+            unmanagedCache
+              .get(path)
+              .orElse(managedCache.getOrElseUpdate(path, sbt.nio.FileStamper.Hash))
+              .map(_.stamp)
+              .getOrElse(backing.source(fr))
+          }
+        }
+      },
       traceLevel in run :== 0,
       traceLevel in runMain :== 0,
       traceLevel in bgRun :== 0,
