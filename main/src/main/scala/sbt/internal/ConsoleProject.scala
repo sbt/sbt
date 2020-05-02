@@ -10,7 +10,7 @@ package internal
 
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
-import sbt.internal.util.JLine
+import sbt.internal.util.Terminal
 import sbt.util.Logger
 import xsbti.compile.ClasspathOptionsUtil
 
@@ -61,7 +61,7 @@ object ConsoleProject {
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
 
-    JLine.usingTerminal { _ =>
+    Terminal.withCanonicalIn {
       // TODO - Hook up dsl classpath correctly...
       (new Console(compiler))(
         unit.classpath,

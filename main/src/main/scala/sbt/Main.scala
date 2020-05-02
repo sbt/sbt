@@ -9,10 +9,10 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
-import java.nio.file.{ FileAlreadyExistsException, Files, FileSystems }
+import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files }
+import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.{ Locale, Properties }
 
 import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
 import sbt.Project.LoadAction
@@ -23,7 +23,7 @@ import sbt.internal._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
-import sbt.internal.util.complete.{ SizeParser, Parser }
+import sbt.internal.util.complete.{ Parser, SizeParser }
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
@@ -50,21 +50,20 @@ private[sbt] object xMain {
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments.map(_.trim)
-      if (clientModByEnv || (userCommands.exists { cmd =>
-            (cmd == DashClient) || (cmd == DashDashClient)
-          })) {
-        val args = userCommands.toList filterNot { cmd =>
-          (cmd == DashClient) || (cmd == DashDashClient)
+      val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
+      Terminal.withStreams {
+        if (clientModByEnv || userCommands.exists(isClient)) {
+          val args = userCommands.toList.filterNot(isClient)
+          NetworkClient.run(configuration, args)
+          Exit(0)
+        } else {
+          val state = StandardMain.initialState(
+            configuration,
+            Seq(defaults, early),
+            runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+          )
+          StandardMain.runManaged(state)
         }
-        NetworkClient.run(configuration, args)
-        Exit(0)
-      } else {
-        val state = StandardMain.initialState(
-          configuration,
-          Seq(defaults, early),
-          runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-        )
-        StandardMain.runManaged(state)
       }
     } finally {
       ShutdownHooks.close()
@@ -764,22 +763,24 @@ object BuiltinCommands {
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
-    val result = (SimpleReader.readLine(
-      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)"
-    ) getOrElse Quit)
-      .toLowerCase(Locale.ENGLISH)
-    def matches(s: String) = !result.isEmpty && (s startsWith result)
-    def retry = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
-    def ignoreMsg =
+    s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
+    val result = Terminal.withRawSystemIn {
+      Terminal.withEcho(toggle = true)(Terminal.wrappedSystemIn.read() match {
+        case -1 => 'q'.toInt
+        case b  => b
+      })
+    }
+    def retry: State = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
+    def ignoreMsg: String =
       if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
-    result match {
-      case ""                     => retry
-      case _ if matches("retry")  => retry
-      case _ if matches(Quit)     => s.exit(ok = false)
-      case _ if matches("ignore") => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
-      case _ if matches("last")   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-      case _                      => println("Invalid response."); doLoadFailed(s, loadArg)
+    result.toChar match {
+      case '\n' | '\r' => retry
+      case 'r' | 'R'   => retry
+      case 'q' | 'Q'   => s.exit(ok = false)
+      case 'i' | 'I'   => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+      case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+      case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
     }
   }
 
@@ -888,7 +889,7 @@ object BuiltinCommands {
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
-    import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
+    import sbt.internal.ConsolePromptEvent
     val exchange = StandardMain.exchange
     val welcomeState = displayWelcomeBanner(s0)
     val s1 = exchange run welcomeState
@@ -898,13 +899,15 @@ object BuiltinCommands {
       .getOpt(Keys.minForcegcInterval)
       .getOrElse(GCUtil.defaultMinForcegcInterval)
     val exec: Exec = exchange.blockUntilNextExec(minGCInterval, s1.globalLogging.full)
+    if (exec.source.fold(true)(_.channelName != "console0")) {
+      s1.log.info(s"received remote command: ${exec.commandLine}")
+    }
     val newState = s1
       .copy(
         onFailure = Some(Exec(Shell, None)),
         remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
       )
       .setInteractive(true)
-    exchange publishEventMessage ConsoleUnpromptEvent(exec.source)
     if (exec.commandLine.trim.isEmpty) newState
     else newState.clearGlobalLog
   }

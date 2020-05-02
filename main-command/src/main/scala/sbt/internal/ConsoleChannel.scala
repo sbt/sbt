@@ -8,32 +8,55 @@
 package sbt
 package internal
 
-import sbt.internal.util._
-import BasicKeys._
 import java.io.File
+import java.nio.channels.ClosedChannelException
+import java.util.concurrent.atomic.AtomicReference
+
+import sbt.BasicKeys._
+import sbt.internal.util._
 import sbt.protocol.EventMessage
 import sjsonnew.JsonFormat
-import Util.AnyOps
 
 private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {
-  private var askUserThread: Option[Thread] = None
-  def makeAskUserThread(s: State): Thread = new Thread("ask-user-thread") {
-    val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
-    val prompt = (s get shellPrompt) match {
-      case Some(pf) => pf(s)
-      case None     => "> "
-    }
-    val reader = new FullReader(history, s.combinedParser, JLine.HandleCONT, true)
-    override def run(): Unit = {
-      // This internally handles thread interruption and returns Some("")
-      val line = reader.readLine(prompt)
-      line match {
-        case Some(cmd) => append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
-        case None      => append(Exec("exit", Some(Exec.newExecId), Some(CommandSource(name))))
-      }
-      askUserThread = None
+  private[this] val askUserThread = new AtomicReference[AskUserThread]
+  private[this] def getPrompt(s: State): String = s.get(shellPrompt) match {
+    case Some(pf) => pf(s)
+    case None =>
+      def ansi(s: String): String = if (ConsoleAppender.formatEnabledInEnv) s"$s" else ""
+      s"${ansi(ConsoleAppender.DeleteLine)}> ${ansi(ConsoleAppender.ClearScreenAfterCursor)}"
+  }
+  private[this] class AskUserThread(s: State) extends Thread("ask-user-thread") {
+    private val history = s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
+    private val prompt = getPrompt(s)
+    private val reader =
+      new FullReader(
+        history,
+        s.combinedParser,
+        LineReader.HandleCONT,
+        Terminal.throwOnClosedSystemIn
+      )
+    setDaemon(true)
+    start()
+    override def run(): Unit =
+      try {
+        reader.readLine(prompt) match {
+          case Some(cmd) => append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
+          case None =>
+            println("") // Prevents server shutdown log lines from appearing on the prompt line
+            append(Exec("exit", Some(Exec.newExecId), Some(CommandSource(name))))
+        }
+        ()
+      } catch {
+        case _: ClosedChannelException =>
+      } finally askUserThread.synchronized(askUserThread.set(null))
+    def redraw(): Unit = {
+      System.out.print(ConsoleAppender.clearLine(0))
+      reader.redraw()
+      System.out.print(ConsoleAppender.ClearScreenAfterCursor)
+      System.out.flush()
     }
   }
+  private[this] def makeAskUserThread(s: State): AskUserThread = new AskUserThread(s)
 
   def run(s: State): State = s
 
@@ -44,33 +67,24 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
   def publishEventMessage(event: EventMessage): Unit =
     event match {
       case e: ConsolePromptEvent =>
-        askUserThread match {
-          case Some(_) =>
-          case _ =>
-            val x = makeAskUserThread(e.state)
-            askUserThread = Some(x)
-            x.start()
-        }
-      case e: ConsoleUnpromptEvent =>
-        e.lastSource match {
-          case Some(src) if src.channelName != name =>
-            askUserThread match {
-              case Some(_) =>
-              // keep listening while network-origin command is running
-              // make sure to test Windows and Cygwin, if you uncomment
-              // shutdown()
-              case _ =>
+        if (Terminal.systemInIsAttached) {
+          askUserThread.synchronized {
+            askUserThread.get match {
+              case null => askUserThread.set(makeAskUserThread(e.state))
+              case t    => t.redraw()
             }
-          case _ =>
+          }
         }
       case _ => //
     }
 
-  def shutdown(): Unit =
-    askUserThread match {
-      case Some(x) if x.isAlive =>
-        x.interrupt()
-        askUserThread = None
+  def shutdown(): Unit = askUserThread.synchronized {
+    askUserThread.get match {
+      case null =>
+      case t if t.isAlive =>
+        t.interrupt()
+        askUserThread.set(null)
       case _ => ()
     }
+  }
 }

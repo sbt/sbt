@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.io.PrintWriter
+
 import Def.ScopedKey
 import Scope.GlobalScope
 import Keys.{ logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, traceLevel }
@@ -16,13 +17,14 @@ import sbt.internal.util.{
   AttributeKey,
   ConsoleAppender,
   ConsoleOut,
+  MainAppender,
+  ManagedLogger,
+  ProgressState,
   Settings,
-  SuppressedTraceContext,
-  MainAppender
+  SuppressedTraceContext
 }
 import MainAppender._
-import sbt.util.{ Level, Logger, LogExchange }
-import sbt.internal.util.ManagedLogger
+import sbt.util.{ Level, LogExchange, Logger }
 import org.apache.logging.log4j.core.Appender
 
 sealed abstract class LogManager {
@@ -142,10 +144,7 @@ object LogManager {
     val extraBacked = state.globalLogging.backed :: relay :: Nil
     val ps = Project.extract(state).get(sbt.Keys.progressState in ThisBuild)
     val consoleOpt = consoleLocally(state, console)
-    consoleOpt foreach {
-      case a: ConsoleAppender => ps.foreach(a.setProgressState)
-      case _                  =>
-    }
+    ps.foreach(ProgressState.set)
     val config = MainAppender.MainAppenderConfig(
       consoleOpt,
       backed,

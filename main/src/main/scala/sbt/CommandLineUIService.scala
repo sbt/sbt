@@ -7,7 +7,7 @@
 
 package sbt
 
-import sbt.internal.util.{ JLine, SimpleReader }
+import sbt.internal.util.{ SimpleReader, Terminal }
 
 trait CommandLineUIService extends InteractionService {
   override def readLine(prompt: String, mask: Boolean): Option[String] = {
@@ -27,9 +27,9 @@ trait CommandLineUIService extends InteractionService {
     }
   }
 
-  override def terminalWidth: Int = JLine.terminal.getWidth
+  override def terminalWidth: Int = Terminal.getWidth
 
-  override def terminalHeight: Int = JLine.terminal.getHeight
+  override def terminalHeight: Int = Terminal.getHeight
 }
 
 object CommandLineUIService extends CommandLineUIService

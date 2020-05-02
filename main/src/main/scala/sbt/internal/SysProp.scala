@@ -90,11 +90,11 @@ object SysProp {
 
   def fileCacheSize: Long =
     SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128L * 1024 * 1024)
-  def dumbTerm: Boolean = sys.env.get("TERM").filter(_ == "dumb").isDefined
+  def dumbTerm: Boolean = sys.env.get("TERM").contains("dumb")
   def supershell: Boolean = booleanOpt("sbt.supershell").getOrElse(!dumbTerm && color)
 
   def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
-  def supershellBlankZone: Int = int("sbt.supershell.blankzone", 5)
+  def supershellBlankZone: Int = int("sbt.supershell.blankzone", 1)
 
   def defaultUseCoursier: Boolean = {
     val coursierOpt = booleanOpt("sbt.coursier")

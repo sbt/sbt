@@ -14,6 +14,7 @@ import sbt.internal.util._
 import sbt.util.Level
 
 import scala.annotation.tailrec
+import scala.concurrent.duration._
 
 /**
  * implements task progress display on the shell.
@@ -23,22 +24,24 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     with ExecuteProgress[Task] {
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val currentProgressThread = new AtomicReference[Option[ProgressThread]](None)
-  private[this] val sleepDuration = SysProp.supershellSleep
+  private[this] val sleepDuration = SysProp.supershellSleep.millis
+  private[this] val threshold = 10.millis
   private[this] final class ProgressThread
       extends Thread("task-progress-report-thread")
       with AutoCloseable {
     private[this] val isClosed = new AtomicBoolean(false)
+    private[this] val firstTime = new AtomicBoolean(true)
     setDaemon(true)
     start()
     @tailrec override def run(): Unit = {
       if (!isClosed.get()) {
         try {
           report()
-          Thread.sleep(sleepDuration)
-          if (active.isEmpty) TaskProgress.this.stop()
-        } catch {
-          case _: InterruptedException =>
-        }
+          val duration =
+            if (firstTime.compareAndSet(true, activeExceedingThreshold.nonEmpty)) threshold
+            else sleepDuration
+          Thread.sleep(duration.toMillis)
+        } catch { case _: InterruptedException => isClosed.set(true) }
         run()
       }
     }
@@ -65,9 +68,7 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
 
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
     // send an empty progress report to clear out the previous report
-    val event = ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None)
-    import sbt.internal.util.codec.JsonProtocol._
-    log.logEvent(Level.Info, event)
+    appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
   }
   private[this] val skipReportTasks =
     Set(
@@ -93,41 +94,40 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
       case _ =>
     }
   }
+  private[this] def appendProgress(event: ProgressEvent): Unit = {
+    import sbt.internal.util.codec.JsonProtocol._
+    log.logEvent(Level.Info, event)
+  }
   private[this] def active: Vector[Task[_]] = activeTasks.toVector.filterNot(Def.isDummy)
+  private[this] def activeExceedingThreshold: Vector[(Task[_], Long)] = active.flatMap { task =>
+    val elapsed = timings.get(task).currentElapsedMicros
+    if (elapsed.micros > threshold) Some[(Task[_], Long)](task -> elapsed) else None
+  }
   private[this] def report(): Unit = {
-    val currentTasks = active
+    val currentTasks = activeExceedingThreshold
     val ltc = lastTaskCount.get
     val currentTasksCount = currentTasks.size
-    def report0(tasks: Vector[Task[_]]): Unit = {
-      if (tasks.nonEmpty) maybeStartThread()
-      val event = ProgressEvent(
-        "Info",
-        tasks
-          .map { task =>
-            val elapsed = timings.get(task).currentElapsedMicros
-            ProgressItem(taskName(task), elapsed)
-          }
-          .sortBy(_.name),
-        Some(ltc),
-        None,
-        None
-      )
-      import sbt.internal.util.codec.JsonProtocol._
-      log.logEvent(Level.Info, event)
-    }
-    if (containsSkipTasks(currentTasks)) {
+    def event(tasks: Vector[(Task[_], Long)]): ProgressEvent = ProgressEvent(
+      "Info",
+      tasks
+        .map { case (task, elapsed) => ProgressItem(taskName(task), elapsed) }
+        .sortBy(_.elapsedMicros),
+      Some(ltc),
+      None,
+      None
+    )
+    if (active.nonEmpty) maybeStartThread()
+    if (containsSkipTasks(active)) {
       if (ltc > 0) {
         lastTaskCount.set(0)
-        report0(Vector.empty)
+        appendProgress(event(Vector.empty))
       }
     } else {
       lastTaskCount.set(currentTasksCount)
-      report0(currentTasks)
+      appendProgress(event(currentTasks))
     }
   }
 
   private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean =
-    tasks
-      .map(t => taskName(t))
-      .exists(n => skipReportTasks.exists(m => m == n || n.endsWith("/ " + m)))
+    tasks.map(taskName).exists(n => skipReportTasks.exists(m => m == n || n.endsWith("/ " + m)))
 }

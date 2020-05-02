@@ -260,10 +260,7 @@ object EvaluateTask {
             ps.reset()
             ConsoleAppender.setShowProgress(true)
             val appender = MainAppender.defaultScreen(StandardMain.console)
-            appender match {
-              case c: ConsoleAppender => c.setProgressState(ps)
-              case _                  =>
-            }
+            ProgressState.set(ps)
             val log = LogManager.progressLogger(appender)
             Some(new TaskProgress(log))
           case _ => None
