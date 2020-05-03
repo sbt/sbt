@@ -231,7 +231,7 @@ object CoursierInputsTasks {
           .withHost(c.host)
           .withUsername(c.userName)
           .withPassword(c.passwd)
-          .withRealm(Some(c.realm).filter(_.nonEmpty))
+          .withRealm(Option(c.realm).filter(_.nonEmpty))
           .withHttpsOnly(false)
           .withMatchHost(true)
       }
