@@ -28,6 +28,8 @@ object ToCoursier {
       .withOptional(authentication.optional)
       .withRealmOpt(authentication.realmOpt)
       .withHttpHeaders(authentication.headers)
+      .withHttpsOnly(authentication.httpsOnly)
+      .withPassOnRedirect(authentication.passOnRedirect)
 
   def module(module: Module): coursier.core.Module =
     coursier.core.Module(

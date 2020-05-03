@@ -8,7 +8,9 @@ import dataclass._
   optional: Boolean = false,
   realmOpt: Option[String] = None,
   @since
-  headers: Seq[(String,String)] = Nil
+  headers: Seq[(String,String)] = Nil,
+  httpsOnly: Boolean = true,
+  passOnRedirect: Boolean = false
 ) {
   override def toString(): String =
     withPassword("****")
@@ -24,5 +26,5 @@ import dataclass._
 object Authentication {
 
   def apply(headers: Seq[(String, String)]): Authentication =
-    Authentication("", "", optional = false, None, headers)
+    Authentication("", "").withHeaders(headers)
 }
