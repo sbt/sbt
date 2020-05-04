@@ -16,23 +16,24 @@ import xsbti.api.Definition
 import xsbti.api.ClassLike
 import xsbti.compile.CompileAnalysis
 import ConcurrentRestrictions.Tag
-
 import testing.{
   AnnotatedFingerprint,
   Fingerprint,
   Framework,
-  SubclassFingerprint,
   Runner,
-  TaskDef,
   Selector,
+  SubclassFingerprint,
   SuiteSelector,
+  TaskDef,
   Task => TestTask
 }
-import scala.annotation.tailrec
 
+import scala.annotation.tailrec
 import sbt.internal.util.ManagedLogger
 import sbt.util.Logger
 import sbt.protocol.testing.TestResult
+
+import scala.runtime.AbstractFunction3
 
 sealed trait TestOption
 
@@ -133,12 +134,113 @@ object Tests {
   final case class SubProcess(config: ForkOptions) extends TestRunPolicy
 
   /** A named group of tests configured to run in the same JVM or be forked. */
-  final case class Group(
-      name: String,
-      tests: Seq[TestDefinition],
-      runPolicy: TestRunPolicy,
-      tags: Seq[(Tag, Int)] = Seq.empty
-  )
+  final class Group(
+      val name: String,
+      val tests: Seq[TestDefinition],
+      val runPolicy: TestRunPolicy,
+      val tags: Seq[(Tag, Int)]
+  ) extends Product
+      with Serializable {
+
+    def this(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy) = {
+      this(name, tests, runPolicy, Seq.empty)
+    }
+
+    def withName(name: String): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    def withTests(tests: Seq[TestDefinition]): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    def withRunPolicy(runPolicy: TestRunPolicy): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    def withTags(tags: Seq[(Tag, Int)]): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    //- EXPANDED CASE CLASS METHOD BEGIN -//
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    def copy(
+        name: String = this.name,
+        tests: Seq[TestDefinition] = this.tests,
+        runPolicy: TestRunPolicy = this.runPolicy
+    ): Group = {
+      new Group(name, tests, runPolicy, this.tags)
+    }
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    override def productElement(x$1: Int): Any = x$1 match {
+      case 0 => Group.this.name
+      case 1 => Group.this.tests
+      case 2 => Group.this.runPolicy
+      case 3 => Group.this.tags
+    }
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    override def productArity: Int = 4
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    def canEqual(x$1: Any): Boolean = x$1.isInstanceOf[Group]
+
+    override def hashCode(): Int = {
+      scala.runtime.ScalaRunTime._hashCode(Group.this)
+    }
+
+    override def toString(): String = scala.runtime.ScalaRunTime._toString(Group.this)
+
+    override def equals(x$1: Any): Boolean = {
+      this.eq(x$1.asInstanceOf[Object]) || (x$1.isInstanceOf[Group] && ({
+        val Group$1: Group = x$1.asInstanceOf[Group]
+        name == Group$1.name && tests == Group$1.tests &&
+        runPolicy == Group$1.runPolicy && tags == Group$1.tags
+      }))
+    }
+    //- EXPANDED CASE CLASS METHOD END -//
+  }
+
+  object Group
+      extends AbstractFunction3[String, Seq[TestDefinition], TestRunPolicy, Group]
+      with Serializable {
+    //- EXPANDED CASE CLASS METHOD BEGIN -//
+    final override def toString(): String = "Group"
+    def apply(
+        name: String,
+        tests: Seq[TestDefinition],
+        runPolicy: TestRunPolicy
+    ): Group = {
+      new Group(name, tests, runPolicy, Seq.empty)
+    }
+
+    def apply(
+        name: String,
+        tests: Seq[TestDefinition],
+        runPolicy: TestRunPolicy,
+        tags: Seq[(Tag, Int)]
+    ): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    def unapply(
+        x$0: Group
+    ): Option[(String, Seq[TestDefinition], TestRunPolicy)] = {
+      if (x$0 == null) None
+      else
+        Some.apply[(String, Seq[TestDefinition], TestRunPolicy)](
+          Tuple3.apply[String, Seq[TestDefinition], TestRunPolicy](
+            x$0.name,
+            x$0.tests,
+            x$0.runPolicy
+          )
+        )
+    }
+    private def readResolve(): Object = Group
+    //- EXPANDED CASE CLASS METHOD END -//
+  }
 
   private[sbt] final class ProcessedOptions(
       val tests: Vector[TestDefinition],

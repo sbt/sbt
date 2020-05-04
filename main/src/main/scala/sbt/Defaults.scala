@@ -1030,7 +1030,14 @@ object Defaults extends BuildCommon {
     val tests = definedTests.value
     val fk = fork.value
     val opts = forkOptions.value
-    Seq(new Tests.Group("<default>", tests, if (fk) Tests.SubProcess(opts) else Tests.InProcess))
+    Seq(
+      new Tests.Group(
+        "<default>",
+        tests,
+        if (fk) Tests.SubProcess(opts) else Tests.InProcess,
+        Seq.empty
+      )
+    )
   }
   def forkOptionsTask: Initialize[Task[ForkOptions]] =
     Def.task {
@@ -1207,35 +1214,34 @@ object Defaults extends BuildCommon {
       projectId: String
   ): Initialize[Task[Tests.Output]] = {
     val runners = createTestRunners(frameworks, loader, config)
-    val groupTasks = groups map {
-      case Tests.Group(_, tests, runPolicy, groupTags) =>
-        runPolicy match {
-          case Tests.SubProcess(opts) =>
-            s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
-            val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
-            s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
-            ForkTests(
-              runners,
-              tests.toVector,
-              forkedConfig,
-              cp.files,
-              opts,
-              s.log,
-              (Tags.ForkedTestGroup, 1) +: groupTags: _*
-            )
-          case Tests.InProcess =>
-            if (javaOptions.nonEmpty) {
-              s.log.warn("javaOptions will be ignored, fork is set to false")
-            }
-            Tests(
-              frameworks,
-              loader,
-              runners,
-              tests.toVector,
-              config.copy(tags = config.tags ++ groupTags),
-              s.log
-            )
-        }
+    val groupTasks = groups map { group =>
+      group.runPolicy match {
+        case Tests.SubProcess(opts) =>
+          s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
+          val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
+          s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
+          ForkTests(
+            runners,
+            group.tests.toVector,
+            forkedConfig,
+            cp.files,
+            opts,
+            s.log,
+            (Tags.ForkedTestGroup, 1) +: group.tags: _*
+          )
+        case Tests.InProcess =>
+          if (javaOptions.nonEmpty) {
+            s.log.warn("javaOptions will be ignored, fork is set to false")
+          }
+          Tests(
+            frameworks,
+            loader,
+            runners,
+            group.tests.toVector,
+            config.copy(tags = config.tags ++ group.tags),
+            s.log
+          )
+      }
     }
     val output = Tests.foldTasks(groupTasks, config.parallel)
     val result = output map { out =>

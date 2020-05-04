@@ -46,6 +46,18 @@ private[sbt] object ForkTests {
     }
   }
 
+  def apply(
+      runners: Map[TestFramework, Runner],
+      tests: Vector[TestDefinition],
+      config: Execution,
+      classpath: Seq[File],
+      fork: ForkOptions,
+      log: Logger,
+      tag: Tag
+  ): Task[TestOutput] = {
+    apply(runners, tests, config, classpath, fork, log, tag -> 1)
+  }
+
   private[this] def mainTestTask(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
