@@ -12,15 +12,16 @@ package server
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes }
+import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes, LogMessageParams, MessageType }
 import sbt.internal.protocol.{
   JsonRpcNotificationMessage,
   JsonRpcRequestMessage,
-  JsonRpcResponseError
+  JsonRpcResponseError,
+  JsonRpcResponseMessage
 }
+import sbt.internal.util.ObjectEvent
 import sbt.internal.util.codec.JValueFormats
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.ObjectEvent
 import sbt.protocol._
 import sbt.util.Logger
 import sjsonnew._
@@ -39,9 +40,7 @@ final class NetworkChannel(
     instance: ServerInstance,
     handlers: Seq[ServerHandler],
     val log: Logger
-) extends CommandChannel
-    with LanguageServerProtocol
-    with BuildServerImpl {
+) extends CommandChannel { self =>
   import NetworkChannel._
 
   private val running = new AtomicBoolean(true)
@@ -58,6 +57,34 @@ final class NetworkChannel(
   private val VsCodeOld = "application/vscode-jsonrpc; charset=utf8"
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
   private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
+
+  private lazy val callback: ServerCallback = new ServerCallback {
+    def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
+      self.respondResult(event, execId)
+
+    def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit =
+      self.respondError(code, message, execId)
+
+    def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit =
+      self.jsonRpcNotify(method, params)
+
+    def appendExec(commandLine: String, execId: Option[String]): Boolean =
+      self.append(Exec(commandLine, execId, Some(CommandSource(name))))
+
+    def appendExec(exec: Exec): Boolean = self.append(exec)
+
+    def log: Logger = self.log
+    def name: String = self.name
+    private[sbt] def authOptions: Set[ServerAuthentication] = self.authOptions
+    private[sbt] def authenticate(token: String): Boolean = self.authenticate(token)
+    private[sbt] def setInitialized(value: Boolean): Unit = self.setInitialized(value)
+    private[sbt] def onSettingQuery(execId: Option[String], req: SettingQuery): Unit =
+      self.onSettingQuery(execId, req)
+    private[sbt] def onCompletionRequest(execId: Option[String], cp: CompletionParams): Unit =
+      self.onCompletionRequest(execId, cp)
+    private[sbt] def onCancellationRequest(execId: Option[String], crp: CancelRequestParams): Unit =
+      self.onCancellationRequest(execId, crp)
+  }
 
   def setContentType(ct: String): Unit = synchronized { _contentType = ct }
   def contentType: String = _contentType
@@ -172,11 +199,11 @@ final class NetworkChannel(
     }
 
     private lazy val intents = {
-      val cb = callbackImpl
       handlers.toVector map { h =>
-        h.handler(cb)
+        h.handler(callback)
       }
     }
+
     lazy val onRequestMessage: PartialFunction[JsonRpcRequestMessage, Unit] =
       intents.foldLeft(PartialFunction.empty[JsonRpcRequestMessage, Unit]) {
         case (f, i) => f orElse i.onRequest
@@ -396,18 +423,6 @@ final class NetworkChannel(
     }
   }
 
-  protected def getSetting[A](key: SettingKey[A]): Option[A] =
-    structure.data.get(key.scope, key.key)
-
-  protected def getTaskValue[A](key: TaskKey[A]): Option[Task[A]] =
-    structure.data.get(key.scope, key.key)
-
-  protected def setting[A](key: SettingKey[A]): A =
-    getSetting(key).getOrElse(sys.error(s"key ${Def.displayFull(key.scopedKey)} is not defined"))
-
-  protected def taskValue[A](key: TaskKey[A]): Task[A] =
-    getTaskValue(key).getOrElse(sys.error(s"key ${Def.displayFull(key.scopedKey)} is not defined"))
-
   private def onExecCommand(cmd: ExecCommand) = {
     if (initialized) {
       append(
@@ -534,6 +549,73 @@ final class NetworkChannel(
     log.info("Shutting down client connection")
     running.set(false)
     out.close()
+  }
+
+  /**
+   * This reacts to various events that happens inside sbt, sometime
+   * in response to the previous requests.
+   * The type information has been erased because it went through logging.
+   */
+  protected def onObjectEvent(event: ObjectEvent[_]): Unit = {
+    // import sbt.internal.langserver.codec.JsonProtocol._
+
+    val msgContentType = event.contentType
+    msgContentType match {
+      // LanguageServerReporter sends PublishDiagnosticsParams
+      case "sbt.internal.langserver.PublishDiagnosticsParams" =>
+      // val p = event.message.asInstanceOf[PublishDiagnosticsParams]
+      // jsonRpcNotify("textDocument/publishDiagnostics", p)
+      case "xsbti.Problem" =>
+        () // ignore
+      case _ =>
+        // log.debug(event)
+        ()
+    }
+  }
+
+  /** Respond back to Language Server's client. */
+  private[sbt] def jsonRpcRespond[A: JsonFormat](event: A, execId: String): Unit = {
+    val m =
+      JsonRpcResponseMessage("2.0", execId, Option(Converter.toJson[A](event).get), None)
+    val bytes = Serialization.serializeResponseMessage(m)
+    publishBytes(bytes)
+  }
+
+  /** Respond back to Language Server's client. */
+  private[sbt] def jsonRpcRespondError[A: JsonFormat](
+      execId: String,
+      code: Long,
+      message: String,
+      data: A,
+  ): Unit = {
+    val err = JsonRpcResponseError(code, message, Converter.toJson[A](data).get)
+    jsonRpcRespondError(execId, err)
+  }
+
+  private[sbt] def jsonRpcRespondError(
+      execId: String,
+      err: JsonRpcResponseError
+  ): Unit = {
+    val m = JsonRpcResponseMessage("2.0", execId, None, Option(err))
+    val bytes = Serialization.serializeResponseMessage(m)
+    publishBytes(bytes)
+  }
+
+  /** Notify to Language Server's client. */
+  private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
+    val m =
+      JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
+    log.debug(s"jsonRpcNotify: $m")
+    val bytes = Serialization.serializeNotificationMessage(m)
+    publishBytes(bytes)
+  }
+
+  def logMessage(level: String, message: String): Unit = {
+    import sbt.internal.langserver.codec.JsonProtocol._
+    jsonRpcNotify(
+      "window/logMessage",
+      LogMessageParams(MessageType.fromLevelString(level), message)
+    )
   }
 }
 

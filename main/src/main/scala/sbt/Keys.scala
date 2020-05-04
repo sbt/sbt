@@ -338,7 +338,10 @@ object Keys {
   val internalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on")
   val closeClassLoaders = settingKey[Boolean]("Close classloaders in run and test when the task completes.").withRank(DSetting)
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
+
   val buildTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
+  val bspWorkspace = taskKey[Map[BuildTargetIdentifier, Scope]]("Mapping of BSP build targets to sbt scopes").withRank(DTask)
+  val bspWorkspaceBuildTargets = taskKey[Seq[BuildTarget]]("List all the BSP build targets").withRank(DTask)
   val bspBuildTarget = settingKey[BuildTarget]("Description of the BSP build target").withRank(DSetting)
   val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetSourcesItem = taskKey[SourcesItem]("").withRank(DTask)

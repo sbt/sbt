@@ -12,9 +12,8 @@ package server
 import sjsonnew.JsonFormat
 import sbt.internal.protocol._
 import sbt.util.Logger
-import sbt.protocol.{ SettingQuery => Q, CompletionParams => CP }
+import sbt.protocol.{ CompletionParams => CP, SettingQuery => Q }
 import sbt.internal.langserver.{ CancelRequestParams => CRP }
-import sbt.internal.bsp._
 
 /**
  * ServerHandler allows plugins to extend sbt server.
@@ -65,6 +64,7 @@ trait ServerCallback {
   def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit
   def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit
   def appendExec(exec: Exec): Boolean
+  def appendExec(commandLine: String, requestId: Option[String]): Boolean
   def log: Logger
   def name: String
 
@@ -74,6 +74,4 @@ trait ServerCallback {
   private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit
   private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit
   private[sbt] def onCancellationRequest(execId: Option[String], crp: CRP): Unit
-  private[sbt] def onBspInitialize(execId: Option[String], param: InitializeBuildParams): Unit
-  private[sbt] def onBspBuildTargets(execId: Option[String]): Unit
 }

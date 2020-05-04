@@ -199,9 +199,10 @@ object Defaults extends BuildCommon {
       },
       fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
       fullServerHandlers := {
-        (Vector(LanguageServerProtocol.handler(fileConverter.value))
-          ++ serverHandlers.value
-          ++ Vector(ServerHandler.fallback))
+        Seq(
+          LanguageServerProtocol.handler(fileConverter.value),
+          BuildServerProtocol.handler(sbtVersion.value)
+        ) ++ serverHandlers.value :+ ServerHandler.fallback
       },
       uncachedStamper := Stamps.uncachedStamps(fileConverter.value),
       reusableStamper := Stamps.timeWrapLibraryStamps(uncachedStamper.value, fileConverter.value),

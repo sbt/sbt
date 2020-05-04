@@ -242,7 +242,7 @@ object BuiltinCommands {
       act,
       continuous,
       clearCaches,
-    ) ++ allBasicCommands ++ server.BuildServerProtocol.commands
+    ) ++ allBasicCommands
 
   def DefaultBootCommands: Seq[String] =
     WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
