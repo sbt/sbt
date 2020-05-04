@@ -112,13 +112,14 @@ object BuildServerProtocol {
       SourcesItem(id, items)
     },
     bspBuildTargetCompileItem := bspCompileTask.value,
-    bspBuildTargetScalacOptionsItem :=
+    bspBuildTargetScalacOptionsItem := {
       ScalacOptionsItem(
         target = buildTargetIdentifier.value,
         options = scalacOptions.value.toVector,
-        classpath = fullClasspath.value.toVector.map(_.data.toURI),
+        classpath = dependencyClasspath.value.map(_.data.toURI).toVector,
         classDirectory = classDirectory.value.toURI
       )
+    }
   )
 
   def handler(sbtVersion: String): ServerHandler = ServerHandler { callback =>
