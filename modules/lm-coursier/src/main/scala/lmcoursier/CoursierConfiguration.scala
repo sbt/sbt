@@ -75,6 +75,8 @@ import scala.concurrent.duration.Duration
     withStrict(Some(strict))
   def withTtl(ttl: Duration): CoursierConfiguration =
     withTtl(Some(ttl))
+  def addRepositoryAuthentication(repositoryId: String, authentication: Authentication): CoursierConfiguration =
+    withAuthenticationByRepositoryId(authenticationByRepositoryId :+ (repositoryId, authentication))
 }
 
 object CoursierConfiguration {

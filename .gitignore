@@ -1,1 +1,8 @@
 target/
+
+# Metals / bloop
+.metals/
+.bloop/
+
+# Intellij
+.idea/
