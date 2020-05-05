@@ -166,7 +166,10 @@ object CoursierPlugin extends AutoPlugin {
     coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
     coursierConfigurations := InputsTasks.coursierConfigurationsTask(None).value,
     coursierParentProjectCache := InputsTasks.parentProjectCacheTask.value,
-    coursierResolutions := ResolutionTasks.resolutionsTask().value,
+    coursierResolutions := (Def.taskDyn {
+      val missingOk = updateConfiguration.value.missingOk
+      ResolutionTasks.resolutionsTask(missingOk = missingOk)
+    }).value,
     Keys.actualCoursierResolution := {
 
       val config = Configuration(Compile.name)
@@ -181,9 +184,13 @@ object CoursierPlugin extends AutoPlugin {
           sys.error(s"Resolution for configuration $config not found")
         }
     },
-    coursierSbtClassifiersResolution := ResolutionTasks.resolutionsTask(
-      sbtClassifiers = true
-    ).value.head._2
+    coursierSbtClassifiersResolution := (Def.taskDyn {
+      val missingOk = (updateConfiguration in updateSbtClassifiers).value.missingOk
+      ResolutionTasks.resolutionsTask(
+        sbtClassifiers = true,
+        missingOk = missingOk,
+      )
+    }).value.head._2
   )
 
   override lazy val buildSettings = super.buildSettings ++ Seq(

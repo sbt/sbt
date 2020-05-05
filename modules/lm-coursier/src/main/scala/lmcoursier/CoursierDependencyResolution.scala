@@ -159,7 +159,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         .withForceVersion(conf.forceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
         .withTypelevel(typelevel)
         .withReconciliation(ToCoursier.reconciliation(conf.reconciliation)),
-      strictOpt = conf.strict.map(ToCoursier.strict)
+      strictOpt = conf.strict.map(ToCoursier.strict),
+      missingOk = conf.missingOk,
     )
 
     def artifactsParams(resolutions: Map[Set[Configuration], Resolution]): ArtifactsParams =
@@ -212,7 +213,6 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       val updateParams0 = updateParams(resolutions, artifacts)
       UpdateRun.update(updateParams0, verbosityLevel, log)
     }
-
     e.left.map(unresolvedWarningOrThrow(uwconfig, _))
   }
 

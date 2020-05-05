@@ -115,7 +115,10 @@ object ResolutionRun {
               }
             )
         )
-        .either()
+        .either() match {
+          case Left(err) if params.missingOk => Right(err.resolution)
+          case others => others
+        }
     }
   }
 

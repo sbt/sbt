@@ -26,7 +26,8 @@ final case class ResolutionParams(
   cache: coursier.cache.FileCache[Task],
   parallel: Int,
   params: coursier.params.ResolutionParams,
-  strictOpt: Option[Strict]
+  strictOpt: Option[Strict],
+  missingOk: Boolean,
 ) {
 
   val fallbackDependenciesRepositories =

@@ -17,7 +17,8 @@ import sbt.Keys._
 object ResolutionTasks {
 
   def resolutionsTask(
-    sbtClassifiers: Boolean = false
+    sbtClassifiers: Boolean = false,
+    missingOk: Boolean = false,
   ): Def.Initialize[sbt.Task[Map[Set[Configuration], coursier.Resolution]]] = {
 
     val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[FallbackDependency], Seq[Set[Configuration]])]] =
@@ -154,7 +155,8 @@ object ResolutionTasks {
             .withForceVersion(userForceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
             .withTypelevel(typelevel)
             .addReconciliation(versionReconciliations0: _*),
-          strictOpt = strictOpt
+          strictOpt = strictOpt,
+          missingOk = missingOk,
         ),
         verbosityLevel,
         log

@@ -49,6 +49,8 @@ import scala.concurrent.duration.Duration
   ttl: Option[Duration] = CacheDefaults.ttl,
   checksums: Vector[Option[String]] = CacheDefaults.checksums.to[Vector],
   cachePolicies: Vector[CachePolicy] = CacheDefaults.cachePolicies.to[Vector].map(FromCoursier.cachePolicy),
+  @since
+  missingOk: Boolean = false,
 ) {
 
   def withLog(log: Logger): CoursierConfiguration =
