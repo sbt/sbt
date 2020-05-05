@@ -128,6 +128,16 @@ private[sbt] final class TaskProgress(log: ManagedLogger)
     }
   }
 
-  private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean =
-    tasks.map(taskName).exists(n => skipReportTasks.exists(m => m == n || n.endsWith("/ " + m)))
+  private[this] def containsSkipTasks(tasks: Vector[Task[_]]): Boolean = {
+    tasks.map(taskName).exists { n =>
+      val shortName = n.lastIndexOf('/') match {
+        case -1 => n
+        case i =>
+          var j = i + 1
+          while (n(j) == ' ') j += 1
+          n.substring(j)
+      }
+      skipReportTasks.contains(shortName)
+    }
+  }
 }
