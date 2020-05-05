@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait InitializeBuildResultFormats { self: sbt.internal.bsp.codec.BuildClientCapabilitiesFormats with sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
+trait InitializeBuildResultFormats { self: sbt.internal.bsp.codec.BuildServerCapabilitiesFormats with sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val InitializeBuildResultFormat: JsonFormat[sbt.internal.bsp.InitializeBuildResult] = new JsonFormat[sbt.internal.bsp.InitializeBuildResult] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.InitializeBuildResult = {
     __jsOpt match {
@@ -14,7 +14,7 @@ implicit lazy val InitializeBuildResultFormat: JsonFormat[sbt.internal.bsp.Initi
       val displayName = unbuilder.readField[String]("displayName")
       val version = unbuilder.readField[String]("version")
       val bspVersion = unbuilder.readField[String]("bspVersion")
-      val capabilities = unbuilder.readField[sbt.internal.bsp.BuildClientCapabilities]("capabilities")
+      val capabilities = unbuilder.readField[sbt.internal.bsp.BuildServerCapabilities]("capabilities")
       val data = unbuilder.readField[Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]]("data")
       unbuilder.endObject()
       sbt.internal.bsp.InitializeBuildResult(displayName, version, bspVersion, capabilities, data)

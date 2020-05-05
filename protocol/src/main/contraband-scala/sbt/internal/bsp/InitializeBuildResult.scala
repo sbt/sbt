@@ -15,7 +15,7 @@ final class InitializeBuildResult private (
   val displayName: String,
   val version: String,
   val bspVersion: String,
-  val capabilities: sbt.internal.bsp.BuildClientCapabilities,
+  val capabilities: sbt.internal.bsp.BuildServerCapabilities,
   val data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]) extends Serializable {
   
   
@@ -30,7 +30,7 @@ final class InitializeBuildResult private (
   override def toString: String = {
     "InitializeBuildResult(" + displayName + ", " + version + ", " + bspVersion + ", " + capabilities + ", " + data + ")"
   }
-  private[this] def copy(displayName: String = displayName, version: String = version, bspVersion: String = bspVersion, capabilities: sbt.internal.bsp.BuildClientCapabilities = capabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): InitializeBuildResult = {
+  private[this] def copy(displayName: String = displayName, version: String = version, bspVersion: String = bspVersion, capabilities: sbt.internal.bsp.BuildServerCapabilities = capabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): InitializeBuildResult = {
     new InitializeBuildResult(displayName, version, bspVersion, capabilities, data)
   }
   def withDisplayName(displayName: String): InitializeBuildResult = {
@@ -42,7 +42,7 @@ final class InitializeBuildResult private (
   def withBspVersion(bspVersion: String): InitializeBuildResult = {
     copy(bspVersion = bspVersion)
   }
-  def withCapabilities(capabilities: sbt.internal.bsp.BuildClientCapabilities): InitializeBuildResult = {
+  def withCapabilities(capabilities: sbt.internal.bsp.BuildServerCapabilities): InitializeBuildResult = {
     copy(capabilities = capabilities)
   }
   def withData(data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]): InitializeBuildResult = {
@@ -54,6 +54,6 @@ final class InitializeBuildResult private (
 }
 object InitializeBuildResult {
   
-  def apply(displayName: String, version: String, bspVersion: String, capabilities: sbt.internal.bsp.BuildClientCapabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]): InitializeBuildResult = new InitializeBuildResult(displayName, version, bspVersion, capabilities, data)
-  def apply(displayName: String, version: String, bspVersion: String, capabilities: sbt.internal.bsp.BuildClientCapabilities, data: sjsonnew.shaded.scalajson.ast.unsafe.JValue): InitializeBuildResult = new InitializeBuildResult(displayName, version, bspVersion, capabilities, Option(data))
+  def apply(displayName: String, version: String, bspVersion: String, capabilities: sbt.internal.bsp.BuildServerCapabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]): InitializeBuildResult = new InitializeBuildResult(displayName, version, bspVersion, capabilities, data)
+  def apply(displayName: String, version: String, bspVersion: String, capabilities: sbt.internal.bsp.BuildServerCapabilities, data: sjsonnew.shaded.scalajson.ast.unsafe.JValue): InitializeBuildResult = new InitializeBuildResult(displayName, version, bspVersion, capabilities, Option(data))
 }

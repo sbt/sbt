@@ -27,7 +27,8 @@ import sjsonnew.support.scalajson.unsafe.Converter
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
   private val bspVersion = "2.0.0-M5"
-  private val capabilities = BuildClientCapabilities(languageIds = Vector("scala"))
+  private val languageIds = Vector("scala")
+  private val capabilities = BuildServerCapabilities(CompileProvider(languageIds))
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     bspWorkspace := Def.taskDyn {

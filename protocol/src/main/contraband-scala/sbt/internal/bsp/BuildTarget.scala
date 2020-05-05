@@ -21,8 +21,10 @@ package sbt.internal.bsp
                - display icons or colors in the user interface.
                Pre-defined tags are listed in `BuildTargetTag` but clients and servers
                are free to define new tags for custom purposes.
+ * @param capabilities The capabilities of this build target.
  * @param languageIds The set of languages that this target contains.
                       The ID string for each language is defined in the LSP.
+ * @param dependencies The direct upstream build target dependencies of this build target
  * @param dataKind Kind of data to expect in the `data` field. If this field is not set, the kind of data is not specified.
  * @param data Language-specific metadata about this target.
                See ScalaBuildTarget as an example.
