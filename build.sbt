@@ -903,6 +903,9 @@ lazy val mainProj = (project in file("main"))
         "sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader"
       ),
       exclude[MissingClassProblem]("sbt.internal.LayeredClassLoaderImpl"),
+      exclude[MissingClassProblem]("sbt.internal.FileManagement"),
+      exclude[MissingClassProblem]("sbt.internal.FileManagement$"),
+      exclude[MissingClassProblem]("sbt.internal.FileManagement$CopiedFileTreeRepository"),
       // false positives
       exclude[DirectMissingMethodProblem]("sbt.plugins.IvyPlugin.requires"),
       exclude[DirectMissingMethodProblem]("sbt.plugins.JUnitXmlReportPlugin.requires"),
