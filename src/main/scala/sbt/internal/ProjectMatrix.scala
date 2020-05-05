@@ -226,7 +226,9 @@ object ProjectMatrix {
             val other = lookupMatrix(ref)
             resolveMatrixAggregate(other, r)
         }
-        val p = Project(childId, base.getAbsoluteFile)
+        val dotSbtMatrix = new java.io.File(".sbt") / "matrix"
+        IO.createDirectory(dotSbtMatrix)
+        val p = Project(childId, dotSbtMatrix / childId)
           .dependsOn(deps: _*)
           .aggregate(aggs: _*)
           .setPlugins(plugins)
