@@ -6,6 +6,7 @@
 package sbt.internal.bsp.codec
 trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.BuildTargetIdentifierFormats
+  with sbt.internal.bsp.codec.BuildTargetCapabilitiesFormats
   with sbt.internal.util.codec.JValueFormats
   with sbt.internal.bsp.codec.BuildTargetFormats
   with sbt.internal.bsp.codec.TaskIdFormats

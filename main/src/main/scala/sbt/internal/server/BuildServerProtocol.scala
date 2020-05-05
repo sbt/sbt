@@ -21,7 +21,6 @@ import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
 import sbt.librarymanagement.Configuration
 import sbt.librarymanagement.Configurations.{ Compile, Test }
-import sbt.std.TaskExtra._
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 
@@ -36,9 +35,11 @@ object BuildServerProtocol {
       val scopes: Seq[Scope] = structure.allProjectRefs.flatMap { ref =>
         Seq(Scope.Global.in(ref, Compile), Scope.Global.in(ref, Test))
       }
-      scopes
-        .map(scope => (scope / Keys.buildTargetIdentifier).toTask)
-        .joinWith(tasks => joinTasks(tasks).join.map(_.zip(scopes).toMap))
+      Def.task {
+        val targetIds = scopes.map(_ / Keys.buildTargetIdentifier).join.value
+        targetIds.zip(scopes).toMap
+      }
+
     }.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
       val workspace = Keys.bspWorkspace.value
@@ -98,7 +99,7 @@ object BuildServerProtocol {
       val c = configuration.value
       toId(ref, c)
     },
-    bspBuildTarget := bspBuildTargetSetting.value,
+    bspBuildTarget := bspBuildTargetTask.value,
     bspBuildTargetSourcesItem := {
       val id = buildTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
@@ -172,44 +173,47 @@ object BuildServerProtocol {
       )
     )
 
-  private def bspBuildTargetSetting: Def.Initialize[BuildTarget] = Def.settingDyn {
+  private def bspBuildTargetTask: Def.Initialize[Task[BuildTarget]] = Def.taskDyn {
     import sbt.internal.bsp.codec.JsonProtocol._
     val buildTargetIdentifier = Keys.buildTargetIdentifier.value
     val thisProject = Keys.thisProject.value
     val thisProjectRef = Keys.thisProjectRef.value
+    val scalaJars = Keys.scalaInstance.value.allJars.map(_.toURI.toString)
     val compileData = ScalaBuildTarget(
       scalaOrganization = scalaOrganization.value,
       scalaVersion = scalaVersion.value,
       scalaBinaryVersion = scalaBinaryVersion.value,
       platform = ScalaPlatform.JVM,
-      jars = Vector("scala-library")
+      jars = scalaJars.toVector
     )
     val configuration = Keys.configuration.value
     val displayName = configuration.name match {
       case "compile"  => thisProject.id
-      case configName => s"${thisProject.id} $configName"
+      case configName => s"${thisProject.id}-$configName"
     }
     val baseDirectory = Keys.baseDirectory.value.toURI
-    val internalDependencies = configuration.name match {
+    val allDependencies = configuration.name match {
       case "test" =>
         thisProject.dependencies :+
           ResolvedClasspathDependency(thisProjectRef, Some("test->compile"))
       case _ => thisProject.dependencies
     }
-    val dependencies = Initialize.join {
-      for {
-        dependencyRef <- internalDependencies
-        dependencyId <- dependencyTargetKeys(dependencyRef, configuration)
-      } yield dependencyId
-    }
-    Def.setting {
+    val capabilities = BuildTargetCapabilities(canCompile = true, canTest = false, canRun = false)
+    val tags = BuildTargetTag.fromConfig(configuration.name)
+    Def.task {
+      val allDepIds = allDependencies
+        .flatMap(dependencyTargetKeys(_, configuration))
+        .join
+        .value
+
       BuildTarget(
         buildTargetIdentifier,
         Some(displayName),
         Some(baseDirectory),
-        tags = Vector.empty,
+        tags,
+        capabilities,
         languageIds = Vector("scala"),
-        dependencies = dependencies.value.toVector,
+        dependencies = allDepIds.toVector,
         dataKind = Some("scala"),
         data = Some(Converter.toJsonUnsafe(compileData)),
       )

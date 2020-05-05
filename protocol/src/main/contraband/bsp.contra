@@ -29,7 +29,7 @@ type BuildTarget {
   tags: [String]
 
   # The capabilities of this build target.
-  # capabilities: BuildTargetCapabilities
+  capabilities: sbt.internal.bsp.BuildTargetCapabilities!
 
   ## The set of languages that this target contains.
   ## The ID string for each language is defined in the LSP.
@@ -50,6 +50,17 @@ type BuildTarget {
 type BuildTargetIdentifier {
   ## The target's Uri
   uri: java.net.URI!
+}
+
+type BuildTargetCapabilities {
+  ## This target can be compiled by the BSP server.
+  canCompile: Boolean!
+
+  ## This target can be tested by the BSP server.
+  canTest: Boolean!
+
+  ## This target can be run by the BSP server.
+  canRun: Boolean!
 }
 
 type TaskId {

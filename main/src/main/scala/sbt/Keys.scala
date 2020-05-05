@@ -342,7 +342,7 @@ object Keys {
   val buildTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
   val bspWorkspace = taskKey[Map[BuildTargetIdentifier, Scope]]("Mapping of BSP build targets to sbt scopes").withRank(DTask)
   val bspWorkspaceBuildTargets = taskKey[Seq[BuildTarget]]("List all the BSP build targets").withRank(DTask)
-  val bspBuildTarget = settingKey[BuildTarget]("Description of the BSP build target").withRank(DSetting)
+  val bspBuildTarget = taskKey[BuildTarget]("Description of the BSP build target").withRank(DTask)
   val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetSourcesItem = taskKey[SourcesItem]("").withRank(DTask)
   val bspBuildTargetCompile = inputKey[Unit]("").withRank(DTask)
