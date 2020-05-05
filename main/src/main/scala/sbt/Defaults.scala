@@ -413,7 +413,9 @@ object Defaults extends BuildCommon {
     sourceManaged := crossTarget.value / "src_managed",
     resourceManaged := crossTarget.value / "resource_managed",
     // Adds subproject build.sbt files to the global list of build files to monitor
-    Scope.Global / checkBuildSources / fileInputs += baseDirectory.value.toGlob / "*.sbt"
+    Scope.Global / checkBuildSources / pollInterval :==
+      new FiniteDuration(Int.MinValue, TimeUnit.MILLISECONDS),
+    Scope.Global / checkBuildSources / fileInputs += baseDirectory.value.toGlob / "*.sbt",
   )
 
   lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths

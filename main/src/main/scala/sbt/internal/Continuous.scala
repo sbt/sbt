@@ -588,7 +588,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
       private[this] val observers: Observers[Event] = new Observers
       private[this] val repo = getRepository(state)
-      private[this] val handle = repo.addObserver(observers)
+      private[this] val handles = new java.util.ArrayList[AutoCloseable]
+      handles.add(repo.addObserver(observers))
       private[this] val eventMonitorObservers = new Observers[Event]
       private[this] val configHandle: AutoCloseable =
         observers.addObserver { e =>
@@ -608,7 +609,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             eventMonitorObservers.onNext(e)
           }
         }
-      if (trackMetaBuild) buildGlobs.foreach(repo.register)
+      if (trackMetaBuild) {
+        state.get(CheckBuildSources.CheckBuildSourcesKey).flatMap(_.fileTreeRepository) match {
+          case Some(r) => buildGlobs.foreach(r.register(_).foreach(observers.addObservable))
+          case _       => buildGlobs.foreach(repo.register)
+        }
+      }
 
       private[this] val monitor = FileEventMonitor.antiEntropy(
         eventMonitorObservers,
@@ -623,7 +629,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
 
       override def close(): Unit = {
         configHandle.close()
-        handle.close()
+        handles.forEach(_.close())
       }
     }
     val watchLogger: WatchLogger = msg => logger.debug(msg.toString)
