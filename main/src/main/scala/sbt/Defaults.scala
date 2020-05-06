@@ -388,6 +388,7 @@ object Defaults extends BuildCommon {
       pollInterval :== Watch.defaultPollInterval,
     ) ++ LintUnused.lintSettings
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
+      ++ RemoteCache.globalSettings
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -504,6 +505,7 @@ object Defaults extends BuildCommon {
   lazy val outputConfigPaths = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
+    compileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "zinc"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
   )
 
@@ -637,7 +639,7 @@ object Defaults extends BuildCommon {
         manipulateBytecode.value.analysis.readStamps.getAllProductStamps.keySet.asScala
       (classFiles.toSeq map { x =>
         c.toPath(x)
-      }) :+ compileAnalysisFileTask.value.toPath
+      }) :+ compileAnalysisFile.value.toPath
     },
     compileOutputs := compileOutputs.triggeredBy(compile).value,
     clean := (compileOutputs / clean).value,
@@ -654,6 +656,9 @@ object Defaults extends BuildCommon {
         if (crossPaths.value) s"_$binVersion"
         else ""
       s"inc_compile$extra.zip"
+    },
+    compileAnalysisFile := {
+      compileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
     /*
     // Comment this out because Zinc now uses farm hash to invalidate the virtual paths.
@@ -1887,8 +1892,6 @@ object Defaults extends BuildCommon {
       incCompiler.compile(i, s.log)
     } finally x.close() // workaround for #937
   }
-  private def compileAnalysisFileTask: Def.Initialize[Task[File]] =
-    Def.task(streams.value.cacheDirectory / compileAnalysisFilename.value)
   def compileIncSetupTask = Def.task {
     val converter = fileConverter.value
     val lookup = new PerClasspathEntryLookup {
@@ -1906,7 +1909,7 @@ object Defaults extends BuildCommon {
       lookup,
       (skip in compile).value,
       // TODO - this is kind of a bad way to grab the cache directory for streams...
-      compileAnalysisFileTask.value.toPath,
+      compileAnalysisFile.value.toPath,
       compilerCache.value,
       incOptions.value,
       (compilerReporter in compile).value,
@@ -2288,7 +2291,7 @@ object Classpaths {
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
     packagedArtifacts := packaged(defaultArtifactTasks).value
-  )
+  ) ++ RemoteCache.projectSettings
 
   val ivyPublishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
     artifacts :== Nil,
