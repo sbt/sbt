@@ -20,7 +20,6 @@ import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
 import sbt.librarymanagement.Configuration
-import sbt.librarymanagement.Configurations.{ Compile, Test }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 
@@ -28,19 +27,19 @@ object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
   private val bspVersion = "2.0.0-M5"
   private val languageIds = Vector("scala")
+  private val bspTargetConfigs = Set("compile", "test")
   private val capabilities = BuildServerCapabilities(CompileProvider(languageIds))
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     bspWorkspace := Def.taskDyn {
       val structure = Keys.buildStructure.value
       val scopes: Seq[Scope] = structure.allProjectRefs.flatMap { ref =>
-        Seq(Scope.Global.in(ref, Compile), Scope.Global.in(ref, Test))
+        bspTargetConfigs.toSeq.map(name => Scope.Global.in(ref, ConfigKey(name)))
       }
       Def.task {
         val targetIds = scopes.map(_ / Keys.buildTargetIdentifier).join.value
         targetIds.zip(scopes).toMap
       }
-
     }.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
       val workspace = Keys.bspWorkspace.value
@@ -100,7 +99,7 @@ object BuildServerProtocol {
       val c = configuration.value
       toId(ref, c)
     },
-    bspBuildTarget := bspBuildTargetTask.value,
+    bspBuildTarget := buildTargetTask.value,
     bspBuildTargetSourcesItem := {
       val id = buildTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
@@ -114,14 +113,8 @@ object BuildServerProtocol {
       SourcesItem(id, items)
     },
     bspBuildTargetCompileItem := bspCompileTask.value,
-    bspBuildTargetScalacOptionsItem := {
-      ScalacOptionsItem(
-        target = buildTargetIdentifier.value,
-        options = scalacOptions.value.toVector,
-        classpath = dependencyClasspath.value.map(_.data.toURI).toVector,
-        classDirectory = classDirectory.value.toURI
-      )
-    }
+    bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
+    bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value
   )
 
   def handler(sbtVersion: String): ServerHandler = ServerHandler { callback =>
@@ -133,34 +126,32 @@ object BuildServerProtocol {
           callback.jsonRpcRespond(response, Some(r.id)); ()
 
         case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
-          val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, None)
+          val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
           ()
 
         case r: JsonRpcRequestMessage if r.method == "build/exit" =>
-          val _ = callback.appendExec("shutdown", None)
+          val _ = callback.appendExec("shutdown", Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
-          import sbt.internal.bsp.codec.JsonProtocol._
           val param = Converter.fromJson[SourcesParams](json(r)).get
           val targets = param.targets.map(_.uri).mkString(" ")
           val command = Keys.bspBuildTargetSources.key
-          val _ = callback.appendExec(s"$command $targets", None)
+          val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
         case r if r.method == "buildTarget/compile" =>
           val param = Converter.fromJson[CompileParams](json(r)).get
           callback.log.info(param.toString)
           val targets = param.targets.map(_.uri).mkString(" ")
           val command = Keys.bspBuildTargetCompile.key
-          val _ = callback.appendExec(s"$command $targets", None)
+          val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "buildTarget/scalacOptions" =>
-          import sbt.internal.bsp.codec.JsonProtocol._
           val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
           val targets = param.targets.map(_.uri).mkString(" ")
           val command = Keys.bspBuildTargetScalacOptions.key
-          val _ = callback.appendExec(s"$command $targets", None)
+          val _ = callback.appendExec(s"$command $targets", Some(r.id))
       },
       PartialFunction.empty
     )
@@ -174,11 +165,11 @@ object BuildServerProtocol {
       )
     )
 
-  private def bspBuildTargetTask: Def.Initialize[Task[BuildTarget]] = Def.taskDyn {
-    import sbt.internal.bsp.codec.JsonProtocol._
+  private def buildTargetTask: Def.Initialize[Task[BuildTarget]] = Def.taskDyn {
     val buildTargetIdentifier = Keys.buildTargetIdentifier.value
     val thisProject = Keys.thisProject.value
     val thisProjectRef = Keys.thisProjectRef.value
+    val thisConfig = Keys.configuration.value
     val scalaJars = Keys.scalaInstance.value.allJars.map(_.toURI.toString)
     val compileData = ScalaBuildTarget(
       scalaOrganization = scalaOrganization.value,
@@ -193,30 +184,46 @@ object BuildServerProtocol {
       case configName => s"${thisProject.id}-$configName"
     }
     val baseDirectory = Keys.baseDirectory.value.toURI
-    val allDependencies = configuration.name match {
-      case "test" =>
-        thisProject.dependencies :+
-          ResolvedClasspathDependency(thisProjectRef, Some("test->compile"))
-      case _ => thisProject.dependencies
-    }
+    val projectDependencies = for {
+      (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
+      config <- configs if (dep != thisProjectRef || config != thisConfig.name) && bspTargetConfigs.contains(config)
+    } yield Keys.buildTargetIdentifier.in(dep, ConfigKey(config))
     val capabilities = BuildTargetCapabilities(canCompile = true, canTest = false, canRun = false)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
-      val allDepIds = allDependencies
-        .flatMap(dependencyTargetKeys(_, configuration))
-        .join
-        .value
-
       BuildTarget(
         buildTargetIdentifier,
         Some(displayName),
         Some(baseDirectory),
         tags,
         capabilities,
-        languageIds = Vector("scala"),
-        dependencies = allDepIds.toVector,
+        languageIds,
+        projectDependencies.join.value.toVector,
         dataKind = Some("scala"),
         data = Some(Converter.toJsonUnsafe(compileData)),
+      )
+    }
+  }
+
+  private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] = Def.taskDyn {
+    val target = Keys.buildTargetIdentifier.value
+    val scalacOptions = Keys.scalacOptions.value
+    val classDirectory = Keys.classDirectory.value
+    val externalDependencyClasspath = Keys.externalDependencyClasspath.value
+
+    val internalDependencyClasspath = for {
+      (ref, configs) <- bspInternalDependencyConfigurations.value
+      config <- configs
+    } yield Keys.classDirectory.in(ref, ConfigKey(config))
+
+    Def.task {
+      val classpath = internalDependencyClasspath.join.value.distinct ++
+        externalDependencyClasspath.map(_.data)
+      ScalacOptionsItem(
+        target,
+        scalacOptions.toVector,
+        classpath.map(_.toURI).toVector,
+        classDirectory.toURI
       )
     }
   }
@@ -228,6 +235,25 @@ object BuildServerProtocol {
       case Inc(_)   =>
         // Cancellation is not yet implemented
         StatusCode.Error
+    }
+  }
+
+  private def internalDependencyConfigurationsSetting = Def.settingDyn {
+    val directDependencies = Keys.internalDependencyConfigurations.value
+    val ref = Keys.thisProjectRef.value
+    val thisConfig = Keys.configuration.value
+    val transitiveDependencies = for {
+      (dep, configs) <- directDependencies
+      config <- configs if dep != ref || config != thisConfig.name
+    } yield Keys.bspInternalDependencyConfigurations.in(dep, ConfigKey(config))
+    Def.setting {
+      val allDependencies = directDependencies ++ transitiveDependencies.join.value.flatten
+      allDependencies
+        .groupBy(_._1)
+        .mapValues { deps =>
+          deps.flatMap { case (_, configs) => configs }.toSet
+        }
+        .toSeq
     }
   }
 
@@ -244,22 +270,4 @@ object BuildServerProtocol {
         BuildTargetIdentifier(new URI(s"$build#$project/${config.id}"))
       case _ => sys.error(s"unexpected $ref")
     }
-
-  private def dependencyTargetKeys(
-      ref: ClasspathDep[ProjectRef],
-      fromConfig: Configuration
-  ): Seq[SettingKey[BuildTargetIdentifier]] = {
-    val from = fromConfig.name
-    val depConfig = ref.configuration.getOrElse("compile")
-    for {
-      configExpr <- depConfig.split(",").toSeq
-      depId <- configExpr.split("->").toList match {
-        case "compile" :: Nil | `from` :: "compile" :: Nil =>
-          Some(ref.project / Compile / Keys.buildTargetIdentifier)
-        case "test" :: Nil | `from` :: "test" :: Nil =>
-          Some(ref.project / Test / Keys.buildTargetIdentifier)
-        case _ => None
-      }
-    } yield depId
-  }
 }
