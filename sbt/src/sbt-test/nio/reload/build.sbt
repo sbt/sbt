@@ -1,3 +1,5 @@
+import scala.concurrent.duration._
+
 val foo = inputKey[Unit]("working task")
 foo := {
   val filename = Def.spaceDelimited("").parsed.head
@@ -11,5 +13,7 @@ exists := {
 }
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
+
+ThisBuild / checkBuildSources / pollInterval := 0.seconds
 
 val sub = project

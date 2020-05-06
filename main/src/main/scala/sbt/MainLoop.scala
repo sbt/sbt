@@ -10,15 +10,14 @@ package sbt
 import java.io.PrintWriter
 import java.util.Properties
 
-import sbt.internal.{ Aggregation, ShutdownHooks }
+import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
-import sbt.internal.util.complete.Parser
+import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Terminal }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.Logger
-import sbt.nio.Keys._
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -191,8 +190,6 @@ object MainLoop {
             } else state
         }
         val newState = Command.process(exec.commandLine, progressState)
-        if (exec.commandLine.contains("session"))
-          newState.get(hasCheckedMetaBuild).foreach(_.set(false))
         val doneEvent = ExecStatusEvent(
           "Done",
           channelName,
@@ -209,25 +206,11 @@ object MainLoop {
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
         newState.remove(sbt.Keys.currentTaskProgress)
       }
-      // The split on space is to handle 'reboot full' and 'reboot'.
-      state.currentCommand.flatMap(_.commandLine.trim.split(" ").headOption) match {
-        case Some("reload") =>
-          // Reset the hasCheckedMetaBuild parameter so that the next call to checkBuildSources
-          // updates the previous cache for checkBuildSources / fileInputStamps but doesn't log.
-          state.get(hasCheckedMetaBuild).foreach(_.set(false))
-          process()
-        case Some("exit") | Some("reboot") => process()
-        case _ =>
-          val emptyState = state.copy(remainingCommands = Nil).put(Aggregation.suppressShow, true)
-          Parser.parse("checkBuildSources", emptyState.combinedParser) match {
-            case Right(cmd) =>
-              cmd() match {
-                case s if s.remainingCommands.headOption.map(_.commandLine).contains("reload") =>
-                  Exec("reload", None, None) +: exec +: state
-                case _ => process()
-              }
-            case _ => process()
-          }
+      state.get(CheckBuildSourcesKey) match {
+        case Some(cbs) =>
+          if (!cbs.needsReload(state, exec.commandLine)) process()
+          else Exec("reload", None, None) +: exec +: state.remove(CheckBuildSourcesKey)
+        case _ => process()
       }
     } catch {
       case err: JsonRpcResponseError =>

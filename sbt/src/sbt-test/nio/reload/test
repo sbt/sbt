@@ -1,3 +1,5 @@
+> show Global / checkBuildSources / pollInterval
+
 > foo bar
 
 > exists bar

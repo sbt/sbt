@@ -12,7 +12,6 @@ import java.net.URI
 import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files }
 import java.util.Properties
 import java.util.concurrent.ForkJoinPool
-import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
 import sbt.Project.LoadAction
@@ -21,6 +20,7 @@ import sbt.internal.Aggregation.AnyKeys
 import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.nio.CheckBuildSources
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
 import sbt.internal.util.complete.{ Parser, SizeParser }
@@ -854,12 +854,9 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
-    val s3 = addCacheStoreFactoryFactory(
-      Project
-        .setProject(session, structure, s2)
-        .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
-    )
-    LintUnused.lintUnusedFunc(s3)
+    val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
+    val s4 = LintUnused.lintUnusedFunc(s3)
+    CheckBuildSources.init(s4)
   }
 
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
