@@ -613,7 +613,7 @@ final class NetworkChannel(
   def logMessage(level: String, message: String): Unit = {
     import sbt.internal.langserver.codec.JsonProtocol._
     jsonRpcNotify(
-      "window/logMessage",
+      "build/logMessage",
       LogMessageParams(MessageType.fromLevelString(level), message)
     )
   }
