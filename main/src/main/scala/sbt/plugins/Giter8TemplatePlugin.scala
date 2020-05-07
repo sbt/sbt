@@ -23,7 +23,7 @@ object Giter8TemplatePlugin extends AutoPlugin {
     Seq(
       templateResolverInfos +=
         TemplateResolverInfo(
-          ModuleID("org.scala-sbt.sbt-giter8-resolver", "sbt-giter8-resolver", "0.11.0") cross CrossVersion.binary,
+          ModuleID("org.scala-sbt.sbt-giter8-resolver", "sbt-giter8-resolver", "0.12.0") cross CrossVersion.binary,
           "sbtgiter8resolver.Giter8TemplateResolver"
         )
     )
