@@ -236,13 +236,58 @@ final class ScriptedTests(
     val seqHandlers = handlers.values.toList
     runner.initStates(states, seqHandlers)
 
+    object ModifiedRetry {
+      private lazy val limit = {
+        val defaultLimit = 10
+        try System.getProperty("sbt.io.retry.limit", defaultLimit.toString).toInt
+        catch { case NonFatal(_) => defaultLimit }
+      }
+      private[sbt] def apply[@specialized T](
+          f: => T,
+          excludedExceptions: Class[_ <: IOException]*
+      ): T =
+        apply(f, limit, excludedExceptions: _*)
+      private[sbt] def apply[@specialized T](
+          f: => T,
+          limit: Int,
+          excludedExceptions: Class[_ <: IOException]*
+      ): T = {
+        require(limit >= 1, "limit must be 1 or higher: was: " + limit)
+        def filter(e: Exception): Boolean = excludedExceptions match {
+          case s if s.nonEmpty =>
+            !excludedExceptions.exists(_.isAssignableFrom(e.getClass))
+          case _ =>
+            true
+        }
+        var attempt = 1
+        var firstException: IOException = null
+        while (attempt <= limit) {
+          try {
+            return f
+          } catch {
+            case e: IOException if filter(e) =>
+              if (firstException == null) firstException = e
+
+              Thread.sleep(100);
+              attempt += 1
+          }
+        }
+        throw firstException
+      }
+    }
+
     def runBatchTests = {
       groupedTests.map {
         case ((group, name), originalDir) =>
           val label = s"$group/$name"
           log.info(s"Running $label")
-          // Copy test's contents and reload the sbt instance to pick them up
-          IO.copyDirectory(originalDir, tempTestDir)
+
+          import java.nio.file.FileAlreadyExistsException
+          ModifiedRetry(
+            // Copy test's contents and reload the sbt instance to pick them up
+            IO.copyDirectory(originalDir, tempTestDir),
+            excludedExceptions = classOf[FileAlreadyExistsException]
+          )
 
           val runTest = () => {
             // Reload and initialize (to reload contents of .sbtrc files)
