@@ -1,0 +1,7 @@
+> set descendant / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+> test
+
+> set descendant / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+
+> test
