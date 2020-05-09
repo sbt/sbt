@@ -80,7 +80,7 @@ final case class Task[T](info: Info[T], work: Action[T]) {
  */
 final case class Info[T](
     attributes: AttributeMap = AttributeMap.empty,
-    post: T => AttributeMap = const(AttributeMap.empty)
+    post: T => AttributeMap = Info.defaultAttributeMap
 ) {
   import Info._
   def name = attributes.get(Name)
@@ -96,4 +96,5 @@ final case class Info[T](
 object Info {
   val Name = AttributeKey[String]("name")
   val Description = AttributeKey[String]("description")
+  val defaultAttributeMap = const(AttributeMap.empty)
 }
