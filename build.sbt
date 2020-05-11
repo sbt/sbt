@@ -145,23 +145,6 @@ lazy val `sbt-pgp-coursier` = project
     }
   )
 
-lazy val `sbt-shading` = project
-  .in(file("modules/sbt-shading"))
-  .enablePlugins(ScriptedPlugin)
-  .disablePlugins(MimaPlugin)
-  .dependsOn(`sbt-coursier`)
-  .settings(
-    plugin,
-    libraryDependencies += ("ch.epfl.scala" % "jarjar" % "1.7.2-patched")
-      .exclude("org.apache.maven", "maven-plugin-api")
-      .exclude("org.apache.ant", "ant"),
-    scriptedDependencies := {
-      scriptedDependencies.value
-      // TODO Get dependency projects automatically
-      scriptedDependencies.in(`sbt-coursier`).value
-    }
-  )
-
 lazy val `sbt-coursier-root` = project
   .in(file("."))
   .disablePlugins(MimaPlugin)
@@ -172,8 +155,7 @@ lazy val `sbt-coursier-root` = project
     `sbt-coursier-shared`,
     `sbt-coursier-shared-shaded`,
     `sbt-lm-coursier`,
-    `sbt-pgp-coursier`,
-    `sbt-shading`
+    `sbt-pgp-coursier`
   )
   .settings(
     shared,
