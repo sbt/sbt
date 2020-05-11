@@ -12,7 +12,7 @@ package sbt.internal.protocol
  */
 final class JsonRpcResponseMessage private (
   jsonrpc: String,
-  val id: Option[String],
+  val id: String,
   val result: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue],
   val error: Option[sbt.internal.protocol.JsonRpcResponseError]) extends sbt.internal.protocol.JsonRpcMessage(jsonrpc) with Serializable {
   
@@ -28,17 +28,14 @@ final class JsonRpcResponseMessage private (
   override def toString: String = {
     s"""JsonRpcResponseMessage($jsonrpc, $id, ${sbt.protocol.Serialization.compactPrintJsonOpt(result)}, $error)"""
   }
-  private[this] def copy(jsonrpc: String = jsonrpc, id: Option[String] = id, result: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = result, error: Option[sbt.internal.protocol.JsonRpcResponseError] = error): JsonRpcResponseMessage = {
+  private[this] def copy(jsonrpc: String = jsonrpc, id: String = id, result: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = result, error: Option[sbt.internal.protocol.JsonRpcResponseError] = error): JsonRpcResponseMessage = {
     new JsonRpcResponseMessage(jsonrpc, id, result, error)
   }
   def withJsonrpc(jsonrpc: String): JsonRpcResponseMessage = {
     copy(jsonrpc = jsonrpc)
   }
-  def withId(id: Option[String]): JsonRpcResponseMessage = {
-    copy(id = id)
-  }
   def withId(id: String): JsonRpcResponseMessage = {
-    copy(id = Option(id))
+    copy(id = id)
   }
   def withResult(result: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]): JsonRpcResponseMessage = {
     copy(result = result)
@@ -55,6 +52,6 @@ final class JsonRpcResponseMessage private (
 }
 object JsonRpcResponseMessage {
   
-  def apply(jsonrpc: String, id: Option[String], result: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue], error: Option[sbt.internal.protocol.JsonRpcResponseError]): JsonRpcResponseMessage = new JsonRpcResponseMessage(jsonrpc, id, result, error)
-  def apply(jsonrpc: String, id: String, result: sjsonnew.shaded.scalajson.ast.unsafe.JValue, error: sbt.internal.protocol.JsonRpcResponseError): JsonRpcResponseMessage = new JsonRpcResponseMessage(jsonrpc, Option(id), Option(result), Option(error))
+  def apply(jsonrpc: String, id: String, result: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue], error: Option[sbt.internal.protocol.JsonRpcResponseError]): JsonRpcResponseMessage = new JsonRpcResponseMessage(jsonrpc, id, result, error)
+  def apply(jsonrpc: String, id: String, result: sjsonnew.shaded.scalajson.ast.unsafe.JValue, error: sbt.internal.protocol.JsonRpcResponseError): JsonRpcResponseMessage = new JsonRpcResponseMessage(jsonrpc, id, Option(result), Option(error))
 }

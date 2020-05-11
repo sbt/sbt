@@ -119,7 +119,7 @@ class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[Strin
   }
 
   def onResponse(msg: JsonRpcResponseMessage): Unit = {
-    msg.id foreach {
+    msg.id match {
       case execId if pendingExecIds contains execId =>
         onReturningReponse(msg)
         lock.synchronized {

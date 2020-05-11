@@ -212,7 +212,7 @@ private[sbt] final class CommandExchange {
       case c: NetworkChannel =>
         try {
           // broadcast to all network channels
-          c.respondError(code, message, execId, source)
+          c.respondError(code, message, execId)
         } catch {
           case _: IOException =>
             toDel += c
@@ -232,7 +232,7 @@ private[sbt] final class CommandExchange {
       case c: NetworkChannel =>
         try {
           // broadcast to all network channels
-          c.respondError(err, execId, source)
+          c.respondError(err, execId)
         } catch {
           case _: IOException =>
             toDel += c
@@ -253,7 +253,7 @@ private[sbt] final class CommandExchange {
       case c: NetworkChannel =>
         try {
           // broadcast to all network channels
-          c.respondEvent(event, execId, source)
+          c.respondEvent(event, execId)
         } catch {
           case _: IOException =>
             toDel += c
