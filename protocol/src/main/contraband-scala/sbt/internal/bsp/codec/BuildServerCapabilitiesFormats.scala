@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[http://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -12,8 +12,9 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
       case Some(__js) =>
       unbuilder.beginObject(__js)
       val compileProvider = unbuilder.readField[Option[sbt.internal.bsp.CompileProvider]]("compileProvider")
+      val dependencySourcesProvider = unbuilder.readField[Option[Boolean]]("dependencySourcesProvider")
       unbuilder.endObject()
-      sbt.internal.bsp.BuildServerCapabilities(compileProvider)
+      sbt.internal.bsp.BuildServerCapabilities(compileProvider, dependencySourcesProvider)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -21,6 +22,7 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
   override def write[J](obj: sbt.internal.bsp.BuildServerCapabilities, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("compileProvider", obj.compileProvider)
+    builder.addField("dependencySourcesProvider", obj.dependencySourcesProvider)
     builder.endObject()
   }
 }

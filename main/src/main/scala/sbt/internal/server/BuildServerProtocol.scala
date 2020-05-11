@@ -28,7 +28,10 @@ object BuildServerProtocol {
   private val bspVersion = "2.0.0-M5"
   private val languageIds = Vector("scala")
   private val bspTargetConfigs = Set("compile", "test")
-  private val capabilities = BuildServerCapabilities(CompileProvider(languageIds))
+  private val capabilities = BuildServerCapabilities(
+    CompileProvider(languageIds),
+    dependencySourcesProvider = true
+  )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     bspWorkspace := Def.taskDyn {
@@ -66,6 +69,20 @@ object BuildServerProtocol {
       }
     }.evaluated,
     bspBuildTargetSources / aggregate := false,
+    bspBuildTargetDependencySources := Def.inputTaskDyn {
+      val s = state.value
+      val workspace = bspWorkspace.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val filter = ScopeFilter.in(targets.map(workspace))
+      // run the worker task concurrently
+      Def.task {
+        import sbt.internal.bsp.codec.JsonProtocol._
+        val items = bspBuildTargetDependencySourcesItem.all(filter).value
+        val result = DependencySourcesResult(items.toVector)
+        s.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetDependencySources / aggregate := false,
     bspBuildTargetCompile := Def.inputTaskDyn {
       val s: State = state.value
       val workspace = bspWorkspace.value
@@ -112,6 +129,7 @@ object BuildServerProtocol {
         })
       SourcesItem(id, items)
     },
+    bspBuildTargetDependencySourcesItem := dependencySourcesItemTask.value,
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value
@@ -138,6 +156,12 @@ object BuildServerProtocol {
           val param = Converter.fromJson[SourcesParams](json(r)).get
           val targets = param.targets.map(_.uri).mkString(" ")
           val command = Keys.bspBuildTargetSources.key
+          val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+        case r if r.method == "buildTarget/dependencySources" =>
+          val param = Converter.fromJson[DependencySourcesParams](json(r)).get
+          val targets = param.targets.map(_.uri).mkString(" ")
+          val command = Keys.bspBuildTargetDependencySources.key
           val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
         case r if r.method == "buildTarget/compile" =>
@@ -186,7 +210,8 @@ object BuildServerProtocol {
     val baseDirectory = Keys.baseDirectory.value.toURI
     val projectDependencies = for {
       (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
-      config <- configs if (dep != thisProjectRef || config != thisConfig.name) && bspTargetConfigs.contains(config)
+      config <- configs
+      if (dep != thisProjectRef || config != thisConfig.name) && bspTargetConfigs.contains(config)
     } yield Keys.buildTargetIdentifier.in(dep, ConfigKey(config))
     val capabilities = BuildTargetCapabilities(canCompile = true, canTest = false, canRun = false)
     val tags = BuildTargetTag.fromConfig(configuration.name)
@@ -226,6 +251,18 @@ object BuildServerProtocol {
         classDirectory.toURI
       )
     }
+  }
+
+  private def dependencySourcesItemTask: Def.Initialize[Task[DependencySourcesItem]] = Def.task {
+    val targetId = Keys.buildTargetIdentifier.value
+    val updateReport = Keys.updateClassifiers.value
+    val sources = for {
+      configuration <- updateReport.configurations.view
+      module <- configuration.modules.view
+      (artifact, file) <- module.artifacts
+      classifier <- artifact.classifier if classifier == "sources"
+    } yield file.toURI
+    DependencySourcesItem(targetId, sources.distinct.toVector)
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
