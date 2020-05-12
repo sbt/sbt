@@ -116,7 +116,7 @@ private[sbt] trait LanguageServerProtocol { self: NetworkChannel =>
 
   protected lazy val callbackImpl: ServerCallback = new ServerCallback {
     def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
-      self.respondEvent(event, execId)
+      self.respondResult(event, execId)
 
     def jsonRpcRespondError(execId: Option[String], code: Long, message: String): Unit =
       self.respondError(code, message, execId)

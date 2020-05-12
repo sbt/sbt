@@ -14,8 +14,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 import sbt.BasicKeys._
 import sbt.internal.util._
-import sbt.protocol.EventMessage
-import sjsonnew.JsonFormat
 
 private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {
   private[this] val askUserThread = new AtomicReference[AskUserThread]
@@ -62,21 +60,16 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
 
   def publishBytes(bytes: Array[Byte]): Unit = ()
 
-  def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = ()
-
-  def publishEventMessage(event: EventMessage): Unit =
-    event match {
-      case e: ConsolePromptEvent =>
-        if (Terminal.systemInIsAttached) {
-          askUserThread.synchronized {
-            askUserThread.get match {
-              case null => askUserThread.set(makeAskUserThread(e.state))
-              case t    => t.redraw()
-            }
-          }
+  def publishEventMessage(event: ConsolePromptEvent): Unit = {
+    if (Terminal.systemInIsAttached) {
+      askUserThread.synchronized {
+        askUserThread.get match {
+          case null => askUserThread.set(makeAskUserThread(event.state))
+          case t    => t.redraw()
         }
-      case _ => //
+      }
     }
+  }
 
   def shutdown(): Unit = askUserThread.synchronized {
     askUserThread.get match {

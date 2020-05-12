@@ -11,7 +11,6 @@ package internal
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import sbt.protocol.EventMessage
-import sjsonnew.JsonFormat
 
 /**
  * A command channel represents an IO device such as network socket or human
@@ -42,9 +41,6 @@ abstract class CommandChannel {
   }
   def poll: Option[Exec] = Option(commandQueue.poll)
 
-  def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit
-  final def publishEvent[A: JsonFormat](event: A): Unit = publishEvent(event, None)
-  def publishEventMessage(event: EventMessage): Unit
   def publishBytes(bytes: Array[Byte]): Unit
   def shutdown(): Unit
   def name: String

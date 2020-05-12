@@ -40,7 +40,7 @@ private[sbt] object Definition {
   def send[A: JsonFormat](source: CommandSource, execId: String)(params: A): Unit = {
     for {
       channel <- StandardMain.exchange.channels.collectFirst {
-        case c if c.name == source.channelName => c
+        case c: NetworkChannel if c.name == source.channelName => c
       }
     } {
       channel.publishEvent(params, Option(execId))

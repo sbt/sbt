@@ -267,7 +267,6 @@ final class NetworkChannel(
       err: JsonRpcResponseError,
       execId: Option[String]
   ): Unit = this.synchronized {
-    println(s"respond error  for $execId")
     execId match {
       case Some(id) if onGoingRequests.contains(id) =>
         onGoingRequests -= id
@@ -285,11 +284,10 @@ final class NetworkChannel(
     respondError(JsonRpcResponseError(code, message), execId)
   }
 
-  private[sbt] def respondEvent[A: JsonFormat](
+  private[sbt] def respondResult[A: JsonFormat](
       event: A,
       execId: Option[String]
   ): Unit = this.synchronized {
-    println(s"respond result for $execId")
     execId match {
       case Some(id) if onGoingRequests.contains(id) =>
         onGoingRequests -= id
@@ -307,17 +305,20 @@ final class NetworkChannel(
     }
   }
 
+  def publishEvent[A: JsonFormat](event: A): Unit =
+    publishEvent(event, None)
+
   def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = {
     if (isLanguageServerProtocol) {
       event match {
         case entry: StringEvent => logMessage(entry.level, entry.message)
         case entry: ExecStatusEvent =>
           entry.exitCode match {
-            case None           => respondEvent(event, entry.execId)
-            case Some(0)        => respondEvent(event, entry.execId)
+            case None           => respondResult(event, entry.execId)
+            case Some(0)        => respondResult(event, entry.execId)
             case Some(exitCode) => respondError(exitCode, entry.message.getOrElse(""), entry.execId)
           }
-        case _ => respondEvent(event, execId)
+        case _ => respondResult(event, execId)
       }
     } else {
       contentType match {
@@ -417,7 +418,7 @@ final class NetworkChannel(
     if (initialized) {
       import sbt.protocol.codec.JsonProtocol._
       SettingQuery.handleSettingQueryEither(req, structure) match {
-        case Right(x) => respondEvent(x, execId)
+        case Right(x) => respondResult(x, execId)
         case Left(s)  => respondError(ErrorCodes.InvalidParams, s, execId)
       }
     } else {
@@ -440,7 +441,7 @@ final class NetworkChannel(
                 }
                 .map(c => cp.query + c)
             import sbt.protocol.codec.JsonProtocol._
-            respondEvent(
+            respondResult(
               CompletionResponse(
                 items = completionItems.toVector
               ),
@@ -498,7 +499,7 @@ final class NetworkChannel(
               runningEngine.cancelAndShutdown()
 
               import sbt.protocol.codec.JsonProtocol._
-              respondEvent(
+              respondResult(
                 ExecStatusEvent(
                   "Task cancelled",
                   Some(name),
