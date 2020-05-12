@@ -8,13 +8,14 @@
 package testpkg
 
 import java.io.{ File, IOException }
+import java.util.concurrent.TimeoutException
 
 import verify._
 import sbt.RunFromSourceMain
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol.ClientSocket
-import scala.annotation.tailrec
+
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
@@ -150,6 +151,7 @@ case class TestServer(
     sbtVersion: String,
     classpath: Seq[File]
 ) {
+  import scala.concurrent.ExecutionContext.Implicits._
   import TestServer.hostLog
 
   val readBuffer = new Array[Byte](40960)
@@ -183,9 +185,15 @@ case class TestServer(
   waitForPortfile(90.seconds)
 
   // make connection to the socket described in the portfile
-  val (sk, tkn) = ClientSocket.socket(portfile)
-  val out = sk.getOutputStream
-  val in = sk.getInputStream
+  var (sk, _) = ClientSocket.socket(portfile)
+  var out = sk.getOutputStream
+  var in = sk.getInputStream
+
+  def resetConnection() = {
+    sk = ClientSocket.socket(portfile)._1
+    out = sk.getOutputStream
+    in = sk.getInputStream
+  }
 
   // initiate handshake
   sendJsonRpc(
@@ -230,7 +238,7 @@ case class TestServer(
     writeEndLine
   }
 
-  def readFrame: Option[String] = {
+  def readFrame: Future[Option[String]] = Future {
     def getContentLength: Int = {
       readLine map { line =>
         line.drop(16).toInt
@@ -244,14 +252,28 @@ case class TestServer(
 
   final def waitForString(duration: FiniteDuration)(f: String => Boolean): Boolean = {
     val deadline = duration.fromNow
-    @tailrec
     def impl(): Boolean = {
-      if (deadline.isOverdue || !process.isAlive) false
-      else
-        readFrame.fold(false)(f) || {
-          Thread.sleep(100)
-          impl
-        }
+      try {
+        Await.result(readFrame, deadline.timeLeft).fold(false)(f) || impl
+      } catch {
+        case _: TimeoutException =>
+          resetConnection() // create a new connection to invalidate the running readFrame future
+          false
+      }
+    }
+    impl()
+  }
+
+  final def neverReceive(duration: FiniteDuration)(f: String => Boolean): Boolean = {
+    val deadline = duration.fromNow
+    def impl(): Boolean = {
+      try {
+        Await.result(readFrame, deadline.timeLeft).fold(true)(s => !f(s)) && impl
+      } catch {
+        case _: TimeoutException =>
+          resetConnection() // create a new connection to invalidate the running readFrame future
+          true
+      }
     }
     impl()
   }
