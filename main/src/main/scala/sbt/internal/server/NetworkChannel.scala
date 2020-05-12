@@ -20,7 +20,7 @@ import sbt.internal.protocol.{
 }
 import sbt.internal.util.codec.JValueFormats
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ ObjectEvent, StringEvent }
+import sbt.internal.util.ObjectEvent
 import sbt.protocol._
 import sbt.util.Logger
 import sjsonnew._
@@ -293,7 +293,9 @@ final class NetworkChannel(
         onGoingRequests -= id
         jsonRpcRespond(event, id)
       case _ =>
-        log.debug(s"unmatched json response: ${CompactPrinter(Converter.toJsonUnsafe(event))}")
+        log.debug(
+          s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
+        )
     }
   }
 
@@ -305,21 +307,11 @@ final class NetworkChannel(
     }
   }
 
-  def publishEvent[A: JsonFormat](event: A): Unit =
-    publishEvent(event, None)
+  def respond[A: JsonFormat](event: A): Unit = respond(event, None)
 
-  def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = {
+  def respond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
     if (isLanguageServerProtocol) {
-      event match {
-        case entry: StringEvent => logMessage(entry.level, entry.message)
-        case entry: ExecStatusEvent =>
-          entry.exitCode match {
-            case None           => respondResult(event, entry.execId)
-            case Some(0)        => respondResult(event, entry.execId)
-            case Some(exitCode) => respondError(exitCode, entry.message.getOrElse(""), entry.execId)
-          }
-        case _ => respondResult(event, execId)
-      }
+      respondResult(event, execId)
     } else {
       contentType match {
         case SbtX1Protocol =>
@@ -330,7 +322,7 @@ final class NetworkChannel(
     }
   }
 
-  def publishEventMessage(event: EventMessage): Unit = {
+  def notifyEvent(event: EventMessage): Unit = {
     if (isLanguageServerProtocol) {
       event match {
         case entry: LogEvent        => logMessage(entry.level, entry.message)
@@ -351,22 +343,22 @@ final class NetworkChannel(
    * This publishes object events. The type information has been
    * erased because it went through logging.
    */
-  private[sbt] def publishObjectEvent(event: ObjectEvent[_]): Unit = {
+  private[sbt] def respond(event: ObjectEvent[_]): Unit = {
     import sjsonnew.shaded.scalajson.ast.unsafe._
     if (isLanguageServerProtocol) onObjectEvent(event)
     else {
       import jsonFormat._
       val json: JValue = JObject(
         JField("type", JString(event.contentType)),
-        (Vector(JField("message", event.json), JField("level", JString(event.level.toString))) ++
-          (event.channelName.toVector map { channelName =>
+        Seq(JField("message", event.json), JField("level", JString(event.level.toString))) ++
+          (event.channelName map { channelName =>
             JField("channelName", JString(channelName))
           }) ++
-          (event.execId.toVector map { execId =>
+          (event.execId map { execId =>
             JField("execId", JString(execId))
-          })): _*
+          }): _*
       )
-      publishEvent(json)
+      respond(json, event.execId)
     }
   }
 
@@ -393,7 +385,7 @@ final class NetworkChannel(
           authenticate(x) match {
             case true =>
               initialized = true
-              publishEventMessage(ChannelAcceptedEvent(name))
+              notifyEvent(ChannelAcceptedEvent(name))
             case _ => sys.error("invalid token")
           }
         case None => sys.error("init command but without token.")

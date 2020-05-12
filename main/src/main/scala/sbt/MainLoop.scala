@@ -176,7 +176,7 @@ object MainLoop {
   /** This is the main function State transfer function of the sbt command processing. */
   def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
-    StandardMain.exchange publishEventMessage
+    StandardMain.exchange notifyStatus
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
     try {
       def process(): State = {
@@ -197,12 +197,7 @@ object MainLoop {
           newState.remainingCommands.toVector map (_.commandLine),
           exitCode(newState, state),
         )
-        if (doneEvent.execId.isDefined) { // send back a response or error
-          import sbt.protocol.codec.JsonProtocol._
-          StandardMain.exchange publishEvent doneEvent
-        } else { // send back a notification
-          StandardMain.exchange publishEventMessage doneEvent
-        }
+        StandardMain.exchange.respondStatus(doneEvent)
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
         newState.remove(sbt.Keys.currentTaskProgress)
       }
@@ -225,8 +220,7 @@ object MainLoop {
           ExitCode(ErrorCodes.UnknownError),
           Option(err.getMessage),
         )
-        import sbt.protocol.codec.JsonProtocol._
-        StandardMain.exchange.publishEvent(errorEvent)
+        StandardMain.exchange.respondStatus(errorEvent)
         throw err
     }
   }

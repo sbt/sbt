@@ -189,16 +189,20 @@ case class TestServer(
   var out = sk.getOutputStream
   var in = sk.getInputStream
 
-  def resetConnection() = {
-    sk = ClientSocket.socket(portfile)._1
-    out = sk.getOutputStream
-    in = sk.getInputStream
-  }
-
   // initiate handshake
   sendJsonRpc(
     """{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { } } }"""
   )
+
+  def resetConnection() = {
+    sk = ClientSocket.socket(portfile)._1
+    out = sk.getOutputStream
+    in = sk.getInputStream
+
+    sendJsonRpc(
+      """{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { } } }"""
+    )
+  }
 
   def test(f: TestServer => Future[Assertion]): Future[Assertion] = {
     f(this)

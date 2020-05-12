@@ -17,10 +17,10 @@ import sbt.BasicKeys._
 import sbt.nio.Watch.NullLogger
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.server._
-import sbt.internal.util.{ ConsoleOut, MainAppender, ObjectEvent, StringEvent, Terminal }
+import sbt.internal.util.{ ConsoleOut, MainAppender, ObjectEvent, Terminal }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
-import sbt.protocol.{ EventMessage, ExecStatusEvent }
+import sbt.protocol.{ ExecStatusEvent, LogEvent }
 import sbt.util.{ Level, LogExchange, Logger }
 import sjsonnew.JsonFormat
 
@@ -212,7 +212,7 @@ private[sbt] final class CommandExchange {
         // broadcast to the source channel only
         case c: NetworkChannel if c.name == source => c
       }
-    } tryTo(_.respondError(err, execId), removeChannel)(channel)
+    } tryTo(_.respondError(err, execId))(channel)
   }
 
   // This is an interface to directly respond events.
@@ -227,7 +227,7 @@ private[sbt] final class CommandExchange {
         // broadcast to the source channel only
         case c: NetworkChannel if c.name == source => c
       }
-    } tryTo(_.respondResult(event, execId), removeChannel)(channel)
+    } tryTo(_.respondResult(event, execId))(channel)
   }
 
   // This is an interface to directly notify events.
@@ -235,42 +235,36 @@ private[sbt] final class CommandExchange {
     channels
       .collect { case c: NetworkChannel => c }
       .foreach {
-        tryTo(_.notifyEvent(method, params), removeChannel)
+        tryTo(_.notifyEvent(method, params))
       }
   }
 
-  private def tryTo(f: NetworkChannel => Unit, fallback: NetworkChannel => Unit)(
+  private def tryTo(f: NetworkChannel => Unit)(
       channel: NetworkChannel
   ): Unit =
     try f(channel)
-    catch { case _: IOException => fallback(channel) }
+    catch { case _: IOException => removeChannel(channel) }
 
-  def publishEvent[A: JsonFormat](event: A): Unit = {
-    event match {
-      case entry: StringEvent =>
-        // Note that language server's LogMessageParams does not hold the execid,
-        // so this is weaker than the StringMessage. We might want to double-send
-        // in case we have a better client that can utilize the knowledge.
-        channels
-          .collect { case c: NetworkChannel => c }
-          .foreach {
-            tryTo(_.logMessage(entry.level, entry.message), removeChannel)
-          }
+  def respondStatus(event: ExecStatusEvent): Unit = {
+    import sbt.protocol.codec.JsonProtocol._
+    for {
+      source <- event.channelName
+      channel <- channels.collectFirst {
+        case c: NetworkChannel if c.name == source => c
+      }
+    } {
+      if (event.execId.isEmpty) {
+        tryTo(_.notifyEvent(event))(channel)
+      } else {
+        event.exitCode match {
+          case None | Some(0) =>
+            tryTo(_.respondResult(event, event.execId))(channel)
+          case Some(code) =>
+            tryTo(_.respondError(code, event.message.getOrElse(""), event.execId))(channel)
+        }
+      }
 
-      case entry: ExecStatusEvent =>
-        for {
-          source <- entry.channelName
-          channel <- channels.collectFirst {
-            case c: NetworkChannel if c.name == source => c
-          }
-        } tryTo(_.publishEvent(event), removeChannel)(channel)
-
-      case _ =>
-        channels
-          .collect { case c: NetworkChannel => c }
-          .foreach {
-            tryTo(_.publishEvent(event), removeChannel)
-          }
+      tryTo(_.respond(event, event.execId))(channel)
     }
   }
 
@@ -278,39 +272,38 @@ private[sbt] final class CommandExchange {
    * This publishes object events. The type information has been
    * erased because it went through logging.
    */
-  private[sbt] def publishObjectEvent(event: ObjectEvent[_]): Unit = {
+  private[sbt] def respondObjectEvent(event: ObjectEvent[_]): Unit = {
     for {
       source <- event.channelName
       channel <- channels.collectFirst {
         case c: NetworkChannel if c.name == source => c
       }
-    } tryTo(_.publishObjectEvent(event), removeChannel)(channel)
+    } tryTo(_.respond(event))(channel)
   }
 
-  // fanout publishEvent
-  def publishEventMessage(event: EventMessage): Unit = {
-    event match {
-      // Special treatment for ConsolePromptEvent since it's hand coded without codec.
-      case entry: ConsolePromptEvent =>
-        activePrompt.set(Terminal.systemInIsAttached)
-        channels
-          .collect { case c: ConsoleChannel => c }
-          .foreach { _.publishEventMessage(entry) }
-      case entry: ExecStatusEvent =>
-        for {
-          source <- entry.channelName
-          channel <- channels.collectFirst {
-            case c: NetworkChannel if c.name == source => c
-          }
-        } tryTo(_.publishEventMessage(event), removeChannel)(channel)
-
-      case _ =>
-        channels
-          .collect { case c: NetworkChannel => c }
-          .foreach {
-            tryTo(_.publishEventMessage(event), removeChannel)
-          }
-    }
+  def prompt(event: ConsolePromptEvent): Unit = {
+    activePrompt.set(Terminal.systemInIsAttached)
+    channels
+      .collect { case c: ConsoleChannel => c }
+      .foreach { _.prompt(event) }
   }
+
+  def logMessage(event: LogEvent): Unit = {
+    channels
+      .collect { case c: NetworkChannel => c }
+      .foreach {
+        tryTo(_.notifyEvent(event))
+      }
+  }
+
+  def notifyStatus(event: ExecStatusEvent): Unit = {
+    for {
+      source <- event.channelName
+      channel <- channels.collectFirst {
+        case c: NetworkChannel if c.name == source => c
+      }
+    } tryTo(_.notifyEvent(event))(channel)
+  }
+
   private[this] def needToFinishPromptLine(): Boolean = activePrompt.compareAndSet(true, false)
 }

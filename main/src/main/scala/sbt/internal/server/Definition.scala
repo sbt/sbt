@@ -43,7 +43,7 @@ private[sbt] object Definition {
         case c: NetworkChannel if c.name == source.channelName => c
       }
     } {
-      channel.publishEvent(params, Option(execId))
+      channel.respond(params, Option(execId))
     }
   }
 

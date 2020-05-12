@@ -17,7 +17,6 @@ import org.apache.logging.log4j.core.config.Property
 import sbt.util.Level
 import sbt.internal.util._
 import sbt.protocol.LogEvent
-import sbt.internal.util.codec._
 
 class RelayAppender(name: String)
     extends AbstractAppender(
@@ -40,15 +39,12 @@ class RelayAppender(name: String)
     }
   }
   def appendLog(level: Level.Value, message: => String): Unit = {
-    exchange.publishEventMessage(LogEvent(level.toString, message))
+    exchange.logMessage(LogEvent(level.toString, message))
   }
   def appendEvent(event: AnyRef): Unit =
     event match {
-      case x: StringEvent => {
-        import JsonProtocol._
-        exchange.publishEvent(x: AbstractEntry)
-      }
-      case x: ObjectEvent[_] => exchange.publishObjectEvent(x)
+      case x: StringEvent    => exchange.logMessage(LogEvent(x.message, x.level))
+      case x: ObjectEvent[_] => exchange.respondObjectEvent(x)
       case _ =>
         println(s"appendEvent: ${event.getClass}")
         ()

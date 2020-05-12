@@ -60,7 +60,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
 
   def publishBytes(bytes: Array[Byte]): Unit = ()
 
-  def publishEventMessage(event: ConsolePromptEvent): Unit = {
+  def prompt(event: ConsolePromptEvent): Unit = {
     if (Terminal.systemInIsAttached) {
       askUserThread.synchronized {
         askUserThread.get match {

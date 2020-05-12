@@ -890,7 +890,7 @@ object BuiltinCommands {
     val exchange = StandardMain.exchange
     val welcomeState = displayWelcomeBanner(s0)
     val s1 = exchange run welcomeState
-    exchange publishEventMessage ConsolePromptEvent(s0)
+    exchange prompt ConsolePromptEvent(s0)
     val minGCInterval = Project
       .extract(s1)
       .getOpt(Keys.minForcegcInterval)
