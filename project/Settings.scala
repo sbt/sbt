@@ -6,7 +6,6 @@ import sbt.Keys._
 import sbt.ScriptedPlugin.autoImport.{scriptedBufferLog, scriptedLaunchOpts}
 
 import com.jsuereth.sbtpgp._
-import coursier.ShadingPlugin.autoImport.{Shading, shadingNamespace}
 
 object Settings {
 
@@ -64,19 +63,6 @@ object Settings {
       sbtPlugin := true,
       sbtVersion.in(pluginCrossBuild) := targetSbtVersion
     )
-
-  lazy val shading =
-    inConfig(Shading)(PgpSettings.projectSettings) ++
-       // Why does this have to be repeated here?
-       // Can't figure out why configuration gets lost without this in particular...
-      coursier.ShadingPlugin.projectSettings ++
-      Seq(
-        shadingNamespace := "coursier.shaded",
-        publish := publish.in(Shading).value,
-        publishLocal := publishLocal.in(Shading).value,
-        PgpKeys.publishSigned := PgpKeys.publishSigned.in(Shading).value,
-        PgpKeys.publishLocalSigned := PgpKeys.publishLocalSigned.in(Shading).value
-      )
 
   lazy val generatePropertyFile =
     resourceGenerators.in(Compile) += Def.task {

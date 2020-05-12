@@ -45,28 +45,27 @@ lazy val `lm-coursier-shaded` = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
-    shading,
-    shadingNamespace := "lmcoursier.internal.shaded",
-    shadeNamespaces ++= Set(
-      "coursier",
-      "shapeless",
-      "argonaut",
-      "org.fusesource",
-      "macrocompat",
-      "io.github.alexarchambault.windowsansi"
-    ),
+    shadedModules += "io.get-coursier" %% "coursier",
+    validNamespaces += "lmcoursier",
+    shadingRules ++= {
+      val toShade = Seq(
+        "coursier",
+        "shapeless",
+        "argonaut",
+        "org.fusesource",
+        "macrocompat",
+        "io.github.alexarchambault.windowsansi"
+      )
+      for (ns <- toShade)
+        yield ShadingRule.moveUnder(ns, "lmcoursier.internal.shaded")
+    },
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion0 % "shaded",
+      "io.get-coursier" %% "coursier" % coursierVersion0,
       "io.github.alexarchambault" %% "data-class" % "0.2.3" % Provided,
       "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.3.2",
       "org.scalatest" %% "scalatest" % "3.1.2" % Test
-    ),
-    packageBin.in(Shading) := {
-      val jar = packageBin.in(Shading).value
-      Check.onlyNamespace("lmcoursier", jar)
-      jar
-    }
+    )
   )
 
 lazy val `sbt-coursier-shared` = project
@@ -145,23 +144,6 @@ lazy val `sbt-pgp-coursier` = project
     }
   )
 
-lazy val `sbt-shading` = project
-  .in(file("modules/sbt-shading"))
-  .enablePlugins(ScriptedPlugin)
-  .disablePlugins(MimaPlugin)
-  .dependsOn(`sbt-coursier`)
-  .settings(
-    plugin,
-    libraryDependencies += ("ch.epfl.scala" % "jarjar" % "1.7.2-patched")
-      .exclude("org.apache.maven", "maven-plugin-api")
-      .exclude("org.apache.ant", "ant"),
-    scriptedDependencies := {
-      scriptedDependencies.value
-      // TODO Get dependency projects automatically
-      scriptedDependencies.in(`sbt-coursier`).value
-    }
-  )
-
 lazy val `sbt-coursier-root` = project
   .in(file("."))
   .disablePlugins(MimaPlugin)
@@ -172,8 +154,7 @@ lazy val `sbt-coursier-root` = project
     `sbt-coursier-shared`,
     `sbt-coursier-shared-shaded`,
     `sbt-lm-coursier`,
-    `sbt-pgp-coursier`,
-    `sbt-shading`
+    `sbt-pgp-coursier`
   )
   .settings(
     shared,
