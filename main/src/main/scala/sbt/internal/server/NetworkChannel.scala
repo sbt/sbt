@@ -56,7 +56,7 @@ final class NetworkChannel(
   private val VsCode = sbt.protocol.Serialization.VsCode
   private val VsCodeOld = "application/vscode-jsonrpc; charset=utf8"
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
-  private val onGoingRequests: mutable.Set[String] = mutable.Set()
+  private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
 
   def setContentType(ct: String): Unit = synchronized { _contentType = ct }
   def contentType: String = _contentType
@@ -258,7 +258,7 @@ final class NetworkChannel(
 
   private def registerRequest(request: JsonRpcRequestMessage): Unit = {
     this.synchronized {
-      onGoingRequests += request.id
+      pendingRequests += (request.id -> request)
       ()
     }
   }
@@ -268,8 +268,8 @@ final class NetworkChannel(
       execId: Option[String]
   ): Unit = this.synchronized {
     execId match {
-      case Some(id) if onGoingRequests.contains(id) =>
-        onGoingRequests -= id
+      case Some(id) if pendingRequests.contains(id) =>
+        pendingRequests -= id
         jsonRpcRespondError(id, err)
       case _ =>
         logMessage("error", s"Error ${err.code}: ${err.message}")
@@ -289,8 +289,8 @@ final class NetworkChannel(
       execId: Option[String]
   ): Unit = this.synchronized {
     execId match {
-      case Some(id) if onGoingRequests.contains(id) =>
-        onGoingRequests -= id
+      case Some(id) if pendingRequests.contains(id) =>
+        pendingRequests -= id
         jsonRpcRespond(event, id)
       case _ =>
         log.debug(
