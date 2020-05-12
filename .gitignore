@@ -8,3 +8,6 @@ npm-debug.log
 !sbt/src/server-test/completions/target
 .big
 .idea
+.bloop
+.metals
+metals.sbt
