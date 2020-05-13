@@ -12,19 +12,22 @@ package server
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sjsonnew._
-import scala.annotation.tailrec
-import sbt.protocol._
-import sbt.internal.langserver.{ ErrorCodes, CancelRequestParams }
-import sbt.internal.util.{ ObjectEvent, StringEvent }
-import sbt.internal.util.complete.Parser
-import sbt.internal.util.codec.JValueFormats
+import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes }
 import sbt.internal.protocol.{
-  JsonRpcResponseError,
+  JsonRpcNotificationMessage,
   JsonRpcRequestMessage,
-  JsonRpcNotificationMessage
+  JsonRpcResponseError
 }
+import sbt.internal.util.codec.JValueFormats
+import sbt.internal.util.complete.Parser
+import sbt.internal.util.ObjectEvent
+import sbt.protocol._
 import sbt.util.Logger
+import sjsonnew._
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+
+import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -53,6 +56,7 @@ final class NetworkChannel(
   private val VsCode = sbt.protocol.Serialization.VsCode
   private val VsCodeOld = "application/vscode-jsonrpc; charset=utf8"
   private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
+  private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
 
   def setContentType(ct: String): Unit = synchronized { _contentType = ct }
   def contentType: String = _contentType
@@ -176,6 +180,7 @@ final class NetworkChannel(
       intents.foldLeft(PartialFunction.empty[JsonRpcRequestMessage, Unit]) {
         case (f, i) => f orElse i.onRequest
       }
+
     lazy val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit] =
       intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) {
         case (f, i) => f orElse i.onNotification
@@ -186,25 +191,27 @@ final class NetworkChannel(
         Serialization.deserializeJsonMessage(chunk) match {
           case Right(req: JsonRpcRequestMessage) =>
             try {
+              registerRequest(req)
               onRequestMessage(req)
             } catch {
               case LangServerError(code, message) =>
                 log.debug(s"sending error: $code: $message")
-                jsonRpcRespondError(Option(req.id), code, message)
+                respondError(code, message, Some(req.id))
             }
           case Right(ntf: JsonRpcNotificationMessage) =>
             try {
               onNotification(ntf)
             } catch {
               case LangServerError(code, message) =>
-                log.debug(s"sending error: $code: $message")
-                jsonRpcRespondError(None, code, message) // new id?
+                logMessage("error", s"Error $code while handling notification: $message")
             }
           case Right(msg) =>
             log.debug(s"Unhandled message: $msg")
           case Left(errorDesc) =>
-            val msg = s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
-            jsonRpcRespondError(None, ErrorCodes.ParseError, msg)
+            logMessage(
+              "error",
+              s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): $errorDesc"
+            )
         }
       } else {
         contentType match {
@@ -213,13 +220,17 @@ final class NetworkChannel(
               .deserializeCommand(chunk)
               .fold(
                 errorDesc =>
-                  log.error(
+                  logMessage(
+                    "error",
                     s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
                   ),
                 onCommand
               )
           case _ =>
-            log.error(s"Unknown Content-Type: $contentType")
+            logMessage(
+              "error",
+              s"Unknown Content-Type: $contentType"
+            )
         }
       } // if-else
     }
@@ -245,24 +256,48 @@ final class NetworkChannel(
     }
   }
 
+  private def registerRequest(request: JsonRpcRequestMessage): Unit = {
+    this.synchronized {
+      pendingRequests += (request.id -> request)
+      ()
+    }
+  }
+
   private[sbt] def respondError(
       err: JsonRpcResponseError,
-      execId: Option[String],
-      source: Option[CommandSource]
-  ): Unit = jsonRpcRespondError(execId, err)
+      execId: Option[String]
+  ): Unit = this.synchronized {
+    execId match {
+      case Some(id) if pendingRequests.contains(id) =>
+        pendingRequests -= id
+        jsonRpcRespondError(id, err)
+      case _ =>
+        logMessage("error", s"Error ${err.code}: ${err.message}")
+    }
+  }
 
   private[sbt] def respondError(
       code: Long,
       message: String,
-      execId: Option[String],
-      source: Option[CommandSource]
-  ): Unit = jsonRpcRespondError(execId, code, message)
+      execId: Option[String]
+  ): Unit = {
+    respondError(JsonRpcResponseError(code, message), execId)
+  }
 
-  private[sbt] def respondEvent[A: JsonFormat](
+  private[sbt] def respondResult[A: JsonFormat](
       event: A,
-      execId: Option[String],
-      source: Option[CommandSource]
-  ): Unit = jsonRpcRespond(event, execId)
+      execId: Option[String]
+  ): Unit = this.synchronized {
+    execId match {
+      case Some(id) if pendingRequests.contains(id) =>
+        pendingRequests -= id
+        jsonRpcRespond(event, id)
+      case _ =>
+        log.debug(
+          s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
+        )
+    }
+  }
 
   private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
     if (isLanguageServerProtocol) {
@@ -272,19 +307,11 @@ final class NetworkChannel(
     }
   }
 
-  def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = {
+  def respond[A: JsonFormat](event: A): Unit = respond(event, None)
+
+  def respond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
     if (isLanguageServerProtocol) {
-      event match {
-        case entry: StringEvent => logMessage(entry.level, entry.message)
-        case entry: ExecStatusEvent =>
-          entry.exitCode match {
-            case None    => jsonRpcRespond(event, entry.execId)
-            case Some(0) => jsonRpcRespond(event, entry.execId)
-            case Some(exitCode) =>
-              jsonRpcRespondError(entry.execId, exitCode, entry.message.getOrElse(""))
-          }
-        case _ => jsonRpcRespond(event, execId)
-      }
+      respondResult(event, execId)
     } else {
       contentType match {
         case SbtX1Protocol =>
@@ -295,7 +322,7 @@ final class NetworkChannel(
     }
   }
 
-  def publishEventMessage(event: EventMessage): Unit = {
+  def notifyEvent(event: EventMessage): Unit = {
     if (isLanguageServerProtocol) {
       event match {
         case entry: LogEvent        => logMessage(entry.level, entry.message)
@@ -316,22 +343,22 @@ final class NetworkChannel(
    * This publishes object events. The type information has been
    * erased because it went through logging.
    */
-  private[sbt] def publishObjectEvent(event: ObjectEvent[_]): Unit = {
+  private[sbt] def respond(event: ObjectEvent[_]): Unit = {
     import sjsonnew.shaded.scalajson.ast.unsafe._
     if (isLanguageServerProtocol) onObjectEvent(event)
     else {
       import jsonFormat._
       val json: JValue = JObject(
         JField("type", JString(event.contentType)),
-        (Vector(JField("message", event.json), JField("level", JString(event.level.toString))) ++
-          (event.channelName.toVector map { channelName =>
+        Seq(JField("message", event.json), JField("level", JString(event.level.toString))) ++
+          (event.channelName map { channelName =>
             JField("channelName", JString(channelName))
           }) ++
-          (event.execId.toVector map { execId =>
+          (event.execId map { execId =>
             JField("execId", JString(execId))
-          })): _*
+          }): _*
       )
-      publishEvent(json)
+      respond(json, event.execId)
     }
   }
 
@@ -358,7 +385,7 @@ final class NetworkChannel(
           authenticate(x) match {
             case true =>
               initialized = true
-              publishEventMessage(ChannelAcceptedEvent(name))
+              notifyEvent(ChannelAcceptedEvent(name))
             case _ => sys.error("invalid token")
           }
         case None => sys.error("init command but without token.")
@@ -383,8 +410,8 @@ final class NetworkChannel(
     if (initialized) {
       import sbt.protocol.codec.JsonProtocol._
       SettingQuery.handleSettingQueryEither(req, structure) match {
-        case Right(x) => jsonRpcRespond(x, execId)
-        case Left(s)  => jsonRpcRespondError(execId, ErrorCodes.InvalidParams, s)
+        case Right(x) => respondResult(x, execId)
+        case Left(s)  => respondError(ErrorCodes.InvalidParams, s, execId)
       }
     } else {
       log.warn(s"ignoring query $req before initialization")
@@ -400,32 +427,31 @@ final class NetworkChannel(
               Parser
                 .completions(sstate.combinedParser, cp.query, 9)
                 .get
-                .map(c => {
+                .flatMap { c =>
                   if (!c.isEmpty) Some(c.append.replaceAll("\n", " "))
                   else None
-                })
-                .flatten
-                .map(c => cp.query + c.toString)
+                }
+                .map(c => cp.query + c)
             import sbt.protocol.codec.JsonProtocol._
-            jsonRpcRespond(
+            respondResult(
               CompletionResponse(
                 items = completionItems.toVector
               ),
               execId
             )
           case _ =>
-            jsonRpcRespondError(
-              execId,
+            respondError(
               ErrorCodes.UnknownError,
-              "No available sbt state"
+              "No available sbt state",
+              execId
             )
         }
       } catch {
-        case NonFatal(e) =>
-          jsonRpcRespondError(
-            execId,
+        case NonFatal(_) =>
+          respondError(
             ErrorCodes.UnknownError,
-            "Completions request failed"
+            "Completions request failed",
+            execId
           )
       }
     } else {
@@ -436,10 +462,10 @@ final class NetworkChannel(
   protected def onCancellationRequest(execId: Option[String], crp: CancelRequestParams) = {
     if (initialized) {
 
-      def errorRespond(msg: String) = jsonRpcRespondError(
-        execId,
+      def errorRespond(msg: String) = respondError(
         ErrorCodes.RequestCancelled,
-        msg
+        msg,
+        execId
       )
 
       try {
@@ -465,11 +491,11 @@ final class NetworkChannel(
               runningEngine.cancelAndShutdown()
 
               import sbt.protocol.codec.JsonProtocol._
-              jsonRpcRespond(
+              respondResult(
                 ExecStatusEvent(
                   "Task cancelled",
                   Some(name),
-                  Some(runningExecId.toString),
+                  Some(runningExecId),
                   Vector(),
                   None,
                 ),

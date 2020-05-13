@@ -25,12 +25,25 @@ Global / serverHandlers += ServerHandler({ callback =>
       case r: JsonRpcRequestMessage if r.method == "foo/rootClasspath" =>
         appendExec(Exec("fooClasspath", Some(r.id), Some(CommandSource(callback.name))))
         ()
+      case r if r.method == "foo/respondTwice" =>
+        appendExec(Exec("fooClasspath", Some(r.id), Some(CommandSource(callback.name))))
+        jsonRpcRespond("concurrent response", Some(r.id))
+        ()
+      case r if r.method == "foo/resultAndError" =>
+        appendExec(Exec("fooCustomFail", Some(r.id), Some(CommandSource(callback.name))))
+        jsonRpcRespond("concurrent response", Some(r.id))
+        ()
     },
-    PartialFunction.empty
+    {
+      case r if r.method == "foo/customNotification" =>
+        jsonRpcRespond("notification result", None)
+        ()
+    }
   )
 })
 
 lazy val fooClasspath = taskKey[Unit]("")
+
 lazy val root = (project in file("."))
   .settings(
     name := "response",
@@ -55,5 +68,5 @@ lazy val root = (project in file("."))
       val s = state.value
       val cp = (Compile / fullClasspath).value
       s.respondEvent(cp.map(_.data))
-    },
+    }
   )

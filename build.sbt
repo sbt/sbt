@@ -677,7 +677,8 @@ lazy val protocolProj = (project in file("protocol"))
       exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQueryFailure.copy$default$*"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQuerySuccess.copy"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.SettingQuerySuccess.copy$default$*"),
-      // ignore missing methods in sbt.internal
+      // ignore missing or incompatible methods in sbt.internal
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.*"),
       exclude[MissingTypesProblem]("sbt.internal.protocol.JsonRpcResponseError"),
     )
@@ -876,7 +877,7 @@ lazy val mainProj = (project in file("main"))
       // New and changed methods on KeyIndex. internal.
       exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
       // internal
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.server.LanguageServerReporter.*"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.*"),
       // Changed signature or removed private[sbt] methods
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
       exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),

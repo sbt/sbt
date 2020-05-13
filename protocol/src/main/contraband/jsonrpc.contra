@@ -31,7 +31,7 @@ type JsonRpcResponseMessage implements JsonRpcMessage
   jsonrpc: String!
 
   ## The request id.
-  id: String
+  id: String!
 
   ## The result of a request. This can be omitted in
   ## the case of an error.

@@ -64,4 +64,54 @@ object ResponseTest extends AbstractServerTest {
       (s contains """{"jsonrpc":"2.0","method":"foo/something","params":"something"}""")
     })
   }
+
+  test("respond concurrently from a task and the handler") { _ =>
+    svr.sendJsonRpc(
+      """{ "jsonrpc": "2.0", "id": "15", "method": "foo/respondTwice", "params": {} }"""
+    )
+    assert {
+      svr.waitForString(1.seconds) { s =>
+        println(s)
+        s contains "\"id\":\"15\""
+      }
+    }
+    assert {
+      // the second response should never be sent
+      svr.neverReceive(500.milliseconds) { s =>
+        println(s)
+        s contains "\"id\":\"15\""
+      }
+    }
+  }
+
+  test("concurrent result and error") { _ =>
+    svr.sendJsonRpc(
+      """{ "jsonrpc": "2.0", "id": "16", "method": "foo/resultAndError", "params": {} }"""
+    )
+    assert {
+      svr.waitForString(1.seconds) { s =>
+        println(s)
+        s contains "\"id\":\"16\""
+      }
+    }
+    assert {
+      // the second response (result or error) should never be sent
+      svr.neverReceive(500.milliseconds) { s =>
+        println(s)
+        s contains "\"id\":\"16\""
+      }
+    }
+  }
+
+  test("response to a notification should not be sent") { _ =>
+    svr.sendJsonRpc(
+      """{ "jsonrpc": "2.0", "method": "foo/customNotification", "params": {} }"""
+    )
+    assert {
+      svr.neverReceive(500.milliseconds) { s =>
+        println(s)
+        s contains "\"result\":\"notification result\""
+      }
+    }
+  }
 }

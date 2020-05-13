@@ -22,15 +22,6 @@ object EventsTest extends AbstractServerTest {
     })
   }
 
-  test("report task failures in case of exceptions") { _ =>
-    svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": 11, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
-    )
-    assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":11""") && (s contains """"error":""")
-    })
-  }
-
   test("return error if cancelling non-matched task id") { _ =>
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
