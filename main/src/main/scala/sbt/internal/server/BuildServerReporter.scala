@@ -1,13 +1,11 @@
 package sbt.internal.server
 
-import java.io.File
-
 import sbt.StandardMain
 import sbt.internal.bsp._
 import sbt.internal.inc.ManagedLoggedReporter
 import sbt.internal.util.ManagedLogger
 import xsbti.compile.CompileAnalysis
-import xsbti.{ FileConverter, Problem, Severity, Position => XPosition }
+import xsbti.{ BasicVirtualFileRef, FileConverter, Problem, Severity, Position => XPosition }
 
 import scala.collection.mutable
 
@@ -32,7 +30,7 @@ class BuildServerReporter(
 
   lazy val exchange = StandardMain.exchange
 
-  private[sbt] lazy val problemsByFile = new mutable.HashMap[File, mutable.ListBuffer[Problem]]
+  private[sbt] lazy val problemsByFile = new mutable.HashMap[String, mutable.ListBuffer[Problem]]
 
   override def reset(): Unit = {
     super.reset()
@@ -41,10 +39,10 @@ class BuildServerReporter(
 
   override def log(problem: Problem): Unit = {
     val pos = problem.position
-    pos.sourceFile.toOption foreach { sourceFile: File =>
-      problemsByFile.get(sourceFile) match {
-        case Some(xs: mutable.ListBuffer[Problem]) => problemsByFile(sourceFile) = xs :+ problem
-        case _                                     => problemsByFile(sourceFile) = mutable.ListBuffer(problem)
+    pos.sourcePath().toOption foreach { sourcePath =>
+      problemsByFile.get(sourcePath) match {
+        case Some(xs: mutable.ListBuffer[Problem]) => problemsByFile(sourcePath) = xs :+ problem
+        case _                                     => problemsByFile(sourcePath) = mutable.ListBuffer(problem)
       }
     }
     super.log(problem)
@@ -86,14 +84,14 @@ class BuildServerReporter(
   }
 
   private[sbt] def aggregateProblems(problem: Problem): Unit = {
-
     val pos = problem.position
-    pos.sourceFile.toOption foreach { sourceFile: File =>
-      problemsByFile.get(sourceFile) match {
+    pos.sourcePath().toOption foreach { sourcePath: String =>
+      problemsByFile.get(sourcePath) match {
         case Some(xs: mutable.ListBuffer[Problem]) =>
           val diagnostics = toDiagnostics(xs)
+          val absolutePath = converter.toPath(new BasicVirtualFileRef(sourcePath) {})
           val params = PublishDiagnosticsParams(
-            TextDocumentIdentifier(sourceFile.toURI),
+            TextDocumentIdentifier(absolutePath.toUri),
             buildTarget,
             originId = None,
             diagnostics,
