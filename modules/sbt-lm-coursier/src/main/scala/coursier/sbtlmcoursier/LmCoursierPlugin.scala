@@ -11,6 +11,7 @@ import sbt.Keys.{appConfiguration, autoScalaLibrary, classpathTypes, dependencyO
 import sbt.librarymanagement.DependencyResolution
 
 import scala.language.reflectiveCalls
+import sbt.TaskKey
 
 object LmCoursierPlugin extends AutoPlugin {
 
@@ -38,6 +39,19 @@ object LmCoursierPlugin extends AutoPlugin {
   // so that it doesn't override us :|
   override def requires = SbtCoursierShared
 
+  private lazy val scalaCompilerBridgeScopeOpt: Option[TaskKey[Unit]] =
+    try {
+      // only added in sbt 1.3.x
+      val key = sbt.Keys
+        .asInstanceOf[{ def scalaCompilerBridgeScope: TaskKey[Unit] }]
+        .scalaCompilerBridgeScope
+      Some(key)
+    }
+    catch {
+      case _: NoSuchMethodError | _: NoSuchMethodException =>
+        None
+    }
+
   // putting this in projectSettings like sbt.plugins.IvyPlugin does :|
   override def projectSettings: Seq[Setting[_]] =
     Seq(
@@ -59,7 +73,18 @@ object LmCoursierPlugin extends AutoPlugin {
         dependencyResolution := mkDependencyResolution.value,
         coursierConfiguration := mkCoursierConfiguration(sbtClassifiers = true).value
       )
-    )
+    ) ++ {
+      scalaCompilerBridgeScopeOpt match {
+        case None => Nil
+        case Some(scalaCompilerBridgeScopeKey) =>
+          inTask(scalaCompilerBridgeScopeKey)(
+            Seq(
+              dependencyResolution := mkDependencyResolution.value,
+              coursierConfiguration := mkCoursierConfiguration().value
+            )
+          )
+      }
+    }
 
 
   private def mkCoursierConfiguration(withClassifiers: Boolean = false, sbtClassifiers: Boolean = false): Def.Initialize[Task[CoursierConfiguration]] =
