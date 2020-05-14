@@ -1941,7 +1941,7 @@ object Defaults extends BuildCommon {
       },
       compilerReporter := {
         new BuildServerReporter(
-          buildTargetIdentifier.value,
+          bspTargetIdentifier.value,
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value),

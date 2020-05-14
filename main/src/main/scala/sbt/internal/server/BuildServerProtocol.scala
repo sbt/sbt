@@ -34,13 +34,14 @@ object BuildServerProtocol {
   )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
-    bspWorkspace := Def.taskDyn {
-      val structure = Keys.buildStructure.value
-      val scopes: Seq[Scope] = structure.allProjectRefs.flatMap { ref =>
-        bspTargetConfigs.toSeq.map(name => Scope.Global.in(ref, ConfigKey(name)))
+    bspWorkspace := Def.settingDyn {
+      val loadedBuild = Keys.loadedBuild.value
+      val scopes: Seq[Scope] = loadedBuild.allProjectRefs.flatMap {
+        case (ref, _) =>
+          bspTargetConfigs.toSeq.map(name => Scope.Global.in(ref, ConfigKey(name)))
       }
-      Def.task {
-        val targetIds = scopes.map(_ / Keys.buildTargetIdentifier).join.value
+      Def.setting {
+        val targetIds = scopes.map(_ / Keys.bspTargetIdentifier).join.value
         targetIds.zip(scopes).toMap
       }
     }.value,
@@ -111,14 +112,14 @@ object BuildServerProtocol {
 
   // This will be scoped to Compile, Test, etc
   lazy val configSettings: Seq[Def.Setting[_]] = Seq(
-    buildTargetIdentifier := {
+    bspTargetIdentifier := {
       val ref = thisProjectRef.value
       val c = configuration.value
       toId(ref, c)
     },
     bspBuildTarget := buildTargetTask.value,
     bspBuildTargetSourcesItem := {
-      val id = buildTargetIdentifier.value
+      val id = bspTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
       val managed = managedSources.value
       val items = (dirs.toVector map { dir =>
@@ -190,7 +191,7 @@ object BuildServerProtocol {
     )
 
   private def buildTargetTask: Def.Initialize[Task[BuildTarget]] = Def.taskDyn {
-    val buildTargetIdentifier = Keys.buildTargetIdentifier.value
+    val buildTargetIdentifier = Keys.bspTargetIdentifier.value
     val thisProject = Keys.thisProject.value
     val thisProjectRef = Keys.thisProjectRef.value
     val thisConfig = Keys.configuration.value
@@ -212,7 +213,7 @@ object BuildServerProtocol {
       (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
       config <- configs
       if (dep != thisProjectRef || config != thisConfig.name) && bspTargetConfigs.contains(config)
-    } yield Keys.buildTargetIdentifier.in(dep, ConfigKey(config))
+    } yield Keys.bspTargetIdentifier.in(dep, ConfigKey(config))
     val capabilities = BuildTargetCapabilities(canCompile = true, canTest = false, canRun = false)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
@@ -231,7 +232,7 @@ object BuildServerProtocol {
   }
 
   private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] = Def.taskDyn {
-    val target = Keys.buildTargetIdentifier.value
+    val target = Keys.bspTargetIdentifier.value
     val scalacOptions = Keys.scalacOptions.value
     val classDirectory = Keys.classDirectory.value
     val externalDependencyClasspath = Keys.externalDependencyClasspath.value
@@ -254,7 +255,7 @@ object BuildServerProtocol {
   }
 
   private def dependencySourcesItemTask: Def.Initialize[Task[DependencySourcesItem]] = Def.task {
-    val targetId = Keys.buildTargetIdentifier.value
+    val targetId = Keys.bspTargetIdentifier.value
     val updateReport = Keys.updateClassifiers.value
     val sources = for {
       configuration <- updateReport.configurations.view
