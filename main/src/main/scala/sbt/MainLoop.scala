@@ -26,6 +26,11 @@ object MainLoop {
 
   /** Entry point to run the remaining commands in State with managed global logging.*/
   def runLogged(state: State): xsbti.MainResult = {
+
+    // This warns if ~/.coursier/cache is found.
+    // Temporary, remove when updating coursier to 2.0.0 final.
+    lmcoursier.CoursierConfiguration.checkLegacyCache()
+
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
     // the jline terminal in finally blocks, but hitting ctrl+c prevents finally blocks from being executed, in that
     // case the only way to restore the terminal is in a shutdown hook.
