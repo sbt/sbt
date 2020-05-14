@@ -19,6 +19,7 @@ import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
 import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
+import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.nio.CheckBuildSources
 import sbt.internal.util.Types.{ const, idFun }
@@ -51,18 +52,23 @@ private[sbt] object xMain {
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments.map(_.trim)
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
-      Terminal.withStreams {
-        if (clientModByEnv || userCommands.exists(isClient)) {
-          val args = userCommands.toList.filterNot(isClient)
-          NetworkClient.run(configuration, args)
-          Exit(0)
-        } else {
-          val state = StandardMain.initialState(
-            configuration,
-            Seq(defaults, early),
-            runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-          )
-          StandardMain.runManaged(state)
+      val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
+      if (userCommands.exists(isBsp)) {
+        BspClient.run(configuration)
+      } else {
+        Terminal.withStreams {
+          if (clientModByEnv || userCommands.exists(isClient)) {
+            val args = userCommands.toList.filterNot(isClient)
+            NetworkClient.run(configuration, args)
+            Exit(0)
+          } else {
+            val state = StandardMain.initialState(
+              configuration,
+              Seq(defaults, early),
+              runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+            )
+            StandardMain.runManaged(state)
+          }
         }
       }
     } finally {
