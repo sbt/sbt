@@ -7,6 +7,8 @@ import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay
 import coursier.core.Type
 import coursier.util.Artifact
 import sbt.util.Logger
+import coursier.core.Dependency
+import coursier.core.Publication
 
 // private[coursier]
 object ArtifactsRun {
@@ -16,6 +18,13 @@ object ArtifactsRun {
     verbosityLevel: Int,
     log: Logger
   ): Either[coursier.error.FetchError, Map[Artifact, File]] =
+    artifactsResult(params, verbosityLevel, log).map(_.collect { case (_, _, a, Some(f)) => (a, f) }.toMap)
+
+  def artifactsResult(
+    params: ArtifactsParams,
+    verbosityLevel: Int,
+    log: Logger
+  ): Either[coursier.error.FetchError, Seq[(Dependency, Publication, Artifact, Option[File])]] =
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
     Lock.lock.synchronized {
@@ -64,8 +73,8 @@ object ArtifactsRun {
                 }
               )
           )
-          .either()
-          .map(_.toMap)
+          .eitherResult()
+          .map(_.fullDetailedArtifacts) // FIXME Misses extraArtifacts, that we don't use for now though
       }
     }
 

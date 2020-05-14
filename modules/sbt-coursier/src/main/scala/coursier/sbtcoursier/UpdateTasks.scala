@@ -130,6 +130,7 @@ object UpdateTasks {
               (p.module, p.version),
               shadedConfigOpt,
               artifactFilesOrErrors0,
+              None,
               classifiers,
               configs,
               dependencies,

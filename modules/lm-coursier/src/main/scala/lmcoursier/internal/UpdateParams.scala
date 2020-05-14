@@ -10,6 +10,7 @@ final case class UpdateParams(
   thisModule: (Module, String),
   shadedConfigOpt: Option[(String, Configuration)],
   artifacts: Map[Artifact, File],
+  fullArtifacts: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
   classifiers: Option[Seq[Classifier]],
   configs: Map[Configuration, Set[Configuration]],
   dependencies: Seq[(Configuration, Dependency)],
