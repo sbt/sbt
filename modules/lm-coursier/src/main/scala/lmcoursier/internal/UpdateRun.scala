@@ -96,6 +96,7 @@ object UpdateRun {
       log,
       includeSignatures = params.includeSignatures,
       classpathOrder = params.classpathOrder,
+      missingOk = params.missingOk
     )
   }
 

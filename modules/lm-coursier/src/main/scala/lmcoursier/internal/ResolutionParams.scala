@@ -62,7 +62,7 @@ final case class ResolutionParams(
         cache = cleanCache
       ),
       cleanCache,
-      sbtClassifiers
+      missingOk
     )
   }
 

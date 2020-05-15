@@ -142,6 +142,7 @@ private[internal] object SbtUpdateReport {
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false,
     classpathOrder: Boolean,
+    missingOk: Boolean
   ): Vector[ModuleReport] = {
 
     val deps = classifiersOpt match {
@@ -156,8 +157,9 @@ private[internal] object SbtUpdateReport {
         deps.map {
           case (d, p, a) =>
             val d0 = d.withAttributes(d.attributes.withClassifier(p.classifier))
-            val f = map.get((d0, p, a)).flatten
-            (d, p, a, f) // not d0
+            val a0 = if (missingOk) a.withOptional(true) else a
+            val f = map.get((d0, p, a0)).flatten
+            (d, p, a0, f) // not d0
         }
       case None =>
         deps.map {
@@ -301,6 +303,7 @@ private[internal] object SbtUpdateReport {
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false,
     classpathOrder: Boolean,
+    missingOk: Boolean
   ): UpdateReport = {
 
     val configReports = configs.map {
@@ -324,6 +327,7 @@ private[internal] object SbtUpdateReport {
           keepPomArtifact = keepPomArtifact,
           includeSignatures = includeSignatures,
           classpathOrder = classpathOrder,
+          missingOk = missingOk
         )
 
         val reports0 = subRes.rootDependencies match {

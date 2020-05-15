@@ -178,6 +178,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         cache = cache0,
         parallel = conf.parallelDownloads,
         classpathOrder = conf.classpathOrder,
+        missingOk = conf.missingOk
       )
 
     val sbtBootJarOverrides = SbtBootJars(
@@ -208,6 +209,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         includeSignatures = false,
         sbtBootJarOverrides = sbtBootJarOverrides,
         classpathOrder = conf.classpathOrder,
+        missingOk = conf.missingOk
       )
 
     val e = for {

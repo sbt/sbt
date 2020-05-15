@@ -19,6 +19,7 @@ final case class UpdateParams(
   includeSignatures: Boolean,
   sbtBootJarOverrides: Map[(Module, String), File],
   classpathOrder: Boolean,
+  missingOk: Boolean
 ) {
 
   def artifactFileOpt(
@@ -38,7 +39,11 @@ final case class UpdateParams(
       else
         None
 
-    fromBootJars.orElse(artifacts.get(artifact))
+    val artifact0 =
+      if (missingOk) artifact.withOptional(true)
+      else artifact
+
+    fromBootJars.orElse(artifacts.get(artifact0))
   }
 
 }

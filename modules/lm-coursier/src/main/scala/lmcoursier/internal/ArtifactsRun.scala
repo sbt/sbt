@@ -51,6 +51,15 @@ object ArtifactsRun {
             else
               Nil
           }
+          .addTransformArtifacts { artifacts =>
+            if (params.missingOk)
+              artifacts.map {
+                case (dependency, publication, artifact) =>
+                  (dependency, publication, artifact.withOptional(true))
+              }
+            else
+              artifacts
+          }
           .withCache(
             params
               .cache
