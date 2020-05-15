@@ -15,4 +15,5 @@ final case class ArtifactsParams(
   cache: FileCache[Task],
   parallel: Int,
   classpathOrder: Boolean,
+  missingOk: Boolean
 )

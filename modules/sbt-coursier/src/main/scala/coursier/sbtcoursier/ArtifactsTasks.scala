@@ -72,6 +72,7 @@ object ArtifactsTasks {
           .withFollowHttpToHttpsRedirections(true),
         parallel = parallelDownloads,
         classpathOrder = true,
+        missingOk = sbtClassifiers
       )
 
       val resOrError = ArtifactsRun.artifacts(

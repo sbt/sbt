@@ -12,6 +12,8 @@ import lmcoursier.internal.{ArtifactsParams, ArtifactsRun, CoursierModuleDescrip
 import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement._
 import sbt.util.Logger
+import coursier.core.Dependency
+import coursier.core.Publication
 
 class CoursierDependencyResolution(conf: CoursierConfiguration) extends DependencyResolutionInterface {
 
@@ -150,7 +152,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       parentProjectCache = Map.empty,
       interProjectDependencies = interProjectDependencies,
       internalRepositories = Seq(interProjectRepo, extraProjectsRepo),
-      sbtClassifiers = false,
+      sbtClassifiers = conf.sbtClassifiers,
       projectName = projectName,
       loggerOpt = loggerOpt,
       cache = cache0,
@@ -172,10 +174,11 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         includeSignatures = false,
         loggerOpt = loggerOpt,
         projectName = projectName,
-        sbtClassifiers = false,
+        sbtClassifiers = conf.sbtClassifiers,
         cache = cache0,
         parallel = conf.parallelDownloads,
         classpathOrder = conf.classpathOrder,
+        missingOk = conf.missingOk
       )
 
     val sbtBootJarOverrides = SbtBootJars(
@@ -191,12 +194,13 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
 
     def updateParams(
       resolutions: Map[Set[Configuration], Resolution],
-      artifacts: Map[Artifact, File]
+      artifacts: Seq[(Dependency, Publication, Artifact, Option[File])]
     ) =
       UpdateParams(
         thisModule = (ToCoursier.module(mod), ver),
         shadedConfigOpt = None,
-        artifacts = artifacts,
+        artifacts = artifacts.collect { case (d, p, a, Some(f)) => a -> f }.toMap,
+        fullArtifacts = Some(artifacts.map { case (d, p, a, f) => (d, p, a) -> f }.toMap),
         classifiers = classifiers,
         configs = configs,
         dependencies = dependencies,
@@ -205,12 +209,13 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         includeSignatures = false,
         sbtBootJarOverrides = sbtBootJarOverrides,
         classpathOrder = conf.classpathOrder,
+        missingOk = conf.missingOk
       )
 
     val e = for {
       resolutions <- ResolutionRun.resolutions(resolutionParams, verbosityLevel, log)
       artifactsParams0 = artifactsParams(resolutions)
-      artifacts <- ArtifactsRun.artifacts(artifactsParams0, verbosityLevel, log)
+      artifacts <- ArtifactsRun.artifactsResult(artifactsParams0, verbosityLevel, log)
     } yield {
       val updateParams0 = updateParams(resolutions, artifacts)
       UpdateRun.update(updateParams0, verbosityLevel, log)

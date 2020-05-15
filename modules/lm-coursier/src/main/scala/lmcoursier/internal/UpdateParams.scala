@@ -10,6 +10,7 @@ final case class UpdateParams(
   thisModule: (Module, String),
   shadedConfigOpt: Option[(String, Configuration)],
   artifacts: Map[Artifact, File],
+  fullArtifacts: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
   classifiers: Option[Seq[Classifier]],
   configs: Map[Configuration, Set[Configuration]],
   dependencies: Seq[(Configuration, Dependency)],
@@ -18,6 +19,7 @@ final case class UpdateParams(
   includeSignatures: Boolean,
   sbtBootJarOverrides: Map[(Module, String), File],
   classpathOrder: Boolean,
+  missingOk: Boolean
 ) {
 
   def artifactFileOpt(
@@ -37,7 +39,11 @@ final case class UpdateParams(
       else
         None
 
-    fromBootJars.orElse(artifacts.get(artifact))
+    val artifact0 =
+      if (missingOk) artifact.withOptional(true)
+      else artifact
+
+    fromBootJars.orElse(artifacts.get(artifact0))
   }
 
 }

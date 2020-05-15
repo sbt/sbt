@@ -102,8 +102,8 @@ object FromSbt {
           }
 
     for {
-      (from, to) <- allMappings
-      pub <- publications
+      (from, to) <- allMappings.distinct
+      pub <- publications.distinct
     } yield {
       val dep0 = dep
         .withConfiguration(to)

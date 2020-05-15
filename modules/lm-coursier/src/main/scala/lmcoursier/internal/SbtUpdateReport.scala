@@ -137,19 +137,43 @@ private[internal] object SbtUpdateReport {
     interProjectDependencies: Seq[Project],
     classifiersOpt: Option[Seq[Classifier]],
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
+    fullArtifactsOpt: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
     log: Logger,
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false,
     classpathOrder: Boolean,
+    missingOk: Boolean
   ): Vector[ModuleReport] = {
-    val depArtifacts1 = res.dependencyArtifacts(classifiersOpt, classpathOrder)
+
+    val deps = classifiersOpt match {
+      case Some(classifiers) =>
+        res.dependencyArtifacts(Some(classifiers.toSeq), classpathOrder)
+      case None =>
+        res.dependencyArtifacts(None, classpathOrder)
+    }
+
+    val depArtifacts1 = fullArtifactsOpt match {
+      case Some(map) =>
+        deps.map {
+          case (d, p, a) =>
+            val d0 = d.withAttributes(d.attributes.withClassifier(p.classifier))
+            val a0 = if (missingOk) a.withOptional(true) else a
+            val f = map.get((d0, p, a0)).flatten
+            (d, p, a0, f) // not d0
+        }
+      case None =>
+        deps.map {
+          case (d, p, a) =>
+            (d, p, a, None)
+        }
+    }
 
     val depArtifacts0 =
       if (keepPomArtifact)
         depArtifacts1
       else
         depArtifacts1.filter {
-          case (_, pub, _) => pub.attributes != Attributes(Type.pom, Classifier.empty)
+          case (_, pub, _, _) => pub.attributes != Attributes(Type.pom, Classifier.empty)
         }
 
     val depArtifacts =
@@ -159,16 +183,16 @@ private[internal] object SbtUpdateReport {
 
         if (notFound.isEmpty)
           depArtifacts0.flatMap {
-            case (dep, pub, a) =>
+            case (dep, pub, a, f) =>
               val sigPub = pub
                 // not too sure about those
                 .withExt(Extension(pub.ext.value))
                 .withType(Type(pub.`type`.value))
-              Seq((dep, pub, a)) ++
-                a.extra.get("sig").toSeq.map((dep, sigPub, _))
+              Seq((dep, pub, a, f)) ++
+                a.extra.get("sig").toSeq.map((dep, sigPub, _, None))
           }
         else {
-          for ((_, _, a) <- notFound)
+          for ((_, _, a, _) <- notFound)
             log.error(s"No signature found for ${a.url}")
           sys.error(s"${notFound.length} signature(s) not found")
         }
@@ -178,7 +202,7 @@ private[internal] object SbtUpdateReport {
     val groupedDepArtifacts = {
       val m = depArtifacts.groupBy(_._1)
       val fromLib = depArtifacts.map(_._1).distinct.map { dep =>
-        dep -> m.getOrElse(dep, Nil).map { case (_, pub, a) => (pub, a) }
+        dep -> m.getOrElse(dep, Nil).map { case (_, pub, a, f) => (pub, a, f) }
       }
       val fromInterProj = interProjectDependencies
         .filter(p => p.module != thisModule._1)
@@ -249,11 +273,19 @@ private[internal] object SbtUpdateReport {
                 Vector.empty
             }
           }
+        val filesOpt = artifacts.map {
+          case (pub, a, fileOpt) =>
+            val fileOpt0 = fileOpt.orElse {
+              if (fullArtifactsOpt.isEmpty) artifactFileOpt(proj.module, proj.version, pub.attributes, a)
+              else None
+            }
+            (pub, a, fileOpt0)
+        }
         moduleReport((
           dep,
           dependees,
           proj,
-          artifacts.map { case (pub, a) => (pub, a, artifactFileOpt(proj.module, proj.version, pub.attributes, a)) }
+          filesOpt
         ))
     }
   }
@@ -266,10 +298,12 @@ private[internal] object SbtUpdateReport {
     configs: Map[Configuration, Set[Configuration]],
     classifiersOpt: Option[Seq[Classifier]],
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
+    fullArtifactsOpt: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
     log: Logger,
     keepPomArtifact: Boolean = false,
     includeSignatures: Boolean = false,
     classpathOrder: Boolean,
+    missingOk: Boolean
   ): UpdateReport = {
 
     val configReports = configs.map {
@@ -288,10 +322,12 @@ private[internal] object SbtUpdateReport {
           interProjectDependencies,
           classifiersOpt,
           artifactFileOpt,
+          fullArtifactsOpt,
           log,
           keepPomArtifact = keepPomArtifact,
           includeSignatures = includeSignatures,
           classpathOrder = classpathOrder,
+          missingOk = missingOk
         )
 
         val reports0 = subRes.rootDependencies match {

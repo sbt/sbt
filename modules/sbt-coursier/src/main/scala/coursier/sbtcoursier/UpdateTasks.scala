@@ -130,6 +130,7 @@ object UpdateTasks {
               (p.module, p.version),
               shadedConfigOpt,
               artifactFilesOrErrors0,
+              None,
               classifiers,
               configs,
               dependencies,
@@ -138,6 +139,7 @@ object UpdateTasks {
               includeSignatures,
               sbtBootJarOverrides,
               classpathOrder = true,
+              missingOk = sbtClassifiers
             )
 
             val rep = UpdateRun.update(params, verbosityLevel, log)

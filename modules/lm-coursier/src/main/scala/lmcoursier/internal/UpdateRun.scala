@@ -92,9 +92,11 @@ object UpdateRun {
       params.configs,
       params.classifiers,
       params.artifactFileOpt,
+      params.fullArtifacts,
       log,
       includeSignatures = params.includeSignatures,
       classpathOrder = params.classpathOrder,
+      missingOk = params.missingOk
     )
   }
 

@@ -52,6 +52,8 @@ import scala.concurrent.duration.Duration
   cachePolicies: Vector[CachePolicy] = CacheDefaults.cachePolicies.to[Vector].map(FromCoursier.cachePolicy),
   @since
   missingOk: Boolean = false,
+  @since
+  sbtClassifiers: Boolean = false
 ) {
 
   def withLog(log: Logger): CoursierConfiguration =
