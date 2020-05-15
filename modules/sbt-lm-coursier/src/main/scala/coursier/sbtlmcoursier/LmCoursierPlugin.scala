@@ -161,6 +161,7 @@ object LmCoursierPlugin extends AutoPlugin {
           .withStrict(strict)
           .withForceVersions(userForceVersions.toVector)
           .withMissingOk(updateConfig.missingOk)
+          .withSbtClassifiers(sbtClassifiers)
       }
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =
