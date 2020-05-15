@@ -160,7 +160,8 @@ object LmCoursierPlugin extends AutoPlugin {
           .withIvyHome(ivyPaths.value.ivyHome)
           .withStrict(strict)
           .withForceVersions(userForceVersions.toVector)
-          .withMissingOk(updateConfig.missingOk)
+          // seems missingOk is false in the updateConfig of updateSbtClassifiers?
+          .withMissingOk(updateConfig.missingOk || sbtClassifiers)
           .withSbtClassifiers(sbtClassifiers)
       }
     }

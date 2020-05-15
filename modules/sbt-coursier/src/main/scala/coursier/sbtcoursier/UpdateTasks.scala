@@ -139,6 +139,7 @@ object UpdateTasks {
               includeSignatures,
               sbtBootJarOverrides,
               classpathOrder = true,
+              missingOk = sbtClassifiers
             )
 
             val rep = UpdateRun.update(params, verbosityLevel, log)
