@@ -2128,17 +2128,9 @@ object Defaults extends BuildCommon {
     )
 
   def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
-    Def.taskDyn {
-      if (useCoursier.value) {
-        Def.task { CoursierDependencyResolution(csrConfiguration.value) }
-      } else
-        Def.task {
-          IvyDependencyResolution(
-            ivyConfiguration.value,
-            CustomHttp.okhttpClient.value
-          )
-        }
-    }
+    Def.ifS(useCoursier.toTask)(Def.task { CoursierDependencyResolution(csrConfiguration.value) })(
+      Def.task { IvyDependencyResolution(ivyConfiguration.value, CustomHttp.okhttpClient.value) }
+    )
 }
 
 object Classpaths {
@@ -2955,13 +2947,14 @@ object Classpaths {
     publishTask(config)
 
   def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
-    Def.taskDyn {
+    Def.ifS((publish / skip).toTask)(Def.task {
       val s = streams.value
-      val skp = (skip in publish).value
       val ref = thisProjectRef.value
-      if (skp) Def.task { s.log.debug(s"Skipping publish* for ${ref.project}") } else
-        Def.task { IvyActions.publish(ivyModule.value, config.value, s.log) }
-    } tag (Tags.Publish, Tags.Network)
+      s.log.debug(s"Skipping publish* for ${ref.project}")
+    })(Def.task {
+      val s = streams.value
+      IvyActions.publish(ivyModule.value, config.value, s.log)
+    }) tag (Tags.Publish, Tags.Network)
 
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
     new sjsonnew.JsonKeyFormat[ModuleID] {
