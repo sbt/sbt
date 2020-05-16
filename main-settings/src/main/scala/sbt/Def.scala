@@ -221,6 +221,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
     inputTaskDynMacroImpl,
     inputTaskMacroImpl,
     taskDynMacroImpl,
+    taskIfMacroImpl,
     taskMacroImpl
   }
   import std._
@@ -234,6 +235,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   def inputTask[T](t: T): Def.Initialize[InputTask[T]] = macro inputTaskMacroImpl[T]
   def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] =
     macro inputTaskDynMacroImpl[T]
+  def taskIf[T](a: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskIfMacroImpl[T]
 
   private[sbt] def selectITask[A, B](
       fab: Initialize[Task[Either[A, B]]],

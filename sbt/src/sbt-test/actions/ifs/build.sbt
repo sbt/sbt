@@ -11,7 +11,10 @@ lazy val root = (project in file("."))
     condition := true,
     trueAction := { IO.write(output.value, s"true\n", append = true) },
     falseAction := { IO.write(output.value, s"false\n", append = true) },
-    foo := (Def.ifS(condition)(trueAction)(falseAction)).value,
+    foo := (Def.taskIf {
+      if (condition.value) trueAction
+      else falseAction
+    }).value,
     TaskKey[Unit]("check") := {
       val lines = IO.read(output.value).linesIterator.toList
       assert(lines == List("true"))
