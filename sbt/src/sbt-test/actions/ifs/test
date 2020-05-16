@@ -1,0 +1,7 @@
+> foo
+> check
+
+$ delete output.txt
+> set condition := false
+> foo
+> check2
