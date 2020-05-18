@@ -27,6 +27,4 @@ object Main extends App {
     !argonautFound,
     "Expected not to find classes from argonaut"
   )
-
-  Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
 }
