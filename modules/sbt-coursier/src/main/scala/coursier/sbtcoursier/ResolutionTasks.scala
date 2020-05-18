@@ -114,6 +114,16 @@ object ResolutionTasks {
         .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
         .getOrElse(Map.empty)
 
+      val excludeDeps = Inputs.exclusions(
+        coursier.sbtcoursiershared.InputsTasks.actualExcludeDependencies.value,
+        sv,
+        sbv,
+        log
+      ).map {
+        case (org, name) =>
+          (Organization(org.value), ModuleName(name.value))
+      }
+
       val mainRepositories = resolvers
         .flatMap { resolver =>
           Resolvers.repository(
@@ -154,7 +164,8 @@ object ResolutionTasks {
             .withProfiles(userEnabledProfiles)
             .withForceVersion(userForceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
             .withTypelevel(typelevel)
-            .addReconciliation(versionReconciliations0: _*),
+            .addReconciliation(versionReconciliations0: _*)
+            .withExclusions(excludeDeps),
           strictOpt = strictOpt,
           missingOk = missingOk,
         ),

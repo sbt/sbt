@@ -1,3 +1,7 @@
-> run
-> publishLocal
+> a/run
+> a/publishLocal
 $ exec java -jar coursier launch io.get-coursier.test:sbt-coursier-exclude-dependencies_2.12:0.1.0-SNAPSHOT
+> b/run
+> b/publishLocal
+# doesn't pass yet (missing exclusions of root deps in ivy.xml?)
+# $ exec java -jar coursier launch io.get-coursier.test:sbt-coursier-exclude-dependencies-2_2.12:0.1.0-SNAPSHOT
