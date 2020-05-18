@@ -34,17 +34,9 @@ object UpdateTasks {
 
     val resTask =
       if (withClassifiers && sbtClassifiers)
-        Def.task {
-          val mod = coursierSbtClassifiersModule.value
-          val classifiersRes = coursierSbtClassifiersResolution.value
-          mod
-            .configurations
-            .iterator
-            .map(c => Configuration(c.name) -> classifiersRes)
-            .toMap
-        }
+        coursierSbtClassifiersResolutions
       else
-        Def.task(coursierResolutions.value)
+        coursierResolutions
 
     // we should be able to call .value on that one here, its conditions don't originate from other tasks
     val artifactFilesOrErrors0Task =

@@ -33,7 +33,7 @@ object Keys {
 
   private[coursier] val actualCoursierResolution = TaskKey[Resolution]("coursier-resolution")
 
-  val coursierSbtClassifiersResolution = TaskKey[Resolution]("coursier-sbt-classifiers-resolution")
+  val coursierSbtClassifiersResolutions = TaskKey[Map[Configuration, Resolution]]("coursier-sbt-classifiers-resolution")
 
   val coursierDependencyTree = TaskKey[Unit](
     "coursier-dependency-tree",

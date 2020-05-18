@@ -37,17 +37,9 @@ object DisplayTasks {
 
     val resolutionsTask =
       if (sbtClassifiers)
-        Def.task {
-          val currentProject = currentProjectTask.value
-          val classifiersRes = coursierSbtClassifiersResolution.value
-          currentProject
-            .configurations
-            .keysIterator
-            .map(config => ToCoursier.configuration(config) -> classifiersRes)
-            .toMap
-        }
+        coursierSbtClassifiersResolutions
       else
-        Def.task(coursierResolutions.value)
+        coursierResolutions
 
     Def.task {
 
