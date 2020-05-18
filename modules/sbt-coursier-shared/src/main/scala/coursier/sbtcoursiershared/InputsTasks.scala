@@ -37,7 +37,7 @@ object InputsTasks {
 
     val exclusions0 = Inputs.exclusions(excludeDeps, sv, sbv, log)
 
-    val configMap = Inputs.configExtends(configurations)
+    val configMap = Inputs.configExtendsSeq(configurations).toMap
 
     val proj = FromSbt.project(
       projId,

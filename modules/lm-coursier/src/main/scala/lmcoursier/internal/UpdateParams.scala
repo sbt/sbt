@@ -15,7 +15,7 @@ final case class UpdateParams(
   configs: Map[Configuration, Set[Configuration]],
   dependencies: Seq[(Configuration, Dependency)],
   interProjectDependencies: Seq[Project],
-  res: Map[Set[Configuration], Resolution],
+  res: Map[Configuration, Resolution],
   includeSignatures: Boolean,
   sbtBootJarOverrides: Map[(Module, String), File],
   classpathOrder: Boolean,

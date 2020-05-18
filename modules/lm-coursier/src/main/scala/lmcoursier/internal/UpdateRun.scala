@@ -57,11 +57,6 @@ object UpdateRun {
     log: Logger
   ): UpdateReport = Lock.lock.synchronized {
 
-    val configResolutions = params.res.flatMap {
-      case (configs, r) =>
-        configs.iterator.map((_, r))
-    }
-
     val depsByConfig = grouped(params.dependencies)(
       config =>
         params.shadedConfigOpt match {
@@ -74,7 +69,7 @@ object UpdateRun {
 
     if (verbosityLevel >= 2) {
       val finalDeps = dependenciesWithConfig(
-        configResolutions,
+        params.res,
         depsByConfig,
         params.configs
       )
@@ -87,9 +82,8 @@ object UpdateRun {
     SbtUpdateReport(
       params.thisModule,
       depsByConfig,
-      configResolutions,
+      params.res.toVector.sortBy(_._1.value), // FIXME Order by config topologically?
       params.interProjectDependencies.toVector,
-      params.configs,
       params.classifiers,
       params.artifactFileOpt,
       params.fullArtifacts,

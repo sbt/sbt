@@ -13,7 +13,7 @@ import scala.collection.mutable
 
 object DisplayTasks {
 
-  private case class ResolutionResult(configs: Set[Configuration], resolution: Resolution, dependencies: Seq[Dependency])
+  private case class ResolutionResult(config: Configuration, resolution: Resolution, dependencies: Seq[Dependency])
 
   private def coursierResolutionTask(
     sbtClassifiers: Boolean = false,
@@ -40,7 +40,11 @@ object DisplayTasks {
         Def.task {
           val currentProject = currentProjectTask.value
           val classifiersRes = coursierSbtClassifiersResolution.value
-          Map(currentProject.configurations.keySet.map(ToCoursier.configuration) -> classifiersRes)
+          currentProject
+            .configurations
+            .keysIterator
+            .map(config => ToCoursier.configuration(config) -> classifiersRes)
+            .toMap
         }
       else
         Def.task(coursierResolutions.value)
@@ -57,19 +61,23 @@ object DisplayTasks {
       val resolutions = resolutionsTask.value
 
       for {
-        (subGraphConfigs, res) <- resolutions.toSeq
-        if subGraphConfigs.exists(includedConfigs)
+        (subGraphConfig, res) <- resolutions.toSeq
+        if includedConfigs(subGraphConfig)
       } yield {
 
-        val dependencies0 = currentProject.dependencies.collect {
-          case (cfg, dep) if includedConfigs(cfg) && subGraphConfigs(cfg) => dep
-        }.sortBy { dep =>
-          (dep.module.organization, dep.module.name, dep.version)
-        }
+        val dependencies0 = currentProject
+          .dependencies
+          .collect {
+            case (`subGraphConfig`, dep) =>
+              dep
+          }
+          .sortBy { dep =>
+            (dep.module.organization, dep.module.name, dep.version)
+          }
 
         val subRes = res.subset(dependencies0)
 
-        ResolutionResult(subGraphConfigs, subRes, dependencies0)
+        ResolutionResult(subGraphConfig, subRes, dependencies0)
       }
     }
   }
@@ -82,9 +90,9 @@ object DisplayTasks {
     val projectName = thisProjectRef.value.project
 
     val resolutions = coursierResolutionTask(sbtClassifiers, ignoreArtifactErrors).value
-    for (ResolutionResult(subGraphConfigs, resolution, dependencies) <- resolutions) {
+    for (ResolutionResult(subGraphConfig, resolution, dependencies) <- resolutions) {
       streams.value.log.info(
-        s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
+        s"$projectName (configuration ${subGraphConfig.value})" + "\n" +
           Print.dependencyTree(
             resolution,
             dependencies,
@@ -110,13 +118,13 @@ object DisplayTasks {
 
     val resolutions = coursierResolutionTask(sbtClassifiers, ignoreArtifactErrors).value
     val result = new mutable.StringBuilder
-    for (ResolutionResult(subGraphConfigs, resolution, _) <- resolutions) {
+    for (ResolutionResult(subGraphConfig, resolution, _) <- resolutions) {
       val roots = resolution
         .minDependencies
         .filter(f => f.module == module)
         .toVector
         .sortBy(_.toString) // elements already have the same module, there's not much left for sorting…
-      val strToPrint = s"$projectName (configurations ${subGraphConfigs.toVector.sorted.map(_.value).mkString(", ")})" + "\n" +
+      val strToPrint = s"$projectName (configurations ${subGraphConfig.value})" + "\n" +
         Print.dependencyTree(
           resolution,
           roots,

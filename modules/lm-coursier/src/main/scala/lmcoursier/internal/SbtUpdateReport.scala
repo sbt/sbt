@@ -132,7 +132,6 @@ private[internal] object SbtUpdateReport {
 
   private def moduleReports(
     thisModule: (Module, String),
-    config: Configuration,
     res: Resolution,
     interProjectDependencies: Seq[Project],
     classifiersOpt: Option[Seq[Classifier]],
@@ -293,9 +292,8 @@ private[internal] object SbtUpdateReport {
   def apply(
     thisModule: (Module, String),
     configDependencies: Map[Configuration, Seq[Dependency]],
-    resolutions: Map[Configuration, Resolution],
+    resolutions: Seq[(Configuration, Resolution)],
     interProjectDependencies: Vector[Project],
-    configs: Map[Configuration, Set[Configuration]],
     classifiersOpt: Option[Seq[Classifier]],
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     fullArtifactsOpt: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
@@ -306,18 +304,11 @@ private[internal] object SbtUpdateReport {
     missingOk: Boolean
   ): UpdateReport = {
 
-    val configReports = configs.map {
-      case (config, extends0) =>
-        val configDeps = extends0
-          .toSeq
-          .sortBy(_.value)
-          .flatMap(configDependencies.getOrElse(_, Nil))
-          .distinct
-        val subRes = resolutions(config).subset(configDeps)
+    val configReports = resolutions.map {
+      case (config, subRes) =>
 
         val reports = moduleReports(
           thisModule,
-          config,
           subRes,
           interProjectDependencies,
           classifiersOpt,

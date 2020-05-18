@@ -129,9 +129,11 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
           (ToCoursier.configuration(config), ToCoursier.dependency(dep0))
       }
 
-    val configGraphs = Inputs.ivyGraphs(
-      Inputs.configExtends(module0.configurations)
-    ).map(_.map(ToCoursier.configuration))
+    val orderedConfigs = Inputs.orderedConfigurations(Inputs.configExtendsSeq(module0.configurations))
+      .map {
+        case (config, extends0) =>
+          (ToCoursier.configuration(config), extends0.map(ToCoursier.configuration))
+      }
 
     val typelevel = so == Typelevel.typelevelOrg
 
@@ -146,7 +148,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
-      configGraphs = configGraphs,
+      orderedConfigs = orderedConfigs,
       autoScalaLibOpt = if (conf.autoScalaLibrary) Some((so, sv)) else None,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
@@ -167,10 +169,10 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       missingOk = conf.missingOk,
     )
 
-    def artifactsParams(resolutions: Map[Set[Configuration], Resolution]): ArtifactsParams =
+    def artifactsParams(resolutions: Map[Configuration, Resolution]): ArtifactsParams =
       ArtifactsParams(
         classifiers = classifiers,
-        resolutions = resolutions.values.toSeq,
+        resolutions = resolutions.values.toSeq.distinct,
         includeSignatures = false,
         loggerOpt = loggerOpt,
         projectName = projectName,
@@ -193,7 +195,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     }
 
     def updateParams(
-      resolutions: Map[Set[Configuration], Resolution],
+      resolutions: Map[Configuration, Resolution],
       artifacts: Seq[(Dependency, Publication, Artifact, Option[File])]
     ) =
       UpdateParams(

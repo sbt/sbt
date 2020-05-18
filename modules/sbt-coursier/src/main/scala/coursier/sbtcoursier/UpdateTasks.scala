@@ -35,9 +35,13 @@ object UpdateTasks {
     val resTask =
       if (withClassifiers && sbtClassifiers)
         Def.task {
-          val cm = coursierSbtClassifiersModule.value
+          val mod = coursierSbtClassifiersModule.value
           val classifiersRes = coursierSbtClassifiersResolution.value
-          Map(cm.configurations.map(c => Configuration(c.name)).toSet -> classifiersRes)
+          mod
+            .configurations
+            .iterator
+            .map(c => Configuration(c.name) -> classifiersRes)
+            .toMap
         }
       else
         Def.task(coursierResolutions.value)

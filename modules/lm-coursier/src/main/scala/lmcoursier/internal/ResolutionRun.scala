@@ -9,6 +9,8 @@ import coursier.maven.MavenRepository
 import coursier.params.rule.RuleResolution
 import sbt.util.Logger
 
+import scala.collection.mutable
+
 // private[coursier]
 object ResolutionRun {
 
@@ -16,7 +18,8 @@ object ResolutionRun {
     params: ResolutionParams,
     verbosityLevel: Int,
     log: Logger,
-    configs: Set[Configuration]
+    configs: Set[Configuration],
+    startingResolutionOpt: Option[Resolution]
   ): Either[coursier.error.ResolutionError, Resolution] = {
 
     val isScalaToolConfig = configs(Configuration("scala-tool"))
@@ -80,6 +83,8 @@ object ResolutionRun {
     ThreadUtil.withFixedThreadPool(params.parallel) { pool =>
 
       Resolve()
+        // re-using various caches from a resolution of a configuration we extend
+        .withInitialResolution(startingResolutionOpt)
         .withDependencies(
           params.dependencies.collect {
             case (config, dep) if configs(config) =>
@@ -126,7 +131,7 @@ object ResolutionRun {
     params: ResolutionParams,
     verbosityLevel: Int,
     log: Logger
-  ): Either[coursier.error.ResolutionError, Map[Set[Configuration], Resolution]] = {
+  ): Either[coursier.error.ResolutionError, Map[Configuration, Resolution]] = {
 
     // TODO Warn about possible duplicated modules from source repositories?
 
@@ -141,13 +146,24 @@ object ResolutionRun {
       // Downloads are already parallel, no need to parallelize further, anyway.
       val resOrError =
         Lock.lock.synchronized {
-          params.configGraphs.foldLeft[Either[coursier.error.ResolutionError, Map[Set[Configuration], Resolution]]](Right(Map())) {
-            case (acc, config) =>
+          var map = new mutable.HashMap[Configuration, Resolution]
+          val either = params.orderedConfigs.foldLeft[Either[coursier.error.ResolutionError, Unit]](Right(())) {
+            case (acc, (config, extends0)) =>
               for {
-                m <- acc
-                res <- resolution(params, verbosityLevel, log, config)
-              } yield m + (config -> res)
+                _ <- acc
+                initRes = {
+                  val it = extends0.iterator.flatMap(map.get(_).iterator)
+                  if (it.hasNext) Some(it.next())
+                  else None
+                }
+                allExtends = params.allConfigExtends.getOrElse(config, Set.empty)
+                res <- resolution(params, verbosityLevel, log, allExtends, initRes)
+              } yield {
+                map += config -> res
+                ()
+              }
           }
+          either.map(_ => map.toMap)
         }
       for (res <- resOrError)
         SbtCoursierCache.default.putResolution(params.resolutionKey, res)

@@ -176,13 +176,10 @@ object CoursierPlugin extends AutoPlugin {
 
       coursierResolutions
         .value
-        .collectFirst {
-          case (configs, res) if configs(config) =>
-            res
-        }
-        .getOrElse {
+        .getOrElse(
+          config,
           sys.error(s"Resolution for configuration $config not found")
-        }
+        )
     },
     coursierSbtClassifiersResolution := (Def.taskDyn {
       val missingOk = (updateConfiguration in updateSbtClassifiers).value.missingOk
