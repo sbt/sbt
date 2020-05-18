@@ -120,10 +120,10 @@ object TaskMacro {
 
   def taskIfMacroImpl[A: c.WeakTypeTag](
       c: blackbox.Context
-  )(a: c.Expr[Initialize[Task[A]]]): c.Expr[Initialize[Task[A]]] = {
+  )(a: c.Expr[A]): c.Expr[Initialize[Task[A]]] = {
     import c.universe._
     def mkIfS(cond: Tree, thenp: Tree, elsep: Tree): Tree =
-      q"""Def.ifS(Def.task($cond))($thenp)($elsep)"""
+      q"""Def.ifS(Def.task($cond))(Def.task($thenp))(Def.task($elsep))"""
     a.tree match {
       case Block(stat, If(cond, thenp, elsep)) =>
         c.Expr[Initialize[Task[A]]](mkIfS(Block(stat, cond), thenp, elsep))

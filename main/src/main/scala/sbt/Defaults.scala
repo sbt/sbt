@@ -2129,8 +2129,8 @@ object Defaults extends BuildCommon {
 
   def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
     Def.taskIf {
-      if (useCoursier.value) Def.task { CoursierDependencyResolution(csrConfiguration.value) } else
-        Def.task { IvyDependencyResolution(ivyConfiguration.value, CustomHttp.okhttpClient.value) }
+      if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
+      else IvyDependencyResolution(ivyConfiguration.value, CustomHttp.okhttpClient.value)
     }
 }
 
@@ -2949,16 +2949,14 @@ object Classpaths {
 
   def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
     Def.taskIf {
-      if ((publish / skip).value)
-        Def.task {
-          val s = streams.value
-          val ref = thisProjectRef.value
-          s.log.debug(s"Skipping publish* for ${ref.project}")
-        } else
-        Def.task {
-          val s = streams.value
-          IvyActions.publish(ivyModule.value, config.value, s.log)
-        }
+      if ((publish / skip).value) {
+        val s = streams.value
+        val ref = thisProjectRef.value
+        s.log.debug(s"Skipping publish* for ${ref.project}")
+      } else {
+        val s = streams.value
+        IvyActions.publish(ivyModule.value, config.value, s.log)
+      }
     } tag (Tags.Publish, Tags.Network)
 
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
