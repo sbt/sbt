@@ -3,11 +3,12 @@ package coursier.sbtcoursiershared
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
+import lmcoursier.Inputs
 import lmcoursier.definitions.{Configuration, Project}
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import sbt.{Def, Setting, Task, TaskKey}
 import sbt.internal.librarymanagement.IvySbt
-import sbt.librarymanagement.PublishConfiguration
+import sbt.librarymanagement.{CrossVersion, PublishConfiguration}
 
 import scala.collection.JavaConverters._
 import scala.xml.{Node, PrefixedAttribute}
@@ -16,6 +17,7 @@ object IvyXml {
 
   private[sbtcoursiershared] def rawContent(
     currentProject: Project,
+    exclusions: Seq[(String, String)],
     shadedConfigOpt: Option[Configuration]
   ): String = {
 
@@ -28,12 +30,13 @@ object IvyXml {
     val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
 
     """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
-      printer.format(content(currentProject, shadedConfigOpt))
+      printer.format(content(currentProject, exclusions, shadedConfigOpt))
   }
 
   // These are required for publish to be fine, later on.
   private def writeFiles(
     currentProject: Project,
+    exclusions: Seq[(String, String)],
     shadedConfigOpt: Option[Configuration],
     ivySbt: IvySbt,
     log: sbt.util.Logger
@@ -53,7 +56,7 @@ object IvyXml {
     val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
     val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
 
-    val content0 = rawContent(currentProject, shadedConfigOpt)
+    val content0 = rawContent(currentProject, exclusions, shadedConfigOpt)
     cacheIvyFile.getParentFile.mkdirs()
     log.info(s"Writing Ivy file $cacheIvyFile")
     Files.write(cacheIvyFile.toPath, content0.getBytes(UTF_8))
@@ -63,7 +66,11 @@ object IvyXml {
     Files.write(cacheIvyPropertiesFile.toPath, Array.emptyByteArray)
   }
 
-  private def content(project0: Project, shadedConfigOpt: Option[Configuration]): Node = {
+  private def content(
+    project0: Project,
+    exclusions: Seq[(String, String)],
+    shadedConfigOpt: Option[Configuration]
+  ): Node = {
 
     val filterOutDependencies =
       shadedConfigOpt.toSet[Configuration].flatMap { shadedConfig =>
@@ -148,11 +155,16 @@ object IvyXml {
         n % moduleAttrs
     }
 
+    val excludeElems = exclusions.toVector.map {
+      case (org, name) =>
+        <exclude org={org} module={name} artifact="*" type="*" ext="*" matcher="exact"/>
+    }
+
     <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
       {infoElem}
       <configurations>{confElems}</configurations>
       <publications>{publicationElems}</publications>
-      <dependencies>{dependencyElems}</dependencies>
+      <dependencies>{dependencyElems}{excludeElems}</dependencies>
     </ivy-module>
   }
 
@@ -166,12 +178,20 @@ object IvyXml {
         val doGen = coursierGenerateIvyXml.value
         if (doGen)
           Def.task {
+            val sv = sbt.Keys.scalaVersion.value
+            val sbv = sbt.Keys.scalaBinaryVersion.value
+            val log = sbt.Keys.streams.value.log
             val currentProject = {
               val proj = coursierProject.value
               val publications = coursierPublications.value
               proj.withPublications(publications)
             }
-            writeFiles(currentProject, shadedConfigOpt, sbt.Keys.ivySbt.value, sbt.Keys.streams.value.log)
+            val excludeDeps = Inputs.exclusionsSeq(InputsTasks.actualExcludeDependencies.value, sv, sbv, log)
+              .map {
+                case (org, name) =>
+                  (org.value, name.value)
+              }
+            writeFiles(currentProject, excludeDeps, shadedConfigOpt, sbt.Keys.ivySbt.value, log)
           }
         else
           Def.task(())

@@ -123,12 +123,12 @@ object Inputs {
     sets.values.toVector.distinct.map(_.set.toSet)
   }
 
-  def exclusions(
+  def exclusionsSeq(
     excludeDeps: Seq[InclExclRule],
     sv: String,
     sbv: String,
     log: Logger
-  ): Set[(Organization, ModuleName)] = {
+  ): Seq[(Organization, ModuleName)] = {
 
     var anyNonSupportedExclusionRule = false
 
@@ -144,13 +144,20 @@ object Inputs {
           Seq((Organization(rule.organization), ModuleName(name)))
         }
       }
-      .toSet
 
     if (anyNonSupportedExclusionRule)
       log.warn("Only supported exclusion rule fields: organization, name")
 
     res
   }
+
+  def exclusions(
+    excludeDeps: Seq[InclExclRule],
+    sv: String,
+    sbv: String,
+    log: Logger
+  ): Set[(Organization, ModuleName)] =
+    exclusionsSeq(excludeDeps, sv, sbv, log).toSet
 
   def forceVersions(depOverrides: Seq[ModuleID], sv: String, sbv: String): Seq[(Module, String)] =
     depOverrides.map(FromSbt.moduleVersion(_, sv, sbv))

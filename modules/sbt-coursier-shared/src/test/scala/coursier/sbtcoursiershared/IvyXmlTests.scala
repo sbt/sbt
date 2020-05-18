@@ -21,7 +21,7 @@ object IvyXmlTests extends TestSuite {
         Info("", "", Nil, Nil, None)
       )
 
-      val content = IvyXml.rawContent(project, None)
+      val content = IvyXml.rawContent(project, Nil, None)
 
       assert(!content.contains("</conf>"))
     }
