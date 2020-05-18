@@ -25,11 +25,9 @@ import sjsonnew.support.scalajson.unsafe.Converter
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
-  private val bspVersion = "2.0.0-M5"
-  private val languageIds = Vector("scala")
   private val bspTargetConfigs = Set("compile", "test")
   private val capabilities = BuildServerCapabilities(
-    CompileProvider(languageIds),
+    CompileProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true
   )
 
@@ -141,7 +139,13 @@ object BuildServerProtocol {
       {
         case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
           val _ = Converter.fromJson[InitializeBuildParams](json(r)).get
-          val response = InitializeBuildResult("sbt", sbtVersion, bspVersion, capabilities, None)
+          val response = InitializeBuildResult(
+            "sbt",
+            sbtVersion,
+            BuildServerConnection.bspVersion,
+            capabilities,
+            None
+          )
           callback.jsonRpcRespond(response, Some(r.id)); ()
 
         case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
@@ -223,7 +227,7 @@ object BuildServerProtocol {
         Some(baseDirectory),
         tags,
         capabilities,
-        languageIds,
+        BuildServerConnection.languages,
         projectDependencies.join.value.toVector,
         dataKind = Some("scala"),
         data = Some(Converter.toJsonUnsafe(compileData)),

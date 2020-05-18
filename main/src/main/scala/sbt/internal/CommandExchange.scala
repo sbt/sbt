@@ -118,6 +118,7 @@ private[sbt] final class CommandExchange {
   private[sbt] def runServer(s: State): State = {
     lazy val port = s.get(serverPort).getOrElse(5001)
     lazy val host = s.get(serverHost).getOrElse("127.0.0.1")
+    lazy val sbtVersion = s.configuration.provider.id.version
     lazy val auth: Set[ServerAuthentication] =
       s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
@@ -147,6 +148,7 @@ private[sbt] final class CommandExchange {
       val tokenfile = serverDir / h / "token.json"
       val socketfile = serverDir / h / "sock"
       val pipeName = "sbt-server-" + h
+      val bspConnectionFile = s.baseDir / ".bsp" / "sbt.json"
       val connection = ServerConnection(
         connectionType,
         host,
@@ -156,6 +158,8 @@ private[sbt] final class CommandExchange {
         tokenfile,
         socketfile,
         pipeName,
+        bspConnectionFile,
+        sbtVersion
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out
