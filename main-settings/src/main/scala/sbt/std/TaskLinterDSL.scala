@@ -211,15 +211,16 @@ object TaskLinterDSLFeedback {
     """.stripMargin
 
   def useOfValueInsideIfExpression(task: String): String =
-    s"""${startBold}The evaluation of `$task` happens always inside a regular task.$reset
+    s"""${startBold}value lookup of `$task` inside an `if` expression$reset
        |
-       |$ProblemHeader: `$task` is inside the if expression of a regular task.
-       |  Regular tasks always evaluate task inside the bodies of if expressions.
+       |$ProblemHeader: `$task.value` is inside an `if` expression of a regular task.
+       |  Regular tasks always evaluate task dependencies (`.value`) regardless of `if` expressions.
        |$SolutionHeader:
-       |  1. If you only want to evaluate it when the if predicate is true or false, use a dynamic task.
-       |  2. Make the static evaluation explicit by evaluating `$task` outside the if expression.
-       |  3. If you still want to force the static evaluation, you may annotate the task evaluation with `@sbtUnchecked`, e.g. `($task.value: @sbtUnchecked)`.
-       |  4. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
+       |  1. Use a conditional task `Def.taskIf(...)` to evaluate it when the `if` predicate is true or false.
+       |  2. Or turn the task body into a single `if` expression; the task is then auto-converted to a conditional task. 
+       |  3. Or make the static evaluation explicit by declaring `$task.value` outside the `if` expression.
+       |  4. If you still want to force the static lookup, you may annotate the task lookup with `@sbtUnchecked`, e.g. `($task.value: @sbtUnchecked)`.
+       |  5. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
     """.stripMargin
 
   def missingValueForKey(key: String): String =
