@@ -151,7 +151,8 @@ object MainLoop {
         case Left(t)                   => state.handleError(t)
       }
     } catch {
-      case oom: OutOfMemoryError if oom.getMessage.contains("Metaspace") =>
+      case oom: OutOfMemoryError
+          if oom.getMessage != null && oom.getMessage.contains("Metaspace") =>
         System.gc() // Since we're under memory pressure, see if more can be freed with a manual gc.
         val isTestOrRun = state.remainingCommands.headOption.exists { exec =>
           val cmd = exec.commandLine
