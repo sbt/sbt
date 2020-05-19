@@ -10,11 +10,13 @@ import lmcoursier.FallbackDependency
 import lmcoursier.definitions.ToCoursier
 import coursier.util.Task
 
+import scala.collection.mutable
+
 // private[coursier]
 final case class ResolutionParams(
   dependencies: Seq[(Configuration, Dependency)],
   fallbackDependencies: Seq[FallbackDependency],
-  configGraphs: Seq[Set[Configuration]],
+  orderedConfigs: Seq[(Configuration, Seq[Configuration])],
   autoScalaLibOpt: Option[(Organization, String)],
   mainRepositories: Seq[Repository],
   parentProjectCache: ProjectCache,
@@ -29,6 +31,18 @@ final case class ResolutionParams(
   strictOpt: Option[Strict],
   missingOk: Boolean,
 ) {
+
+  lazy val allConfigExtends: Map[Configuration, Set[Configuration]] = {
+    val map = new mutable.HashMap[Configuration, Set[Configuration]]
+    for ((config, extends0) <- orderedConfigs) {
+      val allExtends = extends0
+        .iterator
+        // the else of the getOrElse shouldn't be hit (because of the ordering of the configurations)
+        .foldLeft(Set(config))((acc, ext) => acc ++ map.getOrElse(ext, Set(ext)))
+      map += config -> allExtends
+    }
+    map.toMap
+  }
 
   val fallbackDependenciesRepositories =
     if (fallbackDependencies.isEmpty)

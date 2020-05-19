@@ -24,7 +24,7 @@ object ArtifactsTasks {
 
     val resTask: sbt.Def.Initialize[sbt.Task[Seq[Resolution]]] =
       if (withClassifiers && sbtClassifiers)
-        Def.task(Seq(coursierSbtClassifiersResolution.value))
+        Def.task(coursierSbtClassifiersResolutions.value.values.toVector)
       else
         Def.task(coursierResolutions.value.values.toVector)
 

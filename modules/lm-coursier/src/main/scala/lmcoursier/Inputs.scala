@@ -15,6 +15,11 @@ object Inputs {
         Configuration(from.value) -> Configuration(to.value)
     }
 
+  def configExtendsSeq(configurations: Seq[sbt.librarymanagement.Configuration]): Seq[(Configuration, Seq[Configuration])] =
+    configurations
+      .map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name)))
+
+  @deprecated("Now unused internally, to be removed in the future", "2.0.0-RC6-5")
   def configExtends(configurations: Seq[sbt.librarymanagement.Configuration]): Map[Configuration, Seq[Configuration]] =
     configurations
       .map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name)))
@@ -25,7 +30,7 @@ object Inputs {
     shadedConfig: Option[(String, Configuration)] = None
   ): Map[Configuration, Set[Configuration]] = {
 
-    val configs0 = configExtends(configurations)
+    val configs0 = configExtendsSeq(configurations).toMap
 
     def allExtends(c: Configuration) = {
       // possibly bad complexity
@@ -55,6 +60,29 @@ object Inputs {
     }
   }
 
+  def orderedConfigurations(
+    configurations: Seq[(Configuration, Seq[Configuration])]
+  ): Seq[(Configuration, Seq[Configuration])] = {
+
+    val map = configurations.toMap
+
+    def helper(done: Set[Configuration], toAdd: List[Configuration]): Stream[(Configuration, Seq[Configuration])] =
+      toAdd match {
+        case Nil => Stream.empty
+        case config :: rest =>
+          val extends0 = map.getOrElse(config, Nil)
+          val missingExtends = extends0.filterNot(done)
+          if (missingExtends.isEmpty)
+            (config, extends0) #:: helper(done + config, rest)
+          else
+            helper(done, missingExtends.toList ::: toAdd)
+      }
+
+    helper(Set.empty, configurations.map(_._1).toList)
+      .toVector
+  }
+
+  @deprecated("Now unused internally, to be removed in the future", "2.0.0-RC6-5")
   def ivyGraphs(configurations: Map[Configuration, Seq[Configuration]]): Seq[Set[Configuration]] = {
 
     // probably bad complexity, but that shouldn't matter given the size of the graphs involved...
@@ -95,12 +123,12 @@ object Inputs {
     sets.values.toVector.distinct.map(_.set.toSet)
   }
 
-  def exclusions(
+  def exclusionsSeq(
     excludeDeps: Seq[InclExclRule],
     sv: String,
     sbv: String,
     log: Logger
-  ): Set[(Organization, ModuleName)] = {
+  ): Seq[(Organization, ModuleName)] = {
 
     var anyNonSupportedExclusionRule = false
 
@@ -116,13 +144,20 @@ object Inputs {
           Seq((Organization(rule.organization), ModuleName(name)))
         }
       }
-      .toSet
 
     if (anyNonSupportedExclusionRule)
       log.warn("Only supported exclusion rule fields: organization, name")
 
     res
   }
+
+  def exclusions(
+    excludeDeps: Seq[InclExclRule],
+    sv: String,
+    sbv: String,
+    log: Logger
+  ): Set[(Organization, ModuleName)] =
+    exclusionsSeq(excludeDeps, sv, sbv, log).toSet
 
   def forceVersions(depOverrides: Seq[ModuleID], sv: String, sbv: String): Seq[(Module, String)] =
     depOverrides.map(FromSbt.moduleVersion(_, sv, sbv))

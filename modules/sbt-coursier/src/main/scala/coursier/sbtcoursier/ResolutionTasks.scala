@@ -19,9 +19,9 @@ object ResolutionTasks {
   def resolutionsTask(
     sbtClassifiers: Boolean = false,
     missingOk: Boolean = false,
-  ): Def.Initialize[sbt.Task[Map[Set[Configuration], coursier.Resolution]]] = {
+  ): Def.Initialize[sbt.Task[Map[Configuration, coursier.Resolution]]] = {
 
-    val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[FallbackDependency], Seq[Set[Configuration]])]] =
+    val currentProjectTask: sbt.Def.Initialize[sbt.Task[(Project, Seq[FallbackDependency], Seq[(Configuration, Seq[Configuration])])]] =
       if (sbtClassifiers)
         Def.task {
           val sv = scalaVersion.value
@@ -35,7 +35,7 @@ object ResolutionTasks {
             sbv
           )
 
-          (proj, fallbackDeps, Vector(cm.configurations.map(c => Configuration(c.name)).toSet))
+          (proj, fallbackDeps, cm.configurations.map(c => Configuration(c.name) -> Nil))
         }
       else
         Def.task {
@@ -97,7 +97,7 @@ object ResolutionTasks {
 
       val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
 
-      val (currentProject, fallbackDependencies, configGraphs) = currentProjectTask.value
+      val (currentProject, fallbackDependencies, orderedConfigs) = currentProjectTask.value
 
       val autoScalaLib = autoScalaLibrary.value && scalaModuleInfo.value.forall(_.overrideScalaVersion)
 
@@ -113,6 +113,16 @@ object ResolutionTasks {
         .get(resolvers)
         .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
         .getOrElse(Map.empty)
+
+      val excludeDeps = Inputs.exclusions(
+        coursier.sbtcoursiershared.InputsTasks.actualExcludeDependencies.value,
+        sv,
+        sbv,
+        log
+      ).map {
+        case (org, name) =>
+          (Organization(org.value), ModuleName(name.value))
+      }
 
       val mainRepositories = resolvers
         .flatMap { resolver =>
@@ -132,7 +142,7 @@ object ResolutionTasks {
         ResolutionParams(
           dependencies = currentProject.dependencies,
           fallbackDependencies = fallbackDependencies,
-          configGraphs = configGraphs,
+          orderedConfigs = orderedConfigs,
           autoScalaLibOpt = if (autoScalaLib) Some((so, sv)) else None,
           mainRepositories = mainRepositories,
           parentProjectCache = parentProjectCache,
@@ -154,7 +164,8 @@ object ResolutionTasks {
             .withProfiles(userEnabledProfiles)
             .withForceVersion(userForceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
             .withTypelevel(typelevel)
-            .addReconciliation(versionReconciliations0: _*),
+            .addReconciliation(versionReconciliations0: _*)
+            .withExclusions(excludeDeps),
           strictOpt = strictOpt,
           missingOk = missingOk,
         ),

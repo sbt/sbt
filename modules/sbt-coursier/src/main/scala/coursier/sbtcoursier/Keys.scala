@@ -21,7 +21,7 @@ object Keys {
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
 
-  val coursierConfigGraphs = TaskKey[Seq[Set[Configuration]]]("coursier-config-graphs")
+  val coursierConfigGraphs = TaskKey[Seq[(Configuration, Seq[Configuration])]]("coursier-config-graphs")
 
   val coursierSbtClassifiersModule = TaskKey[GetClassifiersModule]("coursier-sbt-classifiers-module")
 
@@ -29,11 +29,11 @@ object Keys {
 
 
   val coursierParentProjectCache = TaskKey[Map[Seq[Resolver], Seq[ProjectCache]]]("coursier-parent-project-cache")
-  val coursierResolutions = TaskKey[Map[Set[Configuration], Resolution]]("coursier-resolutions")
+  val coursierResolutions = TaskKey[Map[Configuration, Resolution]]("coursier-resolutions")
 
   private[coursier] val actualCoursierResolution = TaskKey[Resolution]("coursier-resolution")
 
-  val coursierSbtClassifiersResolution = TaskKey[Resolution]("coursier-sbt-classifiers-resolution")
+  val coursierSbtClassifiersResolutions = TaskKey[Map[Configuration, Resolution]]("coursier-sbt-classifiers-resolution")
 
   val coursierDependencyTree = TaskKey[Unit](
     "coursier-dependency-tree",

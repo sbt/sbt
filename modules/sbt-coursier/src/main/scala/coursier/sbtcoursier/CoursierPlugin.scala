@@ -30,7 +30,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierParentProjectCache = Keys.coursierParentProjectCache
     val coursierResolutions = Keys.coursierResolutions
 
-    val coursierSbtClassifiersResolution = Keys.coursierSbtClassifiersResolution
+    val coursierSbtClassifiersResolutions = Keys.coursierSbtClassifiersResolutions
 
     val coursierDependencyTree = Keys.coursierDependencyTree
     val coursierDependencyInverseTree = Keys.coursierDependencyInverseTree
@@ -176,21 +176,18 @@ object CoursierPlugin extends AutoPlugin {
 
       coursierResolutions
         .value
-        .collectFirst {
-          case (configs, res) if configs(config) =>
-            res
-        }
-        .getOrElse {
+        .getOrElse(
+          config,
           sys.error(s"Resolution for configuration $config not found")
-        }
+        )
     },
-    coursierSbtClassifiersResolution := (Def.taskDyn {
+    coursierSbtClassifiersResolutions := (Def.taskDyn {
       val missingOk = (updateConfiguration in updateSbtClassifiers).value.missingOk
       ResolutionTasks.resolutionsTask(
         sbtClassifiers = true,
         missingOk = missingOk,
       )
-    }).value.head._2
+    }).value
   )
 
   override lazy val buildSettings = super.buildSettings ++ Seq(

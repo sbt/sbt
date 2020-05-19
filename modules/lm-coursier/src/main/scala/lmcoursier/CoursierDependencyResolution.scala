@@ -25,14 +25,6 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
    * sbt-coursier, that was moved to this module.
    */
 
-  private lazy val excludeDependencies = conf
-    .excludeDependencies
-    .map {
-      case (strOrg, strName) =>
-        (lmcoursier.definitions.Organization(strOrg), lmcoursier.definitions.ModuleName(strName))
-    }
-    .toSet
-
   def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
     CoursierModuleDescriptor(moduleSetting, conf)
 
@@ -125,13 +117,14 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       }
       .map {
         case (config, dep) =>
-          val dep0 = dep.withExclusions(dep.exclusions ++ excludeDependencies)
-          (ToCoursier.configuration(config), ToCoursier.dependency(dep0))
+          (ToCoursier.configuration(config), ToCoursier.dependency(dep))
       }
 
-    val configGraphs = Inputs.ivyGraphs(
-      Inputs.configExtends(module0.configurations)
-    ).map(_.map(ToCoursier.configuration))
+    val orderedConfigs = Inputs.orderedConfigurations(Inputs.configExtendsSeq(module0.configurations))
+      .map {
+        case (config, extends0) =>
+          (ToCoursier.configuration(config), extends0.map(ToCoursier.configuration))
+      }
 
     val typelevel = so == Typelevel.typelevelOrg
 
@@ -143,10 +136,18 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       .withCredentials(conf.credentials.map(ToCoursier.credentials))
       .withFollowHttpToHttpsRedirections(conf.followHttpToHttpsRedirections.getOrElse(true))
 
+    val excludeDependencies = conf
+      .excludeDependencies
+      .map {
+        case (strOrg, strName) =>
+          (coursier.Organization(strOrg), coursier.ModuleName(strName))
+      }
+      .toSet
+
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
-      configGraphs = configGraphs,
+      orderedConfigs = orderedConfigs,
       autoScalaLibOpt = if (conf.autoScalaLibrary) Some((so, sv)) else None,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
@@ -162,15 +163,16 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         .withProfiles(conf.mavenProfiles.toSet)
         .withForceVersion(conf.forceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
         .withTypelevel(typelevel)
-        .withReconciliation(ToCoursier.reconciliation(conf.reconciliation)),
+        .withReconciliation(ToCoursier.reconciliation(conf.reconciliation))
+        .withExclusions(excludeDependencies),
       strictOpt = conf.strict.map(ToCoursier.strict),
       missingOk = conf.missingOk,
     )
 
-    def artifactsParams(resolutions: Map[Set[Configuration], Resolution]): ArtifactsParams =
+    def artifactsParams(resolutions: Map[Configuration, Resolution]): ArtifactsParams =
       ArtifactsParams(
         classifiers = classifiers,
-        resolutions = resolutions.values.toSeq,
+        resolutions = resolutions.values.toSeq.distinct,
         includeSignatures = false,
         loggerOpt = loggerOpt,
         projectName = projectName,
@@ -193,7 +195,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     }
 
     def updateParams(
-      resolutions: Map[Set[Configuration], Resolution],
+      resolutions: Map[Configuration, Resolution],
       artifacts: Seq[(Dependency, Publication, Artifact, Option[File])]
     ) =
       UpdateParams(

@@ -28,31 +28,20 @@ object InputsTasks {
   private def coursierProject0(
     projId: ModuleID,
     dependencies: Seq[ModuleID],
-    excludeDeps: Seq[InclExclRule],
     configurations: Seq[sbt.librarymanagement.Configuration],
     sv: String,
     sbv: String,
     log: Logger
   ): Project = {
 
-    val exclusions0 = Inputs.exclusions(excludeDeps, sv, sbv, log)
+    val configMap = Inputs.configExtendsSeq(configurations).toMap
 
-    val configMap = Inputs.configExtends(configurations)
-
-    val proj = FromSbt.project(
+    FromSbt.project(
       projId,
       dependencies,
       configMap,
       sv,
       sbv
-    )
-
-    proj.withDependencies(
-      proj.dependencies.map {
-        case (config, dep) =>
-          val dep0 = dep.withExclusions(dep.exclusions ++ exclusions0)
-          (config, dep0)
-      }
     )
   }
 
@@ -68,7 +57,6 @@ object InputsTasks {
         coursierProject0(
           projectID.in(projectRef).get(state),
           allDependenciesTask.value,
-          actualExcludeDependencies.in(projectRef).get(state),
           // should projectID.configurations be used instead?
           ivyConfigurations.in(projectRef).get(state),
           scalaVersion.in(projectRef).get(state),

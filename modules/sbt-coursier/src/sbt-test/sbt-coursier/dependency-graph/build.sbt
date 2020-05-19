@@ -12,5 +12,6 @@ import CoursierPlugin.autoImport._
 whatDependsOnCheck := {
   val result = (coursierWhatDependsOn in Compile).toTask(" log4j:log4j").value
   val file = new File("whatDependsOnResult.log")
-  assert(IO.read(file).toString == result)
+  val expected = IO.read(file).toString
+  assert(expected == result, s"Expected '$expected', got '$result'")
 }
