@@ -134,7 +134,7 @@ object LmCoursierPlugin extends AutoPlugin {
 
         val userForceVersions = Inputs.forceVersions(dependencyOverrides.value, scalaVer, sbv)
 
-        val authenticationByRepositoryId = coursierCredentials.value.mapValues { c =>
+        val authenticationByRepositoryId = actualCoursierCredentials.value.mapValues { c =>
           val a = c.authentication
           Authentication(a.user, a.password, a.optional, a.realmOpt)
         }

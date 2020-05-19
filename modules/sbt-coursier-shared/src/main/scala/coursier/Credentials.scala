@@ -5,7 +5,7 @@ import java.util.Properties
 
 import lmcoursier.definitions.Authentication
 
-@deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
+// actually deprecated (all public ways of creating that are)
 sealed abstract class Credentials extends Product with Serializable {
   def user: String
   def password: String
