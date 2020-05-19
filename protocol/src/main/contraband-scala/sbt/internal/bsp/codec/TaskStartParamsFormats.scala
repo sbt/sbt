@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait TaskStartParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sjsonnew.BasicJsonProtocol =>
+trait TaskStartParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val TaskStartParamsFormat: JsonFormat[sbt.internal.bsp.TaskStartParams] = new JsonFormat[sbt.internal.bsp.TaskStartParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.TaskStartParams = {
     __jsOpt match {
@@ -14,8 +14,10 @@ implicit lazy val TaskStartParamsFormat: JsonFormat[sbt.internal.bsp.TaskStartPa
       val taskId = unbuilder.readField[sbt.internal.bsp.TaskId]("taskId")
       val eventTime = unbuilder.readField[Option[Long]]("eventTime")
       val message = unbuilder.readField[Option[String]]("message")
+      val dataKind = unbuilder.readField[Option[String]]("dataKind")
+      val data = unbuilder.readField[Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]]("data")
       unbuilder.endObject()
-      sbt.internal.bsp.TaskStartParams(taskId, eventTime, message)
+      sbt.internal.bsp.TaskStartParams(taskId, eventTime, message, dataKind, data)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -25,6 +27,8 @@ implicit lazy val TaskStartParamsFormat: JsonFormat[sbt.internal.bsp.TaskStartPa
     builder.addField("taskId", obj.taskId)
     builder.addField("eventTime", obj.eventTime)
     builder.addField("message", obj.message)
+    builder.addField("dataKind", obj.dataKind)
+    builder.addField("data", obj.data)
     builder.endObject()
   }
 }

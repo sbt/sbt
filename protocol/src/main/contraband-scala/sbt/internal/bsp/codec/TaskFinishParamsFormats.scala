@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait TaskFinishParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sjsonnew.BasicJsonProtocol =>
+trait TaskFinishParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val TaskFinishParamsFormat: JsonFormat[sbt.internal.bsp.TaskFinishParams] = new JsonFormat[sbt.internal.bsp.TaskFinishParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.TaskFinishParams = {
     __jsOpt match {
@@ -15,8 +15,10 @@ implicit lazy val TaskFinishParamsFormat: JsonFormat[sbt.internal.bsp.TaskFinish
       val eventTime = unbuilder.readField[Option[Long]]("eventTime")
       val message = unbuilder.readField[Option[String]]("message")
       val status = unbuilder.readField[Int]("status")
+      val dataKind = unbuilder.readField[Option[String]]("dataKind")
+      val data = unbuilder.readField[Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue]]("data")
       unbuilder.endObject()
-      sbt.internal.bsp.TaskFinishParams(taskId, eventTime, message, status)
+      sbt.internal.bsp.TaskFinishParams(taskId, eventTime, message, status, dataKind, data)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -27,6 +29,8 @@ implicit lazy val TaskFinishParamsFormat: JsonFormat[sbt.internal.bsp.TaskFinish
     builder.addField("eventTime", obj.eventTime)
     builder.addField("message", obj.message)
     builder.addField("status", obj.status)
+    builder.addField("dataKind", obj.dataKind)
+    builder.addField("data", obj.data)
     builder.endObject()
   }
 }

@@ -208,10 +208,7 @@ object BuildServerProtocol {
       jars = scalaJars.toVector
     )
     val configuration = Keys.configuration.value
-    val displayName = configuration.name match {
-      case "compile"  => thisProject.id
-      case configName => s"${thisProject.id}-$configName"
-    }
+    val displayName = BuildTargetName.fromScope(thisProject.id, configuration.name)
     val baseDirectory = Keys.baseDirectory.value.toURI
     val projectDependencies = for {
       (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
@@ -299,14 +296,7 @@ object BuildServerProtocol {
     }
   }
 
-  def scopeFilter(
-      targets: Seq[BuildTargetIdentifier],
-      workspace: Map[BuildTargetIdentifier, Scope]
-  ): ScopeFilter = {
-    ScopeFilter.in(targets.map(workspace))
-  }
-
-  def toId(ref: ProjectReference, config: Configuration): BuildTargetIdentifier =
+  private def toId(ref: ProjectReference, config: Configuration): BuildTargetIdentifier =
     ref match {
       case ProjectRef(build, project) =>
         BuildTargetIdentifier(new URI(s"$build#$project/${config.id}"))

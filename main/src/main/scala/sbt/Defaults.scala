@@ -9,7 +9,7 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, URLClassLoader }
-import java.nio.file.{ Path => NioPath, Paths }
+import java.nio.file.{ Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 
@@ -43,6 +43,7 @@ import sbt.internal.librarymanagement.mavenint.{
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
+  BspCompileTask,
   BuildServerProtocol,
   BuildServerReporter,
   Definition,
@@ -644,7 +645,7 @@ object Defaults extends BuildCommon {
     compile := compileTask.value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
-    compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
+    compileIncremental := compileIncrementalTask.tag(Tags.Compile, Tags.CPU).value,
     printWarnings := printWarningsTask.value,
     compileAnalysisFilename := {
       // Here, if the user wants cross-scala-versioning, we also append it
@@ -1854,8 +1855,10 @@ object Defaults extends BuildCommon {
     analysis
   }
   def compileIncrementalTask = Def.task {
-    // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
+    BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
+      // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+      compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
+    }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Inputs): CompileResult = {

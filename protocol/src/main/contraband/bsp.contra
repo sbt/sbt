@@ -284,11 +284,11 @@ type TaskStartParams {
     ## Optional message describing the task.
     message: String
 
-    # Kind of data to expect in the `data` field.
-    # dataKind: String
+    ## Kind of data to expect in the `data` field.
+    dataKind: String
 
-    # Optional metadata about the task.
-    # data: Any
+    ## Optional metadata about the task.
+    data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
 }
 
 type TaskFinishParams {
@@ -304,11 +304,11 @@ type TaskFinishParams {
     ## Task completion status: 1 -> success, 2 -> error, 3 -> cancelled
     status: Int!
 
-    # Kind of data to expect in the `data` field.
-    # dataKind: String
+    ## Kind of data to expect in the `data` field.
+    dataKind: String
 
-    # Optional metadata about the task.
-    # data: Any
+    ## Optional metadata about the task.
+    data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
 }
 
 ## Compile Request
@@ -339,6 +339,29 @@ type BspCompileResult {
   # A field containing language-specific information, like products
   # of compilation or compiler-specific metadata the client needs to know.
   # data: any
+}
+
+## Compile Notifications
+
+type CompileTask {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+}
+
+type CompileReport {
+  ## The build target that was compiled
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## An optional request id to know the origin of this report
+  originId: String
+
+  ## The total number of reported errors compiling this target.
+  errors: Int!
+
+  ## The total number of reported warnings compiling the target.
+  warnings: Int!
+
+  ## The total number of milliseconds it took to compile the target.
+  time: Int
 }
 
 # Scala Extension
