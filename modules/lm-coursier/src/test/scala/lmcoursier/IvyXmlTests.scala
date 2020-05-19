@@ -19,7 +19,7 @@ object IvyXmlTests extends PropSpec with Matchers {
       Info("", "", Nil, Nil, None)
     )
 
-    val content = IvyXml(project, Nil, None)
+    val content = IvyXml(project, Nil)
 
     assert(!content.contains("</conf>"))
   }

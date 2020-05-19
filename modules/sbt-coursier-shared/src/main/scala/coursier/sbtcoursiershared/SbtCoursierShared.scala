@@ -174,7 +174,7 @@ object SbtCoursierShared extends AutoPlugin {
       versionReconciliation := Seq.empty
     ) ++ {
       if (pubSettings)
-        IvyXmlGeneration.generateIvyXmlSettings()
+        IvyXmlGeneration.generateIvyXmlSettings
       else
         Nil
     }

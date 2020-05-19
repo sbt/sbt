@@ -11,13 +11,7 @@ object CoursierSbtPgpPlugin extends AutoPlugin {
   override def requires = com.typesafe.sbt.SbtPgp && coursier.sbtcoursier.CoursierPlugin
 
   override val projectSettings = Seq(
-    updatePgpSignatures := {
-      UpdateTasks.updateTask(
-        None,
-        withClassifiers = false,
-        includeSignatures = true
-      ).value
-    }
+    updatePgpSignatures := UpdateTasks.updateTask(withClassifiers = false, includeSignatures = true).value
   )
 
 }

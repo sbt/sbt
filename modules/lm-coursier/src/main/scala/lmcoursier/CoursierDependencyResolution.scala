@@ -189,7 +189,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       conf.sbtScalaJars
     )
 
-    val configs = Inputs.coursierConfigurations(module0.configurations).map {
+    val configs = Inputs.coursierConfigurationsMap(module0.configurations).map {
       case (k, l) =>
         ToCoursier.configuration(k) -> l.map(ToCoursier.configuration)
     }
@@ -200,7 +200,6 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     ) =
       UpdateParams(
         thisModule = (ToCoursier.module(mod), ver),
-        shadedConfigOpt = None,
         artifacts = artifacts.collect { case (d, p, a, Some(f)) => a -> f }.toMap,
         fullArtifacts = Some(artifacts.map { case (d, p, a, f) => (d, p, a) -> f }.toMap),
         classifiers = classifiers,

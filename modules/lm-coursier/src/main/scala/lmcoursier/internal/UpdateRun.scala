@@ -57,15 +57,7 @@ object UpdateRun {
     log: Logger
   ): UpdateReport = Lock.lock.synchronized {
 
-    val depsByConfig = grouped(params.dependencies)(
-      config =>
-        params.shadedConfigOpt match {
-          case Some((baseConfig, `config`)) =>
-            Configuration(baseConfig)
-          case _ =>
-            config
-        }
-    )
+    val depsByConfig = grouped(params.dependencies)
 
     if (verbosityLevel >= 2) {
       val finalDeps = dependenciesWithConfig(
@@ -94,9 +86,9 @@ object UpdateRun {
     )
   }
 
-  private def grouped[K, V](map: Seq[(K, V)])(mapKey: K => K): Map[K, Seq[V]] =
+  private def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
     map
-      .groupBy(t => mapKey(t._1))
+      .groupBy(_._1)
       .mapValues(_.map(_._2))
       .iterator
       .toMap

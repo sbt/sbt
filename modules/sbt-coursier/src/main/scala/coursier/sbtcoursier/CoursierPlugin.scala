@@ -137,9 +137,7 @@ object CoursierPlugin extends AutoPlugin {
     }
   )
 
-  def coursierSettings(
-    shadedConfigOpt: Option[(String, Configuration)] = None
-  ): Seq[Setting[_]] = hackHack ++ Seq(
+  def coursierSettings: Seq[Setting[_]] = hackHack ++ Seq(
     coursierArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false).value,
     coursierSignedArtifacts := ArtifactsTasks.artifactsTask(withClassifiers = false, includeSignatures = true).value,
     coursierClassifiersArtifacts := ArtifactsTasks.artifactsTask(
@@ -149,22 +147,12 @@ object CoursierPlugin extends AutoPlugin {
       withClassifiers = true,
       sbtClassifiers = true
     ).value,
-    update := UpdateTasks.updateTask(
-      shadedConfigOpt,
-      withClassifiers = false
-    ).value,
-    updateClassifiers := UpdateTasks.updateTask(
-      shadedConfigOpt,
-      withClassifiers = true
-    ).value,
-    updateSbtClassifiers.in(Defaults.TaskGlobal) := UpdateTasks.updateTask(
-      shadedConfigOpt,
-      withClassifiers = true,
-      sbtClassifiers = true
-    ).value,
+    update := UpdateTasks.updateTask(withClassifiers = false).value,
+    updateClassifiers := UpdateTasks.updateTask(withClassifiers = true).value,
+    updateSbtClassifiers.in(Defaults.TaskGlobal) := UpdateTasks.updateTask(withClassifiers = true, sbtClassifiers = true).value,
     coursierConfigGraphs := InputsTasks.ivyGraphsTask.value,
     coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
-    coursierConfigurations := InputsTasks.coursierConfigurationsTask(None).value,
+    coursierConfigurations := InputsTasks.coursierConfigurationsTask.value,
     coursierParentProjectCache := InputsTasks.parentProjectCacheTask.value,
     coursierResolutions := (Def.taskDyn {
       val missingOk = updateConfiguration.value.missingOk
@@ -200,7 +188,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value)
   )
 
-  override lazy val projectSettings = coursierSettings() ++
+  override lazy val projectSettings = coursierSettings ++
     inConfig(Compile)(treeSettings) ++
     inConfig(Test)(treeSettings)
 

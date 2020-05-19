@@ -13,14 +13,9 @@ import sbt.Keys._
 
 object InputsTasks {
 
-  def coursierConfigurationsTask(
-    shadedConfig: Option[(String, Configuration)]
-  ): Def.Initialize[sbt.Task[Map[Configuration, Set[Configuration]]]] =
+  def coursierConfigurationsTask: Def.Initialize[sbt.Task[Map[Configuration, Set[Configuration]]]] =
     Def.task {
-      Inputs.coursierConfigurations(ivyConfigurations.value, shadedConfig.map {
-        case (from, to) =>
-          (from, lmcoursier.definitions.Configuration(to.value))
-      }).map {
+      Inputs.coursierConfigurationsMap(ivyConfigurations.value).map {
         case (k, v) =>
           ToCoursier.configuration(k) -> v.map(ToCoursier.configuration)
       }

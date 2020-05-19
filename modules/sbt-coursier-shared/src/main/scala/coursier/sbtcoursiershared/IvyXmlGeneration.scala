@@ -18,7 +18,6 @@ object IvyXmlGeneration {
   private def writeFiles(
     currentProject: Project,
     exclusions: Seq[(String, String)],
-    shadedConfigOpt: Option[Configuration],
     ivySbt: IvySbt,
     log: sbt.util.Logger
   ): Unit = {
@@ -37,7 +36,7 @@ object IvyXmlGeneration {
     val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
     val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
 
-    val content0 = IvyXml(currentProject, exclusions, shadedConfigOpt)
+    val content0 = IvyXml(currentProject, exclusions)
     cacheIvyFile.getParentFile.mkdirs()
     log.info(s"Writing Ivy file $cacheIvyFile")
     Files.write(cacheIvyFile.toPath, content0.getBytes(UTF_8))
@@ -47,10 +46,7 @@ object IvyXmlGeneration {
     Files.write(cacheIvyPropertiesFile.toPath, Array.emptyByteArray)
   }
 
-  private def makeIvyXmlBefore[T](
-    task: TaskKey[T],
-    shadedConfigOpt: Option[Configuration]
-  ): Setting[Task[T]] =
+  private def makeIvyXmlBefore[T](task: TaskKey[T]): Setting[Task[T]] =
     task := task.dependsOn {
       Def.taskDyn {
         import SbtCoursierShared.autoImport._
@@ -70,7 +66,7 @@ object IvyXmlGeneration {
                 case (org, name) =>
                   (org.value, name.value)
               }
-            writeFiles(currentProject, excludeDeps, shadedConfigOpt, sbt.Keys.ivySbt.value, log)
+            writeFiles(currentProject, excludeDeps, sbt.Keys.ivySbt.value, log)
           }
         else
           Def.task(())
@@ -91,9 +87,7 @@ object IvyXmlGeneration {
         Nil
     }
 
-  def generateIvyXmlSettings(
-    shadedConfigOpt: Option[Configuration] = None
-  ): Seq[Setting[_]] =
-    (needsIvyXml ++ needsIvyXmlLocal).map(makeIvyXmlBefore(_, shadedConfigOpt))
+  def generateIvyXmlSettings: Seq[Setting[_]] =
+    (needsIvyXml ++ needsIvyXmlLocal).map(makeIvyXmlBefore)
 
 }
