@@ -144,10 +144,15 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
       }
       .toSet
 
+    val providedOpt = orderedConfigs.collectFirst {
+      case (c, _) if conf.providedInCompile && c.value.equalsIgnoreCase("provided") => c
+    }
+
     val resolutionParams = ResolutionParams(
       dependencies = dependencies,
       fallbackDependencies = conf.fallbackDependencies,
-      orderedConfigs = orderedConfigs,
+      orderedConfigs = providedOpt.fold(orderedConfigs)(provided => orderedConfigs.filter(_._1 != provided)),
+      subConfigs = providedOpt.map(_ -> coursier.core.Configuration.compile).toSeq,
       autoScalaLibOpt = if (conf.autoScalaLibrary) Some((so, sv)) else None,
       mainRepositories = mainRepositories,
       parentProjectCache = Map.empty,
