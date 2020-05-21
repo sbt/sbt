@@ -40,9 +40,11 @@ object SbtCoursierShared extends AutoPlugin {
     val mavenProfiles = settingKey[Set[String]]("")
     val versionReconciliation = taskKey[Seq[ModuleID]]("")
 
+    private[coursier] val actualCoursierCredentials = TaskKey[Map[String, LegacyCredentials]]("coursierCredentials", "")
+
     val coursierUseSbtCredentials = settingKey[Boolean]("")
     @deprecated("Use coursierExtraCredentials rather than coursierCredentials", "1.1.0-M14")
-    val coursierCredentials = taskKey[Map[String, LegacyCredentials]]("")
+    val coursierCredentials = actualCoursierCredentials
     val coursierExtraCredentials = taskKey[Seq[Credentials]]("")
 
     val coursierLogger = taskKey[Option[CacheLogger]]("")
@@ -60,7 +62,7 @@ object SbtCoursierShared extends AutoPlugin {
   override def globalSettings: Seq[Setting[_]] =
     Seq(
       coursierUseSbtCredentials := true,
-      coursierCredentials := Map.empty,
+      actualCoursierCredentials := Map.empty,
       coursierExtraCredentials := Nil
     )
 
@@ -174,7 +176,7 @@ object SbtCoursierShared extends AutoPlugin {
       versionReconciliation := Seq.empty
     ) ++ {
       if (pubSettings)
-        IvyXmlGeneration.generateIvyXmlSettings()
+        IvyXmlGeneration.generateIvyXmlSettings
       else
         Nil
     }

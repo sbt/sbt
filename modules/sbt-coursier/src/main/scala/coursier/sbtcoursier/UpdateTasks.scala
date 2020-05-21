@@ -12,7 +12,6 @@ import sbt.librarymanagement.UpdateReport
 object UpdateTasks {
 
   def updateTask(
-    shadedConfigOpt: Option[(String, Configuration)],
     withClassifiers: Boolean,
     sbtClassifiers: Boolean = false,
     includeSignatures: Boolean = false
@@ -57,17 +56,7 @@ object UpdateTasks {
           cm.configurations.map(c => Configuration(c.name) -> Set(Configuration(c.name))).toMap
         }
       else
-        Def.task {
-          val configs0 = coursierConfigurations.value
-
-          shadedConfigOpt.fold(configs0) {
-            case (baseConfig, shadedConfig) =>
-              val baseConfig0 = Configuration(baseConfig)
-              (configs0 - shadedConfig) + (
-                baseConfig0 -> (configs0.getOrElse(baseConfig0, Set()) - shadedConfig)
-              )
-          }
-        }
+        coursierConfigurations
 
     val classifiersTask: sbt.Def.Initialize[sbt.Task[Option[Seq[Classifier]]]] =
       if (withClassifiers) {
@@ -124,7 +113,6 @@ object UpdateTasks {
 
             val params = UpdateParams(
               (p.module, p.version),
-              shadedConfigOpt,
               artifactFilesOrErrors0,
               None,
               classifiers,

@@ -95,7 +95,7 @@ object ResolutionTasks {
 
       val ivyProperties = ResolutionParams.defaultIvyProperties(ivyPaths.value.ivyHome)
 
-      val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
+      val authenticationByRepositoryId = actualCoursierCredentials.value.mapValues(_.authentication)
 
       val (currentProject, fallbackDependencies, orderedConfigs) = currentProjectTask.value
 

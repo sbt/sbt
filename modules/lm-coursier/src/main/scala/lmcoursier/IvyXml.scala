@@ -1,6 +1,5 @@
 package lmcoursier
 
-import lmcoursier.Inputs
 import lmcoursier.definitions.{Configuration, Project}
 
 import scala.xml.{Node, PrefixedAttribute}
@@ -9,8 +8,7 @@ object IvyXml {
 
   def apply(
     currentProject: Project,
-    exclusions: Seq[(String, String)],
-    shadedConfigOpt: Option[Configuration]
+    exclusions: Seq[(String, String)]
   ): String = {
 
     // Important: width = Int.MaxValue, so that no tag gets truncated.
@@ -22,28 +20,14 @@ object IvyXml {
     val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
 
     """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
-      printer.format(content(currentProject, exclusions, shadedConfigOpt))
+      printer.format(content(currentProject, exclusions))
   }
 
   // These are required for publish to be fine, later on.
   private def content(
-    project0: Project,
-    exclusions: Seq[(String, String)],
-    shadedConfigOpt: Option[Configuration]
+    project: Project,
+    exclusions: Seq[(String, String)]
   ): Node = {
-
-    val filterOutDependencies =
-      shadedConfigOpt.toSet[Configuration].flatMap { shadedConfig =>
-        project0
-          .dependencies
-          .collect { case (conf, dep) if conf.value == shadedConfig.value => dep }
-      }
-
-    val project = project0.withDependencies(
-      project0.dependencies.collect {
-        case p @ (_, dep) if !filterOutDependencies(dep) => p
-      }
-    )
 
     val props = project.module.attributes.toSeq ++ project.properties
     val infoAttrs = props.foldLeft[xml.MetaData](xml.Null) {
@@ -72,11 +56,10 @@ object IvyXml {
     } % infoAttrs
 
     val confElems = project.configurations.toVector.collect {
-      case (name, extends0) if !shadedConfigOpt.exists(_.value == name.value) =>
-        val extends1 = shadedConfigOpt.fold(extends0)(c => extends0.filter(_.value != c.value))
+      case (name, extends0) =>
         val n = <conf name={name.value} visibility="public" description="" />
-        if (extends1.nonEmpty)
-          n % <x extends={extends1.map(_.value).mkString(",")} />.attributes
+        if (extends0.nonEmpty)
+          n % <x extends={extends0.map(_.value).mkString(",")} />.attributes
         else
           n
     }

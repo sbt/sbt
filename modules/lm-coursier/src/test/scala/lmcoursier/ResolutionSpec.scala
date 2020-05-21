@@ -1,6 +1,7 @@
 package lmcoursier
 
-import org.scalatest.{Matchers, PropSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.propspec.AnyPropSpec
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.internal.util.ConsoleLogger
 import sbt.librarymanagement._
@@ -9,7 +10,7 @@ import sbt.librarymanagement.Resolver.{DefaultMavenRepository, JCenterRepository
 import sbt.librarymanagement.{Resolver, UnresolvedWarningConfiguration, UpdateConfiguration}
 import sbt.librarymanagement.syntax._
 
-final class ResolutionSpec extends PropSpec with Matchers {
+final class ResolutionSpec extends AnyPropSpec with Matchers {
 
   lazy val log = ConsoleLogger()
 

@@ -5,6 +5,8 @@ import sbt.Keys._
 import sbt.internal.LibraryManagement
 import sbt.librarymanagement.DependencyResolution
 
+import scala.language.reflectiveCalls
+
 object Foo {
 
   // same implementation as update in sbt, except DependencyResolution is passed as argument

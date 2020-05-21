@@ -8,7 +8,6 @@ import coursier.util.Artifact
 // private[coursier]
 final case class UpdateParams(
   thisModule: (Module, String),
-  shadedConfigOpt: Option[(String, Configuration)],
   artifacts: Map[Artifact, File],
   fullArtifacts: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
   classifiers: Option[Seq[Classifier]],

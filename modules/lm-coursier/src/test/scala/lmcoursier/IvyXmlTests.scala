@@ -1,9 +1,10 @@
 package lmcoursier
 
 import lmcoursier.definitions.{Configuration, Info, Module, ModuleName, Organization, Project}
-import org.scalatest.{Matchers, PropSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.propspec.AnyPropSpec
 
-object IvyXmlTests extends PropSpec with Matchers {
+object IvyXmlTests extends AnyPropSpec with Matchers {
 
   property("no truncation") {
     val project = Project(
@@ -19,7 +20,7 @@ object IvyXmlTests extends PropSpec with Matchers {
       Info("", "", Nil, Nil, None)
     )
 
-    val content = IvyXml(project, Nil, None)
+    val content = IvyXml(project, Nil)
 
     assert(!content.contains("</conf>"))
   }
