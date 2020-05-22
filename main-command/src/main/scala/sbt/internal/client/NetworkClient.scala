@@ -133,7 +133,7 @@ class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[Strin
   def onNotification(msg: JsonRpcNotificationMessage): Unit = {
     def splitToMessage: Vector[(Level.Value, String)] =
       (msg.method, msg.params) match {
-        case ("window/logMessage", Some(json)) =>
+        case ("build/logMessage", Some(json)) =>
           import sbt.internal.langserver.codec.JsonProtocol._
           Converter.fromJson[LogMessageParams](json) match {
             case Success(params) => splitLogMessage(params)
