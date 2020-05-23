@@ -130,6 +130,10 @@ def mimaSettingsSince(versions: Seq[String]) = Def settings (
   },
   mimaBinaryIssueFilters ++= Seq(
     // Changes in the internal package
+    exclude[DirectMissingMethodProblem]("sbt.ConcurrentRestrictions.*"),
+    exclude[IncompatibleMethTypeProblem]("sbt.CompletionService.submit"),
+    exclude[DirectMissingMethodProblem]("sbt.CompletionService.*"),
+    exclude[ReversedMissingMethodProblem]("sbt.CompletionService.submit"),
     exclude[DirectMissingMethodProblem]("sbt.internal.*"),
     exclude[FinalClassProblem]("sbt.internal.*"),
     exclude[FinalMethodProblem]("sbt.internal.*"),

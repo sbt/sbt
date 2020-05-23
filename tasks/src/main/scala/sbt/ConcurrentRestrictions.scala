@@ -143,7 +143,6 @@ object ConcurrentRestrictions {
   ): CompletionService[A, R] = {
 
     // Represents submitted work for a task.
-    final class Enqueue(val node: A, val work: () => R)
 
     new CompletionService[A, R] {
 
@@ -157,27 +156,31 @@ object ConcurrentRestrictions {
       private[this] var running = 0
 
       /** Tasks that cannot be run yet because they cannot execute concurrently with the currently running tasks.*/
-      private[this] val pending = new LinkedList[Enqueue]
+      private[this] val pending = new LinkedList[Submission[A, R]]
 
-      def submit(node: A, work: () => R): Unit = synchronized {
-        val newState = tags.add(tagState, node)
+      def submit(submission: Submission[A, R]): Unit = synchronized {
+        val newState = tags.add(tagState, submission.node)
         // if the new task is allowed to run concurrently with the currently running tasks,
         //   submit it to be run by the backing j.u.c.CompletionService
         if (tags valid newState) {
           tagState = newState
-          submitValid(node, work)
+          submitValid(submission)
         } else {
           if (running == 0) errorAddingToIdle()
-          pending.add(new Enqueue(node, work))
+          pending.add(submission)
         }
         ()
       }
-      private[this] def submitValid(node: A, work: () => R) = {
+      private[this] def submitValid(submission: Submission[A, R]) = {
         running += 1
-        val wrappedWork = () =>
-          try work()
+        val wrappedSubmission = new CleanupSubmission(submission)
+        CompletionService.submit(wrappedSubmission, jservice)
+      }
+      private[this] class CleanupSubmission(submission: Submission[A, R]) extends Submission[A, R] {
+        def node: A = submission.node
+        def work(): R =
+          try submission.work()
           finally cleanup(node)
-        CompletionService.submit(wrappedWork, jservice)
       }
       private[this] def cleanup(node: A): Unit = synchronized {
         running -= 1
@@ -186,13 +189,13 @@ object ConcurrentRestrictions {
           warn(
             "Invalid restriction: removing a completed node from a valid system must result in a valid system."
           )
-        submitValid(new LinkedList)
+        submitValid(new LinkedList[Submission[A, R]])
       }
       private[this] def errorAddingToIdle() =
         warn("Invalid restriction: adding a node to an idle system must be allowed.")
 
       /** Submits pending tasks that are now allowed to executed. */
-      @tailrec private[this] def submitValid(tried: Queue[Enqueue]): Unit =
+      @tailrec private[this] def submitValid(tried: Queue[Submission[A, R]]): Unit =
         if (pending.isEmpty) {
           if (!tried.isEmpty) {
             if (running == 0) errorAddingToIdle()
@@ -200,11 +203,11 @@ object ConcurrentRestrictions {
             ()
           }
         } else {
-          val next = pending.remove()
+          val next: Submission[A, R] = pending.remove()
           val newState = tags.add(tagState, next.node)
           if (tags.valid(newState)) {
             tagState = newState
-            submitValid(next.node, next.work)
+            submitValid(next)
           } else
             tried.add(next)
           submitValid(tried)

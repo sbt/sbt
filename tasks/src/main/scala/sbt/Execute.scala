@@ -54,7 +54,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     config: Config,
     triggers: Triggers[F],
     progress: ExecuteProgress[F]
-)(implicit view: NodeView[F]) {
+)(implicit view: NodeView[F]) { self =>
   type Strategy = CompletionService[F[_], Completed]
 
   private[this] val forward = idMap[F[_], IDSet[F[_]]]
@@ -275,10 +275,14 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   }
 
   /** Send the work for this node to the provided Strategy. */
-  def submit[A](node: F[A])(implicit strategy: Strategy): Unit = {
-    val v = viewCache(node)
-    val rs = v.alist.transform(v.in, getResult)
-    strategy.submit(node, () => work(node, v.work(rs)))
+  def submit[A](theNode: F[A])(implicit strategy: Strategy): Unit = {
+    val s = new Submission[F[A], Completed] {
+      val v = viewCache(theNode)
+      val rs = v.alist.transform(v.in, getResult)
+      val node: F[A] = theNode
+      def work(): Completed = self.work(node, v.work(rs))
+    }
+    strategy.submit(s)
   }
 
   /**
