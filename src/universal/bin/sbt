@@ -353,11 +353,11 @@ run() {
   java_args=($JAVA_OPTS)
   sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
 
-  # Split SBT_OPTs into options/commands
+  # Split SBT_OPTS into options/commands
   miniscript=$(map_args "${sbt_options0[@]}") && eval "${miniscript/options/sbt_options}" && \
   eval "${miniscript/commands/sbt_additional_commands}"
 
-  # Combine command line options/commands and commands from SBT_OPTs
+  # Combine command line options/commands and commands from SBT_OPTS
   miniscript=$(map_args "$@") && eval "${miniscript/options/cli_options}" && eval "${miniscript/commands/cli_commands}"
   args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}" )
 

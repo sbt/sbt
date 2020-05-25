@@ -137,6 +137,20 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
+  test("sbt with -debug in SBT_OPTS appears in sbt commands") {
+    val out: List[String] = sbtProcessWithOpts("compile", "-v")("", "-debug").!!.linesIterator.toList
+    // Debug argument must appear in the 'commands' section after sbt-launch.jar to work
+    val locationOfSbtLaunchJarArg = out.zipWithIndex.collectFirst {
+      case (arg, index) if arg.endsWith("sbt-launch.jar") => index
+    }
+
+    assert(locationOfSbtLaunchJarArg.nonEmpty)
+
+    val argsAfterSbtLaunch = out.drop(locationOfSbtLaunchJarArg.get)
+    assert(argsAfterSbtLaunch.contains("-debug"))
+    ()
+  }
+
   test("sbt -V|-version|--version should print sbtVersion") {
     val out = sbtProcess("-version").!!.trim
     val expectedVersion =
