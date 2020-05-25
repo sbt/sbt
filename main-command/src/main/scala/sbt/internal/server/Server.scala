@@ -10,6 +10,7 @@ package internal
 package server
 
 import java.io.{ File, IOException }
+import java.lang.management.ManagementFactory
 import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
@@ -28,6 +29,7 @@ import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
 import org.scalasbt.ipcsocket._
 import sbt.internal.bsp.BuildServerConnection
+import xsbti.AppConfiguration
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -199,7 +201,9 @@ private[sbt] object Server {
 
       private[this] def writeBspConnectionDetails(): Unit = {
         import bsp.codec.JsonProtocol._
-        val details = BuildServerConnection.details(sbtVersion)
+        val sbtVersion = appConfiguration.provider.id.version
+        val launcherJar = ManagementFactory.getRuntimeMXBean.getClassPath
+        val details = BuildServerConnection.details(sbtVersion, launcherJar)
         val json = Converter.toJson(details).get
         IO.write(bspConnectionFile, CompactPrinter(json), append = false)
       }
@@ -223,7 +227,7 @@ private[sbt] case class ServerConnection(
     socketfile: File,
     pipeName: String,
     bspConnectionFile: File,
-    sbtVersion: String
+    appConfiguration: AppConfiguration
 ) {
   def shortName: String = {
     connectionType match {

@@ -118,7 +118,6 @@ private[sbt] final class CommandExchange {
   private[sbt] def runServer(s: State): State = {
     lazy val port = s.get(serverPort).getOrElse(5001)
     lazy val host = s.get(serverHost).getOrElse("127.0.0.1")
-    lazy val sbtVersion = s.configuration.provider.id.version
     lazy val auth: Set[ServerAuthentication] =
       s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
@@ -159,7 +158,7 @@ private[sbt] final class CommandExchange {
         socketfile,
         pipeName,
         bspConnectionFile,
-        sbtVersion
+        s.configuration
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out
