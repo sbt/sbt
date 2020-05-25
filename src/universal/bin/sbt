@@ -133,7 +133,7 @@ addJava () {
   java_args=( "${java_args[@]}" "$1" )
 }
 addSbt () {
-  echoerr "[addSbt] arg = '$1'"
+  dlog "[addSbt] arg = '$1'"
   sbt_commands=( "${sbt_commands[@]}" "$1" )
 }
 addResidual () {
