@@ -39,9 +39,12 @@ object BuildServerProtocol {
           bspTargetConfigs.toSeq.map(name => Scope.Global.in(ref, ConfigKey(name)))
       }
       Def.setting {
-        val targetIds = scopes.map(_ / Keys.bspTargetIdentifier)
-          .map(_?) // bspTargetIdentifier might no be defined if the JvmPlugin is disabled
-          .join.value.flatten
+        val targetIds = scopes
+          .map(_ / Keys.bspTargetIdentifier)
+          .map(_ ?) // bspTargetIdentifier might no be defined if the JvmPlugin is disabled
+          .join
+          .value
+          .flatten
         targetIds.zip(scopes).toMap
       }
     }.value,
