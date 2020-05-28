@@ -561,6 +561,11 @@ public class ScriptedLauncher {
       }
 
       @Override
+      public boolean allowInsecureProtocol() {
+        return false;
+      }
+
+      @Override
       public URL url() {
         try {
           return new URL(url);

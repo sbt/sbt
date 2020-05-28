@@ -3778,7 +3778,8 @@ object Classpaths {
   private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
     repo match {
-      case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
+      case m: xsbti.MavenRepository =>
+        MavenRepository(m.id, m.url.toString).withAllowInsecureProtocol(m.allowInsecureProtocol)
       case i: xsbti.IvyRepository =>
         val patterns = Patterns(
           Vector(i.ivyPattern),
@@ -3792,7 +3793,8 @@ object Classpaths {
             // This hackery is to deal suitably with UNC paths on Windows. Once we can assume Java7, Paths should save us from this.
             val file = IO.toFile(i.url)
             Resolver.file(i.id, file)(patterns)
-          case _ => Resolver.url(i.id, i.url)(patterns)
+          case _ =>
+            Resolver.url(i.id, i.url)(patterns).withAllowInsecureProtocol(i.allowInsecureProtocol)
         }
       case p: xsbti.PredefinedRepository =>
         p.id match {
