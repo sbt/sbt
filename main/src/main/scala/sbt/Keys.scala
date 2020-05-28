@@ -21,6 +21,7 @@ import sbt.Def.ScopedKey
 import sbt.KeyRanks._
 import sbt.internal.InMemoryCacheStore.CacheStoreFactoryFactory
 import sbt.internal._
+import sbt.internal.bsp._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
@@ -337,6 +338,20 @@ object Keys {
   val internalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on")
   val closeClassLoaders = settingKey[Boolean]("Close classloaders in run and test when the task completes.").withRank(DSetting)
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
+
+  val bspTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
+  val bspWorkspace = settingKey[Map[BuildTargetIdentifier, Scope]]("Mapping of BSP build targets to sbt scopes").withRank(DSetting)
+  val bspInternalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on, possibly transitivly").withRank(DSetting)
+  val bspWorkspaceBuildTargets = taskKey[Seq[BuildTarget]]("List all the BSP build targets").withRank(DTask)
+  val bspBuildTarget = taskKey[BuildTarget]("Description of the BSP build targets").withRank(DTask)
+  val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetSourcesItem = taskKey[SourcesItem]("").withRank(DTask)
+  val bspBuildTargetDependencySources = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetDependencySourcesItem = taskKey[DependencySourcesItem]("").withRank(DTask)
+  val bspBuildTargetCompile = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetCompileItem = taskKey[Int]("").withRank(DTask)
+  val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)
   val csrCacheDirectory = settingKey[File]("Coursier cache directory. Uses -Dsbt.coursier.home or Coursier's default.").withRank(CSetting)

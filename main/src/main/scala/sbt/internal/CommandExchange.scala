@@ -147,6 +147,7 @@ private[sbt] final class CommandExchange {
       val tokenfile = serverDir / h / "token.json"
       val socketfile = serverDir / h / "sock"
       val pipeName = "sbt-server-" + h
+      val bspConnectionFile = s.baseDir / ".bsp" / "sbt.json"
       val connection = ServerConnection(
         connectionType,
         host,
@@ -156,6 +157,8 @@ private[sbt] final class CommandExchange {
         tokenfile,
         socketfile,
         pipeName,
+        bspConnectionFile,
+        s.configuration
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out

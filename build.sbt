@@ -731,6 +731,8 @@ lazy val commandProj = (project in file("main-command"))
       exclude[DirectMissingMethodProblem]("sbt.Exec.copy$default$*"),
       // internal
       exclude[ReversedMissingMethodProblem]("sbt.internal.client.ServerConnection.*"),
+      exclude[MissingTypesProblem]("sbt.internal.server.ServerConnection*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.server.ServerConnection.*")
     ),
     unmanagedSources in (Compile, headerCreate) := {
       val old = (unmanagedSources in (Compile, headerCreate)).value
@@ -889,7 +891,7 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.internal.Inspect.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.ProjectIndex.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.BuildIndex.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.server.LanguageServerReporter.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.server.BuildServerReporter.*"),
       exclude[VirtualStaticMemberProblem]("sbt.internal.server.LanguageServerProtocol.*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.librarymanagement.IvyXml.*"),
       exclude[IncompatibleSignatureProblem]("sbt.ScriptedPlugin.*Settings"),
@@ -907,6 +909,7 @@ lazy val mainProj = (project in file("main"))
       exclude[MissingClassProblem]("sbt.internal.FileManagement"),
       exclude[MissingClassProblem]("sbt.internal.FileManagement$"),
       exclude[MissingClassProblem]("sbt.internal.FileManagement$CopiedFileTreeRepository"),
+      exclude[MissingClassProblem]("sbt.internal.server.LanguageServerReporter*"),
       // false positives
       exclude[DirectMissingMethodProblem]("sbt.plugins.IvyPlugin.requires"),
       exclude[DirectMissingMethodProblem]("sbt.plugins.JUnitXmlReportPlugin.requires"),
@@ -941,12 +944,14 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inScope"),
       exclude[MissingTypesProblem]("sbt.internal.Load*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.Load*"),
+      exclude[MissingTypesProblem]("sbt.internal.server.NetworkChannel"),
       // IvyConfiguration was replaced by InlineIvyConfiguration in the generic
       // signature, this does not break compatibility regardless of what
       // cast a compiler might have inserted based on the old signature
       // since we're returning the same values as before.
       exclude[IncompatibleSignatureProblem]("sbt.Classpaths.mkIvyConfiguration"),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.Definition*"),
+      exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.LanguageServerProtocol")
     )
   )
   .configure(

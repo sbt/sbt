@@ -9,7 +9,7 @@ package sbt
 
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, URLClassLoader }
-import java.nio.file.{ Path => NioPath, Paths }
+import java.nio.file.{ Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 
@@ -43,9 +43,11 @@ import sbt.internal.librarymanagement.mavenint.{
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
+  BspCompileTask,
+  BuildServerProtocol,
+  BuildServerReporter,
   Definition,
   LanguageServerProtocol,
-  LanguageServerReporter,
   ServerHandler
 }
 import sbt.internal.testing.TestLogger
@@ -198,9 +200,10 @@ object Defaults extends BuildCommon {
       },
       fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
       fullServerHandlers := {
-        (Vector(LanguageServerProtocol.handler(fileConverter.value))
-          ++ serverHandlers.value
-          ++ Vector(ServerHandler.fallback))
+        Seq(
+          LanguageServerProtocol.handler(fileConverter.value),
+          BuildServerProtocol.handler(sbtVersion.value)
+        ) ++ serverHandlers.value :+ ServerHandler.fallback
       },
       uncachedStamper := Stamps.uncachedStamps(fileConverter.value),
       reusableStamper := Stamps.timeWrapLibraryStamps(uncachedStamper.value, fileConverter.value),
@@ -237,7 +240,7 @@ object Defaults extends BuildCommon {
       bgCopyClasspath :== true,
       closeClassLoaders :== SysProp.closeClassLoaders,
       allowZombieClassLoaders :== true,
-    )
+    ) ++ BuildServerProtocol.globalSettings
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
     Seq(
@@ -383,7 +386,8 @@ object Defaults extends BuildCommon {
         sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
-    ) ++ LintUnused.lintSettings ++ DefaultBackgroundJobService.backgroundJobServiceSettings
+    ) ++ LintUnused.lintSettings
+      ++ DefaultBackgroundJobService.backgroundJobServiceSettings
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -640,7 +644,7 @@ object Defaults extends BuildCommon {
     compile := compileTask.value,
     internalDependencyConfigurations := InternalDependencies.configurations.value,
     manipulateBytecode := compileIncremental.value,
-    compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
+    compileIncremental := compileIncrementalTask.tag(Tags.Compile, Tags.CPU).value,
     printWarnings := printWarningsTask.value,
     compileAnalysisFilename := {
       // Here, if the user wants cross-scala-versioning, we also append it
@@ -1850,8 +1854,10 @@ object Defaults extends BuildCommon {
     analysis
   }
   def compileIncrementalTask = Def.task {
-    // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
+    BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
+      // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+      compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
+    }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Inputs): CompileResult = {
@@ -1873,7 +1879,7 @@ object Defaults extends BuildCommon {
       val prev = i.previousResult
       prev.analysis.toOption map { analysis =>
         i.setup.reporter match {
-          case r: LanguageServerReporter =>
+          case r: BuildServerReporter =>
             r.resetPrevious(analysis)
           case _ => ()
         }
@@ -1936,7 +1942,8 @@ object Defaults extends BuildCommon {
         )
       },
       compilerReporter := {
-        new LanguageServerReporter(
+        new BuildServerReporter(
+          bspTargetIdentifier.value,
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value),
@@ -2174,7 +2181,7 @@ object Classpaths {
       classpathConfiguration.?.value,
       update.value
     )
-  )
+  ) ++ BuildServerProtocol.configSettings
   private[this] def classpaths: Seq[Setting[_]] =
     Seq(
       externalDependencyClasspath := concat(unmanagedClasspath, managedClasspath).value,

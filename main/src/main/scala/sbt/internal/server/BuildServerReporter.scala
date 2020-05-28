@@ -5,25 +5,16 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
-package internal
-package server
+package sbt.internal.server
 
-import java.io.File
+import sbt.StandardMain
+import sbt.internal.bsp._
 import sbt.internal.inc.ManagedLoggedReporter
 import sbt.internal.util.ManagedLogger
-import xsbti.{ FileConverter, Problem, Position => XPosition, Severity }
 import xsbti.compile.CompileAnalysis
-import sbt.internal.langserver.{
-  PublishDiagnosticsParams,
-  Position,
-  Diagnostic,
-  Range,
-  DiagnosticSeverity
-}
-import sbt.internal.inc.JavaInterfaceUtil._
+import xsbti.{ BasicVirtualFileRef, FileConverter, Problem, Severity, Position => XPosition }
+
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 
 /**
  * Defines a compiler reporter that uses event logging provided by a `ManagedLogger`.
@@ -32,15 +23,21 @@ import scala.collection.JavaConverters._
  * @param logger The event managed logger.
  * @param sourcePositionMapper The position mapper.
  */
-class LanguageServerReporter(
+class BuildServerReporter(
+    buildTarget: BuildTargetIdentifier,
     maximumErrors: Int,
     logger: ManagedLogger,
     sourcePositionMapper: XPosition => XPosition = identity[XPosition],
     converter: FileConverter
 ) extends ManagedLoggedReporter(maximumErrors, logger, sourcePositionMapper) {
+  import sbt.internal.bsp.codec.JsonProtocol._
+  import sbt.internal.inc.JavaInterfaceUtil._
+
+  import scala.collection.JavaConverters._
+
   lazy val exchange = StandardMain.exchange
 
-  private[sbt] lazy val problemsByFile = new mutable.HashMap[File, mutable.ListBuffer[Problem]]
+  private[sbt] lazy val problemsByFile = new mutable.HashMap[String, mutable.ListBuffer[Problem]]
 
   override def reset(): Unit = {
     super.reset()
@@ -49,10 +46,10 @@ class LanguageServerReporter(
 
   override def log(problem: Problem): Unit = {
     val pos = problem.position
-    pos.sourceFile.toOption foreach { sourceFile: File =>
-      problemsByFile.get(sourceFile) match {
-        case Some(xs: mutable.ListBuffer[Problem]) => problemsByFile(sourceFile) = xs :+ problem
-        case _                                     => problemsByFile(sourceFile) = mutable.ListBuffer(problem)
+    pos.sourcePath().toOption foreach { sourcePath =>
+      problemsByFile.get(sourcePath) match {
+        case Some(xs: mutable.ListBuffer[Problem]) => problemsByFile(sourcePath) = xs :+ problem
+        case _                                     => problemsByFile(sourcePath) = mutable.ListBuffer(problem)
       }
     }
     super.log(problem)
@@ -80,24 +77,34 @@ class LanguageServerReporter(
   }
 
   private[sbt] def resetPrevious(analysis: CompileAnalysis): Unit = {
-    import sbt.internal.langserver.codec.JsonProtocol._
     val files = analysis.readSourceInfos.getAllSourceInfos.keySet.asScala
-    files foreach { f =>
-      val p = converter.toPath(f)
-      val params = PublishDiagnosticsParams(p.toUri.toString, Vector())
-      exchange.notifyEvent("textDocument/publishDiagnostics", params)
+    files foreach { file =>
+      val params = PublishDiagnosticsParams(
+        TextDocumentIdentifier(converter.toPath(file).toUri),
+        buildTarget,
+        None,
+        diagnostics = Vector(),
+        reset = true
+      )
+      exchange.notifyEvent("build/publishDiagnostics", params)
     }
   }
 
   private[sbt] def aggregateProblems(problem: Problem): Unit = {
-    import sbt.internal.langserver.codec.JsonProtocol._
     val pos = problem.position
-    pos.sourceFile.toOption foreach { sourceFile: File =>
-      problemsByFile.get(sourceFile) match {
+    pos.sourcePath().toOption foreach { sourcePath: String =>
+      problemsByFile.get(sourcePath) match {
         case Some(xs: mutable.ListBuffer[Problem]) =>
-          val ds = toDiagnostics(xs)
-          val params = PublishDiagnosticsParams(sbt.io.IO.toURI(sourceFile).toString, ds)
-          exchange.notifyEvent("textDocument/publishDiagnostics", params)
+          val diagnostics = toDiagnostics(xs)
+          val absolutePath = converter.toPath(new BasicVirtualFileRef(sourcePath) {})
+          val params = PublishDiagnosticsParams(
+            TextDocumentIdentifier(absolutePath.toUri),
+            buildTarget,
+            originId = None,
+            diagnostics,
+            reset = true
+          )
+          exchange.notifyEvent("build/publishDiagnostics", params)
         case _ =>
       }
     }
@@ -112,7 +119,7 @@ class LanguageServerReporter(
     } yield {
       val line = line0.toLong - 1L
       val pointer = pointer0.toLong
-      val r = (
+      val range = (
         pos.startLine.toOption,
         pos.startColumn.toOption,
         pos.endLine.toOption,
@@ -124,7 +131,7 @@ class LanguageServerReporter(
           Range(Position(line, pointer), Position(line, pointer + 1))
       }
       Diagnostic(
-        r,
+        range,
         Option(toDiagnosticSeverity(problem.severity)),
         None,
         Option("sbt"),

@@ -10,22 +10,26 @@ package internal
 package server
 
 import java.io.{ File, IOException }
-import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, Socket }
+import java.lang.management.ManagementFactory
+import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
-import java.nio.file.attribute.{ UserPrincipal, AclEntry, AclEntryPermission, AclEntryType }
+import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
 import java.security.SecureRandom
 import java.math.BigInteger
+
 import scala.concurrent.{ Future, Promise }
-import scala.util.{ Try, Success, Failure }
+import scala.util.{ Failure, Success, Try }
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
 import sbt.io.syntax._
-import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import sbt.internal.protocol.codec._
 import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
 import org.scalasbt.ipcsocket._
+import sbt.internal.bsp.BuildServerConnection
+import xsbti.AppConfiguration
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -85,6 +89,7 @@ private[sbt] object Server {
               serverSocketOpt = Option(serverSocket)
               log.info(s"sbt server started at ${connection.shortName}")
               writePortfile()
+              writeBspConnectionDetails()
               running.set(true)
               p.success(())
               while (running.get()) {
@@ -194,6 +199,15 @@ private[sbt] object Server {
         IO.write(portfile, CompactPrinter(json))
       }
 
+      private[this] def writeBspConnectionDetails(): Unit = {
+        import bsp.codec.JsonProtocol._
+        val sbtVersion = appConfiguration.provider.id.version
+        val launcherJar = ManagementFactory.getRuntimeMXBean.getClassPath
+        val details = BuildServerConnection.details(sbtVersion, launcherJar)
+        val json = Converter.toJson(details).get
+        IO.write(bspConnectionFile, CompactPrinter(json), append = false)
+      }
+
       private[sbt] def prepareSocketfile(): Unit = {
         if (socketfile.exists) {
           IO.delete(socketfile)
@@ -211,7 +225,9 @@ private[sbt] case class ServerConnection(
     portfile: File,
     tokenfile: File,
     socketfile: File,
-    pipeName: String
+    pipeName: String,
+    bspConnectionFile: File,
+    appConfiguration: AppConfiguration
 ) {
   def shortName: String = {
     connectionType match {

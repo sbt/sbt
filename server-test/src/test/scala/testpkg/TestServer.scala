@@ -26,8 +26,18 @@ trait AbstractServerTest extends TestSuite[Unit] {
   var svr: TestServer = _
   def testDirectory: String
 
+  private val targetDir: File = {
+    val p0 = new File("..").getAbsoluteFile.getCanonicalFile / "target"
+    val p1 = new File("target").getAbsoluteFile
+    if (p0.exists) p0
+    else p1
+  }
+
   override def setupSuite(): Unit = {
-    temp = IO.createTemporaryDirectory
+    temp = targetDir / "test-server" / testDirectory
+    if (temp.exists) {
+      IO.delete(temp)
+    }
     val classpath = sys.props.get("sbt.server.classpath") match {
       case Some(s: String) => s.split(java.io.File.pathSeparator).map(file)
       case _               => throw new IllegalStateException("No server classpath was specified.")
