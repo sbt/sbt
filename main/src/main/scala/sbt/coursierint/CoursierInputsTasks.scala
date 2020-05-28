@@ -40,7 +40,6 @@ object CoursierInputsTasks {
   private def coursierProject0(
       projId: ModuleID,
       dependencies: Seq[ModuleID],
-      excludeDeps: Seq[InclExclRule],
       configurations: Seq[sbt.librarymanagement.Configuration],
       sv: String,
       sbv: String,
@@ -50,9 +49,7 @@ object CoursierInputsTasks {
       log: Logger
   ): CProject = {
 
-    val exclusions0 = Inputs.exclusions(excludeDeps, sv, sbv, log)
-
-    val configMap = Inputs.configExtends(configurations)
+    val configMap = Inputs.configExtendsSeq(configurations).toMap
 
     val proj0 = FromSbt.project(
       projId,
@@ -61,18 +58,14 @@ object CoursierInputsTasks {
       sv,
       sbv
     )
-    val proj1 = proj0.withDependencies(proj0.dependencies.map {
-      case (config, dep) =>
-        (config, dep.withExclusions(dep.exclusions ++ exclusions0))
-    })
-    val proj2 = auOpt match {
+    val proj1 = auOpt match {
       case Some(au) =>
-        val props = proj1.properties :+ ("info.apiURL" -> au.toString)
-        proj1.withProperties(props)
-      case _ => proj1
+        val props = proj0.properties :+ ("info.apiURL" -> au.toString)
+        proj0.withProperties(props)
+      case _ => proj0
     }
-    proj2.withInfo(
-      proj2.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
+    proj1.withInfo(
+      proj1.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
     )
   }
 
@@ -81,7 +74,6 @@ object CoursierInputsTasks {
       coursierProject0(
         projectID.value,
         allDependencies.value,
-        allExcludeDependencies.value,
         ivyConfigurations.value,
         scalaVersion.value,
         scalaBinaryVersion.value,
