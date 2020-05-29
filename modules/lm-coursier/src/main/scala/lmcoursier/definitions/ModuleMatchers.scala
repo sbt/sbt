@@ -15,6 +15,8 @@ import dataclass.data
 object ModuleMatchers {
   def all: ModuleMatchers =
     ModuleMatchers(Set.empty, Set.empty)
+  def only(organization: String, moduleName: String): ModuleMatchers =
+    ModuleMatchers(Set.empty, Set(Module(Organization(organization), ModuleName(moduleName), Map())), includeByDefault = false)
   def only(mod: Module): ModuleMatchers =
     ModuleMatchers(Set.empty, Set(mod), includeByDefault = false)
 }

@@ -62,6 +62,7 @@ object LmCoursierPlugin extends AutoPlugin {
         Def.task(sbt.hack.Foo.updateTask(lm).value)
       }.value
     ) ++
+    setCsrConfiguration ++
     inTask(updateClassifiers)(
       Seq(
         dependencyResolution := mkDependencyResolution.value,
@@ -86,6 +87,21 @@ object LmCoursierPlugin extends AutoPlugin {
       }
     }
 
+  private def setCsrConfiguration: Seq[Setting[_]] = {
+    val csrConfigurationOpt = try {
+      val key = sbt.Keys.asInstanceOf[{
+        def csrConfiguration: TaskKey[CoursierConfiguration]
+      }].csrConfiguration
+      Some(key)
+    } catch {
+      case _: NoSuchMethodException =>
+        None
+    }
+
+    csrConfigurationOpt.toSeq.map { csrConfiguration =>
+      csrConfiguration := coursierConfiguration.value
+    }
+  }
 
   private def mkCoursierConfiguration(withClassifiers: Boolean = false, sbtClassifiers: Boolean = false): Def.Initialize[Task[CoursierConfiguration]] =
     Def.taskDyn {
