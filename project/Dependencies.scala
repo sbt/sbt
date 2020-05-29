@@ -15,7 +15,7 @@ object Dependencies {
   private val lmVersion =
     sys.props.get("sbt.build.lm.version") match {
       case Some(version) => version
-      case _             => nightlyVersion.getOrElse("1.3.2")
+      case _             => nightlyVersion.getOrElse("1.3.3")
     }
   val zincVersion = nightlyVersion.getOrElse("1.3.5")
 
@@ -112,7 +112,7 @@ object Dependencies {
   def addSbtZincCompileCore(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierVersion = "2.0.0-RC6-2"
+  val lmCoursierVersion = "2.0.0-RC6-4"
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % lmCoursierVersion
 
   val sjsonNewScalaJson = Def.setting {
