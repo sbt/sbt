@@ -100,7 +100,7 @@ object MainLoop {
     val sbtVersion = sbtVersionOpt.getOrElse(appId.version)
     val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion
     currentArtDirs.get foreach { dir =>
-      state.log.info(s"Deleting $dir")
+      state.log.info(s"deleting $dir")
       IO.delete(dir)
     }
   }

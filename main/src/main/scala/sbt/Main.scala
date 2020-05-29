@@ -829,7 +829,15 @@ object BuiltinCommands {
     )
   }
 
+  private def welcomeBanner(state: State): Unit = {
+    import scala.util.Properties
+    val appVersion = state.configuration.provider.id.version()
+    val javaVersion = s"${Properties.javaVendor} Java ${Properties.javaVersion}"
+    state.log.info(s"welcome to sbt $appVersion ($javaVersion)")
+  }
+
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
+    welcomeBanner(s0)
     checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
