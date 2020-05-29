@@ -254,7 +254,7 @@ private[sbt] object Load {
     val data = timed("Load.apply: Def.make(settings)...", log) {
       // When settings.size is 100000, Def.make takes around 10s.
       if (settings.size > 10000) {
-        log.info(s"Resolving key references (${settings.size} settings) ...")
+        log.info(s"resolving key references (${settings.size} settings) ...")
       }
       Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey(loaded))
     }
@@ -565,7 +565,7 @@ private[sbt] object Load {
     checkDirectory(projectBase)
     assert(
       buildBase == projectBase || IO.relativize(buildBase, projectBase).isDefined,
-      s"Directory $projectBase is not contained in build root $buildBase"
+      s"directory $projectBase is not contained in build root $buildBase"
     )
   }
 
@@ -669,12 +669,12 @@ private[sbt] object Load {
 
   def getBuild[T](map: Map[URI, T], uri: URI): T = map.getOrElse(uri, noBuild(uri))
 
-  def emptyBuild(uri: URI) = sys.error(s"No root project defined for build unit '$uri'")
-  def noBuild(uri: URI) = sys.error(s"Build unit '$uri' not defined.")
-  def noProject(uri: URI, id: String) = sys.error(s"No project '$id' defined in '$uri'.")
+  def emptyBuild(uri: URI) = sys.error(s"no root project defined for build unit '$uri'")
+  def noBuild(uri: URI) = sys.error(s"build unit '$uri' not defined.")
+  def noProject(uri: URI, id: String) = sys.error(s"no project '$id' defined in '$uri'.")
 
   def noConfiguration(uri: URI, id: String, conf: String) =
-    sys.error(s"No configuration '$conf' defined in project '$id' in '$uri'")
+    sys.error(s"no configuration '$conf' defined in project '$id' in '$uri'")
 
   // Called from builtinLoader
   def loadUnit(uri: URI, localBase: File, s: State, config: LoadBuildConfiguration): BuildUnit =
@@ -975,7 +975,7 @@ private[sbt] object Load {
       e: AutoPluginException,
       project: Project
   ): AutoPluginException =
-    e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")
+    e.withPrefix(s"error determining plugins for project '${project.id}' in ${project.base}:\n")
 
   /**
    * Represents the results of flushing out a directory and discovering all the projects underneath it.
@@ -1034,7 +1034,7 @@ private[sbt] object Load {
         def settings(files: Seq[File]): Seq[Setting[_]] = {
           if (files.nonEmpty)
             log.info(
-              s"${files.map(_.getName).mkString(s"Loading settings for project ${p.id} from ", ",", " ...")}"
+              s"${files.map(_.getName).mkString(s"loading settings for project ${p.id} from ", ",", " ...")}"
             )
           for {
             file <- files
@@ -1163,7 +1163,7 @@ private[sbt] object Load {
           opts
         )
       },
-      onLoadMessage := ("Loading project definition from " + baseDirectory.value)
+      onLoadMessage := ("loading project definition from " + baseDirectory.value)
     )
   )
 
