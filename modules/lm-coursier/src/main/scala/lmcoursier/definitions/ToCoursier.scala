@@ -45,7 +45,8 @@ object ToCoursier {
       },
       include = matcher.include map { x =>
         coursier.util.ModuleMatcher(module(x))
-      }
+      },
+      includeByDefault = matcher.includeByDefault
     )
 
   def reconciliation(r: Reconciliation): coursier.core.Reconciliation =
@@ -169,15 +170,18 @@ object ToCoursier {
     }
 
   def strict(strict: Strict): coursier.params.rule.Strict =
-    coursier.params.rule.Strict(
-      include = strict.include.map {
-        case (o, n) => coursier.util.ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
-      },
-      exclude = strict.exclude.map {
-        case (o, n) => coursier.util.ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
-      },
-      // ignoreIfForcedVersion = strict.ignoreIfForcedVersion // should be around once the coursier version is bumped
-    )
+    coursier.params.rule.Strict()
+      .withInclude(strict.include.map {
+        case (o, n) =>
+          coursier.util.ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
+      })
+      .withExclude(strict.exclude.map {
+        case (o, n) =>
+          coursier.util.ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
+      })
+      .withIncludeByDefault(strict.includeByDefault)
+      .withIgnoreIfForcedVersion(strict.ignoreIfForcedVersion)
+      .withSemVer(strict.semVer)
 
   def cachePolicy(r: CachePolicy): coursier.cache.CachePolicy =
     r match {

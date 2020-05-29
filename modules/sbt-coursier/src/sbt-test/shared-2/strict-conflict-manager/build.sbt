@@ -17,3 +17,14 @@ lazy val b = project
     // strict cm should be fine if we force the conflicting module version
     dependencyOverrides += "com.chuusai" %% "shapeless" % "2.3.3"
   )
+
+lazy val c = project
+  .settings(
+    // no shared settings here
+    scalaVersion := "2.12.11",
+    libraryDependencies ++= Seq(
+      "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0",
+      "com.chuusai" %% "shapeless" % "2.3.2"
+    ),
+    versionReconciliation += "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "strict"
+  )
