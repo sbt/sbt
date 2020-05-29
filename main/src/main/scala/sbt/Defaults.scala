@@ -369,7 +369,7 @@ object Defaults extends BuildCommon {
     logManager := LogManager.defaults(extraLoggers.value, StandardMain.console),
     onLoadMessage := (onLoadMessage or
       Def.setting {
-        s"Set current project to ${name.value} (in build ${thisProjectRef.value.build})"
+        s"set current project to ${name.value} (in build ${thisProjectRef.value.build})"
       }).value
   )
 
