@@ -3625,11 +3625,24 @@ object Classpaths {
       ivyRepo.descriptorOptional
     } catch { case _: NoSuchMethodError => false }
 
+  // for forward-compatibility with launcher.jar prior to 1.3.11
+  private[this] def mavenRepoAllowInsecureProtocol(mavenRepo: xsbti.MavenRepository): Boolean =
+    try {
+      mavenRepo.allowInsecureProtocol
+    } catch { case _: NoSuchMethodError => false }
+
+  // for forward-compatibility with launcher.jar prior to 1.3.11
+  private[this] def allowInsecureProtocol(ivyRepo: xsbti.IvyRepository): Boolean =
+    try {
+      ivyRepo.allowInsecureProtocol
+    } catch { case _: NoSuchMethodError => false }
+
   private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
     repo match {
       case m: xsbti.MavenRepository =>
-        MavenRepository(m.id, m.url.toString).withAllowInsecureProtocol(m.allowInsecureProtocol)
+        MavenRepository(m.id, m.url.toString)
+          .withAllowInsecureProtocol(mavenRepoAllowInsecureProtocol(m))
       case i: xsbti.IvyRepository =>
         val patterns = Patterns(
           Vector(i.ivyPattern),
@@ -3644,7 +3657,9 @@ object Classpaths {
             val file = IO.toFile(i.url)
             Resolver.file(i.id, file)(patterns)
           case _ =>
-            Resolver.url(i.id, i.url)(patterns).withAllowInsecureProtocol(i.allowInsecureProtocol)
+            Resolver
+              .url(i.id, i.url)(patterns)
+              .withAllowInsecureProtocol(allowInsecureProtocol(i))
         }
       case p: xsbti.PredefinedRepository =>
         p.id match {
