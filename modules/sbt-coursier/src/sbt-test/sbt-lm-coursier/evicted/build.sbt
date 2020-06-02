@@ -41,7 +41,6 @@ check := {
     assert(foundEvictions)
   }
 
-  // needs https://github.com/coursier/coursier/pull/1217
-  // doCheck(aReport)
+  doCheck(aReport)
   doCheck(bReport)
 }
