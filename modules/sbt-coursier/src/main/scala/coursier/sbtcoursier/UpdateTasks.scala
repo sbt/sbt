@@ -1,10 +1,11 @@
 package coursier.sbtcoursier
 
 import coursier.core._
-import lmcoursier.definitions.ToCoursier
-import lmcoursier.internal.{SbtBootJars, SbtCoursierCache, UpdateParams, UpdateRun}
 import coursier.sbtcoursier.Keys._
 import coursier.sbtcoursiershared.SbtCoursierShared.autoImport._
+import lmcoursier.definitions.ToCoursier
+import lmcoursier.Inputs
+import lmcoursier.internal.{SbtBootJars, SbtCoursierCache, UpdateParams, UpdateRun}
 import sbt.Def
 import sbt.Keys._
 import sbt.librarymanagement.UpdateReport
@@ -110,6 +111,14 @@ object UpdateTasks {
             val artifactFilesOrErrors0 = artifactFilesOrErrors0Task.value
             val classifiers = classifiersTask.value
             val configs = configsTask.value
+            val sv = scalaVersion.value
+            val sbv = scalaBinaryVersion.value
+            val forceVersions = Inputs.forceVersions(dependencyOverrides.value, sv, sbv)
+              .map {
+                case (m, v) =>
+                  (ToCoursier.module(m), v)
+              }
+              .toMap
 
             val params = UpdateParams(
               (p.module, p.version),
@@ -118,6 +127,7 @@ object UpdateTasks {
               classifiers,
               configs,
               dependencies,
+              forceVersions,
               interProjectDependencies,
               res,
               includeSignatures,
