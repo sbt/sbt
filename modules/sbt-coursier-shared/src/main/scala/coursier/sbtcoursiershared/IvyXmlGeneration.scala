@@ -1,5 +1,6 @@
 package coursier.sbtcoursiershared
 
+import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
@@ -18,9 +19,10 @@ object IvyXmlGeneration {
   private def writeFiles(
     currentProject: Project,
     exclusions: Seq[(String, String)],
+    overrides: Seq[(String, String, String)],
     ivySbt: IvySbt,
     log: sbt.util.Logger
-  ): Unit = {
+  ): File = {
 
     val ivyCacheManager = ivySbt.withIvy(log)(ivy =>
       ivy.getResolutionCacheManager
@@ -36,7 +38,7 @@ object IvyXmlGeneration {
     val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
     val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
 
-    val content0 = IvyXml(currentProject, exclusions)
+    val content0 = IvyXml(currentProject, exclusions, overrides)
     cacheIvyFile.getParentFile.mkdirs()
     log.info(s"Writing Ivy file $cacheIvyFile")
     Files.write(cacheIvyFile.toPath, content0.getBytes(UTF_8))
@@ -44,7 +46,33 @@ object IvyXmlGeneration {
     // Just writing an empty file here... Are these only used?
     cacheIvyPropertiesFile.getParentFile.mkdirs()
     Files.write(cacheIvyPropertiesFile.toPath, Array.emptyByteArray)
+
+    cacheIvyFile
   }
+
+  def writeIvyXml: Def.Initialize[Task[File]] =
+    Def.task {
+      import SbtCoursierShared.autoImport._
+
+      val sv = sbt.Keys.scalaVersion.value
+      val sbv = sbt.Keys.scalaBinaryVersion.value
+      val log = sbt.Keys.streams.value.log
+      val currentProject = {
+        val proj = coursierProject.value
+        val publications = coursierPublications.value
+        proj.withPublications(publications)
+      }
+      val overrides = Inputs.forceVersions(sbt.Keys.dependencyOverrides.value, sv, sbv).map {
+        case (mod, ver) =>
+          (mod.organization.value, mod.name.value, ver)
+      }
+      val excludeDeps = Inputs.exclusionsSeq(InputsTasks.actualExcludeDependencies.value, sv, sbv, log)
+        .map {
+          case (org, name) =>
+            (org.value, name.value)
+        }
+      writeFiles(currentProject, excludeDeps, overrides, sbt.Keys.ivySbt.value, log)
+    }
 
   private def makeIvyXmlBefore[T](task: TaskKey[T]): Setting[Task[T]] =
     task := task.dependsOn {
@@ -53,20 +81,8 @@ object IvyXmlGeneration {
         val doGen = coursierGenerateIvyXml.value
         if (doGen)
           Def.task {
-            val sv = sbt.Keys.scalaVersion.value
-            val sbv = sbt.Keys.scalaBinaryVersion.value
-            val log = sbt.Keys.streams.value.log
-            val currentProject = {
-              val proj = coursierProject.value
-              val publications = coursierPublications.value
-              proj.withPublications(publications)
-            }
-            val excludeDeps = Inputs.exclusionsSeq(InputsTasks.actualExcludeDependencies.value, sv, sbv, log)
-              .map {
-                case (org, name) =>
-                  (org.value, name.value)
-              }
-            writeFiles(currentProject, excludeDeps, sbt.Keys.ivySbt.value, log)
+            coursierWriteIvyXml.value
+            ()
           }
         else
           Def.task(())

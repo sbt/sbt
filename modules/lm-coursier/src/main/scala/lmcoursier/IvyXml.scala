@@ -6,9 +6,17 @@ import scala.xml.{Node, PrefixedAttribute}
 
 object IvyXml {
 
+  @deprecated("Use the override accepting 3 arguments", "2.0.0-RC6-6")
   def apply(
     currentProject: Project,
     exclusions: Seq[(String, String)]
+  ): String =
+    apply(currentProject, exclusions, Nil)
+
+  def apply(
+    currentProject: Project,
+    exclusions: Seq[(String, String)],
+    overrides: Seq[(String, String, String)]
   ): String = {
 
     // Important: width = Int.MaxValue, so that no tag gets truncated.
@@ -20,13 +28,14 @@ object IvyXml {
     val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
 
     """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
-      printer.format(content(currentProject, exclusions))
+      printer.format(content(currentProject, exclusions, overrides))
   }
 
   // These are required for publish to be fine, later on.
   private def content(
     project: Project,
-    exclusions: Seq[(String, String)]
+    exclusions: Seq[(String, String)],
+    overrides: Seq[(String, String, String)]
   ): Node = {
 
     val props = project.module.attributes.toSeq ++ project.properties
@@ -103,11 +112,16 @@ object IvyXml {
         <exclude org={org} module={name} artifact="*" type="*" ext="*" matcher="exact"/>
     }
 
+    val overrideElems = overrides.toVector.map {
+      case (org, name, ver) =>
+        <override org={org} module={name} rev={ver} matcher="exact"/>
+    }
+
     <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
       {infoElem}
       <configurations>{confElems}</configurations>
       <publications>{publicationElems}</publications>
-      <dependencies>{dependencyElems}{excludeElems}</dependencies>
+      <dependencies>{dependencyElems}{excludeElems}{overrideElems}</dependencies>
     </ivy-module>
   }
 

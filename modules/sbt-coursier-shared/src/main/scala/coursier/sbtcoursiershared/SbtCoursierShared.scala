@@ -22,6 +22,7 @@ object SbtCoursierShared extends AutoPlugin {
 
   object autoImport {
     val coursierGenerateIvyXml = settingKey[Boolean]("")
+    val coursierWriteIvyXml = taskKey[File]("")
     val coursierProject = TaskKey[Project]("coursier-project")
     val coursierInterProjectDependencies = TaskKey[Seq[Project]]("coursier-inter-project-dependencies", "Projects the current project depends on, possibly transitively")
     val coursierExtraProjects = TaskKey[Seq[Project]]("coursier-extra-projects", "")
@@ -85,6 +86,7 @@ object SbtCoursierShared extends AutoPlugin {
         SbtCoursierCache.default.clear()
       },
       coursierGenerateIvyXml := true,
+      coursierWriteIvyXml := IvyXmlGeneration.writeIvyXml.value,
       coursierProject := InputsTasks.coursierProjectTask.value,
       coursierInterProjectDependencies := InputsTasks.coursierInterProjectDependenciesTask.value,
       coursierExtraProjects := InputsTasks.coursierExtraProjectsTask.value
