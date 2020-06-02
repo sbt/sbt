@@ -13,6 +13,7 @@ final case class UpdateParams(
   classifiers: Option[Seq[Classifier]],
   configs: Map[Configuration, Set[Configuration]],
   dependencies: Seq[(Configuration, Dependency)],
+  forceVersions: Map[Module, String],
   interProjectDependencies: Seq[Project],
   res: Map[Configuration, Resolution],
   includeSignatures: Boolean,

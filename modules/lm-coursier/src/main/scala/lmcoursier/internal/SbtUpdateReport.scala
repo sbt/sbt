@@ -296,7 +296,8 @@ private[internal] object SbtUpdateReport {
     log: Logger,
     includeSignatures: Boolean,
     classpathOrder: Boolean,
-    missingOk: Boolean
+    missingOk: Boolean,
+    forceVersions: Map[Module, String]
   ): UpdateReport = {
 
     val configReports = resolutions.map {
@@ -334,27 +335,30 @@ private[internal] object SbtUpdateReport {
           OrganizationArtifactReport(rep.module.organization, rep.module.name, Vector(rep))
         }
 
-        val evicted = coursier.graph.Conflict(subRes).flatMap { c =>
-          // FIXME The project for c.wantedVersion is possibly not around (it's likely it was just not fetched)
-          val projOpt = subRes.projectCache.get((c.module, c.wantedVersion))
+        val evicted = for {
+          c <- coursier.graph.Conflict(subRes)
+          // ideally, forceVersions should be taken into account by coursier.core.Resolution itself, when
+          // it computes transitive dependencies. It only handles forced versions at a global level for now,
+          // rather than handing them for each dependency (where each dependency could have its own forced
+          // versions, and apply and pass them to its transitive dependencies, just like for exclusions today).
+          if !forceVersions.contains(c.module)
+          projOpt = subRes.projectCache.get((c.module, c.wantedVersion))
             .orElse(subRes.projectCache.get((c.module, c.version)))
-          projOpt.toSeq.map {
-            case (_, proj) =>
-              // likely misses some details (transitive, exclusions, …)
-              val dep = Dependency(c.module, c.wantedVersion)
-              val dependee = Dependency(c.dependeeModule, c.dependeeVersion)
-              val dependeeProj = subRes.projectCache.get((c.dependeeModule, c.dependeeVersion)) match {
-                  case Some((_, p)) =>
-                    ProjectInfo(p.version, p.configurations.keys.toVector.map(c => ConfigRef(c.value)), p.properties)
-                  case None =>
-                    // should not happen
-                    ProjectInfo(c.dependeeVersion, Vector.empty, Vector.empty)
-                }
-              val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.withVersion(c.wantedVersion), Nil))
-                .withEvicted(true)
-                .withEvictedData(Some("version selection")) // ??? put latest-revision like sbt/ivy here?
-              OrganizationArtifactReport(c.module.organization.value, c.module.name.value, Vector(rep))
-          }
+          (_, proj) <- projOpt.toSeq
+        } yield {
+          val dep = Dependency(c.module, c.wantedVersion)
+          val dependee = Dependency(c.dependeeModule, c.dependeeVersion)
+          val dependeeProj = subRes.projectCache.get((c.dependeeModule, c.dependeeVersion)) match {
+              case Some((_, p)) =>
+                ProjectInfo(p.version, p.configurations.keys.toVector.map(c => ConfigRef(c.value)), p.properties)
+              case None =>
+                // should not happen
+                ProjectInfo(c.dependeeVersion, Vector.empty, Vector.empty)
+            }
+          val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.withVersion(c.wantedVersion), Nil))
+            .withEvicted(true)
+            .withEvictedData(Some("version selection")) // ??? put latest-revision like sbt/ivy here?
+          OrganizationArtifactReport(c.module.organization.value, c.module.name.value, Vector(rep))
         }
 
         val details = (mainReportDetails ++ evicted)

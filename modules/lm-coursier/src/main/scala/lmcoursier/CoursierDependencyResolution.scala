@@ -210,6 +210,7 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         classifiers = classifiers,
         configs = configs,
         dependencies = dependencies,
+        forceVersions = conf.forceVersions.map { case (m, v) => (ToCoursier.module(m), v) }.toMap,
         interProjectDependencies = interProjectDependencies,
         res = resolutions,
         includeSignatures = false,
