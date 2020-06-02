@@ -349,11 +349,10 @@ private[internal] object SbtUpdateReport {
               // likely misses some details (transitive, exclusions, …)
               val dep = Dependency(c.module, c.wantedVersion)
               val dependee = Dependency(c.dependeeModule, c.dependeeVersion)
-              val dependeeProj = subRes.projectCache
-                .get((c.dependeeModule, c.dependeeVersion)) match {
+              val dependeeProj = subRes.projectCache.get((c.dependeeModule, c.dependeeVersion)) match {
                   case Some((_, p)) =>
                     ProjectInfo(p.version, p.configurations.keys.toVector.map(c => ConfigRef(c.value)), p.properties)
-                  case _ =>
+                  case None =>
                     // should not happen
                     ProjectInfo(c.dependeeVersion, Vector.empty, Vector.empty)
                 }
