@@ -138,8 +138,7 @@ private[internal] object SbtUpdateReport {
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     fullArtifactsOpt: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
     log: Logger,
-    keepPomArtifact: Boolean = false,
-    includeSignatures: Boolean = false,
+    includeSignatures: Boolean,
     classpathOrder: Boolean,
     missingOk: Boolean
   ): Vector[ModuleReport] = {
@@ -167,13 +166,10 @@ private[internal] object SbtUpdateReport {
         }
     }
 
-    val depArtifacts0 =
-      if (keepPomArtifact)
-        depArtifacts1
-      else
-        depArtifacts1.filter {
-          case (_, pub, _, _) => pub.attributes != Attributes(Type.pom, Classifier.empty)
-        }
+    val depArtifacts0 = depArtifacts1.filter {
+      case (_, pub, _, _) =>
+        pub.attributes != Attributes(Type.pom, Classifier.empty)
+    }
 
     val depArtifacts =
       if (includeSignatures) {
@@ -298,8 +294,7 @@ private[internal] object SbtUpdateReport {
     artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
     fullArtifactsOpt: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
     log: Logger,
-    keepPomArtifact: Boolean = false,
-    includeSignatures: Boolean = false,
+    includeSignatures: Boolean,
     classpathOrder: Boolean,
     missingOk: Boolean
   ): UpdateReport = {
@@ -315,7 +310,6 @@ private[internal] object SbtUpdateReport {
           artifactFileOpt,
           fullArtifactsOpt,
           log,
-          keepPomArtifact = keepPomArtifact,
           includeSignatures = includeSignatures,
           classpathOrder = classpathOrder,
           missingOk = missingOk
