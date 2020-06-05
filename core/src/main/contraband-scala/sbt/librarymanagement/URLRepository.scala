@@ -8,7 +8,7 @@ final class URLRepository private (
   name: String,
   patterns: sbt.librarymanagement.Patterns,
   val allowInsecureProtocol: Boolean) extends sbt.librarymanagement.PatternsBasedRepository(name, patterns) with Serializable {
-  private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateURLRepository(this, logger)
+  private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateURLRepository(this, logger)
   private def this(name: String, patterns: sbt.librarymanagement.Patterns) = this(name, patterns, false)
   
   override def equals(o: Any): Boolean = o match {

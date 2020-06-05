@@ -12,7 +12,7 @@ final class MavenRepo private (
   val _allowInsecureProtocol: Boolean) extends sbt.librarymanagement.MavenRepository(name, root, localIfFile) with Serializable {
   override def isCache: Boolean = false
   override def allowInsecureProtocol: Boolean = _allowInsecureProtocol
-  private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateMavenRepo(this, logger)
+  private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateMavenRepo(this, logger)
   private def this(name: String, root: String) = this(name, root, true, false)
   private def this(name: String, root: String, localIfFile: Boolean) = this(name, root, localIfFile, false)
   
