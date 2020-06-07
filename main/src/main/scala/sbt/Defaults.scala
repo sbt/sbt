@@ -2748,12 +2748,19 @@ object Classpaths {
     }
   }
 
-  private[sbt] def warnInsecureProtocol(ress: Seq[Resolver], log: Logger): Unit = {
-    ress.foreach(_.validateProtocol(log))
+  private[sbt] def errorInsecureProtocol(ress: Seq[Resolver], log: Logger): Unit = {
+    val bad = !ress.forall(!_.validateProtocol(log))
+    if (bad) {
+      sys.error("insecure protocol is unsupported")
+    }
   }
   // this warns about .from("http:/...") in ModuleID
-  private[sbt] def warnInsecureProtocolInModules(mods: Seq[ModuleID], log: Logger): Unit = {
-    mods.foreach(_.validateProtocol(log))
+  private[sbt] def errorInsecureProtocolInModules(mods: Seq[ModuleID], log: Logger): Unit = {
+    val artifacts = mods.flatMap(_.explicitArtifacts.toSeq)
+    val bad = !artifacts.forall(!_.validateProtocol(log))
+    if (bad) {
+      sys.error("insecure protocol is unsupported")
+    }
   }
 
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
@@ -2782,7 +2789,7 @@ object Classpaths {
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     val deps = allDependencies.value.toVector
-    warnInsecureProtocolInModules(deps, streams.value.log)
+    errorInsecureProtocolInModules(deps, streams.value.log)
     ModuleDescriptorConfiguration(projectID.value, projectInfo.value)
       .withValidate(ivyValidate.value)
       .withScalaModuleInfo(scalaModuleInfo.value)
@@ -3413,7 +3420,7 @@ object Classpaths {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
       val s = streams.value
       warnResolversConflict(rs ++: other, s.log)
-      warnInsecureProtocol(rs ++: other, s.log)
+      errorInsecureProtocol(rs ++: other, s.log)
       InlineIvyConfiguration()
         .withPaths(ivyPaths.value)
         .withResolvers(rs)

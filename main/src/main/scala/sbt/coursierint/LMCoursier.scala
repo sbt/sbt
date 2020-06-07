@@ -91,7 +91,7 @@ object LMCoursier {
     val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
     val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
     Classpaths.warnResolversConflict(rs, log)
-    Classpaths.warnInsecureProtocol(rs, log)
+    Classpaths.errorInsecureProtocol(rs, log)
     CoursierConfiguration()
       .withResolvers(rs.toVector)
       .withInterProjectDependencies(interProjectDependencies.toVector)
