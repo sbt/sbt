@@ -951,7 +951,9 @@ lazy val mainProj = (project in file("main"))
       // since we're returning the same values as before.
       exclude[IncompatibleSignatureProblem]("sbt.Classpaths.mkIvyConfiguration"),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.Definition*"),
-      exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.LanguageServerProtocol")
+      exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.LanguageServerProtocol"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocol"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocolInModules"),
     )
   )
   .configure(
