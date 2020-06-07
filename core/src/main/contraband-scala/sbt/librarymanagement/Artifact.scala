@@ -14,7 +14,7 @@ final class Artifact private (
   val extraAttributes: Map[String, String],
   val checksum: Option[sbt.librarymanagement.Checksum],
   val allowInsecureProtocol: Boolean) extends sbt.librarymanagement.ArtifactExtra with Serializable {
-  private[sbt] def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateArtifact(this, logger)
+  private[sbt] def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateArtifact(this, logger)
   private def this(name: String) = this(name, Artifact.DefaultType, Artifact.DefaultExtension, None, Vector.empty, None, Map.empty, None, false)
   private def this(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Vector[sbt.librarymanagement.ConfigRef], url: Option[java.net.URL], extraAttributes: Map[String, String], checksum: Option[sbt.librarymanagement.Checksum]) = this(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum, false)
   

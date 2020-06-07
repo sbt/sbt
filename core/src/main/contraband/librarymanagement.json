@@ -147,7 +147,7 @@
         { "name": "allowInsecureProtocol", "type": "Boolean",                        "default": "false",                     "since": "1.3.0" }
       ],
       "extra": [
-        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateArtifact(this, logger)"
+        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateArtifact(this, logger)"
       ],
       "parentsCompanion": "sbt.librarymanagement.ArtifactFunctions"
     },
@@ -563,7 +563,7 @@
       ],
       "extra": [
         "/** check for HTTP */",
-        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Unit = ()"
+        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Boolean = false"
       ],
       "types": [
         {
@@ -575,7 +575,7 @@
             { "name": "resolvers", "type": "sbt.librarymanagement.Resolver*" }
           ],
           "extra": [
-            "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = resolvers.foreach(_.validateProtocol(logger))"
+            "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = !resolvers.forall(!_.validateProtocol(logger))"
           ]
         },
         {
@@ -603,7 +603,7 @@
               "extra": [
                 "override def isCache: Boolean = false",
                 "override def allowInsecureProtocol: Boolean = _allowInsecureProtocol",
-                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateMavenRepo(this, logger)"
+                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateMavenRepo(this, logger)"
               ],
               "toString": "s\"$name: $root\""
             },
@@ -676,7 +676,7 @@
                 { "name": "allowInsecureProtocol", "type": "boolean", "default": "false", "since": "1.3.0" }
               ],
               "extra": [
-                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Unit = Resolver.validateURLRepository(this, logger)"
+                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateURLRepository(this, logger)"
               ]
             },
             {

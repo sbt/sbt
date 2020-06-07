@@ -404,8 +404,9 @@ private[librarymanagement] abstract class ResolverFunctions {
     Patterns().withIvyPatterns(pList).withArtifactPatterns(pList).withIsMavenCompatible(false)
   }
 
+  // to display all error messages at once, just log here don't throw
   private[sbt] def warnHttp(value: String, suggestion: String, logger: Logger): Unit = {
-    logger.warn(s"insecure HTTP request is deprecated '$value'; switch to HTTPS$suggestion")
+    logger.error(s"insecure HTTP request is unsupported '$value'; switch to HTTPS$suggestion")
   }
   private[sbt] def isInsecureUrl(str: String): Boolean = {
     // don't try to parse str as URL because it could contain $variable from Ivy pattern
@@ -415,8 +416,8 @@ private[librarymanagement] abstract class ResolverFunctions {
       || str.startsWith("http://127.0.0.1/")
       || str.startsWith("http://127.0.0.1:"))
   }
-  private[sbt] def validateURLRepository(repo: URLRepository, logger: Logger): Unit = {
-    if (repo.allowInsecureProtocol) ()
+  private[sbt] def validateURLRepository(repo: URLRepository, logger: Logger): Boolean = {
+    if (repo.allowInsecureProtocol) false
     else {
       val patterns = repo.patterns
       val ivy = patterns.ivyPatterns.headOption match {
@@ -430,34 +431,36 @@ private[librarymanagement] abstract class ResolverFunctions {
       if (ivy || art) {
         warnHttp(
           patterns.toString,
-          s""" or opt-in as Resolver.url("${repo.name}", url(...)).withAllowInsecureProtocol(true)""",
+          s""" or opt-in as Resolver.url("${repo.name}", url(...)).withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file""",
           logger
         )
-      }
+        true
+      } else false
     }
   }
 
-  private[sbt] def validateMavenRepo(repo: MavenRepo, logger: Logger): Unit =
-    if (repo.allowInsecureProtocol) ()
+  private[sbt] def validateMavenRepo(repo: MavenRepo, logger: Logger): Boolean =
+    if (repo.allowInsecureProtocol) false
     else if (isInsecureUrl(repo.root)) {
       warnHttp(
         repo.root,
-        s""" or opt-in as ("${repo.name}" at "${repo.root}").withAllowInsecureProtocol(true)""",
+        s""" or opt-in as ("${repo.name}" at "${repo.root}").withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file""",
         logger
       )
-    }
+      true
+    } else false
 
-  private[sbt] def validateArtifact(art: Artifact, logger: Logger): Unit =
-    if (art.allowInsecureProtocol) ()
-    else {
-      art.url foreach { url =>
-        if (isInsecureUrl(url.toString)) {
+  private[sbt] def validateArtifact(art: Artifact, logger: Logger): Boolean =
+    if (art.allowInsecureProtocol) false
+    else
+      art.url match {
+        case Some(url) if isInsecureUrl(url.toString) =>
           warnHttp(
             art.toString,
             " or opt-in using from(url(...), allowInsecureProtocol = true) on ModuleID or .withAllowInsecureProtocol(true) on Artifact",
             logger
           )
-        }
+          true
+        case _ => false
       }
-    }
 }
