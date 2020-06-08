@@ -202,8 +202,8 @@ private[sbt] object Server {
       private[this] def writeBspConnectionDetails(): Unit = {
         import bsp.codec.JsonProtocol._
         val sbtVersion = appConfiguration.provider.id.version
-        val launcherJar = ManagementFactory.getRuntimeMXBean.getClassPath
-        val details = BuildServerConnection.details(sbtVersion, launcherJar)
+        val launcherClassPath = ManagementFactory.getRuntimeMXBean.getClassPath
+        val details = BuildServerConnection.details(sbtVersion, launcherClassPath)
         val json = Converter.toJson(details).get
         IO.write(bspConnectionFile, CompactPrinter(json), append = false)
       }
