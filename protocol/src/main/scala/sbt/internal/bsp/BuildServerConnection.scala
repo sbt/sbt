@@ -12,8 +12,17 @@ object BuildServerConnection {
   final val bspVersion = "2.0.0-M5"
   final val languages = Vector("scala")
 
-  def details(sbtVersion: String, launcherJar: String): BspConnectionDetails = {
-    val argv = Vector("java", "-Xms100m", "-Xmx100m", "-jar", launcherJar, "-bsp")
+  def details(sbtVersion: String, launcherClassPath: String): BspConnectionDetails = {
+    val argv =
+      Vector(
+        "java",
+        "-Xms100m",
+        "-Xmx100m",
+        "-classpath",
+        launcherClassPath,
+        "xsbt.boot.Boot",
+        "-bsp"
+      )
     BspConnectionDetails(name, sbtVersion, bspVersion, languages, argv)
   }
 }
