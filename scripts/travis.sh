@@ -25,6 +25,7 @@ runLmCoursierTests() {
   # publishing locally to ensure shading runs fine
   ./metadata/scripts/with-test-repo.sh ./sbt \
     ++$TRAVIS_SCALA_VERSION! \
+    evictionCheck \
     compatibilityCheck \
     lm-coursier-shaded/publishLocal \
     lm-coursier/test \

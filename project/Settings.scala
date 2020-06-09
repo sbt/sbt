@@ -5,6 +5,7 @@ import sbt._
 import sbt.Keys._
 import sbt.ScriptedPlugin.autoImport.{scriptedBufferLog, scriptedLaunchOpts}
 import sbtcompatibility.SbtCompatibilityPlugin.autoImport._
+import sbtevictionrules.EvictionRulesPlugin.autoImport._
 
 import com.jsuereth.sbtpgp._
 
@@ -49,7 +50,11 @@ object Settings {
       "net.java.dev.jna" % "jna*" % "always",
       "org.apache.logging.log4j" % "log4j-*" % "semver",
     ),
-    compatibilityIgnored += "com.swoval" % "apple-file-events"
+    compatibilityIgnored += "com.swoval" % "apple-file-events",
+    evictionRules ++= Seq(
+      "com.eed3si9n" %% "gigahorse-*" % "semver",
+      "org.scala-lang.modules" %% "*" % "semver"
+    )
   ) ++ {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(Locale.ROOT)
     if (prop == "0" || prop == "false")
