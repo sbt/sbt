@@ -4,6 +4,8 @@ import java.util.Locale
 import sbt._
 import sbt.Keys._
 import sbt.ScriptedPlugin.autoImport.{scriptedBufferLog, scriptedLaunchOpts}
+import sbtcompatibility.SbtCompatibilityPlugin.autoImport._
+import sbtevictionrules.EvictionRulesPlugin.autoImport._
 
 import com.jsuereth.sbtpgp._
 
@@ -35,7 +37,24 @@ object Settings {
     scalacOptions ++= {
       if (isAtLeastScala213.value) Seq("-Ymacro-annotations")
       else Nil
-    }
+    },
+    compatibilityReconciliations ++= Seq(
+      "com.eed3si9n" %% "gigahorse-*" % "semver",
+      "org.scala-lang.modules" % "*" % "semver",
+      "org.scala-sbt" % "*" % "semver",
+      // FIXME sbt-compatibility should default to semver for java libs, pvp for scala ones, like evicted
+      "com.lmax" % "disruptor" % "semver",
+      "com.squareup.*" % "*" % "semver",
+      "com.swoval" % "apple-file-events" % "semver",
+      "com.typesafe" % "*" % "semver",
+      "net.java.dev.jna" % "jna*" % "always",
+      "org.apache.logging.log4j" % "log4j-*" % "semver",
+    ),
+    compatibilityIgnored += "com.swoval" % "apple-file-events",
+    evictionRules ++= Seq(
+      "com.eed3si9n" %% "gigahorse-*" % "semver",
+      "org.scala-lang.modules" %% "*" % "semver"
+    )
   ) ++ {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(Locale.ROOT)
     if (prop == "0" || prop == "false")
