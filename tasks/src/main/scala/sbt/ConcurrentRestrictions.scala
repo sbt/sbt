@@ -136,6 +136,26 @@ object ConcurrentRestrictions {
     })
   }
 
+  def completionService[A, R](
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit,
+      isSentinel: A => Boolean
+  ): (CompletionService[A, R], () => Unit) = {
+    val pool = Executors.newCachedThreadPool()
+    (completionService[A, R](pool, tags, warn, isSentinel), () => {
+      pool.shutdownNow()
+      ()
+    })
+  }
+
+  def completionService[A, R](
+      backing: Executor,
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit
+  ): CompletionService[A, R] = {
+    completionService[A, R](backing, tags, warn, (_: A) => false)
+  }
+
   /**
    * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution
    * and using the provided Executor to manage execution on threads.
@@ -143,7 +163,8 @@ object ConcurrentRestrictions {
   def completionService[A, R](
       backing: Executor,
       tags: ConcurrentRestrictions[A],
-      warn: String => Unit
+      warn: String => Unit,
+      isSentinel: A => Boolean,
   ): CompletionService[A, R] = {
 
     // Represents submitted work for a task.
@@ -164,17 +185,22 @@ object ConcurrentRestrictions {
       private[this] val pending = new LinkedList[Enqueue]
 
       def submit(node: A, work: () => R): Unit = synchronized {
-        val newState = tags.add(tagState, node)
-        // if the new task is allowed to run concurrently with the currently running tasks,
-        //   submit it to be run by the backing j.u.c.CompletionService
-        if (tags valid newState) {
-          tagState = newState
-          submitValid(node, work)
-          ()
+        if (isSentinel(node)) {
+          // skip all checks for sentinels
+          CompletionService.submit(work, jservice)
         } else {
-          if (running == 0) errorAddingToIdle()
-          pending.add(new Enqueue(node, work))
-          ()
+          val newState = tags.add(tagState, node)
+          // if the new task is allowed to run concurrently with the currently running tasks,
+          //   submit it to be run by the backing j.u.c.CompletionService
+          if (tags valid newState) {
+            tagState = newState
+            submitValid(node, work)
+            ()
+          } else {
+            if (running == 0) errorAddingToIdle()
+            pending.add(new Enqueue(node, work))
+            ()
+          }
         }
         ()
       }
