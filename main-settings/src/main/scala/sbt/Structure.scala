@@ -315,6 +315,20 @@ object Scoped {
     final def ??[T >: S](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or)
   }
 
+  // Duplicated with ProjectExtra.
+  private[sbt] object syntax {
+    implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
+      new Scoped.RichInitializeTask(init)
+
+    implicit def richInitializeInputTask[T](
+        init: Initialize[InputTask[T]]
+    ): Scoped.RichInitializeInputTask[T] =
+      new Scoped.RichInitializeInputTask(init)
+
+    implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] =
+      new Scoped.RichInitialize[T](i)
+  }
+
   /**
    * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` semantics.
    */

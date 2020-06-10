@@ -146,10 +146,7 @@ trait TaskExtra {
     def failure: Task[Incomplete] = mapFailure(idFun)
     def result: Task[Result[S]] = mapR(idFun)
 
-    // The "taskDefinitionKey" is used, at least, by the ".previous" functionality.
-    // But apparently it *cannot* survive a task map/flatMap/etc. See actions/depends-on.
-    private def newInfo[A]: Info[A] =
-      Info[A](AttributeMap(in.info.attributes.entries.filter(_.key.label != "taskDefinitionKey")))
+    private def newInfo[A]: Info[A] = TaskExtra.newInfo(in.info)
 
     def flatMapR[T](f: Result[S] => Task[T]): Task[T] =
       Task(newInfo, new FlatMapped[T, K](in, f, ml))
@@ -284,6 +281,14 @@ object TaskExtra extends TaskExtra {
   def failures[A](results: Seq[Result[A]]): Seq[Incomplete] = results.collect { case Inc(i) => i }
 
   def incompleteDeps(incs: Seq[Incomplete]): Incomplete = Incomplete(None, causes = incs)
+
+  def select[A, B](fab: Task[Either[A, B]], f: Task[A => B]): Task[B] =
+    Task(newInfo(fab.info), new Selected[A, B](fab, f))
+
+  // The "taskDefinitionKey" is used, at least, by the ".previous" functionality.
+  // But apparently it *cannot* survive a task map/flatMap/etc. See actions/depends-on.
+  private[sbt] def newInfo[A](info: Info[_]): Info[A] =
+    Info[A](AttributeMap(info.attributes.entries.filter(_.key.label != "taskDefinitionKey")))
 
   private[sbt] def existToAny(in: Seq[Task[_]]): Seq[Task[Any]] = in.asInstanceOf[Seq[Task[Any]]]
 }

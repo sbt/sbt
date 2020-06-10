@@ -14,6 +14,10 @@ object Classes {
     def map[S, T](f: S => T, v: M[S]): M[T]
   }
 
+  trait Selective[M[_]] extends Applicative[M] {
+    def select[A, B](fab: M[Either[A, B]])(fn: M[A => B]): M[B]
+  }
+
   trait Monad[M[_]] extends Applicative[M] {
     def flatten[T](m: M[M[T]]): M[T]
   }

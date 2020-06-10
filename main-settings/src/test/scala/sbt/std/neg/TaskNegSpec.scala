@@ -44,6 +44,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
         |var condition = true
         |
         |val bazNeg = Def.task[String] {
+        |  val s = 1
         |  if (condition) fooNeg.value
         |  else barNeg.value
         |}
@@ -66,6 +67,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
         |def bi(s: String) = s + "  "
         |
         |val bazNeg = Def.task[String] {
+        |  val s = 1
         |  if (condition) "" + fooNeg.value
         |  else bi(barNeg.value)
         |}
@@ -87,6 +89,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
         |val bazNeg = Def.taskDyn[String] {
         |  if (condition) {
         |    Def.task {
+        |      val s = 1
         |      if (condition) {
         |        fooNeg.value
         |      } else ""
@@ -114,6 +117,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
         |val bazNeg = Def.taskDyn[String] {
         |  if (condition) {
         |    Def.task {
+        |      val s = 1
         |      if (condition) {
         |        val first = if (!condition && condition) {
         |          fooNeg.value
@@ -144,6 +148,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
         |val bazNeg = Def.taskDyn[String] {
         |  if (condition) {
         |    Def.task {
+        |      val s = 1
         |      if (condition) ""
         |      else barNeg.value
         |    }

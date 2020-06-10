@@ -52,6 +52,7 @@ class TaskConfigSpec extends fixture.FunSuite with fixture.TestDataFixture {
        |var condition = true
        |
        |val barNeg = Def.task[String] {
+       |  val s = 1
        |  if (condition) fooNeg.value
        |  else ""
        |}
