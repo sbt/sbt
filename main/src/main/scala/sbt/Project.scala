@@ -865,14 +865,19 @@ object Project extends ProjectExtra {
     }
   }
 
+  /** implicitly injected to tasks that return PromiseWrap.
+   */
   final class RichTaskPromise[A](i: Def.Initialize[Task[PromiseWrap[A]]]) {
     import scala.concurrent.Await
     import scala.concurrent.duration._
-    def await: Def.Initialize[Task[A]] =
+
+    def await: Def.Initialize[Task[A]] = await(Duration.Inf)
+
+    def await(atMost: Duration): Def.Initialize[Task[A]] =
       (Def
         .task {
           val p = i.value
-          val result: A = Await.result(p.underlying.future, Duration.Inf)
+          val result: A = Await.result(p.underlying.future, atMost)
           result
         })
         .tag(Tags.Sentinel)
