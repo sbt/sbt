@@ -21,6 +21,7 @@ import sbt.internal.librarymanagement._
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.internal.inc.JarUtils
+import sbt.util.Logger
 
 object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
@@ -28,9 +29,17 @@ object RemoteCache {
 
   def gitCommitId: String =
     scala.sys.process.Process("git rev-parse --short HEAD").!!.trim
+  def gitCommitIds(n: Int): List[String] =
+    scala.sys.process
+      .Process("git log -n " + n.toString + " --format=%H")
+      .!!
+      .linesIterator
+      .toList
+      .map(_.take(10))
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     remoteCacheId := gitCommitId,
+    remoteCacheIdCandidates := gitCommitIds(5),
     pushRemoteCacheTo :== None,
   )
 
@@ -40,7 +49,7 @@ object RemoteCache {
       val m = moduleName.value
       val id = remoteCacheId.value
       val c = (projectID / crossVersion).value
-      val v = s"0.0.0-$id"
+      val v = toVersion(id)
       ModuleID(o, m, v).cross(c)
     },
     pushRemoteCacheConfiguration / publishMavenStyle := true,
@@ -71,29 +80,34 @@ object RemoteCache {
       val is = (pushRemoteCache / ivySbt).value
       val t = crossTarget.value / "cache-download"
       val p = remoteCacheProjectId.value
-      val id = remoteCacheId.value
+      val ids = remoteCacheIdCandidates.value
       val compileAf = (Compile / compileAnalysisFile).value
       val compileOutput = (Compile / classDirectory).value
       val testAf = (Test / compileAnalysisFile).value
       val testOutput = (Test / classDirectory).value
       val testStreams = (Test / test / streams).value
       val testResult = Defaults.succeededFile(testStreams.cacheDirectory)
-
-      val deps = Vector(p.classifier(cachedCompileClassifier), p.classifier(cachedTestClasifier))
-      val mconfig = dummyModule(smi, deps)
-      val m = new is.Module(mconfig)
-      dr.retrieve(m, t, s.log) match {
-        case Right(xs0) =>
-          val xs = xs0.distinct
-          xs.find(_.toString.endsWith(s"$id-$cachedCompileClassifier.jar")) foreach { jar: File =>
-            extractCache(jar, compileOutput, compileAf, None)
-          }
-          xs.find(_.toString.endsWith(s"$id-$cachedTestClasifier.jar")) foreach { jar: File =>
-            extractCache(jar, testOutput, testAf, Some(testResult))
-          }
-          ()
-        case Left(unresolvedWarning) =>
-          s.log.info(s"remote cache not found for ${id}")
+      var found = false
+      ids foreach {
+        id: String =>
+          val v = toVersion(id)
+          val modId = p.withRevision(v)
+          if (found) ()
+          else
+            pullFromMavenRepo0(modId, smi, is, dr, t, s.log) match {
+              case Right(xs0) =>
+                val xs = xs0.distinct
+                xs.find(_.toString.endsWith(s"$v-$cachedCompileClassifier.jar")) foreach {
+                  jar: File =>
+                    extractCache(jar, compileOutput, compileAf, None)
+                }
+                xs.find(_.toString.endsWith(s"$v-$cachedTestClasifier.jar")) foreach { jar: File =>
+                  extractCache(jar, testOutput, testAf, Some(testResult))
+                }
+                found = true
+              case Left(unresolvedWarning) =>
+                s.log.info(s"remote cache not found for ${v}")
+            }
       }
     },
     remoteCachePom := {
@@ -170,6 +184,30 @@ object RemoteCache {
       )
     )
 
+  private def toVersion(v: String): String = s"0.0.0-$v"
+
+  private def pullFromMavenRepo0(
+      modId: ModuleID,
+      smi: Option[ScalaModuleInfo],
+      is: IvySbt,
+      dr: DependencyResolution,
+      cacheDir: File,
+      log: Logger
+  ): Either[UnresolvedWarning, Vector[File]] = {
+    def dummyModule(deps: Vector[ModuleID]): ModuleDescriptorConfiguration = {
+      val module = ModuleID("com.example.temp", "fake", "0.1.0-SNAPSHOT")
+      val info = ModuleInfo("fake", "", None, None, Vector(), "", None, None, Vector())
+      ModuleDescriptorConfiguration(module, info)
+        .withScalaModuleInfo(smi)
+        .withDependencies(deps)
+    }
+    val deps =
+      Vector(modId.classifier(cachedCompileClassifier), modId.classifier(cachedTestClasifier))
+    val mconfig = dummyModule(deps)
+    val m = new is.Module(mconfig)
+    dr.retrieve(m, cacheDir, log)
+  }
+
   private def extractCache(
       jar: File,
       output: File,
@@ -191,17 +229,6 @@ object RemoteCache {
     //   case _ => ()
     // }
     ()
-  }
-
-  private def dummyModule(
-      smi: Option[ScalaModuleInfo],
-      deps: Vector[ModuleID]
-  ): ModuleDescriptorConfiguration = {
-    val module = ModuleID("com.example.temp", "fake", "0.1.0-SNAPSHOT")
-    val info = ModuleInfo("fake", "", None, None, Vector(), "", None, None, Vector())
-    ModuleDescriptorConfiguration(module, info)
-      .withScalaModuleInfo(smi)
-      .withDependencies(deps)
   }
 
   private def defaultArtifactTasks: Seq[TaskKey[File]] =
