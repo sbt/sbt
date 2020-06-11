@@ -466,7 +466,7 @@ rem top-level directory and the "new" command was not given.
 if not defined sbt_args_sbt_create if not defined sbt_args_print_version if not defined sbt_args_print_sbt_version if not defined sbt_args_print_sbt_script_version if not exist build.sbt (
   if not exist project\ (
     if not defined sbt_new (
-      echo [warn] Neither build.sbt nor a 'project' directory in the current directory: %CD%
+      echo [warn] Neither build.sbt nor a 'project' directory in the current directory: "%CD%"
       setlocal
 :confirm
       echo c^) continue
