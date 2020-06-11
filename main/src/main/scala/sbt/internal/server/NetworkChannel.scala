@@ -20,7 +20,6 @@ import sbt.internal.protocol.{
   JsonRpcResponseMessage
 }
 import sbt.internal.util.ObjectEvent
-import sbt.internal.util.codec.JValueFormats
 import sbt.internal.util.complete.Parser
 import sbt.protocol._
 import sbt.util.Logger
@@ -52,10 +51,6 @@ final class NetworkChannel(
   private val ContentLength = """^Content\-Length\:\s*(\d+)""".r
   private val ContentType = """^Content\-Type\:\s*(.+)""".r
   private var _contentType: String = ""
-  private val SbtX1Protocol = "application/sbt-x1"
-  private val VsCode = sbt.protocol.Serialization.VsCode
-  private val VsCodeOld = "application/vscode-jsonrpc; charset=utf8"
-  private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
   private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
 
   private lazy val callback: ServerCallback = new ServerCallback {
@@ -135,7 +130,8 @@ final class NetworkChannel(
           // handle un-framing
           state match {
             case SingleLine =>
-              tillEndOfLine match {
+              val line = tillEndOfLine
+              line match {
                 case Some(chunk) =>
                   chunk.headOption match {
                     case None        => // ignore blank line
@@ -215,60 +211,43 @@ final class NetworkChannel(
       }
 
     def handleBody(chunk: Vector[Byte]): Unit = {
-      if (isLanguageServerProtocol) {
-        Serialization.deserializeJsonMessage(chunk) match {
-          case Right(req: JsonRpcRequestMessage) =>
-            try {
-              registerRequest(req)
-              onRequestMessage(req)
-            } catch {
-              case LangServerError(code, message) =>
-                log.debug(s"sending error: $code: $message")
-                respondError(code, message, Some(req.id))
-            }
-          case Right(ntf: JsonRpcNotificationMessage) =>
-            try {
-              onNotification(ntf)
-            } catch {
-              case LangServerError(code, message) =>
-                logMessage("error", s"Error $code while handling notification: $message")
-            }
-          case Right(msg) =>
-            log.debug(s"Unhandled message: $msg")
-          case Left(errorDesc) =>
-            logMessage(
-              "error",
-              s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): $errorDesc"
-            )
-        }
-      } else {
-        contentType match {
-          case SbtX1Protocol =>
-            Serialization
-              .deserializeCommand(chunk)
-              .fold(
-                errorDesc =>
-                  logMessage(
-                    "error",
-                    s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): " + errorDesc
-                  ),
-                onCommand
-              )
-          case _ =>
-            logMessage(
-              "error",
-              s"Unknown Content-Type: $contentType"
-            )
-        }
-      } // if-else
+      Serialization.deserializeJsonMessage(chunk) match {
+        case Right(req: JsonRpcRequestMessage) =>
+          try {
+            registerRequest(req)
+            onRequestMessage(req)
+          } catch {
+            case LangServerError(code, message) =>
+              log.debug(s"sending error: $code: $message")
+              respondError(code, message, Some(req.id))
+          }
+        case Right(ntf: JsonRpcNotificationMessage) =>
+          try {
+            onNotification(ntf)
+          } catch {
+            case LangServerError(code, message) =>
+              logMessage("error", s"Error $code while handling notification: $message")
+          }
+        case Right(msg) =>
+          log.debug(s"Unhandled message: $msg")
+        case Left(errorDesc) =>
+          logMessage(
+            "error",
+            s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): $errorDesc"
+          )
+      }
     }
 
     def handleHeader(str: String): Option[Unit] = {
+      val sbtX1Protocol = "application/sbt-x1"
       str match {
         case ContentLength(len) =>
           contentLength = len.toInt
           Some(())
         case ContentType(ct) =>
+          if (ct == sbtX1Protocol) {
+            logMessage("error", s"server protocol $ct is no longer supported")
+          }
           setContentType(ct)
           Some(())
         case _ => None
@@ -277,12 +256,7 @@ final class NetworkChannel(
   }
   thread.start()
 
-  private[sbt] def isLanguageServerProtocol: Boolean = {
-    contentType match {
-      case "" | VsCode | VsCodeOld => true
-      case _                       => false
-    }
-  }
+  private[sbt] def isLanguageServerProtocol: Boolean = true
 
   private def registerRequest(request: JsonRpcRequestMessage): Unit = {
     this.synchronized {
@@ -328,42 +302,20 @@ final class NetworkChannel(
   }
 
   private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
-    if (isLanguageServerProtocol) {
-      jsonRpcNotify(method, params)
-    } else {
-      ()
-    }
+    jsonRpcNotify(method, params)
   }
 
   def respond[A: JsonFormat](event: A): Unit = respond(event, None)
 
   def respond[A: JsonFormat](event: A, execId: Option[String]): Unit = {
-    if (isLanguageServerProtocol) {
-      respondResult(event, execId)
-    } else {
-      contentType match {
-        case SbtX1Protocol =>
-          val bytes = Serialization.serializeEvent(event)
-          publishBytes(bytes, true)
-        case _ =>
-      }
-    }
+    respondResult(event, execId)
   }
 
   def notifyEvent(event: EventMessage): Unit = {
-    if (isLanguageServerProtocol) {
-      event match {
-        case entry: LogEvent        => logMessage(entry.level, entry.message)
-        case entry: ExecStatusEvent => logMessage("debug", entry.status)
-        case _                      => ()
-      }
-    } else {
-      contentType match {
-        case SbtX1Protocol =>
-          val bytes = Serialization.serializeEventMessage(event)
-          publishBytes(bytes, true)
-        case _ => ()
-      }
+    event match {
+      case entry: LogEvent        => logMessage(entry.level, entry.message)
+      case entry: ExecStatusEvent => logMessage("debug", entry.status)
+      case _                      => ()
     }
   }
 
@@ -372,22 +324,7 @@ final class NetworkChannel(
    * erased because it went through logging.
    */
   private[sbt] def respond(event: ObjectEvent[_]): Unit = {
-    import sjsonnew.shaded.scalajson.ast.unsafe._
-    if (isLanguageServerProtocol) onObjectEvent(event)
-    else {
-      import jsonFormat._
-      val json: JValue = JObject(
-        JField("type", JString(event.contentType)),
-        Seq(JField("message", event.json), JField("level", JString(event.level.toString))) ++
-          (event.channelName map { channelName =>
-            JField("channelName", JString(channelName))
-          }) ++
-          (event.execId map { execId =>
-            JField("execId", JString(execId))
-          }): _*
-      )
-      respond(json, event.execId)
-    }
+    onObjectEvent(event)
   }
 
   def publishBytes(event: Array[Byte]): Unit = publishBytes(event, false)
