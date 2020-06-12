@@ -175,22 +175,23 @@ object Serialization {
           if ((fields find { _.field == "id" }).isDefined)
             Converter.fromJson[JsonRpcRequestMessage](json) match {
               case Success(request) => Right(request)
-              case Failure(e)       => Left(s"Conversion error: ${e.getMessage}")
+              case Failure(e)       => Left(s"conversion error: ${e.getMessage}")
             }
           else
             Converter.fromJson[JsonRpcNotificationMessage](json) match {
               case Success(notification) => Right(notification)
-              case Failure(e)            => Left(s"Conversion error: ${e.getMessage}")
+              case Failure(e)            => Left(s"conversion error: ${e.getMessage}")
             }
-        } else
+        } else if ((fields find { _.field == "id" }).isDefined)
           Converter.fromJson[JsonRpcResponseMessage](json) match {
             case Success(res) => Right(res)
-            case Failure(e)   => Left(s"Conversion error: ${e.getMessage}")
+            case Failure(e)   => Left(s"conversion error: ${e.getMessage}")
           }
+        else Left(s"expected JSON-RPC object but found ${new String(bytes.toArray, "UTF-8")}")
       case Success(json) =>
-        Left(s"Expected JSON object but found $json")
+        Left(s"expected JSON object but found ${new String(bytes.toArray, "UTF-8")}")
       case Failure(e) =>
-        Left(s"Parse error: ${e.getMessage}")
+        Left(s"parse error: ${e.getMessage}")
     }
   }
 

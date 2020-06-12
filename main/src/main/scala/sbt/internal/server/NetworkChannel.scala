@@ -145,7 +145,10 @@ final class NetworkChannel(
                         case Some(_) =>
                           state = InHeader
                           process()
-                        case _ => log.error("Got invalid chunk from client: " + str)
+                        case _ =>
+                          val msg = s"got invalid chunk from client: $str"
+                          log.error(msg)
+                          logMessage("error", msg)
                       }
                   }
                 case _ => ()
@@ -226,15 +229,15 @@ final class NetworkChannel(
             onNotification(ntf)
           } catch {
             case LangServerError(code, message) =>
-              logMessage("error", s"Error $code while handling notification: $message")
+              logMessage("error", s"error $code while handling notification: $message")
           }
         case Right(msg) =>
-          log.debug(s"Unhandled message: $msg")
+          log.debug(s"unhandled message: $msg")
         case Left(errorDesc) =>
-          logMessage(
-            "error",
-            s"Got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): $errorDesc"
-          )
+          val msg =
+            s"got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): $errorDesc"
+          log.error(msg)
+          logMessage("error", msg)
       }
     }
 
