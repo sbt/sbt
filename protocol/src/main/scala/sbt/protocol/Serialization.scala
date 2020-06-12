@@ -25,11 +25,13 @@ import sbt.internal.protocol.{
 object Serialization {
   private[sbt] val VsCode = "application/vscode-jsonrpc; charset=utf-8"
 
+  @deprecated("unused", since = "1.4.0")
   def serializeEvent[A: JsonFormat](event: A): Array[Byte] = {
     val json: JValue = Converter.toJson[A](event).get
     CompactPrinter(json).getBytes("UTF-8")
   }
 
+  @deprecated("unused", since = "1.4.0")
   def serializeCommand(command: CommandMessage): Array[Byte] = {
     import codec.JsonProtocol._
     val json: JValue = Converter.toJson[CommandMessage](command).get
@@ -99,6 +101,7 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
+  @deprecated("unused", since = "1.4.0")
   def deserializeCommand(bytes: Seq[Byte]): Either[String, CommandMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
@@ -116,6 +119,7 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
+  @deprecated("unused", since = "1.4.0")
   def deserializeEvent(bytes: Seq[Byte]): Either[String, Any] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
@@ -152,6 +156,7 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
+  @deprecated("unused", since = "1.4.0")
   def deserializeEventMessage(bytes: Seq[Byte]): Either[String, EventMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
