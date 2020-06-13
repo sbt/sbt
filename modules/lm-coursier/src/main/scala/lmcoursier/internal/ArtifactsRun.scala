@@ -1,31 +1,19 @@
 package lmcoursier.internal
 
-import java.io.File
-
+import coursier.Artifacts
 import coursier.cache.CacheLogger
 import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core.Type
-import coursier.util.Artifact
 import sbt.util.Logger
-import coursier.core.Dependency
-import coursier.core.Publication
 
-// private[coursier]
+// private[lmcoursier]
 object ArtifactsRun {
 
-  def artifacts(
+  def apply(
     params: ArtifactsParams,
     verbosityLevel: Int,
     log: Logger
-  ): Either[coursier.error.FetchError, Map[Artifact, File]] =
-    artifactsResult(params, verbosityLevel, log)
-      .map(_.collect { case (_, _, a, Some(f)) => (a, f) }.toMap)
-
-  def artifactsResult(
-    params: ArtifactsParams,
-    verbosityLevel: Int,
-    log: Logger
-  ): Either[coursier.error.FetchError, Seq[(Dependency, Publication, Artifact, Option[File])]] = {
+  ): Either[coursier.error.FetchError, Artifacts.Result] = {
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
@@ -59,16 +47,16 @@ object ArtifactsRun {
 
     if (needsLock)
       Lock.lock.synchronized {
-        artifactsResultNoLock(params, coursierLogger)
+        result(params, coursierLogger)
       }
     else
-      artifactsResultNoLock(params, coursierLogger)
+      result(params, coursierLogger)
   }
 
-  private def artifactsResultNoLock(
+  private def result(
     params: ArtifactsParams,
     coursierLogger: CacheLogger
-  ): Either[coursier.error.FetchError, Seq[(Dependency, Publication, Artifact, Option[File])]] =
+  ): Either[coursier.error.FetchError, Artifacts.Result] =
     coursier.Artifacts()
       .withResolutions(params.resolutions)
       .withArtifactTypes(Set(Type.all))
@@ -91,6 +79,5 @@ object ArtifactsRun {
       }
       .withCache(params.cache.withLogger(coursierLogger))
       .eitherResult()
-      .map(_.fullDetailedArtifacts) // FIXME Misses extraArtifacts, that we don't use for now though
 
 }
