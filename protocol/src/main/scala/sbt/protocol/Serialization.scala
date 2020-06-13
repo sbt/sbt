@@ -25,11 +25,13 @@ import sbt.internal.protocol.{
 object Serialization {
   private[sbt] val VsCode = "application/vscode-jsonrpc; charset=utf-8"
 
+  @deprecated("unused", since = "1.4.0")
   def serializeEvent[A: JsonFormat](event: A): Array[Byte] = {
     val json: JValue = Converter.toJson[A](event).get
     CompactPrinter(json).getBytes("UTF-8")
   }
 
+  @deprecated("unused", since = "1.4.0")
   def serializeCommand(command: CommandMessage): Array[Byte] = {
     import codec.JsonProtocol._
     val json: JValue = Converter.toJson[CommandMessage](command).get
@@ -99,6 +101,7 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
+  @deprecated("unused", since = "1.4.0")
   def deserializeCommand(bytes: Seq[Byte]): Either[String, CommandMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
@@ -116,6 +119,7 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
+  @deprecated("unused", since = "1.4.0")
   def deserializeEvent(bytes: Seq[Byte]): Either[String, Any] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
@@ -152,6 +156,7 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
+  @deprecated("unused", since = "1.4.0")
   def deserializeEventMessage(bytes: Seq[Byte]): Either[String, EventMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
@@ -175,22 +180,23 @@ object Serialization {
           if ((fields find { _.field == "id" }).isDefined)
             Converter.fromJson[JsonRpcRequestMessage](json) match {
               case Success(request) => Right(request)
-              case Failure(e)       => Left(s"Conversion error: ${e.getMessage}")
+              case Failure(e)       => Left(s"conversion error: ${e.getMessage}")
             }
           else
             Converter.fromJson[JsonRpcNotificationMessage](json) match {
               case Success(notification) => Right(notification)
-              case Failure(e)            => Left(s"Conversion error: ${e.getMessage}")
+              case Failure(e)            => Left(s"conversion error: ${e.getMessage}")
             }
-        } else
+        } else if ((fields find { _.field == "id" }).isDefined)
           Converter.fromJson[JsonRpcResponseMessage](json) match {
             case Success(res) => Right(res)
-            case Failure(e)   => Left(s"Conversion error: ${e.getMessage}")
+            case Failure(e)   => Left(s"conversion error: ${e.getMessage}")
           }
+        else Left(s"expected JSON-RPC object but found ${new String(bytes.toArray, "UTF-8")}")
       case Success(json) =>
-        Left(s"Expected JSON object but found $json")
+        Left(s"expected JSON object but found ${new String(bytes.toArray, "UTF-8")}")
       case Failure(e) =>
-        Left(s"Parse error: ${e.getMessage}")
+        Left(s"parse error: ${e.getMessage}")
     }
   }
 
