@@ -43,7 +43,7 @@ If you have a list of files:
   [3481]: https://github.com/sbt/sbt/pull/3481
   [util121]: https://github.com/sbt/util/pull/121
   [@eed3si9n]: https://github.com/eed3si9n
-  [@dwijnand]: http://github.com/dwijnand
+  [@dwijnand]: https://github.com/dwijnand
   [@jvican]: https://github.com/jvican
   [@Duhemm]: https://github.com/Duhemm
   [@jroper]: https://github.com/jroper

@@ -1,6 +1,6 @@
 import complete.Parser
 
-// http://www.scala-sbt.org/0.13/docs/Input-Tasks.html
+// https://www.scala-sbt.org/0.13/docs/Input-Tasks.html
 
 val run2 = inputKey[Unit](
     "Runs the main class twice with different argument lists separated by --")

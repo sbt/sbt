@@ -1,4 +1,4 @@
-package sbttest // you need package http://stackoverflow.com/questions/9822008/
+package sbttest // you need package https://stackoverflow.com/questions/9822008/
 
 import sbt._, Keys._
 

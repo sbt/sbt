@@ -627,7 +627,7 @@ object Scoped {
 
 /** The sbt 0.10 style DSL was deprecated in 0.13.13, favouring the use of the '.value' macro.
  *
- * See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
+ * See https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
  */
 trait TupleSyntax {
   import Scoped._
