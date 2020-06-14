@@ -16,6 +16,7 @@ import java.util.concurrent.ForkJoinPool
 
 import sbt.internal.io.Resources
 import sbt.internal.scripted._
+import RemoteSbtCreatorProp._
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.{ GenSeq, mutable }
@@ -40,9 +41,7 @@ final class ScriptedTests(
       name: String,
       prescripted: File => Unit,
       log: Logger,
-      scalaVersion: String,
-      sbtVersion: String,
-      classpath: Seq[File]
+      prop: RemoteSbtCreatorProp
   ): Seq[TestRunner] = {
 
     // Test group and names may be file filters (like '*')
@@ -60,7 +59,7 @@ final class ScriptedTests(
           val buffer = new BufferedLogger(new FullLogger(log))
           val singleTestRunner = () => {
             val handlers =
-              createScriptedHandlers(testDirectory, buffer, scalaVersion, sbtVersion, classpath)
+              createScriptedHandlers(testDirectory, buffer, prop)
             val runner = new BatchScriptRunner
             val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
             try commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
@@ -76,20 +75,23 @@ final class ScriptedTests(
   private def createScriptedHandlers(
       testDir: File,
       buffered: Logger,
-      scalaVersion: String,
-      sbtVersion: String,
-      classpath: Seq[File]
+      prop: RemoteSbtCreatorProp
   ): Map[Char, StatementHandler] = {
     val fileHandler = new FileCommands(testDir)
     val remoteSbtCreator =
-      new RunFromSourceBasedRemoteSbtCreator(
-        testDir,
-        buffered,
-        launchOpts,
-        scalaVersion,
-        sbtVersion,
-        classpath
-      )
+      prop match {
+        case LauncherBased(launcherJar) =>
+          new LauncherBasedRemoteSbtCreator(testDir, launcherJar, buffered, launchOpts)
+        case RunFromSourceBased(scalaVersion, sbtVersion, classpath) =>
+          new RunFromSourceBasedRemoteSbtCreator(
+            testDir,
+            buffered,
+            launchOpts,
+            scalaVersion,
+            sbtVersion,
+            classpath
+          )
+      }
     val sbtHandler = new SbtHandler(remoteSbtCreator)
     Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler)
   }
@@ -99,10 +101,8 @@ final class ScriptedTests(
       testGroupAndNames: Seq[(String, String)],
       prescripted: File => Unit,
       sbtInstances: Int,
-      log: Logger,
-      scalaVersion: String,
-      sbtVersion: String,
-      classpath: Seq[File]
+      prop: RemoteSbtCreatorProp,
+      log: Logger
   ): Seq[TestRunner] = {
     // Test group and names may be file filters (like '*')
     val groupAndNameDirs = {
@@ -145,7 +145,7 @@ final class ScriptedTests(
           .grouped(batchSize)
           .map { batch => () =>
             IO.withTemporaryDirectory {
-              runBatchedTests(batch, _, prescripted, log, scalaVersion, sbtVersion, classpath)
+              runBatchedTests(batch, _, prescripted, prop, log)
             }
           }
           .toList
@@ -223,15 +223,13 @@ final class ScriptedTests(
       groupedTests: Seq[((String, String), File)],
       tempTestDir: File,
       preHook: File => Unit,
-      log: Logger,
-      scalaVersion: String,
-      sbtVersion: String,
-      classpath: Seq[File]
+      prop: RemoteSbtCreatorProp,
+      log: Logger
   ): Seq[Option[String]] = {
 
     val runner = new BatchScriptRunner
     val buffer = new BufferedLogger(new FullLogger(log))
-    val handlers = createScriptedHandlers(tempTestDir, buffer, scalaVersion, sbtVersion, classpath)
+    val handlers = createScriptedHandlers(tempTestDir, buffer, prop)
     val states = new BatchScriptRunner.States
     val seqHandlers = handlers.values.toList
     runner.initStates(states, seqHandlers)
@@ -401,9 +399,90 @@ object ScriptedTests extends ScriptedRunner {
 
 /** Runner for `scripted`. Not be confused with ScriptRunner. */
 class ScriptedRunner {
+
+  /**
+   * This is the entry point used by sbt-scripted 0.13.18.
+   * Removing this method will break sbt plugin cross building.
+   * See https://github.com/sbt/sbt/issues/3245
+   * See https://github.com/sbt/sbt/blob/v0.13.18/scripted/plugin/src/main/scala/sbt/ScriptedPlugin.scala#L39
+   */
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      launchOpts: Array[String],
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      launchOpts,
+      prescripted = new java.util.ArrayList[File],
+      LauncherBased(launcherJar),
+      1
+    )
+  }
+
+  /**
+   * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x, 1.4.x etc.
+   * Removing this method will break scripted and sbt plugin cross building.
+   * See https://github.com/sbt/sbt/issues/3245
+   * See https://github.com/sbt/sbt/blob/v1.2.8/main/src/main/scala/sbt/ScriptedPlugin.scala#L109-L113
+   */
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      1
+    )
+  }
+
+  /**
+   * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x, 1.4.x etc.
+   * Removing this method will break scripted and sbt plugin cross building.
+   * See https://github.com/sbt/sbt/issues/3245
+   * See https://github.com/sbt/sbt/blob/v1.2.8/main/src/main/scala/sbt/ScriptedPlugin.scala#L109-L113
+   */
+  def runInParallel(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instance: Int,
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      instance,
+    )
+  }
+
   // This is called by project/Scripted.scala
   // Using java.util.List[File] to encode File => Unit
-  // This is used by sbt-scripted sbt 1.x
   def runInParallel(
       baseDir: File,
       bufferLog: Boolean,
@@ -415,23 +494,42 @@ class ScriptedRunner {
       sbtVersion: String,
       classpath: Array[File],
       instances: Int
+  ): Unit =
+    runInParallel(
+      baseDir,
+      bufferLog,
+      tests,
+      logger,
+      launchOpts,
+      prescripted,
+      RunFromSourceBased(scalaVersion, sbtVersion, classpath),
+      instances
+    )
+
+  private[sbt] def runInParallel(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      logger: Logger,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      prop: RemoteSbtCreatorProp,
+      instances: Int
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
     val runner = new ScriptedTests(baseDir, bufferLog, launchOpts)
+    val sbtVersion =
+      prop match {
+        case LauncherBased(launcherJar) =>
+          launcherJar.getName.dropWhile(!_.isDigit).dropRight(".jar".length)
+        case RunFromSourceBased(_, sbtVersion, _) => sbtVersion
+      }
     val accept = isTestCompatible(baseDir, sbtVersion) _
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
     val scriptedTests =
       get(tests, baseDir, accept, logger).map(st => (st.group, st.name))
     val scriptedRunners =
-      runner.batchScriptedRunner(
-        scriptedTests,
-        addTestFile,
-        instances,
-        logger,
-        scalaVersion,
-        sbtVersion,
-        classpath
-      )
+      runner.batchScriptedRunner(scriptedTests, addTestFile, instances, prop, logger)
     val parallelRunners = scriptedRunners.toParArray
     parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
     runAll(parallelRunners)

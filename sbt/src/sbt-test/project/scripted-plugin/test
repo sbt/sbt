@@ -4,3 +4,6 @@ $ copy-file changes/Success.scala src/sbt-test/group/demo/changes/Success.scala
 $ copy-file changes/fail src/sbt-test/group/fail/test
 > scripted group/demo
 -> scripted group/fail
+
+> set scriptedBatchExecution := true
+> scripted group/demo
