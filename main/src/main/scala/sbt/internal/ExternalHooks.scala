@@ -5,6 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+/*
 package sbt.internal
 
 import java.nio.file.{ Path, Paths }
@@ -20,6 +21,7 @@ import sbt.nio.file.{ FileAttributes, FileTreeView, RecursiveGlob }
 import sbt.nio.{ FileChanges, FileStamp, FileStamper }
 import sbt.util.InterfaceUtil.jo2o
 import xsbti.{ VirtualFile, VirtualFileRef }
+import xsbti.api.AnalyzedClass
 import xsbti.compile._
 import xsbti.compile.analysis.Stamp
 
@@ -160,7 +162,9 @@ private[sbt] object ExternalHooks {
             }
         }.toSet)
       }
+      override def lookupAnalyzedClass(binaryClassName: String): Option[AnalyzedClass] = None
     }
     new DefaultExternalHooks(Optional.of(lookup), Optional.empty[ClassFileManager])
   }
 }
+ */

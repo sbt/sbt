@@ -6,7 +6,7 @@ TaskKey[Unit]("checkJavaFailures") := {
   // First error should be on a specific line/file
   val first = ps(0)
   assert(first.position.line.get == 3, s"First failure position is not line 3, failure = $first")
-  val expected = "${0}/src/main/java/bad.java"
+  val expected = "${BASE}/src/main/java/bad.java"
   val sourcePath = first.position.sourcePath.get
   assert(sourcePath == expected, s"$sourcePath == $expected was false")
 }
@@ -19,7 +19,7 @@ TaskKey[Unit]("checkScalaFailures") := {
   // First error should be on a specific line/file
   val first = ps(0)
   assert(first.position.line.get == 2, s"First failure position is not line 2, failure = $first")
-  val expected = "${0}/src/main/scala/bad.scala"
+  val expected = "${BASE}/src/main/scala/bad.scala"
   val sourcePath = first.position.sourcePath.get
   assert(sourcePath == expected, s"$sourcePath == $expected was false")
 }
