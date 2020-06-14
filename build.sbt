@@ -954,6 +954,7 @@ lazy val mainProj = (project in file("main"))
       exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.LanguageServerProtocol"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocol"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocolInModules"),
+      exclude[MissingClassProblem]("sbt.internal.ExternalHooks*"),
     )
   )
   .configure(

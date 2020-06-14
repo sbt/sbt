@@ -196,7 +196,13 @@ object Defaults extends BuildCommon {
         val ih = app.provider.scalaProvider.launcher.ivyHome
         val coursierCache = csrCacheDirectory.value
         val javaHome = Paths.get(sys.props("java.home"))
-        Vector(base.toPath, boot.toPath, coursierCache.toPath, ih.toPath, javaHome)
+        Map(
+          "BASE" -> base.toPath,
+          "SBT_BOOT" -> boot.toPath,
+          "CSR_CACHE" -> coursierCache.toPath,
+          "IVY_HOME" -> ih.toPath,
+          "JAVA_HOME" -> javaHome,
+        )
       },
       fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
       fullServerHandlers := {
