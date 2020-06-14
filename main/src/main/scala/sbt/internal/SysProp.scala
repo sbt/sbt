@@ -18,13 +18,20 @@ import sbt.internal.util.complete.SizeParser
 // See also LineReader.scala
 object SysProp {
   def booleanOpt(name: String): Option[Boolean] =
-    sys.props.get(name).flatMap { x =>
-      x.toLowerCase(Locale.ENGLISH) match {
-        case "1" | "always" | "true" => Some(true)
-        case "0" | "never" | "false" => Some(false)
-        case "auto"                  => None
-        case _                       => None
-      }
+    sys.props.get(name) match {
+      case Some(x) => parseBoolean(x)
+      case _ =>
+        sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
+          case Some(x) => parseBoolean(x)
+          case _       => None
+        }
+    }
+  private def parseBoolean(value: String): Option[Boolean] =
+    value.toLowerCase(Locale.ENGLISH) match {
+      case "1" | "always" | "true" => Some(true)
+      case "0" | "never" | "false" => Some(false)
+      case "auto"                  => None
+      case _                       => None
     }
 
   def getOrFalse(name: String): Boolean = booleanOpt(name).getOrElse(false)
@@ -71,6 +78,7 @@ object SysProp {
   def ci: Boolean = getOrFalse("sbt.ci")
   def allowRootDir: Boolean = getOrFalse("sbt.rootdir")
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
+  def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")

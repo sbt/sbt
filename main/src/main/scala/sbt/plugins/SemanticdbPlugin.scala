@@ -9,6 +9,7 @@ package sbt
 package plugins
 
 import Keys._
+import sbt.internal.SysProp
 import sbt.librarymanagement.syntax._
 import sbt.librarymanagement.CrossVersion
 import Project.inConfig
@@ -18,7 +19,7 @@ object SemanticdbPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
-    semanticdbEnabled := false,
+    semanticdbEnabled := SysProp.semanticdb,
     semanticdbIncludeInJar := false,
     semanticdbOptions := List("-Yrangepos"),
     semanticdbVersion := "4.3.15"
