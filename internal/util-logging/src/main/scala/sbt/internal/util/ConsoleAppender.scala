@@ -484,21 +484,25 @@ trait Appender extends AutoCloseable {
       message: String
   ): Unit =
     try {
-      val len =
-        labelColor.length + label.length + messageColor.length + reset.length * 3 + ClearScreenAfterCursor.length
-      val builder: StringBuilder = new StringBuilder(len)
-      message.linesIterator.foreach { line =>
-        builder.ensureCapacity(len + line.length + 4)
-        builder.setLength(0)
+      // according to https://github.com/sbt/sbt/issues/5608, sometimes we get a null message
+      if (message == null) ()
+      else {
+        val len =
+          labelColor.length + label.length + messageColor.length + reset.length * 3 + ClearScreenAfterCursor.length
+        val builder: StringBuilder = new StringBuilder(len)
+        message.linesIterator.foreach { line =>
+          builder.ensureCapacity(len + line.length + 4)
+          builder.setLength(0)
 
-        def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
+          def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
 
-        builder.append(reset).append('[')
-        fmted(labelColor, label)
-        builder.append("] ")
-        fmted(messageColor, line)
-        builder.append(ClearScreenAfterCursor)
-        write(builder.toString)
+          builder.append(reset).append('[')
+          fmted(labelColor, label)
+          builder.append("] ")
+          fmted(messageColor, line)
+          builder.append(ClearScreenAfterCursor)
+          write(builder.toString)
+        }
       }
     } catch { case _: InterruptedException => }
 
