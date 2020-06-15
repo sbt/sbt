@@ -208,7 +208,8 @@ object Defaults extends BuildCommon {
       fullServerHandlers := {
         Seq(
           LanguageServerProtocol.handler(fileConverter.value),
-          BuildServerProtocol.handler(sbtVersion.value)
+          BuildServerProtocol
+            .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value)
         ) ++ serverHandlers.value :+ ServerHandler.fallback
       },
       uncachedStamper := Stamps.uncachedStamps(fileConverter.value),

@@ -135,8 +135,8 @@ type InitializeBuildParams {
   ## The capabilities of the client
   capabilities: sbt.internal.bsp.BuildClientCapabilities!
 
-  # Additional metadata about the client
-  # data: any
+  ## Additional metadata about the client
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
 }
 
 type BuildClientCapabilities {
@@ -456,4 +456,13 @@ type BspConnectionDetails {
 
   ## Command arguments runnable via system processes to start a BSP server
   argv: [String]
+}
+
+## Metals metadata in the initialization request
+type MetalsMetadata {
+  ## The semanticdb plugin version that should be enabled for Metals code navigation
+  semanticdbVersion: String!
+
+  ## The list of scala versions that are supported by Metals
+  supportedScalaVersions: [String]
 }
