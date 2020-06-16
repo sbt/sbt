@@ -38,17 +38,12 @@ object Settings {
       if (isAtLeastScala213.value) Seq("-Ymacro-annotations")
       else Nil
     },
-    compatibilityReconciliations ++= Seq(
+    compatibilityRules ++= Seq(
       "com.eed3si9n" %% "gigahorse-*" % "semver",
       "org.scala-lang.modules" % "*" % "semver",
       "org.scala-sbt" % "*" % "semver",
-      // FIXME sbt-compatibility should default to semver for java libs, pvp for scala ones, like evicted
-      "com.lmax" % "disruptor" % "semver",
-      "com.squareup.*" % "*" % "semver",
-      "com.swoval" % "apple-file-events" % "semver",
-      "com.typesafe" % "*" % "semver",
-      "net.java.dev.jna" % "jna*" % "always",
-      "org.apache.logging.log4j" % "log4j-*" % "semver",
+      "com.typesafe" %% "ssl-config-core" % "semver",
+      "net.java.dev.jna" % "jna*" % "always"
     ),
     compatibilityIgnored += "com.swoval" % "apple-file-events",
     evictionRules ++= Seq(
