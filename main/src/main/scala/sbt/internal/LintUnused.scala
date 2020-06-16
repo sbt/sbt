@@ -22,6 +22,7 @@ object LintUnused {
       concurrentRestrictions,
       commands,
       crossScalaVersions,
+      initialize,
       onLoad,
       onLoadMessage,
       onUnload,
