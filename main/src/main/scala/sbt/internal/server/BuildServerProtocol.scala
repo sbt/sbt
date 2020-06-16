@@ -214,7 +214,7 @@ object BuildServerProtocol {
       if (!semanticdbEnabled) {
         log.warn(s"${params.displayName} requires the semanticdb compiler plugin")
         log.warn(
-          s"Please consider setting 'Global / semanticdbEnabled := true' in your global sbt settings ($$HOME/.sbt/1.0)"
+          s"consider setting 'Global / semanticdbEnabled := true' in your global sbt settings ($$HOME/.sbt/1.0)"
         )
       }
 
@@ -227,7 +227,7 @@ object BuildServerProtocol {
           s"${params.displayName} requires semanticdb version ${metalsMetadata.semanticdbVersion}, current version is $semanticdbVersion"
         )
         log.warn(
-          s"""Please consider setting 'Global / semanticdbVersion := "${metalsMetadata.semanticdbVersion}"' in your global sbt settings ($$HOME/.sbt/1.0)"""
+          s"""consider setting 'Global / semanticdbVersion := "${metalsMetadata.semanticdbVersion}"' in your global sbt settings ($$HOME/.sbt/1.0)"""
         )
       }
     }
