@@ -26,16 +26,17 @@ import sbt.util.Logger
 object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
   final val cachedTestClasifier = "cached-test"
+  final val commitLength = 10
 
   def gitCommitId: String =
-    scala.sys.process.Process("git rev-parse --short HEAD").!!.trim
+    scala.sys.process.Process("git rev-parse HEAD").!!.trim.take(commitLength)
   def gitCommitIds(n: Int): List[String] =
     scala.sys.process
       .Process("git log -n " + n.toString + " --format=%H")
       .!!
       .linesIterator
       .toList
-      .map(_.take(10))
+      .map(_.take(commitLength))
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     remoteCacheId := gitCommitId,
