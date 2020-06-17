@@ -11,7 +11,7 @@ val output = settingKey[File]("")
 
 lazy val root = (project in file("."))
   .settings(
-    name := "ifs",
+    name := "conditional",
     output := baseDirectory.value / "output.txt",
     condition := true,
     number := -1,
@@ -39,6 +39,12 @@ lazy val root = (project in file("."))
     TaskKey[Unit]("checkFalse") := checkLines("false"),
     TaskKey[Unit]("checkNeg") := checkLines("neg"),
     TaskKey[Unit]("checkZero") := checkLines("zero"),
+
+    // https://github.com/sbt/sbt/issues/5625
+    javacOptions ++= (
+      if (true) Seq.empty
+      else Seq("--release", "8")
+    ),
   )
 
 def checkLines(content: String) = Def.task {
