@@ -217,10 +217,12 @@ object RemoteCache {
   ): Unit = {
     IO.delete(output)
     IO.unzip(jar, output)
-    val expandedAnalysis = output / "META-INF" / "inc_compile.zip"
+    val metaDir = output / "META-INF"
+    val expandedAnalysis = metaDir / "inc_compile.zip"
     if (expandedAnalysis.exists) {
       IO.move(expandedAnalysis, analysisFile)
     }
+    IO.delete(metaDir)
     // testResult match {
     //   case Some(r) =>
     //     val expandedTestResult = output / "META-INF" / "succeeded_tests"
