@@ -12,9 +12,7 @@ import sbt.internal.bsp._
 import sbt.internal.inc.ManagedLoggedReporter
 import sbt.internal.util.ManagedLogger
 import xsbti.compile.CompileAnalysis
-import xsbti.{ BasicVirtualFileRef, FileConverter, Problem, Severity, Position => XPosition }
-
-import scala.collection.mutable
+import xsbti.{ FileConverter, Problem, Severity, Position => XPosition }
 
 /**
  * Defines a compiler reporter that uses event logging provided by a `ManagedLogger`.
@@ -28,57 +26,20 @@ class BuildServerReporter(
     maximumErrors: Int,
     logger: ManagedLogger,
     sourcePositionMapper: XPosition => XPosition = identity[XPosition],
-    converter: FileConverter
+    converter: FileConverter,
+    previousAnalysis: Option[CompileAnalysis]
 ) extends ManagedLoggedReporter(maximumErrors, logger, sourcePositionMapper) {
   import sbt.internal.bsp.codec.JsonProtocol._
   import sbt.internal.inc.JavaInterfaceUtil._
-
   import scala.collection.JavaConverters._
 
   lazy val exchange = StandardMain.exchange
 
-  private[sbt] lazy val problemsByFile = new mutable.HashMap[String, mutable.ListBuffer[Problem]]
-
   override def reset(): Unit = {
-    super.reset()
-    problemsByFile.clear()
-  }
-
-  override def log(problem: Problem): Unit = {
-    val pos = problem.position
-    pos.sourcePath().toOption foreach { sourcePath =>
-      problemsByFile.get(sourcePath) match {
-        case Some(xs: mutable.ListBuffer[Problem]) => problemsByFile(sourcePath) = xs :+ problem
-        case _                                     => problemsByFile(sourcePath) = mutable.ListBuffer(problem)
-      }
-    }
-    super.log(problem)
-  }
-
-  override def logError(problem: Problem): Unit = {
-    aggregateProblems(problem)
-
-    // console channel can keep using the xsbi.Problem
-    super.logError(problem)
-  }
-
-  override def logWarning(problem: Problem): Unit = {
-    aggregateProblems(problem)
-
-    // console channel can keep using the xsbi.Problem
-    super.logWarning(problem)
-  }
-
-  override def logInfo(problem: Problem): Unit = {
-    aggregateProblems(problem)
-
-    // console channel can keep using the xsbi.Problem
-    super.logInfo(problem)
-  }
-
-  private[sbt] def resetPrevious(analysis: CompileAnalysis): Unit = {
-    val files = analysis.readSourceInfos.getAllSourceInfos.keySet.asScala
-    files foreach { file =>
+    for {
+      analysis <- previousAnalysis
+      file <- analysis.readSourceInfos.getAllSourceInfos.keySet().asScala
+    } {
       val params = PublishDiagnosticsParams(
         TextDocumentIdentifier(converter.toPath(file).toUri),
         buildTarget,
@@ -88,37 +49,58 @@ class BuildServerReporter(
       )
       exchange.notifyEvent("build/publishDiagnostics", params)
     }
+    super.reset()
   }
 
-  private[sbt] def aggregateProblems(problem: Problem): Unit = {
-    val pos = problem.position
-    pos.sourcePath().toOption foreach { sourcePath: String =>
-      problemsByFile.get(sourcePath) match {
-        case Some(xs: mutable.ListBuffer[Problem]) =>
-          val diagnostics = toDiagnostics(xs)
-          val absolutePath = converter.toPath(new BasicVirtualFileRef(sourcePath) {})
-          val params = PublishDiagnosticsParams(
-            TextDocumentIdentifier(absolutePath.toUri),
-            buildTarget,
-            originId = None,
-            diagnostics,
-            reset = true
-          )
-          exchange.notifyEvent("build/publishDiagnostics", params)
-        case _ =>
-      }
+  override def log(problem: Problem): Unit = {
+    publishDiagnostic(problem)
+
+    super.log(problem)
+  }
+
+  override def logError(problem: Problem): Unit = {
+    publishDiagnostic(problem)
+
+    // console channel can keep using the xsbi.Problem
+    super.logError(problem)
+  }
+
+  override def logWarning(problem: Problem): Unit = {
+    publishDiagnostic(problem)
+
+    // console channel can keep using the xsbi.Problem
+    super.logWarning(problem)
+  }
+
+  override def logInfo(problem: Problem): Unit = {
+    publishDiagnostic(problem)
+
+    // console channel can keep using the xsbi.Problem
+    super.logInfo(problem)
+  }
+
+  private def publishDiagnostic(problem: Problem): Unit = {
+    for {
+      sourceFile <- problem.position.sourceFile.toOption
+      diagnostic <- toDiagnostic(problem)
+    } {
+      val params = PublishDiagnosticsParams(
+        TextDocumentIdentifier(sourceFile.toURI),
+        buildTarget,
+        originId = None,
+        Vector(diagnostic),
+        reset = false
+      )
+      exchange.notifyEvent("build/publishDiagnostics", params)
     }
   }
 
-  private[sbt] def toDiagnostics(ps: Seq[Problem]): Vector[Diagnostic] = {
+  private def toDiagnostic(problem: Problem): Option[Diagnostic] = {
+    val pos = problem.position
     for {
-      problem <- ps.toVector
-      pos = problem.position
-      line0 <- pos.line.toOption.toVector
-      pointer0 <- pos.pointer.toOption.toVector
+      line <- pos.line.toOption.map(_.toLong - 1L)
+      pointer <- pos.pointer.toOption.map(_.toLong)
     } yield {
-      val line = line0.toLong - 1L
-      val pointer = pointer0.toLong
       val range = (
         pos.startLine.toOption,
         pos.startColumn.toOption,
@@ -130,6 +112,7 @@ class BuildServerReporter(
         case _ =>
           Range(Position(line, pointer), Position(line, pointer + 1))
       }
+
       Diagnostic(
         range,
         Option(toDiagnosticSeverity(problem.severity)),

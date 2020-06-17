@@ -1887,14 +1887,6 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
-      val prev = i.previousResult
-      prev.analysis.toOption map { analysis =>
-        i.setup.reporter match {
-          case r: BuildServerReporter =>
-            r.resetPrevious(analysis)
-          case _ => ()
-        }
-      }
       incCompiler.compile(i, s.log)
     } finally x.close() // workaround for #937
   }
@@ -1956,7 +1948,8 @@ object Defaults extends BuildCommon {
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value),
-          fileConverter.value
+          fileConverter.value,
+          previousCompile.value.analysis.toOption
         )
       },
       compileInputs := {
@@ -1985,9 +1978,9 @@ object Defaults extends BuildCommon {
   private[sbt] def jnone[A]: Optional[A] = none[A].toOptional
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     previousCompile := {
-      val setup = compileIncSetup.value
+      val analysisFile = compileAnalysisFile.value
       val useBinary: Boolean = enableBinaryCompileAnalysis.value
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
+      val store = MixedAnalyzingCompiler.staticCachedStore(analysisFile.toPath, !useBinary)
       store.get().toOption match {
         case Some(contents) =>
           val analysis = Option(contents.getAnalysis).toOptional
