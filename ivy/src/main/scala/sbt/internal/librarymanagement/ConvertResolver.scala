@@ -401,7 +401,11 @@ private[sbt] object ConvertResolver {
                |If you have a staging repository that has failed, drop it and start over.
                |Otherwise fix the double publishing, or relax the setting as follows:
                |    publishConfiguration := publishConfiguration.value.withOverwrite(true)
-               |    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)""".stripMargin,
+               |    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
+               |
+               |If you have a remote cache respoitory, you can enable overwriting as follows:
+               |    pushRemoteCacheConfiguration := pushRemoteCacheConfiguration.value.withOverwrite(true)
+               |""".stripMargin,
             ex
           )
       }
