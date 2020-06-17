@@ -109,7 +109,7 @@ object TaskMacro {
     t.tree match {
       // the tree matches `if` and only `if`
       case If(cond, thenp, elsep) =>
-        c.Expr[Initialize[Task[T]]](mkIfS(c)(cond, thenp, elsep))
+        c.Expr[Initialize[Task[T]]](mkIfS[T](c)(cond, thenp, elsep))
       case _ =>
         Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder, TaskLinterDSL)(
           Left(t),
@@ -118,11 +118,12 @@ object TaskMacro {
     }
   }
 
-  def mkIfS(
+  def mkIfS[A: c.WeakTypeTag](
       c: blackbox.Context
   )(cond: c.Tree, thenp: c.Tree, elsep: c.Tree): c.Tree = {
     import c.universe._
-    q"""Def.ifS(Def.task($cond))(Def.task($thenp))(Def.task($elsep))"""
+    val AA = implicitly[c.WeakTypeTag[A]].tpe
+    q"""_root_.sbt.Def.ifS[$AA](_root_.sbt.Def.task($cond))(_root_.sbt.Def.task[$AA]($thenp: $AA))(_root_.sbt.Def.task[$AA]($elsep: $AA))"""
   }
 
   def taskDynMacroImpl[T: c.WeakTypeTag](
