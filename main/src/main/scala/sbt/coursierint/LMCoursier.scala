@@ -68,6 +68,55 @@ object LMCoursier {
       strict: Option[CStrict],
       depsOverrides: Seq[ModuleID],
       log: Logger
+  ): CoursierConfiguration =
+    coursierConfiguration(
+      rs,
+      interProjectDependencies,
+      extraProjects,
+      fallbackDeps,
+      appConfig,
+      classifiers,
+      profiles,
+      scalaOrg,
+      scalaVer,
+      scalaBinaryVer,
+      autoScalaLib,
+      scalaModInfo,
+      excludeDeps,
+      credentials,
+      createLogger,
+      cacheDirectory,
+      reconciliation,
+      ivyHome,
+      strict,
+      depsOverrides,
+      None,
+      log
+    )
+
+  def coursierConfiguration(
+      rs: Seq[Resolver],
+      interProjectDependencies: Seq[CProject],
+      extraProjects: Seq[CProject],
+      fallbackDeps: Seq[FallbackDependency],
+      appConfig: AppConfiguration,
+      classifiers: Option[Seq[Classifier]],
+      profiles: Set[String],
+      scalaOrg: String,
+      scalaVer: String,
+      scalaBinaryVer: String,
+      autoScalaLib: Boolean,
+      scalaModInfo: Option[ScalaModuleInfo],
+      excludeDeps: Seq[InclExclRule],
+      credentials: Seq[Credentials],
+      createLogger: Option[CacheLogger],
+      cacheDirectory: File,
+      reconciliation: Seq[(ModuleMatchers, Reconciliation)],
+      ivyHome: Option[File],
+      strict: Option[CStrict],
+      depsOverrides: Seq[ModuleID],
+      updateConfig: Option[UpdateConfiguration],
+      log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
       .exclusions(
@@ -92,6 +141,10 @@ object LMCoursier {
     val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
     Classpaths.warnResolversConflict(rs, log)
     Classpaths.errorInsecureProtocol(rs, log)
+    val missingOk = updateConfig match {
+      case Some(uc) => uc.missingOk
+      case _        => false
+    }
     CoursierConfiguration()
       .withResolvers(rs.toVector)
       .withInterProjectDependencies(interProjectDependencies.toVector)
@@ -115,6 +168,7 @@ object LMCoursier {
       .withIvyHome(ivyHome)
       .withStrict(strict)
       .withForceVersions(userForceVersions.toVector)
+      .withMissingOk(missingOk)
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -139,6 +193,7 @@ object LMCoursier {
       ivyPaths.value.ivyHome,
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
+      Some(updateConfiguration.value),
       streams.value.log
     )
   }
@@ -165,6 +220,7 @@ object LMCoursier {
       ivyPaths.value.ivyHome,
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
+      Some(updateConfiguration.value),
       streams.value.log
     )
   }
@@ -191,6 +247,7 @@ object LMCoursier {
       ivyPaths.value.ivyHome,
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
+      Some(updateConfiguration.value),
       streams.value.log
     )
   }
@@ -217,6 +274,7 @@ object LMCoursier {
       ivyPaths.value.ivyHome,
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
+      Some(updateConfiguration.value),
       streams.value.log
     )
   }
