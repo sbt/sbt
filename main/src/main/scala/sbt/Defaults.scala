@@ -2086,7 +2086,8 @@ object Defaults extends BuildCommon {
 
   lazy val configSettings: Seq[Setting[_]] =
     Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++
-      Classpaths.compilerPluginConfig ++ deprecationSettings
+      Classpaths.compilerPluginConfig ++ deprecationSettings ++
+      BuildServerProtocol.configSettings
 
   lazy val compileSettings: Seq[Setting[_]] =
     configSettings ++ (mainBgRunMainTask +: mainBgRunTask) ++ Classpaths.addUnmanagedLibrary
@@ -2183,7 +2184,7 @@ object Classpaths {
       classpathConfiguration.?.value,
       update.value
     )
-  ) ++ BuildServerProtocol.configSettings
+  )
   private[this] def classpaths: Seq[Setting[_]] =
     Seq(
       externalDependencyClasspath := concat(unmanagedClasspath, managedClasspath).value,
