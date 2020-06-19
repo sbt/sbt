@@ -350,14 +350,21 @@ copyRt() {
 }
 
 run() {
-  local retarr=()
   java_args=($JAVA_OPTS)
   sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
-  miniscript=$(map_args "${sbt_options0[@]}") && eval "${miniscript/retarr/sbt_options}"
-  miniscript=$(map_args "$@") && eval "${miniscript/retarr/args1}"
+
+  # Split SBT_OPTS into options/commands
+  miniscript=$(map_args "${sbt_options0[@]}") && eval "${miniscript/options/sbt_options}" && \
+  eval "${miniscript/commands/sbt_additional_commands}"
+
+  # Combine command line options/commands and commands from SBT_OPTS
+  miniscript=$(map_args "$@") && eval "${miniscript/options/cli_options}" && eval "${miniscript/commands/cli_commands}"
+  args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}" )
+
   # process the combined args, then reset "$@" to the residuals
   process_args "${args1[@]}"
   vlog "[sbt_options] $(declare -p sbt_options)"
+
   addDefaultMemory
   set -- "${residual_args[@]}"
   argumentCount=$#
@@ -378,7 +385,7 @@ run() {
   # Java 9 support
   copyRt
 
-  #If we're in cygwin, we should use the windows config, and terminal hacks
+  # If we're in cygwin, we should use the windows config, and terminal hacks
   if [[ "$CYGWIN_FLAG" == "true" ]]; then #"
     stty -icanon min 1 -echo > /dev/null 2>&1
     addJava "-Djline.terminal=jline.UnixTerminal"
@@ -509,25 +516,28 @@ process_my_args () {
 
 ## map over argument array. this is used to process both command line arguments and SBT_OPTS
 map_args () {
-  local retarr=()
+  local options=()
+  local commands=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-     -no-colors|--no-colors) retarr=( "${retarr[@]}" "-Dsbt.log.noformat=true" ) && shift ;;
-         -timings|--timings) retarr=( "${retarr[@]}" "-Dsbt.task.timings=true" "-Dsbt.task.timings.on.shutdown=true" ) && shift ;;
-           -traces|--traces) retarr=( "${retarr[@]}" "-Dsbt.traces=true" ) && shift ;;
-             --supershell=*) retarr=( "${retarr[@]}" "-Dsbt.supershell=${1:13}" ) && shift ;;
-              -supershell=*) retarr=( "${retarr[@]}" "-Dsbt.supershell=${1:12}" ) && shift ;;
-                  --color=*) retarr=( "${retarr[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
-                   -color=*) retarr=( "${retarr[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
-       -no-share|--no-share) retarr=( "${retarr[@]}" "$noshare_opts" ) && shift ;;
-     -no-global|--no-global) retarr=( "${retarr[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
-       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && retarr=( "${retarr[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
-         -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && retarr=( "${retarr[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
-     -debug-inc|--debug-inc) retarr=( "${retarr[@]}" "-Dxsbt.inc.debug=true" ) && shift ;;
-                          *) retarr=( "${retarr[@]}" "$1" ) && shift ;;
+     -no-colors|--no-colors) options=( "${options[@]}" "-Dsbt.log.noformat=true" ) && shift ;;
+         -timings|--timings) options=( "${options[@]}" "-Dsbt.task.timings=true" "-Dsbt.task.timings.on.shutdown=true" ) && shift ;;
+           -traces|--traces) options=( "${options[@]}" "-Dsbt.traces=true" ) && shift ;;
+             --supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:13}" ) && shift ;;
+              -supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:12}" ) && shift ;;
+                  --color=*) options=( "${options[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
+                   -color=*) options=( "${options[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
+       -no-share|--no-share) options=( "${options[@]}" "$noshare_opts" ) && shift ;;
+     -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
+       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
+         -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
+             -debug|--debug) commands=( "${commands[@]}" "-debug" ) && shift ;;
+     -debug-inc|--debug-inc) options=( "${options[@]}" "-Dxsbt.inc.debug=true" ) && shift ;;
+                          *) options=( "${options[@]}" "$1" ) && shift ;;
     esac
   done
-  declare -p retarr
+  declare -p options
+  declare -p commands
 }
 
 process_args () {
