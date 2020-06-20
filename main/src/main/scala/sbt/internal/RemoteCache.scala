@@ -25,11 +25,12 @@ import sbt.util.Logger
 
 object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
-  final val cachedTestClasifier = "cached-test"
+  final val cachedTestClassifier = "cached-test"
   final val commitLength = 10
 
   def gitCommitId: String =
     scala.sys.process.Process("git rev-parse HEAD").!!.trim.take(commitLength)
+
   def gitCommitIds(n: Int): List[String] =
     scala.sys.process
       .Process("git log -n " + n.toString + " --format=%H")
@@ -41,7 +42,7 @@ object RemoteCache {
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     remoteCacheId := gitCommitId,
     remoteCacheIdCandidates := gitCommitIds(5),
-    pushRemoteCacheTo :== None,
+    pushRemoteCacheTo :== None
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(
@@ -54,12 +55,21 @@ object RemoteCache {
       ModuleID(o, m, v).cross(c)
     },
     pushRemoteCacheConfiguration / publishMavenStyle := true,
-    pushRemoteCacheConfiguration / artifacts := artifactDefs(defaultArtifactTasks).value,
-    pushRemoteCacheConfiguration / packagedArtifacts := packaged(defaultArtifactTasks).value,
+    pushRemoteCacheConfiguration / packagedArtifacts := Def.taskDyn {
+      val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+
+      artifacts
+        .map(a => a.packaged.map(file => (a.artifact, file)))
+        .join
+        .apply(_.join.map(_.toMap))
+    }.value,
+    pushRemoteCacheConfiguration / remoteCacheArtifacts := {
+      enabledOnly(remoteCacheArtifact.toSettingKey, defaultArtifactTasks).apply(_.join).value
+    },
     Compile / packageCache / pushRemoteCacheArtifact := true,
     Test / packageCache / pushRemoteCacheArtifact := true,
     Compile / packageCache / artifact := Artifact(moduleName.value, cachedCompileClassifier),
-    Test / packageCache / artifact := Artifact(moduleName.value, cachedTestClasifier),
+    Test / packageCache / artifact := Artifact(moduleName.value, cachedTestClassifier),
     remoteCachePom / pushRemoteCacheArtifact := true,
     pushRemoteCacheConfiguration := {
       Classpaths.publishConfig(
@@ -75,19 +85,17 @@ object RemoteCache {
       )
     },
     pullRemoteCache := {
-      val s = streams.value
+      val log = streams.value.log
       val smi = scalaModuleInfo.value
       val dr = (pullRemoteCache / dependencyResolution).value
       val is = (pushRemoteCache / ivySbt).value
       val t = crossTarget.value / "cache-download"
       val p = remoteCacheProjectId.value
       val ids = remoteCacheIdCandidates.value
-      val compileAf = (Compile / compileAnalysisFile).value
-      val compileOutput = (Compile / classDirectory).value
-      val testAf = (Test / compileAnalysisFile).value
-      val testOutput = (Test / classDirectory).value
-      val testStreams = (Test / test / streams).value
-      val testResult = Defaults.succeededFile(testStreams.cacheDirectory)
+      val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+      val applicable = artifacts.filterNot(RemoteCacheArtifact.isPomArtifact)
+      val classifiers = applicable.flatMap(_.artifact.classifier).toVector
+
       var found = false
       ids foreach {
         id: String =>
@@ -95,19 +103,25 @@ object RemoteCache {
           val modId = p.withRevision(v)
           if (found) ()
           else
-            pullFromMavenRepo0(modId, smi, is, dr, t, s.log) match {
+            pullFromMavenRepo0(modId, classifiers, smi, is, dr, t, log) match {
               case Right(xs0) =>
-                val xs = xs0.distinct
-                xs.find(_.toString.endsWith(s"$v-$cachedCompileClassifier.jar")) foreach {
-                  jar: File =>
-                    extractCache(jar, compileOutput, compileAf, None)
-                }
-                xs.find(_.toString.endsWith(s"$v-$cachedTestClasifier.jar")) foreach { jar: File =>
-                  extractCache(jar, testOutput, testAf, Some(testResult))
+                val jars = xs0.distinct
+
+                applicable.foreach { art =>
+                  val classifier = art.artifact.classifier
+
+                  findJar(classifier, v, jars) match {
+                    case Some(jar) =>
+                      extractJar(art, jar)
+                      log.info(s"remote cache artifact extracted for $classifier")
+
+                    case None =>
+                      log.info(s"remote cache artifact not found for $classifier")
+                  }
                 }
                 found = true
               case Left(unresolvedWarning) =>
-                s.log.info(s"remote cache not found for ${v}")
+                log.info(s"remote cache not found for ${v}")
             }
       }
     },
@@ -118,7 +132,9 @@ object RemoteCache {
       publisher.makePomFile((pushRemoteCache / ivyModule).value, config, s.log)
       config.file.get
     },
-    remoteCachePom / packagedArtifact := ((makePom / artifact).value -> remoteCachePom.value),
+    remoteCachePom / remoteCacheArtifact := {
+      RemoteCacheArtifact.Pom((makePom / artifact).value, remoteCachePom)
+    }
   ) ++ inTask(pushRemoteCache)(
     Seq(
       ivyConfiguration := {
@@ -146,7 +162,7 @@ object RemoteCache {
         val s = streams.value
         val config = pushRemoteCacheConfiguration.value
         IvyActions.publish(ivyModule.value, config, s.log)
-      } tag (Tags.Publish, Tags.Network)).value,
+      } tag (Tags.Publish, Tags.Network)).value
     )
   ) ++ inTask(pullRemoteCache)(
     Seq(
@@ -157,10 +173,12 @@ object RemoteCache {
           .withResolvers(rs)
       }
     )
-  ) ++ inConfig(Compile)(packageCacheSettings)
-    ++ inConfig(Test)(packageCacheSettings))
+  ) ++ inConfig(Compile)(packageCacheSettings(compileArtifact(Compile, cachedCompileClassifier)))
+    ++ inConfig(Test)(packageCacheSettings(testArtifact(Test, cachedTestClassifier))))
 
-  def packageCacheSettings: Seq[Def.Setting[_]] =
+  private def packageCacheSettings[A <: RemoteCacheArtifact](
+      cacheArtifact: Def.Initialize[Task[A]]
+  ): Seq[Def.Setting[_]] =
     inTask(packageCache)(
       Seq(
         packageCache.in(Defaults.TaskZero) := {
@@ -180,15 +198,42 @@ object RemoteCache {
           // }
           artp
         },
+        remoteCacheArtifact := cacheArtifact.value,
         packagedArtifact := (artifact.value -> packageCache.value),
-        artifactPath := Defaults.artifactPathSetting(artifact).value,
+        artifactPath := Defaults.artifactPathSetting(artifact).value
       )
     )
+
+  def compileArtifact(
+      configuration: Configuration,
+      classifier: String
+  ): Def.Initialize[Task[RemoteCacheArtifact.Compile]] = Def.task {
+    RemoteCacheArtifact.Compile(
+      Artifact(moduleName.value, classifier),
+      configuration / packageCache,
+      (configuration / classDirectory).value,
+      (configuration / compileAnalysisFile).value
+    )
+  }
+
+  def testArtifact(
+      configuration: Configuration,
+      classifier: String
+  ): Def.Initialize[Task[RemoteCacheArtifact.Test]] = Def.task {
+    RemoteCacheArtifact.Test(
+      Artifact(moduleName.value, classifier),
+      configuration / packageCache,
+      (configuration / classDirectory).value,
+      (configuration / compileAnalysisFile).value,
+      Defaults.succeededFile((configuration / test / streams).value.cacheDirectory)
+    )
+  }
 
   private def toVersion(v: String): String = s"0.0.0-$v"
 
   private def pullFromMavenRepo0(
       modId: ModuleID,
+      classifiers: Vector[String],
       smi: Option[ScalaModuleInfo],
       is: IvySbt,
       dr: DependencyResolution,
@@ -202,46 +247,68 @@ object RemoteCache {
         .withScalaModuleInfo(smi)
         .withDependencies(deps)
     }
-    val deps =
-      Vector(modId.classifier(cachedCompileClassifier), modId.classifier(cachedTestClasifier))
+    val deps = classifiers.map(modId.classifier)
     val mconfig = dummyModule(deps)
     val m = new is.Module(mconfig)
     dr.retrieve(m, cacheDir, log)
   }
 
-  private def extractCache(
-      jar: File,
-      output: File,
-      analysisFile: File,
-      testResult: Option[File]
+  private def findJar(classifier: Option[String], ver: String, jars: Vector[File]): Option[File] = {
+    val suffix = classifier.fold(ver)(c => s"$ver-$c.jar")
+    jars.find(_.toString.endsWith(suffix))
+  }
+
+  private def extractJar(cacheArtifact: RemoteCacheArtifact, jar: File): Unit =
+    cacheArtifact match {
+      case RemoteCacheArtifact.Compile(_, _, extractDirectory, analysisFile) =>
+        extractCache(jar, extractDirectory, preserveLastModified = true) { output =>
+          extractAnalysis(output, analysisFile)
+        }
+
+      case RemoteCacheArtifact.Test(_, _, extractDirectory, analysisFile, testResult) =>
+        extractCache(jar, extractDirectory, preserveLastModified = true) { output =>
+          extractAnalysis(output, analysisFile)
+          extractTestResult(output, testResult)
+        }
+
+      case RemoteCacheArtifact.Custom(_, _, extractDirectory, preserveLastModified) =>
+        extractCache(jar, extractDirectory, preserveLastModified)(_ => ())
+
+      case RemoteCacheArtifact.Pom(_, _) =>
+        ()
+    }
+
+  private def extractCache(jar: File, output: File, preserveLastModified: Boolean)(
+      processOutput: File => Unit
   ): Unit = {
     IO.delete(output)
-    IO.unzip(jar, output)
+    IO.unzip(jar, output, preserveLastModified = preserveLastModified)
+    processOutput(output)
+    IO.delete(output / "META-INF")
+  }
+
+  private def extractAnalysis(output: File, analysisFile: File): Unit = {
     val metaDir = output / "META-INF"
     val expandedAnalysis = metaDir / "inc_compile.zip"
     if (expandedAnalysis.exists) {
       IO.move(expandedAnalysis, analysisFile)
     }
     IO.delete(metaDir)
-    // testResult match {
-    //   case Some(r) =>
-    //     val expandedTestResult = output / "META-INF" / "succeeded_tests"
-    //     if (expandedTestResult.exists) {
-    //       IO.move(expandedTestResult, r)
-    //     }
-    //   case _ => ()
-    // }
-    ()
+  }
+
+  private def extractTestResult(output: File, testResult: File): Unit = {
+    //val expandedTestResult = output / "META-INF" / "succeeded_tests"
+    //if (expandedTestResult.exists) {
+    //  IO.move(expandedTestResult, testResult)
+    //}
   }
 
   private def defaultArtifactTasks: Seq[TaskKey[File]] =
-    Seq(remoteCachePom, Compile / packageCache, Test / packageCache)
-
-  private def packaged(pkgTasks: Seq[TaskKey[File]]): Def.Initialize[Task[Map[Artifact, File]]] =
-    enabledOnly(packagedArtifact.toSettingKey, pkgTasks) apply (_.join.map(_.toMap))
-
-  private def artifactDefs(pkgTasks: Seq[TaskKey[File]]): Def.Initialize[Seq[Artifact]] =
-    enabledOnly(artifact, pkgTasks)
+    Seq(
+      remoteCachePom,
+      Compile / packageCache,
+      Test / packageCache
+    )
 
   private def enabledOnly[A](
       key: SettingKey[A],
@@ -251,4 +318,46 @@ object RemoteCache {
       Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect {
       case (a, true) => a
     })
+}
+
+sealed trait RemoteCacheArtifact {
+  def artifact: Artifact
+  def packaged: TaskKey[File]
+}
+
+object RemoteCacheArtifact {
+
+  final case class Pom(
+      artifact: Artifact,
+      packaged: TaskKey[File]
+  ) extends RemoteCacheArtifact
+
+  final case class Compile(
+      artifact: Artifact,
+      packaged: TaskKey[File],
+      extractDirectory: File,
+      analysisFile: File
+  ) extends RemoteCacheArtifact
+
+  final case class Test(
+      artifact: Artifact,
+      packaged: TaskKey[File],
+      extractDirectory: File,
+      analysisFile: File,
+      testResult: File
+  ) extends RemoteCacheArtifact
+
+  final case class Custom(
+      artifact: Artifact,
+      packaged: TaskKey[File],
+      extractDirectory: File,
+      preserveLastModified: Boolean
+  ) extends RemoteCacheArtifact
+
+  def isPomArtifact(artifact: RemoteCacheArtifact): Boolean =
+    artifact match {
+      case _: RemoteCacheArtifact.Pom => true
+      case _                          => false
+    }
+
 }
