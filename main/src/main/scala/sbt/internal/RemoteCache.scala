@@ -20,6 +20,7 @@ import sbt.librarymanagement.syntax._
 import sbt.internal.librarymanagement._
 import sbt.io.IO
 import sbt.io.syntax._
+import sbt.internal.remotecache._
 import sbt.internal.inc.JarUtils
 import sbt.util.Logger
 
@@ -93,7 +94,7 @@ object RemoteCache {
       val p = remoteCacheProjectId.value
       val ids = remoteCacheIdCandidates.value
       val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
-      val applicable = artifacts.filterNot(RemoteCacheArtifact.isPomArtifact)
+      val applicable = artifacts.filterNot(isPomArtifact)
       val classifiers = applicable.flatMap(_.artifact.classifier).toVector
 
       var found = false
@@ -133,7 +134,7 @@ object RemoteCache {
       config.file.get
     },
     remoteCachePom / remoteCacheArtifact := {
-      RemoteCacheArtifact.Pom((makePom / artifact).value, remoteCachePom)
+      PomRemoteCacheArtifact((makePom / artifact).value, remoteCachePom)
     }
   ) ++ inTask(pushRemoteCache)(
     Seq(
@@ -204,11 +205,17 @@ object RemoteCache {
       )
     )
 
+  def isPomArtifact(artifact: RemoteCacheArtifact): Boolean =
+    artifact match {
+      case _: PomRemoteCacheArtifact => true
+      case _                         => false
+    }
+
   def compileArtifact(
       configuration: Configuration,
       classifier: String
-  ): Def.Initialize[Task[RemoteCacheArtifact.Compile]] = Def.task {
-    RemoteCacheArtifact.Compile(
+  ): Def.Initialize[Task[CompileRemoteCacheArtifact]] = Def.task {
+    CompileRemoteCacheArtifact(
       Artifact(moduleName.value, classifier),
       configuration / packageCache,
       (configuration / classDirectory).value,
@@ -219,8 +226,8 @@ object RemoteCache {
   def testArtifact(
       configuration: Configuration,
       classifier: String
-  ): Def.Initialize[Task[RemoteCacheArtifact.Test]] = Def.task {
-    RemoteCacheArtifact.Test(
+  ): Def.Initialize[Task[TestRemoteCacheArtifact]] = Def.task {
+    TestRemoteCacheArtifact(
       Artifact(moduleName.value, classifier),
       configuration / packageCache,
       (configuration / classDirectory).value,
@@ -260,21 +267,21 @@ object RemoteCache {
 
   private def extractJar(cacheArtifact: RemoteCacheArtifact, jar: File): Unit =
     cacheArtifact match {
-      case RemoteCacheArtifact.Compile(_, _, extractDirectory, analysisFile) =>
-        extractCache(jar, extractDirectory, preserveLastModified = true) { output =>
-          extractAnalysis(output, analysisFile)
+      case a: CompileRemoteCacheArtifact =>
+        extractCache(jar, a.extractDirectory, preserveLastModified = true) { output =>
+          extractAnalysis(output, a.analysisFile)
         }
 
-      case RemoteCacheArtifact.Test(_, _, extractDirectory, analysisFile, testResult) =>
-        extractCache(jar, extractDirectory, preserveLastModified = true) { output =>
-          extractAnalysis(output, analysisFile)
-          extractTestResult(output, testResult)
+      case a: TestRemoteCacheArtifact =>
+        extractCache(jar, a.extractDirectory, preserveLastModified = true) { output =>
+          extractAnalysis(output, a.analysisFile)
+          extractTestResult(output, a.testResult)
         }
 
-      case RemoteCacheArtifact.Custom(_, _, extractDirectory, preserveLastModified) =>
-        extractCache(jar, extractDirectory, preserveLastModified)(_ => ())
+      case a: CustomRemoteCacheArtifact =>
+        extractCache(jar, a.extractDirectory, a.preserveLastModified)(_ => ())
 
-      case RemoteCacheArtifact.Pom(_, _) =>
+      case _ =>
         ()
     }
 
@@ -304,11 +311,7 @@ object RemoteCache {
   }
 
   private def defaultArtifactTasks: Seq[TaskKey[File]] =
-    Seq(
-      remoteCachePom,
-      Compile / packageCache,
-      Test / packageCache
-    )
+    Seq(remoteCachePom, Compile / packageCache, Test / packageCache)
 
   private def enabledOnly[A](
       key: SettingKey[A],
@@ -318,46 +321,4 @@ object RemoteCache {
       Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect {
       case (a, true) => a
     })
-}
-
-sealed trait RemoteCacheArtifact {
-  def artifact: Artifact
-  def packaged: TaskKey[File]
-}
-
-object RemoteCacheArtifact {
-
-  final case class Pom(
-      artifact: Artifact,
-      packaged: TaskKey[File]
-  ) extends RemoteCacheArtifact
-
-  final case class Compile(
-      artifact: Artifact,
-      packaged: TaskKey[File],
-      extractDirectory: File,
-      analysisFile: File
-  ) extends RemoteCacheArtifact
-
-  final case class Test(
-      artifact: Artifact,
-      packaged: TaskKey[File],
-      extractDirectory: File,
-      analysisFile: File,
-      testResult: File
-  ) extends RemoteCacheArtifact
-
-  final case class Custom(
-      artifact: Artifact,
-      packaged: TaskKey[File],
-      extractDirectory: File,
-      preserveLastModified: Boolean
-  ) extends RemoteCacheArtifact
-
-  def isPomArtifact(artifact: RemoteCacheArtifact): Boolean =
-    artifact match {
-      case _: RemoteCacheArtifact.Pom => true
-      case _                          => false
-    }
-
 }

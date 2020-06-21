@@ -25,6 +25,7 @@ import sbt.internal.bsp._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
+import sbt.internal.remotecache.RemoteCacheArtifact
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
 import sbt.io._
