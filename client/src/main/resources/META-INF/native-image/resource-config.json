@@ -1,0 +1,9 @@
+{
+    "resources":[
+        {"pattern":"jline/console/completer/CandidateListCompletionHandler.properties"},
+        {"pattern":"library.properties"},
+        {"pattern":"darwin/x86_64/libsbtipcsocket.dylib"},
+        {"pattern":"linux/x86_64/libsbtipcsocket.so"},
+        {"pattern":"win32/x86_64/sbtipcsocket.dll"}
+    ]
+}

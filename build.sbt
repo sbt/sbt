@@ -4,6 +4,7 @@ import Util._
 import com.typesafe.tools.mima.core.ProblemFilters._
 import com.typesafe.tools.mima.core._
 import local.Scripted
+import java.nio.file.{ Files, Path => JPath }
 
 import scala.util.Try
 
@@ -213,6 +214,8 @@ lazy val sbtRoot: Project = (project in file("."))
       .single("sbtOn")((state, dir) => s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
     mimaSettings,
     mimaPreviousArtifacts := Set.empty,
+    genExecutable := (sbtClientProj / genExecutable).evaluated,
+    genNativeExecutable := (sbtClientProj / genNativeExecutable).value,
   )
 
 // This is used to configure an sbt-launcher for this version of sbt.
@@ -1022,6 +1025,110 @@ lazy val serverTestProj = (project in file("server-test"))
     },
   )
 
+val isWin = scala.util.Properties.isWin
+val generateReflectionConfig = taskKey[Unit]("generate the graalvm reflection config")
+val genExecutable =
+  inputKey[JPath]("generate a java implementation of the thin client")
+val graalClasspath = taskKey[String]("Generate the classpath for graal (compacted for windows)")
+val graalNativeImageCommand = taskKey[String]("The native image command")
+val graalNativeImageOptions = settingKey[Seq[String]]("The native image options")
+val graalNativeImageClass = settingKey[String]("The class for the native image")
+val genNativeExecutable = taskKey[JPath]("Generate a native executable")
+val nativeExecutablePath = settingKey[JPath]("The location of the native executable")
+lazy val sbtClientProj = (project in file("client"))
+  .dependsOn(commandProj)
+  .settings(
+    commonBaseSettings,
+    publish / skip := true,
+    name := "sbt-client",
+    mimaPreviousArtifacts := Set.empty,
+    crossPaths := false,
+    exportJars := true,
+    libraryDependencies += jansi,
+    libraryDependencies += "net.java.dev.jna" % "jna" % "5.5.0",
+    libraryDependencies += "net.java.dev.jna" % "jna-platform" % "5.5.0",
+    libraryDependencies += scalatest % "test",
+    /*
+     * On windows, the raw classpath is too large to be a command argument to an
+     * external process so we create symbolic links with short names to get the
+     * classpath length under the limit.
+     */
+    graalClasspath := {
+      val original = (Compile / fullClasspathAsJars).value.map(_.data)
+      val outputDir = target.value / "graalcp"
+      IO.createDirectory(outputDir)
+      Files.walk(outputDir.toPath).forEach {
+        case f if f.getFileName.toString.endsWith(".jar") => Files.deleteIfExists(f)
+        case _                                            =>
+      }
+      original.zipWithIndex
+        .map {
+          case (f, i) =>
+            Files.createSymbolicLink(outputDir.toPath / s"$i.jar", f.toPath)
+            s"$i.jar"
+        }
+        .mkString(java.io.File.pathSeparator)
+    },
+    graalNativeImageCommand := System.getProperty("sbt.native-image", "native-image").toString,
+    genNativeExecutable / name := s"sbtc${if (isWin) ".exe" else ""}",
+    nativeExecutablePath := target.value.toPath / "bin" / (genNativeExecutable / name).value,
+    graalNativeImageClass := "sbt.client.Client",
+    genNativeExecutable := {
+      val prefix = Seq(graalNativeImageCommand.value, "-cp", graalClasspath.value)
+      val full = prefix ++ graalNativeImageOptions.value :+ graalNativeImageClass.value
+      val pb = new java.lang.ProcessBuilder(full: _*)
+      pb.directory(target.value / "graalcp")
+      val proc = pb.start()
+      val thread = new Thread {
+        setDaemon(true)
+        val is = proc.getInputStream
+        val es = proc.getErrorStream
+
+        override def run(): Unit = {
+          Thread.sleep(100)
+          while (proc.isAlive) {
+            if (is.available > 0 || es.available > 0) {
+              while (is.available > 0) System.out.print(is.read.toChar)
+              while (es.available > 0) System.err.print(es.read.toChar)
+            }
+            if (proc.isAlive) Thread.sleep(10)
+          }
+        }
+      }
+      thread.start()
+      proc.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
+      nativeExecutablePath.value
+      file("").toPath
+    },
+    graalNativeImageOptions := Seq(
+      "--no-fallback",
+      s"--initialize-at-run-time=sbt.client",
+      "--verbose",
+      "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
+      "-H:+ReportExceptionStackTraces",
+      s"-H:Name=${target.value / "bin" / "sbtc"}",
+    ),
+    genExecutable := {
+      val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
+      val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"
+      val output = target.value.toPath / "bin" / s"${if (isFish) "fish-" else ""}client$ext"
+      java.nio.file.Files.createDirectories(output.getParent)
+      val cp = (Compile / fullClasspathAsJars).value.map(_.data)
+      val args =
+        if (isWin) "%*" else if (isFish) s"$$argv" else s"$$*"
+      java.nio.file.Files.write(
+        output,
+        s"""
+        |${if (isWin) "@echo off" else s"#!/usr/bin/env ${if (isFish) "fish" else "sh"}"}
+        |
+        |java -cp ${cp.mkString(java.io.File.pathSeparator)} sbt.client.Client --jna $args
+        """.stripMargin.linesIterator.toSeq.tail.mkString("\n").getBytes
+      )
+      output.toFile.setExecutable(true)
+      output
+    },
+  )
+
 /*
 lazy val sbtBig = (project in file(".big"))
   .dependsOn(sbtProj)
@@ -1196,7 +1303,8 @@ def allProjects =
     mainProj,
     sbtProj,
     bundledLauncherProj,
-    coreMacrosProj
+    coreMacrosProj,
+    sbtClientProj,
   ) ++ lowerUtilProjects
 
 lazy val lowerUtilProjects =

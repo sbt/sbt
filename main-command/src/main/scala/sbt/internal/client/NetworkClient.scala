@@ -677,7 +677,9 @@ object NetworkClient {
       printStream,
       useJNI
     )
-  def main(useJNI: Boolean, args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
+    val (jnaArg, restOfArgs) = args.partition(_ == "--jna")
+    val useJNI = jnaArg.isEmpty
     val hook = new Thread(() => {
       System.out.print(ConsoleAppender.ClearScreenAfterCursor)
       System.out.flush()
@@ -685,7 +687,7 @@ object NetworkClient {
     Runtime.getRuntime.addShutdownHook(hook)
     System.exit(Terminal.withStreams {
       val base = new File("").getCanonicalFile()
-      try client(base, args, System.in, System.err, System.out, useJNI)
+      try client(base, restOfArgs, System.in, System.err, System.out, useJNI)
       finally {
         Runtime.getRuntime.removeShutdownHook(hook)
         hook.run()
