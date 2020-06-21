@@ -1001,6 +1001,7 @@ lazy val serverTestProj = (project in file("server-test"))
     crossScalaVersions := Seq(baseScalaVersion),
     publish / skip := true,
     // make server tests serial
+    Test / watchTriggers += baseDirectory.value.toGlob / "src" / "server-test" / **,
     Test / parallelExecution := false,
     Test / run / connectInput := true,
     Test / run / outputStrategy := Some(StdoutOutput),
@@ -1011,7 +1012,8 @@ lazy val serverTestProj = (project in file("server-test"))
       List(
         s"-Dsbt.server.classpath=$cp",
         s"-Dsbt.server.version=${version.value}",
-        s"-Dsbt.server.scala.version=${scalaVersion.value}"
+        s"-Dsbt.server.scala.version=${scalaVersion.value}",
+        s"-Dsbt.supershell=false",
       )
     },
   )
