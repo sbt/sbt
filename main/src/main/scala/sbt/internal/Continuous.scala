@@ -272,45 +272,46 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     f(s, valid, invalid)
   }
 
-  private[this] def withCharBufferedStdIn[R](f: InputStream => R): R = Terminal.withRawSystemIn {
-    val wrapped = Terminal.wrappedSystemIn
-    if (Util.isNonCygwinWindows) {
-      val inputStream: InputStream with AutoCloseable = new InputStream with AutoCloseable {
-        private[this] val buffer = new java.util.LinkedList[Int]
-        private[this] val closed = new AtomicBoolean(false)
-        private[this] val thread = new Thread("Continuous-input-stream-reader") {
-          setDaemon(true)
-          start()
-          @tailrec
-          override def run(): Unit = {
-            try {
-              if (!closed.get()) {
-                wrapped.read() match {
-                  case -1 => closed.set(true)
-                  case b  => buffer.add(b)
+  private[this] def withCharBufferedStdIn[R](f: InputStream => R): R =
+    Terminal.get.withRawSystemIn {
+      val wrapped = Terminal.get.inputStream
+      if (Util.isNonCygwinWindows) {
+        val inputStream: InputStream with AutoCloseable = new InputStream with AutoCloseable {
+          private[this] val buffer = new java.util.LinkedList[Int]
+          private[this] val closed = new AtomicBoolean(false)
+          private[this] val thread = new Thread("Continuous-input-stream-reader") {
+            setDaemon(true)
+            start()
+            @tailrec
+            override def run(): Unit = {
+              try {
+                if (!closed.get()) {
+                  wrapped.read() match {
+                    case -1 => closed.set(true)
+                    case b  => buffer.add(b)
+                  }
                 }
+              } catch {
+                case _: InterruptedException => closed.set(true)
               }
-            } catch {
-              case _: InterruptedException => closed.set(true)
+              if (!closed.get()) run()
             }
-            if (!closed.get()) run()
+          }
+          override def available(): Int = buffer.size()
+          override def read(): Int = buffer.poll()
+          override def close(): Unit = if (closed.compareAndSet(false, true)) {
+            thread.interrupt()
           }
         }
-        override def available(): Int = buffer.size()
-        override def read(): Int = buffer.poll()
-        override def close(): Unit = if (closed.compareAndSet(false, true)) {
-          thread.interrupt()
+        try {
+          f(inputStream)
+        } finally {
+          inputStream.close()
         }
+      } else {
+        f(wrapped)
       }
-      try {
-        f(inputStream)
-      } finally {
-        inputStream.close()
-      }
-    } else {
-      f(wrapped)
     }
-  }
 
   private[sbt] def runToTermination(
       state: State,

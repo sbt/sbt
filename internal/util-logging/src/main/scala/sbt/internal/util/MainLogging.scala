@@ -75,8 +75,13 @@ object MainAppender {
   def defaultScreen(
       console: ConsoleOut,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender =
-    ConsoleAppender(ConsoleAppender.generateName, console, suppressedMessage = suppressedMessage)
+  ): Appender = {
+    ConsoleAppender(
+      ConsoleAppender.generateName,
+      Terminal.get,
+      suppressedMessage = suppressedMessage
+    )
+  }
 
   def defaultScreen(
       name: String,

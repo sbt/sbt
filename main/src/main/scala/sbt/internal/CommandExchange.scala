@@ -309,6 +309,6 @@ private[sbt] final class CommandExchange {
           .withChannelName(currentExec.flatMap(_.source.map(_.channelName)))
       case _ => pe
     }
-    ProgressState.updateProgressState(newPE)
+    channels.foreach(c => ProgressState.updateProgressState(newPE, c.terminal))
   }
 }

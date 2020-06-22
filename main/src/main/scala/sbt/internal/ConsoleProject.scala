@@ -61,7 +61,7 @@ object ConsoleProject {
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
 
-    Terminal.withCanonicalIn {
+    Terminal.get.withCanonicalIn {
       // TODO - Hook up dsl classpath correctly...
       (new Console(compiler))(
         unit.classpath,

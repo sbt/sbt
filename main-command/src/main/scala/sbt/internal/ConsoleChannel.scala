@@ -31,7 +31,7 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
         history,
         s.combinedParser,
         LineReader.HandleCONT,
-        Terminal.throwOnClosedSystemIn
+        Terminal.console,
       )
     setDaemon(true)
     start()
@@ -49,7 +49,6 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
       } finally askUserThread.synchronized(askUserThread.set(null))
     def redraw(): Unit = {
       System.out.print(ConsoleAppender.clearLine(0))
-      reader.redraw()
       System.out.print(ConsoleAppender.ClearScreenAfterCursor)
       System.out.flush()
     }
@@ -80,4 +79,5 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
       case _ => ()
     }
   }
+  override private[sbt] def terminal = Terminal.console
 }

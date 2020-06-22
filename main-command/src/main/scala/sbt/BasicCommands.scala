@@ -60,7 +60,7 @@ object BasicCommands {
     oldshell,
     client,
     read,
-    alias
+    alias,
   )
 
   def nop: Command = Command.custom(s => success(() => s))
@@ -375,8 +375,7 @@ object BasicCommands {
   def oldshell: Command = Command.command(OldShell, Help.more(Shell, OldShellDetailed)) { s =>
     val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
-    val reader =
-      new FullReader(history, s.combinedParser, LineReader.HandleCONT, Terminal.wrappedSystemIn)
+    val reader = new FullReader(history, s.combinedParser, LineReader.HandleCONT, Terminal.console)
     val line = reader.readLine(prompt)
     line match {
       case Some(line) =>

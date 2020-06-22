@@ -20,7 +20,7 @@ import sbt.internal.protocol.{
   JsonRpcResponseError,
   JsonRpcResponseMessage
 }
-import sbt.internal.util.ReadJsonFromInputStream
+import sbt.internal.util.{ ReadJsonFromInputStream, Terminal }
 import sbt.internal.util.complete.Parser
 import sbt.protocol._
 import sbt.util.Logger
@@ -46,6 +46,8 @@ final class NetworkChannel(
   private val out = connection.getOutputStream
   private var initialized = false
   private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
+
+  override private[sbt] def terminal: Terminal = Terminal.NullTerminal
 
   private lazy val callback: ServerCallback = new ServerCallback {
     def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
