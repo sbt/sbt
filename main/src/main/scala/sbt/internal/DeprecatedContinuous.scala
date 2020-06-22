@@ -5,7 +5,8 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
+package sbt
+package internal
 
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
@@ -29,7 +30,7 @@ private[internal] trait DeprecatedContinuous {
   }
   private[this] val legacyWatchState =
     AttributeKey[AtomicReference[WS]]("legacy-watch-state", Int.MaxValue)
-  protected def addLegacyWatchSetting(state: State): State = {
+  private[sbt] def addLegacyWatchSetting(state: State): State = {
     val legacyState = new AtomicReference[WS](WS.empty(Nil).withCount(1))
     state
       .put(
@@ -60,8 +61,9 @@ private[internal] trait DeprecatedContinuous {
 
 @silent
 private[sbt] object DeprecatedContinuous {
-  private[sbt] val taskDefinitions = Seq(
+  private[sbt] val taskDefinitions: Seq[Def.Setting[_]] = Seq(
     sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,
     sbt.Keys.watch := sbt.Defaults.watchSetting.value,
+    sbt.nio.Keys.watchTasks := Continuous.continuousTask.evaluated,
   )
 }

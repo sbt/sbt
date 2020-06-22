@@ -24,7 +24,7 @@ import sbt.internal._
 import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.Retry
-import sbt.internal.nio.CheckBuildSources
+import sbt.internal.nio.{ CheckBuildSources, FileTreeRepository }
 import sbt.internal.server.NetworkChannel
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
@@ -269,8 +269,10 @@ object BuiltinCommands {
       continuous,
       clearCaches,
       NetworkChannel.disconnect,
+      waitCmd,
+      promptChannel,
       setTerminalCommand,
-    ) ++ allBasicCommands
+    ) ++ allBasicCommands ++ ContinuousCommands.value
 
   def DefaultBootCommands: Seq[String] =
     WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
@@ -890,10 +892,14 @@ object BuiltinCommands {
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
     val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
-    val s4 = LintUnused.lintUnusedFunc(s3)
-    CheckBuildSources.init(s4)
+    val s4 = setupGlobalFileTreeRepository(s3)
+    CheckBuildSources.init(LintUnused.lintUnusedFunc(s4))
   }
 
+  private val setupGlobalFileTreeRepository: State => State = { state =>
+    state.get(sbt.nio.Keys.globalFileTreeRepository).foreach(_.close())
+    state.put(sbt.nio.Keys.globalFileTreeRepository, FileTreeRepository.default)
+  }
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
     val size = Project
       .extract(s)
@@ -924,6 +930,40 @@ object BuiltinCommands {
     (s, channel) =>
       StandardMain.exchange.channelForName(channel).foreach(c => Terminal.set(c.terminal))
       s
+  }
+
+  private[sbt] def waitCmd: Command =
+    Command.arb(_ => (ContinuousCommands.waitWatch: Parser[String]).examples()) { (s0, _) =>
+      val exchange = StandardMain.exchange
+      if (exchange.channels.exists(ContinuousCommands.isInWatch)) {
+        val s1 = exchange.run(s0)
+        exchange.channels.foreach {
+          case c if ContinuousCommands.isPending(c) =>
+          case c                                    => c.prompt(ConsolePromptEvent(s1))
+        }
+        val exec: Exec = getExec(s1, Duration.Inf)
+        val remaining: List[Exec] =
+          Exec(ContinuousCommands.waitWatch, None) ::
+            Exec(FailureWall, None) :: s1.remainingCommands
+        val newState = s1.copy(remainingCommands = exec +: remaining)
+        if (exec.commandLine.trim.isEmpty) newState
+        else newState.clearGlobalLog
+      } else s0
+    }
+
+  private[sbt] def promptChannel = Command.arb(_ => reportParser(PromptChannel)) {
+    (state, channel) =>
+      if (channel == ConsoleChannel.defaultName) {
+        if (!state.remainingCommands.exists(_.commandLine == Shell))
+          state.copy(remainingCommands = state.remainingCommands ::: (Exec(Shell, None) :: Nil))
+        else state
+      } else {
+        StandardMain.exchange.channelForName(channel) match {
+          case Some(nc: NetworkChannel) => nc.prompt()
+          case _                        =>
+        }
+        state
+      }
   }
 
   private def getExec(state: State, interval: Duration): Exec = {

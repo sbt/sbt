@@ -962,6 +962,7 @@ lazy val mainProj = (project in file("main"))
       // mima seems to incorrectly miss the secondary constructor that provides
       // the binary compatible version.
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.NetworkChannel.this"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.DeprecatedContinuous.taskDefinitions"),
     )
   )
   .configure(

@@ -2,6 +2,6 @@
 # In the build, watchOnEvent should return CancelWatch which should be successful, but we
 # override watchTasks to fail the state instead
 
--> watch root / setStringValue foo.txt bar
+-> ~ root / setStringValue foo.txt bar
 
 > checkStringValue foo.txt bar

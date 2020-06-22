@@ -39,6 +39,7 @@ import Serialization.{
   CancelAll,
   attach,
   cancelRequest,
+  promptChannel,
   systemIn,
   systemOut,
   terminalCapabilities,
@@ -352,6 +353,9 @@ class NetworkClient(
             case Failure(_) =>
           }
           Vector.empty
+        case (`promptChannel`, _) =>
+          batchMode.set(false)
+          Vector.empty
         case ("textDocument/publishDiagnostics", Some(json)) =>
           import sbt.internal.langserver.codec.JsonProtocol._
           Converter.fromJson[PublishDiagnosticsParams](json) match {
@@ -472,20 +476,22 @@ class NetworkClient(
             val queue = sendCancelAllCommand()
             Option(queue.poll(1, TimeUnit.SECONDS)).getOrElse(true)
           }
-          if ((!interactive && pendingResults.isEmpty) || !cancelledTasks) exitAbruptly()
+          if ((batchMode.get && pendingResults.isEmpty) || !cancelledTasks) exitAbruptly()
           else cancelled.set(false)
         } else exitAbruptly() // handles double ctrl+c to force a shutdown
       }
       withSignalHandler(handler, Signals.INT) {
-        if (interactive) {
+        def block(): Int = {
           try this.synchronized(this.wait)
           catch { case _: InterruptedException => }
           if (exitClean.get) 0 else 1
-        } else if (exit) {
-          0
-        } else {
+        }
+        if (interactive) block()
+        else if (exit) 0
+        else {
           batchMode.set(true)
-          batchExecute(userCommands.toList)
+          val res = batchExecute(userCommands.toList)
+          if (!batchMode.get) block() else res
         }
       }
     }

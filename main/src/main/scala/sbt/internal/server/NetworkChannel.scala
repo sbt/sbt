@@ -40,7 +40,8 @@ import Serialization.attach
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
-import Serialization.attach
+import BasicJsonProtocol._
+import Serialization.{ attach, promptChannel }
 
 final class NetworkChannel(
     val name: String,
@@ -93,9 +94,13 @@ final class NetworkChannel(
     if (!isInteractive) terminal.setPrompt(Prompt.Batch)
     attached.set(true)
     pendingRequests.remove(id)
-    import sjsonnew.BasicJsonProtocol._
     jsonRpcRespond("", id)
     initiateMaintenance(attach)
+  }
+  private[sbt] def prompt(): Unit = {
+    terminal.setPrompt(Prompt.Running)
+    interactive.set(true)
+    jsonRpcNotify(promptChannel, "")
   }
   private[sbt] def write(byte: Byte) = inputBuffer.add(byte)
 
@@ -138,7 +143,7 @@ final class NetworkChannel(
   protected def authOptions: Set[ServerAuthentication] = auth
 
   override def mkUIThread: (State, CommandChannel) => UITask = (state, command) => {
-    if (interactive.get) mkUIThreadImpl(state, command)
+    if (interactive.get || ContinuousCommands.isInWatch(this)) mkUIThreadImpl(state, command)
     else
       new UITask {
         override private[sbt] def channel = NetworkChannel.this
@@ -611,6 +616,7 @@ final class NetworkChannel(
       LogMessageParams(MessageType.fromLevelString(level), message)
     )
   }
+
   private[this] lazy val inputStream: InputStream = new InputStream {
     override def read(): Int = {
       try {
@@ -703,7 +709,8 @@ final class NetworkChannel(
     override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
     override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)
     override def isEchoEnabled: Boolean = waitForPending(_.isEchoEnabled)
-    override def isSuccessEnabled: Boolean = prompt != Prompt.Batch
+    override def isSuccessEnabled: Boolean =
+      prompt != Prompt.Batch || ContinuousCommands.isInWatch(NetworkChannel.this)
     override lazy val isColorEnabled: Boolean = waitForPending(_.isColorEnabled)
     override lazy val isSupershellEnabled: Boolean = waitForPending(_.isSupershellEnabled)
     getProperties(false)

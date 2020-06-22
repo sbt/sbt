@@ -162,7 +162,12 @@ final class ScriptedTests(
           case ("classloader-cache", "jni") => true // no native lib is built for windows
           case ("classloader-cache", "snapshot") =>
             true // the test overwrites a jar that is being used which is verboten in windows
-          case ("nio", "make-clone") => true // uses gcc which isn't set up on all systems
+          // The test spark server is unable to bind to a local socket on Visual Studio 2019
+          case ("classloader-cache", "spark") => true
+          case ("nio", "make-clone")          => true // uses gcc which isn't set up on all systems
+          // symlinks don't work the same on windows. Symlink monitoring does work in many cases
+          // on windows but not to the same level as it does on osx and linux
+          case ("watch", "symlinks") => true
           case _                     => false
         }
     }

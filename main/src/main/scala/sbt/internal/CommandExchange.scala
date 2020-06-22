@@ -158,12 +158,18 @@ private[sbt] final class CommandExchange {
     currentExec.filter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
       Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
     }
+    if (ContinuousCommands.isInWatch(c)) {
+      try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
+      catch { case _: InterruptedException => }
+    }
   }
 
   private[this] def mkAskUser(
       name: String,
   ): (State, CommandChannel) => UITask = { (state, channel) =>
-    new UITask.AskUserTask(state, channel)
+    ContinuousCommands
+      .watchUITaskFor(channel)
+      .getOrElse(new UITask.AskUserTask(state, channel))
   }
 
   private[sbt] def currentExec = Option(currentExecRef.get)
@@ -332,7 +338,10 @@ private[sbt] final class CommandExchange {
 
   def prompt(event: ConsolePromptEvent): Unit = {
     currentExecRef.set(null)
-    channels.foreach(_.prompt(event))
+    channels.foreach {
+      case c if ContinuousCommands.isInWatch(c) =>
+      case c                                    => c.prompt(event)
+    }
   }
   def unprompt(event: ConsoleUnpromptEvent): Unit = channels.foreach(_.unprompt(event))
 
@@ -401,8 +410,15 @@ private[sbt] final class CommandExchange {
           case null =>
           case mt: MaintenanceTask =>
             mt.task match {
-              case `attach`   => mt.channel.prompt(ConsolePromptEvent(lastState.get))
-              case "cancel"   => Option(currentExecRef.get).foreach(cancel)
+              case `attach` => mt.channel.prompt(ConsolePromptEvent(lastState.get))
+              case "cancel" => Option(currentExecRef.get).foreach(cancel)
+              case t if t.startsWith(ContinuousCommands.stopWatch) =>
+                ContinuousCommands.stopWatchImpl(mt.channel.name)
+                mt.channel match {
+                  case c: NetworkChannel if !c.isInteractive => exit(mt)
+                  case _                                     => mt.channel.prompt(ConsolePromptEvent(lastState.get))
+                }
+                commandQueue.add(Exec(t, None, None))
               case "exit"     => exit(mt)
               case "shutdown" => shutdown(mt.channel.name)
               case _          =>

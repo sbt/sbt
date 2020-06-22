@@ -214,6 +214,7 @@ $AliasCommand name=
   def ReportResult = "sbtReportResult"
   def CompleteExec = "sbtCompleteExec"
   def MapExec = "sbtMapExec"
+  def PromptChannel = "sbtPromptChannel"
 
   def ClearOnFailure: String = "sbtClearOnFailure"
   def OnFailure: String = "onFailure"
