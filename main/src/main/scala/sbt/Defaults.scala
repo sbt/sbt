@@ -72,7 +72,6 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
-import sbt.nio.FileStamp.Formats.seqPathFileStampJsonFormatter
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
@@ -688,27 +687,6 @@ object Defaults extends BuildCommon {
     },
      */
     externalHooks := IncOptions.defaultExternal,
-    compileSourceFileInputs := {
-      import sjsonnew.BasicJsonProtocol.mapFormat
-      compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
-      val version = scalaVersion.value
-      val versions = crossScalaVersions.value.toSet + version
-      val prev: Map[String, Seq[(java.nio.file.Path, sbt.nio.FileStamp)]] =
-        compileSourceFileInputs.previous.map(_.filterKeys(versions)).getOrElse(Map.empty)
-      prev + (version ->
-        ((unmanagedSources / inputFileStamps).value ++ (managedSourcePaths / outputFileStamps).value))
-    },
-    compileSourceFileInputs := compileSourceFileInputs.triggeredBy(compile).value,
-    compileBinaryFileInputs := {
-      import sjsonnew.BasicJsonProtocol.mapFormat
-      compile.value // ensures the inputFileStamps previous value is only set if compile succeeds.
-      val version = scalaVersion.value
-      val versions = crossScalaVersions.value.toSet + version
-      val prev: Map[String, Seq[(java.nio.file.Path, sbt.nio.FileStamp)]] =
-        compileBinaryFileInputs.previous.map(_.filterKeys(versions)).getOrElse(Map.empty)
-      prev + (version -> (dependencyClasspathFiles / outputFileStamps).value)
-    },
-    compileBinaryFileInputs := compileBinaryFileInputs.triggeredBy(compile).value,
     incOptions := {
       val old = incOptions.value
       old
