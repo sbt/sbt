@@ -10,6 +10,7 @@ interface CommandMessage {
 type InitCommand implements CommandMessage {
   token: String
   execId: String
+  skipAnalysis: Boolean @since("1.4.0")
 }
 
 ## Command to execute sbt command.

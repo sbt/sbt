@@ -44,12 +44,13 @@ object Serialization {
     command match {
       case x: InitCommand =>
         val execId = x.execId.getOrElse(UUID.randomUUID.toString)
+        val analysis = s""""skipAnalysis" : ${x.skipAnalysis.getOrElse(false)}"""
         val opt = x.token match {
           case Some(t) =>
             val json: JValue = Converter.toJson[String](t).get
             val v = CompactPrinter(json)
-            s"""{ "token": $v }"""
-          case None => "{}"
+            s"""{ "token": $v, $analysis }"""
+          case None => s"{ $analysis }"
         }
         s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "initialize", "params": { "initializationOptions": $opt } }"""
       case x: ExecCommand =>

@@ -47,21 +47,21 @@ private[sbt] object LanguageServerProtocol {
     ServerIntent(
       {
         case r: JsonRpcRequestMessage if r.method == "initialize" =>
-          if (authOptions(ServerAuthentication.Token)) {
-            val param = Converter.fromJson[InitializeParams](json(r)).get
-            val optionJson = param.initializationOptions.getOrElse(
-              throw LangServerError(
-                ErrorCodes.InvalidParams,
-                "initializationOptions is expected on 'initialize' param."
-              )
+          val param = Converter.fromJson[InitializeParams](json(r)).get
+          val optionJson = param.initializationOptions.getOrElse(
+            throw LangServerError(
+              ErrorCodes.InvalidParams,
+              "initializationOptions is expected on 'initialize' param."
             )
-            val opt = Converter.fromJson[InitializeOption](optionJson).get
+          )
+          val opt = Converter.fromJson[InitializeOption](optionJson).get
+          if (authOptions(ServerAuthentication.Token)) {
             val token = opt.token.getOrElse(sys.error("'token' is missing."))
             if (authenticate(token)) ()
             else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
           } else ()
           setInitialized(true)
-          appendExec("collectAnalyses", None)
+          if (!opt.skipAnalysis.getOrElse(false)) appendExec("collectAnalyses", None)
           jsonRpcRespond(InitializeResult(serverCapabilities), Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "textDocument/definition" =>

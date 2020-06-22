@@ -58,7 +58,7 @@ class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[Strin
     }
     // initiate handshake
     val execId = UUID.randomUUID.toString
-    val initCommand = InitCommand(tkn, Option(execId))
+    val initCommand = InitCommand(tkn, Option(execId), Some(true))
     conn.sendString(Serialization.serializeCommandAsJsonMessage(initCommand))
     conn
   }
