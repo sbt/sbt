@@ -25,6 +25,7 @@ import sbt.internal.bsp._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
+import sbt.internal.remotecache.RemoteCacheArtifact
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
 import sbt.io._
@@ -345,6 +346,8 @@ object Keys {
   val remoteCacheId = taskKey[String]("Unique identifier for the remote cache.")
   val remoteCacheProjectId = taskKey[ModuleID]("ModuleID used for remote cache JARs.")
   val remoteCacheIdCandidates = taskKey[Seq[String]]("Remote cache ids to pull.")
+  val remoteCacheArtifacts = taskKey[Seq[RemoteCacheArtifact]]("Remote cache artifact definitions.")
+  val remoteCacheArtifact = taskKey[RemoteCacheArtifact]("The remote cache artifact definition.")
   val pullRemoteCache = taskKey[Unit]("Retrieve remote cache.")
   val pushRemoteCache = taskKey[Unit]("Push remote cache to the cache server.")
   val pushRemoteCacheArtifact = settingKey[Boolean]("Enables publishing an artifact to remote cache.")

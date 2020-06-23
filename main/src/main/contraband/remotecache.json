@@ -1,0 +1,83 @@
+{
+  "codecNamespace": "sbt.internal.remotecache",
+  "fullCodec": "RemoteCacheArtifactCodec",
+  "types": [
+    {
+      "name": "RemoteCacheArtifact",
+      "namespace": "sbt.internal.remotecache",
+      "target": "Scala",
+      "type": "interface",
+      "fields": [
+        {
+          "name": "artifact",
+          "type": "sbt.librarymanagement.Artifact"
+        },
+        {
+          "name": "packaged",
+          "type": "sbt.TaskKey[java.io.File]"
+        }
+      ],
+      "types": [
+        {
+          "name": "PomRemoteCacheArtifact",
+          "namespace": "sbt.internal.remotecache",
+          "target": "Scala",
+          "type": "record",
+          "fields": []
+        },
+        {
+          "name": "CompileRemoteCacheArtifact",
+          "namespace": "sbt.internal.remotecache",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            {
+              "name": "extractDirectory",
+              "type": "java.io.File"
+            },
+            {
+              "name": "analysisFile",
+              "type": "java.io.File"
+            }
+          ]
+        },
+        {
+          "name": "TestRemoteCacheArtifact",
+          "namespace": "sbt.internal.remotecache",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            {
+              "name": "extractDirectory",
+              "type": "java.io.File"
+            },
+            {
+              "name": "analysisFile",
+              "type": "java.io.File"
+            },
+            {
+              "name": "testResult",
+              "type": "java.io.File"
+            }
+          ]
+        },
+        {
+          "name": "CustomRemoteCacheArtifact",
+          "namespace": "sbt.internal.remotecache",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            {
+              "name": "extractDirectory",
+              "type": "java.io.File"
+            },
+            {
+              "name": "preserveLastModified",
+              "type": "Boolean"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
