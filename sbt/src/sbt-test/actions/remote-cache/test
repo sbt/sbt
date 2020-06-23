@@ -1,0 +1,58 @@
+> compile
+> pushRemoteCache
+
+# Generated sources, compiled classes
+$ exists target/custom-artifact-gen/HelloWorld.scala
+$ exists target/scala-2.12/classes/HelloWorld.class
+$ exists target/scala-2.12/classes/MyClass.class
+$ exists target/scala-2.12/classes/MyClass$.class
+$ exists target/scala-2.12/zinc/inc_compile_2.12.zip
+$ exists target/scala-2.12/test-classes/MyTest.class
+$ exists target/scala-2.12/test-classes/MyTest$.class
+$ exists target/scala-2.12/test-zinc/inc_compile_2.12.zip
+
+# Pom file
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id.pom
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id.pom.md5
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id.pom.sha1
+
+# Compile
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar.md5
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar.sha1
+
+# Test
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-test.jar
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-test.jar.md5
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-test.jar.sha1
+
+# Custom artifact
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-custom-artifact.jar
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-custom-artifact.jar.md5
+$ exists remote-cache/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-custom-artifact.jar.sha1
+
+> clean
+
+$ absent target/custom-artifact-gen/HelloWorld.scala
+$ absent target/scala-2.12/classes/HelloWorld.class
+$ absent target/scala-2.12/classes/MyClass.class
+$ absent target/scala-2.12/classes/MyClass$.class
+$ absent target/scala-2.12/zinc/inc_compile_2.12.zip
+$ absent target/scala-2.12/test-classes/MyTest.class
+$ absent target/scala-2.12/test-classes/MyTest$.class
+$ absent target/scala-2.12/test-zinc/inc_compile_2.12.zip
+
+> pullRemoteCache
+
+# Files extracted from the cache artifacts
+$ exists target/custom-artifact-gen/HelloWorld.scala
+$ exists target/scala-2.12/classes/HelloWorld.class
+$ exists target/scala-2.12/classes/MyClass.class
+$ exists target/scala-2.12/classes/MyClass$.class
+$ exists target/scala-2.12/zinc/inc_compile_2.12.zip
+$ exists target/scala-2.12/test-classes/MyTest.class
+$ exists target/scala-2.12/test-classes/MyTest$.class
+$ exists target/scala-2.12/test-zinc/inc_compile_2.12.zip
+
+# Artifacts can be pushed twice (enabled overriding)
+> pushRemoteCache
