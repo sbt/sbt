@@ -357,7 +357,7 @@ object Keys {
 
   val bspTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
   val bspWorkspace = settingKey[Map[BuildTargetIdentifier, Scope]]("Mapping of BSP build targets to sbt scopes").withRank(DSetting)
-  val bspInternalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[String])]]("The project configurations that this configuration depends on, possibly transitivly").withRank(DSetting)
+  val bspInternalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[ConfigKey])]]("The project configurations that this configuration depends on, possibly transitivly").withRank(DSetting)
   val bspWorkspaceBuildTargets = taskKey[Seq[BuildTarget]]("List all the BSP build targets").withRank(DTask)
   val bspBuildTarget = taskKey[BuildTarget]("Description of the BSP build targets").withRank(DTask)
   val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)

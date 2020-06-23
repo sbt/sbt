@@ -25,29 +25,13 @@ import sjsonnew.support.scalajson.unsafe.Converter
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
-  private val bspTargetConfigs = Set("compile", "test")
   private val capabilities = BuildServerCapabilities(
     CompileProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true
   )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
-    bspWorkspace := Def.settingDyn {
-      val loadedBuild = Keys.loadedBuild.value
-      val scopes: Seq[Scope] = loadedBuild.allProjectRefs.flatMap {
-        case (ref, _) =>
-          bspTargetConfigs.toSeq.map(name => Scope.Global.in(ref, ConfigKey(name)))
-      }
-      Def.setting {
-        val targetIds = scopes
-          .map(_ / Keys.bspTargetIdentifier)
-          .map(_ ?) // bspTargetIdentifier might no be defined if the JvmPlugin is disabled
-          .join
-          .value
-          .flatten
-        targetIds.zip(scopes).toMap
-      }
-    }.value,
+    bspWorkspace := bspWorkspaceSetting.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
       val workspace = Keys.bspWorkspace.value
       val state = Keys.state.value
@@ -113,7 +97,7 @@ object BuildServerProtocol {
     bspBuildTargetScalacOptions / aggregate := false
   )
 
-  // This will be scoped to Compile, Test, etc
+  // This will be scoped to Compile, Test, IntegrationTest etc
   lazy val configSettings: Seq[Def.Setting[_]] = Seq(
     bspTargetIdentifier := {
       val ref = thisProjectRef.value
@@ -199,6 +183,26 @@ object BuildServerProtocol {
       )
     )
 
+  private def bspWorkspaceSetting: Def.Initialize[Map[BuildTargetIdentifier, Scope]] =
+    Def.settingDyn {
+      val loadedBuild = Keys.loadedBuild.value
+
+      // list all defined scopes for setting bspTargetIdentifier for all projects
+      val scopes: Seq[Scope] = for {
+        (ref, project) <- loadedBuild.allProjectRefs
+        setting <- project.settings
+        if setting.key.key.label == Keys.bspTargetIdentifier.key.label
+      } yield Scope.replaceThis(Scope.Global.in(ref))(setting.key.scope)
+
+      Def.setting {
+        val targetIds = scopes
+          .map(_ / Keys.bspTargetIdentifier)
+          .join
+          .value
+        targetIds.zip(scopes).toMap
+      }
+    }
+
   private def buildTargetTask: Def.Initialize[Task[BuildTarget]] = Def.taskDyn {
     val buildTargetIdentifier = Keys.bspTargetIdentifier.value
     val thisProject = Keys.thisProject.value
@@ -218,8 +222,8 @@ object BuildServerProtocol {
     val projectDependencies = for {
       (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
       config <- configs
-      if (dep != thisProjectRef || config != thisConfig.name) && bspTargetConfigs.contains(config)
-    } yield Keys.bspTargetIdentifier.in(dep, ConfigKey(config))
+      if dep != thisProjectRef || config.name != thisConfig.name
+    } yield Keys.bspTargetIdentifier.in(dep, config)
     val capabilities = BuildTargetCapabilities(canCompile = true, canTest = false, canRun = false)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
@@ -230,7 +234,7 @@ object BuildServerProtocol {
         tags,
         capabilities,
         BuildServerConnection.languages,
-        projectDependencies.join.value.toVector,
+        projectDependencies.join.value.distinct.toVector,
         dataKind = Some("scala"),
         data = Some(Converter.toJsonUnsafe(compileData)),
       )
@@ -246,7 +250,7 @@ object BuildServerProtocol {
     val internalDependencyClasspath = for {
       (ref, configs) <- bspInternalDependencyConfigurations.value
       config <- configs
-    } yield Keys.classDirectory.in(ref, ConfigKey(config))
+    } yield Keys.classDirectory.in(ref, config)
 
     Def.task {
       val classpath = internalDependencyClasspath.join.value.distinct ++
@@ -283,13 +287,17 @@ object BuildServerProtocol {
   }
 
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
-    val directDependencies = Keys.internalDependencyConfigurations.value
+    val directDependencies = Keys.internalDependencyConfigurations.value.map {
+      case (project, rawConfigs) =>
+        val configs = rawConfigs.flatMap(_.split(",")).map(ConfigKey.apply)
+        (project, configs)
+    }
     val ref = Keys.thisProjectRef.value
     val thisConfig = Keys.configuration.value
     val transitiveDependencies = for {
       (dep, configs) <- directDependencies
-      config <- configs if dep != ref || config != thisConfig.name
-    } yield Keys.bspInternalDependencyConfigurations.in(dep, ConfigKey(config))
+      config <- configs if dep != ref || config.name != thisConfig.name
+    } yield Keys.bspInternalDependencyConfigurations.in(dep, config)
     Def.setting {
       val allDependencies = directDependencies ++ transitiveDependencies.join.value.flatten
       allDependencies
