@@ -7,6 +7,8 @@
 
 package sbt
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import sbt.internal.util.AttributeKey
 
 /**
@@ -119,6 +121,8 @@ object ConcurrentRestrictions {
   private[this] def merge[A, B](m: Map[A, B], n: Map[A, B])(f: (B, B) => B): Map[A, B] =
     n.foldLeft(m) { case (acc, (a, b)) => update(acc, a, b)(f) }
 
+  private[this] val poolID = new AtomicInteger(1)
+
   /**
    * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution.
    * @return a pair, with _1 being the CompletionService and _2 a function to shutdown the service.
@@ -129,11 +133,12 @@ object ConcurrentRestrictions {
       tags: ConcurrentRestrictions[A],
       warn: String => Unit
   ): (CompletionService[A, R], () => Unit) = {
-    val pool = Executors.newCachedThreadPool()
-    (completionService[A, R](pool, tags, warn), () => {
-      pool.shutdownNow()
-      ()
-    })
+    val id = poolID.getAndIncrement
+    val i = new AtomicInteger(1)
+    val pool = Executors.newCachedThreadPool { r =>
+      new Thread(r, s"sbt-completion-service-pool-$id-${i.getAndIncrement()}")
+    }
+    (completionService[A, R](pool, tags, warn), () => { pool.shutdownNow(); () })
   }
 
   def completionService[A, R](

@@ -23,18 +23,25 @@ trait CompletionService[A, R] {
   def take(): R
 }
 
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{
   Callable,
-  CompletionService => JCompletionService,
   Executor,
-  Executors,
   ExecutorCompletionService,
+  Executors,
   RejectedExecutionException,
+  CompletionService => JCompletionService
 }
 
 object CompletionService {
+  val poolID = new AtomicInteger(1)
   def apply[A, T](poolSize: Int): (CompletionService[A, T], () => Unit) = {
-    val pool = Executors.newFixedThreadPool(poolSize)
+    val i = new AtomicInteger(1)
+    val id = poolID.getAndIncrement()
+    val pool = Executors.newFixedThreadPool(
+      poolSize,
+      (r: Runnable) => new Thread(r, s"sbt-completion-thread-$id-${i.getAndIncrement}")
+    )
     (apply[A, T](pool), () => { pool.shutdownNow(); () })
   }
   def apply[A, T](x: Executor): CompletionService[A, T] =
