@@ -9,10 +9,13 @@ package sbt
 package internal
 package client
 
-import java.net.{ SocketTimeoutException, Socket }
+import java.io.IOException
+import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
+
 import sbt.protocol._
 import sbt.internal.protocol._
+import sbt.internal.util.ReadJsonFromInputStream
 
 abstract class ServerConnection(connection: Socket) {
 
@@ -25,69 +28,29 @@ abstract class ServerConnection(connection: Socket) {
   val thread = new Thread(s"sbt-serverconnection-${connection.getPort}") {
     override def run(): Unit = {
       try {
-        val readBuffer = new Array[Byte](4096)
         val in = connection.getInputStream
         connection.setSoTimeout(5000)
-        var buffer: Vector[Byte] = Vector.empty
-        def readFrame: Vector[Byte] = {
-          def getContentLength: Int = {
-            readLine.drop(16).toInt
-          }
-          val l = getContentLength
-          readLine
-          readLine
-          readContentLength(l)
-        }
-
-        def readLine: String = {
-          if (buffer.isEmpty) {
-            val bytesRead = in.read(readBuffer)
-            if (bytesRead > 0) {
-              buffer = buffer ++ readBuffer.toVector.take(bytesRead)
-            }
-          }
-          val delimPos = buffer.indexOf(delimiter)
-          if (delimPos > 0) {
-            val chunk0 = buffer.take(delimPos)
-            buffer = buffer.drop(delimPos + 1)
-            // remove \r at the end of line.
-            val chunk1 = if (chunk0.lastOption contains retByte) chunk0.dropRight(1) else chunk0
-            new String(chunk1.toArray, "utf-8")
-          } else readLine
-        }
-
-        def readContentLength(length: Int): Vector[Byte] = {
-          if (buffer.size < length) {
-            val bytesRead = in.read(readBuffer)
-            if (bytesRead > 0) {
-              buffer = buffer ++ readBuffer.toVector.take(bytesRead)
-            } else ()
-          } else ()
-          if (length <= buffer.size) {
-            val chunk = buffer.take(length)
-            buffer = buffer.drop(length)
-            chunk
-          } else readContentLength(length)
-        }
-
         while (running.get) {
           try {
-            val frame = readFrame
-            Serialization
-              .deserializeJsonMessage(frame)
-              .fold(
-                { errorDesc =>
-                  val s = frame.mkString("") // new String(: Array[Byte], "UTF-8")
-                  println(s"Got invalid chunk from server: $s \n" + errorDesc)
-                },
-                _ match {
-                  case msg: JsonRpcRequestMessage      => onRequest(msg)
-                  case msg: JsonRpcResponseMessage     => onResponse(msg)
-                  case msg: JsonRpcNotificationMessage => onNotification(msg)
-                }
-              )
+            val frame = ReadJsonFromInputStream(in, running, None)
+            if (running.get) {
+              Serialization
+                .deserializeJsonMessage(frame)
+                .fold(
+                  { errorDesc =>
+                    val s = frame.mkString("") // new String(: Array[Byte], "UTF-8")
+                    println(s"Got invalid chunk from server: $s \n" + errorDesc)
+                  },
+                  _ match {
+                    case msg: JsonRpcRequestMessage      => onRequest(msg)
+                    case msg: JsonRpcResponseMessage     => onResponse(msg)
+                    case msg: JsonRpcNotificationMessage => onNotification(msg)
+                  }
+                )
+            }
           } catch {
             case _: SocketTimeoutException => // its ok
+            case e: IOException            => running.set(false)
           }
         }
       } finally {

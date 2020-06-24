@@ -9,6 +9,7 @@ package sbt
 package internal
 package server
 
+import java.io.IOException
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -19,14 +20,13 @@ import sbt.internal.protocol.{
   JsonRpcResponseError,
   JsonRpcResponseMessage
 }
-import sbt.internal.util.ObjectEvent
+import sbt.internal.util.ReadJsonFromInputStream
 import sbt.internal.util.complete.Parser
 import sbt.protocol._
 import sbt.util.Logger
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
-import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -40,17 +40,11 @@ final class NetworkChannel(
     handlers: Seq[ServerHandler],
     val log: Logger
 ) extends CommandChannel { self =>
-  import NetworkChannel._
 
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
-  private val RetByte = '\r'.toByte
   private val out = connection.getOutputStream
   private var initialized = false
-  private val Curly = '{'.toByte
-  private val ContentLength = """^Content\-Length\:\s*(\d+)""".r
-  private val ContentType = """^Content\-Type\:\s*(.+)""".r
-  private var _contentType: String = ""
   private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
 
   private lazy val callback: ServerCallback = new ServerCallback {
@@ -81,9 +75,6 @@ final class NetworkChannel(
       self.onCancellationRequest(execId, crp)
   }
 
-  def setContentType(ct: String): Unit = synchronized { _contentType = ct }
-  def contentType: String = _contentType
-
   protected def authenticate(token: String): Boolean = instance.authenticate(token)
 
   protected def setInitialized(value: Boolean): Unit = initialized = value
@@ -91,105 +82,26 @@ final class NetworkChannel(
   protected def authOptions: Set[ServerAuthentication] = auth
 
   val thread = new Thread(s"sbt-networkchannel-${connection.getPort}") {
-    var contentLength: Int = 0
-    var state: ChannelState = SingleLine
-
+    private val ct = "Content-Type: "
+    private val x1 = "application/sbt-x1"
     override def run(): Unit = {
       try {
-        val readBuffer = new Array[Byte](4096)
-        val in = connection.getInputStream
         connection.setSoTimeout(5000)
-        var buffer: Vector[Byte] = Vector.empty
-        var bytesRead = 0
-        def resetChannelState(): Unit = {
-          contentLength = 0
-          state = SingleLine
-        }
-        def tillEndOfLine: Option[Vector[Byte]] = {
-          val delimPos = buffer.indexOf(delimiter)
-          if (delimPos > 0) {
-            val chunk0 = buffer.take(delimPos)
-            buffer = buffer.drop(delimPos + 1)
-            // remove \r at the end of line.
-            if (chunk0.size > 0 && chunk0.indexOf(RetByte) == chunk0.size - 1)
-              Some(chunk0.dropRight(1))
-            else Some(chunk0)
-          } else None // no EOL yet, so skip this turn.
-        }
 
-        def tillContentLength: Option[Vector[Byte]] = {
-          if (contentLength <= buffer.size) {
-            val chunk = buffer.take(contentLength)
-            buffer = buffer.drop(contentLength)
-            resetChannelState()
-            Some(chunk)
-          } else None // have not read enough yet, so skip this turn.
-        }
-
-        @tailrec def process(): Unit = {
-          // handle un-framing
-          state match {
-            case SingleLine =>
-              val line = tillEndOfLine
-              line match {
-                case Some(chunk) =>
-                  chunk.headOption match {
-                    case None        => // ignore blank line
-                    case Some(Curly) =>
-                      // When Content-Length header is not found, interpret the line as JSON message.
-                      handleBody(chunk)
-                      process()
-                    case Some(_) =>
-                      val str = (new String(chunk.toArray, "UTF-8")).trim
-                      handleHeader(str) match {
-                        case Some(_) =>
-                          state = InHeader
-                          process()
-                        case _ =>
-                          val msg = s"got invalid chunk from client: $str"
-                          log.error(msg)
-                          logMessage("error", msg)
-                      }
-                  }
-                case _ => ()
-              }
-            case InHeader =>
-              tillEndOfLine match {
-                case Some(chunk) =>
-                  val str = (new String(chunk.toArray, "UTF-8")).trim
-                  if (str == "") {
-                    state = InBody
-                    process()
-                  } else
-                    handleHeader(str) match {
-                      case Some(_) => process()
-                      case _ =>
-                        log.error("Got invalid header from client: " + str)
-                        resetChannelState()
-                    }
-                case _ => ()
-              }
-            case InBody =>
-              tillContentLength match {
-                case Some(chunk) =>
-                  handleBody(chunk)
-                  process()
-                case _ => ()
-              }
-          }
-        }
-
+        val in = connection.getInputStream
         // keep going unless the socket has closed
-        while (bytesRead != -1 && running.get) {
+        while (running.get) {
           try {
-            bytesRead = in.read(readBuffer)
-            // log.debug(s"bytesRead: $bytesRead")
-            if (bytesRead > 0) {
-              buffer = buffer ++ readBuffer.toVector.take(bytesRead)
+            val onHeader: String => Unit = line => {
+              if (line.startsWith(ct) && line.contains(x1)) {
+                logMessage("error", s"server protocol $x1 is no longer supported")
+              }
             }
-            process()
+            val content = ReadJsonFromInputStream(in, running, Some(onHeader))
+            if (content.nonEmpty) handleBody(content)
           } catch {
-            case _: SocketTimeoutException => // its ok
+            case _: SocketTimeoutException                => // its ok
+            case _: IOException | _: InterruptedException => running.set(false)
           }
         } // while
       } finally {
@@ -213,7 +125,7 @@ final class NetworkChannel(
         case (f, i) => f orElse i.onNotification
       }
 
-    def handleBody(chunk: Vector[Byte]): Unit = {
+    def handleBody(chunk: Seq[Byte]): Unit = {
       Serialization.deserializeJsonMessage(chunk) match {
         case Right(req: JsonRpcRequestMessage) =>
           try {
@@ -238,22 +150,6 @@ final class NetworkChannel(
             s"got invalid chunk from client (${new String(chunk.toArray, "UTF-8")}): $errorDesc"
           log.error(msg)
           logMessage("error", msg)
-      }
-    }
-
-    def handleHeader(str: String): Option[Unit] = {
-      val sbtX1Protocol = "application/sbt-x1"
-      str match {
-        case ContentLength(len) =>
-          contentLength = len.toInt
-          Some(())
-        case ContentType(ct) =>
-          if (ct == sbtX1Protocol) {
-            logMessage("error", s"server protocol $ct is no longer supported")
-          }
-          setContentType(ct)
-          Some(())
-        case _ => None
       }
     }
   }
@@ -320,14 +216,6 @@ final class NetworkChannel(
       case entry: ExecStatusEvent => logMessage("debug", entry.status)
       case _                      => ()
     }
-  }
-
-  /**
-   * This publishes object events. The type information has been
-   * erased because it went through logging.
-   */
-  private[sbt] def respond(event: ObjectEvent[_]): Unit = {
-    onObjectEvent(event)
   }
 
   def publishBytes(event: Array[Byte]): Unit = publishBytes(event, false)
@@ -489,28 +377,6 @@ final class NetworkChannel(
     log.info("Shutting down client connection")
     running.set(false)
     out.close()
-  }
-
-  /**
-   * This reacts to various events that happens inside sbt, sometime
-   * in response to the previous requests.
-   * The type information has been erased because it went through logging.
-   */
-  protected def onObjectEvent(event: ObjectEvent[_]): Unit = {
-    // import sbt.internal.langserver.codec.JsonProtocol._
-
-    val msgContentType = event.contentType
-    msgContentType match {
-      // LanguageServerReporter sends PublishDiagnosticsParams
-      case "sbt.internal.langserver.PublishDiagnosticsParams" =>
-      // val p = event.message.asInstanceOf[PublishDiagnosticsParams]
-      // jsonRpcNotify("textDocument/publishDiagnostics", p)
-      case "xsbti.Problem" =>
-        () // ignore
-      case _ =>
-        // log.debug(event)
-        ()
-    }
   }
 
   /** Respond back to Language Server's client. */

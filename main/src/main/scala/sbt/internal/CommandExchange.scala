@@ -17,7 +17,7 @@ import sbt.BasicKeys._
 import sbt.nio.Watch.NullLogger
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.server._
-import sbt.internal.util.{ ConsoleOut, MainAppender, ObjectEvent, Terminal }
+import sbt.internal.util.{ ConsoleOut, MainAppender, Terminal }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.protocol.{ ExecStatusEvent, LogEvent }
@@ -269,19 +269,6 @@ private[sbt] final class CommandExchange {
 
       tryTo(_.respond(event, event.execId))(channel)
     }
-  }
-
-  /**
-   * This publishes object events. The type information has been
-   * erased because it went through logging.
-   */
-  private[sbt] def respondObjectEvent(event: ObjectEvent[_]): Unit = {
-    for {
-      source <- event.channelName
-      channel <- channels.collectFirst {
-        case c: NetworkChannel if c.name == source => c
-      }
-    } tryTo(_.respond(event))(channel)
   }
 
   def prompt(event: ConsolePromptEvent): Unit = {
