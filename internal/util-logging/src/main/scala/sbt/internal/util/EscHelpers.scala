@@ -7,6 +7,9 @@
 
 package sbt.internal.util
 
+import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
+
 object EscHelpers {
 
   /** Escape character, used to introduce an escape sequence. */
@@ -83,6 +86,110 @@ object EscHelpers {
         }
       nextESC(s, next, sb)
     }
+  }
+  private[this] val esc = 1
+  private[this] val csi = 2
+  def cursorPosition(s: String): Int = {
+    val bytes = s.getBytes
+    var i = 0
+    var index = 0
+    var state = 0
+    val digit = new ArrayBuffer[Byte]
+    var leftDigit = -1
+    while (i < bytes.length) {
+      bytes(i) match {
+        case 27 => state = esc
+        case b if (state == esc || state == csi) && b >= 48 && b < 58 =>
+          state = csi
+          digit += b
+        case '[' if state == esc => state = csi
+        case 8 =>
+          state = 0
+          index = index - 1
+        case b if state == csi =>
+          leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
+          state = 0
+          b.toChar match {
+            case 'D' => index = math.max(index - leftDigit, 0)
+            case 'C' => index += leftDigit
+            case 'K' =>
+            case 'J' => if (leftDigit == 2) index = 0
+            case 'm' =>
+            case ';' => state = csi
+            case _   =>
+          }
+          digit.clear()
+        case _ =>
+          index += 1
+      }
+      i += 1
+    }
+    index
+  }
+  def stripMoves(s: String): String = {
+    val bytes = s.getBytes
+    val res = Array.fill[Byte](bytes.length)(0)
+    var index = 0
+    var lastEscapeIndex = -1
+    var state = 0
+    def set(b: Byte) = {
+      res(index) = b
+      index += 1
+    }
+    bytes.foreach { b =>
+      set(b)
+      b match {
+        case 27 =>
+          state = esc
+          lastEscapeIndex = math.max(0, index)
+        case b if b == '[' && state == esc => state = csi
+        case 'm'                           => state = 0
+        case b if state == csi && (b < 48 || b >= 58) && b != ';' =>
+          state = 0
+          index = math.max(0, lastEscapeIndex - 1)
+        case b =>
+      }
+    }
+    new String(res, 0, index)
+  }
+  def stripColorsAndMoves(s: String): String = {
+    val bytes = s.getBytes
+    val res = Array.fill[Byte](bytes.length)(0)
+    var i = 0
+    var index = 0
+    var state = 0
+    var limit = 0
+    val digit = new ArrayBuffer[Byte]
+    var leftDigit = -1
+    bytes.foreach {
+      case 27 => state = esc
+      case b if (state == esc || state == csi) && b >= 48 && b < 58 =>
+        state = csi
+        digit += b
+      case '[' if state == esc => state = csi
+      case 8 =>
+        state = 0
+        index = math.max(index - 1, 0)
+      case b if state == csi =>
+        leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
+        state = 0
+        b.toChar match {
+          case 'D' => index = math.max(index - leftDigit, 0)
+          case 'C' => index = math.min(limit, math.min(index + leftDigit, res.length - 1))
+          case 'K' | 'J' =>
+            if (leftDigit > 0) (0 until index).foreach(res(_) = 32)
+            else res(index) = 32
+          case 'm' =>
+          case ';' => state = csi
+          case _   =>
+        }
+        digit.clear()
+      case b =>
+        res(index) = b
+        index += 1
+        limit = math.max(limit, index)
+    }
+    new String(res, 0, limit)
   }
 
   /** Skips the escape sequence starting at `i-1`.  `i` should be positioned at the character after the ESC that starts the sequence. */
