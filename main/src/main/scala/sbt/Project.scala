@@ -30,6 +30,7 @@ import Keys.{
   serverConnectionType,
   fullServerHandlers,
   logLevel,
+  windowsServerSecurityLevel,
 }
 import Scope.{ Global, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
@@ -523,9 +524,11 @@ object Project extends ProjectExtra {
       s.definedCommands,
       projectCommand
     )
+    val winSecurityLevel = get(windowsServerSecurityLevel).getOrElse(2)
     val newAttrs =
       s.attributes
         .put(historyPath.key, history)
+        .put(windowsServerSecurityLevel.key, winSecurityLevel)
         .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)

@@ -64,7 +64,13 @@ private[sbt] object Server {
             connection.connectionType match {
               case ConnectionType.Local if isWindows =>
                 // Named pipe already has an exclusive lock.
-                addServerError(new Win32NamedPipeServerSocket(pipeName))
+                addServerError(
+                  new Win32NamedPipeServerSocket(
+                    pipeName,
+                    false,
+                    connection.windowsServerSecurityLevel
+                  )
+                )
               case ConnectionType.Local =>
                 val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
                 val path = socketfile.getAbsolutePath
@@ -228,6 +234,7 @@ private[sbt] case class ServerConnection(
     pipeName: String,
     bspConnectionFile: File,
     appConfiguration: AppConfiguration,
+    windowsServerSecurityLevel: Int
 ) {
   def shortName: String = {
     connectionType match {

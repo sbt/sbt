@@ -76,6 +76,13 @@ object BasicKeys {
       10000
     )
 
+  val windowsServerSecurityLevel =
+    AttributeKey[Int](
+      "windowsServerSecurityLevel",
+      "Configures the security level of the named pipe. Values: 0 - No security; 1 - Logon user only; 2 - Process owner only",
+      10000
+    )
+
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.
   private[sbt] val serverLogLevel =

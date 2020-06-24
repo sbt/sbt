@@ -156,6 +156,7 @@ private[sbt] final class CommandExchange {
       s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
     lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
+    lazy val win32Level = s.get(windowsServerSecurityLevel).getOrElse(2)
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
@@ -193,6 +194,7 @@ private[sbt] final class CommandExchange {
         pipeName,
         bspConnectionFile,
         s.configuration,
+        win32Level,
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out

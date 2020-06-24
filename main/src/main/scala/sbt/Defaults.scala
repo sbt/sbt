@@ -17,6 +17,7 @@ import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
+import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import sbt.Keys._
 import sbt.Project.{
@@ -386,6 +387,7 @@ object Defaults extends BuildCommon {
         else Set()
       },
       serverHandlers :== Nil,
+      windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || SysProp.ci,
