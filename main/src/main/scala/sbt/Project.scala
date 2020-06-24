@@ -24,6 +24,7 @@ import Keys.{
   templateResolverInfos,
   autoStartServer,
   serverHost,
+  serverIdleTimeout,
   serverLog,
   serverPort,
   serverAuthentication,
@@ -52,6 +53,7 @@ import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
 
 import language.experimental.macros
+import scala.concurrent.duration.FiniteDuration
 
 sealed trait ProjectDefinition[PR <: ProjectReference] {
 
@@ -515,6 +517,7 @@ object Project extends ProjectExtra {
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
+    val timeout: Option[Option[FiniteDuration]] = get(serverIdleTimeout)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
     val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
@@ -534,6 +537,7 @@ object Project extends ProjectExtra {
         .setCond(serverHost.key, host)
         .setCond(serverAuthentication.key, authentication)
         .setCond(serverConnectionType.key, connectionType)
+        .setCond(serverIdleTimeout.key, timeout)
         .put(historyPath.key, history)
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)

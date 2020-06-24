@@ -71,14 +71,36 @@ private[sbt] final class CommandExchange {
       state: Option[State],
       logger: Logger
   ): Exec = {
-    @tailrec def impl(deadline: Option[Deadline]): Exec = {
+    val idleDeadline = state.flatMap { s =>
+      lastState.set(s)
+      s.get(BasicKeys.serverIdleTimeout) match {
+        case Some(Some(d)) => Some(d.fromNow)
+        case _             => None
+      }
+    }
+    @tailrec def impl(gcDeadline: Option[Deadline], idleDeadline: Option[Deadline]): Exec = {
       state.foreach(s => prompt(ConsolePromptEvent(s)))
-      def poll: Option[Exec] =
+      def poll: Option[Exec] = {
+        val deadline = gcDeadline.toSeq ++ idleDeadline match {
+          case s @ Seq(_, _) => Some(s.min)
+          case s             => s.headOption
+        }
         Option(deadline match {
           case Some(d: Deadline) =>
-            commandQueue.poll(d.timeLeft.toMillis + 1, TimeUnit.MILLISECONDS)
+            commandQueue.poll(d.timeLeft.toMillis + 1, TimeUnit.MILLISECONDS) match {
+              case null if idleDeadline.fold(false)(_.isOverdue) =>
+                state.foreach { s =>
+                  s.get(BasicKeys.serverIdleTimeout) match {
+                    case Some(Some(d)) => s.log.info(s"sbt idle timeout of $d expired")
+                    case _             =>
+                  }
+                }
+                Exec("exit", Some(CommandSource(ConsoleChannel.defaultName)))
+              case x => x
+            }
           case _ => commandQueue.take
         })
+      }
       poll match {
         case Some(exec) if exec.source.fold(true)(s => channels.exists(_.name == s.channelName)) =>
           exec.commandLine match {
@@ -92,24 +114,24 @@ private[sbt] final class CommandExchange {
               } match {
                 case Some(c) if c.isAttached =>
                   c.shutdown(false)
-                  impl(deadline)
+                  impl(gcDeadline, idleDeadline)
                 case _ => exec
               }
             case _ => exec
           }
         case None =>
-          val newDeadline = if (deadline.fold(false)(_.isOverdue())) {
+          val newDeadline = if (gcDeadline.fold(false)(_.isOverdue())) {
             GCUtil.forceGcWithInterval(interval, logger)
             None
-          } else deadline
-          impl(newDeadline)
+          } else gcDeadline
+          impl(newDeadline, idleDeadline)
       }
     }
     // Do not manually run GC until the user has been idling for at least the min gc interval.
     impl(interval match {
       case d: FiniteDuration => Some(d.fromNow)
       case _                 => None
-    })
+    }, idleDeadline)
   }
 
   private def addConsoleChannel(): Unit =

@@ -378,6 +378,7 @@ object Defaults extends BuildCommon {
       interactionService :== CommandLineUIService,
       autoStartServer := true,
       serverHost := "127.0.0.1",
+      serverIdleTimeout := Some(new FiniteDuration(7, TimeUnit.DAYS)),
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
         .## % 1000),

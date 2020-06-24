@@ -16,6 +16,7 @@ import sbt.internal.server.ServerHandler
 import sbt.internal.util.{ AttributeKey, Terminal }
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
+import scala.concurrent.duration.FiniteDuration
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -80,6 +81,13 @@ object BasicKeys {
     AttributeKey[Int](
       "windowsServerSecurityLevel",
       "Configures the security level of the named pipe. Values: 0 - No security; 1 - Logon user only; 2 - Process owner only",
+      10000
+    )
+
+  val serverIdleTimeout =
+    AttributeKey[Option[FiniteDuration]](
+      "serverIdleTimeOut",
+      "If set to a defined value, sbt server will exit if it goes at least the specified duration without receiving any commands.",
       10000
     )
 
