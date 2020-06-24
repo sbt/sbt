@@ -205,6 +205,7 @@ case class TestServer(
   )
 
   def resetConnection() = {
+    Option(sk).foreach(_.close())
     sk = ClientSocket.socket(portfile)._1
     out = sk.getOutputStream
     in = sk.getInputStream
