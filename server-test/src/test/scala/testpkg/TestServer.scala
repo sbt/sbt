@@ -16,6 +16,7 @@ import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol.ClientSocket
 
+import scala.annotation.tailrec
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
@@ -267,28 +268,31 @@ case class TestServer(
 
   final def waitForString(duration: FiniteDuration)(f: String => Boolean): Boolean = {
     val deadline = duration.fromNow
-    def impl(): Boolean = {
-      try {
-        Await.result(readFrame, deadline.timeLeft).fold(false)(f) || impl
+    @tailrec def impl(): Boolean = {
+      val res = try {
+        Await.result(readFrame, deadline.timeLeft).fold(false)(f)
       } catch {
         case _: TimeoutException =>
           resetConnection() // create a new connection to invalidate the running readFrame future
           false
       }
+      if (!res) impl() else !deadline.isOverdue()
     }
     impl()
   }
 
   final def neverReceive(duration: FiniteDuration)(f: String => Boolean): Boolean = {
     val deadline = duration.fromNow
+    @tailrec
     def impl(): Boolean = {
-      try {
-        Await.result(readFrame, deadline.timeLeft).fold(true)(s => !f(s)) && impl
+      val res = try {
+        Await.result(readFrame, deadline.timeLeft).fold(true)(s => !f(s))
       } catch {
         case _: TimeoutException =>
           resetConnection() // create a new connection to invalidate the running readFrame future
           true
       }
+      if (res && !deadline.isOverdue) impl else res || !deadline.isOverdue
     }
     impl()
   }
