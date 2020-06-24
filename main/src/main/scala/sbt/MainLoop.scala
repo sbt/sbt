@@ -10,7 +10,7 @@ package sbt
 import java.io.PrintWriter
 import java.util.Properties
 
-import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
+import sbt.BasicCommandStrings.{ SetTerminal, StashOnFailure, networkExecPrefix }
 import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
@@ -219,7 +219,12 @@ object MainLoop {
       state.get(CheckBuildSourcesKey) match {
         case Some(cbs) =>
           if (!cbs.needsReload(state, exec.commandLine)) process()
-          else Exec("reload", None, None) +: exec +: state.remove(CheckBuildSourcesKey)
+          else {
+            if (exec.commandLine.startsWith(SetTerminal))
+              exec +: Exec("reload", None, None) +: state.remove(CheckBuildSourcesKey)
+            else
+              Exec("reload", None, None) +: exec +: state.remove(CheckBuildSourcesKey)
+          }
         case _ => process()
       }
     } catch {

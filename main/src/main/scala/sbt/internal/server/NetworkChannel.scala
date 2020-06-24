@@ -246,12 +246,23 @@ final class NetworkChannel(
       err: JsonRpcResponseError,
       execId: Option[String]
   ): Unit = this.synchronized {
+    def respond(id: String) = {
+      pendingRequests -= id
+      jsonRpcRespondError(id, err)
+    }
+    def error(): Unit = logMessage("error", s"Error ${err.code}: ${err.message}")
     execId match {
-      case Some(id) if pendingRequests.contains(id) =>
-        pendingRequests -= id
-        jsonRpcRespondError(id, err)
-      case _ =>
-        logMessage("error", s"Error ${err.code}: ${err.message}")
+      case Some(id) if pendingRequests.contains(id) => respond(id)
+      // This handles multi commands from the network that were remapped to a different
+      // exec id for reporting purposes.
+      case Some(id) if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
+        StandardMain.exchange.withState { s =>
+          s.get(BasicCommands.execMap).flatMap(_.collectFirst { case (k, `id`) => k }) match {
+            case Some(id) if pendingRequests.contains(id) => respond(id)
+            case _                                        => error()
+          }
+        }
+      case _ => error()
     }
   }
 
@@ -267,14 +278,27 @@ final class NetworkChannel(
       event: A,
       execId: Option[String]
   ): Unit = this.synchronized {
+    def error(): Unit = {
+      val msg =
+        s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
+      log.debug(msg)
+    }
+    def respond(id: String): Unit = {
+      pendingRequests -= id
+      jsonRpcRespond(event, id)
+    }
     execId match {
-      case Some(id) if pendingRequests.contains(id) =>
-        pendingRequests -= id
-        jsonRpcRespond(event, id)
-      case _ =>
-        log.debug(
-          s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
-        )
+      case Some(id) if pendingRequests.contains(id) => respond(id)
+      // This handles multi commands from the network that were remapped to a different
+      // exec id for reporting purposes.
+      case Some(id) if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
+        StandardMain.exchange.withState { s =>
+          s.get(BasicCommands.execMap).flatMap(_.collectFirst { case (k, `id`) => k }) match {
+            case Some(id) if pendingRequests.contains(id) => respond(id)
+            case _                                        => error()
+          }
+        }
+      case _ => error()
     }
   }
 
@@ -436,6 +460,11 @@ final class NetworkChannel(
         Option(EvaluateTask.currentlyRunningEngine.get) match {
           case Some((state, runningEngine)) =>
             val runningExecId = state.currentExecId.getOrElse("")
+            val expected = StandardMain.exchange.withState(
+              _.get(BasicCommands.execMap)
+                .flatMap(s => s.get(crp.id) orElse s.get("\u2668" + crp.id))
+                .getOrElse(crp.id)
+            )
 
             def checkId(): Boolean = {
               if (runningExecId.startsWith("\u2668")) {
@@ -446,7 +475,7 @@ final class NetworkChannel(
                   case (Some(id), Some(eid)) => id == eid
                   case _                     => false
                 }
-              } else runningExecId == crp.id
+              } else runningExecId == expected
             }
 
             // direct comparison on strings and

@@ -641,6 +641,58 @@ object NetworkClient {
     new Arguments(new File("").getCanonicalFile, sbtArguments, commandArgs, sbtScript)
   }
 
+  def client(
+      baseDirectory: File,
+      args: Array[String],
+      inputStream: InputStream,
+      errorStream: PrintStream,
+      printStream: PrintStream,
+      useJNI: Boolean
+  ): Int = {
+    val client =
+      simpleClient(
+        NetworkClient.parseArgs(args).withBaseDirectory(baseDirectory),
+        inputStream,
+        errorStream,
+        printStream,
+        useJNI,
+      )
+    try {
+      client.connect(log = true)
+      client.run()
+    } catch { case _: Exception => 1 } finally client.close()
+  }
+  private def simpleClient(
+      arguments: Arguments,
+      inputStream: InputStream,
+      errorStream: PrintStream,
+      printStream: PrintStream,
+      useJNI: Boolean,
+  ): NetworkClient =
+    new NetworkClient(
+      NetworkClient.simpleConsoleInterface(printStream),
+      arguments,
+      inputStream,
+      errorStream,
+      printStream,
+      useJNI
+    )
+  def main(useJNI: Boolean, args: Array[String]): Unit = {
+    val hook = new Thread(() => {
+      System.out.print(ConsoleAppender.ClearScreenAfterCursor)
+      System.out.flush()
+    })
+    Runtime.getRuntime.addShutdownHook(hook)
+    System.exit(Terminal.withStreams {
+      val base = new File("").getCanonicalFile()
+      try client(base, args, System.in, System.err, System.out, useJNI)
+      finally {
+        Runtime.getRuntime.removeShutdownHook(hook)
+        hook.run()
+      }
+    })
+  }
+
   def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Int =
     try {
       val client = new NetworkClient(configuration, parseArgs(arguments.toArray))

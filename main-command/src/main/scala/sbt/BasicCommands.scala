@@ -61,6 +61,9 @@ object BasicCommands {
     client,
     read,
     alias,
+    reportResultsCommand,
+    mapExecCommand,
+    completeExecCommand,
   )
 
   def nop: Command = Command.custom(s => success(() => s))
@@ -544,4 +547,42 @@ object BasicCommands {
       "is-command-alias",
       "Internal: marker for Commands created as aliases for another command."
     )
+
+  private[sbt] def reportParser(key: String) =
+    (key: Parser[String]).examples() ~> " ".examples() ~> matched(any.*).examples()
+  def reportResultsCommand =
+    Command.arb(_ => reportParser(ReportResult)) { (state, id) =>
+      val newState = state.get(execMap) match {
+        case Some(m) => state.put(execMap, m - id)
+        case _       => state
+      }
+      newState.get(execResults) match {
+        case Some(m) if m.contains(id) => state.put(execResults, m - id)
+        case _                         => state.fail
+      }
+    }
+  def mapExecCommand =
+    Command.arb(_ => reportParser(MapExec)) { (state, mapping) =>
+      mapping.split(" ") match {
+        case Array(key, value) =>
+          state.get(execMap) match {
+            case Some(m) => state.put(execMap, m + (key -> value))
+            case None    => state.put(execMap, Map(key -> value))
+          }
+        case _ => state
+      }
+    }
+  def completeExecCommand =
+    Command.arb(_ => reportParser(CompleteExec)) { (state, id) =>
+      val newState = state.get(execResults) match {
+        case Some(m) => state.put(execResults, m + (id -> true))
+        case _       => state.put(execResults, Map(id -> true))
+      }
+      newState.get(execMap) match {
+        case Some(m) => newState.put(execMap, m - id)
+        case _       => newState
+      }
+    }
+  private[sbt] val execResults = AttributeKey[Map[String, Boolean]]("execResults", Int.MaxValue)
+  private[sbt] val execMap = AttributeKey[Map[String, String]]("execMap", Int.MaxValue)
 }

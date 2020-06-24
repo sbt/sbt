@@ -16,6 +16,15 @@ import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
 import sbt.internal.util.complete.{ HistoryCommands, Parser }
 import sbt.internal.util._
 import sbt.util.Logger
+import BasicCommandStrings.{
+  CompleteExec,
+  MapExec,
+  PopOnFailure,
+  ReportResult,
+  SetTerminal,
+  StashOnFailure,
+  networkExecPrefix,
+}
 
 /**
  * Data structure representing all command execution information.
@@ -273,8 +282,43 @@ object State {
         f(cmd, s1)
       }
       s.remainingCommands match {
-        case Nil     => exit(true)
-        case x :: xs => runCmd(x, xs)
+        case Nil => exit(true)
+        case x :: xs =>
+          (x.execId, x.source) match {
+            /*
+             * If the command is coming from a network source, it might be a multi-command. To handle
+             * that, we need to give the command a new exec id and wrap some commands around the
+             * actual command that are used to report it. To make this work, we add a map of exec
+             * results as well as a mapping of exec ids to the exec id that spawned the exec.
+             * We add a command that fills the result map for the original exec. If the command fails,
+             * that map filling command (called sbtCompleteExec) is skipped so the map is never filled
+             * for the original event. The report command (called sbtReportResult) checks the result
+             * map and, if it finds an entry, it succeeds and removes the entry. Otherwise it fails.
+             * The exec for the report command is given the original exec id so the result reported
+             * to the client will be the result of the report command (which should correspond to
+             * the result of the underlying multi-command, which succeeds only if all of the commands
+             * succeed)
+             *
+             */
+            case (Some(id), Some(s))
+                if s.channelName.startsWith("network") &&
+                  !x.commandLine.startsWith(ReportResult) &&
+                  !x.commandLine.startsWith(networkExecPrefix) &&
+                  !id.startsWith(networkExecPrefix) =>
+              val newID = networkExecPrefix + Exec.newExecId
+              val cmd = x.withExecId(newID)
+              val map = Exec(s"$MapExec $id $newID", None)
+              val complete = Exec(s"$CompleteExec $id", None)
+              val report = Exec(s"$ReportResult $id", Some(id), x.source)
+              val stash = Exec(StashOnFailure, None)
+              val failureWall = Exec(FailureWall, None)
+              val pop = Exec(PopOnFailure, None)
+              val setTerm = Exec(s"$SetTerminal ${s.channelName}", None)
+              val setConsole = Exec(s"$SetTerminal console0", None)
+              val remaining = stash :: map :: cmd :: complete :: failureWall :: pop :: setConsole :: report :: xs
+              runCmd(setTerm, remaining)
+            case _ => runCmd(x, xs)
+          }
       }
     }
     def :::(newCommands: List[String]): State = ++:(newCommands map { Exec(_, s.source) })
