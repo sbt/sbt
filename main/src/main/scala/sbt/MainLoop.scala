@@ -195,6 +195,7 @@ object MainLoop {
               state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
             } else state
         }
+        StandardMain.exchange.setExec(Some(exec))
         val newState = Command.process(exec.commandLine, progressState)
         val doneEvent = ExecStatusEvent(
           "Done",
@@ -204,6 +205,7 @@ object MainLoop {
           exitCode(newState, state),
         )
         StandardMain.exchange.respondStatus(doneEvent)
+        StandardMain.exchange.setExec(None)
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
         newState.remove(sbt.Keys.currentTaskProgress)
       }

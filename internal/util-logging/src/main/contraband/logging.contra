@@ -29,6 +29,8 @@ type ProgressEvent implements sbt.internal.util.AbstractEntry {
   lastTaskCount: Int
   channelName: String
   execId: String
+  command: String @since("1.4.0")
+  skipIfActive: Boolean @since("1.4.0")
 }
 
 ## used by super shell

@@ -10,22 +10,13 @@ package internal
 
 import java.io.PrintWriter
 
-import Def.ScopedKey
-import Scope.GlobalScope
-import Keys.{ logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, traceLevel }
-import sbt.internal.util.{
-  AttributeKey,
-  ConsoleAppender,
-  ConsoleOut,
-  MainAppender,
-  ManagedLogger,
-  ProgressState,
-  Settings,
-  SuppressedTraceContext
-}
-import MainAppender._
-import sbt.util.{ Level, LogExchange, Logger }
 import org.apache.logging.log4j.core.Appender
+import sbt.Def.ScopedKey
+import sbt.Keys._
+import sbt.Scope.GlobalScope
+import sbt.internal.util.MainAppender._
+import sbt.internal.util._
+import sbt.util.{ Level, LogExchange, Logger }
 
 sealed abstract class LogManager {
   def apply(
@@ -142,9 +133,7 @@ object LogManager {
     val screenTrace = getOr(traceLevel.key, data, scope, state, defaultTraceLevel(state))
     val backingTrace = getOr(persistTraceLevel.key, data, scope, state, Int.MaxValue)
     val extraBacked = state.globalLogging.backed :: relay :: Nil
-    val ps = Project.extract(state).get(sbt.Keys.progressState in ThisBuild)
     val consoleOpt = consoleLocally(state, console)
-    ps.foreach(ProgressState.set)
     val config = MainAppender.MainAppenderConfig(
       consoleOpt,
       backed,
@@ -164,7 +153,6 @@ object LogManager {
         x.source match {
           // TODO: Fix this stringliness
           case Some(x: CommandSource) if x.channelName == "console0" => Option(console)
-          case Some(_: CommandSource)                                => None
           case _                                                     => Option(console)
         }
       case _ => Option(console)
@@ -254,7 +242,8 @@ object LogManager {
     s1
   }
 
-  def progressLogger(appender: Appender): ManagedLogger = {
+  @deprecated("No longer used.", "1.4.0")
+  private[sbt] def progressLogger(appender: Appender): ManagedLogger = {
     val log = LogExchange.logger("progress", None, None)
     LogExchange.unbindLoggerAppenders("progress")
     LogExchange.bindLoggerAppenders(

@@ -6,8 +6,8 @@
  */
 
 package sbt
-package internal
 
+package internal
 import java.io.IOException
 import java.net.Socket
 import java.util.concurrent.{ ConcurrentLinkedQueue, LinkedBlockingQueue, TimeUnit }
@@ -17,7 +17,7 @@ import sbt.BasicKeys._
 import sbt.nio.Watch.NullLogger
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.server._
-import sbt.internal.util.{ ConsoleOut, MainAppender, Terminal }
+import sbt.internal.util.{ ConsoleOut, MainAppender, ProgressEvent, ProgressState, Terminal }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.protocol.{ ExecStatusEvent, LogEvent }
@@ -48,6 +48,7 @@ private[sbt] final class CommandExchange {
   private val commandChannelQueue = new LinkedBlockingQueue[CommandChannel]
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private[this] val activePrompt = new AtomicBoolean(false)
+  private[this] val currentExecRef = new AtomicReference[Exec]
 
   def channels: List[CommandChannel] = channelBuffer.toList
   private[this] def removeChannel(channel: CommandChannel): Unit = {
@@ -111,6 +112,8 @@ private[sbt] final class CommandExchange {
   }
 
   private def newNetworkName: String = s"network-${nextChannelId.incrementAndGet()}"
+
+  private[sbt] def currentExec = Option(currentExecRef.get)
 
   /**
    * Check if a server instance is running already, and start one if it isn't.
@@ -271,6 +274,8 @@ private[sbt] final class CommandExchange {
     }
   }
 
+  private[sbt] def setExec(exec: Option[Exec]): Unit = currentExecRef.set(exec.orNull)
+
   def prompt(event: ConsolePromptEvent): Unit = {
     activePrompt.set(Terminal.systemInIsAttached)
     channels
@@ -296,4 +301,14 @@ private[sbt] final class CommandExchange {
   }
 
   private[this] def needToFinishPromptLine(): Boolean = activePrompt.compareAndSet(true, false)
+  private[sbt] def updateProgress(pe: ProgressEvent): Unit = {
+    val newPE = currentExec match {
+      case Some(e) =>
+        pe.withCommand(currentExec.map(_.commandLine))
+          .withExecId(currentExec.flatMap(_.execId))
+          .withChannelName(currentExec.flatMap(_.source.map(_.channelName)))
+      case _ => pe
+    }
+    ProgressState.updateProgressState(newPE)
+  }
 }

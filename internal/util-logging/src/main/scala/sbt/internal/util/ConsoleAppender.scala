@@ -483,12 +483,8 @@ class ConsoleAppender private[ConsoleAppender] (
     def appendEvent(oe: ObjectEvent[_]): Unit = {
       val contentType = oe.contentType
       contentType match {
-        case "sbt.internal.util.TraceEvent" => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
+        case "sbt.internal.util.TraceEvent"    => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
         case "sbt.internal.util.ProgressEvent" =>
-          oe.message match {
-            case pe: ProgressEvent => ProgressState.updateProgressState(pe)
-            case _                 =>
-          }
         case _ =>
           LogExchange.stringCodec[AnyRef](contentType) match {
             case Some(codec) if contentType == "sbt.internal.util.SuccessEvent" =>
@@ -570,7 +566,7 @@ private[sbt] object ProgressState {
    * at the info or greater level, we can decrement the padding because the console
    * line will have filled in the blank line.
    */
-  private[util] def updateProgressState(pe: ProgressEvent): Unit = Terminal.withPrintStream { ps =>
+  private[sbt] def updateProgressState(pe: ProgressEvent): Unit = Terminal.withPrintStream { ps =>
     progressState.get match {
       case null =>
       case state =>

@@ -255,17 +255,7 @@ object EvaluateTask {
           extracted,
           structure
         )
-        val progressReporter = extracted.getOpt(progressState in ThisBuild).flatMap {
-          case Some(ps) =>
-            ps.reset()
-            ConsoleAppender.setShowProgress(true)
-            val appender = MainAppender.defaultScreen(StandardMain.console)
-            ProgressState.set(ps)
-            val log = LogManager.progressLogger(appender)
-            Some(new TaskProgress(log))
-          case _ => None
-        }
-        val reporters = maker.map(_.progress) ++ progressReporter ++
+        val reporters = maker.map(_.progress) ++ Some(new TaskProgress) ++
           (if (SysProp.taskTimings)
              new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
            else Nil)
