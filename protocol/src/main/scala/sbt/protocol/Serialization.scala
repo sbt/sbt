@@ -33,6 +33,7 @@ object Serialization {
   val attach = "sbt/attach"
   val attachResponse = "sbt/attachResponse"
   val cancelRequest = "sbt/cancelRequest"
+  val CancelAll = "__CancelAll"
 
   @deprecated("unused", since = "1.4.0")
   def serializeEvent[A: JsonFormat](event: A): Array[Byte] = {

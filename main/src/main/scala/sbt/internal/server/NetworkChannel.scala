@@ -451,7 +451,8 @@ final class NetworkChannel(
 
             // direct comparison on strings and
             // remove hotspring unicode added character for numbers
-            if (checkId) {
+            if (checkId || (crp.id == Serialization.CancelAll &&
+                StandardMain.exchange.currentExec.exists(_.source.exists(_.channelName == name)))) {
               runningEngine.cancelAndShutdown()
 
               import sbt.protocol.codec.JsonProtocol._

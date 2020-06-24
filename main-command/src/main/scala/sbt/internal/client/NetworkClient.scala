@@ -21,7 +21,7 @@ import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
 import sbt.internal.client.NetworkClient.Arguments
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
 import sbt.internal.protocol._
-import sbt.internal.util.{ ConsoleAppender, ConsoleOut, Terminal, Util }
+import sbt.internal.util.{ ConsoleAppender, ConsoleOut, Signals, Terminal, Util }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol._
@@ -36,7 +36,9 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Properties, Success }
 import Serialization.{
+  CancelAll,
   attach,
+  cancelRequest,
   systemIn,
   systemOut,
   terminalCapabilities,
@@ -82,6 +84,7 @@ class NetworkClient(
   private val lock: AnyRef = new AnyRef {}
   private val running = new AtomicBoolean(true)
   private val pendingResults = new ConcurrentHashMap[String, (LinkedBlockingQueue[Integer], Long)]
+  private val pendingCancellations = new ConcurrentHashMap[String, LinkedBlockingQueue[Boolean]]
   private val pendingCompletions = new ConcurrentHashMap[String, CompletionResponse => Unit]
   private val attached = new AtomicBoolean(false)
   private val attachUUID = new AtomicReference[String](null)
@@ -247,6 +250,10 @@ class NetworkClient(
         }
         q.offer(exitCode)
     }
+    pendingCancellations.remove(msg.id) match {
+      case null =>
+      case q    => q.offer(msg.toString.contains("Task cancelled"))
+    }
     msg.id match {
       case execId =>
         if (attachUUID.get == msg.id) {
@@ -390,24 +397,52 @@ class NetworkClient(
     ()
   }
 
-  def run(): Int = {
-    interactiveThread.set(Thread.currentThread)
-    val cleaned = arguments.commandArguments
-    val userCommands = cleaned.takeWhile(_ != "exit")
-    val interactive = cleaned.isEmpty
-    val exit = cleaned.nonEmpty && userCommands.isEmpty
-    attachUUID.set(sendJson(attach, s"""{"interactive": $interactive}"""))
-    if (interactive) {
-      try this.synchronized(this.wait)
-      catch { case _: InterruptedException => }
-      if (exitClean.get) 0 else 1
-    } else if (exit) {
-      0
-    } else {
-      batchMode.set(true)
-      batchExecute(userCommands.toList)
-    }
+  private[this] val contHandler: () => Unit = () => {
+    if (Terminal.console.getLastLine.nonEmpty)
+      printStream.print(ConsoleAppender.DeleteLine + Terminal.console.getLastLine.get)
   }
+  private[this] def withSignalHandler[R](handler: () => Unit, sig: String)(f: => R): R = {
+    val registration = Signals.register(handler, sig)
+    try f
+    finally registration.remove()
+  }
+  private[this] val cancelled = new AtomicBoolean(false)
+
+  def run(): Int =
+    withSignalHandler(contHandler, Signals.CONT) {
+      interactiveThread.set(Thread.currentThread)
+      val cleaned = arguments.commandArguments
+      val userCommands = cleaned.takeWhile(_ != "exit")
+      val interactive = cleaned.isEmpty
+      val exit = cleaned.nonEmpty && userCommands.isEmpty
+      attachUUID.set(sendJson(attach, s"""{"interactive": $interactive}"""))
+      val handler: () => Unit = () => {
+        def exitAbruptly() = {
+          exitClean.set(false)
+          close()
+        }
+        if (cancelled.compareAndSet(false, true)) {
+          val cancelledTasks = {
+            val queue = sendCancelAllCommand()
+            Option(queue.poll(1, TimeUnit.SECONDS)).getOrElse(true)
+          }
+          if ((!interactive && pendingResults.isEmpty) || !cancelledTasks) exitAbruptly()
+          else cancelled.set(false)
+        } else exitAbruptly() // handles double ctrl+c to force a shutdown
+      }
+      withSignalHandler(handler, Signals.INT) {
+        if (interactive) {
+          try this.synchronized(this.wait)
+          catch { case _: InterruptedException => }
+          if (exitClean.get) 0 else 1
+        } else if (exit) {
+          0
+        } else {
+          batchMode.set(true)
+          batchExecute(userCommands.toList)
+        }
+      }
+    }
 
   def batchExecute(userCommands: List[String]): Int = {
     val cmd = userCommands mkString " "
@@ -437,6 +472,13 @@ class NetworkClient(
     val queue = new LinkedBlockingQueue[Integer]
     sendCommand(ExecCommand(commandLine, execId))
     pendingResults.put(execId, (queue, System.currentTimeMillis))
+    queue
+  }
+
+  def sendCancelAllCommand(): LinkedBlockingQueue[Boolean] = {
+    val queue = new LinkedBlockingQueue[Boolean]
+    val execId = sendJson(cancelRequest, s"""{"id":"$CancelAll"}""")
+    pendingCancellations.put(execId, queue)
     queue
   }
 
@@ -538,7 +580,9 @@ class NetworkClient(
     s"Total time: $totalString, completed $nowString"
   }
 }
+
 object NetworkClient {
+  private[sbt] val CancelAll = "__CancelAll"
   private def consoleAppenderInterface(printStream: PrintStream): ConsoleInterface = {
     val appender = ConsoleAppender("thin", ConsoleOut.printStreamOut(printStream))
     new ConsoleInterface {
