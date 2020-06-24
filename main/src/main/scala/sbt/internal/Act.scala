@@ -424,7 +424,7 @@ object Act {
       def evaluate(kvs: Seq[ScopedKey[_]]): Parser[() => State] = {
         val preparedPairs = anyKeyValues(structure, kvs)
         val showConfig = if (action == PrintAction) {
-          Aggregation.ShowConfig(true, true, println, false)
+          Aggregation.ShowConfig(true, true, s => { print(s + "\n"); System.out.flush() }, false)
         } else {
           Aggregation.defaultShow(state, showTasks = action == ShowAction)
         }
