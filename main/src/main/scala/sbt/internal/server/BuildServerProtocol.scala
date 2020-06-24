@@ -20,8 +20,11 @@ import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
 import sbt.librarymanagement.Configuration
+import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
+
+import scala.util.control.NonFatal
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -123,11 +126,17 @@ object BuildServerProtocol {
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value
   )
 
-  def handler(sbtVersion: String): ServerHandler = ServerHandler { callback =>
+  def handler(
+      sbtVersion: String,
+      semanticdbEnabled: Boolean,
+      semanticdbVersion: String
+  ): ServerHandler = ServerHandler { callback =>
     ServerIntent(
       {
         case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
-          val _ = Converter.fromJson[InitializeBuildParams](json(r)).get
+          val params = Converter.fromJson[InitializeBuildParams](json(r)).get
+          checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
+
           val response = InitializeBuildResult(
             "sbt",
             sbtVersion,
@@ -173,6 +182,39 @@ object BuildServerProtocol {
       },
       PartialFunction.empty
     )
+  }
+
+  private def checkMetalsCompatibility(
+      semanticdbEnabled: Boolean,
+      semanticdbVersion: String,
+      params: InitializeBuildParams,
+      log: Logger
+  ): Unit = {
+    for {
+      data <- params.data
+      // try parse metadata as MetalsMetadata
+      metalsMetadata <- Converter.fromJson[MetalsMetadata](data).toOption
+    } {
+      if (!semanticdbEnabled) {
+        log.warn(s"${params.displayName} requires the semanticdb compiler plugin")
+        log.warn(
+          s"consider setting 'Global / semanticdbEnabled := true' in your global sbt settings ($$HOME/.sbt/1.0)"
+        )
+      }
+
+      for {
+        requiredVersion <- SemanticVersion.tryParse(metalsMetadata.semanticdbVersion)
+        currentVersion <- SemanticVersion.tryParse(semanticdbVersion)
+        if requiredVersion > currentVersion
+      } {
+        log.warn(
+          s"${params.displayName} requires semanticdb version ${metalsMetadata.semanticdbVersion}, current version is $semanticdbVersion"
+        )
+        log.warn(
+          s"""consider setting 'Global / semanticdbVersion := "${metalsMetadata.semanticdbVersion}"' in your global sbt settings ($$HOME/.sbt/1.0)"""
+        )
+      }
+    }
   }
 
   private def json(r: JsonRpcRequestMessage): JValue =
@@ -315,4 +357,22 @@ object BuildServerProtocol {
         BuildTargetIdentifier(new URI(s"$build#$project/${config.id}"))
       case _ => sys.error(s"unexpected $ref")
     }
+
+  private case class SemanticVersion(major: Int, minor: Int) extends Ordered[SemanticVersion] {
+    override def compare(that: SemanticVersion): Int = {
+      if (that.major != major) major.compare(that.major)
+      else minor.compare(minor)
+    }
+  }
+
+  private object SemanticVersion {
+    def tryParse(versionStr: String): Option[SemanticVersion] = {
+      try {
+        val parts = versionStr.split('.')
+        Some(SemanticVersion(parts(0).toInt, parts(1).toInt))
+      } catch {
+        case NonFatal(_) => None
+      }
+    }
+  }
 }
