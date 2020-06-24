@@ -187,6 +187,7 @@ case class TestServer(
         hostLog("waiting for the server...")
         nextLog = 10.seconds.fromNow
       }
+      Thread.sleep(10) // Don't spam the portfile
     }
     if (deadline.isOverdue) sys.error(s"Timeout. $portfile is not found.")
     if (!process.isAlive) sys.error(s"Server unexpectedly terminated.")
