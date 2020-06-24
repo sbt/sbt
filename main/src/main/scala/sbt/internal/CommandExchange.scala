@@ -217,6 +217,7 @@ private[sbt] final class CommandExchange {
           server = None
           firstInstance.set(false)
       }
+      if (s.get(BasicKeys.closeIOStreams).getOrElse(false)) Terminal.close()
     }
     s
   }

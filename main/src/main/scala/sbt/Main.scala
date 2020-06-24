@@ -68,11 +68,14 @@ private[sbt] object xMain {
             NetworkClient.run(configuration, args)
             Exit(0)
           } else {
-            val state = StandardMain.initialState(
-              configuration,
-              Seq(defaults, early),
-              runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-            )
+            val closeStreams = userCommands.exists(_ == BasicCommandStrings.CloseIOStreams)
+            val state = StandardMain
+              .initialState(
+                configuration,
+                Seq(defaults, early),
+                runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+              )
+              .put(BasicKeys.closeIOStreams, closeStreams)
             StandardMain.runManaged(state)
           }
         }
@@ -183,7 +186,8 @@ object StandardMain {
     sys.props.put("jna.nosys", "true")
 
     import BasicCommandStrings.isEarlyCommand
-    val userCommands = configuration.arguments.map(_.trim)
+    val userCommands =
+      configuration.arguments.map(_.trim).filterNot(_ == BasicCommandStrings.CloseIOStreams)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
     val commands = (earlyCommands ++ normalCommands).toList map { x =>
       Exec(x, None)

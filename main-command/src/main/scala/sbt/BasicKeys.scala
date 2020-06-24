@@ -114,6 +114,11 @@ object BasicKeys {
     "List of template resolver infos.",
     1000
   )
+  private[sbt] val closeIOStreams = AttributeKey[Boolean](
+    "close-io-streams",
+    "Toggles wheter or not to close system in, out and error when the server starts.",
+    1000
+  )
 }
 
 case class TemplateResolverInfo(module: ModuleID, implementationClass: String)

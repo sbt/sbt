@@ -203,6 +203,7 @@ $AliasCommand name=
     "Provides an interactive prompt from which commands can be run on a server."
   def DashClient: String = "-client"
   def DashDashClient: String = "--client"
+  def CloseIOStreams: String = "--close-io-streams"
 
   def StashOnFailure: String = "sbtStashOnFailure"
   def PopOnFailure: String = "sbtPopOnFailure"

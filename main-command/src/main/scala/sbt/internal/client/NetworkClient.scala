@@ -160,7 +160,7 @@ class NetworkClient(
       else Nil
 
     val args = color ++ superShell ++ arguments.sbtArguments
-    val cmd = arguments.sbtScript +: args
+    val cmd = arguments.sbtScript +: args :+ BasicCommandStrings.CloseIOStreams
     val process =
       new ProcessBuilder(cmd: _*)
         .directory(arguments.baseDirectory)
