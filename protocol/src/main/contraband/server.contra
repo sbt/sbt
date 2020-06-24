@@ -23,6 +23,10 @@ type SettingQuery implements CommandMessage {
   setting: String!
 }
 
+type Attach implements CommandMessage {
+  interactive: Boolean!
+}
+
 type CompletionParams {
   query: String!
 }
@@ -75,4 +79,25 @@ type CompletionResponse {
 type ExecutionEvent {
   success: String!
   commandLine: String!
+}
+
+type TerminalPropertiesResponse implements EventMessage {
+    width: Int!
+    height: Int!
+    isAnsiSupported: Boolean!
+    isColorEnabled: Boolean!
+    isSupershellEnabled: Boolean!
+    isEchoEnabled: Boolean!
+}
+
+type TerminalCapabilitiesQuery implements CommandMessage {
+    boolean: String
+    numeric: String
+    string: String
+}
+
+type TerminalCapabilitiesResponse implements EventMessage {
+    boolean: Boolean
+    numeric: Int
+    string: String
 }

@@ -45,7 +45,7 @@ private[sbt] object LanguageServerProtocol {
   def handler(converter: FileConverter): ServerHandler = ServerHandler { callback =>
     import callback._
     ServerIntent(
-      {
+      onRequest = {
         case r: JsonRpcRequestMessage if r.method == "initialize" =>
           val param = Converter.fromJson[InitializeParams](json(r)).get
           val optionJson = param.initializationOptions.getOrElse(
@@ -86,7 +86,9 @@ private[sbt] object LanguageServerProtocol {
           val param = Converter.fromJson[CP](json(r)).get
           onCompletionRequest(Option(r.id), param)
 
-      }, {
+      },
+      onResponse = PartialFunction.empty,
+      onNotification = {
         case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
           val _ = appendExec(";Test/compile; collectAnalyses", None)
       }

@@ -24,6 +24,15 @@ import sbt.internal.protocol.{
 
 object Serialization {
   private[sbt] val VsCode = "application/vscode-jsonrpc; charset=utf-8"
+  val systemIn = "sbt/systemIn"
+  val systemOut = "sbt/systemOut"
+  val terminalPropertiesQuery = "sbt/terminalPropertiesQuery"
+  val terminalPropertiesResponse = "sbt/terminalPropertiesResponse"
+  val terminalCapabilities = "sbt/terminalCapabilities"
+  val terminalCapabilitiesResponse = "sbt/terminalCapabilitiesResponse"
+  val attach = "sbt/attach"
+  val attachResponse = "sbt/attachResponse"
+  val cancelRequest = "sbt/cancelRequest"
 
   @deprecated("unused", since = "1.4.0")
   def serializeEvent[A: JsonFormat](event: A): Array[Byte] = {
@@ -63,6 +72,13 @@ object Serialization {
         val json: JValue = Converter.toJson[String](x.setting).get
         val v = CompactPrinter(json)
         s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "sbt/setting", "params": { "setting": $v } }"""
+
+      case x: Attach =>
+        val execId = UUID.randomUUID.toString
+        val json: JValue = Converter.toJson[Boolean](x.interactive).get
+        val v = CompactPrinter(json)
+        s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "$attach", "params": { "interactive": $v } }"""
+
     }
   }
 
@@ -74,6 +90,12 @@ object Serialization {
 
   /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
   private[sbt] def serializeResponseMessage(message: JsonRpcResponseMessage): Array[Byte] = {
+    import sbt.internal.protocol.codec.JsonRPCProtocol._
+    serializeResponse(message)
+  }
+
+  /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
+  private[sbt] def serializeRequestMessage(message: JsonRpcRequestMessage): Array[Byte] = {
     import sbt.internal.protocol.codec.JsonRPCProtocol._
     serializeResponse(message)
   }

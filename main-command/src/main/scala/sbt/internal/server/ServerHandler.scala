@@ -29,14 +29,18 @@ object ServerHandler {
 
   lazy val fallback: ServerHandler = ServerHandler({ handler =>
     ServerIntent(
-      { case x => handler.log.debug(s"Unhandled notification received: ${x.method}: $x") },
-      { case x => handler.log.debug(s"Unhandled request received: ${x.method}: $x") }
+      onRequest = { case x  => handler.log.debug(s"Unhandled request received: ${x.method}: $x") },
+      onResponse = { case x => handler.log.debug(s"Unhandled responce received") },
+      onNotification = {
+        case x => handler.log.debug(s"Unhandled notification received: ${x.method}: $x")
+      },
     )
   })
 }
 
 final class ServerIntent(
     val onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
+    val onResponse: PartialFunction[JsonRpcResponseMessage, Unit],
     val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]
 ) {
   override def toString: String = s"ServerIntent(...)"
@@ -45,15 +49,18 @@ final class ServerIntent(
 object ServerIntent {
   def apply(
       onRequest: PartialFunction[JsonRpcRequestMessage, Unit],
+      onResponse: PartialFunction[JsonRpcResponseMessage, Unit],
       onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]
   ): ServerIntent =
-    new ServerIntent(onRequest, onNotification)
+    new ServerIntent(onRequest, onResponse, onNotification)
 
   def request(onRequest: PartialFunction[JsonRpcRequestMessage, Unit]): ServerIntent =
-    new ServerIntent(onRequest, PartialFunction.empty)
+    new ServerIntent(onRequest, PartialFunction.empty, PartialFunction.empty)
 
+  def response(onResponse: PartialFunction[JsonRpcResponseMessage, Unit]): ServerIntent =
+    new ServerIntent(PartialFunction.empty, onResponse, PartialFunction.empty)
   def notify(onNotification: PartialFunction[JsonRpcNotificationMessage, Unit]): ServerIntent =
-    new ServerIntent(PartialFunction.empty, onNotification)
+    new ServerIntent(PartialFunction.empty, PartialFunction.empty, onNotification)
 }
 
 /**

@@ -132,7 +132,7 @@ object BuildServerProtocol {
       semanticdbVersion: String
   ): ServerHandler = ServerHandler { callback =>
     ServerIntent(
-      {
+      onRequest = {
         case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
           val params = Converter.fromJson[InitializeBuildParams](json(r)).get
           checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
@@ -180,7 +180,8 @@ object BuildServerProtocol {
           val command = Keys.bspBuildTargetScalacOptions.key
           val _ = callback.appendExec(s"$command $targets", Some(r.id))
       },
-      PartialFunction.empty
+      onResponse = PartialFunction.empty,
+      onNotification = PartialFunction.empty,
     )
   }
 

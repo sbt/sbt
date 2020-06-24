@@ -9,7 +9,7 @@ Global / serverHandlers += ServerHandler({ callback =>
   import sjsonnew.BasicJsonProtocol._
   import sbt.internal.protocol.JsonRpcRequestMessage
   ServerIntent(
-    {
+    onRequest = {
       case r: JsonRpcRequestMessage if r.method == "foo/export" =>
         appendExec(Exec("fooExport", Some(r.id), Some(CommandSource(callback.name))))
         ()
@@ -34,7 +34,8 @@ Global / serverHandlers += ServerHandler({ callback =>
         jsonRpcRespond("concurrent response", Some(r.id))
         ()
     },
-    {
+    onResponse = PartialFunction.empty,
+    onNotification = {
       case r if r.method == "foo/customNotification" =>
         jsonRpcRespond("notification result", None)
         ()

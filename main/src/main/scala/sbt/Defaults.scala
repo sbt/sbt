@@ -48,7 +48,8 @@ import sbt.internal.server.{
   BuildServerReporter,
   Definition,
   LanguageServerProtocol,
-  ServerHandler
+  ServerHandler,
+  VirtualTerminal,
 }
 import sbt.internal.testing.TestLogger
 import sbt.internal.util.Attributed.data
@@ -208,7 +209,8 @@ object Defaults extends BuildCommon {
         Seq(
           LanguageServerProtocol.handler(fileConverter.value),
           BuildServerProtocol
-            .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value)
+            .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value),
+          VirtualTerminal.handler,
         ) ++ serverHandlers.value :+ ServerHandler.fallback
       },
       uncachedStamper := Stamps.uncachedStamps(fileConverter.value),
@@ -342,15 +344,12 @@ object Defaults extends BuildCommon {
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
       turbo :== SysProp.turbo,
-      useSuperShell := { if (insideCI.value) false else SysProp.supershell },
+      useSuperShell := { if (insideCI.value) false else Terminal.console.isSupershellEnabled },
       progressReports := {
         val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
         rs map { Keys.TaskProgress(_) }
       },
-      progressState := {
-        if ((ThisBuild / useSuperShell).value) Some(new ProgressState(SysProp.supershellBlankZone))
-        else None
-      },
+      progressState := Some(new ProgressState(SysProp.supershellBlankZone)),
       Previous.cache := new Previous(
         Def.streamsManagerKey.value,
         Previous.references.value.getReferences

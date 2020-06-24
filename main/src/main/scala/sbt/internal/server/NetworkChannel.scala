@@ -9,9 +9,11 @@ package sbt
 package internal
 package server
 
-import java.io.IOException
+import java.io.{ IOException, InputStream, OutputStream }
 import java.net.{ Socket, SocketTimeoutException }
-import java.util.concurrent.atomic.AtomicBoolean
+import java.nio.channels.ClosedChannelException
+import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes, LogMessageParams, MessageType }
 import sbt.internal.protocol.{
@@ -20,16 +22,20 @@ import sbt.internal.protocol.{
   JsonRpcResponseError,
   JsonRpcResponseMessage
 }
-import sbt.internal.util.{ ReadJsonFromInputStream, Terminal }
+import sbt.internal.util.{ ReadJsonFromInputStream, Prompt, Terminal, Util }
+import sbt.internal.util.Terminal.TerminalImpl
 import sbt.internal.util.complete.Parser
 import sbt.protocol._
 import sbt.util.Logger
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
+import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.util.Try
 import scala.util.control.NonFatal
+import Serialization.attach
 
 final class NetworkChannel(
     val name: String,
@@ -47,7 +53,29 @@ final class NetworkChannel(
   private var initialized = false
   private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
 
-  override private[sbt] def terminal: Terminal = Terminal.NullTerminal
+  private[this] val inputBuffer = new LinkedBlockingQueue[Byte]()
+  private[this] val pendingWrites = new LinkedBlockingQueue[(Array[Byte], Boolean)]()
+  private[this] val attached = new AtomicBoolean(false)
+  private[this] val alive = new AtomicBoolean(true)
+  private[sbt] def isInteractive = interactive.get
+  private[this] val interactive = new AtomicBoolean(false)
+  private[sbt] def setInteractive(id: String, value: Boolean) = {
+    terminalHolder.getAndSet(new NetworkTerminal) match {
+      case null =>
+      case t    => t.close()
+    }
+    interactive.set(value)
+    if (!isInteractive) terminal.setPrompt(Prompt.Batch)
+    attached.set(true)
+    pendingRequests.remove(id)
+    import sjsonnew.BasicJsonProtocol._
+    jsonRpcRespond("", id)
+    initiateMaintenance(attach)
+  }
+  private[sbt] def write(byte: Byte) = inputBuffer.add(byte)
+
+  private[this] val terminalHolder = new AtomicReference(Terminal.NullTerminal)
+  override private[sbt] def terminal: Terminal = terminalHolder.get
 
   private lazy val callback: ServerCallback = new ServerCallback {
     def jsonRpcRespond[A: JsonFormat](event: A, execId: Option[String]): Unit =
@@ -121,6 +149,10 @@ final class NetworkChannel(
       intents.foldLeft(PartialFunction.empty[JsonRpcRequestMessage, Unit]) {
         case (f, i) => f orElse i.onRequest
       }
+    lazy val onResponseMessage: PartialFunction[JsonRpcResponseMessage, Unit] =
+      intents.foldLeft(PartialFunction.empty[JsonRpcResponseMessage, Unit]) {
+        case (f, i) => f orElse i.onResponse
+      }
 
     lazy val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit] =
       intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) {
@@ -138,6 +170,8 @@ final class NetworkChannel(
               log.debug(s"sending error: $code: $message")
               respondError(code, message, Some(req.id))
           }
+        case Right(res: JsonRpcResponseMessage) =>
+          onResponseMessage(res)
         case Right(ntf: JsonRpcNotificationMessage) =>
           try {
             onNotification(ntf)
@@ -222,13 +256,43 @@ final class NetworkChannel(
 
   def publishBytes(event: Array[Byte]): Unit = publishBytes(event, false)
 
-  def publishBytes(event: Array[Byte], delimit: Boolean): Unit = {
-    out.write(event)
-    if (delimit) {
-      out.write(delimiter.toInt)
+  /*
+   * Do writes on a background thread because otherwise the client socket can get blocked.
+   */
+  private[this] val writeThread = new Thread(() => {
+    @tailrec def impl(): Unit = {
+      val (event, delimit) =
+        try pendingWrites.take
+        catch {
+          case _: InterruptedException =>
+            alive.set(false)
+            (Array.empty[Byte], false)
+        }
+      if (alive.get) {
+        try {
+          out.write(event)
+          if (delimit) {
+            out.write(delimiter.toInt)
+          }
+          out.flush()
+        } catch {
+          case _: IOException =>
+            alive.set(false)
+            shutdown()
+          case _: InterruptedException =>
+            alive.set(false)
+        }
+        impl()
+      }
     }
-    out.flush()
-  }
+    impl()
+  }, s"sbt-$name-write-thread")
+  writeThread.setDaemon(true)
+  writeThread.start()
+
+  def publishBytes(event: Array[Byte], delimit: Boolean): Unit =
+    try pendingWrites.put(event -> delimit)
+    catch { case _: InterruptedException => }
 
   def onCommand(command: CommandMessage): Unit = command match {
     case x: InitCommand  => onInitCommand(x)
@@ -418,6 +482,15 @@ final class NetworkChannel(
     publishBytes(bytes)
   }
 
+  /** Notify to Language Server's client. */
+  private[sbt] def jsonRpcRequest[A: JsonFormat](id: String, method: String, params: A): Unit = {
+    val m =
+      JsonRpcRequestMessage("2.0", id, method, Option(Converter.toJson[A](params).get))
+    log.debug(s"jsonRpcRequest: $m")
+    val bytes = Serialization.serializeRequestMessage(m)
+    publishBytes(bytes)
+  }
+
   def logMessage(level: String, message: String): Unit = {
     import sbt.internal.langserver.codec.JsonProtocol._
     jsonRpcNotify(
@@ -425,6 +498,144 @@ final class NetworkChannel(
       LogMessageParams(MessageType.fromLevelString(level), message)
     )
   }
+  private[this] lazy val inputStream: InputStream = new InputStream {
+    override def read(): Int = {
+      try {
+        inputBuffer.take & 0xFF match {
+          case -1 => throw new ClosedChannelException()
+          case b  => b
+        }
+      } catch { case _: IOException => -1 }
+    }
+    override def available(): Int = inputBuffer.size
+  }
+  import sjsonnew.BasicJsonProtocol._
+
+  import scala.collection.JavaConverters._
+  private[this] lazy val outputStream: OutputStream = new OutputStream {
+    private[this] val buffer = new LinkedBlockingQueue[Byte]()
+    override def write(b: Int): Unit = buffer.put(b.toByte)
+    override def flush(): Unit = {
+      jsonRpcNotify(Serialization.systemOut, buffer.asScala)
+      buffer.clear()
+    }
+    override def write(b: Array[Byte]): Unit = write(b, 0, b.length)
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+      var i = off
+      while (i < len) {
+        buffer.put(b(i))
+        i += 1
+      }
+    }
+  }
+  private class NetworkTerminal extends TerminalImpl(inputStream, outputStream, name) {
+    private[this] val pending = new AtomicBoolean(false)
+    private[this] val closed = new AtomicBoolean(false)
+    private[this] val properties = new AtomicReference[TerminalPropertiesResponse]
+    private[this] val lastUpdate = new AtomicReference[Deadline]
+    private def empty = TerminalPropertiesResponse(0, 0, false, false, false, false)
+    def getProperties(block: Boolean): Unit = {
+      if (alive.get) {
+        if (!pending.get && Option(lastUpdate.get).fold(true)(d => (d + 1.second).isOverdue)) {
+          pending.set(true)
+          val queue = VirtualTerminal.sendTerminalPropertiesQuery(name, jsonRpcRequest)
+          val update: Runnable = () => {
+            queue.poll(5, java.util.concurrent.TimeUnit.SECONDS) match {
+              case null =>
+              case t    => properties.set(t)
+            }
+            pending.synchronized {
+              lastUpdate.set(Deadline.now)
+              pending.set(false)
+              pending.notifyAll()
+            }
+          }
+          new Thread(update, s"network-terminal-$name-update") {
+            setDaemon(true)
+          }.start()
+        }
+        while (block && properties.get == null) pending.synchronized(pending.wait())
+        ()
+      } else throw new InterruptedException
+    }
+    private def withThread[R](f: => R, default: R): R = {
+      val t = Thread.currentThread
+      try {
+        blockedThreads.synchronized(blockedThreads.add(t))
+        f
+      } catch { case _: InterruptedException => default } finally {
+        Util.ignoreResult(blockedThreads.synchronized(blockedThreads.remove(t)))
+      }
+    }
+    def getProperty[T](f: TerminalPropertiesResponse => T, default: T): Option[T] = {
+      if (closed.get || !isAttached) None
+      else
+        withThread({
+          getProperties(true);
+          Some(f(Option(properties.get).getOrElse(empty)))
+        }, None)
+    }
+    private[this] def waitForPending(f: TerminalPropertiesResponse => Boolean): Boolean = {
+      if (closed.get || !isAttached) false
+      withThread(
+        {
+          if (pending.get) pending.synchronized(pending.wait())
+          Option(properties.get).map(f).getOrElse(false)
+        },
+        false
+      )
+    }
+    private[this] val blockedThreads = ConcurrentHashMap.newKeySet[Thread]
+    override def getWidth: Int = getProperty(_.width, 0).getOrElse(0)
+    override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
+    override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)
+    override def isEchoEnabled: Boolean = waitForPending(_.isEchoEnabled)
+    override def isSuccessEnabled: Boolean = prompt != Prompt.Batch
+    override lazy val isColorEnabled: Boolean = waitForPending(_.isColorEnabled)
+    override lazy val isSupershellEnabled: Boolean = waitForPending(_.isSupershellEnabled)
+    getProperties(false)
+    private def getCapability[T](
+        query: TerminalCapabilitiesQuery,
+        result: TerminalCapabilitiesResponse => T
+    ): Option[T] = {
+      if (closed.get) None
+      else {
+        import sbt.protocol.codec.JsonProtocol._
+        val queue = VirtualTerminal.sendTerminalCapabilitiesQuery(name, jsonRpcRequest, query)
+        Some(result(queue.take))
+      }
+    }
+    override def getBooleanCapability(capability: String): Boolean =
+      getCapability(
+        TerminalCapabilitiesQuery(boolean = Some(capability), numeric = None, string = None),
+        _.boolean.getOrElse(false)
+      ).getOrElse(false)
+    override def getNumericCapability(capability: String): Int =
+      getCapability(
+        TerminalCapabilitiesQuery(boolean = None, numeric = Some(capability), string = None),
+        _.numeric.getOrElse(-1)
+      ).getOrElse(-1)
+    override def getStringCapability(capability: String): String =
+      getCapability(
+        TerminalCapabilitiesQuery(boolean = None, numeric = None, string = Some(capability)),
+        _.string.flatMap {
+          case "null" => None
+          case s      => Some(s)
+        }.orNull
+      ).getOrElse("")
+
+    override def toString: String = s"NetworkTerminal($name)"
+    override def close(): Unit = if (closed.compareAndSet(false, true)) {
+      val threads = blockedThreads.synchronized {
+        val t = blockedThreads.asScala.toVector
+        blockedThreads.clear()
+        t
+      }
+      threads.foreach(_.interrupt())
+      super.close()
+    }
+  }
+  private[sbt] def isAttached: Boolean = attached.get
 }
 
 object NetworkChannel {

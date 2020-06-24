@@ -46,8 +46,10 @@ private[sbt] final class CommandExchange {
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
   private val commandChannelQueue = new LinkedBlockingQueue[CommandChannel]
+  private val maintenanceChannelQueue = new LinkedBlockingQueue[MaintenanceTask]
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private[this] val activePrompt = new AtomicBoolean(false)
+  private[this] val lastState = new AtomicReference[State]
   private[this] val currentExecRef = new AtomicReference[Exec]
 
   def channels: List[CommandChannel] = channelBuffer.toList
@@ -60,9 +62,10 @@ private[sbt] final class CommandExchange {
 
   def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized {
     channelBuffer.append(c)
-    c.register(commandChannelQueue)
+    c.register(commandQueue, maintenanceChannelQueue)
   }
 
+  private[sbt] def withState[T](f: State => T): T = f(lastState.get)
   def blockUntilNextExec: Exec = blockUntilNextExec(Duration.Inf, NullLogger)
   // periodically move all messages from all the channels
   private[sbt] def blockUntilNextExec(interval: Duration, logger: Logger): Exec = {
@@ -110,6 +113,7 @@ private[sbt] final class CommandExchange {
     if (autoStartServerSysProp && autoStartServerAttr) runServer(s)
     else s
   }
+  private[sbt] def setState(s: State): Unit = lastState.set(s)
 
   private def newNetworkName: String = s"network-${nextChannelId.incrementAndGet()}"
 
@@ -191,6 +195,7 @@ private[sbt] final class CommandExchange {
   }
 
   def shutdown(): Unit = {
+    maintenanceThread.close()
     channels foreach (_.shutdown())
     // interrupt and kill the thread
     server.foreach(_.shutdown())
@@ -311,4 +316,46 @@ private[sbt] final class CommandExchange {
     }
     channels.foreach(c => ProgressState.updateProgressState(newPE, c.terminal))
   }
+
+  private[sbt] def shutdown(name: String): Unit = {
+    commandQueue.clear()
+    val exit =
+      Exec("shutdown", Some(Exec.newExecId), Some(CommandSource(name)))
+    commandQueue.add(exit)
+    ()
+  }
+
+  private[this] class MaintenanceThread
+      extends Thread("sbt-command-exchange-maintenance")
+      with AutoCloseable {
+    setDaemon(true)
+    start()
+    private[this] val isStopped = new AtomicBoolean(false)
+    override def run(): Unit = {
+      def exit(mt: MaintenanceTask): Unit = {
+        mt.channel.shutdown()
+        if (mt.channel.name.contains("console")) shutdown(mt.channel.name)
+      }
+      @tailrec def impl(): Unit = {
+        maintenanceChannelQueue.take match {
+          case null =>
+          case mt: MaintenanceTask =>
+            mt.task match {
+              case "exit"     => exit(mt)
+              case "shutdown" => shutdown(mt.channel.name)
+              case _          =>
+            }
+        }
+        if (!isStopped.get) impl()
+      }
+      try impl()
+      catch { case _: InterruptedException => }
+    }
+    override def close(): Unit = if (isStopped.compareAndSet(false, true)) {
+      interrupt()
+    }
+  }
+  private[sbt] def channelForName(channelName: String): Option[CommandChannel] =
+    channels.find(_.name == channelName)
+  private[this] val maintenanceThread = new MaintenanceThread
 }
