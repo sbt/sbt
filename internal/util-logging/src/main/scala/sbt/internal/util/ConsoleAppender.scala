@@ -658,6 +658,7 @@ private[sbt] object ProgressState {
             }
           } else {
             pe.command.toSeq.flatMap { cmd =>
+              val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
               s"sbt server is running '$cmd'" :: tail
             }
           }

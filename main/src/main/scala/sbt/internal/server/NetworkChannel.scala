@@ -698,6 +698,40 @@ object NetworkChannel {
   case object SingleLine extends ChannelState
   case object InHeader extends ChannelState
   case object InBody extends ChannelState
+  private[sbt] def cancel(
+      execID: Option[String],
+      id: String
+  ): Either[String, String] = {
+
+    Option(EvaluateTask.currentlyRunningEngine.get) match {
+      case Some((state, runningEngine)) =>
+        val runningExecId = state.currentExecId.getOrElse("")
+
+        def checkId(): Boolean = {
+          if (runningExecId.startsWith("\u2668")) {
+            (
+              Try { id.toLong }.toOption,
+              Try { runningExecId.substring(1).toLong }.toOption
+            ) match {
+              case (Some(id), Some(eid)) => id == eid
+              case _                     => false
+            }
+          } else runningExecId == id
+        }
+
+        // direct comparison on strings and
+        // remove hotspring unicode added character for numbers
+        if (checkId) {
+          runningEngine.cancelAndShutdown()
+          Right(runningExecId)
+        } else {
+          Left("Task ID not matched")
+        }
+
+      case None =>
+        Left("No tasks under execution")
+    }
+  }
 
   private[sbt] val disconnect: Command =
     Command.arb { s =>

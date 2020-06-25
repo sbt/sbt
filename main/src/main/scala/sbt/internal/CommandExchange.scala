@@ -350,6 +350,15 @@ private[sbt] final class CommandExchange {
     commandQueue.add(exit)
     ()
   }
+  private[this] def cancel(e: Exec): Unit = {
+    if (e.commandLine.startsWith("console")) {
+      val terminal = Terminal.get
+      terminal.write(13, 13, 13, 4)
+      terminal.printStream.println("\nconsole session killed by remote sbt client")
+    } else {
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+    }
+  }
 
   private[this] class MaintenanceThread
       extends Thread("sbt-command-exchange-maintenance")
