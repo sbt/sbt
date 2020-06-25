@@ -9,13 +9,13 @@ package sbt
 package internal
 package client
 
-import java.io.{ File, IOException }
+import java.io.{ File, IOException, InputStream, PrintStream }
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
 import sbt.internal.protocol._
-import sbt.internal.util.{ ConsoleAppender, LineReader }
+import sbt.internal.util.{ ConsoleAppender, ConsoleOut, LineReader }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol._
@@ -23,19 +23,51 @@ import sbt.util.Level
 import sjsonnew.support.scalajson.unsafe.Converter
 
 import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
 import scala.sys.process.{ BasicIO, Process, ProcessLogger }
+import scala.util.Properties
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success }
+import NetworkClient.Arguments
 
-class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[String]) { self =>
-  private val channelName = new AtomicReference("_")
+trait ConsoleInterface {
+  def appendLog(level: Level.Value, message: => String): Unit
+  def success(msg: String): Unit
+}
+
+class NetworkClient(
+    console: ConsoleInterface,
+    arguments: Arguments,
+    inputStream: InputStream,
+    errorStream: PrintStream,
+    printStream: PrintStream,
+    useJNI: Boolean,
+) extends AutoCloseable { self =>
+  def this(configuration: xsbti.AppConfiguration, arguments: Arguments) =
+    this(
+      console = NetworkClient.consoleAppenderInterface(System.out),
+      arguments = arguments.withBaseDirectory(configuration.baseDirectory),
+      inputStream = System.in,
+      errorStream = System.err,
+      printStream = System.out,
+      useJNI = false,
+    )
+  def this(configuration: xsbti.AppConfiguration, args: List[String]) =
+    this(
+      console = NetworkClient.consoleAppenderInterface(System.out),
+      arguments =
+        NetworkClient.parseArgs(args.toArray).withBaseDirectory(configuration.baseDirectory),
+      inputStream = System.in,
+      errorStream = System.err,
+      printStream = System.out,
+      useJNI = false,
+    )
   private val status = new AtomicReference("Ready")
   private val lock: AnyRef = new AnyRef {}
   private val running = new AtomicBoolean(true)
   private val pendingExecIds = ListBuffer.empty[String]
 
-  private val console = ConsoleAppender("thin1")
-  private def baseDirectory: File = configuration.baseDirectory
+  private def baseDirectory: File = arguments.baseDirectory
 
   lazy val connection = init()
 
@@ -196,9 +228,7 @@ class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[Strin
   def start(): Unit = {
     console.appendLog(Level.Info, "entering *experimental* thin client - BEEP WHIRR")
     val _ = connection
-    val userCommands = arguments filterNot { cmd =>
-      cmd.startsWith("-")
-    }
+    val userCommands = arguments.commandArguments.toList
     if (userCommands.isEmpty) shell()
     else batchExecute(userCommands)
   }
@@ -258,14 +288,77 @@ class NetworkClient(configuration: xsbti.AppConfiguration, arguments: List[Strin
       status.set("Processing")
     }
   }
+  override def close(): Unit = {}
 }
-
 object NetworkClient {
-  def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Unit =
+  private def consoleAppenderInterface(printStream: PrintStream): ConsoleInterface = {
+    val appender = ConsoleAppender("thin", ConsoleOut.printStreamOut(printStream))
+    new ConsoleInterface {
+      override def appendLog(level: Level.Value, message: => String): Unit =
+        appender.appendLog(level, message)
+      override def success(msg: String): Unit = appender.success(msg)
+    }
+  }
+  private def simpleConsoleInterface(printStream: PrintStream): ConsoleInterface =
+    new ConsoleInterface {
+      import scala.Console.{ GREEN, RED, RESET, YELLOW }
+      override def appendLog(level: Level.Value, message: => String): Unit = {
+        val prefix = level match {
+          case Level.Error => s"[$RED$level$RESET]"
+          case Level.Warn  => s"[$YELLOW$level$RESET]"
+          case _           => s"[$RESET$level$RESET]"
+        }
+        message.split("\n").foreach { line =>
+          if (!line.trim.isEmpty) printStream.println(s"$prefix $line")
+        }
+      }
+      override def success(msg: String): Unit = printStream.println(s"[${GREEN}success$RESET] $msg")
+    }
+  private[client] class Arguments(
+      val baseDirectory: File,
+      val sbtArguments: Seq[String],
+      val commandArguments: Seq[String],
+      val sbtScript: String,
+  ) {
+    def withBaseDirectory(file: File): Arguments =
+      new Arguments(file, sbtArguments, commandArguments, sbtScript)
+  }
+  private[client] def parseArgs(args: Array[String]): Arguments = {
+    var i = 0
+    var sbtScript = if (Properties.isWin) "sbt.cmd" else "sbt"
+    val commandArgs = new mutable.ArrayBuffer[String]
+    val sbtArguments = new mutable.ArrayBuffer[String]
+    val SysProp = "-D([^=]+)=(.*)".r
+    val sanitized = args.flatMap {
+      case a if a.startsWith("\"") => Array(a)
+      case a                       => a.split(" ")
+    }
+    while (i < sanitized.length) {
+      sanitized(i) match {
+        case a if a.startsWith("--sbt-script=") =>
+          sbtScript = a.split("--sbt-script=").lastOption.getOrElse(sbtScript)
+        case a if !a.startsWith("-") => commandArgs += a
+        case a @ SysProp(key, value) =>
+          System.setProperty(key, value)
+          sbtArguments += a
+        case a =>
+          sbtArguments += a
+      }
+      i += 1
+    }
+    new Arguments(new File("").getCanonicalFile, sbtArguments, commandArgs, sbtScript)
+  }
+
+  def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Int =
     try {
-      new NetworkClient(configuration, arguments)
-      ()
+      val client = new NetworkClient(configuration, parseArgs(arguments.toArray))
+      try {
+        client.start()
+        0
+      } catch { case _: Throwable => 1 } finally client.close()
     } catch {
-      case NonFatal(e) => println(e.getMessage)
+      case NonFatal(e) =>
+        e.printStackTrace()
+        1
     }
 }
