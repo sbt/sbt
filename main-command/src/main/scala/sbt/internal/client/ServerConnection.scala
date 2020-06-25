@@ -62,7 +62,7 @@ abstract class ServerConnection(connection: Socket) {
   }
   thread.start()
 
-  def sendString(message: String): Unit = {
+  def sendString(message: String): Unit = this.synchronized {
     val a = message.getBytes("UTF-8")
     writeLine(s"""Content-Length: ${a.length + 2}""".getBytes("UTF-8"))
     writeLine(Array())
