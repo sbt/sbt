@@ -57,7 +57,7 @@ private[sbt] object xMain {
         override def provider: AppProvider = config.provider()
       }
   }
-  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
       import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
       import BasicCommands.early
@@ -65,6 +65,10 @@ private[sbt] object xMain {
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       import sbt.internal.client.NetworkClient
 
+      val bootServerSocket = getSocketOrExit(configuration) match {
+        case (_, Some(e)) => return e
+        case (s, _)       => s
+      }
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments.map(_.trim)
@@ -73,6 +77,7 @@ private[sbt] object xMain {
       if (userCommands.exists(isBsp)) {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
+        bootServerSocket.foreach(l => Terminal.setBootStreams(l.inputStream, l.outputStream))
         Terminal.withStreams {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
@@ -80,19 +85,42 @@ private[sbt] object xMain {
             Exit(0)
           } else {
             val closeStreams = userCommands.exists(_ == BasicCommandStrings.CloseIOStreams)
-            val state = StandardMain
+            val state0 = StandardMain
               .initialState(
                 dealiasBaseDirectory(configuration),
                 Seq(defaults, early),
                 runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
               )
               .put(BasicKeys.closeIOStreams, closeStreams)
-            StandardMain.runManaged(state)
+            val state = bootServerSocket match {
+              case Some(l) => state0.put(Keys.bootServerSocket, l)
+              case _       => state0
+            }
+            try StandardMain.runManaged(state)
+            finally bootServerSocket.foreach(_.close())
           }
         }
       }
     } finally {
       ShutdownHooks.close()
+    }
+  }
+
+  private def getSocketOrExit(
+      configuration: xsbti.AppConfiguration
+  ): (Option[BootServerSocket], Option[Exit]) =
+    try (Some(new BootServerSocket(configuration)) -> None)
+    catch {
+      case _: ServerAlreadyBootingException if System.console != null =>
+        println("sbt server is already booting. Create a new server? y/n (default y)")
+        val exit = Terminal.get.withRawSystemIn(System.in.read) match {
+          case 110 => Some(Exit(1))
+          case _   => None
+        }
+        (None, exit)
+      case _: ServerAlreadyBootingException =>
+        if (SysProp.forceServerStart) (None, None)
+        else (None, Some(Exit(2)))
     }
 }
 
@@ -805,8 +833,7 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
-    val terminal = Terminal.get
-    val result = try terminal.withRawSystemIn(terminal.inputStream.read) match {
+    val result = try Terminal.get.withRawSystemIn(System.in.read) match {
       case -1 => 'q'.toInt
       case b  => b
     } catch { case _: ClosedChannelException => 'q' }

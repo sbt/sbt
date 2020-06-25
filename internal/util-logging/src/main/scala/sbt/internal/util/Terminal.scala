@@ -11,7 +11,7 @@ import java.io.{ InputStream, OutputStream, PrintStream }
 import java.nio.channels.ClosedChannelException
 import java.util.Locale
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import java.util.concurrent.{ CountDownLatch, Executors, LinkedBlockingQueue }
+import java.util.concurrent.{ CountDownLatch, Executors, LinkedBlockingQueue, TimeUnit }
 
 import jline.DefaultTerminal2
 import jline.console.ConsoleReader
@@ -362,6 +362,7 @@ object Terminal {
   }
   private[this] val nonBlockingIn: WriteableInputStream =
     new WriteableInputStream(jline.TerminalFactory.get.wrapInIfNeeded(originalIn), "console")
+
   private[this] val inputStream = new AtomicReference[InputStream](System.in)
   private[this] def withOut[T](f: => T): T = {
     try {
@@ -397,11 +398,86 @@ object Terminal {
    */
   private[this] val activeTerminal = new AtomicReference[Terminal](consoleTerminalHolder.get)
   jline.TerminalFactory.set(consoleTerminalHolder.get.toJLine)
+
+  /**
+   * The boot input stream allows a remote client to forward input to the sbt process while
+   * it is still loading. It works by updating proxyInputStream to read from the
+   * value of bootInputStreamHolder if it is non-null as well as from the normal process
+   * console io (assuming there is console io).
+   */
+  private[this] val bootInputStreamHolder = new AtomicReference[InputStream]
+
+  /**
+   * The boot output stream allows sbt to relay the bytes written to stdout to one or
+   * more remote clients while the sbt build is loading and hasn't yet loaded a server.
+   * The output stream of TerminalConsole is updated to write to value of
+   * bootOutputStreamHolder when it is non-null as well as the normal process console
+   * output stream.
+   */
+  private[this] val bootOutputStreamHolder = new AtomicReference[OutputStream]
+  private[sbt] def setBootStreams(
+      bootInputStream: InputStream,
+      bootOutputStream: OutputStream
+  ): Unit = {
+    bootInputStreamHolder.set(bootInputStream)
+    bootOutputStreamHolder.set(bootOutputStream)
+  }
+
   private[this] object proxyInputStream extends InputStream {
-    def read(): Int = activeTerminal.get().inputStream.read()
+    private[this] val isScripted = System.getProperty("sbt.scripted", "false") == "true"
+    /*
+     * This is to handle the case when a remote client starts sbt and the build fails.
+     * We need to be able to consume input bytes from the remote client, but they
+     * haven't yet connected to the main server but may be connected to the
+     * BootServerSocket. Unfortunately there is no poll method on input stream that
+     * takes a duration so we have to manually implement that here. All of the input
+     * streams that we create in sbt are interruptible, so we can just poll each
+     * of the input streams and periodically interrupt the thread to switch between
+     * the two input streams.
+     */
+    private class ReadThread extends Thread with AutoCloseable {
+      val result = new LinkedBlockingQueue[Integer]
+      setDaemon(true)
+      start()
+      val running = new AtomicBoolean(true)
+      override def run(): Unit = while (running.get) {
+        bootInputStreamHolder.get match {
+          case null =>
+          case is =>
+            def readFrom(inputStream: InputStream) =
+              try {
+                if (running.get) {
+                  inputStream.read match {
+                    case -1 =>
+                    case i =>
+                      result.put(i)
+                      running.set(false)
+                  }
+                }
+              } catch { case _: InterruptedException => }
+            readFrom(is)
+            readFrom(activeTerminal.get().inputStream)
+        }
+      }
+      override def close(): Unit = if (running.compareAndSet(true, false)) this.interrupt()
+    }
+    def read(): Int = {
+      if (isScripted) -1
+      else if (bootInputStreamHolder.get == null) activeTerminal.get().inputStream.read()
+      else {
+        val thread = new ReadThread
+        @tailrec def poll(): Int = thread.result.poll(10, TimeUnit.MILLISECONDS) match {
+          case null =>
+            thread.interrupt()
+            poll()
+          case i => i
+        }
+        poll()
+      }
+    }
   }
   private[this] object proxyOutputStream extends OutputStream {
-    private[this] def os = activeTerminal.get().outputStream
+    private[this] def os: OutputStream = activeTerminal.get().outputStream
     def write(byte: Int): Unit = {
       os.write(byte)
       os.flush()
@@ -611,12 +687,28 @@ object Terminal {
     }
     def throwIfClosed[R](f: => R): R = if (isStopped.get) throw new ClosedChannelException else f
 
+    private val combinedOutputStream = new OutputStream {
+      override def write(b: Int): Unit = {
+        Option(bootOutputStreamHolder.get).foreach(_.write(b))
+        out.write(b)
+      }
+      override def write(b: Array[Byte]): Unit = write(b, 0, b.length)
+      override def write(b: Array[Byte], offset: Int, len: Int): Unit = {
+        Option(bootOutputStreamHolder.get).foreach(_.write(b, offset, len))
+        out.write(b, offset, len)
+      }
+      override def flush(): Unit = {
+        Option(bootOutputStreamHolder.get).foreach(_.flush())
+        out.flush()
+      }
+    }
+
     override val outputStream = new OutputStream {
       override def write(b: Int): Unit = throwIfClosed {
         writeLock.synchronized {
           if (b == Int.MinValue) currentLine.set(new ArrayBuffer[Byte])
           else doWrite(Vector((b & 0xFF).toByte))
-          if (b == 10) out.flush()
+          if (b == 10) combinedOutputStream.flush()
         }
       }
       override def write(b: Array[Byte]): Unit = throwIfClosed(write(b, 0, b.length))
@@ -629,6 +721,7 @@ object Terminal {
           }
         }
       }
+      override def flush(): Unit = combinedOutputStream.flush()
       private[this] val clear = s"$CursorLeft1000$ClearScreenAfterCursor"
       private def doWrite(bytes: Seq[Byte]): Unit = {
         def doWrite(b: Byte): Unit = out.write(b & 0xFF)
@@ -638,8 +731,8 @@ object Terminal {
             progressState.clearBytes()
             val cl = currentLine.get
             if (buf.nonEmpty && isAnsiSupported && cl.isEmpty) clear.getBytes.foreach(doWrite)
-            out.write(buf.toArray)
-            out.write(10)
+            combinedOutputStream.write(buf.toArray)
+            combinedOutputStream.write(10)
             currentLine.get match {
               case s if s.nonEmpty => currentLine.set(new ArrayBuffer[Byte])
               case _               =>
@@ -654,9 +747,9 @@ object Terminal {
             clear.getBytes.foreach(doWrite)
           }
           cl ++= remaining
-          out.write(remaining.toArray)
+          combinedOutputStream.write(remaining.toArray)
         }
-        out.flush()
+        combinedOutputStream.flush()
       }
     }
     override private[sbt] val printStream: PrintStream = new PrintStream(outputStream, true)
@@ -681,7 +774,7 @@ object Terminal {
         Some(new String(bytes.toArray).replaceAllLiterally(ClearScreenAfterCursor, ""))
     }
 
-    private[this] val rawPrintStream: PrintStream = new PrintStream(out, true) {
+    private[this] val rawPrintStream: PrintStream = new PrintStream(combinedOutputStream, true) {
       override def close(): Unit = {}
     }
     override def withPrintStream[T](f: PrintStream => T): T =

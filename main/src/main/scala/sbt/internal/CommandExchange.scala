@@ -248,9 +248,11 @@ private[sbt] final class CommandExchange {
           server = None
           firstInstance.set(false)
       }
+      Terminal.setBootStreams(null, null)
       if (s.get(BasicKeys.closeIOStreams).getOrElse(false)) Terminal.close()
+      s.get(Keys.bootServerSocket).foreach(_.close())
     }
-    s
+    s.remove(Keys.bootServerSocket)
   }
 
   def shutdown(): Unit = {

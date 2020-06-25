@@ -34,7 +34,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
-import scala.util.{ Failure, Properties, Success }
+import scala.util.{ Failure, Properties, Success, Try }
 import Serialization.{
   CancelAll,
   attach,
@@ -108,14 +108,11 @@ class NetworkClient(
   }
 
   private[this] val stdinBytes = new LinkedBlockingQueue[Int]
-  private[this] val stdin: InputStream = new InputStream {
-    override def available(): Int = stdinBytes.size
-    override def read: Int = stdinBytes.take
-  }
   private[this] val inputThread = new AtomicReference(new RawInputThread)
   private[this] val exitClean = new AtomicBoolean(true)
   private[this] val sbtProcess = new AtomicReference[Process](null)
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
+  private class ServerFailedException extends Exception
 
   // Open server connection based on the portfile
   def init(prompt: Boolean, retry: Boolean): ServerConnection =
@@ -138,9 +135,23 @@ class NetworkClient(
           forkServer(portfile, log = true)
         }
       }
-      val (sk, tkn) =
-        try mkSocket(portfile)
-        catch { case e: IOException => throw new ConnectionRefusedException(e) }
+      @tailrec def connect(attempt: Int): (Socket, Option[String]) = {
+        val res = try Some(mkSocket(portfile))
+        catch {
+          // This catches a pipe busy exception which can happen if two windows clients
+          // attempt to connect in rapid succession
+          case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 => None
+          case e: IOException                                                           => throw new ConnectionRefusedException(e)
+        }
+        res match {
+          case Some(r) => r
+          case None    =>
+            // Use a random sleep to spread out the competing processes
+            Thread.sleep(new java.util.Random().nextInt(20).toLong)
+            connect(attempt + 1)
+        }
+      }
+      val (sk, tkn) = connect(0)
       val conn = new ServerConnection(sk) {
         override def onNotification(msg: JsonRpcNotificationMessage): Unit = {
           msg.method match {
@@ -188,57 +199,129 @@ class NetworkClient(
    * This instance must be shutdown explicitly via `sbt -client shutdown`
    */
   def forkServer(portfile: File, log: Boolean): Unit = {
-    if (log) console.appendLog(Level.Info, "server was not detected. starting an instance")
-    val term = Terminal.console
-    val props =
-      Seq(
-        term.getWidth,
-        term.getHeight,
-        term.isAnsiSupported,
-        term.isColorEnabled,
-        term.isSupershellEnabled
-      ).mkString(",")
+    val bootSocketName =
+      BootServerSocket.socketLocation(arguments.baseDirectory.toPath.toRealPath())
+    var socket: Option[Socket] = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+    val process = socket match {
+      case None =>
+        val term = Terminal.console
+        if (log) console.appendLog(Level.Info, "server was not detected. starting an instance")
+        val props =
+          Seq(
+            term.getWidth,
+            term.getHeight,
+            term.isAnsiSupported,
+            term.isColorEnabled,
+            term.isSupershellEnabled
+          ).mkString(",")
 
-    val cmd = arguments.sbtScript +: arguments.sbtArguments :+ BasicCommandStrings.CloseIOStreams
-    val processBuilder =
-      new ProcessBuilder(cmd: _*)
-        .directory(arguments.baseDirectory)
-        .redirectInput(Redirect.PIPE)
-    processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
-    val process = processBuilder.start()
-    sbtProcess.set(process)
-
+        val cmd = arguments.sbtScript +: arguments.sbtArguments :+ BasicCommandStrings.CloseIOStreams
+        val processBuilder =
+          new ProcessBuilder(cmd: _*)
+            .directory(arguments.baseDirectory)
+            .redirectInput(Redirect.PIPE)
+        processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
+        val process = processBuilder.start()
+        sbtProcess.set(process)
+        Some(process)
+      case _ =>
+        if (log) console.appendLog(Level.Info, "sbt server is booting up")
+        None
+    }
     val hook = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
     Runtime.getRuntime.addShutdownHook(hook)
-    val stdout = process.getInputStream
-    val stderr = process.getErrorStream
-    val stdin = process.getOutputStream
+    val isWin = Properties.isWin
+    var gotInputBack = false
+    val readThreadAlive = new AtomicBoolean(true)
+    /*
+     * Socket.getInputStream.available doesn't always return a value greater than 0
+     * so it is necessary to read the process output from the socket on a background
+     * thread.
+     */
+    val readThread = new Thread("client-read-thread") {
+      setDaemon(true)
+      start()
+      override def run(): Unit = {
+        try {
+          while (readThreadAlive.get) {
+            socket.foreach { s =>
+              try {
+                s.getInputStream.read match {
+                  case -1 | 0            => readThreadAlive.set(false)
+                  case 2                 => gotInputBack = true
+                  case 3 if gotInputBack => readThreadAlive.set(false)
+                  case i if gotInputBack => stdinBytes.offer(i)
+                  case i                 => printStream.write(i)
+                }
+              } catch {
+                case e @ (_: IOException | _: InterruptedException) =>
+                  readThreadAlive.set(false)
+              }
+            }
+            if (socket.isEmpty && readThreadAlive.get) {
+              try Thread.sleep(10)
+              catch { case _: InterruptedException => }
+            }
+          }
+        } catch { case e: IOException => e.printStackTrace(System.err) }
+      }
+    }
     @tailrec
     def blockUntilStart(): Unit = {
+      if (socket.isEmpty) {
+        socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
+      }
       val stop = try {
-        while (stdout.available > 0) {
-          val byte = stdout.read
-          printStream.write(byte)
+        socket match {
+          case None =>
+            process.foreach { p =>
+              val output = p.getInputStream
+              while (output.available > 0) {
+                printStream.write(output.read())
+              }
+            }
+          case Some(s) =>
+            while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
+              val out = s.getOutputStream
+              val b = stdinBytes.poll
+              // echo stdin during boot
+              printStream.write(b)
+              printStream.flush()
+              out.write(b)
+              out.flush()
+            }
         }
-        while (stderr.available > 0) {
-          val byte = stderr.read
-          errorStream.write(byte)
-        }
-        while (!stdinBytes.isEmpty) {
-          stdin.write(stdinBytes.take)
-          stdin.flush()
+        process.foreach { p =>
+          val error = p.getErrorStream
+          while (error.available > 0) {
+            errorStream.write(error.read())
+          }
         }
         false
-      } catch {
-        case _: IOException => true
-      }
+      } catch { case e: IOException => true }
       Thread.sleep(10)
-      if (!portfile.exists && !stop) blockUntilStart()
-      else {
-        stdin.close()
-        stdout.close()
-        stderr.close()
-        process.getOutputStream.close()
+      printStream.flush()
+      errorStream.flush()
+      /*
+       * If an earlier server process is launching, the process launched by this client
+       * will return with exit value 2. In that case, we can treat the process as alive
+       * even if it is actually dead.
+       */
+      val existsValidProcess = process.fold(socket.isDefined)(p => p.isAlive || p.exitValue == 2)
+      if (!portfile.exists && !stop && readThreadAlive.get && existsValidProcess) {
+        blockUntilStart()
+      } else {
+        socket.foreach { s =>
+          s.getInputStream.close()
+          s.getOutputStream.close()
+          s.close()
+        }
+        readThread.interrupt()
+        process.foreach { p =>
+          p.getOutputStream.close()
+          p.getErrorStream.close()
+          p.getInputStream.close()
+        }
       }
     }
 
@@ -247,6 +330,8 @@ class NetworkClient(
       sbtProcess.set(null)
       Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(hook))
     }
+    if (!portfile.exists()) throw new ServerFailedException
+    if (attached.get && !stdinBytes.isEmpty) Option(inputThread.get).foreach(_.drain())
   }
 
   /** Called on the response for a returning message. */
@@ -443,10 +528,16 @@ class NetworkClient(
     }
   }
 
-  def connect(log: Boolean, prompt: Boolean): Unit = {
+  def connect(log: Boolean, prompt: Boolean): Boolean = {
     if (log) console.appendLog(Level.Info, "entering *experimental* thin client - BEEP WHIRR")
-    init(prompt, retry = true)
-    ()
+    try {
+      init(prompt, retry = true)
+      true
+    } catch {
+      case _: ServerFailedException =>
+        console.appendLog(Level.Error, "failed to connect to server")
+        false
+    }
   }
 
   private[this] val contHandler: () => Unit = () => {
@@ -505,7 +596,6 @@ class NetworkClient(
   }
 
   def getCompletions(query: String): Seq[String] = {
-    connect(log = false, prompt = true)
     val quoteCount = query.foldLeft(0) {
       case (count, '"') => count + 1
       case (count, _)   => count
@@ -639,7 +729,10 @@ class NetworkClient(
       stdinBytes.offer(-1)
       val mainThread = interactiveThread.getAndSet(null)
       if (mainThread != null && mainThread != Thread.currentThread) mainThread.interrupt
-      connection.shutdown()
+      connectionHolder.get match {
+        case null =>
+        case c    => c.shutdown()
+      }
       Option(inputThread.get).foreach(_.interrupt())
     } catch {
       case t: Throwable => t.printStackTrace(); throw t
@@ -784,8 +877,8 @@ object NetworkClient {
         useJNI,
       )
     try {
-      client.connect(log = true, prompt = false)
-      client.run()
+      if (client.connect(log = true, prompt = false)) client.run()
+      else 1
     } catch { case _: Exception => 1 } finally client.close()
   }
   private def simpleClient(
@@ -857,7 +950,9 @@ object NetworkClient {
         useJNI = useJNI,
       )
     try {
-      val results = client.getCompletions(cmd)
+      val results =
+        if (client.connect(log = false, prompt = true)) client.getCompletions(cmd)
+        else Nil
       out.println(results.sorted.distinct mkString "\n")
       0
     } catch { case _: Exception => 1 } finally client.close()
@@ -867,8 +962,8 @@ object NetworkClient {
     try {
       val client = new NetworkClient(configuration, parseArgs(arguments.toArray))
       try {
-        client.connect(log = true, prompt = false)
-        client.run()
+        if (client.connect(log = true, prompt = false)) client.run()
+        else 1
       } catch { case _: Throwable => 1 } finally client.close()
     } catch {
       case NonFatal(e) =>
