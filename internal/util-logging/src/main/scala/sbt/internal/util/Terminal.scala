@@ -11,7 +11,7 @@ import java.io.{ InputStream, OutputStream, PrintStream }
 import java.nio.channels.ClosedChannelException
 import java.util.Locale
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import java.util.concurrent.{ ArrayBlockingQueue, CountDownLatch, Executors, LinkedBlockingQueue }
+import java.util.concurrent.{ CountDownLatch, Executors, LinkedBlockingQueue }
 
 import jline.DefaultTerminal2
 import jline.console.ConsoleReader
@@ -48,9 +48,6 @@ trait Terminal extends AutoCloseable {
    */
   def getLineHeightAndWidth(line: String): (Int, Int)
 
-  /**
-   *
-   */
   /**
    * Gets the input stream for this Terminal. This could be a wrapper around System.in for the
    * process or it could be a remote input stream for a network channel.
@@ -102,15 +99,21 @@ trait Terminal extends AutoCloseable {
    */
   def isSupershellEnabled: Boolean
 
+  /*
+   * The methods below this comment are implementation details that are in
+   * some cases specific to jline2. These methods may need to change or be
+   * removed if/when sbt upgrades to jline 3.
+   */
+
   /**
    * Returns the last line written to the terminal's output stream.
    * @return the last line
    */
-  def getLastLine: Option[String]
+  private[sbt] def getLastLine: Option[String]
 
-  def getBooleanCapability(capability: String): Boolean
-  def getNumericCapability(capability: String): Int
-  def getStringCapability(capability: String): String
+  private[sbt] def getBooleanCapability(capability: String): Boolean
+  private[sbt] def getNumericCapability(capability: String): Int
+  private[sbt] def getStringCapability(capability: String): String
 
   private[sbt] def name: String
   private[sbt] def withRawSystemIn[T](f: => T): T = f
@@ -151,12 +154,19 @@ object Terminal {
     Terminal.console.printStream.println(s"[info] $string")
   }
   private[sbt] def set(terminal: Terminal) = {
-    currentTerminal.set(terminal)
+    activeTerminal.set(terminal)
     jline.TerminalFactory.set(terminal.toJLine)
   }
   implicit class TerminalOps(private val term: Terminal) extends AnyVal {
     def ansi(richString: => String, string: => String): String =
       if (term.isAnsiSupported) richString else string
+    /*
+     * Whenever we are dealing with JLine, which is true in sbt's ConsoleReader
+     * as well as in the scala `console` task, we need to provide a jline.Terminal2
+     * instance that can be consumed by the ConsoleReader. The ConsoleTerminal
+     * already wraps a jline terminal, so we can just return the wrapped jline
+     * terminal.
+     */
     private[sbt] def toJLine: jline.Terminal with jline.Terminal2 = term match {
       case t: ConsoleTerminal => t.term
       case _ =>
@@ -189,6 +199,10 @@ object Terminal {
     }
   }
 
+  /*
+   * Closes the standard input and output streams for the process. This allows
+   * the sbt client to detach from the server it launches.
+   */
   def close(): Unit = {
     if (System.console == null) {
       originalOut.close()
@@ -250,7 +264,7 @@ object Terminal {
     } else f
 
   private[this] object ProxyTerminal extends Terminal {
-    private def t: Terminal = currentTerminal.get
+    private def t: Terminal = activeTerminal.get
     override def getWidth: Int = t.getWidth
     override def getHeight: Int = t.getHeight
     override def getLineHeightAndWidth(line: String): (Int, Int) = t.getLineHeightAndWidth(line)
@@ -365,14 +379,28 @@ object Terminal {
 
   private[sbt] def withPrintStream[T](f: PrintStream => T): T = console.withPrintStream(f)
   private[this] val attached = new AtomicBoolean(true)
-  private[this] val terminalHolder = new AtomicReference(wrap(jline.TerminalFactory.get))
-  private[this] val currentTerminal = new AtomicReference[Terminal](terminalHolder.get)
-  jline.TerminalFactory.set(terminalHolder.get.toJLine)
+
+  /**
+   * A wrapped instance of a jline.Terminal2 instance. It should only ever be changed when the
+   * backgrounds sbt with ctrl+z and then foregrounds sbt which causes a call to reset. The
+   * Terminal.console method returns this terminal and the ConsoleChannel delegates its
+   * terminal method to it.
+   */
+  private[this] val consoleTerminalHolder = new AtomicReference(wrap(jline.TerminalFactory.get))
+
+  /**
+   * The terminal that is currently being used by the proxyInputStream and proxyOutputStream.
+   * It is set through the Terminal.set method which is called by the SetTerminal command, which
+   * is used to change the terminal during task evaluation. This allows us to route System.in and
+   * System.out through the terminal's input and output streams.
+   */
+  private[this] val activeTerminal = new AtomicReference[Terminal](consoleTerminalHolder.get)
+  jline.TerminalFactory.set(consoleTerminalHolder.get.toJLine)
   private[this] object proxyInputStream extends InputStream {
-    def read(): Int = currentTerminal.get().inputStream.read()
+    def read(): Int = activeTerminal.get().inputStream.read()
   }
   private[this] object proxyOutputStream extends OutputStream {
-    private[this] def os = currentTerminal.get().outputStream
+    private[this] def os = activeTerminal.get().outputStream
     def write(byte: Int): Unit = {
       os.write(byte)
       os.flush()
@@ -406,6 +434,16 @@ object Terminal {
     }
   }
 
+  /**
+   * Creates an instance of [[Terminal]] that delegates most of its methods to an underlying
+   * jline.Terminal2 instance. In the long run, sbt should upgrade to jline3, which has a
+   * completely different terminal interface so whereever possible, we should avoid
+   * directly referencing jline.Terminal. Wrapping jline Terminal in sbt terminal helps
+   * with that goal.
+   *
+   * @param terminal the jline terminal to wrap
+   * @return an sbt Terminal
+   */
   private[this] def wrap(terminal: jline.Terminal): Terminal = {
     val term: jline.Terminal with jline.Terminal2 = new jline.Terminal with jline.Terminal2 {
       private[this] val hasConsole = System.console != null
@@ -449,7 +487,7 @@ object Terminal {
   private[sbt] def reset(): Unit = {
     jline.TerminalFactory.reset()
     console.close()
-    terminalHolder.set(wrap(jline.TerminalFactory.get))
+    consoleTerminalHolder.set(wrap(jline.TerminalFactory.get))
   }
 
   // translate explicit class names to type in order to support
@@ -479,7 +517,7 @@ object Terminal {
     }
   }
 
-  private[sbt] def console: Terminal = terminalHolder.get match {
+  private[sbt] def console: Terminal = consoleTerminalHolder.get match {
     case null => throw new IllegalStateException("Uninitialized terminal.")
     case term => term
   }
