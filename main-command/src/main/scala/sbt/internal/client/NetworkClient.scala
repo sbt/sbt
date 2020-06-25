@@ -91,13 +91,17 @@ class NetworkClient(
   private val connectionHolder = new AtomicReference[ServerConnection]
   private val batchMode = new AtomicBoolean(false)
   private val interactiveThread = new AtomicReference[Thread](null)
+  private lazy val noTab = arguments.completionArguments.contains("--no-tab")
+  private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
+    System.getenv("SBTC_AUTO_COMPLETE") == null
+
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 
   private def portfile = arguments.baseDirectory / "project" / "target" / "active.json"
 
   def connection: ServerConnection = connectionHolder.synchronized {
     connectionHolder.get match {
-      case null => init(true)
+      case null => init(prompt = false, retry = true)
       case c    => c
     }
   }
@@ -113,17 +117,51 @@ class NetworkClient(
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
 
   // Open server connection based on the portfile
-  def init(retry: Boolean): ServerConnection =
+  def init(prompt: Boolean, retry: Boolean): ServerConnection =
     try {
       if (!portfile.exists) {
-        forkServer(portfile, log = true)
+        if (prompt) {
+          val msg = if (noTab) "" else "No sbt server is running. Press <tab> to start one..."
+          errorStream.print(s"\n$msg")
+          if (noStdErr) System.exit(0)
+          else if (noTab) forkServer(portfile, log = true)
+          else {
+            stdinBytes.take match {
+              case 9 =>
+                errorStream.println("\nStarting server...")
+                forkServer(portfile, !prompt)
+              case _ => System.exit(0)
+            }
+          }
+        } else {
+          forkServer(portfile, log = true)
+        }
       }
       val (sk, tkn) =
         try mkSocket(portfile)
         catch { case e: IOException => throw new ConnectionRefusedException(e) }
       val conn = new ServerConnection(sk) {
-        override def onNotification(msg: JsonRpcNotificationMessage): Unit =
-          self.onNotification(msg)
+        override def onNotification(msg: JsonRpcNotificationMessage): Unit = {
+          msg.method match {
+            case "shutdown" =>
+              val log = msg.params match {
+                case Some(jvalue) => Converter.fromJson[Boolean](jvalue).getOrElse(true)
+                case _            => false
+              }
+              if (running.compareAndSet(true, false) && log) {
+                if (!arguments.commandArguments.contains("shutdown")) {
+                  if (Terminal.console.getLastLine.fold(true)(_.nonEmpty)) errorStream.println()
+                  console.appendLog(Level.Error, "sbt server disconnected")
+                  exitClean.set(false)
+                }
+              }
+              stdinBytes.offer(-1)
+              Option(inputThread.get).foreach(_.close())
+              Option(interactiveThread.get).foreach(_.interrupt)
+            case "readInput" =>
+            case _           => self.onNotification(msg)
+          }
+        }
         override def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
         override def onResponse(msg: JsonRpcResponseMessage): Unit = self.onResponse(msg)
         override def onShutdown(): Unit = {
@@ -140,7 +178,7 @@ class NetworkClient(
       conn
     } catch {
       case e: ConnectionRefusedException if retry =>
-        if (Files.deleteIfExists(portfile.toPath)) init(retry = false)
+        if (Files.deleteIfExists(portfile.toPath)) init(prompt, retry = false)
         else throw e
     }
 
@@ -275,6 +313,14 @@ class NetworkClient(
                             .fromJson[Vector[String]](i.value)
                             .getOrElse(Vector.empty[String])
                         )
+                      else if (i.field == "cachedTestNames")
+                        resp.withCachedTestNames(
+                          Converter.fromJson[Boolean](i.value).getOrElse(true)
+                        )
+                      else if (i.field == "cachedMainClassNames")
+                        resp.withCachedMainClassNames(
+                          Converter.fromJson[Boolean](i.value).getOrElse(true)
+                        )
                       else resp
                   }
               case _ => CompletionResponse(Vector.empty[String])
@@ -391,9 +437,9 @@ class NetworkClient(
     }
   }
 
-  def connect(log: Boolean): Unit = {
+  def connect(log: Boolean, prompt: Boolean): Unit = {
     if (log) console.appendLog(Level.Info, "entering *experimental* thin client - BEEP WHIRR")
-    init(retry = true)
+    init(prompt, retry = true)
     ()
   }
 
@@ -448,6 +494,68 @@ class NetworkClient(
     val cmd = userCommands mkString " "
     printStream.println("> " + cmd)
     sendAndWait(cmd, None)
+  }
+
+  def getCompletions(query: String): Seq[String] = {
+    connect(log = false, prompt = true)
+    val quoteCount = query.foldLeft(0) {
+      case (count, '"') => count + 1
+      case (count, _)   => count
+    }
+    val inQuote = quoteCount % 2 != 0
+    val (rawPrefix, prefix, rawSuffix, suffix) = if (quoteCount > 0) {
+      query.lastIndexOf('"') match {
+        case -1 => (query, query, None, None) // shouldn't happen
+        case i =>
+          val rawPrefix = query.substring(0, i)
+          val prefix = rawPrefix.replaceAllLiterally("\"", "").replaceAllLiterally("\\;", ";")
+          val rawSuffix = query.substring(i).replaceAllLiterally("\\;", ";")
+          val suffix = if (rawSuffix.length > 1) rawSuffix.substring(1) else ""
+          (rawPrefix, prefix, Some(rawSuffix), Some(suffix))
+      }
+    } else (query, query.replaceAllLiterally("\\;", ";"), None, None)
+    val tailSpace = query.endsWith(" ") || query.endsWith("\"")
+    val sanitizedQuery = suffix.foldLeft(prefix) { _ + _ }
+    def getCompletions(query: String, sendCommand: Boolean): Seq[String] = {
+      val result = new LinkedBlockingQueue[CompletionResponse]()
+      val json = s"""{"query":"$query","level":1}"""
+      val execId = sendJson("sbt/completion", json)
+      pendingCompletions.put(execId, result.put)
+      val response = result.take
+      def fillCompletions(label: String, regex: String, command: String): Seq[String] = {
+        def updateCompletions(): Seq[String] = {
+          errorStream.println()
+          sendJson(attach, s"""{"interactive": false}""")
+          sendAndWait(query.replaceAll(regex + ".*", command).trim, None)
+          getCompletions(query, false)
+        }
+        if (noStdErr) Nil
+        else if (noTab) updateCompletions()
+        else {
+          errorStream.print(s"\nNo cached $label names found. Press '<tab>' to compile: ")
+          stdinBytes.take match {
+            case 9 =>
+              updateCompletions()
+            case _ => Nil
+          }
+        }
+      }
+      val testNameCompletions =
+        if (!response.cachedTestNames.getOrElse(true) && sendCommand)
+          fillCompletions("test", "test(Only|Quick)", "definedTestNames")
+        else Nil
+      val classNameCompletions =
+        if (!response.cachedMainClassNames.getOrElse(true) && sendCommand)
+          fillCompletions("main class", "runMain", "discoveredMainClasses")
+        else Nil
+      val completions = response.items
+      testNameCompletions ++ classNameCompletions ++ completions
+    }
+    getCompletions(sanitizedQuery, true) collect {
+      case c if inQuote                      => c
+      case c if tailSpace && c.contains(" ") => c.replaceAllLiterally(prefix, "")
+      case c if !tailSpace                   => c.split(" ").last
+    }
   }
 
   private def sendAndWait(cmd: String, limit: Option[Deadline]): Int = {
@@ -610,35 +718,48 @@ object NetworkClient {
       val baseDirectory: File,
       val sbtArguments: Seq[String],
       val commandArguments: Seq[String],
+      val completionArguments: Seq[String],
       val sbtScript: String,
   ) {
     def withBaseDirectory(file: File): Arguments =
-      new Arguments(file, sbtArguments, commandArguments, sbtScript)
+      new Arguments(file, sbtArguments, commandArguments, completionArguments, sbtScript)
   }
+  private[client] val completions = "--completions"
+  private[client] val noTab = "--no-tab"
+  private[client] val noStdErr = "--no-stderr"
+  private[client] val sbtBase = "--sbt-base-directory"
   private[client] def parseArgs(args: Array[String]): Arguments = {
-    var i = 0
     var sbtScript = if (Properties.isWin) "sbt.cmd" else "sbt"
     val commandArgs = new mutable.ArrayBuffer[String]
     val sbtArguments = new mutable.ArrayBuffer[String]
+    val completionArguments = new mutable.ArrayBuffer[String]
     val SysProp = "-D([^=]+)=(.*)".r
     val sanitized = args.flatMap {
       case a if a.startsWith("\"") => Array(a)
       case a                       => a.split(" ")
     }
+    var foundCompletions = false
+    var i = 0
     while (i < sanitized.length) {
       sanitized(i) match {
+        case a if foundCompletions => completionArguments += a
+        case a if a == noStdErr || a == noTab || a.startsWith(completions) =>
+          foundCompletions = true
+          completionArguments += a
         case a if a.startsWith("--sbt-script=") =>
           sbtScript = a.split("--sbt-script=").lastOption.getOrElse(sbtScript)
+        case a if !a.startsWith("-") => commandArgs += a
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
           sbtArguments += a
-        case a =>
+        case a if !foundCompletions =>
           sbtArguments += a
       }
       i += 1
     }
-    new Arguments(new File("").getCanonicalFile, sbtArguments, commandArgs, sbtScript)
+    val base = new File("").getCanonicalFile
+    new Arguments(base, sbtArguments, commandArgs, completionArguments, sbtScript)
   }
 
   def client(
@@ -658,7 +779,7 @@ object NetworkClient {
         useJNI,
       )
     try {
-      client.connect(log = true)
+      client.connect(log = true, prompt = false)
       client.run()
     } catch { case _: Exception => 1 } finally client.close()
   }
@@ -675,31 +796,73 @@ object NetworkClient {
       inputStream,
       errorStream,
       printStream,
-      useJNI
+      useJNI,
     )
   def main(args: Array[String]): Unit = {
     val (jnaArg, restOfArgs) = args.partition(_ == "--jna")
     val useJNI = jnaArg.isEmpty
-    val hook = new Thread(() => {
-      System.out.print(ConsoleAppender.ClearScreenAfterCursor)
-      System.out.flush()
-    })
-    Runtime.getRuntime.addShutdownHook(hook)
-    System.exit(Terminal.withStreams {
-      val base = new File("").getCanonicalFile()
-      try client(base, restOfArgs, System.in, System.err, System.out, useJNI)
-      finally {
-        Runtime.getRuntime.removeShutdownHook(hook)
-        hook.run()
-      }
-    })
+    val base = new File("").getCanonicalFile
+    if (restOfArgs.exists(_.startsWith(NetworkClient.completions)))
+      System.exit(complete(base, restOfArgs, useJNI, System.in, System.out))
+    else {
+      val hook = new Thread(() => {
+        System.out.print(ConsoleAppender.ClearScreenAfterCursor)
+        System.out.flush()
+      })
+      Runtime.getRuntime.addShutdownHook(hook)
+      System.exit(Terminal.withStreams {
+        try client(base, restOfArgs, System.in, System.err, System.out, useJNI)
+        finally {
+          Runtime.getRuntime.removeShutdownHook(hook)
+          hook.run()
+        }
+      })
+    }
+  }
+  def complete(
+      baseDirectory: File,
+      args: Array[String],
+      useJNI: Boolean,
+      in: InputStream,
+      out: PrintStream
+  ): Int = {
+    val cmd: String = args.find(_.startsWith(NetworkClient.completions)) match {
+      case Some(c) =>
+        c.split('=').lastOption match {
+          case Some(query) =>
+            query.indexOf(" ") match {
+              case -1 => throw new IllegalArgumentException(query)
+              case i  => query.substring(i + 1)
+            }
+          case _ => throw new IllegalArgumentException(c)
+        }
+      case _ => throw new IllegalStateException("should be unreachable")
+    }
+    val quiet = args.exists(_ == "--quiet")
+    val errorStream = if (quiet) new PrintStream(_ => {}, false) else System.err
+    val sbtArgs = args.takeWhile(!_.startsWith(NetworkClient.completions))
+    val arguments = NetworkClient.parseArgs(sbtArgs)
+    val noTab = args.contains("--no-tab")
+    val client =
+      simpleClient(
+        arguments.withBaseDirectory(baseDirectory),
+        inputStream = in,
+        errorStream = errorStream,
+        printStream = errorStream,
+        useJNI = useJNI,
+      )
+    try {
+      val results = client.getCompletions(cmd)
+      out.println(results.sorted.distinct mkString "\n")
+      0
+    } catch { case _: Exception => 1 } finally client.close()
   }
 
   def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Int =
     try {
       val client = new NetworkClient(configuration, parseArgs(arguments.toArray))
       try {
-        client.connect(log = true)
+        client.connect(log = true, prompt = false)
         client.run()
       } catch { case _: Throwable => 1 } finally client.close()
     } catch {

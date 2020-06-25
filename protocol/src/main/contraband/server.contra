@@ -29,6 +29,7 @@ type Attach implements CommandMessage {
 
 type CompletionParams {
   query: String!
+  level: Int @since("1.4.0")
 }
 
 ## Message for events.
@@ -68,6 +69,8 @@ type SettingQueryFailure implements SettingQueryResponse {
 
 type CompletionResponse {
   items: [String]
+  cachedMainClassNames: Boolean @since("1.4.0")
+  cachedTestNames: Boolean @since("1.4.0")
 }
 
 # enum Status {

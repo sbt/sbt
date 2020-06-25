@@ -1,0 +1,5 @@
+#compdef sbtc
+
+COMPLETE="--completions=${words[@]}"
+COMPLETIONS=($(sbtc --no-tab ${COMPLETE}))
+_alternative 'arguments:custom arg:($COMPLETIONS)'

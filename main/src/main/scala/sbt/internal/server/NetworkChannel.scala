@@ -411,19 +411,47 @@ final class NetworkChannel(
       try {
         Option(EvaluateTask.lastEvaluatedState.get) match {
           case Some(sstate) =>
-            val completionItems =
+            import sbt.protocol.codec.JsonProtocol._
+            def completionItems(s: State) = {
               Parser
-                .completions(sstate.combinedParser, cp.query, 9)
+                .completions(s.combinedParser, cp.query, cp.level.getOrElse(9))
                 .get
                 .flatMap { c =>
                   if (!c.isEmpty) Some(c.append.replaceAll("\n", " "))
                   else None
                 }
                 .map(c => cp.query + c)
-            import sbt.protocol.codec.JsonProtocol._
+            }
+            val (items, cachedMainClassNames, cachedTestNames) = StandardMain.exchange.withState {
+              s =>
+                val scopedKeyParser: Parser[Seq[Def.ScopedKey[_]]] =
+                  Act.aggregatedKeyParser(s) <~ Parsers.any.*
+                Parser.parse(cp.query, scopedKeyParser) match {
+                  case Right(keys) =>
+                    val testKeys =
+                      keys.filter(k => k.key.label == "testOnly" || k.key.label == "testQuick")
+                    val (testState, cachedTestNames) = testKeys.foldLeft((s, true)) {
+                      case ((st, allCached), k) =>
+                        SessionVar.loadAndSet(sbt.Keys.definedTestNames in k.scope, st, true) match {
+                          case (nst, d) => (nst, allCached && d.isDefined)
+                        }
+                    }
+                    val runKeys = keys.filter(_.key.label == "runMain")
+                    val (runState, cachedMainClassNames) = runKeys.foldLeft((testState, true)) {
+                      case ((st, allCached), k) =>
+                        SessionVar.loadAndSet(sbt.Keys.discoveredMainClasses in k.scope, st, true) match {
+                          case (nst, d) => (nst, allCached && d.isDefined)
+                        }
+                    }
+                    (completionItems(runState), cachedMainClassNames, cachedTestNames)
+                  case _ => (completionItems(s), true, true)
+                }
+            }
             respondResult(
               CompletionResponse(
-                items = completionItems.toVector
+                items = items.toVector,
+                cachedMainClassNames = cachedMainClassNames,
+                cachedTestNames = cachedTestNames
               ),
               execId
             )
