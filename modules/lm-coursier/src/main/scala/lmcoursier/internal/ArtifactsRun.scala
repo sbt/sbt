@@ -2,7 +2,6 @@ package lmcoursier.internal
 
 import java.io.File
 
-import coursier.cache.internal.ThreadUtil
 import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core.Type
 import coursier.util.Artifact
@@ -38,53 +37,50 @@ object ArtifactsRun {
         else
           ""
 
-      ThreadUtil.withFixedThreadPool(params.parallel) { pool =>
-
-        coursier.Artifacts()
-          .withResolutions(params.resolutions)
-          .withArtifactTypes(Set(Type.all))
-          .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
-          .withClasspathOrder(params.classpathOrder)
-          .addExtraArtifacts { l =>
-            if (params.includeSignatures)
-              l.flatMap(_._3.extra.get("sig").toSeq)
-            else
-              Nil
-          }
-          .addTransformArtifacts { artifacts =>
-            if (params.missingOk)
-              artifacts.map {
-                case (dependency, publication, artifact) =>
-                  (dependency, publication, artifact.withOptional(true))
+      coursier.Artifacts()
+        .withResolutions(params.resolutions)
+        .withArtifactTypes(Set(Type.all))
+        .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
+        .withClasspathOrder(params.classpathOrder)
+        .addExtraArtifacts { l =>
+          if (params.includeSignatures)
+            l.flatMap(_._3.extra.get("sig").toSeq)
+          else
+            Nil
+        }
+        .addTransformArtifacts { artifacts =>
+          if (params.missingOk)
+            artifacts.map {
+              case (dependency, publication, artifact) =>
+                (dependency, publication, artifact.withOptional(true))
+            }
+          else
+            artifacts
+        }
+        .withCache(
+          params
+            .cache
+            .withLogger(
+              params.loggerOpt.getOrElse {
+                RefreshLogger.create(
+                  if (RefreshLogger.defaultFallbackMode)
+                    new FallbackRefreshDisplay()
+                  else
+                    ProgressBarRefreshDisplay.create(
+                      if (printOptionalMessage) log.info(artifactInitialMessage),
+                      if (printOptionalMessage || verbosityLevel >= 2)
+                        log.info(
+                          s"Fetched artifacts of ${params.projectName}" +
+                            (if (params.sbtClassifiers) " (sbt classifiers)" else "")
+                        )
+                    )
+                )
               }
-            else
-              artifacts
-          }
-          .withCache(
-            params
-              .cache
-              .withPool(pool)
-              .withLogger(
-                params.loggerOpt.getOrElse {
-                  RefreshLogger.create(
-                    if (RefreshLogger.defaultFallbackMode)
-                      new FallbackRefreshDisplay()
-                    else
-                      ProgressBarRefreshDisplay.create(
-                        if (printOptionalMessage) log.info(artifactInitialMessage),
-                        if (printOptionalMessage || verbosityLevel >= 2)
-                          log.info(
-                            s"Fetched artifacts of ${params.projectName}" +
-                              (if (params.sbtClassifiers) " (sbt classifiers)" else "")
-                          )
-                      )
-                  )
-                }
-              )
-          )
-          .eitherResult()
-          .map(_.fullDetailedArtifacts) // FIXME Misses extraArtifacts, that we don't use for now though
-      }
+            )
+        )
+        .eitherResult()
+        .map(_.fullDetailedArtifacts) // FIXME Misses extraArtifacts, that we don't use for now though
+
     }
 
 }

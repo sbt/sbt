@@ -1,6 +1,5 @@
 package lmcoursier.internal
 
-import coursier.cache.internal.ThreadUtil
 import coursier.{Resolution, Resolve}
 import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core._
@@ -80,51 +79,47 @@ object ResolutionRun {
     if (verbosityLevel >= 2)
       log.info(initialMessage)
 
-    ThreadUtil.withFixedThreadPool(params.parallel) { pool =>
-
-      Resolve()
-        // re-using various caches from a resolution of a configuration we extend
-        .withInitialResolution(startingResolutionOpt)
-        .withDependencies(
-          params.dependencies.collect {
-            case (config, dep) if configs(config) =>
-              dep
-          }
-        )
-        .withRepositories(repositories)
-        .withResolutionParams(
-          params
-            .params
-            .addForceVersion((if (isSandboxConfig) Nil else params.interProjectDependencies.map(_.moduleVersion)): _*)
-            .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
-            .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
-            .withTypelevel(params.params.typelevel)
-            .withRules(rules)
-        )
-        .withCache(
-          params
-            .cache
-            .withPool(pool)
-            .withLogger(
-              params.loggerOpt.getOrElse {
-                RefreshLogger.create(
-                  if (RefreshLogger.defaultFallbackMode)
-                    new FallbackRefreshDisplay()
-                  else
-                    ProgressBarRefreshDisplay.create(
-                      if (printOptionalMessage) log.info(initialMessage),
-                      if (printOptionalMessage || verbosityLevel >= 2)
-                        log.info(s"Resolved ${params.projectName} dependencies")
-                    )
-                )
-              }
-            )
-        )
-        .either() match {
-          case Left(err) if params.missingOk => Right(err.resolution)
-          case others => others
+    Resolve()
+      // re-using various caches from a resolution of a configuration we extend
+      .withInitialResolution(startingResolutionOpt)
+      .withDependencies(
+        params.dependencies.collect {
+          case (config, dep) if configs(config) =>
+            dep
         }
-    }
+      )
+      .withRepositories(repositories)
+      .withResolutionParams(
+        params
+          .params
+          .addForceVersion((if (isSandboxConfig) Nil else params.interProjectDependencies.map(_.moduleVersion)): _*)
+          .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
+          .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
+          .withTypelevel(params.params.typelevel)
+          .withRules(rules)
+      )
+      .withCache(
+        params
+          .cache
+          .withLogger(
+            params.loggerOpt.getOrElse {
+              RefreshLogger.create(
+                if (RefreshLogger.defaultFallbackMode)
+                  new FallbackRefreshDisplay()
+                else
+                  ProgressBarRefreshDisplay.create(
+                    if (printOptionalMessage) log.info(initialMessage),
+                    if (printOptionalMessage || verbosityLevel >= 2)
+                      log.info(s"Resolved ${params.projectName} dependencies")
+                  )
+              )
+            }
+          )
+      )
+      .either() match {
+        case Left(err) if params.missingOk => Right(err.resolution)
+        case others => others
+      }
   }
 
   def resolutions(
