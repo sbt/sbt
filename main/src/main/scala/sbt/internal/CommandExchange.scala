@@ -49,7 +49,7 @@ private[sbt] final class CommandExchange {
   private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
-  private val maintenanceChannelQueue = new LinkedBlockingQueue[MaintenanceTask]
+  private val fastTrackChannelQueue = new LinkedBlockingQueue[FastTrackTask]
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private[this] val lastState = new AtomicReference[State]
   private[this] val currentExecRef = new AtomicReference[Exec]
@@ -58,7 +58,7 @@ private[sbt] final class CommandExchange {
 
   def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized {
     channelBuffer.append(c)
-    c.register(commandQueue, maintenanceChannelQueue)
+    c.register(commandQueue, fastTrackChannelQueue)
   }
 
   private[sbt] def withState[T](f: State => T): T = f(lastState.get)
@@ -253,7 +253,7 @@ private[sbt] final class CommandExchange {
   }
 
   def shutdown(): Unit = {
-    maintenanceThread.close()
+    fastTrackThread.close()
     channels foreach (_.shutdown(true))
     // interrupt and kill the thread
     server.foreach(_.shutdown())
@@ -394,21 +394,21 @@ private[sbt] final class CommandExchange {
     }
   }
 
-  private[this] class MaintenanceThread
-      extends Thread("sbt-command-exchange-maintenance")
+  private[this] class FastTrackThread
+      extends Thread("sbt-command-exchange-fastTrack")
       with AutoCloseable {
     setDaemon(true)
     start()
     private[this] val isStopped = new AtomicBoolean(false)
     override def run(): Unit = {
-      def exit(mt: MaintenanceTask): Unit = {
+      def exit(mt: FastTrackTask): Unit = {
         mt.channel.shutdown(false)
         if (mt.channel.name.contains("console")) shutdown(mt.channel.name)
       }
       @tailrec def impl(): Unit = {
-        maintenanceChannelQueue.take match {
+        fastTrackChannelQueue.take match {
           case null =>
-          case mt: MaintenanceTask =>
+          case mt: FastTrackTask =>
             mt.task match {
               case `attach` => mt.channel.prompt(ConsolePromptEvent(lastState.get))
               case "cancel" => Option(currentExecRef.get).foreach(cancel)
@@ -435,5 +435,5 @@ private[sbt] final class CommandExchange {
   }
   private[sbt] def channelForName(channelName: String): Option[CommandChannel] =
     channels.find(_.name == channelName)
-  private[this] val maintenanceThread = new MaintenanceThread
+  private[this] val fastTrackThread = new FastTrackThread
 }

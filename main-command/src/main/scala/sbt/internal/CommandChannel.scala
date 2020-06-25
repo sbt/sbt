@@ -26,10 +26,10 @@ import scala.collection.JavaConverters._
 abstract class CommandChannel {
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val registered: java.util.Set[java.util.Queue[Exec]] = new java.util.HashSet
-  private val maintenance: java.util.Set[java.util.Queue[MaintenanceTask]] = new java.util.HashSet
+  private val fastTrack: java.util.Set[java.util.Queue[FastTrackTask]] = new java.util.HashSet
   private[sbt] final def register(
       queue: java.util.Queue[Exec],
-      maintenanceQueue: java.util.Queue[MaintenanceTask]
+      fastTrackQueue: java.util.Queue[FastTrackTask]
   ): Unit =
     registered.synchronized {
       registered.add(queue)
@@ -37,20 +37,20 @@ abstract class CommandChannel {
         queue.addAll(commandQueue)
         commandQueue.clear()
       }
-      maintenance.add(maintenanceQueue)
+      fastTrack.add(fastTrackQueue)
       ()
     }
   private[sbt] final def unregister(
       queue: java.util.Queue[CommandChannel],
-      maintenanceQueue: java.util.Queue[MaintenanceTask]
+      fastTrackQueue: java.util.Queue[FastTrackTask]
   ): Unit =
     registered.synchronized {
       registered.remove(queue)
-      maintenance.remove(maintenanceQueue)
+      fastTrack.remove(fastTrackQueue)
       ()
     }
-  private[sbt] final def initiateMaintenance(task: String): Unit = {
-    maintenance.forEach(q => q.synchronized { q.add(new MaintenanceTask(this, task)); () })
+  private[sbt] final def addFastTrackTask(task: String): Unit = {
+    fastTrack.forEach(q => q.synchronized { q.add(new FastTrackTask(this, task)); () })
   }
   private[sbt] def mkUIThread: (State, CommandChannel) => UITask
   private[sbt] def makeUIThread(state: State): UITask = mkUIThread(state, this)
@@ -91,9 +91,9 @@ abstract class CommandChannel {
       if (cmd.nonEmpty) append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
       else false
   }
-  private[sbt] def onMaintenance: String => Boolean = { s: String =>
-    maintenance.synchronized(maintenance.forEach { q =>
-      q.add(new MaintenanceTask(this, s))
+  private[sbt] def onFastTrackTask: String => Boolean = { s: String =>
+    fastTrack.synchronized(fastTrack.forEach { q =>
+      q.add(new FastTrackTask(this, s))
       ()
     })
     true
@@ -116,4 +116,4 @@ case class ConsolePromptEvent(state: State) extends EventMessage
  */
 case class ConsoleUnpromptEvent(lastSource: Option[CommandSource]) extends EventMessage
 
-private[internal] class MaintenanceTask(val channel: CommandChannel, val task: String)
+private[internal] class FastTrackTask(val channel: CommandChannel, val task: String)

@@ -25,7 +25,7 @@ private[sbt] trait UITask extends Runnable with AutoCloseable {
   private[sbt] def channel: CommandChannel
   private[sbt] def reader: UITask.Reader
   private[this] final def handleInput(s: Either[String, String]): Boolean = s match {
-    case Left(m)    => channel.onMaintenance(m)
+    case Left(m)    => channel.onFastTrackTask(m)
     case Right(cmd) => channel.onCommand(cmd)
   }
   private[this] val isStopped = new AtomicBoolean(false)

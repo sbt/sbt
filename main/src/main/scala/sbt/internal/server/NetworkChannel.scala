@@ -95,7 +95,7 @@ final class NetworkChannel(
     attached.set(true)
     pendingRequests.remove(id)
     jsonRpcRespond("", id)
-    initiateMaintenance(attach)
+    addFastTrackTask(attach)
   }
   private[sbt] def prompt(): Unit = {
     terminal.setPrompt(Prompt.Running)
