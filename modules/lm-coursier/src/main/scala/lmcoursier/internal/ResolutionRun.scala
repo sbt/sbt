@@ -183,7 +183,7 @@ object ResolutionRun {
                 ()
               }
           }
-          either.map(_ => map.toMap)
+          withSubResolutions.map(_ => map.toMap)
         }
       for (res <- resOrError)
         SbtCoursierCache.default.putResolution(params.resolutionKey, res)
