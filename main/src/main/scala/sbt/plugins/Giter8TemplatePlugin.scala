@@ -26,7 +26,7 @@ object Giter8TemplatePlugin extends AutoPlugin {
           ModuleID(
             "org.scala-sbt.sbt-giter8-resolver",
             "sbt-giter8-resolver",
-            "0.12.0"
+            "0.13.1"
           ) cross CrossVersion.binary,
           "sbtgiter8resolver.Giter8TemplateResolver"
         )
