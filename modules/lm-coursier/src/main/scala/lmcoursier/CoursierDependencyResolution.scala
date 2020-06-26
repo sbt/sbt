@@ -35,6 +35,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
 
+    val conf = this.conf.withUpdateConfiguration(configuration)
+
     // TODO Take stuff in configuration into account? uwconfig too?
 
     val module0 = module match {

@@ -4,7 +4,7 @@ import lmcoursier.definitions.{Configuration, Info, Module, ModuleName, Organiza
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 
-object IvyXmlTests extends AnyPropSpec with Matchers {
+class IvyXmlTests extends AnyPropSpec with Matchers {
 
   property("no truncation") {
     val project = Project(

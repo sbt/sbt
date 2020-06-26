@@ -7,7 +7,7 @@ import dataclass.data
 import coursier.cache.CacheDefaults
 import lmcoursier.credentials.Credentials
 import lmcoursier.definitions.{Authentication, CacheLogger, CachePolicy, FromCoursier, Module, ModuleMatchers, Project, Reconciliation, Strict}
-import sbt.librarymanagement.Resolver
+import sbt.librarymanagement.{Resolver, UpdateConfiguration}
 import xsbti.Logger
 
 import scala.concurrent.duration.Duration
@@ -84,6 +84,9 @@ import scala.concurrent.duration.Duration
     withTtl(Some(ttl))
   def addRepositoryAuthentication(repositoryId: String, authentication: Authentication): CoursierConfiguration =
     withAuthenticationByRepositoryId(authenticationByRepositoryId :+ (repositoryId, authentication))
+
+  def withUpdateConfiguration(conf: UpdateConfiguration): CoursierConfiguration =
+    withMissingOk(conf.missingOk)
 }
 
 object CoursierConfiguration {
