@@ -33,6 +33,7 @@ import xsbti.compile.CompilerCache
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
+import xsbti.AppProvider
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
@@ -40,6 +41,16 @@ final class xMain extends xsbti.AppMain {
     new XMainConfiguration().run("xMain", configuration)
 }
 private[sbt] object xMain {
+  private[sbt] def dealiasBaseDirectory(config: xsbti.AppConfiguration): xsbti.AppConfiguration = {
+    val dealiasedBase = config.baseDirectory.getCanonicalFile
+    if (config.baseDirectory == dealiasedBase) config
+    else
+      new xsbti.AppConfiguration {
+        override def arguments: Array[String] = config.arguments()
+        override val baseDirectory: File = dealiasedBase
+        override def provider: AppProvider = config.provider()
+      }
+  }
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     try {
       import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
@@ -54,16 +65,16 @@ private[sbt] object xMain {
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
       if (userCommands.exists(isBsp)) {
-        BspClient.run(configuration)
+        BspClient.run(dealiasBaseDirectory(configuration))
       } else {
         Terminal.withStreams {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
-            NetworkClient.run(configuration, args)
+            NetworkClient.run(dealiasBaseDirectory(configuration), args)
             Exit(0)
           } else {
             val state = StandardMain.initialState(
-              configuration,
+              dealiasBaseDirectory(configuration),
               Seq(defaults, early),
               runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
             )
@@ -84,7 +95,7 @@ private[sbt] object ScriptMain {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
     val state = StandardMain.initialState(
-      configuration,
+      xMain.dealiasBaseDirectory(configuration),
       BuiltinCommands.ScriptCommands,
       runEarly(Level.Error.toString) :: Script.Name :: Nil
     )
@@ -99,7 +110,7 @@ final class ConsoleMain extends xsbti.AppMain {
 private[sbt] object ConsoleMain {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val state = StandardMain.initialState(
-      configuration,
+      xMain.dealiasBaseDirectory(configuration),
       BuiltinCommands.ConsoleCommands,
       IvyConsole.Name :: Nil
     )
