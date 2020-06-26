@@ -4,7 +4,7 @@
 package sbt.librarymanagement
 
 import java.io.{ IOException, File }
-import java.net.URL
+import java.net.{ URI, URL }
 import scala.xml.XML
 import org.xml.sax.SAXParseException
 import sbt.util.Logger
@@ -304,9 +304,13 @@ private[librarymanagement] abstract class ResolverFunctions {
 
     /** Constructs a file resolver with the given name and base directory. */
     def apply(name: String, baseDirectory: File)(implicit basePatterns: Patterns): FileRepository =
-      baseRepository(new File(baseDirectory.toURI.normalize).getAbsolutePath)(
+      baseRepository(
+        new File(toUri(baseDirectory).normalize.getSchemeSpecificPart).getAbsolutePath
+      )(
         FileRepository(name, defaultFileConfiguration, _)
       )
+
+    private def toUri(dir: File): URI = dir.toPath.toUri
   }
   object url {
 
