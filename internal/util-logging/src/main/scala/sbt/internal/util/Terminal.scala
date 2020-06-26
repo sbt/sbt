@@ -19,6 +19,7 @@ import sbt.internal.util.ConsoleAppender.{ ClearScreenAfterCursor, CursorLeft100
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 trait Terminal extends AutoCloseable {
 
@@ -430,6 +431,38 @@ object Terminal {
     }
   }
 
+  /*
+   * When the server is booted by a remote client, it may not be able to accurately
+   * calculate the terminal properties. To work around this, we can set the
+   * properties via an environment property. It was too difficult to get system
+   * properties working correctly with windows.
+   */
+  private class Props(
+      val width: Int,
+      val height: Int,
+      val ansi: Boolean,
+      val color: Boolean,
+      val supershell: Boolean
+  )
+  private[sbt] val TERMINAL_PROPS = "SBT_TERMINAL_PROPS"
+  private val props = System.getenv(TERMINAL_PROPS) match {
+    case null => None
+    case p =>
+      p.split(",") match {
+        case Array(width, height, ansi, color, supershell) =>
+          Try(
+            new Props(
+              width.toInt,
+              height.toInt,
+              ansi.toBoolean,
+              color.toBoolean,
+              supershell.toBoolean
+            )
+          ).toOption
+        case _ => None
+      }
+  }
+
   /**
    * Creates an instance of [[Terminal]] that delegates most of its methods to an underlying
    * jline.Terminal2 instance. In the long run, sbt should upgrade to jline3, which has a
@@ -452,9 +485,9 @@ object Terminal {
       override def restore(): Unit = if (alive) terminal.restore()
       override def reset(): Unit = if (alive) terminal.reset()
       override def isSupported: Boolean = terminal.isSupported
-      override def getWidth: Int = terminal.getWidth
-      override def getHeight: Int = terminal.getHeight
-      override def isAnsiSupported: Boolean = terminal.isAnsiSupported
+      override def getWidth: Int = props.map(_.width).getOrElse(terminal.getWidth)
+      override def getHeight: Int = props.map(_.height).getOrElse(terminal.getHeight)
+      override def isAnsiSupported: Boolean = props.map(_.ansi).getOrElse(terminal.isAnsiSupported)
       override def wrapOutIfNeeded(out: OutputStream): OutputStream = terminal.wrapOutIfNeeded(out)
       override def wrapInIfNeeded(in: InputStream): InputStream = terminal.wrapInIfNeeded(in)
       override def hasWeirdWrap: Boolean = terminal.hasWeirdWrap
@@ -549,13 +582,18 @@ object Terminal {
         term.setEchoEnabled(true)
       }
     }
-    override def isColorEnabled: Boolean = ConsoleAppender.formatEnabledInEnv
+    override def isColorEnabled: Boolean =
+      props.map(_.color).getOrElse(ConsoleAppender.formatEnabledInEnv)
 
-    override def isSupershellEnabled: Boolean = System.getProperty("sbt.supershell") match {
-      case null   => !(sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")) && isColorEnabled
-      case "true" => true
-      case _      => false
-    }
+    override def isSupershellEnabled: Boolean =
+      props
+        .map(_.supershell)
+        .getOrElse(System.getProperty("sbt.supershell") match {
+          case null =>
+            !(sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")) && isColorEnabled
+          case "true" => true
+          case _      => false
+        })
   }
   private[sbt] abstract class TerminalImpl private[sbt] (
       val in: InputStream,

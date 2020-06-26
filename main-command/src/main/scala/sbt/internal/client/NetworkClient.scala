@@ -189,23 +189,25 @@ class NetworkClient(
    */
   def forkServer(portfile: File, log: Boolean): Unit = {
     if (log) console.appendLog(Level.Info, "server was not detected. starting an instance")
-    val color =
-      if (!arguments.sbtArguments.exists(_.startsWith("-Dsbt.color=")))
-        s"-Dsbt.color=${Terminal.console.isColorEnabled}" :: Nil
-      else Nil
-    val superShell =
-      if (!arguments.sbtArguments.exists(_.startsWith("-Dsbt.supershell=")))
-        s"-Dsbt.supershell=${Terminal.console.isColorEnabled}" :: Nil
-      else Nil
+    val term = Terminal.console
+    val props =
+      Seq(
+        term.getWidth,
+        term.getHeight,
+        term.isAnsiSupported,
+        term.isColorEnabled,
+        term.isSupershellEnabled
+      ).mkString(",")
 
-    val args = color ++ superShell ++ arguments.sbtArguments
-    val cmd = arguments.sbtScript +: args :+ BasicCommandStrings.CloseIOStreams
-    val process =
+    val cmd = arguments.sbtScript +: arguments.sbtArguments :+ BasicCommandStrings.CloseIOStreams
+    val processBuilder =
       new ProcessBuilder(cmd: _*)
         .directory(arguments.baseDirectory)
         .redirectInput(Redirect.PIPE)
-        .start()
+    processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
+    val process = processBuilder.start()
     sbtProcess.set(process)
+
     val hook = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
     Runtime.getRuntime.addShutdownHook(hook)
     val stdout = process.getInputStream
