@@ -415,10 +415,6 @@ object Terminal {
   }
   private[this] val proxyPrintStream = new PrintStream(proxyOutputStream, true) {
     override def toString: String = s"proxyPrintStream($proxyOutputStream)"
-    override def println(s: String): Unit = {
-      proxyOutputStream.write(s"$s\n".getBytes("UTF-8"))
-      proxyOutputStream.flush()
-    }
   }
   private[this] lazy val isWindows =
     System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
