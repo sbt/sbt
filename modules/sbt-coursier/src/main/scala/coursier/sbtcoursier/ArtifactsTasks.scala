@@ -75,7 +75,7 @@ object ArtifactsTasks {
         missingOk = sbtClassifiers
       )
 
-      val resOrError = ArtifactsRun.artifacts(
+      val resOrError = ArtifactsRun(
         params,
         verbosityLevel,
         log
@@ -85,7 +85,7 @@ object ArtifactsTasks {
         case Left(err) =>
           throw err
         case Right(res0) =>
-          res0
+          res0.artifacts.toMap
       }
     }
   }

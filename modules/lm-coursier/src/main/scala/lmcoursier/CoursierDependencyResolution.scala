@@ -222,9 +222,9 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     val e = for {
       resolutions <- ResolutionRun.resolutions(resolutionParams, verbosityLevel, log)
       artifactsParams0 = artifactsParams(resolutions)
-      artifacts <- ArtifactsRun.artifactsResult(artifactsParams0, verbosityLevel, log)
+      artifacts <- ArtifactsRun(artifactsParams0, verbosityLevel, log)
     } yield {
-      val updateParams0 = updateParams(resolutions, artifacts)
+      val updateParams0 = updateParams(resolutions, artifacts.fullDetailedArtifacts)
       UpdateRun.update(updateParams0, verbosityLevel, log)
     }
     e.left.map(unresolvedWarningOrThrow(uwconfig, _))
