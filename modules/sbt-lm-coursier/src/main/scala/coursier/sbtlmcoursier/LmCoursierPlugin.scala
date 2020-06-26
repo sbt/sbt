@@ -201,9 +201,9 @@ object LmCoursierPlugin extends AutoPlugin {
           .withIvyHome(ivyPaths.value.ivyHome)
           .withStrict(strict)
           .withForceVersions(userForceVersions.toVector)
-          // seems missingOk is false in the updateConfig of updateSbtClassifiers?
-          .withMissingOk(updateConfig.missingOk || sbtClassifiers)
           .withSbtClassifiers(sbtClassifiers)
+          // seems missingOk is false in the updateConfig of updateSbtClassifiers?
+          .withUpdateConfiguration(updateConfig.withMissingOk(updateConfig.missingOk || sbtClassifiers))
       }
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =

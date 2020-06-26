@@ -317,7 +317,7 @@ private[internal] object SbtUpdateReport {
         )
 
         val reports0 = subRes.rootDependencies match {
-          case Seq(dep) =>
+          case Seq(dep) if subRes.projectCache.contains(dep.moduleVersion) =>
             // quick hack ensuring the module for the only root dependency
             // appears first in the update report, see https://github.com/coursier/coursier/issues/650
             val (_, proj) = subRes.projectCache(dep.moduleVersion)
