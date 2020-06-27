@@ -819,7 +819,7 @@ if /I !JAVA_VERSION! GEQ 8 (
   if %ERRORLEVEL% EQU 0 (
     if not exist !PRELOAD_SBT_JAR! (
       if exist "!SBT_HOME!\lib\local-preloaded\" (
-        robocopy "!SBT_HOME!\lib\local-preloaded" "%UserProfile%\.sbt\preloaded" /E
+        robocopy "!SBT_HOME!\lib\local-preloaded" "%UserProfile%\.sbt\preloaded" /E >nul 2>nul
       )
     )
   )

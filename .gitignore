@@ -1,6 +1,8 @@
 /SbtTemplateProject.scala
 target
 /project/boot
+/project/metals.sbt
+/.metals
 /project/plugins
 lib_managed
 src_managed
