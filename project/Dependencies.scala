@@ -91,7 +91,7 @@ object Dependencies {
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "0.2.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
-  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
   val scalaReflect = Def.setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
 
