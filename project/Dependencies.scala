@@ -130,7 +130,7 @@ object Dependencies {
     ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
   )
 
-  val scalaXml = scala211Module("scala-xml", "1.2.0")
+  val scalaXml = scala211Module("scala-xml", "1.3.0")
   val scalaParsers = scala211Module("scala-parser-combinators", "1.1.2")
 
   def log4jVersion = "2.11.2"
