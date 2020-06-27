@@ -53,6 +53,7 @@ private[sbt] final class CommandExchange {
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private[this] val lastState = new AtomicReference[State]
   private[this] val currentExecRef = new AtomicReference[Exec]
+  private[sbt] def hasServer = server.isDefined
 
   def channels: List[CommandChannel] = channelBuffer.toList
 

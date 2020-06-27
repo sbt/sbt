@@ -1019,22 +1019,31 @@ object BuiltinCommands {
     val exchange = StandardMain.exchange
     val welcomeState = displayWelcomeBanner(s0)
     val s1 = exchange run welcomeState
-    exchange prompt ConsolePromptEvent(s0)
-    val minGCInterval = Project
-      .extract(s1)
-      .getOpt(Keys.minForcegcInterval)
-      .getOrElse(GCUtil.defaultMinForcegcInterval)
-    val exec: Exec = getExec(s1, minGCInterval)
-    val newState = s1
-      .copy(
-        onFailure = Some(Exec(Shell, None)),
-        remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
-      )
-      .setInteractive(true)
-    val res =
-      if (exec.commandLine.trim.isEmpty) newState
-      else newState.clearGlobalLog
-    res
+    /*
+     * It is possible for sbt processes to leak if two are started simultaneously
+     * by a remote client and only one is able to start a server. This seems to
+     * happen primarily on windows.
+     */
+    if (Terminal.startedByRemoteClient && !exchange.hasServer) {
+      Exec("shutdown", None) +: s1
+    } else {
+      exchange prompt ConsolePromptEvent(s0)
+      val minGCInterval = Project
+        .extract(s1)
+        .getOpt(Keys.minForcegcInterval)
+        .getOrElse(GCUtil.defaultMinForcegcInterval)
+      val exec: Exec = getExec(s1, minGCInterval)
+      val newState = s1
+        .copy(
+          onFailure = Some(Exec(Shell, None)),
+          remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
+        )
+        .setInteractive(true)
+      val res =
+        if (exec.commandLine.trim.isEmpty) newState
+        else newState.clearGlobalLog
+      res
+    }
   }
 
   def startServer: Command =

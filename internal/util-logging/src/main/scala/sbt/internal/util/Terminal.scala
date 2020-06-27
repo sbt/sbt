@@ -538,6 +538,7 @@ object Terminal {
         case _ => None
       }
   }
+  private[sbt] def startedByRemoteClient = props.isDefined
 
   /**
    * Creates an instance of [[Terminal]] that delegates most of its methods to an underlying
