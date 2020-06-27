@@ -13,7 +13,13 @@ import java.net.Socket
 import java.util.concurrent.atomic._
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 
-import sbt.BasicCommandStrings.{ Cancel, Shutdown, TerminateAction, networkExecPrefix }
+import sbt.BasicCommandStrings.{
+  Cancel,
+  CompleteExec,
+  Shutdown,
+  TerminateAction,
+  networkExecPrefix
+}
 import sbt.BasicKeys._
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.server._
@@ -375,6 +381,33 @@ private[sbt] final class CommandExchange {
     }
     if (channels.isEmpty) addConsoleChannel()
     channels.foreach(c => ProgressState.updateProgressState(newPE, c.terminal))
+  }
+
+  /**
+   * When a reboot is initiated by a network client, we need to communicate
+   * to it which
+   *
+   * @param state
+   */
+  private[sbt] def reboot(state: State): Unit = state.source match {
+    case Some(s) if s.channelName.startsWith("network") =>
+      channels.foreach {
+        case nc: NetworkChannel if nc.name == s.channelName =>
+          val remainingCommands =
+            state.remainingCommands
+              .takeWhile(!_.commandLine.startsWith(CompleteExec))
+              .map(_.commandLine)
+              .filterNot(_.startsWith("sbtReboot"))
+              .mkString(";")
+          val execId = state.remainingCommands.collectFirst {
+            case e if e.commandLine.startsWith(CompleteExec) =>
+              e.commandLine.split(CompleteExec).last.trim
+          }
+          nc.shutdown(true, execId.map(_ -> remainingCommands))
+        case nc: NetworkChannel => nc.shutdown(true, Some(("", "")))
+        case _                  =>
+      }
+    case _ =>
   }
 
   private[sbt] def shutdown(name: String): Unit = {

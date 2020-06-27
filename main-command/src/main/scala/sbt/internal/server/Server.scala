@@ -106,7 +106,8 @@ private[sbt] object Server {
                   val socket = serverSocket.accept()
                   onIncomingSocket(socket, self)
                 } catch {
-                  case _: SocketTimeoutException => // its ok
+                  case e: IOException if e.getMessage.contains("connect") =>
+                  case _: SocketTimeoutException                          => // its ok
                 }
               }
               serverSocketHolder.get match {

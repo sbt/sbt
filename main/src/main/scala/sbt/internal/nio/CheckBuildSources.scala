@@ -90,7 +90,8 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
     val commands =
       allCmds.flatMap(_.split(";").flatMap(_.trim.split(" ").headOption).filterNot(_.isEmpty))
     val filter = (c: String) =>
-      c == LoadProject || c == RebootCommand || c == TerminateAction || c == Shutdown
+      c == LoadProject || c == RebootCommand || c == TerminateAction || c == Shutdown ||
+        c.startsWith("sbtReboot")
     val res = !commands.exists(filter)
     if (!res) {
       previousStamps.set(getStamps(force = true))

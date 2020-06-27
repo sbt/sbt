@@ -53,6 +53,7 @@ object BasicCommands {
     stashOnFailure,
     popOnFailure,
     reboot,
+    rebootImpl,
     call,
     early,
     exit,
@@ -304,6 +305,12 @@ object BasicCommands {
 
   def reboot: Command =
     Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(_ => rebootOptionParser) {
+      case (s, (full, currentOnly)) =>
+        val option = if (full) " full" else if (currentOnly) " dev" else ""
+        RebootNetwork :: s"$RebootImpl$option" :: s
+    }
+  def rebootImpl: Command =
+    Command.arb(_ => (RebootImpl ~> rebootOptionParser).examples()) {
       case (s, (full, currentOnly)) =>
         s.reboot(full, currentOnly)
     }

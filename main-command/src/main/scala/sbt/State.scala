@@ -22,6 +22,7 @@ import BasicCommandStrings.{
   PopOnFailure,
   ReportResult,
   SetTerminal,
+  StartServer,
   StashOnFailure,
   networkExecPrefix,
 }
@@ -339,9 +340,14 @@ object State {
     /** Implementation of reboot. */
     private[sbt] def reboot(full: Boolean, currentOnly: Boolean): State = {
       runExitHooks()
-      val rs = s.remainingCommands map { case e: Exec => e.commandLine }
-      if (currentOnly) throw new RebootCurrent(rs)
-      else throw new xsbti.FullReload(rs.toArray, full)
+      val remaining: List[String] = s.remainingCommands.map(_.commandLine)
+      val fullRemaining = s.source match {
+        case Some(s) if s.channelName.startsWith("network") =>
+          StartServer :: remaining.dropWhile(!_.startsWith(ReportResult)).tail ::: "shell" :: Nil
+        case _ => remaining
+      }
+      if (currentOnly) throw new RebootCurrent(fullRemaining)
+      else throw new xsbti.FullReload(fullRemaining.toArray, full)
     }
 
     def reload = runExitHooks().setNext(new Return(defaultReload(s)))

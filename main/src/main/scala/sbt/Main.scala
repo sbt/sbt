@@ -111,7 +111,8 @@ private[sbt] object xMain {
   ): (Option[BootServerSocket], Option[Exit]) =
     try (Some(new BootServerSocket(configuration)) -> None)
     catch {
-      case _: ServerAlreadyBootingException if System.console != null =>
+      case _: ServerAlreadyBootingException
+          if System.console != null && !Terminal.startedByRemoteClient =>
         println("sbt server is already booting. Create a new server? y/n (default y)")
         val exit = Terminal.get.withRawSystemIn(System.in.read) match {
           case 110 => Some(Exit(1))
@@ -296,6 +297,7 @@ object BuiltinCommands {
       skipBanner,
       notifyUsersAboutShell,
       shell,
+      rebootNetwork,
       startServer,
       eval,
       last,
@@ -1046,6 +1048,11 @@ object BuiltinCommands {
     }
   }
 
+  def rebootNetwork: Command = Command.arb(_ => (RebootNetwork: Parser[String]).examples()) {
+    (s, _) =>
+      StandardMain.exchange.reboot(s)
+      s
+  }
   def startServer: Command =
     Command.command(StartServer, Help.more(StartServer, StartServerDetailed)) { s0 =>
       val exchange = StandardMain.exchange
@@ -1115,10 +1122,12 @@ object BuiltinCommands {
 
   private def intendsToInvokeCompile(state: State) =
     state.remainingCommands exists (_.commandLine == Keys.compile.key.label)
+  private def hasRebooted(state: State) =
+    state.remainingCommands exists (_.commandLine == StartServer)
 
   private def notifyUsersAboutShell(state: State): Unit = {
     val suppress = Project extract state getOpt Keys.suppressSbtShellNotification getOrElse false
-    if (!suppress && intendsToInvokeCompile(state))
+    if (!suppress && intendsToInvokeCompile(state) && !hasRebooted(state))
       state.log info "Executing in batch mode. For better performance use sbt's shell"
   }
 

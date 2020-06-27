@@ -551,6 +551,9 @@ final class NetworkChannel(
   }
   import sjsonnew.BasicJsonProtocol.BooleanJsonFormat
 
+  override def shutdown(logShutdown: Boolean): Unit =
+    shutdown(logShutdown, remainingCommands = None)
+
   /**
    * Closes down the channel. Before closing the socket, it sends a notification to
    * the client to shutdown. If the client initiated the shutdown, we don't want the
@@ -559,13 +562,16 @@ final class NetworkChannel(
    * easily be done client side because when the client is in interactive session,
    * it doesn't know commands it has sent to the server.
    */
-  override def shutdown(logShutdown: Boolean): Unit = {
+  private[sbt] def shutdown(
+      logShutdown: Boolean,
+      remainingCommands: Option[(String, String)]
+  ): Unit = {
     terminal.close()
     StandardMain.exchange.removeChannel(this)
     super.shutdown(logShutdown)
     if (logShutdown) Terminal.consoleLog(s"shutting down client connection $name")
     VirtualTerminal.cancelRequests(name)
-    try jsonRpcNotify(Shutdown, logShutdown)
+    try jsonRpcNotify(Shutdown, (logShutdown, remainingCommands))
     catch { case _: IOException => }
     running.set(false)
     out.close()

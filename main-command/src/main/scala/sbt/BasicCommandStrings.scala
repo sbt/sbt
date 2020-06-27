@@ -137,6 +137,8 @@ $HelpCommand <regular expression>
    If a classpath is provided, modules are loaded from a new class loader for this classpath.
 """
 
+  private[sbt] def RebootNetwork: String = "sbtRebootNetwork"
+  private[sbt] def RebootImpl: String = "sbtRebootImpl"
   def RebootCommand: String = "reboot"
   def RebootDetailed: String =
     RebootCommand + """ [dev | full]
