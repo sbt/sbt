@@ -13,7 +13,7 @@ import java.net.Socket
 import java.util.concurrent.atomic._
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 
-import sbt.BasicCommandStrings.networkExecPrefix
+import sbt.BasicCommandStrings.{ Cancel, Shutdown, TerminateAction, networkExecPrefix }
 import sbt.BasicKeys._
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.server._
@@ -96,7 +96,7 @@ private[sbt] final class CommandExchange {
                     case _             =>
                   }
                 }
-                Exec("exit", Some(CommandSource(ConsoleChannel.defaultName)))
+                Exec(TerminateAction, Some(CommandSource(ConsoleChannel.defaultName)))
               case x => x
             }
           case _ => commandQueue.take
@@ -105,11 +105,8 @@ private[sbt] final class CommandExchange {
       poll match {
         case Some(exec) if exec.source.fold(true)(s => channels.exists(_.name == s.channelName)) =>
           exec.commandLine match {
-            case "shutdown" =>
-              exec
-                .withCommandLine("exit")
-                .withSource(Some(CommandSource(ConsoleChannel.defaultName)))
-            case "exit" if exec.source.fold(false)(_.channelName.startsWith("network")) =>
+            case `TerminateAction`
+                if exec.source.fold(false)(_.channelName.startsWith("network")) =>
               channels.collectFirst {
                 case c: NetworkChannel if exec.source.fold(false)(_.channelName == c.name) => c
               } match {
@@ -383,8 +380,7 @@ private[sbt] final class CommandExchange {
   private[sbt] def shutdown(name: String): Unit = {
     Option(currentExecRef.get).foreach(cancel)
     commandQueue.clear()
-    val exit =
-      Exec("shutdown", Some(Exec.newExecId), Some(CommandSource(name)))
+    val exit = Exec(Shutdown, Some(Exec.newExecId), Some(CommandSource(name)))
     commandQueue.add(exit)
     ()
   }
@@ -415,7 +411,7 @@ private[sbt] final class CommandExchange {
           case mt: FastTrackTask =>
             mt.task match {
               case `attach` => mt.channel.prompt(ConsolePromptEvent(lastState.get))
-              case "cancel" => Option(currentExecRef.get).foreach(cancel)
+              case `Cancel` => Option(currentExecRef.get).foreach(cancel)
               case t if t.startsWith(ContinuousCommands.stopWatch) =>
                 ContinuousCommands.stopWatchImpl(mt.channel.name)
                 mt.channel match {
@@ -423,8 +419,8 @@ private[sbt] final class CommandExchange {
                   case _                                     => mt.channel.prompt(ConsolePromptEvent(lastState.get))
                 }
                 commandQueue.add(Exec(t, None, None))
-              case "exit" => exit(mt)
-              case "shutdown" =>
+              case `TerminateAction` => exit(mt)
+              case `Shutdown` =>
                 channels.find(_.name == mt.channel.name) match {
                   case Some(c: NetworkChannel) => c.shutdown(false)
                   case _                       =>

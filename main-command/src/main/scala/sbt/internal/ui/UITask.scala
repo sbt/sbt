@@ -12,6 +12,7 @@ import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
 
 import jline.console.history.PersistentHistory
+import sbt.BasicCommandStrings.{ Cancel, TerminateAction, Shutdown }
 import sbt.BasicKeys.{ historyPath, terminalShellPrompt }
 import sbt.State
 import sbt.internal.CommandChannel
@@ -54,7 +55,7 @@ private[sbt] object UITask {
         try {
           @tailrec def impl(): Either[String, String] = {
             lineReader.readLine(clear + terminal.prompt.mkPrompt()) match {
-              case null => Left("exit")
+              case null => Left(TerminateAction)
               case s: String =>
                 lineReader.getHistory match {
                   case p: PersistentHistory =>
@@ -63,8 +64,8 @@ private[sbt] object UITask {
                   case _ =>
                 }
                 s match {
-                  case ""                                     => impl()
-                  case cmd @ ("shutdown" | "exit" | "cancel") => Left(cmd)
+                  case ""                                                => impl()
+                  case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
                   case cmd =>
                     if (terminal.prompt != Prompt.Batch) terminal.setPrompt(Prompt.Running)
                     terminal.printStream.write(Int.MinValue)

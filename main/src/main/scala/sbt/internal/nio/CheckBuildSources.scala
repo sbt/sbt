@@ -10,7 +10,7 @@ package internal.nio
 
 import java.nio.file.Path
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import sbt.BasicCommandStrings.{ RebootCommand, TerminateAction }
+import sbt.BasicCommandStrings.{ RebootCommand, Shutdown, TerminateAction }
 import sbt.Keys.{ baseDirectory, pollInterval, state }
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
@@ -90,7 +90,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
     val commands =
       allCmds.flatMap(_.split(";").flatMap(_.trim.split(" ").headOption).filterNot(_.isEmpty))
     val filter = (c: String) =>
-      c == LoadProject || c == RebootCommand || c == TerminateAction || c == "shutdown"
+      c == LoadProject || c == RebootCommand || c == TerminateAction || c == Shutdown
     val res = !commands.exists(filter)
     if (!res) {
       previousStamps.set(getStamps(force = true))

@@ -15,7 +15,7 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ SetTerminal, Shell, TemplateCommand, networkExecPrefix }
+import sbt.BasicCommandStrings.{ SetTerminal, Shell, Shutdown, TemplateCommand, networkExecPrefix }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
@@ -1025,7 +1025,7 @@ object BuiltinCommands {
      * happen primarily on windows.
      */
     if (Terminal.startedByRemoteClient && !exchange.hasServer) {
-      Exec("shutdown", None) +: s1
+      Exec(Shutdown, None) +: s1
     } else {
       exchange prompt ConsolePromptEvent(s0)
       val minGCInterval = Project

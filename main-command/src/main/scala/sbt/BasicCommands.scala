@@ -56,6 +56,7 @@ object BasicCommands {
     call,
     early,
     exit,
+    shutdown,
     history,
     oldshell,
     client,
@@ -356,6 +357,13 @@ object BasicCommands {
       case _ => s exit true
     }
   }
+  def shutdown: Command = Command.command(Shutdown, shutdownBrief, shutdownBrief) { s =>
+    s.source match {
+      case Some(c) if c.channelName.startsWith("network") =>
+        s"${DisconnectNetworkChannel} ${c.channelName}" :: (Exec(Shutdown, None) +: s)
+      case _ => s exit true
+    }
+  }
 
   @deprecated("Replaced by BuiltInCommands.continuous", "1.3.0")
   def continuous: Command =
@@ -412,7 +420,7 @@ object BasicCommands {
         case xs                                   => xs map (_.commandLine)
       })
     NetworkClient.run(s0.configuration, arguments)
-    "exit" :: s0.copy(remainingCommands = Nil)
+    TerminateAction :: s0.copy(remainingCommands = Nil)
   }
 
   def read: Command =

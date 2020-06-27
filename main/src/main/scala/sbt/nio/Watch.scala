@@ -13,7 +13,7 @@ import java.time.{ Instant, ZoneId, ZonedDateTime }
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-import sbt.BasicCommandStrings.ContinuousExecutePrefix
+import sbt.BasicCommandStrings.{ ContinuousExecutePrefix, TerminateAction }
 import sbt._
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
@@ -487,7 +487,7 @@ object Watch {
     Watch.InputOption(4.toChar, "<ctrl-d>", "interrupt (exits sbt in batch mode)", CancelWatch),
     Watch.InputOption('r', "re-run the command", Trigger),
     Watch.InputOption('s', "return to shell", Prompt),
-    Watch.InputOption('q', "quit sbt", Run("exit")),
+    Watch.InputOption('q', "quit sbt", Run(TerminateAction)),
     Watch.InputOption('?', "print options", ShowOptions)
   )
 

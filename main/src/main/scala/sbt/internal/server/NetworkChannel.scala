@@ -15,6 +15,7 @@ import java.nio.channels.ClosedChannelException
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
+import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
 import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes, LogMessageParams, MessageType }
 import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes }
 import sbt.internal.protocol.{
@@ -150,7 +151,7 @@ final class NetworkChannel(
         override def reader: UITask.Reader = () => {
           try {
             this.synchronized(this.wait)
-            Left("exit")
+            Left(TerminateAction)
           } catch {
             case _: InterruptedException => Right("")
           }
@@ -564,7 +565,7 @@ final class NetworkChannel(
     super.shutdown(logShutdown)
     if (logShutdown) Terminal.consoleLog(s"shutting down client connection $name")
     VirtualTerminal.cancelRequests(name)
-    try jsonRpcNotify("shutdown", logShutdown)
+    try jsonRpcNotify(Shutdown, logShutdown)
     catch { case _: IOException => }
     running.set(false)
     out.close()

@@ -18,6 +18,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
 
+import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
 import sbt.internal.client.NetworkClient.Arguments
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
 import sbt.internal.protocol._
@@ -155,13 +156,13 @@ class NetworkClient(
       val conn = new ServerConnection(sk) {
         override def onNotification(msg: JsonRpcNotificationMessage): Unit = {
           msg.method match {
-            case "shutdown" =>
+            case `Shutdown` =>
               val log = msg.params match {
                 case Some(jvalue) => Converter.fromJson[Boolean](jvalue).getOrElse(true)
                 case _            => false
               }
               if (running.compareAndSet(true, false) && log) {
-                if (!arguments.commandArguments.contains("shutdown")) {
+                if (!arguments.commandArguments.contains(Shutdown)) {
                   if (Terminal.console.getLastLine.fold(true)(_.nonEmpty)) errorStream.println()
                   console.appendLog(Level.Error, "sbt server disconnected")
                   exitClean.set(false)
@@ -451,7 +452,7 @@ class NetworkClient(
             case Success(params) => splitDiagnostics(params); Vector()
             case Failure(_)      => Vector()
           }
-        case ("shutdown", Some(_))                => Vector.empty
+        case (`Shutdown`, Some(_))                => Vector.empty
         case (msg, _) if msg.startsWith("build/") => Vector.empty
         case _ =>
           Vector(
@@ -557,7 +558,7 @@ class NetworkClient(
     withSignalHandler(contHandler, Signals.CONT) {
       interactiveThread.set(Thread.currentThread)
       val cleaned = arguments.commandArguments
-      val userCommands = cleaned.takeWhile(_ != "exit")
+      val userCommands = cleaned.takeWhile(_ != TerminateAction)
       val interactive = cleaned.isEmpty
       val exit = cleaned.nonEmpty && userCommands.isEmpty
       attachUUID.set(sendJson(attach, s"""{"interactive": $interactive}"""))
@@ -668,8 +669,8 @@ class NetworkClient(
           case _       => queue.take
         }
       } catch {
-        case _: InterruptedException if cmd == "shutdown" => result = 0
-        case _: InterruptedException                      => result = if (exitClean.get) 0 else 1
+        case _: InterruptedException if cmd == Shutdown => result = 0
+        case _: InterruptedException                    => result = if (exitClean.get) 0 else 1
       }
     }
     if (result == null) 1 else result

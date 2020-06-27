@@ -14,8 +14,10 @@ object BasicCommandStrings {
   val HelpCommand: String = "help"
   val CompletionsCommand: String = "completions"
   val Exit: String = "exit"
+  val Shutdown: String = "shutdown"
   val Quit: String = "quit"
   val TemplateCommand: String = "new"
+  val Cancel: String = "cancel"
 
   /** The command name to terminate the program.*/
   val TerminateAction: String = Exit
@@ -57,7 +59,8 @@ $HelpCommand <regular expression>
   def historyHelp =
     Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
 
-  def exitBrief: String = "Terminates the build."
+  def exitBrief: String = "Terminates the remote client or the build when called from the console."
+  def shutdownBrief: String = "Terminates the build."
 
   def logLevelHelp: Help = {
     val levels = Level.values.toSeq

@@ -11,6 +11,7 @@ package server
 
 import java.net.URI
 
+import sbt.BasicCommandStrings.Shutdown
 import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
@@ -153,7 +154,7 @@ object BuildServerProtocol {
           ()
 
         case r: JsonRpcRequestMessage if r.method == "build/exit" =>
-          val _ = callback.appendExec("shutdown", Some(r.id))
+          val _ = callback.appendExec(Shutdown, Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
           val param = Converter.fromJson[SourcesParams](json(r)).get
