@@ -744,23 +744,20 @@ object NetworkClient {
       case a if a.startsWith("\"") => Array(a)
       case a                       => a.split(" ")
     }
-    var foundCompletions = false
     var i = 0
     while (i < sanitized.length) {
       sanitized(i) match {
-        case a if foundCompletions => completionArguments += a
+        case a if completionArguments.nonEmpty => completionArguments += a
+        case a if commandArgs.nonEmpty         => commandArgs += a
         case a if a == noStdErr || a == noTab || a.startsWith(completions) =>
-          foundCompletions = true
           completionArguments += a
         case a if a.startsWith("--sbt-script=") =>
           sbtScript = a.split("--sbt-script=").lastOption.getOrElse(sbtScript)
         case a if !a.startsWith("-") => commandArgs += a
-        case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
           sbtArguments += a
-        case a if !foundCompletions =>
-          sbtArguments += a
+        case a => sbtArguments += a
       }
       i += 1
     }
