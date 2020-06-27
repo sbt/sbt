@@ -192,7 +192,7 @@ object Defaults extends BuildCommon {
       allowMachinePath :== true,
       rootPaths := {
         val app = appConfiguration.value
-        val base = app.baseDirectory
+        val base = app.baseDirectory.getCanonicalFile
         val boot = app.provider.scalaProvider.launcher.bootDirectory
         val ih = app.provider.scalaProvider.launcher.ivyHome
         val coursierCache = csrCacheDirectory.value

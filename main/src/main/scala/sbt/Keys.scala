@@ -537,6 +537,8 @@ object Keys {
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
   val lintUnused = inputKey[Unit]("Check for keys unused by other settings and tasks.")
+  val lintIncludeFilter = settingKey[String => Boolean]("Filters key names that should be included in the lint check.")
+  val lintExcludeFilter = settingKey[String => Boolean]("Filters key names that should be excluded in the lint check.")
   val excludeLintKeys = settingKey[Set[Def.KeyedInitialize[_]]]("Keys excluded from lintUnused task")
   val includeLintKeys = settingKey[Set[Def.KeyedInitialize[_]]]("Task keys that are included into lintUnused task")
   val lintUnusedKeysOnLoad = settingKey[Boolean]("Toggles whether or not to check for unused keys during startup")

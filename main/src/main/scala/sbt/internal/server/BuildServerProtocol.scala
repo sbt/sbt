@@ -332,7 +332,7 @@ object BuildServerProtocol {
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
     val directDependencies = Keys.internalDependencyConfigurations.value.map {
       case (project, rawConfigs) =>
-        val configs = rawConfigs.flatMap(_.split(",")).map(ConfigKey.apply)
+        val configs = rawConfigs.flatMap(_.split(",")).map(name => ConfigKey(name.trim))
         (project, configs)
     }
     val ref = Keys.thisProjectRef.value
