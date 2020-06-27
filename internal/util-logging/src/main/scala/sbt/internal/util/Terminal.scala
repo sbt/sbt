@@ -11,7 +11,7 @@ import java.io.{ InputStream, OutputStream, PrintStream }
 import java.nio.channels.ClosedChannelException
 import java.util.Locale
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import java.util.concurrent.{ CountDownLatch, Executors, LinkedBlockingQueue, TimeUnit }
+import java.util.concurrent.{ ConcurrentHashMap, Executors, LinkedBlockingQueue, TimeUnit }
 
 import jline.DefaultTerminal2
 import jline.console.ConsoleReader
@@ -324,39 +324,69 @@ object Terminal {
 
   private[this] val originalOut = System.out
   private[this] val originalIn = System.in
-  private[this] class WriteableInputStream(in: InputStream, name: String)
+  private[sbt] class WriteableInputStream(in: InputStream, name: String)
       extends InputStream
       with AutoCloseable {
-    final def write(bytes: Int*): Unit = bytes.foreach(buffer.put)
+    final def write(bytes: Int*): Unit = bytes.foreach(i => buffer.put(i))
     private[this] val executor =
       Executors.newSingleThreadExecutor(r => new Thread(r, s"sbt-$name-input-reader"))
-    private[this] val buffer = new LinkedBlockingQueue[Int]
-    private[this] val latch = new CountDownLatch(1)
+    private[this] val buffer = new LinkedBlockingQueue[Integer]
     private[this] val closed = new AtomicBoolean(false)
-    private[this] def takeOne: Int = if (closed.get) -1 else buffer.take
+    private[this] val resultQueue = new LinkedBlockingQueue[LinkedBlockingQueue[Int]]
+    private[this] val waiting = ConcurrentHashMap.newKeySet[LinkedBlockingQueue[Int]]
+    /*
+     * Starts a loop that waits for consumers of the InputStream to call read.
+     * When read is called, we enqueue a `LinkedBlockingQueue[Int]` to which
+     * the runnable can return a byte from stdin. If the read caller is interrupted,
+     * they remove the result from the waiting set and any byte read will be
+     * enqueued in the buffer. It is done this way so that we only read from
+     * System.in when a caller actually asks for bytes. If we constantly poll
+     * from System.in, then when the user calls reboot from the console, the
+     * first character they type after reboot is swallowed by the previous
+     * sbt main program. If the user calls reboot from a remote client, we
+     * can't avoid losing the first byte inputted in the console. A more
+     * robust fix would be to override System.in at the launcher level instead
+     * of at the sbt level. At the moment, the use case of a user calling
+     * reboot from a network client and the adding input at the server console
+     * seems pathological enough that it isn't worth putting more effort into
+     * fixing.
+     *
+     */
     private[this] val runnable: Runnable = () => {
       @tailrec def impl(): Unit = {
+        val result = resultQueue.take
         val b = in.read
-        buffer.put(b)
-        if (b != -1) impl()
+        // The downstream consumer may have been interrupted. Buffer the result
+        // when that hapens.
+        if (waiting.contains(result)) result.put(b) else buffer.put(b)
+        if (b != -1 && !Thread.interrupted()) impl()
         else closed.set(true)
       }
-      try {
-        latch.await()
-        impl()
-      } catch { case _: InterruptedException => }
+      try impl()
+      catch { case _: InterruptedException => closed.set(true) }
     }
     executor.submit(runnable)
-    override def read(): Int = {
-      latch.countDown()
-      takeOne match {
-        case -1 => throw new ClosedChannelException
-        case b  => b
-      }
-    }
+    override def read(): Int =
+      if (closed.get) -1
+      else
+        synchronized {
+          buffer.poll match {
+            case null =>
+              val result = new LinkedBlockingQueue[Int]
+              waiting.add(result)
+              resultQueue.offer(result)
+              try result.take
+              catch {
+                case e: InterruptedException =>
+                  waiting.remove(result)
+                  throw e
+              }
+            case b if b == -1 => throw new ClosedChannelException
+            case b            => b
+          }
+        }
 
     override def available(): Int = {
-      latch.countDown()
       buffer.size
     }
     override def close(): Unit = if (closed.compareAndSet(false, true)) {

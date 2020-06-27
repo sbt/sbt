@@ -55,6 +55,13 @@ private[sbt] object UITask {
         try {
           @tailrec def impl(): Either[String, String] = {
             lineReader.readLine(clear + terminal.prompt.mkPrompt()) match {
+              case null if terminal == Terminal.console && System.console == null =>
+                // No stdin is attached to the process so just ignore the result and
+                // block until the thread is interrupted.
+                this.synchronized(this.wait())
+                Right("") // should be unreachable
+              // JLine returns null on ctrl+d when there is no other input. This interprets
+              // ctrl+d with no imput as an exit
               case null => Left(TerminateAction)
               case s: String =>
                 lineReader.getHistory match {

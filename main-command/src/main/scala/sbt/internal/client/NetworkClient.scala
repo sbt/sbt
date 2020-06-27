@@ -155,6 +155,7 @@ class NetworkClient(
       val (sk, tkn) = connect(0)
       val conn = new ServerConnection(sk) {
         override def onNotification(msg: JsonRpcNotificationMessage): Unit = {
+          if (msg.toString.contains("shutdown")) System.err.println(msg)
           msg.method match {
             case `Shutdown` =>
               val log = msg.params match {
