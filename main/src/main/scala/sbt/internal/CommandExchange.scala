@@ -422,9 +422,14 @@ private[sbt] final class CommandExchange {
                   case _                                     => mt.channel.prompt(ConsolePromptEvent(lastState.get))
                 }
                 commandQueue.add(Exec(t, None, None))
-              case "exit"     => exit(mt)
-              case "shutdown" => shutdown(mt.channel.name)
-              case _          =>
+              case "exit" => exit(mt)
+              case "shutdown" =>
+                channels.find(_.name == mt.channel.name) match {
+                  case Some(c: NetworkChannel) => c.shutdown(false)
+                  case _                       =>
+                }
+                shutdown(mt.channel.name)
+              case _ =>
             }
         }
         if (!isStopped.get) impl()

@@ -549,6 +549,15 @@ final class NetworkChannel(
     shutdown(true)
   }
   import sjsonnew.BasicJsonProtocol.BooleanJsonFormat
+
+  /**
+   * Closes down the channel. Before closing the socket, it sends a notification to
+   * the client to shutdown. If the client initiated the shutdown, we don't want the
+   * client to display an error or return a non-zero exit code so we send it a
+   * notification that tells it whether or not to log the shutdown. This can't
+   * easily be done client side because when the client is in interactive session,
+   * it doesn't know commands it has sent to the server.
+   */
   override def shutdown(logShutdown: Boolean): Unit = {
     terminal.close()
     StandardMain.exchange.removeChannel(this)

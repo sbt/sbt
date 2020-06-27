@@ -166,6 +166,8 @@ class NetworkClient(
                   console.appendLog(Level.Error, "sbt server disconnected")
                   exitClean.set(false)
                 }
+              } else {
+                console.appendLog(Level.Info, "sbt server disconnected")
               }
               stdinBytes.offer(-1)
               Option(inputThread.get).foreach(_.close())
