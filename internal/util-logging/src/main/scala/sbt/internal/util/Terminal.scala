@@ -261,7 +261,11 @@ object Terminal {
    */
   private[sbt] def withStreams[T](f: => T): T =
     if (System.getProperty("sbt.io.virtual", "true") == "true") {
-      withOut(withIn(f))
+      try withOut(withIn(f))
+      finally {
+        jline.TerminalFactory.reset()
+        console.close()
+      }
     } else f
 
   private[this] object ProxyTerminal extends Terminal {
@@ -355,7 +359,7 @@ object Terminal {
       latch.countDown()
       buffer.size
     }
-    override def close(): Unit = {
+    override def close(): Unit = if (closed.compareAndSet(false, true)) {
       executor.shutdownNow()
       ()
     }
