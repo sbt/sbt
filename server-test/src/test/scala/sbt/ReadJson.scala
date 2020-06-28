@@ -11,8 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.io.InputStream
 
 object ReadJson {
-  def apply(in: InputStream, running: AtomicBoolean): Option[String] = {
-    val bytes = sbt.internal.util.ReadJsonFromInputStream(in, running, None).toArray
-    Some(new String(bytes, "UTF-8"))
-  }
+  def apply(in: InputStream, running: AtomicBoolean): String =
+    new String(sbt.internal.util.ReadJsonFromInputStream(in, running, None).toArray, "UTF-8")
 }

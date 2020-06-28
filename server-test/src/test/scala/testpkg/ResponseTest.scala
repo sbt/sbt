@@ -70,7 +70,7 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "15", "method": "foo/respondTwice", "params": {} }"""
     )
     assert {
-      svr.waitForString(1.seconds) { s =>
+      svr.waitForString(10.seconds) { s =>
         if (!s.contains("systemOut")) println(s)
         s contains "\"id\":\"15\""
       }
@@ -89,7 +89,7 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "16", "method": "foo/resultAndError", "params": {} }"""
     )
     assert {
-      svr.waitForString(1.seconds) { s =>
+      svr.waitForString(10.seconds) { s =>
         if (!s.contains("systemOut")) println(s)
         s contains "\"id\":\"16\""
       }
