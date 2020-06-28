@@ -12,7 +12,7 @@ package server
 import java.io.{ File, IOException }
 import java.lang.management.ManagementFactory
 import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
 import java.security.SecureRandom
 import java.math.BigInteger
@@ -56,7 +56,7 @@ private[sbt] object Server {
       val ready: Future[Unit] = p.future
       private[this] val rand = new SecureRandom
       private[this] var token: String = nextToken
-      private[this] var serverSocketOpt: Option[ServerSocket] = None
+      private[this] val serverSocketHolder = new AtomicReference[ServerSocket]
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
@@ -92,7 +92,10 @@ private[sbt] object Server {
             case Failure(e) => p.failure(e)
             case Success(serverSocket) =>
               serverSocket.setSoTimeout(5000)
-              serverSocketOpt = Option(serverSocket)
+              serverSocketHolder.getAndSet(serverSocket) match {
+                case null =>
+                case s    => s.close()
+              }
               log.info(s"sbt server started at ${connection.shortName}")
               writePortfile()
               writeBspConnectionDetails()
@@ -106,7 +109,10 @@ private[sbt] object Server {
                   case _: SocketTimeoutException => // its ok
                 }
               }
-              serverSocket.close()
+              serverSocketHolder.get match {
+                case null =>
+                case s    => s.close()
+              }
           }
         }
       }
@@ -152,6 +158,10 @@ private[sbt] object Server {
           IO.delete(tokenfile)
         }
         running.set(false)
+        serverSocketHolder.getAndSet(null) match {
+          case null =>
+          case s    => s.close()
+        }
       }
 
       private[this] def writeTokenfile(): Unit = {
