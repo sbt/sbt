@@ -10,6 +10,7 @@ package testpkg
 import java.io.{ File, IOException }
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
 
 import verify._
 import sbt.RunFromSourceMain
@@ -170,8 +171,7 @@ case class TestServer(
   val readBuffer = new Array[Byte](40960)
   var buffer: Vector[Byte] = Vector.empty
   var bytesRead = 0
-  private val delimiter: Byte = '\n'.toByte
-  private val RetByte = '\r'.toByte
+  val running = new AtomicBoolean(true)
 
   hostLog("fork to a new sbt instance")
   val process = RunFromSourceMain.fork(baseDirectory, scalaVersion, sbtVersion, classpath)
@@ -257,17 +257,7 @@ case class TestServer(
     writeEndLine
   }
 
-  def readFrame: Future[Option[String]] = Future {
-    def getContentLength: Int = {
-      readLine map { line =>
-        line.drop(16).toInt
-      } getOrElse (0)
-    }
-    val l = getContentLength
-    readLine
-    readLine
-    readContentLength(l)
-  }
+  def readFrame: Future[Option[String]] = Future(sbt.ReadJson(in, running))
 
   final def waitForString(duration: FiniteDuration)(f: String => Boolean): Boolean = {
     val deadline = duration.fromNow
@@ -298,37 +288,6 @@ case class TestServer(
       if (res && !deadline.isOverdue) impl else res || !deadline.isOverdue
     }
     impl()
-  }
-
-  def readLine: Option[String] = {
-    if (buffer.isEmpty) {
-      val bytesRead = in.read(readBuffer)
-      if (bytesRead > 0) {
-        buffer = buffer ++ readBuffer.toVector.take(bytesRead)
-      }
-    }
-    val delimPos = buffer.indexOf(delimiter)
-    if (delimPos > 0) {
-      val chunk0 = buffer.take(delimPos)
-      buffer = buffer.drop(delimPos + 1)
-      // remove \r at the end of line.
-      val chunk1 = if (chunk0.lastOption contains RetByte) chunk0.dropRight(1) else chunk0
-      Some(new String(chunk1.toArray, "utf-8"))
-    } else None // no EOL yet, so skip this turn.
-  }
-
-  def readContentLength(length: Int): Option[String] = {
-    if (buffer.isEmpty) {
-      val bytesRead = in.read(readBuffer)
-      if (bytesRead > 0) {
-        buffer = buffer ++ readBuffer.toVector.take(bytesRead)
-      }
-    }
-    if (length <= buffer.size) {
-      val chunk = buffer.take(length)
-      buffer = buffer.drop(length)
-      Some(new String(chunk.toArray, "utf-8"))
-    } else None // have not read enough yet, so skip this turn.
   }
 
 }
