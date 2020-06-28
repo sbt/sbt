@@ -279,7 +279,7 @@ case class TestServer(
           resetConnection() // create a new connection to invalidate the running readFrame future
           false
       }
-      if (!res) impl() else !deadline.isOverdue()
+      if (!res && !deadline.isOverdue) impl() else !deadline.isOverdue()
     }
     impl()
   }
