@@ -155,4 +155,4 @@ for:
     - '%USERPROFILE%\.sbt'
 
   test_script:
-    - sbt "scripted actions/* classloader-cache/* nio/* watch/*" "serverTestProj/testOnly serverTestProj/testOnly testpkg.HandshakeTest"
+    - sbt "scripted actions/* classloader-cache/* nio/* watch/*" "serverTestProj/test"

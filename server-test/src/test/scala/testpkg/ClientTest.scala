@@ -27,15 +27,9 @@ object ClientTest extends AbstractServerTest {
     def lines = cos.lines
   }
   class CachingOutputStream extends OutputStream {
-    private val lineBuffer = new mutable.ArrayBuffer[String]
-    private var byteBuffer = new mutable.ArrayBuffer[Byte]
-    override def write(i: Int) = {
-      if (i == 10) {
-        lineBuffer += new String(byteBuffer.toArray)
-        byteBuffer = new mutable.ArrayBuffer[Byte]
-      } else Util.ignoreResult(byteBuffer += i.toByte)
-    }
-    def lines = lineBuffer.toVector
+    private val byteBuffer = new mutable.ArrayBuffer[Byte]
+    override def write(i: Int) = Util.ignoreResult(byteBuffer += i.toByte)
+    def lines = new String(byteBuffer.toArray, "UTF-8").linesIterator.toSeq
   }
   class FixedInputStream(keys: Char*) extends InputStream {
     var i = 0

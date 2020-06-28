@@ -8,7 +8,8 @@
 package testpkg
 
 import java.io.{ File, IOException }
-import java.nio.file.Path
+import java.net.Socket
+import java.nio.file.{ Files, Path }
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -37,10 +38,11 @@ trait AbstractServerTest extends TestSuite[Unit] {
   }
 
   override def setupSuite(): Unit = {
-    temp = targetDir / "test-server" / testDirectory
-    if (temp.exists) {
-      IO.delete(temp)
-    }
+    val base = Files.createTempDirectory(
+      Files.createDirectories(targetDir.toPath.resolve("test-server")),
+      "server-test"
+    )
+    temp = base.toFile
     val classpath = sys.props.get("sbt.server.classpath") match {
       case Some(s: String) => s.split(java.io.File.pathSeparator).map(file)
       case _               => throw new IllegalStateException("No server classpath was specified.")
@@ -191,8 +193,19 @@ case class TestServer(
   hostLog(s"wait $waitDuration until the server is ready to respond")
   waitForPortfile(waitDuration)
 
+  @tailrec
+  private def connect(attempt: Int): Socket = {
+    val res = try Some(ClientSocket.socket(portfile)._1)
+    catch { case _: IOException if attempt < 10 => None }
+    res match {
+      case Some(s) => s
+      case _ =>
+        Thread.sleep(100)
+        connect(attempt + 1)
+    }
+  }
   // make connection to the socket described in the portfile
-  val (sk, _) = ClientSocket.socket(portfile)
+  val sk = connect(0)
   val out = sk.getOutputStream
   val in = sk.getInputStream
   private val lines = new LinkedBlockingQueue[String]
