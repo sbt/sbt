@@ -10,7 +10,6 @@ package sbt.internal.util
 import java.io.InputStream
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
-import scala.collection.mutable
 import scala.util.Try
 
 private[sbt] object ReadJsonFromInputStream {
@@ -22,10 +21,19 @@ private[sbt] object ReadJsonFromInputStream {
     val newline = '\n'.toInt
     val carriageReturn = '\r'.toInt
     val contentLength = "Content-Length: "
-    var bytes = new mutable.ArrayBuffer[Byte]
+    var index = 0
+    /*
+     * This is the buffer into which we copy headers. The value of 128 bytes is
+     * somewhat arbitrary but chosen to ensure that there is enough space
+     * for any reasonable header. Any header exceeding 128 bytes will
+     * be truncated. The only header we care about at the moment is
+     * content-length, so this should be fine. If we ever start doing anything
+     * with headers, we may need to adjust this buffer size.
+     */
+    val headerBuffer = new Array[Byte](128)
     def getLine(): String = {
-      val line = new String(bytes.toArray, "UTF-8")
-      bytes = new mutable.ArrayBuffer[Byte]
+      val line = new String(headerBuffer, 0, index, "UTF-8")
+      index = 0
       onHeader.foreach(oh => oh(line))
       line
     }
@@ -51,7 +59,10 @@ private[sbt] object ReadJsonFromInputStream {
                     case `carriageReturn` => onCarriageReturn = true
                     case c =>
                       if (c == newline) getLine()
-                      else bytes += c.toByte
+                      else {
+                        if (index < headerBuffer.length) headerBuffer(index) = c.toByte
+                        index += 1
+                      }
                       onCarriageReturn = false
                       consecutiveLineEndings = 0
                   }
@@ -74,7 +85,8 @@ private[sbt] object ReadJsonFromInputStream {
         case `carriageReturn` => onCarriageReturn = true
         case c =>
           onCarriageReturn = false
-          bytes += c.toByte
+          if (index < headerBuffer.length) headerBuffer(index) = c.toByte
+          index += 1
 
       }
     } while (content.isEmpty && running.get)
