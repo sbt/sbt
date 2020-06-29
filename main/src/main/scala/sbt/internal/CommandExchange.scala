@@ -119,6 +119,7 @@ private[sbt] final class CommandExchange {
               }
             case _ => exec
           }
+        case Some(e) => e
         case None =>
           val newDeadline = if (gcDeadline.fold(false)(_.isOverdue())) {
             GCUtil.forceGcWithInterval(interval, logger)
