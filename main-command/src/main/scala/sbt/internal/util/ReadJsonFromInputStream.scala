@@ -57,6 +57,7 @@ private[sbt] object ReadJsonFromInputStream {
                       onCarriageReturn = false
                       consecutiveLineEndings += 1
                     case `carriageReturn` => onCarriageReturn = true
+                    case -1               => running.set(false)
                     case c =>
                       if (c == newline) getLine()
                       else {
@@ -66,14 +67,16 @@ private[sbt] object ReadJsonFromInputStream {
                       onCarriageReturn = false
                       consecutiveLineEndings = 0
                   }
-                } while (consecutiveLineEndings < 2)
+                } while (consecutiveLineEndings < 2 && running.get)
               drainHeaders()
-              val buf = new Array[Byte](len)
-              var offset = 0
-              do {
-                offset += inputStream.read(buf, offset, len - offset)
-              } while (offset < len)
-              content = buf.toSeq
+              if (running.get) {
+                val buf = new Array[Byte](len)
+                var offset = 0
+                do {
+                  offset += inputStream.read(buf, offset, len - offset)
+                } while (offset < len && running.get)
+                if (running.get) content = buf.toSeq
+              }
             }
           } else if (line.startsWith("{")) {
             // Assume this is a json object with no headers
