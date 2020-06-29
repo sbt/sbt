@@ -16,14 +16,14 @@ import sbt.internal.util._
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 
+object TaskProgress extends TaskProgress
+
 /**
  * implements task progress display on the shell.
  */
-private[sbt] final class TaskProgress
+private[sbt] class TaskProgress private ()
     extends AbstractTaskExecuteProgress
     with ExecuteProgress[Task] {
-  @deprecated("Use the no argument constructor.", "1.4.0")
-  def this(log: ManagedLogger) = this()
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val currentProgressThread = new AtomicReference[Option[ProgressThread]](None)
   private[this] val sleepDuration = SysProp.supershellSleep.millis
@@ -38,6 +38,13 @@ private[sbt] final class TaskProgress
     private[this] def doReport(): Unit = { hasReported.set(true); report() }
     setDaemon(true)
     start()
+    private def resetThread(): Unit =
+      currentProgressThread.synchronized {
+        currentProgressThread.getAndSet(None) match {
+          case Some(t) if t != this => currentProgressThread.set(Some(t))
+          case _                    =>
+        }
+      }
     @tailrec override def run(): Unit = {
       if (!isClosed.get() && (!hasReported.get || active.nonEmpty)) {
         try {
@@ -61,6 +68,8 @@ private[sbt] final class TaskProgress
 
         }
         run()
+      } else {
+        resetThread()
       }
     }
 
@@ -71,7 +80,7 @@ private[sbt] final class TaskProgress
       interrupt()
       report()
       appendProgress(ProgressEvent("Info", Vector(), None, None, None))
-      ()
+      resetThread()
     }
   }
 
