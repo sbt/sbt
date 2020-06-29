@@ -146,14 +146,6 @@ for:
           )
           [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\sbt-bin.zip", "C:\sbt")
         }
-
-        if (!(Test-Path -Path "C:\zulu-jdk7" )) {
-          (new-object System.Net.WebClient).DownloadFile(
-            'https://cdn.azul.com/zulu/bin/zulu7.38.0.11-ca-jdk7.0.262-win_x64.zip',
-            'C:\zulu-jdk7.zip'
-          )
-          [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\zulu-jdk7.zip", "C:\")
-        }
     - SET PATH=C:\sbt\sbt\bin;%PATH%
     - SET SBT_OPTS=-Xmx4g -Dsbt.supershell=never -Dfile.encoding=UTF8
 
