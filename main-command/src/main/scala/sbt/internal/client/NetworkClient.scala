@@ -55,9 +55,40 @@ trait ConsoleInterface {
   def success(msg: String): Unit
 }
 
+/**
+ * A NetworkClient connects to a running an sbt instance or starts a
+ * new instance if there isn't already one running. Once connected,
+ * it can send commands for sbt to run, it can send completions to sbt
+ * and print the completions to stdout so that a shell can consume
+ * the completions or it can enter an interactive sbt shell session
+ * in which it relays io bytes between sbt and the terminal.
+ *
+ * @param arguments   the arguments for the forked sbt server if the client
+ *                    needs to start it. It also contains the sbt command
+ *                    arguments to send to the server if any are present.
+ * @param console     a logging instance. This can use a ConsoleAppender or
+ *                    just simply print to a PrintSream.
+ * @param inputStream the InputStream from which the client reads bytes. It
+ *                    is not hardcoded to System.in so that a NetworkClient
+ *                    can be remotely controlled by a java process, which
+ *                    is useful in test.
+ * @param errorStream the sink for messages that we always want to be printed.
+ *                    It is usually System.err but could be overridden in tests
+ *                    or set to a null OutputStream if the NetworkClient needs
+ *                    to be silent
+ * @param printStream the sink for standard out messages. It is typically
+ *                    System.out but in the case of completions, the bytes written
+ *                    to System.out are usually treated as completion results
+ *                    so we need to reroute standard out messages to System.err.
+ *                    It's also useful to override this in testing.
+ * @param useJNI      toggles whether or not to use the jni based implementations
+ *                    in org.scalasbt.ipcsocket. These are only available on
+ *                    64 bit linux, mac and windows. Any other platform will need
+ *                    to fall back on jna.
+ */
 class NetworkClient(
-    console: ConsoleInterface,
     arguments: Arguments,
+    console: ConsoleInterface,
     inputStream: InputStream,
     errorStream: PrintStream,
     printStream: PrintStream,
@@ -65,8 +96,8 @@ class NetworkClient(
 ) extends AutoCloseable { self =>
   def this(configuration: xsbti.AppConfiguration, arguments: Arguments) =
     this(
-      console = NetworkClient.consoleAppenderInterface(System.out),
       arguments = arguments.withBaseDirectory(configuration.baseDirectory),
+      console = NetworkClient.consoleAppenderInterface(System.out),
       inputStream = System.in,
       errorStream = System.err,
       printStream = System.out,
@@ -953,8 +984,8 @@ object NetworkClient {
       useJNI: Boolean,
   ): NetworkClient =
     new NetworkClient(
-      NetworkClient.simpleConsoleInterface(printStream),
       arguments,
+      NetworkClient.simpleConsoleInterface(printStream),
       inputStream,
       errorStream,
       printStream,
