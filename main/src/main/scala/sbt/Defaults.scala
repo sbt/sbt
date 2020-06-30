@@ -1504,13 +1504,13 @@ object Defaults extends BuildCommon {
           def print(st: String) = { scala.Console.out.print(st); scala.Console.out.flush() }
           print(s)
           Terminal.get.withRawSystemIn {
-            Terminal.get.inputStream.read match {
-              case -1 => None
+            try Terminal.get.inputStream.read match {
+              case -1 | -2 => None
               case b =>
                 val res = b.toChar.toString
                 println(res)
                 Some(res)
-            }
+            } catch { case e: InterruptedException => None }
           }
         }),
       classes

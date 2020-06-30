@@ -78,7 +78,7 @@ private[sbt] object xMain {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
         bootServerSocket.foreach(l => Terminal.setBootStreams(l.inputStream, l.outputStream))
-        Terminal.withStreams {
+        Terminal.withStreams(true) {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
             NetworkClient.run(dealiasBaseDirectory(configuration), args)

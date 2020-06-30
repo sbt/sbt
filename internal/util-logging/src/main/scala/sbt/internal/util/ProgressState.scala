@@ -14,7 +14,6 @@ import sbt.internal.util.ConsoleAppender.{
   ClearScreenAfterCursor,
   CursorLeft1000,
   DeleteLine,
-  cursorLeft,
   cursorUp,
 }
 
@@ -33,6 +32,10 @@ private[sbt] final class ProgressState(
       blankZone,
       new AtomicReference(new ArrayBuffer[Byte]),
     )
+  def currentLine: Option[String] =
+    new String(currentLineBytes.get.toArray, "UTF-8").linesIterator.toSeq.lastOption
+      .map(EscHelpers.stripColorsAndMoves)
+      .filter(_.nonEmpty)
   def reset(): Unit = {
     progressLines.set(Nil)
     padding.set(0)
@@ -44,8 +47,9 @@ private[sbt] final class ProgressState(
     currentLineBytes.set(new ArrayBuffer[Byte])
   }
 
-  private[util] def addBytes(terminal: Terminal, bytes: ArrayBuffer[Byte]): Unit = {
-    val previous = currentLineBytes.get
+  private[this] val lineSeparatorBytes: Array[Byte] = System.lineSeparator.getBytes("UTF-8")
+  private[util] def addBytes(terminal: Terminal, bytes: Seq[Byte]): Unit = {
+    val previous: ArrayBuffer[Byte] = currentLineBytes.get
     val padding = this.padding.get
     val prevLineCount = if (padding > 0) terminal.lineCount(new String(previous.toArray)) else 0
     previous ++= bytes
@@ -53,6 +57,16 @@ private[sbt] final class ProgressState(
       val newLineCount = terminal.lineCount(new String(previous.toArray))
       val diff = newLineCount - prevLineCount
       this.padding.set(math.max(padding - diff, 0))
+    }
+    val lines = new String(previous.toArray, "UTF-8")
+    if (lines.contains(System.lineSeparator)) {
+      currentLineBytes.set(new ArrayBuffer[Byte])
+      if (!lines.endsWith(System.lineSeparator)) {
+        lines
+          .split(System.lineSeparator)
+          .lastOption
+          .foreach(currentLineBytes.get ++= _.getBytes("UTF-8"))
+      }
     }
   }
 
@@ -62,31 +76,50 @@ private[sbt] final class ProgressState(
       val pmpt = prefix.getBytes ++ terminal.prompt.render().getBytes
       pmpt.foreach(b => printStream.write(b & 0xFF))
     }
-  private[util] def reprint(terminal: Terminal, printStream: PrintStream): Unit = {
-    printPrompt(terminal, printStream)
-    if (progressLines.get.nonEmpty) {
-      val lines = printProgress(terminal, terminal.getLastLine.getOrElse(""))
-      printStream.print(ClearScreenAfterCursor + lines)
-    }
+  private[util] def write(
+      terminal: Terminal,
+      bytes: Array[Byte],
+      printStream: PrintStream,
+      hasProgress: Boolean
+  ): Unit = {
+    addBytes(terminal, bytes)
+    if (hasProgress && terminal.prompt != Prompt.Loading) {
+      terminal.prompt match {
+        case a: Prompt.AskUser if a.render.nonEmpty =>
+          printStream.print(System.lineSeparator + ClearScreenAfterCursor + CursorLeft1000)
+          printStream.flush()
+        case _ =>
+      }
+      printStream.write(bytes)
+      printStream.write(ClearScreenAfterCursor.getBytes("UTF-8"))
+      printStream.flush()
+      if (bytes.endsWith(lineSeparatorBytes)) {
+        if (progressLines.get.nonEmpty) {
+          val lastLine = terminal.prompt match {
+            case a: Prompt.AskUser => a.render()
+            case _                 => currentLine.getOrElse("")
+          }
+          val lines = printProgress(terminal, lastLine)
+          printStream.print(ClearScreenAfterCursor + lines)
+        }
+      }
+      printPrompt(terminal, printStream)
+    } else printStream.write(bytes)
   }
 
-  private[util] def printProgress(
-      terminal: Terminal,
-      lastLine: String
-  ): String = {
+  private[util] def printProgress(terminal: Terminal, lastLine: String): String = {
     val previousLines = progressLines.get
     if (previousLines.nonEmpty) {
       val currentLength = previousLines.foldLeft(0)(_ + terminal.lineCount(_))
       val (height, width) = terminal.getLineHeightAndWidth(lastLine)
-      val left = cursorLeft(1000) // resets the position to the left
       val offset = width > 0
       val pad = math.max(padding.get - height, 0)
-      val start = (if (offset) "\n" else "")
+      val start = (if (offset) s"\n$CursorLeft1000" else "")
       val totalSize = currentLength + blankZone + pad
-      val blank = left + s"\n$DeleteLine" * (totalSize - currentLength)
+      val blank = CursorLeft1000 + s"\n$DeleteLine" * (totalSize - currentLength)
       val lines = previousLines.mkString(DeleteLine, s"\n$DeleteLine", s"\n$DeleteLine")
       val resetCursorUp = cursorUp(totalSize + (if (offset) 1 else 0))
-      val resetCursor = resetCursorUp + left + lastLine
+      val resetCursor = resetCursorUp + CursorLeft1000 + lastLine
       start + blank + lines + resetCursor
     } else {
       ClearScreenAfterCursor
@@ -108,6 +141,7 @@ private[sbt] object ProgressState {
       terminal: Terminal
   ): Unit = {
     val state = terminal.progressState
+    val isAskUser = terminal.prompt.isInstanceOf[Prompt.AskUser]
     val isRunning = terminal.prompt == Prompt.Running
     val isBatch = terminal.prompt == Prompt.Batch
     val isWatch = terminal.prompt == Prompt.Watch
@@ -115,31 +149,27 @@ private[sbt] object ProgressState {
     if (terminal.isSupershellEnabled) {
       if (!pe.skipIfActive.getOrElse(false) || (!isRunning && !isBatch)) {
         terminal.withPrintStream { ps =>
-          val info =
-            if ((isRunning || isBatch || noPrompt) && pe.channelName
-                  .fold(true)(_ == terminal.name)) {
-              pe.items.map { item =>
-                val elapsed = item.elapsedMicros / 1000000L
-                s"  | => ${item.name} ${elapsed}s"
-              }
-            } else {
-              pe.command.toSeq.flatMap { cmd =>
-                val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
-                s"sbt server is running '$cmd'" :: tail
-              }
+          val commandFromThisTerminal = pe.channelName.fold(true)(_ == terminal.name)
+          val info = if ((isRunning || isBatch || noPrompt) && commandFromThisTerminal) {
+            pe.items.map { item =>
+              val elapsed = item.elapsedMicros / 1000000L
+              s"  | => ${item.name} ${elapsed}s"
             }
+          } else {
+            pe.command.toSeq.flatMap { cmd =>
+              val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
+              s"sbt server is running '$cmd'" :: tail
+            }
+          }
 
           val currentLength = info.foldLeft(0)(_ + terminal.lineCount(_))
           val previousLines = state.progressLines.getAndSet(info)
           val prevLength = previousLines.foldLeft(0)(_ + terminal.lineCount(_))
-          val lastLine = terminal.prompt match {
-            case Prompt.Running | Prompt.Batch => terminal.getLastLine.getOrElse("")
-            case a                             => a.render()
-          }
           val prevSize = prevLength + state.padding.get
 
-          val newPadding = math.max(0, prevSize - currentLength)
-          state.padding.set(newPadding)
+          val lastLine =
+            if (isAskUser) terminal.prompt.render() else terminal.getLastLine.getOrElse("")
+          state.padding.set(math.max(0, prevSize - currentLength))
           state.printPrompt(terminal, ps)
           ps.print(state.printProgress(terminal, lastLine))
           ps.flush()

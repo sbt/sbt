@@ -25,16 +25,27 @@ import sbt.protocol.Serialization.{
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.{
   Attach,
+  TerminalAttributesQuery,
+  TerminalAttributesResponse,
   TerminalCapabilitiesQuery,
   TerminalCapabilitiesResponse,
-  TerminalPropertiesResponse
+  TerminalPropertiesResponse,
+  TerminalSetAttributesCommand,
+  TerminalSetSizeCommand,
 }
+import sbt.protocol.codec.JsonProtocol._
 
 object VirtualTerminal {
   private[this] val pendingTerminalProperties =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalPropertiesResponse]]()
   private[this] val pendingTerminalCapabilities =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalCapabilitiesResponse]]
+  private[this] val pendingTerminalAttributes =
+    new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalAttributesResponse]]
+  private[this] val pendingTerminalSetAttributes =
+    new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
+  private[this] val pendingTerminalSetSize =
+    new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
   private[sbt] def sendTerminalPropertiesQuery(
       channelName: String,
       jsonRpcRequest: (String, String, String) => Unit
@@ -70,6 +81,39 @@ object VirtualTerminal {
       case _ =>
     }
   }
+  private[sbt] def sendTerminalAttributesQuery(
+      channelName: String,
+      jsonRpcRequest: (String, String, TerminalAttributesQuery) => Unit,
+  ): ArrayBlockingQueue[TerminalAttributesResponse] = {
+    val id = UUID.randomUUID.toString
+    val queue = new ArrayBlockingQueue[TerminalAttributesResponse](1)
+    pendingTerminalAttributes.put((channelName, id), queue)
+    jsonRpcRequest(id, terminalCapabilities, TerminalAttributesQuery())
+    queue
+  }
+  private[sbt] def setTerminalAttributes(
+      channelName: String,
+      jsonRpcRequest: (String, String, TerminalSetAttributesCommand) => Unit,
+      query: TerminalSetAttributesCommand
+  ): ArrayBlockingQueue[Unit] = {
+    val id = UUID.randomUUID.toString
+    val queue = new ArrayBlockingQueue[Unit](1)
+    pendingTerminalSetAttributes.put((channelName, id), queue)
+    jsonRpcRequest(id, terminalCapabilities, query)
+    queue
+  }
+
+  private[sbt] def setTerminalSize(
+      channelName: String,
+      jsonRpcRequest: (String, String, TerminalSetSizeCommand) => Unit,
+      query: TerminalSetSizeCommand
+  ): ArrayBlockingQueue[Unit] = {
+    val id = UUID.randomUUID.toString
+    val queue = new ArrayBlockingQueue[Unit](1)
+    pendingTerminalSetSize.put((channelName, id), queue)
+    jsonRpcRequest(id, terminalCapabilities, query)
+    queue
+  }
   val handler = ServerHandler { cb =>
     ServerIntent(requestHandler(cb), responseHandler(cb), notificationHandler(cb))
   }
@@ -77,7 +121,6 @@ object VirtualTerminal {
   private val requestHandler: Handler[JsonRpcRequestMessage] =
     callback => {
       case r if r.method == attach =>
-        import sbt.protocol.codec.JsonProtocol.AttachFormat
         val isInteractive = r.params
           .flatMap(Converter.fromJson[Attach](_).toOption.map(_.interactive))
           .exists(identity)
@@ -89,7 +132,6 @@ object VirtualTerminal {
   private val responseHandler: Handler[JsonRpcResponseMessage] =
     callback => {
       case r if pendingTerminalProperties.get((callback.name, r.id)) != null =>
-        import sbt.protocol.codec.JsonProtocol._
         val response =
           r.result.flatMap(Converter.fromJson[TerminalPropertiesResponse](_).toOption)
         pendingTerminalProperties.remove((callback.name, r.id)) match {
@@ -97,7 +139,6 @@ object VirtualTerminal {
           case buffer => response.foreach(buffer.put)
         }
       case r if pendingTerminalCapabilities.get((callback.name, r.id)) != null =>
-        import sbt.protocol.codec.JsonProtocol._
         val response =
           r.result.flatMap(
             Converter.fromJson[TerminalCapabilitiesResponse](_).toOption
@@ -106,6 +147,24 @@ object VirtualTerminal {
           case null =>
           case buffer =>
             buffer.put(response.getOrElse(TerminalCapabilitiesResponse(None, None, None)))
+        }
+      case r if pendingTerminalAttributes.get((callback.name, r.id)) != null =>
+        val response =
+          r.result.flatMap(Converter.fromJson[TerminalAttributesResponse](_).toOption)
+        pendingTerminalAttributes.remove((callback.name, r.id)) match {
+          case null =>
+          case buffer =>
+            buffer.put(response.getOrElse(TerminalAttributesResponse("", "", "", "", "")))
+        }
+      case r if pendingTerminalSetAttributes.get((callback.name, r.id)) != null =>
+        pendingTerminalSetAttributes.remove((callback.name, r.id)) match {
+          case null   =>
+          case buffer => buffer.put(())
+        }
+      case r if pendingTerminalSetSize.get((callback.name, r.id)) != null =>
+        pendingTerminalSetSize.remove((callback.name, r.id)) match {
+          case null   =>
+          case buffer => buffer.put(())
         }
     }
   private val notificationHandler: Handler[JsonRpcNotificationMessage] =

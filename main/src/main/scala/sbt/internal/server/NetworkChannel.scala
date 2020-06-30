@@ -99,7 +99,6 @@ final class NetworkChannel(
     addFastTrackTask(attach)
   }
   private[sbt] def prompt(): Unit = {
-    terminal.setPrompt(Prompt.Running)
     interactive.set(true)
     jsonRpcNotify(promptChannel, "")
   }
@@ -641,7 +640,7 @@ final class NetworkChannel(
           case -1 => throw new ClosedChannelException()
           case b  => b
         }
-      } catch { case _: IOException => -1 }
+      } catch { case e: IOException => -1 }
     }
     override def available(): Int = inputBuffer.size
   }
@@ -774,24 +773,81 @@ final class NetworkChannel(
         Some(result(queue.take))
       }
     }
-    override def getBooleanCapability(capability: String): Boolean =
+    override def getBooleanCapability(capability: String, jline3: Boolean): Boolean =
       getCapability(
-        TerminalCapabilitiesQuery(boolean = Some(capability), numeric = None, string = None),
+        TerminalCapabilitiesQuery(
+          boolean = Some(capability),
+          numeric = None,
+          string = None,
+          jline3
+        ),
         _.boolean.getOrElse(false)
       ).getOrElse(false)
-    override def getNumericCapability(capability: String): Int =
+    override def getNumericCapability(capability: String, jline3: Boolean): Integer =
       getCapability(
-        TerminalCapabilitiesQuery(boolean = None, numeric = Some(capability), string = None),
-        _.numeric.getOrElse(-1)
-      ).getOrElse(-1)
-    override def getStringCapability(capability: String): String =
+        TerminalCapabilitiesQuery(
+          boolean = None,
+          numeric = Some(capability),
+          string = None,
+          jline3
+        ),
+        (_: TerminalCapabilitiesResponse).numeric.map(Integer.valueOf).getOrElse(-1: Integer)
+      ).getOrElse(-1: Integer)
+    override def getStringCapability(capability: String, jline3: Boolean): String =
       getCapability(
-        TerminalCapabilitiesQuery(boolean = None, numeric = None, string = Some(capability)),
+        TerminalCapabilitiesQuery(
+          boolean = None,
+          numeric = None,
+          string = Some(capability),
+          jline3
+        ),
         _.string.flatMap {
           case "null" => None
           case s      => Some(s)
         }.orNull
       ).getOrElse("")
+
+    override private[sbt] def getAttributes: Map[String, String] =
+      if (closed.get) Map.empty
+      else {
+        import sbt.protocol.codec.JsonProtocol._
+        val queue = VirtualTerminal.sendTerminalAttributesQuery(
+          name,
+          jsonRpcRequest
+        )
+        try {
+          val a = queue.take
+          Map(
+            "iflag" -> a.iflag,
+            "oflag" -> a.oflag,
+            "cflag" -> a.cflag,
+            "lflag" -> a.lflag,
+            "cchars" -> a.cchars
+          )
+        } catch { case _: InterruptedException => Map.empty }
+      }
+    override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
+      if (!closed.get) {
+        import sbt.protocol.codec.JsonProtocol._
+        val attrs = TerminalSetAttributesCommand(
+          iflag = attributes.getOrElse("iflag", ""),
+          oflag = attributes.getOrElse("oflag", ""),
+          cflag = attributes.getOrElse("cflag", ""),
+          lflag = attributes.getOrElse("lflag", ""),
+          cchars = attributes.getOrElse("cchars", ""),
+        )
+        val queue = VirtualTerminal.setTerminalAttributes(name, jsonRpcRequest, attrs)
+        try queue.take
+        catch { case _: InterruptedException => }
+      }
+    override def setSize(width: Int, height: Int): Unit =
+      if (!closed.get) {
+        import sbt.protocol.codec.JsonProtocol._
+        val size = TerminalSetSizeCommand(width, height)
+        val queue = VirtualTerminal.setTerminalSize(name, jsonRpcRequest, size)
+        try queue.take
+        catch { case _: InterruptedException => }
+      }
 
     override def toString: String = s"NetworkTerminal($name)"
     override def close(): Unit = if (closed.compareAndSet(false, true)) {

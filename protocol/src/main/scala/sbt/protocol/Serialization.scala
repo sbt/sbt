@@ -26,6 +26,7 @@ object Serialization {
   private[sbt] val VsCode = "application/vscode-jsonrpc; charset=utf-8"
   val systemIn = "sbt/systemIn"
   val systemOut = "sbt/systemOut"
+  val systemOutFlush = "sbt/systemOutFlush"
   val terminalPropertiesQuery = "sbt/terminalPropertiesQuery"
   val terminalPropertiesResponse = "sbt/terminalPropertiesResponse"
   val terminalCapabilities = "sbt/terminalCapabilities"
@@ -34,6 +35,9 @@ object Serialization {
   val attachResponse = "sbt/attachResponse"
   val cancelRequest = "sbt/cancelRequest"
   val promptChannel = "sbt/promptChannel"
+  val setTerminalAttributes = "sbt/setTerminalAttributes"
+  val getTerminalAttributes = "sbt/getTerminalAttributes"
+  val setTerminalSize = "sbt/setTerminalSize"
   val CancelAll = "__CancelAll"
 
   @deprecated("unused", since = "1.4.0")

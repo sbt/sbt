@@ -9,6 +9,7 @@ package sbt.internal.util
 
 import java.io.{ PrintStream, PrintWriter }
 import java.lang.StringBuilder
+import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 
 import org.apache.logging.log4j.core.appender.AbstractAppender
@@ -394,7 +395,8 @@ class ConsoleAppender private[ConsoleAppender] (
   override def append(event: XLogEvent): Unit = {
     val level = ConsoleAppender.toLevel(event.getLevel)
     val message = event.getMessage
-    appendMessage(level, message)
+    try appendMessage(level, message)
+    catch { case _: ClosedChannelException => }
   }
 
   /**

@@ -289,6 +289,7 @@ val completeProj = (project in file("internal") / "util-complete")
     testedBaseSettings,
     name := "Completion",
     libraryDependencies += jline,
+    libraryDependencies += jline3,
     mimaSettings,
     // Parser is used publicly, so we can't break bincompat.
     mimaBinaryIssueFilters := Seq(
@@ -343,12 +344,20 @@ lazy val utilPosition = (project in file("internal") / "util-position")
 
 lazy val utilLogging = (project in file("internal") / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(utilInterface)
+  .dependsOn(utilInterface, collectionProj)
   .settings(
     utilCommonSettings,
     name := "Util Logging",
     libraryDependencies ++=
-      Seq(jline, log4jApi, log4jCore, disruptor, sjsonNewScalaJson.value, scalaReflect.value),
+      Seq(
+        jline,
+        jline3,
+        log4jApi,
+        log4jCore,
+        disruptor,
+        sjsonNewScalaJson.value,
+        scalaReflect.value
+      ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
@@ -1047,8 +1056,7 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies += jansi,
-    libraryDependencies += "net.java.dev.jna" % "jna" % "5.5.0",
-    libraryDependencies += "net.java.dev.jna" % "jna-platform" % "5.5.0",
+    libraryDependencies += jline3Jansi,
     libraryDependencies += scalatest % "test",
     /*
      * On windows, the raw classpath is too large to be a command argument to an

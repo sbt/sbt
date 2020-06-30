@@ -8,16 +8,28 @@
 package sbt.internal.util
 
 import java.io._
+import java.util.{ List => JList }
 
 import jline.console.ConsoleReader
 import jline.console.history.{ FileHistory, MemoryHistory }
+import org.jline.reader.{
+  Candidate,
+  Completer,
+  EndOfFileException,
+  LineReader => JLineReader,
+  LineReaderBuilder,
+  ParsedLine,
+  UserInterruptException,
+}
 import sbt.internal.util.complete.Parser
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
+import java.nio.channels.ClosedByInterruptException
 
-trait LineReader {
+trait LineReader extends AutoCloseable {
   def readLine(prompt: String, mask: Option[Char] = None): Option[String]
+  override def close(): Unit = {}
 }
 
 object LineReader {
@@ -25,7 +37,67 @@ object LineReader {
     !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
   val MaxHistorySize = 500
 
+  private def completer(parser: Parser[_]): Completer = new Completer {
+    def complete(lr: JLineReader, pl: ParsedLine, candidates: JList[Candidate]): Unit = {
+      Parser.completions(parser, pl.line(), 10).get.foreach { c =>
+        /*
+         * For commands like `~` that delegate parsing to another parser, the `~` may be
+         * excluded from the completion result. For example,
+         * ~testOnly <TAB>
+         * might return results like
+         * 'testOnly ;'
+         * 'testOnly com.foo.FooSpec'
+         * ...
+         * If we use the raw display, JLine will reject the completions because they are
+         * missing the leading `~`. To workaround this, we append to the result to the
+         * line provided the line does not end with " ". This fixes the missing `~` in
+         * the prefix problem. We also need to split the line on space and take the
+         * last token and append to that otherwise the completion will double print
+         * the prefix, so that `testOnly com<Tab>` might expand to something like:
+         * `testOnly testOnly\ com.foo.FooSpec` instead of `testOnly com.foo.FooSpec`.
+         */
+        if (c.append.nonEmpty) {
+          if (!pl.line().endsWith(" ")) {
+            candidates.add(new Candidate(pl.line().split(" ").last + c.append))
+          } else {
+            candidates.add(new Candidate(c.append))
+          }
+        }
+      }
+    }
+  }
   def createReader(
+      historyPath: Option[File],
+      parser: Parser[_],
+      terminal: Terminal,
+      prompt: Prompt = Prompt.Running,
+  ): LineReader = {
+    val term = JLine3(terminal)
+    // We may want to consider insourcing LineReader.java from jline. We don't otherwise
+    // directly need jline3 for sbt.
+    val reader = LineReaderBuilder.builder().terminal(term).completer(completer(parser)).build()
+    historyPath.foreach(f => reader.setVariable(JLineReader.HISTORY_FILE, f))
+    new LineReader {
+      override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
+        try terminal.withRawSystemIn {
+          Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
+        } catch {
+          case e: EndOfFileException =>
+            if (terminal == Terminal.console && System.console == null) None
+            else Some("exit")
+          case _: IOError => Some("exit")
+          case _: UserInterruptException | _: ClosedByInterruptException |
+              _: UncheckedIOException =>
+            throw new InterruptedException
+        } finally {
+          terminal.prompt.reset()
+          term.close()
+        }
+      }
+    }
+  }
+
+  def createJLine2Reader(
       historyPath: Option[File],
       terminal: Terminal,
       prompt: Prompt = Prompt.Running,
@@ -42,7 +114,6 @@ object LineReader {
     cr.setHistoryEnabled(true)
     cr
   }
-
   def simple(terminal: Terminal): LineReader = new SimpleReader(None, HandleCONT, terminal)
   def simple(
       historyPath: Option[File],
@@ -230,7 +301,7 @@ final class FullReader(
       Terminal.console
     )
   protected[this] val reader: ConsoleReader = {
-    val cr = LineReader.createReader(historyPath, terminal)
+    val cr = LineReader.createJLine2Reader(historyPath, terminal)
     sbt.internal.util.complete.JLineCompletion.installCustomCompletor(cr, complete)
     cr
   }
@@ -244,7 +315,7 @@ class SimpleReader private[sbt] (
   def this(historyPath: Option[File], handleCONT: Boolean, injectThreadSleep: Boolean) =
     this(historyPath, handleCONT, Terminal.console)
   protected[this] val reader: ConsoleReader =
-    LineReader.createReader(historyPath, terminal)
+    LineReader.createJLine2Reader(historyPath, terminal)
 }
 
 object SimpleReader extends SimpleReader(None, LineReader.HandleCONT, false) {

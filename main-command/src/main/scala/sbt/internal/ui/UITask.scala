@@ -11,14 +11,14 @@ import java.io.File
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
 
-import jline.console.history.PersistentHistory
+//import jline.console.history.PersistentHistory
 import sbt.BasicCommandStrings.{ Cancel, TerminateAction, Shutdown }
 import sbt.BasicKeys.{ historyPath, terminalShellPrompt }
 import sbt.State
 import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
 import sbt.internal.util._
-import sbt.internal.util.complete.{ JLineCompletion, Parser }
+import sbt.internal.util.complete.{ Parser }
 
 import scala.annotation.tailrec
 
@@ -47,44 +47,31 @@ private[sbt] object UITask {
     def terminalReader(parser: Parser[_])(
         terminal: Terminal,
         state: State
-    ): Reader = {
-      val lineReader = LineReader.createReader(history(state), terminal, terminal.prompt)
-      JLineCompletion.installCustomCompletor(lineReader, parser)
-      () => {
+    ): Reader = { () =>
+      try {
         val clear = terminal.ansi(ClearPromptLine, "")
-        try {
-          @tailrec def impl(): Either[String, String] = {
-            lineReader.readLine(clear + terminal.prompt.mkPrompt()) match {
-              case null if terminal == Terminal.console && System.console == null =>
-                // No stdin is attached to the process so just ignore the result and
-                // block until the thread is interrupted.
-                this.synchronized(this.wait())
-                Right("") // should be unreachable
-              // JLine returns null on ctrl+d when there is no other input. This interprets
-              // ctrl+d with no imput as an exit
-              case null => Left(TerminateAction)
-              case s: String =>
-                lineReader.getHistory match {
-                  case p: PersistentHistory =>
-                    p.add(s)
-                    p.flush()
-                  case _ =>
-                }
-                s match {
-                  case ""                                                => impl()
-                  case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
-                  case cmd =>
-                    if (terminal.prompt != Prompt.Batch) terminal.setPrompt(Prompt.Running)
-                    terminal.printStream.write(Int.MinValue)
-                    Right(cmd)
-                }
-            }
+        @tailrec def impl(): Either[String, String] = {
+          val reader = LineReader.createReader(history(state), parser, terminal, terminal.prompt)
+          (try reader.readLine(clear + terminal.prompt.mkPrompt())
+          finally reader.close) match {
+            case None if terminal == Terminal.console && System.console == null =>
+              // No stdin is attached to the process so just ignore the result and
+              // block until the thread is interrupted.
+              this.synchronized(this.wait())
+              Right("") // should be unreachable
+            // JLine returns null on ctrl+d when there is no other input. This interprets
+            // ctrl+d with no imput as an exit
+            case None => Left(TerminateAction)
+            case Some(s: String) =>
+              s.trim() match {
+                case ""                                                => impl()
+                case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
+                case cmd                                               => Right(cmd)
+              }
           }
-          impl()
-        } catch {
-          case _: InterruptedException => Right("")
-        } finally lineReader.close()
-      }
+        }
+        impl()
+      } catch { case e: InterruptedException => Right("") }
     }
   }
   private[this] def history(s: State): Option[File] =
