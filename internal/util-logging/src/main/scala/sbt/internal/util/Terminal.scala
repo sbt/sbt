@@ -57,9 +57,8 @@ trait Terminal extends AutoCloseable {
   def inputStream: InputStream
 
   /**
-   * Gets the input stream for this Terminal. This could be a wrapper around System.in for the
-   * process or it could be a remote input stream for a network channel.
-   * @return the input stream.
+   * Gets the output stream for this Terminal.
+   * @return the output stream.
    */
   def outputStream: OutputStream
 
