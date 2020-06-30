@@ -672,8 +672,11 @@ class NetworkClient(
           catch { case _: InterruptedException => }
           if (exitClean.get) 0 else 1
         }
-        if (interactive) block()
-        else if (exit) 0
+        console.appendLog(Level.Info, "terminate the server with `shutdown`")
+        if (interactive) {
+          console.appendLog(Level.Info, "disconnect from the server with `exit`")
+          block()
+        } else if (exit) 0
         else {
           batchMode.set(true)
           val res = batchExecute(userCommands.toList)
