@@ -136,7 +136,7 @@ class NetworkClient(
 
   def connection: ServerConnection = connectionHolder.synchronized {
     connectionHolder.get match {
-      case null => init(prompt = false, retry = true)
+      case null => init(promptCompleteUsers = false, retry = true)
       case c    => c
     }
   }
@@ -150,10 +150,10 @@ class NetworkClient(
   private class ServerFailedException extends Exception
 
   // Open server connection based on the portfile
-  def init(prompt: Boolean, retry: Boolean): ServerConnection =
+  def init(promptCompleteUsers: Boolean, retry: Boolean): ServerConnection =
     try {
       if (!portfile.exists) {
-        if (prompt) {
+        if (promptCompleteUsers) {
           val msg = if (noTab) "" else "No sbt server is running. Press <tab> to start one..."
           errorStream.print(s"\n$msg")
           if (noStdErr) System.exit(0)
@@ -162,7 +162,7 @@ class NetworkClient(
             stdinBytes.take match {
               case 9 =>
                 errorStream.println("\nStarting server...")
-                waitForServer(portfile, !prompt, startServer = true)
+                waitForServer(portfile, !promptCompleteUsers, startServer = true)
               case _ => System.exit(0)
             }
           }
@@ -207,7 +207,7 @@ class NetworkClient(
                   case c    => c.shutdown()
                 }
                 waitForServer(portfile, true, false)
-                init(prompt = false, retry = false)
+                init(promptCompleteUsers = false, retry = false)
                 attachUUID.set(sendJson(attach, s"""{"interactive": ${!batchMode.get}}"""))
                 rebooting.set(false)
                 rebootCommands match {
@@ -262,7 +262,7 @@ class NetworkClient(
       conn
     } catch {
       case e: ConnectionRefusedException if retry =>
-        if (Files.deleteIfExists(portfile.toPath)) init(prompt, retry = false)
+        if (Files.deleteIfExists(portfile.toPath)) init(promptCompleteUsers, retry = false)
         else throw e
     }
 
@@ -621,10 +621,10 @@ class NetworkClient(
     }
   }
 
-  def connect(log: Boolean, prompt: Boolean): Boolean = {
+  def connect(log: Boolean, promptCompleteUsers: Boolean): Boolean = {
     if (log) console.appendLog(Level.Info, "entering *experimental* thin client - BEEP WHIRR")
     try {
-      init(prompt, retry = true)
+      init(promptCompleteUsers, retry = true)
       true
     } catch {
       case _: ServerFailedException =>
@@ -725,8 +725,7 @@ class NetworkClient(
         else {
           errorStream.print(s"\nNo cached $label names found. Press '<tab>' to compile: ")
           stdinBytes.take match {
-            case 9 =>
-              updateCompletions()
+            case 9 => updateCompletions()
             case _ => Nil
           }
         }
@@ -972,7 +971,7 @@ object NetworkClient {
         useJNI,
       )
     try {
-      if (client.connect(log = true, prompt = false)) client.run()
+      if (client.connect(log = true, promptCompleteUsers = false)) client.run()
       else 1
     } catch { case _: Exception => 1 } finally client.close()
   }
@@ -1046,7 +1045,7 @@ object NetworkClient {
       )
     try {
       val results =
-        if (client.connect(log = false, prompt = true)) client.getCompletions(cmd)
+        if (client.connect(log = false, promptCompleteUsers = true)) client.getCompletions(cmd)
         else Nil
       out.println(results.sorted.distinct mkString "\n")
       0
@@ -1057,7 +1056,7 @@ object NetworkClient {
     try {
       val client = new NetworkClient(configuration, parseArgs(arguments.toArray))
       try {
-        if (client.connect(log = true, prompt = false)) client.run()
+        if (client.connect(log = true, promptCompleteUsers = false)) client.run()
         else 1
       } catch { case _: Throwable => 1 } finally client.close()
     } catch {
