@@ -494,11 +494,7 @@ class ConsoleAppender private[ConsoleAppender] (
   private def write(msg: String): Unit = {
     val toWrite =
       if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg) else msg
-    /*
-     * Use print + flush rather than println to prevent log lines from getting interleaved.
-     */
-    out.print(toWrite + "\n")
-    out.flush()
+    out.println(toWrite)
   }
 
   private def appendMessage(level: Level.Value, msg: Message): Unit =
