@@ -1107,6 +1107,7 @@ lazy val sbtClientProj = (project in file("client"))
       "--verbose",
       "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
       "-H:+ReportExceptionStackTraces",
+      "-H:-ParseRuntimeOptions",
       s"-H:Name=${target.value / "bin" / "sbtc"}",
     ),
     genExecutable := {
