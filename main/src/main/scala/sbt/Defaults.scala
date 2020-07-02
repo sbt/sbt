@@ -17,6 +17,7 @@ import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
+import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import sbt.Keys._
 import sbt.Project.{
@@ -48,7 +49,8 @@ import sbt.internal.server.{
   BuildServerReporter,
   Definition,
   LanguageServerProtocol,
-  ServerHandler
+  ServerHandler,
+  VirtualTerminal,
 }
 import sbt.internal.testing.TestLogger
 import sbt.internal.util.Attributed.data
@@ -208,7 +210,8 @@ object Defaults extends BuildCommon {
         Seq(
           LanguageServerProtocol.handler(fileConverter.value),
           BuildServerProtocol
-            .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value)
+            .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value),
+          VirtualTerminal.handler,
         ) ++ serverHandlers.value :+ ServerHandler.fallback
       },
       uncachedStamper := Stamps.uncachedStamps(fileConverter.value),
@@ -342,15 +345,12 @@ object Defaults extends BuildCommon {
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
       turbo :== SysProp.turbo,
-      useSuperShell := { if (insideCI.value) false else SysProp.supershell },
+      useSuperShell := { if (insideCI.value) false else Terminal.console.isSupershellEnabled },
       progressReports := {
         val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
         rs map { Keys.TaskProgress(_) }
       },
-      progressState := {
-        if ((ThisBuild / useSuperShell).value) Some(new ProgressState(SysProp.supershellBlankZone))
-        else None
-      },
+      progressState := Some(new ProgressState(SysProp.supershellBlankZone)),
       Previous.cache := new Previous(
         Def.streamsManagerKey.value,
         Previous.references.value.getReferences
@@ -378,6 +378,7 @@ object Defaults extends BuildCommon {
       interactionService :== CommandLineUIService,
       autoStartServer := true,
       serverHost := "127.0.0.1",
+      serverIdleTimeout := Some(new FiniteDuration(7, TimeUnit.DAYS)),
       serverPort := 5000 + (Hash
         .toHex(Hash(appConfiguration.value.baseDirectory.toString))
         .## % 1000),
@@ -387,6 +388,7 @@ object Defaults extends BuildCommon {
         else Set()
       },
       serverHandlers :== Nil,
+      windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || SysProp.ci,
@@ -408,7 +410,7 @@ object Defaults extends BuildCommon {
   // TODO: This should be on the new default settings for a project.
   def projectCore: Seq[Setting[_]] = Seq(
     name := thisProject.value.id,
-    logManager := LogManager.defaults(extraLoggers.value, StandardMain.console),
+    logManager := LogManager.defaults(extraLoggers.value, ConsoleOut.terminalOut),
     onLoadMessage := (onLoadMessage or
       Def.setting {
         s"set current project to ${name.value} (in build ${thisProjectRef.value.build})"
@@ -1496,13 +1498,13 @@ object Defaults extends BuildCommon {
 
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(
-      if (classes.length >= 10) Some(SimpleReader.readLine(_))
+      if (classes.length >= 10) Some(SimpleReader(Terminal.get).readLine(_))
       else
         Some(s => {
           def print(st: String) = { scala.Console.out.print(st); scala.Console.out.flush() }
           print(s)
-          Terminal.withRawSystemIn {
-            Terminal.wrappedSystemIn.read match {
+          Terminal.get.withRawSystemIn {
+            Terminal.get.inputStream.read match {
               case -1 => None
               case b =>
                 val res = b.toChar.toString
@@ -2344,6 +2346,9 @@ object Classpaths {
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
         },
         shellPrompt := shellPromptFromState,
+        terminalShellPrompt := { (t, s) =>
+          shellPromptFromState(t)(s)
+        },
         dynamicDependency := { (): Unit },
         transitiveClasspathDependency := { (): Unit },
         transitiveDynamicInputs :== Nil,
@@ -3827,11 +3832,13 @@ object Classpaths {
     }
   }
 
-  def shellPromptFromState: State => String = { s: State =>
+  def shellPromptFromState: State => String = shellPromptFromState(Terminal.console)
+  def shellPromptFromState(terminal: Terminal): State => String = { s: State =>
     val extracted = Project.extract(s)
     (name in extracted.currentRef).get(extracted.structure.data) match {
-      case Some(name) => s"sbt:$name" + Def.withColor("> ", Option(scala.Console.CYAN))
-      case _          => "> "
+      case Some(name) =>
+        s"sbt:$name" + Def.withColor(s"> ", Option(scala.Console.CYAN), terminal.isColorEnabled)
+      case _ => "> "
     }
   }
 }

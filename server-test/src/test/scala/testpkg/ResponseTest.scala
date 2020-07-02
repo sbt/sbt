@@ -18,7 +18,7 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "10", "method": "foo/export", "params": {} }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      println(s)
+      if (!s.contains("systemOut")) println(s)
       (s contains """"id":"10"""") &&
       (s contains "scala-library.jar")
     })
@@ -29,7 +29,7 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "11", "method": "foo/rootClasspath", "params": {} }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      println(s)
+      if (!s.contains("systemOut")) println(s)
       (s contains """"id":"11"""") &&
       (s contains "scala-library.jar")
     })
@@ -40,7 +40,7 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "12", "method": "foo/fail", "params": {} }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      println(s)
+      if (!s.contains("systemOut")) println(s)
       (s contains """"error":{"code":-33000,"message":"fail message"""")
     })
   }
@@ -50,7 +50,7 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "13", "method": "foo/customfail", "params": {} }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      println(s)
+      if (!s.contains("systemOut")) println(s)
       (s contains """"error":{"code":500,"message":"some error"""")
     })
   }
@@ -60,7 +60,7 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "14", "method": "foo/notification", "params": {} }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      println(s)
+      if (!s.contains("systemOut")) println(s)
       (s contains """{"jsonrpc":"2.0","method":"foo/something","params":"something"}""")
     })
   }
@@ -70,15 +70,15 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "15", "method": "foo/respondTwice", "params": {} }"""
     )
     assert {
-      svr.waitForString(1.seconds) { s =>
-        println(s)
+      svr.waitForString(10.seconds) { s =>
+        if (!s.contains("systemOut")) println(s)
         s contains "\"id\":\"15\""
       }
     }
     assert {
       // the second response should never be sent
       svr.neverReceive(500.milliseconds) { s =>
-        println(s)
+        if (!s.contains("systemOut")) println(s)
         s contains "\"id\":\"15\""
       }
     }
@@ -89,15 +89,15 @@ object ResponseTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "16", "method": "foo/resultAndError", "params": {} }"""
     )
     assert {
-      svr.waitForString(1.seconds) { s =>
-        println(s)
+      svr.waitForString(10.seconds) { s =>
+        if (!s.contains("systemOut")) println(s)
         s contains "\"id\":\"16\""
       }
     }
     assert {
       // the second response (result or error) should never be sent
       svr.neverReceive(500.milliseconds) { s =>
-        println(s)
+        if (!s.contains("systemOut")) println(s)
         s contains "\"id\":\"16\""
       }
     }
@@ -109,7 +109,7 @@ object ResponseTest extends AbstractServerTest {
     )
     assert {
       svr.neverReceive(500.milliseconds) { s =>
-        println(s)
+        if (!s.contains("systemOut")) println(s)
         s contains "\"result\":\"notification result\""
       }
     }

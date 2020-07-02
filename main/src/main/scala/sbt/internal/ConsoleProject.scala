@@ -28,7 +28,7 @@ object ConsoleProject {
       extracted.runTask(Keys.scalaCompilerBridgeBinaryJar.in(Keys.consoleProject), state1)
     val scalaInstance = {
       val scalaProvider = state.configuration.provider.scalaProvider
-      ScalaInstance(scalaProvider.version, scalaProvider.launcher)
+      ScalaInstance(scalaProvider.version, scalaProvider)
     }
     val g = BuildPaths.getGlobalBase(state)
     val zincDir = BuildPaths.getZincDirectory(state, g)
@@ -61,13 +61,15 @@ object ConsoleProject {
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
 
-    Terminal.withCanonicalIn {
+    val terminal = Terminal.get
+    terminal.withCanonicalIn {
       // TODO - Hook up dsl classpath correctly...
       (new Console(compiler))(
         unit.classpath,
         options,
         initCommands,
-        cleanupCommands
+        cleanupCommands,
+        terminal
       )(Some(unit.loader), bindings).get
     }
     ()

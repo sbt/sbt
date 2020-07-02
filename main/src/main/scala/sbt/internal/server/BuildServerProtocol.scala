@@ -11,6 +11,7 @@ package server
 
 import java.net.URI
 
+import sbt.BasicCommandStrings.Shutdown
 import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
@@ -132,7 +133,7 @@ object BuildServerProtocol {
       semanticdbVersion: String
   ): ServerHandler = ServerHandler { callback =>
     ServerIntent(
-      {
+      onRequest = {
         case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
           val params = Converter.fromJson[InitializeBuildParams](json(r)).get
           checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
@@ -153,7 +154,7 @@ object BuildServerProtocol {
           ()
 
         case r: JsonRpcRequestMessage if r.method == "build/exit" =>
-          val _ = callback.appendExec("shutdown", Some(r.id))
+          val _ = callback.appendExec(Shutdown, Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
           val param = Converter.fromJson[SourcesParams](json(r)).get
@@ -180,7 +181,8 @@ object BuildServerProtocol {
           val command = Keys.bspBuildTargetScalacOptions.key
           val _ = callback.appendExec(s"$command $targets", Some(r.id))
       },
-      PartialFunction.empty
+      onResponse = PartialFunction.empty,
+      onNotification = PartialFunction.empty,
     )
   }
 

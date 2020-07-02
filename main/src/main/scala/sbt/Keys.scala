@@ -89,11 +89,14 @@ object Keys {
   // Command keys
   val historyPath = SettingKey(BasicKeys.historyPath)
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
+  val terminalShellPrompt = SettingKey(BasicKeys.terminalShellPrompt)
   val autoStartServer = SettingKey(BasicKeys.autoStartServer)
   val serverPort = SettingKey(BasicKeys.serverPort)
   val serverHost = SettingKey(BasicKeys.serverHost)
   val serverAuthentication = SettingKey(BasicKeys.serverAuthentication)
   val serverConnectionType = SettingKey(BasicKeys.serverConnectionType)
+  val serverIdleTimeout = SettingKey(BasicKeys.serverIdleTimeout)
+  val windowsServerSecurityLevel = SettingKey(BasicKeys.windowsServerSecurityLevel)
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
 
@@ -546,6 +549,7 @@ object Keys {
   val globalPluginUpdate = taskKey[UpdateReport]("A hook to get the UpdateReport of the global plugin.").withRank(DTask)
   private[sbt] val taskCancelStrategy = settingKey[State => TaskCancellationStrategy]("Experimental task cancellation handler.").withRank(DTask)
   private[sbt] val cacheStoreFactoryFactory = AttributeKey[CacheStoreFactoryFactory]("cache-store-factory-factory")
+  private[sbt] val bootServerSocket = AttributeKey[BootServerSocket]("boot-server-socket")
   val fileCacheSize = settingKey[String]("The approximate maximum size in bytes of the cache used to store previous task results. For example, it could be set to \"256M\" to make the maximum size 256 megabytes.")
 
   // Experimental in sbt 0.13.2 to enable grabbing semantic compile failures.

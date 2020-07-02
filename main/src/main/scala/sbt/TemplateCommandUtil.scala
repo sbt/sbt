@@ -11,6 +11,7 @@ import java.lang.reflect.InvocationTargetException
 import java.nio.file.Path
 import java.io.File
 
+import sbt.BasicCommandStrings.TerminateAction
 import sbt.io._, syntax._
 import sbt.util._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
@@ -54,7 +55,7 @@ private[sbt] object TemplateCommandUtil {
         case xs                                         => xs map (_.commandLine)
       })
     run(infos, arguments, state.configuration, ivyConf, globalBase, scalaModuleInfo, log)
-    "exit" :: s2.copy(remainingCommands = Nil)
+    TerminateAction :: s2.copy(remainingCommands = Nil)
   }
 
   private def run(

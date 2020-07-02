@@ -13,9 +13,10 @@ import com.github.ghik.silencer.silent
 import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
-import sbt.internal.util.AttributeKey
+import sbt.internal.util.{ AttributeKey, Terminal }
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
+import scala.concurrent.duration.FiniteDuration
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -33,6 +34,11 @@ object BasicKeys {
   val shellPrompt = AttributeKey[State => String](
     "shell-prompt",
     "The function that constructs the command prompt from the current build state.",
+    10000
+  )
+  val terminalShellPrompt = AttributeKey[(Terminal, State) => String](
+    "new-shell-prompt",
+    "The function that constructs the command prompt from the current build state for a given terminal.",
     10000
   )
   @silent val watch =
@@ -68,6 +74,20 @@ object BasicKeys {
     AttributeKey[Boolean](
       "autoStartServer",
       "If true, the sbt server will startup automatically during interactive sessions.",
+      10000
+    )
+
+  val windowsServerSecurityLevel =
+    AttributeKey[Int](
+      "windowsServerSecurityLevel",
+      "Configures the security level of the named pipe. Values: 0 - No security; 1 - Logon user only; 2 - Process owner only",
+      10000
+    )
+
+  val serverIdleTimeout =
+    AttributeKey[Option[FiniteDuration]](
+      "serverIdleTimeOut",
+      "If set to a defined value, sbt server will exit if it goes at least the specified duration without receiving any commands.",
       10000
     )
 
@@ -107,6 +127,11 @@ object BasicKeys {
   private[sbt] val templateResolverInfos = AttributeKey[Seq[TemplateResolverInfo]](
     "templateResolverInfos",
     "List of template resolver infos.",
+    1000
+  )
+  private[sbt] val closeIOStreams = AttributeKey[Boolean](
+    "close-io-streams",
+    "Toggles wheter or not to close system in, out and error when the server starts.",
     1000
   )
 }

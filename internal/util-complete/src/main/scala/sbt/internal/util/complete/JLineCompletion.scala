@@ -98,7 +98,7 @@ object JLineCompletion {
       f: (String, Int) => (Seq[String], Seq[String])
   ): (ConsoleReader, Int) => Boolean =
     (reader, level) => {
-      val success = complete(beforeCursor(reader), reader => f(reader, level), reader)
+      val success = complete(beforeCursor(reader), string => f(string, level), reader)
       reader.flush()
       success
     }

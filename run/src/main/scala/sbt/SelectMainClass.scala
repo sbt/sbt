@@ -7,7 +7,7 @@
 
 package sbt
 
-import sbt.internal.util.ConsoleAppender
+import sbt.internal.util.ConsoleAppender.ClearScreenAfterCursor
 import sbt.internal.util.Util.{ AnyOps, none }
 
 object SelectMainClass {
@@ -25,9 +25,9 @@ object SelectMainClass {
           val classes = multiple.zipWithIndex
             .map { case (className, index) => s" [${index + 1}] $className" }
             .mkString("\n")
-          println(ConsoleAppender.ClearScreenAfterCursor + header + classes)
+          println(ClearScreenAfterCursor + header + classes + "\n")
 
-          val line = trim(prompt("\nEnter number: "))
+          val line = trim(prompt("Enter number: "))
           toInt(line, multiple.length) map multiple.apply
         }
     }

@@ -53,14 +53,19 @@ object BasicCommands {
     stashOnFailure,
     popOnFailure,
     reboot,
+    rebootImpl,
     call,
     early,
     exit,
+    shutdown,
     history,
     oldshell,
     client,
     read,
-    alias
+    alias,
+    reportResultsCommand,
+    mapExecCommand,
+    completeExecCommand,
   )
 
   def nop: Command = Command.custom(s => success(() => s))
@@ -301,6 +306,12 @@ object BasicCommands {
   def reboot: Command =
     Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(_ => rebootOptionParser) {
       case (s, (full, currentOnly)) =>
+        val option = if (full) " full" else if (currentOnly) " dev" else ""
+        RebootNetwork :: s"$RebootImpl$option" :: s
+    }
+  def rebootImpl: Command =
+    Command.arb(_ => (RebootImpl ~> rebootOptionParser).examples()) {
+      case (s, (full, currentOnly)) =>
         s.reboot(full, currentOnly)
     }
 
@@ -346,7 +357,20 @@ object BasicCommands {
   private[this] def classpathStrings: Parser[Seq[String]] =
     token(StringBasic.map(s => IO.pathSplit(s).toSeq), "<classpath>")
 
-  def exit: Command = Command.command(TerminateAction, exitBrief, exitBrief)(_ exit true)
+  def exit: Command = Command.command(TerminateAction, exitBrief, exitBrief) { s =>
+    s.source match {
+      case Some(c) if c.channelName.startsWith("network") =>
+        s"${DisconnectNetworkChannel} ${c.channelName}" :: s
+      case _ => s exit true
+    }
+  }
+  def shutdown: Command = Command.command(Shutdown, shutdownBrief, shutdownBrief) { s =>
+    s.source match {
+      case Some(c) if c.channelName.startsWith("network") =>
+        s"${DisconnectNetworkChannel} ${c.channelName}" :: (Exec(Shutdown, None) +: s)
+      case _ => s exit true
+    }
+  }
 
   @deprecated("Replaced by BuiltInCommands.continuous", "1.3.0")
   def continuous: Command =
@@ -375,8 +399,7 @@ object BasicCommands {
   def oldshell: Command = Command.command(OldShell, Help.more(Shell, OldShellDetailed)) { s =>
     val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
-    val reader =
-      new FullReader(history, s.combinedParser, LineReader.HandleCONT, Terminal.wrappedSystemIn)
+    val reader = new FullReader(history, s.combinedParser, LineReader.HandleCONT, Terminal.console)
     val line = reader.readLine(prompt)
     line match {
       case Some(line) =>
@@ -404,7 +427,7 @@ object BasicCommands {
         case xs                                   => xs map (_.commandLine)
       })
     NetworkClient.run(s0.configuration, arguments)
-    "exit" :: s0.copy(remainingCommands = Nil)
+    TerminateAction :: s0.copy(remainingCommands = Nil)
   }
 
   def read: Command =
@@ -539,4 +562,42 @@ object BasicCommands {
       "is-command-alias",
       "Internal: marker for Commands created as aliases for another command."
     )
+
+  private[sbt] def reportParser(key: String) =
+    (key: Parser[String]).examples() ~> " ".examples() ~> matched(any.*).examples()
+  def reportResultsCommand =
+    Command.arb(_ => reportParser(ReportResult)) { (state, id) =>
+      val newState = state.get(execMap) match {
+        case Some(m) => state.put(execMap, m - id)
+        case _       => state
+      }
+      newState.get(execResults) match {
+        case Some(m) if m.contains(id) => state.put(execResults, m - id)
+        case _                         => state.fail
+      }
+    }
+  def mapExecCommand =
+    Command.arb(_ => reportParser(MapExec)) { (state, mapping) =>
+      mapping.split(" ") match {
+        case Array(key, value) =>
+          state.get(execMap) match {
+            case Some(m) => state.put(execMap, m + (key -> value))
+            case None    => state.put(execMap, Map(key -> value))
+          }
+        case _ => state
+      }
+    }
+  def completeExecCommand =
+    Command.arb(_ => reportParser(CompleteExec)) { (state, id) =>
+      val newState = state.get(execResults) match {
+        case Some(m) => state.put(execResults, m + (id -> true))
+        case _       => state.put(execResults, Map(id -> true))
+      }
+      newState.get(execMap) match {
+        case Some(m) => newState.put(execMap, m - id)
+        case _       => newState
+      }
+    }
+  private[sbt] val execResults = AttributeKey[Map[String, Boolean]]("execResults", Int.MaxValue)
+  private[sbt] val execMap = AttributeKey[Map[String, String]]("execMap", Int.MaxValue)
 }

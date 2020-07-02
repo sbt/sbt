@@ -12,8 +12,10 @@ implicit lazy val CompletionResponseFormat: JsonFormat[sbt.protocol.CompletionRe
       case Some(__js) =>
       unbuilder.beginObject(__js)
       val items = unbuilder.readField[Vector[String]]("items")
+      val cachedMainClassNames = unbuilder.readField[Option[Boolean]]("cachedMainClassNames")
+      val cachedTestNames = unbuilder.readField[Option[Boolean]]("cachedTestNames")
       unbuilder.endObject()
-      sbt.protocol.CompletionResponse(items)
+      sbt.protocol.CompletionResponse(items, cachedMainClassNames, cachedTestNames)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -21,6 +23,8 @@ implicit lazy val CompletionResponseFormat: JsonFormat[sbt.protocol.CompletionRe
   override def write[J](obj: sbt.protocol.CompletionResponse, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("items", obj.items)
+    builder.addField("cachedMainClassNames", obj.cachedMainClassNames)
+    builder.addField("cachedTestNames", obj.cachedTestNames)
     builder.endObject()
   }
 }

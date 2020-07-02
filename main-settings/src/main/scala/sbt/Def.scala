@@ -170,12 +170,11 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   def displayMasked(scoped: ScopedKey[_], mask: ScopeMask, showZeroConfig: Boolean): String =
     Scope.displayMasked(scoped.scope, scoped.key.label, mask, showZeroConfig)
 
-  def withColor(s: String, color: Option[String]): String = {
-    val useColor = ConsoleAppender.formatEnabledInEnv
-    color match {
-      case Some(c) if useColor => c + s + scala.Console.RESET
-      case _                   => s
-    }
+  def withColor(s: String, color: Option[String]): String =
+    withColor(s, color, useColor = ConsoleAppender.formatEnabledInEnv)
+  def withColor(s: String, color: Option[String], useColor: Boolean): String = color match {
+    case Some(c) if useColor => c + s + scala.Console.RESET
+    case _                   => s
   }
 
   override def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] =

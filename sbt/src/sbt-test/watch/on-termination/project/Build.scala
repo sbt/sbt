@@ -22,10 +22,6 @@ object Build {
     setStringValue / watchTriggers += baseDirectory.value.toGlob / "foo.txt",
     setStringValue := setStringValueImpl.evaluated,
     checkStringValue := checkStringValueImpl.evaluated,
-    watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },
-    watchTasks := Def.inputTask {
-      val prev = watchTasks.evaluated
-      StateTransform(_.fail)
-    }.evaluated
+    watchOnFileInputEvent := { (_, _) => new Watch.HandleError(new IllegalStateException("")) },
   )
 }

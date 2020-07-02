@@ -12,8 +12,9 @@ implicit lazy val InitializeOptionFormat: JsonFormat[sbt.internal.protocol.Initi
       case Some(__js) =>
       unbuilder.beginObject(__js)
       val token = unbuilder.readField[Option[String]]("token")
+      val skipAnalysis = unbuilder.readField[Option[Boolean]]("skipAnalysis")
       unbuilder.endObject()
-      sbt.internal.protocol.InitializeOption(token)
+      sbt.internal.protocol.InitializeOption(token, skipAnalysis)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -21,6 +22,7 @@ implicit lazy val InitializeOptionFormat: JsonFormat[sbt.internal.protocol.Initi
   override def write[J](obj: sbt.internal.protocol.InitializeOption, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("token", obj.token)
+    builder.addField("skipAnalysis", obj.skipAnalysis)
     builder.endObject()
   }
 }

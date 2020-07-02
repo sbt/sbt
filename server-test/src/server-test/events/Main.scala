@@ -1,8 +1,6 @@
-
 object Main extends App {
 
-  while (true) {
-    Thread.sleep(1000)
-  }
+  try this.synchronized(this.wait)
+  catch { case _: InterruptedException => }
 
 }

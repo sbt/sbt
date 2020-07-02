@@ -25,7 +25,7 @@ object Dependencies {
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.0.1"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.1.0"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
@@ -83,7 +83,8 @@ object Dependencies {
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
-  val jline = "jline" % "jline" % "2.14.6"
+  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-5e51b9d4f9631ebfa29753ce4accc57808e7fd6b"
+  val jansi = "org.fusesource.jansi" % "jansi" % "1.12"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.0.1"

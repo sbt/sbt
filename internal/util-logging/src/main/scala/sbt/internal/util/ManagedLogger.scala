@@ -21,8 +21,11 @@ class ManagedLogger(
     val name: String,
     val channelName: Option[String],
     val execId: Option[String],
-    xlogger: XLogger
+    xlogger: XLogger,
+    terminal: Option[Terminal]
 ) extends Logger {
+  def this(name: String, channelName: Option[String], execId: Option[String], xlogger: XLogger) =
+    this(name, channelName, execId, xlogger, None)
   override def trace(t: => Throwable): Unit =
     logEvent(Level.Error, TraceEvent("Error", t, channelName, execId))
   override def log(level: Level.Value, message: => String): Unit = {
@@ -35,10 +38,12 @@ class ManagedLogger(
   private lazy val SuccessEventTag = scala.reflect.runtime.universe.typeTag[SuccessEvent]
   // send special event for success since it's not a real log level
   override def success(message: => String): Unit = {
-    infoEvent[SuccessEvent](SuccessEvent(message))(
-      implicitly[JsonFormat[SuccessEvent]],
-      SuccessEventTag
-    )
+    if (terminal.fold(true)(_.isSuccessEnabled)) {
+      infoEvent[SuccessEvent](SuccessEvent(message))(
+        implicitly[JsonFormat[SuccessEvent]],
+        SuccessEventTag
+      )
+    }
   }
 
   def registerStringCodec[A: ShowLines: TypeTag]: Unit = {

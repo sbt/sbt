@@ -27,9 +27,9 @@ trait CommandLineUIService extends InteractionService {
     }
   }
 
-  override def terminalWidth: Int = Terminal.getWidth
+  override def terminalWidth: Int = Terminal.get.getWidth
 
-  override def terminalHeight: Int = Terminal.getHeight
+  override def terminalHeight: Int = Terminal.get.getHeight
 }
 
 object CommandLineUIService extends CommandLineUIService

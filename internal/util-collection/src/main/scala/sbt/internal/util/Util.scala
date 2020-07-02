@@ -9,6 +9,9 @@ package sbt.internal.util
 
 import java.util.Locale
 
+import scala.reflect.macros.blackbox
+import scala.language.experimental.macros
+
 object Util {
   def makeList[T](size: Int, value: T): List[T] = List.fill(size)(value)
 
@@ -42,6 +45,8 @@ object Util {
 
   def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) '`' + s + '`' else s
 
+  def ignoreResult[T](f: => T): Unit = macro Macro.ignore
+
   lazy val isWindows: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 
@@ -62,5 +67,8 @@ object Util {
 
   implicit class AnyOps[A](private val value: A) extends AnyVal {
     def some: Option[A] = (Some(value): Option[A])
+  }
+  class Macro(val c: blackbox.Context) {
+    def ignore(f: c.Tree): c.Expr[Unit] = c.universe.reify({ c.Expr[Any](f).splice; () })
   }
 }

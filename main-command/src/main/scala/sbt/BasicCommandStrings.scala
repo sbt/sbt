@@ -14,8 +14,10 @@ object BasicCommandStrings {
   val HelpCommand: String = "help"
   val CompletionsCommand: String = "completions"
   val Exit: String = "exit"
+  val Shutdown: String = "shutdown"
   val Quit: String = "quit"
   val TemplateCommand: String = "new"
+  val Cancel: String = "cancel"
 
   /** The command name to terminate the program.*/
   val TerminateAction: String = Exit
@@ -57,7 +59,8 @@ $HelpCommand <regular expression>
   def historyHelp =
     Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
 
-  def exitBrief: String = "Terminates the build."
+  def exitBrief: String = "Terminates the remote client or the build when called from the console."
+  def shutdownBrief: String = "Terminates the build."
 
   def logLevelHelp: Help = {
     val levels = Level.values.toSeq
@@ -134,6 +137,8 @@ $HelpCommand <regular expression>
    If a classpath is provided, modules are loaded from a new class loader for this classpath.
 """
 
+  private[sbt] def RebootNetwork: String = "sbtRebootNetwork"
+  private[sbt] def RebootImpl: String = "sbtRebootImpl"
   def RebootCommand: String = "reboot"
   def RebootDetailed: String =
     RebootCommand + """ [dev | full]
@@ -203,11 +208,18 @@ $AliasCommand name=
     "Provides an interactive prompt from which commands can be run on a server."
   def DashClient: String = "-client"
   def DashDashClient: String = "--client"
+  def CloseIOStreams: String = "--close-io-streams"
 
   def StashOnFailure: String = "sbtStashOnFailure"
   def PopOnFailure: String = "sbtPopOnFailure"
 
   def FailureWall: String = "resumeFromFailure"
+
+  def SetTerminal = "sbtSetTerminal"
+  def ReportResult = "sbtReportResult"
+  def CompleteExec = "sbtCompleteExec"
+  def MapExec = "sbtMapExec"
+  def PromptChannel = "sbtPromptChannel"
 
   def ClearOnFailure: String = "sbtClearOnFailure"
   def OnFailure: String = "onFailure"
@@ -235,4 +247,7 @@ $AliasCommand name=
     (ContinuousExecutePrefix + " <command>", continuousDetail)
   def ClearCaches: String = "clearCaches"
   def ClearCachesDetailed: String = "Clears all of sbt's internal caches."
+
+  private[sbt] val networkExecPrefix = "__"
+  private[sbt] val DisconnectNetworkChannel = s"${networkExecPrefix}disconnectNetworkChannel"
 }

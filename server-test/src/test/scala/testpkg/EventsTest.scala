@@ -8,54 +8,79 @@
 package testpkg
 
 import scala.concurrent.duration._
+import java.util.concurrent.atomic.AtomicInteger
+import sbt.Exec
 
 // starts svr using server-test/events and perform event related tests
 object EventsTest extends AbstractServerTest {
   override val testDirectory: String = "events"
+  val currentID = new AtomicInteger(0)
 
   test("report task failures in case of exceptions") { _ =>
+    val id = currentID.getAndIncrement()
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": 11, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
+      s"""{ "jsonrpc": "2.0", "id": $id, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":11""") && (s contains """"error":""")
+      (s contains s""""id":$id""") && (s contains """"error":""")
     })
   }
 
   test("return error if cancelling non-matched task id") { _ =>
+    val id = currentID.getAndIncrement()
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
+      s"""{ "jsonrpc": "2.0", "id":$id, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
     )
+    assert(svr.waitForString(10.seconds) { s =>
+      s contains "Waiting for"
+    })
+    val cancelID = currentID.getAndIncrement()
+    val invalidID = currentID.getAndIncrement()
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "55" } }"""
+      s"""{ "jsonrpc": "2.0", "id":$cancelID, "method": "sbt/cancelRequest", "params": { "id": "$invalidID" } }"""
     )
     assert(svr.waitForString(20.seconds) { s =>
       (s contains """"error":{"code":-32800""")
     })
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id":${currentID.getAndIncrement}, "method": "sbt/cancelRequest", "params": { "id": "$id" } }"""
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      s contains """"result":{"status":"Task cancelled""""
+    })
   }
 
   test("cancel on-going task with numeric id") { _ =>
+    val id = currentID.getAndIncrement()
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id":12, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
+      s"""{ "jsonrpc": "2.0", "id":$id, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
     )
-    assert(svr.waitForString(1.minute) { s =>
-      svr.sendJsonRpc(
-        """{ "jsonrpc": "2.0", "id":13, "method": "sbt/cancelRequest", "params": { "id": "12" } }"""
-      )
+    assert(svr.waitForString(10.seconds) { s =>
+      s contains "Waiting for"
+    })
+    val cancelID = currentID.getAndIncrement()
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id":$cancelID, "method": "sbt/cancelRequest", "params": { "id": "$id" } }"""
+    )
+    assert(svr.waitForString(10.seconds) { s =>
       s contains """"result":{"status":"Task cancelled""""
     })
   }
 
-  /*
   test("cancel on-going task with string id") { _ =>
+    val id = Exec.newExecId
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": "foo", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
+      s"""{ "jsonrpc": "2.0", "id": "$id", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
     )
-    assert(svr.waitForString(1.minute) { s =>
-      svr.sendJsonRpc(
-        """{ "jsonrpc": "2.0", "id": "bar", "method": "sbt/cancelRequest", "params": { "id": "foo" } }"""
-      )
+    assert(svr.waitForString(10.seconds) { s =>
+      s contains "Waiting for"
+    })
+    val cancelID = Exec.newExecId
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "$cancelID", "method": "sbt/cancelRequest", "params": { "id": "$id" } }"""
+    )
+    assert(svr.waitForString(10.seconds) { s =>
       s contains """"result":{"status":"Task cancelled""""
     })
-  }*/
+  }
 }

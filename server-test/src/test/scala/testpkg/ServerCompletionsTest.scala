@@ -29,7 +29,7 @@ object ServerCompletionsTest extends AbstractServerTest {
       s"""{ "jsonrpc": "2.0", "id": 16, "method": "sbt/completion", "params": $completionStr }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      s contains """"result":{"items":["hello"]}"""
+      s contains """"result":{"items":["hello"]"""
     })
   }
 
@@ -39,7 +39,7 @@ object ServerCompletionsTest extends AbstractServerTest {
       s"""{ "jsonrpc": "2.0", "id": 17, "method": "sbt/completion", "params": $completionStr }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]}"""
+      s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]"""
     })
   }
 }

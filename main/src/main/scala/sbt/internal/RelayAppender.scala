@@ -44,7 +44,7 @@ class RelayAppender(name: String)
   def appendEvent(event: AnyRef): Unit =
     event match {
       case x: StringEvent    => exchange.logMessage(LogEvent(level = x.level, message = x.message))
-      case x: ObjectEvent[_] => exchange.respondObjectEvent(x)
+      case x: ObjectEvent[_] => // ignore object events
       case _ =>
         println(s"appendEvent: ${event.getClass}")
         ()

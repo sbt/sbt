@@ -12,8 +12,9 @@ implicit lazy val CompletionParamsFormat: JsonFormat[sbt.protocol.CompletionPara
       case Some(__js) =>
       unbuilder.beginObject(__js)
       val query = unbuilder.readField[String]("query")
+      val level = unbuilder.readField[Option[Int]]("level")
       unbuilder.endObject()
-      sbt.protocol.CompletionParams(query)
+      sbt.protocol.CompletionParams(query, level)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -21,6 +22,7 @@ implicit lazy val CompletionParamsFormat: JsonFormat[sbt.protocol.CompletionPara
   override def write[J](obj: sbt.protocol.CompletionParams, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("query", obj.query)
+    builder.addField("level", obj.level)
     builder.endObject()
   }
 }

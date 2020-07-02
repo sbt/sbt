@@ -10,7 +10,7 @@ package internal.nio
 
 import java.nio.file.Path
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import sbt.BasicCommandStrings.{ RebootCommand, TerminateAction }
+import sbt.BasicCommandStrings.{ RebootCommand, Shutdown, TerminateAction }
 import sbt.Keys.{ baseDirectory, pollInterval, state }
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
@@ -83,11 +83,16 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
       previousStamps.set(getStamps(force = true))
     }
   }
-  private def needCheck(cmd: String): Boolean = {
-    val commands = cmd.split(";").flatMap(_.trim.split(" ").headOption).filterNot(_.isEmpty)
-    val res = !commands.exists { c =>
-      c == LoadProject || c == RebootCommand || c == TerminateAction || c == "shutdown"
-    }
+  private def needCheck(state: State, cmd: String): Boolean = {
+    val allCmds = state.remainingCommands
+      .map(_.commandLine)
+      .dropWhile(!_.startsWith(BasicCommandStrings.MapExec)) :+ cmd
+    val commands =
+      allCmds.flatMap(_.split(";").flatMap(_.trim.split(" ").headOption).filterNot(_.isEmpty))
+    val filter = (c: String) =>
+      c == LoadProject || c == RebootCommand || c == TerminateAction || c == Shutdown ||
+        c.startsWith("sbtReboot")
+    val res = !commands.exists(filter)
     if (!res) {
       previousStamps.set(getStamps(force = true))
       needUpdate.set(false)
@@ -96,7 +101,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
   }
   @inline private def forceCheck = fileTreeRepository.isEmpty
   private[sbt] def needsReload(state: State, cmd: String) = {
-    (needCheck(cmd) && (forceCheck || needUpdate.compareAndSet(true, false))) && {
+    (needCheck(state, cmd) && (forceCheck || needUpdate.compareAndSet(true, false))) && {
       val extracted = Project.extract(state)
       val onChanges = extracted.get(Global / onChangedBuildSource)
       val logger = state.globalLogging.full

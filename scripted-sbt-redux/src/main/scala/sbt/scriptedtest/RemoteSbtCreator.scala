@@ -32,8 +32,9 @@ final class LauncherBasedRemoteSbtCreator(
   def newRemote(server: IPC.Server) = {
     val launcherJar = launcher.getAbsolutePath
     val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
+    val scripted = "-Dsbt.scripted=true"
     val args = List("<" + server.port)
-    val cmd = "java" :: launchOpts.toList ::: globalBase :: "-jar" :: launcherJar :: args ::: Nil
+    val cmd = "java" :: launchOpts.toList ::: globalBase :: scripted :: "-jar" :: launcherJar :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
     val p = Process(cmd, directory) run (io)
     val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }
@@ -52,11 +53,12 @@ final class RunFromSourceBasedRemoteSbtCreator(
 ) extends RemoteSbtCreator {
   def newRemote(server: IPC.Server): Process = {
     val globalBase = "-Dsbt.global.base=" + new File(directory, "global").getAbsolutePath
+    val scripted = "-Dsbt.scripted=true"
     val mainClassName = "sbt.RunFromSourceMain"
     val cpString = classpath.mkString(java.io.File.pathSeparator)
     val args =
       List(mainClassName, directory.toString, scalaVersion, sbtVersion, cpString, "<" + server.port)
-    val cmd = "java" :: launchOpts.toList ::: globalBase :: "-cp" :: cpString :: args ::: Nil
+    val cmd = "java" :: launchOpts.toList ::: globalBase :: scripted :: "-cp" :: cpString :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
     val p = Process(cmd, directory) run (io)
     val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }

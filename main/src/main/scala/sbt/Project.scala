@@ -19,16 +19,19 @@ import Keys.{
   historyPath,
   projectCommand,
   sessionSettings,
+  terminalShellPrompt,
   shellPrompt,
   templateResolverInfos,
   autoStartServer,
   serverHost,
+  serverIdleTimeout,
   serverLog,
   serverPort,
   serverAuthentication,
   serverConnectionType,
   fullServerHandlers,
   logLevel,
+  windowsServerSecurityLevel,
 }
 import Scope.{ Global, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
@@ -50,6 +53,7 @@ import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
 
 import language.experimental.macros
+import scala.concurrent.duration.FiniteDuration
 
 sealed trait ProjectDefinition[PR <: ProjectReference] {
 
@@ -508,10 +512,12 @@ object Project extends ProjectExtra {
     val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
     val history = get(historyPath) flatMap idFun
     val prompt = get(shellPrompt)
+    val newPrompt = get(terminalShellPrompt)
     val trs = (templateResolverInfos in Global get structure.data).toList.flatten
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
+    val timeout: Option[Option[FiniteDuration]] = get(serverIdleTimeout)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
     val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
@@ -521,17 +527,21 @@ object Project extends ProjectExtra {
       s.definedCommands,
       projectCommand
     )
+    val winSecurityLevel = get(windowsServerSecurityLevel).getOrElse(2)
     val newAttrs =
       s.attributes
         .put(historyPath.key, history)
+        .put(windowsServerSecurityLevel.key, winSecurityLevel)
         .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
         .setCond(serverAuthentication.key, authentication)
         .setCond(serverConnectionType.key, connectionType)
+        .setCond(serverIdleTimeout.key, timeout)
         .put(historyPath.key, history)
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)
+        .setCond(terminalShellPrompt.key, newPrompt)
         .setCond(serverLogLevel, srvLogLevel)
         .setCond(fullServerHandlers.key, hs)
     s.copy(
