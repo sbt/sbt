@@ -41,8 +41,7 @@ private[sbt] object SettingsGraph {
     f(extracted, compile(extracted.structure))
   }
 
-  private[sbt] def compile(structure: BuildStructure): CompiledMap =
-    compiled(structure.settings)(structure.delegates, structure.scopeLocal, (_: ScopedKey[_]) => "")
+  private[sbt] def compile(structure: BuildStructure): CompiledMap = structure.compiledMap
   private[sbt] final class Arguments(
       val scopedKey: ScopedKey[_],
       val extracted: Extracted,

@@ -198,17 +198,24 @@ trait Init[ScopeType] {
     compile(dMap)
   }
 
+  @deprecated("Use makeWithCompiledMap", "1.4.0")
   def make(init: Seq[Setting[_]])(
       implicit delegates: ScopeType => Seq[ScopeType],
       scopeLocal: ScopeLocal,
       display: Show[ScopedKey[_]]
-  ): Settings[ScopeType] = {
+  ): Settings[ScopeType] = makeWithCompiledMap(init)._2
+
+  def makeWithCompiledMap(init: Seq[Setting[_]])(
+      implicit delegates: ScopeType => Seq[ScopeType],
+      scopeLocal: ScopeLocal,
+      display: Show[ScopedKey[_]]
+  ): (CompiledMap, Settings[ScopeType]) = {
     val cMap = compiled(init)(delegates, scopeLocal, display)
     // order the initializations.  cyclic references are detected here.
     val ordered: Seq[Compiled[_]] = sort(cMap)
     // evaluation: apply the initializations.
     try {
-      applyInits(ordered)
+      (cMap, applyInits(ordered))
     } catch {
       case rru: RuntimeUndefined =>
         throw Uninitialized(cMap.keys.toSeq, delegates, rru.undefined, true)
