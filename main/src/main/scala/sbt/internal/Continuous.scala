@@ -170,9 +170,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     // Extract all of the globs that we will monitor during the continuous build.
     val inputs = {
       val configs = scopedKey.get(internalDependencyConfigurations).getOrElse(Nil)
-      val args =
-        new SettingsGraph.Arguments(scopedKey, extracted, compiledMap, logger, configs, state)
-      SettingsGraph.transitiveDynamicInputs(args)
+      import WatchTransitiveDependencies.{ Arguments => DArguments }
+      val args = new DArguments(scopedKey, extracted, compiledMap, logger, configs, state)
+      WatchTransitiveDependencies.transitiveDynamicInputs(args)
     }
 
     val repository = getRepository(state)
@@ -240,7 +240,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       dynamicInputs: mutable.Set[DynamicInput],
   )(implicit extracted: Extracted, logger: Logger): Seq[Config] = {
     val commandKeys = commands.map(parseCommand(_, state))
-    val compiledMap = SettingsGraph.compile(extracted.structure)
+    val compiledMap = WatchTransitiveDependencies.compile(extracted.structure)
     commandKeys.flatMap(_.map(getConfig(state, _, compiledMap, dynamicInputs)))
   }
 

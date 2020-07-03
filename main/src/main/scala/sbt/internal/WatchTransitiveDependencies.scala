@@ -21,7 +21,7 @@ import sbt.nio.file.Glob
 
 import scala.annotation.tailrec
 
-private[sbt] object SettingsGraph {
+private[sbt] object WatchTransitiveDependencies {
   private implicit class SourceOps(val source: Source) {
     def toGlob: Glob = {
       val filter = source.includeFilter -- source.excludeFilter

@@ -747,7 +747,7 @@ object Defaults extends BuildCommon {
     cleanKeepGlobs ++= historyPath.value.map(_.toGlob).toVector,
     clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     consoleProject := consoleProjectTask.value,
-    transitiveDynamicInputs := SettingsGraph.task.value,
+    transitiveDynamicInputs := WatchTransitiveDependencies.task.value,
   ) ++ sbt.internal.DeprecatedContinuous.taskDefinitions
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] =

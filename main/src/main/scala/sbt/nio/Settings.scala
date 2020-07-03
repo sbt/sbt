@@ -15,7 +15,7 @@ import sbt.Keys._
 import sbt.internal.Clean.ToSeqPath
 import sbt.internal.Continuous.FileStampRepository
 import sbt.internal.util.AttributeKey
-import sbt.internal.{ Clean, Continuous, DynamicInput, SettingsGraph }
+import sbt.internal.{ Clean, Continuous, DynamicInput, WatchTransitiveDependencies }
 import sbt.nio.FileStamp.Formats._
 import sbt.nio.FileStamper.{ Hash, LastModified }
 import sbt.nio.Keys._
@@ -108,7 +108,8 @@ private[sbt] object Settings {
       case transitiveDynamicInputs.key =>
         scopedKey.scope.task.toOption.toSeq.map { key =>
           val updatedKey = Def.ScopedKey(scopedKey.scope.copy(task = Zero), key)
-          transitiveDynamicInputs in scopedKey.scope := SettingsGraph.task(updatedKey).value
+          transitiveDynamicInputs in scopedKey.scope :=
+            WatchTransitiveDependencies.task(updatedKey).value
         }
       case dynamicDependency.key => (dynamicDependency in scopedKey.scope := { () }) :: Nil
       case transitiveClasspathDependency.key =>
