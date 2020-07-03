@@ -9,6 +9,7 @@ package sbt.internal.server
 
 import sbt._
 import sbt.internal.bsp._
+import sbt.internal.io.Retry
 import sbt.librarymanagement.Configuration
 import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.compile.CompileResult
@@ -27,7 +28,7 @@ object BspCompileTask {
     val task = BspCompileTask(targetId, project, config)
     try {
       notifyStart(task)
-      val result = compile
+      val result = Retry(compile)
       notifySuccess(task, result)
       result
     } catch {
