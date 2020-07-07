@@ -109,6 +109,16 @@ trait Terminal extends AutoCloseable {
    */
   private[sbt] def getLastLine: Option[String]
 
+  /**
+   * Returns the buffered lines that have been written to the terminal. The
+   * main use case is to display the system startup log lines when a client
+   * connects to a booting server. This could also be used to implement a more
+   * tmux like experience where multiple clients connect to the same console.
+   *
+   * @return the lines
+   */
+  private[sbt] def getLines: Seq[String]
+
   private[sbt] def getBooleanCapability(capability: String, jline3: Boolean): Boolean
   private[sbt] def getNumericCapability(capability: String, jline3: Boolean): Integer
   private[sbt] def getStringCapability(capability: String, jline3: Boolean): String
@@ -328,6 +338,7 @@ object Terminal {
     override def close(): Unit = {}
     override private[sbt] def write(bytes: Int*): Unit = t.write(bytes: _*)
     override def getLastLine: Option[String] = t.getLastLine
+    override def getLines: Seq[String] = t.getLines
     override private[sbt] def name: String = t.name
   }
   private[sbt] def get: Terminal = ProxyTerminal
@@ -731,7 +742,7 @@ object Terminal {
     }
   }
 
-  private[sbt] def console: Terminal = consoleTerminalHolder.get match {
+  def console: Terminal = consoleTerminalHolder.get match {
     case null => throw new IllegalStateException("Uninitialized terminal.")
     case term => term
   }
@@ -808,6 +819,7 @@ object Terminal {
     }
     def throwIfClosed[R](f: => R): R = if (isStopped.get) throw new ClosedChannelException else f
     override def getLastLine: Option[String] = progressState.currentLine
+    override def getLines: Seq[String] = progressState.getLines
 
     private val combinedOutputStream = new OutputStream {
       override def write(b: Int): Unit = {
@@ -868,6 +880,7 @@ object Terminal {
     override def getBooleanCapability(capability: String, jline3: Boolean): Boolean = false
     override def getHeight: Int = 0
     override def getLastLine: Option[String] = None
+    override def getLines: Seq[String] = Nil
     override def getLineHeightAndWidth(line: String): (Int, Int) = (0, 0)
     override def getNumericCapability(capability: String, jline3: Boolean): Integer = null
     override def getStringCapability(capability: String, jline3: Boolean): String = null

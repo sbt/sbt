@@ -8,16 +8,18 @@
 package sbt.internal.util
 
 import java.io.PrintStream
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
 
 import sbt.internal.util.ConsoleAppender.{
   ClearScreenAfterCursor,
   CursorLeft1000,
   DeleteLine,
-  cursorUp,
+  cursorUp
 }
 
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.JavaConverters._
 
 private[sbt] final class ProgressState(
     val progressLines: AtomicReference[Seq[String]],
@@ -41,6 +43,9 @@ private[sbt] final class ProgressState(
     padding.set(0)
     currentLineBytes.set(new ArrayBuffer[Byte])
   }
+  private[this] val lineBuffer = new ArrayBlockingQueue[String](300)
+  private[util] def getLines: Seq[String] = lineBuffer.asScala.toVector
+  private[this] def appendLine(line: String) = while (!lineBuffer.offer(line)) { lineBuffer.poll }
   private[util] def clearBytes(): Unit = {
     val pad = padding.get
     if (currentLineBytes.get.isEmpty && pad > 0) padding.decrementAndGet()
@@ -62,10 +67,12 @@ private[sbt] final class ProgressState(
     if (lines.contains(System.lineSeparator)) {
       currentLineBytes.set(new ArrayBuffer[Byte])
       if (!lines.endsWith(System.lineSeparator)) {
-        lines
-          .split(System.lineSeparator)
-          .lastOption
+        val allLines = lines.split(System.lineSeparator)
+        allLines.dropRight(1).foreach(appendLine)
+        allLines.lastOption
           .foreach(currentLineBytes.get ++= _.getBytes("UTF-8"))
+      } else if (lines.contains(System.lineSeparator)) {
+        lines.split(System.lineSeparator).foreach(appendLine)
       }
     }
   }
