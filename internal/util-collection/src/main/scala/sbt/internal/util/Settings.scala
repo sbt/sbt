@@ -7,8 +7,6 @@
 
 package sbt.internal.util
 
-import scala.language.existentials
-
 import Types._
 import sbt.util.Show
 import Util.{ nil, nilSeq }
@@ -242,7 +240,7 @@ trait Init[ScopeType] {
     if (s.definitive) Vector(s) else ss :+ s
 
   def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
-    init.par.map(_.dependencies flatMap scopeLocal).toVector.flatten ++ init
+    Par(init).map(_.dependencies flatMap scopeLocal).toVector.flatten ++ init
 
   def delegate(sMap: ScopedMap)(
       implicit delegates: ScopeType => Seq[ScopeType],
@@ -465,7 +463,7 @@ trait Init[ScopeType] {
       def dependencies = settings.flatMap(_.dependencies)
       // This is mainly for use in the cyclic reference error message
       override def toString =
-        s"Derived settings for ${key.label}, ${definedAtString(settings.map(_.setting))}"
+        s"Derived settings for ${key.label}, ${definedAtString(settings.map(_.setting).toSeq)}"
     }
 
     // separate `derived` settings from normal settings (`defs`)

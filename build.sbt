@@ -108,7 +108,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
-    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary)
+    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
 def utilCommonSettings: Seq[Setting[_]] =
   commonBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
@@ -246,9 +246,14 @@ lazy val bundledLauncherProj =
 val collectionProj = (project in file("internal") / "util-collection")
   .settings(
     testedBaseSettings,
+    utilCommonSettings,
     Util.keywordsSettings,
     name := "Collections",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
+    libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, major)) if major <= 12 => Seq()
+      case _                               => Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0")
+    }),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // Added private[sbt] method to capture State attributes.
