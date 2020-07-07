@@ -1107,8 +1107,8 @@ lazy val sbtClientProj = (project in file("client"))
       }
       thread.start()
       proc.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
+      assert(proc.exitValue == 0, s"Exit value ${proc.exitValue} was nonzero")
       nativeExecutablePath.value
-      file("").toPath
     },
     graalNativeImageOptions := Seq(
       "--no-fallback",
