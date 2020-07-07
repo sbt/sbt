@@ -241,7 +241,7 @@ abstract class TestBuild {
           throw e
       }
     }
-    val data = Def.make(settings)(env.delegates, const(Nil), display)
+    val data = Def.makeWithCompiledMap(settings)(env.delegates, const(Nil), display)._2
     val keys = data.allKeys((s, key) => ScopedKey(s, key))
     val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
     val projectsMap = env.builds.map(b => (b.uri, b.projects.map(_.id).toSet)).toMap

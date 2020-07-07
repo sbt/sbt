@@ -21,7 +21,7 @@ import sbt.nio.file.Glob
 
 import scala.annotation.tailrec
 
-private[sbt] object SettingsGraph {
+private[sbt] object WatchTransitiveDependencies {
   private implicit class SourceOps(val source: Source) {
     def toGlob: Glob = {
       val filter = source.includeFilter -- source.excludeFilter
@@ -41,8 +41,7 @@ private[sbt] object SettingsGraph {
     f(extracted, compile(extracted.structure))
   }
 
-  private[sbt] def compile(structure: BuildStructure): CompiledMap =
-    compiled(structure.settings)(structure.delegates, structure.scopeLocal, (_: ScopedKey[_]) => "")
+  private[sbt] def compile(structure: BuildStructure): CompiledMap = structure.compiledMap
   private[sbt] final class Arguments(
       val scopedKey: ScopedKey[_],
       val extracted: Extracted,

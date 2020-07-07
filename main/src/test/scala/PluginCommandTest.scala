@@ -102,7 +102,8 @@ object FakeState {
     val delegates: (Scope) => Seq[Scope] = _ => Nil
     val scopeLocal: Def.ScopeLocal = _ => Nil
 
-    val data: Settings[Scope] = Def.make(settings)(delegates, scopeLocal, Def.showFullKey)
+    val (cMap, data: Settings[Scope]) =
+      Def.makeWithCompiledMap(settings)(delegates, scopeLocal, Def.showFullKey)
     val extra: KeyIndex => BuildUtil[_] = (keyIndex) =>
       BuildUtil(base.toURI, Map.empty, keyIndex, data)
     val structureIndex: StructureIndex =
@@ -140,7 +141,8 @@ object FakeState {
       structureIndex,
       streams,
       delegates,
-      scopeLocal
+      scopeLocal,
+      cMap,
     )
 
     val attributes = AttributeMap.empty ++ AttributeMap(

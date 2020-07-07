@@ -117,9 +117,7 @@ object LintUnused {
     val extracted = Project.extract(state)
     val structure = extracted.structure
     val display = Def.showShortKey(None) // extracted.showKey
-    val actual = true
-    val comp =
-      Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+    val comp = structure.compiledMap
     val cMap = Def.flattenLocals(comp)
     val used: Set[ScopedKey[_]] = cMap.values.flatMap(_.dependencies).toSet
     val unused: Seq[ScopedKey[_]] = cMap.keys.filter(!used.contains(_)).toSeq

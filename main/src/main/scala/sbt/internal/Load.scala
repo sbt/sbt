@@ -251,12 +251,16 @@ private[sbt] object Load {
     val delegates = timed("Load.apply: config.delegates", log) {
       config.delegates(loaded)
     }
-    val data = timed("Load.apply: Def.make(settings)...", log) {
+    val (cMap, data) = timed("Load.apply: Def.make(settings)...", log) {
       // When settings.size is 100000, Def.make takes around 10s.
       if (settings.size > 10000) {
         log.info(s"resolving key references (${settings.size} settings) ...")
       }
-      Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey(loaded))
+      Def.makeWithCompiledMap(settings)(
+        delegates,
+        config.scopeLocal,
+        Project.showLoadingKey(loaded)
+      )
     }
     Project.checkTargets(data) foreach sys.error
     val index = timed("Load.apply: structureIndex", log) {
@@ -271,7 +275,8 @@ private[sbt] object Load {
       index,
       streams,
       delegates,
-      config.scopeLocal
+      config.scopeLocal,
+      cMap
     )
     (rootEval, bs)
   }
@@ -338,7 +343,8 @@ private[sbt] object Load {
       implicit display: Show[ScopedKey[_]]
   ): BuildStructure = {
     val transformed = finalTransforms(newSettings)
-    val newData = Def.make(transformed)(structure.delegates, structure.scopeLocal, display)
+    val (cMap, newData) =
+      Def.makeWithCompiledMap(transformed)(structure.delegates, structure.scopeLocal, display)
     def extra(index: KeyIndex) = BuildUtil(structure.root, structure.units, index, newData)
     val newIndex = structureIndex(newData, transformed, extra, structure.units)
     val newStreams = mkStreams(structure.units, structure.root, newData)
@@ -350,7 +356,8 @@ private[sbt] object Load {
       index = newIndex,
       streams = newStreams,
       delegates = structure.delegates,
-      scopeLocal = structure.scopeLocal
+      scopeLocal = structure.scopeLocal,
+      compiledMap = cMap,
     )
   }
 

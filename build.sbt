@@ -963,6 +963,7 @@ lazy val mainProj = (project in file("main"))
       // the binary compatible version.
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.NetworkChannel.this"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.DeprecatedContinuous.taskDefinitions"),
+      exclude[MissingClassProblem]("sbt.internal.SettingsGraph*")
     )
   )
   .configure(

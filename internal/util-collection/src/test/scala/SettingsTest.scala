@@ -200,7 +200,7 @@ object SettingsTest extends Properties("settings") {
 
   def evaluate(settings: Seq[Setting[_]]): Settings[Scope] =
     try {
-      make(settings)(delegates, scopeLocal, showFullKey)
+      makeWithCompiledMap(settings)(delegates, scopeLocal, showFullKey)._2
     } catch {
       case e: Throwable => e.printStackTrace(); throw e
     }

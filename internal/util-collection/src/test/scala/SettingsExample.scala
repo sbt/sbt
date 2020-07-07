@@ -64,7 +64,8 @@ case class SettingsUsage(val settingsExample: SettingsExample) {
   // "compiles" and applies the settings.
   //  This can be split into multiple steps to access intermediate results if desired.
   //  The 'inspect' command operates on the output of 'compile', for example.
-  val applied: Settings[Scope] = make(mySettings)(delegates, scopeLocal, showFullKey)
+  val applied: Settings[Scope] =
+    makeWithCompiledMap(mySettings)(delegates, scopeLocal, showFullKey)._2
 
   // Show results.
   /*	for(i <- 0 to 5; k <- Seq(a, b)) {
