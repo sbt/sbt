@@ -1202,7 +1202,7 @@ private[sbt] object ContinuousCommands {
         case Watch.Trigger     => Right(s"$runWatch ${channel.name}")
         case Watch.Reload =>
           val rewatch = s"$ContinuousExecutePrefix ${ws.count} ${cs.commands mkString "; "}"
-          stop.map(_ :: "reload" :: rewatch :: Nil mkString "; ")
+          stop.map(_ :: s"$SetTerminal ${channel.name}" :: "reload" :: rewatch :: Nil mkString "; ")
         case Watch.Prompt => stop.map(_ :: s"$PromptChannel ${channel.name}" :: Nil mkString ";")
         case Watch.Run(commands) =>
           stop.map(_ +: commands.map(_.commandLine).filter(_.nonEmpty) mkString "; ")
