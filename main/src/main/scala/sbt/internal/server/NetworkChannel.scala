@@ -12,7 +12,7 @@ package server
 import java.io.{ IOException, InputStream, OutputStream }
 import java.net.{ Socket, SocketTimeoutException }
 import java.nio.channels.ClosedChannelException
-import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
+import java.util.concurrent.{ ConcurrentHashMap, Executors, LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
@@ -575,6 +575,7 @@ final class NetworkChannel(
     catch { case _: IOException => }
     running.set(false)
     out.close()
+    outputStream.close()
     thread.interrupt()
     writeThread.interrupt()
   }
@@ -647,20 +648,52 @@ final class NetworkChannel(
   import sjsonnew.BasicJsonProtocol._
 
   import scala.collection.JavaConverters._
-  private[this] lazy val outputStream: OutputStream = new OutputStream {
-    private[this] val buffer = new LinkedBlockingQueue[Byte]()
-    override def write(b: Int): Unit = buffer.put(b.toByte)
-    override def flush(): Unit = {
-      jsonRpcNotify(Serialization.systemOut, buffer.asScala)
-      buffer.clear()
+  private[this] lazy val outputStream: OutputStream with AutoCloseable = new OutputStream
+    with AutoCloseable {
+    /*
+     * We buffer calls to flush to the remote client so that it is called at most
+     * once every 20 milliseconds. This is done because many terminals seem to flicker
+     * and display ghost characters if we flush to the remote client too often. The
+     * json protocol is a bit bulky so this will also reduce the total number of
+     * bytes that are written to the named pipe or unix domain socket. The buffer
+     * period of 20 milliseconds was arbitrarily chosen and could be tuned in the future.
+     * The thinking is that writes tend to be bursty so a twenty millisecond window is
+     * probably long enough to catch each burst but short enough to not introduce
+     * noticeable latency.
+     */
+    private[this] val executor =
+      Executors.newSingleThreadScheduledExecutor(
+        r => new Thread(r, s"$name-output-buffer-timer-thread")
+      )
+    private[this] val buffer = new LinkedBlockingQueue[Byte]
+    private[this] val future = new AtomicReference[java.util.concurrent.Future[_]]
+    override def close(): Unit = Util.ignoreResult(executor.shutdownNow())
+    override def write(b: Int): Unit = buffer.synchronized {
+      buffer.put(b.toByte)
     }
-    override def write(b: Array[Byte]): Unit = write(b, 0, b.length)
-    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-      var i = off
-      while (i < len) {
-        buffer.put(b(i))
-        i += 1
+    override def flush(): Unit = {
+      future.get match {
+        case null =>
+          future.set(
+            executor.schedule(
+              (() => {
+                future.set(null)
+                val list = new java.util.ArrayList[Byte]
+                buffer.synchronized(buffer.drainTo(list))
+                jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
+              }): Runnable,
+              20,
+              TimeUnit.MILLISECONDS
+            )
+          )
+        case f =>
       }
+    }
+    override def write(b: Array[Byte]): Unit = buffer.synchronized {
+      b.foreach(buffer.put)
+    }
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+      write(java.util.Arrays.copyOfRange(b, off, off + len))
     }
   }
   private class NetworkTerminal extends TerminalImpl(inputStream, outputStream, name) {
