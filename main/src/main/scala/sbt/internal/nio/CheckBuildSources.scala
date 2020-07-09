@@ -92,12 +92,14 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
     val filter = (c: String) =>
       c == LoadProject || c == RebootCommand || c == TerminateAction || c == Shutdown ||
         c.startsWith("sbtReboot")
-    val res = !commands.exists(filter)
-    if (!res) {
+    val resetState = commands.exists(filter)
+    if (resetState) {
       previousStamps.set(getStamps(force = true))
       needUpdate.set(false)
     }
-    res
+    // We don't need to do a check since we just updated the stamps since
+    // we are about to perform a reload or reboot.
+    !resetState
   }
   @inline private def forceCheck = fileTreeRepository.isEmpty
   private[sbt] def needsReload(state: State, cmd: String) = {
