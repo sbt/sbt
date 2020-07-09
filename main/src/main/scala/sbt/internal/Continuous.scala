@@ -320,7 +320,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val (nextFileEvent, cleanupFileMonitor): (
         Int => Option[(Watch.Event, Watch.Action)],
         () => Unit
-    ) = getFileEvents(configs, logger, state, commands, fileStampCache)
+    ) = getFileEvents(configs, logger, state, commands, fileStampCache, channel.name)
     val executor = new WatchExecutor(channel.name)
     val nextEvent: Int => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, message, logger, logger, executor)
@@ -420,7 +420,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       logger: Logger,
       state: State,
       commands: Seq[String],
-      fileStampCache: FileStamp.Cache
+      fileStampCache: FileStamp.Cache,
+      channel: String,
   )(implicit extracted: Extracted): (Int => Option[(Watch.Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
@@ -554,7 +555,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         getWatchEvent(forceTrigger = false).flatMap { e =>
           state.get(CheckBuildSources.CheckBuildSourcesKey) match {
             case Some(cbs) =>
-              if (cbs.needsReload(state, logger, "")) Some(e -> Watch.Reload) else None
+              if (cbs.needsReload(state, Exec("", Some(CommandSource(channel)))))
+                Some(e -> Watch.Reload)
+              else None
             case None =>
               Some(e -> Watch.Reload)
           }

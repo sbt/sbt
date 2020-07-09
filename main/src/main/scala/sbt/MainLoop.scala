@@ -184,7 +184,8 @@ object MainLoop {
   /** This is the main function State transfer function of the sbt command processing. */
   def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
-    StandardMain.exchange notifyStatus
+    val exchange = StandardMain.exchange
+    exchange notifyStatus
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
     try {
       def process(): State = {
@@ -197,9 +198,9 @@ object MainLoop {
               state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
             } else state
         }
-        StandardMain.exchange.setState(progressState)
-        StandardMain.exchange.setExec(Some(exec))
-        StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source), force = false)
+        exchange.setState(progressState)
+        exchange.setExec(Some(exec))
+        exchange.unprompt(ConsoleUnpromptEvent(exec.source), force = false)
         val newState = Command.process(exec.commandLine, progressState)
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
             !exec.commandLine.startsWith(networkExecPrefix)) {
@@ -210,26 +211,25 @@ object MainLoop {
             newState.remainingCommands.toVector map (_.commandLine),
             exitCode(newState, state),
           )
-          StandardMain.exchange.respondStatus(doneEvent)
+          exchange.respondStatus(doneEvent)
         }
-        StandardMain.exchange.setExec(None)
+        exchange.setExec(None)
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
         newState.remove(sbt.Keys.currentTaskProgress)
       }
       state.get(CheckBuildSourcesKey) match {
         case Some(cbs) =>
-          if (!cbs.needsReload(state, state.globalLogging.full, exec.commandLine)) process()
+          if (!cbs.needsReload(state, exec)) process()
           else {
-            if (exec.commandLine.startsWith(SetTerminal))
-              exec +: Exec("reload", None, None) +: state.remove(CheckBuildSourcesKey)
-            else
-              Exec("reload", None, None) +: exec +: state.remove(CheckBuildSourcesKey)
+            val isSetTerminal = exec.commandLine.startsWith(SetTerminal)
+            if (isSetTerminal) exec +: Exec("reload", None) +: state.remove(CheckBuildSourcesKey)
+            else Exec("reload", None) +: exec +: state.remove(CheckBuildSourcesKey)
           }
         case _ => process()
       }
     } catch {
       case err: JsonRpcResponseError =>
-        StandardMain.exchange.respondError(err, exec.execId, channelName.map(CommandSource(_)))
+        exchange.respondError(err, exec.execId, channelName.map(CommandSource(_)))
         throw err
       case err: Throwable =>
         val errorEvent = ExecStatusEvent(

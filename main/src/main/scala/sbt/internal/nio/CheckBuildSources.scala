@@ -10,13 +10,13 @@ package internal.nio
 
 import java.nio.file.Path
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import sbt.BasicCommandStrings.{ RebootCommand, Shutdown, TerminateAction }
+import sbt.BasicCommandStrings.{ RebootCommand, SetTerminal, Shutdown, TerminateAction }
 import sbt.Keys.{ baseDirectory, pollInterval, state }
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
 import sbt.internal.CommandStrings.LoadProject
 import sbt.internal.SysProp
-import sbt.internal.util.AttributeKey
+import sbt.internal.util.{ AttributeKey, Terminal }
 import sbt.io.syntax._
 import sbt.nio.FileChanges
 import sbt.nio.FileStamp
@@ -28,6 +28,7 @@ import sbt.util.Logger
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.{ Deadline => SDeadline, _ }
+import scala.io.AnsiColor
 
 /**
  * This class is used to determine whether sbt needs to automatically reload
@@ -103,7 +104,28 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
     !resetState
   }
   @inline private def forceCheck = fileTreeRepository.isEmpty
-  private[sbt] def needsReload(state: State, logger: Logger, cmd: String) = {
+  private[sbt] def needsReload(
+      state: State,
+      exec: Exec
+  ): Boolean = {
+    val isSetTerminal = exec.commandLine.startsWith(SetTerminal)
+    val name =
+      if (isSetTerminal)
+        exec.commandLine.split(s"$SetTerminal ").lastOption.filterNot(_.isEmpty)
+      else exec.source.map(_.channelName)
+    val loggerOrTerminal =
+      name.flatMap(StandardMain.exchange.channelForName(_).map(_.terminal)) match {
+        case Some(t) => Right(t)
+        case _       => Left(state.globalLogging.full)
+      }
+
+    needsReload(state, loggerOrTerminal, exec.commandLine)
+  }
+  private def needsReload(
+      state: State,
+      loggerOrTerminal: Either[Logger, Terminal],
+      cmd: String
+  ): Boolean = {
     (needCheck(state, cmd) && (forceCheck || needUpdate.compareAndSet(true, false))) && {
       val extracted = Project.extract(state)
       val onChanges = extracted.get(Global / onChangedBuildSource)
@@ -122,14 +144,24 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
              else "")
           val prefix = rawPrefix.linesIterator.filterNot(_.trim.isEmpty).mkString("\n")
           if (onChanges == ReloadOnSourceChanges) {
-            logger.info(s"$prefix\nReloading sbt...")
+            val msg = s"$prefix\nReloading sbt..."
+            loggerOrTerminal match {
+              case Right(t) => msg.linesIterator.foreach(l => t.printStream.println(s"[info] $l"))
+              case Left(l)  => l.info(msg)
+            }
             true
           } else {
             val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
               "build when source changes are detected by setting " +
               "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
               "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
-            logger.warn(s"$prefix\n$tail")
+            val msg = s"$prefix\n$tail"
+            loggerOrTerminal match {
+              case Right(t) =>
+                val prefix = s"[${Def.withColor("warn", Some(AnsiColor.YELLOW), t.isColorEnabled)}]"
+                msg.linesIterator.foreach(l => t.printStream.println(s"$prefix $l"))
+              case Left(l) => l.warn(msg)
+            }
             false
           }
         case _ => false
@@ -160,7 +192,7 @@ private[sbt] object CheckBuildSources {
   private[sbt] def needReloadImpl: Def.Initialize[Task[StateTransform]] = Def.task {
     val st = state.value
     st.get(CheckBuildSourcesKey) match {
-      case Some(cbs) if (cbs.needsReload(st, st.globalLogging.full, "")) =>
+      case Some(cbs) if (cbs.needsReload(st, Exec("", None))) =>
         StateTransform("reload" :: (_: State))
       case _ => StateTransform(identity)
     }
