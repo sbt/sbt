@@ -611,7 +611,7 @@ final class NetworkChannel(
   private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
     val m =
       JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
-    log.debug(s"jsonRpcNotify: $m")
+    if (method != Serialization.systemOut) log.debug(s"jsonRpcNotify: $m")
     val bytes = Serialization.serializeNotificationMessage(m)
     publishBytes(bytes)
   }
