@@ -526,7 +526,14 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       }
 
       if (buildGlobs.exists(_.matches(path))) {
-        getWatchEvent(forceTrigger = false).map(e => e -> Watch.Reload).toSeq
+        getWatchEvent(forceTrigger = false).flatMap { e =>
+          state.get(CheckBuildSources.CheckBuildSourcesKey) match {
+            case Some(cbs) =>
+              if (cbs.needsReload(state, logger, "")) Some(e -> Watch.Reload) else None
+            case None =>
+              Some(e -> Watch.Reload)
+          }
+        }.toSeq
       } else {
         val acceptedConfigParameters = configs.flatMap { config =>
           config.inputs().flatMap {

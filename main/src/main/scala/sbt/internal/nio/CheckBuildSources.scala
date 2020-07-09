@@ -24,6 +24,7 @@ import sbt.nio.Keys._
 import sbt.nio.file.{ FileAttributes, FileTreeView, Glob, ** }
 import sbt.nio.file.syntax._
 import sbt.nio.Settings
+import sbt.util.Logger
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.{ Deadline => SDeadline, _ }
@@ -102,11 +103,10 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
     !resetState
   }
   @inline private def forceCheck = fileTreeRepository.isEmpty
-  private[sbt] def needsReload(state: State, cmd: String) = {
+  private[sbt] def needsReload(state: State, logger: Logger, cmd: String) = {
     (needCheck(state, cmd) && (forceCheck || needUpdate.compareAndSet(true, false))) && {
       val extracted = Project.extract(state)
       val onChanges = extracted.get(Global / onChangedBuildSource)
-      val logger = state.globalLogging.full
       val current = getStamps(force = false)
       val previous = previousStamps.getAndSet(current)
       Settings.changedFiles(previous, current) match {
@@ -160,8 +160,9 @@ private[sbt] object CheckBuildSources {
   private[sbt] def needReloadImpl: Def.Initialize[Task[StateTransform]] = Def.task {
     val st = state.value
     st.get(CheckBuildSourcesKey) match {
-      case Some(cbs) if (cbs.needsReload(st, "")) => StateTransform("reload" :: (_: State))
-      case _                                      => StateTransform(identity)
+      case Some(cbs) if (cbs.needsReload(st, st.globalLogging.full, "")) =>
+        StateTransform("reload" :: (_: State))
+      case _ => StateTransform(identity)
     }
   }
   private[sbt] def buildSourceFileInputs: Def.Initialize[Seq[Glob]] = Def.setting {

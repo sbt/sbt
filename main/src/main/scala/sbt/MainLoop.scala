@@ -218,7 +218,7 @@ object MainLoop {
       }
       state.get(CheckBuildSourcesKey) match {
         case Some(cbs) =>
-          if (!cbs.needsReload(state, exec.commandLine)) process()
+          if (!cbs.needsReload(state, state.globalLogging.full, exec.commandLine)) process()
           else {
             if (exec.commandLine.startsWith(SetTerminal))
               exec +: Exec("reload", None, None) +: state.remove(CheckBuildSourcesKey)
