@@ -759,7 +759,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       }
 
-      terminal.withRawSystemIn(impl())
+      terminal.withRawInput(impl())
     }
   }
 

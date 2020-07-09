@@ -114,7 +114,7 @@ private[sbt] object xMain {
       case _: ServerAlreadyBootingException
           if System.console != null && !Terminal.startedByRemoteClient =>
         println("sbt server is already booting. Create a new server? y/n (default y)")
-        val exit = Terminal.get.withRawSystemIn(System.in.read) match {
+        val exit = Terminal.get.withRawInput(System.in.read) match {
           case 110 => Some(Exit(1))
           case _   => None
         }
@@ -835,7 +835,7 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
-    val result = try Terminal.get.withRawSystemIn(System.in.read) match {
+    val result = try Terminal.get.withRawInput(System.in.read) match {
       case -1 => 'q'.toInt
       case b  => b
     } catch { case _: ClosedChannelException => 'q' }

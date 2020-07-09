@@ -885,7 +885,7 @@ class NetworkClient(
             if (!stopped.get()) read()
         }
       }
-      try Terminal.console.withRawSystemIn(read())
+      try Terminal.console.withRawInput(read())
       catch { case NonFatal(_) => stopped.set(true) }
     }
 

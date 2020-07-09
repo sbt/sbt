@@ -127,11 +127,12 @@ trait Terminal extends AutoCloseable {
   private[sbt] def setSize(width: Int, height: Int): Unit
 
   private[sbt] def name: String
-  private[sbt] def withRawSystemIn[T](f: => T): T = f
+  private[sbt] def withRawInput[T](f: => T): T = f
   private[sbt] def withCanonicalIn[T](f: => T): T = f
   private[sbt] def write(bytes: Int*): Unit
   private[sbt] def printStream: PrintStream
   private[sbt] def withPrintStream[T](f: PrintStream => T): T
+  private[sbt] def withRawOutput[R](f: => R): R
   private[sbt] def restore(): Unit = {}
   private[sbt] val progressState = new ProgressState(1)
   private[this] val promptHolder: AtomicReference[Prompt] = new AtomicReference(Prompt.Running)
@@ -330,10 +331,11 @@ object Terminal {
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
       t.setAttributes(attributes)
     override private[sbt] def setSize(width: Int, height: Int): Unit = t.setSize(width, height)
-    override def withRawSystemIn[T](f: => T): T = t.withRawSystemIn(f)
+    override def withRawInput[T](f: => T): T = t.withRawInput(f)
     override def withCanonicalIn[T](f: => T): T = t.withCanonicalIn(f)
     override def printStream: PrintStream = t.printStream
     override def withPrintStream[T](f: PrintStream => T): T = t.withPrintStream(f)
+    override private[sbt] def withRawOutput[R](f: => R): R = t.withRawOutput(f)
     override def restore(): Unit = t.restore()
     override def close(): Unit = {}
     override private[sbt] def write(bytes: Int*): Unit = t.write(bytes: _*)
@@ -737,8 +739,8 @@ object Terminal {
   private[sbt] def createReader(term: Terminal, prompt: Prompt): ConsoleReader = {
     new ConsoleReader(term.inputStream, term.outputStream, term.toJLine) {
       override def readLine(prompt: String, mask: Character): String =
-        term.withRawSystemIn(super.readLine(prompt, mask))
-      override def readLine(prompt: String): String = term.withRawSystemIn(super.readLine(prompt))
+        term.withRawInput(super.readLine(prompt, mask))
+      override def readLine(prompt: String): String = term.withRawInput(super.readLine(prompt))
     }
   }
 
@@ -782,7 +784,7 @@ object Terminal {
     override private[sbt] def setSize(width: Int, height: Int): Unit =
       system.setSize(new org.jline.terminal.Size(width, height))
 
-    override def withRawSystemIn[T](f: => T): T = term.synchronized {
+    override def withRawInput[T](f: => T): T = term.synchronized {
       val prev = JLine3.enterRawMode(system)
       try f
       catch { case _: InterruptedIOException => throw new InterruptedException } finally {
@@ -812,6 +814,7 @@ object Terminal {
       val out: OutputStream,
       override private[sbt] val name: String
   ) extends Terminal {
+    private[this] val rawMode = new AtomicBoolean(false)
     private[this] val writeLock = new AnyRef
     private[this] val writeableInputStream = in match {
       case w: WriteableInputStream => w
@@ -852,7 +855,7 @@ object Terminal {
       override def flush(): Unit = combinedOutputStream.flush()
     }
     private def doWrite(bytes: Array[Byte]): Unit =
-      progressState.write(TerminalImpl.this, bytes, rawPrintStream, hasProgress.get)
+      progressState.write(TerminalImpl.this, bytes, rawPrintStream, hasProgress.get && !rawMode.get)
     override private[sbt] val printStream: PrintStream = new LinePrintStream(outputStream)
     override def inputStream: InputStream = writeableInputStream
 
@@ -867,6 +870,11 @@ object Terminal {
       case _ => (0, 0)
     }
 
+    private[sbt] def withRawOutput[R](f: => R): R = {
+      rawMode.set(true)
+      try f
+      finally rawMode.set(false)
+    }
     private[this] val rawPrintStream: PrintStream = new LinePrintStream(combinedOutputStream)
     override def withPrintStream[T](f: PrintStream => T): T =
       writeLock.synchronized(f(rawPrintStream))
@@ -904,5 +912,6 @@ object Terminal {
       new PrintStream(outputStream, false)
     override private[sbt] def withPrintStream[T](f: java.io.PrintStream => T): T = f(printStream)
     override private[sbt] def write(bytes: Int*): Unit = {}
+    override private[sbt] def withRawOutput[R](f: => R): R = f
   }
 }

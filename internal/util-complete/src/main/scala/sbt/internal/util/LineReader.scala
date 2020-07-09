@@ -79,7 +79,7 @@ object LineReader {
     historyPath.foreach(f => reader.setVariable(JLineReader.HISTORY_FILE, f))
     new LineReader {
       override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
-        try terminal.withRawSystemIn {
+        try terminal.withRawInput {
           Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
         } catch {
           case e: EndOfFileException =>
@@ -240,7 +240,7 @@ private[sbt] object JLine {
   }
 
   @deprecated("Avoid referencing JLine directly.", "1.4.0")
-  def withJLine[T](action: => T): T = Terminal.get.withRawSystemIn(action)
+  def withJLine[T](action: => T): T = Terminal.get.withRawInput(action)
 
   @deprecated("Use LineReader.simple instead", "1.4.0")
   def simple(
