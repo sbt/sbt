@@ -772,7 +772,7 @@ object Terminal {
               case s if s.nonEmpty => currentLine.set(new ArrayBuffer[Byte])
               case _               =>
             }
-            progressState.reprint(TerminalImpl.this, rawPrintStream)
+            if (prompt != Prompt.Loading) progressState.reprint(TerminalImpl.this, rawPrintStream)
             new ArrayBuffer[Byte]
           } else buf += i
         }

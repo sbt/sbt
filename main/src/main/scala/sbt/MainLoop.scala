@@ -199,7 +199,7 @@ object MainLoop {
         }
         StandardMain.exchange.setState(progressState)
         StandardMain.exchange.setExec(Some(exec))
-        StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
+        StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source), force = false)
         val newState = Command.process(exec.commandLine, progressState)
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
             !exec.commandLine.startsWith(networkExecPrefix)) {
