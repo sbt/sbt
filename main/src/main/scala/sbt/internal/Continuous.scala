@@ -797,7 +797,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         .foreach(logger.debug(_))
       min match {
         case ShowOptions =>
-          ConsoleOut.systemOut.println("")
           rawLogger.info(options)
           Watch.Ignore
         case m => m
