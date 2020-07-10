@@ -451,6 +451,14 @@ object Watch {
   final val defaultAntiEntropy: FiniteDuration = 500.milliseconds
 
   /**
+   * The duration for which we will poll for new file events when we are buffering events
+   * after an initial event has been detected to avoid spurious rebuilds.
+   *
+   * If this value is ever updated, please update the comment in Continuous.getFileEvents.
+   */
+  final val defaultAntiEntropyPollPeriod: FiniteDuration = 5.milliseconds
+
+  /**
    * The duration in wall clock time for which a FileEventMonitor will retain anti-entropy
    * events for files. This is an implementation detail of the FileEventMonitor. It should
    * hopefully not need to be set by the users. It is needed because when a task takes a long time
@@ -613,5 +621,6 @@ object Watch {
     watchForceTriggerOnAnyChange :== false,
     watchPersistFileStamps := (sbt.Keys.turbo in ThisBuild).value,
     watchTriggers :== Nil,
+    watchAntiEntropyPollPeriod := Watch.defaultAntiEntropyPollPeriod,
   )
 }

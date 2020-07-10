@@ -465,16 +465,41 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       }
 
+      private[this] val antiEntropyWindow = configs.map(_.watchSettings.antiEntropy).max
       private[this] val monitor = FileEventMonitor.antiEntropy(
         eventMonitorObservers,
-        configs.map(_.watchSettings.antiEntropy).max,
+        antiEntropyWindow,
         logger,
         quarantinePeriod,
         retentionPeriod
       )
 
-      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] =
-        monitor.poll(duration, filter)
+      private[this] val antiEntropyPollPeriod =
+        configs.map(_.watchSettings.antiEntropyPollPeriod).max
+      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
+        monitor.poll(duration, filter) match {
+          case s if s.nonEmpty =>
+            val limit = antiEntropyWindow.fromNow
+            /*
+             * File events may come in bursts so we poll for a short time to see if there
+             * are other changes detected in the burst. As soon as no changes are detected
+             * during the polling window, we return all of the detected events. The polling
+             * period is by default 5 milliseconds which is short enough to detect bursts
+             * induced by commands like git rebase but fast enough to not lead to a noticable
+             * increase in latency.
+             */
+            @tailrec def aggregate(res: Seq[Event]): Seq[Event] =
+              if (limit.isOverdue) res
+              else {
+                monitor.poll(antiEntropyPollPeriod) match {
+                  case s if s.nonEmpty => aggregate(res ++ s)
+                  case _               => res
+                }
+              }
+            aggregate(s)
+          case s => s
+        }
+      }
 
       override def close(): Unit = {
         configHandle.close()
@@ -865,6 +890,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     // alternative would be SettingKey[() => InputStream], but that doesn't feel right because
     // one might want the InputStream to depend on other tasks.
     val inputStream: Option[TaskKey[InputStream]] = key.get(watchInputStream)
+    val antiEntropyPollPeriod: FiniteDuration =
+      key.get(watchAntiEntropyPollPeriod).getOrElse(Watch.defaultAntiEntropyPollPeriod)
   }
 
   /**
