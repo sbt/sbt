@@ -126,7 +126,8 @@ trait Terminal extends AutoCloseable {
   private[sbt] val progressState = new ProgressState(1)
   private[this] val promptHolder: AtomicReference[Prompt] = new AtomicReference(Prompt.Running)
   private[sbt] final def prompt: Prompt = promptHolder.get
-  private[sbt] final def setPrompt(newPrompt: Prompt): Unit = promptHolder.set(newPrompt)
+  private[sbt] final def setPrompt(newPrompt: Prompt): Unit =
+    if (prompt != Prompt.NoPrompt) promptHolder.set(newPrompt)
 
   /**
    * Returns the number of lines that the input string will cover given the current width of the

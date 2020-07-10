@@ -644,20 +644,23 @@ private[sbt] object ProgressState {
     val isRunning = terminal.prompt == Prompt.Running
     val isBatch = terminal.prompt == Prompt.Batch
     val isWatch = terminal.prompt == Prompt.Watch
+    val noPrompt = terminal.prompt == Prompt.NoPrompt
     if (terminal.isSupershellEnabled) {
       if (!pe.skipIfActive.getOrElse(false) || (!isRunning && !isBatch)) {
         terminal.withPrintStream { ps =>
-          val info = if (isRunning || isBatch && pe.channelName.fold(true)(_ == terminal.name)) {
-            pe.items.map { item =>
-              val elapsed = item.elapsedMicros / 1000000L
-              s"  | => ${item.name} ${elapsed}s"
+          val info =
+            if ((isRunning || isBatch || noPrompt) && pe.channelName
+                  .fold(true)(_ == terminal.name)) {
+              pe.items.map { item =>
+                val elapsed = item.elapsedMicros / 1000000L
+                s"  | => ${item.name} ${elapsed}s"
+              }
+            } else {
+              pe.command.toSeq.flatMap { cmd =>
+                val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
+                s"sbt server is running '$cmd'" :: tail
+              }
             }
-          } else {
-            pe.command.toSeq.flatMap { cmd =>
-              val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
-              s"sbt server is running '$cmd'" :: tail
-            }
-          }
 
           val currentLength = info.foldLeft(0)(_ + terminal.lineCount(_))
           val previousLines = state.progressLines.getAndSet(info)

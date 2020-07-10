@@ -45,4 +45,5 @@ private[sbt] object Prompt {
   private[sbt] case object Batch extends NoPrompt
   private[sbt] case object Watch extends NoPrompt
   private[sbt] case object Loading extends NoPrompt
+  private[sbt] case object NoPrompt extends NoPrompt
 }
