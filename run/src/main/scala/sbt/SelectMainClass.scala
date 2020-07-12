@@ -9,6 +9,7 @@ package sbt
 
 import sbt.internal.util.ConsoleAppender.ClearScreenAfterCursor
 import sbt.internal.util.Util.{ AnyOps, none }
+import scala.annotation.tailrec
 
 object SelectMainClass {
   // Some(SimpleReader.readLine _)
@@ -21,14 +22,22 @@ object SelectMainClass {
       case head :: Nil => Some(head)
       case multiple =>
         promptIfMultipleChoices.flatMap { prompt =>
-          val header = "\nMultiple main classes detected. Select one to run:\n"
-          val classes = multiple.zipWithIndex
-            .map { case (className, index) => s" [${index + 1}] $className" }
-            .mkString("\n")
-          println(ClearScreenAfterCursor + header + classes + "\n")
-
-          val line = trim(prompt("Enter number: "))
-          toInt(line, multiple.length) map multiple.apply
+          @tailrec def loop(): Option[String] = {
+            val header = "\nMultiple main classes detected. Select one to run:\n"
+            val classes = multiple.zipWithIndex
+              .map { case (className, index) => s" [${index + 1}] $className" }
+              .mkString("\n")
+            println(ClearScreenAfterCursor + header + classes + "\n")
+            val line = trim(prompt("Enter number: "))
+            // An empty line usually means the user typed <ctrl+c>
+            if (line.nonEmpty) {
+              toInt(line, multiple.length) map multiple.apply match {
+                case None => loop()
+                case r    => r
+              }
+            } else None
+          }
+          loop()
         }
     }
   }
@@ -44,7 +53,7 @@ object SelectMainClass {
       }
     } catch {
       case nfe: NumberFormatException =>
-        println("Invalid number: " + nfe.toString)
+        println(s"Invalid number: '$s'")
         none
     }
 }

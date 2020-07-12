@@ -85,22 +85,50 @@ type ExecutionEvent {
 }
 
 type TerminalPropertiesResponse implements EventMessage {
-    width: Int!
-    height: Int!
-    isAnsiSupported: Boolean!
-    isColorEnabled: Boolean!
-    isSupershellEnabled: Boolean!
-    isEchoEnabled: Boolean!
+  width: Int!
+  height: Int!
+  isAnsiSupported: Boolean!
+  isColorEnabled: Boolean!
+  isSupershellEnabled: Boolean!
+  isEchoEnabled: Boolean!
 }
 
 type TerminalCapabilitiesQuery implements CommandMessage {
-    boolean: String
-    numeric: String
-    string: String
+  boolean: String
+  numeric: String
+  string: String
+  jline3: Boolean!
 }
 
 type TerminalCapabilitiesResponse implements EventMessage {
-    boolean: Boolean
-    numeric: Int
-    string: String
+  boolean: Boolean
+  numeric: Int
+  string: String
 }
+
+type TerminalSetAttributesCommand implements CommandMessage {
+  iflag: String!,
+  oflag: String!,
+  cflag: String!,
+  lflag: String!,
+  cchars: String!,
+}
+
+type TerminalSetAttributesResponse implements EventMessage {}
+
+type TerminalAttributesQuery implements CommandMessage {}
+
+type TerminalAttributesResponse implements EventMessage {
+  iflag: String!,
+  oflag: String!,
+  cflag: String!,
+  lflag: String!,
+  cchars: String!,
+}
+
+type TerminalSetSizeCommand implements CommandMessage {
+  width: Int!
+  height: Int!
+}
+
+type TerminalSetSizeResponse implements EventMessage {}

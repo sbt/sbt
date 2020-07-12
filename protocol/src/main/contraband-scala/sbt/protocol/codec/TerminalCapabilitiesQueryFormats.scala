@@ -14,8 +14,9 @@ implicit lazy val TerminalCapabilitiesQueryFormat: JsonFormat[sbt.protocol.Termi
       val boolean = unbuilder.readField[Option[String]]("boolean")
       val numeric = unbuilder.readField[Option[String]]("numeric")
       val string = unbuilder.readField[Option[String]]("string")
+      val jline3 = unbuilder.readField[Boolean]("jline3")
       unbuilder.endObject()
-      sbt.protocol.TerminalCapabilitiesQuery(boolean, numeric, string)
+      sbt.protocol.TerminalCapabilitiesQuery(boolean, numeric, string, jline3)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -25,6 +26,7 @@ implicit lazy val TerminalCapabilitiesQueryFormat: JsonFormat[sbt.protocol.Termi
     builder.addField("boolean", obj.boolean)
     builder.addField("numeric", obj.numeric)
     builder.addField("string", obj.string)
+    builder.addField("jline3", obj.jline3)
     builder.endObject()
   }
 }

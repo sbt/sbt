@@ -181,9 +181,10 @@ object EscHelpers {
             else res(index) = 32
           case 'm' =>
           case ';' => state = csi
-          case _   =>
+          case b   => state = csi
         }
         digit.clear()
+      case b if state == esc => state = 0
       case b =>
         res(index) = b
         index += 1

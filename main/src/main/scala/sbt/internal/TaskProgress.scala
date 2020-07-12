@@ -53,11 +53,12 @@ private[sbt] class TaskProgress private ()
             if (firstTime.compareAndSet(true, activeExceedingThreshold.isEmpty)) threshold
             else sleepDuration
           val limit = duration.fromNow
-          while (Deadline.now < limit) {
+          while (Deadline.now < limit && !isClosed.get && active.nonEmpty) {
             var task = tasks.poll((limit - Deadline.now).toMillis, TimeUnit.MILLISECONDS)
             while (task != null) {
               if (containsSkipTasks(Vector(task)) || lastTaskCount.get == 0) doReport()
               task = tasks.poll
+              tasks.clear()
             }
           }
         } catch {

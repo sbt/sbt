@@ -12,7 +12,6 @@ package client
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
 import java.net.Socket
-import java.nio.channels.ClosedChannelException
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
@@ -43,10 +42,14 @@ import Serialization.{
   promptChannel,
   systemIn,
   systemOut,
+  systemOutFlush,
   terminalCapabilities,
   terminalCapabilitiesResponse,
   terminalPropertiesQuery,
-  terminalPropertiesResponse
+  terminalPropertiesResponse,
+  getTerminalAttributes,
+  setTerminalAttributes,
+  setTerminalSize,
 }
 import NetworkClient.Arguments
 
@@ -199,7 +202,6 @@ class NetworkClient(
                 case _ => (false, None)
               }
               if (rebootCommands.nonEmpty) {
-                if (Terminal.console.getLastLine.isDefined) Terminal.console.printStream.println()
                 rebooting.set(true)
                 attached.set(false)
                 connectionHolder.getAndSet(null) match {
@@ -212,7 +214,7 @@ class NetworkClient(
                 rebooting.set(false)
                 rebootCommands match {
                   case Some((execId, cmd)) if execId.nonEmpty =>
-                    if (batchMode.get && !pendingResults.contains(execId) && cmd.isEmpty) {
+                    if (batchMode.get && !pendingResults.containsKey(execId) && cmd.nonEmpty) {
                       console.appendLog(
                         Level.Error,
                         s"received request to re-run unknown command '$cmd' after reboot"
@@ -230,8 +232,6 @@ class NetworkClient(
               } else {
                 if (!rebooting.get() && running.compareAndSet(true, false) && log) {
                   if (!arguments.commandArguments.contains(Shutdown)) {
-                    if (Terminal.console.getLastLine.isDefined)
-                      Terminal.console.printStream.println()
                     console.appendLog(Level.Error, "sbt server disconnected")
                     exitClean.set(false)
                   }
@@ -306,7 +306,6 @@ class NetworkClient(
         Some(process)
       case _ =>
         if (log) {
-          if (Terminal.console.getLastLine.isDefined) Terminal.console.printStream.println()
           console.appendLog(Level.Info, "sbt server is booting up")
         }
         None
@@ -522,16 +521,14 @@ class NetworkClient(
             }
           } else Vector()
         case (`systemOut`, Some(json)) =>
-          Converter.fromJson[Seq[Byte]](json) match {
-            case Success(params) =>
-              if (params.nonEmpty) {
-                if (attached.get) {
-                  printStream.write(params.toArray)
-                  printStream.flush()
-                }
-              }
-            case Failure(_) =>
+          Converter.fromJson[Array[Byte]](json) match {
+            case Success(bytes) if bytes.nonEmpty && attached.get =>
+              synchronized(printStream.write(bytes))
+            case _ =>
           }
+          Vector.empty
+        case (`systemOutFlush`, _) =>
+          synchronized(printStream.flush())
           Vector.empty
         case (`promptChannel`, _) =>
           batchMode.set(false)
@@ -589,16 +586,23 @@ class NetworkClient(
   }
 
   def onRequest(msg: JsonRpcRequestMessage): Unit = {
+    import sbt.protocol.codec.JsonProtocol._
     (msg.method, msg.params) match {
       case (`terminalCapabilities`, Some(json)) =>
-        import sbt.protocol.codec.JsonProtocol._
         Converter.fromJson[TerminalCapabilitiesQuery](json) match {
           case Success(terminalCapabilitiesQuery) =>
+            val jline3 = terminalCapabilitiesQuery.jline3
             val response = TerminalCapabilitiesResponse(
-              terminalCapabilitiesQuery.boolean.map(Terminal.console.getBooleanCapability),
-              terminalCapabilitiesQuery.numeric.map(Terminal.console.getNumericCapability),
+              terminalCapabilitiesQuery.boolean
+                .map(Terminal.console.getBooleanCapability(_, jline3)),
+              terminalCapabilitiesQuery.numeric
+                .map(
+                  c => Option(Terminal.console.getNumericCapability(c, jline3)).fold(-1)(_.toInt)
+                ),
               terminalCapabilitiesQuery.string
-                .map(s => Option(Terminal.console.getStringCapability(s)).getOrElse("null")),
+                .map(
+                  s => Option(Terminal.console.getStringCapability(s, jline3)).getOrElse("null")
+                ),
             )
             sendCommandResponse(
               terminalCapabilitiesResponse,
@@ -617,6 +621,37 @@ class NetworkClient(
           isEchoEnabled = Terminal.console.isEchoEnabled
         )
         sendCommandResponse(terminalPropertiesResponse, response, msg.id)
+      case (`setTerminalAttributes`, Some(json)) =>
+        Converter.fromJson[TerminalSetAttributesCommand](json) match {
+          case Success(attributes) =>
+            val attrs = Map(
+              "iflag" -> attributes.iflag,
+              "oflag" -> attributes.oflag,
+              "cflag" -> attributes.cflag,
+              "lflag" -> attributes.lflag,
+              "cchars" -> attributes.cchars,
+            )
+            Terminal.console.setAttributes(attrs)
+            sendCommandResponse("", TerminalSetAttributesResponse(), msg.id)
+          case Failure(_) =>
+        }
+      case (`getTerminalAttributes`, _) =>
+        val attrs = Terminal.console.getAttributes
+        val response = TerminalAttributesResponse(
+          iflag = attrs.getOrElse("iflag", ""),
+          oflag = attrs.getOrElse("oflag", ""),
+          cflag = attrs.getOrElse("cflag", ""),
+          lflag = attrs.getOrElse("lflag", ""),
+          cchars = attrs.getOrElse("cchars", ""),
+        )
+        sendCommandResponse("", response, msg.id)
+      case (`setTerminalSize`, Some(json)) =>
+        Converter.fromJson[TerminalSetSizeCommand](json) match {
+          case Success(size) =>
+            Terminal.console.setSize(size.width, size.height)
+            sendCommandResponse("", TerminalSetSizeResponse(), msg.id)
+          case Failure(_) =>
+        }
       case _ =>
     }
   }
@@ -850,8 +885,8 @@ class NetworkClient(
             if (!stopped.get()) read()
         }
       }
-      try Terminal.console.withRawSystemIn(read())
-      catch { case _: InterruptedException | _: ClosedChannelException => stopped.set(true) }
+      try Terminal.console.withRawInput(read())
+      catch { case NonFatal(_) => stopped.set(true) }
     }
 
     def drain(): Unit = inLock.synchronized {
@@ -897,20 +932,18 @@ object NetworkClient {
       override def success(msg: String): Unit = appender.success(msg)
     }
   }
-  private def simpleConsoleInterface(printStream: PrintStream): ConsoleInterface =
+  private def simpleConsoleInterface(doPrintln: String => Unit): ConsoleInterface =
     new ConsoleInterface {
       import scala.Console.{ GREEN, RED, RESET, YELLOW }
-      override def appendLog(level: Level.Value, message: => String): Unit = {
+      override def appendLog(level: Level.Value, message: => String): Unit = synchronized {
         val prefix = level match {
           case Level.Error => s"[$RED$level$RESET]"
           case Level.Warn  => s"[$YELLOW$level$RESET]"
           case _           => s"[$RESET$level$RESET]"
         }
-        message.split("\n").foreach { line =>
-          if (!line.trim.isEmpty) printStream.println(s"$prefix $line")
-        }
+        message.linesIterator.foreach(line => doPrintln(s"$prefix $line"))
       }
-      override def success(msg: String): Unit = printStream.println(s"[${GREEN}success$RESET] $msg")
+      override def success(msg: String): Unit = doPrintln(s"[${GREEN}success$RESET] $msg")
     }
   private[client] class Arguments(
       val baseDirectory: File,
@@ -961,8 +994,29 @@ object NetworkClient {
       baseDirectory: File,
       args: Array[String],
       inputStream: InputStream,
-      errorStream: PrintStream,
       printStream: PrintStream,
+      errorStream: PrintStream,
+      useJNI: Boolean
+  ): Int = {
+    val client =
+      simpleClient(
+        NetworkClient.parseArgs(args).withBaseDirectory(baseDirectory),
+        inputStream,
+        printStream,
+        errorStream,
+        useJNI,
+      )
+    try {
+      if (client.connect(log = true, promptCompleteUsers = false)) client.run()
+      else 1
+    } catch { case _: Exception => 1 } finally client.close()
+  }
+  def client(
+      baseDirectory: File,
+      args: Array[String],
+      inputStream: InputStream,
+      errorStream: PrintStream,
+      terminal: Terminal,
       useJNI: Boolean
   ): Int = {
     val client =
@@ -970,8 +1024,8 @@ object NetworkClient {
         NetworkClient.parseArgs(args).withBaseDirectory(baseDirectory),
         inputStream,
         errorStream,
-        printStream,
         useJNI,
+        terminal
       )
     try {
       if (client.connect(log = true, promptCompleteUsers = false)) client.run()
@@ -982,17 +1036,27 @@ object NetworkClient {
       arguments: Arguments,
       inputStream: InputStream,
       errorStream: PrintStream,
-      printStream: PrintStream,
       useJNI: Boolean,
-  ): NetworkClient =
-    new NetworkClient(
-      arguments,
-      NetworkClient.simpleConsoleInterface(printStream),
-      inputStream,
-      errorStream,
-      printStream,
-      useJNI,
-    )
+      terminal: Terminal
+  ): NetworkClient = {
+    val doPrint: String => Unit = line => {
+      if (terminal.getLastLine.isDefined) terminal.printStream.println()
+      terminal.printStream.println(line)
+    }
+    val interface = NetworkClient.simpleConsoleInterface(doPrint)
+    val printStream = terminal.printStream
+    new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
+  }
+  private def simpleClient(
+      arguments: Arguments,
+      inputStream: InputStream,
+      printStream: PrintStream,
+      errorStream: PrintStream,
+      useJNI: Boolean,
+  ): NetworkClient = {
+    val interface = NetworkClient.simpleConsoleInterface(printStream.println)
+    new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
+  }
   def main(args: Array[String]): Unit = {
     val (jnaArg, restOfArgs) = args.partition(_ == "--jna")
     val useJNI = jnaArg.isEmpty
@@ -1005,8 +1069,9 @@ object NetworkClient {
         System.out.flush()
       })
       Runtime.getRuntime.addShutdownHook(hook)
-      System.exit(Terminal.withStreams {
-        try client(base, restOfArgs, System.in, System.err, System.out, useJNI)
+      System.exit(Terminal.withStreams(false) {
+        val term = Terminal.console
+        try client(base, restOfArgs, term.inputStream, System.err, term, useJNI)
         finally {
           Runtime.getRuntime.removeShutdownHook(hook)
           hook.run()

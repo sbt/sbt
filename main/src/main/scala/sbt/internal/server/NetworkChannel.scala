@@ -12,7 +12,7 @@ package server
 import java.io.{ IOException, InputStream, OutputStream }
 import java.net.{ Socket, SocketTimeoutException }
 import java.nio.channels.ClosedChannelException
-import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue }
+import java.util.concurrent.{ ConcurrentHashMap, Executors, LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
@@ -99,7 +99,6 @@ final class NetworkChannel(
     addFastTrackTask(attach)
   }
   private[sbt] def prompt(): Unit = {
-    terminal.setPrompt(Prompt.Running)
     interactive.set(true)
     jsonRpcNotify(promptChannel, "")
   }
@@ -575,6 +574,7 @@ final class NetworkChannel(
     catch { case _: IOException => }
     running.set(false)
     out.close()
+    outputStream.close()
     thread.interrupt()
     writeThread.interrupt()
   }
@@ -611,7 +611,7 @@ final class NetworkChannel(
   private[sbt] def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit = {
     val m =
       JsonRpcNotificationMessage("2.0", method, Option(Converter.toJson[A](params).get))
-    log.debug(s"jsonRpcNotify: $m")
+    if (method != Serialization.systemOut) log.debug(s"jsonRpcNotify: $m")
     val bytes = Serialization.serializeNotificationMessage(m)
     publishBytes(bytes)
   }
@@ -640,27 +640,59 @@ final class NetworkChannel(
           case -1 => throw new ClosedChannelException()
           case b  => b
         }
-      } catch { case _: IOException => -1 }
+      } catch { case e: IOException => -1 }
     }
     override def available(): Int = inputBuffer.size
   }
   import sjsonnew.BasicJsonProtocol._
 
   import scala.collection.JavaConverters._
-  private[this] lazy val outputStream: OutputStream = new OutputStream {
-    private[this] val buffer = new LinkedBlockingQueue[Byte]()
-    override def write(b: Int): Unit = buffer.put(b.toByte)
-    override def flush(): Unit = {
-      jsonRpcNotify(Serialization.systemOut, buffer.asScala)
-      buffer.clear()
+  private[this] lazy val outputStream: OutputStream with AutoCloseable = new OutputStream
+    with AutoCloseable {
+    /*
+     * We buffer calls to flush to the remote client so that it is called at most
+     * once every 20 milliseconds. This is done because many terminals seem to flicker
+     * and display ghost characters if we flush to the remote client too often. The
+     * json protocol is a bit bulky so this will also reduce the total number of
+     * bytes that are written to the named pipe or unix domain socket. The buffer
+     * period of 20 milliseconds was arbitrarily chosen and could be tuned in the future.
+     * The thinking is that writes tend to be bursty so a twenty millisecond window is
+     * probably long enough to catch each burst but short enough to not introduce
+     * noticeable latency.
+     */
+    private[this] val executor =
+      Executors.newSingleThreadScheduledExecutor(
+        r => new Thread(r, s"$name-output-buffer-timer-thread")
+      )
+    private[this] val buffer = new LinkedBlockingQueue[Byte]
+    private[this] val future = new AtomicReference[java.util.concurrent.Future[_]]
+    override def close(): Unit = Util.ignoreResult(executor.shutdownNow())
+    override def write(b: Int): Unit = buffer.synchronized {
+      buffer.put(b.toByte)
     }
-    override def write(b: Array[Byte]): Unit = write(b, 0, b.length)
-    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-      var i = off
-      while (i < len) {
-        buffer.put(b(i))
-        i += 1
+    override def flush(): Unit = {
+      future.get match {
+        case null =>
+          future.set(
+            executor.schedule(
+              (() => {
+                future.set(null)
+                val list = new java.util.ArrayList[Byte]
+                buffer.synchronized(buffer.drainTo(list))
+                jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
+              }): Runnable,
+              20,
+              TimeUnit.MILLISECONDS
+            )
+          )
+        case f =>
       }
+    }
+    override def write(b: Array[Byte]): Unit = buffer.synchronized {
+      b.foreach(buffer.put)
+    }
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+      write(java.util.Arrays.copyOfRange(b, off, off + len))
     }
   }
   private class NetworkTerminal extends TerminalImpl(inputStream, outputStream, name) {
@@ -741,24 +773,81 @@ final class NetworkChannel(
         Some(result(queue.take))
       }
     }
-    override def getBooleanCapability(capability: String): Boolean =
+    override def getBooleanCapability(capability: String, jline3: Boolean): Boolean =
       getCapability(
-        TerminalCapabilitiesQuery(boolean = Some(capability), numeric = None, string = None),
+        TerminalCapabilitiesQuery(
+          boolean = Some(capability),
+          numeric = None,
+          string = None,
+          jline3
+        ),
         _.boolean.getOrElse(false)
       ).getOrElse(false)
-    override def getNumericCapability(capability: String): Int =
+    override def getNumericCapability(capability: String, jline3: Boolean): Integer =
       getCapability(
-        TerminalCapabilitiesQuery(boolean = None, numeric = Some(capability), string = None),
-        _.numeric.getOrElse(-1)
-      ).getOrElse(-1)
-    override def getStringCapability(capability: String): String =
+        TerminalCapabilitiesQuery(
+          boolean = None,
+          numeric = Some(capability),
+          string = None,
+          jline3
+        ),
+        (_: TerminalCapabilitiesResponse).numeric.map(Integer.valueOf).getOrElse(-1: Integer)
+      ).getOrElse(-1: Integer)
+    override def getStringCapability(capability: String, jline3: Boolean): String =
       getCapability(
-        TerminalCapabilitiesQuery(boolean = None, numeric = None, string = Some(capability)),
+        TerminalCapabilitiesQuery(
+          boolean = None,
+          numeric = None,
+          string = Some(capability),
+          jline3
+        ),
         _.string.flatMap {
           case "null" => None
           case s      => Some(s)
         }.orNull
       ).getOrElse("")
+
+    override private[sbt] def getAttributes: Map[String, String] =
+      if (closed.get) Map.empty
+      else {
+        import sbt.protocol.codec.JsonProtocol._
+        val queue = VirtualTerminal.sendTerminalAttributesQuery(
+          name,
+          jsonRpcRequest
+        )
+        try {
+          val a = queue.take
+          Map(
+            "iflag" -> a.iflag,
+            "oflag" -> a.oflag,
+            "cflag" -> a.cflag,
+            "lflag" -> a.lflag,
+            "cchars" -> a.cchars
+          )
+        } catch { case _: InterruptedException => Map.empty }
+      }
+    override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
+      if (!closed.get) {
+        import sbt.protocol.codec.JsonProtocol._
+        val attrs = TerminalSetAttributesCommand(
+          iflag = attributes.getOrElse("iflag", ""),
+          oflag = attributes.getOrElse("oflag", ""),
+          cflag = attributes.getOrElse("cflag", ""),
+          lflag = attributes.getOrElse("lflag", ""),
+          cchars = attributes.getOrElse("cchars", ""),
+        )
+        val queue = VirtualTerminal.setTerminalAttributes(name, jsonRpcRequest, attrs)
+        try queue.take
+        catch { case _: InterruptedException => }
+      }
+    override def setSize(width: Int, height: Int): Unit =
+      if (!closed.get) {
+        import sbt.protocol.codec.JsonProtocol._
+        val size = TerminalSetSizeCommand(width, height)
+        val queue = VirtualTerminal.setTerminalSize(name, jsonRpcRequest, size)
+        try queue.take
+        catch { case _: InterruptedException => }
+      }
 
     override def toString: String = s"NetworkTerminal($name)"
     override def close(): Unit = if (closed.compareAndSet(false, true)) {

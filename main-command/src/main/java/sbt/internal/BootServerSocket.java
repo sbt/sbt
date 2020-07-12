@@ -35,6 +35,7 @@ import org.scalasbt.ipcsocket.UnixDomainSocket;
 import org.scalasbt.ipcsocket.Win32NamedPipeServerSocket;
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket;
 import org.scalasbt.ipcsocket.Win32SecurityLevel;
+import sbt.internal.util.Terminal;
 import xsbti.AppConfiguration;
 
 /**
@@ -102,6 +103,16 @@ public class BootServerSocket implements AutoCloseable {
             service.submit(
                 () -> {
                   try {
+                    Terminal.console()
+                        .getLines()
+                        .foreach(
+                            l -> {
+                              try {
+                                write((l + System.lineSeparator()).getBytes("UTF-8"));
+                              } catch (final IOException e) {
+                              }
+                              return 0;
+                            });
                     final InputStream inputStream = socket.getInputStream();
                     while (alive.get()) {
                       try {
@@ -128,6 +139,15 @@ public class BootServerSocket implements AutoCloseable {
     private void write(final int i) {
       try {
         if (alive.get()) socket.getOutputStream().write(i);
+      } catch (final IOException e) {
+        alive.set(false);
+        close();
+      }
+    }
+
+    private void write(final byte[] b) {
+      try {
+        if (alive.get()) socket.getOutputStream().write(b);
       } catch (final IOException e) {
         alive.set(false);
         close();

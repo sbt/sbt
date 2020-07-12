@@ -63,4 +63,11 @@ class CleanStringSpec extends FlatSpec {
     val colorArrow = new String(Array[Byte](27, 91, 51, 54, 109, 62))
     assert(EscHelpers.stripMoves(original) == "foo" + colorArrow + " " + scala.Console.RESET)
   }
+  it should "remove unusual escape characters" in {
+    val original = new String(
+      Array[Byte](27, 91, 63, 49, 108, 27, 62, 27, 91, 63, 49, 48, 48, 48, 108, 27, 91, 63, 50, 48,
+        48, 52, 108)
+    )
+    assert(EscHelpers.stripColorsAndMoves(original).isEmpty)
+  }
 }

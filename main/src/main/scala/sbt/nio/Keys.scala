@@ -67,6 +67,9 @@ object Keys {
   val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration](
     "Wall clock Duration for which a FileEventMonitor will store anti-entropy events. This prevents spurious triggers when a task takes a long time to run. Higher values will consume more memory but make spurious triggers less likely."
   ).withRank(BMinusSetting)
+  val watchAntiEntropyPollPeriod = settingKey[FiniteDuration](
+    "The duration for which sbt will poll for file events during the window in which sbt is buffering file events"
+  )
   val onChangedBuildSource = settingKey[WatchBuildSourceOption](
     "Determines what to do if the sbt meta build sources have changed"
   ).withRank(DSetting)

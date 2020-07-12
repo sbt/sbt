@@ -320,7 +320,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val (nextFileEvent, cleanupFileMonitor): (
         Int => Option[(Watch.Event, Watch.Action)],
         () => Unit
-    ) = getFileEvents(configs, logger, state, commands, fileStampCache)
+    ) = getFileEvents(configs, logger, state, commands, fileStampCache, channel.name)
     val executor = new WatchExecutor(channel.name)
     val nextEvent: Int => Watch.Action =
       combineInputAndFileEvents(nextInputEvent, nextFileEvent, message, logger, logger, executor)
@@ -420,7 +420,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       logger: Logger,
       state: State,
       commands: Seq[String],
-      fileStampCache: FileStamp.Cache
+      fileStampCache: FileStamp.Cache,
+      channel: String,
   )(implicit extracted: Extracted): (Int => Option[(Watch.Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
@@ -465,16 +466,41 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       }
 
+      private[this] val antiEntropyWindow = configs.map(_.watchSettings.antiEntropy).max
       private[this] val monitor = FileEventMonitor.antiEntropy(
         eventMonitorObservers,
-        configs.map(_.watchSettings.antiEntropy).max,
+        antiEntropyWindow,
         logger,
         quarantinePeriod,
         retentionPeriod
       )
 
-      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] =
-        monitor.poll(duration, filter)
+      private[this] val antiEntropyPollPeriod =
+        configs.map(_.watchSettings.antiEntropyPollPeriod).max
+      override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
+        monitor.poll(duration, filter) match {
+          case s if s.nonEmpty =>
+            val limit = antiEntropyWindow.fromNow
+            /*
+             * File events may come in bursts so we poll for a short time to see if there
+             * are other changes detected in the burst. As soon as no changes are detected
+             * during the polling window, we return all of the detected events. The polling
+             * period is by default 5 milliseconds which is short enough to detect bursts
+             * induced by commands like git rebase but fast enough to not lead to a noticable
+             * increase in latency.
+             */
+            @tailrec def aggregate(res: Seq[Event]): Seq[Event] =
+              if (limit.isOverdue) res
+              else {
+                monitor.poll(antiEntropyPollPeriod) match {
+                  case s if s.nonEmpty => aggregate(res ++ s)
+                  case _               => res
+                }
+              }
+            aggregate(s)
+          case s => s
+        }
+      }
 
       override def close(): Unit = {
         configHandle.close()
@@ -526,7 +552,16 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       }
 
       if (buildGlobs.exists(_.matches(path))) {
-        getWatchEvent(forceTrigger = false).map(e => e -> Watch.Reload).toSeq
+        getWatchEvent(forceTrigger = false).flatMap { e =>
+          state.get(CheckBuildSources.CheckBuildSourcesKey) match {
+            case Some(cbs) =>
+              if (cbs.needsReload(state, Exec("", Some(CommandSource(channel)))))
+                Some(e -> Watch.Reload)
+              else None
+            case None =>
+              Some(e -> Watch.Reload)
+          }
+        }.toSeq
       } else {
         val acceptedConfigParameters = configs.flatMap { config =>
           config.inputs().flatMap {
@@ -727,7 +762,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       }
 
-      terminal.withRawSystemIn(impl())
+      terminal.withRawInput(impl())
     }
   }
 
@@ -858,6 +893,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     // alternative would be SettingKey[() => InputStream], but that doesn't feel right because
     // one might want the InputStream to depend on other tasks.
     val inputStream: Option[TaskKey[InputStream]] = key.get(watchInputStream)
+    val antiEntropyPollPeriod: FiniteDuration =
+      key.get(watchAntiEntropyPollPeriod).getOrElse(Watch.defaultAntiEntropyPollPeriod)
   }
 
   /**
@@ -1183,7 +1220,6 @@ private[sbt] object ContinuousCommands {
   ) extends Thread(s"sbt-${channel.name}-watch-ui-thread")
       with UITask {
     override private[sbt] def reader: UITask.Reader = () => {
-      channel.terminal.printStream.write(Int.MinValue)
       def stop = Right(s"${ContinuousCommands.stopWatch} ${channel.name}")
       val exitAction: Watch.Action = {
         Watch.apply(
@@ -1202,7 +1238,7 @@ private[sbt] object ContinuousCommands {
         case Watch.Trigger     => Right(s"$runWatch ${channel.name}")
         case Watch.Reload =>
           val rewatch = s"$ContinuousExecutePrefix ${ws.count} ${cs.commands mkString "; "}"
-          stop.map(_ :: "reload" :: rewatch :: Nil mkString "; ")
+          stop.map(_ :: s"$SetTerminal ${channel.name}" :: "reload" :: rewatch :: Nil mkString "; ")
         case Watch.Prompt => stop.map(_ :: s"$PromptChannel ${channel.name}" :: Nil mkString ";")
         case Watch.Run(commands) =>
           stop.map(_ +: commands.map(_.commandLine).filter(_.nonEmpty) mkString "; ")

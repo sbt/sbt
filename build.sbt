@@ -108,7 +108,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
-    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary)
+    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
 def utilCommonSettings: Seq[Setting[_]] =
   commonBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
@@ -246,9 +246,14 @@ lazy val bundledLauncherProj =
 val collectionProj = (project in file("internal") / "util-collection")
   .settings(
     testedBaseSettings,
+    utilCommonSettings,
     Util.keywordsSettings,
     name := "Collections",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
+    libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, major)) if major <= 12 => Seq()
+      case _                               => Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0")
+    }),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // Added private[sbt] method to capture State attributes.
@@ -289,6 +294,7 @@ val completeProj = (project in file("internal") / "util-complete")
     testedBaseSettings,
     name := "Completion",
     libraryDependencies += jline,
+    libraryDependencies += jline3,
     mimaSettings,
     // Parser is used publicly, so we can't break bincompat.
     mimaBinaryIssueFilters := Seq(
@@ -343,12 +349,20 @@ lazy val utilPosition = (project in file("internal") / "util-position")
 
 lazy val utilLogging = (project in file("internal") / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(utilInterface)
+  .dependsOn(utilInterface, collectionProj)
   .settings(
     utilCommonSettings,
     name := "Util Logging",
     libraryDependencies ++=
-      Seq(jline, log4jApi, log4jCore, disruptor, sjsonNewScalaJson.value, scalaReflect.value),
+      Seq(
+        jline,
+        jline3,
+        log4jApi,
+        log4jCore,
+        disruptor,
+        sjsonNewScalaJson.value,
+        scalaReflect.value
+      ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
@@ -1047,8 +1061,7 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies += jansi,
-    libraryDependencies += "net.java.dev.jna" % "jna" % "5.5.0",
-    libraryDependencies += "net.java.dev.jna" % "jna-platform" % "5.5.0",
+    libraryDependencies += jline3Jansi,
     libraryDependencies += scalatest % "test",
     /*
      * On windows, the raw classpath is too large to be a command argument to an
@@ -1099,8 +1112,8 @@ lazy val sbtClientProj = (project in file("client"))
       }
       thread.start()
       proc.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
+      assert(proc.exitValue == 0, s"Exit value ${proc.exitValue} was nonzero")
       nativeExecutablePath.value
-      file("").toPath
     },
     graalNativeImageOptions := Seq(
       "--no-fallback",

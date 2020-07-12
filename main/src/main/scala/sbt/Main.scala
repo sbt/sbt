@@ -78,7 +78,7 @@ private[sbt] object xMain {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
         bootServerSocket.foreach(l => Terminal.setBootStreams(l.inputStream, l.outputStream))
-        Terminal.withStreams {
+        Terminal.withStreams(true) {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
             NetworkClient.run(dealiasBaseDirectory(configuration), args)
@@ -114,7 +114,7 @@ private[sbt] object xMain {
       case _: ServerAlreadyBootingException
           if System.console != null && !Terminal.startedByRemoteClient =>
         println("sbt server is already booting. Create a new server? y/n (default y)")
-        val exit = Terminal.get.withRawSystemIn(System.in.read) match {
+        val exit = Terminal.get.withRawInput(System.in.read) match {
           case 110 => Some(Exit(1))
           case _   => None
         }
@@ -835,7 +835,7 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
-    val result = try Terminal.get.withRawSystemIn(System.in.read) match {
+    val result = try Terminal.get.withRawInput(System.in.read) match {
       case -1 => 'q'.toInt
       case b  => b
     } catch { case _: ClosedChannelException => 'q' }
@@ -913,6 +913,8 @@ object BuiltinCommands {
   }
 
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
+    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(None), force = true)
+    StandardMain.exchange.channels.foreach(_.terminal.setPrompt(Prompt.Loading))
     welcomeBanner(s0)
     checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
@@ -933,7 +935,9 @@ object BuiltinCommands {
     SessionSettings.checkSession(session, s2)
     val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
     val s4 = setupGlobalFileTreeRepository(s3)
-    CheckBuildSources.init(LintUnused.lintUnusedFunc(s4))
+    val s5 = CheckBuildSources.init(LintUnused.lintUnusedFunc(s4))
+    StandardMain.exchange.prompt(ConsolePromptEvent(s5))
+    s5
   }
 
   private val setupGlobalFileTreeRepository: State => State = { state =>
@@ -977,9 +981,11 @@ object BuiltinCommands {
       val exchange = StandardMain.exchange
       if (exchange.channels.exists(ContinuousCommands.isInWatch)) {
         val s1 = exchange.run(s0)
+        def needPrompt(c: CommandChannel) =
+          ContinuousCommands.isInWatch(c) && !ContinuousCommands.isPending(c)
         exchange.channels.foreach {
-          case c if ContinuousCommands.isPending(c) =>
-          case c                                    => c.prompt(ConsolePromptEvent(s1))
+          case c if needPrompt(c) => c.prompt(ConsolePromptEvent(s1))
+          case _                  =>
         }
         val exec: Exec = getExec(s1, Duration.Inf)
         val remaining: List[Exec] =

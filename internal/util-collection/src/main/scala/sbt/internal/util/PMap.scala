@@ -66,7 +66,7 @@ object IMap {
       put(k, f(this get k getOrElse init))
 
     def mapValues[V2[_]](f: V ~> V2) =
-      new IMap0[K, V2](backing.mapValues(x => f(x)))
+      new IMap0[K, V2](Map(backing.iterator.map { case (k, v) => k -> f(v) }.toArray: _*))
 
     def mapSeparate[VL[_], VR[_]](f: V ~> λ[T => Either[VL[T], VR[T]]]) = {
       val mapped = backing.iterator.map {

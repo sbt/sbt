@@ -16,4 +16,11 @@ failingTask := {
   throw new IllegalStateException("failed")
 }
 
-onChangedBuildSource := ReloadOnSourceChanges
+watchOnIteration := { (count, project, commands) =>
+  val extra = baseDirectory.value / "extra.sbt"
+  IO.copyFile(baseDirectory.value / "changes" / "extra.sbt", extra, CopyOptions().withOverwrite(true))
+  Watch.defaultStartWatch(count, project, commands).foreach(_.linesIterator.foreach(l => println(s"[info] $l")))
+  Watch.Ignore
+}
+
+Global / onChangedBuildSource := ReloadOnSourceChanges

@@ -133,10 +133,17 @@ private[sbt] final class CommandExchange {
       }
     }
     // Do not manually run GC until the user has been idling for at least the min gc interval.
-    impl(interval match {
+    val exec = impl(interval match {
       case d: FiniteDuration => Some(d.fromNow)
       case _                 => None
     }, idleDeadline)
+    exec.source.foreach { s =>
+      channelForName(s.channelName).foreach {
+        case c if c.terminal.prompt != Prompt.Batch => c.terminal.setPrompt(Prompt.Running)
+        case _                                      =>
+      }
+    }
+    exec
   }
 
   private def addConsoleChannel(): Unit =
@@ -350,7 +357,11 @@ private[sbt] final class CommandExchange {
       case c                                    => c.prompt(event)
     }
   }
-  def unprompt(event: ConsoleUnpromptEvent): Unit = channels.foreach(_.unprompt(event))
+  def unprompt(event: ConsoleUnpromptEvent, force: Boolean): Unit = {
+    if (force)
+      channels.foreach(c => c.unprompt(event.copy(lastSource = Some(CommandSource(c.name)))))
+    else channels.foreach(_.unprompt(event))
+  }
 
   def logMessage(event: LogEvent): Unit = {
     channels.foreach {
@@ -408,6 +419,10 @@ private[sbt] final class CommandExchange {
         case _                  =>
       }
     case _ =>
+      channels.foreach {
+        case nc: NetworkChannel => nc.shutdown(true, Some(("", "")))
+        case c                  => c.shutdown(false)
+      }
   }
 
   private[sbt] def shutdown(name: String): Unit = {
@@ -444,7 +459,9 @@ private[sbt] final class CommandExchange {
           case mt: FastTrackTask =>
             mt.task match {
               case `attach` => mt.channel.prompt(ConsolePromptEvent(lastState.get))
-              case `Cancel` => Option(currentExecRef.get).foreach(cancel)
+              case `Cancel` =>
+                Option(currentExecRef.get).foreach(cancel)
+                mt.channel.prompt(ConsolePromptEvent(lastState.get))
               case t if t.startsWith(ContinuousCommands.stopWatch) =>
                 ContinuousCommands.stopWatchImpl(mt.channel.name)
                 mt.channel match {
@@ -454,6 +471,10 @@ private[sbt] final class CommandExchange {
                 commandQueue.add(Exec(t, None, None))
               case `TerminateAction` => exit(mt)
               case `Shutdown` =>
+                val console = Terminal.console
+                val needNewLine = console.prompt.isInstanceOf[Prompt.AskUser]
+                console.setPrompt(Prompt.Batch)
+                if (needNewLine) console.printStream.println()
                 channels.find(_.name == mt.channel.name) match {
                   case Some(c: NetworkChannel) => c.shutdown(false)
                   case _                       =>
