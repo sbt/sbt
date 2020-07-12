@@ -800,7 +800,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         .foreach(logger.debug(_))
       min match {
         case ShowOptions =>
-          ConsoleOut.systemOut.println("")
           rawLogger.info(options)
           Watch.Ignore
         case m => m
@@ -1259,7 +1258,7 @@ private[sbt] object ContinuousCommands {
     watchState(channel).beforeCommand(state)
   }
   private[this] val postWatchCommand = watchCommand(postWatch) { (channel, state) =>
-    StandardMain.exchange.channelForName(channel).foreach(_.terminal.setPrompt(Prompt.Watch))
+    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))), false)
     val ws = watchState(channel)
     watchStates.put(channel, ws.withPending(false))
     ws.afterCommand(state)
@@ -1269,7 +1268,7 @@ private[sbt] object ContinuousCommands {
     state
   }
   private[sbt] def stopWatchImpl(channelName: String): Unit = {
-    StandardMain.exchange.channelForName(channelName).foreach(_.terminal.setPrompt(Prompt.Running))
+    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channelName))), false)
     Option(watchStates.get(channelName)).foreach { ws =>
       ws.afterWatch()
       ws.callbacks.onExit()
