@@ -37,11 +37,10 @@ THE SOFTWARE.
 <script src="dependencies.dot.js"></script>
 
 <style>
-    svg {
-        border: 1px solid #999;
+    body {
+        margin: 0;
         overflow: hidden;
     }
-
     .node {
         white-space: nowrap;
     }
@@ -76,8 +75,6 @@ THE SOFTWARE.
 
 <body onLoad="initialize()">
 
-<h1>Dependencies</h1>
-
 <svg width=1280 height=1024>
     <g/>
 </svg>
@@ -91,6 +88,8 @@ function initialize() {
           inner.attr("transform", "translate(" + d3.event.translate + ")" +
                                       "scale(" + d3.event.scale + ")");
         });
+    svg.attr("width", window.innerWidth);
+
     svg.call(zoom);
     // Create and configure the renderer
     var render = dagreD3.render();
@@ -98,21 +97,11 @@ function initialize() {
       var g;
       {
         g = graphlibDot.read(inputGraph);
-        // Set margins, if not present
-        if (!g.graph().hasOwnProperty("marginx") &&
-            !g.graph().hasOwnProperty("marginy")) {
-          g.graph().marginx = 20;
-          g.graph().marginy = 20;
-          g.graph().rankdir = "LR";
-        }
-        g.graph().transition = function(selection) {
-          return selection.transition().duration(500);
-        };
-        // Render the graph into svg g
+        g.graph().rankdir = "LR";
         d3.select("svg g").call(render, g);
 
         // Center the graph
-        var initialScale = 0.75;
+        var initialScale = 0.10;
         zoom
           .translate([(svg.attr("width") - g.graph().width * initialScale) / 2, 20])
           .scale(initialScale)
