@@ -9,7 +9,7 @@ package sbt.internal
 
 import java.io.File
 import java.lang.reflect.InvocationTargetException
-import java.net.{ URL, URLClassLoader }
+import java.net.URL
 import java.util.concurrent.{ ExecutorService, Executors }
 import ClassLoaderClose.close
 
@@ -60,21 +60,20 @@ private[sbt] class XMainConfiguration {
   def run(moduleName: String, configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     val updatedConfiguration =
-      if (topLoader.getClass.getCanonicalName.contains("TestInterfaceLoader")) {
-        topLoader match {
-          case u: URLClassLoader =>
-            val urls = u.getURLs
-            var i = 0
-            while (i < urls.length && i >= 0) {
-              if (urls(i).toString.contains("jline")) i = -2
-              else i += 1
-            }
-            if (i < 0) configuration
-            else makeConfiguration(configuration)
-          case _ => configuration
+      try {
+        val method = topLoader.getClass.getMethod("getEarlyJars")
+        val jars = method.invoke(topLoader).asInstanceOf[Array[URL]]
+        var canReuseConfiguration = jars.length == 3
+        var j = 0
+        while (j < jars.length && canReuseConfiguration) {
+          val s = jars(j).toString
+          canReuseConfiguration =
+            s.contains("jline") || s.contains("test-interface") || s.contains("jansi")
+          j += 1
         }
-      } else {
-        makeConfiguration(configuration)
+        if (canReuseConfiguration) configuration else makeConfiguration(configuration)
+      } catch {
+        case _: NoSuchMethodException => makeConfiguration(configuration)
       }
     val loader = updatedConfiguration.provider.loader
     Thread.currentThread.setContextClassLoader(loader)
