@@ -12,14 +12,16 @@ object BuildServerConnection {
   final val bspVersion = "2.0.0-M5"
   final val languages = Vector("scala")
 
-  def details(sbtVersion: String, launcherClassPath: String): BspConnectionDetails = {
+  private[sbt] def details(sbtVersion: String): BspConnectionDetails = {
+    val javaHome = System.getProperty("java.home")
+    val classPath = System.getProperty("java.class.path")
     val argv =
       Vector(
-        "java",
+        s"$javaHome/bin/java",
         "-Xms100m",
         "-Xmx100m",
         "-classpath",
-        launcherClassPath,
+        classPath,
         "xsbt.boot.Boot",
         "-bsp"
       )

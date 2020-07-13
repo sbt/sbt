@@ -10,7 +10,6 @@ package internal
 package server
 
 import java.io.{ File, IOException }
-import java.lang.management.ManagementFactory
 import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
@@ -219,8 +218,7 @@ private[sbt] object Server {
       private[this] def writeBspConnectionDetails(): Unit = {
         import bsp.codec.JsonProtocol._
         val sbtVersion = appConfiguration.provider.id.version
-        val launcherClassPath = ManagementFactory.getRuntimeMXBean.getClassPath
-        val details = BuildServerConnection.details(sbtVersion, launcherClassPath)
+        val details = BuildServerConnection.details(sbtVersion)
         val json = Converter.toJson(details).get
         IO.write(bspConnectionFile, CompactPrinter(json), append = false)
       }

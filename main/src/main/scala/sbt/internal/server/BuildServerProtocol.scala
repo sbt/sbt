@@ -170,7 +170,6 @@ object BuildServerProtocol {
 
         case r if r.method == "buildTarget/compile" =>
           val param = Converter.fromJson[CompileParams](json(r)).get
-          callback.log.info(param.toString)
           val targets = param.targets.map(_.uri).mkString(" ")
           val command = Keys.bspBuildTargetCompile.key
           val _ = callback.appendExec(s"$command $targets", Some(r.id))
