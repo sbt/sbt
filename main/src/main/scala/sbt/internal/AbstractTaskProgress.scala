@@ -42,13 +42,21 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
   }
 
   override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = {
-    timings.get(task).stop()
+    timings.get(task) match {
+      case null =>
+      case t    => t.stop()
+    }
     activeTasksMap.remove(task)
 
     // we need this to infer anonymous task names
     result.left.foreach { t =>
       calledBy.put(t, task)
     }
+  }
+
+  protected def reset(): Unit = {
+    activeTasksMap.clear()
+    timings.clear()
   }
 
   private[this] val taskNameCache = TrieMap.empty[Task[_], String]

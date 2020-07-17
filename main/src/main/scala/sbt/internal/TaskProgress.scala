@@ -101,6 +101,7 @@ private[sbt] class TaskProgress private ()
   }
 
   override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
+    reset()
     // send an empty progress report to clear out the previous report
     appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
   }
@@ -132,8 +133,12 @@ private[sbt] class TaskProgress private ()
     StandardMain.exchange.updateProgress(event)
   private[this] def active: Vector[Task[_]] = activeTasks.toVector.filterNot(Def.isDummy)
   private[this] def activeExceedingThreshold: Vector[(Task[_], Long)] = active.flatMap { task =>
-    val elapsed = timings.get(task).currentElapsedMicros
-    if (elapsed.micros > threshold) Some[(Task[_], Long)](task -> elapsed) else None
+    timings.get(task) match {
+      case null => None
+      case t =>
+        val elapsed = t.currentElapsedMicros
+        if (elapsed.micros > threshold) Some[(Task[_], Long)](task -> elapsed) else None
+    }
   }
   private[this] def report(): Unit = {
     val currentTasks = activeExceedingThreshold
