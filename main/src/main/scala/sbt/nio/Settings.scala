@@ -289,10 +289,10 @@ private[sbt] object Settings {
         }
       val filter =
         (fileInputIncludeFilter in scope).value && !(fileInputExcludeFilter in scope).value
-      (Keys.allInputPathsAndAttributes in scope).value.flatMap {
+      (Keys.allInputPathsAndAttributes in scope).value.par.flatMap {
         case (path, a) if filter.accept(path, a) => stampFile(path)
         case _                                   => None
-      }
+      }.toVector
     })
   }
 
