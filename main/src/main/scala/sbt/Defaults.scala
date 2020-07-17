@@ -215,7 +215,7 @@ object Defaults extends BuildCommon {
         ) ++ serverHandlers.value :+ ServerHandler.fallback
       },
       timeWrappedStamper := Stamps
-        .timeWrapLibraryStamps(Stamps.uncachedStamps(fileConverter.value), fileConverter.value),
+        .timeWrapBinaryStamps(Stamps.uncachedStamps(fileConverter.value), fileConverter.value),
       reusableStamper := {
         val converter = fileConverter.value
         val unmanagedCache = unmanagedFileStampCache.value
@@ -1942,7 +1942,8 @@ object Defaults extends BuildCommon {
           compileOrder.value,
           None.toOptional: Optional[NioPath],
           Some(fileConverter.value).toOptional,
-          Some(reusableStamper.value).toOptional
+          Some(reusableStamper.value).toOptional,
+          None.toOptional: Optional[xsbti.compile.Output],
         )
       },
       compilerReporter := {
