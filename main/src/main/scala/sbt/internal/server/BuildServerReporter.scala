@@ -14,6 +14,7 @@ import sbt.internal.util.ManagedLogger
 import xsbti.compile.CompileAnalysis
 import xsbti.{ BasicVirtualFileRef, FileConverter, Problem, Severity, Position => XPosition }
 
+import java.net.URI
 import scala.collection.mutable
 
 /**
@@ -80,7 +81,7 @@ class BuildServerReporter(
     val files = analysis.readSourceInfos.getAllSourceInfos.keySet.asScala
     files foreach { file =>
       val params = PublishDiagnosticsParams(
-        TextDocumentIdentifier(converter.toPath(file).toUri),
+        TextDocumentIdentifier(new URI("file", "", converter.toPath(file).toString, null)),
         buildTarget,
         None,
         diagnostics = Vector(),
