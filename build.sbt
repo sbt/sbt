@@ -16,6 +16,13 @@ ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
 
+val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
+Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
+Global / excludeLint += componentID
+Global / excludeLint += whitesourceIgnoredScopes
+Global / excludeLint += scriptedBufferLog
+Global / excludeLint += checkPluginCross
+
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] =
@@ -103,8 +110,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   publishArtifact in Test := false,
-  fork in compile := true,
-  fork in run := true
+  fork in run := true,
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
