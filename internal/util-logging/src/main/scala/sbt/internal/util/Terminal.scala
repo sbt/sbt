@@ -785,10 +785,13 @@ object Terminal {
       system.setSize(new org.jline.terminal.Size(width, height))
 
     override def withRawInput[T](f: => T): T = term.synchronized {
-      val prev = JLine3.enterRawMode(system)
-      try f
-      catch { case _: InterruptedIOException => throw new InterruptedException } finally {
-        setAttributes(prev)
+      try {
+        term.init()
+        term.setEchoEnabled(false)
+        f
+      } catch { case _: InterruptedIOException => throw new InterruptedException } finally {
+        term.restore()
+        term.setEchoEnabled(true)
       }
     }
     override def isColorEnabled: Boolean =
