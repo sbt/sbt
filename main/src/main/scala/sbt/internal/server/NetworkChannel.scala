@@ -875,6 +875,14 @@ final class NetworkChannel(
         try queue.take
         catch { case _: InterruptedException => }
       }
+    override private[sbt] def getSizeImpl: (Int, Int) =
+      if (!closed.get) {
+        import sbt.protocol.codec.JsonProtocol._
+        val queue = VirtualTerminal.getTerminalSize(name, jsonRpcRequest)
+        val res = try queue.take
+        catch { case _: InterruptedException => TerminalGetSizeResponse(1, 1) }
+        (res.width, res.height)
+      } else (1, 1)
     override def setSize(width: Int, height: Int): Unit =
       if (!closed.get) {
         import sbt.protocol.codec.JsonProtocol._

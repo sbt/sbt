@@ -570,6 +570,9 @@ object Keys {
   val includeLintKeys = settingKey[Set[Def.KeyedInitialize[_]]]("Task keys that are included into lintUnused task")
   val lintUnusedKeysOnLoad = settingKey[Boolean]("Toggles whether or not to check for unused keys during startup")
 
+  val useScalaReplJLine = settingKey[Boolean]("Toggles whether or not to use sbt's forked jline in the scala repl. Enabling this flag may break the thin client in the scala console.").withRank(KeyRanks.Invisible)
+  val scalaInstanceTopLoader = settingKey[ClassLoader]("The top classloader for the scala instance").withRank(KeyRanks.Invisible)
+
   val stateStreams = AttributeKey[Streams]("stateStreams", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped
   val pluginData = taskKey[PluginData]("Information from the plugin build needed in the main build definition.").withRank(DTask)

@@ -49,6 +49,8 @@ private[sbt] object UITask {
     override def close(): Unit = {}
   }
   object Reader {
+    // Avoid filling the stack trace since it isn't helpful here
+    object interrupted extends InterruptedException
     def terminalReader(parser: Parser[_])(
         terminal: Terminal,
         state: State
@@ -59,9 +61,9 @@ private[sbt] object UITask {
           val clear = terminal.ansi(ClearPromptLine, "")
           @tailrec def impl(): Either[String, String] = {
             val thread = Thread.currentThread
-            if (thread.isInterrupted || closed.get) throw new InterruptedException
+            if (thread.isInterrupted || closed.get) throw interrupted
             val reader = LineReader.createReader(history(state), parser, terminal)
-            if (thread.isInterrupted || closed.get) throw new InterruptedException
+            if (thread.isInterrupted || closed.get) throw interrupted
             (try reader.readLine(clear + terminal.prompt.mkPrompt())
             finally reader.close) match {
               case None if terminal == Terminal.console && System.console == null =>

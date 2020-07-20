@@ -20,7 +20,9 @@ import sbt.protocol.Serialization.{
   attach,
   systemIn,
   terminalCapabilities,
+  terminalGetSize,
   terminalPropertiesQuery,
+  terminalSetSize,
 }
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.{
@@ -30,10 +32,13 @@ import sbt.protocol.{
   TerminalCapabilitiesQuery,
   TerminalCapabilitiesResponse,
   TerminalPropertiesResponse,
+  TerminalGetSizeQuery,
+  TerminalGetSizeResponse,
   TerminalSetAttributesCommand,
   TerminalSetSizeCommand,
 }
 import sbt.protocol.codec.JsonProtocol._
+import sbt.protocol.TerminalGetSizeResponse
 
 object VirtualTerminal {
   private[this] val pendingTerminalProperties =
@@ -46,6 +51,8 @@ object VirtualTerminal {
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
   private[this] val pendingTerminalSetSize =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
+  private[this] val pendingTerminalGetSize =
+    new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalGetSizeResponse]]
   private[sbt] def sendTerminalPropertiesQuery(
       channelName: String,
       jsonRpcRequest: (String, String, String) => Unit
@@ -111,9 +118,22 @@ object VirtualTerminal {
     val id = UUID.randomUUID.toString
     val queue = new ArrayBlockingQueue[Unit](1)
     pendingTerminalSetSize.put((channelName, id), queue)
-    jsonRpcRequest(id, terminalCapabilities, query)
+    jsonRpcRequest(id, terminalSetSize, query)
     queue
   }
+
+  private[sbt] def getTerminalSize(
+      channelName: String,
+      jsonRpcRequest: (String, String, TerminalGetSizeQuery) => Unit,
+  ): ArrayBlockingQueue[TerminalGetSizeResponse] = {
+    val id = UUID.randomUUID.toString
+    val query = TerminalGetSizeQuery()
+    val queue = new ArrayBlockingQueue[TerminalGetSizeResponse](1)
+    pendingTerminalGetSize.put((channelName, id), queue)
+    jsonRpcRequest(id, terminalGetSize, query)
+    queue
+  }
+
   val handler = ServerHandler { cb =>
     ServerIntent(requestHandler(cb), responseHandler(cb), notificationHandler(cb))
   }
@@ -165,6 +185,13 @@ object VirtualTerminal {
         pendingTerminalSetSize.remove((callback.name, r.id)) match {
           case null   =>
           case buffer => buffer.put(())
+        }
+      case r if pendingTerminalGetSize.get((callback.name, r.id)) != null =>
+        val response =
+          r.result.flatMap(Converter.fromJson[TerminalGetSizeResponse](_).toOption)
+        pendingTerminalGetSize.remove((callback.name, r.id)) match {
+          case null   =>
+          case buffer => buffer.put(response.getOrElse(TerminalGetSizeResponse(1, 1)))
         }
     }
   private val notificationHandler: Handler[JsonRpcNotificationMessage] =

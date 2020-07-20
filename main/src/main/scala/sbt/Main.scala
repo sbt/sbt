@@ -932,6 +932,9 @@ object BuiltinCommands {
     val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
     val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
     val s5 = setupGlobalFileTreeRepository(s4)
+    // This is a workaround for the console task in dotty which uses the classloader cache.
+    // We need to override the top loader in that case so that it gets the forked jline.
+    s5.extendedClassLoaderCache.setParent(Project.extract(s5).get(Keys.scalaInstanceTopLoader))
     CheckBuildSources.init(LintUnused.lintUnusedFunc(s5))
   }
 

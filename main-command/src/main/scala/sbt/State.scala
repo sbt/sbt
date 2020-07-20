@@ -389,6 +389,10 @@ object State {
       s get BasicKeys.classLoaderCache getOrElse (throw new IllegalStateException(
         "Tried to get classloader cache for uninitialized state."
       ))
+    private[sbt] def extendedClassLoaderCache: ClassLoaderCache =
+      s get BasicKeys.extendedClassLoaderCache getOrElse (throw new IllegalStateException(
+        "Tried to get extended classloader cache for uninitialized state."
+      ))
     def initializeClassLoaderCache: State = {
       s.get(BasicKeys.extendedClassLoaderCache).foreach(_.close())
       val cache = newClassLoaderCache

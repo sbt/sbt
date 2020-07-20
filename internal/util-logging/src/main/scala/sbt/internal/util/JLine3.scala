@@ -7,7 +7,7 @@
 
 package sbt.internal.util
 
-import java.io.{ EOFException, InputStream, OutputStream, PrintWriter }
+import java.io.{ InputStream, OutputStream, PrintWriter }
 import java.nio.charset.Charset
 import java.util.{ Arrays, EnumSet }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
@@ -22,7 +22,7 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
 
-private[util] object JLine3 {
+private[sbt] object JLine3 {
   private val capabilityMap = Capability
     .values()
     .map { c =>
@@ -109,18 +109,18 @@ private[util] object JLine3 {
             case _ => throw new ClosedException
           }
           if (res == 4 && term.prompt.render().endsWith(term.prompt.mkPrompt()))
-            throw new EOFException
+            throw new ClosedException
           res
         }
       }
       override val output: OutputStream = new OutputStream {
         override def write(b: Int): Unit = write(Array[Byte](b.toByte))
         override def write(b: Array[Byte]): Unit = if (!closed.get) term.withPrintStream { ps =>
+          ps.write(b)
           term.prompt match {
             case a: Prompt.AskUser => a.write(b)
             case _                 =>
           }
-          ps.write(b)
         }
         override def write(b: Array[Byte], offset: Int, len: Int) =
           write(Arrays.copyOfRange(b, offset, offset + len))
