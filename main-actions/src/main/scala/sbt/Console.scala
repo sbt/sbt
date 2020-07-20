@@ -66,6 +66,7 @@ final class Console(compiler: AnalyzingCompiler) {
     val previous = sys.props.get("scala.color").getOrElse("auto")
     try {
       sys.props("scala.color") = if (terminal.isColorEnabled) "true" else "false"
+      sys.props("scala.jline.terminal.provider") = "sbt.internal.util.JLine3$"
       terminal.withRawOutput {
         terminal.withRawInput(Run.executeTrapExit(console0, log))
       }

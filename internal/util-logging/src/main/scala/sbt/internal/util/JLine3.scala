@@ -22,6 +22,7 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 private[util] object JLine3 {
+  def getJLine3Terminal: JTerminal = apply(Terminal.get)
   private val capabilityMap = Capability
     .values()
     .map { c =>
