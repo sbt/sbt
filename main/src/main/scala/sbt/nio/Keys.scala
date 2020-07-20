@@ -181,12 +181,6 @@ object Keys {
   private[sbt] val dependencyClasspathFiles =
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
   private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)
-  private[sbt] val compileSourceFileInputs =
-    taskKey[Map[String, Seq[(Path, FileStamp)]]]("Source file stamps stored by scala version")
-      .withRank(Invisible)
-  private[sbt] val compileBinaryFileInputs =
-    taskKey[Map[String, Seq[(Path, FileStamp)]]]("Source file stamps stored by scala version")
-      .withRank(Invisible)
 
   private[this] val hasCheckedMetaBuildMsg =
     "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +
