@@ -227,8 +227,8 @@ object Keys {
   val fileConverter = settingKey[FileConverter]("The file converter used to convert between Path and VirtualFile")
   val allowMachinePath = settingKey[Boolean]("Allow machine-specific paths during conversion.")
   val rootPaths = settingKey[Map[String, NioPath]]("The root paths used to abstract machine-specific paths.")
-  private[sbt] val uncachedStamper = settingKey[ReadStamps]("The stamper to create timestamp or hash.")
-  private[sbt] val reusableStamper = settingKey[ReadStamps]("The stamper can be reused across subprojects and sessions.")
+  private[sbt] val timeWrappedStamper = settingKey[ReadStamps]("The stamper to create timestamp or hash.")
+  private[sbt] val reusableStamper = taskKey[ReadStamps]("The stamper can be reused across subprojects and sessions.")
 
   // package keys
   val packageBin = taskKey[File]("Produces a main artifact, such as a binary jar.").withRank(ATask)
