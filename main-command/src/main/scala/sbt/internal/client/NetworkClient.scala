@@ -41,8 +41,10 @@ import Serialization.{
   cancelRequest,
   promptChannel,
   systemIn,
+  systemErr,
   systemOut,
   systemOutFlush,
+  systemErrFlush,
   terminalCapabilities,
   terminalCapabilitiesResponse,
   terminalPropertiesQuery,
@@ -527,8 +529,18 @@ class NetworkClient(
             case _ =>
           }
           Vector.empty
+        case (`systemErr`, Some(json)) =>
+          Converter.fromJson[Array[Byte]](json) match {
+            case Success(bytes) if bytes.nonEmpty && attached.get =>
+              synchronized(errorStream.write(bytes))
+            case _ =>
+          }
+          Vector.empty
         case (`systemOutFlush`, _) =>
           synchronized(printStream.flush())
+          Vector.empty
+        case (`systemErrFlush`, _) =>
+          synchronized(errorStream.flush())
           Vector.empty
         case (`promptChannel`, _) =>
           batchMode.set(false)

@@ -709,7 +709,24 @@ final class NetworkChannel(
       write(java.util.Arrays.copyOfRange(b, off, off + len))
     }
   }
-  private class NetworkTerminal extends TerminalImpl(inputStream, outputStream, name) {
+  private[this] lazy val errorStream: OutputStream = new OutputStream {
+    private[this] val buffer = new LinkedBlockingQueue[Byte]
+    override def write(b: Int): Unit = buffer.synchronized {
+      buffer.put(b.toByte)
+    }
+    override def flush(): Unit = {
+      val list = new java.util.ArrayList[Byte]
+      buffer.synchronized(buffer.drainTo(list))
+      if (!list.isEmpty) jsonRpcNotify(Serialization.systemErr, list.asScala.toSeq)
+    }
+    override def write(b: Array[Byte]): Unit = buffer.synchronized {
+      b.foreach(buffer.put)
+    }
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+      write(java.util.Arrays.copyOfRange(b, off, off + len))
+    }
+  }
+  private class NetworkTerminal extends TerminalImpl(inputStream, outputStream, errorStream, name) {
     private[this] val pending = new AtomicBoolean(false)
     private[this] val closed = new AtomicBoolean(false)
     private[this] val properties = new AtomicReference[TerminalPropertiesResponse]
