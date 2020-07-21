@@ -90,7 +90,7 @@ private[sbt] final class ProgressState(
       hasProgress: Boolean
   ): Unit = {
     addBytes(terminal, bytes)
-    if (hasProgress && terminal.prompt != Prompt.Loading) {
+    if (hasProgress) {
       terminal.prompt match {
         case a: Prompt.AskUser if a.render.nonEmpty =>
           printStream.print(System.lineSeparator + ClearScreenAfterCursor + CursorLeft1000)

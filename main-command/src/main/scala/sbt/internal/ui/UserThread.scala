@@ -14,7 +14,7 @@ import java.util.concurrent.Executors
 
 import sbt.State
 import sbt.internal.util.{ ConsoleAppender, ProgressEvent, ProgressState, Util }
-import sbt.internal.util.Prompt.{ AskUser, Loading, Running }
+import sbt.internal.util.Prompt.{ AskUser, Running }
 
 private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable {
   private[this] val uiThread = new AtomicReference[(UITask, Thread)]
@@ -70,9 +70,8 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
     }
     val state = consolePromptEvent.state
     terminal.prompt match {
-      case Loading | Running =>
-        terminal.setPrompt(AskUser(() => UITask.shellPrompt(terminal, state)))
-      case _ =>
+      case Running => terminal.setPrompt(AskUser(() => UITask.shellPrompt(terminal, state)))
+      case _       =>
     }
     onProgressEvent(ProgressEvent("Info", Vector(), None, None, None))
     reset(state)

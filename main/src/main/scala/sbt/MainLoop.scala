@@ -198,9 +198,9 @@ object MainLoop {
               state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
             } else state
         }
-        exchange.setState(progressState)
-        exchange.setExec(Some(exec))
-        exchange.unprompt(ConsoleUnpromptEvent(exec.source), force = false)
+        StandardMain.exchange.setState(progressState)
+        StandardMain.exchange.setExec(Some(exec))
+        StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
         val newState = Command.process(exec.commandLine, progressState)
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
             !exec.commandLine.startsWith(networkExecPrefix)) {
