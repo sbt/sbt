@@ -1880,16 +1880,13 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
-      val prev = i.previousResult
-      prev.analysis.toOption map { analysis =>
-        i.setup.reporter match {
-          case r: BuildServerReporter =>
-            r.resetPrevious(analysis)
-          case _ => ()
-        }
-      }
       incCompiler.compile(i, s.log)
-    } finally x.close() // workaround for #937
+    } finally {
+      i.setup.reporter match {
+        case r: BuildServerReporter => r.sendFinalReport()
+      }
+      x.close() // workaround for #937
+    }
   }
   def compileIncSetupTask = Def.task {
     val converter = fileConverter.value
@@ -1949,7 +1946,7 @@ object Defaults extends BuildCommon {
           maxErrors.value,
           streams.value.log,
           foldMappers(sourcePositionMappers.value),
-          fileConverter.value
+          sources.value
         )
       },
       compileInputs := {
