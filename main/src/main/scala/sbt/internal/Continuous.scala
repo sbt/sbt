@@ -1254,11 +1254,11 @@ private[sbt] object ContinuousCommands {
   }
 
   private[this] val preWatchCommand = watchCommand(preWatch) { (channel, state) =>
-    StandardMain.exchange.channelForName(channel).foreach(_.terminal.setPrompt(Prompt.Running))
+    StandardMain.exchange.channelForName(channel).foreach(_.terminal.setPrompt(Prompt.Watch))
     watchState(channel).beforeCommand(state)
   }
   private[this] val postWatchCommand = watchCommand(postWatch) { (channel, state) =>
-    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))), false)
+    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
     val ws = watchState(channel)
     watchStates.put(channel, ws.withPending(false))
     ws.afterCommand(state)
@@ -1268,7 +1268,7 @@ private[sbt] object ContinuousCommands {
     state
   }
   private[sbt] def stopWatchImpl(channelName: String): Unit = {
-    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channelName))), false)
+    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channelName))))
     Option(watchStates.get(channelName)).foreach { ws =>
       ws.afterWatch()
       ws.callbacks.onExit()

@@ -73,7 +73,8 @@ private[sbt] final class TaskTraceEvent
       ()
     } finally {
       trace.close()
-      console.println(s"wrote $outFile")
+      try console.println(s"wrote $outFile")
+      catch { case _: java.nio.channels.ClosedChannelException => }
     }
   }
 }
