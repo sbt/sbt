@@ -454,7 +454,12 @@ object Defaults extends BuildCommon {
   def paths: Seq[Setting[_]] = Seq(
     baseDirectory := thisProject.value.base,
     target := baseDirectory.value / "target",
-    historyPath := (historyPath or target(t => Option(t / ".history"))).value,
+    // Use a different history path for jline3 because the jline2 format is
+    // incompatible. By sbt 1.4.0, we should consider revering this to t / ".history"
+    // and possibly rewriting the jline2 history in a jline3 compatible format if the
+    // history file is incompatible. For now, just use a different file to facilitate
+    // going back and forth between 1.3.x and 1.4.x.
+    historyPath := (historyPath or target(t => Option(t / ".history3"))).value,
     sourceDirectory := baseDirectory.value / "src",
     sourceManaged := crossTarget.value / "src_managed",
     resourceManaged := crossTarget.value / "resource_managed",

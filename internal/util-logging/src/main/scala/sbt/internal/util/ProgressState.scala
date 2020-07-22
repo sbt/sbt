@@ -80,8 +80,8 @@ private[sbt] final class ProgressState(
   private[util] def printPrompt(terminal: Terminal, printStream: PrintStream): Unit =
     if (terminal.prompt != Prompt.Running && terminal.prompt != Prompt.Batch) {
       val prefix = if (terminal.isAnsiSupported) s"$DeleteLine$CursorLeft1000" else ""
-      val pmpt = prefix.getBytes ++ terminal.prompt.render().getBytes
-      pmpt.foreach(b => printStream.write(b & 0xFF))
+      printStream.write(prefix.getBytes ++ terminal.prompt.render().getBytes)
+      printStream.flush()
     }
   private[util] def write(
       terminal: Terminal,
@@ -90,10 +90,10 @@ private[sbt] final class ProgressState(
       hasProgress: Boolean
   ): Unit = {
     addBytes(terminal, bytes)
-    if (hasProgress && terminal.prompt != Prompt.Loading) {
+    if (hasProgress) {
       terminal.prompt match {
         case a: Prompt.AskUser if a.render.nonEmpty =>
-          printStream.print(System.lineSeparator + ClearScreenAfterCursor + CursorLeft1000)
+          printStream.print(DeleteLine + ClearScreenAfterCursor + CursorLeft1000)
           printStream.flush()
         case _ =>
       }

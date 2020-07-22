@@ -357,11 +357,7 @@ private[sbt] final class CommandExchange {
       case c                                    => c.prompt(event)
     }
   }
-  def unprompt(event: ConsoleUnpromptEvent, force: Boolean): Unit = {
-    if (force)
-      channels.foreach(c => c.unprompt(event.copy(lastSource = Some(CommandSource(c.name)))))
-    else channels.foreach(_.unprompt(event))
-  }
+  def unprompt(event: ConsoleUnpromptEvent): Unit = channels.foreach(_.unprompt(event))
 
   def logMessage(event: LogEvent): Unit = {
     channels.foreach {

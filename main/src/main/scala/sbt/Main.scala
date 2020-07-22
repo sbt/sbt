@@ -102,7 +102,10 @@ private[sbt] object xMain {
         }
       }
     } finally {
+      // Clear any stray progress lines
       ShutdownHooks.close()
+      System.out.print(ConsoleAppender.ClearScreenAfterCursor)
+      System.out.flush()
     }
   }
 
@@ -913,8 +916,6 @@ object BuiltinCommands {
   }
 
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
-    StandardMain.exchange.unprompt(ConsoleUnpromptEvent(None), force = true)
-    StandardMain.exchange.channels.foreach(_.terminal.setPrompt(Prompt.Loading))
     welcomeBanner(s0)
     checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
@@ -935,9 +936,7 @@ object BuiltinCommands {
     SessionSettings.checkSession(session, s2)
     val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
     val s4 = setupGlobalFileTreeRepository(s3)
-    val s5 = CheckBuildSources.init(LintUnused.lintUnusedFunc(s4))
-    StandardMain.exchange.prompt(ConsolePromptEvent(s5))
-    s5
+    CheckBuildSources.init(LintUnused.lintUnusedFunc(s4))
   }
 
   private val setupGlobalFileTreeRepository: State => State = { state =>
@@ -981,11 +980,9 @@ object BuiltinCommands {
       val exchange = StandardMain.exchange
       if (exchange.channels.exists(ContinuousCommands.isInWatch)) {
         val s1 = exchange.run(s0)
-        def needPrompt(c: CommandChannel) =
-          ContinuousCommands.isInWatch(c) && !ContinuousCommands.isPending(c)
         exchange.channels.foreach {
-          case c if needPrompt(c) => c.prompt(ConsolePromptEvent(s1))
-          case _                  =>
+          case c if ContinuousCommands.isPending(c) =>
+          case c                                    => c.prompt(ConsolePromptEvent(s1))
         }
         val exec: Exec = getExec(s1, Duration.Inf)
         val remaining: List[Exec] =
