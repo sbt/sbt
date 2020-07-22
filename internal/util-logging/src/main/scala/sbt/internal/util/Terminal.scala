@@ -61,6 +61,12 @@ trait Terminal extends AutoCloseable {
   def outputStream: OutputStream
 
   /**
+   * Gets the error stream for this Terminal.
+   * @return the error stream.
+   */
+  def errorStream: OutputStream
+
+  /**
    * Returns true if the terminal supports ansi characters.
    *
    * @return true if the terminal supports ansi escape codes.
@@ -221,7 +227,7 @@ object Terminal {
     if (System.console == null) {
       originalOut.close()
       originalIn.close()
-      System.err.close()
+      originalErr.close()
     }
   }
 
@@ -316,6 +322,7 @@ object Terminal {
     override def lineCount(line: String): Int = t.lineCount(line)
     override def inputStream: InputStream = t.inputStream
     override def outputStream: OutputStream = t.outputStream
+    override def errorStream: OutputStream = t.errorStream
     override def isAnsiSupported: Boolean = t.isAnsiSupported
     override def isColorEnabled: Boolean = t.isColorEnabled
     override def isEchoEnabled: Boolean = t.isEchoEnabled
@@ -359,14 +366,17 @@ object Terminal {
 
   private[sbt] def withOut[T](out: PrintStream)(f: => T): T = {
     val originalOut = System.out
+    val originalErr = System.err
     val originalProxyOut = ConsoleOut.getGlobalProxy
     try {
       ConsoleOut.setGlobalProxy(ConsoleOut.printStreamOut(out))
       System.setOut(out)
-      scala.Console.withOut(out)(f)
+      System.setErr(out)
+      scala.Console.withErr(out)(scala.Console.withOut(out)(f))
     } finally {
       ConsoleOut.setGlobalProxy(originalProxyOut)
       System.setOut(originalOut)
+      System.setErr(originalErr)
     }
   }
 
@@ -379,6 +389,7 @@ object Terminal {
     }
   }
   private[this] val originalOut = new LinePrintStream(System.out)
+  private[this] val originalErr = System.err
   private[this] val originalIn = System.in
   private[sbt] class WriteableInputStream(in: InputStream, name: String)
       extends InputStream
@@ -476,9 +487,11 @@ object Terminal {
   private[this] def withOut[T](f: => T): T = {
     try {
       System.setOut(proxyPrintStream)
-      scala.Console.withOut(proxyOutputStream)(f)
+      System.setErr(proxyErrorStream)
+      scala.Console.withErr(proxyErrorStream)(scala.Console.withOut(proxyOutputStream)(f))
     } finally {
       System.setOut(originalOut)
+      System.setErr(originalErr)
     }
   }
   private[this] def withIn[T](f: => T): T =
@@ -602,6 +615,15 @@ object Terminal {
   private[this] val proxyPrintStream = new LinePrintStream(proxyOutputStream) {
     override def toString: String = s"proxyPrintStream($proxyOutputStream)"
   }
+  private[this] object proxyErrorOutputStream extends OutputStream {
+    private[this] def os: OutputStream = activeTerminal.get().errorStream
+    def write(byte: Int): Unit = os.write(byte)
+    override def write(bytes: Array[Byte]): Unit = write(bytes, 0, bytes.length)
+    override def write(bytes: Array[Byte], offset: Int, len: Int): Unit =
+      os.write(bytes, offset, len)
+    override def flush(): Unit = os.flush()
+  }
+  private[this] val proxyErrorStream = new PrintStream(proxyErrorOutputStream, true)
   private[this] lazy val isWindows =
     System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
   private[this] object WrappedSystemIn extends InputStream {
@@ -758,7 +780,7 @@ object Terminal {
       val term: jline.Terminal with jline.Terminal2,
       in: InputStream,
       out: OutputStream
-  ) extends TerminalImpl(in, out, "console0") {
+  ) extends TerminalImpl(in, out, originalErr, "console0") {
     private[util] lazy val system = JLine3.system
     private[this] def isCI = sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")
     override def getWidth: Int = system.getSize.getColumns
@@ -815,6 +837,7 @@ object Terminal {
   private[sbt] abstract class TerminalImpl private[sbt] (
       val in: InputStream,
       val out: OutputStream,
+      override val errorStream: OutputStream,
       override private[sbt] val name: String
   ) extends Terminal {
     private[this] val rawMode = new AtomicBoolean(false)
@@ -907,6 +930,7 @@ object Terminal {
     override def isSuccessEnabled: Boolean = false
     override def isSupershellEnabled: Boolean = false
     override def outputStream: java.io.OutputStream = _ => {}
+    override def errorStream: java.io.OutputStream = _ => {}
     override private[sbt] def getAttributes: Map[String, String] = Map.empty
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit = {}
     override private[sbt] def setSize(width: Int, height: Int): Unit = {}
