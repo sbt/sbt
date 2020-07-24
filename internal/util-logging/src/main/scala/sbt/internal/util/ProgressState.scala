@@ -77,12 +77,12 @@ private[sbt] final class ProgressState(
     }
   }
 
-  private[util] def printPrompt(terminal: Terminal, printStream: PrintStream): Unit =
+  private[util] def getPrompt(terminal: Terminal): Array[Byte] = {
     if (terminal.prompt != Prompt.Running && terminal.prompt != Prompt.Batch) {
       val prefix = if (terminal.isAnsiSupported) s"$DeleteLine$CursorLeft1000" else ""
-      printStream.write(prefix.getBytes ++ terminal.prompt.render().getBytes)
-      printStream.flush()
-    }
+      prefix.getBytes ++ terminal.prompt.render().getBytes("UTF-8")
+    } else Array.empty
+  }
   private[util] def write(
       terminal: Terminal,
       bytes: Array[Byte],
@@ -91,15 +91,14 @@ private[sbt] final class ProgressState(
   ): Unit = {
     addBytes(terminal, bytes)
     if (hasProgress) {
+      val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
         case a: Prompt.AskUser if a.render.nonEmpty =>
-          printStream.print(DeleteLine + ClearScreenAfterCursor + CursorLeft1000)
-          printStream.flush()
+          toWrite ++= (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
         case _ =>
       }
-      printStream.write(bytes)
-      printStream.write(ClearScreenAfterCursor.getBytes("UTF-8"))
-      printStream.flush()
+      toWrite ++= bytes
+      toWrite ++= ClearScreenAfterCursor.getBytes("UTF-8")
       if (bytes.endsWith(lineSeparatorBytes)) {
         if (progressLines.get.nonEmpty) {
           val lastLine = terminal.prompt match {
@@ -107,10 +106,12 @@ private[sbt] final class ProgressState(
             case _                 => currentLine.getOrElse("")
           }
           val lines = printProgress(terminal, lastLine)
-          printStream.print(ClearScreenAfterCursor + lines)
+          toWrite ++= (ClearScreenAfterCursor + lines).getBytes("UTF-8")
         }
       }
-      printPrompt(terminal, printStream)
+      toWrite ++= getPrompt(terminal)
+      printStream.write(toWrite.toArray)
+      printStream.flush()
     } else printStream.write(bytes)
   }
 
@@ -177,8 +178,9 @@ private[sbt] object ProgressState {
           val lastLine =
             if (isAskUser) terminal.prompt.render() else terminal.getLastLine.getOrElse("")
           state.padding.set(math.max(0, prevSize - currentLength))
-          state.printPrompt(terminal, ps)
-          ps.print(state.printProgress(terminal, lastLine))
+          val toWrite =
+            state.getPrompt(terminal) ++ state.printProgress(terminal, lastLine).getBytes("UTF-8")
+          ps.write(toWrite)
           ps.flush()
         }
       } else if (state.progressLines.get.nonEmpty) {
