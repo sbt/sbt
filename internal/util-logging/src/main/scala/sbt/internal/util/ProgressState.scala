@@ -158,7 +158,7 @@ private[sbt] object ProgressState {
       if (!pe.skipIfActive.getOrElse(false) || (!isRunning && !isBatch)) {
         terminal.withPrintStream { ps =>
           val commandFromThisTerminal = pe.channelName.fold(true)(_ == terminal.name)
-          val info = if ((isRunning || isBatch || noPrompt) && commandFromThisTerminal) {
+          val info = if (commandFromThisTerminal) {
             pe.items.map { item =>
               val elapsed = item.elapsedMicros / 1000000L
               s"  | => ${item.name} ${elapsed}s"

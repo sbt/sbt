@@ -1231,7 +1231,7 @@ private[sbt] object ContinuousCommands {
       state: State
   ) extends Thread(s"sbt-${channel.name}-watch-ui-thread")
       with UITask {
-    override private[sbt] def reader: UITask.Reader = () => {
+    override private[sbt] lazy val reader: UITask.Reader = () => {
       def stop = Right(s"${ContinuousCommands.stopWatch} ${channel.name}")
       val exitAction: Watch.Action = {
         Watch.apply(

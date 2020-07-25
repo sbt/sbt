@@ -110,7 +110,7 @@ final class NetworkChannel(
   }
   private[sbt] def write(byte: Byte) = inputBuffer.add(byte)
 
-  private[this] val terminalHolder = new AtomicReference(Terminal.NullTerminal)
+  private[this] val terminalHolder = new AtomicReference[Terminal](Terminal.NullTerminal)
   override private[sbt] def terminal: Terminal = terminalHolder.get
   override val userThread: UserThread = new UserThread(this)
 
@@ -152,8 +152,8 @@ final class NetworkChannel(
     if (interactive.get || ContinuousCommands.isInWatch(state, this)) mkUIThreadImpl(state, command)
     else
       new UITask {
-        override private[sbt] def channel = NetworkChannel.this
-        override def reader: UITask.Reader = () => {
+        override private[sbt] val channel = NetworkChannel.this
+        override private[sbt] lazy val reader: UITask.Reader = () => {
           try {
             this.synchronized(this.wait)
             Left(TerminateAction)
@@ -650,6 +650,8 @@ final class NetworkChannel(
     }
     override def available(): Int = inputBuffer.size
   }
+  private[this] lazy val writeableInputStream: Terminal.WriteableInputStream =
+    new Terminal.WriteableInputStream(inputStream, name)
   import sjsonnew.BasicJsonProtocol._
 
   import scala.collection.JavaConverters._
@@ -726,7 +728,8 @@ final class NetworkChannel(
       write(java.util.Arrays.copyOfRange(b, off, off + len))
     }
   }
-  private class NetworkTerminal extends TerminalImpl(inputStream, outputStream, errorStream, name) {
+  private class NetworkTerminal
+      extends TerminalImpl(writeableInputStream, outputStream, errorStream, name) {
     private[this] val pending = new AtomicBoolean(false)
     private[this] val closed = new AtomicBoolean(false)
     private[this] val properties = new AtomicReference[TerminalPropertiesResponse]

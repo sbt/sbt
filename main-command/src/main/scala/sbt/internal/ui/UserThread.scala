@@ -14,7 +14,7 @@ import java.util.concurrent.Executors
 
 import sbt.State
 import sbt.internal.util.{ ConsoleAppender, ProgressEvent, ProgressState, Util }
-import sbt.internal.util.Prompt.{ AskUser, Running }
+import sbt.internal.util.Prompt
 
 private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable {
   private[this] val uiThread = new AtomicReference[(UITask, Thread)]
@@ -31,9 +31,15 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
     uiThread.synchronized {
       val task = channel.makeUIThread(state)
       def submit(): Thread = {
-        val thread = new Thread(() => {
-          task.run()
-          uiThread.set(null)
+        def close(): Unit = {
+          uiThread.get match {
+            case (_, t) if t == thread => uiThread.set(null)
+            case _                     =>
+          }
+        }
+        lazy val thread = new Thread(() => {
+          try task.run()
+          finally close()
         }, s"sbt-$name-ui-thread")
         thread.setDaemon(true)
         thread.start()
@@ -60,6 +66,13 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
       case (t, thread) =>
         t.close()
         Util.ignoreResult(thread.interrupt())
+        try thread.join(1000)
+        catch { case _: InterruptedException => }
+
+        // This join should always work, but if it doesn't log an error because
+        // it can cause problems if the thread isn't joined
+        if (thread.isAlive) System.err.println(s"Unable to join thread $thread")
+        ()
     }
   }
 
@@ -70,8 +83,9 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
     }
     val state = consolePromptEvent.state
     terminal.prompt match {
-      case Running => terminal.setPrompt(AskUser(() => UITask.shellPrompt(terminal, state)))
-      case _       =>
+      case Prompt.Running | Prompt.Pending =>
+        terminal.setPrompt(Prompt.AskUser(() => UITask.shellPrompt(terminal, state)))
+      case _ =>
     }
     onProgressEvent(ProgressEvent("Info", Vector(), None, None, None))
     reset(state)
@@ -80,6 +94,7 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
   private[sbt] def onConsoleUnpromptEvent(
       consoleUnpromptEvent: ConsoleUnpromptEvent
   ): Unit = {
+    terminal.setPrompt(Prompt.Pending)
     if (consoleUnpromptEvent.lastSource.fold(true)(_.channelName != name)) {
       terminal.progressState.reset()
     } else stopThread()
