@@ -955,12 +955,7 @@ object BuiltinCommands {
 
   def registerCompilerCache(s: State): State = {
     s.get(Keys.stateCompilerCache).foreach(_.clear())
-
-    val maxCompilers: Int = SysProp.residentLimit
-    val cache =
-      if (maxCompilers <= 0) CompilerCache.fresh
-      else CompilerCache.createCacheFor(maxCompilers)
-    s.put(Keys.stateCompilerCache, cache)
+    s.put(Keys.stateCompilerCache, CompilerCache.fresh)
   }
 
   def clearCaches: Command = {

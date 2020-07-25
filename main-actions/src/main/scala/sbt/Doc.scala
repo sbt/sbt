@@ -14,6 +14,7 @@ import sbt.util.CacheStoreFactory
 import sbt.util.Logger
 import xsbti.Reporter
 import xsbti.compile.JavaTools
+import sbt.internal.inc.MappedFileConverter
 
 object Doc {
   import RawCompileLike._
@@ -44,6 +45,7 @@ object Doc {
             classpath map { x =>
               PlainVirtualFile(x.toPath)
             },
+            MappedFileConverter.empty,
             outputDirectory.toPath,
             options,
             maxErrors,

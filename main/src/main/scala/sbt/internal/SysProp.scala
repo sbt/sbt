@@ -84,6 +84,7 @@ object SysProp {
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
 
+  @deprecated("Resident compilation is no longer supported", "1.4.0")
   def residentLimit: Int = int("sbt.resident.limit", 0)
 
   /**
