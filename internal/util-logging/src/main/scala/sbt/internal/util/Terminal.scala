@@ -467,7 +467,7 @@ object Terminal {
     try {
       System.setOut(proxyPrintStream)
       System.setErr(proxyErrorStream)
-      scala.Console.withErr(proxyErrorStream)(scala.Console.withOut(proxyOutputStream)(f))
+      scala.Console.withErr(proxyErrorStream)(scala.Console.withOut(proxyPrintStream)(f))
     } finally {
       System.setOut(originalOut)
       System.setErr(originalErr)

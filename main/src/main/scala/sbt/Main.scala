@@ -15,7 +15,7 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ Shell, Shutdown, TemplateCommand, networkExecPrefix }
+import sbt.BasicCommandStrings.{ Shell, Shutdown, TemplateCommand }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
@@ -999,13 +999,7 @@ object BuiltinCommands {
   }
 
   private def getExec(state: State, interval: Duration): Exec = {
-    val exec: Exec =
-      StandardMain.exchange.blockUntilNextExec(interval, Some(state), state.globalLogging.full)
-    if (exec.source.fold(true)(_.channelName != ConsoleChannel.defaultName) &&
-        !exec.commandLine.startsWith(networkExecPrefix)) {
-      Terminal.consoleLog(s"received remote command: ${exec.commandLine}")
-    }
-    exec
+    StandardMain.exchange.blockUntilNextExec(interval, Some(state), state.globalLogging.full)
   }
 
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>

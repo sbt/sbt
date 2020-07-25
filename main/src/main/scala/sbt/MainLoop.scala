@@ -16,7 +16,7 @@ import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal }
-import sbt.internal.ShutdownHooks
+import sbt.internal.{ ShutdownHooks, TaskProgress }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.{ Logger, LoggerContext }
@@ -150,9 +150,13 @@ object MainLoop {
 
   def next(state: State): State = {
     val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
+    val taskProgress = new TaskProgress
     try {
       ErrorHandling.wideConvert {
-        state.put(Keys.loggerContext, context).process(processCommand)
+        state
+          .put(Keys.loggerContext, context)
+          .put(Keys.taskProgress, taskProgress)
+          .process(processCommand)
       } match {
         case Right(s)                  => s.remove(Keys.loggerContext)
         case Left(t: xsbti.FullReload) => throw t
@@ -186,7 +190,10 @@ object MainLoop {
         state.log.error(msg)
         state.log.error("\n")
         state.handleError(oom)
-    } finally context.close()
+    } finally {
+      context.close()
+      taskProgress.close()
+    }
   }
 
   /** This is the main function State transfer function of the sbt command processing. */
@@ -217,6 +224,7 @@ object MainLoop {
             () => {
               c.terminal.setPrompt(prevPrompt)
               Terminal.set(prevTerminal)
+              c.terminal.setPrompt(prevPrompt)
               c.terminal.flush()
             }
           case _ => () => ()

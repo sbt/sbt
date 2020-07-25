@@ -31,7 +31,6 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
       override def log(level: Level.Value, message: => String): Unit =
         ConsoleOut.systemOut.println(message)
     })
-  import AbstractTaskExecuteProgress.Timer
   private[this] var start = 0L
   private[this] val threshold = SysProp.taskTimingsThreshold
   private[this] val omitPaths = SysProp.taskTimingsOmitPaths
@@ -61,15 +60,12 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
   private[this] def report() = {
     val total = divide(System.nanoTime - start)
     logger.info(s"Total time: $total $unit")
-    import collection.JavaConverters._
-    def sumTimes(in: Seq[(Task[_], Timer)]) = in.map(_._2.durationNanos).sum
-    val timingsByName = timings.asScala.toSeq.groupBy { case (t, _) => taskName(t) } mapValues (sumTimes)
     val times = timingsByName.toSeq
-      .sortBy(_._2)
+      .sortBy(_._2.get)
       .reverse
       .map {
         case (name, time) =>
-          (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time))
+          (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
       }
       .filter { _._2 > threshold }
     if (times.size > 0) {
