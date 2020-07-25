@@ -882,8 +882,9 @@ object Terminal {
       }
       override def flush(): Unit = combinedOutputStream.flush()
     }
-    private def doWrite(bytes: Array[Byte]): Unit =
-      progressState.write(TerminalImpl.this, bytes, rawPrintStream, hasProgress.get && !rawMode.get)
+    private def doWrite(bytes: Array[Byte]): Unit = withPrintStream { ps =>
+      progressState.write(TerminalImpl.this, bytes, ps, hasProgress.get && !rawMode.get)
+    }
     override private[sbt] val printStream: PrintStream = new LinePrintStream(outputStream)
     override def inputStream: InputStream = writeableInputStream
 
