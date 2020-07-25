@@ -11,7 +11,7 @@ import java.io.{ File, IOException }
 import java.nio.file.{ Path, Paths }
 import java.util.concurrent.ConcurrentHashMap
 
-import sbt.internal.inc.{ EmptyStamp, Stamper, LastModified => IncLastModified }
+import sbt.internal.inc.{ EmptyStamp, Stamper, Hash => IncHash, LastModified => IncLastModified }
 import sbt.io.IO
 import sbt.nio.file.FileAttributes
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
@@ -65,6 +65,11 @@ object FileStamp {
       case FileStamper.Hash         => hash(path)
       case FileStamper.LastModified => lastModified(path)
     }
+  private[sbt] def apply(stamp: XStamp): Option[FileStamp] = stamp match {
+    case lm: IncLastModified => Some(new LastModified(lm.value))
+    case s: IncHash          => Some(fromZincStamp(s))
+    case _                   => None
+  }
   private[sbt] def apply(path: Path, fileAttributes: FileAttributes): Option[FileStamp] =
     try {
       if (fileAttributes.isDirectory) lastModified(path)

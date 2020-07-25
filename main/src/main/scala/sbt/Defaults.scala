@@ -74,6 +74,7 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+import sbt.nio.FileStamp
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
@@ -2215,9 +2216,11 @@ object Classpaths {
     ).map(exportClasspath) ++ Seq(
       dependencyClasspathFiles := data(dependencyClasspath.value).map(_.toPath),
       dependencyClasspathFiles / outputFileStamps := {
-        val cache = managedFileStampCache.value
-        val stamper = (managedSourcePaths / outputFileStamper).value
-        dependencyClasspathFiles.value.flatMap(p => cache.getOrElseUpdate(p, stamper).map(p -> _))
+        val stamper = timeWrappedStamper.value
+        val converter = fileConverter.value
+        dependencyClasspathFiles.value.flatMap(
+          p => FileStamp(stamper.library(converter.toVirtualFile(p))).map(p -> _)
+        )
       }
     )
 
