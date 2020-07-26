@@ -55,7 +55,10 @@ object IMap {
    */
   def empty[K[_], V[_]]: IMap[K, V] = new IMap0[K, V](Map.empty)
 
-  private[this] class IMap0[K[_], V[_]](backing: Map[K[_], V[_]])
+  private[sbt] def fromJMap[K[_], V[_]](map: java.util.Map[K[_], V[_]]): IMap[K, V] =
+    new IMap0[K, V](new WrappedMap(map))
+
+  private[sbt] class IMap0[K[_], V[_]](val backing: Map[K[_], V[_]])
       extends AbstractRMap[K, V]
       with IMap[K, V] {
     def get[T](k: K[T]): Option[V[T]] = (backing get k).asInstanceOf[Option[V[T]]]
@@ -69,15 +72,16 @@ object IMap {
       new IMap0[K, V2](Map(backing.iterator.map { case (k, v) => k -> f(v) }.toArray: _*))
 
     def mapSeparate[VL[_], VR[_]](f: V ~> λ[T => Either[VL[T], VR[T]]]) = {
-      val mapped = backing.iterator.map {
+      val left = new java.util.concurrent.ConcurrentHashMap[K[_], VL[_]]
+      val right = new java.util.concurrent.ConcurrentHashMap[K[_], VR[_]]
+      Par(backing.toVector).foreach {
         case (k, v) =>
           f(v) match {
-            case Left(l)  => Left((k, l)): Either[(K[_], VL[_]), (K[_], VR[_])]
-            case Right(r) => Right((k, r)): Either[(K[_], VL[_]), (K[_], VR[_])]
+            case Left(l)  => left.put(k, l)
+            case Right(r) => right.put(k, r)
           }
       }
-      val (l, r) = Util.separateE[(K[_], VL[_]), (K[_], VR[_])](mapped.toList)
-      (new IMap0[K, VL](l.toMap), new IMap0[K, VR](r.toMap))
+      (new IMap0[K, VL](new WrappedMap(left)), new IMap0[K, VR](new WrappedMap(right)))
     }
 
     def toSeq = backing.toSeq

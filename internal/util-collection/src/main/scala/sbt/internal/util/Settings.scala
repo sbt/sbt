@@ -173,10 +173,15 @@ trait Init[ScopeType] {
       )
 
   private[this] def applyDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
-    val (defaults, others) = Util.separate[Setting[_], DefaultSetting[_], Setting[_]](ss) {
-      case u: DefaultSetting[_] => Left(u); case s => Right(s)
+    val result = new java.util.LinkedHashSet[Setting[_]]
+    val others = new java.util.ArrayList[Setting[_]]
+    ss.foreach {
+      case u: DefaultSetting[_] => result.add(u)
+      case r                    => others.add(r)
     }
-    (defaults.distinct: Seq[Setting[_]]) ++ others
+    result.addAll(others)
+    import scala.collection.JavaConverters._
+    result.asScala.toVector
   }
 
   def compiled(init: Seq[Setting[_]], actual: Boolean = true)(
@@ -187,11 +192,12 @@ trait Init[ScopeType] {
     val initDefaults = applyDefaults(init)
     // inject derived settings into scopes where their dependencies are directly defined
     // and prepend per-scope settings
-    val derived = deriveAndLocal(initDefaults)
+    val derived = deriveAndLocal(initDefaults, mkDelegates(delegates))
     // group by Scope/Key, dropping dead initializations
     val sMap: ScopedMap = grouped(derived)
     // delegate references to undefined values according to 'delegates'
-    val dMap: ScopedMap = if (actual) delegate(sMap)(delegates, display) else sMap
+    val dMap: ScopedMap =
+      if (actual) delegate(sMap)(delegates, display) else sMap
     // merge Seq[Setting[_]] into Compiled
     compile(dMap)
   }
@@ -223,15 +229,39 @@ trait Init[ScopeType] {
   def sort(cMap: CompiledMap): Seq[Compiled[_]] =
     Dag.topologicalSort(cMap.values)(_.dependencies.map(cMap))
 
-  def compile(sMap: ScopedMap): CompiledMap =
-    sMap.toTypedSeq.map {
-      case sMap.TPair(k, ss) =>
-        val deps = ss.flatMap(_.dependencies).toSet
-        (k, new Compiled(k, deps, ss))
-    }.toMap
+  def compile(sMap: ScopedMap): CompiledMap = sMap match {
+    case m: IMap.IMap0[ScopedKey, SettingSeq] @unchecked =>
+      Par(m.backing.toVector)
+        .map {
+          case (k, ss) =>
+            val deps = ss.flatMap(_.dependencies).toSet
+            (
+              k,
+              new Compiled(k.asInstanceOf[ScopedKey[Any]], deps, ss.asInstanceOf[SettingSeq[Any]])
+            )
+        }
+        .toVector
+        .toMap
+    case _ =>
+      sMap.toTypedSeq.map {
+        case sMap.TPair(k, ss) =>
+          val deps = ss.flatMap(_.dependencies)
+          (k, new Compiled(k, deps, ss))
+      }.toMap
+  }
 
-  def grouped(init: Seq[Setting[_]]): ScopedMap =
-    init.foldLeft(IMap.empty: ScopedMap)((m, s) => add(m, s))
+  def grouped(init: Seq[Setting[_]]): ScopedMap = {
+    val result = new java.util.HashMap[ScopedKey[_], Seq[Setting[_]]]
+    init.foreach { s =>
+      result.putIfAbsent(s.key, Vector(s)) match {
+        case null =>
+        case ss   => result.put(s.key, if (s.definitive) Vector(s) else ss :+ s)
+      }
+    }
+    IMap.fromJMap[ScopedKey, SettingSeq](
+      result.asInstanceOf[java.util.Map[ScopedKey[_], SettingSeq[_]]]
+    )
+  }
 
   def add[T](m: ScopedMap, s: Setting[T]): ScopedMap =
     m.mapValue[T](s.key, Vector.empty[Setting[T]], ss => append(ss, s))
@@ -251,22 +281,36 @@ trait Init[ScopeType] {
         delegateForKey(sMap, k, delegates(k.scope), ref, selfRefOk || !isFirst)
     }
 
-    type ValidatedSettings[T] = Either[Seq[Undefined], SettingSeq[T]]
-
-    val f = λ[SettingSeq ~> ValidatedSettings] { (ks: Seq[Setting[_]]) =>
-      val (undefs, valid) = Util.separate(ks.zipWithIndex) {
-        case (s, i) => s validateKeyReferenced refMap(s, i == 0)
-      }
-      if (undefs.isEmpty) Right(valid) else Left(undefs.flatten)
+    import scala.collection.JavaConverters._
+    val undefined = new java.util.ArrayList[Undefined]
+    val result = new java.util.concurrent.ConcurrentHashMap[ScopedKey[_], Any]
+    val backing = sMap.toSeq
+    Par(backing).foreach {
+      case (key, settings) =>
+        val valid = new java.util.ArrayList[Setting[_]]
+        val undefs = new java.util.ArrayList[Undefined]
+        def validate(s: Setting[_], first: Boolean): Unit = {
+          s.validateKeyReferenced(refMap(s, first)) match {
+            case Right(v) => valid.add(v); ()
+            case Left(us) => us.foreach(u => undefs.add(u))
+          }
+        }
+        settings.headOption match {
+          case Some(s) =>
+            validate(s, true)
+            settings.tail.foreach(validate(_, false))
+          case _ =>
+        }
+        if (undefs.isEmpty) result.put(key, valid.asScala.toVector)
+        else undefined.addAll(undefs)
     }
 
-    type Undefs[_] = Seq[Undefined]
-    val (undefineds, result) = sMap.mapSeparate[Undefs, SettingSeq](f)
-
-    if (undefineds.isEmpty)
-      result
+    if (undefined.isEmpty)
+      IMap.fromJMap[ScopedKey, SettingSeq](
+        result.asInstanceOf[java.util.Map[ScopedKey[_], SettingSeq[_]]]
+      )
     else
-      throw Uninitialized(sMap.keys.toSeq, delegates, undefineds.values.flatten.toList, false)
+      throw Uninitialized(sMap.keys.toSeq, delegates, undefined.asScala.toList, false)
   }
 
   private[this] def delegateForKey[T](
@@ -437,18 +481,58 @@ trait Init[ScopeType] {
   }
 
   /**
+   *  The intersect method was calling Seq.contains which is very slow compared
+   *  to converting the Seq to a Set and calling contains on the Set. This
+   *  private trait abstracts out the two ways that Seq[ScopeType] was actually
+   *  used, `contains` and `exists`. In mkDelegates, we can create and cache
+   *  instances of Delegates so that we don't have to repeatedly convert the
+   *  same Seq to Set. On a 2020 16" macbook pro, creating the compiled map
+   *  for the sbt project is roughly 2 seconds faster after this change
+   *  (about 3.5 seconds before compared to about 1.5 seconds after)
+   *
+   */
+  private trait Delegates {
+    def contains(s: ScopeType): Boolean
+    def exists(f: ScopeType => Boolean): Boolean
+  }
+  private[this] def mkDelegates(delegates: ScopeType => Seq[ScopeType]): ScopeType => Delegates = {
+    val delegateMap = new java.util.concurrent.ConcurrentHashMap[ScopeType, Delegates]
+    s =>
+      delegateMap.get(s) match {
+        case null =>
+          val seq = delegates(s)
+          val set = seq.toSet
+          val d = new Delegates {
+            override def contains(s: ScopeType): Boolean = set.contains(s)
+            override def exists(f: ScopeType => Boolean): Boolean = seq.exists(f)
+          }
+          delegateMap.put(s, d)
+          d
+        case d => d
+      }
+  }
+
+  /**
    * Intersects two scopes, returning the more specific one if they intersect, or None otherwise.
    */
   private[sbt] def intersect(s1: ScopeType, s2: ScopeType)(
       implicit delegates: ScopeType => Seq[ScopeType]
+  ): Option[ScopeType] = intersectDelegates(s1, s2, mkDelegates(delegates))
+
+  /**
+   * Intersects two scopes, returning the more specific one if they intersect, or None otherwise.
+   */
+  private def intersectDelegates(
+      s1: ScopeType,
+      s2: ScopeType,
+      delegates: ScopeType => Delegates
   ): Option[ScopeType] =
     if (delegates(s1).contains(s2)) Some(s1) // s1 is more specific
     else if (delegates(s2).contains(s1)) Some(s2) // s2 is more specific
     else None
 
-  private[this] def deriveAndLocal(init: Seq[Setting[_]])(
-      implicit delegates: ScopeType => Seq[ScopeType],
-      scopeLocal: ScopeLocal
+  private[this] def deriveAndLocal(init: Seq[Setting[_]], delegates: ScopeType => Delegates)(
+      implicit scopeLocal: ScopeLocal
   ): Seq[Setting[_]] = {
     import collection.mutable
 
@@ -467,9 +551,10 @@ trait Init[ScopeType] {
     }
 
     // separate `derived` settings from normal settings (`defs`)
-    val (derived, rawDefs) = Util.separate[Setting[_], Derived, Setting[_]](init) {
-      case d: DerivedSetting[_] => Left(new Derived(d)); case s => Right(s)
-    }
+    val (derived, rawDefs) =
+      Util.separate[Setting[_], Derived, Setting[_]](init) {
+        case d: DerivedSetting[_] => Left(new Derived(d)); case s => Right(s)
+      }
     val defs = addLocal(rawDefs)(scopeLocal)
 
     // group derived settings by the key they define
@@ -518,7 +603,7 @@ trait Init[ScopeType] {
       val scope = sk.scope
       def localAndDerived(d: Derived): Seq[Setting[_]] = {
         def definingScope = d.setting.key.scope
-        val outputScope = intersect(scope, definingScope)
+        val outputScope = intersectDelegates(scope, definingScope, delegates)
         outputScope collect {
           case s if !d.inScopes.contains(s) && d.setting.filter(s) =>
             val local = d.dependencies.flatMap(dep => scopeLocal(ScopedKey(s, dep)))
