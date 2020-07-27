@@ -196,10 +196,6 @@ lazy val sbtRoot: Project = (project in file("."))
     Util.baseScalacOptions,
     Docs.settings,
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
-    sources in (Compile, doc) := {
-      val allSources = (sources ?? Nil).all(docProjects).value
-      allSources.flatten.distinct
-    }, // doc
     Util.publishPomSettings,
     otherRootSettings,
     Transform.conscriptSettings(bundledLauncherProj),
