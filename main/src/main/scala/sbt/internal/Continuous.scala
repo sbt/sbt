@@ -1297,7 +1297,7 @@ private[sbt] object ContinuousCommands {
       case _ => state
     }
   }
-  private[this] val failWatchCommand = watchCommand(failWatch) { (channel, state) =>
+  private[sbt] val failWatchCommand = watchCommand(failWatch) { (channel, state) =>
     state.fail
   }
   /*
