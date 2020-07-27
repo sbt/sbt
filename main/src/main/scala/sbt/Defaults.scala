@@ -231,13 +231,7 @@ object Defaults extends BuildCommon {
           def getAllSourceStamps()
               : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
             new java.util.HashMap[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp]
-          def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = {
-            val path = converter.toPath(fr)
-            managedCache
-              .getOrElseUpdate(path, sbt.nio.FileStamper.Hash)
-              .map(_.stamp)
-              .getOrElse(backing.library(fr))
-          }
+          def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.library(fr)
           def product(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.product(fr)
           def source(fr: xsbti.VirtualFile): xsbti.compile.analysis.Stamp = {
             val path = converter.toPath(fr)
