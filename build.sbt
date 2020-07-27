@@ -1,5 +1,4 @@
 import Dependencies._
-import Sxr.sxr
 import Util._
 import com.typesafe.tools.mima.core.ProblemFilters._
 import com.typesafe.tools.mima.core._
@@ -175,7 +174,6 @@ val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
   .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
-  .configs(Sxr.SxrConf)
   .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
@@ -197,19 +195,7 @@ lazy val sbtRoot: Project = (project in file("."))
     },
     Util.baseScalacOptions,
     Docs.settings,
-    Sxr.settings,
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
-    sources in sxr := {
-      val allSources = (sources ?? Nil).all(docProjects).value
-      allSources.flatten.distinct
-    }, //sxr
-    sources in (Compile, doc) := (sources in sxr).value, // doc
-    Sxr.sourceDirectories := {
-      val allSourceDirectories = (sourceDirectories ?? Nil).all(docProjects).value
-      allSourceDirectories.flatten
-    },
-    fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
-    dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value,
     Util.publishPomSettings,
     otherRootSettings,
     Transform.conscriptSettings(bundledLauncherProj),
