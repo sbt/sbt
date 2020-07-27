@@ -93,11 +93,17 @@ object ClientTest extends AbstractServerTest {
       "compileAnalysisFile",
       "compileAnalysisFilename",
       "compileAnalysisTargetRoot",
+      "compileEarly",
       "compileIncSetup",
       "compileIncremental",
+      "compileJava",
       "compileOutputs",
+      "compileProgress",
+      "compileScalaBackend",
+      "compileSplit",
       "compilers",
     )
+
     assert(complete("compi") == expected)
   }
   test("testOnly completions") { _ =>

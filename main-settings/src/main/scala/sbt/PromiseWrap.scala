@@ -18,4 +18,5 @@ final class PromiseWrap[A] {
     }
   def success(value: A): Unit = underlying.success(value)
   def failure(cause: Throwable): Unit = underlying.failure(cause)
+  def isCompleted: Boolean = underlying.isCompleted
 }

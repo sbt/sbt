@@ -116,6 +116,7 @@ object SysProp {
   def banner: Boolean = getOrTrue("sbt.banner")
 
   def turbo: Boolean = getOrFalse("sbt.turbo")
+  def pipelining: Boolean = getOrFalse("sbt.pipelining")
 
   def taskTimings: Boolean = getOrFalse("sbt.task.timings")
   def taskTimingsOnShutdown: Boolean = getOrFalse("sbt.task.timings.on.shutdown")
