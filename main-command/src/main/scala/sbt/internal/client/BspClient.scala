@@ -18,24 +18,47 @@ import scala.sys.process.Process
 import scala.util.control.NonFatal
 
 class BspClient private (sbtServer: Socket) {
+  private val lock = new AnyRef
+  private var terminated = false
 
-  private def transferTo(input: InputStream, output: OutputStream): Unit = {
-    val buffer = Array.ofDim[Byte](1024)
-    while (true) {
-      val size = input.read(buffer)
-      output.write(buffer, 0, size)
-      output.flush()
+  private def transferTo(input: InputStream, output: OutputStream): Thread = {
+    val thread = new Thread {
+      override def run(): Unit = {
+        val buffer = Array.ofDim[Byte](1024)
+        try {
+          while (!terminated) {
+            val size = input.read(buffer)
+            if (size == -1) {
+              terminated = true
+            } else {
+              output.write(buffer, 0, size)
+              output.flush()
+            }
+          }
+          input.close()
+          output.close()
+        } catch {
+          case NonFatal(_) => ()
+        } finally {
+          lock.synchronized {
+            terminated = true
+            lock.notify()
+          }
+        }
+      }
     }
+    thread.setDaemon(true)
+    thread
   }
 
   private def run(): Exit = {
     try {
-      val redirection = new Thread {
-        override def run(): Unit = transferTo(sbtServer.getInputStream, System.out)
-      }
+      transferTo(sbtServer.getInputStream, System.out).start()
+      transferTo(System.in, sbtServer.getOutputStream).start()
 
-      redirection.start()
-      transferTo(System.in, sbtServer.getOutputStream)
+      lock.synchronized {
+        while (!terminated) lock.wait()
+      }
 
       Exit(0)
     } catch {
