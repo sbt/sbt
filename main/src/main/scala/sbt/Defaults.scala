@@ -3289,8 +3289,7 @@ object Classpaths {
   def analyzed[T](data: T, analysis: CompileAnalysis) =
     Attributed.blank(data).put(Keys.analysis, analysis)
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
-    compile.value
-    copyResources.value
+    val _ = (compile.value, copyResources.value)
     classDirectory.value :: Nil
   }
   private[sbt] def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =

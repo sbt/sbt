@@ -2,11 +2,11 @@ ThisBuild / scalaVersion := "2.11.12"
 
 lazy val root = (project in file("."))
   .settings(
-    scalaVersion := "2.12.11",
+    scalaVersion := "2.12.12",
 
     update / scalaVersion := {
       scalaVersion.value match {
-        case "2.12.11" => "2.12.10"
+        case "2.12.12" => "2.12.10"
         case "2.11.12" => "2.11.11"
         case x         => x
       }

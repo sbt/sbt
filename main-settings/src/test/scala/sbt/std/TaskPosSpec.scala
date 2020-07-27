@@ -164,7 +164,7 @@ class TaskPosSpec {
     def withKey(foo: => SettingKey[String]): Def.Initialize[Task[Unit]] = {
       Def.task {
         if (true) {
-          foo.value; ()
+          val _ = foo.value; ()
         }
       }
     }

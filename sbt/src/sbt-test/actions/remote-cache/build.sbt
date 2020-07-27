@@ -4,7 +4,7 @@ lazy val root = (project in file("."))
   .configs(CustomArtifact)
   .settings(
     name := "my-project",
-    scalaVersion := "2.12.11",
+    scalaVersion := "2.12.12",
     pushRemoteCacheTo := Some(
       MavenCache("local-cache", (ThisBuild / baseDirectory).value / "remote-cache")
     ),

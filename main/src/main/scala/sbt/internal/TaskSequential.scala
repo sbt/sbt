@@ -777,7 +777,7 @@ trait TaskSequential {
     }
   private def unitTask[A](task: Initialize[Task[A]]): Initialize[Task[Unit]] =
     Def.task {
-      task.value
+      val _ = task.value
       ()
     }
 }

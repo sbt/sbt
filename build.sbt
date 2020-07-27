@@ -320,7 +320,7 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
   javaOnlySettings,
   crossPaths := false,
   name := "Util Interface",
-  exportJars := true,
+  exportJars := false,
   utilMimaSettings,
 )
 
@@ -1246,7 +1246,7 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
     crossScalaVersions := Seq(baseScalaVersion),
     skip in publish := true,
     compile in Compile := {
-      update.value: Unit
+      val _ = update.value
       runNpm("run compile", baseDirectory.value, streams.value.log)
       sbt.internal.inc.Analysis.empty
     },
@@ -1276,7 +1276,7 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   )
 
 def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  publishLocalBinAll.value
+  val _ = publishLocalBinAll.value
   val launchJar = s"-Dsbt.launch.jar=${(bundledLauncherProj / Compile / packageBin).value}"
   Scripted.doScripted(
     (scalaInstance in scriptedSbtReduxProj).value,
@@ -1349,7 +1349,9 @@ def otherRootSettings =
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
         case _          => Nil
       }),
-    publishLocalBinAll := (Compile / publishLocalBin).all(scriptedProjects).value,
+    publishLocalBinAll := {
+      val _ = (Compile / publishLocalBin).all(scriptedProjects).value
+    },
     aggregate in bintrayRelease := false,
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(

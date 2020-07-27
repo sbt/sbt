@@ -256,7 +256,7 @@ private[sbt] object Settings {
     addTaskDefinition(sbt.Keys.clean in taskScope := Def.taskDyn {
       // the clean file task needs to run first because the previous cache gets blown away
       // by the second task
-      Clean.cleanFileOutputTask(taskKey).value
+      val _ = Clean.cleanFileOutputTask(taskKey).value
       Clean.task(taskScope, full = false)
     }.value)
   }
