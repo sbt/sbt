@@ -31,6 +31,7 @@ object LintUnused {
       commands,
       crossScalaVersions,
       initialize,
+      lintUnusedKeysOnLoad,
       onLoad,
       onLoadMessage,
       onUnload,
