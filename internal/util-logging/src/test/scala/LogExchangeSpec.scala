@@ -14,9 +14,17 @@ import org.scalatest._
 class LogExchangeSpec extends FlatSpec with Matchers {
   import LogExchange._
 
-  checkTypeTag("stringTypeTagThrowable", stringTypeTagThrowable, StringTypeTag[Throwable])
-  checkTypeTag("stringTypeTagTraceEvent", stringTypeTagTraceEvent, StringTypeTag[TraceEvent])
-  checkTypeTag("stringTypeTagSuccessEvent", stringTypeTagSuccessEvent, StringTypeTag[SuccessEvent])
+  checkTypeTag("stringTypeTagThrowable", stringTypeTagThrowable, StringTypeTag.fast[Throwable])
+  checkTypeTag(
+    "stringTypeTagTraceEvent",
+    stringTypeTagTraceEvent,
+    StringTypeTag.fast[TraceEvent]
+  )
+  checkTypeTag(
+    "stringTypeTagSuccessEvent",
+    stringTypeTagSuccessEvent,
+    StringTypeTag.fast[SuccessEvent]
+  )
 
   private def checkTypeTag[A](name: String, inc: StringTypeTag[A], exp: StringTypeTag[A]): Unit =
     s"LogExchange.$name" should s"match real StringTypeTag[$exp]" in {

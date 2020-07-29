@@ -15,7 +15,6 @@ import org.apache.logging.log4j.core.config.{ AppenderRef, LoggerConfig }
 import org.apache.logging.log4j.core.layout.PatternLayout
 import scala.collection.JavaConverters._
 import scala.collection.concurrent
-import scala.reflect.runtime.universe.TypeTag
 import sjsonnew.JsonFormat
 
 // http://logging.apache.org/log4j/2.x/manual/customconfig.html
@@ -114,9 +113,15 @@ sealed abstract class LogExchange {
   def getOrElseUpdateStringCodec[A](tag: String, v: ShowLines[A]): ShowLines[A] =
     stringCodecs.getOrElseUpdate(tag, v).asInstanceOf[ShowLines[A]]
 
-  def registerStringCodec[A: ShowLines: TypeTag]: Unit = {
-    val tag = StringTypeTag[A]
-    registerStringCodecByStringTypeTag(tag)
+  @deprecated("Prefer macro based registerStringCodec", "1.4.0")
+  def registerStringCodec[A](
+      st: ShowLines[A],
+      tt: scala.reflect.runtime.universe.TypeTag[A]
+  ): Unit = {
+    registerStringCodecByStringTypeTag(StringTypeTag.apply[A](tt))(st)
+  }
+  private[sbt] def registerStringCodec[A: ShowLines: StringTypeTag]: Unit = {
+    registerStringCodecByStringTypeTag(implicitly[StringTypeTag[A]])
   }
 
   private[sbt] def registerStringCodecByStringTypeTag[A: ShowLines](tag: StringTypeTag[A]): Unit = {

@@ -7,6 +7,7 @@
 
 package sbt.internal.util
 
+import scala.language.experimental.macros
 import scala.reflect.runtime.universe._
 
 /** This is used to carry type information in JSON. */
@@ -15,6 +16,10 @@ final case class StringTypeTag[A](key: String) {
 }
 
 object StringTypeTag {
+
+  /** Generates a StringTypeTag for any type at compile time. */
+  implicit def fast[A]: StringTypeTag[A] = macro appmacro.StringTypeTag.impl[A]
+  @deprecated("Prefer macro generated StringTypeTag", "1.4.0")
   def apply[A: TypeTag]: StringTypeTag[A] =
     synchronized {
       def doApply: StringTypeTag[A] = {
@@ -38,6 +43,7 @@ object StringTypeTag {
       retry(3)
     }
 
+  @deprecated("Prefer macro generated StringTypeTag", "1.4.0")
   def typeToString(tpe: Type): String =
     tpe match {
       case TypeRef(_, sym, args) =>

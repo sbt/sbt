@@ -84,7 +84,7 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     } {
       pool.submit(new Runnable {
         def run(): Unit = {
-          val stringTypeTag = StringTypeTag[List[Int]]
+          val stringTypeTag = StringTypeTag.fast[List[Int]]
           val log = LogExchange.logger(s"foo$i")
           LogExchange.bindLoggerAppenders(s"foo$i", List(LogExchange.asyncStdout -> Level.Info))
           if (i % 100 == 0) {
