@@ -14,7 +14,6 @@ import java.util.concurrent.{ ExecutorService, Executors }
 import ClassLoaderClose.close
 
 import sbt.plugins.{ CorePlugin, IvyPlugin, JvmPlugin }
-import sbt.util.LogExchange
 import xsbti._
 
 private[internal] object ClassLoaderWarmup {
@@ -29,7 +28,6 @@ private[internal] object ClassLoaderWarmup {
         ()
       }
 
-      submit(LogExchange.context)
       submit(Class.forName("sbt.internal.parser.SbtParserInit").getConstructor().newInstance())
       submit(CorePlugin.projectSettings)
       submit(IvyPlugin.projectSettings)

@@ -341,7 +341,7 @@ lazy val utilPosition = (project in file("internal") / "util-position")
 
 lazy val utilLogging = (project in file("internal") / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(utilInterface, collectionProj)
+  .dependsOn(utilInterface, collectionProj, coreMacrosProj)
   .settings(
     utilCommonSettings,
     name := "Util Logging",
@@ -763,7 +763,7 @@ lazy val commandProj = (project in file("main-command"))
 lazy val coreMacrosProj = (project in file("core-macros"))
   .dependsOn(collectionProj)
   .settings(
-    baseSettings,
+    baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil)),
     name := "Core Macros",
     libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
     mimaSettings,
