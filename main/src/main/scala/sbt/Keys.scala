@@ -387,7 +387,7 @@ object Keys {
   val csrExtraCredentials = taskKey[Seq[lmcoursier.credentials.Credentials]]("")
   val csrPublications = taskKey[Seq[(lmcoursier.definitions.Configuration, lmcoursier.definitions.Publication)]]("")
   val csrReconciliations = settingKey[Seq[(ModuleMatchers, Reconciliation)]]("Strategy to reconcile version conflicts.")
-  
+
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)
   val ivyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, such as the resolvers and paths to use.").withRank(DTask)
@@ -457,7 +457,7 @@ object Keys {
   val fullResolvers = taskKey[Seq[Resolver]]("Combines the project resolver, default resolvers, and user-defined resolvers.").withRank(CTask)
   val otherResolvers = taskKey[Seq[Resolver]]("Resolvers not included in the main resolver chain, such as those in module configurations.").withRank(CSetting)
   val scalaCompilerBridgeResolvers = taskKey[Seq[Resolver]]("Resolvers used to resolve compiler bridges.").withRank(CSetting)
-  val includePluginResolvers = settingKey[Boolean]("Include the resolvers from the metabuild.").withRank(CSetting)  
+  val includePluginResolvers = settingKey[Boolean]("Include the resolvers from the metabuild.").withRank(CSetting)
   val useJCenter = settingKey[Boolean]("Use JCenter as the default repository.").withRank(CSetting)
   val moduleConfigurations = settingKey[Seq[ModuleConfiguration]]("Defines module configurations, which override resolvers on a per-module basis.").withRank(BMinusSetting)
   val retrievePattern = settingKey[String]("Pattern used to retrieve managed dependencies to the current build.").withRank(DSetting)
