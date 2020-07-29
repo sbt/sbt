@@ -476,9 +476,14 @@ private[sbt] class DefaultBackgroundJobService(private[sbt] val serviceTempDirBa
     extends AbstractBackgroundJobService {
   @deprecated("Use the constructor that specifies the background job temporary directory", "1.4.0")
   def this() = this(IO.createTemporaryDirectory)
+  val logExchange = new LogExchange
   override def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): ManagedLogger = {
     val extracted = Project.extract(state)
-    LogManager.constructBackgroundLog(extracted.structure.data, state)(spawningTask)
+    LogManager.constructBackgroundLog(extracted.structure.data, state, logExchange)(spawningTask)
+  }
+  override def shutdown(): Unit = {
+    super.shutdown()
+    logExchange.close()
   }
 }
 private[sbt] object DefaultBackgroundJobService {

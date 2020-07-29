@@ -19,7 +19,7 @@ import sbt.LocalRootProject
 import sbt.io.syntax._
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
-import sbt.util.Logger
+import sbt.util.{ LogExchange, Logger }
 import sjsonnew.SupportConverter
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
@@ -316,11 +316,12 @@ object BuildStreams {
         sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
         sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
       )
-    (s get Keys.stateStreams) getOrElse {
+    s.get(Keys.stateStreams).getOrElse {
+      val exchange = s.get(Keys.logExchangeAttribute).getOrElse(LogExchange)
       std.Streams(
         path(units, root, data),
         displayFull,
-        LogManager.construct(data, s),
+        LogManager.construct(data, s, exchange),
         sjsonnew.support.scalajson.unsafe.Converter, {
           val factory =
             s.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))

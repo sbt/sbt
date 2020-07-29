@@ -19,14 +19,31 @@ import sbt.internal.util._
 import sbt.util.{ Level, LogExchange, Logger }
 
 sealed abstract class LogManager {
+  @deprecated("Use the version that takes a LogExchange parameter", "1.4.0")
   def apply(
       data: Settings[Scope],
       state: State,
       task: ScopedKey[_],
       writer: PrintWriter
+  ): ManagedLogger = apply(data, state, task, writer, LogExchange)
+
+  def apply(
+      data: Settings[Scope],
+      state: State,
+      task: ScopedKey[_],
+      writer: PrintWriter,
+      logExchange: LogExchange,
   ): ManagedLogger
 
-  def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger
+  @deprecated("Use the apply that provides a LogExchange", "1.4.0")
+  def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger =
+    backgroundLog(data, state, task, LogExchange)
+  def backgroundLog(
+      data: Settings[Scope],
+      state: State,
+      task: ScopedKey[_],
+      logExchange: LogExchange
+  ): ManagedLogger
 }
 
 object LogManager {
@@ -34,38 +51,55 @@ object LogManager {
   private val generateId: AtomicInteger = new AtomicInteger
 
   // This is called by mkStreams
+  @deprecated("Use the version that takes a LogExchange parameter", "1.4.0")
   def construct(
       data: Settings[Scope],
       state: State
+  ): (ScopedKey[_], PrintWriter) => ManagedLogger = construct(data, state, LogExchange)
+  def construct(
+      data: Settings[Scope],
+      state: State,
+      logExchange: LogExchange,
   ): (ScopedKey[_], PrintWriter) => ManagedLogger =
     (task: ScopedKey[_], to: PrintWriter) => {
       val manager: LogManager =
         (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
-      manager(data, state, task, to)
+      manager(data, state, task, to, logExchange)
     }
 
+  @deprecated("Use the version that takes a LogExchange parameter", "1.4.0")
   def constructBackgroundLog(
       data: Settings[Scope],
       state: State
+  ): (ScopedKey[_]) => ManagedLogger = constructBackgroundLog(data, state, LogExchange)
+  def constructBackgroundLog(
+      data: Settings[Scope],
+      state: State,
+      logExchange: LogExchange,
   ): (ScopedKey[_]) => ManagedLogger =
     (task: ScopedKey[_]) => {
       val manager: LogManager =
         (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
-      manager.backgroundLog(data, state, task)
+      manager.backgroundLog(data, state, task, logExchange)
     }
 
   def defaultManager(console: ConsoleOut): LogManager =
     withLoggers((_, _) => defaultScreen(console))
 
-  // This is called by Defaults.
-  def defaults(extra: ScopedKey[_] => Seq[Appender], console: ConsoleOut): LogManager =
+  def defaults(
+      extra: ScopedKey[_] => Seq[Appender],
+      console: ConsoleOut,
+  ): LogManager =
     withLoggers(
       (task, state) => defaultScreen(console, suppressedMessage(task, state)),
-      extra = extra
+      backed = defaultBacked,
+      relay = defaultRelay,
+      extra = extra,
     )
 
-  def withScreenLogger(mk: (ScopedKey[_], State) => Appender): LogManager =
-    withLoggers(screen = mk)
+  def withScreenLogger(
+      mk: (ScopedKey[_], State) => Appender,
+  ): LogManager = withLoggers(screen = mk)
 
   def withLoggers(
       screen: (ScopedKey[_], State) => Appender = (_, s) => defaultScreen(s.globalLogging.console),
@@ -78,13 +112,14 @@ object LogManager {
       screen: (ScopedKey[_], State) => Appender,
       backed: PrintWriter => Appender,
       relay: Unit => Appender,
-      extra: ScopedKey[_] => Seq[Appender]
+      extra: ScopedKey[_] => Seq[Appender],
   ) extends LogManager {
     def apply(
         data: Settings[Scope],
         state: State,
         task: ScopedKey[_],
-        to: PrintWriter
+        to: PrintWriter,
+        logExchange: LogExchange,
     ): ManagedLogger =
       defaultLogger(
         data,
@@ -93,12 +128,18 @@ object LogManager {
         screen(task, state),
         backed(to),
         relay(()),
-        extra(task).toList
+        extra(task).toList,
+        logExchange,
       )
 
-    def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger = {
+    def backgroundLog(
+        data: Settings[Scope],
+        state: State,
+        task: ScopedKey[_],
+        exchange: LogExchange
+    ): ManagedLogger = {
       val console = screen(task, state)
-      LogManager.backgroundLog(data, state, task, console, relay(()))
+      LogManager.backgroundLog(data, state, task, console, relay(()), exchange)
     }
   }
 
@@ -112,7 +153,7 @@ object LogManager {
   ): T =
     data.get(scope, key) orElse state.get(key) getOrElse default
 
-  // This is the main function that is used to generate the logger for tasks.
+  @deprecated("Use the version that passes in a log exchange", "1.4.0")
   def defaultLogger(
       data: Settings[Scope],
       state: State,
@@ -121,12 +162,28 @@ object LogManager {
       backed: Appender,
       relay: Appender,
       extra: List[Appender]
+  ): ManagedLogger = defaultLogger(data, state, task, console, backed, relay, extra, LogExchange)
+
+  // This is the main function that is used to generate the logger for tasks.
+  def defaultLogger(
+      data: Settings[Scope],
+      state: State,
+      task: ScopedKey[_],
+      console: Appender,
+      backed: Appender,
+      relay: Appender,
+      extra: List[Appender],
+      logExchange: LogExchange,
   ): ManagedLogger = {
     val execOpt = state.currentCommand
-    val loggerName: String = s"${task.key.label}-${generateId.incrementAndGet}"
+    val name = task.key.label match {
+      case "streams" => task.scope.task.toOption.map(_.label).getOrElse(task.key.label)
+      case n         => n
+    }
+    val loggerName: String = s"$name-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
     val execId: Option[String] = execOpt flatMap { _.execId }
-    val log = LogExchange.logger(loggerName, channelName, execId)
+    val log = logExchange.logger(loggerName, channelName, execId)
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
     val backingLevel = getOr(persistLogLevel.key, data, scope, state, Level.Debug)
@@ -184,6 +241,7 @@ object LogManager {
     case _            => key // should never get here
   }
 
+  @deprecated("Use the version that passes in a log exchange", "1.4.0")
   def backgroundLog(
       data: Settings[Scope],
       state: State,
@@ -191,6 +249,15 @@ object LogManager {
       console: Appender,
       /* TODO: backed: Appender,*/
       relay: Appender,
+  ): ManagedLogger = backgroundLog(data, state, task, console, relay, LogExchange)
+  def backgroundLog(
+      data: Settings[Scope],
+      state: State,
+      task: ScopedKey[_],
+      console: Appender,
+      /* TODO: backed: Appender,*/
+      relay: Appender,
+      logExchange: LogExchange,
   ): ManagedLogger = {
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
@@ -200,15 +267,15 @@ object LogManager {
     val loggerName: String = s"bg-${task.key.label}-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
     // val execId: Option[String] = execOpt flatMap { _.execId }
-    val log = LogExchange.logger(loggerName, channelName, None)
-    LogExchange.unbindLoggerAppenders(loggerName)
+    val log = logExchange.logger(loggerName, channelName, None)
+    logExchange.unbindLoggerAppenders(loggerName)
     val consoleOpt = consoleLocally(state, console) map {
       case a: ConsoleAppender =>
         a.setTrace(screenTrace)
         a
       case a => a
     }
-    LogExchange.bindLoggerAppenders(
+    logExchange.bindLoggerAppenders(
       loggerName,
       (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil
     )

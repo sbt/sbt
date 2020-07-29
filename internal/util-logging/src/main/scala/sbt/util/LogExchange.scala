@@ -17,22 +17,30 @@ import scala.collection.JavaConverters._
 import scala.collection.concurrent
 import scala.reflect.runtime.universe.TypeTag
 import sjsonnew.JsonFormat
+import java.util.concurrent.ConcurrentHashMap
 
 // http://logging.apache.org/log4j/2.x/manual/customconfig.html
 // https://logging.apache.org/log4j/2.x/log4j-core/apidocs/index.html
 
-sealed abstract class LogExchange {
+sealed class LogExchange extends AutoCloseable {
   private[sbt] lazy val context: LoggerContext = init()
   private[sbt] lazy val builtInStringCodecs: Unit = initStringCodecs()
   private[sbt] lazy val asyncStdout: AsyncAppender = buildAsyncStdout
   private[sbt] val jsonCodecs: concurrent.Map[String, JsonFormat[_]] = concurrent.TrieMap()
   private[sbt] val stringCodecs: concurrent.Map[String, ShowLines[_]] = concurrent.TrieMap()
+  private[this] def getCtx = XLogManager.getContext(false) match { case x: LoggerContext => x }
+  private[this] val loggers = ConcurrentHashMap.newKeySet[String]
+  override def close(): Unit = {
+    val config = getCtx.getConfiguration
+    loggers.forEach(config.removeLogger)
+    loggers.clear()
+  }
 
   def logger(name: String): ManagedLogger = logger(name, None, None)
   def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger = {
     val _ = context
     val codecs = builtInStringCodecs
-    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
+    val ctx = getCtx
     val config = ctx.getConfiguration
     val loggerConfig = LoggerConfig.createLogger(
       false,
@@ -47,8 +55,8 @@ sealed abstract class LogExchange {
       null
     )
     config.addLogger(name, loggerConfig)
-    ctx.updateLoggers
     val logger = ctx.getLogger(name)
+    loggers.add(name)
     new ManagedLogger(name, channelName, execId, logger, Some(Terminal.get))
   }
   def unbindLoggerAppenders(loggerName: String): Unit = {
@@ -63,11 +71,8 @@ sealed abstract class LogExchange {
       case (x, lv) => lc.addAppender(x, ConsoleAppender.toXLevel(lv), null)
     }
   }
-  def loggerConfig(loggerName: String): LoggerConfig = {
-    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
-    val config = ctx.getConfiguration
-    config.getLoggerConfig(loggerName)
-  }
+  def loggerConfig(loggerName: String): LoggerConfig =
+    getCtx.getConfiguration.getLoggerConfig(loggerName)
 
   // Construct these StringTypeTags manually, because they're used at the very startup of sbt
   // and we'll try not to initialize the universe by using the StringTypeTag.apply that requires a TypeTag

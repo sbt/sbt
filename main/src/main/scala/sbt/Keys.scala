@@ -35,7 +35,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, UpdateOptions }
 import sbt.nio.file.Glob
 import sbt.testing.Framework
-import sbt.util.{ Level, Logger }
+import sbt.util.{ Level, LogExchange, Logger }
 import xsbti.FileConverter
 import xsbti.compile._
 import xsbti.compile.analysis.ReadStamps
@@ -61,6 +61,7 @@ object Keys {
   val timingFormat = settingKey[java.text.DateFormat]("The format used for displaying the completion time.").withRank(CSetting)
   val extraLoggers = settingKey[ScopedKey[_] => Seq[Appender]]("A function that provides additional loggers for a given setting.").withRank(DSetting)
   val logManager = settingKey[LogManager]("The log manager, which creates Loggers for different contexts.").withRank(DSetting)
+  private[sbt] val logExchangeAttribute = AttributeKey[LogExchange]("log-exchange-attribute", "The current log manager", Invisible)
   val logBuffered = settingKey[Boolean]("True if logging should be buffered until work completes.").withRank(CSetting)
   val sLog = settingKey[Logger]("Logger usable by settings during project loading.").withRank(CSetting)
   val serverLog = taskKey[Unit]("A dummy task to set server log level using Global / serverLog / logLevel.").withRank(CTask)

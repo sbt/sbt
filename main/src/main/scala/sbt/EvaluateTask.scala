@@ -20,7 +20,7 @@ import sbt.internal._
 import sbt.internal.util._
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
-import sbt.util.{ Logger, Show }
+import sbt.util.{ LogExchange, Logger, Show }
 
 import scala.Console.RED
 import scala.concurrent.duration.Duration
@@ -383,11 +383,13 @@ object EvaluateTask {
     streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))
 
   def withStreams[T](structure: BuildStructure, state: State)(f: Streams => T): T = {
-    val str = std.Streams.closeable(structure.streams(state))
+    val logExchange = new LogExchange
+    val str = std.Streams.closeable(structure.streams(state.put(logExchangeAttribute, logExchange)))
     try {
       f(str)
     } finally {
       str.close()
+      logExchange.close()
     }
   }
 
