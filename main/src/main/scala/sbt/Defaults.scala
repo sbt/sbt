@@ -74,6 +74,7 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
+import sbt.nio.FileStamp
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
@@ -231,13 +232,7 @@ object Defaults extends BuildCommon {
           def getAllSourceStamps()
               : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
             new java.util.HashMap[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp]
-          def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = {
-            val path = converter.toPath(fr)
-            managedCache
-              .getOrElseUpdate(path, sbt.nio.FileStamper.Hash)
-              .map(_.stamp)
-              .getOrElse(backing.library(fr))
-          }
+          def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.library(fr)
           def product(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.product(fr)
           def source(fr: xsbti.VirtualFile): xsbti.compile.analysis.Stamp = {
             val path = converter.toPath(fr)
@@ -2221,9 +2216,11 @@ object Classpaths {
     ).map(exportClasspath) ++ Seq(
       dependencyClasspathFiles := data(dependencyClasspath.value).map(_.toPath),
       dependencyClasspathFiles / outputFileStamps := {
-        val cache = managedFileStampCache.value
-        val stamper = (managedSourcePaths / outputFileStamper).value
-        dependencyClasspathFiles.value.flatMap(p => cache.getOrElseUpdate(p, stamper).map(p -> _))
+        val stamper = timeWrappedStamper.value
+        val converter = fileConverter.value
+        dependencyClasspathFiles.value.flatMap(
+          p => FileStamp(stamper.library(converter.toVirtualFile(p))).map(p -> _)
+        )
       }
     )
 
