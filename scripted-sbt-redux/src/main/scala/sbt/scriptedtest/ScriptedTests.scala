@@ -20,7 +20,6 @@ import RemoteSbtCreatorProp._
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.{ GenSeq, mutable }
-import scala.util.Try
 import scala.util.control.NonFatal
 
 final class ScriptedTests(
@@ -173,40 +172,6 @@ final class ScriptedTests(
     }
     else _ => false
 
-  /** Defines an auto plugin that is injected to sbt between every scripted session.
-   *
-   * It sets the name of the local root project for those tests run in batch mode.
-   *
-   * This is necessary because the current design to run tests in batch mode forces
-   * scripted tests to share one common sbt dir instead of each one having its own.
-   *
-   * Sbt extracts the local root project name from the directory name. So those
-   * scripted tests that don't set the name for the root and whose test files check
-   * information based on the name will fail.
-   *
-   * The reason why we set the name here and not via `set` is because some tests
-   * dump the session to check that their settings have been correctly applied.
-   *
-   * @param testName The test name used to extract the root project name.
-   * @return A string-based implementation to run between every reload.
-   */
-  private def createAutoPlugin(testName: String) =
-    s"""
-      |import sbt._, Keys._
-      |object InstrumentScripted extends AutoPlugin {
-      |  override def trigger = allRequirements
-      |  override def globalSettings: Seq[Setting[_]] =
-      |    Seq(commands += setUpScripted) ++ super.globalSettings
-      |
-      |  def setUpScripted = Command.command("setUpScripted") { (state0: State) =>
-      |    val nameScriptedSetting = name.in(LocalRootProject).:=(
-      |        if (name.value.startsWith("sbt_")) "$testName" else name.value)
-      |    val state1 = Project.extract(state0).appendWithoutSession(nameScriptedSetting, state0)
-      |    "initialize" :: state1
-      |  }
-      |}
-    """.stripMargin
-
   /** Defines the batch execution of scripted tests.
    *
    * Scripted tests are run one after the other one recycling the handlers, under
@@ -249,20 +214,13 @@ final class ScriptedTests(
 
           val runTest = () => {
             // Reload and initialize (to reload contents of .sbtrc files)
-            val pluginImplementation = createAutoPlugin(name)
-            val pluginFile = tempTestDir / "project" / "InstrumentScripted.scala"
-            IO.write(pluginFile, pluginImplementation)
             def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
             val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
-            val commandsToRun = ";reload;setUpScripted"
-            val statement = Statement(commandsToRun, Nil, successExpected = true, line = -1)
+            val statement = Statement("reload;initialize", Nil, successExpected = true, line = -1)
 
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
-              while (!Try(IO.read(pluginFile)).toOption.contains(pluginImplementation)) {
-                IO.write(pluginFile, pluginImplementation)
-              }
               try runner.processStatement(sbtHandler, statement, states)
               catch {
                 case t: Throwable =>
