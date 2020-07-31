@@ -158,32 +158,7 @@ object ResolutionRun {
                 ()
               }
           }
-          val withSubResolutions = params.subConfigs.foldLeft(either) {
-            case (acc, (config, parent)) =>
-              for {
-                _ <- acc
-                initResOpt = map.get(parent)
-                allExtends = params.allConfigExtends.getOrElse(config, Set.empty)
-                res <- {
-                  initResOpt match {
-                    case None =>
-                      val allExtendsWithParent = allExtends ++
-                        params.allConfigExtends.getOrElse(parent, Set.empty)
-                      resolution(params, verbosityLevel, log, allExtendsWithParent, None)
-                    case Some(initRes) =>
-                      val deps = params.dependencies.collect {
-                        case (config, dep) if allExtends(config) =>
-                          dep
-                      }
-                      Right(initRes.subset(deps))
-                  }
-                }
-              } yield {
-                map += config -> res
-                ()
-              }
-          }
-          withSubResolutions.map(_ => map.toMap)
+          either.map(_ => map.toMap)
         }
       for (res <- resOrError)
         SbtCoursierCache.default.putResolution(params.resolutionKey, res)

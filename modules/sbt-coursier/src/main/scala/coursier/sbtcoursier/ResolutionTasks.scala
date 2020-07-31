@@ -138,16 +138,11 @@ object ResolutionTasks {
           )
         }
 
-      val providedOpt = orderedConfigs.collectFirst {
-        case (c, _) if c.value.equalsIgnoreCase("provided") => c
-      }
-
       val resOrError = ResolutionRun.resolutions(
         ResolutionParams(
           dependencies = currentProject.dependencies,
           fallbackDependencies = fallbackDependencies,
           orderedConfigs = orderedConfigs,
-          subConfigs = providedOpt.map(_ -> coursier.core.Configuration.compile).toSeq,
           autoScalaLibOpt = if (autoScalaLib) Some((so, sv)) else None,
           mainRepositories = mainRepositories,
           parentProjectCache = parentProjectCache,

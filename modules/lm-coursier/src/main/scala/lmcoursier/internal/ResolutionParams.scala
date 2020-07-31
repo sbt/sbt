@@ -17,7 +17,6 @@ final case class ResolutionParams(
   dependencies: Seq[(Configuration, Dependency)],
   fallbackDependencies: Seq[FallbackDependency],
   orderedConfigs: Seq[(Configuration, Seq[Configuration])],
-  subConfigs: Seq[(Configuration, Configuration)],
   autoScalaLibOpt: Option[(Organization, String)],
   mainRepositories: Seq[Repository],
   parentProjectCache: ProjectCache,
@@ -35,18 +34,12 @@ final case class ResolutionParams(
 
   lazy val allConfigExtends: Map[Configuration, Set[Configuration]] = {
     val map = new mutable.HashMap[Configuration, Set[Configuration]]
-    val subConfigMap = subConfigs
-      .map { case (config, parent) => parent -> config }
-      .groupBy(_._1)
-      .mapValues(_.map(_._2))
-      .toMap
     for ((config, extends0) <- orderedConfigs) {
       val allExtends = extends0
         .iterator
         // the else of the getOrElse shouldn't be hit (because of the ordering of the configurations)
         .foldLeft(Set(config))((acc, ext) => acc ++ map.getOrElse(ext, Set(ext)))
-      val viaSubConfig = subConfigMap.getOrElse(config, Nil)
-      map += config -> (allExtends ++ viaSubConfig)
+      map += config -> allExtends
     }
     map.toMap
   }

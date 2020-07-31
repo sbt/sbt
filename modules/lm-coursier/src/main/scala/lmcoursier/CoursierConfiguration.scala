@@ -55,7 +55,7 @@ import scala.concurrent.duration.Duration
   @since
   sbtClassifiers: Boolean = false,
   @since
-  providedInCompile: Boolean = true
+  providedInCompile: Boolean = false // unused, kept for binary compatibility
 ) {
 
   def withLog(log: Logger): CoursierConfiguration =
