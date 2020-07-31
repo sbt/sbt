@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion0 = "2.0.0-RC6-23"
+val coursierVersion0 = "2.0.0-RC6-24"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
