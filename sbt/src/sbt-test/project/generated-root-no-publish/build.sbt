@@ -7,4 +7,5 @@ val commonSettings = Seq(
 lazy val app = (project in file("app")).
   settings(commonSettings: _*)
 
+name := "generated-root-no-publish"
 commonSettings
