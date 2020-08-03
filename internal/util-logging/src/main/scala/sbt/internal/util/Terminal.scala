@@ -350,6 +350,7 @@ object Terminal {
     override def getLastLine: Option[String] = t.getLastLine
     override def getLines: Seq[String] = t.getLines
     override private[sbt] def name: String = t.name
+    override def toString: String = s"ProxyTerminal(current = $t)"
   }
   private[sbt] def get: Terminal = ProxyTerminal
 
