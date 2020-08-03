@@ -202,6 +202,10 @@ object MainLoop {
         StandardMain.exchange.setExec(Some(exec))
         StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
         val newState = Command.process(exec.commandLine, progressState)
+        // Flush the terminal output after command evaluation to ensure that all output
+        // is displayed in the thin client before we report the command status.
+        val terminal = channelName.flatMap(exchange.channelForName(_).map(_.terminal))
+        terminal.foreach(_.flush())
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
             !exec.commandLine.startsWith(networkExecPrefix)) {
           val doneEvent = ExecStatusEvent(

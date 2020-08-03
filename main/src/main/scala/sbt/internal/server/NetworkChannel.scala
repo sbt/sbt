@@ -653,6 +653,13 @@ final class NetworkChannel(
   import sjsonnew.BasicJsonProtocol._
 
   import scala.collection.JavaConverters._
+  private[this] val outputBuffer = new LinkedBlockingQueue[Byte]
+  private[this] val flushFuture = new AtomicReference[java.util.concurrent.Future[_]]
+  private[this] def doFlush()() = {
+    val list = new java.util.ArrayList[Byte]
+    outputBuffer.synchronized(outputBuffer.drainTo(list))
+    if (!list.isEmpty) jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
+  }
   private[this] lazy val outputStream: OutputStream with AutoCloseable = new OutputStream
     with AutoCloseable {
     /*
@@ -670,28 +677,21 @@ final class NetworkChannel(
       Executors.newSingleThreadScheduledExecutor(
         r => new Thread(r, s"$name-output-buffer-timer-thread")
       )
-    private[this] val buffer = new LinkedBlockingQueue[Byte]
-    private[this] val future = new AtomicReference[java.util.concurrent.Future[_]]
-    private[this] def doFlush()() = {
-      val list = new java.util.ArrayList[Byte]
-      buffer.synchronized(buffer.drainTo(list))
-      if (!list.isEmpty) jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
-    }
     override def close(): Unit = {
       Util.ignoreResult(executor.shutdownNow())
       doFlush()
     }
-    override def write(b: Int): Unit = buffer.synchronized {
-      buffer.put(b.toByte)
+    override def write(b: Int): Unit = outputBuffer.synchronized {
+      outputBuffer.put(b.toByte)
     }
     override def flush(): Unit = {
-      future.get match {
+      flushFuture.get match {
         case null =>
           try {
-            future.set(
+            flushFuture.set(
               executor.schedule(
                 (() => {
-                  future.set(null)
+                  flushFuture.set(null)
                   doFlush()
                 }): Runnable,
                 20,
@@ -702,8 +702,8 @@ final class NetworkChannel(
         case f =>
       }
     }
-    override def write(b: Array[Byte]): Unit = buffer.synchronized {
-      b.foreach(buffer.put)
+    override def write(b: Array[Byte]): Unit = outputBuffer.synchronized {
+      b.foreach(outputBuffer.put)
     }
     override def write(b: Array[Byte], off: Int, len: Int): Unit = {
       write(java.util.Arrays.copyOfRange(b, off, off + len))
@@ -880,6 +880,7 @@ final class NetworkChannel(
         catch { case _: InterruptedException => }
       }
 
+    override def flush(): Unit = doFlush()
     override def toString: String = s"NetworkTerminal($name)"
     override def close(): Unit = if (closed.compareAndSet(false, true)) {
       val threads = blockedThreads.synchronized {
