@@ -31,21 +31,21 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
     uiThread.synchronized {
       val task = channel.makeUIThread(state)
       def submit(): Thread = {
-        def close(): Unit = {
-          uiThread.get match {
-            case (_, t) if t == thread => uiThread.set(null)
-            case _                     =>
-          }
+        val thread: Thread = new Thread(s"sbt-$name-ui-thread") {
+          setDaemon(true)
+          override def run(): Unit =
+            try task.run()
+            finally uiThread.get match {
+              case (_, t) if t == this => uiThread.set(null)
+              case _                   =>
+            }
         }
-        lazy val thread = new Thread(() => {
-          try task.run()
-          finally close()
-        }, s"sbt-$name-ui-thread")
-        thread.setDaemon(true)
-        thread.start()
         uiThread.getAndSet((task, thread)) match {
-          case null   =>
-          case (_, t) => t.interrupt()
+          case null => thread.start()
+          case (task, t) if t.getClass != task.getClass =>
+            stopThreadImpl()
+            thread.start()
+          case t => uiThread.set(t)
         }
         thread
       }
@@ -53,14 +53,14 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
         case null                                  => uiThread.set((task, submit()))
         case (t, _) if t.getClass == task.getClass =>
         case (t, thread) =>
-          thread.interrupt()
+          stopThreadImpl()
           uiThread.set((task, submit()))
       }
     }
     Option(lastProgressEvent.get).foreach(onProgressEvent)
   }
 
-  private[sbt] def stopThread(): Unit = uiThread.synchronized {
+  private[sbt] def stopThreadImpl(): Unit = uiThread.synchronized {
     uiThread.getAndSet(null) match {
       case null =>
       case (t, thread) =>
@@ -75,21 +75,25 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
         ()
     }
   }
+  private[sbt] def stopThread(): Unit = uiThread.synchronized(stopThreadImpl())
 
-  private[sbt] def onConsolePromptEvent(consolePromptEvent: ConsolePromptEvent): Unit = {
-    channel.terminal.withPrintStream { ps =>
-      ps.print(ConsoleAppender.ClearScreenAfterCursor)
-      ps.flush()
+  private[sbt] def onConsolePromptEvent(consolePromptEvent: ConsolePromptEvent): Unit =
+    // synchronize to ensure that the state isn't modified during the call to reset
+    // at the bottom
+    synchronized {
+      channel.terminal.withPrintStream { ps =>
+        ps.print(ConsoleAppender.ClearScreenAfterCursor)
+        ps.flush()
+      }
+      val state = consolePromptEvent.state
+      terminal.prompt match {
+        case Prompt.Running | Prompt.Pending =>
+          terminal.setPrompt(Prompt.AskUser(() => UITask.shellPrompt(terminal, state)))
+        case _ =>
+      }
+      onProgressEvent(ProgressEvent("Info", Vector(), None, None, None))
+      reset(state)
     }
-    val state = consolePromptEvent.state
-    terminal.prompt match {
-      case Prompt.Running | Prompt.Pending =>
-        terminal.setPrompt(Prompt.AskUser(() => UITask.shellPrompt(terminal, state)))
-      case _ =>
-    }
-    onProgressEvent(ProgressEvent("Info", Vector(), None, None, None))
-    reset(state)
-  }
 
   private[sbt] def onConsoleUnpromptEvent(
       consoleUnpromptEvent: ConsoleUnpromptEvent

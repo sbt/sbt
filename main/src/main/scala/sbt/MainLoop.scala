@@ -15,8 +15,8 @@ import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Terminal }
-import sbt.internal.{ ConsoleUnpromptEvent, ShutdownHooks }
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal }
+import sbt.internal.ShutdownHooks
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.{ Logger, LoggerContext }
@@ -206,13 +206,16 @@ object MainLoop {
               state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
             } else state
         }
-        StandardMain.exchange.setState(progressState)
-        StandardMain.exchange.setExec(Some(exec))
-        StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
+        exchange.setState(progressState)
+        exchange.setExec(Some(exec))
         val restoreTerminal = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
             val prevTerminal = Terminal.set(c.terminal)
+            val prevPrompt = c.terminal.prompt
+            // temporarily set the prompt to running during task evaluation
+            c.terminal.setPrompt(Prompt.Running)
             () => {
+              c.terminal.setPrompt(prevPrompt)
               Terminal.set(prevTerminal)
               c.terminal.flush()
             }

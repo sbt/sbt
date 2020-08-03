@@ -82,7 +82,9 @@ private[sbt] object UITask {
                 }
             }
           }
-          impl()
+          val res = impl()
+          terminal.setPrompt(Prompt.Pending)
+          res
         } catch { case e: InterruptedException => Right("") }
       override def close(): Unit = closed.set(true)
     }

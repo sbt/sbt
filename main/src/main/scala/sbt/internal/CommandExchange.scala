@@ -133,17 +133,10 @@ private[sbt] final class CommandExchange {
       }
     }
     // Do not manually run GC until the user has been idling for at least the min gc interval.
-    val exec = impl(interval match {
+    impl(interval match {
       case d: FiniteDuration => Some(d.fromNow)
       case _                 => None
     }, idleDeadline)
-    exec.source.foreach { s =>
-      channelForName(s.channelName).foreach {
-        case c if c.terminal.prompt != Prompt.Batch => c.terminal.setPrompt(Prompt.Running)
-        case _                                      =>
-      }
-    }
-    exec
   }
 
   private def addConsoleChannel(): Unit =
