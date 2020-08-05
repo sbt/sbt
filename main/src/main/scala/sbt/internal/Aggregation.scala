@@ -131,7 +131,7 @@ object Aggregation {
     if (get(showSuccess)) {
       if (get(showTiming)) {
         val msg = timingString(start, stop, structure.data, currentRef)
-        if (success) log.success(msg) else log.error(msg)
+        if (success) log.success(msg) else if (Terminal.get.isSuccessEnabled) log.error(msg)
       } else if (success)
         log.success("")
     }

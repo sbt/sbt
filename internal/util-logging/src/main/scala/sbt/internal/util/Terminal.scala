@@ -163,7 +163,7 @@ trait Terminal extends AutoCloseable {
     if (lines.nonEmpty) lines.tail.foldLeft(lines.headOption.fold(0)(count))(_ + count(_))
     else 0
   }
-
+  private[sbt] def flush(): Unit = printStream.flush()
 }
 
 object Terminal {
