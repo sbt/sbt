@@ -7,7 +7,7 @@
 
 package sbt.internal.util
 
-import java.io.{ InputStream, InterruptedIOException, OutputStream, PrintStream }
+import java.io.{ InputStream, InterruptedIOException, IOException, OutputStream, PrintStream }
 import java.nio.channels.ClosedChannelException
 import java.util.{ Arrays, Locale }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
@@ -171,7 +171,8 @@ object Terminal {
   if (System.getProperty("sbt.jline.verbose", "false") != "true")
     jline.internal.Log.setOutput(new PrintStream(_ => {}, false))
   def consoleLog(string: String): Unit = {
-    Terminal.console.printStream.println(s"[info] $string")
+    try Terminal.console.printStream.println(s"[info] $string")
+    catch { case _: IOException => }
   }
   private[sbt] def set(terminal: Terminal) = {
     activeTerminal.set(terminal)
