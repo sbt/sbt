@@ -305,6 +305,7 @@ object Defaults extends BuildCommon {
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
       version :== "0.1.0-SNAPSHOT",
+      versionScheme :== None,
       classpathTypes :== Set("jar", "bundle", "maven-plugin", "test-jar") ++ CustomPomParser.JarPackagings,
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
@@ -2645,7 +2646,7 @@ object Classpaths {
       val report = (updateTask tag (Tags.Update, Tags.Network)).value
       val log = streams.value.log
       val ew =
-        EvictionWarning(ivyModule.value, (evictionWarningOptions in evicted).value, report)
+        EvictionWarning(ivyModule.value, (evicted / evictionWarningOptions).value, report)
       ew.lines foreach { log.warn(_) }
       ew.infoAllTheThings foreach { log.info(_) }
       ew
@@ -2763,13 +2764,20 @@ object Classpaths {
   }
 
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
-    val base = ModuleID(organization.value, moduleName.value, version.value)
+    val p0 = ModuleID(organization.value, moduleName.value, version.value)
       .cross(crossVersion in projectID value)
       .artifacts(artifacts.value: _*)
-    apiURL.value match {
-      case Some(u) => base.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
-      case _       => base
+    val p1 = apiURL.value match {
+      case Some(u) => p0.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
+      case _       => p0
     }
+    val p2 = versionScheme.value match {
+      case Some(x) =>
+        VersionSchemes.validateScheme(x)
+        p1.extra(SbtPomExtraProperties.VERSION_SCHEME_KEY -> x)
+      case _ => p1
+    }
+    p2
   }
   def pluginProjectID: Initialize[ModuleID] =
     Def.setting {

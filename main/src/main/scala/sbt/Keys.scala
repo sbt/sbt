@@ -488,6 +488,7 @@ object Keys {
   val packagedArtifact = taskKey[(Artifact, File)]("Generates a packaged artifact, returning the Artifact and the produced File.").withRank(CTask)
   val checksums = settingKey[Seq[String]]("The list of checksums to generate and to verify for dependencies.").withRank(BSetting)
   val forceUpdatePeriod = settingKey[Option[FiniteDuration]]("Duration after which to force a full update to occur").withRank(CSetting)
+  val versionScheme = settingKey[Option[String]]("""Version scheme used for the subproject: Supported values are Some("early-semver"), Some("pvp"), and Some("semver-spec")""").withRank(BSetting)
 
   val classifiersModule = taskKey[GetClassifiersModule]("classifiers-module").withRank(CTask)
   val compatibilityWarningOptions = settingKey[CompatibilityWarningOptions]("Configures warnings around Maven incompatibility.").withRank(CSetting)

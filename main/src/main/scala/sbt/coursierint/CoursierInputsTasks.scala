@@ -28,6 +28,7 @@ import lmcoursier.definitions.{
 }
 import lmcoursier.credentials.DirectCredentials
 import lmcoursier.{ FallbackDependency, FromSbt, Inputs }
+import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.ivy.{
   FileCredentials,
   Credentials,
@@ -46,6 +47,7 @@ object CoursierInputsTasks {
       auOpt: Option[URL],
       description: String,
       homepage: Option[URL],
+      vsOpt: Option[String],
       log: Logger
   ): CProject = {
 
@@ -60,12 +62,16 @@ object CoursierInputsTasks {
     )
     val proj1 = auOpt match {
       case Some(au) =>
-        val props = proj0.properties :+ ("info.apiURL" -> au.toString)
-        proj0.withProperties(props)
+        proj0.withProperties(proj0.properties :+ (SbtPomExtraProperties.POM_API_KEY -> au.toString))
       case _ => proj0
     }
-    proj1.withInfo(
-      proj1.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
+    val proj2 = vsOpt match {
+      case Some(vs) =>
+        proj1.withProperties(proj1.properties :+ (SbtPomExtraProperties.VERSION_SCHEME_KEY -> vs))
+      case _ => proj1
+    }
+    proj2.withInfo(
+      proj2.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
     )
   }
 
@@ -80,6 +86,7 @@ object CoursierInputsTasks {
         apiURL.value,
         description.value,
         homepage.value,
+        versionScheme.value,
         streams.value.log
       )
     }
