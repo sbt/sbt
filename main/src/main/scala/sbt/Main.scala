@@ -930,8 +930,9 @@ object BuiltinCommands {
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
     val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
-    val s4 = setupGlobalFileTreeRepository(s3)
-    CheckBuildSources.init(LintUnused.lintUnusedFunc(s4))
+    val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
+    val s5 = setupGlobalFileTreeRepository(s4)
+    CheckBuildSources.init(LintUnused.lintUnusedFunc(s5))
   }
 
   private val setupGlobalFileTreeRepository: State => State = { state =>

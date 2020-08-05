@@ -258,14 +258,16 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       commands: Seq[String],
       fileStampCache: FileStamp.Cache,
       dynamicInputs: mutable.Set[DynamicInput],
+      context: LoggerContext
   ): Callbacks = {
     implicit val extracted: Extracted = Project.extract(s)
-    implicit val logger: Logger = LogExchange.logger(channel.name + "-watch")
+    implicit val logger: Logger =
+      context.logger(channel.name + "-watch", None, None)
     validateCommands(s, commands)
     val configs = getAllConfigs(s, commands, dynamicInputs)
     val appender = ConsoleAppender(channel.name + "-watch", channel.terminal)
     val level = configs.minBy(_.watchSettings.logLevel).watchSettings.logLevel
-    LogExchange.bindLoggerAppenders(channel.name + "-watch", (appender -> level) :: Nil)
+    context.addAppender(channel.name + "-watch", appender -> level)
     aggregate(
       configs,
       logger,
@@ -1141,8 +1143,9 @@ private[sbt] object ContinuousCommands {
             .channelForName(channelName)
             .getOrElse(throw new IllegalStateException(s"No channel with name $channelName"))
           val dynamicInputs = mutable.Set.empty[DynamicInput]
+          val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
           def cb: Continuous.Callbacks =
-            Continuous.getCallbacks(state, channel, commands, cache, dynamicInputs)
+            Continuous.getCallbacks(state, channel, commands, cache, dynamicInputs, context)
 
           val s = new ContinuousState(
             count = count,
@@ -1178,8 +1181,9 @@ private[sbt] object ContinuousCommands {
               restoredState.remove(persistentFileStampCache).remove(Continuous.DynamicInputs)
             },
             afterWatch = state => {
-              LogExchange.unbindLoggerAppenders(channelName + "-watch")
+              context.clearAppenders(channelName + "-watch")
               repo.close()
+              context.close()
               state.get(watchStates) match {
                 case None     => state
                 case Some(ws) => state.put(watchStates, ws - channelName)

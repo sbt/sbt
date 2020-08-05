@@ -17,6 +17,7 @@ import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
+import org.apache.logging.log4j.core.{ Appender => XAppender }
 import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import sbt.Keys._
@@ -359,9 +360,19 @@ object Defaults extends BuildCommon {
         try onUnload.value(s)
         finally IO.delete(taskTemporaryDirectory.value)
       },
-      extraLoggers :== { _ =>
+      // extraLoggers is deprecated
+      SettingKey[ScopedKey[_] => Seq[XAppender]]("extraLoggers") :== { _ =>
         Nil
       },
+      extraAppenders := {
+        val f = SettingKey[ScopedKey[_] => Seq[XAppender]]("extraLoggers").value
+        s =>
+          f(s).map {
+            case a: Appender => a
+            case a           => new ConsoleAppenderFromLog4J(a.getName, a)
+          }
+      },
+      useLog4J :== SysProp.useLog4J,
       watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
       taskTemporaryDirectory := {
@@ -441,7 +452,7 @@ object Defaults extends BuildCommon {
   // TODO: This should be on the new default settings for a project.
   def projectCore: Seq[Setting[_]] = Seq(
     name := thisProject.value.id,
-    logManager := LogManager.defaults(extraLoggers.value, ConsoleOut.terminalOut),
+    logManager := LogManager.defaults(extraAppenders.value, ConsoleOut.terminalOut),
     onLoadMessage := (onLoadMessage or
       Def.setting {
         s"set current project to ${name.value} (in build ${thisProjectRef.value.build})"
@@ -1046,13 +1057,15 @@ object Defaults extends BuildCommon {
     inTask(key)(
       Seq(
         testListeners := {
+          val stateLogLevel = state.value.get(Keys.logLevel.key).getOrElse(Level.Info)
           TestLogger.make(
             streams.value.log,
             closeableTestLogger(
               streamsManager.value,
               test in resolvedScoped.value.scope,
               logBuffered.value
-            )
+            ),
+            Keys.logLevel.?.value.getOrElse(stateLogLevel),
           ) +:
             new TestStatusReporter(succeededFile(streams.in(test).value.cacheDirectory)) +:
             testListeners.in(TaskZero).value

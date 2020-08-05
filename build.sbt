@@ -410,6 +410,16 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
       exclude[InheritedNewAbstractMethodProblem](
         "sbt.internal.util.codec.JsonProtocol.ProgressEventFormat"
       ),
+      exclude[DirectMissingMethodProblem]("sbt.internal.util.MainAppender.*"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.BufferedAppender.*"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.ManagedLogger.this"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.ManagedLogger.this"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.MainAppender*"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.util.GlobalLogging.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.GlobalLogging.*"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.util.MainAppender*"),
+      exclude[MissingTypesProblem]("sbt.internal.util.ConsoleAppender"),
+      exclude[MissingTypesProblem]("sbt.internal.util.BufferedAppender"),
     ),
   )
   .configure(addSbtIO)
@@ -1004,6 +1014,9 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.productsTask"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.jarProductsTask"),
       exclude[DirectMissingMethodProblem]("sbt.StandardMain.cache"),
+      // internal logging apis,
+      exclude[IncompatibleSignatureProblem]("sbt.internal.LogManager*"),
+      exclude[MissingTypesProblem]("sbt.internal.RelayAppender"),
     )
   )
   .configure(

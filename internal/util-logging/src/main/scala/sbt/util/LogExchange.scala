@@ -7,64 +7,71 @@
 
 package sbt.util
 
-import sbt.internal.util._
+import java.util.concurrent.ConcurrentHashMap
 import org.apache.logging.log4j.{ LogManager => XLogManager, Level => XLevel }
-import org.apache.logging.log4j.core._
-import org.apache.logging.log4j.core.appender.AsyncAppender
+import org.apache.logging.log4j.core.{ Appender => XAppender, LoggerContext => XLoggerContext }
 import org.apache.logging.log4j.core.config.{ AppenderRef, LoggerConfig }
 import org.apache.logging.log4j.core.layout.PatternLayout
-import scala.collection.JavaConverters._
+import sbt.internal.util._
 import scala.collection.concurrent
 import sjsonnew.JsonFormat
+import org.apache.logging.log4j.core.appender.AsyncAppender
 
 // http://logging.apache.org/log4j/2.x/manual/customconfig.html
 // https://logging.apache.org/log4j/2.x/log4j-core/apidocs/index.html
 
 sealed abstract class LogExchange {
-  private[sbt] lazy val context: LoggerContext = init()
-  private[sbt] lazy val builtInStringCodecs: Unit = initStringCodecs()
-  private[sbt] lazy val asyncStdout: AsyncAppender = buildAsyncStdout
+  private[sbt] lazy val context: XLoggerContext = init()
   private[sbt] val stringCodecs: concurrent.Map[String, ShowLines[_]] = concurrent.TrieMap()
+  private[sbt] val builtInStringCodecs: Unit = initStringCodecs()
+  private[util] val configs = new ConcurrentHashMap[String, LoggerConfig]
+  private[util] def addConfig(name: String, config: LoggerConfig): Unit =
+    Util.ignoreResult(configs.putIfAbsent(name, config))
+  private[util] def removeConfig(name: String): Option[LoggerConfig] = Option(configs.remove(name))
 
+  @deprecated("Use LoggerContext to create loggers", "1.4.0")
   def logger(name: String): ManagedLogger = logger(name, None, None)
-  def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger = {
-    val _ = context
-    val codecs = builtInStringCodecs
-    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
-    val config = ctx.getConfiguration
-    val loggerConfig = LoggerConfig.createLogger(
-      false,
-      XLevel.DEBUG,
-      name,
-      // disable the calculation of caller location as it is very expensive
-      // https://issues.apache.org/jira/browse/LOG4J2-153
-      "false",
-      Array[AppenderRef](),
-      null,
-      config,
-      null
-    )
-    config.addLogger(name, loggerConfig)
-    ctx.updateLoggers
-    val logger = ctx.getLogger(name)
-    new ManagedLogger(name, channelName, execId, logger, Some(Terminal.get))
-  }
+  @deprecated("Use LoggerContext to create loggers", "1.4.0")
+  def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger =
+    LoggerContext.globalContext.logger(name, channelName, execId)
+  @deprecated("Use LoggerContext to unbind appenders", "1.4.0")
   def unbindLoggerAppenders(loggerName: String): Unit = {
-    val lc = loggerConfig(loggerName)
-    lc.getAppenders.asScala foreach {
-      case (k, v) => lc.removeAppender(k)
+    LoggerContext.globalContext.clearAppenders(loggerName)
+  }
+  @deprecated("Use LoggerContext to bind appenders", "1.4.0")
+  def bindLoggerAppenders(
+      loggerName: String,
+      appenders: List[(XAppender, Level.Value)]
+  ): Unit = {
+    appenders.foreach {
+      case (a, l) =>
+        LoggerContext.globalContext
+          .addAppender(loggerName, new ConsoleAppenderFromLog4J(loggerName, a) -> l)
     }
   }
-  def bindLoggerAppenders(loggerName: String, appenders: List[(Appender, Level.Value)]): Unit = {
-    val lc = loggerConfig(loggerName)
-    appenders foreach {
-      case (x, lv) => lc.addAppender(x, ConsoleAppender.toXLevel(lv), null)
-    }
-  }
-  def loggerConfig(loggerName: String): LoggerConfig = {
-    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
+  @deprecated("unused", "1.4.0")
+  def loggerConfig(loggerName: String): LoggerConfig = configs.get(loggerName)
+
+  @deprecated("unused", "1.4.0")
+  lazy val asyncStdout = buildAsyncStdout
+  @deprecated("unused", "1.4.0")
+  private[sbt] def buildAsyncStdout: AsyncAppender = {
+    val ctx = XLogManager.getContext(false) match { case x: XLoggerContext => x }
     val config = ctx.getConfiguration
-    config.getLoggerConfig(loggerName)
+    val appender = ConsoleAppender("Stdout").toLog4J
+    // CustomConsoleAppender.createAppender("Stdout", layout, null, null)
+    appender.start
+    config.addAppender(appender)
+    val asyncAppender: AsyncAppender = AsyncAppender
+      .newBuilder()
+      .setName("AsyncStdout")
+      .setAppenderRefs(Array(AppenderRef.createAppenderRef("Stdout", XLevel.DEBUG, null)))
+      .setBlocking(false)
+      .setConfiguration(config)
+      .build
+    asyncAppender.start
+    config.addAppender(asyncAppender)
+    asyncAppender
   }
 
   // Construct these StringTypeTags manually, because they're used at the very startup of sbt
@@ -90,7 +97,7 @@ sealed abstract class LogExchange {
   // Since we currently do not use Layout inside ConsoleAppender, the actual pattern is not relevant.
   private[sbt] lazy val dummyLayout: PatternLayout = {
     val _ = context
-    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
+    val ctx = XLogManager.getContext(false) match { case x: XLoggerContext => x }
     val config = ctx.getConfiguration
     val lo = PatternLayout.newBuilder
       .withConfiguration(config)
@@ -131,31 +138,14 @@ sealed abstract class LogExchange {
     val _ = getOrElseUpdateStringCodec(tag.key, ev)
   }
 
-  private[sbt] def buildAsyncStdout: AsyncAppender = {
-    val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
-    val config = ctx.getConfiguration
-    val appender = ConsoleAppender("Stdout")
-    // CustomConsoleAppenderImpl.createAppender("Stdout", layout, null, null)
-    appender.start
-    config.addAppender(appender)
-    val asyncAppender: AsyncAppender = AsyncAppender
-      .newBuilder()
-      .setName("AsyncStdout")
-      .setAppenderRefs(Array(AppenderRef.createAppenderRef("Stdout", XLevel.DEBUG, null)))
-      .setBlocking(false)
-      .setConfiguration(config)
-      .build
-    asyncAppender.start
-    config.addAppender(asyncAppender)
-    asyncAppender
-  }
-  private[sbt] def init(): LoggerContext = {
+  private[sbt] def init(): XLoggerContext = {
     import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
     import org.apache.logging.log4j.core.config.Configurator
     val builder = ConfigurationBuilderFactory.newConfigurationBuilder
     builder.setConfigurationName("sbt.util.logging")
     val ctx = Configurator.initialize(builder.build())
-    ctx match { case x: LoggerContext => x }
+    ctx match { case x: XLoggerContext => x }
   }
+  private[sbt] def init(name: String): XLoggerContext = new XLoggerContext(name)
 }
 object LogExchange extends LogExchange

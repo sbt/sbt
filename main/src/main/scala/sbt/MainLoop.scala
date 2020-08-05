@@ -19,7 +19,7 @@ import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Terminal }
 import sbt.internal.{ ConsoleUnpromptEvent, ShutdownHooks }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
-import sbt.util.Logger
+import sbt.util.{ Logger, LoggerContext }
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -63,7 +63,7 @@ object MainLoop {
     }
 
   /** Runs the next sequence of commands, cleaning up global logging after any exceptions. */
-  def runAndClearLast(state: State, logBacking: GlobalLogBacking): RunNext =
+  def runAndClearLast(state: State, logBacking: GlobalLogBacking): RunNext = {
     try runWithNewLog(state, logBacking)
     catch {
       case e: xsbti.FullReload =>
@@ -80,6 +80,7 @@ object MainLoop {
         deleteLastLog(logBacking)
         throw e
     }
+  }
 
   /** Deletes the previous global log file. */
   def deleteLastLog(logBacking: GlobalLogBacking): Unit =
@@ -108,16 +109,20 @@ object MainLoop {
   }
 
   /** Runs the next sequence of commands with global logging in place. */
-  def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
+  def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext = {
     Using.fileWriter(append = true)(logBacking.file) { writer =>
       val out = new PrintWriter(writer)
       val full = state.globalLogging.full
-      val newLogging = state.globalLogging.newAppender(full, out, logBacking)
+      val newLogging =
+        state.globalLogging.newAppender(full, out, logBacking, LoggerContext.globalContext)
       // transferLevels(state, newLogging)
       val loggedState = state.copy(globalLogging = newLogging)
       try run(loggedState)
-      finally out.close()
+      finally {
+        out.close()
+      }
     }
+  }
 
   // /** Transfers logging and trace levels from the old global loggers to the new ones. */
   // private[this] def transferLevels(state: State, logging: GlobalLogging): Unit = {
@@ -143,15 +148,16 @@ object MainLoop {
       case ret: State.Return    => new Return(ret.result)
     }
 
-  def next(state: State): State =
+  def next(state: State): State = {
+    val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
     try {
       ErrorHandling.wideConvert {
-        state.process(processCommand)
+        state.put(Keys.loggerContext, context).process(processCommand)
       } match {
-        case Right(s)                  => s
+        case Right(s)                  => s.remove(Keys.loggerContext)
         case Left(t: xsbti.FullReload) => throw t
         case Left(t: RebootCurrent)    => throw t
-        case Left(t)                   => state.handleError(t)
+        case Left(t)                   => state.remove(Keys.loggerContext).handleError(t)
       }
     } catch {
       case oom: OutOfMemoryError
@@ -180,7 +186,8 @@ object MainLoop {
         state.log.error(msg)
         state.log.error("\n")
         state.handleError(oom)
-    }
+    } finally context.close()
+  }
 
   /** This is the main function State transfer function of the sbt command processing. */
   def processCommand(exec: Exec, state: State): State = {
@@ -202,20 +209,31 @@ object MainLoop {
         StandardMain.exchange.setState(progressState)
         StandardMain.exchange.setExec(Some(exec))
         StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
-        val terminal = channelName.flatMap(exchange.channelForName(_).map(_.terminal))
-        val prevTerminal = terminal.map(Terminal.set)
+        val restoreTerminal = channelName.flatMap(exchange.channelForName) match {
+          case Some(c) =>
+            val prevTerminal = Terminal.set(c.terminal)
+            () => {
+              Terminal.set(prevTerminal)
+              c.terminal.flush()
+            }
+          case _ => () => ()
+        }
         /*
          * FastTrackCommands.evaluate can be significantly faster than Command.process because
          * it avoids an expensive parsing step for internal commands that are easy to parse.
          * Dropping (FastTrackCommands.evaluate ... getOrElse) should be functionally identical
          * but slower.
          */
-        val newState = FastTrackCommands.evaluate(progressState, exec.commandLine) getOrElse
-          Command.process(exec.commandLine, progressState)
-        // Flush the terminal output after command evaluation to ensure that all output
-        // is displayed in the thin client before we report the command status.
-        terminal.foreach(_.flush())
-        prevTerminal.foreach(Terminal.set)
+        val newState = try {
+          FastTrackCommands
+            .evaluate(progressState, exec.commandLine)
+            .getOrElse(Command.process(exec.commandLine, progressState))
+        } finally {
+          // Flush the terminal output after command evaluation to ensure that all output
+          // is displayed in the thin client before we report the command status. Also
+          // set the promt to whatever it was before we started evaluating the task.
+          restoreTerminal()
+        }
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
             !exec.commandLine.startsWith(networkExecPrefix)) {
           val doneEvent = ExecStatusEvent(

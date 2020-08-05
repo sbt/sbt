@@ -7,12 +7,15 @@
 
 package sbt.internal.util
 
-import org.apache.logging.log4j.{ Logger => XLogger }
-import org.apache.logging.log4j.message.ObjectMessage
 import sbt.internal.util.codec.JsonProtocol._
 import sbt.util._
 import scala.reflect.runtime.universe.TypeTag
 import sjsonnew.JsonFormat
+
+private[sbt] trait MiniLogger {
+  def log[T](level: Level.Value, message: ObjectEvent[T]): Unit
+  def log(level: Level.Value, message: => String): Unit
+}
 
 /**
  * Delegates log events to the associated LogExchange.
@@ -21,19 +24,21 @@ class ManagedLogger(
     val name: String,
     val channelName: Option[String],
     val execId: Option[String],
-    xlogger: XLogger,
-    terminal: Option[Terminal]
+    xlogger: MiniLogger,
+    terminal: Option[Terminal],
+    private[sbt] val context: LoggerContext,
 ) extends Logger {
-  def this(name: String, channelName: Option[String], execId: Option[String], xlogger: XLogger) =
-    this(name, channelName, execId, xlogger, None)
+  def this(
+      name: String,
+      channelName: Option[String],
+      execId: Option[String],
+      xlogger: MiniLogger
+  ) =
+    this(name, channelName, execId, xlogger, None, LoggerContext.globalContext)
   override def trace(t: => Throwable): Unit =
     logEvent(Level.Error, TraceEvent("Error", t, channelName, execId))
-  override def log(level: Level.Value, message: => String): Unit = {
-    xlogger.log(
-      ConsoleAppender.toXLevel(level),
-      new ObjectMessage(StringEvent(level.toString, message, channelName, execId))
-    )
-  }
+  override def log(level: Level.Value, message: => String): Unit =
+    xlogger.log(level, message)
 
   // send special event for success since it's not a real log level
   override def success(message: => String): Unit = {
@@ -84,10 +89,7 @@ class ManagedLogger(
     val v: A = event
     // println("logEvent " + tag.key)
     val entry: ObjectEvent[A] = ObjectEvent(level, v, channelName, execId, tag.key)
-    xlogger.log(
-      ConsoleAppender.toXLevel(level),
-      new ObjectMessage(entry)
-    )
+    xlogger.log(level, entry)
   }
 
   @deprecated("No longer used.", "1.0.0")
