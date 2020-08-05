@@ -4,7 +4,7 @@ import org.scalatest.{ FreeSpec, Inside, Matchers }
 
 // This is a specification to check VersionNumber and VersionNumberCompatibility.
 class VersionNumberSpec extends FreeSpec with Matchers with Inside {
-  import VersionNumber.{ SemVer, SecondSegment }
+  import VersionNumber.{ EarlySemVer, SemVer, PackVer }
 
   version("1") { v =>
     assertParsesTo(v, Seq(1), Seq(), Seq())
@@ -28,10 +28,15 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
     assertIsNotCompatibleWith(v, "2.0.0", SemVer)
     assertIsNotCompatibleWith(v, "1.0.0-M1", SemVer)
 
-    assertIsCompatibleWith(v, "1.0.1", SecondSegment)
-    assertIsNotCompatibleWith(v, "1.1.1", SecondSegment)
-    assertIsNotCompatibleWith(v, "2.0.0", SecondSegment)
-    assertIsNotCompatibleWith(v, "1.0.0-M1", SecondSegment)
+    assertIsCompatibleWith(v, "1.0.1", EarlySemVer)
+    assertIsCompatibleWith(v, "1.1.1", EarlySemVer)
+    assertIsNotCompatibleWith(v, "2.0.0", EarlySemVer)
+    assertIsNotCompatibleWith(v, "1.0.0-M1", EarlySemVer)
+
+    assertIsCompatibleWith(v, "1.0.1", PackVer)
+    assertIsNotCompatibleWith(v, "1.1.1", PackVer)
+    assertIsNotCompatibleWith(v, "2.0.0", PackVer)
+    assertIsNotCompatibleWith(v, "1.0.0-M1", PackVer)
   }
 
   version("1.0.0.0") { v =>
@@ -49,9 +54,13 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
     assertIsNotCompatibleWith(v, "0.12.1", SemVer)
     assertIsNotCompatibleWith(v, "0.12.1-M1", SemVer)
 
-    assertIsNotCompatibleWith(v, "0.12.0-RC1", SecondSegment)
-    assertIsCompatibleWith(v, "0.12.1", SecondSegment)
-    assertIsCompatibleWith(v, "0.12.1-M1", SecondSegment)
+    assertIsNotCompatibleWith(v, "0.12.0-RC1", EarlySemVer)
+    assertIsCompatibleWith(v, "0.12.1", EarlySemVer)
+    assertIsCompatibleWith(v, "0.12.1-M1", EarlySemVer)
+
+    assertIsNotCompatibleWith(v, "0.12.0-RC1", PackVer)
+    assertIsCompatibleWith(v, "0.12.1", PackVer)
+    assertIsCompatibleWith(v, "0.12.1-M1", PackVer)
   }
 
   version("0.1.0-SNAPSHOT") { v =>
@@ -62,9 +71,13 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
     assertIsNotCompatibleWith(v, "0.1.0", SemVer)
     assertIsCompatibleWith(v, "0.1.0-SNAPSHOT+001", SemVer)
 
-    assertIsCompatibleWith(v, "0.1.0-SNAPSHOT", SecondSegment)
-    assertIsNotCompatibleWith(v, "0.1.0", SecondSegment)
-    assertIsCompatibleWith(v, "0.1.0-SNAPSHOT+001", SecondSegment)
+    assertIsCompatibleWith(v, "0.1.0-SNAPSHOT", EarlySemVer)
+    assertIsNotCompatibleWith(v, "0.1.0", EarlySemVer)
+    assertIsCompatibleWith(v, "0.1.0-SNAPSHOT+001", EarlySemVer)
+
+    assertIsCompatibleWith(v, "0.1.0-SNAPSHOT", PackVer)
+    assertIsNotCompatibleWith(v, "0.1.0", PackVer)
+    assertIsCompatibleWith(v, "0.1.0-SNAPSHOT+001", PackVer)
   }
 
   version("0.1.0-M1") { v =>
@@ -86,7 +99,7 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
     assertParsesTo(v, Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())
     assertCascadesTo(v, Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
     assertIsCompatibleWith(v, "2.0.0", SemVer)
-    assertIsNotCompatibleWith(v, "2.0.0", SecondSegment)
+    assertIsNotCompatibleWith(v, "2.0.0", PackVer)
   }
 
   version("20140115000117-b3a-sources") { v =>
@@ -187,9 +200,10 @@ class VersionNumberSpec extends FreeSpec with Matchers with Inside {
   ) = {
     val prefix = if (expectOutcome) "should" else "should NOT"
     val compatibilityStrategy = vnc match {
-      case SemVer        => "SemVer"
-      case SecondSegment => "SecondSegment"
-      case _             => val s = vnc.name; if (s contains " ") s""""$s"""" else s
+      case SemVer      => "SemVer"
+      case PackVer     => "PackVer"
+      case EarlySemVer => "EarlySemVer"
+      case _           => val s = vnc.name; if (s contains " ") s""""$s"""" else s
     }
     s"$prefix be $compatibilityStrategy compatible with $v2" in {
       vnc.isCompatible(VersionNumber(v1.value), VersionNumber(v2)) shouldBe expectOutcome

@@ -3,6 +3,7 @@ package sbt.librarymanagement
 import collection.mutable
 import Configurations.Compile
 import ScalaArtifacts.{ LibraryID, CompilerID }
+import sbt.internal.librarymanagement.VersionSchemes
 import sbt.util.Logger
 import sbt.util.ShowLines
 
@@ -131,6 +132,17 @@ object EvictionWarningOptions {
       (m1.revision, m2.revision) match {
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.SemVer
+            .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
+        case _ => false
+      }
+  }
+
+  lazy val guessEarlySemVer
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+    case (m1, Some(m2), _) =>
+      (m1.revision, m2.revision) match {
+        case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
+          VersionNumber.EarlySemVer
             .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
         case _ => false
       }
@@ -290,9 +302,25 @@ object EvictionWarning {
     var binaryIncompatibleEvictionExists = false
     def guessCompatible(p: EvictionPair): Boolean =
       p.evicteds forall { r =>
-        options.guessCompatible(
-          (r.module, p.winner map { _.module }, module.scalaModuleInfo)
-        )
+        val winnerOpt = p.winner map { _.module }
+        val extraAttributes = (p.winner match {
+          case Some(r) => r.extraAttributes
+          case _       => Map.empty
+        }) ++ (winnerOpt match {
+          case Some(w) => w.extraAttributes
+          case _       => Map.empty
+        })
+        val schemeOpt = VersionSchemes.extractFromExtraAttributes(extraAttributes)
+        val f = (winnerOpt, schemeOpt) match {
+          case (Some(_), Some(VersionSchemes.EarlySemVer)) =>
+            EvictionWarningOptions.guessEarlySemVer
+          case (Some(_), Some(VersionSchemes.SemVerSpec)) =>
+            EvictionWarningOptions.guessSemVer
+          case (Some(_), Some(VersionSchemes.PackVer)) =>
+            EvictionWarningOptions.guessSecondSegment
+          case _ => options.guessCompatible(_)
+        }
+        f((r.module, winnerOpt, module.scalaModuleInfo))
       }
     pairs foreach {
       case p if isScalaArtifact(module, p.organization, p.name) =>
