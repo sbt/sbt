@@ -167,9 +167,19 @@ object VersionNumber {
    * Also API compatibility is expected even when the first segment is zero.
    */
   object SecondSegment extends VersionNumberCompatibility {
+    def name: String = "Second Segment Variant"
+    def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
+      PackVer.isCompatible(v1, v2)
+  }
+
+  /** A variant of SemVar that seems to be common among the Scala libraries.
+   * The second segment (y in x.y.z) increments breaks the binary compatibility even when x > 0.
+   * Also API compatibility is expected even when the first segment is zero.
+   */
+  object PackVer extends VersionNumberCompatibility {
     import SemVer._
 
-    def name: String = "Second Segment Variant"
+    def name: String = "Package Versioning Policy"
 
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
@@ -181,6 +191,69 @@ object VersionNumber {
         case _                                                    => false
       }
     }
+  }
+
+  /** A variant of SemVar that enforces API compatibility when the first segment is zero.
+   */
+  object EarlySemVer extends VersionNumberCompatibility {
+    import SemVer._
+
+    def name: String = "Early Semantic Versioning"
+
+    /* Quotes of parts of the rules in the SemVer Spec relevant to compatibility checking:
+     *
+     * Rule 2:
+     * > A normal version number MUST take the form X.Y.Z
+     *
+     * Rule 6:
+     * > Patch version Z (x.y.Z | x > 0) MUST be incremented if only backwards compatible bug fixes are introduced.
+     *
+     * Rule 7:
+     * > Minor version Y (x.Y.z | x > 0) MUST be incremented if new, backwards compatible functionality is introduced.
+     *
+     * Rule 8:
+     * > Major version X (X.y.z | X > 0) MUST be incremented if any backwards incompatible changes are introduced.
+     *
+     * Rule 9:
+     * > A pre-release version MAY be denoted by appending a hyphen and a series of
+     * > dot separated identifiers immediately following the patch version.
+     * > Identifiers MUST comprise only ASCII alphanumerics and hyphen [0-9A-Za-z-].
+     * > Identifiers MUST NOT be empty.
+     * > Numeric identifiers MUST NOT include leading zeroes.
+     * > Pre-release versions have a lower precedence than the associated normal version.
+     * > A pre-release version indicates that the version is unstable and might not satisfy the
+     * > intended compatibility requirements as denoted by its associated normal version.
+     * > Examples: 1.0.0-alpha, 1.0.0-alpha.1, 1.0.0-0.3.7, 1.0.0-x.7.z.92.
+     *
+     * Rule 10:
+     * > Build metadata MAY be denoted by appending a plus sign and a series of
+     * > dot separated identifiers immediately following the patch or pre-release version.
+     * > Identifiers MUST comprise only ASCII alphanumerics and hyphen [0-9A-Za-z-].
+     * > Identifiers MUST NOT be empty.
+     * > Build metadata SHOULD be ignored when determining version precedence.
+     * > Thus two versions that differ only in the build metadata, have the same precedence.
+     * > Examples: 1.0.0-alpha+001, 1.0.0+20130313144700, 1.0.0-beta+exp.sha.5114f85.
+     *
+     * Rule 10 means that build metadata is never considered for compatibility
+     *         we'll enforce this immediately by dropping them from both versions
+     * Rule 2 we enforce with custom extractors.
+     * Rule 6, 7 & 8 means version compatibility is determined by comparing the two X values
+     * Rule 9..
+     *   Dale thinks means pre-release versions are fully equals checked..
+     *   Eugene thinks means pre-releases before 1.0.0 are not compatible, if not they are..
+     * Rule 4 is modified in this variant.
+     */
+    def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
+      doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
+
+    private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
+      (v1, v2) match {
+        case (NormalVersion(0, _, 0), NormalVersion(0, _, 0))   => v1 == v2
+        case (NormalVersion(0, y1, _), NormalVersion(0, y2, _)) => y1 == y2
+        case (NormalVersion(_, 0, 0), NormalVersion(_, 0, 0))   => v1 == v2 // R9 maybe?
+        case (NormalVersion(x1, _, _), NormalVersion(x2, _, _)) => x1 == x2 // R6, R7 & R8
+        case _                                                  => false
+      }
   }
 }
 

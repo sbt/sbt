@@ -13,6 +13,7 @@ public class SbtPomExtraProperties {
     public static final String POM_SCALA_VERSION = "scalaVersion";
     public static final String POM_SBT_VERSION = "sbtVersion";
     public static final String POM_API_KEY = "info.apiURL";
+    public static final String VERSION_SCHEME_KEY = "info.versionScheme";
 
     public static final String LICENSE_COUNT_KEY = "license.count";
 
