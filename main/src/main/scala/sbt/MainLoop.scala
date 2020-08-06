@@ -23,6 +23,7 @@ import sbt.util.Logger
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
+import sbt.internal.FastTrackCommands
 
 object MainLoop {
 
@@ -201,7 +202,14 @@ object MainLoop {
         StandardMain.exchange.setState(progressState)
         StandardMain.exchange.setExec(Some(exec))
         StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
-        val newState = Command.process(exec.commandLine, progressState)
+        /*
+         * FastTrackCommands.evaluate can be significantly faster than Command.process because
+         * it avoids an expensive parsing step for internal commands that are easy to parse.
+         * Dropping (FastTrackCommands.evaluate ... getOrElse) should be functionally identical
+         * but slower.
+         */
+        val newState = FastTrackCommands.evaluate(progressState, exec.commandLine) getOrElse
+          Command.process(exec.commandLine, progressState)
         // Flush the terminal output after command evaluation to ensure that all output
         // is displayed in the thin client before we report the command status.
         val terminal = channelName.flatMap(exchange.channelForName(_).map(_.terminal))
