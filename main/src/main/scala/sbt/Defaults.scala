@@ -26,7 +26,8 @@ import sbt.Project.{
   inTask,
   richInitialize,
   richInitializeTask,
-  richTaskSessionVar
+  richTaskSessionVar,
+  sbtRichTaskPromise,
 }
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.coursierint._
@@ -35,7 +36,14 @@ import sbt.internal._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.classpath.{ ClassLoaderCache, ClasspathFilter, ClasspathUtil }
-import sbt.internal.inc.{ MappedFileConverter, PlainVirtualFile, Stamps, ZincLmUtil, ZincUtil }
+import sbt.internal.inc.{
+  CompileOutput,
+  MappedFileConverter,
+  PlainVirtualFile,
+  Stamps,
+  ZincLmUtil,
+  ZincUtil
+}
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
@@ -68,7 +76,6 @@ import sbt.librarymanagement.Configurations.{
   Provided,
   Runtime,
   Test,
-  names
 }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement._
@@ -82,7 +89,7 @@ import sbt.nio.Watch
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
-import sbt.util.InterfaceUtil.{ toJavaFunction => f1 }
+import sbt.util.InterfaceUtil.{ toJavaFunction => f1, t2 }
 import sbt.util._
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.Converter
@@ -97,7 +104,6 @@ import sbt.SlashSyntax0._
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
-  FileValueCache,
   Locate,
   ManagedLoggedReporter,
   MixedAnalyzingCompiler,
@@ -112,6 +118,7 @@ import xsbti.compile.{
   CompileOptions,
   CompileOrder,
   CompileResult,
+  CompileProgress,
   CompilerCache,
   Compilers,
   DefinesClass,
@@ -180,16 +187,10 @@ object Defaults extends BuildCommon {
       apiMappings := Map.empty,
       autoScalaLibrary :== true,
       managedScalaInstance :== true,
-      classpathEntryDefinesClass := {
-        val converter = fileConverter.value
-        val f = FileValueCache({ x: NioPath =>
-          if (x.getFileName.toString != "rt.jar") Locate.definesClass(converter.toVirtualFile(x))
-          else ((_: String) => false): DefinesClass
-        }).get;
-        { (x: File) =>
-          f(x.toPath)
-        }
+      classpathEntryDefinesClass := { (file: File) =>
+        sys.error("use classpathEntryDefinesClassVF instead")
       },
+      extraIncOptions :== Seq("JAVA_CLASS_VERSION" -> sys.props("java.class.version")),
       allowMachinePath :== true,
       rootPaths := {
         val app = appConfiguration.value
@@ -373,6 +374,7 @@ object Defaults extends BuildCommon {
         () => Clean.deleteContents(tempDirectory, _ => false)
       },
       turbo :== SysProp.turbo,
+      usePipelining :== SysProp.pipelining,
       useSuperShell := { if (insideCI.value) false else Terminal.console.isSupershellEnabled },
       progressReports := {
         val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
@@ -543,10 +545,16 @@ object Defaults extends BuildCommon {
   )
   // This exists for binary compatibility and probably never should have been public.
   def addBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Nil
-  lazy val outputConfigPaths = Seq(
+  lazy val outputConfigPaths: Seq[Setting[_]] = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
+    // TODO: Use FileConverter once Zinc can handle non-Path
+    backendOutput := PlainVirtualFile(classDirectory.value.toPath),
+    earlyOutput / artifactPath := earlyArtifactPathSetting(artifact).value,
+    // TODO: Use FileConverter once Zinc can handle non-Path
+    earlyOutput := PlainVirtualFile((earlyOutput / artifactPath).value.toPath),
     semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
     compileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "zinc"),
+    earlyCompileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "early-zinc"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
   )
 
@@ -670,9 +678,10 @@ object Defaults extends BuildCommon {
   def defaultCompileSettings: Seq[Setting[_]] =
     globalDefaults(enableBinaryCompileAnalysis := true)
 
-  lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
-    compileInputsSettings
-  ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
+  lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++
+    inTask(compile)(compileInputsSettings) ++
+    inTask(compileJava)(compileInputsSettings(dependencyVirtualClasspath)) ++
+    configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compileOutputs := {
       import scala.collection.JavaConverters._
       val c = fileConverter.value
@@ -684,9 +693,31 @@ object Defaults extends BuildCommon {
     },
     compileOutputs := compileOutputs.triggeredBy(compile).value,
     clean := (compileOutputs / clean).value,
+    earlyOutputPing := Def.promise[Boolean],
+    compileProgress := {
+      val s = streams.value
+      val promise = earlyOutputPing.value
+      val mn = moduleName.value
+      val c = configuration.value
+      new CompileProgress {
+        override def afterEarlyOutput(isSuccess: Boolean): Unit = {
+          if (isSuccess) s.log.debug(s"[$mn / $c] early output is success")
+          else s.log.debug(s"[$mn / $c] early output can't be made because of macros")
+          promise.complete(Value(isSuccess))
+        }
+      }
+    },
+    compileEarly := compileEarlyTask.value,
     compile := compileTask.value,
+    compileScalaBackend := compileScalaBackendTask.value,
+    compileJava := compileJavaTask.value,
+    compileSplit := {
+      // conditional task
+      if (incOptions.value.pipelining) compileJava.value
+      else compileScalaBackend.value
+    },
     internalDependencyConfigurations := InternalDependencies.configurations.value,
-    manipulateBytecode := compileIncremental.value,
+    manipulateBytecode := compileSplit.value,
     compileIncremental := compileIncrementalTask.tag(Tags.Compile, Tags.CPU).value,
     printWarnings := printWarningsTask.value,
     compileAnalysisFilename := {
@@ -697,6 +728,9 @@ object Defaults extends BuildCommon {
         if (crossPaths.value) s"_$binVersion"
         else ""
       s"inc_compile$extra.zip"
+    },
+    earlyCompileAnalysisFile := {
+      earlyCompileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
     compileAnalysisFile := {
       compileAnalysisTargetRoot.value / compileAnalysisFilename.value
@@ -715,6 +749,22 @@ object Defaults extends BuildCommon {
               ): ClassFileManagerType
           ).toOptional
         )
+        .withPipelining(usePipelining.value)
+    },
+    scalacOptions := {
+      val old = scalacOptions.value
+      val converter = fileConverter.value
+      if (usePipelining.value)
+        Vector("-Ypickle-java", "-Ypickle-write", converter.toPath(earlyOutput.value).toString) ++ old
+      else old
+    },
+    classpathEntryDefinesClassVF := {
+      val converter = fileConverter.value
+      val f = VirtualFileValueCache(converter)({ x: VirtualFile =>
+        if (x.name.toString != "rt.jar") Locate.definesClass(x)
+        else ((_: String) => false): DefinesClass
+      }).get
+      f
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
@@ -1429,6 +1479,19 @@ object Defaults extends BuildCommon {
       excludes: ScopedTaskable[FileFilter]
   ): Initialize[Task[Seq[File]]] = collectFiles(dirs: Taskable[Seq[File]], filter, excludes)
 
+  private[sbt] def earlyArtifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
+    Def.setting {
+      val f = artifactName.value
+      crossTarget.value / "early" / f(
+        ScalaVersion(
+          (scalaVersion in artifactName).value,
+          (scalaBinaryVersion in artifactName).value
+        ),
+        projectID.value,
+        art.value
+      )
+    }
+
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
     Def.setting {
       val f = artifactName.value
@@ -1836,6 +1899,43 @@ object Defaults extends BuildCommon {
     finally w.close() // workaround for #937
   }
 
+  /** Handles traditional Scalac compilation. For non-pipelined compilation,
+   *  this also handles Java compilation.
+   */
+  private[sbt] def compileScalaBackendTask: Initialize[Task[CompileResult]] = Def.task {
+    val setup: Setup = compileIncSetup.value
+    val useBinary: Boolean = enableBinaryCompileAnalysis.value
+    val analysisResult: CompileResult = compileIncremental.value
+    // Save analysis midway if pipelining is enabled
+    if (analysisResult.hasModified && setup.incrementalCompilerOptions.pipelining) {
+      val store =
+        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
+      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
+      store.set(contents)
+    }
+    analysisResult
+  }
+
+  /** Block on earlyOutputPing promise, which will be completed by `compile` midway
+   * via `compileProgress` implementation.
+   */
+  private[sbt] def compileEarlyTask: Initialize[Task[CompileAnalysis]] = Def.task {
+    if ({
+      streams.value.log
+        .debug(s"${name.value}: compileEarly: blocking on earlyOutputPing")
+      earlyOutputPing.await.value
+    }) {
+      val useBinary: Boolean = enableBinaryCompileAnalysis.value
+      val store =
+        MixedAnalyzingCompiler.staticCachedStore(earlyCompileAnalysisFile.value.toPath, !useBinary)
+      store.get.toOption match {
+        case Some(contents) => contents.getAnalysis
+        case _              => Analysis.empty
+      }
+    } else {
+      compile.value
+    }
+  }
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
     val useBinary: Boolean = enableBinaryCompileAnalysis.value
@@ -1860,11 +1960,31 @@ object Defaults extends BuildCommon {
   def compileIncrementalTask = Def.task {
     BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
+      compileIncrementalTaskImpl(
+        streams.value,
+        (compile / compileInputs).value,
+        earlyOutputPing.value
+      )
     }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
-  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Inputs): CompileResult = {
+  private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
+    val s = streams.value
+    val in = (compileJava / compileInputs).value
+    val _ = compileScalaBackend.value
+    try {
+      incCompiler.asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl].compileAllJava(in, s.log)
+    } finally {
+      in.setup.reporter match {
+        case r: BuildServerReporter => r.sendFinalReport()
+      }
+    }
+  }
+  private[this] def compileIncrementalTaskImpl(
+      s: TaskStreams,
+      ci: Inputs,
+      promise: PromiseWrap[Boolean]
+  ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) = {
       cs.withScalac(
@@ -1874,13 +1994,14 @@ object Defaults extends BuildCommon {
         }
       )
     }
-    // .withJavac(
-    //  cs.javac.onArgs(exported(x, "javac"))
-    //)
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
       incCompiler.compile(i, s.log)
+    } catch {
+      case e: Throwable if !promise.isCompleted =>
+        promise.failure(e)
+        throw e
     } finally {
       i.setup.reporter match {
         case r: BuildServerReporter => r.sendFinalReport()
@@ -1889,47 +2010,44 @@ object Defaults extends BuildCommon {
     }
   }
   def compileIncSetupTask = Def.task {
-    val converter = fileConverter.value
+    val cp = dependencyPicklePath.value
     val lookup = new PerClasspathEntryLookup {
-      private val cachedAnalysisMap: File => Option[CompileAnalysis] =
-        analysisMap(dependencyClasspath.value)
-      private val cachedPerEntryDefinesClassLookup: File => DefinesClass =
-        Keys.classpathEntryDefinesClass.value
-
+      private val cachedAnalysisMap: VirtualFile => Option[CompileAnalysis] =
+        analysisMap(cp)
+      private val cachedPerEntryDefinesClassLookup: VirtualFile => DefinesClass =
+        Keys.classpathEntryDefinesClassVF.value
       override def analysis(classpathEntry: VirtualFile): Optional[CompileAnalysis] =
-        cachedAnalysisMap(converter.toPath(classpathEntry).toFile).toOptional
+        cachedAnalysisMap(classpathEntry).toOptional
       override def definesClass(classpathEntry: VirtualFile): DefinesClass =
-        cachedPerEntryDefinesClassLookup(converter.toPath(classpathEntry).toFile)
+        cachedPerEntryDefinesClassLookup(classpathEntry)
     }
+    val extra = extraIncOptions.value.map(t2)
     Setup.of(
       lookup,
       (skip in compile).value,
-      // TODO - this is kind of a bad way to grab the cache directory for streams...
       compileAnalysisFile.value.toPath,
       compilerCache.value,
       incOptions.value,
       (compilerReporter in compile).value,
-      // TODO - task / setting for compile progress
-      None.toOptional: Optional[xsbti.compile.CompileProgress],
-      // TODO - task / setting for extra,
-      Array.empty: Array[xsbti.T2[String, String]],
+      Some((compile / compileProgress).value).toOptional,
+      extra.toArray,
     )
   }
-  def compileInputsSettings: Seq[Setting[_]] = {
+  def compileInputsSettings: Seq[Setting[_]] =
+    compileInputsSettings(dependencyPicklePath)
+  def compileInputsSettings(classpathTask: TaskKey[VirtualClasspath]): Seq[Setting[_]] = {
     Seq(
       compileOptions := {
         val c = fileConverter.value
-        val cp0 = classDirectory.value +: data(dependencyClasspath.value)
-        val cp = cp0 map { x =>
-          PlainVirtualFile(x.toPath)
-        }
+        val cp0 = classpathTask.value
+        val cp = backendOutput.value +: data(cp0)
         val vs = sources.value.toVector map { x =>
           c.toVirtualFile(x.toPath)
         }
         CompileOptions.of(
-          cp.toArray: Array[VirtualFile],
+          cp.toArray,
           vs.toArray,
-          classDirectory.value.toPath,
+          c.toPath(backendOutput.value),
           scalacOptions.value.toArray,
           javacOptions.value.toArray,
           maxErrors.value,
@@ -1938,7 +2056,7 @@ object Defaults extends BuildCommon {
           None.toOptional: Optional[NioPath],
           Some(fileConverter.value).toOptional,
           Some(reusableStamper.value).toOptional,
-          None.toOptional: Optional[xsbti.compile.Output],
+          Some(CompileOutput(c.toPath(earlyOutput.value))).toOptional,
         )
       },
       compilerReporter := {
@@ -2166,8 +2284,10 @@ object Classpaths {
   def concatSettings[T](a: SettingKey[Seq[T]], b: SettingKey[Seq[T]]): Initialize[Seq[T]] =
     concatSettings(a: Initialize[Seq[T]], b) // forward to widened variant
 
+  // Included as part of JvmPlugin#projectSettings.
   lazy val configSettings: Seq[Setting[_]] = classpaths ++ Seq(
     products := makeProducts.value,
+    pickleProducts := makePickleProducts.value,
     productDirectories := classDirectory.value :: Nil,
     classpathConfiguration := findClasspathConfig(
       internalConfigurationMap.value,
@@ -2181,7 +2301,7 @@ object Classpaths {
       externalDependencyClasspath := concat(unmanagedClasspath, managedClasspath).value,
       dependencyClasspath := concat(internalDependencyClasspath, externalDependencyClasspath).value,
       fullClasspath := concatDistinct(exportedProducts, dependencyClasspath).value,
-      internalDependencyClasspath := internalDependencies.value,
+      internalDependencyClasspath := ClasspathImpl.internalDependencyClasspathTask.value,
       unmanagedClasspath := unmanagedDependencies.value,
       managedClasspath := {
         val isMeta = isMetaBuild.value
@@ -2198,12 +2318,20 @@ object Classpaths {
         if (isMeta && !force && !csr) mjars ++ sbtCp
         else mjars
       },
-      exportedProducts := trackedExportedProducts(TrackLevel.TrackAlways).value,
-      exportedProductsIfMissing := trackedExportedProducts(TrackLevel.TrackIfMissing).value,
-      exportedProductsNoTracking := trackedExportedProducts(TrackLevel.NoTracking).value,
-      exportedProductJars := trackedExportedJarProducts(TrackLevel.TrackAlways).value,
-      exportedProductJarsIfMissing := trackedExportedJarProducts(TrackLevel.TrackIfMissing).value,
-      exportedProductJarsNoTracking := trackedExportedJarProducts(TrackLevel.NoTracking).value,
+      exportedProducts := ClasspathImpl.trackedExportedProducts(TrackLevel.TrackAlways).value,
+      exportedProductsIfMissing := ClasspathImpl
+        .trackedExportedProducts(TrackLevel.TrackIfMissing)
+        .value,
+      exportedProductsNoTracking := ClasspathImpl
+        .trackedExportedProducts(TrackLevel.NoTracking)
+        .value,
+      exportedProductJars := ClasspathImpl.trackedExportedJarProducts(TrackLevel.TrackAlways).value,
+      exportedProductJarsIfMissing := ClasspathImpl
+        .trackedExportedJarProducts(TrackLevel.TrackIfMissing)
+        .value,
+      exportedProductJarsNoTracking := ClasspathImpl
+        .trackedExportedJarProducts(TrackLevel.NoTracking)
+        .value,
       internalDependencyAsJars := internalDependencyJarsTask.value,
       dependencyClasspathAsJars := concat(internalDependencyAsJars, externalDependencyClasspath).value,
       fullClasspathAsJars := concatDistinct(exportedProductJars, dependencyClasspathAsJars).value,
@@ -2221,7 +2349,38 @@ object Classpaths {
         dependencyClasspathFiles.value.flatMap(
           p => FileStamp(stamper.library(converter.toVirtualFile(p))).map(p -> _)
         )
-      }
+      },
+      dependencyVirtualClasspath := {
+        // TODO: Use converter
+        val cp0 = dependencyClasspath.value
+        cp0 map {
+          _ map { file =>
+            PlainVirtualFile(file.toPath): VirtualFile
+          }
+        }
+      },
+      // Note: invoking this task from shell would block indefinately because it will
+      // wait for the upstream compilation to start.
+      dependencyPicklePath := {
+        // This is a conditional task. Do not refactor.
+        if (incOptions.value.pipelining) {
+          concat(
+            internalDependencyPicklePath,
+            Def.task {
+              // TODO: Use converter
+              externalDependencyClasspath.value map {
+                _ map { file =>
+                  PlainVirtualFile(file.toPath): VirtualFile
+                }
+              }
+            }
+          ).value
+        } else {
+          dependencyVirtualClasspath.value
+        }
+      },
+      internalDependencyPicklePath := ClasspathImpl.internalDependencyPicklePathTask.value,
+      exportedPickles := ClasspathImpl.exportedPicklesTask.value,
     )
 
   private[this] def exportClasspath(s: Setting[Task[Classpath]]): Setting[Task[Classpath]] =
@@ -3182,15 +3341,15 @@ object Classpaths {
     }
 
   /*
-	// can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
-	def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit, module: IvySbt#Module, config: PublishConfiguration) => Unit =
-	{ case module :+: config :+: HNil =>
-	/*	implicit val publishCache = publishIC
-		val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: PublishConfiguration) =>*/
-		    g(module, config)
-		/*}
-		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
-	}*/
+    // can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
+    def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit, module: IvySbt#Module, config: PublishConfiguration) => Unit =
+    { case module :+: config :+: HNil =>
+    /*	implicit val publishCache = publishIC
+      val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: PublishConfiguration) =>*/
+          g(module, config)
+      /*}
+      f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
+    }*/
 
   def defaultRepositoryFilter: MavenRepository => Boolean = repo => !repo.root.startsWith("file:")
 
@@ -3283,140 +3442,37 @@ object Classpaths {
       new RawRepository(resolver, resolver.getName)
     }
 
-  def analyzed[T](data: T, analysis: CompileAnalysis) =
-    Attributed.blank(data).put(Keys.analysis, analysis)
+  def analyzed[T](data: T, analysis: CompileAnalysis) = ClasspathImpl.analyzed[T](data, analysis)
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
+    val c = fileConverter.value
     compile.value
     copyResources.value
-    classDirectory.value :: Nil
+    c.toPath(backendOutput.value).toFile :: Nil
   }
-  private[sbt] def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =
-    Def.task {
-      val _ = (packageBin / dynamicDependency).value
-      val art = (artifact in packageBin).value
-      val module = projectID.value
-      val config = configuration.value
-      for { (f, analysis) <- trackedExportedProductsImplTask(track).value } yield APIMappings
-        .store(analyzed(f, analysis), apiURL.value)
-        .put(artifact.key, art)
-        .put(moduleID.key, module)
-        .put(configuration.key, config)
-    }
-  private[sbt] def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
-    Def.task {
-      val _ = (packageBin / dynamicDependency).value
-      val art = (artifact in packageBin).value
-      val module = projectID.value
-      val config = configuration.value
-      for { (f, analysis) <- trackedJarProductsImplTask(track).value } yield APIMappings
-        .store(analyzed(f, analysis), apiURL.value)
-        .put(artifact.key, art)
-        .put(moduleID.key, module)
-        .put(configuration.key, config)
-    }
-  private[this] def trackedExportedProductsImplTask(
-      track: TrackLevel
-  ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
-    Def.taskDyn {
-      val _ = (packageBin / dynamicDependency).value
-      val useJars = exportJars.value
-      if (useJars) trackedJarProductsImplTask(track)
-      else trackedNonJarProductsImplTask(track)
-    }
-  private[this] def trackedNonJarProductsImplTask(
-      track: TrackLevel
-  ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
-    Def.taskDyn {
-      val dirs = productDirectories.value
-      val view = fileTreeView.value
-      def containsClassFile(): Boolean =
-        view.list(dirs.map(Glob(_, RecursiveGlob / "*.class"))).nonEmpty
-      TrackLevel.intersection(track, exportToInternal.value) match {
-        case TrackLevel.TrackAlways =>
-          Def.task {
-            products.value map { (_, compile.value) }
-          }
-        case TrackLevel.TrackIfMissing if !containsClassFile() =>
-          Def.task {
-            products.value map { (_, compile.value) }
-          }
-        case _ =>
-          Def.task {
-            val analysis = previousCompile.value.analysis.toOption.getOrElse(Analysis.empty)
-            dirs.map(_ -> analysis)
-          }
+
+  private[sbt] def makePickleProducts: Initialize[Task[Seq[VirtualFile]]] = Def.task {
+    // This is a conditional task.
+    if (earlyOutputPing.await.value) {
+      // TODO: copyResources.value
+      earlyOutput.value :: Nil
+    } else {
+      val c = fileConverter.value
+      products.value map { x: File =>
+        c.toVirtualFile(x.toPath)
       }
     }
-  private[this] def trackedJarProductsImplTask(
-      track: TrackLevel
-  ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
-    Def.taskDyn {
-      val jar = (artifactPath in packageBin).value
-      TrackLevel.intersection(track, exportToInternal.value) match {
-        case TrackLevel.TrackAlways =>
-          Def.task {
-            Seq((packageBin.value, compile.value))
-          }
-        case TrackLevel.TrackIfMissing if !jar.exists =>
-          Def.task {
-            Seq((packageBin.value, compile.value))
-          }
-        case _ =>
-          Def.task {
-            val analysisOpt = previousCompile.value.analysis.toOption
-            Seq(jar) map { x =>
-              (
-                x,
-                if (analysisOpt.isDefined) analysisOpt.get
-                else Analysis.empty
-              )
-            }
-          }
-      }
-    }
+  }
 
   def constructBuildDependencies: Initialize[BuildDependencies] =
     loadedBuild(lb => BuildUtil.dependencies(lb.units))
 
+  @deprecated("not used", "1.4.0")
   def internalDependencies: Initialize[Task[Classpath]] =
-    Def.taskDyn {
-      val _ = (
-        (exportedProductsNoTracking / transitiveClasspathDependency).value,
-        (exportedProductsIfMissing / transitiveClasspathDependency).value,
-        (exportedProducts / transitiveClasspathDependency).value,
-        (exportedProductJarsNoTracking / transitiveClasspathDependency).value,
-        (exportedProductJarsIfMissing / transitiveClasspathDependency).value,
-        (exportedProductJars / transitiveClasspathDependency).value
-      )
-      internalDependenciesImplTask(
-        thisProjectRef.value,
-        classpathConfiguration.value,
-        configuration.value,
-        settingsData.value,
-        buildDependencies.value,
-        trackInternalDependencies.value
-      )
-    }
+    ClasspathImpl.internalDependencyClasspathTask
+
   def internalDependencyJarsTask: Initialize[Task[Classpath]] =
-    Def.taskDyn {
-      internalDependencyJarsImplTask(
-        thisProjectRef.value,
-        classpathConfiguration.value,
-        configuration.value,
-        settingsData.value,
-        buildDependencies.value,
-        trackInternalDependencies.value
-      )
-    }
-  def unmanagedDependencies: Initialize[Task[Classpath]] =
-    Def.taskDyn {
-      unmanagedDependencies0(
-        thisProjectRef.value,
-        configuration.value,
-        settingsData.value,
-        buildDependencies.value
-      )
-    }
+    ClasspathImpl.internalDependencyJarsTask
+  def unmanagedDependencies: Initialize[Task[Classpath]] = ClasspathImpl.unmanagedDependenciesTask
   def mkIvyConfiguration: Initialize[Task[InlineIvyConfiguration]] =
     Def.task {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
@@ -3435,37 +3491,12 @@ object Classpaths {
         .withLog(s.log)
     }
 
-  import java.util.LinkedHashSet
-
-  import collection.JavaConverters._
   def interSort(
       projectRef: ProjectRef,
       conf: Configuration,
       data: Settings[Scope],
       deps: BuildDependencies
-  ): Seq[(ProjectRef, String)] = {
-    val visited = (new LinkedHashSet[(ProjectRef, String)]).asScala
-    def visit(p: ProjectRef, c: Configuration): Unit = {
-      val applicableConfigs = allConfigs(c)
-      for (ac <- applicableConfigs) // add all configurations in this project
-        visited add (p -> ac.name)
-      val masterConfs = names(getConfigurations(projectRef, data).toVector)
-
-      for (ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)) {
-        val configurations = getConfigurations(dep, data)
-        val mapping =
-          mapped(confMapping, masterConfs, names(configurations.toVector), "compile", "*->compile")
-        // map master configuration 'c' and all extended configurations to the appropriate dependency configuration
-        for (ac <- applicableConfigs; depConfName <- mapping(ac.name)) {
-          for (depConf <- confOpt(configurations, depConfName))
-            if (!visited((dep, depConfName)))
-              visit(dep, depConf)
-        }
-      }
-    }
-    visit(projectRef, conf)
-    visited.toSeq
-  }
+  ): Seq[(ProjectRef, String)] = ClasspathImpl.interSort(projectRef, conf, data, deps)
 
   def interSortConfigurations(
       projectRef: ProjectRef,
@@ -3477,143 +3508,50 @@ object Classpaths {
       case (projectRef, configName) => (projectRef, ConfigRef(configName))
     }
 
-  private[sbt] def unmanagedDependencies0(
-      projectRef: ProjectRef,
-      conf: Configuration,
-      data: Settings[Scope],
-      deps: BuildDependencies
-  ): Initialize[Task[Classpath]] =
-    Def.value {
-      interDependencies(
-        projectRef,
-        deps,
-        conf,
-        conf,
-        data,
-        TrackLevel.TrackAlways,
-        true,
-        (dep, conf, data, _) => unmanagedLibs(dep, conf, data),
-      )
-    }
-  private[sbt] def internalDependenciesImplTask(
-      projectRef: ProjectRef,
-      conf: Configuration,
-      self: Configuration,
-      data: Settings[Scope],
-      deps: BuildDependencies,
-      track: TrackLevel
-  ): Initialize[Task[Classpath]] =
-    Def.value { interDependencies(projectRef, deps, conf, self, data, track, false, productsTask) }
-  private[sbt] def internalDependencyJarsImplTask(
-      projectRef: ProjectRef,
-      conf: Configuration,
-      self: Configuration,
-      data: Settings[Scope],
-      deps: BuildDependencies,
-      track: TrackLevel
-  ): Initialize[Task[Classpath]] =
-    Def.value {
-      interDependencies(projectRef, deps, conf, self, data, track, false, jarProductsTask)
-    }
-  private[sbt] def interDependencies(
-      projectRef: ProjectRef,
-      deps: BuildDependencies,
-      conf: Configuration,
-      self: Configuration,
-      data: Settings[Scope],
-      track: TrackLevel,
-      includeSelf: Boolean,
-      f: (ProjectRef, String, Settings[Scope], TrackLevel) => Task[Classpath]
-  ): Task[Classpath] = {
-    val visited = interSort(projectRef, conf, data, deps)
-    val tasks = (new LinkedHashSet[Task[Classpath]]).asScala
-    for ((dep, c) <- visited)
-      if (includeSelf || (dep != projectRef) || (conf.name != c && self.name != c))
-        tasks += f(dep, c, data, track)
-
-    (tasks.toSeq.join).map(_.flatten.distinct)
-  }
-
   def mapped(
       confString: Option[String],
       masterConfs: Seq[String],
       depConfs: Seq[String],
       default: String,
       defaultMapping: String
-  ): String => Seq[String] = {
-    lazy val defaultMap = parseMapping(defaultMapping, masterConfs, depConfs, _ :: Nil)
-    parseMapping(confString getOrElse default, masterConfs, depConfs, defaultMap)
-  }
+  ): String => Seq[String] =
+    ClasspathImpl.mapped(confString, masterConfs, depConfs, default, defaultMapping)
+
   def parseMapping(
       confString: String,
       masterConfs: Seq[String],
       depConfs: Seq[String],
       default: String => Seq[String]
   ): String => Seq[String] =
-    union(confString.split(";") map parseSingleMapping(masterConfs, depConfs, default))
+    ClasspathImpl.parseMapping(confString, masterConfs, depConfs, default)
+
   def parseSingleMapping(
       masterConfs: Seq[String],
       depConfs: Seq[String],
       default: String => Seq[String]
-  )(confString: String): String => Seq[String] = {
-    val ms: Seq[(String, Seq[String])] =
-      trim(confString.split("->", 2)) match {
-        case x :: Nil => for (a <- parseList(x, masterConfs)) yield (a, default(a))
-        case x :: y :: Nil =>
-          val target = parseList(y, depConfs);
-          for (a <- parseList(x, masterConfs)) yield (a, target)
-        case _ => sys.error("Invalid configuration '" + confString + "'") // shouldn't get here
-      }
-    val m = ms.toMap
-    s => m.getOrElse(s, Nil)
-  }
+  )(confString: String): String => Seq[String] =
+    ClasspathImpl.parseSingleMapping(masterConfs, depConfs, default)(confString)
 
   def union[A, B](maps: Seq[A => Seq[B]]): A => Seq[B] =
-    a => maps.foldLeft(Seq[B]()) { _ ++ _(a) } distinct;
+    ClasspathImpl.union[A, B](maps)
 
   def parseList(s: String, allConfs: Seq[String]): Seq[String] =
-    (trim(s split ",") flatMap replaceWildcard(allConfs)).distinct
-  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] = conf match {
-    case ""  => Nil
-    case "*" => allConfs
-    case _   => conf :: Nil
-  }
+    ClasspathImpl.parseList(s, allConfs)
 
-  private def trim(a: Array[String]): List[String] = a.toList.map(_.trim)
+  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] =
+    ClasspathImpl.replaceWildcard(allConfs)(conf)
+
   def missingConfiguration(in: String, conf: String) =
     sys.error("Configuration '" + conf + "' not defined in '" + in + "'")
-  def allConfigs(conf: Configuration): Seq[Configuration] =
-    Dag.topologicalSort(conf)(_.extendsConfigs)
+  def allConfigs(conf: Configuration): Seq[Configuration] = ClasspathImpl.allConfigs(conf)
 
   def getConfigurations(p: ResolvedReference, data: Settings[Scope]): Seq[Configuration] =
-    ivyConfigurations in p get data getOrElse Nil
+    ClasspathImpl.getConfigurations(p, data)
   def confOpt(configurations: Seq[Configuration], conf: String): Option[Configuration] =
-    configurations.find(_.name == conf)
-  private[sbt] def productsTask(
-      dep: ResolvedReference,
-      conf: String,
-      data: Settings[Scope],
-      track: TrackLevel
-  ): Task[Classpath] =
-    track match {
-      case TrackLevel.NoTracking     => getClasspath(exportedProductsNoTracking, dep, conf, data)
-      case TrackLevel.TrackIfMissing => getClasspath(exportedProductsIfMissing, dep, conf, data)
-      case TrackLevel.TrackAlways    => getClasspath(exportedProducts, dep, conf, data)
-    }
-  private[sbt] def jarProductsTask(
-      dep: ResolvedReference,
-      conf: String,
-      data: Settings[Scope],
-      track: TrackLevel
-  ): Task[Classpath] =
-    track match {
-      case TrackLevel.NoTracking     => getClasspath(exportedProductJarsNoTracking, dep, conf, data)
-      case TrackLevel.TrackIfMissing => getClasspath(exportedProductJarsIfMissing, dep, conf, data)
-      case TrackLevel.TrackAlways    => getClasspath(exportedProductJars, dep, conf, data)
-    }
+    ClasspathImpl.confOpt(configurations, conf)
 
   def unmanagedLibs(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
-    getClasspath(unmanagedJars, dep, conf, data)
+    ClasspathImpl.unmanagedLibs(dep, conf, data)
 
   def getClasspath(
       key: TaskKey[Classpath],
@@ -3621,7 +3559,7 @@ object Classpaths {
       conf: String,
       data: Settings[Scope]
   ): Task[Classpath] =
-    (key in (dep, ConfigKey(conf))) get data getOrElse constant(Nil)
+    ClasspathImpl.getClasspath(key, dep, conf, data)
 
   def defaultConfigurationTask(p: ResolvedReference, data: Settings[Scope]): Configuration =
     flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
@@ -3704,13 +3642,14 @@ object Classpaths {
       val ref = thisProjectRef.value
       val data = settingsData.value
       val deps = buildDependencies.value
-      internalDependenciesImplTask(
+      ClasspathImpl.internalDependenciesImplTask(
         ref,
         CompilerPlugin,
         CompilerPlugin,
         data,
         deps,
-        TrackLevel.TrackAlways
+        TrackLevel.TrackAlways,
+        streams.value.log
       )
     }
 

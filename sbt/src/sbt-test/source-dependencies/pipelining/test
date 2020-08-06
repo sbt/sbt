@@ -1,0 +1,9 @@
+> dep/compile
+
+> use/checkPickle
+
+> compile
+
+# making subproject dep should trigger failure
+$ copy-file changes/Break.scala dep/A.scala
+-> compile

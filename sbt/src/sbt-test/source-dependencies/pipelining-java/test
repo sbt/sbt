@@ -1,0 +1,5 @@
+> use/compile
+
+$ delete dep/A.java
+$ copy-file changes/Break.java dep/Break.java
+-> use/compile
