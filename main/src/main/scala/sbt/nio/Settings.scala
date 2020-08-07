@@ -149,7 +149,7 @@ private[sbt] object Settings {
       // This makes watch work by ensuring that the input glob is registered with the
       // repository used by the watch process.
       state.value.get(globalFileTreeRepository).foreach { repo =>
-        inputs.foreach(repo.register)
+        inputs.foreach(repo.register(_).foreach(_.close()))
       }
       dynamicInputs.foreach(_ ++= inputs.map(g => DynamicInput(g, stamper, forceTrigger)))
       view.list(inputs)
