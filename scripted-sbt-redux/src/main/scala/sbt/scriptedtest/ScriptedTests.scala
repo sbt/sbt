@@ -216,7 +216,8 @@ final class ScriptedTests(
             // Reload and initialize (to reload contents of .sbtrc files)
             def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
             val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
-            val statement = Statement("reload;initialize", Nil, successExpected = true, line = -1)
+            val statement =
+              Statement("info;reload;initialize", Nil, successExpected = true, line = -1)
 
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
