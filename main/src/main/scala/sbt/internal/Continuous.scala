@@ -1210,9 +1210,8 @@ private[sbt] object ContinuousCommands {
     state.get(watchStates).flatMap(_.get(channel)) match {
       case None => state
       case Some(cs) =>
-        val pre = StashOnFailure :: s"$SetTerminal $channel" :: s"$preWatch $channel" :: Nil
-        val post = FailureWall :: PopOnFailure :: s"$SetTerminal ${ConsoleChannel.defaultName}" ::
-          s"$postWatch $channel" :: s"$waitWatch $channel" :: Nil
+        val pre = StashOnFailure :: s"$preWatch $channel" :: Nil
+        val post = FailureWall :: PopOnFailure :: s"$postWatch $channel" :: s"$waitWatch $channel" :: Nil
         pre ::: cs.commands.toList ::: post ::: state
     }
   }
@@ -1251,7 +1250,7 @@ private[sbt] object ContinuousCommands {
         case Watch.Trigger     => Right(s"$runWatch ${channel.name}")
         case Watch.Reload =>
           val rewatch = s"$ContinuousExecutePrefix ${ws.count} ${cs.commands mkString "; "}"
-          stop.map(_ :: s"$SetTerminal ${channel.name}" :: "reload" :: rewatch :: Nil mkString "; ")
+          stop.map(_ :: "reload" :: rewatch :: Nil mkString "; ")
         case Watch.Prompt => stop.map(_ :: s"$PromptChannel ${channel.name}" :: Nil mkString ";")
         case Watch.Run(commands) =>
           stop.map(_ +: commands.map(_.commandLine).filter(_.nonEmpty) mkString "; ")

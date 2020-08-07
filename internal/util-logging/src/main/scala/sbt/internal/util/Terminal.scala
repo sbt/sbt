@@ -174,9 +174,9 @@ object Terminal {
     try Terminal.console.printStream.println(s"[info] $string")
     catch { case _: IOException => }
   }
-  private[sbt] def set(terminal: Terminal) = {
-    activeTerminal.set(terminal)
+  private[sbt] def set(terminal: Terminal): Terminal = {
     jline.TerminalFactory.set(terminal.toJLine)
+    activeTerminal.getAndSet(terminal)
   }
   implicit class TerminalOps(private val term: Terminal) extends AnyVal {
     def ansi(richString: => String, string: => String): String =

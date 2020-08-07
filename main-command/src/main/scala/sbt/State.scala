@@ -21,7 +21,6 @@ import BasicCommandStrings.{
   MapExec,
   PopOnFailure,
   ReportResult,
-  SetTerminal,
   StartServer,
   StashOnFailure,
   networkExecPrefix,
@@ -314,10 +313,8 @@ object State {
               val stash = Exec(StashOnFailure, None)
               val failureWall = Exec(FailureWall, None)
               val pop = Exec(PopOnFailure, None)
-              val setTerm = Exec(s"$SetTerminal ${s.channelName}", None)
-              val setConsole = Exec(s"$SetTerminal console0", None)
-              val remaining = stash :: map :: cmd :: complete :: failureWall :: pop :: setConsole :: report :: xs
-              runCmd(setTerm, remaining)
+              val remaining = map :: cmd :: complete :: failureWall :: pop :: report :: xs
+              runCmd(stash, remaining)
             case _ => runCmd(x, xs)
           }
       }

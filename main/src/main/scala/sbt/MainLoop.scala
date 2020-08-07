@@ -10,7 +10,7 @@ package sbt
 import java.io.PrintWriter
 import java.util.Properties
 
-import sbt.BasicCommandStrings.{ SetTerminal, StashOnFailure, networkExecPrefix }
+import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
 import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
@@ -202,6 +202,8 @@ object MainLoop {
         StandardMain.exchange.setState(progressState)
         StandardMain.exchange.setExec(Some(exec))
         StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
+        val terminal = channelName.flatMap(exchange.channelForName(_).map(_.terminal))
+        val prevTerminal = terminal.map(Terminal.set)
         /*
          * FastTrackCommands.evaluate can be significantly faster than Command.process because
          * it avoids an expensive parsing step for internal commands that are easy to parse.
@@ -212,8 +214,8 @@ object MainLoop {
           Command.process(exec.commandLine, progressState)
         // Flush the terminal output after command evaluation to ensure that all output
         // is displayed in the thin client before we report the command status.
-        val terminal = channelName.flatMap(exchange.channelForName(_).map(_.terminal))
         terminal.foreach(_.flush())
+        prevTerminal.foreach(Terminal.set)
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
             !exec.commandLine.startsWith(networkExecPrefix)) {
           val doneEvent = ExecStatusEvent(
@@ -232,11 +234,7 @@ object MainLoop {
       state.get(CheckBuildSourcesKey) match {
         case Some(cbs) =>
           if (!cbs.needsReload(state, exec)) process()
-          else {
-            val isSetTerminal = exec.commandLine.startsWith(SetTerminal)
-            if (isSetTerminal) exec +: Exec("reload", None) +: state.remove(CheckBuildSourcesKey)
-            else Exec("reload", None) +: exec +: state.remove(CheckBuildSourcesKey)
-          }
+          else Exec("reload", None) +: exec +: state.remove(CheckBuildSourcesKey)
         case _ => process()
       }
     } catch {

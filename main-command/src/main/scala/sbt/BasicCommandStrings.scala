@@ -215,7 +215,6 @@ $AliasCommand name=
 
   def FailureWall: String = "resumeFromFailure"
 
-  def SetTerminal = "sbtSetTerminal"
   def ReportResult = "sbtReportResult"
   def CompleteExec = "sbtCompleteExec"
   def MapExec = "sbtMapExec"

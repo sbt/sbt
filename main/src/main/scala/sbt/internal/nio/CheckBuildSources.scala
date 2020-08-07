@@ -10,7 +10,7 @@ package internal.nio
 
 import java.nio.file.Path
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import sbt.BasicCommandStrings.{ RebootCommand, SetTerminal, Shutdown, TerminateAction }
+import sbt.BasicCommandStrings.{ RebootCommand, Shutdown, TerminateAction }
 import sbt.Keys.{ baseDirectory, pollInterval, state }
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
@@ -108,11 +108,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
       state: State,
       exec: Exec
   ): Boolean = {
-    val isSetTerminal = exec.commandLine.startsWith(SetTerminal)
-    val name =
-      if (isSetTerminal)
-        exec.commandLine.split(s"$SetTerminal ").lastOption.filterNot(_.isEmpty)
-      else exec.source.map(_.channelName)
+    val name = exec.source.map(_.channelName)
     val loggerOrTerminal =
       name.flatMap(StandardMain.exchange.channelForName(_).map(_.terminal)) match {
         case Some(t) => Right(t)

@@ -15,7 +15,7 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ SetTerminal, Shell, Shutdown, TemplateCommand, networkExecPrefix }
+import sbt.BasicCommandStrings.{ Shell, Shutdown, TemplateCommand, networkExecPrefix }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
@@ -311,7 +311,6 @@ object BuiltinCommands {
       NetworkChannel.disconnect,
       waitCmd,
       promptChannel,
-      setTerminalCommand,
     ) ++ allBasicCommands ++ ContinuousCommands.value
 
   def DefaultBootCommands: Seq[String] =
@@ -958,12 +957,6 @@ object BuiltinCommands {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
     val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache) andThen addCacheStoreFactoryFactory
     Command.command(ClearCaches, help)(f)
-  }
-
-  def setTerminalCommand = Command.arb(_ => BasicCommands.reportParser(SetTerminal)) {
-    (s, channel) =>
-      StandardMain.exchange.channelForName(channel).foreach(c => Terminal.set(c.terminal))
-      s
   }
 
   private[sbt] def waitCmd: Command =

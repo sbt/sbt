@@ -10,7 +10,7 @@ package internal
 
 import BasicCommandStrings._
 import BasicCommands._
-import BuiltinCommands.{ setTerminalCommand, shell, waitCmd }
+import BuiltinCommands.{ shell, waitCmd }
 import ContinuousCommands._
 
 import sbt.internal.util.complete.Parser
@@ -32,7 +32,6 @@ private[sbt] object FastTrackCommands {
     StashOnFailure -> fromCommand(StashOnFailure, stashOnFailure, arguments = false),
     PopOnFailure -> fromCommand(PopOnFailure, popOnFailure, arguments = false),
     Shell -> fromCommand(Shell, shell),
-    SetTerminal -> fromCommand(SetTerminal, setTerminalCommand),
     failWatch -> fromCommand(failWatch, failWatchCommand),
     preWatch -> fromCommand(preWatch, preWatchCommand),
     postWatch -> fromCommand(postWatch, postWatchCommand),
