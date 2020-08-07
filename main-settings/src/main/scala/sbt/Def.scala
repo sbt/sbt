@@ -18,10 +18,12 @@ import sbt.internal.util.complete.Parser
 import sbt.internal.util._
 import Util._
 import sbt.util.Show
+import xsbti.VirtualFile
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   type Classpath = Seq[Attributed[File]]
+  type VirtualClasspath = Seq[Attributed[VirtualFile]]
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
 

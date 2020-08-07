@@ -973,7 +973,18 @@ lazy val mainProj = (project in file("main"))
       // the binary compatible version.
       exclude[IncompatibleMethTypeProblem]("sbt.internal.server.NetworkChannel.this"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.DeprecatedContinuous.taskDefinitions"),
-      exclude[MissingClassProblem]("sbt.internal.SettingsGraph*")
+      exclude[MissingClassProblem]("sbt.internal.SettingsGraph*"),
+      // Tasks include non-Files, but it's ok
+      exclude[IncompatibleSignatureProblem]("sbt.Defaults.outputConfigPaths"),
+      // private[sbt]
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.trackedExportedProducts"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.trackedExportedJarProducts"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedDependencies0"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.internalDependenciesImplTask"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.internalDependencyJarsImplTask"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.interDependencies"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.productsTask"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.jarProductsTask"),
     )
   )
   .configure(

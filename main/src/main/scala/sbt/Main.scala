@@ -971,22 +971,23 @@ object BuiltinCommands {
   }
 
   private[sbt] def waitCmd: Command =
-    Command.arb(_ => (ContinuousCommands.waitWatch: Parser[String]).examples()) { (s0, _) =>
+    Command.arb(
+      _ => ContinuousCommands.waitWatch.examples() ~> " ".examples() ~> matched(any.*).examples()
+    ) { (s0, channel) =>
       val exchange = StandardMain.exchange
-      if (exchange.channels.exists(ContinuousCommands.isInWatch)) {
-        val s1 = exchange.run(s0)
-        exchange.channels.foreach {
-          case c if ContinuousCommands.isPending(c) =>
-          case c                                    => c.prompt(ConsolePromptEvent(s1))
-        }
-        val exec: Exec = getExec(s1, Duration.Inf)
-        val remaining: List[Exec] =
-          Exec(ContinuousCommands.waitWatch, None) ::
-            Exec(FailureWall, None) :: s1.remainingCommands
-        val newState = s1.copy(remainingCommands = exec +: remaining)
-        if (exec.commandLine.trim.isEmpty) newState
-        else newState.clearGlobalLog
-      } else s0
+      exchange.channelForName(channel) match {
+        case Some(c) if ContinuousCommands.isInWatch(s0, c) =>
+          c.prompt(ConsolePromptEvent(s0))
+          val s1 = exchange.run(s0)
+          val exec: Exec = getExec(s1, Duration.Inf)
+          val remaining: List[Exec] =
+            Exec(s"${ContinuousCommands.waitWatch} $channel", None) ::
+              Exec(FailureWall, None) :: s1.remainingCommands
+          val newState = s1.copy(remainingCommands = exec +: remaining)
+          if (exec.commandLine.trim.isEmpty) newState
+          else newState.clearGlobalLog
+        case _ => s0
+      }
     }
 
   private[sbt] def promptChannel = Command.arb(_ => reportParser(PromptChannel)) {
