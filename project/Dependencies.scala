@@ -105,7 +105,7 @@ object Dependencies {
   val log4jSlf4jImpl = log4jModule("log4j-slf4j-impl")
   val log4jModules = Vector(log4jApi, log4jCore, log4jSlf4jImpl)
 
-  val scalaCacheCaffeine = "com.github.cb372" %% "scalacache-caffeine" % "0.20.0"
+  val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
 
   val hedgehog = "hedgehog" %% "hedgehog-sbt" % "0.1.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"

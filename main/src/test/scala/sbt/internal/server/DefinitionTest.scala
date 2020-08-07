@@ -9,6 +9,8 @@ package sbt
 package internal
 package server
 
+import com.github.benmanes.caffeine.cache.Caffeine
+
 class DefinitionTest extends org.specs2.mutable.Specification {
   import Definition.textProcessor
 
@@ -132,11 +134,8 @@ class DefinitionTest extends org.specs2.mutable.Specification {
 
   "definition" should {
 
-    import scalacache.caffeine._
-    import scalacache.modes.sync._
-
     "cache data in cache" in {
-      val cache = CaffeineCache[Any]
+      val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
       val cacheFile = "Test.scala"
       val useBinary = true
 
@@ -148,7 +147,7 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
 
     "replace cache data in cache" in {
-      val cache = CaffeineCache[Any]
+      val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
       val cacheFile = "Test.scala"
       val useBinary = true
       val falseUseBinary = false
@@ -162,7 +161,7 @@ class DefinitionTest extends org.specs2.mutable.Specification {
     }
 
     "cache more data in cache" in {
-      val cache = CaffeineCache[Any]
+      val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
       val cacheFile = "Test.scala"
       val useBinary = true
       val otherCacheFile = "OtherTest.scala"

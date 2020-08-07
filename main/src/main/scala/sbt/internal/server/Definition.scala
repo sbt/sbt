@@ -15,7 +15,6 @@ import java.nio.file._
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.duration.Duration
 import scala.reflect.NameTransformer
 import scala.tools.reflect.{ ToolBox, ToolBoxError }
 import scala.util.matching.Regex
@@ -23,8 +22,6 @@ import scala.util.matching.Regex
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
-
-import scalacache._
 
 import sbt.internal.inc.{ Analysis, MixedAnalyzingCompiler }
 import sbt.internal.inc.JavaInterfaceUtil._
@@ -35,6 +32,9 @@ import sbt.internal.langserver.{ ErrorCodes, Location, Position, Range, TextDocu
 import sbt.util.Logger
 import sbt.Keys._
 import xsbti.{ FileConverter, VirtualFileRef }
+import com.github.benmanes.caffeine.cache.Cache
+import scala.concurrent.Promise
+import com.github.benmanes.caffeine.cache.Caffeine
 
 private[sbt] object Definition {
   def send[A: JsonFormat](source: CommandSource, execId: String)(params: A): Unit = {
@@ -181,23 +181,8 @@ private[sbt] object Definition {
     Converter.fromJson[TextDocumentPositionParams](jsonDefinition).toOption
   }
 
-  object AnalysesAccess {
-    private[this] val AnalysesKey = "lsp.definition.analyses.key"
-
-    private[server] type Analyses = Set[((String, Boolean), Option[Analysis])]
-
-    private[server] def getFrom[F[_]](
-        cache: Cache[Any]
-    )(implicit mode: Mode[F], flags: Flags): F[Option[Analyses]] =
-      mode.M.map(cache.get(AnalysesKey))(_ map (_.asInstanceOf[Analyses]))
-
-    private[server] def putIn[F[_]](
-        cache: Cache[Any],
-        value: Analyses,
-        ttl: Option[Duration],
-    )(implicit mode: Mode[F], flags: Flags): F[Any] =
-      cache.put(AnalysesKey)(value, ttl)
-  }
+  private[this] val AnalysesKey = "lsp.definition.analyses.key"
+  private[server] type Analyses = Set[((String, Boolean), Option[Analysis])]
 
   private def storeAnalysis(cacheFile: Path, useBinary: Boolean): Option[Analysis] =
     MixedAnalyzingCompiler
@@ -207,19 +192,29 @@ private[sbt] object Definition {
       .map { _.getAnalysis }
       .collect { case a: Analysis => a }
 
-  private[sbt] def updateCache[F[_]](cache: Cache[Any])(cacheFile: String, useBinary: Boolean)(
-      implicit
-      mode: Mode[F],
-      flags: Flags
-  ): F[Any] = {
-    mode.M.flatMap(AnalysesAccess.getFrom(cache)) {
-      case None =>
-        AnalysesAccess.putIn(cache, Set(cacheFile -> useBinary -> None), Option(Duration.Inf))
-      case Some(set) =>
+  private[sbt] def updateCache(
+      cache: Cache[String, Analyses]
+  )(cacheFile: String, useBinary: Boolean): Any = {
+    cache.get(AnalysesKey, k => Set(cacheFile -> useBinary -> None)) match {
+      case null => new AnyRef
+      case set =>
         val newSet = set
           .filterNot { case ((file, _), _) => file == cacheFile }
           .+(cacheFile -> useBinary -> None)
-        AnalysesAccess.putIn(cache, newSet, Option(Duration.Inf))
+        cache.put(AnalysesKey, newSet)
+    }
+  }
+  private[sbt] object AnalysesAccess {
+    private[sbt] lazy val cache: Cache[String, Analyses] = Caffeine.newBuilder.build()
+    ShutdownHooks.add(() => {
+      cache.invalidateAll()
+      cache.cleanUp()
+    })
+    private[sbt] def getFrom(cache: Cache[String, Analyses]): Option[Analyses] = {
+      cache.getIfPresent(AnalysesKey) match {
+        case null => None
+        case a    => Some(a)
+      }
     }
   }
 
@@ -228,33 +223,40 @@ private[sbt] object Definition {
     val useBinary = enableBinaryCompileAnalysis.value
     val s = state.value
     s.log.debug(s"analysis location ${cacheFile -> useBinary}")
-    import scalacache.modes.sync._
-    updateCache(StandardMain.cache)(cacheFile, useBinary)
+    updateCache(AnalysesAccess.cache)(cacheFile, useBinary)
   }
 
   private[sbt] def getAnalyses: Future[Seq[Analysis]] = {
-    import scalacache.modes.scalaFuture._
-    implicit val executionContext: ExecutionContext = StandardMain.executionContext
-    AnalysesAccess
-      .getFrom(StandardMain.cache)
-      .collect { case Some(a) => a }
-      .map { caches =>
-        val (working, uninitialized) = caches.partition {
-          case (_, Some(_)) => true
-          case (_, None)    => false
-        }
-        val addToCache = uninitialized.collect {
-          case (title @ (file, useBinary), _) if Files.exists(Paths.get(file)) =>
-            (title, storeAnalysis(Paths.get(file), !useBinary))
-        }
-        val validCaches = working ++ addToCache
-        if (addToCache.nonEmpty)
-          AnalysesAccess.putIn(StandardMain.cache, validCaches, Option(Duration.Inf))
-        validCaches.toSeq.collect {
-          case (_, Some(analysis)) =>
-            analysis
-        }
-      }
+    val result = Promise[Seq[Analysis]]
+
+    new Thread("sbt-get-analysis-thread") {
+      setDaemon(true)
+      start()
+      override def run(): Unit =
+        try {
+          AnalysesAccess.cache.getIfPresent(AnalysesKey) match {
+            case null => result.success(Nil)
+            case caches =>
+              val (working, uninitialized) = caches.partition {
+                case (_, Some(_)) => true
+                case (_, None)    => false
+              }
+              val addToCache = uninitialized.collect {
+                case (title @ (file, useBinary), _) if Files.exists(Paths.get(file)) =>
+                  (title, storeAnalysis(Paths.get(file), !useBinary))
+              }
+              val validCaches = working ++ addToCache
+              if (addToCache.nonEmpty) {
+                AnalysesAccess.cache.put(AnalysesKey, validCaches)
+              }
+              result.success(validCaches.toSeq.collect {
+                case (_, Some(analysis)) =>
+                  analysis
+              })
+          }
+        } catch { case scala.util.control.NonFatal(e) => result.failure(e) }
+    }
+    result.future
   }
 
   def lspDefinition(
