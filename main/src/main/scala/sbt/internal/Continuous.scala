@@ -178,7 +178,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val repository = getRepository(state)
     dynamicInputs ++= inputs
     logger.debug(s"[watch] [${scopedKey.show}] Found inputs: ${inputs.map(_.glob).mkString(",")}")
-    inputs.foreach(i => repository.register(i.glob))
+    inputs.foreach(i => repository.register(i.glob).foreach(_.close()))
     val watchSettings = new WatchSettings(scopedKey)
     new Config(
       scopedKey.show,
@@ -462,7 +462,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       if (trackMetaBuild) {
         state.get(CheckBuildSources.CheckBuildSourcesKey).flatMap(_.fileTreeRepository) match {
           case Some(r) => buildGlobs.foreach(r.register(_).foreach(observers.addObservable))
-          case _       => buildGlobs.foreach(repo.register)
+          case _       => buildGlobs.foreach(repo.register(_).foreach(_.close()))
         }
       }
 
@@ -505,6 +505,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       override def close(): Unit = {
         configHandle.close()
         handles.forEach(_.close())
+        observers.close()
       }
     }
     val watchLogger: WatchLogger = msg => logger.debug(msg.toString)

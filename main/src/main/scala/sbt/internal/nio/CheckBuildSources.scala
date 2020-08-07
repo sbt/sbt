@@ -75,13 +75,13 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
           val repo = FileTreeRepository.default
           repo.addObserver(_ => needUpdate.set(true))
           repository.set(repo)
-          newSources.foreach(g => repo.register(g))
+          newSources.foreach(g => repo.register(g).foreach(_.close()))
         case r =>
       }
     }
     val previousSources = sources.getAndSet(newSources)
     if (previousSources != newSources) {
-      fileTreeRepository.foreach(r => newSources.foreach(g => r.register(g)))
+      fileTreeRepository.foreach(r => newSources.foreach(g => r.register(g).foreach(_.close())))
       previousStamps.set(getStamps(force = true))
     }
   }
