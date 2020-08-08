@@ -206,8 +206,26 @@ lazy val sbtRoot: Project = (project in file("."))
       .single("sbtOn")((state, dir) => s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
     mimaSettings,
     mimaPreviousArtifacts := Set.empty,
-    genExecutable := (sbtClientProj / genExecutable).evaluated,
-    genNativeExecutable := (sbtClientProj / genNativeExecutable).value,
+    buildThinClient := (sbtClientProj / buildThinClient).evaluated,
+    buildNativeThinClient := (sbtClientProj / buildNativeThinClient).value,
+    installNativeThinClient := {
+      // nativeInstallDirectory can be set globally or in a gitignored local file
+      val dir = nativeInstallDirectory.?.value
+      val target = Def.spaceDelimited("").parsed.headOption match {
+        case Some(p) => file(p).toPath
+        case _ =>
+          dir match {
+            case Some(d) => d / "sbtc"
+            case _ =>
+              val msg = "Expected input parameter <path>: installNativeExecutable /usr/local/bin"
+              throw new IllegalStateException(msg)
+          }
+      }
+      val base = baseDirectory.value.toPath
+      val exec = (sbtClientProj / buildNativeThinClient).value
+      streams.value.log.info(s"installing thin client ${base.relativize(exec)} to ${target}")
+      Files.copy(exec, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
   )
 
 // This is used to configure an sbt-launcher for this version of sbt.
@@ -1050,15 +1068,18 @@ lazy val serverTestProj = (project in file("server-test"))
   )
 
 val isWin = scala.util.Properties.isWin
-val generateReflectionConfig = taskKey[Unit]("generate the graalvm reflection config")
-val genExecutable =
+val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
-val graalClasspath = taskKey[String]("Generate the classpath for graal (compacted for windows)")
-val graalNativeImageCommand = taskKey[String]("The native image command")
-val graalNativeImageOptions = settingKey[Seq[String]]("The native image options")
-val graalNativeImageClass = settingKey[String]("The class for the native image")
-val genNativeExecutable = taskKey[JPath]("Generate a native executable")
-val nativeExecutablePath = settingKey[JPath]("The location of the native executable")
+val thinClientClasspath =
+  taskKey[Seq[JPath]]("Generate the classpath for thin client (compacted for windows)")
+val thinClientNativeImageCommand = taskKey[String]("The native image command")
+val thinClientNativeImageOptions = settingKey[Seq[String]]("The native image options")
+val thinClientNativeImageClass = settingKey[String]("The class for the native image")
+val buildNativeThinClient = taskKey[JPath]("Generate a native executable")
+// Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
+val nativeInstallDirectory = taskKey[JPath]("The install directory for the native executable")
+val installNativeThinClient = inputKey[JPath]("Install the native executable")
+val nativeThinClientPath = settingKey[JPath]("The location of the native executable")
 lazy val sbtClientProj = (project in file("client"))
   .dependsOn(commandProj)
   .settings(
@@ -1076,54 +1097,56 @@ lazy val sbtClientProj = (project in file("client"))
      * external process so we create symbolic links with short names to get the
      * classpath length under the limit.
      */
-    graalClasspath := {
+    thinClientClasspath := {
       val original = (Compile / fullClasspathAsJars).value.map(_.data)
-      val outputDir = target.value / "graalcp"
+      val outputDir = target.value / "thinclientcp"
       IO.createDirectory(outputDir)
       Files.walk(outputDir.toPath).forEach {
         case f if f.getFileName.toString.endsWith(".jar") => Files.deleteIfExists(f)
         case _                                            =>
       }
-      original.zipWithIndex
-        .map {
-          case (f, i) =>
-            Files.createSymbolicLink(outputDir.toPath / s"$i.jar", f.toPath)
-            s"$i.jar"
-        }
-        .mkString(java.io.File.pathSeparator)
+      original.zipWithIndex.map {
+        case (f, i) => Files.createSymbolicLink(outputDir.toPath / s"$i.jar", f.toPath)
+      }
     },
-    graalNativeImageCommand := System.getProperty("sbt.native-image", "native-image").toString,
-    genNativeExecutable / name := s"sbtc${if (isWin) ".exe" else ""}",
-    nativeExecutablePath := target.value.toPath / "bin" / (genNativeExecutable / name).value,
-    graalNativeImageClass := "sbt.client.Client",
-    genNativeExecutable := {
-      val prefix = Seq(graalNativeImageCommand.value, "-cp", graalClasspath.value)
-      val full = prefix ++ graalNativeImageOptions.value :+ graalNativeImageClass.value
-      val pb = new java.lang.ProcessBuilder(full: _*)
-      pb.directory(target.value / "graalcp")
-      val proc = pb.start()
-      val thread = new Thread {
-        setDaemon(true)
-        val is = proc.getInputStream
-        val es = proc.getErrorStream
+    thinClientNativeImageCommand := System.getProperty("sbt.native-image", "native-image").toString,
+    buildNativeThinClient / name := s"sbtc${if (isWin) ".exe" else ""}",
+    nativeThinClientPath := target.value.toPath / "bin" / (buildNativeThinClient / name).value,
+    thinClientNativeImageClass := "sbt.client.Client",
+    buildNativeThinClient := {
+      val hasChanges = thinClientClasspath.outputFileChanges.hasChanges
+      val cpString =
+        thinClientClasspath.value.map(_.getFileName).mkString(java.io.File.pathSeparator)
+      val prefix = Seq(thinClientNativeImageCommand.value, "-cp", cpString)
+      val full = prefix ++ thinClientNativeImageOptions.value :+ thinClientNativeImageClass.value
+      val dir = target.value
+      if (hasChanges || !Files.exists(nativeThinClientPath.value)) {
+        val pb = new java.lang.ProcessBuilder(full: _*)
+        pb.directory(dir / "thinclientcp")
+        val proc = pb.start()
+        val thread = new Thread {
+          setDaemon(true)
+          val is = proc.getInputStream
+          val es = proc.getErrorStream
 
-        override def run(): Unit = {
-          Thread.sleep(100)
-          while (proc.isAlive) {
-            if (is.available > 0 || es.available > 0) {
-              while (is.available > 0) System.out.print(is.read.toChar)
-              while (es.available > 0) System.err.print(es.read.toChar)
+          override def run(): Unit = {
+            Thread.sleep(100)
+            while (proc.isAlive) {
+              if (is.available > 0 || es.available > 0) {
+                while (is.available > 0) System.out.print(is.read.toChar)
+                while (es.available > 0) System.err.print(es.read.toChar)
+              }
+              if (proc.isAlive) Thread.sleep(10)
             }
-            if (proc.isAlive) Thread.sleep(10)
           }
         }
+        thread.start()
+        proc.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
+        assert(proc.exitValue == 0, s"Exit value ${proc.exitValue} was nonzero")
       }
-      thread.start()
-      proc.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
-      assert(proc.exitValue == 0, s"Exit value ${proc.exitValue} was nonzero")
-      nativeExecutablePath.value
+      nativeThinClientPath.value
     },
-    graalNativeImageOptions := Seq(
+    thinClientNativeImageOptions := Seq(
       "--no-fallback",
       s"--initialize-at-run-time=sbt.client",
       "--verbose",
@@ -1132,7 +1155,7 @@ lazy val sbtClientProj = (project in file("client"))
       "-H:-ParseRuntimeOptions",
       s"-H:Name=${target.value / "bin" / "sbtc"}",
     ),
-    genExecutable := {
+    buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
       val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"
       val output = target.value.toPath / "bin" / s"${if (isFish) "fish-" else ""}client$ext"
