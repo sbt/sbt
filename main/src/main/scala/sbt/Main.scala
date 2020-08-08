@@ -161,8 +161,6 @@ private[sbt] object ConsoleMain {
 
 object StandardMain {
   private[sbt] lazy val exchange = new CommandExchange()
-  import scalacache.caffeine._
-  private[sbt] lazy val cache: scalacache.Cache[Any] = CaffeineCache[Any]
   // The access to the pool should be thread safe because lazy val instantiation is thread safe
   // and pool is only referenced directly in closeRunnable after the executionContext is sure
   // to have been instantiated
@@ -174,8 +172,6 @@ object StandardMain {
   })
 
   private[this] val closeRunnable = () => {
-    cache.close()(scalacache.modes.sync.mode)
-    cache.close()(scalacache.modes.scalaFuture.mode(executionContext))
     exchange.shutdown()
     pool.foreach(_.shutdownNow())
   }

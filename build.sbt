@@ -873,7 +873,7 @@ lazy val mainProj = (project in file("main"))
         sys.error(s"PluginCross.scala does not match up with the scalaVersion $sv")
     },
     libraryDependencies ++=
-      (Seq(scalaXml, launcherInterface, scalaCacheCaffeine, lmCoursierShaded) ++ log4jModules),
+      (Seq(scalaXml, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
       case _                          => List()
@@ -985,6 +985,7 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.interDependencies"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.productsTask"),
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.jarProductsTask"),
+      exclude[DirectMissingMethodProblem]("sbt.StandardMain.cache"),
     )
   )
   .configure(
