@@ -11,7 +11,7 @@ import java.io.File
 
 import sbt.StandardMain
 import sbt.internal.bsp._
-import sbt.internal.inc.ManagedLoggedReporter
+import sbt.internal.inc.LoggedReporter
 import sbt.internal.util.ManagedLogger
 import xsbti.{ Problem, Severity, Position => XPosition }
 
@@ -30,7 +30,11 @@ class BuildServerReporter(
     logger: ManagedLogger,
     sourcePositionMapper: XPosition => XPosition = identity[XPosition],
     sources: Seq[File]
-) extends ManagedLoggedReporter(maximumErrors, logger, sourcePositionMapper) {
+) extends LoggedReporter(maximumErrors, logger, sourcePositionMapper) {
+  import LoggedReporter.problemFormats._
+  import LoggedReporter.problemStringFormats._
+  logger.registerStringCodec[Problem]
+
   import sbt.internal.bsp.codec.JsonProtocol._
   import sbt.internal.inc.JavaInterfaceUtil._
 
@@ -55,21 +59,21 @@ class BuildServerReporter(
     publishDiagnostic(problem)
 
     // console channel can keep using the xsbi.Problem
-    super.logError(problem)
+    logger.errorEvent(problem)
   }
 
   override def logWarning(problem: Problem): Unit = {
     publishDiagnostic(problem)
 
     // console channel can keep using the xsbi.Problem
-    super.logWarning(problem)
+    logger.warnEvent(problem)
   }
 
   override def logInfo(problem: Problem): Unit = {
     publishDiagnostic(problem)
 
     // console channel can keep using the xsbi.Problem
-    super.logInfo(problem)
+    logger.infoEvent(problem)
   }
 
   private def publishDiagnostic(problem: Problem): Unit = {

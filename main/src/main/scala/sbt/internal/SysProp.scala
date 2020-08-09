@@ -115,6 +115,7 @@ object SysProp {
 
   def banner: Boolean = getOrTrue("sbt.banner")
 
+  def useLog4J: Boolean = getOrFalse("sbt.log.uselog4j")
   def turbo: Boolean = getOrFalse("sbt.turbo")
   def pipelining: Boolean = getOrFalse("sbt.pipelining")
 

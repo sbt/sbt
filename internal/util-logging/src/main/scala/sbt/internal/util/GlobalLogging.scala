@@ -9,7 +9,6 @@ package sbt.internal.util
 
 import sbt.util._
 import java.io.{ File, PrintWriter }
-import org.apache.logging.log4j.core.Appender
 
 /**
  * Provides the current global logging configuration.
@@ -25,7 +24,7 @@ final case class GlobalLogging(
     console: ConsoleOut,
     backed: Appender,
     backing: GlobalLogBacking,
-    newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging
+    newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging
 )
 
 final case class GlobalLogging1(
@@ -78,14 +77,14 @@ object GlobalLogging {
   }
 
   def initial(
-      newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging,
+      newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging,
       newBackingFile: => File,
       console: ConsoleOut
   ): GlobalLogging = {
     val loggerName = generateName
-    val log = LogExchange.logger(loggerName)
+    val log = LoggerContext.globalContext.logger(loggerName, None, None)
     val appender = ConsoleAppender(ConsoleAppender.generateName, console)
-    LogExchange.bindLoggerAppenders(loggerName, List(appender -> Level.Info))
+    LoggerContext.globalContext.addAppender(loggerName, appender -> Level.Info)
     GlobalLogging(log, console, appender, GlobalLogBacking(newBackingFile), newAppender)
   }
 }

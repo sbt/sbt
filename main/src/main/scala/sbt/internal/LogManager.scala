@@ -10,23 +10,38 @@ package internal
 
 import java.io.PrintWriter
 
-import org.apache.logging.log4j.core.Appender
 import sbt.Def.ScopedKey
 import sbt.Keys._
 import sbt.Scope.GlobalScope
 import sbt.internal.util.MainAppender._
 import sbt.internal.util._
-import sbt.util.{ Level, LogExchange, Logger }
+import sbt.util.{ Level, LogExchange, Logger, LoggerContext }
 
 sealed abstract class LogManager {
   def apply(
       data: Settings[Scope],
       state: State,
       task: ScopedKey[_],
-      writer: PrintWriter
+      writer: PrintWriter,
+      context: LoggerContext,
   ): ManagedLogger
+  @deprecated("Use alternate apply that provides a LoggerContext", "1.4.0")
+  def apply(
+      data: Settings[Scope],
+      state: State,
+      task: ScopedKey[_],
+      writer: PrintWriter
+  ): ManagedLogger = apply(data, state, task, writer, LoggerContext.globalContext)
 
-  def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger
+  def backgroundLog(
+      data: Settings[Scope],
+      state: State,
+      task: ScopedKey[_],
+      context: LoggerContext
+  ): ManagedLogger
+  @deprecated("Use alternate background log that provides a LoggerContext", "1.4.0")
+  final def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger =
+    backgroundLog(data, state, task, LoggerContext.globalContext)
 }
 
 object LogManager {
@@ -34,14 +49,16 @@ object LogManager {
   private val generateId: AtomicInteger = new AtomicInteger
 
   // This is called by mkStreams
+  //
   def construct(
       data: Settings[Scope],
       state: State
   ): (ScopedKey[_], PrintWriter) => ManagedLogger =
     (task: ScopedKey[_], to: PrintWriter) => {
+      val context = state.get(Keys.loggerContext).getOrElse(LoggerContext.globalContext)
       val manager: LogManager =
         (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
-      manager(data, state, task, to)
+      manager(data, state, task, to, context)
     }
 
   def constructBackgroundLog(
@@ -51,7 +68,8 @@ object LogManager {
     (task: ScopedKey[_]) => {
       val manager: LogManager =
         (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
-      manager.backgroundLog(data, state, task)
+      val context = state.get(Keys.loggerContext).getOrElse(LoggerContext.globalContext)
+      manager.backgroundLog(data, state, task, context)
     }
 
   def defaultManager(console: ConsoleOut): LogManager =
@@ -84,7 +102,8 @@ object LogManager {
         data: Settings[Scope],
         state: State,
         task: ScopedKey[_],
-        to: PrintWriter
+        to: PrintWriter,
+        context: LoggerContext,
     ): ManagedLogger =
       defaultLogger(
         data,
@@ -93,12 +112,18 @@ object LogManager {
         screen(task, state),
         backed(to),
         relay(()),
-        extra(task).toList
+        extra(task).toList,
+        context,
       )
 
-    def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger = {
+    def backgroundLog(
+        data: Settings[Scope],
+        state: State,
+        task: ScopedKey[_],
+        context: LoggerContext
+    ): ManagedLogger = {
       val console = screen(task, state)
-      LogManager.backgroundLog(data, state, task, console, relay(()))
+      LogManager.backgroundLog(data, state, task, console, relay(()), context)
     }
   }
 
@@ -112,7 +137,7 @@ object LogManager {
   ): T =
     data.get(scope, key) orElse state.get(key) getOrElse default
 
-  // This is the main function that is used to generate the logger for tasks.
+  @deprecated("Use defaultLogger that provides a LoggerContext", "1.4.0")
   def defaultLogger(
       data: Settings[Scope],
       state: State,
@@ -121,12 +146,24 @@ object LogManager {
       backed: Appender,
       relay: Appender,
       extra: List[Appender]
+  ): ManagedLogger =
+    defaultLogger(data, state, task, console, backed, relay, extra, LoggerContext.globalContext)
+  // This is the main function that is used to generate the logger for tasks.
+  def defaultLogger(
+      data: Settings[Scope],
+      state: State,
+      task: ScopedKey[_],
+      console: Appender,
+      backed: Appender,
+      relay: Appender,
+      extra: List[Appender],
+      context: LoggerContext,
   ): ManagedLogger = {
     val execOpt = state.currentCommand
     val loggerName: String = s"${task.key.label}-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
     val execId: Option[String] = execOpt flatMap { _.execId }
-    val log = LogExchange.logger(loggerName, channelName, execId)
+    val log = context.logger(loggerName, channelName, execId)
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
     val backingLevel = getOr(persistLogLevel.key, data, scope, state, Level.Debug)
@@ -143,7 +180,7 @@ object LogManager {
       screenTrace,
       backingTrace
     )
-    multiLogger(log, config)
+    multiLogger(log, config, context)
   }
 
   // Return None if the exec is not from console origin.
@@ -191,6 +228,7 @@ object LogManager {
       console: Appender,
       /* TODO: backed: Appender,*/
       relay: Appender,
+      context: LoggerContext,
   ): ManagedLogger = {
     val scope = task.scope
     val screenLevel = getOr(logLevel.key, data, scope, state, Level.Info)
@@ -200,18 +238,16 @@ object LogManager {
     val loggerName: String = s"bg-${task.key.label}-${generateId.incrementAndGet}"
     val channelName: Option[String] = execOpt flatMap (_.source map (_.channelName))
     // val execId: Option[String] = execOpt flatMap { _.execId }
-    val log = LogExchange.logger(loggerName, channelName, None)
-    LogExchange.unbindLoggerAppenders(loggerName)
+    val log = context.logger(loggerName, channelName, None)
+    context.clearAppenders(loggerName)
     val consoleOpt = consoleLocally(state, console) map {
-      case a: ConsoleAppender =>
+      case a: Appender =>
         a.setTrace(screenTrace)
         a
       case a => a
     }
-    LogExchange.bindLoggerAppenders(
-      loggerName,
-      (consoleOpt.toList map { _ -> screenLevel }) ::: (relay -> backingLevel) :: Nil
-    )
+    consoleOpt.foreach(a => context.addAppender(loggerName, a -> screenLevel))
+    context.addAppender(loggerName, relay -> backingLevel)
     log
   }
 
@@ -238,30 +274,23 @@ object LogManager {
   def setGlobalLogLevel(s: State, level: Level.Value): State = {
     val s1 = s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
     val gl = s1.globalLogging
-    LogExchange.unbindLoggerAppenders(gl.full.name)
-    LogExchange.bindLoggerAppenders(gl.full.name, (gl.backed -> level) :: Nil)
+    LoggerContext.globalContext.clearAppenders(gl.full.name)
+    LoggerContext.globalContext.addAppender(gl.full.name, gl.backed -> level)
     s1
   }
 
   @deprecated("No longer used.", "1.4.0")
-  private[sbt] def progressLogger(appender: Appender): ManagedLogger = {
+  private[sbt] def progressLogger(appender: ConsoleAppender): ManagedLogger = {
     val log = LogExchange.logger("progress", None, None)
-    LogExchange.unbindLoggerAppenders("progress")
-    LogExchange.bindLoggerAppenders(
-      "progress",
-      List(appender -> Level.Info)
-    )
+    LoggerContext.globalContext.clearAppenders("progress")
+    LoggerContext.globalContext.addAppender("progress", appender -> Level.Info)
     log
   }
 
   // This is the default implementation for the relay appender
-  val defaultRelay: Unit => Appender = _ => defaultRelayImpl
+  val defaultRelay: Unit => ConsoleAppender = _ => defaultRelayImpl
 
-  private[this] lazy val defaultRelayImpl: RelayAppender = {
-    val appender = new RelayAppender("Relay0")
-    appender.start()
-    appender
-  }
+  private[this] lazy val defaultRelayImpl: ConsoleAppender = new RelayAppender("Relay0")
 
   private[sbt] def settingsLogger(state: State): Def.Setting[_] =
     // strict to avoid retaining a reference to `state`

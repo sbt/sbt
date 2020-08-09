@@ -21,10 +21,11 @@ import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.util.{ Attributed, ManagedLogger }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
-import sbt.util.{ LogExchange, Logger }
+import sbt.util.Logger
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
+import sbt.util.LoggerContext
 
 /**
  * Interface between sbt and a thing running in the background.
@@ -63,6 +64,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   private val pool = new BackgroundThreadPool()
 
   private[sbt] def serviceTempDirBase: File
+  private[sbt] def useLog4J: Boolean
   private val serviceTempDirRef = new AtomicReference[File]
   private def serviceTempDir: File = serviceTempDirRef.synchronized {
     serviceTempDirRef.get match {
@@ -76,6 +78,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   // hooks for sending start/stop events
   protected def onAddJob(@deprecated("unused", "") job: JobHandle): Unit = ()
   protected def onRemoveJob(@deprecated("unused", "") job: JobHandle): Unit = ()
+  private val context = LoggerContext(useLog4J)
 
   // this mutable state could conceptually go on State except
   // that then every task that runs a background job would have
@@ -111,7 +114,8 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       // logger.close()
       removeJob(this)
       IO.delete(workingDirectory)
-      LogExchange.unbindLoggerAppenders(logger.name)
+      context.clearAppenders(logger.name)
+      context.close()
     }
     addJob(this)
     override final def equals(other: Any): Boolean = other match {
@@ -472,10 +476,12 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
   }
 }
 
-private[sbt] class DefaultBackgroundJobService(private[sbt] val serviceTempDirBase: File)
-    extends AbstractBackgroundJobService {
+private[sbt] class DefaultBackgroundJobService(
+    private[sbt] val serviceTempDirBase: File,
+    override private[sbt] val useLog4J: Boolean
+) extends AbstractBackgroundJobService {
   @deprecated("Use the constructor that specifies the background job temporary directory", "1.4.0")
-  def this() = this(IO.createTemporaryDirectory)
+  def this() = this(IO.createTemporaryDirectory, false)
   override def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): ManagedLogger = {
     val extracted = Project.extract(state)
     LogManager.constructBackgroundLog(extracted.structure.data, state)(spawningTask)
@@ -491,7 +497,8 @@ private[sbt] object DefaultBackgroundJobService {
   private[sbt] lazy val backgroundJobServiceSetting: Setting[_] =
     (Keys.bgJobService in GlobalScope) := {
       val path = (sbt.Keys.bgJobServiceDirectory in GlobalScope).value
-      val newService = new DefaultBackgroundJobService(path)
+      val useLog4J = (Keys.useLog4J in GlobalScope).value
+      val newService = new DefaultBackgroundJobService(path, useLog4J)
       backgroundJobServices.putIfAbsent(path, newService) match {
         case null => newService
         case s =>

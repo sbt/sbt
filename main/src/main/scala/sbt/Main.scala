@@ -15,7 +15,7 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ SetTerminal, Shell, Shutdown, TemplateCommand, networkExecPrefix }
+import sbt.BasicCommandStrings.{ Shell, Shutdown, TemplateCommand, networkExecPrefix }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
@@ -311,7 +311,6 @@ object BuiltinCommands {
       NetworkChannel.disconnect,
       waitCmd,
       promptChannel,
-      setTerminalCommand,
     ) ++ allBasicCommands ++ ContinuousCommands.value
 
   def DefaultBootCommands: Seq[String] =
@@ -931,8 +930,9 @@ object BuiltinCommands {
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
     val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
-    val s4 = setupGlobalFileTreeRepository(s3)
-    CheckBuildSources.init(LintUnused.lintUnusedFunc(s4))
+    val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
+    val s5 = setupGlobalFileTreeRepository(s4)
+    CheckBuildSources.init(LintUnused.lintUnusedFunc(s5))
   }
 
   private val setupGlobalFileTreeRepository: State => State = { state =>
@@ -958,12 +958,6 @@ object BuiltinCommands {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
     val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache) andThen addCacheStoreFactoryFactory
     Command.command(ClearCaches, help)(f)
-  }
-
-  def setTerminalCommand = Command.arb(_ => BasicCommands.reportParser(SetTerminal)) {
-    (s, channel) =>
-      StandardMain.exchange.channelForName(channel).foreach(c => Terminal.set(c.terminal))
-      s
   }
 
   private[sbt] def waitCmd: Command =

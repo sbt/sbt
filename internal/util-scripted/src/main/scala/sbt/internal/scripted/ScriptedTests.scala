@@ -10,8 +10,8 @@ package internal
 package scripted
 
 import java.io.File
-import sbt.util.{ Logger, LogExchange, Level }
-import sbt.internal.util.{ ManagedLogger, ConsoleAppender, BufferedAppender }
+import sbt.util.{ Logger, LoggerContext, Level }
+import sbt.internal.util.{ Appender, ManagedLogger, ConsoleAppender, BufferedAppender }
 import sbt.io.IO.wrapNull
 import sbt.io.{ DirectoryFilter, HiddenFileFilter }
 import sbt.io.syntax._
@@ -25,11 +25,13 @@ object ScriptedRunnerImpl {
       tests: Array[String],
       handlersProvider: HandlersProvider
   ): Unit = {
+    val context =
+      LoggerContext(useLog4J = System.getProperty("sbt.log.uselog4j", "false") == "true")
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, handlersProvider)
-    val logger = newLogger
+    val logger = newLogger(context)
     val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
       case ScriptedTest(group, name) =>
-        runner.scriptedTest(group, name, logger)
+        runner.scriptedTest(group, name, logger, context)
     }
     runAll(allTests)
   }
@@ -48,10 +50,9 @@ object ScriptedRunnerImpl {
       ScriptedTest(group, name)
     }
   private[sbt] val generateId: AtomicInteger = new AtomicInteger
-  private[sbt] def newLogger: ManagedLogger = {
+  private[sbt] def newLogger(context: LoggerContext): ManagedLogger = {
     val loggerName = "scripted-" + generateId.incrementAndGet
-    val x = LogExchange.logger(loggerName)
-    x
+    context.logger(loggerName, None, None)
   }
 }
 
@@ -64,7 +65,7 @@ final class ScriptedTests(
   def this(resourceBaseDirectory: File, bufferLog: Boolean, handlersProvider: HandlersProvider) =
     this(resourceBaseDirectory, bufferLog, handlersProvider, true)
   private val testResources = new Resources(resourceBaseDirectory)
-  private val consoleAppender: ConsoleAppender = ConsoleAppender()
+  private val appender: Appender = ConsoleAppender()
 
   val ScriptFilename = "test"
   val PendingScriptFilename = "pending"
@@ -72,14 +73,35 @@ final class ScriptedTests(
   def scriptedTest(group: String, name: String, log: xsbti.Logger): Seq[() => Option[String]] =
     scriptedTest(group, name, Logger.xlog2Log(log))
 
-  def scriptedTest(group: String, name: String, log: ManagedLogger): Seq[() => Option[String]] =
-    scriptedTest(group, name, (_ => ()), log)
+  @deprecated("Use scriptedTest that takes a LoggerContext", "1.4.0")
+  def scriptedTest(
+      group: String,
+      name: String,
+      log: ManagedLogger,
+  ): Seq[() => Option[String]] =
+    scriptedTest(group, name, (_ => ()), log, LoggerContext.globalContext)
+  def scriptedTest(
+      group: String,
+      name: String,
+      log: ManagedLogger,
+      context: LoggerContext
+  ): Seq[() => Option[String]] =
+    scriptedTest(group, name, (_ => ()), log, context)
 
+  @deprecated("Use scriptedTest that provides LoggerContext", "1.4.0")
   def scriptedTest(
       group: String,
       name: String,
       prescripted: File => Unit,
-      log: ManagedLogger
+      log: ManagedLogger,
+  ): Seq[() => Option[String]] =
+    scriptedTest(group, name, prescripted, log, LoggerContext.globalContext)
+  def scriptedTest(
+      group: String,
+      name: String,
+      prescripted: File => Unit,
+      log: ManagedLogger,
+      context: LoggerContext,
   ): Seq[() => Option[String]] = {
     for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
       val g = groupDir.getName
@@ -94,7 +116,7 @@ final class ScriptedTests(
             None
           } else {
             try {
-              scriptedTest(str, testDirectory, prescripted, log); None
+              scriptedTest(str, testDirectory, prescripted, log, context); None
             } catch {
               case _: TestException | _: PendingTestSuccessException => Some(str)
             }
@@ -108,11 +130,12 @@ final class ScriptedTests(
       label: String,
       testDirectory: File,
       prescripted: File => Unit,
-      log: ManagedLogger
+      log: ManagedLogger,
+      context: LoggerContext,
   ): Unit = {
-    val buffered = BufferedAppender(consoleAppender)
-    LogExchange.unbindLoggerAppenders(log.name)
-    LogExchange.bindLoggerAppenders(log.name, (buffered -> Level.Debug) :: Nil)
+    val buffered = BufferedAppender(appender)
+    context.clearAppenders(log.name)
+    context.addAppender(log.name, (buffered -> Level.Debug))
     if (bufferLog) {
       buffered.record()
     }

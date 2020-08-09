@@ -15,7 +15,7 @@ import lmcoursier.definitions.{ CacheLogger, ModuleMatchers, Reconciliation }
 import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
-import org.apache.logging.log4j.core.Appender
+import org.apache.logging.log4j.core.{ Appender => XAppender }
 import sbt.BuildSyntax._
 import sbt.Def.ScopedKey
 import sbt.KeyRanks._
@@ -27,7 +27,7 @@ import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.remotecache.RemoteCacheArtifact
 import sbt.internal.server.ServerHandler
-import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
+import sbt.internal.util.{ Appender, AttributeKey, ProgressState, SourcePosition }
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
@@ -35,7 +35,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, UpdateOptions }
 import sbt.nio.file.Glob
 import sbt.testing.Framework
-import sbt.util.{ Level, Logger }
+import sbt.util.{ Level, Logger, LoggerContext }
 import xsbti.{ FileConverter, VirtualFile }
 import xsbti.compile._
 import xsbti.compile.analysis.ReadStamps
@@ -59,8 +59,12 @@ object Keys {
   val showSuccess = settingKey[Boolean]("If true, displays a success message after running a command successfully.").withRank(CSetting)
   val showTiming = settingKey[Boolean]("If true, the command success message includes the completion time.").withRank(CSetting)
   val timingFormat = settingKey[java.text.DateFormat]("The format used for displaying the completion time.").withRank(CSetting)
-  val extraLoggers = settingKey[ScopedKey[_] => Seq[Appender]]("A function that provides additional loggers for a given setting.").withRank(DSetting)
+  @deprecated("", "1.4.0")
+  val extraLoggers = settingKey[ScopedKey[_] => Seq[XAppender]]("A function that provides additional loggers for a given setting.").withRank(DSetting)
+  val extraAppenders = settingKey[ScopedKey[_] => Seq[Appender]]("A function that provides additional loggers for a given setting.").withRank(DSetting)
+  val useLog4J = settingKey[Boolean]("Toggles whether or not to use log4j for sbt internal loggers.").withRank(Invisible)
   val logManager = settingKey[LogManager]("The log manager, which creates Loggers for different contexts.").withRank(DSetting)
+  private[sbt] val loggerContext = AttributeKey[LoggerContext]("sbt-logger-context", "The logger config which creates Loggers for different contexts.", Int.MaxValue)
   val logBuffered = settingKey[Boolean]("True if logging should be buffered until work completes.").withRank(CSetting)
   val sLog = settingKey[Logger]("Logger usable by settings during project loading.").withRank(CSetting)
   val serverLog = taskKey[Unit]("A dummy task to set server log level using Global / serverLog / logLevel.").withRank(CTask)
