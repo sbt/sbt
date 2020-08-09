@@ -11,7 +11,9 @@ package internal
 import java.util.concurrent.ConcurrentHashMap
 import sbt.internal.inc.Stamper
 import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
+import xsbti.compile.DefinesClass
 import xsbti.compile.analysis.{ Stamp => XStamp }
+import sbt.internal.inc.Locate
 
 /**
  * Cache based on path and its stamp.
@@ -22,6 +24,12 @@ sealed trait VirtualFileValueCache[A] {
 }
 
 object VirtualFileValueCache {
+  def definesClassCache(converter: FileConverter): VirtualFileValueCache[DefinesClass] = {
+    apply(converter) { x: VirtualFile =>
+      if (x.name.toString != "rt.jar") Locate.definesClass(x)
+      else (_: String) => false
+    }
+  }
   def apply[A](converter: FileConverter)(f: VirtualFile => A): VirtualFileValueCache[A] = {
     import collection.mutable.{ HashMap, Map }
     val stampCache: Map[VirtualFileRef, (Long, XStamp)] = new HashMap

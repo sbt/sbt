@@ -104,7 +104,6 @@ import sbt.SlashSyntax0._
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
-  Locate,
   ManagedLoggedReporter,
   MixedAnalyzingCompiler,
   ScalaInstance
@@ -759,13 +758,11 @@ object Defaults extends BuildCommon {
         Vector("-Ypickle-java", "-Ypickle-write", converter.toPath(earlyOutput.value).toString) ++ old
       else old
     },
+    persistJarClasspath :== true,
+    classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
     classpathEntryDefinesClassVF := {
-      val converter = fileConverter.value
-      val f = VirtualFileValueCache(converter)({ x: VirtualFile =>
-        if (x.name.toString != "rt.jar") Locate.definesClass(x)
-        else ((_: String) => false): DefinesClass
-      }).get
-      f
+      (if (persistJarClasspath.value) classpathDefinesClassCache.value
+       else VirtualFileValueCache.definesClassCache(fileConverter.value)).get
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
