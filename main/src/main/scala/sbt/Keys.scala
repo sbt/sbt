@@ -231,6 +231,8 @@ object Keys {
   val compilerCache = taskKey[GlobalsCache]("Cache of scala.tools.nsc.Global instances.  This should typically be cached so that it isn't recreated every task run.").withRank(DTask)
   val stateCompilerCache = AttributeKey[GlobalsCache]("stateCompilerCache", "Internal use: Global cache.")
   val classpathEntryDefinesClass = taskKey[File => DefinesClass]("Internal use: provides a function that determines whether the provided file contains a given class.").withRank(Invisible)
+  private[sbt] val classpathDefinesClassCache = settingKey[VirtualFileValueCache[DefinesClass]]("Internal use: a cache of jar classpath entries that persists across command evaluations.").withRank(Invisible)
+  val persistJarClasspath = settingKey[Boolean]("Toggles whether or not to cache jar classpath entries between command evaluations")
   val classpathEntryDefinesClassVF = taskKey[VirtualFile => DefinesClass]("Internal use: provides a function that determines whether the provided file contains a given class.").withRank(Invisible)
   val doc = taskKey[File]("Generates API documentation.").withRank(AMinusTask)
   val copyResources = taskKey[Seq[(File, File)]]("Copies resources to the output directory.").withRank(AMinusTask)
