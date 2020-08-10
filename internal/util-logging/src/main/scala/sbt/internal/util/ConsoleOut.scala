@@ -33,6 +33,7 @@ object ConsoleOut {
     override def println(s: String): Unit = get.println(s)
     override def println(): Unit = get.println()
     override def flush(): Unit = get.flush()
+    override def toString: String = s"ProxyConsoleOut"
   }
 
   def overwriteContaining(s: String): (String, String) => Boolean =
@@ -70,6 +71,7 @@ object ConsoleOut {
       last = Some(s)
       current.setLength(0)
     }
+    override def toString: String = s"SystemOutOverwrite@${System.identityHashCode(this)}"
   }
 
   def terminalOut: ConsoleOut = new ConsoleOut {
@@ -78,6 +80,7 @@ object ConsoleOut {
     override def println(s: String): Unit = Terminal.get.printStream.println(s)
     override def println(): Unit = Terminal.get.printStream.println()
     override def flush(): Unit = Terminal.get.printStream.flush()
+    override def toString: String = s"TerminalOut"
   }
 
   private[this] val consoleOutPerTerminal = new ConcurrentHashMap[Terminal, ConsoleOut]
@@ -89,6 +92,7 @@ object ConsoleOut {
         override def println(s: String): Unit = terminal.printStream.println(s)
         override def println(): Unit = terminal.printStream.println()
         override def flush(): Unit = terminal.printStream.flush()
+        override def toString: String = s"TerminalOut($terminal)"
       }
       consoleOutPerTerminal.put(terminal, res)
       res
@@ -100,6 +104,7 @@ object ConsoleOut {
     def println(s: String) = out.println(s)
     def println() = out.println()
     def flush() = out.flush()
+    override def toString: String = s"PrintStreamConsoleOut($out)"
   }
   def printWriterOut(out: PrintWriter): ConsoleOut = new ConsoleOut {
     val lockObject = out
@@ -107,6 +112,7 @@ object ConsoleOut {
     def println(s: String) = { out.println(s); flush() }
     def println() = { out.println(); flush() }
     def flush() = { out.flush() }
+    override def toString: String = s"PrintWriterConsoleOut($out)"
   }
   def bufferedWriterOut(out: BufferedWriter): ConsoleOut = new ConsoleOut {
     val lockObject = out
@@ -114,5 +120,6 @@ object ConsoleOut {
     def println(s: String) = { out.write(s); println() }
     def println() = { out.newLine(); flush() }
     def flush() = { out.flush() }
+    override def toString: String = s"BufferedWriterConsoleOut($out)"
   }
 }

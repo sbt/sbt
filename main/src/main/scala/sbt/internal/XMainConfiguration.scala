@@ -59,17 +59,16 @@ private[sbt] class XMainConfiguration {
     val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     val updatedConfiguration =
       try {
-        val method = topLoader.getClass.getMethod("getEarlyJars")
+        val method = topLoader.getClass.getMethod("getJLineJars")
         val jars = method.invoke(topLoader).asInstanceOf[Array[URL]]
         var canReuseConfiguration = jars.length == 3
         var j = 0
         while (j < jars.length && canReuseConfiguration) {
           val s = jars(j).toString
-          canReuseConfiguration =
-            s.contains("jline") || s.contains("test-interface") || s.contains("jansi")
+          canReuseConfiguration = s.contains("jline") || s.contains("jansi")
           j += 1
         }
-        if (canReuseConfiguration) configuration else makeConfiguration(configuration)
+        if (canReuseConfiguration && j == 3) configuration else makeConfiguration(configuration)
       } catch {
         case _: NoSuchMethodException => makeConfiguration(configuration)
       }

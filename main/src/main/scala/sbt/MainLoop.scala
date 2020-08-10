@@ -15,15 +15,17 @@ import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Terminal }
-import sbt.internal.{ ConsoleUnpromptEvent, ShutdownHooks }
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal }
+import sbt.internal.{ ShutdownHooks, TaskProgress }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.{ Logger, LoggerContext }
 
 import scala.annotation.tailrec
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import sbt.internal.FastTrackCommands
+import sbt.internal.SysProp
 
 object MainLoop {
 
@@ -150,9 +152,17 @@ object MainLoop {
 
   def next(state: State): State = {
     val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
+    val superShellSleep =
+      state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
+    val superShellThreshold =
+      state.get(Keys.superShellThreshold.key).getOrElse(SysProp.supershellThreshold)
+    val taskProgress = new TaskProgress(superShellSleep, superShellThreshold)
     try {
       ErrorHandling.wideConvert {
-        state.put(Keys.loggerContext, context).process(processCommand)
+        state
+          .put(Keys.loggerContext, context)
+          .put(Keys.taskProgress, taskProgress)
+          .process(processCommand)
       } match {
         case Right(s)                  => s.remove(Keys.loggerContext)
         case Left(t: xsbti.FullReload) => throw t
@@ -186,7 +196,10 @@ object MainLoop {
         state.log.error(msg)
         state.log.error("\n")
         state.handleError(oom)
-    } finally context.close()
+    } finally {
+      context.close()
+      taskProgress.close()
+    }
   }
 
   /** This is the main function State transfer function of the sbt command processing. */
@@ -206,14 +219,18 @@ object MainLoop {
               state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
             } else state
         }
-        StandardMain.exchange.setState(progressState)
-        StandardMain.exchange.setExec(Some(exec))
-        StandardMain.exchange.unprompt(ConsoleUnpromptEvent(exec.source))
+        exchange.setState(progressState)
+        exchange.setExec(Some(exec))
         val restoreTerminal = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
             val prevTerminal = Terminal.set(c.terminal)
+            val prevPrompt = c.terminal.prompt
+            // temporarily set the prompt to running during task evaluation
+            c.terminal.setPrompt(Prompt.Running)
             () => {
+              c.terminal.setPrompt(prevPrompt)
               Terminal.set(prevTerminal)
+              c.terminal.setPrompt(prevPrompt)
               c.terminal.flush()
             }
           case _ => () => ()

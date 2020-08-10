@@ -84,8 +84,10 @@ object Dependencies {
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
   val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-5e51b9d4f9631ebfa29753ce4accc57808e7fd6b"
-  val jline3 = "org.jline" % "jline" % "3.15.0"
-  val jline3Jansi = "org.jline" % "jline-terminal-jansi" % "3.15.0"
+  val jline3Version = "3.16.0" // Once the base jline version is upgraded, we can use the official jline-terminal
+  val jline3Terminal = "org.scala-sbt.jline3" % "jline-terminal" % s"$jline3Version-sbt-211a082ed6326908dc84ca017ce4430728f18a8a"
+  val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
+  val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jansi = "org.fusesource.jansi" % "jansi" % "1.18"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"

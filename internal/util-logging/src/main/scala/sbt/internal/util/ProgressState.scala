@@ -26,14 +26,16 @@ private[sbt] final class ProgressState(
     val padding: AtomicInteger,
     val blankZone: Int,
     val currentLineBytes: AtomicReference[ArrayBuffer[Byte]],
+    val maxItems: Int,
 ) {
-  def this(blankZone: Int) =
-    this(
-      new AtomicReference(Nil),
-      new AtomicInteger(0),
-      blankZone,
-      new AtomicReference(new ArrayBuffer[Byte]),
-    )
+  def this(blankZone: Int, maxItems: Int) = this(
+    new AtomicReference(Nil),
+    new AtomicInteger(0),
+    blankZone,
+    new AtomicReference(new ArrayBuffer[Byte]),
+    maxItems,
+  )
+  def this(blankZone: Int) = this(blankZone, 8)
   def currentLine: Option[String] =
     new String(currentLineBytes.get.toArray, "UTF-8").linesIterator.toSeq.lastOption
       .map(EscHelpers.stripColorsAndMoves)
@@ -78,7 +80,7 @@ private[sbt] final class ProgressState(
   }
 
   private[util] def getPrompt(terminal: Terminal): Array[Byte] = {
-    if (terminal.prompt != Prompt.Running && terminal.prompt != Prompt.Batch) {
+    if (terminal.prompt.isInstanceOf[Prompt.AskUser]) {
       val prefix = if (terminal.isAnsiSupported) s"$DeleteLine$CursorLeft1000" else ""
       prefix.getBytes ++ terminal.prompt.render().getBytes("UTF-8")
     } else Array.empty
@@ -108,8 +110,8 @@ private[sbt] final class ProgressState(
           val lines = printProgress(terminal, lastLine)
           toWrite ++= (ClearScreenAfterCursor + lines).getBytes("UTF-8")
         }
+        toWrite ++= getPrompt(terminal)
       }
-      toWrite ++= getPrompt(terminal)
       printStream.write(toWrite.toArray)
       printStream.flush()
     } else printStream.write(bytes)
@@ -136,6 +138,9 @@ private[sbt] final class ProgressState(
 }
 
 private[sbt] object ProgressState {
+  private val MIN_COMMAND_WIDTH = 10
+  private val SERVER_IS_RUNNING = "sbt server is running "
+  private val SERVER_IS_RUNNING_LENGTH = SERVER_IS_RUNNING.length + 2
 
   /**
    * Receives a new task report and replaces the old one. In the event that the new
@@ -158,15 +163,24 @@ private[sbt] object ProgressState {
       if (!pe.skipIfActive.getOrElse(false) || (!isRunning && !isBatch)) {
         terminal.withPrintStream { ps =>
           val commandFromThisTerminal = pe.channelName.fold(true)(_ == terminal.name)
-          val info = if ((isRunning || isBatch || noPrompt) && commandFromThisTerminal) {
-            pe.items.map { item =>
+          val info = if (commandFromThisTerminal) {
+            val base = pe.items.map { item =>
               val elapsed = item.elapsedMicros / 1000000L
               s"  | => ${item.name} ${elapsed}s"
             }
+            val limit = state.maxItems
+            if (base.size > limit)
+              s"  | ... (${base.size - limit} other tasks)" +: base.takeRight(limit)
+            else base
           } else {
             pe.command.toSeq.flatMap { cmd =>
+              val width = terminal.getWidth
+              val sanitized = if ((cmd.length + SERVER_IS_RUNNING_LENGTH) > width) {
+                if (SERVER_IS_RUNNING_LENGTH + cmd.length < width) cmd
+                else cmd.take(MIN_COMMAND_WIDTH) + "..."
+              } else cmd
               val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
-              s"sbt server is running '$cmd'" :: tail
+              s"$SERVER_IS_RUNNING '$sanitized'" :: tail
             }
           }
 

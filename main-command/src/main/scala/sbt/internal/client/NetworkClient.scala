@@ -47,11 +47,12 @@ import Serialization.{
   systemErrFlush,
   terminalCapabilities,
   terminalCapabilitiesResponse,
+  terminalGetSize,
   terminalPropertiesQuery,
   terminalPropertiesResponse,
+  terminalSetSize,
   getTerminalAttributes,
   setTerminalAttributes,
-  setTerminalSize,
 }
 import NetworkClient.Arguments
 
@@ -657,7 +658,13 @@ class NetworkClient(
           cchars = attrs.getOrElse("cchars", ""),
         )
         sendCommandResponse("", response, msg.id)
-      case (`setTerminalSize`, Some(json)) =>
+      case (`terminalGetSize`, _) =>
+        val response = TerminalGetSizeResponse(
+          Terminal.console.getWidth,
+          Terminal.console.getHeight,
+        )
+        sendCommandResponse("", response, msg.id)
+      case (`terminalSetSize`, Some(json)) =>
         Converter.fromJson[TerminalSetSizeCommand](json) match {
           case Success(size) =>
             Terminal.console.setSize(size.width, size.height)

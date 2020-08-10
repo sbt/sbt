@@ -11,7 +11,6 @@ import java.io.File
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
 
-//import jline.console.history.PersistentHistory
 import sbt.BasicCommandStrings.{ Cancel, TerminateAction, Shutdown }
 import sbt.BasicKeys.{ historyPath, terminalShellPrompt }
 import sbt.State
@@ -23,55 +22,71 @@ import sbt.internal.util.complete.{ Parser }
 import scala.annotation.tailrec
 
 private[sbt] trait UITask extends Runnable with AutoCloseable {
-  private[sbt] def channel: CommandChannel
-  private[sbt] def reader: UITask.Reader
+  private[sbt] val channel: CommandChannel
+  private[sbt] val reader: UITask.Reader
   private[this] final def handleInput(s: Either[String, String]): Boolean = s match {
     case Left(m)    => channel.onFastTrackTask(m)
     case Right(cmd) => channel.onCommand(cmd)
   }
   private[this] val isStopped = new AtomicBoolean(false)
   override def run(): Unit = {
-    @tailrec def impl(): Unit = {
+    @tailrec def impl(): Unit = if (!isStopped.get) {
       val res = reader.readLine()
       if (!handleInput(res) && !isStopped.get) impl()
     }
     try impl()
     catch { case _: InterruptedException | _: ClosedChannelException => isStopped.set(true) }
   }
-  override def close(): Unit = isStopped.set(true)
+  override def close(): Unit = {
+    isStopped.set(true)
+    reader.close()
+  }
 }
 
 private[sbt] object UITask {
-  trait Reader { def readLine(): Either[String, String] }
+  trait Reader extends AutoCloseable {
+    def readLine(): Either[String, String]
+    override def close(): Unit = {}
+  }
   object Reader {
+    // Avoid filling the stack trace since it isn't helpful here
+    object interrupted extends InterruptedException
     def terminalReader(parser: Parser[_])(
         terminal: Terminal,
         state: State
-    ): Reader = { () =>
-      try {
-        val clear = terminal.ansi(ClearPromptLine, "")
-        @tailrec def impl(): Either[String, String] = {
-          val reader = LineReader.createReader(history(state), parser, terminal, terminal.prompt)
-          (try reader.readLine(clear + terminal.prompt.mkPrompt())
-          finally reader.close) match {
-            case None if terminal == Terminal.console && System.console == null =>
-              // No stdin is attached to the process so just ignore the result and
-              // block until the thread is interrupted.
-              this.synchronized(this.wait())
-              Right("") // should be unreachable
-            // JLine returns null on ctrl+d when there is no other input. This interprets
-            // ctrl+d with no imput as an exit
-            case None => Left(TerminateAction)
-            case Some(s: String) =>
-              s.trim() match {
-                case ""                                                => impl()
-                case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
-                case cmd                                               => Right(cmd)
-              }
+    ): Reader = new Reader {
+      val closed = new AtomicBoolean(false)
+      def readLine(): Either[String, String] =
+        try {
+          val clear = terminal.ansi(ClearPromptLine, "")
+          @tailrec def impl(): Either[String, String] = {
+            val thread = Thread.currentThread
+            if (thread.isInterrupted || closed.get) throw interrupted
+            val reader = LineReader.createReader(history(state), parser, terminal)
+            if (thread.isInterrupted || closed.get) throw interrupted
+            (try reader.readLine(clear + terminal.prompt.mkPrompt())
+            finally reader.close) match {
+              case None if terminal == Terminal.console && System.console == null =>
+                // No stdin is attached to the process so just ignore the result and
+                // block until the thread is interrupted.
+                this.synchronized(this.wait())
+                Right("") // should be unreachable
+              // JLine returns null on ctrl+d when there is no other input. This interprets
+              // ctrl+d with no imput as an exit
+              case None => Left(TerminateAction)
+              case Some(s: String) =>
+                s.trim() match {
+                  case ""                                                => impl()
+                  case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
+                  case cmd                                               => Right(cmd)
+                }
+            }
           }
-        }
-        impl()
-      } catch { case e: InterruptedException => Right("") }
+          val res = impl()
+          terminal.setPrompt(Prompt.Pending)
+          res
+        } catch { case e: InterruptedException => Right("") }
+      override def close(): Unit = closed.set(true)
     }
   }
   private[this] def history(s: State): Option[File] =
@@ -87,7 +102,7 @@ private[sbt] object UITask {
       state: State,
       override val channel: CommandChannel,
   ) extends UITask {
-    override private[sbt] def reader: UITask.Reader = {
+    override private[sbt] lazy val reader: UITask.Reader = {
       UITask.Reader.terminalReader(state.combinedParser)(channel.terminal, state)
     }
   }

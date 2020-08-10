@@ -49,6 +49,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import BasicJsonProtocol._
 import Serialization.{ attach, promptChannel }
+import sbt.internal.util.ProgressState
 
 final class NetworkChannel(
     val name: String,
@@ -58,7 +59,8 @@ final class NetworkChannel(
     instance: ServerInstance,
     handlers: Seq[ServerHandler],
     val log: Logger,
-    mkUIThreadImpl: (State, CommandChannel) => UITask
+    mkUIThreadImpl: (State, CommandChannel) => UITask,
+    state: Option[State],
 ) extends CommandChannel { self =>
   def this(
       name: String,
@@ -77,7 +79,8 @@ final class NetworkChannel(
       instance,
       handlers,
       log,
-      new UITask.AskUserTask(_, _)
+      new UITask.AskUserTask(_, _),
+      None
     )
 
   private val running = new AtomicBoolean(true)
@@ -110,7 +113,7 @@ final class NetworkChannel(
   }
   private[sbt] def write(byte: Byte) = inputBuffer.add(byte)
 
-  private[this] val terminalHolder = new AtomicReference(Terminal.NullTerminal)
+  private[this] val terminalHolder = new AtomicReference[Terminal](Terminal.NullTerminal)
   override private[sbt] def terminal: Terminal = terminalHolder.get
   override val userThread: UserThread = new UserThread(this)
 
@@ -152,8 +155,8 @@ final class NetworkChannel(
     if (interactive.get || ContinuousCommands.isInWatch(state, this)) mkUIThreadImpl(state, command)
     else
       new UITask {
-        override private[sbt] def channel = NetworkChannel.this
-        override def reader: UITask.Reader = () => {
+        override private[sbt] val channel = NetworkChannel.this
+        override private[sbt] lazy val reader: UITask.Reader = () => {
           try {
             this.synchronized(this.wait)
             Left(TerminateAction)
@@ -650,6 +653,8 @@ final class NetworkChannel(
     }
     override def available(): Int = inputBuffer.size
   }
+  private[this] lazy val writeableInputStream: Terminal.WriteableInputStream =
+    new Terminal.WriteableInputStream(inputStream, name)
   import sjsonnew.BasicJsonProtocol._
 
   import scala.collection.JavaConverters._
@@ -726,7 +731,8 @@ final class NetworkChannel(
       write(java.util.Arrays.copyOfRange(b, off, off + len))
     }
   }
-  private class NetworkTerminal extends TerminalImpl(inputStream, outputStream, errorStream, name) {
+  private class NetworkTerminal
+      extends TerminalImpl(writeableInputStream, outputStream, errorStream, name) {
     private[this] val pending = new AtomicBoolean(false)
     private[this] val closed = new AtomicBoolean(false)
     private[this] val properties = new AtomicReference[TerminalPropertiesResponse]
@@ -784,6 +790,10 @@ final class NetworkChannel(
       )
     }
     private[this] val blockedThreads = ConcurrentHashMap.newKeySet[Thread]
+    override private[sbt] val progressState: ProgressState = new ProgressState(
+      1,
+      state.flatMap(_.get(Keys.superShellMaxTasks.key)).getOrElse(SysProp.supershellMaxTasks)
+    )
     override def getWidth: Int = getProperty(_.width, 0).getOrElse(0)
     override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
     override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)
@@ -872,6 +882,14 @@ final class NetworkChannel(
         try queue.take
         catch { case _: InterruptedException => }
       }
+    override private[sbt] def getSizeImpl: (Int, Int) =
+      if (!closed.get) {
+        import sbt.protocol.codec.JsonProtocol._
+        val queue = VirtualTerminal.getTerminalSize(name, jsonRpcRequest)
+        val res = try queue.take
+        catch { case _: InterruptedException => TerminalGetSizeResponse(1, 1) }
+        (res.width, res.height)
+      } else (1, 1)
     override def setSize(width: Int, height: Int): Unit =
       if (!closed.get) {
         import sbt.protocol.codec.JsonProtocol._

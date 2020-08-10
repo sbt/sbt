@@ -39,7 +39,8 @@ object Serialization {
   val promptChannel = "sbt/promptChannel"
   val setTerminalAttributes = "sbt/setTerminalAttributes"
   val getTerminalAttributes = "sbt/getTerminalAttributes"
-  val setTerminalSize = "sbt/setTerminalSize"
+  val terminalGetSize = "sbt/terminalGetSize"
+  val terminalSetSize = "sbt/terminalSetSize"
   val CancelAll = "__CancelAll"
 
   @deprecated("unused", since = "1.4.0")

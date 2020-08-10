@@ -7,12 +7,12 @@
 
 package sbt.internal.util
 
-import java.io.{ EOFException, InputStream, OutputStream, PrintWriter }
+import java.io.{ InputStream, OutputStream, PrintWriter }
 import java.nio.charset.Charset
 import java.util.{ Arrays, EnumSet }
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import org.jline.utils.InfoCmp.Capability
-import org.jline.utils.{ NonBlocking, OSUtils }
+import org.jline.utils.{ ClosedException, NonBlockingReader, OSUtils }
 import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
 import org.jline.terminal.Terminal.SignalHandler
 import org.jline.terminal.impl.AbstractTerminal
@@ -20,8 +20,9 @@ import org.jline.terminal.impl.jansi.JansiSupportImpl
 import org.jline.terminal.impl.jansi.win.JansiWinSysTerminal
 import scala.collection.JavaConverters._
 import scala.util.Try
+import java.util.concurrent.LinkedBlockingQueue
 
-private[util] object JLine3 {
+private[sbt] object JLine3 {
   private val capabilityMap = Capability
     .values()
     .map { c =>
@@ -77,6 +78,8 @@ private[util] object JLine3 {
     new AbstractTerminal(term.name, "ansi", Charset.forName("UTF-8"), SignalHandler.SIG_DFL) {
       val closed = new AtomicBoolean(false)
       setOnClose { () =>
+        doClose()
+        reader.close()
         if (closed.compareAndSet(false, true)) {
           // This is necessary to shutdown the non blocking input reader
           // so that it doesn't keep blocking
@@ -89,29 +92,76 @@ private[util] object JLine3 {
       parseInfoCmp()
       override val input: InputStream = new InputStream {
         override def read: Int = {
-          val res = try term.inputStream.read
-          catch { case _: InterruptedException => -2 }
+          val res = term.inputStream match {
+            case w: Terminal.WriteableInputStream =>
+              val result = new LinkedBlockingQueue[Integer]
+              try {
+                w.read(result)
+                result.poll match {
+                  case null => throw new ClosedException
+                  case i    => i.toInt
+                }
+              } catch {
+                case _: InterruptedException =>
+                  w.cancel()
+                  throw new ClosedException
+              }
+            case _ => throw new ClosedException
+          }
           if (res == 4 && term.prompt.render().endsWith(term.prompt.mkPrompt()))
-            throw new EOFException
+            throw new ClosedException
           res
         }
       }
       override val output: OutputStream = new OutputStream {
         override def write(b: Int): Unit = write(Array[Byte](b.toByte))
         override def write(b: Array[Byte]): Unit = if (!closed.get) term.withPrintStream { ps =>
+          ps.write(b)
           term.prompt match {
             case a: Prompt.AskUser => a.write(b)
             case _                 =>
           }
-          ps.write(b)
         }
         override def write(b: Array[Byte], offset: Int, len: Int) =
           write(Arrays.copyOfRange(b, offset, offset + len))
         override def flush(): Unit = term.withPrintStream(_.flush())
       }
 
-      override val reader =
-        NonBlocking.nonBlocking(term.name, input, Charset.defaultCharset())
+      override val reader = new NonBlockingReader {
+        val buffer = new LinkedBlockingQueue[Integer]
+        val thread = new AtomicReference[Thread]
+        private def fillBuffer(): Unit = thread.synchronized {
+          thread.set(Thread.currentThread)
+          buffer.put(
+            try input.read()
+            catch { case _: InterruptedException => -3 }
+          )
+        }
+        override def close(): Unit = thread.get match {
+          case null =>
+          case t    => t.interrupt()
+        }
+        override def read(timeout: Long, peek: Boolean) = {
+          if (buffer.isEmpty && !peek) fillBuffer()
+          (if (peek) buffer.peek else buffer.take) match {
+            case null => -2
+            case i    => if (i == -3) throw new ClosedException else i
+          }
+        }
+        override def peek(timeout: Long): Int = buffer.peek() match {
+          case null => -1
+          case i    => i.toInt
+        }
+        override def readBuffered(buf: Array[Char]): Int = {
+          if (buffer.isEmpty) fillBuffer()
+          buffer.take match {
+            case i if i == -1 => -1
+            case i =>
+              buf(0) = i.toChar
+              1
+          }
+        }
+      }
       override val writer: PrintWriter = new PrintWriter(output, true)
       /*
        * For now assume that the terminal capabilities for client and server

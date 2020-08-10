@@ -126,6 +126,12 @@ type TerminalAttributesResponse implements EventMessage {
   cchars: String!,
 }
 
+type TerminalGetSizeQuery implements CommandMessage {}
+type TerminalGetSizeResponse implements EventMessage {
+  width: Int!
+  height: Int!
+}
+
 type TerminalSetSizeCommand implements CommandMessage {
   width: Int!
   height: Int!

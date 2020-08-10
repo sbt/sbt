@@ -73,7 +73,6 @@ object LineReader {
       historyPath: Option[File],
       parser: Parser[_],
       terminal: Terminal,
-      prompt: Prompt = Prompt.Running,
   ): LineReader = {
     val term = JLine3(terminal)
     // We may want to consider insourcing LineReader.java from jline. We don't otherwise

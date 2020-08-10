@@ -13,7 +13,6 @@ import java.nio.file.Files
 import sbt.internal.util.{ RMap, ConsoleOut }
 import sbt.io.IO
 import sbt.io.syntax._
-import scala.collection.JavaConverters._
 import sjsonnew.shaded.scalajson.ast.unsafe.JString
 import sjsonnew.support.scalajson.unsafe.CompactPrinter
 
@@ -39,7 +38,7 @@ private[sbt] final class TaskTraceEvent
   ShutdownHooks.add(() => report())
 
   private[this] def report() = {
-    if (timings.asScala.nonEmpty) {
+    if (anyTimings) {
       writeTraceEvent()
     }
   }
@@ -63,10 +62,10 @@ private[sbt] final class TaskTraceEvent
         CompactPrinter.print(new JString(name), sb)
         s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tid": ${t.threadId}}"""
       }
-      val entryIterator = timings.entrySet().iterator()
+      val entryIterator = currentTimings
       while (entryIterator.hasNext) {
-        val entry = entryIterator.next()
-        trace.append(durationEvent(taskName(entry.getKey), "task", entry.getValue))
+        val (key, value) = entryIterator.next()
+        trace.append(durationEvent(taskName(key), "task", value))
         if (entryIterator.hasNext) trace.append(",")
       }
       trace.append("]}")
