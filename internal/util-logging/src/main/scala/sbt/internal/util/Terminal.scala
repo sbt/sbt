@@ -141,7 +141,7 @@ trait Terminal extends AutoCloseable {
   private[sbt] def withPrintStream[T](f: PrintStream => T): T
   private[sbt] def withRawOutput[R](f: => R): R
   private[sbt] def restore(): Unit = {}
-  private[sbt] val progressState = new ProgressState(1)
+  private[sbt] def progressState: ProgressState
   private[this] val promptHolder: AtomicReference[Prompt] = new AtomicReference(Prompt.Pending)
   private[sbt] final def prompt: Prompt = promptHolder.get
   private[sbt] final def setPrompt(newPrompt: Prompt): Unit =
@@ -315,6 +315,7 @@ object Terminal {
 
   private[this] object ProxyTerminal extends Terminal {
     private def t: Terminal = activeTerminal.get
+    override private[sbt] def progressState: ProgressState = t.progressState
     override def getWidth: Int = t.getWidth
     override def getHeight: Int = t.getHeight
     override def getLineHeightAndWidth(line: String): (Int, Int) = t.getLineHeightAndWidth(line)
@@ -755,6 +756,9 @@ object Terminal {
 
   private val capabilityMap =
     org.jline.utils.InfoCmp.Capability.values().map(c => c.toString -> c).toMap
+  private val consoleProgressState = new AtomicReference[ProgressState](new ProgressState(1))
+  private[sbt] def setConsoleProgressState(progressState: ProgressState): Unit =
+    consoleProgressState.set(progressState)
 
   @deprecated("For compatibility only", "1.4.0")
   private[sbt] def deprecatedTeminal: jline.Terminal = console.toJLine
@@ -770,6 +774,7 @@ object Terminal {
     }
     private[this] val isCI = sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")
     override lazy val isAnsiSupported: Boolean = term.isAnsiSupported && !isCI
+    override private[sbt] def progressState: ProgressState = consoleProgressState.get
     override def isEchoEnabled: Boolean = system.echo()
     override def isSuccessEnabled: Boolean = true
     override def getBooleanCapability(capability: String, jline3: Boolean): Boolean =
@@ -912,6 +917,7 @@ object Terminal {
     new WriteableInputStream(nullInputStream, "null-writeable-input-stream")
   private[sbt] val NullTerminal = new Terminal {
     override def close(): Unit = {}
+    override private[sbt] def progressState: ProgressState = new ProgressState(1)
     override def getBooleanCapability(capability: String, jline3: Boolean): Boolean = false
     override def getHeight: Int = 0
     override def getLastLine: Option[String] = None

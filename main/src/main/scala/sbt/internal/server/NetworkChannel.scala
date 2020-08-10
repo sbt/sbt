@@ -49,6 +49,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import BasicJsonProtocol._
 import Serialization.{ attach, promptChannel }
+import sbt.internal.util.ProgressState
 
 final class NetworkChannel(
     val name: String,
@@ -58,7 +59,8 @@ final class NetworkChannel(
     instance: ServerInstance,
     handlers: Seq[ServerHandler],
     val log: Logger,
-    mkUIThreadImpl: (State, CommandChannel) => UITask
+    mkUIThreadImpl: (State, CommandChannel) => UITask,
+    state: Option[State],
 ) extends CommandChannel { self =>
   def this(
       name: String,
@@ -77,7 +79,8 @@ final class NetworkChannel(
       instance,
       handlers,
       log,
-      new UITask.AskUserTask(_, _)
+      new UITask.AskUserTask(_, _),
+      None
     )
 
   private val running = new AtomicBoolean(true)
@@ -787,6 +790,10 @@ final class NetworkChannel(
       )
     }
     private[this] val blockedThreads = ConcurrentHashMap.newKeySet[Thread]
+    override private[sbt] val progressState: ProgressState = new ProgressState(
+      1,
+      state.flatMap(_.get(Keys.superShellMaxTasks.key)).getOrElse(SysProp.supershellMaxTasks)
+    )
     override def getWidth: Int = getProperty(_.width, 0).getOrElse(0)
     override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
     override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)

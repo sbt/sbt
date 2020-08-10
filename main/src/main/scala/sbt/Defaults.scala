@@ -97,7 +97,7 @@ import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.Converter
 
 import scala.collection.immutable.ListMap
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
@@ -393,11 +393,15 @@ object Defaults extends BuildCommon {
         else appConfiguration.value.provider.scalaProvider.launcher.topLoader.getParent
       },
       useSuperShell := { if (insideCI.value) false else Terminal.console.isSupershellEnabled },
+      superShellThreshold :== SysProp.supershellThreshold,
+      superShellMaxTasks :== SysProp.supershellMaxTasks,
+      superShellSleep :== SysProp.supershellSleep.millis,
       progressReports := {
         val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
         rs map { Keys.TaskProgress(_) }
       },
-      progressState := Some(new ProgressState(SysProp.supershellBlankZone)),
+      // progressState is deprecated
+      SettingKey[Option[ProgressState]]("progressState") := None,
       Previous.cache := new Previous(
         Def.streamsManagerKey.value,
         Previous.references.value.getReferences

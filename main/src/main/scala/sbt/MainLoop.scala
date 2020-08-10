@@ -22,8 +22,10 @@ import sbt.protocol._
 import sbt.util.{ Logger, LoggerContext }
 
 import scala.annotation.tailrec
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import sbt.internal.FastTrackCommands
+import sbt.internal.SysProp
 
 object MainLoop {
 
@@ -150,7 +152,11 @@ object MainLoop {
 
   def next(state: State): State = {
     val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
-    val taskProgress = new TaskProgress
+    val superShellSleep =
+      state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
+    val superShellThreshold =
+      state.get(Keys.superShellThreshold.key).getOrElse(SysProp.supershellThreshold)
+    val taskProgress = new TaskProgress(superShellSleep, superShellThreshold)
     try {
       ErrorHandling.wideConvert {
         state

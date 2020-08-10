@@ -201,7 +201,8 @@ private[sbt] final class CommandExchange {
           instance,
           handlers,
           s.log,
-          mkAskUser(name)
+          mkAskUser(name),
+          Option(lastState.get),
         )
       subscribe(channel)
     }

@@ -557,9 +557,13 @@ object Keys {
   private[sbt] val currentTaskProgress = AttributeKey[TaskProgress]("current-task-progress")
   private[sbt] val taskProgress = AttributeKey[sbt.internal.TaskProgress]("active-task-progress")
   val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
+  val superShellMaxTasks = settingKey[Int]("The max number of tasks to display in the supershell progress report")
+  val superShellSleep = settingKey[FiniteDuration]("The minimum duration to sleep between progress reports")
+  val superShellThreshold = settingKey[FiniteDuration]("The minimum amount of time a task must be running to appear in the supershell progress report")
   val turbo = settingKey[Boolean]("Enables (true) or disables optional performance features.")
   // This key can be used to add custom ExecuteProgress instances
   val progressReports = settingKey[Seq[TaskProgress]]("A function that returns a list of progress reporters.").withRank(DTask)
+  @deprecated("unused", "1.4.0")
   private[sbt] val progressState = settingKey[Option[ProgressState]]("The optional progress state if supershell is enabled.").withRank(Invisible)
   private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)
   @deprecated("No longer used", "1.3.0")

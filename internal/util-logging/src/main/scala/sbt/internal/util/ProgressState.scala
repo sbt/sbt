@@ -26,14 +26,16 @@ private[sbt] final class ProgressState(
     val padding: AtomicInteger,
     val blankZone: Int,
     val currentLineBytes: AtomicReference[ArrayBuffer[Byte]],
+    val maxItems: Int,
 ) {
-  def this(blankZone: Int) =
-    this(
-      new AtomicReference(Nil),
-      new AtomicInteger(0),
-      blankZone,
-      new AtomicReference(new ArrayBuffer[Byte]),
-    )
+  def this(blankZone: Int, maxItems: Int) = this(
+    new AtomicReference(Nil),
+    new AtomicInteger(0),
+    blankZone,
+    new AtomicReference(new ArrayBuffer[Byte]),
+    maxItems,
+  )
+  def this(blankZone: Int) = this(blankZone, 8)
   def currentLine: Option[String] =
     new String(currentLineBytes.get.toArray, "UTF-8").linesIterator.toSeq.lastOption
       .map(EscHelpers.stripColorsAndMoves)
@@ -162,14 +164,18 @@ private[sbt] object ProgressState {
         terminal.withPrintStream { ps =>
           val commandFromThisTerminal = pe.channelName.fold(true)(_ == terminal.name)
           val info = if (commandFromThisTerminal) {
-            pe.items.map { item =>
+            val base = pe.items.map { item =>
               val elapsed = item.elapsedMicros / 1000000L
               s"  | => ${item.name} ${elapsed}s"
             }
+            val limit = state.maxItems
+            if (base.size > limit)
+              s"  | ... (${base.size - limit} other tasks)" +: base.takeRight(limit)
+            else base
           } else {
             pe.command.toSeq.flatMap { cmd =>
               val width = terminal.getWidth
-              val sanitized = if ((cmd.length + SERVER_IS_RUNNING_LENGTH) < width) {
+              val sanitized = if ((cmd.length + SERVER_IS_RUNNING_LENGTH) > width) {
                 if (SERVER_IS_RUNNING_LENGTH + cmd.length < width) cmd
                 else cmd.take(MIN_COMMAND_WIDTH) + "..."
               } else cmd

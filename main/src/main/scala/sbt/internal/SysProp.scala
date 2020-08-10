@@ -104,7 +104,9 @@ object SysProp {
   def dumbTerm: Boolean = sys.env.get("TERM").contains("dumb")
   def supershell: Boolean = booleanOpt("sbt.supershell").getOrElse(!dumbTerm && color)
 
-  def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
+  def supershellMaxTasks: Int = int("sbt.supershell.maxitems", 8)
+  def supershellSleep: Long = long("sbt.supershell.sleep", 500.millis.toMillis)
+  def supershellThreshold: FiniteDuration = long("sbt.supershell.threshold", 100L).millis
   def supershellBlankZone: Int = int("sbt.supershell.blankzone", 1)
 
   def defaultUseCoursier: Boolean = {

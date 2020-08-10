@@ -935,12 +935,24 @@ object BuiltinCommands {
     // This is a workaround for the console task in dotty which uses the classloader cache.
     // We need to override the top loader in that case so that it gets the forked jline.
     s5.extendedClassLoaderCache.setParent(Project.extract(s5).get(Keys.scalaInstanceTopLoader))
-    CheckBuildSources.init(LintUnused.lintUnusedFunc(s5))
+    addSuperShellParams(CheckBuildSources.init(LintUnused.lintUnusedFunc(s5)))
   }
 
   private val setupGlobalFileTreeRepository: State => State = { state =>
     state.get(sbt.nio.Keys.globalFileTreeRepository).foreach(_.close())
     state.put(sbt.nio.Keys.globalFileTreeRepository, FileTreeRepository.default)
+  }
+  private val addSuperShellParams: State => State = (s: State) => {
+    val extracted = Project.extract(s)
+    import scala.concurrent.duration._
+    val sleep = extracted.getOpt(Keys.superShellSleep).getOrElse(SysProp.supershellSleep.millis)
+    val threshold =
+      extracted.getOpt(Keys.superShellThreshold).getOrElse(SysProp.supershellThreshold)
+    val maxItems = extracted.getOpt(Keys.superShellMaxTasks).getOrElse(SysProp.supershellMaxTasks)
+    Terminal.setConsoleProgressState(new ProgressState(1, maxItems))
+    s.put(Keys.superShellSleep.key, sleep)
+      .put(Keys.superShellThreshold.key, threshold)
+      .put(Keys.superShellMaxTasks.key, maxItems)
   }
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
     val size = Project

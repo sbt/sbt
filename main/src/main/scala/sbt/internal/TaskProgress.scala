@@ -20,13 +20,11 @@ import java.util.concurrent.{ ConcurrentHashMap, Executors, TimeoutException }
 /**
  * implements task progress display on the shell.
  */
-private[sbt] class TaskProgress
+private[sbt] class TaskProgress(sleepDuration: FiniteDuration, threshold: FiniteDuration)
     extends AbstractTaskExecuteProgress
     with ExecuteProgress[Task]
     with AutoCloseable {
   private[this] val lastTaskCount = new AtomicInteger(0)
-  private[this] val sleepDuration = SysProp.supershellSleep.millis
-  private[this] val threshold = 10.millis
   private[this] val reportLoop = new AtomicReference[AutoCloseable]
   private[this] val active = new ConcurrentHashMap[Task[_], AutoCloseable]
   private[this] val nextReport = new AtomicReference(Deadline.now)
