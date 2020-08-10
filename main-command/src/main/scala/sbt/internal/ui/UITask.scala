@@ -59,7 +59,7 @@ private[sbt] object UITask {
       def readLine(): Either[String, String] =
         try {
           val clear = terminal.ansi(ClearPromptLine, "")
-          @tailrec def impl(): Either[String, String] = {
+          val res = {
             val thread = Thread.currentThread
             if (thread.isInterrupted || closed.get) throw interrupted
             val reader = LineReader.createReader(history(state), parser, terminal)
@@ -76,16 +76,17 @@ private[sbt] object UITask {
               case None => Left(TerminateAction)
               case Some(s: String) =>
                 s.trim() match {
-                  case ""                                                => impl()
+                  // We need to put the empty string on the fast track queue so that we can
+                  // reprompt the user if another command is running on the server.
+                  case ""                                                => Left("")
                   case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
                   case cmd                                               => Right(cmd)
                 }
             }
           }
-          val res = impl()
           terminal.setPrompt(Prompt.Pending)
           res
-        } catch { case e: InterruptedException => Right("") }
+        } catch { case e: InterruptedException => Left("") }
       override def close(): Unit = closed.set(true)
     }
   }
