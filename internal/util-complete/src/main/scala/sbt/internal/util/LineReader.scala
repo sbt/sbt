@@ -74,13 +74,13 @@ object LineReader {
       parser: Parser[_],
       terminal: Terminal,
   ): LineReader = {
-    val term = JLine3(terminal)
     // We may want to consider insourcing LineReader.java from jline. We don't otherwise
     // directly need jline3 for sbt.
-    val reader = LineReaderBuilder.builder().terminal(term).completer(completer(parser)).build()
-    historyPath.foreach(f => reader.setVariable(JLineReader.HISTORY_FILE, f))
     new LineReader {
       override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
+        val term = JLine3(terminal)
+        val reader = LineReaderBuilder.builder().terminal(term).completer(completer(parser)).build()
+        historyPath.foreach(f => reader.setVariable(JLineReader.HISTORY_FILE, f))
         try terminal.withRawInput {
           Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
         } catch {

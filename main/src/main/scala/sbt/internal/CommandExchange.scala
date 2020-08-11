@@ -446,7 +446,7 @@ private[sbt] final class CommandExchange {
           case null =>
           case mt: FastTrackTask =>
             mt.task match {
-              case `attach` => mt.channel.prompt(ConsolePromptEvent(lastState.get))
+              case `attach` | "" => mt.channel.prompt(ConsolePromptEvent(lastState.get))
               case `Cancel` =>
                 Option(currentExecRef.get).foreach(cancel)
                 mt.channel.prompt(ConsolePromptEvent(lastState.get))
