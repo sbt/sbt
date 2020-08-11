@@ -9,7 +9,7 @@ package sbt
 
 import java.io.File
 import java.nio.channels.ClosedChannelException
-import sbt.internal.inc.{ AnalyzingCompiler, PlainVirtualFile }
+import sbt.internal.inc.{ AnalyzingCompiler, MappedFileConverter, PlainVirtualFile }
 import sbt.internal.util.{ DeprecatedJLine, Terminal }
 import sbt.util.Logger
 import xsbti.compile.{ Compilers, Inputs }
@@ -56,13 +56,14 @@ final class Console(compiler: AnalyzingCompiler) {
       terminal: Terminal
   )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
     def console0(): Unit =
-      try compiler.console(classpath map { x =>
-        PlainVirtualFile(x.toPath)
-      }, options, initialCommands, cleanupCommands, log)(
-        loader,
-        bindings
-      )
-      catch { case _: InterruptedException | _: ClosedChannelException => }
+      try {
+        compiler.console(classpath map { x =>
+          PlainVirtualFile(x.toPath)
+        }, MappedFileConverter.empty, options, initialCommands, cleanupCommands, log)(
+          loader,
+          bindings
+        )
+      } catch { case _: InterruptedException | _: ClosedChannelException => }
     val previous = sys.props.get("scala.color").getOrElse("auto")
     try {
       sys.props("scala.color") = if (terminal.isColorEnabled) "true" else "false"
