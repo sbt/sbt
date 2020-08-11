@@ -193,59 +193,6 @@ object Defaults extends BuildCommon {
       },
       extraIncOptions :== Seq("JAVA_CLASS_VERSION" -> sys.props("java.class.version")),
       allowMachinePath :== true,
-      rootPaths := {
-        val app = appConfiguration.value
-        val base = app.baseDirectory.getCanonicalFile
-        val boot = app.provider.scalaProvider.launcher.bootDirectory
-        val ih = app.provider.scalaProvider.launcher.ivyHome
-        val coursierCache = csrCacheDirectory.value
-        val javaHome = Paths.get(sys.props("java.home"))
-        Map(
-          "BASE" -> base.toPath,
-          "SBT_BOOT" -> boot.toPath,
-          "CSR_CACHE" -> coursierCache.toPath,
-          "IVY_HOME" -> ih.toPath,
-          "JAVA_HOME" -> javaHome,
-        )
-      },
-      fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
-      fullServerHandlers := {
-        Seq(
-          LanguageServerProtocol.handler(fileConverter.value),
-          BuildServerProtocol
-            .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value),
-          VirtualTerminal.handler,
-        ) ++ serverHandlers.value :+ ServerHandler.fallback
-      },
-      timeWrappedStamper := Stamps
-        .timeWrapBinaryStamps(Stamps.uncachedStamps(fileConverter.value), fileConverter.value),
-      reusableStamper := {
-        val converter = fileConverter.value
-        val unmanagedCache = unmanagedFileStampCache.value
-        val managedCache = managedFileStampCache.value
-        val backing = timeWrappedStamper.value
-        new xsbti.compile.analysis.ReadStamps {
-          def getAllLibraryStamps()
-              : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
-            backing.getAllLibraryStamps()
-          def getAllProductStamps()
-              : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
-            backing.getAllProductStamps()
-          def getAllSourceStamps()
-              : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
-            new java.util.HashMap[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp]
-          def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.library(fr)
-          def product(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.product(fr)
-          def source(fr: xsbti.VirtualFile): xsbti.compile.analysis.Stamp = {
-            val path = converter.toPath(fr)
-            unmanagedCache
-              .get(path)
-              .orElse(managedCache.getOrElseUpdate(path, sbt.nio.FileStamper.Hash))
-              .map(_.stamp)
-              .getOrElse(backing.source(fr))
-          }
-        }
-      },
       traceLevel in run :== 0,
       traceLevel in runMain :== 0,
       traceLevel in bgRun :== 0,
@@ -323,7 +270,6 @@ object Defaults extends BuildCommon {
       // coursier settings
       csrExtraCredentials :== Nil,
       csrLogger := LMCoursier.coursierLoggerTask.value,
-      csrCacheDirectory :== LMCoursier.defaultCacheLocation,
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
     )
@@ -448,6 +394,70 @@ object Defaults extends BuildCommon {
     ) ++ LintUnused.lintSettings
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
       ++ RemoteCache.globalSettings
+  )
+
+  private[sbt] lazy val buildLevelJvmSettings: Seq[Setting[_]] = Seq(
+    rootPaths := {
+      val app = appConfiguration.value
+      val base = app.baseDirectory.getCanonicalFile
+      val boot = app.provider.scalaProvider.launcher.bootDirectory
+      val ih = app.provider.scalaProvider.launcher.ivyHome
+      val coursierCache = csrCacheDirectory.value
+      val javaHome = Paths.get(sys.props("java.home"))
+      Map(
+        "BASE" -> base.toPath,
+        "SBT_BOOT" -> boot.toPath,
+        "CSR_CACHE" -> coursierCache.toPath,
+        "IVY_HOME" -> ih.toPath,
+        "JAVA_HOME" -> javaHome,
+      )
+    },
+    fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
+    fullServerHandlers := {
+      Seq(
+        LanguageServerProtocol.handler(fileConverter.value),
+        BuildServerProtocol
+          .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value),
+        VirtualTerminal.handler,
+      ) ++ serverHandlers.value :+ ServerHandler.fallback
+    },
+    timeWrappedStamper := Stamps
+      .timeWrapBinaryStamps(Stamps.uncachedStamps(fileConverter.value), fileConverter.value),
+    reusableStamper := {
+      val converter = fileConverter.value
+      val unmanagedCache = unmanagedFileStampCache.value
+      val managedCache = managedFileStampCache.value
+      val backing = timeWrappedStamper.value
+      new xsbti.compile.analysis.ReadStamps {
+        def getAllLibraryStamps()
+            : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+          backing.getAllLibraryStamps()
+        def getAllProductStamps()
+            : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+          backing.getAllProductStamps()
+        def getAllSourceStamps()
+            : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+          new java.util.HashMap[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp]
+        def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.library(fr)
+        def product(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.product(fr)
+        def source(fr: xsbti.VirtualFile): xsbti.compile.analysis.Stamp = {
+          val path = converter.toPath(fr)
+          unmanagedCache
+            .get(path)
+            .orElse(managedCache.getOrElseUpdate(path, sbt.nio.FileStamper.Hash))
+            .map(_.stamp)
+            .getOrElse(backing.source(fr))
+        }
+      }
+    },
+  )
+
+  // csrCacheDirectory is scoped to ThisBuild to allow customization.
+  private[sbt] lazy val buildLevelIvySettings: Seq[Setting[_]] = Seq(
+    csrCacheDirectory := {
+      if (useCoursier.value) LMCoursier.defaultCacheLocation
+      else Classpaths.dummyCoursierDirectory(appConfiguration.value)
+    },
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
@@ -2618,15 +2628,19 @@ object Classpaths {
     ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
+      val ac = appConfiguration.value
       val ip = ivyPaths.value
-      val defaultIvyCache = bootIvyHome(appConfiguration.value)
-      if (old != LMCoursier.defaultCacheLocation) old
-      else if (ip.ivyHome == defaultIvyCache) old
-      else
-        ip.ivyHome match {
-          case Some(home) => home / "coursier-cache"
-          case _          => old
-        }
+      // if ivyPaths is customized, create coursier-cache directory in it
+      if (useCoursier.value) {
+        val defaultIvyCache = bootIvyHome(ac)
+        if (old != LMCoursier.defaultCacheLocation) old
+        else if (ip.ivyHome == defaultIvyCache) old
+        else
+          ip.ivyHome match {
+            case Some(home) => home / "coursier-cache"
+            case _          => old
+          }
+      } else Classpaths.dummyCoursierDirectory(ac)
     },
     dependencyCacheDirectory := {
       val st = state.value
@@ -3746,6 +3760,12 @@ object Classpaths {
     } catch {
       case _: NoSuchMethodError => None
     }
+
+  // This is a place holder in case someone doesn't want to use Coursier
+  private[sbt] def dummyCoursierDirectory(app: xsbti.AppConfiguration): File = {
+    val base = app.baseDirectory.getCanonicalFile
+    base / "target" / "coursier-temp"
+  }
 
   private[this] def mavenCompatible(ivyRepo: xsbti.IvyRepository): Boolean =
     try {

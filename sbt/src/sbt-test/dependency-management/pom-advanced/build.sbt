@@ -1,5 +1,7 @@
 import complete.DefaultParsers._
 
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 lazy val root = (project in file(".")).
   settings(
     resolvers ++= Seq(local, Resolver.sonatypeRepo("releases"), Resolver.sonatypeRepo("snapshots")),

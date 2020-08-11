@@ -6,6 +6,8 @@ val summingbirdVersion = "0.4.0"
 val luceneVersion = "4.0.0"
 val akkaVersion = "2.3.1"
 
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),

@@ -1,3 +1,5 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 def commonSettings: Vector[Def.Setting[_]] =
   Vector(
     organization := "com.example",
