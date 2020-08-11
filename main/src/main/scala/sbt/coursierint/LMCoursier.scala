@@ -37,10 +37,18 @@ object LMCoursier {
   private[this] val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 
+  private[this] lazy val checkLegacyCache: Unit = {
+    // This warns if ~/.coursier/cache is found.
+    // Temporary, remove when updating coursier to 2.0.0 final.
+    lmcoursier.CoursierConfiguration.checkLegacyCache()
+  }
+
   def defaultCacheLocation: File =
     sys.props.get("sbt.coursier.home") match {
       case Some(home) => new File(home).getAbsoluteFile / "cache"
-      case _          => CoursierDependencyResolution.defaultCacheLocation
+      case _ =>
+        checkLegacyCache
+        CoursierDependencyResolution.defaultCacheLocation
     }
 
   def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
