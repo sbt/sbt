@@ -1,3 +1,5 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 lazy val root = (project in file("."))
   .settings(
     organization := "com.example",

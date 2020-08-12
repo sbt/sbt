@@ -1,3 +1,5 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
 organization := "org.example"

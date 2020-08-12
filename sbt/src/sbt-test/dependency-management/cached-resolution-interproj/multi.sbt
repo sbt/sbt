@@ -4,6 +4,7 @@ val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 val junit = "junit" % "junit" % "4.11"
 
 ThisBuild / scalaVersion := "2.12.11"
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(

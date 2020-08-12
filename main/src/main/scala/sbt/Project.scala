@@ -521,7 +521,7 @@ object Project extends ProjectExtra {
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
     val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
-    val hs: Option[Seq[ServerHandler]] = get(fullServerHandlers)
+    val hs: Option[Seq[ServerHandler]] = get(fullServerHandlers in ThisBuild)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(
       s.definedCommands,

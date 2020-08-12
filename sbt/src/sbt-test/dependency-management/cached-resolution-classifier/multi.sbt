@@ -2,6 +2,8 @@ ThisBuild / useCoursier := false
 
 lazy val check = taskKey[Unit]("Runs the check")
 
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),

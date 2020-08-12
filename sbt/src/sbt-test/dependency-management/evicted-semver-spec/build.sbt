@@ -2,6 +2,7 @@
 ThisBuild / organization := "com.example"
 ThisBuild / scalaVersion := "2.12.11"
 ThisBuild / versionScheme := Some("semver-spec")
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
@@ -9,7 +10,6 @@ def commonSettings: Seq[Def.Setting[_]] =
       (ThisBuild / baseDirectory).value,
       Some((LocalRootProject / target).value / "ivy-cache")
     ),
-    csrCacheDirectory := (LocalRootProject / target).value / "cache",
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
     publishTo := Some(MavenCache("local-maven", (LocalRootProject / target).value / "local-maven")),
     resolvers += MavenCache("local-maven", (LocalRootProject / target).value / "local-maven"),

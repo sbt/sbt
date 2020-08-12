@@ -1,3 +1,5 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 ivyScala ~= { (is: Option[IvyScala]) => is.map(_.copy(checkExplicit = false, overrideScalaVersion = false, filterImplicit = false)) }
 
 ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value

@@ -9,6 +9,7 @@ ThisBuild / scalaVersion     := "2.12.11"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.example"
 ThisBuild / organizationName := "example"
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 lazy val Dev = config("dev").extend(Compile)
   .describedAs("Dependencies required for development environments")
