@@ -5,7 +5,7 @@ language: scala
 env:
   global:
     - TRAVIS_JDK=adopt@1.11.0-1
-    - SCALA_212=2.12.11
+    - SCALA_212=2.12.12
     - SCALA_213=2.13.1
     - UTIL_TESTS="utilCache/test;utilControl/test;utilInterface/test;utilLogging/test;utilPosition/test;utilRelation/test;utilScripted/test;utilTracking/test"
     # WHITESOURCE_PASSWORD=

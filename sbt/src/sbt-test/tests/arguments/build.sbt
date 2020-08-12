@@ -1,6 +1,6 @@
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
-ThisBuild / scalaVersion := "2.12.11"
+ThisBuild / scalaVersion := "2.12.12"
 
 val foo = settingKey[Seq[String]]("foo")
 val checkFoo = inputKey[Unit]("check contents of foo")
