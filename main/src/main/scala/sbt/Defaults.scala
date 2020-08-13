@@ -36,16 +36,8 @@ import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
 import sbt.internal.classpath.{ AlternativeZincUtil, ClassLoaderCache }
 import sbt.internal.inc.JavaInterfaceUtil._
-import sbt.internal.inc.{
-  CompileOutput,
-  MappedFileConverter,
-  PlainVirtualFile,
-  Stamps,
-  ZincLmUtil,
-  ZincUtil
-}
 import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
-import sbt.internal.inc.{ MappedFileConverter, PlainVirtualFile, Stamps, ZincLmUtil, ZincUtil }
+import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
@@ -578,11 +570,17 @@ object Defaults extends BuildCommon {
   def addBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Nil
   lazy val outputConfigPaths: Seq[Setting[_]] = Seq(
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
-    // TODO: Use FileConverter once Zinc can handle non-Path
-    backendOutput := PlainVirtualFile(classDirectory.value.toPath),
+    backendOutput := {
+      val converter = fileConverter.value
+      val dir = classDirectory.value
+      converter.toVirtualFile(dir.toPath)
+    },
     earlyOutput / artifactPath := earlyArtifactPathSetting(artifact).value,
-    // TODO: Use FileConverter once Zinc can handle non-Path
-    earlyOutput := PlainVirtualFile((earlyOutput / artifactPath).value.toPath),
+    earlyOutput := {
+      val converter = fileConverter.value
+      val jar = (earlyOutput / artifactPath).value
+      converter.toVirtualFile(jar.toPath)
+    },
     semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
     compileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "zinc"),
     earlyCompileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "early-zinc"),
@@ -2387,11 +2385,11 @@ object Classpaths {
         )
       },
       dependencyVirtualClasspath := {
-        // TODO: Use converter
+        val converter = fileConverter.value
         val cp0 = dependencyClasspath.value
-        cp0 map {
-          _ map { file =>
-            PlainVirtualFile(file.toPath): VirtualFile
+        cp0 map { attr: Attributed[File] =>
+          attr map { file =>
+            converter.toVirtualFile(file.toPath)
           }
         }
       },
@@ -2403,10 +2401,10 @@ object Classpaths {
           concat(
             internalDependencyPicklePath,
             Def.task {
-              // TODO: Use converter
-              externalDependencyClasspath.value map {
-                _ map { file =>
-                  PlainVirtualFile(file.toPath): VirtualFile
+              externalDependencyClasspath.value map { attr: Attributed[File] =>
+                attr map { file =>
+                  val converter = fileConverter.value
+                  converter.toVirtualFile(file.toPath)
                 }
               }
             }
