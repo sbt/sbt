@@ -405,6 +405,8 @@ object Defaults extends BuildCommon {
       )
     },
     fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
+    // The virtual file value cache needs to be global or sbt will run out of direct byte buffer memory.
+    classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
     fullServerHandlers := {
       Seq(
         LanguageServerProtocol.handler(fileConverter.value),
@@ -788,7 +790,6 @@ object Defaults extends BuildCommon {
       else old
     },
     persistJarClasspath :== true,
-    classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
     classpathEntryDefinesClassVF := {
       (if (persistJarClasspath.value) classpathDefinesClassCache.value
        else VirtualFileValueCache.definesClassCache(fileConverter.value)).get
