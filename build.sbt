@@ -215,7 +215,7 @@ lazy val sbtRoot: Project = (project in file("."))
         case Some(p) => file(p).toPath
         case _ =>
           dir match {
-            case Some(d) => d / "sbtc"
+            case Some(d) => d / "sbtn"
             case _ =>
               val msg = "Expected input parameter <path>: installNativeExecutable /usr/local/bin"
               throw new IllegalStateException(msg)
@@ -1125,7 +1125,7 @@ lazy val sbtClientProj = (project in file("client"))
       }
     },
     thinClientNativeImageCommand := System.getProperty("sbt.native-image", "native-image").toString,
-    buildNativeThinClient / name := s"sbtc${if (isWin) ".exe" else ""}",
+    buildNativeThinClient / name := s"sbtn${if (isWin) ".exe" else ""}",
     nativeThinClientPath := target.value.toPath / "bin" / (buildNativeThinClient / name).value,
     thinClientNativeImageClass := "sbt.client.Client",
     buildNativeThinClient := {
@@ -1168,7 +1168,7 @@ lazy val sbtClientProj = (project in file("client"))
       "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
       "-H:+ReportExceptionStackTraces",
       "-H:-ParseRuntimeOptions",
-      s"-H:Name=${target.value / "bin" / "sbtc"}",
+      s"-H:Name=${target.value / "bin" / "sbtn"}",
     ),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")

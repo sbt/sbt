@@ -58,7 +58,7 @@ object ClientTest extends AbstractServerTest {
     val cps = new CachingPrintStream
     NetworkClient.complete(
       testPath.toFile,
-      Array(s"--completions=sbtc $completionString"),
+      Array(s"--completions=sbtn $completionString"),
       false,
       tabs,
       cps

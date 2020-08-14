@@ -1,4 +1,4 @@
-#compdef sbtc
+#compdef sbtn
 
 COMPLETE="--completions=${words[@]}"
 COMPLETIONS=($(sbtc --no-tab ${COMPLETE}))
