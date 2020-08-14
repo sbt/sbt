@@ -493,6 +493,7 @@ object Watch {
   final val defaultInputOptions: Seq[Watch.InputOption] = Seq(
     Watch.InputOption("<enter>", "interrupt (exits sbt in batch mode)", CancelWatch, '\n', '\r'),
     Watch.InputOption(4.toChar, "<ctrl-d>", "interrupt (exits sbt in batch mode)", CancelWatch),
+    Watch.InputOption('l', "reload the build", Reload),
     Watch.InputOption('r', "re-run the command", Trigger),
     Watch.InputOption('s', "return to shell", Prompt),
     Watch.InputOption('q', "quit sbt", Run(TerminateAction)),
