@@ -66,7 +66,7 @@ class IllegalReferenceSpec extends fixture.FunSuite with fixture.TestDataFixture
          |  // `Def.toITask(sbt.Keys.baseDirectory)`. This, in turn, causes `Def` to be added
          |  // to a list of local definitions. Later on, we dereference `Def` with
          |  // `Def.sequential` which used to erroneously cause an illegal dynamic reference.
-         |  baseDirectory.value
+         |  Def.unit(baseDirectory.value)
          |  Def.sequential(Def.task(42))
          |}.dependencies.headOption.map(_.key.label)
        """.stripMargin

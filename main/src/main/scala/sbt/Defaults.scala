@@ -2006,7 +2006,7 @@ object Defaults extends BuildCommon {
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
     val s = streams.value
     val in = (compileJava / compileInputs).value
-    val _ = compileScalaBackend.value
+    Def.unit(compileScalaBackend.value)
     try {
       incCompiler.asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl].compileAllJava(in, s.log)
     } finally {
@@ -3161,7 +3161,7 @@ object Classpaths {
 
   def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[File]] =
     Def.task {
-      val _ = update.value
+      Def.unit(update.value)
       IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
     }
 
@@ -3491,8 +3491,9 @@ object Classpaths {
   def analyzed[T](data: T, analysis: CompileAnalysis) = ClasspathImpl.analyzed[T](data, analysis)
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
-    compile.value
-    copyResources.value
+    Def.unit(copyResources.value)
+    Def.unit(compile.value)
+
     c.toPath(backendOutput.value).toFile :: Nil
   }
 

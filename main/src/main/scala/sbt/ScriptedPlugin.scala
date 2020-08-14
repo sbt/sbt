@@ -178,7 +178,7 @@ object ScriptedPlugin extends AutoPlugin {
 
   private[sbt] def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
     val args = scriptedParser(sbtTestDirectory.value).parsed
-    scriptedDependencies.value
+    Def.unit(scriptedDependencies.value)
     try {
       val method = scriptedRun.value
       val scriptedInstance = scriptedTests.value

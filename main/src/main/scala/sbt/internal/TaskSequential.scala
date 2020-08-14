@@ -771,13 +771,13 @@ trait TaskSequential {
       case Nil => Def.task { last.value }
       case x :: xs =>
         Def.taskDyn {
-          val _ = x.value
+          Def.unit(x.value)
           sequential(xs, last)
         }
     }
   private def unitTask[A](task: Initialize[Task[A]]): Initialize[Task[Unit]] =
     Def.task {
-      task.value
+      Def.unit(task.value)
       ()
     }
 }

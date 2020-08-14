@@ -320,6 +320,16 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
     def toTaskable: Taskable[T] = x
   }
 
+  /** This works around Scala 2.12.12's
+   * "a pure expression does nothing in statement position"
+   *
+   * {{{
+   * Def.unit(copyResources.value)
+   * Def.unit(compile.value)
+   * }}}
+   */
+  def unit(a: Any): Unit = ()
+
   private[sbt] def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) =
     (TaskKey[T](name, description, DTask), dummyTask(name))
 
