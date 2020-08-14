@@ -19,8 +19,8 @@ for:
     only:
       - build-graal
   artifacts:
-  - path: client/target/bin/sbtc
-    name: sbtc
+  - path: client/target/bin/sbtn
+    name: sbtn
 
   install:
   - curl -sL https://github.com/sbt/sbt/releases/download/v1.3.10/sbt-1.3.10.tgz > ~/sbt-bin.tgz
@@ -50,7 +50,7 @@ for:
     only:
       - build-graal
   artifacts:
-  - path: client/target/bin/sbtc
+  - path: client/target/bin/sbtn
     name: mac-native-sbt-client
 
   install:
@@ -81,8 +81,8 @@ for:
       - build-graal
 
   artifacts:
-  - path: client\target\bin\sbtc.exe
-    name: sbtc.exe
+  - path: client\target\bin\sbtn.exe
+    name: sbtn.exe
   install:
     - cinst jdk8 -params 'installdir=C:\\jdk8'
     - SET CI=true
