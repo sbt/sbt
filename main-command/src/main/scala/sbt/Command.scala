@@ -184,7 +184,8 @@ object Command {
     )
 
   def process(command: String, state: State): State = {
-    parse(command, state.combinedParser) match {
+    (if (command.contains(";")) parse(command, state.combinedParser)
+    else parse(command, state.nonMultiParser)) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log error errMsg
