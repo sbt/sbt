@@ -1,4 +1,4 @@
 function __sbtcomp
-  sbtc --completions="$argv"
+  sbtn --completions="$argv"
 end
 complete --command sbtn -f --arguments '(__sbtcomp (commandline -cp))'
