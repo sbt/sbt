@@ -905,7 +905,7 @@ class NetworkClient(
         }
       }
       try Terminal.console.withRawInput(read())
-      catch { case NonFatal(_) => stopped.set(true) }
+      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) }
     }
 
     def drain(): Unit = inLock.synchronized {
