@@ -14,6 +14,7 @@ ThisBuild / version := {
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
+ThisBuild / SettingKey[Boolean]("usePipelining") := true
 
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
@@ -796,6 +797,7 @@ lazy val coreMacrosProj = (project in file("core-macros"))
     baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil)),
     name := "Core Macros",
     libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+    SettingKey[Boolean]("exportPipelining") := false,
     mimaSettings,
   )
 
@@ -913,6 +915,7 @@ lazy val mainProj = (project in file("main"))
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     testOptions in Test += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
+    SettingKey[Boolean]("usePipelining") := false,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       // New and changed methods on KeyIndex. internal.
