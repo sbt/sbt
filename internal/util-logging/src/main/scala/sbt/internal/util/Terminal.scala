@@ -460,7 +460,7 @@ object Terminal {
       ()
     }
   }
-  private[this] val nonBlockingIn: WriteableInputStream =
+  private[this] lazy val nonBlockingIn: WriteableInputStream =
     new WriteableInputStream(jline.TerminalFactory.get.wrapInIfNeeded(originalIn), "console")
 
   private[this] val inputStream = new AtomicReference[InputStream](System.in)

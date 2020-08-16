@@ -33,7 +33,7 @@ object ConsoleLogger {
   @deprecated("Use EscHelpers.removeEscapeSequences instead", "0.13.x")
   def removeEscapeSequences(s: String): String = EscHelpers.removeEscapeSequences(s)
   @deprecated("Use ConsoleAppender.formatEnabledInEnv instead", "0.13.x")
-  val formatEnabled = ConsoleAppender.formatEnabledInEnv
+  lazy val formatEnabled = ConsoleAppender.formatEnabledInEnv
   @deprecated("Use ConsoleAppender.noSuppressedMessage instead", "0.13.x")
   val noSuppressedMessage = ConsoleAppender.noSuppressedMessage
 
