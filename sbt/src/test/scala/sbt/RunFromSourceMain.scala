@@ -57,6 +57,7 @@ object RunFromSourceMain {
       )
     case Array(wd, scalaVersion, sbtVersion, classpath, args @ _*) =>
       System.setProperty("jna.nosys", "true")
+      if (args.exists(_.startsWith("<"))) System.setProperty("sbt.io.virtual", "false")
       val context = LoggerContext(useLog4J = SysProp.useLog4J)
       try run(file(wd), scalaVersion, sbtVersion, classpath, args, context)
       finally context.close()
