@@ -1,4 +1,4 @@
-lazy val dottyVersion = "0.14.0-RC1"
+ThisBuild / scalaVersion := "0.26.0-RC1"
 
 lazy val plugin = project
   .in(file("plugin"))
@@ -6,7 +6,6 @@ lazy val plugin = project
     name := "dividezero",
     version := "0.0.1",
     organization := "ch.epfl.lamp",
-    scalaVersion := dottyVersion,
 
     scalacOptions ++= Seq(
       "-language:implicitConversions"

@@ -3450,14 +3450,38 @@ object Classpaths {
   def deliverPattern(outputPath: File): String =
     (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
+  private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
+    def compare(a: String, b: String): Boolean =
+      a == "2.13" && (b.startsWith("0.") || b.startsWith("3.0"))
+    compare(sbv1, sbv2) || compare(sbv2, sbv1)
+  }
+
   def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
     Def.task {
+      val sbv = scalaBinaryVersion.value
       val ref = thisProjectRef.value
       val data = settingsData.value
       val deps = buildDependencies.value
       deps.classpath(ref) flatMap { dep =>
-        (projectID in dep.project) get data map {
-          _.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+        val depProjIdOpt = (dep.project / projectID).get(data)
+        val depSVOpt = (dep.project / scalaVersion).get(data)
+        val depSBVOpt = (dep.project / scalaBinaryVersion).get(data)
+        val depCrossOpt = (dep.project / crossVersion).get(data)
+        (depProjIdOpt, depSVOpt, depSBVOpt, depCrossOpt) match {
+          case (Some(depProjId), Some(depSV), Some(depSBV), Some(depCross)) =>
+            if (sbv == depSBV || depCross != CrossVersion.binary)
+              Some(
+                depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+              )
+            else if (isScala2Scala3Sandwich(sbv, depSBV) && depCross == CrossVersion.binary)
+              Some(
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(depSBV))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              )
+            else sys.error(s"scalaBinaryVersion mismatch: expected $sbv but found ${depSBV}")
+          case _ => None
         }
       }
     }
