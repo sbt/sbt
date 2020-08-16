@@ -10,6 +10,16 @@ package sbt.internal
 private[sbt] object Banner {
   def apply(version: String): Option[String] =
     version match {
+      case v if v.startsWith("1.4.0") =>
+        Some(s"""
+                |Here are some highlights of this release:
+                |  - Build server protocol (BSP) support
+                |  - sbtn: a native thin client for sbt
+                |  - VirtualFile + RemoteCache: caches build artifacts across different machines
+                |  - Incremental build pipelining. Try it using `ThisBuild / usePipelining := true`.
+                |See http://eed3si9n.com/sbt-1.4.0-beta for full release notes.
+                |Hide the banner for this release by running `skipBanner`.
+                |""".stripMargin.linesIterator.mkString("\n"))
       case "1.3.0" =>
         Some(s"""
                 |Welcome to sbt $version.
