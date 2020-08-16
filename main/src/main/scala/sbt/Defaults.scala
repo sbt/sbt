@@ -325,6 +325,7 @@ object Defaults extends BuildCommon {
       },
       turbo :== SysProp.turbo,
       usePipelining :== SysProp.pipelining,
+      exportPipelining := usePipelining.value,
       useScalaReplJLine :== false,
       scalaInstanceTopLoader := {
         if (!useScalaReplJLine.value) classOf[org.jline.terminal.Terminal].getClassLoader
@@ -389,6 +390,7 @@ object Defaults extends BuildCommon {
   )
 
   private[sbt] lazy val buildLevelJvmSettings: Seq[Setting[_]] = Seq(
+    exportPipelining := usePipelining.value,
     rootPaths := {
       val app = appConfiguration.value
       val base = app.baseDirectory.getCanonicalFile
@@ -785,7 +787,7 @@ object Defaults extends BuildCommon {
     scalacOptions := {
       val old = scalacOptions.value
       val converter = fileConverter.value
-      if (usePipelining.value)
+      if (exportPipelining.value)
         Vector("-Ypickle-java", "-Ypickle-write", converter.toPath(earlyOutput.value).toString) ++ old
       else old
     },
@@ -1941,8 +1943,9 @@ object Defaults extends BuildCommon {
     val setup: Setup = compileIncSetup.value
     val useBinary: Boolean = enableBinaryCompileAnalysis.value
     val analysisResult: CompileResult = compileIncremental.value
+    val exportP = exportPipelining.value
     // Save analysis midway if pipelining is enabled
-    if (analysisResult.hasModified && setup.incrementalCompilerOptions.pipelining) {
+    if (analysisResult.hasModified && exportP) {
       val store =
         MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
@@ -2079,6 +2082,10 @@ object Defaults extends BuildCommon {
         val vs = sources.value.toVector map { x =>
           c.toVirtualFile(x.toPath)
         }
+        val eo = CompileOutput(c.toPath(earlyOutput.value))
+        val eoOpt =
+          if (exportPipelining.value) Some(eo)
+          else None
         CompileOptions.of(
           cp.toArray,
           vs.toArray,
@@ -2091,7 +2098,7 @@ object Defaults extends BuildCommon {
           None.toOptional: Optional[NioPath],
           Some(fileConverter.value).toOptional,
           Some(reusableStamper.value).toOptional,
-          Some(CompileOutput(c.toPath(earlyOutput.value))).toOptional,
+          eoOpt.toOptional,
         )
       },
       compilerReporter := {

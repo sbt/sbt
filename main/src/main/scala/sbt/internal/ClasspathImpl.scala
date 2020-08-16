@@ -31,15 +31,22 @@ private[sbt] object ClasspathImpl {
   // we can't reduce the track level.
   def exportedPicklesTask: Initialize[Task[VirtualClasspath]] =
     Def.task {
-      val module = projectID.value
-      val config = configuration.value
-      val products = pickleProducts.value
-      val analysis = compileEarly.value
-      val xs = products map { _ -> analysis }
-      for { (f, analysis) <- xs } yield APIMappings
-        .store(analyzed(f, analysis), apiURL.value)
-        .put(moduleID.key, module)
-        .put(configuration.key, config)
+      // conditional task: do not refactor
+      if (exportPipelining.value) {
+        val module = projectID.value
+        val config = configuration.value
+        val products = pickleProducts.value
+        val analysis = compileEarly.value
+        val xs = products map { _ -> analysis }
+        for { (f, analysis) <- xs } yield APIMappings
+          .store(analyzed(f, analysis), apiURL.value)
+          .put(moduleID.key, module)
+          .put(configuration.key, config)
+      } else {
+        val c = fileConverter.value
+        val ps = exportedProducts.value
+        ps.map(attr => attr.map(x => c.toVirtualFile(x.toPath)))
+      }
     }
 
   def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =
