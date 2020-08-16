@@ -15,7 +15,8 @@ import sbt.internal.util.ConsoleAppender.{
   ClearScreenAfterCursor,
   CursorLeft1000,
   DeleteLine,
-  cursorUp
+  cursorUp,
+  setShowProgress,
 }
 
 import scala.collection.mutable.ArrayBuffer
@@ -160,6 +161,7 @@ private[sbt] object ProgressState {
     val isWatch = terminal.prompt == Prompt.Watch
     val noPrompt = terminal.prompt == Prompt.NoPrompt
     if (terminal.isSupershellEnabled) {
+      setShowProgress(true) // used by Zinc to not show "done compiling"
       if (!pe.skipIfActive.getOrElse(false) || (!isRunning && !isBatch)) {
         terminal.withPrintStream { ps =>
           val commandFromThisTerminal = pe.channelName.fold(true)(_ == terminal.name)
