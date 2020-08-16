@@ -27,7 +27,7 @@ import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.remotecache.RemoteCacheArtifact
 import sbt.internal.server.ServerHandler
-import sbt.internal.util.{ Appender, AttributeKey, ProgressState, SourcePosition }
+import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
@@ -61,7 +61,7 @@ object Keys {
   val timingFormat = settingKey[java.text.DateFormat]("The format used for displaying the completion time.").withRank(CSetting)
   @deprecated("", "1.4.0")
   val extraLoggers = settingKey[ScopedKey[_] => Seq[XAppender]]("A function that provides additional loggers for a given setting.").withRank(DSetting)
-  val extraAppenders = settingKey[ScopedKey[_] => Seq[Appender]]("A function that provides additional loggers for a given setting.").withRank(DSetting)
+  val extraAppenders = settingKey[AppenderSupplier]("A function that provides additional loggers for a given setting.").withRank(DSetting)
   val useLog4J = settingKey[Boolean]("Toggles whether or not to use log4j for sbt internal loggers.").withRank(Invisible)
   val logManager = settingKey[LogManager]("The log manager, which creates Loggers for different contexts.").withRank(DSetting)
   private[sbt] val loggerContext = AttributeKey[LoggerContext]("sbt-logger-context", "The logger config which creates Loggers for different contexts.", Int.MaxValue)

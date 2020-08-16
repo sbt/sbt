@@ -16,6 +16,7 @@ import sbt.Scope.GlobalScope
 import sbt.internal.util.MainAppender._
 import sbt.internal.util._
 import sbt.util.{ Level, LogExchange, Logger, LoggerContext }
+import org.apache.logging.log4j.core.{ Appender => XAppender }
 
 sealed abstract class LogManager {
   def apply(
@@ -42,6 +43,14 @@ sealed abstract class LogManager {
   @deprecated("Use alternate background log that provides a LoggerContext", "1.4.0")
   final def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger =
     backgroundLog(data, state, task, LoggerContext.globalContext)
+}
+
+/**
+ * A functional interface that allows us to preserve binary compatibility
+ * for LogManager.defaults with the old log4j variant.
+ */
+trait AppenderSupplier {
+  def apply(s: ScopedKey[_]): Seq[Appender]
 }
 
 object LogManager {
@@ -75,8 +84,14 @@ object LogManager {
   def defaultManager(console: ConsoleOut): LogManager =
     withLoggers((_, _) => defaultScreen(console))
 
+  @deprecated(
+    "use defaults that takes AppenderSupplier instead of ScopedKey[_] => Seq[Appender]",
+    "1.4.0"
+  )
+  def defaults(extra: ScopedKey[_] => Seq[XAppender], console: ConsoleOut): LogManager =
+    defaults((sk: ScopedKey[_]) => extra(sk).map(new ConsoleAppenderFromLog4J("extra", _)), console)
   // This is called by Defaults.
-  def defaults(extra: ScopedKey[_] => Seq[Appender], console: ConsoleOut): LogManager =
+  def defaults(extra: AppenderSupplier, console: ConsoleOut): LogManager =
     withLoggers(
       (task, state) => defaultScreen(console, suppressedMessage(task, state)),
       extra = extra
@@ -89,14 +104,14 @@ object LogManager {
       screen: (ScopedKey[_], State) => Appender = (_, s) => defaultScreen(s.globalLogging.console),
       backed: PrintWriter => Appender = defaultBacked,
       relay: Unit => Appender = defaultRelay,
-      extra: ScopedKey[_] => Seq[Appender] = _ => Nil
+      extra: AppenderSupplier = _ => Nil
   ): LogManager = new DefaultLogManager(screen, backed, relay, extra)
 
   private class DefaultLogManager(
       screen: (ScopedKey[_], State) => Appender,
       backed: PrintWriter => Appender,
       relay: Unit => Appender,
-      extra: ScopedKey[_] => Seq[Appender]
+      extra: AppenderSupplier
   ) extends LogManager {
     def apply(
         data: Settings[Scope],
