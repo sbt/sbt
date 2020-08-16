@@ -283,6 +283,8 @@ object Terminal {
   private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
     if (System.getProperty("sbt.io.virtual", "true") == "true") {
       hasProgress.set(isServer)
+      consoleTerminalHolder.set(wrap(jline.TerminalFactory.get))
+      activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
       finally {
         jline.TerminalFactory.reset()
@@ -490,7 +492,8 @@ object Terminal {
    * Terminal.console method returns this terminal and the ConsoleChannel delegates its
    * terminal method to it.
    */
-  private[this] val consoleTerminalHolder = new AtomicReference(wrap(jline.TerminalFactory.get))
+  private[this] val consoleTerminalHolder: AtomicReference[Terminal] =
+    new AtomicReference(SimpleTerminal)
 
   /**
    * The terminal that is currently being used by the proxyInputStream and proxyOutputStream.
@@ -915,7 +918,7 @@ object Terminal {
   }
   private lazy val nullWriteableInputStream =
     new WriteableInputStream(nullInputStream, "null-writeable-input-stream")
-  private[sbt] val NullTerminal = new Terminal {
+  private[sbt] class DefaultTerminal extends Terminal {
     override def close(): Unit = {}
     override private[sbt] def progressState: ProgressState = new ProgressState(1)
     override def getBooleanCapability(capability: String, jline3: Boolean): Boolean = false
@@ -926,22 +929,27 @@ object Terminal {
     override def getNumericCapability(capability: String, jline3: Boolean): Integer = null
     override def getStringCapability(capability: String, jline3: Boolean): String = null
     override def getWidth: Int = 0
-    override def inputStream: java.io.InputStream = nullInputStream
+    override def inputStream: InputStream = nullInputStream
     override def isAnsiSupported: Boolean = false
     override def isColorEnabled: Boolean = false
     override def isEchoEnabled: Boolean = false
     override def isSuccessEnabled: Boolean = false
     override def isSupershellEnabled: Boolean = false
-    override def outputStream: java.io.OutputStream = _ => {}
-    override def errorStream: java.io.OutputStream = _ => {}
+    override def outputStream: OutputStream = _ => {}
+    override def errorStream: OutputStream = _ => {}
     override private[sbt] def getAttributes: Map[String, String] = Map.empty
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit = {}
     override private[sbt] def setSize(width: Int, height: Int): Unit = {}
     override private[sbt] def name: String = "NullTerminal"
-    override private[sbt] val printStream: java.io.PrintStream =
+    override private[sbt] val printStream: PrintStream =
       new PrintStream(outputStream, false)
-    override private[sbt] def withPrintStream[T](f: java.io.PrintStream => T): T = f(printStream)
+    override private[sbt] def withPrintStream[T](f: PrintStream => T): T = f(printStream)
     override private[sbt] def write(bytes: Int*): Unit = {}
     override private[sbt] def withRawOutput[R](f: => R): R = f
+  }
+  private[sbt] object NullTerminal extends DefaultTerminal
+  private[sbt] object SimpleTerminal extends DefaultTerminal {
+    override lazy val outputStream: OutputStream = originalOut
+    override lazy val errorStream: OutputStream = originalErr
   }
 }
