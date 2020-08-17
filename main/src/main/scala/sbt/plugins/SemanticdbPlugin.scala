@@ -13,6 +13,7 @@ import sbt.internal.SysProp
 import sbt.librarymanagement.syntax._
 import sbt.librarymanagement.CrossVersion
 import Project.inConfig
+import sbt.internal.inc.ScalaInstance
 
 object SemanticdbPlugin extends AutoPlugin {
   override def requires = JvmPlugin
@@ -21,7 +22,7 @@ object SemanticdbPlugin extends AutoPlugin {
   override lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     semanticdbEnabled := SysProp.semanticdb,
     semanticdbIncludeInJar := false,
-    semanticdbOptions := List("-Yrangepos"),
+    semanticdbOptions := List(),
     semanticdbVersion := "4.3.20"
   )
 
@@ -33,7 +34,8 @@ object SemanticdbPlugin extends AutoPlugin {
     allDependencies ++= {
       val sdb = semanticdbEnabled.value
       val m = semanticdbCompilerPlugin.value
-      if (sdb) List(Build0.compilerPlugin(m))
+      val sv = scalaVersion.value
+      if (sdb && !ScalaInstance.isDotty(sv)) List(Build0.compilerPlugin(m))
       else Nil
     }
   ) ++ inConfig(Compile)(configurationSettings) ++ inConfig(Test)(configurationSettings)
@@ -43,8 +45,13 @@ object SemanticdbPlugin extends AutoPlugin {
       val old = scalacOptions.value
       val sdb = semanticdbEnabled.value
       val sdbOptions = semanticdbOptions.value
-      if (sdb) (old.toVector ++ sdbOptions.toVector).distinct
-      else old
+      val sv = scalaVersion.value
+      if (sdb) {
+        (
+          old.toVector ++ sdbOptions ++
+            (if (ScalaInstance.isDotty(sv)) Some("-Ysemanticdb") else None)
+        ).distinct
+      } else old
     },
     semanticdbTargetRoot := {
       val in = semanticdbIncludeInJar.value
@@ -53,7 +60,9 @@ object SemanticdbPlugin extends AutoPlugin {
     },
     semanticdbOptions ++= {
       val tr = semanticdbTargetRoot.value
-      List(s"-P:semanticdb:targetroot:$tr")
+      val sv = scalaVersion.value
+      if (ScalaInstance.isDotty(sv)) List("-semanticdb-target", tr.toString)
+      else List(s"-P:semanticdb:targetroot:$tr", "-Yrangepos")
     }
   )
 }
