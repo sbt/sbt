@@ -35,6 +35,10 @@ object BuildServerProtocol {
   )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
+    bspConfig := BuildServerConnection.writeConnectionFile(
+      sbtVersion.value,
+      (ThisBuild / baseDirectory).value
+    ),
     bspWorkspace := bspWorkspaceSetting.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
       val workspace = Keys.bspWorkspace.value

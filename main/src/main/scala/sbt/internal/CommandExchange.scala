@@ -28,17 +28,16 @@ import sbt.internal.util._
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.nio.Watch.NullLogger
+import sbt.protocol.Serialization.attach
 import sbt.protocol.{ ExecStatusEvent, LogEvent }
 import sbt.util.Logger
-import sbt.protocol.Serialization.attach
+import sjsonnew.JsonFormat
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success, Try }
-
-import sjsonnew.JsonFormat
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -214,7 +213,6 @@ private[sbt] final class CommandExchange {
       val tokenfile = serverDir / h / "token.json"
       val socketfile = serverDir / h / "sock"
       val pipeName = "sbt-server-" + h
-      val bspConnectionFile = s.baseDir / ".bsp" / "sbt.json"
       val connection = ServerConnection(
         connectionType,
         host,
@@ -224,7 +222,6 @@ private[sbt] final class CommandExchange {
         tokenfile,
         socketfile,
         pipeName,
-        bspConnectionFile,
         s.configuration,
         win32Level,
       )
