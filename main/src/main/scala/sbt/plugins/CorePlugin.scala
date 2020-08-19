@@ -9,6 +9,7 @@ package sbt
 package plugins
 
 import Def.Setting
+import sbt.internal.GlobalDefaults
 
 /**
  * Plugin for core sbt-isms.
@@ -21,7 +22,7 @@ object CorePlugin extends AutoPlugin {
   override def requires = empty
 
   override lazy val projectSettings: Seq[Setting[_]] =
-    Defaults.coreDefaultSettings
+    GlobalDefaults.coreDefaultSettings
   override lazy val globalSettings: Seq[Setting[_]] =
-    Defaults.globalSbtCore
+    GlobalDefaults.globalSbtCore
 }

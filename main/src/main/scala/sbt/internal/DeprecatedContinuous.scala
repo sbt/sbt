@@ -61,9 +61,41 @@ private[internal] trait DeprecatedContinuous {
 
 @silent
 private[sbt] object DeprecatedContinuous {
+  import sbt.Keys._
+  import scala.concurrent.duration._
+  private[sbt] val watchSetting: Def.Initialize[Watched] =
+    Def.setting {
+      val getService = watchService.value
+      val interval = pollInterval.value
+      val _antiEntropy = watchAntiEntropy.value
+      val base = thisProjectRef.value
+      val msg = watchingMessage.?.value.getOrElse(Watched.defaultWatchingMessage)
+      val trigMsg = triggeredMessage.?.value.getOrElse(Watched.defaultTriggeredMessage)
+      new Watched {
+        val scoped = watchTransitiveSources in base
+        val key = scoped.scopedKey
+        override def antiEntropy: FiniteDuration = _antiEntropy
+        override def pollInterval: FiniteDuration = interval
+        override def watchingMessage(s: WS) = msg(s)
+        override def triggeredMessage(s: WS) = trigMsg(s)
+        override def watchService() = getService()
+        override def watchSources(s: State) =
+          EvaluateTask(Project structure s, key, s, base) match {
+            case Some((_, Value(ps))) => ps
+            case Some((_, Inc(i)))    => throw i
+            case None                 => sys.error("key not found: " + Def.displayFull(key))
+          }
+      }
+    }
+  private[sbt] def watchTransitiveSourcesTask: Def.Initialize[Task[Seq[Source]]] = {
+    import ScopeFilter.Make.{ inDependencies => inDeps, _ }
+    val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
+    val allWatched = (watchSources ?? Nil).all(selectDeps)
+    Def.task { allWatched.value.flatten }
+  }
   private[sbt] val taskDefinitions: Seq[Def.Setting[_]] = Seq(
-    sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,
-    sbt.Keys.watch := sbt.Defaults.watchSetting.value,
+    sbt.Keys.watchTransitiveSources := watchTransitiveSourcesTask.value,
+    sbt.Keys.watch := watchSetting.value,
     sbt.nio.Keys.watchTasks := Continuous.continuousTask.evaluated,
   )
 }

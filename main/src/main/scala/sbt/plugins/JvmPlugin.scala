@@ -11,6 +11,7 @@ package plugins
 import sbt.librarymanagement.{ Configuration, Configurations }
 
 import Def.Setting
+import sbt.internal.GlobalDefaults
 
 /**
  * A plugin representing the ability to build a JVM project.
@@ -31,7 +32,7 @@ object JvmPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override lazy val globalSettings: Seq[Setting[_]] =
-    Defaults.globalJvmCore
+    GlobalDefaults.globalJvmCore
 
   override lazy val buildSettings: Seq[Setting[_]] =
     Defaults.buildLevelJvmSettings

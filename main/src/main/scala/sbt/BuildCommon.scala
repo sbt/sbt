@@ -11,6 +11,7 @@ import java.io.File
 
 import sbt.Def.{ Initialize, ScopedKey, Setting }
 import sbt.Keys._
+import sbt.internal.{ LibraryManagement, OverrideConfigs }
 import sbt.internal.util._
 import sbt.internal.util.complete._
 import sbt.io._
@@ -19,6 +20,7 @@ import sbt.librarymanagement._
 import sjsonnew._
 
 trait BuildCommon {
+  def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = LibraryManagement.lock(app)
 
   /**
    * Allows a String to be used where a `NameFilter` is expected.
@@ -48,17 +50,7 @@ trait BuildCommon {
 
   def overrideConfigs(cs: Configuration*)(
       configurations: Seq[Configuration]
-  ): Seq[Configuration] = {
-    val existingName = configurations.map(_.name).toSet
-    val newByName = cs.map(c => (c.name, c)).toMap
-    val overridden = configurations map { conf =>
-      newByName.getOrElse(conf.name, conf)
-    }
-    val newConfigs = cs filter { c =>
-      !existingName(c.name)
-    }
-    overridden ++ newConfigs
-  }
+  ): Seq[Configuration] = OverrideConfigs(cs: _*)(configurations)
 
   // these are intended for use in in put tasks for creating parsers
   def getFromContext[T](task: TaskKey[T], context: ScopedKey[_], s: State): Option[T] =

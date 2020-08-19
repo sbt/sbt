@@ -9,6 +9,7 @@ package sbt
 package plugins
 
 import Def.Setting
+import sbt.internal.GlobalDefaults
 
 /**
  * Plugin that enables resolving artifacts via ivy.
@@ -27,7 +28,7 @@ object IvyPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override lazy val globalSettings: Seq[Setting[_]] =
-    Defaults.globalIvyCore
+    GlobalDefaults.globalIvyCore
   override lazy val buildSettings: Seq[Setting[_]] =
     Defaults.buildLevelIvySettings
   override lazy val projectSettings: Seq[Setting[_]] =

@@ -29,7 +29,6 @@ import sbt.util.CacheImplicits._
 private[sbt] object Build0 extends BuildExtra
 
 trait BuildExtra extends BuildCommon with DefExtra {
-  import Defaults._
 
   /**
    * Defines an alias given by `name` that expands to `value`.
@@ -50,7 +49,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    * Adds Maven resolver plugin.
    */
   def addMavenResolverPlugin: Setting[Seq[ModuleID]] =
-    libraryDependencies += sbtPluginExtra(
+    libraryDependencies += SbtPluginExtra(
       ModuleID("org.scala-sbt", "sbt-maven-resolver", sbtVersion.value),
       sbtBinaryVersion.value,
       scalaBinaryVersion.value
@@ -65,7 +64,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
       sbtVersion: String,
       scalaVersion: String
   ): Setting[Seq[ModuleID]] =
-    libraryDependencies += sbtPluginExtra(dependency, sbtVersion, scalaVersion)
+    libraryDependencies += SbtPluginExtra(dependency, sbtVersion, scalaVersion)
 
   /**
    * Adds `dependency` as an sbt plugin for the specific sbt version `sbtVersion`.
@@ -74,7 +73,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def addSbtPlugin(dependency: ModuleID, sbtVersion: String): Setting[Seq[ModuleID]] =
     libraryDependencies += {
       val scalaV = (scalaBinaryVersion in update).value
-      sbtPluginExtra(dependency, sbtVersion, scalaV)
+      SbtPluginExtra(dependency, sbtVersion, scalaV)
     }
 
   /**
@@ -85,7 +84,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     libraryDependencies += {
       val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
       val scalaV = (scalaBinaryVersion in update).value
-      sbtPluginExtra(dependency, sbtV, scalaV)
+      SbtPluginExtra(dependency, sbtV, scalaV)
     }
 
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
@@ -235,7 +234,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
             }
         }
       }.evaluated
-    ) ++ inTask(scoped)(forkOptions in config := forkOptionsTask.value)
+    ) ++ inTask(scoped)(forkOptions in config := ForkOptionsTask.get.value)
   }
 
   // public API
@@ -258,7 +257,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
             }
         }
         .value
-    ) ++ inTask(scoped)(forkOptions in config := forkOptionsTask.value)
+    ) ++ inTask(scoped)(forkOptions in config := ForkOptionsTask.get.value)
 
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] =
     initScope(fillTaskAxis(sk.scope, sk.key), i)
@@ -270,7 +269,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    * This is useful for reducing test:compile time when not running test.
    */
   def noTestCompletion(config: Configuration = Test): Setting[_] =
-    inConfig(config)(Seq(definedTests := detectTests.value)).head
+    inConfig(config)(Seq(definedTests := DetectTests.task.value)).head
 
   def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(
       f: ScopedKey[_] => Boolean

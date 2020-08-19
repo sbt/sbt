@@ -40,6 +40,7 @@ import sbt.internal.{
   BuildStructure,
   LoadedBuild,
   LoadedBuildUnit,
+  OverrideConfigs,
   SettingGraph,
   SettingCompletions,
   SessionSettings
@@ -236,14 +237,14 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
 
   /** Adds configurations to this project.  Added configurations replace existing configurations with the same name.*/
   def overrideConfigs(cs: Configuration*): Project =
-    copy(configurations = Defaults.overrideConfigs(cs: _*)(configurations))
+    copy(configurations = OverrideConfigs(cs: _*)(configurations))
 
   /**
    * Adds configuration at the *start* of the configuration list for this project.  Previous configurations replace this prefix
    * list with the same name.
    */
   private[sbt] def prefixConfigs(cs: Configuration*): Project =
-    copy(configurations = Defaults.overrideConfigs(configurations: _*)(cs))
+    copy(configurations = OverrideConfigs(configurations: _*)(cs))
 
   /** Adds new configurations directly to this project.  To override an existing configuration, use `overrideConfigs`. */
   def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)

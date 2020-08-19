@@ -28,6 +28,7 @@ object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
   final val cachedTestClassifier = "cached-test"
   final val commitLength = 10
+  private lazy val TaskZero: Scope = sbt.Scope.ThisScope.copy(task = Zero)
 
   def gitCommitId: String =
     scala.sys.process.Process("git rev-parse HEAD").!!.trim.take(commitLength)
@@ -159,7 +160,7 @@ object RemoteCache {
         ModuleDescriptorConfiguration(remoteCacheProjectId.value, projectInfo.value)
           .withScalaModuleInfo(smi)
       },
-      pushRemoteCache.in(Defaults.TaskZero) := (Def.task {
+      pushRemoteCache.in(TaskZero) := (Def.task {
         val s = streams.value
         val config = pushRemoteCacheConfiguration.value
         IvyActions.publish(ivyModule.value, config, s.log)
@@ -167,7 +168,7 @@ object RemoteCache {
     )
   ) ++ inTask(pullRemoteCache)(
     Seq(
-      dependencyResolution := Defaults.dependencyResolutionTask.value,
+      dependencyResolution := DependencyResolutionTask.get.value,
       csrConfiguration := {
         val rs = pushRemoteCacheTo.value.toVector
         LMCoursier.scalaCompilerBridgeConfigurationTask.value
@@ -182,8 +183,8 @@ object RemoteCache {
   ): Seq[Def.Setting[_]] =
     inTask(packageCache)(
       Seq(
-        packageCache.in(Defaults.TaskZero) := {
-          val original = packageBin.in(Defaults.TaskZero).value
+        packageCache.in(TaskZero) := {
+          val original = packageBin.in(TaskZero).value
           val artp = artifactPath.value
           val af = compileAnalysisFile.value
           IO.copyFile(original, artp)
@@ -192,7 +193,7 @@ object RemoteCache {
           }
           // val testStream = (test / streams).?.value
           // testStream foreach { s =>
-          //   val sf = Defaults.succeededFile(s.cacheDirectory)
+          //   val sf = succeededFile(s.cacheDirectory)
           //   if (sf.exists) {
           //     JarUtils.includeInJar(artp, Vector(sf -> s"META-INF/succeeded_tests"))
           //   }
@@ -201,7 +202,7 @@ object RemoteCache {
         },
         remoteCacheArtifact := cacheArtifact.value,
         packagedArtifact := (artifact.value -> packageCache.value),
-        artifactPath := Defaults.artifactPathSetting(artifact).value
+        artifactPath := ArtifactPathSetting(artifact).value
       )
     )
 
@@ -223,6 +224,7 @@ object RemoteCache {
     )
   }
 
+  private def succeededFile(dir: File) = dir / "succeeded_tests"
   def testArtifact(
       configuration: Configuration,
       classifier: String
@@ -232,7 +234,7 @@ object RemoteCache {
       configuration / packageCache,
       (configuration / classDirectory).value,
       (configuration / compileAnalysisFile).value,
-      Defaults.succeededFile((configuration / test / streams).value.cacheDirectory)
+      succeededFile((configuration / test / streams).value.cacheDirectory)
     )
   }
 

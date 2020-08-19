@@ -13,9 +13,6 @@ import java.nio.file.{ Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 
-import lmcoursier.CoursierDependencyResolution
-import org.apache.logging.log4j.core.{ Appender => XAppender }
-import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting }
 import sbt.Keys._
 import sbt.Project.{
@@ -34,10 +31,9 @@ import sbt.internal.classpath.{ AlternativeZincUtil, ClassLoaderCache }
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
 import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
-import sbt.internal.io.{ Source, WatchState }
-import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
+import sbt.internal.io.Source
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
-import sbt.internal.nio.{ CheckBuildSources, Globs }
+import sbt.internal.nio.Globs
 import sbt.internal.server.{
   BspCompileTask,
   BuildServerProtocol,
@@ -55,25 +51,19 @@ import sbt.internal.util.complete._
 import sbt.io.Path._
 import sbt.io._
 import sbt.io.syntax._
-import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{ Compile, IntegrationTest, Runtime, Test }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion }
 import sbt.librarymanagement._
-import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
 import sbt.nio.Keys._
 import sbt.nio.file.syntax._
-import sbt.nio.file.FileTreeView
-import sbt.nio.Watch
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ toJavaFunction => f1, t2 }
 import sbt.util._
 
-import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
-import scala.xml.NodeSeq
 
 // incremental compiler
 import sbt.SlashSyntax0._
@@ -84,7 +74,7 @@ import sbt.internal.inc.{
   MixedAnalyzingCompiler,
   ScalaInstance
 }
-import xsbti.{ CrossValue, VirtualFile, VirtualFileRef }
+import xsbti.{ VirtualFile, VirtualFileRef }
 import xsbti.compile.{
   AnalysisContents,
   ClassFileManagerType,
@@ -94,7 +84,6 @@ import xsbti.compile.{
   CompileOrder,
   CompileResult,
   CompileProgress,
-  CompilerCache,
   Compilers,
   DefinesClass,
   IncOptions,
@@ -117,8 +106,6 @@ object Defaults extends BuildCommon {
   def nameForSrc(config: String) = if (config == Configurations.Compile.name) "main" else config
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
 
-  def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = LibraryManagement.lock(app)
-
   def extractAnalysis[T](a: Attributed[T]): (T, CompileAnalysis) =
     (a.data, a.metadata get Keys.analysis getOrElse Analysis.Empty)
 
@@ -126,250 +113,26 @@ object Defaults extends BuildCommon {
     val m = (for (a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an)).toMap
     m.get _
   }
-  private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-    Def.defaultSettings(inScope(GlobalScope)(ss))
+  private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = GlobalDefaults(ss)
 
-  def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
+  @deprecated("use BuildCore.settings", "1.4.0")
+  def buildCore: Seq[Setting[_]] = GlobalDefaults.settings
   def thisBuildCore: Seq[Setting[_]] =
     inScope(GlobalScope.copy(project = Select(ThisBuild)))(
       Seq(
         managedDirectory := baseDirectory.value / "lib_managed"
       )
     )
-  private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(
-    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
-      excludeFilter :== HiddenFileFilter,
-      fileInputs :== Nil,
-      fileInputIncludeFilter :== AllPassFilter.toNio,
-      fileInputExcludeFilter :== DirectoryFilter.toNio || HiddenFileFilter,
-      fileOutputIncludeFilter :== AllPassFilter.toNio,
-      fileOutputExcludeFilter :== NothingFilter.toNio,
-      inputFileStamper :== sbt.nio.FileStamper.Hash,
-      outputFileStamper :== sbt.nio.FileStamper.LastModified,
-      onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
-      clean := { () },
-      unmanagedFileStampCache :=
-        state.value.get(persistentFileStampCache).getOrElse(new sbt.nio.FileStamp.Cache),
-      managedFileStampCache := new sbt.nio.FileStamp.Cache,
-    ) ++ globalIvyCore ++ globalJvmCore ++ Watch.defaults
-  ) ++ globalSbtCore
+  @deprecated("use BuildCore.globalCore", "1.4.0")
+  private[sbt] lazy val globalCore: Seq[Setting[_]] = GlobalDefaults.globalCore
+  @deprecated("use BuildCore.globalJvmCore", "1.4.0")
+  private[sbt] lazy val globalJvmCore: Seq[Setting[_]] = GlobalDefaults.globalJvmCore
 
-  private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
-    Seq(
-      compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
-      sourcesInBase :== true,
-      autoAPIMappings := false,
-      apiMappings := Map.empty,
-      autoScalaLibrary :== true,
-      managedScalaInstance :== true,
-      classpathEntryDefinesClass := { (file: File) =>
-        sys.error("use classpathEntryDefinesClassVF instead")
-      },
-      extraIncOptions :== Seq("JAVA_CLASS_VERSION" -> sys.props("java.class.version")),
-      allowMachinePath :== true,
-      traceLevel in run :== 0,
-      traceLevel in runMain :== 0,
-      traceLevel in bgRun :== 0,
-      traceLevel in fgRun :== 0,
-      traceLevel in console :== Int.MaxValue,
-      traceLevel in consoleProject :== Int.MaxValue,
-      autoCompilerPlugins :== true,
-      scalaHome :== None,
-      apiURL := None,
-      javaHome :== None,
-      discoveredJavaHomes := CrossJava.discoverJavaHomes,
-      javaHomes :== ListMap.empty,
-      fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
-      testForkedParallel :== false,
-      javaOptions :== Nil,
-      sbtPlugin :== false,
-      isMetaBuild :== false,
-      reresolveSbtArtifacts :== false,
-      crossPaths :== true,
-      sourcePositionMappers :== Nil,
-      artifactClassifier in packageSrc :== Some(SourceClassifier),
-      artifactClassifier in packageDoc :== Some(DocClassifier),
-      includeFilter :== NothingFilter,
-      includeFilter in unmanagedSources :== ("*.java" | "*.scala"),
-      includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
-      includeFilter in unmanagedResources :== AllPassFilter,
-      bgList := { bgJobService.value.jobs },
-      ps := psTask.value,
-      bgStop := bgStopTask.evaluated,
-      bgWaitFor := bgWaitForTask.evaluated,
-      bgCopyClasspath :== true,
-      closeClassLoaders :== SysProp.closeClassLoaders,
-      allowZombieClassLoaders :== true,
-    ) ++ BuildServerProtocol.globalSettings
+  @deprecated("use BuildCore.globalIvyCore", "1.4.0")
+  private[sbt] lazy val globalIvyCore: Seq[Setting[_]] = GlobalDefaults.globalIvyCore
 
-  private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
-    Seq(
-      internalConfigurationMap :== Configurations.internalMap _,
-      credentials :== Nil,
-      exportJars :== false,
-      trackInternalDependencies :== TrackLevel.TrackAlways,
-      exportToInternal :== TrackLevel.TrackAlways,
-      useCoursier :== SysProp.defaultUseCoursier,
-      retrieveManaged :== false,
-      retrieveManagedSync :== false,
-      configurationsToRetrieve :== None,
-      scalaOrganization :== ScalaArtifacts.Organization,
-      scalaArtifacts :== ScalaArtifacts.Artifacts,
-      sbtResolver := {
-        val v = sbtVersion.value
-        if (v.endsWith("-SNAPSHOT") || v.contains("-bin-")) Classpaths.sbtMavenSnapshots
-        else Resolver.DefaultMavenRepository
-      },
-      sbtResolvers := {
-        // TODO: Remove Classpaths.typesafeReleases for sbt 2.x
-        // We need to keep it around for sbt 1.x to cross build plugins with sbt 0.13 - https://github.com/sbt/sbt/issues/4698
-        Vector(sbtResolver.value, Classpaths.sbtPluginReleases, Classpaths.typesafeReleases)
-      },
-      crossVersion :== Disabled(),
-      buildDependencies := Classpaths.constructBuildDependencies.value,
-      version :== "0.1.0-SNAPSHOT",
-      versionScheme :== None,
-      classpathTypes :== Set("jar", "bundle", "maven-plugin", "test-jar") ++ CustomPomParser.JarPackagings,
-      artifactClassifier :== None,
-      checksums := Classpaths.bootChecksums(appConfiguration.value),
-      conflictManager := ConflictManager.default,
-      CustomHttp.okhttpClientBuilder :== CustomHttp.defaultHttpClientBuilder,
-      CustomHttp.okhttpClient := CustomHttp.okhttpClientBuilder.value.build,
-      pomExtra :== NodeSeq.Empty,
-      pomPostProcess :== idFun,
-      pomAllRepositories :== false,
-      pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
-      updateOptions := UpdateOptions(),
-      forceUpdatePeriod :== None,
-      // coursier settings
-      csrExtraCredentials :== Nil,
-      csrLogger := LMCoursier.coursierLoggerTask.value,
-      csrMavenProfiles :== Set.empty,
-      csrReconciliations :== LMCoursier.relaxedForAllModules,
-    )
-
-  /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
-  private[sbt] lazy val globalSbtCore: Seq[Setting[_]] = globalDefaults(
-    Seq(
-      outputStrategy :== None, // TODO - This might belong elsewhere.
-      buildStructure := Project.structure(state.value),
-      settingsData := buildStructure.value.data,
-      aggregate in checkBuildSources :== false,
-      aggregate in checkBuildSources / changedInputFiles := false,
-      checkBuildSources / Continuous.dynamicInputs := None,
-      checkBuildSources / fileInputs := CheckBuildSources.buildSourceFileInputs.value,
-      checkBuildSources := CheckBuildSources.needReloadImpl.value,
-      fileCacheSize := "128M",
-      trapExit :== true,
-      connectInput :== false,
-      cancelable :== true,
-      taskCancelStrategy := { state: State =>
-        if (cancelable.value) TaskCancellationStrategy.Signal
-        else TaskCancellationStrategy.Null
-      },
-      envVars :== Map.empty,
-      sbtVersion := appConfiguration.value.provider.id.version,
-      sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
-      // `pluginCrossBuild` scoping is based on sbt-cross-building plugin.
-      // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
-      // directs the dependencies of the plugin to build to the specified sbt plugin version.
-      sbtVersion in pluginCrossBuild := sbtVersion.value,
-      onLoad := idFun[State],
-      onUnload := idFun[State],
-      onUnload := { s =>
-        try onUnload.value(s)
-        finally IO.delete(taskTemporaryDirectory.value)
-      },
-      // extraLoggers is deprecated
-      SettingKey[ScopedKey[_] => Seq[XAppender]]("extraLoggers") :== { _ =>
-        Nil
-      },
-      extraAppenders := {
-        val f = SettingKey[ScopedKey[_] => Seq[XAppender]]("extraLoggers").value
-        s =>
-          f(s).map {
-            case a: Appender => a
-            case a           => new ConsoleAppenderFromLog4J(a.getName, a)
-          }
-      },
-      useLog4J :== SysProp.useLog4J,
-      watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
-      skip :== false,
-      taskTemporaryDirectory := {
-        val base = BuildPaths.globalTaskDirectoryStandard(appConfiguration.value.baseDirectory)
-        val dir = IO.createUniqueDirectory(base)
-        ShutdownHooks.add(() => IO.delete(dir))
-        dir
-      },
-      onComplete := {
-        val tempDirectory = taskTemporaryDirectory.value
-        () => Clean.deleteContents(tempDirectory, _ => false)
-      },
-      turbo :== SysProp.turbo,
-      usePipelining :== SysProp.pipelining,
-      exportPipelining := usePipelining.value,
-      useScalaReplJLine :== false,
-      scalaInstanceTopLoader := {
-        if (!useScalaReplJLine.value) classOf[org.jline.terminal.Terminal].getClassLoader
-        else appConfiguration.value.provider.scalaProvider.launcher.topLoader.getParent
-      },
-      useSuperShell := { if (insideCI.value) false else Terminal.console.isSupershellEnabled },
-      superShellThreshold :== SysProp.supershellThreshold,
-      superShellMaxTasks :== SysProp.supershellMaxTasks,
-      superShellSleep :== SysProp.supershellSleep.millis,
-      progressReports := {
-        val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
-        rs map { Keys.TaskProgress(_) }
-      },
-      // progressState is deprecated
-      SettingKey[Option[ProgressState]]("progressState") := None,
-      Previous.cache := new Previous(
-        Def.streamsManagerKey.value,
-        Previous.references.value.getReferences
-      ),
-      Previous.references :== new Previous.References,
-      concurrentRestrictions := defaultRestrictions.value,
-      parallelExecution :== true,
-      fileTreeView :== FileTreeView.default,
-      Continuous.dynamicInputs := Continuous.dynamicInputsImpl.value,
-      logBuffered :== false,
-      commands :== Nil,
-      showSuccess :== true,
-      showTiming :== true,
-      timingFormat :== Aggregation.defaultFormat,
-      aggregate :== true,
-      maxErrors :== 100,
-      fork :== false,
-      initialize :== {},
-      templateResolverInfos :== Nil,
-      forcegc :== sys.props
-        .get("sbt.task.forcegc")
-        .map(java.lang.Boolean.parseBoolean)
-        .getOrElse(GCUtil.defaultForceGarbageCollection),
-      minForcegcInterval :== GCUtil.defaultMinForcegcInterval,
-      interactionService :== CommandLineUIService,
-      autoStartServer := true,
-      serverHost := "127.0.0.1",
-      serverIdleTimeout := Some(new FiniteDuration(7, TimeUnit.DAYS)),
-      serverPort := 5000 + (Hash
-        .toHex(Hash(appConfiguration.value.baseDirectory.toString))
-        .## % 1000),
-      serverConnectionType := ConnectionType.Local,
-      serverAuthentication := {
-        if (serverConnectionType.value == ConnectionType.Tcp) Set(ServerAuthentication.Token)
-        else Set()
-      },
-      serverHandlers :== Nil,
-      windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
-      fullServerHandlers := Nil,
-      insideCI :== sys.env.contains("BUILD_NUMBER") ||
-        sys.env.contains("CI") || SysProp.ci,
-      // watch related settings
-      pollInterval :== Watch.defaultPollInterval,
-    ) ++ LintUnused.lintSettings
-      ++ DefaultBackgroundJobService.backgroundJobServiceSettings
-      ++ RemoteCache.globalSettings
-  )
+  @deprecated("use BuildCore.globalSbtCore", "1.4.0")
+  private[sbt] lazy val globalSbtCore: Seq[Setting[_]] = GlobalDefaults.globalSbtCore
 
   private[sbt] lazy val buildLevelJvmSettings: Seq[Setting[_]] = Seq(
     exportPipelining := usePipelining.value,
@@ -438,13 +201,9 @@ object Defaults extends BuildCommon {
     },
   )
 
+  @deprecated("unused", "1.4.0")
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
-    inTask(key)(
-      Seq(
-        tags := Seq(Tags.Test -> 1),
-        logBuffered := true
-      )
-    )
+    inTask(key)(Seq(tags := Seq(Tags.Test -> 1), logBuffered := true))
 
   // TODO: This should be on the new default settings for a project.
   def projectCore: Seq[Setting[_]] = Seq(
@@ -832,50 +591,12 @@ object Defaults extends BuildCommon {
     "1.3.0"
   )
   def watchTransitiveSourcesTask: Initialize[Task[Seq[Source]]] =
-    watchTransitiveSourcesTaskImpl(watchSources)
+    DeprecatedContinuous.watchTransitiveSourcesTask
 
-  private def watchTransitiveSourcesTaskImpl(
-      key: TaskKey[Seq[Source]]
-  ): Initialize[Task[Seq[Source]]] = {
-    import ScopeFilter.Make.{ inDependencies => inDeps, _ }
-    val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
-    val allWatched = (key ?? Nil).all(selectDeps)
-    Def.task { allWatched.value.flatten }
-  }
-
-  def transitiveUpdateTask: Initialize[Task[Seq[UpdateReport]]] = {
-    import ScopeFilter.Make.{ inDependencies => inDeps, _ }
-    val selectDeps = ScopeFilter(inDeps(ThisProject, includeRoot = false))
-    val allUpdates = update.?.all(selectDeps)
-    // If I am a "build" (a project inside project/) then I have a globalPluginUpdate.
-    Def.task { allUpdates.value.flatten ++ globalPluginUpdate.?.value }
-  }
+  def transitiveUpdateTask: Initialize[Task[Seq[UpdateReport]]] = TransitiveUpdateTask.get
 
   @deprecated("This is no longer used to implement continuous execution", "1.3.0")
-  def watchSetting: Initialize[Watched] =
-    Def.setting {
-      val getService = watchService.value
-      val interval = pollInterval.value
-      val _antiEntropy = watchAntiEntropy.value
-      val base = thisProjectRef.value
-      val msg = watchingMessage.?.value.getOrElse(Watched.defaultWatchingMessage)
-      val trigMsg = triggeredMessage.?.value.getOrElse(Watched.defaultTriggeredMessage)
-      new Watched {
-        val scoped = watchTransitiveSources in base
-        val key = scoped.scopedKey
-        override def antiEntropy: FiniteDuration = _antiEntropy
-        override def pollInterval: FiniteDuration = interval
-        override def watchingMessage(s: WatchState) = msg(s)
-        override def triggeredMessage(s: WatchState) = trigMsg(s)
-        override def watchService() = getService()
-        override def watchSources(s: State) =
-          EvaluateTask(Project structure s, key, s, base) match {
-            case Some((_, Value(ps))) => ps
-            case Some((_, Inc(i)))    => throw i
-            case None                 => sys.error("key not found: " + Def.displayFull(key))
-          }
-      }
-    }
+  def watchSetting: Initialize[Watched] = DeprecatedContinuous.watchSetting
 
   def scalaInstanceTask: Initialize[Task[ScalaInstance]] = Def.taskDyn {
     // if this logic changes, ensure that `unmanagedScalaInstanceOnly` and `update` are changed
@@ -910,9 +631,7 @@ object Defaults extends BuildCommon {
   // Returns the ScalaInstance only if it was not constructed via `update`
   //  This is necessary to prevent cycles between `update` and `scalaInstance`
   private[sbt] def unmanagedScalaInstanceOnly: Initialize[Task[Option[ScalaInstance]]] =
-    Def.taskDyn {
-      if (scalaHome.value.isDefined) Def.task(Some(scalaInstance.value)) else Def.task(None)
-    }
+    UnmanagedScalaInstanceOnly.get
 
   private[this] def noToolConfiguration(autoInstance: Boolean): String = {
     val pre = "Missing Scala tool configuration from the 'update' report.  "
@@ -1389,10 +1108,7 @@ object Defaults extends BuildCommon {
         includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
     }
   }
-  def detectTests: Initialize[Task[Seq[TestDefinition]]] =
-    Def.task {
-      Tests.discover(loadedTestFrameworks.value.values.toList, compile.value, streams.value.log)._1
-    }
+  def detectTests: Initialize[Task[Seq[TestDefinition]]] = DetectTests.task
   def defaultRestrictions: Initialize[Seq[Tags.Rule]] =
     Def.setting {
       val par = parallelExecution.value
@@ -1511,18 +1227,7 @@ object Defaults extends BuildCommon {
       )
     }
 
-  def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
-    Def.setting {
-      val f = artifactName.value
-      crossTarget.value / f(
-        ScalaVersion(
-          (scalaVersion in artifactName).value,
-          (scalaBinaryVersion in artifactName).value
-        ),
-        projectID.value,
-        art.value
-      )
-    }
+  def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] = ArtifactPathSetting(art)
 
   def artifactSetting: Initialize[Artifact] =
     Def.setting {
@@ -1765,42 +1470,14 @@ object Defaults extends BuildCommon {
     }
   }
 
-  private def foreachJobTask(
-      f: (BackgroundJobService, JobHandle) => Unit
-  ): Initialize[InputTask[Unit]] = {
-    val parser: Initialize[State => Parser[Seq[JobHandle]]] = Def.setting { (s: State) =>
-      val extracted = Project.extract(s)
-      val service = extracted.get(bgJobService)
-      // you might be tempted to use the jobList task here, but the problem
-      // is that its result gets cached during execution and therefore stale
-      BackgroundJobService.jobIdParser(s, service.jobs)
-    }
-    Def.inputTask {
-      val handles = parser.parsed
-      for (handle <- handles) {
-        f(bgJobService.value, handle)
-      }
-    }
-  }
+  @deprecated("use BgJobsTasks.psTask", "1.4.0")
+  def psTask: Initialize[Task[Seq[JobHandle]]] = BgJobsTasks.psTask
 
-  def psTask: Initialize[Task[Seq[JobHandle]]] =
-    Def.task {
-      val xs = bgList.value
-      val s = streams.value
-      xs foreach { x =>
-        s.log.info(x.toString)
-      }
-      xs
-    }
+  @deprecated("use BgJobsTasks.bgStopTask", "1.4.0")
+  def bgStopTask: Initialize[InputTask[Unit]] = BgJobsTasks.bgStopTask
 
-  def bgStopTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
-    manager.stop(handle)
-  }
-
-  def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) =>
-    manager.waitForTry(handle)
-    ()
-  }
+  @deprecated("use BgJobsTasks.bgWaitForTask", "1.4.0")
+  def bgWaitForTask: Initialize[InputTask[Unit]] = BgJobsTasks.bgWaitForTask
 
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] =
     inTask(key)(
@@ -2144,11 +1821,7 @@ object Defaults extends BuildCommon {
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
-    m.extra(
-        PomExtraDependencyAttributes.SbtVersionKey -> sbtV,
-        PomExtraDependencyAttributes.ScalaVersionKey -> scalaV
-      )
-      .withCrossVersion(Disabled())
+    SbtPluginExtra(m, sbtV, scalaV)
 
   def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.taskDyn {
     if (sbtPlugin.value) Def.task(PluginDiscovery.discoverSourceAll(compile.value))
@@ -2201,9 +1874,12 @@ object Defaults extends BuildCommon {
 
   val CompletionsID = "completions"
 
+  @deprecated("use BuildCore.noAggregation", "1.4.0")
   def noAggregation: Seq[Scoped] =
     Seq(run, runMain, bgRun, bgRunMain, console, consoleQuick, consoleProject)
-  lazy val disableAggregation = Defaults.globalDefaults(noAggregation map disableAggregate)
+  @deprecated("use BuildCore.disableAggregation", "1.4.0")
+  lazy val disableAggregation = GlobalDefaults(noAggregation map disableAggregate)
+  @deprecated("unused", "1.4.0")
   def disableAggregate(k: Scoped) = aggregate in k :== false
 
   // 1. runnerSettings is added unscoped via JvmPlugin.
@@ -2235,34 +1911,8 @@ object Defaults extends BuildCommon {
     inConfig(Runtime)(Classpaths.configSettings)
 
   // These are project level settings that MUST be on every project.
-  lazy val coreDefaultSettings: Seq[Setting[_]] =
-    projectCore ++ disableAggregation ++ Seq(
-      // Missing but core settings
-      baseDirectory := thisProject.value.base,
-      target := baseDirectory.value / "target",
-      // Use (sbtVersion in pluginCrossBuild) to pick the sbt module to depend from the plugin.
-      // Because `sbtVersion in pluginCrossBuild` can be scoped to project level,
-      // this setting needs to be set here too.
-      sbtDependency in pluginCrossBuild := {
-        val app = appConfiguration.value
-        val id = app.provider.id
-        val sv = (sbtVersion in pluginCrossBuild).value
-        val scalaV = (scalaVersion in pluginCrossBuild).value
-        val binVersion = (scalaBinaryVersion in pluginCrossBuild).value
-        val cross = id.crossVersionedValue match {
-          case CrossValue.Disabled => Disabled()
-          case CrossValue.Full     => CrossVersion.full
-          case CrossValue.Binary   => CrossVersion.binary
-        }
-        val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
-        CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
-      },
-      bgHashClasspath := !turbo.value,
-      classLoaderLayeringStrategy := {
-        if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
-        else ClassLoaderLayeringStrategy.ScalaLibrary
-      },
-    )
+  lazy val coreDefaultSettings: Seq[Setting[_]] = GlobalDefaults.coreDefaultSettings
+
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
     inConfig(Compile)(
@@ -2278,10 +1928,7 @@ object Defaults extends BuildCommon {
     )
 
   def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
-    Def.taskIf {
-      if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
-      else IvyDependencyResolution(ivyConfiguration.value, CustomHttp.okhttpClient.value)
-    }
+    DependencyResolutionTask.get
 }
 
 trait DefExtra {

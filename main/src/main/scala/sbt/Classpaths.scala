@@ -50,8 +50,9 @@ import sbt.internal.inc.ScalaInstance
 import xsbti.{ CrossValue, VirtualFile }
 import xsbti.compile.CompileAnalysis
 
-object Classpaths {
-  import Defaults._
+object Classpaths extends BuildCommon {
+
+  private lazy val TaskGlobal: Scope = sbt.Scope.ThisScope.copy(task = Zero)
   import Keys._
 
   def concatDistinct[T](a: Taskable[Seq[T]], b: Taskable[Seq[T]]): Initialize[Task[Seq[T]]] =
@@ -222,7 +223,7 @@ object Classpaths {
     pkgTasks.map(pkg => key in pkg.scope in pkg).join
 
   private[this] def publishGlobalDefaults =
-    Defaults.globalDefaults(
+    GlobalDefaults(
       Seq(
         publishMavenStyle :== true,
         publishArtifact :== true,
@@ -255,7 +256,7 @@ object Classpaths {
   )
 
   private[this] def baseGlobalDefaults =
-    Defaults.globalDefaults(
+    GlobalDefaults(
       Seq(
         conflictWarning :== ConflictWarning.default("global"),
         evictionWarningOptions := EvictionWarningOptions.default,
@@ -425,7 +426,7 @@ object Classpaths {
         )
       }
     )).value,
-    artifactPath in makePom := artifactPathSetting(artifact in makePom).value,
+    artifactPath in makePom := ArtifactPathSetting(artifact in makePom).value,
     publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
     artifact in makePom := Artifact.pom(moduleName.value),
     projectID := defaultProjectID.value,
@@ -452,7 +453,7 @@ object Classpaths {
         )
       else None
     },
-    dependencyResolution := dependencyResolutionTask.value,
+    dependencyResolution := DependencyResolutionTask.get.value,
     publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
@@ -573,7 +574,7 @@ object Classpaths {
     ivySbt := ivySbt0.value,
     ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
     allCredentials := LMCoursier.allCredentialsTask.value,
-    transitiveUpdate := transitiveUpdateTask.value,
+    transitiveUpdate := TransitiveUpdateTask.get.value,
     updateCacheName := {
       val binVersion = scalaBinaryVersion.value
       val suffix = if (crossPaths.value) s"_$binVersion" else ""
@@ -618,7 +619,7 @@ object Classpaths {
             transitiveClassifiers.value.toVector
           )
         },
-        dependencyResolution := dependencyResolutionTask.value,
+        dependencyResolution := DependencyResolutionTask.get.value,
         csrConfiguration := LMCoursier.updateClassifierConfigurationTask.value,
         updateClassifiers in TaskGlobal := LibraryManagement.updateClassifiersTask.value,
       )
@@ -734,7 +735,7 @@ object Classpaths {
   def pluginProjectID: Initialize[ModuleID] =
     Def.setting {
       if (sbtPlugin.value)
-        sbtPluginExtra(
+        SbtPluginExtra(
           projectID.value,
           (sbtBinaryVersion in pluginCrossBuild).value,
           (scalaBinaryVersion in pluginCrossBuild).value
@@ -762,7 +763,7 @@ object Classpaths {
   }
 
   private[this] def sbtClassifiersGlobalDefaults =
-    Defaults.globalDefaults(
+    GlobalDefaults(
       Seq(
         transitiveClassifiers in updateSbtClassifiers ~= (_.filter(_ != DocClassifier))
       )
@@ -782,7 +783,7 @@ object Classpaths {
             explicit orElse boot getOrElse externalResolvers.value
           },
           ivyConfiguration := InlineIvyConfiguration(
-            lock = Option(lock(appConfiguration.value)),
+            lock = Option(LibraryManagement.lock(appConfiguration.value)),
             log = Option(streams.value.log),
             updateOptions = UpdateOptions(),
             paths = Option(ivyPaths.value),
@@ -812,7 +813,7 @@ object Classpaths {
               ).withScalaOrganization(scalaOrganization.value)
             )
           },
-          dependencyResolution := dependencyResolutionTask.value,
+          dependencyResolution := DependencyResolutionTask.get.value,
           csrConfiguration := LMCoursier.updateSbtClassifierConfigurationTask.value,
           updateSbtClassifiers in TaskGlobal := (Def.task {
             val lm = dependencyResolution.value
@@ -855,7 +856,7 @@ object Classpaths {
       ) ++
       inTask(scalaCompilerBridgeScope)(
         Seq(
-          dependencyResolution := dependencyResolutionTask.value,
+          dependencyResolution := DependencyResolutionTask.get.value,
           csrConfiguration := LMCoursier.scalaCompilerBridgeConfigurationTask.value,
           csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
           externalResolvers := scalaCompilerBridgeResolvers.value,
@@ -1013,7 +1014,7 @@ object Classpaths {
 
     val providedScalaJars: String => Seq[File] = {
       val scalaProvider = appConfiguration.value.provider.scalaProvider
-      Defaults.unmanagedScalaInstanceOnly.value match {
+      UnmanagedScalaInstanceOnly.get.value match {
         case Some(instance) =>
           unmanagedJarsTask(scalaVersion.value, instance.version, instance.allJars)
         case None =>
