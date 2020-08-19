@@ -13,8 +13,9 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.Executors
 
 import sbt.State
-import sbt.internal.util.{ ConsoleAppender, ProgressEvent, ProgressState, Util }
-import sbt.internal.util.Prompt
+import scala.concurrent.duration._
+import sbt.internal.util.JoinThread._
+import sbt.internal.util.{ ConsoleAppender, ProgressEvent, ProgressState, Prompt }
 
 private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable {
   private[this] val uiThread = new AtomicReference[(UITask, Thread)]
@@ -65,14 +66,7 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
       case null =>
       case (t, thread) =>
         t.close()
-        Util.ignoreResult(thread.interrupt())
-        try thread.join(1000)
-        catch { case _: InterruptedException => }
-
-        // This join should always work, but if it doesn't log an error because
-        // it can cause problems if the thread isn't joined
-        if (thread.isAlive) System.err.println(s"Unable to join thread $thread")
-        ()
+        thread.joinFor(1.second)
     }
   }
   private[sbt] def stopThread(): Unit = uiThread.synchronized(stopThreadImpl())

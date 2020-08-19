@@ -21,6 +21,7 @@ import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
 import sbt.internal.nio._
 import sbt.internal.ui.UITask
+import sbt.internal.util.JoinThread._
 import sbt.internal.util.complete.DefaultParsers.{ Space, matched }
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
@@ -666,15 +667,13 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
     def removeThread(thread: Thread): Unit = Util.ignoreResult(threads.remove(thread))
     def close(): Unit = if (closed.compareAndSet(false, true)) {
-      threads.forEach { t =>
-        val deadline = 1.second.fromNow
-        while (t.isAlive && !deadline.isOverdue) {
-          t.interrupt()
-          t.join(10)
-        }
-        if (t.isAlive) System.err.println(s"Couldn't join watch thread $t")
+      var exception: Option[InterruptedException] = None
+      threads.forEach { thread =>
+        try thread.joinFor(1.second)
+        catch { case e: InterruptedException => exception = Some(e) }
       }
       threads.clear()
+      exception.foreach(throw _)
     }
   }
   private object WatchExecutor {
@@ -692,8 +691,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         executor: WatchExecutor
     ) extends Future[R] {
       def cancel(): Unit = {
-        thread.interrupt()
         executor.removeThread(thread)
+        thread.joinFor(1.second)
       }
       def result: Try[R] =
         try queue.take match {
