@@ -39,7 +39,7 @@ for:
     - export PATH="$PATH:~/.jabba/jdk/adopt@1.8.0-222/bin"
     - export PATH="$PATH:graalvm-ce-java8-20.1.0/bin"
     - gu install native-image
-    - sbt -Dsbt.native-image=$(pwd)/graalvm-ce-java8-20.1.0/bin/native-image "sbtClientProj/buildNativeThinClient"
+    - sbt "-Dsbt.io.virtual=false" "-Dsbt.native-image=$(pwd)/graalvm-ce-java8-20.1.0/bin/native-image" "sbtClientProj/buildNativeThinClient"
 
 -
   matrix:
@@ -70,7 +70,7 @@ for:
     - export PATH="$PATH:~/.jabba/jdk/adopt@1.8.0-222/Contents/Home/bin"
     - export PATH="$PATH:graalvm-ce-java8-20.1.0/Contents/Home/bin"
     - gu install native-image
-    - sbt -Dsbt.native-image=$(pwd)/graalvm-ce-java8-20.1.0/Contents/Home/bin/native-image "sbtClientProj/buildNativeThinClient"
+    - sbt "-Dsbt.io.virtual=false" "-Dsbt.native-image=$(pwd)/graalvm-ce-java8-20.1.0/Contents/Home/bin/native-image" "sbtClientProj/buildNativeThinClient"
 
 -
   matrix:
@@ -123,7 +123,7 @@ for:
     - '%USERPROFILE%\.sbt'
 
   test_script:
-    - sbt "-Dsbt.native-image=C:\graalvm-ce-java8-20.1.0\bin\native-image.cmd" "sbtClientProj/buildNativeThinClient"
+    - sbt "-Dsbt.io.virtual=false" "-Dsbt.native-image=C:\graalvm-ce-java8-20.1.0\bin\native-image.cmd" "sbtClientProj/buildNativeThinClient"
 -
   matrix:
     only:
@@ -157,4 +157,4 @@ for:
   test_script:
     # The server tests often fail in CI when run together so just run a single test to ensure
     # that the thin client works on windows
-    - sbt "scripted actions/* classloader-cache/* nio/* watch/*" "serverTestProj/testOnly testpkg.ClientTest"
+    - sbt "-Dsbt.io.virtual=false" "scripted actions/* classloader-cache/* nio/* watch/*" "serverTestProj/testOnly testpkg.ClientTest"
