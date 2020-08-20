@@ -386,7 +386,8 @@ object Keys {
   val exportPipelining = settingKey[Boolean]("Product early output so downstream subprojects can do pipelining.").withRank(BSetting)
 
   val bspConfig = taskKey[Unit]("Create or update the BSP connection files").withRank(DSetting)
-  val bspTargetIdentifier = settingKey[BuildTargetIdentifier]("Id for BSP build target.").withRank(DSetting)
+  val bspEnabled = settingKey[Boolean]("Enable/Disable BSP for this build, project or configuration")
+  val bspTargetIdentifier = settingKey[BuildTargetIdentifier]("Build target identifier of a project and configuration.").withRank(DSetting)
   val bspWorkspace = settingKey[Map[BuildTargetIdentifier, Scope]]("Mapping of BSP build targets to sbt scopes").withRank(DSetting)
   val bspInternalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[ConfigKey])]]("The project configurations that this configuration depends on, possibly transitivly").withRank(DSetting)
   val bspWorkspaceBuildTargets = taskKey[Seq[BuildTarget]]("List all the BSP build targets").withRank(DTask)
