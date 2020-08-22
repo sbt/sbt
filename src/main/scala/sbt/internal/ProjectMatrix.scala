@@ -163,6 +163,9 @@ object ProjectMatrix {
     def isMatch(that: ProjectRow): Boolean =
       VirtualAxis.isMatch(this.axisValues, that.axisValues)
 
+    def isSecondaryMatch(that: ProjectRow): Boolean =
+      VirtualAxis.isSecondaryMatch(this.axisValues, that.axisValues)
+
     override def toString: String = s"ProjectRow($autoScalaLibrary, $axisValues)"
   }
 
@@ -275,7 +278,8 @@ object ProjectMatrix {
 
     // resolve to the closest match for the given row
     private[sbt] def resolveMatch(thatRow: ProjectRow): ProjectReference =
-      rows.find(r => r.isMatch(thatRow)) match {
+      (rows.find(r => r.isMatch(thatRow)) orElse
+        rows.find(r => r.isSecondaryMatch(thatRow))) match {
         case Some(r) => LocalProject(resolveProjectIds(r))
         case _       => sys.error(s"no rows were found in $id matching $thatRow: $rows")
       }
