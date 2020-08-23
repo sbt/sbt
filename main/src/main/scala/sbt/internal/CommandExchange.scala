@@ -195,13 +195,10 @@ private[sbt] final class CommandExchange {
         new NetworkChannel(
           name,
           socket,
-          Project structure s,
           auth,
           instance,
           handlers,
-          s.log,
           mkAskUser(name),
-          Option(lastState.get),
         )
       subscribe(channel)
     }

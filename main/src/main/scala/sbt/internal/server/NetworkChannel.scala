@@ -54,13 +54,10 @@ import sbt.internal.util.ProgressState
 final class NetworkChannel(
     val name: String,
     connection: Socket,
-    protected val structure: BuildStructure,
     auth: Set[ServerAuthentication],
     instance: ServerInstance,
     handlers: Seq[ServerHandler],
-    val log: Logger,
     mkUIThreadImpl: (State, CommandChannel) => UITask,
-    state: Option[State],
 ) extends CommandChannel { self =>
   def this(
       name: String,
@@ -74,14 +71,13 @@ final class NetworkChannel(
     this(
       name,
       connection,
-      structure,
       auth,
       instance,
       handlers,
-      log,
       new UITask.AskUserTask(_, _),
-      None
     )
+
+  def log: Logger = StandardMain.exchange.withState(_.log)
 
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
@@ -411,9 +407,12 @@ final class NetworkChannel(
   protected def onSettingQuery(execId: Option[String], req: SettingQuery) = {
     if (initialized) {
       import sbt.protocol.codec.JsonProtocol._
-      SettingQuery.handleSettingQueryEither(req, structure) match {
-        case Right(x) => respondResult(x, execId)
-        case Left(s)  => respondError(ErrorCodes.InvalidParams, s, execId)
+      StandardMain.exchange.withState { s =>
+        val structure = Project.extract(s).structure
+        SettingQuery.handleSettingQueryEither(req, structure) match {
+          case Right(x) => respondResult(x, execId)
+          case Left(s)  => respondError(ErrorCodes.InvalidParams, s, execId)
+        }
       }
     } else {
       log.warn(s"ignoring query $req before initialization")
@@ -792,7 +791,9 @@ final class NetworkChannel(
     private[this] val blockedThreads = ConcurrentHashMap.newKeySet[Thread]
     override private[sbt] val progressState: ProgressState = new ProgressState(
       1,
-      state.flatMap(_.get(Keys.superShellMaxTasks.key)).getOrElse(SysProp.supershellMaxTasks)
+      StandardMain.exchange
+        .withState(_.get(Keys.superShellMaxTasks.key))
+        .getOrElse(SysProp.supershellMaxTasks)
     )
     override def getWidth: Int = getProperty(_.width, 0).getOrElse(0)
     override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
