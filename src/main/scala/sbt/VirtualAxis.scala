@@ -23,16 +23,50 @@ object VirtualAxis {
   abstract class StrongAxis extends VirtualAxis
 
 
-  def isMatch(lhs: Seq[VirtualAxis], rhs: Seq[VirtualAxis]): Boolean = {
-    def isCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
-      v match {
-        case v: WeakAxis =>
-          val clazz = v.getClass
-          stack.contains(v) || !stack.exists(_.getClass == clazz)
-        case v: StrongAxis =>
-          stack.contains(v)
+  def isMatch(lhs: Seq[VirtualAxis], rhs: Seq[VirtualAxis]): Boolean =
+    lhs.forall(isStronglyCompatible(_, rhs)) && rhs.forall(isStronglyCompatible(_, lhs))
+
+  private[sbt] def isStronglyCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
+    v match {
+      case v: WeakAxis =>
+        val clazz = v.getClass
+        stack.contains(v) || !stack.exists(_.getClass == clazz)
+      case v: StrongAxis =>
+        stack.contains(v)
+    }
+
+  def isSecondaryMatch(lhs: Seq[VirtualAxis], rhs: Seq[VirtualAxis]): Boolean =
+    lhs.forall(isSecondaryCompatible(_, rhs)) && rhs.forall(isSecondaryCompatible(_, lhs))
+
+  def isSecondaryCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
+    v match {
+      case v: ScalaVersionAxis =>
+        val thatSVOpt = (stack collect {
+          case x: ScalaVersionAxis => x
+        }).headOption
+        thatSVOpt match {
+          case Some(ScalaVersionAxis(sv, _)) =>
+            (v.scalaVersion == sv) ||
+            isScala2Scala3Sandwich(partialVersion(v.scalaVersion), partialVersion(sv))
+          case _ => true
+        }
+      case _ =>
+        isStronglyCompatible(v, stack)
+    }
+
+  private[sbt] def isScala2Scala3Sandwich(sbv1: Option[(Long, Long)], sbv2: Option[(Long, Long)]): Boolean = {
+    def str(x: Option[(Long, Long)]): String =
+      x match {
+        case Some((a, b)) => s"$a.$b"
+        case _            => "0.0"
       }
-    lhs.forall(isCompatible(_, rhs)) && rhs.forall(isCompatible(_, lhs))
+    isScala2Scala3Sandwich(str(sbv1), str(sbv2))
+  }
+
+  private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
+    def compare(a: String, b: String): Boolean =
+      a == "2.13" && (b.startsWith("0.") || b.startsWith("3.0"))
+    compare(sbv1, sbv2) || compare(sbv2, sbv1)
   }
 
   case class ScalaVersionAxis(scalaVersion: String, value: String) extends WeakAxis {
