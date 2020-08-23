@@ -275,17 +275,58 @@ object Terminal {
 
   private[this] val hasProgress: AtomicBoolean = new AtomicBoolean(false)
 
+  private[sbt] def parseLogOption(s: String): LogOption =
+    s.toLowerCase match {
+      case "always" => LogOption.Always
+      case "auto"   => LogOption.Auto
+      case "never"  => LogOption.Never
+      case "true"   => LogOption.Always
+      case "false"  => LogOption.Never
+      case _        => LogOption.Auto
+    }
+
+  /**
+   * Indicates whether formatting has been disabled in environment variables.
+   * 1. -Dsbt.log.noformat=true means no formatting.
+   * 2. -Dsbt.color=always/auto/never/true/false
+   * 3. -Dsbt.colour=always/auto/never/true/false
+   * 4. -Dsbt.log.format=always/auto/never/true/false
+   */
+  private[sbt] lazy val formatEnabledInEnv: Boolean = {
+    def useColorDefault: Boolean = {
+      // This approximates that both stdin and stdio are connected,
+      // so by default color will be turned off for pipes and redirects.
+      val hasConsole = Option(java.lang.System.console).isDefined
+      props.map(_.ansi).getOrElse(true) && hasConsole
+    }
+    sys.props.get("sbt.log.noformat") match {
+      case Some(_) => !java.lang.Boolean.getBoolean("sbt.log.noformat")
+      case _ =>
+        sys.props
+          .get("sbt.color")
+          .orElse(sys.props.get("sbt.colour"))
+          .orElse(sys.props.get("sbt.log.format"))
+          .flatMap({ s =>
+            parseLogOption(s) match {
+              case LogOption.Always => Some(true)
+              case LogOption.Never  => Some(false)
+              case _                => None
+            }
+          })
+          .getOrElse(useColorDefault)
+    }
+  }
+
   /**
    *
-   * @param progress toggles whether or not the console terminal has progress
+   * @param isServer toggles whether or not this is a server of client process
    * @param f the thunk to run
    * @tparam T the result type of the thunk
    * @return the result of the thunk
    */
   private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
-    if (isCI && System.getProperty("sbt.io.virtual", "") != "true") f
-    else {
+    if (System.getProperty("sbt.io.virtual", "") == "true" || (formatEnabledInEnv && !isCI)) {
       hasProgress.set(isServer)
       consoleTerminalHolder.set(wrap(jline.TerminalFactory.get))
       activeTerminal.set(consoleTerminalHolder.get)
@@ -317,7 +358,7 @@ object Terminal {
           console.close()
         }
       }
-    }
+    } else f
 
   private[this] object ProxyTerminal extends Terminal {
     private def t: Terminal = activeTerminal.get
@@ -693,7 +734,7 @@ object Terminal {
       override def isSupported: Boolean = terminal.isSupported
       override def getWidth: Int = props.map(_.width).getOrElse(terminal.getWidth)
       override def getHeight: Int = props.map(_.height).getOrElse(terminal.getHeight)
-      override def isAnsiSupported: Boolean = props.map(_.ansi).getOrElse(terminal.isAnsiSupported)
+      override def isAnsiSupported: Boolean = formatEnabledInEnv
       override def wrapOutIfNeeded(out: OutputStream): OutputStream = terminal.wrapOutIfNeeded(out)
       override def wrapInIfNeeded(in: InputStream): InputStream = terminal.wrapInIfNeeded(in)
       override def hasWeirdWrap: Boolean = terminal.hasWeirdWrap
@@ -952,6 +993,7 @@ object Terminal {
   }
   private[sbt] object NullTerminal extends DefaultTerminal
   private[sbt] object SimpleTerminal extends DefaultTerminal {
+    override lazy val inputStream: InputStream = nonBlockingIn
     override lazy val outputStream: OutputStream = originalOut
     override lazy val errorStream: OutputStream = originalErr
   }

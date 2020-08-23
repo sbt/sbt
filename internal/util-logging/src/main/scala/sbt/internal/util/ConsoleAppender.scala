@@ -148,40 +148,9 @@ object ConsoleAppender {
    * 3. -Dsbt.colour=always/auto/never/true/false
    * 4. -Dsbt.log.format=always/auto/never/true/false
    */
-  lazy val formatEnabledInEnv: Boolean = {
-    def useColorDefault: Boolean = {
-      // This approximates that both stdin and stdio are connected,
-      // so by default color will be turned off for pipes and redirects.
-      val hasConsole = Option(java.lang.System.console).isDefined
-      ansiSupported && hasConsole
-    }
-    sys.props.get("sbt.log.noformat") match {
-      case Some(_) => !java.lang.Boolean.getBoolean("sbt.log.noformat")
-      case _ =>
-        sys.props
-          .get("sbt.color")
-          .orElse(sys.props.get("sbt.colour"))
-          .orElse(sys.props.get("sbt.log.format"))
-          .flatMap({ s =>
-            parseLogOption(s) match {
-              case LogOption.Always => Some(true)
-              case LogOption.Never  => Some(false)
-              case _                => None
-            }
-          })
-          .getOrElse(useColorDefault)
-    }
-  }
+  lazy val formatEnabledInEnv: Boolean = Terminal.formatEnabledInEnv
 
-  private[sbt] def parseLogOption(s: String): LogOption =
-    s.toLowerCase match {
-      case "always" => LogOption.Always
-      case "auto"   => LogOption.Auto
-      case "never"  => LogOption.Never
-      case "true"   => LogOption.Always
-      case "false"  => LogOption.Never
-      case _        => LogOption.Auto
-    }
+  private[sbt] def parseLogOption(s: String): LogOption = Terminal.parseLogOption(s)
 
   private[this] val generateId: AtomicInteger = new AtomicInteger
 
@@ -399,6 +368,10 @@ trait Appender extends AutoCloseable {
     if (ansiCodesSupported && useFormat) scala.Console.RESET
     else ""
   }
+  private def clearScreenAfterCursor: String = {
+    if (ansiCodesSupported && useFormat) ClearScreenAfterCursor
+    else ""
+  }
 
   private val SUCCESS_LABEL_COLOR = GREEN
   private val SUCCESS_MESSAGE_COLOR = reset
@@ -488,7 +461,7 @@ trait Appender extends AutoCloseable {
       if (message == null) ()
       else {
         val len =
-          labelColor.length + label.length + messageColor.length + reset.length * 3 + ClearScreenAfterCursor.length
+          labelColor.length + label.length + messageColor.length + reset.length * 3 + clearScreenAfterCursor.length
         val builder: StringBuilder = new StringBuilder(len)
         message.linesIterator.foreach { line =>
           builder.ensureCapacity(len + line.length + 4)
@@ -500,7 +473,7 @@ trait Appender extends AutoCloseable {
           fmted(labelColor, label)
           builder.append("] ")
           fmted(messageColor, line)
-          builder.append(ClearScreenAfterCursor)
+          builder.append(clearScreenAfterCursor)
           write(builder.toString)
         }
       }

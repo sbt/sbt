@@ -75,9 +75,11 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
     // synchronize to ensure that the state isn't modified during the call to reset
     // at the bottom
     synchronized {
-      channel.terminal.withPrintStream { ps =>
-        ps.print(ConsoleAppender.ClearScreenAfterCursor)
-        ps.flush()
+      if (terminal.isAnsiSupported) {
+        channel.terminal.withPrintStream { ps =>
+          ps.print(ConsoleAppender.ClearScreenAfterCursor)
+          ps.flush()
+        }
       }
       val state = consolePromptEvent.state
       terminal.prompt match {
