@@ -249,7 +249,8 @@ object ProjectMatrix {
             crossTarget := Keys.target.value,
             sourceDirectory := base.getAbsoluteFile / "src",
             inConfig(Compile)(makeSources(nonScalaDirSuffix, svDirSuffix)),
-            inConfig(Test)(makeSources(nonScalaDirSuffix, svDirSuffix))
+            inConfig(Test)(makeSources(nonScalaDirSuffix, svDirSuffix)),
+            projectDependencies := projectDependenciesTask.value,
           )
           .settings(self.settings)
           .configure(transforms: _*)
@@ -258,6 +259,43 @@ object ProjectMatrix {
       }): _*)
     }
 
+  // backport of https://github.com/sbt/sbt/pull/5767
+  def projectDependenciesTask: Def.Initialize[Task[Seq[ModuleID]]] =
+    Def.task {
+      val orig = projectDependencies.value
+      val sbv = scalaBinaryVersion.value
+      val ref = thisProjectRef.value
+      val data = settingsData.value
+      val deps = buildDependencies.value
+      val sbtV = VersionNumber(sbtVersion.value)
+
+      if (sbtV._1.getOrElse(0L) == 1 && (sbtV._2.getOrElse(0L) < 4)) {
+        deps.classpath(ref) flatMap { dep =>
+          val depProjIdOpt = (dep.project / projectID).get(data)
+          val depSVOpt = (dep.project / scalaVersion).get(data)
+          val depSBVOpt = (dep.project / scalaBinaryVersion).get(data)
+          val depCrossOpt = (dep.project / crossVersion).get(data)
+          (depProjIdOpt, depSVOpt, depSBVOpt, depCrossOpt) match {
+            case (Some(depProjId), Some(depSV), Some(depSBV), Some(depCross)) =>
+              if (sbv == depSBV || depCross != CrossVersion.binary)
+                Some(
+                  depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+                )
+              else if (VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) && depCross == CrossVersion.binary)
+                Some(
+                  depProjId
+                    .withCrossVersion(CrossVersion.constant(depSBV))
+                    .withConfigurations(dep.configuration)
+                    .withExplicitArtifacts(Vector.empty)
+                )
+              else sys.error(s"scalaBinaryVersion mismatch: expected $sbv but found ${depSBV}")
+            case _ => None
+          }
+        }
+      } else {
+        orig
+      }
+    }
 
     override lazy val componentProjects: Seq[Project] = resolvedMappings.values.toList
 
