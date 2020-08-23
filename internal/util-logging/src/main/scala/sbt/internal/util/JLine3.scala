@@ -108,9 +108,12 @@ private[sbt] object JLine3 {
               }
             case _ => throw new ClosedException
           }
-          if (res == 4 && term.prompt.render().endsWith(term.prompt.mkPrompt()))
-            throw new ClosedException
-          res
+          res match {
+            case 3 /* ctrl+c */ => throw new ClosedException
+            case 4 /* ctrl+d */ if term.prompt.render().endsWith(term.prompt.mkPrompt()) =>
+              throw new ClosedException
+            case r => r
+          }
         }
       }
       override val output: OutputStream = new OutputStream {
