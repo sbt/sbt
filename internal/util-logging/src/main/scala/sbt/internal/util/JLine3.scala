@@ -15,7 +15,7 @@ import org.jline.utils.InfoCmp.Capability
 import org.jline.utils.{ ClosedException, NonBlockingReader, OSUtils }
 import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
 import org.jline.terminal.Terminal.SignalHandler
-import org.jline.terminal.impl.AbstractTerminal
+import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
 import org.jline.terminal.impl.jansi.JansiSupportImpl
 import org.jline.terminal.impl.jansi.win.JansiWinSysTerminal
 import scala.collection.JavaConverters._
@@ -75,6 +75,11 @@ private[sbt] object JLine3 {
     }
   }
   private[sbt] def apply(term: Terminal): JTerminal = {
+    if (System.getProperty("jline.terminal", "") == "none")
+      new DumbTerminal(term.inputStream, term.outputStream)
+    else wrapTerminal(term)
+  }
+  private[this] def wrapTerminal(term: Terminal): JTerminal = {
     new AbstractTerminal(term.name, "ansi", Charset.forName("UTF-8"), SignalHandler.SIG_DFL) {
       val closed = new AtomicBoolean(false)
       setOnClose { () =>
