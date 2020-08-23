@@ -993,6 +993,7 @@ object Terminal {
   }
   private[sbt] object NullTerminal extends DefaultTerminal
   private[sbt] object SimpleTerminal extends DefaultTerminal {
+    override lazy val inputStream: InputStream = nonBlockingIn
     override lazy val outputStream: OutputStream = originalOut
     override lazy val errorStream: OutputStream = originalErr
   }

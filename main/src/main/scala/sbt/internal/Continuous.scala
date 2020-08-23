@@ -729,7 +729,6 @@ private[sbt] object Continuous extends DeprecatedContinuous {
      * to a state where it does not parse an action, we can wait until we receive new input
      * to attempt to parse again.
      */
-    type ActionParser = String => Watch.Action
     // Transform the Config.watchSettings.inputParser instances to functions of type
     // String => Watch.Action. The String that is provided will contain any characters that
     // have been read from stdin. If there are any characters available, then it calls the
@@ -766,9 +765,10 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         val action =
           try {
             interrupted.set(false)
-            val byte = terminal.inputStream.read
-            val parse: ActionParser => Watch.Action = parser => parser(byte.toChar.toString)
-            parse(inputHandler)
+            terminal.inputStream.read match {
+              case -1   => Watch.Ignore
+              case byte => inputHandler(byte.toChar.toString)
+            }
           } catch {
             case _: InterruptedException =>
               interrupted.set(true)
