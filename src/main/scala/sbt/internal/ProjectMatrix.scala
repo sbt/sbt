@@ -240,8 +240,11 @@ object ProjectMatrix {
             name := self.id
           )
           .settings(
-            r.scalaVersionOpt.toList map { sv =>
-              Keys.scalaVersion := sv
+            r.scalaVersionOpt match {
+              case Some(sv) =>
+                List(Keys.scalaVersion := sv)
+              case _ =>
+                List(Keys.autoScalaLibrary := false, Keys.crossPaths := false)
             }
           )
           .settings(
