@@ -1,3 +1,5 @@
+lazy val scala213 = "2.13.3"
+lazy val scala212 = "2.12.12"
 lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
@@ -11,7 +13,7 @@ lazy val app = (projectMatrix in file("app"))
   .settings(
     name := "app"
   )
-  .jvmPlatform(scalaVersions = Seq("2.12.8"))
+  .jvmPlatform(scalaVersions = Seq(scala213))
 
 lazy val core = (projectMatrix in file("core"))
   .settings(
@@ -19,7 +21,7 @@ lazy val core = (projectMatrix in file("core"))
       assert(moduleName.value == "core", s"moduleName is ${moduleName.value}")
     },
   )
-  .jvmPlatform(scalaVersions = Seq("2.12.8", "2.11.12"))
+  .jvmPlatform(scalaVersions = Seq(scala213, scala212))
 
 lazy val intf = (projectMatrix in file("intf"))
   .settings(
@@ -29,4 +31,4 @@ lazy val intf = (projectMatrix in file("intf"))
   )
   .jvmPlatform(autoScalaLibrary = false)
 
-lazy val core212 = core.jvm("2.12.8")
+lazy val core213 = core.jvm(scala213)
