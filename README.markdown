@@ -13,7 +13,7 @@ setup
 In `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.5.1")
+addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.6.0")
 
 // add also the following for Scala.js support
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.27")
@@ -28,17 +28,17 @@ After adding sbt-projectmatrix to your build, here's how you can set up a matrix
 
 ```scala
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.13.3"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
 
 lazy val core = (projectMatrix in file("core"))
   .settings(
     name := "core"
   )
-  .jvmPlatform(scalaVersions = Seq("2.12.8", "2.11.12"))
+  .jvmPlatform(scalaVersions = Seq("2.13.3", "2.12.12"))
 ```
 
-This will create subprojects `coreJVM2_11` and `coreJVM2_12`.
+This will create subprojects `core` and `core2_12`.
 Unlike `++` style stateful cross building, these will build in parallel.
 
 ### two matrices
@@ -47,7 +47,7 @@ It gets more interesting if you have more than one matrix.
 
 ```scala
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.13.3"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
 
 // uncomment if you want root
@@ -60,17 +60,17 @@ lazy val core = (projectMatrix in file("core"))
   .settings(
     name := "core"
   )
-  .jvmPlatform(scalaVersions = Seq("2.12.8", "2.11.12"))
+  .jvmPlatform(scalaVersions = Seq("2.13.3", "2.12.12"))
 
 lazy val app = (projectMatrix in file("app"))
   .dependsOn(core)
   .settings(
     name := "app"
   )
-  .jvmPlatform(scalaVersions = Seq("2.12.8"))
+  .jvmPlatform(scalaVersions = Seq("2.13.3"))
 ```
 
-This is an example where `core` builds against Scala 2.11 and 2.12, but app only builds for one of them.
+This is an example where `core` builds against Scala 2.12 and 2.13, but app only builds for one of them.
 
 ### Scala.js support
 
@@ -82,7 +82,7 @@ lazy val core = (projectMatrix in file("core"))
   .settings(
     name := "core"
   )
-  .jsPlatform(scalaVersions = Seq("2.12.8", "2.11.12"))
+  .jsPlatform(scalaVersions = Seq("2.12.12", "2.11.12"))
 ```
 
 This will create subprojects `coreJS2_11` and `coreJS2_12`.
