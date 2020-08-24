@@ -332,7 +332,15 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     ) = getFileEvents(configs, logger, state, commands, fileStampCache, channel.name)
     val executor = new WatchExecutor(channel.name)
     val nextEvent: Int => Watch.Action =
-      combineInputAndFileEvents(nextInputEvent, nextFileEvent, message, logger, logger, executor)
+      combineInputAndFileEvents(
+        nextInputEvent,
+        nextFileEvent,
+        message,
+        logger,
+        logger,
+        executor,
+        channel
+      )
     val onExit = () => {
       cleanupFileMonitor()
       Util.ignoreResult(executor.close())
@@ -781,6 +789,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
             interrupted.set(false)
             terminal.inputStream.read match {
               case -1   => Watch.Ignore
+              case 3    => Watch.CancelWatch // ctrl+c on windows
               case byte => inputHandler(byte.toChar.toString)
             }
           } catch {
@@ -808,6 +817,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       logger: Logger,
       rawLogger: Logger,
       executor: WatchExecutor,
+      channel: CommandChannel
   ): Int => Watch.Action = count => {
     val events = new LinkedBlockingQueue[Either[Watch.Action, (Watch.Event, Watch.Action)]]
 
@@ -817,6 +827,10 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     val fileJob =
       executor
         .submit(s"get-file-events-$count", nextFileEvent(count).foreach(e => events.put(Right(e))))
+    val signalRegistration = channel match {
+      case _: ConsoleChannel => Some(Signals.register(() => events.put(Left(Watch.CancelWatch))))
+      case _                 => None
+    }
     try {
       if (!inputJob.waitUntilStart(1.second) || !fileJob.waitUntilStart(1.second)) {
         inputJob.cancel()
@@ -848,6 +862,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       }
     } finally {
+      signalRegistration.foreach(_.remove())
       inputJob.cancel()
       fileJob.cancel()
       ()
