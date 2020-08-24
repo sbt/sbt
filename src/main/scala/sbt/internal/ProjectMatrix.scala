@@ -112,6 +112,8 @@ sealed trait ProjectMatrix extends CompositeProject {
   def nativePlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
   def native: ProjectFinder
 
+  def defaultAxes(axes: VirtualAxis*): ProjectMatrix
+
   def projectRefs: Seq[ProjectReference]
 
   def filterProjects(axisValues: Seq[VirtualAxis]): Seq[Project]
@@ -193,6 +195,7 @@ object ProjectMatrix {
       val configurations: Seq[Configuration],
       val plugins: Plugins,
       val transforms: Seq[Project => Project],
+      val defAxes: Seq[VirtualAxis],
   ) extends ProjectMatrix { self =>
     lazy val resolvedMappings: ListMap[ProjectRow, Project] = resolveMappings
     private def resolveProjectIds: Map[ProjectRow, String] = {
@@ -200,11 +203,15 @@ object ProjectMatrix {
         r <- rows
       } yield {
         val axes = r.axisValues.sortBy(_.suffixOrder)
+          .filterNot(isSortOfDefaultAxis)
         val idSuffix = axes.map(_.idSuffix).mkString("")
         val childId = self.id + idSuffix
         r -> childId
       }): _*)
     }
+
+    private def isSortOfDefaultAxis(a: VirtualAxis): Boolean =
+      defAxes exists { da => VirtualAxis.isPartialVersionEquals(da, a) }
 
     private def resolveMappings: ListMap[ProjectRow, Project] = {
       val projectIds = resolveProjectIds
@@ -240,8 +247,11 @@ object ProjectMatrix {
             name := self.id
           )
           .settings(
-            r.scalaVersionOpt.toList map { sv =>
-              Keys.scalaVersion := sv
+            r.scalaVersionOpt match {
+              case Some(sv) =>
+                List(Keys.scalaVersion := sv)
+              case _ =>
+                List(Keys.autoScalaLibrary := false, Keys.crossPaths := false)
             }
           )
           .settings(
@@ -279,7 +289,8 @@ object ProjectMatrix {
             case (Some(depProjId), Some(depSV), Some(depSBV), Some(depCross)) =>
               if (sbv == depSBV || depCross != CrossVersion.binary)
                 Some(
-                  depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+                  depProjId.withConfigurations(dep.configuration)
+                    .withExplicitArtifacts(Vector.empty)
                 )
               else if (VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) && depCross == CrossVersion.binary)
                 Some(
@@ -288,7 +299,7 @@ object ProjectMatrix {
                     .withConfigurations(dep.configuration)
                     .withExplicitArtifacts(Vector.empty)
                 )
-              else sys.error(s"scalaBinaryVersion mismatch: expected $sbv but found ${depSBV}")
+              else sys.error(s"scalaBinaryVersion mismatch: expected $sbv but found ${depSBV} in $depProjId")
             case _ => None
           }
         }
@@ -381,6 +392,9 @@ object ProjectMatrix {
             ))
             .settings(settings)
         })
+
+    override def defaultAxes(axes: VirtualAxis*): ProjectMatrix =
+      copy(defAxes = axes.toSeq)
 
     def scalajsPlugin(classLoader: ClassLoader): Try[AutoPlugin] = {
       import sbtprojectmatrix.ReflectionUtil._
@@ -491,6 +505,7 @@ object ProjectMatrix {
         configurations: Seq[Configuration] = configurations,
         plugins: Plugins = plugins,
         transforms: Seq[Project => Project] = transforms,
+        defAxes: Seq[VirtualAxis] = defAxes,
     ): ProjectMatrix = {
       val matrix = unresolved(
         id,
@@ -502,7 +517,8 @@ object ProjectMatrix {
         settings,
         configurations,
         plugins,
-        transforms
+        transforms,
+        defAxes,
       )
       allMatrices(id) = matrix
       matrix
@@ -511,7 +527,8 @@ object ProjectMatrix {
 
   // called by macro
   def apply(id: String, base: sbt.File): ProjectMatrix = {
-    val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty, Nil)
+    val defaultDefAxes = Seq(VirtualAxis.jvm, VirtualAxis.scalaPartialVersion("2.13.3"))
+    val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty, Nil, defaultDefAxes)
     allMatrices(id) = matrix
     matrix
   }
@@ -526,7 +543,8 @@ object ProjectMatrix {
       settings: Seq[Def.Setting[_]],
       configurations: Seq[Configuration],
       plugins: Plugins,
-      transforms: Seq[Project => Project]
+      transforms: Seq[Project => Project],
+      defAxes: Seq[VirtualAxis],
   ): ProjectMatrix =
     new ProjectMatrixDef(
       id,
@@ -538,7 +556,8 @@ object ProjectMatrix {
       settings,
       configurations,
       plugins,
-      transforms
+      transforms,
+      defAxes,
     )
 
   def lookupMatrix(local: LocalProjectMatrix): ProjectMatrix = {

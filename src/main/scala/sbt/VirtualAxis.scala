@@ -69,6 +69,15 @@ object VirtualAxis {
     compare(sbv1, sbv2) || compare(sbv2, sbv1)
   }
 
+  // This admits partial Scala version
+  private[sbt] def isPartialVersionEquals(ax1: VirtualAxis, ax2: VirtualAxis): Boolean = {
+    (ax1, ax2) match {
+      case (ax1: ScalaVersionAxis, ax2: ScalaVersionAxis) =>
+        (ax1 == ax2) || (ax1.value == ax2.value)
+      case _ => ax1 == ax2
+    }
+  }
+
   case class ScalaVersionAxis(scalaVersion: String, value: String) extends WeakAxis {
     override def idSuffix: String = directorySuffix.replaceAll("""\W+""", "_")
     override val suffixOrder: Int = 100

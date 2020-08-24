@@ -1,6 +1,6 @@
 > compile
 
+$ exists core/target/jvm-2.13/classes/a/Core.class
 $ exists core/target/jvm-2.12/classes/a/Core.class
-$ exists core/target/jvm-2.11/classes/a/Core.class
 
-> coreJVM2_12/check
+> core/check

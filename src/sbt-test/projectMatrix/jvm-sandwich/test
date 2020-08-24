@@ -1,5 +1,5 @@
-> fooAppJVM0_23/compile
+> fooApp0_23/compile
 
-> barAppJVM2_13/compile
+> barApp/compile
 
-> bazAppJVM2_13/check
+> bazApp/check
