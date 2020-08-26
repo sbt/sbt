@@ -480,6 +480,7 @@ object EvaluateTask {
       def cancelAndShutdown(): Unit = {
         println("")
         log.warn("Canceling execution...")
+        RunningProcesses.killAll()
         ConcurrentRestrictions.cancelAll()
         shutdown()
       }
