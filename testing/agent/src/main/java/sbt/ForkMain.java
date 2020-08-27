@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.concurrent.*;
 
 public final class ForkMain {
@@ -326,7 +327,7 @@ public final class ForkMain {
 
         if (framework == null) continue;
 
-        final ArrayList<TaskDef> filteredTests = new ArrayList<>();
+        final LinkedHashSet<TaskDef> filteredTests = new LinkedHashSet<>();
         for (final Fingerprint testFingerprint : framework.fingerprints()) {
           for (final TaskDef test : tests) {
             // TODO: To pass in correct explicitlySpecified and selectors
