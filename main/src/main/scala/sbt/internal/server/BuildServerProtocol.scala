@@ -39,6 +39,7 @@ object BuildServerProtocol {
       sbtVersion.value,
       (ThisBuild / baseDirectory).value
     ),
+    bspEnabled := true,
     bspWorkspace := bspWorkspaceSetting.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
       val workspace = Keys.bspWorkspace.value
@@ -246,7 +247,15 @@ object BuildServerProtocol {
           .map(_ / Keys.bspTargetIdentifier)
           .join
           .value
-        targetIds.zip(scopes).toMap
+        val bspEnabled = scopes
+          .map(_ / Keys.bspEnabled)
+          .join
+          .value
+        val result = for {
+          (targetId, scope, bspEnabled) <- (targetIds, scopes, bspEnabled).zipped
+          if bspEnabled
+        } yield targetId -> scope
+        result.toMap
       }
     }
 
