@@ -368,7 +368,11 @@ object BuildServerProtocol {
   private def toId(ref: ProjectReference, config: Configuration): BuildTargetIdentifier =
     ref match {
       case ProjectRef(build, project) =>
-        BuildTargetIdentifier(new URI(s"$build#$project/${config.id}"))
+        val sanitized = build.toString.indexOf("#") match {
+          case i if i > 0 => build.toString.take(i)
+          case _          => build.toString
+        }
+        BuildTargetIdentifier(new URI(s"$sanitized#$project/${config.id}"))
       case _ => sys.error(s"unexpected $ref")
     }
 
