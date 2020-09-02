@@ -3470,25 +3470,19 @@ object Classpaths {
       val data = settingsData.value
       val deps = buildDependencies.value
       deps.classpath(ref) flatMap { dep =>
-        val depProjIdOpt = (dep.project / projectID).get(data)
-        val depSVOpt = (dep.project / scalaVersion).get(data)
-        val depSBVOpt = (dep.project / scalaBinaryVersion).get(data)
-        val depCrossOpt = (dep.project / crossVersion).get(data)
-        (depProjIdOpt, depSVOpt, depSBVOpt, depCrossOpt) match {
-          case (Some(depProjId), Some(depSV), Some(depSBV), Some(depCross)) =>
-            if (sbv == depSBV || depCross != CrossVersion.binary)
-              Some(
-                depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
-              )
-            else if (isScala2Scala3Sandwich(sbv, depSBV) && depCross == CrossVersion.binary)
-              Some(
-                depProjId
-                  .withCrossVersion(CrossVersion.constant(depSBV))
-                  .withConfigurations(dep.configuration)
-                  .withExplicitArtifacts(Vector.empty)
-              )
-            else sys.error(s"scalaBinaryVersion mismatch: expected $sbv but found ${depSBV}")
-          case _ => None
+        for {
+          depProjId <- (dep.project / projectID).get(data)
+          depSV <- (dep.project / scalaVersion).get(data)
+          depSBV <- (dep.project / scalaBinaryVersion).get(data)
+          depCross <- (dep.project / crossVersion).get(data)
+        } yield {
+          if (isScala2Scala3Sandwich(sbv, depSBV) && depCross == CrossVersion.binary)
+            depProjId
+              .withCrossVersion(CrossVersion.constant(depSBV))
+              .withConfigurations(dep.configuration)
+              .withExplicitArtifacts(Vector.empty)
+          else
+            depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
         }
       }
     }
