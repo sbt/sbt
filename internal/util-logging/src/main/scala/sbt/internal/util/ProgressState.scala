@@ -171,7 +171,7 @@ private[sbt] object ProgressState {
               s"  | => ${item.name} ${elapsed}s"
             }
             val limit = state.maxItems
-            if (base.size > limit)
+            if (base.size > limit + 1)
               s"  | ... (${base.size - limit} other tasks)" +: base.takeRight(limit)
             else base
           } else {
