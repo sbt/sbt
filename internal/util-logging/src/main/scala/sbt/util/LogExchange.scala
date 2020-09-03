@@ -49,6 +49,11 @@ sealed abstract class LogExchange {
           .addAppender(loggerName, new ConsoleAppenderFromLog4J(loggerName, a) -> l)
     }
   }
+  @deprecated("Use LoggerContext to bind appenders", "1.4.0")
+  def bindLoggerAppenders(
+      loggerName: String,
+      appenders: Seq[(Appender, Level.Value)]
+  ): Unit = bindLoggerAppenders(loggerName, appenders.map { case (a, l) => a.toLog4J -> l }.toList)
   @deprecated("unused", "1.4.0")
   def loggerConfig(loggerName: String): LoggerConfig = configs.get(loggerName)
 
