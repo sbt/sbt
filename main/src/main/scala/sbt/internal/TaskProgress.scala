@@ -118,10 +118,14 @@ private[sbt] class TaskProgress(sleepDuration: FiniteDuration, threshold: Finite
       "consoleQuick",
       "state"
     )
+  private[this] val hiddenTasks = Set(
+    "compileEarly",
+    "pickleProducts",
+  )
   private[this] def appendProgress(event: ProgressEvent): Unit =
     StandardMain.exchange.updateProgress(event)
   private[this] def report(): Unit = {
-    val currentTasks = timings(active.keySet, threshold.toMicros)
+    val (currentTasks, skip) = filter(timings(active.keySet, threshold.toMicros))
     val ltc = lastTaskCount.get
     if (currentTasks.nonEmpty || ltc != 0) {
       val currentTasksCount = currentTasks.size
@@ -141,7 +145,7 @@ private[sbt] class TaskProgress(sleepDuration: FiniteDuration, threshold: Finite
           None,
           None,
           None,
-          Some(containsSkipTasks(active.keySet))
+          Some(skip)
         )
       }
       lastTaskCount.set(currentTasksCount)
@@ -149,16 +153,21 @@ private[sbt] class TaskProgress(sleepDuration: FiniteDuration, threshold: Finite
     }
   }
 
-  private[this] def containsSkipTasks(tasks: java.util.Set[Task[_]]): Boolean = {
-    tasks.iterator.asScala.map(taskName).exists { n =>
-      val shortName = n.lastIndexOf('/') match {
-        case -1 => n
-        case i =>
-          var j = i + 1
-          while (n(j) == ' ') j += 1
-          n.substring(j)
-      }
-      skipReportTasks.contains(shortName)
+  private[this] def filter(
+      tasks: Vector[(Task[_], Long)]
+  ): (Vector[(Task[_], Long)], Boolean) = {
+    tasks.foldLeft((Vector.empty[(Task[_], Long)], false)) {
+      case ((tasks, skip), pair @ (t, _)) =>
+        val n = taskName(t)
+        val shortName = n.lastIndexOf('/') match {
+          case -1 => n
+          case i =>
+            var j = i + 1
+            while (n(j) == ' ') j += 1
+            n.substring(j)
+        }
+        val newSkip = skip || skipReportTasks.contains(shortName)
+        if (hiddenTasks.contains(shortName)) (tasks, newSkip) else (tasks :+ pair, newSkip)
     }
   }
 }
