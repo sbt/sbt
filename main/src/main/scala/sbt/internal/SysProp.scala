@@ -60,6 +60,17 @@ object SysProp {
       case _ => default
     }
 
+  def double(name: String, default: Double): Double =
+    sys.props.get(name) match {
+      case Some(str) =>
+        try {
+          str.toDouble
+        } catch {
+          case NonFatal(_) => default
+        }
+      case _ => default
+    }
+
   // System property style:
   //   1. use sbt. prefix
   //   2. prefer short nouns
@@ -136,6 +147,10 @@ object SysProp {
         System.err.println(s"Unknown sbt.task.timings.unit: $x.\nUsing milliseconds.")
         ("ms", 6)
     }
+
+  def gcMonitor: Boolean = getOrTrue("sbt.gc.monitor")
+  def gcWindow: FiniteDuration = int("sbt.gc.monitor.window", 10).seconds
+  def gcRatio: Double = double("sbt.gc.monitor.ratio", 0.5)
 
   /** Generate build.properties if missing. */
   def genBuildProps: Boolean =
