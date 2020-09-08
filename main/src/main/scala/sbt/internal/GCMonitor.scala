@@ -38,7 +38,8 @@ class GCMonitor(logger: Logger) extends AutoCloseable {
     if ((total > window.toMillis * ratio) && (lastWarned.get + window).isOverdue) {
       lastWarned.set(Deadline.now)
       val msg = s"${total / 1000.0} seconds of the last $window were spent in garbage " +
-        "collection. You may want to increase the project heap size for better performance."
+        "collection. You may want to increase the project heap size using `-Xmx` or try " +
+        "a different gc algorithm, e.g. `-XX:+UseG1GC`, for better performance."
       logger.warn(msg)
     }
   }
