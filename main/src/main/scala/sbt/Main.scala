@@ -59,7 +59,7 @@ private[sbt] object xMain {
   }
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
-      import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
+      import BasicCommandStrings.{ DashClient, DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
@@ -71,7 +71,9 @@ private[sbt] object xMain {
       }
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
-      val userCommands = configuration.arguments.map(_.trim)
+      val userCommands = configuration.arguments
+        .map(_.trim)
+        .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
       if (userCommands.exists(isBsp)) {

@@ -200,6 +200,10 @@ $AliasCommand name=
 	Starts the server if it has not been started. This is intended to be used with
 	-Dsbt.server.autostart=false."""
 
+  def ServerDetailed: String =
+    "--server always runs sbt in not-daemon mode."
+  def DashDashServer: String = "--server"
+
   def OldShell: String = "oldshell"
   def OldShellDetailed = "Provides an interactive prompt from which commands can be run."
 

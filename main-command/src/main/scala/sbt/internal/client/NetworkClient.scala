@@ -298,7 +298,8 @@ class NetworkClient(
             term.isSupershellEnabled
           ).mkString(",")
 
-        val cmd = arguments.sbtScript +: arguments.sbtArguments :+ BasicCommandStrings.CloseIOStreams
+        val cmd = List(arguments.sbtScript) ++ arguments.sbtArguments ++
+          List(BasicCommandStrings.CloseIOStreams, BasicCommandStrings.DashDashServer)
         val processBuilder =
           new ProcessBuilder(cmd: _*)
             .directory(arguments.baseDirectory)
