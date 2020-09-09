@@ -22,44 +22,35 @@ class GCMonitor(logger: Logger) extends AutoCloseable {
     Try(System.getProperty("sbt.gc.monitor.window", "10").toInt).getOrElse(10).seconds
   private[this] val ratio =
     Try(System.getProperty("sbt.gc.monitor.ratio", "0.5").toDouble).getOrElse(0.5)
+  private[this] val queue = new LinkedBlockingQueue[(FiniteDuration, Long)]
+  private[this] val lastWarned = new AtomicReference(Deadline(0.millis))
   private[this] def handleNotification(
       notification: Notification,
       bean: GarbageCollectorMXBean,
-      info: (LinkedBlockingQueue[(Deadline, Long)], AtomicLong, AtomicReference[Deadline])
+      totalCollectionTime: AtomicLong
   ): Unit = {
-    val (queue, lastCollectionTime, lastWarned) = info
-    val now = Deadline.now
+    val now = notification.getTimeStamp.millis
     val collectionTime = bean.getCollectionTime
-    val elapsed = collectionTime - lastCollectionTime.getAndSet(collectionTime)
-    queue.removeIf { case (d, _) => (d + window).isOverdue }
+    val elapsed = collectionTime - totalCollectionTime.getAndSet(collectionTime)
+    queue.removeIf { case (whenEventHappened, _) => now > whenEventHappened + window }
     queue.add(now -> elapsed)
     val total = queue.asScala.foldLeft(0L) { case (total, (_, t)) => total + t }
     if ((total > window.toMillis * ratio) && (lastWarned.get + window).isOverdue) {
-      lastWarned.set(now)
+      lastWarned.set(Deadline.now)
       val msg = s"${total / 1000.0} seconds of the last $window were spent in garbage " +
-        "collection. You may want to increase the project heap size for better performance."
+        "collection. You may want to increase the project heap size using `-Xmx` or try " +
+        "a different gc algorithm, e.g. `-XX:+UseG1GC`, for better performance."
       logger.warn(msg)
     }
   }
 
   val removers = ManagementFactory.getGarbageCollectorMXBeans.asScala.flatMap {
-    case e: NotificationEmitter =>
-      val queue = new LinkedBlockingQueue[(Deadline, Long)]
-      val lastCollectionTime = new AtomicLong(0L)
-      val lastLogged = new AtomicReference(Deadline(0.millis))
+    case bean: NotificationEmitter =>
+      val elapsedTime = new AtomicLong(bean.getCollectionTime)
       val listener: NotificationListener =
-        (notification, queue) =>
-          queue match {
-            case (
-                q: LinkedBlockingQueue[(Deadline, Long)] @unchecked,
-                lct: AtomicLong,
-                ll: AtomicReference[Deadline] @unchecked
-                ) =>
-              handleNotification(notification, e, (q, lct, ll))
-            case _ =>
-          }
-      e.addNotificationListener(listener, null, (queue, lastCollectionTime, lastLogged))
-      Some(() => e.removeNotificationListener(listener))
+        (notification, _) => handleNotification(notification, bean, elapsedTime)
+      bean.addNotificationListener(listener, null, null)
+      Some(() => bean.removeNotificationListener(listener))
     case _ => None
   }
   override def close(): Unit = {
