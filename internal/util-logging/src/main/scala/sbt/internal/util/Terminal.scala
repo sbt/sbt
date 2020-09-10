@@ -297,7 +297,7 @@ object Terminal {
       // This approximates that both stdin and stdio are connected,
       // so by default color will be turned off for pipes and redirects.
       val hasConsole = Option(java.lang.System.console).isDefined
-      props.map(_.ansi).getOrElse(true) && hasConsole
+      props.map(_.color).getOrElse(hasConsole)
     }
     sys.props.get("sbt.log.noformat") match {
       case Some(_) => !java.lang.Boolean.getBoolean("sbt.log.noformat")
@@ -852,8 +852,7 @@ object Terminal {
         term.setEchoEnabled(true)
       }
     }
-    override def isColorEnabled: Boolean =
-      props.map(_.color).getOrElse(ConsoleAppender.formatEnabledInEnv)
+    override def isColorEnabled: Boolean = props.map(_.color).getOrElse(formatEnabledInEnv)
 
     override def isSupershellEnabled: Boolean =
       props
