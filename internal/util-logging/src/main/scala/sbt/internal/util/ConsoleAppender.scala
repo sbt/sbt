@@ -150,7 +150,11 @@ object ConsoleAppender {
    */
   lazy val formatEnabledInEnv: Boolean = Terminal.formatEnabledInEnv
 
-  private[sbt] def parseLogOption(s: String): LogOption = Terminal.parseLogOption(s)
+  private[sbt] def parseLogOption(s: String): LogOption = Terminal.parseLogOption(s) match {
+    case Some(true)  => LogOption.Always
+    case Some(false) => LogOption.Never
+    case _           => LogOption.Auto
+  }
 
   private[this] val generateId: AtomicInteger = new AtomicInteger
 
