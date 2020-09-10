@@ -10,7 +10,7 @@ package internal
 package server
 
 import java.io.{ File, IOException }
-import java.net.{ InetAddress, ServerSocket, Socket, SocketTimeoutException }
+import java.net.{ InetAddress, ServerSocket, Socket, SocketException, SocketTimeoutException }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
 import java.security.SecureRandom
@@ -110,6 +110,7 @@ private[sbt] object Server {
                 } catch {
                   case e: IOException if e.getMessage.contains("connect") =>
                   case _: SocketTimeoutException                          => // its ok
+                  case _: SocketException if !running.get                 => // the server is shutting down
                 }
               }
               serverSocketHolder.get match {

@@ -36,6 +36,7 @@ object LintUnused {
       onLoadMessage,
       onUnload,
       sbt.nio.Keys.watchTriggers,
+      serverConnectionType,
     ),
     includeLintKeys := Set(
       scalacOptions,
