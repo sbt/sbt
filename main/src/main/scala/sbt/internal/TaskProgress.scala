@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{ RejectedExecutionException, TimeUnit }
 
 import sbt.internal.util._
 
@@ -46,11 +46,17 @@ private[sbt] class TaskProgress(
         }
       }
       val delay = duration.toMillis
-      val future =
-        if (recurring) scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS)
-        else scheduler.scheduleAtFixedRate(runnable, delay, delay, TimeUnit.MILLISECONDS)
-      pending.add(future)
-      () => Util.ignoreResult(future.cancel(true))
+      try {
+        val future =
+          if (recurring) scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS)
+          else scheduler.scheduleAtFixedRate(runnable, delay, delay, TimeUnit.MILLISECONDS)
+        pending.add(future)
+        () => Util.ignoreResult(future.cancel(true))
+      } catch {
+        case e: RejectedExecutionException =>
+          logger.trace(e)
+          () => ()
+      }
     } else {
       logger.debug("tried to call schedule on closed TaskProgress")
       () => ()
