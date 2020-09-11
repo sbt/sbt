@@ -186,6 +186,9 @@ type BuildServerCapabilities {
   # via method buildTarget/resources
   # resourcesProvider: Boolean
 
+  ## Reloading the workspace state through workspace/reload is supported
+  canReload: Boolean
+
   # The server sends notifications to the client on build
   # target change events via buildTarget/didChange
   # buildTargetChangedProvider: Boolean

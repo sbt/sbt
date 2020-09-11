@@ -74,6 +74,17 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("workspace/reload") { _ =>
+    svr.sendJsonRpc(
+      """{ "jsonrpc": "2.0", "id": "15", "method": "workspace/reload"}"""
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains """"id":"15"""") &&
+      (s contains """"result":null""")
+    })
+  }
+
   def initializeRequest(): Unit = {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "10", "method": "build/initialize",

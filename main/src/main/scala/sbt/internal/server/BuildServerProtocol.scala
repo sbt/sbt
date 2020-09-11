@@ -17,11 +17,13 @@ import sbt.Def._
 import sbt.Keys._
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
+import sbt.StandardMain.exchange
 import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
 import sbt.librarymanagement.Configuration
 import sbt.util.Logger
+import sjsonnew.shaded.scalajson.ast.unsafe.JNull
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 
@@ -29,9 +31,44 @@ import scala.util.control.NonFatal
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
+
   private val capabilities = BuildServerCapabilities(
     CompileProvider(BuildServerConnection.languages),
-    dependencySourcesProvider = true
+    dependencySourcesProvider = true,
+    canReload = true
+  )
+
+  private val bspReload = "bspReload"
+  private val bspReloadFailed = "bspReloadFailed"
+  private val bspReloadSucceed = "bspReloadSucceed"
+
+  lazy val commands: Seq[Command] = Seq(
+    Command.single(bspReload) { (state, reqId) =>
+      import sbt.BasicCommandStrings._
+      import sbt.internal.CommandStrings._
+      val result = List(
+        StashOnFailure,
+        s"$OnFailure $bspReloadFailed $reqId",
+        LoadProjectImpl,
+        s"$bspReloadSucceed $reqId",
+        PopOnFailure,
+        FailureWall
+      ) ::: state
+      result
+    },
+    Command.single(bspReloadFailed) { (state, reqId) =>
+      exchange.respondError(
+        ErrorCodes.InternalError,
+        "reload failed",
+        Some(reqId),
+        state.source
+      )
+      state
+    },
+    Command.single(bspReloadSucceed) { (state, reqId) =>
+      exchange.respondEvent(JNull, Some(reqId), state.source)
+      state
+    }
   )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
@@ -59,7 +96,6 @@ object BuildServerProtocol {
       val filter = ScopeFilter.in(targets.map(workspace))
       // run the worker task concurrently
       Def.task {
-        import sbt.internal.bsp.codec.JsonProtocol._
         val items = bspBuildTargetSourcesItem.all(filter).value
         val result = SourcesResult(items.toVector)
         s.respondEvent(result)
@@ -86,7 +122,6 @@ object BuildServerProtocol {
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
       val filter = ScopeFilter.in(targets.map(workspace))
       Def.task {
-        import sbt.internal.bsp.codec.JsonProtocol._
         val statusCode = Keys.bspBuildTargetCompileItem.all(filter).value.max
         s.respondEvent(BspCompileResult(None, statusCode))
       }
@@ -154,6 +189,9 @@ object BuildServerProtocol {
 
         case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
           val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
+
+        case r: JsonRpcRequestMessage if r.method == "workspace/reload" =>
+          val _ = callback.appendExec(s"$bspReload ${r.id}", None)
 
         case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
           ()

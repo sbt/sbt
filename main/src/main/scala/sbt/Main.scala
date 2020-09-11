@@ -23,9 +23,8 @@ import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
 import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
-import sbt.internal.io.Retry
 import sbt.internal.nio.{ CheckBuildSources, FileTreeRepository }
-import sbt.internal.server.NetworkChannel
+import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util._
 import sbt.internal.util.complete.{ Parser, SizeParser }
@@ -317,7 +316,10 @@ object BuiltinCommands {
       NetworkChannel.disconnect,
       waitCmd,
       promptChannel,
-    ) ++ allBasicCommands ++ ContinuousCommands.value
+    ) ++
+      allBasicCommands ++
+      ContinuousCommands.value ++
+      BuildServerProtocol.commands
 
   def DefaultBootCommands: Seq[String] =
     WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil

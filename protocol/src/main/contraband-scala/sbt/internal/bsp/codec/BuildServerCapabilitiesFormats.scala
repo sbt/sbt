@@ -13,8 +13,9 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
       unbuilder.beginObject(__js)
       val compileProvider = unbuilder.readField[Option[sbt.internal.bsp.CompileProvider]]("compileProvider")
       val dependencySourcesProvider = unbuilder.readField[Option[Boolean]]("dependencySourcesProvider")
+      val canReload = unbuilder.readField[Option[Boolean]]("canReload")
       unbuilder.endObject()
-      sbt.internal.bsp.BuildServerCapabilities(compileProvider, dependencySourcesProvider)
+      sbt.internal.bsp.BuildServerCapabilities(compileProvider, dependencySourcesProvider, canReload)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -23,6 +24,7 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
     builder.beginObject()
     builder.addField("compileProvider", obj.compileProvider)
     builder.addField("dependencySourcesProvider", obj.dependencySourcesProvider)
+    builder.addField("canReload", obj.canReload)
     builder.endObject()
   }
 }
