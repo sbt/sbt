@@ -21,6 +21,13 @@ sealed trait ConsoleOut {
 
 object ConsoleOut {
   def systemOut: ConsoleOut = terminalOut
+  private[sbt] object NullConsoleOut extends ConsoleOut {
+    override val lockObject: AnyRef = this
+    override def print(s: String): Unit = {}
+    override def println(): Unit = {}
+    override def println(s: String): Unit = {}
+    override def flush(): Unit = {}
+  }
   private[sbt] def globalProxy: ConsoleOut = Proxy
   private[sbt] def setGlobalProxy(out: ConsoleOut): Unit = Proxy.set(out)
   private[sbt] def getGlobalProxy: ConsoleOut = Proxy.proxy.get

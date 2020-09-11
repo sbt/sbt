@@ -15,7 +15,7 @@ import sbt.util.Level
 class RelayAppender(override val name: String)
     extends ConsoleAppender(
       name,
-      ConsoleAppender.Properties.from(ConsoleOut.globalProxy, true, true),
+      ConsoleAppender.Properties.from(ConsoleOut.NullConsoleOut, true, true),
       _ => None
     ) {
   lazy val exchange = StandardMain.exchange
