@@ -341,17 +341,21 @@ object Terminal {
                * to become non-blocking. After we set it to non-blocking, we spin
                * up a thread that reads from the inputstream and the resets it
                * back to blocking mode. We can then close the console. We do
-               * this on a background thread to avoid blocking sbt's exit.
+               * this on a background thread in case the read blocks indefinitely.
                */
               val prev = c.system.enterRawMode()
               val runnable: Runnable = () => {
-                c.inputStream.read()
-                c.system.setAttributes(prev)
-                c.close()
+                try Util.ignoreResult(c.inputStream.read)
+                catch { case _: InterruptedException => }
               }
               val thread = new Thread(runnable, "sbt-console-background-close")
               thread.setDaemon(true)
               thread.start()
+              // The thread should exit almost instantly but give it 200ms to spin up
+              thread.join(200)
+              if (thread.isAlive) thread.interrupt()
+              c.system.setAttributes(prev)
+              c.close()
             case c => c.close()
           }
         } else {
@@ -723,11 +727,10 @@ object Terminal {
             case _: InterruptedException | _: java.io.IOError =>
           }
       override def restore(): Unit =
-        if (alive)
-          try terminal.restore()
-          catch {
-            case _: InterruptedException | _: java.io.IOError =>
-          }
+        try terminal.restore()
+        catch {
+          case _: InterruptedException | _: java.io.IOError =>
+        }
       override def reset(): Unit =
         try terminal.reset()
         catch { case _: InterruptedException => }
@@ -864,8 +867,10 @@ object Terminal {
           case _      => false
         })
     override def close(): Unit = {
-      try system.close()
-      catch { case NonFatal(_) => }
+      try {
+        system.close()
+        term.restore()
+      } catch { case NonFatal(_) => }
       super.close()
     }
   }
