@@ -152,7 +152,7 @@ object MainLoop {
       state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
     val superShellThreshold =
       state.get(Keys.superShellThreshold.key).getOrElse(SysProp.supershellThreshold)
-    val taskProgress = new TaskProgress(superShellSleep, superShellThreshold)
+    val taskProgress = new TaskProgress(superShellSleep, superShellThreshold, state.log)
     val gcMonitor = if (SysProp.gcMonitor) Some(new sbt.internal.GCMonitor(state.log)) else None
     try {
       ErrorHandling.wideConvert {
