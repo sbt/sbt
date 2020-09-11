@@ -2558,9 +2558,12 @@ object Classpaths {
           val base = ModuleID(id.groupID, id.name, sbtVersion.value).withCrossVersion(cross)
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
         },
-        shellPrompt := shellPromptFromState,
+        shellPrompt := sbt.internal.ui.UITask.NoShellPrompt,
         terminalShellPrompt := { (t, s) =>
-          shellPromptFromState(t)(s)
+          shellPrompt.value match {
+            case sbt.internal.ui.UITask.NoShellPrompt => shellPromptFromState(t)(s)
+            case p                                    => p(s)
+          }
         },
         dynamicDependency := { (): Unit },
         transitiveClasspathDependency := { (): Unit },
