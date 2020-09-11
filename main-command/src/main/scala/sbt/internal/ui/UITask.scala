@@ -12,7 +12,7 @@ import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.BasicCommandStrings.{ Cancel, TerminateAction, Shutdown }
-import sbt.BasicKeys.{ historyPath, terminalShellPrompt }
+import sbt.BasicKeys.{ historyPath, colorShellPrompt }
 import sbt.State
 import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
@@ -98,11 +98,11 @@ private[sbt] object UITask {
   private[sbt] def shellPrompt(terminal: Terminal, s: State): String =
     s.get(sbt.BasicKeys.shellPrompt) match {
       case Some(NoShellPrompt) | None =>
-        s.get(terminalShellPrompt) match {
-          case Some(pf) => pf(terminal, s)
+        s.get(colorShellPrompt) match {
+          case Some(pf) => pf(terminal.isColorEnabled, s)
           case None =>
-            def ansi(s: String): String = if (terminal.isAnsiSupported) s"$s" else ""
-            s"${ansi(DeleteLine)}> ${ansi(ClearScreenAfterCursor)}"
+            def color(s: String): String = if (terminal.isColorEnabled) s"$s" else ""
+            s"${color(DeleteLine)}> ${color(ClearScreenAfterCursor)}"
         }
       case Some(p) => p(s)
     }

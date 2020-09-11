@@ -13,7 +13,7 @@ import com.github.ghik.silencer.silent
 import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
-import sbt.internal.util.{ AttributeKey, Terminal }
+import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
 import scala.concurrent.duration.FiniteDuration
@@ -36,8 +36,8 @@ object BasicKeys {
     "The function that constructs the command prompt from the current build state.",
     10000
   )
-  val terminalShellPrompt = AttributeKey[(Terminal, State) => String](
-    "new-shell-prompt",
+  val colorShellPrompt = AttributeKey[(Boolean, State) => String](
+    "color-shell-prompt",
     "The function that constructs the command prompt from the current build state for a given terminal.",
     10000
   )
