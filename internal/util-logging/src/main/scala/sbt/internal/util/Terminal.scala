@@ -275,14 +275,14 @@ object Terminal {
 
   private[this] val hasProgress: AtomicBoolean = new AtomicBoolean(false)
 
-  private[sbt] def parseLogOption(s: String): LogOption =
+  private[sbt] def parseLogOption(s: String): Option[Boolean] =
     s.toLowerCase match {
-      case "always" => LogOption.Always
-      case "auto"   => LogOption.Auto
-      case "never"  => LogOption.Never
-      case "true"   => LogOption.Always
-      case "false"  => LogOption.Never
-      case _        => LogOption.Auto
+      case "always" => Some(true)
+      case "auto"   => None
+      case "never"  => Some(false)
+      case "true"   => Some(true)
+      case "false"  => Some(false)
+      case _        => None
     }
 
   /**
@@ -292,30 +292,21 @@ object Terminal {
    * 3. -Dsbt.colour=always/auto/never/true/false
    * 4. -Dsbt.log.format=always/auto/never/true/false
    */
-  private[sbt] lazy val formatEnabledInEnv: Boolean = {
-    def useColorDefault: Boolean = {
-      // This approximates that both stdin and stdio are connected,
-      // so by default color will be turned off for pipes and redirects.
-      val hasConsole = Option(java.lang.System.console).isDefined
-      props.map(_.color).getOrElse(hasConsole)
-    }
+  private[this] lazy val logFormatEnabled: Option[Boolean] = {
     sys.props.get("sbt.log.noformat") match {
-      case Some(_) => !java.lang.Boolean.getBoolean("sbt.log.noformat")
-      case _ =>
-        sys.props
-          .get("sbt.color")
-          .orElse(sys.props.get("sbt.colour"))
-          .orElse(sys.props.get("sbt.log.format"))
-          .flatMap({ s =>
-            parseLogOption(s) match {
-              case LogOption.Always => Some(true)
-              case LogOption.Never  => Some(false)
-              case _                => None
-            }
-          })
-          .getOrElse(useColorDefault)
+      case Some(_) => Some(!java.lang.Boolean.getBoolean("sbt.log.noformat"))
+      case _       => sys.props.get("sbt.log.format").flatMap(parseLogOption)
     }
   }
+  private[sbt] lazy val formatEnabledInEnv: Boolean = logFormatEnabled.getOrElse(useColorDefault)
+  private[this] def useColorDefault: Boolean = {
+    // This approximates that both stdin and stdio are connected,
+    // so by default color will be turned off for pipes and redirects.
+    val hasConsole = Option(java.lang.System.console).isDefined
+    props.map(_.color).orElse(isColorEnabledProp).getOrElse(hasConsole)
+  }
+  private[this] lazy val isColorEnabledProp: Option[Boolean] =
+    sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
 
   /**
    *
@@ -326,7 +317,7 @@ object Terminal {
    */
   private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
-    if (System.getProperty("sbt.io.virtual", "") == "true" || (formatEnabledInEnv && !isCI)) {
+    if (System.getProperty("sbt.io.virtual", "") == "true" || (logFormatEnabled.getOrElse(true) && !isCI)) {
       hasProgress.set(isServer)
       consoleTerminalHolder.set(wrap(jline.TerminalFactory.get))
       activeTerminal.set(consoleTerminalHolder.get)
@@ -737,7 +728,7 @@ object Terminal {
       override def isSupported: Boolean = terminal.isSupported
       override def getWidth: Int = props.map(_.width).getOrElse(terminal.getWidth)
       override def getHeight: Int = props.map(_.height).getOrElse(terminal.getHeight)
-      override def isAnsiSupported: Boolean = formatEnabledInEnv
+      override val isAnsiSupported: Boolean = terminal.isAnsiSupported && formatEnabledInEnv
       override def wrapOutIfNeeded(out: OutputStream): OutputStream = terminal.wrapOutIfNeeded(out)
       override def wrapInIfNeeded(in: InputStream): InputStream = terminal.wrapInIfNeeded(in)
       override def hasWeirdWrap: Boolean = terminal.hasWeirdWrap
@@ -855,7 +846,10 @@ object Terminal {
         term.setEchoEnabled(true)
       }
     }
-    override def isColorEnabled: Boolean = props.map(_.color).getOrElse(formatEnabledInEnv)
+    override def isColorEnabled: Boolean =
+      props
+        .map(_.color)
+        .getOrElse(isColorEnabledProp.getOrElse(term.isAnsiSupported && formatEnabledInEnv))
 
     override def isSupershellEnabled: Boolean =
       props
