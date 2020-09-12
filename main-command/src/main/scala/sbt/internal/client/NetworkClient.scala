@@ -299,7 +299,7 @@ class NetworkClient(
           ).mkString(",")
 
         val cmd = List(arguments.sbtScript) ++ arguments.sbtArguments ++
-          List(BasicCommandStrings.CloseIOStreams, BasicCommandStrings.DashDashServer)
+          List(BasicCommandStrings.DashDashDetachStdio, BasicCommandStrings.DashDashServer)
         val processBuilder =
           new ProcessBuilder(cmd: _*)
             .directory(arguments.baseDirectory)

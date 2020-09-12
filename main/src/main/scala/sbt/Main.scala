@@ -86,14 +86,14 @@ private[sbt] object xMain {
             NetworkClient.run(dealiasBaseDirectory(configuration), args)
             Exit(0)
           } else {
-            val closeStreams = userCommands.exists(_ == BasicCommandStrings.CloseIOStreams)
+            val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
             val state0 = StandardMain
               .initialState(
                 dealiasBaseDirectory(configuration),
                 Seq(defaults, early),
                 runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
               )
-              .put(BasicKeys.closeIOStreams, closeStreams)
+              .put(BasicKeys.detachStdio, detachStdio)
             val state = bootServerSocket match {
               case Some(l) => state0.put(Keys.bootServerSocket, l)
               case _       => state0
@@ -230,7 +230,9 @@ object StandardMain {
 
     import BasicCommandStrings.isEarlyCommand
     val userCommands =
-      configuration.arguments.map(_.trim).filterNot(_ == BasicCommandStrings.CloseIOStreams)
+      configuration.arguments
+        .map(_.trim)
+        .filterNot(_ == BasicCommandStrings.DashDashDetachStdio)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
     val commands = (earlyCommands ++ normalCommands).toList map { x =>
       Exec(x, None)

@@ -246,7 +246,11 @@ private[sbt] final class CommandExchange {
           firstInstance.set(false)
       }
       Terminal.setBootStreams(null, null)
-      if (s.get(BasicKeys.closeIOStreams).getOrElse(false)) Terminal.close()
+
+      if (s.get(BasicKeys.detachStdio).getOrElse(false)) {
+        Terminal.close()
+      }
+
       s.get(Keys.bootServerSocket).foreach(_.close())
     }
     s.remove(Keys.bootServerSocket)
