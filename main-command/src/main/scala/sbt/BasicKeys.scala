@@ -129,8 +129,8 @@ object BasicKeys {
     "List of template resolver infos.",
     1000
   )
-  private[sbt] val closeIOStreams = AttributeKey[Boolean](
-    "close-io-streams",
+  private[sbt] val detachStdio = AttributeKey[Boolean](
+    "detach-stdio",
     "Toggles wheter or not to close system in, out and error when the server starts.",
     1000
   )

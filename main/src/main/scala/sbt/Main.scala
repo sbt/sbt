@@ -59,7 +59,7 @@ private[sbt] object xMain {
   }
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
-      import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
+      import BasicCommandStrings.{ DashClient, DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
@@ -71,7 +71,9 @@ private[sbt] object xMain {
       }
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
-      val userCommands = configuration.arguments.map(_.trim)
+      val userCommands = configuration.arguments
+        .map(_.trim)
+        .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
       if (userCommands.exists(isBsp)) {
@@ -84,14 +86,14 @@ private[sbt] object xMain {
             NetworkClient.run(dealiasBaseDirectory(configuration), args)
             Exit(0)
           } else {
-            val closeStreams = userCommands.exists(_ == BasicCommandStrings.CloseIOStreams)
+            val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
             val state0 = StandardMain
               .initialState(
                 dealiasBaseDirectory(configuration),
                 Seq(defaults, early),
                 runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
               )
-              .put(BasicKeys.closeIOStreams, closeStreams)
+              .put(BasicKeys.detachStdio, detachStdio)
             val state = bootServerSocket match {
               case Some(l) => state0.put(Keys.bootServerSocket, l)
               case _       => state0
@@ -228,7 +230,9 @@ object StandardMain {
 
     import BasicCommandStrings.isEarlyCommand
     val userCommands =
-      configuration.arguments.map(_.trim).filterNot(_ == BasicCommandStrings.CloseIOStreams)
+      configuration.arguments
+        .map(_.trim)
+        .filterNot(_ == BasicCommandStrings.DashDashDetachStdio)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
     val commands = (earlyCommands ++ normalCommands).toList map { x =>
       Exec(x, None)
