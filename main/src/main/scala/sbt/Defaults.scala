@@ -2558,9 +2558,12 @@ object Classpaths {
           val base = ModuleID(id.groupID, id.name, sbtVersion.value).withCrossVersion(cross)
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
         },
-        shellPrompt := shellPromptFromState,
-        terminalShellPrompt := { (t, s) =>
-          shellPromptFromState(t)(s)
+        shellPrompt := sbt.internal.ui.UITask.NoShellPrompt,
+        colorShellPrompt := { (c, s) =>
+          shellPrompt.value match {
+            case sbt.internal.ui.UITask.NoShellPrompt => shellPromptFromState(c)(s)
+            case p                                    => p(s)
+          }
         },
         dynamicDependency := { (): Unit },
         transitiveClasspathDependency := { (): Unit },
@@ -3861,12 +3864,12 @@ object Classpaths {
     }
   }
 
-  def shellPromptFromState: State => String = shellPromptFromState(Terminal.console)
-  def shellPromptFromState(terminal: Terminal): State => String = { s: State =>
+  def shellPromptFromState: State => String = shellPromptFromState(Terminal.console.isColorEnabled)
+  def shellPromptFromState(isColorEnabled: Boolean): State => String = { s: State =>
     val extracted = Project.extract(s)
     (name in extracted.currentRef).get(extracted.structure.data) match {
       case Some(name) =>
-        s"sbt:$name" + Def.withColor(s"> ", Option(scala.Console.CYAN), terminal.isColorEnabled)
+        s"sbt:$name" + Def.withColor(s"> ", Option(scala.Console.CYAN), isColorEnabled)
       case _ => "> "
     }
   }

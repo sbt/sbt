@@ -12,7 +12,7 @@ import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.BasicCommandStrings.{ Cancel, TerminateAction, Shutdown }
-import sbt.BasicKeys.{ historyPath, terminalShellPrompt }
+import sbt.BasicKeys.{ historyPath, colorShellPrompt }
 import sbt.State
 import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
@@ -44,6 +44,9 @@ private[sbt] trait UITask extends Runnable with AutoCloseable {
 }
 
 private[sbt] object UITask {
+  case object NoShellPrompt extends (State => String) {
+    override def apply(state: State): String = ""
+  }
   trait Reader extends AutoCloseable {
     def readLine(): Either[String, String]
     override def close(): Unit = {}
@@ -93,11 +96,15 @@ private[sbt] object UITask {
   private[this] def history(s: State): Option[File] =
     s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
   private[sbt] def shellPrompt(terminal: Terminal, s: State): String =
-    s.get(terminalShellPrompt) match {
-      case Some(pf) => pf(terminal, s)
-      case None =>
-        def ansi(s: String): String = if (terminal.isAnsiSupported) s"$s" else ""
-        s"${ansi(DeleteLine)}> ${ansi(ClearScreenAfterCursor)}"
+    s.get(sbt.BasicKeys.shellPrompt) match {
+      case Some(NoShellPrompt) | None =>
+        s.get(colorShellPrompt) match {
+          case Some(pf) => pf(terminal.isColorEnabled, s)
+          case None =>
+            def color(s: String): String = if (terminal.isColorEnabled) s"$s" else ""
+            s"${color(DeleteLine)}> ${color(ClearScreenAfterCursor)}"
+        }
+      case Some(p) => p(s)
     }
   private[sbt] class AskUserTask(
       state: State,
