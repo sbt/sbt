@@ -70,10 +70,16 @@ class BuildServerReporter(
   }
 
   override def logInfo(problem: Problem): Unit = {
-    publishDiagnostic(problem)
+    // demote this message https://github.com/scala/bug/issues/12097
+    val sigFilesWritten = "[sig files written]"
+    if (problem.message == sigFilesWritten) {
+      logger.debug(sigFilesWritten)
+    } else {
+      publishDiagnostic(problem)
 
-    // console channel can keep using the xsbi.Problem
-    logger.infoEvent(problem)
+      // console channel can keep using the xsbi.Problem
+      logger.infoEvent(problem)
+    }
   }
 
   private def publishDiagnostic(problem: Problem): Unit = {
