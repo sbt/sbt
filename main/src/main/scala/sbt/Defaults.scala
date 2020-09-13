@@ -713,7 +713,20 @@ object Defaults extends BuildCommon {
 
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++
     inTask(compile)(compileInputsSettings) ++
-    inTask(compileJava)(compileInputsSettings(dependencyVirtualClasspath)) ++
+    inTask(compileJava)(
+      Seq(
+        compileInputs := {
+          val opts = (compileJava / compileOptions).value
+          (compile / compileInputs).value.withOptions(opts)
+        },
+        compileOptions := {
+          val opts = (compile / compileOptions).value
+          val cp0 = dependencyVirtualClasspath.value
+          val cp = backendOutput.value +: data(cp0)
+          opts.withClasspath(cp.toArray)
+        }
+      )
+    ) ++
     configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compileOutputs := {
       import scala.collection.JavaConverters._
@@ -1950,6 +1963,10 @@ object Defaults extends BuildCommon {
         MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
+      // this stores the eary analysis (again) in case the subproject contains a macro
+      setup.earlyAnalysisStore.toOption map { earlyStore =>
+        earlyStore.set(contents)
+      }
     }
     analysisResult
   }
@@ -2008,10 +2025,16 @@ object Defaults extends BuildCommon {
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
     val s = streams.value
-    val in = (compileJava / compileInputs).value
-    Def.unit(compileScalaBackend.value)
+    val r = compileScalaBackend.value
+    val in0 = (compileJava / compileInputs).value
+    val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
     try {
-      incCompiler.asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl].compileAllJava(in, s.log)
+      if (r.hasModified) {
+        val result0 = incCompiler
+          .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
+          .compileAllJava(in, s.log)
+        result0.withHasModified(result0.hasModified || r.hasModified)
+      } else r
     } finally {
       in.setup.reporter match {
         case r: BuildServerReporter => r.sendFinalReport()
@@ -2060,6 +2083,11 @@ object Defaults extends BuildCommon {
         cachedPerEntryDefinesClassLookup(classpathEntry)
     }
     val extra = extraIncOptions.value.map(t2)
+    val useBinary: Boolean = enableBinaryCompileAnalysis.value
+    val eapath = earlyCompileAnalysisFile.value.toPath
+    val eaOpt =
+      if (exportPipelining.value) Some(MixedAnalyzingCompiler.staticCachedStore(eapath, !useBinary))
+      else None
     Setup.of(
       lookup,
       (skip in compile).value,
@@ -2068,6 +2096,7 @@ object Defaults extends BuildCommon {
       incOptions.value,
       (compilerReporter in compile).value,
       Some((compile / compileProgress).value).toOptional,
+      eaOpt.toOptional,
       extra.toArray,
     )
   }
@@ -2113,11 +2142,12 @@ object Defaults extends BuildCommon {
       compileInputs := {
         val options = compileOptions.value
         val setup = compileIncSetup.value
+        val prev = previousCompile.value
         Inputs.of(
           compilers.value,
           options,
           setup,
-          previousCompile.value
+          prev
         )
       }
     )
@@ -2139,13 +2169,14 @@ object Defaults extends BuildCommon {
       val setup = compileIncSetup.value
       val useBinary: Boolean = enableBinaryCompileAnalysis.value
       val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
-      store.get().toOption match {
+      val prev = store.get().toOption match {
         case Some(contents) =>
           val analysis = Option(contents.getAnalysis).toOptional
           val setup = Option(contents.getMiniSetup).toOptional
           PreviousResult.of(analysis, setup)
         case None => PreviousResult.of(jnone[CompileAnalysis], jnone[MiniSetup])
       }
+      prev
     }
   )
 
