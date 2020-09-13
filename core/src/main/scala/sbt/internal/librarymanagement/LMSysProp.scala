@@ -60,4 +60,6 @@ object LMSysProp {
   }
 
   lazy val useGigahorse: Boolean = getOrFalse("sbt.gigahorse")
+  lazy val maxPublishAttempts: Int = java.lang.Integer.getInteger("sbt.repository.publish.attempts", 3)
+
 }
