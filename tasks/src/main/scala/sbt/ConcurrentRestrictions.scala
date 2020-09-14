@@ -11,7 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import sbt.internal.util.AttributeKey
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.{ Future => JFuture, RejectedExecutionException }
+import scala.collection.mutable
 
 /**
  * Describes restrictions on concurrent execution for a set of tasks.
@@ -45,6 +46,10 @@ trait ConcurrentRestrictions[A] {
   def valid(g: G): Boolean
 }
 
+private[sbt] sealed trait CancelSentiels {
+  def cancelSentinels(): Unit
+}
+
 import java.util.{ LinkedList, Queue }
 import java.util.concurrent.{ Executor, Executors, ExecutorCompletionService }
 import annotation.tailrec
@@ -55,6 +60,11 @@ object ConcurrentRestrictions {
   def cancelAll() = completionServices.keySet.asScala.toVector.foreach {
     case a: AutoCloseable => a.close()
     case _                =>
+  }
+
+  private[sbt] def cancelAllSentinels() = completionServices.keySet.asScala.toVector.foreach {
+    case a: CancelSentiels => a.cancelSentinels()
+    case _                 =>
   }
 
   /**
@@ -181,12 +191,12 @@ object ConcurrentRestrictions {
       tags: ConcurrentRestrictions[A],
       warn: String => Unit,
       isSentinel: A => Boolean,
-  ): CompletionService[A, R] with AutoCloseable = {
+  ): CompletionService[A, R] with CancelSentiels with AutoCloseable = {
 
     // Represents submitted work for a task.
     final class Enqueue(val node: A, val work: () => R)
 
-    new CompletionService[A, R] with AutoCloseable {
+    new CompletionService[A, R] with CancelSentiels with AutoCloseable {
       completionServices.put(this, true)
       private[this] val closed = new AtomicBoolean(false)
       override def close(): Unit = if (closed.compareAndSet(false, true)) {
@@ -206,11 +216,20 @@ object ConcurrentRestrictions {
       /** Tasks that cannot be run yet because they cannot execute concurrently with the currently running tasks.*/
       private[this] val pending = new LinkedList[Enqueue]
 
+      private[this] val sentinels: mutable.ListBuffer[JFuture[_]] = mutable.ListBuffer.empty
+
+      def cancelSentinels(): Unit = {
+        sentinels.toList foreach { s =>
+          s.cancel(true)
+        }
+        sentinels.clear
+      }
+
       def submit(node: A, work: () => R): Unit = synchronized {
         if (closed.get) throw new RejectedExecutionException
         else if (isSentinel(node)) {
           // skip all checks for sentinels
-          CompletionService.submit(work, jservice)
+          sentinels += CompletionService.submitFuture(work, jservice)
         } else {
           val newState = tags.add(tagState, node)
           // if the new task is allowed to run concurrently with the currently running tasks,
@@ -232,7 +251,7 @@ object ConcurrentRestrictions {
         val wrappedWork = () =>
           try work()
           finally cleanup(node)
-        CompletionService.submit(wrappedWork, jservice)
+        CompletionService.submitFuture(wrappedWork, jservice)
         ()
       }
       private[this] def cleanup(node: A): Unit = synchronized {
