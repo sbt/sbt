@@ -7,11 +7,12 @@ libraryDependencies += {
 
 lazy val whatDependsOnCheck = TaskKey[Unit]("whatDependsOnCheck")
 
+import java.nio.file.{Files, Paths}
 import CoursierPlugin.autoImport._
 
 whatDependsOnCheck := {
   val result = (coursierWhatDependsOn in Compile).toTask(" log4j:log4j").value
-  val file = new File("whatDependsOnResult.log")
-  val expected = IO.read(file).toString
+    .replace(System.lineSeparator(), "\n")
+  val expected = new String(Files.readAllBytes(Paths.get("whatDependsOnResult.log")), "UTF-8")
   assert(expected == result, s"Expected '$expected', got '$result'")
 }
