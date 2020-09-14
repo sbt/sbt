@@ -5,10 +5,6 @@ lmCoursier() {
   [ "${PLUGIN:-""}" = "sbt-lm-coursier" ]
 }
 
-sbtShading() {
-  [ "${SBT_SHADING:-""}" = 1 ]
-}
-
 runLmCoursierTests() {
   if [ "$TEST_GROUP" = 1 ]; then
     SCRIPTED_EXTRA="sbt-lm-coursier/*"
@@ -41,14 +37,8 @@ runSbtCoursierTests() {
     "sbt-coursier/scripted shared-$TEST_GROUP/* $SCRIPTED_EXTRA"
 }
 
-runSbtShadingTests() {
-  ./sbt sbt-shading/scripted
-}
 
-
-if sbtShading; then
-  runSbtShadingTests
-elif lmCoursier; then
+if lmCoursier; then
   runLmCoursierTests
 else
   runSbtCoursierTests
