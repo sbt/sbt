@@ -5,7 +5,7 @@ Global / serverLog / logLevel := Level.Debug
 lazy val root = (project in file("."))
   .aggregate(foo, util)
 
-lazy val foo = project
+lazy val foo = project.in(file("foo"))
   .dependsOn(util)
 
 lazy val util = project

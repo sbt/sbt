@@ -469,3 +469,38 @@ type MetalsMetadata {
   ## The list of scala versions that are supported by Metals
   supportedScalaVersions: [String]
 }
+
+## The build target main classes request is sent from the client to the server
+## to query for the list of main classes that can be fed as arguments to buildTarget/run.
+type ScalaMainClassesParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+
+  ## An optional number uniquely identifying a client request.
+  originId: String
+}
+
+type ScalaMainClassesResult {
+  items: [sbt.internal.bsp.ScalaMainClassesItem]
+
+  ## An optional id of the request that triggered this result.
+  originId: String
+}
+
+type ScalaMainClassesItem {
+  ## The build target that contains the test classes.
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## The main class items
+  classes: [sbt.internal.bsp.ScalaMainClass]
+}
+
+type ScalaMainClass {
+  ## The main class to run.
+  class: String!
+
+  ## The user arguments to the main entrypoint.
+  arguments: [String]
+
+  ## The jvm options for the application.
+  jvmOptions: [String]
+}

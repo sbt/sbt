@@ -138,7 +138,18 @@ object BuildServerProtocol {
         s.respondEvent(result)
       }
     }.evaluated,
-    bspBuildTargetScalacOptions / aggregate := false
+    bspBuildTargetScalacOptions / aggregate := false,
+    bspScalaMainClasses := Def.inputTaskDyn {
+      val s = state.value
+      val workspace = bspWorkspace.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val filter = ScopeFilter.in(targets.map(workspace))
+      Def.task {
+        val items = bspScalaMainClassesItem.all(filter).value
+        val result = ScalaMainClassesResult(items.toVector, None)
+        s.respondEvent(result)
+      }
+    }.evaluated
   )
 
   // This will be scoped to Compile, Test, IntegrationTest etc
@@ -164,7 +175,8 @@ object BuildServerProtocol {
     bspBuildTargetDependencySourcesItem := dependencySourcesItemTask.value,
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
-    bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value
+    bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
+    bspScalaMainClassesItem := scalaMainClassesTask.value
   )
 
   def handler(
@@ -221,6 +233,12 @@ object BuildServerProtocol {
           val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
           val targets = param.targets.map(_.uri).mkString(" ")
           val command = Keys.bspBuildTargetScalacOptions.key
+          val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+        case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaMainClasses" =>
+          val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
+          val targets = param.targets.map(_.uri).mkString(" ")
+          val command = Keys.bspScalaMainClasses.key
           val _ = callback.appendExec(s"$command $targets", Some(r.id))
       },
       onResponse = PartialFunction.empty,
@@ -401,6 +419,17 @@ object BuildServerProtocol {
         }
         .toSeq
     }
+  }
+
+  private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
+    val jvmOptions = Keys.javaOptions.value.toVector
+    val mainClasses = Keys.discoveredMainClasses.value.map(
+      ScalaMainClass(_, Vector(), jvmOptions)
+    )
+    ScalaMainClassesItem(
+      bspTargetIdentifier.value,
+      mainClasses.toVector
+    )
   }
 
   private def toId(ref: ProjectReference, config: Configuration): BuildTargetIdentifier =
