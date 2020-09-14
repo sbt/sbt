@@ -20,7 +20,6 @@ runLmCoursierTests() {
 
   # publishing locally to ensure shading runs fine
   ./metadata/scripts/with-test-repo.sh ./sbt \
-    ++$TRAVIS_SCALA_VERSION! \
     evictionCheck \
     compatibilityCheck \
     lm-coursier-shaded/publishLocal \
@@ -38,13 +37,12 @@ runSbtCoursierTests() {
   fi
 
   ./metadata/scripts/with-test-repo.sh ./sbt \
-    ++$TRAVIS_SCALA_VERSION \
     sbt-coursier-shared/test \
     "sbt-coursier/scripted shared-$TEST_GROUP/* $SCRIPTED_EXTRA"
 }
 
 runSbtShadingTests() {
-  ./sbt ++$TRAVIS_SCALA_VERSION sbt-shading/scripted
+  ./sbt sbt-shading/scripted
 }
 
 
