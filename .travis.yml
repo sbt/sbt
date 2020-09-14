@@ -3,7 +3,7 @@ os: linux
 jdk: openjdk8
 git:
   depth: false # https://stackoverflow.com/a/51727114/3714539
-script: scripts/travis.sh
+script: scripts/ci.sh
 stages:
   - name: test
   - name: release
