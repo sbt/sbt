@@ -124,26 +124,6 @@ lazy val `sbt-coursier` = project
     }
   )
 
-lazy val `sbt-pgp-coursier` = project
-  .in(file("modules/sbt-pgp-coursier"))
-  .enablePlugins(ScriptedPlugin)
-  .disablePlugins(MimaPlugin)
-  .dependsOn(`sbt-coursier`)
-  .settings(
-    plugin,
-    libraryDependencies += {
-      val sbtv = CrossVersion.binarySbtVersion(sbtVersion.in(pluginCrossBuild).value)
-      val sv = scalaBinaryVersion.value
-      val ver = "1.1.2-1"
-      Defaults.sbtPluginExtra("com.jsuereth" % "sbt-pgp" % ver, sbtv, sv)
-    },
-    scriptedDependencies := {
-      scriptedDependencies.value
-      // TODO Get dependency projects automatically
-      scriptedDependencies.in(`sbt-coursier`).value
-    }
-  )
-
 lazy val `sbt-coursier-root` = project
   .in(file("."))
   .disablePlugins(MimaPlugin)
@@ -153,8 +133,7 @@ lazy val `sbt-coursier-root` = project
     `sbt-coursier`,
     `sbt-coursier-shared`,
     `sbt-coursier-shared-shaded`,
-    `sbt-lm-coursier`,
-    `sbt-pgp-coursier`
+    `sbt-lm-coursier`
   )
   .settings(
     shared,
