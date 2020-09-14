@@ -2,7 +2,7 @@
 set -euvx
 
 lmCoursier() {
-  [ "${LM_COURSIER:-""}" = 1 ]
+  [ "${PLUGIN:-""}" = "sbt-lm-coursier" ]
 }
 
 sbtShading() {

@@ -1,0 +1,58 @@
+name: CI
+on:
+  push:
+    branches:
+    - master
+    tags:
+    - "v*"
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} ${{ matrix.PLUGIN }} group ${{ matrix.TEST_GROUP }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        PLUGIN: [sbt-coursier, sbt-lm-coursier]
+        TEST_GROUP: [1, 2]
+    steps:
+    - name: Don't convert LF to CRLF during checkout
+      if: runner.os == 'Windows'
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/cache-action@v4
+    - uses: olafurpg/setup-scala@v7
+      with:
+        java-version: adopt@1.8.0-232
+    - run: scripts/ci.sh
+      shell: bash
+      env:
+        PLUGIN: ${{ matrix.PLUGIN }}
+        TEST_GROUP: ${{ matrix.TEST_GROUP }}
+
+  publish:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          submodules: true
+      - uses: coursier/cache-action@v4
+      - uses: olafurpg/setup-scala@v7
+      - uses: olafurpg/setup-gpg@v2
+      - name: Release
+        run: ./sbt ci-release
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
