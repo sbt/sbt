@@ -30,7 +30,12 @@ private[sbt] object ReadJsonFromInputStream {
      * content-length, so this should be fine. If we ever start doing anything
      * with headers, we may need to adjust this buffer size.
      */
-    val headerBuffer = new Array[Byte](128)
+    var headerBuffer = new Array[Byte](128)
+    def expandHeaderBuffer(): Unit = {
+      val newHeaderBuffer = new Array[Byte](headerBuffer.size * 2)
+      headerBuffer.view.zipWithIndex.foreach { case (b, i) => newHeaderBuffer(i) = b }
+      headerBuffer = newHeaderBuffer
+    }
     def getLine(): String = {
       val line = new String(headerBuffer, 0, index, "UTF-8")
       index = 0
@@ -61,7 +66,8 @@ private[sbt] object ReadJsonFromInputStream {
                     case c =>
                       if (c == newline) getLine()
                       else {
-                        if (index < headerBuffer.length) headerBuffer(index) = c.toByte
+                        if (index >= headerBuffer.length) expandHeaderBuffer()
+                        headerBuffer(index) = c.toByte
                         index += 1
                       }
                       onCarriageReturn = false
@@ -88,7 +94,8 @@ private[sbt] object ReadJsonFromInputStream {
         case `carriageReturn` => onCarriageReturn = true
         case c =>
           onCarriageReturn = false
-          if (index < headerBuffer.length) headerBuffer(index) = c.toByte
+          if (index >= headerBuffer.length) expandHeaderBuffer()
+          headerBuffer(index) = c.toByte
           index += 1
 
       }
