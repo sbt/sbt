@@ -75,7 +75,7 @@ private[sbt] object JLine3 {
     }
   }
   private[sbt] def apply(term: Terminal): JTerminal = {
-    if (System.getProperty("jline.terminal", "") == "none")
+    if (System.getProperty("jline.terminal", "") == "none" || !Terminal.formatEnabledInEnv)
       new DumbTerminal(term.inputStream, term.outputStream)
     else wrapTerminal(term)
   }

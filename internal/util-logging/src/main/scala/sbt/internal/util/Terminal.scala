@@ -768,14 +768,17 @@ object Terminal {
   //  older Scala, since it shaded classes but not the system property
   private[this] def fixTerminalProperty(): Unit = {
     val terminalProperty = "jline.terminal"
-    val newValue = System.getProperty(terminalProperty) match {
-      case "jline.UnixTerminal"                             => "unix"
-      case null if System.getProperty("sbt.cygwin") != null => "unix"
-      case "jline.WindowsTerminal"                          => "windows"
-      case "jline.AnsiWindowsTerminal"                      => "windows"
-      case "jline.UnsupportedTerminal"                      => "none"
-      case x                                                => x
-    }
+    val newValue =
+      if (!formatEnabledInEnv) "none"
+      else
+        System.getProperty(terminalProperty) match {
+          case "jline.UnixTerminal"                             => "unix"
+          case null if System.getProperty("sbt.cygwin") != null => "unix"
+          case "jline.WindowsTerminal"                          => "windows"
+          case "jline.AnsiWindowsTerminal"                      => "windows"
+          case "jline.UnsupportedTerminal"                      => "none"
+          case x                                                => x
+        }
     if (newValue != null) {
       System.setProperty(terminalProperty, newValue)
       ()
