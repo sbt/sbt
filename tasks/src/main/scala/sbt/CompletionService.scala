@@ -29,6 +29,7 @@ import java.util.concurrent.{
   Executor,
   ExecutorCompletionService,
   Executors,
+  Future => JFuture,
   RejectedExecutionException,
   CompletionService => JCompletionService
 }
@@ -52,8 +53,12 @@ object CompletionService {
       def take() = completion.take().get()
     }
   def submit[T](work: () => T, completion: JCompletionService[T]): () => T = {
+    val future = submitFuture[T](work, completion)
+    () => future.get
+  }
+  private[sbt] def submitFuture[A](work: () => A, completion: JCompletionService[A]): JFuture[A] = {
     val future = try completion.submit {
-      new Callable[T] {
+      new Callable[A] {
         def call =
           try {
             work()
@@ -66,7 +71,7 @@ object CompletionService {
       case _: RejectedExecutionException =>
         throw Incomplete(None, message = Some("cancelled"))
     }
-    () => future.get()
+    future
   }
   def manage[A, T](
       service: CompletionService[A, T]

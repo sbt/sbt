@@ -53,6 +53,7 @@ import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
 
 import language.experimental.macros
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait ProjectDefinition[PR <: ProjectReference] {
@@ -887,8 +888,20 @@ object Project extends ProjectExtra {
       (Def
         .task {
           val p = i.value
-          val result: A = Await.result(p.underlying.future, atMost)
-          result
+          var result: Option[A] = None
+          if (atMost == Duration.Inf) {
+            while (result.isEmpty) {
+              try {
+                result = Some(Await.result(p.underlying.future, Duration("1s")))
+                Thread.sleep(10)
+              } catch {
+                case _: TimeoutException => ()
+              }
+            }
+          } else {
+            result = Some(Await.result(p.underlying.future, atMost))
+          }
+          result.get
         })
         .tag(Tags.Sentinel)
   }

@@ -2062,6 +2062,7 @@ object Defaults extends BuildCommon {
     } catch {
       case e: Throwable if !promise.isCompleted =>
         promise.failure(e)
+        ConcurrentRestrictions.cancelAllSentinels()
         throw e
     } finally {
       i.setup.reporter match {
