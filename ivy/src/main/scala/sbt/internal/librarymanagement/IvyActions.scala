@@ -25,6 +25,7 @@ import sbt.librarymanagement.{ ModuleDescriptorConfiguration => InlineConfigurat
 import syntax._
 import InternalDefaults._
 import UpdateClassifiersUtil._
+import sbt.internal.librarymanagement.IvyUtil.TransientNetworkException
 
 object IvyActions {
 
@@ -497,8 +498,14 @@ object IvyActions {
       checkFilesPresent(artifacts)
       try {
         resolver.beginPublishTransaction(module.getModuleRevisionId(), overwrite);
-        for ((artifact, file) <- artifacts)
-          resolver.publish(artifact, file, overwrite)
+        artifacts.foreach {
+          case (artifact, file) =>
+            IvyUtil.retryWithBackoff(
+              resolver.publish(artifact, file, overwrite),
+              TransientNetworkException.apply,
+              maxAttempts = LMSysProp.maxPublishAttempts
+            )
+        }
         resolver.commitPublishTransaction()
       } catch {
         case e: Throwable =>
