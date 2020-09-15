@@ -1,7 +1,6 @@
 package lmcoursier
 
 import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
 
 import dataclass.data
 import coursier.cache.CacheDefaults
@@ -91,10 +90,8 @@ import scala.concurrent.duration.Duration
 
 object CoursierConfiguration {
 
-  private var checkedLegacyCache = new AtomicBoolean
-  def checkLegacyCache(): Unit =
-    if (!checkedLegacyCache.getAndSet(true))
-      coursier.cache.CacheDefaults.warnLegacyCacheLocation()
+  @deprecated("Legacy cache location support was dropped, this method does nothing.", "2.0.0-RC6-10")
+  def checkLegacyCache(): Unit = ()
 
   def apply(
     log: Logger,
