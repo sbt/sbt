@@ -978,7 +978,7 @@ object Terminal {
     override def isAnsiSupported: Boolean = false
     override def isColorEnabled: Boolean = false
     override def isEchoEnabled: Boolean = false
-    override def isSuccessEnabled: Boolean = false
+    override def isSuccessEnabled: Boolean = true
     override def isSupershellEnabled: Boolean = false
     override def outputStream: OutputStream = _ => {}
     override def errorStream: OutputStream = _ => {}
