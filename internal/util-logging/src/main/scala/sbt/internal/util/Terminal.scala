@@ -135,7 +135,6 @@ trait Terminal extends AutoCloseable {
 
   private[sbt] def name: String
   private[sbt] def withRawInput[T](f: => T): T = f
-  private[sbt] def withCanonicalIn[T](f: => T): T = f
   private[sbt] def write(bytes: Int*): Unit
   private[sbt] def printStream: PrintStream
   private[sbt] def withPrintStream[T](f: PrintStream => T): T
@@ -381,7 +380,6 @@ object Terminal {
       t.setAttributes(attributes)
     override private[sbt] def setSize(width: Int, height: Int): Unit = t.setSize(width, height)
     override def withRawInput[T](f: => T): T = t.withRawInput(f)
-    override def withCanonicalIn[T](f: => T): T = t.withCanonicalIn(f)
     override def printStream: PrintStream = t.printStream
     override def withPrintStream[T](f: PrintStream => T): T = t.withPrintStream(f)
     override private[sbt] def withRawOutput[R](f: => R): R = t.withRawOutput(f)

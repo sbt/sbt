@@ -221,8 +221,7 @@ private[sbt] object JLine {
     "Don't use jline.Terminal directly. Use Terminal.get.withCanonicalIn instead.",
     "1.4.0"
   )
-  def usingTerminal[T](f: jline.Terminal => T): T =
-    Terminal.get.withCanonicalIn(f(Terminal.get.toJLine))
+  def usingTerminal[T](f: jline.Terminal => T): T = f(Terminal.get.toJLine)
 
   @deprecated("unused", "1.4.0")
   def createReader(): ConsoleReader = createReader(None, Terminal.wrappedSystemIn)
