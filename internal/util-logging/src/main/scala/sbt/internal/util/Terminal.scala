@@ -518,8 +518,8 @@ object Terminal {
   }
   private[this] def withIn[T](f: => T): T =
     try {
-      inputStream.set(Terminal.wrappedSystemIn)
-      System.setIn(wrappedSystemIn)
+      inputStream.set(proxyInputStream)
+      System.setIn(proxyInputStream)
       scala.Console.withIn(proxyInputStream)(f)
     } finally System.setIn(originalIn)
 
