@@ -645,7 +645,7 @@ object Terminal {
       os.write(bytes, offset, len)
     override def flush(): Unit = os.flush()
   }
-  private[this] val proxyErrorStream = new PrintStream(proxyErrorOutputStream, true)
+  private[this] object proxyErrorStream extends PrintStream(proxyErrorOutputStream, true)
   private[this] lazy val isWindows =
     System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
   private[this] object WrappedSystemIn extends InputStream {
