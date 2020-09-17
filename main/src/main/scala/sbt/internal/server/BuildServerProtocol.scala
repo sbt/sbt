@@ -28,7 +28,7 @@ import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 
-import scala.util.{ Failure, Success }
+import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
 object BuildServerProtocol {
@@ -431,12 +431,15 @@ object BuildServerProtocol {
     }
   }
 
-  private val jsonParser: Parser[JValue] = (Parsers.any *)
+  private val jsonParser: Parser[Try[JValue]] = (Parsers.any *)
     .map(_.mkString)
-    .map(JsonParser.parseUnsafe)
+    .map(JsonParser.parseFromString)
 
   private def bspRunTask: Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
-    val runParams = jsonParser.map(json => Converter.fromJson[RunParams](json).get).parsed
+    val runParams = jsonParser
+      .map(_.flatMap(json => Converter.fromJson[RunParams](json)))
+      .parsed
+      .get
     val defaultClass = Keys.mainClass.value
     val defaultJvmOptions = Keys.javaOptions.value
 

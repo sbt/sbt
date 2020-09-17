@@ -19,6 +19,7 @@ object ServerCompletionsTest extends AbstractServerTest {
       s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
+      println(s)
       s contains """"result":{"items":["""
     })
   }
