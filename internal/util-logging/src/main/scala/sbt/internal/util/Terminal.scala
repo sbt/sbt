@@ -435,7 +435,7 @@ object Terminal {
   private[this] val originalErr = System.err
   private[this] val originalIn = System.in
   private[sbt] class WriteableInputStream(in: InputStream, name: String)
-      extends InputStream
+      extends SimpleInputStream
       with AutoCloseable {
     final def write(bytes: Int*): Unit = readThread.synchronized {
       bytes.foreach(b => buffer.put(b))
@@ -567,7 +567,15 @@ object Terminal {
     bootOutputStreamHolder.set(bootOutputStream)
   }
 
-  private[this] object proxyInputStream extends InputStream {
+  private[sbt] trait SimpleInputStream extends InputStream {
+    override def read(b: Array[Byte]): Int = read(b, 0, b.length)
+    override def read(b: Array[Byte], off: Int, len: Int): Int = {
+      val byte = read()
+      b(off) = byte.toByte
+      1
+    }
+  }
+  private[this] object proxyInputStream extends SimpleInputStream {
     private[this] val isScripted = System.getProperty("sbt.scripted", "false") == "true"
     /*
      * This is to handle the case when a remote client starts sbt and the build fails.
@@ -648,7 +656,7 @@ object Terminal {
   private[this] object proxyErrorStream extends PrintStream(proxyErrorOutputStream, true)
   private[this] lazy val isWindows =
     System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
-  private[this] object WrappedSystemIn extends InputStream {
+  private[this] object WrappedSystemIn extends SimpleInputStream {
     private[this] val in = proxyInputStream
     override def available(): Int = if (attached.get) in.available() else 0
     override def read(): Int = synchronized {
