@@ -142,6 +142,17 @@ object BuildServerProtocol {
       }
     }.evaluated,
     bspBuildTargetScalacOptions / aggregate := false,
+    bspScalaTestClasses := Def.inputTaskDyn {
+      val s = state.value
+      val workspace = bspWorkspace.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val filter = ScopeFilter.in(targets.map(workspace))
+      Def.task {
+        val items = bspScalaTestClassesItem.all(filter).value
+        val result = ScalaTestClassesResult(items.toVector, None)
+        s.respondEvent(result)
+      }
+    }.evaluated,
     bspScalaMainClasses := Def.inputTaskDyn {
       val s = state.value
       val workspace = bspWorkspace.value
@@ -152,7 +163,8 @@ object BuildServerProtocol {
         val result = ScalaMainClassesResult(items.toVector, None)
         s.respondEvent(result)
       }
-    }.evaluated
+    }.evaluated,
+    bspScalaMainClasses / aggregate := false
   )
 
   // This will be scoped to Compile, Test, IntegrationTest etc
@@ -180,6 +192,7 @@ object BuildServerProtocol {
     bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
+    bspScalaTestClassesItem := scalaTestClassesTask.value,
     bspScalaMainClassesItem := scalaMainClassesTask.value
   )
 
@@ -265,6 +278,12 @@ object BuildServerProtocol {
             val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetScalacOptions.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaTestClasses" =>
+            val param = Converter.fromJson[ScalaTestClassesParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspScalaTestClasses.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
           case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaMainClasses" =>
@@ -522,6 +541,17 @@ object BuildServerProtocol {
         }
         .toSeq
     }
+  }
+
+  private def scalaTestClassesTask: Initialize[Task[ScalaTestClassesItem]] = Def.task {
+    val testClasses = Keys.definedTests.?.value
+      .getOrElse(Seq.empty)
+      .map(_.name)
+      .toVector
+    ScalaTestClassesItem(
+      bspTargetIdentifier.value,
+      testClasses
+    )
   }
 
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {

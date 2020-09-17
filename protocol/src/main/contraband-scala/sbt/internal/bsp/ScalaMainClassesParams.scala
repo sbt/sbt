@@ -5,6 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp
 /**
+ * Scala Main Class Request
  * The build target main classes request is sent from the client to the server
  * to query for the list of main classes that can be fed as arguments to buildTarget/run.
  * @param originId An optional number uniquely identifying a client request.

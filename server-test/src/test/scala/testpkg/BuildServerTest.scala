@@ -120,6 +120,20 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("buildTarget/scalaTestClasses") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Test"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "18", "method": "buildTarget/scalaTestClasses", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains """"id":"18"""") &&
+      (s contains """"classes":["foo.FooTest"]""")
+    })
+  }
+
   def initializeRequest(): Unit = {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "10", "method": "build/initialize",
