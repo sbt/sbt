@@ -386,6 +386,8 @@ object Defaults extends BuildCommon {
         sys.env.contains("CI") || SysProp.ci,
       // watch related settings
       pollInterval :== Watch.defaultPollInterval,
+      canonicalInput :== true,
+      echoInput :== true,
     ) ++ LintUnused.lintSettings
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
       ++ RemoteCache.globalSettings
@@ -1700,6 +1702,20 @@ object Defaults extends BuildCommon {
   /** Implements `cleanFiles` task. */
   private[sbt] def cleanFilesTask: Initialize[Task[Vector[File]]] = Def.task { Vector.empty[File] }
 
+  private[this] def termWrapper(canonical: Boolean, echo: Boolean): (() => Unit) => (() => Unit) =
+    (f: () => Unit) =>
+      () => {
+        val term = Terminal.get
+        if (!canonical) {
+          term.enterRawMode()
+          if (echo) term.setEchoEnabled(echo)
+        } else if (!echo) term.setEchoEnabled(false)
+        try f()
+        finally {
+          if (!canonical) term.exitRawMode()
+          if (!echo) term.setEchoEnabled(true)
+        }
+      }
   def bgRunMainTask(
       products: Initialize[Task[Classpath]],
       classpath: Initialize[Task[Classpath]],
@@ -1713,6 +1729,7 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       val (mainClass, args) = parser.parsed
       val hashClasspath = (bgHashClasspath in bgRunMain).value
+      val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val files =
           if (copyClasspath.value)
@@ -1722,9 +1739,9 @@ object Defaults extends BuildCommon {
         scalaRun.value match {
           case r: Run =>
             val loader = r.newLoader(cp)
-            (Some(loader), () => r.runWithLoader(loader, cp, mainClass, args, logger).get)
+            (Some(loader), wrapper(() => r.runWithLoader(loader, cp, mainClass, args, logger).get))
           case sr =>
-            (None, () => sr.run(mainClass, cp, args, logger).get)
+            (None, wrapper(() => sr.run(mainClass, cp, args, logger).get))
         }
       }
     }
@@ -1743,6 +1760,7 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
       val hashClasspath = (bgHashClasspath in bgRun).value
+      val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val files =
           if (copyClasspath.value)
@@ -1753,9 +1771,9 @@ object Defaults extends BuildCommon {
         scalaRun.value match {
           case r: Run =>
             val loader = r.newLoader(cp)
-            (Some(loader), () => r.runWithLoader(loader, cp, mainClass, args, logger).get)
+            (Some(loader), wrapper(() => r.runWithLoader(loader, cp, mainClass, args, logger).get))
           case sr =>
-            (None, () => sr.run(mainClass, cp, args, logger).get)
+            (None, wrapper(() => sr.run(mainClass, cp, args, logger).get))
         }
       }
     }
