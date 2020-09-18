@@ -142,7 +142,7 @@ trait Terminal extends AutoCloseable {
   private[sbt] def withRawOutput[R](f: => R): R
   private[sbt] def restore(): Unit = {}
   private[sbt] def progressState: ProgressState
-  private[this] val promptHolder: AtomicReference[Prompt] = new AtomicReference(Prompt.Pending)
+  private[this] val promptHolder: AtomicReference[Prompt] = new AtomicReference(Prompt.Batch)
   private[sbt] final def prompt: Prompt = promptHolder.get
   private[sbt] final def setPrompt(newPrompt: Prompt): Unit =
     if (prompt != Prompt.NoPrompt) promptHolder.set(newPrompt)
