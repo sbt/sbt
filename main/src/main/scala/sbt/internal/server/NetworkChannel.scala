@@ -800,7 +800,7 @@ final class NetworkChannel(
     override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)
     override def isEchoEnabled: Boolean = waitForPending(_.isEchoEnabled)
     override def isSuccessEnabled: Boolean =
-      prompt != Prompt.Batch ||
+      interactive.get ||
         StandardMain.exchange.withState(ContinuousCommands.isInWatch(_, NetworkChannel.this))
     override lazy val isColorEnabled: Boolean = waitForPending(_.isColorEnabled)
     override lazy val isSupershellEnabled: Boolean = waitForPending(_.isSupershellEnabled)
