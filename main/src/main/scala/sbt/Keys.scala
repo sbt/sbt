@@ -245,6 +245,7 @@ object Keys {
   private[sbt] val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
   val fileConverter = settingKey[FileConverter]("The file converter used to convert between Path and VirtualFile")
   val allowMachinePath = settingKey[Boolean]("Allow machine-specific paths during conversion.")
+  val reportAbsolutePath = settingKey[Boolean]("Report absolute paths during compilation.")
   val rootPaths = settingKey[Map[String, NioPath]]("The root paths used to abstract machine-specific paths.")
   private[sbt] val timeWrappedStamper = settingKey[ReadStamps]("The stamper to create timestamp or hash.")
   private[sbt] val reusableStamper = taskKey[ReadStamps]("The stamper can be reused across subprojects and sessions.")

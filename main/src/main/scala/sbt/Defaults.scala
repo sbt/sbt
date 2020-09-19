@@ -28,7 +28,7 @@ import sbt.Project.{
   richInitialize,
   richInitializeTask,
   richTaskSessionVar,
-  sbtRichTaskPromise,
+  sbtRichTaskPromise
 }
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.coursierint._
@@ -52,7 +52,7 @@ import sbt.internal.server.{
   Definition,
   LanguageServerProtocol,
   ServerHandler,
-  VirtualTerminal,
+  VirtualTerminal
 }
 import sbt.internal.testing.TestLogger
 import sbt.internal.util.Attributed.data
@@ -69,7 +69,7 @@ import sbt.librarymanagement.Configurations.{
   IntegrationTest,
   Provided,
   Runtime,
-  Test,
+  Test
 }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement._
@@ -83,10 +83,11 @@ import sbt.nio.Watch
 import sbt.std.TaskExtra._
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
-import sbt.util.InterfaceUtil.{ toJavaFunction => f1, t2 }
+import sbt.util.InterfaceUtil.{ t2, toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.Converter
+import xsbti.{ FileConverter, Position }
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
@@ -185,6 +186,7 @@ object Defaults extends BuildCommon {
       },
       extraIncOptions :== Seq("JAVA_CLASS_VERSION" -> sys.props("java.class.version")),
       allowMachinePath :== true,
+      reportAbsolutePath := true,
       traceLevel in run :== 0,
       traceLevel in runMain :== 0,
       traceLevel in bgRun :== 0,
@@ -407,6 +409,12 @@ object Defaults extends BuildCommon {
       )
     },
     fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
+    sourcePositionMappers ++= {
+      val fc = fileConverter.value
+      if (reportAbsolutePath.value) {
+        List(toAbsoluteSourceMapper(fc))
+      } else Nil
+    },
     // The virtual file value cache needs to be global or sbt will run out of direct byte buffer memory.
     classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
     fullServerHandlers := {
@@ -447,6 +455,31 @@ object Defaults extends BuildCommon {
       }
     },
   )
+
+  private[sbt] def toAbsoluteSourceMapper(fc: FileConverter): Position => Option[Position] = {
+    pos =>
+      val newPath: Optional[String] = pos.sourcePath
+        .map { id =>
+          fc.toPath(VirtualFileRef.of(id)).toAbsolutePath.toString
+        }
+      Some(
+        new Position {
+          override def line(): Optional[Integer] = pos.line()
+
+          override def lineContent(): String = pos.lineContent()
+
+          override def offset(): Optional[Integer] = pos.offset()
+
+          override def pointer(): Optional[Integer] = pos.pointer()
+
+          override def pointerSpace(): Optional[String] = pos.pointerSpace()
+
+          override def sourcePath(): Optional[String] = newPath
+
+          override def sourceFile(): Optional[File] = pos.sourceFile()
+        }
+      )
+  }
 
   // csrCacheDirectory is scoped to ThisBuild to allow customization.
   private[sbt] lazy val buildLevelIvySettings: Seq[Setting[_]] = Seq(
