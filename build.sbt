@@ -1300,7 +1300,7 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
     crossScalaVersions := Seq(baseScalaVersion),
     skip in publish := true,
     compile in Compile := {
-      update.value: Unit
+      val _ = update.value
       runNpm("run compile", baseDirectory.value, streams.value.log)
       sbt.internal.inc.Analysis.empty
     },
@@ -1330,7 +1330,7 @@ lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   )
 
 def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  publishLocalBinAll.value
+  val _ = publishLocalBinAll.value
   val launchJar = s"-Dsbt.launch.jar=${(bundledLauncherProj / Compile / packageBin).value}"
   Scripted.doScripted(
     (scalaInstance in scriptedSbtReduxProj).value,
@@ -1350,7 +1350,6 @@ lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 def allProjects =
   Seq(
-    collectionProj,
     logicProj,
     completeProj,
     testingProj,
@@ -1369,12 +1368,14 @@ def allProjects =
     mainProj,
     sbtProj,
     bundledLauncherProj,
-    coreMacrosProj,
     sbtClientProj,
   ) ++ lowerUtilProjects
 
+// These need to be cross published to 2.12 and 2.13 for Zinc
 lazy val lowerUtilProjects =
   Seq(
+    collectionProj,
+    coreMacrosProj,
     utilCache,
     utilControl,
     utilInterface,
@@ -1403,7 +1404,9 @@ def otherRootSettings =
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
         case _          => Nil
       }),
-    publishLocalBinAll := (Compile / publishLocalBin).all(scriptedProjects).value,
+    publishLocalBinAll := {
+      val _ = (Compile / publishLocalBin).all(scriptedProjects).value
+    },
     aggregate in bintrayRelease := false,
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(
@@ -1484,22 +1487,20 @@ def customCommands: Seq[Setting[_]] = Seq(
       List(s"++$sv", "publishLocal") :::
       state
   },
-  /** There are several complications with sbt's build.
-   * First is the fact that interface project is a Java-only project
-   * that uses source generator from datatype subproject in Scala 2.10.6.
-   *
-   * Second is the fact that all subprojects are released with crossPaths
-   * turned off for the sbt's Scala version 2.10.6, but some of them are also
-   * cross published against 2.11.1 with crossPaths turned on.
-   *
-   * `so compile` handles 2.10.x/2.11.x cross building.
-   */
-  commands += Command.command("release-sbt") { state =>
+  commands += Command.command("releaseLowerUtils") { state =>
+    // TODO - Any sort of validation
+    "clean" ::
+      "+lowerUtils/compile" ::
+      "+lowerUtils/publishSigned" ::
+      s"++$scala212" ::
+      state
+  },
+  commands += Command.command("release") { state =>
     // TODO - Any sort of validation
     "clean" ::
       "conscriptConfigs" ::
-      "compile" ::
-      "publishSigned" ::
+      "upperModules/compile" ::
+      "upperModules/publishSigned" ::
       "bundledLauncherProj/publishLauncher" ::
       state
   },
