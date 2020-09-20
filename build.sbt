@@ -266,19 +266,19 @@ lazy val java9rtexport = (project in file("java9-rt-export"))
     autoScalaLibrary := false,
     crossPaths := false,
     description := "Exports the contents of the Java 9. JEP-220 runtime image to a JAR for compatibility with older tools.",
-    homepage := Some(url("http://github.com/retronym/" + name.value)),
+    homepage := Some(url("https://github.com/retronym/" + name.value)),
     startYear := Some(2017),
     licenses += ("Scala license", url(homepage.value.get.toString + "/blob/master/LICENSE")),
     mainClass in Compile := Some("io.github.retronym.java9rtexport.Export")
   )
 
 def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
-  case Array(0, 11, 3, _*)           => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/sbt-launch.jar"
-  case Array(0, 11, x, _*) if x >= 3 => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case Array(0, y, _*) if y >= 12    => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case Array(1, _, _*) if v contains ("-20") => "http://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case Array(1, _, _*)               => "http://repo.scala-sbt.org/scalasbt/maven-releases/org/scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
+  case Array(0, 11, 3, _*)           => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/sbt-launch.jar"
+  case Array(0, 11, x, _*) if x >= 3 => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
+  case Array(0, y, _*) if y >= 12    => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
+  case Array(1, _, _*) if v contains ("-20") => "https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
+  case Array(1, _, _*)               => "https://repo.scala-sbt.org/scalasbt/maven-releases/org/scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
+  case _                             => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
 }
 
 def makePublishToForConfig(config: Configuration) = {
